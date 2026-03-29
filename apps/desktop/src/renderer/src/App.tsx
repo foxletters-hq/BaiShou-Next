@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { TitleBar } from './components/TitleBar';
-import { useSettingsStore } from '@baishou/store/stores/settings.store';
+import { useSettingsStore } from '@baishou/store';
 import './styles/index.css';
 
 export const App: React.FC = () => {

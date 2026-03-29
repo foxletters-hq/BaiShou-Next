@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./theme/*": "./src/theme/*"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },

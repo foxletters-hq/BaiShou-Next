@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./stores/*": "./src/stores/*"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zustand": "^5.0.0"
+  },
   "devDependencies": {
     "typescript": "^5.8.0"
   }
