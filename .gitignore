@@ -1,0 +1,129 @@
+# ─── 项目管理 ─────────────────────────────────────────────
+项目进度跟踪/
+开发进度追踪/
+
+# ─── 依赖 ─────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+.yarn/
+.npm/
+
+# ─── 构建产物 ──────────────────────────────────────────────
+dist/
+out/
+build/
+.next/
+.turbo/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ─── Electron ──────────────────────────────────────────────
+release/
+*.dmg
+*.exe
+*.msi
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.nupkg
+*.blockmap
+
+# ─── React Native ─────────────────────────────────────────
+# Android
+apps/mobile/android/app/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/build/
+apps/mobile/android/local.properties
+apps/mobile/android/captures/
+apps/mobile/android/.cxx/
+*.apk
+*.aab
+
+# iOS
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/ios/*.xcworkspace
+apps/mobile/ios/*.xcodeproj/xcuserdata/
+*.ipa
+
+# ─── 环境配置 ──────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# ─── IDE / 编辑器 ─────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# 保留 .vscode 中的推荐配置
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# ─── 操作系统 ──────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ─── 日志 ──────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── 测试 / 覆盖率 ────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+
+# ─── 缓存 ──────────────────────────────────────────────────
+.cache/
+.eslintcache
+.stylelintcache
+*.tgz
+
+# ─── AI Agent / Agentic 工具 ──────────────────────────────
+.agents/
+.agent/
+_agents/
+_agent/
+.gemini/
+.claude/
+
+# ─── 临时文件 ──────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+
+# ─── Secret / Key ─────────────────────────────────────────
+*.pem
+*.key
+*.cert
+*.p12
+*.keystore
