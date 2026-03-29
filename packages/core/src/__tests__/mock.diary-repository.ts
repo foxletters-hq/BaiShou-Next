@@ -19,6 +19,8 @@ export class MockDiaryRepository implements DiaryRepository {
   
   async create(input: CreateDiaryInput): Promise<Diary> {
     const newDiary: Diary = {
+      isFavorite: false,
+      mediaPaths: [],
       ...input,
       id: this.nextId++,
       createdAt: new Date(),

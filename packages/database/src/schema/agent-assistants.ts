@@ -1,7 +1,7 @@
 import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core";
 
 export const agentAssistantsTable = sqliteTable('agent_assistants', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+  id: text('id').primaryKey(),
   name: text('name').notNull(),
   emoji: text('emoji'),
   description: text('description'),

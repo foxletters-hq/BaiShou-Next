@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 export const AgentSessionSchema = z.object({
-  id: z.number().int().positive().optional(),
+  id: z.string(),
   title: z.string().min(1),
   vaultName: z.string(),
-  assistantId: z.number().int().positive(),
+  assistantId: z.string().optional().nullable(),
   isPinned: z.boolean().default(false),
   systemPrompt: z.string().optional().nullable(),
   providerId: z.string(),
@@ -21,8 +21,8 @@ export type AgentSession = z.infer<typeof AgentSessionSchema>;
 export const AgentMessageRoleSchema = z.enum(['system', 'user', 'assistant', 'tool']);
 
 export const AgentMessageSchema = z.object({
-  id: z.number().int().positive().optional(),
-  sessionId: z.number().int().positive(),
+  id: z.string(),
+  sessionId: z.string(),
   role: AgentMessageRoleSchema,
   isSummary: z.boolean().default(false),
   askId: z.string().optional().nullable(),
@@ -40,9 +40,9 @@ export type AgentMessage = z.infer<typeof AgentMessageSchema>;
 export const AgentPartTypeSchema = z.enum(['text', 'tool', 'stepFinish', 'compaction']);
 
 export const AgentPartSchema = z.object({
-  id: z.number().int().positive().optional(),
-  messageId: z.number().int().positive(),
-  sessionId: z.number().int().positive(),
+  id: z.string(),
+  messageId: z.string(),
+  sessionId: z.string(),
   type: AgentPartTypeSchema,
   data: z.any(),
   createdAt: z.date().optional()
@@ -51,7 +51,7 @@ export const AgentPartSchema = z.object({
 export type AgentPart = z.infer<typeof AgentPartSchema>;
 
 export const AgentAssistantSchema = z.object({
-  id: z.number().int().positive().optional(),
+  id: z.string(),
   name: z.string().min(1),
   emoji: z.string().optional().nullable(),
   description: z.string().optional().nullable(),

@@ -2,8 +2,8 @@ import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core";
 import { agentSessionsTable } from "./agent-sessions";
 
 export const agentMessagesTable = sqliteTable('agent_messages', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  sessionId: integer('session_id').notNull().references(() => agentSessionsTable.id, { onDelete: 'cascade' }),
+  id: text('id').primaryKey(),
+  sessionId: text('session_id').notNull().references(() => agentSessionsTable.id, { onDelete: 'cascade' }),
   role: text('role', { enum: ['system', 'user', 'assistant', 'tool'] }).notNull(),
   isSummary: integer('is_summary', { mode: 'boolean' }).notNull().default(false),
   askId: text('ask_id'),
