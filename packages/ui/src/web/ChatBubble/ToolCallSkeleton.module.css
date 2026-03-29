@@ -1,0 +1,61 @@
+.container {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--color-glass-border);
+  border-radius: 12px;
+  margin: 8px 0;
+  gap: 12px;
+  transition: all var(--animation-micro);
+}
+
+.iconPulse {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background: rgba(91, 168, 245, 0.15); /* color-primary with opacity */
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-primary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-main);
+  margin-bottom: 2px;
+}
+
+.toolName {
+  font-size: 14px;
+  color: var(--color-text-main);
+  font-family: var(--font-family-main);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

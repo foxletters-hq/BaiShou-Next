@@ -1,0 +1,240 @@
+.container {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.toolbarWrapper {
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 8px;
+}
+
+.toolbarVisible {
+  max-height: 40px;
+  opacity: 1;
+}
+
+.toolbarHidden {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
+.toolbarScroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.toolbarScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.quickActionChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--color-surface-highest-light);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--animation-micro);
+  border: 1px solid transparent;
+}
+
+[data-theme="dark"] .quickActionChip {
+  background: var(--color-surface-highest-dark);
+}
+
+.quickActionChip:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.quickActionChip.active {
+  background: rgba(91, 168, 245, 0.1); /* Primary tinted */
+  border-color: rgba(91, 168, 245, 0.3);
+}
+
+.chipIcon {
+  font-size: 14px;
+}
+
+.chipLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.quickActionChip.active .chipLabel {
+  color: var(--color-primary);
+}
+
+.inputCard {
+  background: var(--color-surface-highest-light);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  border-radius: 26px; /* Capsule shape */
+  padding: 6px 6px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  transition: border-color var(--animation-micro);
+}
+
+[data-theme="dark"] .inputCard {
+  background: var(--color-surface-highest-dark);
+}
+
+.inputCard:focus-within {
+  border-color: var(--color-primary);
+}
+
+.toggleToolbarBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2px;
+  transition: all var(--animation-micro);
+}
+
+.toggleToolbarBtn:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-text-main);
+  font-family: var(--font-family-main);
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 8px 6px;
+  resize: none;
+  outline: none;
+  min-height: 38px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Scrollbar for textarea */
+.textarea::-webkit-scrollbar {
+  width: 4px;
+}
+.textarea::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 2px;
+}
+
+.textarea::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.5;
+}
+
+.actionBtnContainer {
+  width: 36px;
+  height: 36px;
+  margin-left: 2px;
+  margin-bottom: 2px;
+}
+
+.sendBtn {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: none;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(91, 168, 245, 0.3);
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), opacity var(--animation-micro);
+}
+
+.sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.sendBtn:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+.sendIcon {
+  font-size: 16px;
+}
+
+.stopBtn {
+  background: var(--color-surface);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  color: var(--color-text-main);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stopIcon {
+  font-size: 14px;
+}
+
+.attachmentPreviewArea {
+  display: flex;
+  gap: 8px;
+  padding: 0 4px 8px 4px;
+  overflow-x: auto;
+}
+
+.attachmentChip {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  padding: 4px 8px;
+  border-radius: 8px;
+  gap: 6px;
+  max-width: 150px;
+}
+
+.attIcon {
+  font-size: 14px;
+}
+
+.attName {
+  font-size: 11px;
+  color: var(--color-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.attRemoveBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+}
+
+.attRemoveBtn:hover {
+  color: #EF4444;
+}

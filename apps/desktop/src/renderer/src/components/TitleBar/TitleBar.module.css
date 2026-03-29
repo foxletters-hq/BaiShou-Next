@@ -1,0 +1,56 @@
+.titlebar {
+  width: 100%;
+  height: 38px;
+  display: flex;
+  background: transparent;
+  backdrop-filter: blur(20px);
+  -webkit-app-region: drag;
+  justify-content: space-between;
+  align-items: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+}
+
+.mac {
+  padding-left: 80px; /* Leave space for macOS traffic lights */
+}
+
+.win {
+  padding-left: 12px;
+}
+
+.dragRegion {
+  flex: 1;
+  height: 100%;
+}
+
+.windowControls {
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.controlBtn {
+  width: 46px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--color-text-main);
+  font-family: 'Segoe MDL2 Assets', sans-serif;
+  font-size: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.controlBtn:hover {
+  background: rgba(128, 128, 128, 0.2);
+}
+
+.closeBtn:hover {
+  background: #E81123;
+  color: white;
+}

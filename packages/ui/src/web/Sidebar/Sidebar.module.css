@@ -1,0 +1,190 @@
+.sidebar {
+  width: 250px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-right: 1px solid rgba(128, 128, 128, 0.15);
+  font-family: var(--font-family-main);
+  user-select: none;
+}
+
+.header {
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logoBox {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--color-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.logoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+}
+
+.appName {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.tagline {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.navList {
+  flex: 1;
+  padding: 0 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  padding: 12px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all var(--animation-micro);
+  position: relative;
+  background: transparent;
+}
+
+.navItem:hover {
+  background: var(--color-surface-highest-light);
+}
+
+[data-theme="dark"] .navItem:hover {
+  background: var(--color-surface-highest-dark);
+}
+
+.navItem.active {
+  background: rgba(91, 168, 245, 0.15); /* primary slightly transparent */
+}
+
+.navItem.dragging {
+  opacity: 0.5;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  background: var(--color-surface);
+}
+
+.dragHandle {
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--animation-micro);
+  cursor: grab;
+}
+
+.navItem:hover .dragHandle {
+  opacity: 0.5;
+}
+
+.dragIndicator {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+}
+
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  color: var(--color-text-secondary);
+  transition: color var(--animation-micro);
+}
+
+.staticIcon {
+  margin-left: 20px; /* Align with dragged items excluding drag handle width */
+}
+
+.navItem.active .itemIcon {
+  color: var(--color-primary);
+}
+
+.itemLabel {
+  margin-left: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: all var(--animation-micro);
+}
+
+.navItem.active .itemLabel {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.divider {
+  height: 1px;
+  background: rgba(128, 128, 128, 0.15);
+  margin: 12px 0;
+}
+
+.footer {
+  padding: 20px;
+  border-top: 1px solid rgba(128, 128, 128, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(91, 168, 245, 0.15);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--color-primary);
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.nickname {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}

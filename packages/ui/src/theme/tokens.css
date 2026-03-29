@@ -1,0 +1,51 @@
+:root {
+  /* Colors - Light Mode (Sakura Style) */
+  --bg-light: #F6F7F8;
+  --surface-light: #FFFFFF;
+  --surface-highest-light: #E8E8E8;
+  --text-main-light: #1A1A1A;
+  --text-secondary-light: #475569;
+
+  /* Colors - Dark Mode (Akatsuki Style) */
+  --bg-dark: #101922;
+  --surface-dark: #192633;
+  --surface-highest-dark: #233648;
+  --text-main-dark: #FFFFFF;
+  --text-secondary-dark: #92ADC9;
+
+  /* Brand Colors */
+  --color-primary: #5BA8F5;
+  --color-secondary: #78909C;
+
+  /* Glassmorphism Variables */
+  --glass-blur: 16px;
+  --glass-bg-light: rgba(255, 255, 255, 0.7);
+  --glass-bg-dark: rgba(25, 38, 51, 0.7);
+  --glass-border-light: rgba(255, 255, 255, 0.5);
+  --glass-border-dark: rgba(255, 255, 255, 0.05);
+
+  /* Typography */
+  --font-family-main: "Manrope", "Microsoft YaHei", "Noto Sans SC", "PingFang SC", sans-serif;
+  
+  /* Animations */
+  --animation-micro: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --animation-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] {
+  --color-bg: var(--bg-light);
+  --color-surface: var(--surface-light);
+  --color-text-main: var(--text-main-light);
+  --color-text-secondary: var(--text-secondary-light);
+  --color-glass-bg: var(--glass-bg-light);
+  --color-glass-border: var(--glass-border-light);
+}
+
+[data-theme="dark"] {
+  --color-bg: var(--bg-dark);
+  --color-surface: var(--surface-dark);
+  --color-text-main: var(--text-main-dark);
+  --color-text-secondary: var(--text-secondary-dark);
+  --color-glass-bg: var(--glass-bg-dark);
+  --color-glass-border: var(--glass-border-dark);
+}
