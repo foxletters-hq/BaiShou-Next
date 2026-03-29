@@ -1,0 +1,28 @@
+{
+  "name": "baishou-next",
+  "private": true,
+  "description": "白守 Next — 以纯白誓约，守护彼此一生。",
+  "scripts": {
+    "dev:desktop": "turbo run dev --filter=@baishou/desktop",
+    "dev:mobile": "turbo run dev --filter=@baishou/mobile",
+    "build:desktop": "turbo run build --filter=@baishou/desktop",
+    "build:mobile": "turbo run build --filter=@baishou/mobile",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "db:generate": "turbo run db:generate --filter=@baishou/database",
+    "db:push": "turbo run db:push --filter=@baishou/database",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0",
+    "prettier": "^3.5.0",
+    "eslint": "^9.0.0"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
