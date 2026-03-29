@@ -1,0 +1,104 @@
+.nodeContainer {
+  display: flex;
+  margin-bottom: 24px;
+  font-family: var(--font-family-main);
+  position: relative;
+}
+
+.timeAxis {
+  width: 60px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-right: 16px;
+  padding-top: 4px;
+}
+
+.timeText {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  line-height: 1;
+}
+
+.dateText {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+}
+
+.trackerAxis {
+  width: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.lineTop {
+  position: absolute;
+  top: 0;
+  bottom: calc(100% - 10px); /* stop at dot top margin */
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(128, 128, 128, 0.2),
+    rgba(128, 128, 128, 0.2) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.lineBottom {
+  position: absolute;
+  top: 24px; /* start below dot */
+  bottom: -24px; /* extend to next node */
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(128, 128, 128, 0.2),
+    rgba(128, 128, 128, 0.2) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-top: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 0 4px var(--color-surface); /* cuts off the line */
+  z-index: 2;
+}
+
+.dotInner {
+  width: 6px;
+  height: 6px;
+  background: var(--color-surface);
+  border-radius: 50%;
+}
+
+.contentAxis {
+  flex: 1;
+  padding-left: 20px;
+}
+
+.cardBox {
+  background: transparent; /* Assuming DiaryCard is placed inside */
+}
+
+@media (max-width: 600px) {
+  .timeAxis {
+    width: 45px;
+    padding-right: 10px;
+  }
+  .contentAxis {
+    padding-left: 12px;
+  }
+}

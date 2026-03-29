@@ -1,0 +1,121 @@
+.container {
+  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  border-radius: 16px;
+  font-family: var(--font-family-main);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+}
+
+[data-theme="dark"] .container {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.totalBadge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(91, 168, 245, 0.15);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.heatmapWrapper {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+
+.heatmapWrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.heatmapWrapper::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.2);
+  border-radius: 3px;
+}
+
+.yAxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-top: 24px; /* Align with cells grid skipping xAxis */
+  gap: 4px;
+}
+
+.axisLabel {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  height: 12px;
+  line-height: 12px;
+}
+
+.graph {
+  display: flex;
+  flex-direction: column;
+}
+
+.xAxis {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+.cellsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gridRow {
+  display: flex;
+  gap: 4px;
+}
+
+.cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  outline: 1px solid rgba(27, 31, 35, 0.06);
+  outline-offset: -1px;
+  transition: transform var(--animation-micro), opacity var(--animation-micro);
+  cursor: pointer;
+}
+
+.cell:hover {
+  transform: scale(1.2);
+  z-index: 10;
+  box-shadow: 0 0 4px rgba(0,0,0,0.2);
+}
+
+/* Coloring Levels using GitHub Green inspired dynamic primary hues */
+.level0 { background: var(--color-surface-highest-light); }
+[data-theme="dark"] .level0 { background: var(--color-surface-highest-dark); }
+.level1 { background: rgba(91, 168, 245, 0.3); }
+.level2 { background: rgba(91, 168, 245, 0.5); }
+.level3 { background: rgba(91, 168, 245, 0.8); }
+.level4 { background: var(--color-primary); }
+
+.legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 16px;
+}

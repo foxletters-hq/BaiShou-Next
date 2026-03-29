@@ -1,0 +1,125 @@
+.galleryContainer {
+  padding: 16px 24px;
+  font-family: var(--font-family-main);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: var(--color-text-secondary);
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.emptyState p {
+  font-size: 14px;
+}
+
+.monthSection {
+  margin-bottom: 32px;
+}
+
+.monthHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  padding-bottom: 8px;
+}
+
+.monthHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text-main);
+}
+
+.countBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-highest-light);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+[data-theme="dark"] .countBadge {
+  background: var(--color-surface-highest-dark);
+}
+
+.masonryGrid {
+  /* Dynamic Columns based on container width mimicking masonry */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  grid-auto-rows: 180px; 
+}
+
+.imageCard {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--color-surface-highest-light);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: transform var(--animation-micro), box-shadow var(--animation-micro);
+}
+
+[data-theme="dark"] .imageCard {
+  background: var(--color-surface-highest-dark);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.imageCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+.imageCard img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--animation-micro);
+}
+
+.imageCard:hover img {
+  transform: scale(1.05);
+}
+
+.imageOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 12px 12px 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity var(--animation-micro);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.imageCard:hover .imageOverlay {
+  opacity: 1;
+}
+
+.dateLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 6px;
+  border-radius: 4px;
+  backdrop-filter: blur(2px);
+}
