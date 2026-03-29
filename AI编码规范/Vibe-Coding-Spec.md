@@ -88,7 +88,7 @@ git worktree add ../BaiShou-Next-fix-rag -b fix/rag-dedup-bug
 
 ### 2.3 声明工作范围（SCOPE.md）
 
-创建 worktree 后，**必须立即**在工作目录下创建 `SCOPE.md`。这是唯一的工作契约文件，调研结论也记录在这里：
+创建 worktree 后，**必须立即**在工作目录下创建 `SCOPE.md`。这是唯一的工作契约文件，调研结论也记录在这里。**(注意：SCOPE.md 仅作为本地草稿和 AI 的上下文边界规范使用，已被加入 .gitignore，绝对禁止将其提交到 Git 仓库历史中！)**
 
 ```markdown
 # 工作范围声明
