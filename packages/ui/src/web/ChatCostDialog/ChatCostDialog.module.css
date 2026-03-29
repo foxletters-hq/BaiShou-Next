@@ -1,0 +1,173 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  background: var(--color-surface);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  animation: popIn 0.25s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  font-family: var(--font-family-main);
+  border: 1px solid var(--color-glass-border);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px dashed rgba(128, 128, 128, 0.2);
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* Receipt Styles */
+.receiptBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modelTag {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-surface-highest-light);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(128, 128, 128, 0.1);
+  margin-bottom: 8px;
+}
+
+[data-theme="dark"] .modelTag {
+  background: var(--color-surface-highest-dark);
+}
+
+.itemRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.itemLabel {
+  color: var(--color-text-secondary);
+}
+
+.itemValue {
+  color: var(--color-text-main);
+  font-weight: 600;
+}
+
+.divider {
+  border-top: 1px dashed rgba(128, 128, 128, 0.3);
+  margin: 4px 0;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.totalLabel {
+  color: var(--color-text-main);
+}
+
+.totalValue {
+  color: var(--color-primary);
+}
+
+.costBox {
+  margin-top: 12px;
+  background: rgba(16, 185, 129, 0.1); /* Emerald tint */
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.costTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.costPrice {
+  font-size: 18px;
+  font-weight: 800;
+  color: #10b981;
+  font-family: monospace;
+}
+
+.footer {
+  padding: 16px 20px;
+  background: rgba(128, 128, 128, 0.05);
+  border-top: 1px solid rgba(128, 128, 128, 0.1);
+  border-radius: 0 0 16px 16px;
+}
+
+.confirmBtn {
+  width: 100%;
+  padding: 10px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--animation-micro);
+}
+
+.confirmBtn:active {
+  transform: scale(0.97);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

@@ -1,0 +1,65 @@
+.card {
+  background: var(--color-surface);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  border-radius: 16px;
+  padding: 24px;
+  font-family: var(--font-family-main);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+  transition: all var(--animation-micro);
+  max-width: 800px;
+  margin-bottom: 20px;
+}
+
+[data-theme="dark"] .card {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.highlighted {
+  border-color: rgba(91, 168, 245, 0.4);
+  box-shadow: 0 8px 32px rgba(91, 168, 245, 0.1);
+  background: linear-gradient(180deg, rgba(91, 168, 245, 0.02) 0%, transparent 100%);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed rgba(128, 128, 128, 0.15);
+}
+
+.dateBadge {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-text-main);
+  background: var(--color-surface-highest-light);
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+[data-theme="dark"] .dateBadge {
+  background: var(--color-surface-highest-dark);
+}
+
+.metaInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: rgba(128, 128, 128, 0.05);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.icon {
+  font-size: 12px;
+}
+
+.body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text-main);
+}

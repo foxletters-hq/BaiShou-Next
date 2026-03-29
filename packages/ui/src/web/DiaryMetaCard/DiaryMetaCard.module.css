@@ -1,0 +1,55 @@
+.card {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface-highest-light);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-family: var(--font-family-main);
+  gap: 16px;
+  max-width: 300px;
+}
+
+[data-theme="dark"] .card {
+  background: var(--color-surface-highest-dark);
+}
+
+.emotionCircle {
+  width: 44px;
+  height: 44px;
+  background: var(--color-surface);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] .emotionCircle {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.infoCol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weatherLine, .locationLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.locationLine {
+  color: var(--color-text-secondary);
+}
+
+.weatherIcon, .locationIcon {
+  font-size: 14px;
+  opacity: 0.8;
+}

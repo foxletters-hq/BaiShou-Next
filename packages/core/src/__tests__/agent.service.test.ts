@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AgentService, AgentChatInput } from '../services/agent.service';
+import { AgentService } from '../services/agent.service';
 import { MockAgentSessionRepository, MockAgentMessageRepository } from './mock.agent-repository';
 import { SessionNotFoundError } from '../errors/agent.errors';
 import { AIProviderRegistry, AgentToolRegistry } from '@baishou/ai';

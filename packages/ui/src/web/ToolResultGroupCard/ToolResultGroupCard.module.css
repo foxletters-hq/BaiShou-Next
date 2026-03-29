@@ -1,0 +1,145 @@
+.groupCard {
+  background: var(--color-surface);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  font-family: var(--font-family-main);
+  margin: 12px 0;
+  max-width: 600px;
+}
+
+[data-theme="dark"] .groupCard {
+  background: var(--color-surface-highest-dark);
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(128, 128, 128, 0.05);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.headerIcon {
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.headerTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.invocationsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolItem {
+  border-bottom: 1px solid rgba(128, 128, 128, 0.05);
+}
+
+.toolItem:last-child {
+  border-bottom: none;
+}
+
+.toolItemHeader {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background var(--animation-micro);
+  user-select: none;
+}
+
+.toolItemHeader:hover {
+  background: rgba(128, 128, 128, 0.05);
+}
+
+.toggleArrow {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  width: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.toolName {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin-left: 6px;
+  flex: 1;
+}
+
+.statusBadge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.hasError .statusBadge {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444; /* Red */
+}
+
+/* Expanded Info */
+.toolItemBody {
+  padding: 0 14px 14px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: expandDown 0.2s ease-out forwards;
+}
+
+.codeBlock {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(128, 128, 128, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .codeBlock {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.codeLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  padding: 4px 8px;
+  background: rgba(128, 128, 128, 0.08);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  text-transform: uppercase;
+}
+
+.codeBlock pre {
+  margin: 0;
+  padding: 8px;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--color-text-main);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.hasError .resultBlock {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.hasError .resultBlock .codeLabel {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+@keyframes expandDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

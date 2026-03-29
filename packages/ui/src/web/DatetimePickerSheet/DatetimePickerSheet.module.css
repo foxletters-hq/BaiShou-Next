@@ -1,0 +1,122 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-radius: 20px 20px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 1001;
+  font-family: var(--font-family-main);
+  animation: slideUp 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] .sheet {
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+}
+
+.handleBar {
+  width: 36px;
+  height: 4px;
+  background: rgba(128, 128, 128, 0.3);
+  border-radius: 2px;
+  margin: 10px auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.cancelBtn {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.confirmBtn {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.fakePickerContainer {
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  /* Perspective mock */
+  mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
+}
+
+.wheelColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  z-index: 2;
+}
+
+.wheelItem {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+  opacity: 0.5;
+  transition: all var(--animation-micro);
+}
+
+.wheelItemActive {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.highlightBar {
+  position: absolute;
+  top: 50%;
+  left: 20px;
+  right: 20px;
+  height: 36px;
+  transform: translateY(-50%);
+  background: rgba(128, 128, 128, 0.08);
+  border-radius: 8px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}

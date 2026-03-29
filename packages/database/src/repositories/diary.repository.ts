@@ -13,4 +13,5 @@ export interface DiaryRepository {
   update(id: number, diary: UpdateDiaryInput): Promise<Diary>;
   delete(id: number): Promise<void>;
   search(query: string, options?: SearchOptions): Promise<Diary[]>;
+  list(options?: { limit?: number; offset?: number; orderBy?: 'asc' | 'desc' }): Promise<Diary[]>;
 }

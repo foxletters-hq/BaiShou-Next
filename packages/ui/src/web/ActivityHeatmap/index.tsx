@@ -1,49 +1,18 @@
 import React, { useMemo } from 'react';
 import styles from './ActivityHeatmap.module.css';
 
-export interface ActivityData {
-  date: string; // YYYY-MM-DD
-  count: number;
-}
+import { generateHeatmapMatrix, ActivityData } from '../../utils/heatmap-matrix';
 
 interface ActivityHeatmapProps {
   data: ActivityData[];
-  year: int;
+  year: number;
 }
 
 const MONTHS = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 const DAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ data, year }) => {
-  const datesMap = useMemo(() => {
-    const map = new Map<string, number>();
-    data.forEach(d => map.set(d.date, d.count));
-    return map;
-  }, [data]);
-
-  const gridMatrix = useMemo(() => {
-    const matrix: { date: Date; count: number }[][] = Array.from({ length: 7 }, () => []);
-    
-    // Simple mock logic for displaying 52 weeks of the year
-    const startDate = new Date(year, 0, 1);
-    const endDate = new Date(year, 11, 31);
-    
-    let currentDate = new Date(startDate);
-    // Rewind to Sunday
-    currentDate.setDate(currentDate.getDate() - currentDate.getDay());
-    
-    while (currentDate <= endDate || currentDate.getDay() !== 0) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      const count = datesMap.get(dateStr) || 0;
-      matrix[currentDate.getDay()].push({
-         date: new Date(currentDate),
-         count
-      });
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    
-    return matrix;
-  }, [datesMap, year]);
+  const gridMatrix = useMemo(() => generateHeatmapMatrix(data, year), [data, year]);
 
   const getColorLevel = (count: number) => {
     if (count === 0) return styles.level0;

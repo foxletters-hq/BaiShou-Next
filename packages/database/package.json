@@ -11,7 +11,8 @@
   "dependencies": {
     "@baishou/shared": "workspace:^",
     "better-sqlite3": "^12.8.0",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "^0.45.2",
+    "sqlite-vec": "^0.1.7"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

@@ -7,7 +7,7 @@ class ToolA extends AgentTool<z.ZodObject<{ msg: z.ZodString }>> {
   readonly name = 'tool_a';
   readonly description = 'Tool A';
   readonly parameters = z.object({ msg: z.string() });
-  async execute(args: { msg: string }, context: ToolContext) { return 'A' + args.msg; }
+  async execute(args: { msg: string }, _context: ToolContext) { return 'A' + args.msg; }
 }
 
 describe('AgentToolRegistry', () => {

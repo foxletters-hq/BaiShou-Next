@@ -1,0 +1,88 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  /* invisible overlay, just capturing clicks */
+}
+
+.dialog {
+  position: absolute;
+  /* Centered for mockup, but usually anchored to mouse click */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  padding: 12px;
+  z-index: 1001;
+  width: 240px;
+  animation: scaleIn 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+}
+
+[data-theme="dark"] .dialog {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-main);
+  text-transform: uppercase;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.closeBtn:hover {
+  color: var(--color-text-main);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.emojiBtn {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--animation-micro);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.emojiBtn:hover {
+  background: rgba(128, 128, 128, 0.1);
+  transform: scale(1.15);
+}
+
+.emojiBtn:active {
+  transform: scale(0.95);
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

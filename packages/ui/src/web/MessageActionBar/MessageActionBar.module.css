@@ -1,0 +1,55 @@
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  opacity: 0;
+  transition: opacity var(--animation-micro);
+}
+
+/* Designed to be fully visible when the parent bubble is hovered */
+:global(.bubbleWrapper):hover .actionBar {
+  opacity: 1;
+}
+
+.alignLeft {
+  justify-content: flex-start;
+}
+
+.alignRight {
+  justify-content: flex-end;
+}
+
+.actionBtn {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--animation-micro);
+  font-family: var(--font-family-main);
+}
+
+.actionBtn:hover {
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--color-text-main);
+}
+
+.dangerBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.btnText {
+  display: none;
+}
+
+/* Show text on larger blocks or hover */
+.actionBtn:hover .btnText {
+  display: inline;
+}

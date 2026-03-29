@@ -16,10 +16,11 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
   },
   "devDependencies": {
-    "turbo": "^2.5.0",
-    "typescript": "^5.8.0",
+    "@types/node": "^22.19.1",
+    "eslint": "^9.0.0",
     "prettier": "^3.5.0",
-    "eslint": "^9.0.0"
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
   },
   "packageManager": "pnpm@10.0.0",
   "engines": {
