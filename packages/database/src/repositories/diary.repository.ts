@@ -1,0 +1,16 @@
+import { CreateDiaryInput, UpdateDiaryInput, Diary } from '@baishou/shared';
+
+export interface SearchOptions {
+  limit?: number;
+  offset?: number;
+}
+
+export interface DiaryRepository {
+  findById(id: number): Promise<Diary | null>;
+  findByDate(date: Date): Promise<Diary | null>;
+  findByDateRange(start: Date, end: Date): Promise<Diary[]>;
+  create(diary: CreateDiaryInput): Promise<Diary>;
+  update(id: number, diary: UpdateDiaryInput): Promise<Diary>;
+  delete(id: number): Promise<void>;
+  search(query: string, options?: SearchOptions): Promise<Diary[]>;
+}
