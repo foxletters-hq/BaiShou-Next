@@ -23,13 +23,16 @@
 6. [Phase 4：自测验证](#六phase-4自测验证)
 7. [Phase 5：提交与合并](#七phase-5提交与合并)
 8. [代码风格与约定](#八代码风格与约定)
-9. [SOLID 设计原则](#九solid-设计原则)
-10. [并行工作与 Worktree 策略](#十并行工作与-worktree-策略)
-11. [完成检查清单](#十一完成检查清单)
+9. [工程约定补充](#九工程约定补充)
+10. [SOLID 设计原则](#十solid-设计原则)
+11. [并行工作与 Worktree 策略](#十一并行工作与-worktree-策略)
+12. [完成检查清单](#十二完成检查清单)
 
 ---
 
 ## 一、工作流程总览
+
+> **技术栈声明：** 本项目使用 **pnpm** 包管理器、**Turborepo** 构建编排、**Vitest** 测试框架、**TypeScript 5.8+ strict 模式**。
 
 每个任务必须按照以下流程执行，**不允许跳步**：
 
@@ -589,11 +592,103 @@ const diary = await getDiary(id);
 
 ---
 
-## 九、SOLID 设计原则
+## 九、工程约定补充
+
+### 9.1 测试框架
+
+本项目统一使用 **Vitest** 作为测试框架。
+
+```bash
+# vitest.config.ts 已在各包中配置
+pnpm test                    # 全量测试
+pnpm test --filter=@baishou/core   # 指定包
+pnpm test -- --watch         # 监听模式
+pnpm test --coverage         # 覆盖率
+```
+
+- Mock 使用 Vitest 内置 `vi.fn()` / `vi.spyOn()` / `vi.mock()`
+- 断言使用 Vitest 内置 `expect`（兼容 Jest API）
+- **禁止**引入 Jest、Mocha 等其他测试框架
+
+### 9.2 环境变量管理
+
+```
+BaiShou-Next/
+├── .env.example          # 必须提交——所有变量的模板（值留空）
+├── .env                  # .gitignore 忽略——本地开发环境变量
+└── packages/
+    └── ai/
+        └── .env.test     # .gitignore 忽略——测试专用变量
+```
+
+**规则：**
+- API Key 等敏感信息**只能**存在 `.env` 中，**严禁**硬编码或提交到仓库
+- 新增环境变量时，**必须**同步更新 `.env.example`
+- 跨包共享的变量在根 `.env` 定义，通过 Turborepo `globalEnv` 透传
+- 测试中使用 `vi.stubEnv()` Mock 环境变量，不依赖真实 Key
+
+### 9.3 日志规范
+
+使用 `console` 的结构化封装（后续可替换为 `pino`）：
+
+```typescript
+// ✅ 使用分级日志
+import { logger } from '@baishou/shared';
+
+logger.info('Diary created', { diaryId: 42, date: '2026-03-29' });
+logger.warn('Compression threshold approaching', { usage: 58000 });
+logger.error('AI provider failed', { provider: 'gemini', error });
+
+// ❌ 禁止裸 console.log
+console.log('diary created');  // 不允许
+```
+
+**日志级别约定：**
+
+| 级别    | 用途                                     |
+| ------- | ---------------------------------------- |
+| `error` | 不可恢复的错误，需要人工介入             |
+| `warn`  | 可恢复但需关注的异常（降级、重试等）     |
+| `info`  | 关键业务事件（创建/删除/同步完成等）     |
+| `debug` | 开发调试信息（生产环境自动关闭）         |
+
+### 9.4 依赖管理策略
+
+**添加新依赖的前置条件：**
+
+1. 在 SCOPE.md 的调研结论中说明为什么需要这个依赖
+2. 优先选择：零依赖 > 依赖少 > 依赖多
+3. 检查项：
+   - 最近 6 个月有维护活动
+   - TypeScript 类型完备（自带或 `@types/`）
+   - 许可证兼容（MIT / Apache-2.0 / ISC）
+   - 无已知安全漏洞（`pnpm audit`）
+4. **需要用户审批**才能添加的依赖类型：
+   - 包含 Native addon 的依赖
+   - 体积 > 500KB 的依赖
+   - 引入新的构建工具链
+
+**版本锁定：**
+- `dependencies` 使用 `^` 语义化版本
+- `devDependencies` 使用 `^` 语义化版本
+- 安全关键的依赖（如 `sqlite3`）使用精确版本锁定
+
+### 9.5 单文件行数限制
+
+> **铁律：单文件 ≤ 300 行（不含空行和注释）。**
+
+- 超过 300 行的文件必须拆分
+- 拆分优先级：按职责拆分 > 按功能拆分 > 按体积拆分
+- 允许例外：自动生成的文件（如 Schema 定义、i18n 资源）
+- 例外需在文件头部注释说明原因
+
+---
+
+## 十、SOLID 设计原则
 
 本项目**强制遵循 SOLID 原则**。每个模块设计和代码审查都必须以此为标准。
 
-### 9.1 S — 单一职责原则 (Single Responsibility)
+### 10.1 S — 单一职责原则 (Single Responsibility)
 
 > 一个类/模块只应有一个引起变化的原因。
 
@@ -613,7 +708,7 @@ export class DiaryManager {
 }
 ```
 
-### 9.2 O — 开闭原则 (Open/Closed)
+### 10.2 O — 开闭原则 (Open/Closed)
 
 > 对扩展开放，对修改关闭。新增功能不应修改已有代码。
 
@@ -633,7 +728,7 @@ class DeepSeekProvider implements AIProvider { ... }
 registry.register('deepseek', new DeepSeekProvider());
 ```
 
-### 9.3 L — 里氏替换原则 (Liskov Substitution)
+### 10.3 L — 里氏替换原则 (Liskov Substitution)
 
 > 子类型必须能透明替换父类型，不破坏程序正确性。
 
@@ -649,7 +744,7 @@ class InMemoryDiaryRepository implements DiaryRepository { ... } // 测试用
 // 两者可以无差别注入到 DiaryService
 ```
 
-### 9.4 I — 接口隔离原则 (Interface Segregation)
+### 10.4 I — 接口隔离原则 (Interface Segregation)
 
 > 不应强迫依赖方依赖它不需要的接口。
 
@@ -688,7 +783,7 @@ export interface DiaryRepository {
 }
 ```
 
-### 9.5 D — 依赖倒置原则 (Dependency Inversion)
+### 10.5 D — 依赖倒置原则 (Dependency Inversion)
 
 > 高层模块不依赖低层模块，两者都依赖抽象。
 
@@ -714,7 +809,7 @@ export class DiaryService {
 }
 ```
 
-### 9.6 SOLID 违规视为代码缺陷
+### 10.6 SOLID 违规视为代码缺陷
 
 在 Code Review 中，SOLID 违规与 Bug 同等对待：
 
@@ -725,7 +820,7 @@ export class DiaryService {
 
 ---
 
-## 十、并行工作与 Worktree 策略
+## 十一、并行工作与 Worktree 策略
 
 - 不同 AI 协作者可以**同时**在不同 worktree 上工作
 - 工作范围**不得重叠**（通过 SCOPE.md 确保）
@@ -735,7 +830,7 @@ export class DiaryService {
 
 ---
 
-## 十一、完成检查清单
+## 十二、完成检查清单
 
 每个 AI 协作者在声称 "任务完成" 前，必须逐项确认：
 
