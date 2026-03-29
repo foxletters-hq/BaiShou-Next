@@ -7,3 +7,4 @@ export * from './schema/agent-assistants';
 export * from './schema/compression-snapshots';
 
 export * from './repositories/diary.repository';
+export * from './repositories/agent.repository';
