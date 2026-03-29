@@ -423,6 +423,8 @@ pnpm test --coverage --filter=<包名>
 
 ### 7.1 Commit Message 规范
 
+**强制要求：Commit Message 必须使用中文（除 type 和 scope 外）。**
+
 使用 [Conventional Commits](https://www.conventionalcommits.org/) 格式：
 
 ```
@@ -449,11 +451,11 @@ pnpm test --coverage --filter=<包名>
 **scope 使用包名：**
 
 ```bash
-feat(core): add diary CRUD operations
-fix(ai): resolve streaming response memory leak
-test(database): add edge case tests for diary repository
-refactor(shared): extract date utility functions
-chore(root): update turbo.json pipeline config
+feat(core): 新增日记 CRUD 操作
+fix(ai): 修复流式响应的内存泄漏问题
+test(database): 增加日记仓库的边界场景测试
+refactor(shared): 提取日期工具函数
+chore(root): 更新 turbo.json 构建配置
 ```
 
 ### 7.2 提交前检查
@@ -579,6 +581,8 @@ const [diary, summary] = await Promise.all([
 ```
 
 ### 8.7 注释规范
+
+**强制要求：所有代码注释必须使用中文书写。**
 
 ```typescript
 // ✅ 解释"为什么"，而非"是什么"
