@@ -35,7 +35,7 @@
 }
 
 .text:hover:not(:disabled) {
-  background-color: var(--bg-surface-highlight);
+  background-color: var(--bg-surface-normal);
 }
 
 .outlined {
@@ -45,7 +45,7 @@
 }
 
 .outlined:hover:not(:disabled) {
-  background-color: var(--bg-surface-highlight);
+  background-color: var(--bg-surface-normal);
 }
 
 .spinner {

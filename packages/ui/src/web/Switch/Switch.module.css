@@ -14,7 +14,7 @@
 .track {
   width: 52px;
   height: 32px;
-  background-color: var(--bg-surface-highlight);
+  background-color: var(--bg-surface-normal);
   border-radius: var(--radius-full);
   position: relative;
   transition: background-color var(--duration-fast) ease;
@@ -53,7 +53,7 @@
 }
 
 .labelOn { opacity: 0; color: var(--color-primary); }
-.labelOff { opacity: 1; color: var(--bg-surface-highlight); }
+.labelOff { opacity: 1; color: var(--bg-surface-normal); }
 
 .input:checked + .track .thumb .labelOn { opacity: 1; }
 .input:checked + .track .thumb .labelOff { opacity: 0; }

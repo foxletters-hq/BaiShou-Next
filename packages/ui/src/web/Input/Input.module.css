@@ -11,7 +11,7 @@
 }
 
 .input {
-  background-color: var(--bg-surface-highlight);
+  background-color: var(--bg-surface-normal);
   color: var(--text-primary);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);

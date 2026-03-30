@@ -1,15 +1,21 @@
 :root {
   /* Colors - Light */
   --color-primary: #5BA8F5;
+  --color-primary-dark: #3A88D5;
   --bg-app: #F6F7F8;
   --bg-surface: #FFFFFF;
-  --bg-surface-highlight: #F2F2F2;
+  --bg-surface-highest: #E8E8E8;
+  --bg-surface-high: #EEEEEE;
+  --bg-surface-normal: #F2F2F2;
+  --bg-surface-low: #F6F7F8;
+  
   --text-primary: #1A1A1A;
   --text-secondary: #475569;
   --color-accent-green: #4CAF50;
+  --color-secondary: #78909C;
 
   /* Typography */
-  --font-family: 'Manrope', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-family: 'Manrope', 'Microsoft YaHei', 'Noto Sans SC', 'PingFang SC', sans-serif;
 
   /* Radius */
   --radius-sm: 4px;
@@ -25,21 +31,28 @@
   --spacing-xl: 32px;
 
   /* Shadow */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.05); /* Soft drop shadow */
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.15); /* Match flutter toast elevation */
 
   /* Animation */
   --duration-fast: 150ms;
   --duration-normal: 250ms;
+  --ease-out-cubic: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme="dark"] {
   /* Colors - Dark */
   --color-primary: #5BA8F5;
+  --color-primary-dark: #3A88D5;
   --bg-app: #101922;
   --bg-surface: #192633;
-  --bg-surface-highlight: #233648;
+  --bg-surface-highest: #233648;
+  --bg-surface-high: #233648;
+  --bg-surface-normal: #1C2936;
+  --bg-surface-low: #101922;
+
   --text-primary: #FFFFFF;
   --text-secondary: #94A3B8;
   --color-accent-green: #4CAF50;
+  --color-secondary: #78909C;
 }

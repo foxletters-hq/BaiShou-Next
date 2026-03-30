@@ -27,5 +27,8 @@
     "react-native": "0.83.4",
     "typescript": "^5.8.0",
     "vitest": "^4.1.2"
+  },
+  "dependencies": {
+    "colord": "^2.9.3"
   }
 }

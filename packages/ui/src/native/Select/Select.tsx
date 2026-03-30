@@ -26,7 +26,7 @@ export const Select: React.FC<NativeSelectProps> = ({ options, value, onValueCha
     <View style={style}>
       <TouchableOpacity 
         style={{
-          backgroundColor: colors.bgSurfaceHighlight,
+          backgroundColor: colors.bgSurfaceNormal,
           paddingHorizontal: tokens.spacing.md,
           paddingVertical: tokens.spacing.md,
           borderRadius: tokens.radius.sm,
@@ -55,7 +55,7 @@ export const Select: React.FC<NativeSelectProps> = ({ options, value, onValueCha
                   keyExtractor={(item) => item.value}
                   renderItem={({ item }) => (
                     <TouchableOpacity 
-                      style={{ padding: tokens.spacing.md, borderBottomWidth: 1, borderBottomColor: colors.bgSurfaceHighlight }}
+                      style={{ padding: tokens.spacing.md, borderBottomWidth: 1, borderBottomColor: colors.bgSurfaceNormal }}
                       onPress={() => { onValueChange?.(item.value); setModalVisible(false); }}
                     >
                       <Text style={{ color: colors.textPrimary, fontSize: 16, textAlign: 'center' }}>

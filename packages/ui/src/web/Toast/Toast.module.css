@@ -1,35 +1,72 @@
 .toastContainer {
   position: fixed;
-  bottom: var(--spacing-xl);
-  left: 50%;
-  transform: translateX(-50%);
+  top: 12px;
+  right: 16px;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: var(--spacing-sm);
   z-index: 9999;
   pointer-events: none;
 }
 
 .toast {
-  background-color: var(--text-primary);
-  color: var(--bg-surface);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--radius-full);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: 12px;
   font-size: 14px;
   font-family: var(--font-family);
-  box-shadow: var(--shadow-md);
-  text-align: center;
-  animation: slideUp var(--duration-normal) ease forwards;
+  font-weight: 500;
+  box-shadow: var(--shadow-md); /* using updated matching blur shadow */
+  border: 1px solid rgba(158, 158, 158, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 70vw;
+  animation: slideFromRight var(--duration-normal) var(--ease-out-cubic) forwards;
   pointer-events: auto;
+  cursor: pointer;
 }
 
-@keyframes slideUp {
+.exiting {
+  animation: fadeOutFromRight 200ms ease forwards;
+}
+
+@keyframes slideFromRight {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateX(100%);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
+}
+
+@keyframes fadeOutFromRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.message {
+  flex: 1;
+  word-break: break-all;
+}
+
+[data-theme="dark"] .toast {
+  background-color: #1C2936;
 }

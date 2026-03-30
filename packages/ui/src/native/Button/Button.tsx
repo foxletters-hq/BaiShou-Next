@@ -37,11 +37,11 @@ export const Button: React.FC<NativeButtonProps> = ({
       base.shadowOpacity = 0.2;
       base.shadowRadius = pressed ? 4 : 2;
     } else if (variant === 'outlined') {
-      base.backgroundColor = pressed ? colors.bgSurfaceHighlight : 'transparent';
+      base.backgroundColor = pressed ? colors.bgSurfaceNormal : 'transparent';
       base.borderWidth = 1;
       base.borderColor = colors.primary;
     } else {
-      base.backgroundColor = pressed ? colors.bgSurfaceHighlight : 'transparent';
+      base.backgroundColor = pressed ? colors.bgSurfaceNormal : 'transparent';
     }
 
     if (disabled || isLoading) {

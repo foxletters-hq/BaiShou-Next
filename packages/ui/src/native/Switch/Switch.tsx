@@ -9,9 +9,9 @@ export const Switch: React.FC<NativeSwitchProps> = (props) => {
 
   return (
     <RNSwitch
-      trackColor={{ false: colors.bgSurfaceHighlight, true: colors.primary }}
+      trackColor={{ false: colors.bgSurfaceNormal, true: colors.primary }}
       thumbColor={colors.bgSurface}
-      ios_backgroundColor={colors.bgSurfaceHighlight}
+      ios_backgroundColor={colors.bgSurfaceNormal}
       {...props}
     />
   );

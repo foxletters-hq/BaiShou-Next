@@ -17,7 +17,7 @@ export const Input: React.FC<NativeInputProps> = ({ label, error, containerStyle
     <View style={[{ width: '100%', gap: tokens.spacing.xs }, containerStyle]}>
       <View
         style={{
-          backgroundColor: colors.bgSurfaceHighlight,
+          backgroundColor: colors.bgSurfaceNormal,
           borderRadius: tokens.radius.sm,
           paddingHorizontal: tokens.spacing.md,
           paddingTop: tokens.spacing.lg,
