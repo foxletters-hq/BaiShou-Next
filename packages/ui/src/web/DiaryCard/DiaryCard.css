@@ -1,0 +1,140 @@
+.diary-card-v2 {
+  background: var(--bg-surface);
+  border-radius: 24px;
+  padding: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.diary-card-v2:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); /* Dark mode opacity 0.3 handled by generic CSS variables ideally */
+}
+
+.diary-card-v2-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.diary-card-v2-date-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.diary-card-v2-day {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.diary-card-v2-date-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diary-card-v2-weekday {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.diary-card-v2-badge {
+  padding: 2px 6px;
+  background-color: var(--color-primary-light, rgba(91, 168, 245, 0.1));
+  color: var(--color-primary);
+  border-radius: 4px;
+  border: 0.5px solid var(--color-primary-light, rgba(91, 168, 245, 0.2));
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.diary-card-v2-icon {
+  opacity: 0.3;
+  font-size: 20px;
+}
+
+.diary-card-v2-content {
+  height: 120px;
+  width: 100%;
+}
+
+.markdown-snippet-mask {
+  height: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+.markdown-snippet-mask p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  opacity: 0.9;
+  margin: 0;
+}
+
+.diary-card-v2-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.diary-card-v2-tag {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.diary-card-v2-actions {
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin-top: 20px;
+  transform: translateY(10px);
+}
+
+.diary-card-v2-actions.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.actions-divider {
+  height: 1px;
+  background-color: var(--border-color, rgba(148, 163, 184, 0.3));
+  margin-bottom: 12px;
+}
+
+.actions-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.edit-btn { color: var(--text-secondary); }
+.delete-btn { color: #EF4444; } /* Red for delete */
