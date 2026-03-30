@@ -1,109 +1,165 @@
-import React, { useState } from 'react';
+import React from 'react';
 import styles from './ChatBubble.module.css';
-import { MarkdownRenderer } from '../MarkdownRenderer';
-import { TokenBadge } from '../TokenBadge';
+import { MarkdownRenderer } from '../MarkdownRenderer'; 
+import { TokenBadge } from '../TokenBadge'; 
+import { MessageActionBar } from '../MessageActionBar'; 
+import { MockChatMessage } from '@baishou/shared/src/mock/agent.mock';
 
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
-  timestamp: Date;
-  inputTokens?: number;
-  outputTokens?: number;
-  durationMs?: number;
-  toolCalls?: { id: string; name: string; result: string; isError?: boolean }[];
-}
+// TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
+const useTranslation = (): { t: (key: string) => string } => ({
+  t: (key: string) => key,
+});
 
-interface ChatBubbleProps {
-  message: ChatMessage;
-  userProfile?: { nickname: string; avatarUrl?: string };
-  aiProfile?: { name: string; avatarUrl?: string };
+export interface ChatBubbleProps {
+  message: MockChatMessage;
+  userProfile?: { nickname: string; avatarPath?: string | null };
+  aiProfile?: { name: string; avatarPath?: string | null; emoji?: string | null };
+  onEdit?: () => void;
+  onRegenerate?: () => void;
+  onResend?: () => void;
+  onCopy?: () => void;
+  onShowContext?: (msg: MockChatMessage) => void;
 }
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
   message,
-  userProfile = { nickname: 'ME' },
-  aiProfile = { name: 'AI Partner' }
+  userProfile = { nickname: 'U' },
+  aiProfile = { name: 'AI' }, 
+  onRegenerate,
+  onResend,
+  onCopy,
+  onShowContext
 }) => {
-  const [expandedTools, setExpandedTools] = useState(false);
-  const isUser = message.role === 'user';
-  const timeStr = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+  const { t } = useTranslation();
+  
   if (message.role === 'tool') {
-    return null; // Tool messages are nested in parent
+    return null;
   }
+  
+  const isUser = message.role === 'user';
+  
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+  
+  const handleCopy = () => {
+    if (onCopy) {
+      onCopy();
+    } else {
+      if (message.content) {
+        navigator.clipboard.writeText(message.content);
+        // TODO: [Agent1-Dependency] 替换为 import AppToast
+        alert(t('common.copied'));
+      }
+    }
+  };
+  
+  const renderAttachments = (isUserBubble: boolean) => {
+    if (!message.attachments || message.attachments.length === 0) return null;
+    return (
+      <div className={`${styles.attachmentsWrap} ${isUserBubble ? styles.alignEnd : styles.alignStart}`}>
+        {message.attachments.map((att) => (
+          <div key={att.id} className={styles.attachmentItem}>
+             {att.isImage ? (
+               <img src={att.filePath || 'placeholder.png'} className={styles.attImage} alt={att.fileName}/>
+             ) : (
+               <div className={styles.attDocument}>
+                 <span className={styles.attDocIcon}>{att.isPdf ? '📄' : '📁'}</span>
+                 <span className={styles.attDocName}>{att.fileName}</span>
+               </div>
+             )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderUserBubble = () => {
+    return (
+      <div className={`${styles.bubbleRow} ${styles.userRow}`}>
+        <div className={styles.messageCol}>
+           <div className={`${styles.nameTimeRow} ${styles.justifyEnd}`}>
+             <span className={styles.nameLabel}>{userProfile.nickname}</span>
+             <span className={styles.timeLabel}>{formatTime(message.timestamp)}</span>
+           </div>
+           
+           <div className={styles.userBubbleCard}>
+              {renderAttachments(true)}
+              {message.content && <div className={styles.textContentUser}>{message.content}</div>}
+           </div>
+           
+           <MessageActionBar 
+             isAI={false} 
+             onCopy={handleCopy} 
+             onRetry={onResend} 
+           />
+        </div>
+        
+        <div className={styles.avatarWrap}>
+          {userProfile.avatarPath ? (
+             <img src={userProfile.avatarPath} alt="avatar" className={styles.avatarImg}/>
+          ) : (
+             <div className={`${styles.avatarFallback} ${styles.userAvatar}`}>{userProfile.nickname.charAt(0).toUpperCase()}</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderAiBubble = () => {
+    const aiName = aiProfile.name || t('agent.chat.ai_label');
+    return (
+      <div className={`${styles.bubbleRow} ${styles.aiRow}`}>
+         <div className={styles.avatarWrap}>
+           {aiProfile.avatarPath ? (
+               <img src={aiProfile.avatarPath} alt="avatar" className={styles.avatarImg}/>
+            ) : aiProfile.emoji ? (
+               <div className={`${styles.avatarFallback} ${styles.aiAvatar}`}>{aiProfile.emoji}</div>
+            ) : (
+               <div className={`${styles.avatarFallback} ${styles.aiAvatar}`}>✨</div>
+            )}
+         </div>
+         
+         <div className={styles.messageCol}>
+            <div className={`${styles.nameTimeRow} ${styles.justifyStart}`}>
+               <span className={styles.nameLabel}>{aiName}</span>
+               <span className={styles.timeLabel}>{formatTime(message.timestamp)}</span>
+            </div>
+            
+            <div className={styles.aiBubbleCard}>
+               {renderAttachments(false)}
+               {message.content && <MarkdownRenderer content={message.content} />}
+            </div>
+            
+            <div className={styles.aiFooterRow}>
+               <MessageActionBar 
+                 isAI={true} 
+                 onCopy={handleCopy} 
+                 onRetry={onRegenerate} 
+               />
+               <div className={styles.footerRight}>
+                 {message.inputTokens !== undefined && (
+                   <TokenBadge 
+                      inputTokens={message.inputTokens} 
+                      outputTokens={message.outputTokens || 0} 
+                      durationMs={message.costMicros} /* fallback for visual display */
+                   />
+                 )}
+                 {message.contextMessages && message.contextMessages.length > 0 && (
+                   <button className={styles.contextBtn} onClick={() => onShowContext && onShowContext(message)} title="查看对话上下文树">
+                      🌿
+                   </button>
+                 )}
+               </div>
+            </div>
+         </div>
+      </div>
+    );
+  };
 
   return (
-    <div className={`${styles.bubbleWrapper} ${isUser ? styles.userRow : styles.aiRow}`}>
-      {!isUser && (
-        <div className={styles.avatar}>
-          {aiProfile.avatarUrl ? (
-            <img src={aiProfile.avatarUrl} alt="AI Avatar" />
-          ) : (
-            <span className={styles.aiIcon}>✨</span>
-          )}
-        </div>
-      )}
-
-      <div className={styles.contentCol}>
-        <div className={styles.header}>
-          <span className={styles.name}>{isUser ? userProfile.nickname : aiProfile.name}</span>
-          <span className={styles.time}>{timeStr}</span>
-        </div>
-
-        <div className={`${styles.bubbleContent} ${isUser ? styles.userContent : styles.aiContent}`}>
-          {isUser ? (
-            <p className={styles.userText}>{message.content}</p>
-          ) : (
-            <MarkdownRenderer content={message.content} />
-          )}
-        </div>
-
-        {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
-          <div className={styles.toolCallsGroup}>
-            <div className={styles.toolGroupHeader} onClick={() => setExpandedTools(!expandedTools)}>
-              <div className={styles.toolIconWrapper}>
-                <span>🔧</span>
-              </div>
-              <span className={styles.toolLabel}>使用了 {message.toolCalls.length} 个工具</span>
-              <span className={styles.expandIcon}>{expandedTools ? '▲' : '▼'}</span>
-            </div>
-            {expandedTools && (
-              <div className={styles.toolResults}>
-                {message.toolCalls.map((tool) => (
-                  <div key={tool.id} className={`${styles.toolItem} ${tool.isError ? styles.toolError : ''}`}>
-                    <div className={styles.toolItemHeader}>
-                      <span className={styles.statusIcon}>{tool.isError ? '❌' : '✅'}</span>
-                      <span className={styles.toolName}>{tool.name}</span>
-                    </div>
-                    <pre className={styles.toolResultBody}>{tool.result}</pre>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {!isUser && (message.inputTokens || message.outputTokens) && (
-          <div className={styles.footerRow}>
-             <TokenBadge 
-               inputTokens={message.inputTokens} 
-               outputTokens={message.outputTokens} 
-               durationMs={message.durationMs} 
-             />
-          </div>
-        )}
-      </div>
-
-      {isUser && (
-        <div className={styles.avatar}>
-           {userProfile.avatarUrl ? (
-            <img src={userProfile.avatarUrl} alt="User Avatar" />
-          ) : (
-            <span>{userProfile.nickname.charAt(0).toUpperCase()}</span>
-          )}
-        </div>
-      )}
+    <div className={styles.chatBubbleContainer}>
+      {isUser ? renderUserBubble() : renderAiBubble()}
     </div>
   );
 };

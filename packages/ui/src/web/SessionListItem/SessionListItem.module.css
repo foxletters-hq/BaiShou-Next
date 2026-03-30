@@ -1,0 +1,107 @@
+.itemWrapper {
+  padding-bottom: 2px;
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  background-color: transparent;
+  position: relative;
+}
+
+.container:hover {
+  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.3);
+}
+
+.selected, .selected:hover {
+  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.5);
+}
+
+.checkbox {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.pinIcon {
+  font-size: 13px;
+  color: var(--color-primary, #5BA8F5);
+  margin-right: 6px;
+}
+
+.title {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary, #1A1A1A);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titleSelected {
+  font-weight: 600;
+  color: var(--color-primary, #5BA8F5);
+}
+
+.actionsBox {
+  position: relative;
+}
+
+.moreBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.menuOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background-color: var(--bg-surface, #FFFFFF);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 101;
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary, #1A1A1A);
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
+}
+
+.menuItemDanger {
+  color: var(--color-error, #F44336);
+  border-top: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+}
+
+.menuIcon {
+  font-size: 14px;
+  margin-right: 8px;
+}

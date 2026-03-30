@@ -1,0 +1,190 @@
+.container {
+  padding: 8px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.avatarWrap {
+  flex-shrink: 0;
+}
+
+.avatarImg {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: var(--color-primary-container, #E3F2FD);
+}
+
+.avatarFallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-family: var(--font-family, sans-serif);
+  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.6);
+  color: var(--color-primary, #5BA8F5);
+  font-size: 18px;
+}
+
+.messageCol {
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+  align-items: flex-start;
+}
+
+.nameLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+  padding-left: 4px;
+  margin-bottom: 6px;
+}
+
+.bubbleCard {
+  padding: 12px 16px;
+  background-color: var(--bg-surface-highlight, #F2F2F2);
+  border-radius: 4px 20px 20px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  width: 100%;
+}
+
+.dotsWrap {
+  padding: 12px;
+}
+
+/* Tool Execution Group */
+.toolGroupCard {
+  margin-bottom: 8px;
+  padding: 12px;
+  background-color: var(--bg-surface-highlight, #FAFAFA);
+  border-radius: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.toolHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.toolIcon {
+  width: 28px;
+  height: 28px;
+  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.5);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--color-primary, #5BA8F5);
+  margin-right: 8px;
+}
+
+.toolTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  margin-right: 8px;
+}
+
+.toolCountBadge {
+  padding: 2px 8px;
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+  color: var(--color-primary, #5BA8F5);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.toolList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.toolItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkIcon {
+  font-size: 14px;
+  color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.7);
+}
+
+.toolItemName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #1A1A1A);
+}
+
+.toolItemDuration {
+  font-size: 10px;
+  color: rgba(var(--text-outline-rgb, 120, 120, 120), 0.6);
+}
+
+.activeToolName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-tertiary, #AD88D4);
+}
+
+.pulsing {
+  animation: pulseOpacity 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes pulseOpacity {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.3);
+  border-top-color: var(--color-tertiary, #AD88D4);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Bouncing Dots */
+.bouncingDots {
+  display: flex;
+  align-items: center;
+  height: 12px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  margin: 0 3px;
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.5);
+  border-radius: 50%;
+  animation: bounce 0.6s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-6px); }
+}

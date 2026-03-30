@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./native": "./src/native/index.ts",
     "./web/*": "./src/web/*",
     "./native/*": "./src/native/*",
     "./theme/*": "./src/theme/*",

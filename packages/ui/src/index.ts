@@ -39,3 +39,14 @@ export * from './web/ColorPicker';
 export * from './web/AppearanceSettingsCard/AppearanceSettingsCard';
 
 // 仅保证 TypeScript 导出正常，真正跨包可能会区分 web / native 导出策略
+
+// 聊天与Agent组件
+export * from './web/ChatBubble';
+export * from './web/StreamingBubble';
+export * from './web/TokenBadge';
+export * from './web/ToolResultGroupCard';
+export * from './web/InputBar';
+export * from './web/ModelSwitcher';
+export * from './web/AssistantPicker';
+export * from './web/SessionListItem';
+export * from './web/EmojiPicker';
