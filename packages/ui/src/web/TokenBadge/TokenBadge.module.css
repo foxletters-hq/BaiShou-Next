@@ -1,43 +1,19 @@
-.badgeContainer {
-  display: flex;
+.container {
+  padding-top: 6px;
+  padding-right: 4px;
+  display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
-  background: var(--color-surface-highest-light);
-  border-radius: 12px;
-  gap: 6px;
+}
+
+.tokenText {
+  color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.7);
+  font-size: 10px;
   font-family: monospace;
 }
 
-[data-theme="dark"] .badgeContainer {
-  background: var(--color-surface-highest-dark);
-}
-
-.iconBox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.icon {
+.costText {
+  margin-left: 6px;
+  color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.6);
   font-size: 10px;
-  color: #F59E0B; /* Amber color for lightning */
-}
-
-.stats {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.tokens {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text-main);
-  opacity: 0.8;
-}
-
-.duration {
-  font-size: 9px;
-  color: var(--color-text-secondary);
-  opacity: 0.6;
+  font-family: monospace;
 }

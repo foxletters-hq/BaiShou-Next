@@ -1,70 +1,98 @@
 import React, { useState } from 'react';
 import styles from './ToolResultGroupCard.module.css';
+import { MockChatMessage } from '@baishou/shared/src/mock/agent.mock';
 
-export interface ToolInvocation {
-  id: string;
-  toolName: string;
-  argsString: string;
-  resultString?: string;
-  isError?: boolean;
+// TODO: [Agent1-Dependency] 替换 i18n
+const useTranslation = (): { t: (key: string, options?: any) => string } => ({
+  t: (key: string, options?: any) => `调用了 ${options?.count || 0} 个操作`,
+});
+
+interface ToolResultGroupProps {
+  messages: MockChatMessage[];
 }
 
-interface ToolResultGroupCardProps {
-  invocations: ToolInvocation[];
-}
+export const ToolResultGroup: React.FC<ToolResultGroupProps> = ({ messages }) => {
+  const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation();
 
-export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({ invocations }) => {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const toggleExpand = (id: string) => {
-    setExpandedId(prev => prev === id ? null : id);
-  };
-
-  if (invocations.length === 0) return null;
+  if (!messages || messages.length === 0) return null;
 
   return (
-     <div className={styles.groupCard}>
-        <div className={styles.groupHeader}>
-           <span className={styles.headerIcon}>🧩</span>
-           <span className={styles.headerTitle}>调用了 {invocations.length} 个本地工具</span>
-        </div>
-        
-        <div className={styles.invocationsList}>
-           {invocations.map(inv => {
-              const isExpanded = expandedId === inv.id;
-              return (
-                 <div key={inv.id} className={`${styles.toolItem} ${inv.isError ? styles.hasError : ''}`}>
-                    <div 
-                      className={styles.toolItemHeader} 
-                      onClick={() => toggleExpand(inv.id)}
-                    >
-                       <span className={styles.toggleArrow}>
-                         {isExpanded ? '▼' : '▶'}
-                       </span>
-                       <span className={styles.toolName}>{inv.toolName}</span>
-                       <span className={styles.statusBadge}>
-                         {inv.resultString ? (inv.isError ? '执行失败' : '执行完成') : '执行中...'}
-                       </span>
-                    </div>
-                    
-                    {isExpanded && (
-                       <div className={styles.toolItemBody}>
-                          <div className={styles.codeBlock}>
-                             <div className={styles.codeLabel}>Arguments</div>
-                             <pre>{inv.argsString}</pre>
-                          </div>
-                          {inv.resultString && (
-                             <div className={`${styles.codeBlock} ${styles.resultBlock}`}>
-                                <div className={styles.codeLabel}>Result</div>
-                                <pre>{inv.resultString}</pre>
-                             </div>
-                          )}
-                       </div>
-                    )}
-                 </div>
-              );
-           })}
-        </div>
-     </div>
+    <div className={styles.groupContainer}>
+       <div className={styles.indentLeft}></div>
+       <div className={styles.groupCard}>
+          <div 
+            className={styles.headerRow} 
+            onClick={() => setExpanded(!expanded)}
+          >
+             <div className={styles.iconBox}>
+                🔧
+             </div>
+             
+             <div className={styles.titleArea}>
+                <span className={styles.titleText}>
+                   {t('agent.tools.tool_call_results', { count: messages.length })}
+                </span>
+                <span className={styles.countBadge}>{messages.length}</span>
+             </div>
+             
+             <div className={styles.expandIcon}>
+                {expanded ? '▲' : '▼'}
+             </div>
+          </div>
+          
+          {expanded && (
+             <div className={styles.childrenArea}>
+                {messages.map(msg => <ToolResultItem key={msg.id} message={msg} />)}
+             </div>
+          )}
+       </div>
+    </div>
+  );
+};
+
+const ToolResultItem: React.FC<{ message: MockChatMessage }> = ({ message }) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  const getToolName = () => {
+    if (message.toolName) return message.toolName;
+    const callId = message.toolCallId;
+    if (!callId) return 'tool';
+    const parts = callId.split('_');
+    if (parts.length >= 3 && parts[0] === 'gemini') {
+      return parts.slice(1, parts.length - 1).join('_');
+    }
+    return 'tool';
+  };
+  
+  const isError = () => {
+    const content = message.content || '';
+    return content.startsWith('Tool execution failed:') || 
+           content.startsWith('Tool "') || 
+           content.startsWith('Error');
+  };
+  
+  const hasError = isError();
+  const toolName = getToolName();
+  const content = message.content || '';
+
+  return (
+    <div className={`${styles.itemCard} ${hasError ? styles.itemError : ''}`}>
+       <div 
+         className={styles.itemHeader} 
+         onClick={() => setExpanded(!expanded)}
+       >
+          <span className={styles.statusIcon}>
+             {hasError ? '❌' : '✅'}
+          </span>
+          <span className={styles.itemName}>{toolName}</span>
+       </div>
+       
+       {expanded && (
+          <div className={styles.itemBody}>
+             <pre className={styles.resultText}>{content}</pre>
+          </div>
+       )}
+    </div>
   );
 };

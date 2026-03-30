@@ -1,0 +1,74 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+.container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background-color: var(--bg-surface, #FFFFFF);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 280px;
+  height: 240px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+}
+
+.header {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-surface, #FFFFFF);
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+}
+
+.dragHandle {
+  width: 40px;
+  height: 4px;
+  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
+  border-radius: 2px;
+}
+
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-auto-rows: 32px;
+  gap: 2px;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.grid::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.2);
+  border-radius: 2px;
+}
+
+.emojiBtn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  padding: 0;
+}
+
+.emojiBtn:hover {
+  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
+}

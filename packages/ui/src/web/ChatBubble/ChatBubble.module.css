@@ -1,9 +1,13 @@
-.bubbleWrapper {
-  display: flex;
+.chatBubbleContainer {
+  padding: 8px 16px;
   width: 100%;
-  margin-bottom: 24px;
-  font-family: var(--font-family-main);
-  gap: 12px;
+  box-sizing: border-box;
+}
+
+.bubbleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .userRow {
@@ -14,197 +18,194 @@
   justify-content: flex-start;
 }
 
-.avatar {
+.avatarWrap {
+  flex-shrink: 0;
+}
+
+.avatarImg {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--color-surface-highest-light);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  flex-shrink: 0;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-}
-
-[data-theme="dark"] .avatar {
-  background: var(--color-surface-highest-dark);
-}
-
-.aiIcon {
-  color: var(--color-primary);
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
   object-fit: cover;
+  background-color: var(--color-primary-container, #E3F2FD);
 }
 
-.contentCol {
+.avatarFallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-family: var(--font-family, sans-serif);
+}
+
+.userAvatar {
+  background-color: var(--color-primary-container, #E3F2FD);
+  color: var(--text-primary, #1A1A1A);
+}
+
+.aiAvatar {
+  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.6);
+  color: var(--color-primary, #5BA8F5);
+  font-size: 18px;
+}
+
+.messageCol {
   display: flex;
   flex-direction: column;
-  max-width: 75%;
+  max-width: 600px;
 }
 
-.userRow .contentCol {
+.userRow .messageCol {
   align-items: flex-end;
 }
 
-.aiRow .contentCol {
+.aiRow .messageCol {
   align-items: flex-start;
 }
 
-.header {
+.nameTimeRow {
   display: flex;
   align-items: baseline;
+  padding-bottom: 6px;
   gap: 8px;
-  margin-bottom: 6px;
-  margin-left: 4px;
-  margin-right: 4px;
 }
 
-.name {
+.userRow .nameTimeRow {
+  padding-right: 4px;
+}
+
+.aiRow .nameTimeRow {
+  padding-left: 4px;
+}
+
+.nameLabel {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary, #475569);
 }
 
-.time {
+.timeLabel {
   font-size: 10px;
-  color: var(--color-text-secondary);
-  opacity: 0.6;
+  color: rgba(var(--text-secondary-rgb, 71, 85, 105), 0.6);
 }
 
-.bubbleContent {
+.userBubbleCard {
   padding: 12px 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background-color: var(--color-primary, #5BA8F5);
+  border-radius: 20px 4px 20px 20px;
+  box-shadow: 0 3px 12px rgba(91, 168, 245, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.textContentUser {
+  color: var(--text-on-primary, #FFFFFF);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
   word-break: break-word;
 }
 
-.userContent {
-  background: var(--color-primary);
-  color: white;
-  border-radius: 20px 4px 20px 20px; /* Asymmetric right top */
-}
-
-.userText {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.aiContent {
-  background: var(--color-surface);
-  color: var(--color-text-main);
-  border-radius: 4px 20px 20px 20px; /* Asymmetric left top */
-  border: 1px solid var(--color-glass-border);
-}
-
-.footerRow {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-}
-
-/* Tool Calls Styling */
-.toolCallsGroup {
-  margin-top: 8px;
-  background: var(--color-surface);
-  border-radius: 12px;
-  border: 1px solid var(--color-glass-border);
-  overflow: hidden;
-  width: 100%;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-}
-
-.toolGroupHeader {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  cursor: pointer;
-  background: rgba(128, 128, 128, 0.05);
-}
-
-.toolGroupHeader:hover {
-  background: rgba(128, 128, 128, 0.1);
-}
-
-.toolIconWrapper {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  background: rgba(91, 168, 245, 0.15);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-right: 8px;
-  font-size: 12px;
-}
-
-.toolLabel {
-  flex: 1;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-main);
-}
-
-.expandIcon {
-  font-size: 10px;
-  color: var(--color-text-secondary);
-}
-
-.toolResults {
-  padding: 0 8px 8px 8px;
+.aiBubbleCard {
+  padding: 12px 16px;
+  background-color: var(--bg-surface-highlight, #F2F2F2);
+  border-radius: 4px 20px 20px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: flex-start;
+  width: 100%;
 }
 
-.toolItem {
-  background: var(--color-surface-highest-light);
+.attachmentsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.alignEnd {
+  justify-content: flex-end;
+}
+
+.alignStart {
+  justify-content: flex-start;
+}
+
+.attachmentItem {
+  display: inline-flex;
+}
+
+.attImage {
+  width: 160px;
+  height: 160px;
   border-radius: 8px;
-  overflow: hidden;
+  object-fit: cover;
+  background-color: var(--bg-surface, #FFFFFF);
 }
 
-[data-theme="dark"] .toolItem {
-  background: var(--color-surface-highest-dark);
-}
-
-.toolError {
-  background: rgba(239, 68, 68, 0.1) !important;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.toolItemHeader {
+.attDocument {
+  width: 160px;
+  padding: 8px;
+  background-color: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
   display: flex;
   align-items: center;
-  padding: 6px 10px;
-  gap: 6px;
+  gap: 8px;
 }
 
-.statusIcon {
-  font-size: 10px;
+.attDocIcon {
+  font-size: 24px;
 }
 
-.toolName {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-main);
+.attDocName {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.toolResultBody {
-  margin: 0;
-  padding: 8px 10px;
-  font-family: monospace;
-  font-size: 10px;
-  color: var(--color-text-secondary);
-  background: rgba(0, 0, 0, 0.03);
-  max-height: 120px;
-  overflow-y: auto;
+.userRow .attDocName {
+  color: var(--text-on-primary, #FFFFFF);
 }
 
-[data-theme="dark"] .toolResultBody {
-  background: rgba(0, 0, 0, 0.2);
+.aiRow .attDocName {
+  color: var(--text-primary, #1A1A1A);
+}
+
+.aiFooterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.footerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contextBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contextBtn:hover {
+  background-color: rgba(0,0,0,0.05);
 }

@@ -1,29 +1,37 @@
 import React from 'react';
 import styles from './TokenBadge.module.css';
 
-interface TokenBadgeProps {
+export interface TokenBadgeProps {
   inputTokens?: number;
   outputTokens?: number;
-  durationMs?: number;
+  costMicros?: number;
+  durationMs?: number; // legacy prop alias
 }
 
 export const TokenBadge: React.FC<TokenBadgeProps> = ({
   inputTokens = 0,
   outputTokens = 0,
+  costMicros = 0,
   durationMs = 0
 }) => {
-  const totalTokens = inputTokens + outputTokens;
-  const durationSec = (durationMs / 1000).toFixed(1);
+  const formatTokens = (n: number) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+    return `${n}`;
+  };
+
+  const actualCostMicros = costMicros || durationMs;
+  const costText = actualCostMicros > 0 ? (actualCostMicros / 1000000).toFixed(4) : null;
 
   return (
-    <div className={styles.badgeContainer}>
-      <div className={styles.iconBox}>
-        <span className={styles.icon}>⚡</span>
-      </div>
-      <div className={styles.stats}>
-        <span className={styles.tokens}>{totalTokens} Tokens</span>
-        <span className={styles.duration}> {durationSec}s</span>
-      </div>
+    <div className={styles.container}>
+      <span className={styles.tokenText}>
+        ↑{formatTokens(inputTokens)}  ↓{formatTokens(outputTokens)}
+      </span>
+      {costText && (
+        <span className={styles.costText}>
+          ${costText}
+        </span>
+      )}
     </div>
   );
 };

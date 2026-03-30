@@ -1,145 +1,118 @@
+.groupContainer {
+  padding: 4px 16px;
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.indentLeft {
+  width: 46px; 
+  flex-shrink: 0;
+}
+
 .groupCard {
-  background: var(--color-surface);
-  border: 1px solid rgba(128, 128, 128, 0.2);
-  border-radius: 12px;
+  flex: 1;
+  background-color: var(--bg-surface-highlight, #F2F2F2);
+  border-radius: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
   overflow: hidden;
-  font-family: var(--font-family-main);
-  margin: 12px 0;
   max-width: 600px;
 }
 
-[data-theme="dark"] .groupCard {
-  background: var(--color-surface-highest-dark);
-}
-
-.groupHeader {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  background: rgba(128, 128, 128, 0.05);
-  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
-}
-
-.headerIcon {
-  font-size: 14px;
-  margin-right: 8px;
-}
-
-.headerTitle {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-}
-
-.invocationsList {
-  display: flex;
-  flex-direction: column;
-}
-
-.toolItem {
-  border-bottom: 1px solid rgba(128, 128, 128, 0.05);
-}
-
-.toolItem:last-child {
-  border-bottom: none;
-}
-
-.toolItemHeader {
+.headerRow {
   display: flex;
   align-items: center;
   padding: 10px 14px;
   cursor: pointer;
-  transition: background var(--animation-micro);
-  user-select: none;
 }
 
-.toolItemHeader:hover {
-  background: rgba(128, 128, 128, 0.05);
-}
-
-.toggleArrow {
-  font-size: 10px;
-  color: var(--color-text-secondary);
-  width: 16px;
+.iconBox {
+  width: 32px;
+  height: 32px;
   display: flex;
+  align-items: center;
   justify-content: center;
+  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.5);
+  border-radius: 8px;
+  margin-right: 12px;
+  font-size: 16px;
+  color: var(--color-primary, #5BA8F5);
 }
 
-.toolName {
-  font-family: monospace;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-main);
-  margin-left: 6px;
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: 1;
 }
 
-.statusBadge {
+.titleText {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+}
+
+.countBadge {
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+  color: var(--color-primary, #5BA8F5);
   font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
 }
 
-.hasError .statusBadge {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444; /* Red */
+.expandIcon {
+  color: var(--text-secondary, #475569);
+  font-size: 12px;
 }
 
-/* Expanded Info */
-.toolItemBody {
-  padding: 0 14px 14px 36px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  animation: expandDown 0.2s ease-out forwards;
+.childrenArea {
+  padding: 0 0 4px 0;
 }
 
-.codeBlock {
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(128, 128, 128, 0.1);
-  border-radius: 6px;
+.itemCard {
+  margin: 2px 8px;
+  background-color: var(--bg-surface, #FFFFFF);
+  border-radius: 10px;
   overflow: hidden;
 }
 
-[data-theme="dark"] .codeBlock {
-  background: rgba(255, 255, 255, 0.03);
+.itemError {
+  background-color: rgba(var(--color-error-rgb, 244, 67, 54), 0.1);
 }
 
-.codeLabel {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-  padding: 4px 8px;
-  background: rgba(128, 128, 128, 0.08);
-  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
-  text-transform: uppercase;
+.itemHeader {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  cursor: pointer;
+  gap: 8px;
 }
 
-.codeBlock pre {
-  margin: 0;
-  padding: 8px;
-  font-family: monospace;
-  font-size: 11px;
-  color: var(--color-text-main);
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 200px;
+.statusIcon {
+  font-size: 14px;
+}
+
+.itemName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #1A1A1A);
+  flex: 1;
+}
+
+.itemBody {
+  padding: 0 10px 8px 32px;
+  max-height: 150px;
   overflow-y: auto;
 }
 
-.hasError .resultBlock {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.05);
-}
-
-.hasError .resultBlock .codeLabel {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
-}
-
-@keyframes expandDown {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+.resultText {
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary, #475569);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
 }
