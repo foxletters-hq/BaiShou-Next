@@ -26,6 +26,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@baishou/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@baishou/store':
         specifier: workspace:*
         version: link:../../packages/store
@@ -285,7 +288,7 @@ importers:
         version: 26.0.2(typescript@5.9.3)
       react-i18next:
         specifier: ^17.0.1
-        version: 17.0.1(i18next@26.0.2(typescript@5.9.3))(react@19.2.0)(typescript@5.9.3)
+        version: 17.0.1(i18next@26.0.2(typescript@5.9.3))(react-dom@19.2.0(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -309,12 +312,24 @@ importers:
 
   packages/ui:
     dependencies:
+      '@baishou/shared':
+        specifier: workspace:*
+        version: link:../shared
       colord:
         specifier: ^2.9.3
         version: 2.9.3
+      expo-document-picker:
+        specifier: ^55.0.9
+        version: 55.0.9(expo@55.0.9)
+      i18next:
+        specifier: ^26.0.2
+        version: 26.0.2(typescript@5.9.3)
       lucide-react:
         specifier: ^1.7.0
         version: 1.7.0(react@19.2.0)
+      react-i18next:
+        specifier: ^17.0.1
+        version: 17.0.1(i18next@26.0.2(typescript@5.9.3))(react-dom@19.2.0(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
       react-markdown:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@19.2.14)(react@19.2.0)
@@ -3921,6 +3936,11 @@ packages:
     peerDependencies:
       expo: '*'
       react-native: '*'
+
+  expo-document-picker@55.0.9:
+    resolution: {integrity: sha512-XtkhmZ9alOj1n2Ok782lK9qtfk9TbaBoOJotSDK0pvq5oa+3UyHlLLTUmnC5UPMmFKoLGLJC3R2fLBFEiN5jCQ==}
+    peerDependencies:
+      expo: '*'
 
   expo-file-system@55.0.12:
     resolution: {integrity: sha512-MFN/3L3gm174nxP2HqKQsSsPbjAj92wuidKFGSbl3Lt6oJTS09EbTwszX5BhYeeVSprcsw8pnlxYSmhkSqGEFw==}
@@ -11143,6 +11163,10 @@ snapshots:
       - supports-color
       - typescript
 
+  expo-document-picker@55.0.9(expo@55.0.9):
+    dependencies:
+      expo: 55.0.9(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.8)(react-dom@19.2.0(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
+
   expo-file-system@55.0.12(expo@55.0.9)(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)):
     dependencies:
       expo: 55.0.9(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.8)(react-dom@19.2.0(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
@@ -13564,7 +13588,7 @@ snapshots:
     dependencies:
       react: 19.2.0
 
-  react-i18next@17.0.1(i18next@26.0.2(typescript@5.9.3))(react@19.2.0)(typescript@5.9.3):
+  react-i18next@17.0.1(i18next@26.0.2(typescript@5.9.3))(react-dom@19.2.0(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3):
     dependencies:
       '@babel/runtime': 7.29.2
       html-parse-stringify: 3.0.1
@@ -13572,6 +13596,8 @@ snapshots:
       react: 19.2.0
       use-sync-external-store: 1.6.0(react@19.2.0)
     optionalDependencies:
+      react-dom: 19.2.0(react@19.2.0)
+      react-native: 0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)
       typescript: 5.9.3
 
   react-is@16.13.1: {}
