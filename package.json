@@ -3,6 +3,7 @@
   "private": true,
   "description": "白守 Next — 以纯白誓约，守护彼此一生。",
   "scripts": {
+    "dev": "turbo run dev",
     "dev:desktop": "turbo run dev --filter=@baishou/desktop",
     "dev:mobile": "turbo run dev --filter=@baishou/mobile",
     "build:desktop": "turbo run build --filter=@baishou/desktop",
@@ -24,6 +25,6 @@
   },
   "packageManager": "pnpm@10.0.0",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=20.0.0"
   }
 }
