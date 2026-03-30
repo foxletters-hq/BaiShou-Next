@@ -14,7 +14,6 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
-    "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
@@ -24,15 +23,17 @@
     "@baishou/store": "workspace:*",
     "@baishou/ui": "workspace:*",
     "@electron-toolkit/preload": "^3.0.2",
-    "@electron-toolkit/utils": "^4.0.0"
+    "@electron-toolkit/utils": "^4.0.0",
+    "lucide-react": "^1.7.0",
+    "react-router-dom": "^7.13.2"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
     "@types/node": "^22.19.1",
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
     "@vitejs/plugin-react": "^5.1.1",
     "electron": "^39.2.6",
     "electron-builder": "^26.0.12",
@@ -42,8 +43,8 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "prettier": "^3.7.4",
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.6"
   }
