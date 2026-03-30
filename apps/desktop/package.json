@@ -20,6 +20,7 @@
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
+    "@baishou/core": "workspace:*",
     "@baishou/store": "workspace:*",
     "@baishou/ui": "workspace:*",
     "@electron-toolkit/preload": "^3.0.2",

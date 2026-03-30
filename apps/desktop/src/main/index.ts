@@ -51,6 +51,10 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+  
+  // Register Agent Streaming IPC
+  const { registerAgentIPC } = require('./ipc/agent.ipc')
+  registerAgentIPC()
 
   createWindow()
 
