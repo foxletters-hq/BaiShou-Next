@@ -1,0 +1,50 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  width: 100%;
+}
+
+.wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select {
+  appearance: none;
+  background-color: var(--bg-surface-highlight);
+  color: var(--text-primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-sm) var(--spacing-md);
+  font-size: 16px;
+  font-family: var(--font-family);
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-bottom-color var(--duration-fast) ease;
+  cursor: pointer;
+}
+
+.select:focus {
+  border-bottom-color: var(--color-primary);
+}
+
+.hasError {
+  border-bottom-color: var(--color-accent-green);
+}
+
+.icon {
+  position: absolute;
+  right: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.errorText {
+  color: var(--color-accent-green);
+  font-size: 12px;
+}

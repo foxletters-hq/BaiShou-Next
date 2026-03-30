@@ -1,0 +1,64 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.track {
+  width: 52px;
+  height: 32px;
+  background-color: var(--bg-surface-highlight);
+  border-radius: var(--radius-full);
+  position: relative;
+  transition: background-color var(--duration-fast) ease;
+  border: 2px solid transparent;
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  background-color: var(--text-secondary);
+  border-radius: 50%;
+  transition: transform var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1), background-color var(--duration-fast) ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.input:checked + .track {
+  background-color: var(--color-primary);
+}
+
+.input:checked + .track .thumb {
+  transform: translateX(20px);
+  background-color: var(--bg-surface);
+}
+
+.labelOn, .labelOff {
+  font-size: 10px;
+  font-family: var(--font-family);
+  position: absolute;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.labelOn { opacity: 0; color: var(--color-primary); }
+.labelOff { opacity: 1; color: var(--bg-surface-highlight); }
+
+.input:checked + .track .thumb .labelOn { opacity: 1; }
+.input:checked + .track .thumb .labelOff { opacity: 0; }
+
+.input:disabled + .track {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,0 +1,45 @@
+:root {
+  /* Colors - Light */
+  --color-primary: #5BA8F5;
+  --bg-app: #F6F7F8;
+  --bg-surface: #FFFFFF;
+  --bg-surface-highlight: #F2F2F2;
+  --text-primary: #1A1A1A;
+  --text-secondary: #475569;
+  --color-accent-green: #4CAF50;
+
+  /* Typography */
+  --font-family: 'Manrope', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+  /* Animation */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+}
+
+[data-theme="dark"] {
+  /* Colors - Dark */
+  --color-primary: #5BA8F5;
+  --bg-app: #101922;
+  --bg-surface: #192633;
+  --bg-surface-highlight: #233648;
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --color-accent-green: #4CAF50;
+}

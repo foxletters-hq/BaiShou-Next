@@ -1,0 +1,56 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn var(--duration-fast) ease-out;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  min-width: 320px;
+  max-width: 90vw;
+  max-height: 90vh;
+  box-shadow: var(--shadow-md);
+  font-family: var(--font-family);
+  animation: scaleUp var(--duration-normal) cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+}
+
+.header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.body {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

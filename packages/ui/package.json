@@ -5,7 +5,10 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./theme/*": "./src/theme/*"
+    "./web/*": "./src/web/*",
+    "./native/*": "./src/native/*",
+    "./theme/*": "./src/theme/*",
+    "./hooks/*": "./src/hooks/*"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
@@ -17,9 +20,11 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "~19.2.0",
     "@types/react-dom": "^19.2.3",
+    "@types/react-native": "^0.73.0",
     "jsdom": "^29.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "react-native": "0.83.4",
     "typescript": "^5.8.0",
     "vitest": "^4.1.2"
   }

@@ -1,0 +1,23 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-accent-green);
+  color: var(--bg-surface);
+  font-family: var(--font-family);
+  font-weight: bold;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.capsule {
+  padding: 0 var(--spacing-xs);
+  min-width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+}
