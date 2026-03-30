@@ -5,10 +5,8 @@ import { TokenBadge } from '../TokenBadge';
 import { MessageActionBar } from '../MessageActionBar'; 
 import { MockChatMessage } from '@baishou/shared/src/mock/agent.mock';
 
-// TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+import { useTranslation } from 'react-i18next';
+import { useToast } from '../Toast/useToast';
 
 export interface ChatBubbleProps {
   message: MockChatMessage;
@@ -32,6 +30,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 }) => {
   const { t } = useTranslation();
   
+  const toast = useToast();
+  
   if (message.role === 'tool') {
     return null;
   }
@@ -48,8 +48,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     } else {
       if (message.content) {
         navigator.clipboard.writeText(message.content);
-        // TODO: [Agent1-Dependency] 替换为 import AppToast
-        alert(t('common.copied'));
+        toast.showSuccess(t('common.copied'));
       }
     }
   };

@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import styles from './AssistantPicker.module.css';
-import { MockAgentAssistant } from '@baishou/shared/src/mock/agent.mock';
+import { useTranslation } from 'react-i18next';
+import { Button } from '../Button/Button';
+
+// (skipping some code context replacement using correct chunks)
 
 interface AssistantPickerProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
   currentAssistantId,
   onSelect,
 }) => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(currentAssistantId || null);
   const [activeTab, setActiveTab] = useState<'prompt'|'memory'>('prompt');
@@ -46,7 +48,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
          <div className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
                <span className={styles.sidebarTitleIcon}>✨</span>
-               <span className={styles.sidebarTitle}>选择伙伴</span>
+               <span className={styles.sidebarTitle}>{t('agent.selectAssistant')}</span>
             </div>
 
             <div className={styles.searchWrapper}>
@@ -61,7 +63,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
 
             <div className={styles.assistantList}>
                {filteredAssistants.length === 0 ? (
-                 <div className={styles.emptyHint}>没有相关伙伴</div>
+                 <div className={styles.emptyHint}>{t('agent.noAssistant')}</div>
                ) : (
                  filteredAssistants.map(a => {
                     const isSelected = activeAssistant?.id === a.id;
@@ -89,10 +91,10 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
             </div>
 
             <div className={styles.createBtnWrapper}>
-               <button className={styles.createBtn}>
+               <Button variant="text" className={styles.createBtn}>
                   <span className={styles.createBtnIcon}>+</span>
-                  <span className={styles.createBtnLabel}>新建伙伴</span>
-               </button>
+                  <span className={styles.createBtnLabel}>{t('agent.createAssistant')}</span>
+               </Button>
             </div>
          </div>
 
@@ -106,7 +108,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                        <div className={styles.detailNameRow}>
                           <span className={styles.detailName}>{activeAssistant.name}</span>
                           {activeAssistant.id === currentAssistantId && (
-                            <span className={styles.detailCurrentTag}>当前</span>
+                            <span className={styles.detailCurrentTag}>{t('agent.current')}</span>
                           )}
                        </div>
                        <span className={styles.detailDesc}>{activeAssistant.description}</span>
@@ -131,13 +133,13 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                  <div className={styles.tabContentArea}>
                     {activeTab === 'prompt' ? (
                        <div className={styles.tabPanelPrompt}>
-                         <h4 className={styles.panelTitle}>系统提示词</h4>
+                         <h4 className={styles.panelTitle}>{t('agent.systemPrompt')}</h4>
                          <textarea 
                            className={styles.systemPromptInput} 
                            defaultValue={activeAssistant.systemPrompt}
                          />
                          
-                         <h4 className={styles.panelTitle}>模型设置</h4>
+                         <h4 className={styles.panelTitle}>{t('agent.modelSettings')}</h4>
                          <div className={styles.modelSettingBox}>
                             <span>Provider: {activeAssistant.providerId}</span>
                             <span>Model: {activeAssistant.modelId}</span>
@@ -145,13 +147,13 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                        </div>
                     ) : (
                        <div className={styles.tabPanelMemory}>
-                         <h4 className={styles.panelTitle}>上下文窗口管理</h4>
+                         <h4 className={styles.panelTitle}>{t('agent.memoryManagement')}</h4>
                          <div className={styles.settingRow}>
-                            <span>上下文携带 Window:</span>
+                            <span>{t('agent.contextWindow')}:</span>
                             <span>{activeAssistant.contextWindow} tokens</span>
                          </div>
                          <div className={styles.settingRow}>
-                            <span>启用上下文压缩:</span>
+                            <span>{t('agent.compressThreshold')}:</span>
                             <span>{activeAssistant.compressTokenThreshold > 0 ? `阈值 ${activeAssistant.compressTokenThreshold}` : '关闭'}</span>
                          </div>
                        </div>
@@ -159,7 +161,8 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                  </div>
 
                  <div className={styles.detailFooter}>
-                    <button 
+                    <Button 
+                      variant={activeAssistant.id === currentAssistantId ? 'outlined' : 'elevated'}
                       className={`${styles.selectBtn} ${activeAssistant.id === currentAssistantId ? styles.selectBtnCurrent : ''}`}
                       onClick={() => {
                         onSelect(activeAssistant);
@@ -169,21 +172,21 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                        {activeAssistant.id === currentAssistantId ? (
                          <>
                            <span className={styles.btnIcon}>✅</span>
-                           当前伙伴
+                           {t('agent.currentAssistant')}
                          </>
                        ) : (
                          <>
                            <span className={styles.btnIcon}>⇄</span>
-                           选择此伙伴
+                           {t('agent.selectThis')}
                          </>
                        )}
-                    </button>
+                    </Button>
                  </div>
               </>
             ) : (
               <div className={styles.emptyDetail}>
                  <span className={styles.emptyDetailIcon}>✨</span>
-                 <span className={styles.emptyDetailText}>选择一个伙伴查看详情</span>
+                 <span className={styles.emptyDetailText}>{t('agent.emptyDetail')}</span>
               </div>
             )}
          </div>

@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import styles from './ToolResultGroupCard.module.css';
 import { MockChatMessage } from '@baishou/shared/src/mock/agent.mock';
 
-// TODO: [Agent1-Dependency] 替换 i18n
-const useTranslation = (): { t: (key: string, options?: any) => string } => ({
-  t: (key: string, options?: any) => `调用了 ${options?.count || 0} 个操作`,
-});
+import { useTranslation } from 'react-i18next';
 
 interface ToolResultGroupProps {
   messages: MockChatMessage[];

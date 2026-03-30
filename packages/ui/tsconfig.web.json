@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist/web",
+    "rootDir": "src",
+    "composite": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": []
+  },
+  "include": [
+    "src/env.d.ts",
+    "src/index.ts",
+    "src/i18n.ts",
+    "src/web/**/*",
+    "src/hooks/**/*",
+    "src/theme/**/*",
+    "src/utils/**/*"
+  ],
+  "exclude": ["src/native/**/*"]
+}

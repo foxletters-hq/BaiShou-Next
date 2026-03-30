@@ -1,21 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styles from './InputBar.module.css';
-import { MockChatAttachment } from '@baishou/shared/src/mock/agent.mock';
+import type { MockChatAttachment } from '@baishou/shared';
 
-// TODO: [Agent1-Dependency] i18n
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => {
-    const dict: Record<string, string> = {
-      'agent.tools.tool_call': '工具调用',
-      'settings.web_search_mode_off': '搜索关闭',
-      'settings.web_search_mode_tool': '深度搜索',
-      'settings.recall_memories': '记忆唤醒',
-      'agent.chat.input_hint': '输入消息...',
-    };
-    return dict[key] || key;
-  },
-});
-
+import { useTranslation } from 'react-i18next';
+import { useToast } from '../Toast/useToast';
 export interface InputBarProps {
   isLoading: boolean;
   onSend: (text: string, attachments?: MockChatAttachment[]) => void;
@@ -39,6 +27,7 @@ export const InputBar: React.FC<InputBarProps> = ({
   const [showToolbar, setShowToolbar] = useState(true);
   const [searchMode, setSearchMode] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const toast = useToast();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -65,21 +54,55 @@ export const InputBar: React.FC<InputBarProps> = ({
   };
 
   // 1. Tool Bar Chips
-  const handlePickFiles = () => {
-    // Mocking file picker
-    const newAtt: MockChatAttachment = {
-      id: Math.random().toString(36).substring(7),
-      fileName: 'mock_file.pdf',
-      filePath: '/mock_file.pdf',
-      isImage: false,
-      isPdf: true,
-    };
-    setAttachments(prev => [...prev, newAtt]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePickFiles = async () => {
+    // Phase 10: Use Electron Native `dialog` if available
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.api && window.api.pickFiles) {
+      try {
+        // @ts-ignore
+        const newAtts = await window.api.pickFiles();
+        if (newAtts && newAtts.length > 0) {
+          setAttachments(prev => [...prev, ...newAtts]);
+        }
+      } catch (e) {
+        console.error('Failed to pick file via IPC:', e);
+      }
+      return;
+    }
+
+    // Fallback: Web standard <input type="file" />
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleNativeWebFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    
+    // Simulate reading via standard Web File API and converting to MockChatAttachment
+    // Note: In a complete implementation we might read Blob/DataURL
+    const newAtts = Array.from(e.target.files).map(file => {
+      const isImage = file.type.startsWith('image/');
+      const isPdf = file.type === 'application/pdf';
+      return {
+        id: Math.random().toString(36).substring(7),
+        fileName: file.name,
+        filePath: URL.createObjectURL(file), // create local blob string to display
+        isImage,
+        isPdf
+      };
+    });
+
+    setAttachments(prev => [...prev, ...newAtts]);
+    // Reset file input
+    e.target.value = '';
   };
 
   const handleOpenToolManager = () => {
-    // TODO: [Agent2/3 Dependency] Dialog
-    alert('Open Tool Manager');
+    // TODO: Connect this to actual Agent Screen props event when agent UI needs Tool Modals
+    toast.showSuccess(t('agent.tools.tool_call') + ' Manager Triggered');
   };
 
   const handlePromptShortcut = () => {
@@ -99,6 +122,13 @@ export const InputBar: React.FC<InputBarProps> = ({
 
   return (
     <div className={styles.containerMask}>
+      <input 
+        type="file" 
+        multiple 
+        ref={fileInputRef} 
+        onChange={handleNativeWebFileChange}
+        style={{ display: 'none' }}
+      />
       <div className={styles.constrainedBox}>
         {/* Animated Toolbar */}
         <div className={`${styles.toolbarWrapper} ${showToolbar ? styles.toolbarVisible : ''}`}>

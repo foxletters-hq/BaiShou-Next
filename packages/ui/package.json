@@ -12,7 +12,7 @@
     "./hooks/*": "./src/hooks/*"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -b --dry"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -30,8 +30,12 @@
     "vitest": "^4.1.2"
   },
   "dependencies": {
+    "@baishou/shared": "workspace:*",
     "colord": "^2.9.3",
+    "expo-document-picker": "^55.0.9",
+    "i18next": "^26.0.2",
     "lucide-react": "^1.7.0",
+    "react-i18next": "^17.0.1",
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1"

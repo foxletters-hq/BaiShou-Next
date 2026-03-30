@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist/native",
+    "rootDir": "src",
+    "composite": true,
+    "jsx": "react-native",
+    "lib": ["ES2022"],
+    "types": ["react-native"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/native/**/*"
+  ],
+  "exclude": ["src/web/**/*"]
+}

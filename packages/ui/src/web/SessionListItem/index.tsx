@@ -1,21 +1,7 @@
 import React, { useState } from 'react';
 import styles from './SessionListItem.module.css';
 
-// TODO: [Agent1-Dependency] i18n
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => {
-    const dict: Record<string, string> = {
-      'agent.sessions.new_chat': '新对话',
-      'agent.sessions.actions': '操作',
-      'agent.sessions.pin': '置顶',
-      'agent.sessions.unpin': '取消置顶',
-      'agent.sessions.rename': '重命名',
-      'agent.sessions.delete_session': '删除会话',
-    };
-    return dict[key] || key;
-  },
-});
-
+import { useTranslation } from 'react-i18next';
 export interface SessionData {
   id: string;
   title: string;

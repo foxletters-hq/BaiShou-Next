@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import styles from './ModelSwitcher.module.css';
 import { MockAiProviderModel } from '@baishou/shared/src/mock/agent.mock';
+import { useTranslation } from 'react-i18next';
 
 interface ModelSwitcherProps {
   isOpen: boolean;
@@ -18,7 +19,9 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   currentProviderId,
   currentModelId,
   onSelect
+  onSelect
 }) => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { filteredProviders, filteredModels } = useMemo(() => {
@@ -45,11 +48,11 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.dialog} onClick={e => e.stopPropagation()}>
-         {/* Header */}
+          {/* Header */}
          <div className={styles.header}>
             <div className={styles.headerTitle}>
                <span className={styles.titleIcon}>⇄</span>
-               <span>切换模型</span>
+               <span>{t('agent.switchModel')}</span>
             </div>
          </div>
 
@@ -70,7 +73,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
          {/* List */}
          <div className={styles.listContainer}>
             {filteredProviders.length === 0 ? (
-              <div className={styles.emptyState}>没有匹配的模型</div>
+              <div className={styles.emptyState}>{t('agent.noMatchModel')}</div>
             ) : (
               filteredProviders.map(provider => {
                  const models = filteredModels[provider.id] || [];
