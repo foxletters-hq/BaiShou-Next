@@ -1,0 +1,91 @@
+.dashboard-stats-card {
+  padding: 20px;
+  background: var(--bg-surface, #fff);
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.5); /* outlineVariant */
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.stats-header-icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+.stats-header-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+}
+
+.stats-row.full > div {
+  width: 100%;
+}
+
+.stats-tile {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.stats-tile:hover {
+  transform: translateY(-2px);
+}
+
+.stats-icon {
+  font-size: 22px;
+  margin-right: 10px;
+}
+
+.stats-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.stats-count {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.stats-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+/* Color Variants mimicking Flutter withOpacity(0.08) */
+.color-green { background: rgba(76, 175, 80, 0.08); }
+.color-green .stats-count { color: #4CAF50; }
+
+.color-indigo { background: rgba(63, 81, 181, 0.08); }
+.color-indigo .stats-count { color: #3F51B5; }
+
+.color-blue { background: rgba(33, 150, 243, 0.08); }
+.color-blue .stats-count { color: #2196F3; }
+
+.color-amber { background: rgba(255, 179, 0, 0.08); }
+.color-amber .stats-count { color: #FFB300; }
+
+.color-orange { background: rgba(255, 152, 0, 0.08); }
+.color-orange .stats-count { color: #FF9800; }
