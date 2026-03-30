@@ -1,0 +1,87 @@
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--bg-background, #F9F9F9);
+}
+
+.appBar {
+  height: 56px;
+  background-color: var(--bg-surface, #FFFFFF);
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.modelSwitcherTrigger {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modelSwitcherTrigger:hover {
+  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
+}
+
+.modelIcon {
+  font-size: 16px;
+  margin-right: 8px;
+  color: var(--color-primary, #5BA8F5);
+}
+
+.modelName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  margin-right: 4px;
+}
+
+.chevron {
+  font-size: 12px;
+  color: var(--text-secondary, #475569);
+  margin-top: 2px;
+}
+
+.appBarRight {
+  display: flex;
+  align-items: center;
+}
+
+.messageList {
+  flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.messageContent {
+  padding: 24px 0 40px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.messageList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messageList::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
+  border-radius: 3px;
+}
+
+.inputContainer {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--bg-background, #F9F9F9) 20%
+  );
+}

@@ -1,56 +1,55 @@
-.titlebar {
-  width: 100%;
+.titleBar {
   height: 38px;
+  background-color: var(--bg-surface, #FFFFFF);
   display: flex;
-  background: transparent;
-  backdrop-filter: blur(20px);
-  -webkit-app-region: drag;
-  justify-content: space-between;
   align-items: center;
-  position: absolute;
-  top: 0;
-  left: 0;
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  position: relative;
   z-index: 9999;
-}
-
-.mac {
-  padding-left: 80px; /* Leave space for macOS traffic lights */
-}
-
-.win {
-  padding-left: 12px;
 }
 
 .dragRegion {
   flex: 1;
   height: 100%;
+  -webkit-app-region: drag; /* Electron drag property */
+  display: flex;
+  align-items: center;
+  padding-left: 80px; /* Leave space for macOS traffic lights */
 }
 
-.windowControls {
-  display: flex;
-  height: 100%;
+/* Windows no-drag areas */
+.dragRegion span {
   -webkit-app-region: no-drag;
 }
 
-.controlBtn {
-  width: 46px;
-  height: 100%;
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  user-select: none;
+}
+
+.actions {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  padding-right: 12px;
+}
+
+.themeToggle {
   background: transparent;
   border: none;
-  color: var(--color-text-main);
-  font-family: 'Segoe MDL2 Assets', sans-serif;
-  font-size: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
   display: flex;
-  justify-content: center;
   align-items: center;
-  transition: background 0.2s;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background-color 0.2s;
 }
 
-.controlBtn:hover {
-  background: rgba(128, 128, 128, 0.2);
-}
-
-.closeBtn:hover {
-  background: #E81123;
-  color: white;
+.themeToggle:hover {
+  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
 }
