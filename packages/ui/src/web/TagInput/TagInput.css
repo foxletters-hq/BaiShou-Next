@@ -1,0 +1,46 @@
+.tag-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--bg-surface-highlight);
+  border-radius: 8px;
+  min-height: 48px;
+  align-items: center;
+}
+
+.tag-bubble {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-primary);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 16px;
+  font-size: 14px;
+  gap: 4px;
+}
+
+.tag-remove {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-remove:hover {
+  color: #fff;
+}
+
+.tag-input {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+}

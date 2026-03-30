@@ -1,0 +1,30 @@
+.summary-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dashboard-hero {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #3B82F6 100%);
+  padding: 32px 24px;
+  border-radius: 16px;
+  color: #fff;
+}
+
+.hero-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
+.hero-subtitle {
+  font-size: 16px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.stats-grid {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}

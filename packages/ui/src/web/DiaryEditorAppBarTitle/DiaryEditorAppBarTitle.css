@@ -1,0 +1,44 @@
+.diary-editor-app-bar-title {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+
+.diary-editor-app-bar-title:hover {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.title-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-text {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.title-icon {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.date-picker-mock {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-surface, #fff);
+  padding: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  margin-top: 8px;
+  z-index: 100;
+}
