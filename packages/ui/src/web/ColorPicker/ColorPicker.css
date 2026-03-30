@@ -1,0 +1,53 @@
+.color-picker-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.color-presets {
+  display: flex;
+  gap: 8px;
+}
+
+.color-preset-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s ease;
+}
+
+.color-preset-btn:hover {
+  transform: scale(1.1);
+}
+
+.color-preset-btn.selected {
+  border-color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+.color-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface-highlight);
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+
+.color-input {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+}
+
+.color-hex {
+  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-primary);
+}

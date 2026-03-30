@@ -1,0 +1,43 @@
+/* 消费 Agent 1 定义的 Theme Tokens */
+.markdown-renderer {
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  line-height: 1.6;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.markdown-renderer h1,
+.markdown-renderer h2,
+.markdown-renderer h3,
+.markdown-renderer h4,
+.markdown-renderer h5,
+.markdown-renderer h6 {
+  color: var(--text-primary);
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.markdown-renderer a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.markdown-renderer a:hover {
+  text-decoration: underline;
+}
+
+.markdown-renderer pre {
+  background-color: var(--bg-surface-highlight);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.markdown-renderer code {
+  font-family: monospace;
+  background-color: var(--bg-surface-highlight);
+  padding: 2px 4px;
+  border-radius: 4px;
+}

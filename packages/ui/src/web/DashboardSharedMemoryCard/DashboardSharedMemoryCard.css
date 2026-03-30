@@ -1,0 +1,66 @@
+.dashboard-shared-memory-card {
+  padding: 20px;
+  background: var(--bg-surface, #fff);
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.sm-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.sm-header-icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+.sm-header-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.sm-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.sm-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.sm-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.sm-slider {
+  width: 100%;
+}
+
+.sm-btn {
+  background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+  color: #c2185b;
+  border: none;
+  border-radius: 20px;
+  padding: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(255, 154, 158, 0.4);
+}
+
+.sm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 154, 158, 0.6);
+}

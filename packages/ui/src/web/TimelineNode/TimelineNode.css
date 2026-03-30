@@ -1,0 +1,36 @@
+.timeline-node-v2 {
+  display: flex;
+  position: relative;
+  align-items: stretch;
+}
+
+.timeline-track-v2 {
+  width: 40px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.timeline-line-v2 {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 20px;
+  width: 2px;
+  background-color: var(--timeline-line-color, rgba(148, 163, 184, 0.2));
+}
+
+.timeline-indicator-v2 {
+  position: absolute;
+  top: 24px;
+  left: 15px;
+  width: 10px;
+  height: 10px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px var(--color-primary-light, rgba(91, 168, 245, 0.3));
+}
+
+.timeline-content-v2 {
+  flex: 1;
+}

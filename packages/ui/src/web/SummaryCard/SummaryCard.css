@@ -1,0 +1,83 @@
+.summary-card-v2 {
+  background: var(--bg-surface);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* mock elevation 2 */
+  margin: 8px 20px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.summary-card-v2:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08); /* 悬浮提升模拟原版反馈 */
+  transform: translateY(-2px);
+}
+
+.summary-card-v2-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.summary-card-v2-type-badge {
+  background: var(--color-primary-light, rgba(91, 168, 245, 0.1));
+  color: var(--color-primary, #5BA8F5);
+  font-size: 12px;
+  font-weight: bold;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.summary-card-v2-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.summary-card-v2-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.summary-card-v2-content {
+  height: 150px;
+  width: 100%;
+}
+
+.summary-card-mask {
+  height: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+.summary-card-mask p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  opacity: 0.8;
+  margin: 0;
+}
+
+.summary-card-v2-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.summary-action-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.5;
+  font-size: 16px;
+}
+
+.summary-action-icon:hover {
+  opacity: 1;
+}

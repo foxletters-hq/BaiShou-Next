@@ -1,0 +1,21 @@
+.date-picker-container {
+  display: inline-flex;
+  background-color: var(--bg-surface-highlight);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.date-picker-input {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+}
+
+.date-picker-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.5); /* Quick mock for dark mode compatibility icon */
+}
