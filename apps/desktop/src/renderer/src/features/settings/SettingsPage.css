@@ -1,0 +1,14 @@
+.settings-page-container {
+  padding: 32px;
+  max-width: 800px;
+  margin: 0 auto;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.settings-page-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+}

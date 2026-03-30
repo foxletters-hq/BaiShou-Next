@@ -1,0 +1,81 @@
+.summary-page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-default, #F6F7F8);
+  overflow-y: auto;
+}
+
+.sp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--bg-surface, #FFFFFF);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sp-tabs {
+  display: flex;
+  gap: 24px;
+}
+
+.sp-tab {
+  padding: 16px 0;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.sp-tab:hover {
+  color: var(--text-primary);
+}
+
+.sp-tab.active {
+  color: var(--color-primary, #5BA8F5);
+  border-bottom-color: var(--color-primary, #5BA8F5);
+  font-weight: bold;
+}
+
+.sp-settings-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+.sp-settings-btn:hover {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.sp-content {
+  flex: 1;
+}
+
+.sp-panel-view {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sp-dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 宽屏断点：大于 600px 变为并排 */
+@media (min-width: 600px) {
+  .sp-dashboard-layout {
+    flex-direction: row;
+  }
+  .sp-dashboard-layout > * {
+    flex: 1;
+  }
+}
