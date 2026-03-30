@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, useColorScheme, FlatList } from 'react-native';
-import { useAgentStore } from '@baishou/store/stores/agent.store';
+import { useAgentStore } from '@baishou/store';
 
 export default function AgentScreen() {
   const colorScheme = useColorScheme();
