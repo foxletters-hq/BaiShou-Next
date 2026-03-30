@@ -4,3 +4,6 @@ export * from './types/agent.types';
 
 export { default as i18n } from './i18n/i18n';
 export * from './i18n/i18n.types';
+
+// Mock 数据与类型（供开发阶段跨包使用）
+export * from './mock/agent.mock';

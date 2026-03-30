@@ -9,6 +9,7 @@ import {
   MOCK_PROVIDERS,
   MOCK_ASSISTANTS_LIST
 } from '@baishou/ui';
+import { useAgentStore } from '@baishou/store/src/stores/agent.store';
 import styles from './AgentScreen.module.css';
 
 // Simple mock for messages
@@ -19,24 +20,52 @@ const initialMessages = [
 
 export const AgentScreen: React.FC = () => {
   const { sessionId } = useParams();
-  const [messages, setMessages] = useState(initialMessages);
+  const { messages, isLoading, addMessage, setLoading, clearSession, sendMessage } = useAgentStore();
+  
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   
   const [showModelSwitcher, setShowModelSwitcher] = useState(false);
   const [currentProviderId, setCurrentProviderId] = useState<string>('openai_1');
   const [currentModelId, setCurrentModelId] = useState<string>('gpt-4o');
+  const [providers, setProviders] = useState(MOCK_PROVIDERS);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Reset messages when session changes (mocked behavior)
+    // Reset messages when session changes
     if (sessionId) {
-      setMessages([...initialMessages]);
+      clearSession();
+      // Load initial mock messages
+      initialMessages.forEach(msg => {
+        addMessage({
+          id: msg.id,
+          role: msg.role as any,
+          content: msg.content,
+          timestamp: new Date()
+        });
+      });
       setIsStreaming(false);
       setStreamingText('');
+      
+      // Initialize Stream IPC listeners mapping to store
+      const store = useAgentStore.getState();
+      if ((store as any).initIpcListeners) {
+        (store as any).initIpcListeners();
+      }
+      
+      // Load providers from backend IPC instead of static mock
+      // @ts-ignore
+      if (window.api && window.api.getProviders) {
+        // @ts-ignore
+        window.api.getProviders().then(res => {
+          if (res && res.length > 0) {
+            setProviders(res);
+          }
+        }).catch(console.error);
+      }
     }
-  }, [sessionId]);
+  }, [sessionId, clearSession, addMessage]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -49,32 +78,12 @@ export const AgentScreen: React.FC = () => {
   }, [messages, streamingText, isStreaming]);
 
   const handleSend = async (text: string, options?: any) => {
-    const newMsg = { id: Date.now().toString(), role: 'user', content: text };
-    setMessages(prev => [...prev, newMsg]);
-    setIsStreaming(true);
-    setStreamingText('');
-
-    // Mock streaming simulation
-    const responseText = "这是一个模拟的流式回复，它会在一段时间内逐渐显示出来。";
-    let currentText = '';
-    
-    for (let i = 0; i <= responseText.length; i++) {
-      if (!isStreaming) break; // In a real app we'd use an abort controller
-      await new Promise(r => setTimeout(r, 50));
-      currentText = responseText.substring(0, i);
-      setStreamingText(currentText);
-    }
-    
-    setMessages(prev => [
-      ...prev, 
-      { id: Date.now().toString(), role: 'assistant', content: responseText }
-    ]);
-    setIsStreaming(false);
-    setStreamingText('');
+    sendMessage(text);
   };
 
   const handleStop = () => {
     setIsStreaming(false);
+    setLoading(false);
   };
 
   return (
@@ -102,7 +111,7 @@ export const AgentScreen: React.FC = () => {
       <ModelSwitcher 
         isOpen={showModelSwitcher}
         onClose={() => setShowModelSwitcher(false)}
-        providers={MOCK_PROVIDERS}
+        providers={providers}
         currentProviderId={currentProviderId}
         currentModelId={currentModelId}
         onSelect={(pid, mid) => {
@@ -139,7 +148,7 @@ export const AgentScreen: React.FC = () => {
       {/* Input Box */}
       <div className={styles.inputContainer}>
          <InputBar 
-           isLoading={isStreaming}
+           isLoading={isLoading || isStreaming}
            onSend={handleSend}
            onStop={handleStop}
            assistantName={MOCK_ASSISTANTS_LIST[0].name}

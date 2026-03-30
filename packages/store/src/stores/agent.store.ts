@@ -23,9 +23,11 @@ export interface AgentActions {
   setLoading: (loading: boolean) => void;
   addToolCall: (id: string, toolCallName: string, args: any) => void;
   clearSession: () => void;
+  initIpcListeners: () => void;
+  sendMessage: (text: string) => void;
 }
 
-export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore', (set) => ({
+export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore', (set, get: any) => ({
   messages: [],
   isLoading: false,
   toolCalls: {},
@@ -51,4 +53,66 @@ export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore'
     })),
 
   clearSession: () => set({ messages: [], toolCalls: {}, isLoading: false }),
+
+  initIpcListeners: () => {
+    // Check if electron bridge exists
+    if (typeof window !== 'undefined' && (window as any).api) {
+      const api = (window as any).api;
+      
+      api.removeAgentListeners?.();
+      
+      api.onAgentStreamChunk?.((chunk: string) => {
+        set((state: AgentState) => {
+          const msgs = [...state.messages];
+          if (msgs.length > 0) {
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant') {
+              last.content += chunk;
+              return { messages: msgs };
+            }
+          }
+          return state;
+        });
+      });
+      
+      api.onAgentStreamFinish?.((error?: string) => {
+        set({ isLoading: false });
+        if (error) {
+          console.error('Agent chat stream hit an error:', error);
+        }
+      });
+    }
+  },
+
+  sendMessage: (text: string) => {
+    const { addMessage, setLoading } = get();
+    // Add User Message
+    addMessage({
+      id: Date.now().toString(),
+      role: 'user',
+      content: text,
+      timestamp: new Date()
+    });
+    setLoading(true);
+
+    // Initial Empty Assistant Message
+    const assistantMsgId = (Date.now() + 1).toString();
+    addMessage({
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '', // Will stream
+      timestamp: new Date()
+    });
+
+    // Send through IPC if available
+    if (typeof window !== 'undefined' && (window as any).api) {
+      (window as any).api.agentChat?.(text);
+    } else {
+      // Fallback for Web/RN (dummy timeout)
+      setTimeout(() => {
+        get().updateMessage(assistantMsgId, { content: 'Mock response in Web/RN (IPC not found)' });
+        setLoading(false);
+      }, 1000);
+    }
+  }
 }));

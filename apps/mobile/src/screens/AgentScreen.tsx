@@ -1,28 +1,29 @@
-import React, { useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 import { ChatBubble, InputBar, TokenBadge } from '@baishou/ui/native';
-
-// Simplified Mock Data
-const MOCK_MESSAGES = [
-  { id: '1', role: 'assistant' as const, content: '你好！我是你的 BaiShou AI 助手，在手机端很高兴为你服务。' },
-  { id: '2', role: 'user' as const, content: '今天的天气怎么样？' },
-];
+import { useAgentStore } from '@baishou/store/src/stores/agent.store';
 
 export const AgentScreen = () => {
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const { messages, isLoading, setLoading, addMessage } = useAgentStore();
+  
+  const flatListRef = useRef<FlatList>(null);
+  
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages]);
 
   const handleSend = (text: string) => {
-    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: text }]);
-    setIsStreaming(true);
+    addMessage({ id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() });
+    setLoading(true);
     
-    // Mock response
+    // Mock response for now, until actual backend integration
     setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        { id: Date.now().toString(), role: 'assistant', content: '这是一个模拟的移动端回复。目前是晴天！' }
-      ]);
-      setIsStreaming(false);
+      addMessage({ id: Date.now().toString(), role: 'assistant', content: '这是一个模拟的移动端回复。目前是晴天！', timestamp: new Date() });
+      setLoading(false);
     }, 1500);
   };
 
@@ -38,20 +39,23 @@ export const AgentScreen = () => {
         </View>
 
         <FlatList
+          ref={flatListRef}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           data={messages}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
-            <ChatBubble message={{ role: item.role, content: item.content }} />
+            <ChatBubble message={{ role: item.role as any, content: item.content }} />
           )}
           inverted={false}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
 
         <InputBar
           onSend={handleSend}
-          isLoading={isStreaming}
-          onStop={() => setIsStreaming(false)}
+          isLoading={isLoading}
+          onStop={() => setLoading(false)}
           assistantName="BaiShou Assistant"
         />
       </KeyboardAvoidingView>
