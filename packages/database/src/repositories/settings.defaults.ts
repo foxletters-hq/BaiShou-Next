@@ -6,7 +6,8 @@ import type {
   WebSearchConfig,
   SummaryConfig,
   ToolManagementConfig,
-  McpServerConfig
+  McpServerConfig,
+  HotkeyConfig
 } from '@baishou/shared';
 
 export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
@@ -74,4 +75,10 @@ export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
 export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004
+};
+
+export const DEFAULT_HOTKEY_CONFIG: HotkeyConfig = {
+  hotkeyEnabled: false,
+  hotkeyModifier: 'Alt',
+  hotkeyKey: 'S'
 };

@@ -96,3 +96,12 @@ export interface McpServerConfig {
   mcpEnabled: boolean; // MCP Server 是否启用（默认关闭）
   mcpPort: number;     // MCP Server 端口（默认 31004）
 }
+
+/**
+ * 全局热键配置 (Global Hotkey Config)
+ */
+export interface HotkeyConfig {
+  hotkeyEnabled: boolean;   // 是否启用全局呼出（默认 false）
+  hotkeyModifier: string;   // 修饰键（如：Alt, CmdOrCtrl, Shift 等）
+  hotkeyKey: string;        // 触发键（如：S, Space, F1 等）
+}
