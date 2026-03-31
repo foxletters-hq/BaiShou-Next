@@ -56,6 +56,30 @@ export const api = {
     pickZip: () => ipcRenderer.invoke('archive:pick-zip')
   },
 
+  // Diary System (Phase 13)
+  diary: {
+    create: (input: any) => ipcRenderer.invoke('diary:create', input),
+    update: (id: number, input: any) => ipcRenderer.invoke('diary:update', id, input),
+    delete: (id: number) => ipcRenderer.invoke('diary:delete', id),
+    findById: (id: number) => ipcRenderer.invoke('diary:findById', id),
+    findByDate: (dateStr: string) => ipcRenderer.invoke('diary:findByDate', dateStr),
+    listAll: (options?: any) => ipcRenderer.invoke('diary:listAll', options),
+    search: (query: string, options?: any) => ipcRenderer.invoke('diary:search', query, options),
+    count: () => ipcRenderer.invoke('diary:count')
+  },
+
+  // Summary System (Phase 13)
+  summary: {
+    save: (input: any) => ipcRenderer.invoke('summary:save', input),
+    update: (id: number, type: string, startDate: string, endDate: string, update: any) => 
+      ipcRenderer.invoke('summary:update', id, type, startDate, endDate, update),
+    delete: (type: string, startDate: string, endDate: string) => 
+      ipcRenderer.invoke('summary:delete', type, startDate, endDate),
+    readDetail: (type: string, startDate: string, endDate: string) => 
+      ipcRenderer.invoke('summary:readDetail', type, startDate, endDate),
+    list: (options?: any) => ipcRenderer.invoke('summary:list', options),
+  },
+
   // LAN Sync (Phase B)
   lan: {
     startBroadcasting: () => ipcRenderer.invoke('lan:startBroadcasting'),
