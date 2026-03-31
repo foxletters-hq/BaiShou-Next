@@ -1,19 +1,20 @@
 .container {
+  display: flex;
+  flex-direction: column;
   background: var(--bg-surface);
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.2);
   margin-top: 24px;
+  overflow: hidden;
 }
 
 .header {
-  padding: 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  padding: 20px 24px;
 }
 
 .title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
   color: var(--text-primary);
 }
@@ -21,26 +22,36 @@
 .subtitle {
   font-size: 13px;
   color: var(--text-secondary);
-  margin: 8px 0 0;
   line-height: 1.5;
+  margin: 8px 0 0;
 }
 
-/* Stat Bar */
+/* Stat Bar - Upgraded */
 .statBar {
   display: flex;
-  gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  padding: 24px;
 }
 
 .statCard {
-  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.statIcon {
+  font-size: 32px;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+.statText {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 12px;
-  background: rgba(99, 102, 241, 0.06);
-  border-radius: 8px;
+  gap: 4px;
 }
 
 .statLabel {
@@ -51,66 +62,70 @@
 }
 
 .statValue {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-top: 4px;
+  color: #9AD4EA;
+  font-family: 'Fira Code', monospace;
 }
+.statValue small {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.statDivider {
+  width: 1px;
+  height: 40px;
+  background: rgba(148, 163, 184, 0.2);
+}
+
 
 /* Toolbar */
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-  gap: 8px;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .toolbarLeft {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: 12px;
 }
 
-.configBtn {
-  background: none;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  padding: 6px 14px;
-  border-radius: 6px;
+.configBtn, .manageBtn, .cancelBtn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  padding: 8px 16px;
+  border-radius: 8px;
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.configBtn:hover, .manageBtn:hover, .cancelBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
-}
-
-.manageBtn {
-  background: none;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--text-primary);
-}
-
-.cancelBtn {
-  background: none;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
 }
 
 .deleteBtn {
-  background: #ef4444;
-  color: white;
-  border: none;
-  padding: 6px 14px;
-  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 8px 16px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+}
+.deleteBtn:hover:not(:disabled) {
+  background: #ef4444;
+  color: white;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
 }
 .deleteBtn:disabled {
   opacity: 0.5;
@@ -118,148 +133,161 @@
 }
 
 .syncBtn {
-  background: var(--color-primary, #6366f1);
+  background: #10b981;
   color: white;
   border: none;
-  padding: 8px 20px;
+  padding: 10px 24px;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 13px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  transition: all 0.2s;
+}
+.syncBtn:hover:not(:disabled) {
+  background: #059669;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
 }
 .syncBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Config Panel */
+
+/* Config panel */
 .configPanel {
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.02);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
 }
 
 .configGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .configGroup label {
   font-size: 12px;
-  font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  font-weight: 500;
 }
 
-.configGroup input,
-.configGroup select {
-  padding: 8px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 6px;
-  font-size: 14px;
-  background: var(--bg-surface, white);
+.configGroup input, .configGroup select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
+  font-size: 14px;
 }
 
-/* Records Section */
+/* Records Log */
 .recordsSection {
-  padding: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
 }
+
+.selectAllHeader {
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(239, 68, 68, 0.05);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.1);
+}
+.selectAllLabel { font-size: 13px; font-weight: 600; color: #ef4444;}
+.customCheck { accent-color: #ef4444; transform: scale(1.2); cursor: pointer; }
 
 .recordsHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  font-weight: 600;
+  padding: 16px 24px;
   font-size: 14px;
-  color: var(--text-primary);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  font-weight: 600;
+  background: rgba(255,255,255,0.02);
 }
 
 .refreshBtn {
-  background: none;
+  background: transparent;
   border: none;
-  font-size: 16px;
   cursor: pointer;
-  padding: 4px;
+  opacity: 0.6;
 }
-.refreshBtn:disabled {
-  opacity: 0.5;
-}
-
-.loadingState, .emptyState {
-  padding: 32px;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
+.refreshBtn:hover { opacity: 1; }
 
 .recordList {
-  max-height: 400px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .recordItem {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-  transition: background 0.15s;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  gap: 16px;
+  transition: all 0.2s;
 }
 .recordItem:hover {
-  background: rgba(99, 102, 241, 0.03);
+  background: rgba(255, 255, 255, 0.03);
+}
+.itemSelected {
+  background: rgba(239, 68, 68, 0.05) !important;
 }
 
 .recordInfo {
   flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .recordName {
-  font-size: 13px;
   font-weight: 600;
+  font-size: 14px;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .recordMeta {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-top: 2px;
 }
 
 .recordActions {
   display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 8px;
 }
 
 .recordActions button {
-  background: none;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  padding: 4px 10px;
-  border-radius: 4px;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 6px 12px;
+  border-radius: 6px;
   font-size: 12px;
   cursor: pointer;
+}
+.recordActions button:hover {
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
 }
 
 .restoreBtn {
   color: #f59e0b !important;
-  border-color: #f59e0b !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
 }
 
 .deleteSingleBtn {
   color: #ef4444 !important;
-  border-color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.loadingState, .emptyState {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
 }

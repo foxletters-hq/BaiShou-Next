@@ -1,42 +1,180 @@
-.settings-page-container {
-  padding: 32px;
-  max-width: 800px;
-  margin: 0 auto;
+.settings-page-wrapper {
+  position: relative;
+  width: 100%;
   height: 100%;
-  overflow-y: auto;
-}
-
-.settings-page-title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 24px;
+  overflow: hidden;
+  display: flex;
+  background-color: var(--bg-default);
   color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
 }
 
-.settings-tab-btn {
+/* 渐变氛围背光背景（仅有微弱流转，增强高级毛玻璃体验） */
+.settings-page-glow {
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, rgba(var(--primary-color-rgb, 74, 222, 128), 0.08) 0%, transparent 70%);
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 侧边导航栏 */
+.settings-sidebar {
+  position: relative;
+  z-index: 10;
+  width: 260px;
+  min-width: 260px;
+  height: 100%;
+  padding: 32px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-right: 1px solid rgba(148, 163, 184, 0.1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-header-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 32px;
+  padding-left: 12px;
+  background: linear-gradient(90deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 导航组包裹 */
+.settings-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 单个主菜单项目 */
+.settings-nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-radius: 12px;
-  border: none;
-  background-color: transparent;
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  text-align: left;
+  background: transparent;
+  color: var(--text-secondary);
+  outline: none;
 }
 
-.settings-tab-btn:hover {
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.3);
+.settings-nav-item:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-primary);
+  transform: translateX(4px);
+}
+
+.settings-nav-item.active {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.2);
+  color: var(--text-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.settings-nav-icon {
+  font-size: 20px;
+  margin-right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+}
+
+.settings-nav-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-nav-label {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.settings-nav-desc {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* 右侧内容区域包裹 */
+.settings-content-area {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  height: 100%;
+  overflow-y: overlay;
+  padding: 40px 60px;
+  scroll-behavior: smooth;
+}
+
+.settings-content-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-content-area::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+}
+
+/* 面板切入微动画 */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-pane {
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* 通用毛玻璃卡片组预设 */
+.glass-panel-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.glass-panel-card:hover {
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
+}
+
+.pane-section-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
   color: var(--text-primary);
 }
 
-.settings-tab-btn.active {
-  background-color: var(--color-primary-container);
-  color: var(--color-primary);
-  font-weight: 600;
+.pane-section-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
 }

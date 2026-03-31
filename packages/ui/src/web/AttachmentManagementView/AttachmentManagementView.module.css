@@ -1,0 +1,228 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  min-height: 500px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.titleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Base Stats */
+.statsBoard {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.statBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dangerTextLabel { color: rgba(239, 68, 68, 0.8) !important; }
+
+.statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: #9AD4EA;
+  font-family: 'Fira Code', monospace;
+}
+.statValue small { font-size: 11px; margin-left: 4px; color: var(--text-secondary); }
+
+.statValue.dangerText {
+  color: #ef4444;
+}
+
+.statDivider {
+  width: 1px;
+  height: 40px;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+/* Toolbar & Tabs */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tabsRow {
+  display: flex;
+  gap: 8px;
+}
+
+.tabBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tabBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tabActive {
+  background: rgba(154, 212, 234, 0.15);
+  color: #9AD4EA;
+  border-color: rgba(154, 212, 234, 0.3);
+}
+
+.badge, .badgeDanger {
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(0,0,0,0.3);
+  color: var(--text-primary);
+}
+.badgeDanger { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+
+.selectAllBtn {
+  background: transparent;
+  color: #9AD4EA;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.selectAllBtn:disabled { color: var(--text-secondary); opacity: 0.5; cursor: not-allowed;}
+.selectAllBtn:hover:not(:disabled) { text-shadow: 0 0 10px rgba(154, 212, 234, 0.5); }
+
+/* List */
+.listArea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 480px;
+  padding-bottom: 80px; /* footer space */
+}
+.listArea::-webkit-scrollbar { width: 6px; }
+.listArea::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 3px; }
+
+.empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px 0; color: var(--text-secondary);
+}
+.emptyIcon { font-size: 40px; margin-bottom: 16px; opacity: 0.2; }
+.emptyText { font-size: 13px; font-weight: 500; }
+
+.card {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.05);
+  border-radius: 12px;
+  padding: 12px 16px;
+  gap: 12px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.card:hover { background: rgba(255, 255, 255, 0.06); }
+.cardChecked { background: rgba(154, 212, 234, 0.1); border-color: rgba(154, 212, 234, 0.3); }
+
+.cardOrphan { border-color: rgba(239, 68, 68, 0.15); }
+.cardOrphan.cardChecked { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); }
+
+.cardSelectCol {
+  display: flex; align-items: center; justify-content: center;
+}
+.customCheck { accent-color: #9AD4EA; transform: scale(1.1); cursor: pointer; }
+.cardOrphan .customCheck { accent-color: #ef4444; }
+
+.cardIconBox {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: rgba(154, 212, 234, 0.15); color: #9AD4EA;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.cardIconBoxOrphan { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+.cardMain {
+  flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden;
+}
+
+.cardHeaderRow { display: flex; align-items: center; gap: 8px;}
+.cardName { font-size: 14px; font-weight: 600; color: var(--text-primary); max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.orphanTag {
+  font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+  background: #ef4444; color: white;
+}
+
+.cardSubRow { display: flex; align-items: center; gap: 8px;}
+.fileCountHint { font-size: 12px; color: var(--text-secondary); }
+
+.cardSizeBox { display: flex; flex-direction: column; align-items: flex-end; gap: 4px;}
+.cardSize { font-size: 14px; font-weight: 700; color: var(--text-secondary); font-family: 'Fira Code', monospace;}
+.cardDate { font-size: 11px; color: rgba(148, 163, 184, 0.5); }
+
+/* Footer */
+.massActionFooter {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 16px 24px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp { from {opacity: 0; transform: translateY(20px);} to {opacity: 1; transform: translateY(0);} }
+
+.footerInfo { font-size: 14px; color: var(--text-primary); font-weight: 500;}
+.highlight { color: #ef4444; font-weight: 700; font-size: 16px;}
+
+.massiveDeleteBtn {
+  background: #ef4444; color: white; padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.massiveDeleteBtn:hover:not(:disabled) { background: #dc2626; box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+.massiveDeleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }

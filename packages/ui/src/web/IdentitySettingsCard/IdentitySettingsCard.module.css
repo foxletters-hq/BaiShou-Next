@@ -1,0 +1,218 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.titleLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.titleLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon {
+  font-size: 18px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.addFactBtn {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.addFactBtn:hover {
+  background: rgba(74, 222, 128, 0.3);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.chip {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.chipActive {
+  background: rgba(74, 222, 128, 0.15);
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #4ade80;
+  font-weight: 500;
+}
+
+.chipActive:hover {
+  background: rgba(74, 222, 128, 0.25);
+  color: #4ade80;
+}
+
+.chipDel {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.chipDel:hover {
+  background: rgba(239, 68, 68, 0.8);
+  color: #fff;
+}
+
+.addChipBtn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.addChipBtn:hover {
+  color: var(--text-primary);
+  border-color: rgba(148, 163, 184, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.factsArea {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.05);
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+}
+
+.emptyFacts {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  gap: 8px;
+}
+.emptyIcon {
+  font-size: 24px;
+  opacity: 0.5;
+}
+
+.factRow {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  gap: 16px;
+  transition: background 0.2s;
+}
+.factRow:last-child {
+  border-bottom: none;
+}
+.factRow:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.factKey {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 80px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.factVal {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.factActions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.factRow:hover .factActions {
+  opacity: 1;
+}
+
+.factActions button {
+  background: rgba(148, 163, 184, 0.15);
+  border: none;
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.factActions button:hover {
+  background: rgba(148, 163, 184, 0.3);
+  color: var(--text-primary);
+}
+
+.factActions .delBtn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}

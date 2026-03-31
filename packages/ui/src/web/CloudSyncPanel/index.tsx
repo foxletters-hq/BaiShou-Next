@@ -68,6 +68,14 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [manageMode, setManageMode] = useState(false);
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelected(new Set(records.map(r => r.filename)));
+    } else {
+      setSelected(new Set());
+    }
+  };
+
   const fetchRecords = useCallback(async () => {
     if (config.target === 'local') { setRecords([]); return; }
     setIsLoading(true);
@@ -163,16 +171,27 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
 
       <div className={styles.statBar}>
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>同步目标</span>
-          <span className={styles.statValue}>{config.target.toUpperCase()}</span>
+          <div className={styles.statIcon}>☁️</div>
+          <div className={styles.statText}>
+            <span className={styles.statLabel}>分发终点 (Target)</span>
+            <span className={styles.statValue}>{config.target.toUpperCase()}</span>
+          </div>
         </div>
+        <div className={styles.statDivider} />
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>云端总大小</span>
-          <span className={styles.statValue}>{totalSizeMb > 0 ? totalSizeMb.toFixed(2) + ' MB' : '0 MB'}</span>
+          <div className={styles.statIcon}>💾</div>
+          <div className={styles.statText}>
+            <span className={styles.statLabel}>云端容载 (Size)</span>
+            <span className={styles.statValue}>{totalSizeMb > 0 ? totalSizeMb.toFixed(2) + ' MB' : '0 MB'}</span>
+          </div>
         </div>
+        <div className={styles.statDivider} />
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>备份份数</span>
-          <span className={styles.statValue}>{records.length} 份</span>
+          <div className={styles.statIcon}>📦</div>
+          <div className={styles.statText}>
+             <span className={styles.statLabel}>母体存数 (Count)</span>
+             <span className={styles.statValue}>{records.length} <small>份</small></span>
+          </div>
         </div>
       </div>
 
@@ -187,9 +206,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           )}
           {manageMode && (
             <>
-              <button className={styles.cancelBtn} onClick={() => { setManageMode(false); setSelected(new Set()); }}>取消</button>
+              <button className={styles.cancelBtn} onClick={() => { setManageMode(false); setSelected(new Set()); }}>取消选定</button>
               <button className={styles.deleteBtn} onClick={handleBatchDelete} disabled={selected.size === 0}>
-                删除 ({selected.size})
+                ☄️ 核爆选定档 ({selected.size})
               </button>
             </>
           )}
@@ -277,17 +296,28 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         </div>
 
         {isLoading ? (
-          <div className={styles.loadingState}>加载中...</div>
+          <div className={styles.loadingState}>链接亚空间与握手中...</div>
         ) : records.length === 0 ? (
           <div className={styles.emptyState}>
-            {config.target === 'local' ? '云同步已关闭，请先配置 WebDAV 或 S3 目标' : '暂无远端备份记录'}
+            {config.target === 'local' ? '云同步引擎已处于离线沉睡状态。' : '此目标宇宙目前暂无发现您的数据遗迹。'}
           </div>
         ) : (
           <div className={styles.recordList}>
+            {manageMode && (
+               <div className={styles.selectAllHeader}>
+                 <input 
+                   type="checkbox" 
+                   className={styles.customCheck}
+                   checked={selected.size === records.length && records.length > 0} 
+                   onChange={handleSelectAll} 
+                 />
+                 <span className={styles.selectAllLabel}>全选所有 {records.length} 个锚点进行歼灭</span>
+               </div>
+            )}
             {records.map((r) => (
-              <div key={r.filename} className={styles.recordItem}>
+              <div key={r.filename} className={`${styles.recordItem} ${selected.has(r.filename) ? styles.itemSelected : ''}`}>
                 {manageMode && (
-                  <input type="checkbox" checked={selected.has(r.filename)}
+                  <input type="checkbox" className={styles.customCheck} checked={selected.has(r.filename)}
                     onChange={(e) => {
                       const next = new Set(selected);
                       e.target.checked ? next.add(r.filename) : next.delete(r.filename);

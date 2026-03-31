@@ -1,108 +1,286 @@
 .container {
-  background: var(--bg-surface);
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
   overflow: hidden;
-  margin-top: 24px;
 }
 
 .header {
-  padding: 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  margin: 0;
   color: var(--text-primary);
+  margin: 0;
+}
+
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.4);
+  transition: all 0.3s;
+}
+
+.activeDot {
+  background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+  animation: dotFlash 2s infinite;
+}
+
+@keyframes dotFlash {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .subtitle {
   font-size: 13px;
   color: var(--text-secondary);
-  margin: 8px 0 0;
   line-height: 1.5;
+  margin: 8px 0 0;
 }
 
-.actions {
+/* Radar Zone */
+.radarZone {
+  position: relative;
+  height: 320px;
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.05) 0%, rgba(0, 0, 0, 0.6) 100%);
+  overflow: hidden;
   display: flex;
-  padding: 16px;
+  align-items: center;
   justify-content: center;
 }
 
-.startBtn {
-  background: var(--color-primary, #3b82f6);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  width: 100%;
-  transition: opacity 0.2s;
+.radarCore {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  border: 2px solid rgba(16, 185, 129, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
 }
 
-.stopBtn {
-  background: #ef4444;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  width: 100%;
+.coreIcon {
+  font-size: 24px;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
 }
 
-.radarZone {
-  padding: 16px;
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(0,0,0,0.02);
+.corePulse {
+  animation: coreThrob 2s infinite ease-in-out;
 }
 
-.deviceList {
+@keyframes coreThrob {
+  0% { transform: scale(1); box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+  50% { transform: scale(1.1); box-shadow: 0 0 40px rgba(16, 185, 129, 0.6); }
+  100% { transform: scale(1); box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+}
+
+.radarRings {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+}
+
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.1);
+  opacity: 0;
+  animation: radarWave 4s infinite linear;
+}
+
+.ring1 { animation-delay: 0s; }
+.ring2 { animation-delay: 1.33s; }
+.ring3 { animation-delay: 2.66s; }
+
+@keyframes radarWave {
+  0% { width: 0; height: 0; opacity: 1; border-width: 2px; }
+  100% { width: 400px; height: 400px; opacity: 0; border-width: 1px; }
+}
+
+.silentHint {
+  position: absolute;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.deviceCard {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  background: white;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 8px;
+  gap: 8px;
+  opacity: 0.3;
 }
+.silentIcon { font-size: 40px; }
+.silentHint p { margin: 0; font-size: 13px; color: var(--text-secondary); }
 
-.deviceName {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.deviceIp {
+.scanHint {
+  position: absolute;
+  bottom: 24px;
   font-size: 12px;
-  color: #64748b;
+  color: #10b981;
+  letter-spacing: 1px;
+  animation: pulseOpacity 2s infinite;
 }
 
-.sendBtn {
-  background: #10b981;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
+@keyframes pulseOpacity {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; text-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
 }
-.sendBtn:disabled {
-  opacity: 0.5;
+
+/* Bubbles */
+.deviceBubble {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  backdrop-filter: blur(4px);
+  border-radius: 30px;
+  padding: 6px 14px 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  animation: floatBubble 3s infinite ease-in-out alternate;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+@keyframes floatBubble {
+  from { transform: translate(-50%, -45%); }
+  to { transform: translate(-50%, -55%); }
+}
+
+.deviceBubble:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  border-color: #10b981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  /* Hover 时展示覆盖按钮 */
+  animation-play-state: paused;
+}
+
+.bubbleSending {
+  border-color: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  animation: none;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.bubbleIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.bubbleInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.bubbleName {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bubbleIp {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: 'Fira Code', monospace;
+}
+
+.sendOverlayBtn {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  background: rgba(16, 185, 129, 0.95);
+  backdrop-filter: blur(2px);
+  border: none;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deviceBubble:hover .sendOverlayBtn {
+  opacity: 1;
+}
+
+.sendOverlayBtn:disabled {
+  background: rgba(245, 158, 11, 0.95);
+  opacity: 1; /* 正在发送时常驻展示进度 */
   cursor: not-allowed;
 }
 
-.loading {
-  text-align: center;
-  font-size: 13px;
-  color: #64748b;
+/* Actions Box */
+.actionsBox {
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.controlBtn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.startBtn {
+  background: #10b981;
+  color: white;
+}
+.startBtn:hover {
+  background: #059669;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.stopBtn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.stopBtn:hover {
+  background: rgba(239, 68, 68, 0.25);
 }
