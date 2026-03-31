@@ -33,6 +33,7 @@
     "@baishou/shared": "workspace:*",
     "colord": "^2.9.3",
     "expo-document-picker": "^55.0.9",
+    "framer-motion": "^12.38.0",
     "i18next": "^26.0.2",
     "lucide-react": "^1.7.0",
     "react-i18next": "^17.0.1",
