@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar';
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle';
-import { TagInput } from '../TagInput';
+// import { TagInput } from '../TagInput';
 
 interface DiaryEditorProps {
   content: string;
@@ -79,7 +79,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
         {!isSummaryMode && (
           <View style={styles.tagsSection}>
-            <TagInput tags={tags} onChange={onTagsChange} />
+            {/* <TagInput tags={tags} onChange={onTagsChange} /> */}
           </View>
         )}
 

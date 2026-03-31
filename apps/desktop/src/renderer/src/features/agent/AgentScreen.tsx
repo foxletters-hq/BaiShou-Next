@@ -12,15 +12,9 @@ import {
 import { useAgentStore } from '@baishou/store/src/stores/agent.store';
 import styles from './AgentScreen.module.css';
 
-// Simple mock for messages
-const initialMessages = [
-  { id: '1', role: 'assistant', content: '你好！我是 BaiShou AI，有什么我可以帮你的？' },
-  { id: '2', role: 'user', content: '你能解释一下 React Hooks 的原理吗？' },
-];
-
 export const AgentScreen: React.FC = () => {
   const { sessionId } = useParams();
-  const { messages, isLoading, addMessage, setLoading, clearSession, sendMessage } = useAgentStore();
+  const { messages, isLoading, setLoading, clearSession, sendMessage, loadMessages } = useAgentStore();
   
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
@@ -36,15 +30,9 @@ export const AgentScreen: React.FC = () => {
     // Reset messages when session changes
     if (sessionId) {
       clearSession();
-      // Load initial mock messages
-      initialMessages.forEach(msg => {
-        addMessage({
-          id: msg.id,
-          role: msg.role as any,
-          content: msg.content,
-          timestamp: new Date()
-        });
-      });
+      // Load real messages
+      loadMessages(sessionId);
+
       setIsStreaming(false);
       setStreamingText('');
       
@@ -65,11 +53,13 @@ export const AgentScreen: React.FC = () => {
         }).catch(console.error);
       }
     }
-  }, [sessionId, clearSession, addMessage]);
+  }, [sessionId, clearSession, loadMessages]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // In flex-col-reverse, scrollTop = 0 means bottom natively. We shouldn't scrollHeight.
+      // Or we can just let flex-col-reverse handle anchoring natively
+      scrollRef.current.scrollTop = 0;
     }
   };
 
@@ -78,7 +68,8 @@ export const AgentScreen: React.FC = () => {
   }, [messages, streamingText, isStreaming]);
 
   const handleSend = async (text: string, options?: any) => {
-    sendMessage(text);
+    if (!sessionId) return;
+    sendMessage(sessionId, text);
   };
 
   const handleStop = () => {
@@ -124,24 +115,23 @@ export const AgentScreen: React.FC = () => {
       {/* Message List */}
       <div className={styles.messageList} ref={scrollRef}>
          <div className={styles.messageContent}>
-           {messages.map(msg => (
+           {isStreaming && (
+              <StreamingBubble 
+                text={streamingText}
+              />
+           )}
+           {[...messages].reverse().map(msg => (
               <ChatBubble 
                 key={msg.id}
                 message={{
                   id: msg.id,
                   role: msg.role === 'user' ? 'user' : 'assistant',
                   content: msg.content,
-                  createdAt: new Date()
+                  createdAt: msg.timestamp || new Date()
                 }}
                 onEdit={msg.role === 'user' ? () => console.log('1') : undefined}
               />
            ))}
-
-           {isStreaming && (
-              <StreamingBubble 
-                text={streamingText}
-              />
-           )}
          </div>
       </div>
 

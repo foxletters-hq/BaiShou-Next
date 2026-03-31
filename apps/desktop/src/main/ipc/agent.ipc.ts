@@ -1,7 +1,7 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron'
 import { join } from 'path';
 import { AgentService, MockAgentSessionRepository, MockAgentMessageRepository } from '@baishou/core'
-import { initNodeDatabase, SessionRepository, AssistantRepository } from '@baishou/database'
+import { initNodeDatabase, SessionRepository, AssistantRepository, MessageRepository } from '@baishou/database'
 
 // 1. 初始化 SQLite
 const dbPath = join(app.getPath('userData'), 'baishou_next_agent.db');
@@ -10,6 +10,7 @@ const appDb = initNodeDatabase(dbPath);
 // 2. 初始化持久层 Repositories
 const realSessionRepo = new SessionRepository(appDb);
 const realAssistantRepo = new AssistantRepository(appDb);
+const realMessageRepo = new MessageRepository(appDb);
 
 // Define dummy provider logic directly here temporarily just to pass registry 
 class DummyModel {
@@ -26,10 +27,9 @@ const mockToolRegistry = {
   toVercelTools: () => ({})
 } as any
 
-// The AgentService internally still uses mock core repos for streamChat as the pure core repo hasn't been merged with sqlite yet, but for CRUD we use the real ones.
 const agentService = new AgentService(
-  new MockAgentSessionRepository(),
-  new MockAgentMessageRepository(),
+  realSessionRepo, // Switched to Real SQLite Repo
+  realMessageRepo, // Switched to Real SQLite Repo
   mockProviderRegistry,
   mockToolRegistry
 )
@@ -73,11 +73,15 @@ export function registerAgentIPC() {
   // ==========================================
   // API: Chat (Legacy mocked stream chat)
   // ==========================================
-  ipcMain.handle('agent:chat', async (event, text: string) => {
+  ipcMain.handle('agent:get-messages', async (_, sessionId: string) => {
+    return await realMessageRepo.findBySessionId(sessionId, 50);
+  });
+
+  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
     try {
       const result = await agentService.streamChat({
-        sessionId: 'ipc-session',
-        userMessage: text,
+        sessionId: args.sessionId,
+        userMessage: args.text,
       })
 
       // Iterate async over the Vercel AI SDK textStream

@@ -39,7 +39,7 @@ describe('useAgentStore (Zustand IPC Flow)', () => {
     // Assure no window.api exists
     expect((globalThis as any).window).toBeUndefined();
 
-    store.sendMessage('Test fallback');
+    store.sendMessage('session-1', 'Test fallback');
     
     // Synchronous state check
     const pendingState = useAgentStore.getState();
@@ -68,12 +68,12 @@ describe('useAgentStore (Zustand IPC Flow)', () => {
     };
 
     const store = useAgentStore.getState();
-    store.sendMessage('Hello Electron');
+    store.sendMessage('session-1', 'Hello Electron');
 
     const state = useAgentStore.getState();
     expect(state.isLoading).toBe(true);
     expect(state.messages).toHaveLength(2); // Local immediate append
-    expect(mockAgentChat).toHaveBeenCalledWith('Hello Electron');
+    expect(mockAgentChat).toHaveBeenCalledWith({ sessionId: 'session-1', text: 'Hello Electron' });
   });
 
   it('initIpcListeners binds stream chunks and correctly constructs text', () => {

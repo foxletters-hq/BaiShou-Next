@@ -13,7 +13,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [toastData, setToastData] = useState<{message: string, type: string} | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateX = useRef(new Animated.Value(100)).current;
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dismissToast = () => {
     Animated.parallel([

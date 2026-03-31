@@ -12,6 +12,7 @@ export * from './repositories/diary.repository.impl';
 export * from './repositories/agent.repository';
 export * from './repositories/session.repository';
 export * from './repositories/assistant.repository';
+export * from './repositories/message.repository';
 
 export * from './drivers/vec-capability';
 export * from './drivers/node-sqlite.driver';

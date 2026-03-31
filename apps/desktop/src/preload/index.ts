@@ -3,7 +3,9 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
 export const api = {
-  agentChat: (text: string) => ipcRenderer.invoke('agent:chat', text),
+  agentChat: (params: { sessionId: string; text: string }) => ipcRenderer.invoke('agent:chat', params),
+  getMessages: (sessionId: string) => ipcRenderer.invoke('agent:get-messages', sessionId),
+  
   onAgentStreamChunk: (callback: (chunk: string) => void) => {
     ipcRenderer.on('agent:stream-chunk', (_event, chunk) => callback(chunk))
   },
