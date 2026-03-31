@@ -1,1 +1,1 @@
-export * from './TimelineNode';
+export * from './index';
