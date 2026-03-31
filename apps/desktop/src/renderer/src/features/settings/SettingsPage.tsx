@@ -15,10 +15,13 @@ import {
   AttachmentManagementView,
   AIModelServicesView,
   AIGlobalModelsView,
+  AgentBehaviorSettingsCard,
   IdentitySettingsCard,
   RagMemoryView,
   AgentToolsView,
-  WebSearchSettingsView
+  WebSearchSettingsView,
+  AboutSettingsCard,
+  AssistantMatrixCard
 } from '@baishou/ui';
 
 // ----------------------------------------------------
@@ -74,8 +77,8 @@ export const SettingsPage: React.FC = () => {
               加载系统环境配置中...
             </div>
          ) : (
-            <div className="settings-pane" key={activeTab}>
-              {activeTab === 'profile' && <ProfilePane />}
+            <div className="settings-content-scroll" key={activeTab}>
+              {activeTab === 'profile' && <ProfilePane settings={settings} />}
               {activeTab === 'general' && <GeneralPane settings={settings} />}
               {activeTab === 'storage' && <StoragePane />}
               {activeTab === 'ai' && <AiPane settings={settings} />}
@@ -93,14 +96,16 @@ export const SettingsPage: React.FC = () => {
 // 拆分子面板集 (目前作为 Phase 分步的入口空壳/占位集成)
 // ----------------------------------------------------
 
-const ProfilePane: React.FC = () => {
+const ProfilePane: React.FC<{ settings: any }> = ({ settings }) => {
   return (
     <>
       <div>
-        <h2 className="pane-section-title">人格与身份设定</h2>
-        <p className="pane-section-subtitle">配置您在白守中的昵称形象及您管理的多重数字分身。</p>
+        <h2 className="pane-section-title">个人偏好库</h2>
+        <p className="pane-section-subtitle">配置您的昵称、签名档以及多身份分身档案库。</p>
       </div>
-      <div className="glass-panel-card">
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {/* 保留原本的 ProfileSettingsCard 挂载位 */}
          <ProfileSettingsCard 
            profile={{ nickname: '指挥官 (Commander)', autoSync: true, avatarUrl: '' }}
            onSave={(p) => console.log('Saved profile', p)}
@@ -109,6 +114,19 @@ const ProfilePane: React.FC = () => {
            }}
            onGenerateAvatar={() => {}}
          />
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {settings.userProfileConfig && (
+            <IdentitySettingsCard 
+                profile={settings.userProfileConfig}
+                onChange={(profile) => settings.setUserProfileConfig(profile)}
+            />
+         )}
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         <AssistantMatrixCard onLaunchMatrix={async () => console.log('前往特型数字生命车间...')} />
       </div>
     </>
   );
@@ -151,6 +169,14 @@ const GeneralPane: React.FC<{ settings: any }> = ({ settings }) => {
              />
          ) : null}
       </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         <AboutSettingsCard 
+             version="v2.0.0-Next-Canary"
+             onOpenPrivacyPolicy={() => console.log('打开开发哲学与隐私协议')}
+             onOpenGithubHost={() => console.log('导航到 Github Issue')}
+         />
+      </div>
     </>
   );
 };
@@ -168,6 +194,10 @@ const StoragePane: React.FC = () => {
           onExportZip={async () => {(window as any).api?.archive.exportZip()}}
           onImportZip={async (file: string) => {(window as any).api?.archive.importZip(file)}}
           onPickFile={async () => await (window as any).api?.archive.pickZip()}
+          snapshots={[
+            { filename: 'auto_backup_01.zip', sizeMB: '14.2', fullPath: '/tmp/01.zip', timeLabel: '2 小时前自动留存' },
+            { filename: 'auto_backup_02.zip', sizeMB: '13.8', fullPath: '/tmp/02.zip', timeLabel: '昨天 23:14' }
+          ]}
         />
       </div>
 
@@ -187,10 +217,10 @@ const StoragePane: React.FC = () => {
         <div style={{ padding: 24 }}>
            <AttachmentManagementView 
                attachments={[
-                  { id: '1', name: 'midjourney-prompt-ref.png', size: '2.4MB', type: 'image', date: '2026-03-31' },
-                  { id: '2', name: 'claude-3-opus-guidelines.pdf', size: '1.2MB', type: 'document', date: '2026-03-29' }
+                  { id: '1', name: 'midjourney-prompt-ref.png', sizeMB: 2.4, type: 'image', date: '2026-03-31', isOrphan: false, fileCount: 1 },
+                  { id: '2', name: 'claude-3-opus-guidelines.pdf', sizeMB: 1.2, type: 'document', date: '2026-03-29', isOrphan: true, fileCount: 3 }
                ]}
-               onDelete={(id) => console.log('Delete attachment', id)}
+               onDeleteSelected={async (ids) => console.log('Delete attachment', ids)}
            />
         </div>
       </div>
@@ -244,14 +274,16 @@ const AiPane: React.FC<{ settings: any }> = ({ settings }) => {
          {settings.globalModelsConfig && (
              <AIGlobalModelsView 
                  config={settings.globalModelsConfig}
+                 availableProviders={settings.aiProviderConfigs || {}}
                  onChange={(config) => settings.setGlobalModelsConfig(config)}
+                 onEmbeddingMigrationRequest={async () => true}
              />
          )}
       </div>
 
       <div className="glass-panel-card" style={{ padding: 0 }}>
          {settings.agentBehaviorConfig && (
-             <IdentitySettingsCard 
+             <AgentBehaviorSettingsCard 
                  config={settings.agentBehaviorConfig}
                  onChange={(config) => settings.setAgentBehaviorConfig(config)}
              />
@@ -262,6 +294,8 @@ const AiPane: React.FC<{ settings: any }> = ({ settings }) => {
          <AIModelServicesView 
              providers={settings.aiProviderConfigs || {}}
              onUpdateProvider={(id, updates) => settings.updateAiProviderConfig(id, updates)}
+             onTestConnection={async () => await new Promise(r => setTimeout(r, 800))}
+             onFetchModels={async () => ['gpt-4-turbo', 'gpt-3.5-turbo', 'claude-3-opus']}
          />
       </div>
     </>
@@ -280,7 +314,21 @@ const RagPane: React.FC<{ settings: any }> = ({ settings }) => {
          {settings.ragConfig && (
              <RagMemoryView 
                  config={settings.ragConfig}
+                 stats={{ totalCount: 4210, currentDimension: 1536, totalSizeText: '48.2 MB' }}
+                 ragState={{ isRunning: false, type: 'idle', progress: 0, total: 0, statusText: '' }}
+                 hasMismatchModel={false}
+                 entries={[
+                    { embeddingId: 'e1', text: '记录了白守初始化配置的一段核心思维...', modelId: 'text-embedding-3-small', createdAt: Date.now() }
+                 ]}
                  onChange={(config) => settings.setRagConfig(config)}
+                 onClearDimension={async () => {}}
+                 onBatchEmbed={async () => {}}
+                 onAddManualMemory={async () => {}}
+                 onTriggerMigration={async () => {}}
+                 onClearAll={async () => {}}
+                 onSearch={(q) => console.log(q)}
+                 onDeleteEntry={async () => {}}
+                 onEditEntry={async () => {}}
              />
          )}
       </div>

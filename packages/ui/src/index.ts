@@ -47,6 +47,7 @@ export * from './web/AttachmentManagementView';
 
 export * from './web/AIModelServicesView';
 export * from './web/AIGlobalModelsView';
+export * from './web/AgentBehaviorSettingsCard';
 export * from './web/IdentitySettingsCard';
 
 export * from './web/RagMemoryView';
@@ -57,6 +58,9 @@ export * from './web/ProfileSettingsCard';
 export * from './web/HotkeySettingsCard';
 export * from './web/McpSettingsCard';
 export * from './web/DeveloperOptionsView';
+
+export * from './web/AboutSettingsCard';
+export * from './web/AssistantMatrixCard';
 
 // 仅保证 TypeScript 导出正常，真正跨包可能会区分 web / native 导出策略
 
