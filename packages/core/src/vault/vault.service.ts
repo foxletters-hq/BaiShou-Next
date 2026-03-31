@@ -55,7 +55,9 @@ export class VaultService implements IVaultService {
           const vault = this._vaults[i];
           if (!vault) continue;
           const expectedPath = path.join(rootDir, vault.name);
-          if (vault.path !== expectedPath) {
+          // 容错匹配：移除路径末尾可能多余的横杠并将反斜杠转为正斜杠归一化后比对
+          const normalize = (p: string) => path.resolve(p).replace(/\\/g, '/');
+          if (normalize(vault.path) !== normalize(expectedPath)) {
             vault.path = expectedPath;
             shouldSave = true;
           }

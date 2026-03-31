@@ -1,286 +1,106 @@
-/**
- * 总结生成服务
- *
- * 负责协调日记/总结仓库数据，并根据选定的 AI 供应商生成多维度的总结。
- * 支持 weekly / monthly / quarterly / yearly 四种总结类型。
- *
- * 原始实现：lib/features/summary/domain/services/summary_generator_service.dart (430 行)
- */
+import { MissingSummary, SummaryType } from '@baishou/shared';
+import { DiaryRepository } from '@baishou/database/src/repositories/diary.repository';
+import { SummaryRepository } from '@baishou/database/src/repositories/summary.repository';
 
-import {
-  type SummaryType,
-  buildWeeklyPrompt,
-  buildMonthlyPrompt,
-  buildQuarterlyPrompt,
-  buildYearlyPrompt,
-} from './summary-prompt-templates';
-
-// ─── 依赖接口（DIP） ──────────────────────────────────────
-
-export interface SummaryDiarySource {
-  getDiariesInRange(
-    start: Date,
-    end: Date,
-  ): Promise<
-    Array<{
-      date: Date;
-      content: string;
-      tags: string[];
-    }>
-  >;
-}
-
-export interface SummaryEntry {
-  type: SummaryType;
-  startDate: Date;
-  endDate: Date;
-  content: string;
-}
-
-export interface SummarySource {
-  getSummaries(start: Date): Promise<SummaryEntry[]>;
-}
-
-export interface SummaryLLM {
+export interface SummaryAiClient {
   generateContent(prompt: string, modelId: string): Promise<string>;
 }
 
-export interface MissingSummary {
-  type: SummaryType;
-  startDate: Date;
-  endDate: Date;
-  weekNumber?: number;
-}
-
-// ─── 服务实现 ──────────────────────────────────────────────
-
 export class SummaryGeneratorService {
   constructor(
-    private readonly diarySource: SummaryDiarySource,
-    private readonly summarySource: SummarySource,
-    private readonly llm: SummaryLLM,
-    private readonly getModelId: () => string,
-    private readonly getCustomTemplate?: (type: string) => string | undefined,
+    private readonly diaryRepo: DiaryRepository,
+    private readonly summaryRepo: SummaryRepository,
+    private readonly aiClient: SummaryAiClient
   ) {}
 
-  /**
-   * 生成指定类型的总结
-   *
-   * @param target 缺失的总结目标
-   * @param onStatus 状态回调
-   * @returns 生成的 Markdown 内容
-   */
-  async generate(
-    target: MissingSummary,
-    onStatus?: (status: string) => void,
-  ): Promise<string> {
-    onStatus?.('正在读取数据...');
-
-    const modelId = this.getModelId();
+  async *generate(target: MissingSummary, modelId: string = 'gpt-4'): AsyncGenerator<string> {
+    yield 'STATUS:reading_data';
+    
     let contextData = '';
-    let prompt = '';
+    let promptTemplate = '';
 
-    const customTemplate = this.getCustomTemplate?.(target.type);
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    try {
+      switch (target.type) {
+        case SummaryType.weekly:
+          contextData = await this.buildWeeklyContext(target.startDate, target.endDate);
+          promptTemplate = 'Please write a weekly summary for the provided diaries:\n';
+          break;
+        case SummaryType.monthly:
+          contextData = await this.buildMonthlyContext(target.startDate, target.endDate);
+          promptTemplate = 'Please formulate a monthly summary based on the weeklies and diaries:\n';
+          break;
+        case SummaryType.quarterly:
+          contextData = await this.buildQuarterlyContext(target.startDate, target.endDate);
+          promptTemplate = 'Extract the core quarterly summary from these past 3 month insights:\n';
+          break;
+        case SummaryType.yearly:
+          contextData = await this.buildYearlyContext(target.startDate, target.endDate);
+          promptTemplate = 'Write the comprehensive end-of-year review out of the past quarters:\n';
+          break;
+      }
 
-    switch (target.type) {
-      case 'weekly':
-        contextData = await this.buildWeeklyContext(target.startDate, target.endDate);
-        prompt = buildWeeklyPrompt({
-          year: target.startDate.getFullYear(),
-          month: target.startDate.getMonth() + 1,
-          week: target.weekNumber ?? 1,
-          start: fmt(target.startDate),
-          end: fmt(target.endDate),
-          customTemplate,
-        });
-        break;
+      if (!contextData) {
+        yield 'STATUS:no_data_error';
+        return;
+      }
 
-      case 'monthly':
-        contextData = await this.buildMonthlyContext(target.startDate, target.endDate);
-        prompt = buildMonthlyPrompt({
-          year: target.startDate.getFullYear(),
-          month: target.startDate.getMonth() + 1,
-          start: fmt(target.startDate),
-          end: fmt(target.endDate),
-          customTemplate,
-        });
-        break;
+      yield `STATUS:thinking_via_${modelId}`;
 
-      case 'quarterly':
-        contextData = await this.buildQuarterlyContext(target.startDate, target.endDate);
-        prompt = buildQuarterlyPrompt({
-          year: target.startDate.getFullYear(),
-          quarter: Math.ceil((target.startDate.getMonth() + 1) / 3),
-          start: fmt(target.startDate),
-          end: fmt(target.endDate),
-          customTemplate,
-        });
-        break;
+      const combinedPrompt = `${promptTemplate}\n\n${contextData}`;
+      const generatedResult = await this.aiClient.generateContent(combinedPrompt, modelId);
+      
+      yield generatedResult;
 
-      case 'yearly':
-        contextData = await this.buildYearlyContext(target.startDate, target.endDate);
-        prompt = buildYearlyPrompt({
-          year: target.startDate.getFullYear(),
-          start: fmt(target.startDate),
-          end: fmt(target.endDate),
-          customTemplate,
-        });
-        break;
+    } catch (e: any) {
+      const safeMsg = this.sanitizeError(e);
+      yield `STATUS:generation_failed_error: ${safeMsg}`;
+      throw new Error(safeMsg);
     }
-
-    if (!contextData) {
-      throw new Error('没有找到可用的数据来生成总结');
-    }
-
-    onStatus?.(`AI 正在思考 (${modelId})...`);
-
-    const combinedPrompt = `${prompt}\n\n${contextData}`;
-    return this.llm.generateContent(combinedPrompt, modelId);
   }
 
-  // ─── 上下文构建 ──────────────────────────────────────────
-
   private async buildWeeklyContext(start: Date, end: Date): Promise<string> {
-    const diaries = await this.diarySource.getDiariesInRange(start, end);
-    if (diaries.length === 0) return '';
-
-    const lines: string[] = [
-      `## 原始日记数据 (${this.fmt(start)} ~ ${this.fmt(end)})`,
-    ];
-    for (const d of diaries) {
-      lines.push(`\n#### ${this.fmt(d.date)}`);
-      lines.push(d.content);
-      if (d.tags.length > 0) {
-        lines.push(`标签: ${d.tags.join(', ')}`);
-      }
-    }
-    return lines.join('\n');
+    const diaries = await this.diaryRepo.findByDateRange(start, end);
+    if (!diaries.length) return '';
+    return diaries.map(d => `#### ${d.date.toISOString().split('T')[0]}\n${d.content}\nTags: ${d.tags}`).join('\n\n');
   }
 
   private async buildMonthlyContext(start: Date, end: Date): Promise<string> {
-    const [diaries, summaries] = await Promise.all([
-      this.diarySource.getDiariesInRange(start, end),
-      this.summarySource.getSummaries(start),
-    ]);
-
-    const weeklies = summaries.filter(
-      (s) => s.type === 'weekly' && s.startDate >= start && s.startDate <= end,
+    const summaries = await this.summaryRepo.getSummaries({ start: new Date(start.getTime() - 1) });
+    const weeklies = summaries.filter(s => 
+      s.type === SummaryType.weekly && s.startDate.getTime() >= start.getTime() && s.endDate.getTime() <= end.getTime()
     );
 
-    if (diaries.length === 0 && weeklies.length === 0) return '';
-
-    const lines: string[] = [];
-
-    if (diaries.length > 0) {
-      lines.push(
-        `## ${start.getFullYear()}年${start.getMonth() + 1}月 原始日记数据`,
-      );
-      for (const d of diaries) {
-        lines.push(`\n#### ${this.fmt(d.date)}`);
-        lines.push(d.content);
-        if (d.tags.length > 0) lines.push(`标签: ${d.tags.join(', ')}`);
-      }
-    }
-
-    if (weeklies.length > 0) {
-      lines.push('\n## 本月周记');
-      for (const s of weeklies) {
-        lines.push(`\n#### ${this.fmt(s.startDate)} ~ ${this.fmt(s.endDate)} 周记`);
-        lines.push(s.content);
-      }
-    }
-
-    return lines.join('\n');
+    if (!weeklies.length) return '';
+    return weeklies.map(w => `#### ${w.startDate.toISOString().split('T')[0]} to ${w.endDate.toISOString().split('T')[0]} (Weekly)\n${w.content}`).join('\n\n');
   }
 
   private async buildQuarterlyContext(start: Date, end: Date): Promise<string> {
-    const summaries = await this.summarySource.getSummaries(start);
+    const summaries = await this.summaryRepo.getSummaries({ start: new Date(start.getTime() - 1) });
+    const monthlies = summaries.filter(s => 
+      s.type === SummaryType.monthly && s.startDate.getTime() >= start.getTime() && s.endDate.getTime() <= end.getTime()
+    );
 
-    const weeklies = summaries
-      .filter((s) => s.type === 'weekly' && s.startDate >= start && s.startDate <= end)
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-
-    const monthlies = summaries
-      .filter((s) => s.type === 'monthly' && s.startDate >= start && s.startDate <= end)
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-
-    if (weeklies.length === 0 && monthlies.length === 0) return '';
-
-    const q = Math.ceil((start.getMonth() + 1) / 3);
-    const lines: string[] = [
-      `## ${start.getFullYear()}年Q${q} 数据汇总`,
-    ];
-
-    if (weeklies.length > 0) {
-      lines.push('\n### 周记');
-      for (const s of weeklies) {
-        lines.push(`\n#### ${this.fmt(s.startDate)} ~ ${this.fmt(s.endDate)} 周记`);
-        lines.push(s.content);
-      }
-    }
-
-    if (monthlies.length > 0) {
-      lines.push('\n### 月报');
-      for (const s of monthlies) {
-        lines.push(`\n#### ${s.startDate.getFullYear()}-${s.startDate.getMonth() + 1} 月报`);
-        lines.push(s.content);
-      }
-    }
-
-    return lines.join('\n');
+    if (!monthlies.length) return '';
+    return monthlies.map(m => `#### ${m.startDate.toISOString().split('T')[0]} (Monthly)\n${m.content}`).join('\n\n');
   }
 
   private async buildYearlyContext(start: Date, end: Date): Promise<string> {
-    const summaries = await this.summarySource.getSummaries(start);
+    const summaries = await this.summaryRepo.getSummaries({ start: new Date(start.getTime() - 1) });
+    const quarterlies = summaries.filter(s => 
+      s.type === SummaryType.quarterly && s.startDate.getTime() >= start.getTime() && s.endDate.getTime() <= end.getTime()
+    );
 
-    const weeklies = summaries
-      .filter((s) => s.type === 'weekly' && s.startDate >= start && s.startDate <= end)
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-    const monthlies = summaries
-      .filter((s) => s.type === 'monthly' && s.startDate >= start && s.startDate <= end)
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-    const quarterlies = summaries
-      .filter((s) => s.type === 'quarterly' && s.startDate >= start && s.startDate <= end)
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-
-    if (weeklies.length === 0 && monthlies.length === 0 && quarterlies.length === 0)
-      return '';
-
-    const lines: string[] = [
-      `## ${start.getFullYear()}年 年度数据汇总`,
-    ];
-
-    if (weeklies.length > 0) {
-      lines.push('\n### 周记汇总');
-      for (const s of weeklies) {
-        lines.push(`\n#### ${this.fmt(s.startDate)} ~ ${this.fmt(s.endDate)} 周记`);
-        lines.push(s.content);
-      }
-    }
-
-    if (monthlies.length > 0) {
-      lines.push('\n### 月报汇总');
-      for (const s of monthlies) {
-        lines.push(`\n#### ${s.startDate.getFullYear()}-${s.startDate.getMonth() + 1} 月报`);
-        lines.push(s.content);
-      }
-    }
-
-    if (quarterlies.length > 0) {
-      lines.push('\n### 季报汇总');
-      for (const s of quarterlies) {
-        const q = Math.ceil((s.startDate.getMonth() + 1) / 3);
-        lines.push(`\n#### ${s.startDate.getFullYear()} Q${q} 季报`);
-        lines.push(s.content);
-      }
-    }
-
-    return lines.join('\n');
+    if (!quarterlies.length) return '';
+    return quarterlies.map(q => `#### (Quarterly)\n${q.content}`).join('\n\n');
   }
 
-  private fmt(d: Date): string {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  private sanitizeError(e: any): string {
+    let msg = e?.message || String(e);
+    msg = msg.replace(/(key|api_key|Authorization)=[A-Za-z0-9\-_]+/g, '$1=******');
+    
+    if (msg.includes('ECONNREFUSED') || msg.includes('timeout')) {
+      return `Network or connection issue: ${msg}`;
+    }
+    return msg;
   }
 }

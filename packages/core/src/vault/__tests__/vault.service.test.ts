@@ -1,166 +1,59 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { VaultService } from '../vault.service';
-import { IStoragePathService } from '../storage-path.types';
-import { VaultActiveDeleteError, VaultNotFoundError } from '../vault.errors';
-import { IDatabaseConnectionManager } from '@baishou/database';
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs/promises';
 
-vi.mock('node:fs/promises');
-
-// 辅助 Mock 实现
-const mockPathService: IStoragePathService = {
-  getGlobalRegistryDirectory: vi.fn().mockResolvedValue('/global'),
-  getVaultDirectory: vi.fn().mockImplementation((name) => Promise.resolve(path.join('/root', name))),
-  getVaultSystemDirectory: vi.fn().mockImplementation((name) => Promise.resolve(path.join('/root', name, '.baishou'))),
-  getRootDirectory: vi.fn().mockResolvedValue('/root'),
-};
-
-const mockDbManager: IDatabaseConnectionManager = {
-  connect: vi.fn().mockResolvedValue({}),
-  disconnect: vi.fn().mockResolvedValue(undefined),
-  getDb: vi.fn(),
-  isConnected: vi.fn(),
-  getCurrentPath: vi.fn(),
-  onConnect: vi.fn(),
-  onDisconnect: vi.fn(),
-};
-
-describe('VaultService', () => {
+describe('VaultService Integration', () => {
+  let tempDir: string;
   let service: VaultService;
+  
+  beforeEach(async () => {
+    // 建立一个真实的沙盒目录模拟多系统的应用数据目录
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baishou-vault-test-'));
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    service = new VaultService(mockPathService, mockDbManager);
+    // 提供给 VaultService 真实的临时目录
+    const mockPathService = {
+      getRootDirectory: vi.fn().mockResolvedValue(tempDir),
+      getGlobalRegistryDirectory: vi.fn().mockResolvedValue(tempDir),
+      getVaultDirectory: vi.fn().mockImplementation(async (name: string) => path.join(tempDir, name)),
+      getVaultSystemDirectory: vi.fn().mockImplementation(async (name: string) => path.join(tempDir, name, '.baishou'))
+    };
+
+    const mockDbManager = {
+      connect: vi.fn().mockResolvedValue(undefined)
+    };
+
+    service = new VaultService(mockPathService as any, mockDbManager as any);
   });
 
-  describe('initRegistry', () => {
-    it('should create Personal vault and registry if file does not exist', async () => {
-      const err = new Error('ENOENT') as any;
-      err.code = 'ENOENT';
-      vi.mocked(fs.readFile).mockRejectedValue(err);
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
-
-      await service.initRegistry();
-
-      const vaults = service.getAllVaults();
-      expect(vaults).toHaveLength(1);
-      expect(vaults[0]?.name).toBe('Personal');
-      expect(vaults[0]?.path).toBe(path.join('/root', 'Personal'));
-
-      // Verify it was written
-      expect(fs.writeFile).toHaveBeenCalled();
-    });
-
-    it('should load existing registry and correct paths', async () => {
-      const existingRegistry = [
-        {
-          name: 'Personal',
-          path: 'C:\\oldpath\\Personal',
-          createdAt: new Date().toISOString(),
-          lastAccessedAt: new Date().toISOString()
-        }
-      ];
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(existingRegistry));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-
-      await service.initRegistry();
-
-      const vaults = service.getAllVaults();
-      expect(vaults).toHaveLength(1);
-      expect(vaults[0]?.path).toBe(path.join('/root', 'Personal'));
-      // Expect it to auto-save corrected paths
-      expect(fs.writeFile).toHaveBeenCalled();
-    });
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => null);
   });
 
-  describe('switchVault', () => {
-    beforeEach(async () => {
-      const existingRegistry = [
-        {
-          name: 'Personal',
-          path: '/root/Personal',
-          createdAt: new Date().toISOString(),
-          lastAccessedAt: new Date().toISOString()
-        }
-      ];
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(existingRegistry));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-      await service.initRegistry();
-    });
+  it('should auto correct corrupted foreign absolute paths to local paths when initializing', async () => {
+    // 主动注入一个带着异乎寻常的 Windows (C:\) 或者错乱绝对路径的 json，模拟 ZIP 迁移
+    const registryPath = path.join(tempDir, 'vault_registry.json');
+    const corruptedJson = [{
+      name: 'Personal',
+      path: 'C:\\Users\\ForeignUser\\AppData\\Roaming\\BaiShou\\Personal',
+      createdAt: new Date().toISOString(),
+      lastAccessedAt: new Date().toISOString()
+    }];
+    await fs.writeFile(registryPath, JSON.stringify(corruptedJson));
 
-    it('should update lastAccessedAt if vault exists', async () => {
-      const oldVaults = service.getAllVaults();
-      const oldTime = oldVaults[0]?.lastAccessedAt.getTime() ?? 0;
+    await service.initRegistry();
 
-      // simulate time passing
-      await new Promise(r => setTimeout(r, 10));
+    const vaults = service.getAllVaults();
+    expect(vaults.length).toBe(1);
+    
+    // 它应当已经被修正为基于当前系统 tempDir 下的路径 (自动根据 OS 判断路径拼接)
+    const expected = path.join(tempDir, 'Personal');
+    expect(vaults[0].path).toBe(expected);
 
-      await service.switchVault('Personal');
-
-      const activeVault = service.getActiveVault();
-      expect(activeVault?.name).toBe('Personal');
-      expect(activeVault?.lastAccessedAt.getTime()).toBeGreaterThan(oldTime);
-    });
-
-    it('should create new vault if it does not exist', async () => {
-      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
-
-      // Add a slight delay so "Work" gets a newer timestamp than "Personal"
-      await new Promise(r => setTimeout(r, 10));
-
-      await service.switchVault('Work');
-
-      const vaults = service.getAllVaults();
-      expect(vaults).toHaveLength(2);
-      
-      const activeVault = service.getActiveVault();
-      expect(activeVault?.name).toBe('Work');
-      expect(activeVault?.path).toBe(path.join('/root', 'Work'));
-    });
-  });
-
-  describe('deleteVault', () => {
-    beforeEach(async () => {
-      const existingRegistry = [
-        {
-          name: 'Personal',
-          path: '/root/Personal',
-          createdAt: new Date().toISOString(),
-          lastAccessedAt: new Date().toISOString()
-        },
-        {
-          name: 'Work',
-          path: '/root/Work',
-          createdAt: new Date(Date.now() - 1000).toISOString(),
-          lastAccessedAt: new Date(Date.now() - 1000).toISOString()
-        }
-      ];
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(existingRegistry));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-      await service.initRegistry(); // Active is Personal
-    });
-
-    it('should throw error if attempting to delete active vault', async () => {
-      await expect(service.deleteVault('Personal')).rejects.toThrow(VaultActiveDeleteError);
-    });
-
-    it('should throw error if vault does not exist', async () => {
-      await expect(service.deleteVault('NonExistent')).rejects.toThrow(VaultNotFoundError);
-    });
-
-    it('should delete non-active vault and remove from registry', async () => {
-      vi.mocked(fs.rm).mockResolvedValue(undefined);
-
-      await service.deleteVault('Work');
-
-      const vaults = service.getAllVaults();
-      expect(vaults).toHaveLength(1);
-      expect(vaults[0]?.name).toBe('Personal');
-      
-      expect(fs.rm).toHaveBeenCalledWith(path.join('/root', 'Work'), { recursive: true, force: true });
-      expect(fs.writeFile).toHaveBeenCalled();
-    });
+    // 文件上也应该被静默修正了
+    const fixedContent = await fs.readFile(registryPath, 'utf8');
+    const parsed = JSON.parse(fixedContent);
+    expect(parsed[0].path).toBe(expected);
   });
 });

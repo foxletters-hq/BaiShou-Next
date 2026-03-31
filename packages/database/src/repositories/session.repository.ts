@@ -168,4 +168,88 @@ export class SessionRepository {
       .set({ isPinned, updatedAt: new Date() })
       .where(eq(agentSessionsTable.id, id));
   }
+
+  /**
+   * 读取完整的 Session 结构体
+   */
+  async getSessionAggregate(sessionId: string): Promise<any | null> {
+    const sessionDoc = await this.db.select().from(agentSessionsTable).where(eq(agentSessionsTable.id, sessionId)).limit(1);
+    if (!sessionDoc.length) return null;
+    const session = sessionDoc[0];
+
+    const messages = await this.db.select().from(messagesTbl).where(eq(messagesTbl.sessionId, sessionId));
+    // Drizzle default sort is preserving order index if insert by order, or we can just sort in memory:
+    messages.sort((a,b) => a.orderIndex - b.orderIndex);
+
+    const parts = await this.db.select().from(partsTbl).where(eq(partsTbl.sessionId, sessionId));
+
+    const enrichedMessages = messages.map(m => ({
+        ...m,
+        parts: parts.filter(p => p.messageId === m.id)
+    }));
+
+    return { session, messages: enrichedMessages };
+  }
+
+  /**
+   * 将同步来的物理 File (JSON Aggregate) 倒灌或者幂等替换到 DB 缓存。
+   */
+  async upsertAggregate(aggregate: any): Promise<void> {
+     const { session, messages } = aggregate;
+     
+     await this.db.transaction(async (tx) => {
+        // 更新会话自身
+        await tx.insert(agentSessionsTable).values(session).onConflictDoUpdate({
+           target: [agentSessionsTable.id],
+           set: {
+              title: session.title,
+              vaultName: session.vaultName,
+              assistantId: session.assistantId,
+              isPinned: session.isPinned,
+              systemPrompt: session.systemPrompt,
+              providerId: session.providerId,
+              modelId: session.modelId,
+              totalInputTokens: session.totalInputTokens,
+              totalOutputTokens: session.totalOutputTokens,
+              totalCostMicros: session.totalCostMicros,
+              updatedAt: new Date(session.updatedAt) // assure Date object
+           }
+        });
+
+        // 强压替换法：由于 Messages 和 Parts 会有很多微小的变动，直接清理该 Session 的子级再重新插入
+        await tx.delete(messagesTbl).where(eq(messagesTbl.sessionId, session.id));
+        await tx.delete(partsTbl).where(eq(partsTbl.sessionId, session.id));
+
+        if (messages && messages.length > 0) {
+           const msgsInsert = messages.map((m: any) => ({
+              id: m.id,
+              sessionId: m.sessionId,
+              role: m.role,
+              isSummary: m.isSummary ?? false,
+              orderIndex: m.orderIndex,
+              createdAt: new Date(m.createdAt),
+           }));
+           await tx.insert(messagesTbl).values(msgsInsert);
+
+           const allParts: any[] = [];
+           for (const m of messages) {
+               if (m.parts && m.parts.length > 0) {
+                   for (const p of m.parts) {
+                       allParts.push({
+                           id: p.id,
+                           messageId: p.messageId,
+                           sessionId: p.sessionId,
+                           type: p.type,
+                           data: p.data,
+                           createdAt: new Date(p.createdAt)
+                       });
+                   }
+               }
+           }
+           if (allParts.length > 0) {
+              await tx.insert(partsTbl).values(allParts);
+           }
+        }
+     });
+  }
 }
