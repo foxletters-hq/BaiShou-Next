@@ -21,6 +21,16 @@ export const api = {
   pickFiles: () => ipcRenderer.invoke('system:pick-files'),
   getProviders: () => ipcRenderer.invoke('agent:get-providers'),
 
+  // Settings
+  settings: {
+    getProviders: () => ipcRenderer.invoke('settings:get-providers'),
+    setProviders: (providers: any[]) => ipcRenderer.invoke('settings:set-providers', providers),
+    getGlobalModels: () => ipcRenderer.invoke('settings:get-global-models'),
+    setGlobalModels: (config: any) => ipcRenderer.invoke('settings:set-global-models', config),
+    getFeatures: () => ipcRenderer.invoke('settings:get-features'),
+    setFeatures: (config: any) => ipcRenderer.invoke('settings:set-features', config),
+  },
+
   // Data Routing API (Phase 11: Data Wiring)
   getSessions: () => ipcRenderer.invoke('agent:get-sessions'),
   deleteSessions: (ids: string[]) => ipcRenderer.invoke('agent:delete-sessions', ids),
