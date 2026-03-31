@@ -20,6 +20,7 @@
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
+    "@baishou/ai": "workspace:*",
     "@baishou/core": "workspace:*",
     "@baishou/database": "workspace:*",
     "@baishou/store": "workspace:*",

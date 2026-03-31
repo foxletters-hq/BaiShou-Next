@@ -1,56 +1,37 @@
-import { ipcMain, dialog, BrowserWindow, app } from 'electron'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { join } from 'path';
-import { AgentService, MockAgentSessionRepository, MockAgentMessageRepository } from '@baishou/core'
 import { SessionRepository, AssistantRepository, MessageRepository } from '@baishou/database'
 import { appDb } from '../db'
+// @ts-ignore
+import { AgentSessionService } from '@baishou/ai/src/agent/agent-session.service'
+// @ts-ignore
+import { ToolRegistry } from '@baishou/ai/src/tools/tool-registry'
+// @ts-ignore
+import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
 
-// 2. 初始化持久层 Repositories
+// @ts-ignore: We need to inject a real AI provider to finally wake it up!
+import { createOpenAI } from '@ai-sdk/openai'
+
 const realSessionRepo = new SessionRepository(appDb);
 const realAssistantRepo = new AssistantRepository(appDb);
 const realMessageRepo = new MessageRepository(appDb);
+const realSnapshotRepo = new SnapshotRepository(appDb);
 
-// Define dummy provider logic directly here temporarily just to pass registry 
-class DummyModel {
-  constructor(public id: string) {}
-}
+// 为了这第一枪实弹测试，我们使用全局预埋的指挥官提供的深求 Token (深求默认支持 OpenAI 协议)
+const deepseekTarget = createOpenAI({
+  baseURL: 'https://api.deepseek.com/v1',
+  apiKey: 'sk-435ddce8f94d4b01abc92b5cbf1e57be'
+});
 
 const mockProviderRegistry = {
-  getProvider: () => ({
-    getModel: (modelId: string) => new DummyModel(modelId)
-  })
-} as any
+  config: { id: 'deepseek_global' },
+  getLanguageModel: (modelId: string) => deepseekTarget.chat(modelId),
+  getEmbeddingModel: () => undefined // 等待未来 Gamma 设置面板打通向量选择
+} as any;
 
-const mockToolRegistry = {
-  toVercelTools: () => ({})
-} as any
+const toolRegistry = new ToolRegistry();
+const agentService = new AgentSessionService();
 
-const agentService = new AgentService(
-  realSessionRepo, // Switched to Real SQLite Repo
-  realMessageRepo, // Switched to Real SQLite Repo
-  mockProviderRegistry,
-  mockToolRegistry
-)
-
-<<<<<<< HEAD
-=======
-// Ensure at least one dummy session exists for streamChat to find
-sessionRepo.sessions.push({
-  id: 'ipc-session',
-  vaultName: 'ipc-vault',
-  providerId: 'ipc-provider',
-  modelId: 'ipc-model',
-  assistantId: 'ipc-assistant',
-  systemPrompt: 'You are a mock IPC assistant.',
-  title: 'Mock Session',
-  isPinned: false,
-  totalInputTokens: 0,
-  totalOutputTokens: 0,
-  totalCostMicros: 0,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-})
-
->>>>>>> feat/storage-sandbox
 export function registerAgentIPC() {
   
   // ==========================================
@@ -88,30 +69,38 @@ export function registerAgentIPC() {
   });
 
   // ==========================================
-  // API: Chat (Legacy mocked stream chat)
+  // API: Chat (The Real Stream Pipeline)
   // ==========================================
   ipcMain.handle('agent:get-messages', async (_, sessionId: string) => {
-    return await realMessageRepo.findBySessionId(sessionId, 50);
+    const raw = await realMessageRepo.findBySessionId(sessionId, 50);
+    return raw;
   });
 
   ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
     try {
-      const result = await agentService.streamChat({
+      // 开启纯血无Mock的多模态隧道
+      await agentService.streamChat({
         sessionId: args.sessionId,
-        userMessage: args.text,
-      })
+        userText: args.text,
+        provider: mockProviderRegistry,
+        modelId: 'deepseek-chat', // 对齐模型的官方代号
+        toolRegistry: toolRegistry,
+        sessionRepo: realSessionRepo,
+        snapshotRepo: realSnapshotRepo,
+        systemPrompt: "You are BaiShou-Next, a genius local assistant. Follow the tools when applicable."
+      }, {
+        onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
+        onReasoningDelta: (chunk) => event.sender.send('agent:reasoning-chunk', chunk),
+        onToolCallStart: (name, argsObj) => event.sender.send('agent:tool-start', { name, args: argsObj }),
+        onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { name, result }),
+        onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
+        onFinish: () => event.sender.send('agent:stream-finish', { success: true })
+      });
 
-      // Iterate async over the Vercel AI SDK textStream
-      for await (const chunk of result.textStream) {
-        // Send chunk to renderer who made the IPC call
-        event.sender.send('agent:stream-chunk', chunk)
-      }
-
-      event.sender.send('agent:stream-finish')
       return true
     } catch (error: any) {
       console.error('Agent IPC stream error:', error)
-      event.sender.send('agent:stream-finish', error.message || 'Stream Error')
+      event.sender.send('agent:stream-finish', { error: error.message || 'Stream Error' })
       return false
     }
   })
