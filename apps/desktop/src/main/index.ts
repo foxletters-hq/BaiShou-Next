@@ -64,6 +64,19 @@ app.whenReady().then(() => {
   const { initVaultSystem, registerVaultIPC } = require('./ipc/vault.ipc')
   initVaultSystem().then(() => {
     registerVaultIPC()
+
+    // Register Archive IPC
+    const { registerArchiveIPC } = require('./ipc/archive.ipc')
+    registerArchiveIPC()
+    
+    // Register LAN Sync IPC
+    const { registerLanIPC } = require('./ipc/lan.ipc')
+    registerLanIPC()
+    
+    // Register Cloud Sync IPC
+    const { registerCloudSyncIPC } = require('./ipc/cloud-sync.ipc')
+    registerCloudSyncIPC()
+    
     createWindow()
   }).catch((err) => {
     console.error('Failed to init Vault System', err)

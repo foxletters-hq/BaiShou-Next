@@ -3,8 +3,8 @@ import { VaultService } from '@baishou/core';
 import { connectionManager } from '@baishou/database';
 import { DesktopStoragePathService } from '../services/path.service';
 
-const pathService = new DesktopStoragePathService();
-const vaultService = new VaultService(pathService, connectionManager);
+export const pathService = new DesktopStoragePathService();
+export const vaultService = new VaultService(pathService, connectionManager);
 
 export async function initVaultSystem() {
   await vaultService.initRegistry();

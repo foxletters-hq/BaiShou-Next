@@ -18,5 +18,14 @@ export * from './session/memory-deduplication.service';
 export * from './summary/summary-prompt-templates';
 export * from './summary/summary-generator.service';
 
+// 存档系统
+export * from './archive/archive.interface';
+
+// 局域网系统
+export * from './network/lan-sync.interface';
+
+// 云同步系统
+export * from './network/cloud-sync.interface';
+
 // 开发阶段的内存模拟仓库——在真实数据库 Repository 就绪后替换
 export * from './__tests__/mock.agent-repository';

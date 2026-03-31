@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppearanceSettingsCard, SettingsItem } from '@baishou/ui';
+import { AppearanceSettingsCard, SettingsItem, DataManagementCard, LanSyncCard, CloudSyncPanel } from '@baishou/ui';
 import { AIModelServicesView } from '@baishou/ui/src/web/AIModelServicesView';
 import { AIGlobalModelsView, type ProviderModelMap } from '@baishou/ui/src/web/AIGlobalModelsView';
 import { FeatureSettingsView } from '@baishou/ui/src/web/FeatureSettingsView';
@@ -74,6 +74,38 @@ export const SettingsPage: React.FC = () => {
                 <SettingsItem title="局域网传输" subtitle="在相同 Wi-Fi 下快速同步大型记忆文件" onClick={() => {}} />
                 <SettingsItem title="存储目录管理" subtitle="查看离线向量库占用情况" onClick={() => {}} />
               </div>
+              
+              <DataManagementCard 
+                onExportZip={async () => {(window as any).api?.archive.exportZip()}}
+                onImportZip={async (file) => {(window as any).api?.archive.importZip(file)}}
+                onPickFile={async () => await (window as any).api?.archive.pickZip()}
+              />
+
+              <LanSyncCard
+                onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
+                onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}
+                onStartDiscovery={async (onFound, onLost) => {
+                  (window as any).api?.lan?.onDeviceFound(onFound);
+                  (window as any).api?.lan?.onDeviceLost(onLost);
+                  await (window as any).api?.lan?.startDiscovery();
+                }}
+                onStopDiscovery={async () => (window as any).api?.lan?.stopDiscovery()}
+                onSendFile={async (ip, port, progress) => {
+                  (window as any).api?.lan?.onSendProgress(progress);
+                  return await (window as any).api?.lan?.sendFile(ip, port);
+                }}
+                onFileReceivedListener={(cb) => (window as any).api?.lan?.onFileReceived(cb)}
+                onImportZip={async (file) => {(window as any).api?.archive.importZip(file)}}
+              />
+
+              <CloudSyncPanel
+                onSyncNow={async (config) => (window as any).api?.cloud?.syncNow(config)}
+                onListRecords={async (config) => (window as any).api?.cloud?.listRecords(config)}
+                onRestore={async (config, filename) => (window as any).api?.cloud?.restore(config, filename)}
+                onDeleteRecord={async (config, filename) => (window as any).api?.cloud?.deleteRecord(config, filename)}
+                onBatchDelete={async (config, filenames) => (window as any).api?.cloud?.batchDelete(config, filenames)}
+                onRename={async (config, oldName, newName) => (window as any).api?.cloud?.rename(config, oldName, newName)}
+              />
             </div>
 
             <div>
