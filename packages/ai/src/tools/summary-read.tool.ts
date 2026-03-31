@@ -10,8 +10,6 @@
 import { z } from 'zod';
 import { AgentTool } from './agent.tool';
 import type { ToolContext } from './agent.tool';
-import { readFile, readdir, access } from 'node:fs/promises';
-import { join } from 'node:path';
 
 const summaryReadParams = z.object({
   type: z
@@ -42,41 +40,25 @@ export class SummaryReadTool extends AgentTool<typeof summaryReadParams> {
     args: z.infer<typeof summaryReadParams>,
     context: ToolContext,
   ): Promise<string> {
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(args.start_date)) {
-      return `Error: Invalid date format "${args.start_date}". Expected YYYY-MM-DD.`;
+    if (!context.summaryReader) {
+       return '系统错误: 总结报表读取器未挂载注入';
     }
 
-    const summaryDir = join(context.vaultName, 'Summaries', args.type);
-    const fileName = `${args.start_date}.md`;
-    const filePath = join(summaryDir, fileName);
-
     try {
-      await access(filePath);
-      const content = await readFile(filePath, 'utf-8');
-      return content;
-    } catch {
-      // 文件不存在——列出可用总结
-      try {
-        const files = await readdir(summaryDir);
-        const mdFiles = files
-          .filter((f) => f.endsWith('.md'))
-          .sort()
-          .reverse()
-          .slice(0, 5);
-
-        if (mdFiles.length === 0) {
-          return `No ${args.type} summaries found.`;
-        }
-
-        const dates = mdFiles
-          .map((f) => `- ${f.replace('.md', '')}`)
-          .join('\n');
-
-        return `No ${args.type} summary found for ${args.start_date}. Available ${args.type} summaries:\n${dates}`;
-      } catch {
-        return `No ${args.type} summaries directory found. The user may not have generated any summaries yet.`;
+      const resultObj = await context.summaryReader.readSummary(args.type, args.start_date);
+      if (resultObj) {
+         return resultObj.content;
       }
+      
+      // 如果找不到，返回一个列表提示模型哪些是可以看的
+      const availableDates = await context.summaryReader.getAvailableSummaries(args.type, 5);
+      if (availableDates.length > 0) {
+         return `No ${args.type} summary found for ${args.start_date}. Available ${args.type} summaries:\n${availableDates.join('\n')}`;
+      }
+      
+      return `No ${args.type} summaries found in the database.`;
+    } catch (e) {
+      return `Failed to read summary: ${e instanceof Error ? e.message : String(e)}`;
     }
   }
 }

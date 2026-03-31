@@ -33,6 +33,14 @@ export interface VectorSearchResult {
 export interface ToolVectorStore {
   searchSimilar(queryEmbedding: number[], topK: number): Promise<VectorSearchResult[]>;
   deleteBySource(sourceType: string, sourceId: string): Promise<void>;
+  /**
+   * 将一个指定的日记文件从向量库中抹去
+   */
+  deleteFile?(filePath: string): Promise<void>;
+  /**
+   * 将一个指定的日记文件载入并在向量库创建碎钻索引
+   */
+  indexFile?(filePath: string): Promise<void>;
   searchFts?(query: string, limit: number): Promise<Array<{
     messageId: string;
     sessionId: string;
@@ -53,19 +61,40 @@ export interface ToolMessageSearcher {
 }
 
 /**
+ * 结构化总结阅读器接口
+ */
+export interface ToolSummaryReader {
+  readSummary(type: string, startDateIso: string): Promise<{ content: string; generatedAt: string, endDateIso: string } | null>;
+  getAvailableSummaries(type: string, limit?: number): Promise<string[]>;
+}
+
+/**
  * 传递给工具执行的上下文
  */
 export interface ToolContext {
   sessionId: string;
   vaultName: string;
-  /** 嵌入服务（可选，由宿主层注入） */
   embeddingService?: ToolEmbeddingService;
-  /** 向量数据库（可选，由宿主层注入） */
   vectorStore?: ToolVectorStore;
-  /** 消息搜索器（可选，由宿主层注入） */
   messageSearcher?: ToolMessageSearcher;
-  /** 用户自定义工具参数 */
+  summaryReader?: ToolSummaryReader;
   userConfig?: Record<string, unknown>;
+  /** 允许外部注入基于宿主系统（如 Electron / Web）的真正搜索页面执行器，如果没有则降级走 Native Fetch */
+  webSearchResultFetcher?: (url: string) => Promise<string>;
+}
+
+/**
+ * 对应老白守的工具参数交互配置定义
+ */
+export interface ToolConfigParam {
+  key: string;
+  label: string;
+  type: 'string' | 'boolean' | 'number' | 'enum';
+  defaultValue: unknown;
+  description?: string;
+  placeholder?: string;
+  enumOptions?: { label: string; value: string | number }[];
+  isSecret?: boolean; // 如果为 true，密码框呈现
 }
 
 /**
@@ -81,6 +110,33 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
   
   /** 工具接受的参数 Schema (基于 Zod) */
   abstract readonly parameters: TArgs;
+
+  // ─── 工具管理 UI 元数据 ───
+  
+  get displayName(): string {
+    return this.name;
+  }
+  
+  get category(): string {
+    return 'general';
+  }
+
+  get icon(): string {
+    // 桌面端用 Lucide 或者老白守中的 Material Icons，此处以统一规范字符占位提供
+    return 'tool'; 
+  }
+
+  get canBeDisabled(): boolean {
+    return true; // 默认允许被用户从设置页面关闭
+  }
+
+  get showInSettings(): boolean {
+    return true; // 是否在工具配置清单页显露
+  }
+
+  get configurableParams(): ToolConfigParam[] {
+    return [];
+  }
 
   /**
    * 工具的执行逻辑

@@ -28,3 +28,13 @@ export * from './tools/url-read.tool';
 export * from './middleware/message-middleware';
 export * from './middleware/gemini-thought-signature';
 export * from './middleware/middleware-factory';
+
+// Agent Handlers
+export * from './agent/message.adapter';
+export * from './agent/stream-accumulator';
+export * from './agent/agent-session.service';
+
+// Memory & Context Engine
+export * from './agent/context-window.builder';
+export * from './agent/title-generator.service';
+export * from './agent/context-compressor.service';
