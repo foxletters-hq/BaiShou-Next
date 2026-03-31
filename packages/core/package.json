@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "node ../../node_modules/vitest/vitest.mjs run"
   },
   "dependencies": {
     "@baishou/shared": "workspace:*",
