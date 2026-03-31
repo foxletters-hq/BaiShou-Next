@@ -1,0 +1,147 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.titleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0; }
+.subtitle { font-size: 13px; color: var(--text-secondary); margin: 0; }
+
+.cardSection {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.cardSection:hover {
+  background: rgba(0, 0, 0, 0.15);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.cardHeader {
+  padding: 16px 20px;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.cardTitleLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.cardDesc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cardBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: opacity 0.3s ease;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.selectBox {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.selectBox:focus {
+  border-color: #4ade80;
+}
+
+.selectBox option {
+  background: #1e293b;
+  color: #fff;
+}
+
+.sliderWrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rangeInput, .rangeInputColored {
+  -webkit-appearance: none;
+  flex: 1;
+  height: 4px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 2px;
+  outline: none;
+}
+
+.rangeInput::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #38bdf8; cursor: pointer;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.rangeInputColored::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fbbf24; cursor: pointer;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+}
+
+.valBadge {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Switch widget */
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(148, 163, 184, 0.3); transition: .3s; border-radius: 24px;
+}
+.slider:before {
+  position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+  background-color: white; transition: .3s; border-radius: 50%;
+}
+input:checked + .slider { background-color: #38bdf8; }
+input:checked + .slider:before { transform: translateX(20px); }

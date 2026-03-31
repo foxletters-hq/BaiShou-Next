@@ -1,129 +1,101 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import styles from './AIGlobalModelsView.module.css';
 
-// ─── Types ──────────────────────────────────────────────────
-
 export interface GlobalModelsConfig {
-  defaultProviderId?: string;
-  defaultModelId?: string;
-  reasoningProviderId?: string;
-  reasoningModelId?: string;
+  defaultChatModel: string;
+  defaultVisionModel: string;
+  defaultSummaryModel: string;
+  defaultEmbeddingModel: string;
 }
 
-export interface ProviderModelMap {
-  [providerId: string]: string[];
-}
-
-export interface AIGlobalModelsViewProps {
+interface AIGlobalModelsViewProps {
   config: GlobalModelsConfig;
-  availableModels: ProviderModelMap;
   onChange: (config: GlobalModelsConfig) => void;
 }
 
-// ─── Component ──────────────────────────────────────────────
-
-export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
-  config,
-  availableModels,
-  onChange,
-}) => {
-  const { t } = useTranslation();
-
-  const providerIds = Object.keys(availableModels);
-
-  const handleProviderChange = (type: 'default' | 'reasoning', providerId: string) => {
-    const defaultModel = availableModels[providerId]?.[0] || '';
-    if (type === 'default') {
-      onChange({ ...config, defaultProviderId: providerId, defaultModelId: defaultModel });
-    } else {
-      onChange({ ...config, reasoningProviderId: providerId, reasoningModelId: defaultModel });
-    }
-  };
-
-  const handleModelChange = (type: 'default' | 'reasoning', modelId: string) => {
-    if (type === 'default') {
-      onChange({ ...config, defaultModelId: modelId });
-    } else {
-      onChange({ ...config, reasoningModelId: modelId });
-    }
+// 这里简单模拟全局可选模型的格式，供表单输入或选择
+export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({ config, onChange }) => {
+  const updateField = (field: keyof GlobalModelsConfig, val: string) => {
+    onChange({ ...config, [field]: val });
   };
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>{t('settings.ai.global_models', 'AI 全局模型')}</h2>
-        <p className={styles.desc}>
-          {t('settings.ai.global_desc', '设置系统默认使用的模型，当未绑定专属模型的 Agent 被选中时，将使用这里的默认配置。')}
-        </p>
-      </div>
+      <h3 className={styles.headerTitle}>全局算力集群派遣分流 (Routing)</h3>
+      <p className={styles.headerSubtitle}>
+        白守会在不同的专业领域调派最适合的模型子节点。请使用 `provider:model_name` 格式进行绑定，如 <code>openai:gpt-4o</code>。
+      </p>
 
-      <div className={styles.card}>
-        <div className={styles.settingRow}>
-          <div className={styles.settingInfo}>
-            <span className={styles.settingIcon}>✨</span>
-            <div className={styles.settingText}>
-              <span className={styles.settingLabel}>{t('settings.ai.default_model', '默认模型')}</span>
-              <span className={styles.settingHint}>{t('settings.ai.default_hint', '用于日常对话和基础文本处理')}</span>
+      <div className={styles.grid}>
+        
+        {/* Chat Model */}
+        <div className={styles.routingCard}>
+          <div className={styles.routeHeader}>
+            <div className={styles.routeIcon}>💬</div>
+            <div className={styles.routeMeta}>
+              <span className={styles.routeName}>逻辑智核 (Chat & Main)</span>
+              <span className={styles.routeDesc}>负责高并发的流式文本对答与思维链推理。</span>
             </div>
           </div>
-          <div className={styles.settingSelects}>
-            <select 
-              className={styles.select}
-              value={config.defaultProviderId || ''}
-              onChange={(e) => handleProviderChange('default', e.target.value)}
-            >
-              <option value="" disabled>选择 Provider</option>
-              {providerIds.map(p => <option key={`p-${p}`} value={p}>{p}</option>)}
-            </select>
-            
-            <select
-              className={styles.select}
-              value={config.defaultModelId || ''}
-              onChange={(e) => handleModelChange('default', e.target.value)}
-              disabled={!config.defaultProviderId}
-            >
-              <option value="" disabled>选择 Model</option>
-              {(availableModels[config.defaultProviderId || ''] || []).map(m => (
-                <option key={`m-${m}`} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
+          <input 
+            className={styles.routeInput}
+            value={config.defaultChatModel}
+            onChange={(e) => updateField('defaultChatModel', e.target.value)}
+            placeholder="如: deepseek:deepseek-chat"
+          />
         </div>
 
-        <div className={styles.divider} />
-
-        <div className={styles.settingRow}>
-          <div className={styles.settingInfo}>
-            <span className={styles.settingIcon}>🧠</span>
-            <div className={styles.settingText}>
-              <span className={styles.settingLabel}>{t('settings.ai.reasoning_model', '推理模型 (Agent)')}</span>
-              <span className={styles.settingHint}>{t('settings.ai.reasoning_hint', '用于工具调用、月度总结等复杂长思考任务')}</span>
+        {/* Vision Model */}
+        <div className={styles.routingCard}>
+          <div className={styles.routeHeader}>
+            <div className={styles.routeIcon}>👁️</div>
+            <div className={styles.routeMeta}>
+              <span className={styles.routeName}>视觉中枢 (Vision Analysis)</span>
+              <span className={styles.routeDesc}>负责对图像输入做基于光学意图的深度解析。</span>
             </div>
           </div>
-          <div className={styles.settingSelects}>
-            <select 
-              className={styles.select}
-              value={config.reasoningProviderId || ''}
-              onChange={(e) => handleProviderChange('reasoning', e.target.value)}
-            >
-              <option value="" disabled>选择 Provider</option>
-              {providerIds.map(p => <option key={`p-${p}`} value={p}>{p}</option>)}
-            </select>
-            
-            <select
-              className={styles.select}
-              value={config.reasoningModelId || ''}
-              onChange={(e) => handleModelChange('reasoning', e.target.value)}
-              disabled={!config.reasoningProviderId}
-            >
-              <option value="" disabled>选择 Model</option>
-              {(availableModels[config.reasoningProviderId || ''] || []).map(m => (
-                <option key={`m-${m}`} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
+          <input 
+            className={styles.routeInput}
+            value={config.defaultVisionModel}
+            onChange={(e) => updateField('defaultVisionModel', e.target.value)}
+            placeholder="如: openai:gpt-4o"
+          />
         </div>
+
+        {/* Summary Model */}
+        <div className={styles.routingCard}>
+          <div className={styles.routeHeader}>
+            <div className={styles.routeIcon}>📑</div>
+            <div className={styles.routeMeta}>
+              <span className={styles.routeName}>归档摘要机 (Summarizer)</span>
+              <span className={styles.routeDesc}>负责将长文无损压缩，要求极高的上下文容量与速读。</span>
+            </div>
+          </div>
+          <input 
+            className={styles.routeInput}
+            value={config.defaultSummaryModel}
+            onChange={(e) => updateField('defaultSummaryModel', e.target.value)}
+            placeholder="如: kimi:moonshot-v1-32k"
+          />
+        </div>
+
+        {/* Embedding Model */}
+        <div className={styles.routingCard}>
+          <div className={styles.routeHeader}>
+            <div className={styles.routeIcon}>🔢</div>
+            <div className={styles.routeMeta}>
+              <span className={styles.routeName}>向量嵌入引擎 (Embeddings)</span>
+              <span className={styles.routeDesc}>极高频转换。一旦设定，切忌随意更改，否则向量库会塌陷！</span>
+            </div>
+          </div>
+          <input 
+            className={styles.routeInput}
+            value={config.defaultEmbeddingModel}
+            onChange={(e) => updateField('defaultEmbeddingModel', e.target.value)}
+            placeholder="如: ollama:nomic-embed-text"
+          />
+        </div>
+
       </div>
     </div>
   );

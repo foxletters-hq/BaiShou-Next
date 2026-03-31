@@ -1,26 +1,19 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
 }
 
-.header {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.headerTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+  color: var(--text-primary);
 }
 
-.title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary, #1A1A1A);
-  margin: 0;
-}
-
-.desc {
+.headerSubtitle {
   font-size: 13px;
-  color: var(--text-secondary, #475569);
-  margin: 0;
+  color: var(--text-secondary);
+  margin: 0 0 20px 0;
 }
 
 .list {
@@ -30,144 +23,115 @@
 }
 
 .providerCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(148, 163, 184, 0.05);
   border-radius: 12px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  background-color: var(--bg-surface, #FFFFFF);
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .providerCard:hover {
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(148, 163, 184, 0.15);
 }
 
-.expanded {
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+.providerCard.expanded {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(74, 222, 128, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .cardHeader {
-  padding: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 16px 20px;
   cursor: pointer;
-  background-color: transparent;
-  transition: background-color 0.15s ease;
+  user-select: none;
 }
 
-.cardHeader:hover {
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.2);
-}
-
-.cardInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.cardNameRow {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.providerName {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
-}
-
-.providerId {
-  font-size: 11px;
-  color: rgba(var(--text-secondary-rgb, 71, 85, 105), 0.6);
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.3);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.cardStatus {
+.brandRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 14px;
 }
 
-.statusIndicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--color-error, #EF4444);
+.brandIcon {
+  font-size: 22px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
 }
 
-.statusIndicator[data-active="true"] {
-  background-color: #10B981;
+.brandName {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
-.statusText {
-  font-size: 12px;
-  color: var(--text-secondary, #475569);
-}
-
-.cardActions {
+.actionsRow {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-.chevron {
-  font-size: 20px;
-  color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.5);
-  font-family: monospace;
-  transition: transform 0.2s ease;
-  transform: rotate(90deg);
-}
-
-.chevronOpen {
-  transform: rotate(-90deg);
-  color: var(--color-primary, #5BA8F5);
-}
-
-/* Switch */
 .switch {
+  position: relative;
+  display: inline-block;
   width: 44px;
   height: 24px;
-  border-radius: 12px;
-  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
-  position: relative;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
 }
-
-.switch[data-on="true"] {
-  background-color: var(--color-primary, #5BA8F5);
-}
-
-.switchHandle {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: #FFFFFF;
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(148, 163, 184, 0.3);
+  transition: .3s;
+  border-radius: 24px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px; width: 18px; left: 3px; bottom: 3px;
+  background-color: white; transition: .3s; border-radius: 50%;
+}
+input:checked + .slider { background-color: #4ade80; }
+input:checked + .slider:before { transform: translateX(20px); }
+
+.collapseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s;
 }
 
-.switch[data-on="true"] .switchHandle {
-  transform: translateX(20px);
+.collapseBtn:hover {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-primary);
 }
 
-/* Form */
-.editForm {
-  padding: 0 16px 20px 16px;
+.cardBody {
+  padding: 0 20px 20px 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  border-top: 1px dashed rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  margin-top: 4px;
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-top: 1px dashed rgba(148, 163, 184, 0.1);
+  margin-top: -4px;
   padding-top: 16px;
-  animation: slideDown 0.2s ease-out forwards;
 }
 
 @keyframes slideDown {
@@ -175,43 +139,30 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.formGroup {
+.inputGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.formLabel {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary, #1A1A1A);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.labelHint {
-  font-size: 11px;
-  font-weight: 400;
-  color: rgba(var(--text-secondary-rgb, 71, 85, 105), 0.6);
-}
-
-.formInput {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  background-color: var(--bg-surface-low, #FAFAFA);
+.inputGroup label {
   font-size: 13px;
-  font-family: monospace;
-  color: var(--text-primary, #1A1A1A);
-  outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  box-sizing: border-box;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.formInput:focus {
-  border-color: var(--color-primary, #5BA8F5);
-  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
-  background-color: var(--bg-surface, #FFFFFF);
+.textField {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  font-family: monospace;
+  transition: border-color 0.2s;
+}
+
+.textField:focus {
+  border-color: #4ade80;
 }

@@ -1,0 +1,120 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.titleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.visualBar {
+  display: flex;
+  height: 20px;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.chunkSqlite { background: #4ade80; transition: width 0.5s ease; }
+.chunkVector { background: #c084fc; transition: width 0.5s ease; }
+.chunkMedia  { background: #60a5fa; transition: width 0.5s ease; }
+.chunkEmpty  { background: transparent; }
+
+.legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.05);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+}
+
+.legendText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legendTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.legendSize {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.vacuumBtn, .clearBtn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.vacuumBtn {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-primary);
+}
+.vacuumBtn:hover {
+  background: rgba(148, 163, 184, 0.25);
+}
+
+.clearBtn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+.clearBtn:hover {
+  background: rgba(239, 68, 68, 0.25);
+}

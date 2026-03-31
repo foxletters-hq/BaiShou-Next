@@ -42,6 +42,22 @@ export * from './web/DataManagementCard';
 export * from './web/LanSyncCard';
 export * from './web/CloudSyncPanel';
 
+export * from './web/StorageSettingsCard';
+export * from './web/AttachmentManagementView';
+
+export * from './web/AIModelServicesView';
+export * from './web/AIGlobalModelsView';
+export * from './web/IdentitySettingsCard';
+
+export * from './web/RagMemoryView';
+export * from './web/AgentToolsView';
+export * from './web/WebSearchSettingsView';
+
+export * from './web/ProfileSettingsCard';
+export * from './web/HotkeySettingsCard';
+export * from './web/McpSettingsCard';
+export * from './web/DeveloperOptionsView';
+
 // 仅保证 TypeScript 导出正常，真正跨包可能会区分 web / native 导出策略
 
 // 聊天与Agent组件
