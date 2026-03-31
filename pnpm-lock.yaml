@@ -29,6 +29,9 @@ importers:
       '@baishou/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@baishou/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@baishou/store':
         specifier: workspace:*
         version: link:../../packages/store
