@@ -40,6 +40,14 @@ export const api = {
   createAssistant: (input: any) => ipcRenderer.invoke('agent:create-assistant', input),
   updateAssistant: (id: string, input: any) => ipcRenderer.invoke('agent:update-assistant', id, input),
   deleteAssistant: (id: string) => ipcRenderer.invoke('agent:delete-assistant', id),
+
+  // Vault/Workspace System
+  vaultGetAll: () => ipcRenderer.invoke('vault:getAll'),
+  vaultGetActive: () => ipcRenderer.invoke('vault:getActive'),
+  vaultSwitch: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
+  vaultDelete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
+  vaultPickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
+  vaultGetCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

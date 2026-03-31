@@ -1,0 +1,219 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background-color: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+}
+
+.rootConfig {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: var(--surface-hover);
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+}
+
+.rootInfo {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.rootLabel {
+  font-weight: 500;
+  color: var(--text-base);
+}
+
+.rootPath {
+  font-family: monospace;
+  color: var(--text-muted);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-base);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.vaultList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.vaultItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background-color: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.vaultItem.active {
+  border-color: var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.vaultInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.vaultName {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-base);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.activeBadge {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  background-color: var(--primary);
+  color: #fff;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.vaultPath {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.vaultActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.switchBtn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-base);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.switchBtn:hover {
+  background-color: var(--surface-active);
+  border-color: var(--border-hover);
+}
+
+.deleteBtn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.deleteBtn:hover {
+  background-color: var(--danger);
+  color: #fff;
+}
+
+.createAction {
+  margin-top: 0.5rem;
+}
+
+.createBtn {
+  padding: 0.75rem 1rem;
+  width: 100%;
+  border: 1px dashed var(--border);
+  background-color: transparent;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.createBtn:hover {
+  color: var(--text-base);
+  border-color: var(--border-hover);
+  background-color: var(--surface-hover);
+}
+
+.createForm {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.input {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: var(--surface);
+  color: var(--text-base);
+  font-size: 0.875rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.saveBtn {
+  padding: 0.625rem 1rem;
+  background-color: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelBtn {
+  padding: 0.625rem 1rem;
+  background-color: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-base);
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  background-color: var(--surface-hover);
+}
