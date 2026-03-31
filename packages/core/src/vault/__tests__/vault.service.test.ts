@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { VaultService } from '../vault.service';
 import { IStoragePathService } from '../storage-path.types';
 import { VaultActiveDeleteError, VaultNotFoundError } from '../vault.errors';
+import { IDatabaseConnectionManager } from '@baishou/database';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
@@ -15,12 +16,22 @@ const mockPathService: IStoragePathService = {
   getRootDirectory: vi.fn().mockResolvedValue('/root'),
 };
 
+const mockDbManager: IDatabaseConnectionManager = {
+  connect: vi.fn().mockResolvedValue({}),
+  disconnect: vi.fn().mockResolvedValue(undefined),
+  getDb: vi.fn(),
+  isConnected: vi.fn(),
+  getCurrentPath: vi.fn(),
+  onConnect: vi.fn(),
+  onDisconnect: vi.fn(),
+};
+
 describe('VaultService', () => {
   let service: VaultService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new VaultService(mockPathService);
+    service = new VaultService(mockPathService, mockDbManager);
   });
 
   describe('initRegistry', () => {

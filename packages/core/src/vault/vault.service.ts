@@ -3,11 +3,15 @@ import * as path from 'node:path';
 import { IVaultService, VaultInfo } from './vault.types';
 import { IStoragePathService } from './storage-path.types';
 import { VaultActiveDeleteError, VaultNotFoundError } from './vault.errors';
+import { IDatabaseConnectionManager } from '@baishou/database';
 
 export class VaultService implements IVaultService {
   private _vaults: VaultInfo[] = [];
 
-  constructor(private readonly pathService: IStoragePathService) {}
+  constructor(
+    private readonly pathService: IStoragePathService,
+    private readonly dbManager: IDatabaseConnectionManager
+  ) {}
 
   public async initRegistry(): Promise<void> {
     const globalDir = await this.pathService.getGlobalRegistryDirectory();
@@ -72,6 +76,12 @@ export class VaultService implements IVaultService {
     if (shouldSave) {
       await this.saveRegistry(registryFile);
     }
+    
+    // Auto-connect to active vault at boot
+    const activeVault = this.getActiveVault();
+    if (activeVault) {
+      await this.dbManager.connect(path.join(activeVault.path, 'data.db'));
+    }
   }
 
   public getActiveVault(): VaultInfo | null {
@@ -90,11 +100,13 @@ export class VaultService implements IVaultService {
     const existingIndex = this._vaults.findIndex(v => v.name === vaultName);
     const globalDir = await this.pathService.getGlobalRegistryDirectory();
     const registryFile = path.join(globalDir, 'vault_registry.json');
+    let targetPath = '';
 
     if (existingIndex !== -1) {
       const existing = this._vaults[existingIndex];
       if (existing) {
         existing.lastAccessedAt = new Date();
+        targetPath = existing.path;
       }
     } else {
       const newPath = await this.pathService.getVaultDirectory(vaultName);
@@ -109,9 +121,11 @@ export class VaultService implements IVaultService {
         lastAccessedAt: new Date(),
       };
       this._vaults.push(newVault);
+      targetPath = newPath;
     }
 
     await this.saveRegistry(registryFile);
+    await this.dbManager.connect(path.join(targetPath, 'data.db'));
   }
 
   public async deleteVault(vaultName: string): Promise<void> {

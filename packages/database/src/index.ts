@@ -18,3 +18,5 @@ export * from './repositories/settings.repository';
 
 export * from './drivers/vec-capability';
 export * from './drivers/node-sqlite.driver';
+export * from './connection.manager.types';
+export * from './connection.manager';
