@@ -18,3 +18,19 @@ export const DiarySchema = z.object({
 export type Diary = z.infer<typeof DiarySchema>;
 export type CreateDiaryInput = Omit<z.input<typeof DiarySchema>, 'id' | 'createdAt' | 'updatedAt'>;
 export type UpdateDiaryInput = Partial<CreateDiaryInput>;
+
+// ── UI 视图所需的数据结构 (从 Flutter 迁移) ──
+
+export interface DiaryMeta {
+  id: number;
+  date: Date;
+  preview: string;
+  tags: string[];
+}
+
+export interface TimelineNode {
+  id: number | string;
+  type: 'month_separator' | 'diary_entry';
+  date: Date;
+  meta?: DiaryMeta;
+}
