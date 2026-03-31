@@ -1,43 +1,32 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
   z-index: 1000;
-  backdrop-filter: blur(2px);
-  animation: fadeIn 0.2s ease-out;
+  background: transparent;
 }
 
 .sheet {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 700px;
-  height: 80vh;
-  min-height: 400px;
+  position: absolute;
+  bottom: calc(100% + 16px);
+  left: 0;
+  width: 400px;
+  height: auto;
+  min-height: 250px;
+  max-height: 450px;
   background: var(--color-surface);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
   z-index: 1001;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: var(--font-family-main);
   border: 1px solid var(--color-glass-border);
-  border-bottom: none;
+  transform-origin: bottom left;
 }
 
 [data-theme="dark"] .sheet {
-  box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
-}
-
-.handleBar {
-  width: 40px;
-  height: 4px;
-  background: rgba(128, 128, 128, 0.3);
-  border-radius: 2px;
-  margin: 12px auto 0 auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
 
 .header {
@@ -68,140 +57,129 @@
   background: rgba(128, 128, 128, 0.1);
 }
 
-.searchWrap {
-  margin: 8px 20px;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.searchIcon {
-  position: absolute;
-  left: 12px;
-  font-size: 14px;
-}
-
-.searchInput {
-  width: 100%;
-  padding: 12px 12px 12px 36px;
-  font-size: 14px;
-  color: var(--color-text-main);
-  background: var(--color-surface-highest-light);
-  border: 1px solid rgba(128, 128, 128, 0.15);
-  border-radius: 12px;
-  outline: none;
-  transition: all var(--animation-micro);
-}
-
-[data-theme="dark"] .searchInput {
-  background: var(--color-surface-highest-dark);
-}
-
-.searchInput:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
-}
-
-.list {
-  flex: 1;
-  overflow-y: auto;
+.body {
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  flex: 1;
 }
 
-.empty {
-  text-align: center;
-  margin-top: 60px;
-  font-size: 14px;
+.desc {
+  font-size: 13px;
   color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
 }
 
-.memoryCard {
+.sliderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.sliderLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.sliderValueWrap {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.sliderValue {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-primary);
+  font-family: monospace;
+}
+
+.sliderUnit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  height: 6px;
+  border-radius: 4px;
+  outline: none;
+}
+
+.previewBox {
+  margin-top: 16px;
+  min-height: 80px;
   background: var(--color-surface-highest-light);
-  border: 1px solid rgba(128, 128, 128, 0.15);
   border-radius: 12px;
   padding: 16px;
-  cursor: pointer;
-  position: relative;
-  transition: all var(--animation-micro);
+  border: 1px dashed rgba(128,128,128,0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
 }
 
-[data-theme="dark"] .memoryCard {
+[data-theme="dark"] .previewBox {
   background: var(--color-surface-highest-dark);
 }
 
-.memoryCard:hover {
-  border-color: rgba(91, 168, 245, 0.5);
-}
-
-.memoryCard.selected {
-  background: rgba(91, 168, 245, 0.05);
-  border-color: var(--color-primary);
-  box-shadow: 0 4px 16px rgba(91, 168, 245, 0.1);
-}
-
-.cardHeader {
+.badges {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.statBadge {
+  display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--badge-c) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-c) 20%, transparent);
 }
 
-.date {
-  font-size: 11px;
-  color: var(--color-text-secondary);
+.badgeIcon {
+  font-size: 14px;
+}
+
+.badgeCount {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--badge-c);
+}
+
+.badgeLabel {
+  font-size: 12px;
   font-weight: 600;
+  color: color-mix(in srgb, var(--badge-c) 80%, black);
 }
 
-.scoreBadge {
-  font-size: 10px;
-  font-weight: 700;
-  color: #10b981; /* Emerald */
-  background: rgba(16, 185, 129, 0.1);
-  padding: 2px 6px;
-  border-radius: 6px;
-}
-
-.cardContent {
+.emptyPrompt, .loading {
   font-size: 13px;
-  color: var(--color-text-main);
-  line-height: 1.6;
-  max-height: 100px;
-  overflow: hidden;
-  position: relative;
-  /* fade out long text */
-  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-}
-
-.checkbox {
-  position: absolute;
-  top: 50%;
-  right: 16px;
-  transform: translateY(-50%);
-  font-size: 18px;
-  animation: bounceIn 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  color: var(--color-text-secondary);
+  text-align: center;
 }
 
 .footer {
-  padding: 16px 20px 24px 20px;
+  padding: 16px 20px;
   background: var(--color-surface);
   border-top: 1px solid rgba(128, 128, 128, 0.15);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.selectionInfo {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  font-weight: 600;
+  border-radius: 0 0 12px 12px;
 }
 
 .injectBtn {
-  padding: 12px 24px;
+  width: 100%;
+  padding: 12px;
   background: var(--color-primary);
   color: white;
   border: none;
@@ -209,32 +187,19 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
-  transition: transform var(--animation-micro), opacity var(--animation-micro);
+  transition: all 0.2s ease;
 }
 
 .injectBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 .injectBtn:not(:disabled):active {
-  transform: scale(0.96);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  transform: scale(0.97);
 }
 
 @keyframes slideUp {
-  from { transform: translate(-50%, 100%); }
-  to { transform: translate(-50%, 0); }
-}
-
-@keyframes bounceIn {
-  0% { transform: translateY(-50%) scale(0.5); opacity: 0; }
-  80% { transform: translateY(-50%) scale(1.1); opacity: 1; }
-  100% { transform: translateY(-50%) scale(1); opacity: 1; }
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
