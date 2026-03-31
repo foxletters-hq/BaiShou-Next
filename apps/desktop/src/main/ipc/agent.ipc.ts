@@ -1,13 +1,33 @@
-import { ipcMain, dialog, BrowserWindow, app } from 'electron'
-import { join } from 'path';
-import { AgentService, MockAgentSessionRepository, MockAgentMessageRepository } from '@baishou/core'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { 
+  AgentService, 
+  SessionFileService,
+  SessionSyncService,
+  SessionManagerService,
+  AssistantFileService,
+  AssistantManagerService
+} from '@baishou/core'
 import { SessionRepository, AssistantRepository, MessageRepository } from '@baishou/database'
-import { appDb } from '../db'
+import { connectionManager } from '@baishou/database';
+import { pathService } from './vault.ipc'
 
-// 2. 初始化持久层 Repositories
-const realSessionRepo = new SessionRepository(appDb);
-const realAssistantRepo = new AssistantRepository(appDb);
-const realMessageRepo = new MessageRepository(appDb);
+// 动态工厂：确保每一次响应 IPC 时都锁定在用户当前所切环境的 Database 句柄上
+export function getAgentManagers() {
+  const db = connectionManager.getDb();
+  
+  const realSessionRepo = new SessionRepository(db);
+  const sessionFileService = new SessionFileService(pathService);
+  const sessionSyncService = new SessionSyncService(realSessionRepo, sessionFileService);
+  const sessionManager = new SessionManagerService(realSessionRepo, sessionFileService, sessionSyncService);
+
+  const realAssistantRepo = new AssistantRepository(db);
+  const assistantFileService = new AssistantFileService(pathService);
+  const assistantManager = new AssistantManagerService(realAssistantRepo, assistantFileService);
+
+  const realMessageRepo = new MessageRepository(db);
+
+  return { sessionManager, assistantManager, realMessageRepo, realSessionRepo };
+}
 
 // Define dummy provider logic directly here temporarily just to pass registry 
 class DummyModel {
@@ -24,90 +44,80 @@ const mockToolRegistry = {
   toVercelTools: () => ({})
 } as any
 
-const agentService = new AgentService(
-  realSessionRepo, // Switched to Real SQLite Repo
-  realMessageRepo, // Switched to Real SQLite Repo
-  mockProviderRegistry,
-  mockToolRegistry
-)
-
-<<<<<<< HEAD
-=======
-// Ensure at least one dummy session exists for streamChat to find
-sessionRepo.sessions.push({
-  id: 'ipc-session',
-  vaultName: 'ipc-vault',
-  providerId: 'ipc-provider',
-  modelId: 'ipc-model',
-  assistantId: 'ipc-assistant',
-  systemPrompt: 'You are a mock IPC assistant.',
-  title: 'Mock Session',
-  isPinned: false,
-  totalInputTokens: 0,
-  totalOutputTokens: 0,
-  totalCostMicros: 0,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-})
-
->>>>>>> feat/storage-sandbox
 export function registerAgentIPC() {
   
   // ==========================================
-  // API: Assistants
+  // API: Assistants (SSOT pipeline connected)
   // ==========================================
   ipcMain.handle('agent:get-assistants', async () => {
-    return await realAssistantRepo.findAll();
+    const { assistantManager } = getAgentManagers();
+    return await assistantManager.findAll();
   });
 
   ipcMain.handle('agent:create-assistant', async (_, input) => {
-    await realAssistantRepo.create(input);
+    const { assistantManager } = getAgentManagers();
+    await assistantManager.create(input);
   });
 
   ipcMain.handle('agent:update-assistant', async (_, id, input) => {
-    await realAssistantRepo.update(id, input);
+    const { assistantManager } = getAgentManagers();
+    await assistantManager.update(id, input);
   });
 
   ipcMain.handle('agent:delete-assistant', async (_, id) => {
-    await realAssistantRepo.delete(id);
+    const { assistantManager } = getAgentManagers();
+    await assistantManager.delete(id);
   });
 
   // ==========================================
-  // API: Sessions
+  // API: Sessions (Refactored to SSOT Sync pipeline)
   // ==========================================
   ipcMain.handle('agent:get-sessions', async () => {
-    return await realSessionRepo.findAllSessions();
+    const { sessionManager } = getAgentManagers();
+    return await sessionManager.findAllSessions();
   });
 
   ipcMain.handle('agent:delete-sessions', async (_, ids: string[]) => {
-    await realSessionRepo.deleteSessions(ids);
+    const { sessionManager } = getAgentManagers();
+    await sessionManager.deleteSessions(ids);
   });
 
   ipcMain.handle('agent:pin-session', async (_, id: string, isPinned: boolean) => {
-    await realSessionRepo.togglePin(id, isPinned);
+    const { sessionManager } = getAgentManagers();
+    await sessionManager.togglePin(id, isPinned);
   });
 
   // ==========================================
   // API: Chat (Legacy mocked stream chat)
   // ==========================================
   ipcMain.handle('agent:get-messages', async (_, sessionId: string) => {
+    const { realMessageRepo } = getAgentManagers();
     return await realMessageRepo.findBySessionId(sessionId, 50);
   });
 
-  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
+    ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
     try {
+      const { realSessionRepo, realMessageRepo, sessionManager } = getAgentManagers();
+      const agentService = new AgentService(realSessionRepo as any, realMessageRepo as any, mockProviderRegistry, mockToolRegistry);
+
       const result = await agentService.streamChat({
         sessionId: args.sessionId,
         userMessage: args.text,
       })
 
-      // Iterate async over the Vercel AI SDK textStream
       for await (const chunk of result.textStream) {
-        // Send chunk to renderer who made the IPC call
         event.sender.send('agent:stream-chunk', chunk)
       }
 
       event.sender.send('agent:stream-finish')
+      
+      // Phase 8: 当流式会话走完并把消息插入 db 后，我们主动在系统后台发起一次整个气泡 JSON 到 Vault/Sessions 的快照归档持久化
+      try {
+         await sessionManager.flushSessionToDisk(args.sessionId);
+      } catch (e) {
+         console.error('Agent IPC persistence SSOT Error', e);
+      }
+
       return true
     } catch (error: any) {
       console.error('Agent IPC stream error:', error)

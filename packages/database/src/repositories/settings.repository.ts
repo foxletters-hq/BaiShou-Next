@@ -27,6 +27,23 @@ export class SettingsRepository {
   }
 
   /**
+   * 将全量配置抽出
+   */
+  async getAll(): Promise<Record<string, any>> {
+    const rows = await this.db.select().from(systemSettingsTable);
+    const result: Record<string, any> = {};
+    for (const r of rows) {
+      try {
+        result[r.key] = JSON.parse(r.value);
+      } catch (e) {
+        // preserve unparseable raw str
+        result[r.key] = r.value;  
+      }
+    }
+    return result;
+  }
+
+  /**
    * 将任意数据模型序列化为 JSON 字符串，并保存至数据库。支持插入和更新 (Upsert)。
    */
   async set<T>(key: string, value: T): Promise<void> {

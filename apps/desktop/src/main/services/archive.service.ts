@@ -224,6 +224,12 @@ export class DesktopArchiveService implements IArchiveService {
 
     // 6. Regenerate and reload system registry completely
     await this.vaultService.initRegistry();
+    
+    // 7. Global Ecosystem Wake-up! 
+    // This is CRITICAL for the SSOT mechanism to perceive the newly dropped files.
+    // 避免因循环引用在此进行隐式调用，需引入 bootstrapper (注意保持解耦，可从外部直接调，或在此 import)
+    const { globalBootstrapper } = require('./bootstrapper.service');
+    await globalBootstrapper.fullyResyncAllEcosystems();
 
     return {
       fileCount: -1, // Cannot easily get file count from extract-zip syncably

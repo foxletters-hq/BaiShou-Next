@@ -8,6 +8,10 @@ export const vaultService = new VaultService(pathService, connectionManager);
 
 export async function initVaultSystem() {
   await vaultService.initRegistry();
+  
+  // App Boot: Enforce SSOT consistency scan for potential offline cloud-disk changes
+  const { globalBootstrapper } = require('../services/bootstrapper.service');
+  await globalBootstrapper.fullyResyncAllEcosystems();
 }
 
 export function registerVaultIPC() {
@@ -45,6 +49,11 @@ export function registerVaultIPC() {
 
   ipcMain.handle('vault:switch', async (_, vaultName: string) => {
     await vaultService.switchVault(vaultName);
+    
+    // Vault Switch: Enforce SSOT
+    const { globalBootstrapper } = require('../services/bootstrapper.service');
+    await globalBootstrapper.fullyResyncAllEcosystems();
+    
     return vaultService.getActiveVault();
   });
 

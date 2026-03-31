@@ -18,4 +18,29 @@ export interface IStoragePathService {
    * 获取应用全局存放所有 Vaults 的根目录
    */
   getRootDirectory(): Promise<string>;
+
+  /**
+   * 获取用于全局归档备份系统使用的快照缓存目录
+   */
+  getSnapshotsDirectory(): Promise<string>;
+
+  /**
+   * 返回当前活动 Vault 下用于写入 Markdown 日记的位置
+   */
+  getJournalsBaseDirectory(): Promise<string>;
+
+  /**
+   * 返回当前活动 Vault 下用于定格各类总结回顾的 Markdown 文件夹位置
+   */
+  getSummariesBaseDirectory(): Promise<string>;
+
+  /**
+   * 返回当前活动 Vault 下用于存放 AI Agent 长记忆 JSON 存储的位置
+   */
+  getSessionsBaseDirectory(): Promise<string>;
+
+  /**
+   * 返回当前活动 Vault 下用于存放用户设置的 AI 模型助手角色位置
+   */
+  getAssistantsBaseDirectory(): Promise<string>;
 }
