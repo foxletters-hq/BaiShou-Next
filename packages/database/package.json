@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "db:generate": "echo 'not implemented'",
     "db:push": "echo 'not implemented'"
   },

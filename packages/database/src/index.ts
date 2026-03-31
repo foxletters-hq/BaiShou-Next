@@ -15,6 +15,8 @@ export * from './repositories/session.repository';
 export * from './repositories/assistant.repository';
 export * from './repositories/message.repository';
 export * from './repositories/settings.repository';
+export * from './repositories/hybrid-search.repository';
+export * from './repositories/snapshot.repository';
 
 export * from './drivers/vec-capability';
 export * from './drivers/node-sqlite.driver';

@@ -92,4 +92,26 @@ export class MessageRepository implements AgentMessageRepository {
       type: inserted.type as AgentPart['type']
     };
   }
+
+  async searchMessagesByKeyword(keyword: string, limit: number = 10): Promise<any[]> {
+    const { sql } = await import('drizzle-orm');
+    const rows = await this.db.select({
+       role: agentMessagesTable.role,
+       content: agentPartsTable.data,
+       createdAt: agentMessagesTable.createdAt,
+       sessionTitle: sql<string>`(SELECT title FROM sessions WHERE id = ${agentMessagesTable.sessionId})`
+    })
+    .from(agentMessagesTable)
+    .innerJoin(agentPartsTable, eq(agentMessagesTable.id, agentPartsTable.messageId))
+    .where(sql`json_extract(${agentPartsTable.data}, '$.text') LIKE ${'%' + keyword + '%'}`)
+    .orderBy(desc(agentMessagesTable.createdAt))
+    .limit(limit);
+    
+    return rows.map(r => ({
+       role: r.role,
+       content: (r.content as any)?.text || '',
+       sessionTitle: r.sessionTitle,
+       createdAt: r.createdAt
+    }));
+  }
 }

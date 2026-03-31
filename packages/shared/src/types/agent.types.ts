@@ -37,7 +37,7 @@ export const AgentMessageSchema = z.object({
 
 export type AgentMessage = z.infer<typeof AgentMessageSchema>;
 
-export const AgentPartTypeSchema = z.enum(['text', 'tool', 'stepFinish', 'compaction']);
+export const AgentPartTypeSchema = z.enum(['text', 'tool', 'stepFinish', 'compaction', 'attachment', 'context_snapshot']);
 
 export const AgentPartSchema = z.object({
   id: z.string(),

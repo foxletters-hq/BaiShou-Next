@@ -168,4 +168,15 @@ export class SessionRepository {
       .set({ isPinned, updatedAt: new Date() })
       .where(eq(agentSessionsTable.id, id));
   }
+
+  /**
+   * 按 ID 批量更新 Parts 的内部数据（用于压缩剪枝抹去过时的巨大长文）
+   */
+  async updatePartsDataFallback(partIds: string[], fallbackData: any): Promise<void> {
+    if (partIds.length === 0) return;
+    const { inArray } = await import('drizzle-orm');
+    await this.db.update(partsTbl)
+      .set({ data: fallbackData })
+      .where(inArray(partsTbl.id, partIds));
+  }
 }
