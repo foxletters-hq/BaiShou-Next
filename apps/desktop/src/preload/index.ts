@@ -47,7 +47,55 @@ export const api = {
   vaultSwitch: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
   vaultDelete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
   vaultPickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
-  vaultGetCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath')
+  vaultGetCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
+
+  // Archive System (Phase B1)
+  archive: {
+    exportZip: () => ipcRenderer.invoke('archive:export'),
+    importZip: (filePath: string) => ipcRenderer.invoke('archive:import', filePath),
+    pickZip: () => ipcRenderer.invoke('archive:pick-zip')
+  },
+
+  // LAN Sync (Phase B)
+  lan: {
+    startBroadcasting: () => ipcRenderer.invoke('lan:startBroadcasting'),
+    stopBroadcasting: () => ipcRenderer.invoke('lan:stopBroadcasting'),
+    startDiscovery: () => ipcRenderer.invoke('lan:startDiscovery'),
+    stopDiscovery: () => ipcRenderer.invoke('lan:stopDiscovery'),
+    sendFile: (ip: string, port: number) => ipcRenderer.invoke('lan:sendFile', ip, port),
+    
+    // Listeners
+    onDeviceFound: (callback: (device: any) => void) => {
+      const handler = (_: any, device: any) => callback(device)
+      ipcRenderer.on('lan:device-found', handler)
+      return () => ipcRenderer.off('lan:device-found', handler)
+    },
+    onDeviceLost: (callback: (deviceId: string) => void) => {
+      const handler = (_: any, deviceId: string) => callback(deviceId)
+      ipcRenderer.on('lan:device-lost', handler)
+      return () => ipcRenderer.off('lan:device-lost', handler)
+    },
+    onSendProgress: (callback: (progress: number) => void) => {
+      const handler = (_: any, progress: number) => callback(progress)
+      ipcRenderer.on('lan:send-progress', handler)
+      return () => ipcRenderer.off('lan:send-progress', handler)
+    },
+    onFileReceived: (callback: (zipFilePath: string) => void) => {
+      const handler = (_: any, path: string) => callback(path)
+      ipcRenderer.on('lan:file-received', handler)
+      return () => ipcRenderer.off('lan:file-received', handler)
+    }
+  },
+
+  // Cloud Sync (Phase C)
+  cloud: {
+    syncNow: (config: any) => ipcRenderer.invoke('cloud:syncNow', config),
+    listRecords: (config: any) => ipcRenderer.invoke('cloud:listRecords', config),
+    restore: (config: any, filename: string) => ipcRenderer.invoke('cloud:restore', config, filename),
+    deleteRecord: (config: any, filename: string) => ipcRenderer.invoke('cloud:deleteRecord', config, filename),
+    batchDelete: (config: any, filenames: string[]) => ipcRenderer.invoke('cloud:batchDelete', config, filenames),
+    rename: (config: any, oldName: string, newName: string) => ipcRenderer.invoke('cloud:rename', config, oldName, newName)
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

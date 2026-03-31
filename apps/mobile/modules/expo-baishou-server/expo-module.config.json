@@ -1,0 +1,8 @@
+{
+  "name": "expo-baishou-server",
+  "android": {
+    "modules": [
+      "expo.modules.baishouserver.ExpoBaishouServerModule"
+    ]
+  }
+}

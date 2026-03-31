@@ -1,0 +1,110 @@
+.container {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font-family: inherit;
+  margin-top: 24px;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 1.25rem;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: #a0a0a0;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cardSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionHeader h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.dangerText {
+  color: #ff4d4f;
+}
+
+.sectionDesc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #8c8c8c;
+}
+
+.divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 4px 0;
+}
+
+.exportBtn, .importBtn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.exportBtn {
+  background: #1890ff;
+  color: #fff;
+}
+
+.exportBtn:hover:not(:disabled) {
+  background: #40a9ff;
+}
+
+.exportBtn:disabled {
+  background: #1890ff80;
+  cursor: not-allowed;
+}
+
+.importBtn {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+  border: 1px solid rgba(255, 77, 79, 0.3);
+}
+
+.importBtn:hover:not(:disabled) {
+  background: rgba(255, 77, 79, 0.2);
+}
+
+.importBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
