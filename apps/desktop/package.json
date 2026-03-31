@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@baishou/core": "workspace:*",
+    "@baishou/database": "workspace:*",
     "@baishou/store": "workspace:*",
     "@baishou/ui": "workspace:*",
     "@electron-toolkit/preload": "^3.0.2",

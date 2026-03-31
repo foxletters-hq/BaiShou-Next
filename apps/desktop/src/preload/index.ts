@@ -17,7 +17,17 @@ export const api = {
   
   // Phase 10 Extracted System Access
   pickFiles: () => ipcRenderer.invoke('system:pick-files'),
-  getProviders: () => ipcRenderer.invoke('agent:get-providers')
+  getProviders: () => ipcRenderer.invoke('agent:get-providers'),
+
+  // Data Routing API (Phase 11: Data Wiring)
+  getSessions: () => ipcRenderer.invoke('agent:get-sessions'),
+  deleteSessions: (ids: string[]) => ipcRenderer.invoke('agent:delete-sessions', ids),
+  pinSession: (id: string, isPinned: boolean) => ipcRenderer.invoke('agent:pin-session', id, isPinned),
+
+  getAssistants: () => ipcRenderer.invoke('agent:get-assistants'),
+  createAssistant: (input: any) => ipcRenderer.invoke('agent:create-assistant', input),
+  updateAssistant: (id: string, input: any) => ipcRenderer.invoke('agent:update-assistant', id, input),
+  deleteAssistant: (id: string) => ipcRenderer.invoke('agent:delete-assistant', id),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

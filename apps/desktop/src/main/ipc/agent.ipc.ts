@@ -1,5 +1,15 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, app } from 'electron'
+import { join } from 'path';
 import { AgentService, MockAgentSessionRepository, MockAgentMessageRepository } from '@baishou/core'
+import { initNodeDatabase, SessionRepository, AssistantRepository } from '@baishou/database'
+
+// 1. 初始化 SQLite
+const dbPath = join(app.getPath('userData'), 'baishou_next_agent.db');
+const appDb = initNodeDatabase(dbPath);
+
+// 2. 初始化持久层 Repositories
+const realSessionRepo = new SessionRepository(appDb);
+const realAssistantRepo = new AssistantRepository(appDb);
 
 // Define dummy provider logic directly here temporarily just to pass registry 
 class DummyModel {
@@ -16,30 +26,53 @@ const mockToolRegistry = {
   toVercelTools: () => ({})
 } as any
 
-const sessionRepo = new MockAgentSessionRepository()
-const messageRepo = new MockAgentMessageRepository()
+// The AgentService internally still uses mock core repos for streamChat as the pure core repo hasn't been merged with sqlite yet, but for CRUD we use the real ones.
 const agentService = new AgentService(
-  sessionRepo,
-  messageRepo,
+  new MockAgentSessionRepository(),
+  new MockAgentMessageRepository(),
   mockProviderRegistry,
   mockToolRegistry
 )
 
-// Ensure at least one dummy session exists for streamChat to find
-sessionRepo.sessions.push({
-  id: 'ipc-session',
-  vaultName: 'ipc-vault',
-  providerId: 'ipc-provider',
-  modelId: 'ipc-model',
-  assistantId: 'ipc-assistant',
-  systemPrompt: 'You are a mock IPC assistant.',
-  totalInputTokens: 0,
-  totalOutputTokens: 0,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-})
-
 export function registerAgentIPC() {
+  
+  // ==========================================
+  // API: Assistants
+  // ==========================================
+  ipcMain.handle('agent:get-assistants', async () => {
+    return await realAssistantRepo.findAll();
+  });
+
+  ipcMain.handle('agent:create-assistant', async (_, input) => {
+    await realAssistantRepo.create(input);
+  });
+
+  ipcMain.handle('agent:update-assistant', async (_, id, input) => {
+    await realAssistantRepo.update(id, input);
+  });
+
+  ipcMain.handle('agent:delete-assistant', async (_, id) => {
+    await realAssistantRepo.delete(id);
+  });
+
+  // ==========================================
+  // API: Sessions
+  // ==========================================
+  ipcMain.handle('agent:get-sessions', async () => {
+    return await realSessionRepo.findAllSessions();
+  });
+
+  ipcMain.handle('agent:delete-sessions', async (_, ids: string[]) => {
+    await realSessionRepo.deleteSessions(ids);
+  });
+
+  ipcMain.handle('agent:pin-session', async (_, id: string, isPinned: boolean) => {
+    await realSessionRepo.togglePin(id, isPinned);
+  });
+
+  // ==========================================
+  // API: Chat (Legacy mocked stream chat)
+  // ==========================================
   ipcMain.handle('agent:chat', async (event, text: string) => {
     try {
       const result = await agentService.streamChat({

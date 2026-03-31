@@ -116,4 +116,40 @@ export class SessionRepository {
       parts: allParts.filter(p => p.messageId === msg.id)
     }));
   }
+
+  /**
+   * 查询所有会话（按置顶和更新时间排序）
+   */
+  async findAllSessions() {
+    return await this.db.select()
+      .from(agentSessionsTable)
+      .orderBy(
+        desc(agentSessionsTable.isPinned),
+        desc(agentSessionsTable.updatedAt)
+      );
+  }
+
+  /**
+   * 批量删除会话
+   */
+  async deleteSessions(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    
+    // In drizzle sqlite, we can use inArray
+    const { inArray } = await import('drizzle-orm');
+    await this.db.transaction(async (tx) => {
+      await tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids));
+      await tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids));
+      await tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids));
+    });
+  }
+
+  /**
+   * 切换会话置顶状态
+   */
+  async togglePin(id: string, isPinned: boolean): Promise<void> {
+    await this.db.update(agentSessionsTable)
+      .set({ isPinned, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, id));
+  }
 }
