@@ -37,6 +37,7 @@ export * from './web/SettingsSection';
 export * from './web/SettingsItem';
 export * from './web/ColorPicker';
 export * from './web/AppearanceSettingsCard/AppearanceSettingsCard';
+export * from './web/WorkspaceSettingsCard';
 
 // 仅保证 TypeScript 导出正常，真正跨包可能会区分 web / native 导出策略
 
