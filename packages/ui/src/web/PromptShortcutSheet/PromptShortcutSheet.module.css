@@ -1,43 +1,32 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
   z-index: 1000;
-  backdrop-filter: blur(2px);
-  animation: fadeIn 0.2s ease-out;
+  background: transparent;
 }
 
 .sheet {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 600px;
-  height: 60vh;
-  min-height: 300px;
+  position: absolute;
+  bottom: calc(100% + 16px);
+  left: 0;
+  width: 360px;
+  height: auto;
+  min-height: 200px;
+  max-height: 400px;
   background: var(--color-surface);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
   z-index: 1001;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: var(--font-family-main);
   border: 1px solid var(--color-glass-border);
-  border-bottom: none;
+  transform-origin: bottom left;
 }
 
 [data-theme="dark"] .sheet {
-  box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
-}
-
-.handleBar {
-  width: 40px;
-  height: 4px;
-  background: rgba(128, 128, 128, 0.3);
-  border-radius: 2px;
-  margin: 12px auto 0 auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
 
 .header {
@@ -47,24 +36,42 @@
   padding: 16px 20px 8px 20px;
 }
 
-.header h2 {
+.titleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titleWrap h2 {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
   color: var(--color-text-main);
 }
 
-.closeBtn {
+.boltIcon {
+  color: var(--color-primary);
+  font-size: 18px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconBtn, .closeBtn {
   background: transparent;
   border: none;
-  font-size: 18px;
+  font-size: 16px;
   color: var(--color-text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
+  transition: all var(--animation-micro);
 }
 
-.closeBtn:hover {
+.iconBtn:hover, .closeBtn:hover {
   background: rgba(128, 128, 128, 0.1);
 }
 
@@ -84,13 +91,18 @@
 .shortcutItem {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 8px 12px;
   margin-bottom: 8px;
   background: var(--color-surface-highest-light);
   border-radius: 12px;
-  cursor: pointer;
   transition: all var(--animation-micro);
-  gap: 16px;
+  gap: 12px;
+  border: 1px solid transparent;
+}
+
+.shortcutItem.dragging {
+  opacity: 0.5;
+  border: 1px dashed var(--color-primary);
 }
 
 [data-theme="dark"] .shortcutItem {
@@ -101,16 +113,37 @@
   background: rgba(91, 168, 245, 0.1); /* Primary tint */
 }
 
-.triggerBadge {
-  font-family: monospace;
-  font-size: 13px;
-  font-weight: 700;
+.dragHandle {
+  cursor: grab;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  opacity: 0.5;
+  padding: 4px;
+}
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.clickArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.iconBox {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
   color: var(--color-primary);
-  background: rgba(91, 168, 245, 0.15);
-  padding: 4px 8px;
-  border-radius: 6px;
-  min-width: 60px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
 }
 
 .commandContent {
@@ -124,7 +157,10 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-main);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .commandPreview {
@@ -137,12 +173,137 @@
   opacity: 0.7;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.itemActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.shortcutItem:hover .itemActions {
+  opacity: 1;
+}
+
+.itemActions button {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+}
+
+.itemActions button:hover {
+  background: rgba(128,128,128,0.1);
+}
+
+.itemActions .delBtn:hover {
+  color: #ef4444; /* red */
+  background: rgba(239, 68, 68, 0.1);
+}
+
+
+/* Editor Styles */
+.editorBody {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.inputRow {
+  display: flex;
+  gap: 12px;
+}
+
+.iconInput, .textInput {
+  background: var(--color-surface-highest-light);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--color-text-main);
+  outline: none;
+}
+.iconInput {
+  width: 48px;
+  text-align: center;
+  font-size: 16px;
+}
+.textInput {
+  flex: 1;
+}
+
+.iconInput:focus, .textInput:focus, .textArea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+}
+
+.textArea {
+  flex: 1;
+  background: var(--color-surface-highest-light);
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--color-text-main);
+  outline: none;
+  resize: none;
+  font-family: monospace;
+  min-height: 100px;
+}
+
+[data-theme="dark"] .iconInput, [data-theme="dark"] .textInput, [data-theme="dark"] .textArea {
+  background: var(--color-surface-highest-dark);
+}
+
+.editorFooter {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid rgba(128, 128, 128, 0.1);
+  background: var(--color-surface);
+  border-radius: 0 0 12px 12px;
+}
+
+.cancelBtn {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(128,128,128,0.2);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cancelBtn:hover {
+  background: rgba(128,128,128,0.05);
+}
+
+.saveBtn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 8px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 0.2s;
+}
+.saveBtn:active {
+  transform: scale(0.95);
+}
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @keyframes slideUp {
-  from { transform: translate(-50%, 100%); }
-  to { transform: translate(-50%, 0); }
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }

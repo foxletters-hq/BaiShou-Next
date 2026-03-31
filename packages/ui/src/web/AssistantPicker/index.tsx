@@ -1,5 +1,8 @@
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../Button/Button';
+import styles from './AssistantPicker.module.css';
+import { MockAgentAssistant } from '@baishou/shared/src/mock/agent.mock';
 
 // (skipping some code context replacement using correct chunks)
 

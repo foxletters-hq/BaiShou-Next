@@ -19,7 +19,6 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   currentProviderId,
   currentModelId,
   onSelect
-  onSelect
 }) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');

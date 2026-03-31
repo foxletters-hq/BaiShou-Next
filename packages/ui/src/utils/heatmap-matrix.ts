@@ -12,7 +12,7 @@ export function generateHeatmapMatrix(data: ActivityData[], year: number): GridC
   const datesMap = new Map<string, number>();
   data.forEach(d => datesMap.set(d.date, d.count));
 
-  const matrix: GridCell[][] = Array.from({ length: 7 }, () => []);
+  const matrix: GridCell[][] = Array.from({ length: 7 }, (): GridCell[] => []);
   
   const startDate = new Date(year, 0, 1);
   const endDate = new Date(year, 11, 31);
@@ -28,7 +28,7 @@ export function generateHeatmapMatrix(data: ActivityData[], year: number): GridC
     const dateStr = `${yyyy}-${mm}-${dd}`;
     
     const count = datesMap.get(dateStr) || 0;
-    matrix[currentDate.getDay()].push({
+    matrix[currentDate.getDay()]!.push({
        date: new Date(currentDate),
        count
     });

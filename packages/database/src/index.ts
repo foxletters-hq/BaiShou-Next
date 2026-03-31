@@ -6,8 +6,15 @@ export * from './schema/agent-parts';
 export * from './schema/agent-assistants';
 export * from './schema/compression-snapshots';
 export * from './schema/vectors';
+export * from './schema/system-settings';
 
 export * from './repositories/diary.repository';
 export * from './repositories/diary.repository.impl';
 export * from './repositories/agent.repository';
+export * from './repositories/session.repository';
+export * from './repositories/assistant.repository';
+export * from './repositories/message.repository';
+export * from './repositories/settings.repository';
+
 export * from './drivers/vec-capability';
+export * from './drivers/node-sqlite.driver';

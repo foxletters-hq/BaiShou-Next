@@ -24,7 +24,8 @@ export interface AgentActions {
   addToolCall: (id: string, toolCallName: string, args: any) => void;
   clearSession: () => void;
   initIpcListeners: () => void;
-  sendMessage: (text: string) => void;
+  sendMessage: (sessionId: string, text: string) => void;
+  loadMessages: (sessionId: string) => Promise<void>;
 }
 
 export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore', (set, get: any) => ({
@@ -53,6 +54,23 @@ export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore'
     })),
 
   clearSession: () => set({ messages: [], toolCalls: {}, isLoading: false }),
+
+  loadMessages: async (sessionId: string) => {
+    if (typeof window !== 'undefined' && (window as any).api) {
+      const msgs = await (window as any).api.getMessages?.(sessionId);
+      if (msgs) {
+        set({
+          messages: msgs.map((m: any) => ({
+            id: m.id,
+            role: m.role,
+            content: '', // Need to hydrate parts if exist, default to empty for now
+            timestamp: new Date(m.createdAt)
+          })),
+          isLoading: false
+        });
+      }
+    }
+  },
 
   initIpcListeners: () => {
     // Check if electron bridge exists
@@ -84,9 +102,9 @@ export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore'
     }
   },
 
-  sendMessage: (text: string) => {
+  sendMessage: (sessionId: string, text: string) => {
     const { addMessage, setLoading } = get();
-    // Add User Message
+    // Add User Message immediately for fast UI feedback
     addMessage({
       id: Date.now().toString(),
       role: 'user',
@@ -95,7 +113,7 @@ export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore'
     });
     setLoading(true);
 
-    // Initial Empty Assistant Message
+    // Initial Empty Assistant Message for streaming
     const assistantMsgId = (Date.now() + 1).toString();
     addMessage({
       id: assistantMsgId,
@@ -106,7 +124,7 @@ export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore'
 
     // Send through IPC if available
     if (typeof window !== 'undefined' && (window as any).api) {
-      (window as any).api.agentChat?.(text);
+      (window as any).api.agentChat?.({ sessionId, text });
     } else {
       // Fallback for Web/RN (dummy timeout)
       setTimeout(() => {

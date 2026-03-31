@@ -30,7 +30,7 @@ describe('useAgentStore (Zustand IPC Flow)', () => {
 
     const updated = useAgentStore.getState();
     expect(updated.messages).toHaveLength(1);
-    expect(updated.messages[0].content).toBe('Hello World');
+    expect(updated.messages[0]?.content).toBe('Hello World');
   });
 
   it('sendMessage in Web/RN (Fallback Mode without window.api) falls back to mocked delayed response', () => {
@@ -39,22 +39,22 @@ describe('useAgentStore (Zustand IPC Flow)', () => {
     // Assure no window.api exists
     expect((globalThis as any).window).toBeUndefined();
 
-    store.sendMessage('Test fallback');
+    store.sendMessage('session-1', 'Test fallback');
     
     // Synchronous state check
     const pendingState = useAgentStore.getState();
     expect(pendingState.isLoading).toBe(true);
     // 1 user msg, 1 empty assistant msg
     expect(pendingState.messages).toHaveLength(2);
-    expect(pendingState.messages[1].role).toBe('assistant');
-    expect(pendingState.messages[1].content).toBe('');
+    expect(pendingState.messages[1]?.role).toBe('assistant');
+    expect(pendingState.messages[1]?.content).toBe('');
 
     // Advance 1000ms dummy timeout
     vi.advanceTimersByTime(1000);
 
     const resolvedState = useAgentStore.getState();
     expect(resolvedState.isLoading).toBe(false);
-    expect(resolvedState.messages[1].content).toBe('Mock response in Web/RN (IPC not found)');
+    expect(resolvedState.messages[1]?.content).toBe('Mock response in Web/RN (IPC not found)');
   });
 
   it('sendMessage in Electron (Bridge Mode) executes agentChat IPC call via window.api', () => {
@@ -68,12 +68,12 @@ describe('useAgentStore (Zustand IPC Flow)', () => {
     };
 
     const store = useAgentStore.getState();
-    store.sendMessage('Hello Electron');
+    store.sendMessage('session-1', 'Hello Electron');
 
     const state = useAgentStore.getState();
     expect(state.isLoading).toBe(true);
     expect(state.messages).toHaveLength(2); // Local immediate append
-    expect(mockAgentChat).toHaveBeenCalledWith('Hello Electron');
+    expect(mockAgentChat).toHaveBeenCalledWith({ sessionId: 'session-1', text: 'Hello Electron' });
   });
 
   it('initIpcListeners binds stream chunks and correctly constructs text', () => {
@@ -106,7 +106,7 @@ describe('useAgentStore (Zustand IPC Flow)', () => {
 
     // Assert that the Zustand subscriber updated the content progressively
     const progressiveState = useAgentStore.getState();
-    expect(progressiveState.messages[0].content).toBe('Hi, this is a streaming test.');
+    expect(progressiveState.messages[0]?.content).toBe('Hi, this is a streaming test.');
 
     // Emulate finish payload
     useAgentStore.setState({ isLoading: true });

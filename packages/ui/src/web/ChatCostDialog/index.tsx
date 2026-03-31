@@ -43,7 +43,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ details, onClose
                 <span className={styles.totalValue}>{details.totalTokens.toLocaleString()} tk</span>
              </div>
              <div className={styles.costBox}>
-                <span className={styles.costTitle}>预计开销 / Cost</span>
+                <span className={styles.costTitle}>预计开销 / USD Cost</span>
                 <span className={styles.costPrice}>{details.estimatedCost}</span>
              </div>
           </div>

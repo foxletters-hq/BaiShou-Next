@@ -3,7 +3,9 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
 export const api = {
-  agentChat: (text: string) => ipcRenderer.invoke('agent:chat', text),
+  agentChat: (params: { sessionId: string; text: string }) => ipcRenderer.invoke('agent:chat', params),
+  getMessages: (sessionId: string) => ipcRenderer.invoke('agent:get-messages', sessionId),
+  
   onAgentStreamChunk: (callback: (chunk: string) => void) => {
     ipcRenderer.on('agent:stream-chunk', (_event, chunk) => callback(chunk))
   },
@@ -17,7 +19,27 @@ export const api = {
   
   // Phase 10 Extracted System Access
   pickFiles: () => ipcRenderer.invoke('system:pick-files'),
-  getProviders: () => ipcRenderer.invoke('agent:get-providers')
+  getProviders: () => ipcRenderer.invoke('agent:get-providers'),
+
+  // Settings
+  settings: {
+    getProviders: () => ipcRenderer.invoke('settings:get-providers'),
+    setProviders: (providers: any[]) => ipcRenderer.invoke('settings:set-providers', providers),
+    getGlobalModels: () => ipcRenderer.invoke('settings:get-global-models'),
+    setGlobalModels: (config: any) => ipcRenderer.invoke('settings:set-global-models', config),
+    getFeatures: () => ipcRenderer.invoke('settings:get-features'),
+    setFeatures: (config: any) => ipcRenderer.invoke('settings:set-features', config),
+  },
+
+  // Data Routing API (Phase 11: Data Wiring)
+  getSessions: () => ipcRenderer.invoke('agent:get-sessions'),
+  deleteSessions: (ids: string[]) => ipcRenderer.invoke('agent:delete-sessions', ids),
+  pinSession: (id: string, isPinned: boolean) => ipcRenderer.invoke('agent:pin-session', id, isPinned),
+
+  getAssistants: () => ipcRenderer.invoke('agent:get-assistants'),
+  createAssistant: (input: any) => ipcRenderer.invoke('agent:create-assistant', input),
+  updateAssistant: (id: string, input: any) => ipcRenderer.invoke('agent:update-assistant', id, input),
+  deleteAssistant: (id: string) => ipcRenderer.invoke('agent:delete-assistant', id),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

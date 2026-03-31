@@ -40,7 +40,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
     ];
     let sum = 0;
     for (let i = 0; i < tag.length; i++) sum += tag.charCodeAt(i);
-    return colors[sum % colors.length];
+    return colors[sum % colors.length]!;
   };
 
   return (

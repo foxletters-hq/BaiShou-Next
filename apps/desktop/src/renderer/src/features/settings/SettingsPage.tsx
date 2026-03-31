@@ -1,21 +1,14 @@
-import React, { useState } from 'react';
-import { AppearanceSettingsCard, SettingsItem, SettingsSection } from '@baishou/ui';
-import { AIModelServicesView, type AIProviderConfig } from '@baishou/ui/src/web/AIModelServicesView';
-import { AIGlobalModelsView, type GlobalModelsConfig, type ProviderModelMap } from '@baishou/ui/src/web/AIGlobalModelsView';
-import { FeatureSettingsView, type FeatureSettingsConfig } from '@baishou/ui/src/web/FeatureSettingsView';
-import { useSettingsMock } from './hooks/useSettingsMock';
+import React, { useState, useEffect } from 'react';
+import { AppearanceSettingsCard, SettingsItem } from '@baishou/ui';
+import { AIModelServicesView } from '@baishou/ui/src/web/AIModelServicesView';
+import { AIGlobalModelsView, type ProviderModelMap } from '@baishou/ui/src/web/AIGlobalModelsView';
+import { FeatureSettingsView } from '@baishou/ui/src/web/FeatureSettingsView';
+import { useSettingsStore } from '@baishou/store';
 import './SettingsPage.css';
 
-// TODO: [Agent1-Dependency] 替换
 const useTranslation = (): { t: (key: string) => string } => ({
   t: (key: string) => key,
 });
-
-const MOCK_PROVIDERS: AIProviderConfig[] = [
-  { id: 'openai', name: 'OpenAI', isEnabled: true, apiKey: 'sk-1234', baseUrl: '', customModels: [] },
-  { id: 'anthropic', name: 'Anthropic', isEnabled: false, apiKey: '', baseUrl: '', customModels: [] },
-  { id: 'gemini', name: 'Google Gemini', isEnabled: true, apiKey: 'AIzaSy...', baseUrl: '', customModels: [] },
-];
 
 const MOCK_AVAILABLE_MODELS: ProviderModelMap = {
   'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
@@ -23,31 +16,15 @@ const MOCK_AVAILABLE_MODELS: ProviderModelMap = {
   'gemini': ['gemini-1.5-pro', 'gemini-1.5-flash']
 };
 
-const MOCK_GLOBAL_CONFIG: GlobalModelsConfig = {
-  defaultProviderId: 'openai',
-  defaultModelId: 'gpt-4o',
-  reasoningProviderId: 'anthropic',
-  reasoningModelId: 'claude-3-5-sonnet-20240620',
-};
-
-const MOCK_FEATURES: FeatureSettingsConfig = {
-  ragEnabled: true,
-  ragSimilarityThreshold: 0.85,
-  searchMaxResults: 10,
-  searchIncludeDiary: true,
-  summaryAutoGenerate: true,
-  devModeEnabled: false,
-};
-
 export const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { state, actions } = useSettingsMock();
+  const settings = useSettingsStore();
   const [activeTab, setActiveTab] = useState<'appearance' | 'ai' | 'features'>('appearance');
 
-  // Local state for mock functionality
-  const [providers, setProviders] = useState(MOCK_PROVIDERS);
-  const [globalConfig, setGlobalConfig] = useState(MOCK_GLOBAL_CONFIG);
-  const [features, setFeatures] = useState(MOCK_FEATURES);
+  useEffect(() => {
+    // 组件挂载时拉取真实配置
+    settings.loadConfig();
+  }, []);
 
   return (
     <div className="settings-page-container" style={{ display: 'flex', gap: '32px' }}>
@@ -80,12 +57,12 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'appearance' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             <AppearanceSettingsCard 
-              themeMode={state.themeMode}
-              seedColor={state.seedColor}
-              language={state.language}
-              onThemeModeChange={actions.setThemeMode}
-              onSeedColorChange={actions.setSeedColor}
-              onLanguageChange={actions.setLanguage}
+              themeMode={settings.themeMode}
+              seedColor="#4ade80"
+              language={settings.locale}
+              onThemeModeChange={settings.setThemeMode}
+              onSeedColorChange={() => {}}
+              onLanguageChange={settings.setLocale}
             />
 
             <div>
@@ -114,26 +91,30 @@ export const SettingsPage: React.FC = () => {
 
         {activeTab === 'ai' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-            <AIModelServicesView 
-              providers={providers}
-              onUpdateProvider={(newP) => setProviders(prev => prev.map(p => p.id === newP.id ? newP : p))}
-              onToggleProvider={(id, enabled) => setProviders(prev => prev.map(p => p.id === id ? { ...p, isEnabled: enabled } : p))}
-            />
+            {settings.isLoading ? (
+               <div style={{ padding: 20 }}>读取配置加载中...</div>
+            ) : (
+               <AIModelServicesView 
+                 providers={settings.providers}
+                 onUpdateProvider={settings.updateProvider}
+                 onToggleProvider={settings.toggleProvider}
+               />
+            )}
             
             <div style={{ height: 1, backgroundColor: 'rgba(148,163,184,0.2)' }} />
 
             <AIGlobalModelsView 
-              config={globalConfig}
+              config={settings.globalModels || { defaultProviderId: 'openai', defaultModelId: 'gpt-4', reasoningProviderId: 'anthropic', reasoningModelId: 'claude-3-5' }}
               availableModels={MOCK_AVAILABLE_MODELS}
-              onChange={setGlobalConfig}
+              onChange={settings.setGlobalModels}
             />
           </div>
         )}
 
         {activeTab === 'features' && (
           <FeatureSettingsView 
-            config={features}
-            onChange={setFeatures}
+            config={settings.features || { ragEnabled: true, ragSimilarityThreshold: 0.85, searchMaxResults: 10, searchIncludeDiary: true, summaryAutoGenerate: true, devModeEnabled: false }}
+            onChange={settings.setFeatureSettings}
           />
         )}
       </div>

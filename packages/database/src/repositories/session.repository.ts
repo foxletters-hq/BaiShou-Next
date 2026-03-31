@@ -92,6 +92,22 @@ export class SessionRepository {
   }
 
   /**
+   * 更新模型用量流耗散的 Tokens 与其对于美元微单位 (`micros`) 的总花销。
+   * 此更新方式为利用 SQLite 后台进行增量原子累加以确保安全。
+   */
+  async updateTokenUsage(id: string, inputTokens: number, outputTokens: number, costMicros: number = 0): Promise<void> {
+    const { sql } = await import('drizzle-orm');
+    await this.db.update(agentSessionsTable)
+      .set({ 
+        totalInputTokens: sql`${agentSessionsTable.totalInputTokens} + ${inputTokens}`,
+        totalOutputTokens: sql`${agentSessionsTable.totalOutputTokens} + ${outputTokens}`,
+        totalCostMicros: sql`${agentSessionsTable.totalCostMicros} + ${costMicros}`,
+        updatedAt: new Date() 
+      })
+      .where(eq(agentSessionsTable.id, id));
+  }
+
+  /**
    * 获取会话的消息体历史
    */
   async getMessagesBySession(sessionId: string, limit: number = 50) {
@@ -115,5 +131,41 @@ export class SessionRepository {
       ...msg,
       parts: allParts.filter(p => p.messageId === msg.id)
     }));
+  }
+
+  /**
+   * 查询所有会话（按置顶和更新时间排序）
+   */
+  async findAllSessions() {
+    return await this.db.select()
+      .from(agentSessionsTable)
+      .orderBy(
+        desc(agentSessionsTable.isPinned),
+        desc(agentSessionsTable.updatedAt)
+      );
+  }
+
+  /**
+   * 批量删除会话
+   */
+  async deleteSessions(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    
+    // In drizzle sqlite, we can use inArray
+    const { inArray } = await import('drizzle-orm');
+    await this.db.transaction(async (tx) => {
+      await tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids));
+      await tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids));
+      await tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids));
+    });
+  }
+
+  /**
+   * 切换会话置顶状态
+   */
+  async togglePin(id: string, isPinned: boolean): Promise<void> {
+    await this.db.update(agentSessionsTable)
+      .set({ isPinned, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, id));
   }
 }

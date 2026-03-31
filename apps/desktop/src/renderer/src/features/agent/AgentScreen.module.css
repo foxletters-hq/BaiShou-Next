@@ -59,6 +59,8 @@
   flex: 1;
   overflow-y: auto;
   scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column-reverse;
 }
 
 .messageContent {
