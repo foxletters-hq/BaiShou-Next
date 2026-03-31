@@ -7,6 +7,12 @@ import { SessionManagementScreen } from './features/agent/SessionManagementScree
 import { AssistantManagementScreen } from './features/agent/AssistantManagementScreen';
 import { AssistantEditScreen } from './features/agent/AssistantEditScreen';
 
+// Phase 14: Recover Missing Feature Routes
+import { DiaryPage } from './features/diary/DiaryPage';
+import { DiaryEditorPage } from './features/diary/DiaryEditorPage';
+import { SettingsPage } from './features/settings/SettingsPage';
+import { SummaryPage } from './features/summary/SummaryPage';
+
 export function App() {
   return (
     <HashRouter>
@@ -15,6 +21,14 @@ export function App() {
         
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomeScreen />} />
+          
+          {/* Main Business Logic Sub-Routes */}
+          <Route path="/diary" element={<DiaryPage />} />
+          <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
+          <Route path="/summary" element={<SummaryPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+
+          {/* AI / Agent Role Routing */}
           <Route path="/c/:sessionId" element={<AgentScreen />} />
           <Route path="/sessions" element={<SessionManagementScreen />} />
           <Route path="/assistants" element={<AssistantManagementScreen />} />
