@@ -1,155 +1,333 @@
 import React, { useState, useEffect } from 'react';
-import { AppearanceSettingsCard, SettingsItem, DataManagementCard, LanSyncCard, CloudSyncPanel } from '@baishou/ui';
-import { AIModelServicesView } from '@baishou/ui/src/web/AIModelServicesView';
-import { AIGlobalModelsView, type ProviderModelMap } from '@baishou/ui/src/web/AIGlobalModelsView';
-import { FeatureSettingsView } from '@baishou/ui/src/web/FeatureSettingsView';
 import { useSettingsStore } from '@baishou/store';
 import './SettingsPage.css';
+import { 
+  AppearanceSettingsCard, 
+  DataManagementCard, 
+  LanSyncCard, 
+  CloudSyncPanel,
+  ProfileSettingsCard,
+  HotkeySettingsCard,
+  WorkspaceSettingsCard,
+  McpSettingsCard,
+  DeveloperOptionsView,
+  StorageSettingsCard,
+  AttachmentManagementView,
+  AIModelServicesView,
+  AIGlobalModelsView,
+  IdentitySettingsCard,
+  RagMemoryView,
+  AgentToolsView,
+  WebSearchSettingsView
+} from '@baishou/ui';
 
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+// ----------------------------------------------------
+// TABS 定义
+// ----------------------------------------------------
+type TabId = 'profile' | 'general' | 'storage' | 'ai' | 'rag' | 'advanced';
 
-const MOCK_AVAILABLE_MODELS: ProviderModelMap = {
-  'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  'anthropic': ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229'],
-  'gemini': ['gemini-1.5-pro', 'gemini-1.5-flash']
-};
+const SETTINGS_TABS: Array<{ id: TabId; icon: string; label: string; desc: string }> = [
+  { id: 'profile', icon: '👤', label: '个人名片', desc: '身份管理与人设' },
+  { id: 'general', icon: '🎨', label: '通用偏好', desc: '外观、热键与工作区' },
+  { id: 'storage', icon: '💾', label: '数据与存储', desc: '快照与大局网传输' },
+  { id: 'ai', icon: '🧠', label: '大脑引擎', desc: '分发流与 LLM 集群' },
+  { id: 'rag', icon: '📚', label: '外脑建设', desc: '搜索与私有记忆层' },
+  { id: 'advanced', icon: '⚙️', label: '极客扩展', desc: 'MCP 面板与调试' },
+];
 
 export const SettingsPage: React.FC = () => {
-  const { t } = useTranslation();
   const settings = useSettingsStore();
-  const [activeTab, setActiveTab] = useState<'appearance' | 'ai' | 'features'>('appearance');
+  const [activeTab, setActiveTab] = useState<TabId>('profile');
 
   useEffect(() => {
-    // 组件挂载时拉取真实配置
     settings.loadConfig();
-  }, []);
+  }, [settings.loadConfig]);
 
   return (
-    <div className="settings-page-container" style={{ display: 'flex', gap: '32px' }}>
-      <div className="settings-sidebar" style={{ width: 200, flexShrink: 0 }}>
-        <h2 className="settings-page-title" style={{ marginBottom: 24, paddingLeft: 12 }}>{t('settings.title') || '设置'}</h2>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <button 
-            className={`settings-tab-btn ${activeTab === 'appearance' ? 'active' : ''}`}
-            onClick={() => setActiveTab('appearance')}
-          >
-            🎨 外观与通用
-          </button>
-          <button 
-            className={`settings-tab-btn ${activeTab === 'ai' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ai')}
-          >
-            🧠 AI 模型与服务
-          </button>
-          <button 
-            className={`settings-tab-btn ${activeTab === 'features' ? 'active' : ''}`}
-            onClick={() => setActiveTab('features')}
-          >
-            ⚙️ 功能与特性
-          </button>
+    <div className="settings-page-wrapper">
+      <div className="settings-page-glow" />
+
+      {/* 侧边导航 */}
+      <nav className="settings-sidebar">
+        <h1 className="settings-header-title">配置中心</h1>
+        <div className="settings-nav-group">
+          {SETTINGS_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`settings-nav-item ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <div className="settings-nav-icon">{tab.icon}</div>
+              <div className="settings-nav-text">
+                 <span className="settings-nav-label">{tab.label}</span>
+                 <span className="settings-nav-desc">{tab.desc}</span>
+              </div>
+            </button>
+          ))}
         </div>
-      </div>
-      
-      <div className="settings-content" style={{ flex: 1, paddingBottom: 64 }}>
-        {activeTab === 'appearance' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            <AppearanceSettingsCard 
-              themeMode={settings.themeMode}
-              seedColor="#4ade80"
-              language={settings.locale}
-              onThemeModeChange={settings.setThemeMode}
-              onSeedColorChange={() => {}}
-              onLanguageChange={settings.setLocale}
-            />
+      </nav>
 
-            <div>
-              <h3 style={{ fontSize: 16, marginBottom: 8, paddingLeft: 8, color: 'var(--text-secondary)' }}>
-                {t('settings.general_title') || '数据与隐私'}
-              </h3>
-              <div style={{ background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid rgba(148,163,184,0.3)', overflow: 'hidden' }}>
-                <SettingsItem title="数据同步" subtitle="通过 WebDAV 跨端同步日记与设定" onClick={() => {}} />
-                <SettingsItem title="局域网传输" subtitle="在相同 Wi-Fi 下快速同步大型记忆文件" onClick={() => {}} />
-                <SettingsItem title="存储目录管理" subtitle="查看离线向量库占用情况" onClick={() => {}} />
-              </div>
-              
-              <DataManagementCard 
-                onExportZip={async () => {(window as any).api?.archive.exportZip()}}
-                onImportZip={async (file) => {(window as any).api?.archive.importZip(file)}}
-                onPickFile={async () => await (window as any).api?.archive.pickZip()}
-              />
-
-              <LanSyncCard
-                onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
-                onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}
-                onStartDiscovery={async (onFound, onLost) => {
-                  (window as any).api?.lan?.onDeviceFound(onFound);
-                  (window as any).api?.lan?.onDeviceLost(onLost);
-                  await (window as any).api?.lan?.startDiscovery();
-                }}
-                onStopDiscovery={async () => (window as any).api?.lan?.stopDiscovery()}
-                onSendFile={async (ip, port, progress) => {
-                  (window as any).api?.lan?.onSendProgress(progress);
-                  return await (window as any).api?.lan?.sendFile(ip, port);
-                }}
-                onFileReceivedListener={(cb) => (window as any).api?.lan?.onFileReceived(cb)}
-                onImportZip={async (file) => {(window as any).api?.archive.importZip(file)}}
-              />
-
-              <CloudSyncPanel
-                onSyncNow={async (config) => (window as any).api?.cloud?.syncNow(config)}
-                onListRecords={async (config) => (window as any).api?.cloud?.listRecords(config)}
-                onRestore={async (config, filename) => (window as any).api?.cloud?.restore(config, filename)}
-                onDeleteRecord={async (config, filename) => (window as any).api?.cloud?.deleteRecord(config, filename)}
-                onBatchDelete={async (config, filenames) => (window as any).api?.cloud?.batchDelete(config, filenames)}
-                onRename={async (config, oldName, newName) => (window as any).api?.cloud?.rename(config, oldName, newName)}
-              />
+      {/* 右侧动态渲染面板区 */}
+      <main className="settings-content-area">
+         {settings.isLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 100, color: 'var(--text-secondary)' }}>
+              加载系统环境配置中...
             </div>
-
-            <div>
-              <h3 style={{ fontSize: 16, marginBottom: 8, paddingLeft: 8, color: 'var(--text-secondary)' }}>
-                {t('settings.about_title') || '关于白守'}
-              </h3>
-              <div style={{ background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid rgba(148,163,184,0.3)', overflow: 'hidden' }}>
-                <SettingsItem title="当前版本" rightElement={<span style={{color:'var(--text-secondary)',fontSize:13}}>v1.0.0-beta</span>} />
-                <SettingsItem title="隐私政策" onClick={() => {}} />
-                <SettingsItem title="开源协议" onClick={() => {}} />
-              </div>
+         ) : (
+            <div className="settings-pane" key={activeTab}>
+              {activeTab === 'profile' && <ProfilePane />}
+              {activeTab === 'general' && <GeneralPane settings={settings} />}
+              {activeTab === 'storage' && <StoragePane />}
+              {activeTab === 'ai' && <AiPane settings={settings} />}
+              {activeTab === 'rag' && <RagPane settings={settings} />}
+              {activeTab === 'advanced' && <AdvancedPane settings={settings} />}
             </div>
-          </div>
-        )}
-
-        {activeTab === 'ai' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-            {settings.isLoading ? (
-               <div style={{ padding: 20 }}>读取配置加载中...</div>
-            ) : (
-               <AIModelServicesView 
-                 providers={settings.providers}
-                 onUpdateProvider={settings.updateProvider}
-                 onToggleProvider={settings.toggleProvider}
-               />
-            )}
-            
-            <div style={{ height: 1, backgroundColor: 'rgba(148,163,184,0.2)' }} />
-
-            <AIGlobalModelsView 
-              config={settings.globalModels || { defaultProviderId: 'openai', defaultModelId: 'gpt-4', reasoningProviderId: 'anthropic', reasoningModelId: 'claude-3-5' }}
-              availableModels={MOCK_AVAILABLE_MODELS}
-              onChange={settings.setGlobalModels}
-            />
-          </div>
-        )}
-
-        {activeTab === 'features' && (
-          <FeatureSettingsView 
-            config={settings.features || { ragEnabled: true, ragSimilarityThreshold: 0.85, searchMaxResults: 10, searchIncludeDiary: true, summaryAutoGenerate: true, devModeEnabled: false }}
-            onChange={settings.setFeatureSettings}
-          />
-        )}
-      </div>
+         )}
+      </main>
     </div>
   );
 };
+
+
+// ----------------------------------------------------
+// 拆分子面板集 (目前作为 Phase 分步的入口空壳/占位集成)
+// ----------------------------------------------------
+
+const ProfilePane: React.FC = () => {
+  return (
+    <>
+      <div>
+        <h2 className="pane-section-title">人格与身份设定</h2>
+        <p className="pane-section-subtitle">配置您在白守中的昵称形象及您管理的多重数字分身。</p>
+      </div>
+      <div className="glass-panel-card">
+         <ProfileSettingsCard 
+           profile={{ nickname: '指挥官 (Commander)', autoSync: true, avatarUrl: '' }}
+           onSave={(p) => console.log('Saved profile', p)}
+           onPickAvatar={async () => {
+             // 预留接线：(window.api as any).profile.pickAndSaveAvatar()
+           }}
+           onGenerateAvatar={() => {}}
+         />
+      </div>
+    </>
+  );
+};
+
+const GeneralPane: React.FC<{ settings: any }> = ({ settings }) => {
+  return (
+    <>
+      <div>
+        <h2 className="pane-section-title">基础视觉与使用环境</h2>
+        <p className="pane-section-subtitle">调整白守的沉浸感主题、唤出热键等通用系统参数。</p>
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <AppearanceSettingsCard 
+          themeMode={settings.themeMode}
+          seedColor="#4ade80"
+          language={settings.locale}
+          onThemeModeChange={settings.setThemeMode}
+          onSeedColorChange={() => {}}
+          onLanguageChange={settings.setLocale}
+        />
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         <WorkspaceSettingsCard 
+            vaults={[{ name: 'Default', path: '~/Documents/BaiShou', createdAt: new Date().toISOString(), lastAccessedAt: new Date().toISOString() }]}
+            activeVault={{ name: 'Default', path: '~/Documents/BaiShou', createdAt: new Date().toISOString(), lastAccessedAt: new Date().toISOString() }}
+            onSwitch={() => {}}
+            onDelete={() => {}}
+            onCreate={async () => {}}
+         />
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {settings.hotkeyConfig ? (
+             <HotkeySettingsCard 
+                 config={settings.hotkeyConfig}
+                 onChange={(config) => settings.setHotkeyConfig(config)}
+             />
+         ) : null}
+      </div>
+    </>
+  );
+};
+
+const StoragePane: React.FC = () => {
+  return (
+    <>
+      <div>
+        <h2 className="pane-section-title">数据管理与流通</h2>
+        <p className="pane-section-subtitle">接管云驱动器同步以及近场通讯的设备级网络协同。</p>
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+        <DataManagementCard 
+          onExportZip={async () => {(window as any).api?.archive.exportZip()}}
+          onImportZip={async (file: string) => {(window as any).api?.archive.importZip(file)}}
+          onPickFile={async () => await (window as any).api?.archive.pickZip()}
+        />
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+        <div style={{ padding: 24 }}>
+           <StorageSettingsCard 
+               sqliteSizeStats="142 MB"
+               vectorDbStats="2.1 GB"
+               mediaCacheStats="450 MB"
+               onClearCache={() => alert("清理系统缓存")}
+               onVacuumDb={() => alert("VACUUM 命令已执行")}
+           />
+        </div>
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+        <div style={{ padding: 24 }}>
+           <AttachmentManagementView 
+               attachments={[
+                  { id: '1', name: 'midjourney-prompt-ref.png', size: '2.4MB', type: 'image', date: '2026-03-31' },
+                  { id: '2', name: 'claude-3-opus-guidelines.pdf', size: '1.2MB', type: 'document', date: '2026-03-29' }
+               ]}
+               onDelete={(id) => console.log('Delete attachment', id)}
+           />
+        </div>
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {/* TODO: Phase B 追加 LanSyncCard */}
+         <div style={{ padding: 24 }}>
+           <h3 style={{ fontSize: 16, marginBottom: 12 }}>近场传输 (Lan Sync)</h3>
+           <LanSyncCard
+            onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
+            onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}
+            onStartDiscovery={async (onFound: any, onLost: any) => {
+              (window as any).api?.lan?.onDeviceFound(onFound);
+              (window as any).api?.lan?.onDeviceLost(onLost);
+              await (window as any).api?.lan?.startDiscovery();
+            }}
+            onStopDiscovery={async () => (window as any).api?.lan?.stopDiscovery()}
+            onSendFile={async (ip: string, port: number, progress: any) => {
+              (window as any).api?.lan?.onSendProgress(progress);
+              return await (window as any).api?.lan?.sendFile(ip, port);
+            }}
+            onFileReceivedListener={(cb: any) => (window as any).api?.lan?.onFileReceived(cb)}
+            onImportZip={async (file: string) => {(window as any).api?.archive.importZip(file)}}
+          />
+         </div>
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+        <CloudSyncPanel
+          onSyncNow={async (config: any) => (window as any).api?.cloud?.syncNow(config)}
+          onListRecords={async (config: any) => (window as any).api?.cloud?.listRecords(config)}
+          onRestore={async (config: any, filename: string) => (window as any).api?.cloud?.restore(config, filename)}
+          onDeleteRecord={async (config: any, filename: string) => (window as any).api?.cloud?.deleteRecord(config, filename)}
+          onBatchDelete={async (config: any, filenames: string[]) => (window as any).api?.cloud?.batchDelete(config, filenames)}
+          onRename={async (config: any, oldName: string, newName: string) => (window as any).api?.cloud?.rename(config, oldName, newName)}
+        />
+      </div>
+    </>
+  );
+};
+
+const AiPane: React.FC<{ settings: any }> = ({ settings }) => {
+  return (
+    <>
+      <div>
+        <h2 className="pane-section-title">智能神经引擎</h2>
+        <p className="pane-section-subtitle">统一绑定云服务商 Key，并进行四维模型下发与分流器部署。</p>
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {settings.globalModelsConfig && (
+             <AIGlobalModelsView 
+                 config={settings.globalModelsConfig}
+                 onChange={(config) => settings.setGlobalModelsConfig(config)}
+             />
+         )}
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {settings.agentBehaviorConfig && (
+             <IdentitySettingsCard 
+                 config={settings.agentBehaviorConfig}
+                 onChange={(config) => settings.setAgentBehaviorConfig(config)}
+             />
+         )}
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         <AIModelServicesView 
+             providers={settings.aiProviderConfigs || {}}
+             onUpdateProvider={(id, updates) => settings.updateAiProviderConfig(id, updates)}
+         />
+      </div>
+    </>
+  );
+};
+
+const RagPane: React.FC<{ settings: any }> = ({ settings }) => {
+  return (
+    <>
+      <div>
+        <h2 className="pane-section-title">工具集与外挂存储</h2>
+        <p className="pane-section-subtitle">配置白守 RAG 检索深度指标及外挂工具箱权限。</p>
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {settings.ragConfig && (
+             <RagMemoryView 
+                 config={settings.ragConfig}
+                 onChange={(config) => settings.setRagConfig(config)}
+             />
+         )}
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {settings.webSearchConfig && settings.summaryConfig && (
+             <WebSearchSettingsView 
+                 searchConfig={settings.webSearchConfig}
+                 summaryConfig={settings.summaryConfig}
+                 onSearchChange={(config) => settings.setWebSearchConfig(config)}
+                 onSummaryChange={(config) => settings.setSummaryConfig(config)}
+             />
+         )}
+      </div>
+      
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {settings.toolManagementConfig && (
+             <AgentToolsView 
+                 config={settings.toolManagementConfig}
+                 onChange={(config) => settings.setToolManagementConfig(config)}
+             />
+         )}
+      </div>
+    </>
+  );
+}
+
+const AdvancedPane: React.FC<{ settings: any }> = ({ settings }) => {
+  return (
+    <>
+      <div>
+        <h2 className="pane-section-title">高级控制选项</h2>
+        <p className="pane-section-subtitle">Model Context Protocol 对外局域暴露，以及深度研发设定。</p>
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0 }}>
+         {settings.mcpServerConfig ? (
+             <McpSettingsCard 
+                 config={settings.mcpServerConfig!}
+                 onChange={(config) => settings.setMcpServerConfig(config)}
+             />
+         ) : null}
+      </div>
+
+      <div className="glass-panel-card" style={{ padding: 0, background: 'transparent', border: 'none', boxShadow: 'none' }}>
+         <DeveloperOptionsView />
+      </div>
+    </>
+  );
+}
