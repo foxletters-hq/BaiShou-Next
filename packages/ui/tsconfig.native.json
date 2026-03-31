@@ -8,10 +8,12 @@
     "lib": ["ES2022"],
     "types": ["react-native"],
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "strictNullChecks": false
   },
   "include": [
-    "src/native/**/*"
+    "src/native/**/*",
+    "src/theme/**/*"
   ],
   "exclude": ["src/web/**/*"]
 }

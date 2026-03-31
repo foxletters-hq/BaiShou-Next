@@ -56,6 +56,10 @@ app.whenReady().then(() => {
   const { registerAgentIPC } = require('./ipc/agent.ipc')
   registerAgentIPC()
 
+  // Register Settings IPC
+  const { registerSettingsIPC } = require('./ipc/settings.ipc')
+  registerSettingsIPC()
+
   createWindow()
 
   app.on('activate', function () {

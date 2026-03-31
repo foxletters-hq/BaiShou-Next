@@ -44,4 +44,18 @@ export class MockDiaryRepository implements DiaryRepository {
   async search(query: string): Promise<Diary[]> {
     return this.diaries.filter(d => d.content.includes(query));
   }
+  
+  async list(options?: { limit?: number; offset?: number; orderBy?: "desc"|"asc" }): Promise<Diary[]> {
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
+    let results = [...this.diaries];
+    if (options?.orderBy === 'desc') {
+      results.reverse();
+    }
+    return results.slice(offset, offset + limit);
+  }
+
+  async getSyncUpdatesSince(date: Date): Promise<Diary[]> {
+    return this.diaries.filter(d => d.updatedAt && d.updatedAt >= date);
+  }
 }

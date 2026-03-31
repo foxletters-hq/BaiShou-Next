@@ -83,10 +83,19 @@ export class AgentService {
         
         // 更新用量和费用估算
         if (event.usage) {
+          const { modelPricingService, usdToMicros } = await import('@baishou/shared');
+          const costUsd = await modelPricingService.calculateCost(
+             session.providerId,
+             session.modelId, 
+             event.usage.promptTokens, 
+             event.usage.completionTokens
+          );
+
           await this.sessionRepo.updateTokenUsage(
             input.sessionId, 
             event.usage.promptTokens, 
-            event.usage.completionTokens
+            event.usage.completionTokens,
+            costUsd !== null ? usdToMicros(costUsd) : 0
           );
         }
       }
