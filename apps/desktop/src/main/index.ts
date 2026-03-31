@@ -56,7 +56,14 @@ app.whenReady().then(() => {
   const { registerAgentIPC } = require('./ipc/agent.ipc')
   registerAgentIPC()
 
-  createWindow()
+  // Register Vault IPC
+  const { initVaultSystem, registerVaultIPC } = require('./ipc/vault.ipc')
+  initVaultSystem().then(() => {
+    registerVaultIPC()
+    createWindow()
+  }).catch((err) => {
+    console.error('Failed to init Vault System', err)
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
