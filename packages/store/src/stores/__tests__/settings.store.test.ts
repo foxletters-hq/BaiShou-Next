@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSettingsStore } from '../settings.store';
 import type { 
   AIProviderConfig, 
-  GlobalModelsConfig, 
-  AgentBehaviorConfig, 
   RagConfig 
 } from '@baishou/shared';
 

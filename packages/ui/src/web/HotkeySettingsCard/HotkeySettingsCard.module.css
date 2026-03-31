@@ -90,3 +90,40 @@ input:checked + .slider:before { transform: translateX(20px); }
   50% { opacity: 0.6; }
   100% { opacity: 1; }
 }
+
+.colRow {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.hotkeyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.conflictGroup {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+}
+
+.conflictText {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.conflictWarningBox {
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.15);
+  border-left: 3px solid #f87171;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #fca5a5;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

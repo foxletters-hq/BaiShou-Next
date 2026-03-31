@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.0",
+    "@baishou/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.8.0"

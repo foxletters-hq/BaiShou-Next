@@ -1,166 +1,122 @@
 import React, { useState } from 'react';
 import './AppearanceSettingsCard.css';
 
-interface AppearanceSettingsProps {
+export interface AppearanceSettingsProps {
   themeMode: 'system' | 'light' | 'dark';
   seedColor: string;
-  language: 'system' | 'zh' | 'en' | 'ja' | 'zh-TW';
+  language?: string;
   onThemeModeChange: (mode: 'system' | 'light' | 'dark') => void;
   onSeedColorChange: (color: string) => void;
-  onLanguageChange: (lang: 'system' | 'zh' | 'en' | 'ja' | 'zh-TW') => void;
+  onLanguageChange: (lang: string) => void;
 }
 
-// TODO: [Agent1-Dependency] 替换
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+const PRESET_COLORS = [
+  '#9AD4EA', '#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#C77DFF'
+];
 
-function hslToHex(h: number, s: number, l: number) {
-  l /= 100;
-  const a = s * Math.min(l, 1 - l) / 100;
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
+const LANGS = [
+  { val: 'system', label: '跟随系统' },
+  { val: 'zh', label: '简体中文' },
+  { val: 'zh-TW', label: '繁體中文' },
+  { val: 'en', label: 'English' },
+  { val: 'ja', label: '日本語' },
+];
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   themeMode,
   seedColor,
-  language,
+  language = 'system',
   onThemeModeChange,
   onSeedColorChange,
   onLanguageChange
 }) => {
-  const { t } = useTranslation();
-  
-  // NOTE: 展开状态和模态框状态属于"组件自身私有交互状态"，不涉及业务数据存储，
-  // 保留在组件内符合 SRP（容器组件无须关心弹窗是否展开）
-  const [expanded, setExpanded] = useState(false);
-  const [showColorModal, setShowColorModal] = useState(false);
-  const [hue, setHue] = useState(190);
-  const [sat, setSat] = useState(60);
-  const [lit, setLit] = useState(75);
+  const [showPicker, setShowPicker] = useState(false);
 
-  const previewColor = hslToHex(hue, sat, lit);
-
-  const openColorPicker = () => {
-    setHue(190); setSat(60); setLit(75);
-    setShowColorModal(true);
-  };
-
-  const saveColor = () => {
-    onSeedColorChange(previewColor);
-    setShowColorModal(false);
-  };
+  // 判断当前颜色是否为预设之一
+  const isCustomColor = !PRESET_COLORS.includes(seedColor.toUpperCase()) && !PRESET_COLORS.includes(seedColor);
 
   return (
-    <>
-      <div className={`appearance-settings-card ${expanded ? 'expanded' : ''}`}>
-        <div className="asc-header" onClick={() => setExpanded(!expanded)}>
-          <div className="asc-header-icon">🎨</div>
-          <div className="asc-header-body">
-            <div className="asc-title">{t('settings.appearance') || '外观与多语言'}</div>
-            <div className="asc-subtitle">
-              {themeMode} · {language}
-            </div>
-          </div>
-          <div className="asc-header-arrow">▼</div>
-        </div>
-        
-        <div className="asc-content-wrapper">
-          <div className="asc-content">
-            <div className="asc-section">
-              <div className="asc-label">{t('settings.theme_mode') || '主题模式'}</div>
-              <div className="asc-segmented-controls">
-                {(['system', 'light', 'dark'] as const).map(mode => (
-                  <button 
-                    key={mode}
-                    className={`asc-segment ${themeMode === mode ? 'active' : ''}`}
-                    onClick={() => onThemeModeChange(mode)}
-                  >
-                    {mode === 'system' ? '跟随系统' : mode === 'light' ? '浅色' : '深色'}
-                  </button>
-                ))}
-              </div>
-            </div>
+    <div className="appearance-card-container">
+      <div className="appearance-header">
+         <span className="appearance-icon">🎨</span>
+         <div className="appearance-title-group">
+            <h3>环境与感知 (Appearance)</h3>
+            <p>全盘接管系统的深浅模式与界面核心强调色调。</p>
+         </div>
+      </div>
 
-            <div className="asc-section">
-              <div className="asc-label">{t('settings.theme_color') || '种子主题色'}</div>
-              <div className="asc-color-wrap">
-                <button 
-                  className={`asc-color-preset ${seedColor === '#9AD4EA' ? 'active' : ''}`}
-                  style={{ backgroundColor: '#9AD4EA' }}
-                  onClick={() => onSeedColorChange('#9AD4EA')}
-                >
-                  {seedColor === '#9AD4EA' && <span className="asc-color-check">✓</span>}
-                </button>
-                <button 
-                  className={`asc-color-custom ${seedColor !== '#9AD4EA' ? 'active' : ''}`}
-                  onClick={openColorPicker}
-                >
-                  {seedColor !== '#9AD4EA' ? (
-                     <div style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: seedColor }} />
-                  ) : '+'}
-                </button>
-              </div>
-            </div>
-
-            <div className="asc-divider" />
-
-            <div className="asc-section">
-              <div className="asc-label">{t('settings.language') || '显示语言'}</div>
-              <div className="asc-lang-wrap">
-                {(['system', 'zh', 'zh-TW', 'en', 'ja'] as const).map(lang => (
-                  <button
-                    key={lang}
-                    className={`asc-lang-chip ${language === lang ? 'active' : ''}`}
-                    onClick={() => onLanguageChange(lang)}
-                  >
-                    {lang}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+      <div className="appearance-row">
+        <label>光照模式 (Theme)</label>
+        <div className="theme-toggle-group">
+          <button 
+            className={`theme-btn ${themeMode === 'system' ? 'active' : ''}`}
+            onClick={() => onThemeModeChange('system')}
+          >
+            💻 系统跟随
+          </button>
+          <button 
+            className={`theme-btn ${themeMode === 'light' ? 'active' : ''}`}
+            onClick={() => onThemeModeChange('light')}
+          >
+            ☀️ 日间清晰
+          </button>
+          <button 
+            className={`theme-btn ${themeMode === 'dark' ? 'active' : ''}`}
+            onClick={() => onThemeModeChange('dark')}
+          >
+            🌙 夜宴暗影
+          </button>
         </div>
       </div>
 
-      {showColorModal && (
-        <div className="color-modal-overlay">
-          <div className="color-modal-box">
-            <h3 className="color-modal-title">{t('settings.custom_color') || '自定义颜色'}</h3>
-            <div 
-              className="color-modal-preview" 
-              style={{ backgroundColor: previewColor, boxShadow: `0 4px 12px ${previewColor}80` }}
-            />
-            
-            <div className="color-slider-row">
-              <span className="color-slider-label">色相</span>
-              <input type="range" min="0" max="360" value={hue} onChange={e => setHue(Number(e.target.value))} />
-            </div>
-            <div className="color-slider-row">
-              <span className="color-slider-label">饱和</span>
-              <input type="range" min="0" max="100" value={sat} onChange={e => setSat(Number(e.target.value))} />
-            </div>
-            <div className="color-slider-row">
-              <span className="color-slider-label">明度</span>
-              <input type="range" min="20" max="90" value={lit} onChange={e => setLit(Number(e.target.value))} />
-            </div>
+      <div className="appearance-row">
+        <label>基核种子色 (Seed Color)</label>
+        <div className="color-palette">
+           {PRESET_COLORS.map(c => (
+             <div 
+               key={c}
+               className={`color-dot ${seedColor.toUpperCase() === c.toUpperCase() ? 'active' : ''}`}
+               style={{ backgroundColor: c }}
+               onClick={() => onSeedColorChange(c)}
+             />
+           ))}
+           <div 
+             className={`color-dot custom-color-picker ${isCustomColor ? 'active' : ''}`}
+             style={{ background: isCustomColor ? seedColor : 'linear-gradient(45deg, #FF6B6B, #FFD93D, #4D96FF, #C77DFF)' }}
+             onClick={() => setShowPicker(!showPicker)}
+           >
+             {isCustomColor ? '' : '+'}
+           </div>
 
-            <div className="color-modal-actions">
-              <button className="color-modal-btn cancel" onClick={() => setShowColorModal(false)}>
-                {t('common.cancel') || '取消'}
-              </button>
-              <button className="color-modal-btn save" onClick={saveColor}>
-                {t('common.save') || '保存'}
-              </button>
-            </div>
-          </div>
+           {showPicker && (
+             <div className="color-native-wrapper">
+                <input 
+                  type="color" 
+                  value={seedColor}
+                  onChange={(e) => onSeedColorChange(e.target.value)}
+                  onBlur={() => setShowPicker(false)}
+                />
+                <span className="color-hint">选择后点击他处关闭</span>
+             </div>
+           )}
         </div>
-      )}
-    </>
+      </div>
+
+      <div className="appearance-row" style={{ marginTop: '8px' }}>
+        <label>界译语言 (Locale)</label>
+        <div className="lang-chips">
+           {LANGS.map(l => (
+             <div 
+               key={l.val}
+               className={`lang-chip ${language === l.val ? 'active' : ''}`}
+               onClick={() => onLanguageChange(l.val)}
+             >
+               {l.label}
+             </div>
+           ))}
+        </div>
+      </div>
+
+    </div>
   );
 };

@@ -6,15 +6,19 @@ export interface AIProviderConfig {
   enabled: boolean;
   apiKey: string;
   apiBaseUrl?: string;
+  models?: string[];
+  enabledModels?: string[];
 }
 
 export interface AIModelServicesViewProps {
   providers: Record<string, AIProviderConfig>;
   onUpdateProvider: (providerId: string, updates: Partial<AIProviderConfig>) => void;
+  onTestConnection?: (providerId: string, apiKey: string, baseUrl?: string) => Promise<void>;
+  onFetchModels?: (providerId: string, apiKey: string, baseUrl?: string) => Promise<string[]>;
 }
 
-// 供界面展示使用的主要云脑预设名单（包含原有的 13 个主流平台意向）
-const KNOWN_PROVIDERS = [
+// 核心自带云脑，可追加后续通过新增按钮自定义的类型
+const BASE_KNOWN_PROVIDERS = [
   { id: 'openai', name: 'OpenAI', icon: '🧠', defaultBase: 'https://api.openai.com/v1' },
   { id: 'anthropic', name: 'Anthropic (Claude)', icon: '🔮', defaultBase: 'https://api.anthropic.com' },
   { id: 'google', name: 'Google (Gemini)', icon: '🌌', defaultBase: 'https://generativelanguage.googleapis.com' },
@@ -24,32 +28,120 @@ const KNOWN_PROVIDERS = [
   { id: 'qwen', name: 'Qwen (阿里通义)', icon: '☁️', defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
   { id: 'zhipu', name: 'ZhipuAI (智谱清言)', icon: '🧩', defaultBase: 'https://open.bigmodel.cn/api/paas/v4' },
   { id: 'xunfei', name: 'Xunfei (星火)', icon: '✨', defaultBase: 'https://spark-api-open.xf-yun.com/v1' },
-  { id: 'minimax', name: 'MiniMax (海螺)', icon: '🐚', defaultBase: 'https://api.minimax.chat/v1' },
-  { id: 'stepfun', name: 'StepFun (阶跃星辰)', icon: '💫', defaultBase: 'https://api.stepfun.com/v1' },
-  { id: 'yi', name: '01.AI (零一万物)', icon: '🔢', defaultBase: 'https://api.lingyiwanwu.com/v1' },
-  { id: 'groq', name: 'Groq (极速 LPU)', icon: '⚡', defaultBase: 'https://api.groq.com/openai/v1' },
 ];
 
-export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({ providers, onUpdateProvider }) => {
+export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({ 
+  providers, 
+  onUpdateProvider, 
+  onTestConnection, 
+  onFetchModels 
+}) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [loadingTest, setLoadingTest] = useState<Record<string, boolean>>({});
+  const [loadingFetch, setLoadingFetch] = useState<Record<string, boolean>>({});
+
+  // 合并已知的和用户自行录入的 Providers
+  const displayIds = new Set<string>();
+  BASE_KNOWN_PROVIDERS.forEach(p => displayIds.add(p.id));
+  Object.keys(providers).forEach(pid => displayIds.add(pid));
+
+  const ALL_LIST = Array.from(displayIds).map(id => {
+    const base = BASE_KNOWN_PROVIDERS.find(b => b.id === id);
+    if (base) return base;
+    return { id, name: id.toUpperCase(), icon: '🌐', defaultBase: '' }; // Fallback for custom added
+  });
 
   const toggleExpand = (id: string) => {
-    if (expandedId === id) setExpandedId(null);
-    else setExpandedId(id);
+    setExpandedId(prev => prev === id ? null : id);
+  };
+
+  const handleTest = async (id: string, config: AIProviderConfig) => {
+    if (!onTestConnection) return;
+    if (!config.apiKey) {
+      alert('请先填写 API Key (鉴权口令) 后再测试连通性！');
+      return;
+    }
+    setLoadingTest(prev => ({ ...prev, [id]: true }));
+    try {
+      await onTestConnection(id, config.apiKey, config.apiBaseUrl);
+      alert('✅ 测通成功！该节点返回的信号良好。');
+    } catch (e: any) {
+      alert(`❌ 测通失败: ${e.message}`);
+    } finally {
+      setLoadingTest(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleFetch = async (id: string, config: AIProviderConfig) => {
+    if (!onFetchModels) return;
+    if (!config.apiKey) {
+      alert('请先填写 API Key，以获取您的账户有权访问的流式图表。');
+      return;
+    }
+    setLoadingFetch(prev => ({ ...prev, [id]: true }));
+    try {
+      const RemoteModels = await onFetchModels(id, config.apiKey, config.apiBaseUrl);
+      // 默认全选拉取到的模型，或与早期的 enabledModels 进行对冲合并
+      const oldEnabled = new Set(config.enabledModels || []);
+      const newEnabled = RemoteModels.filter(rm => oldEnabled.size === 0 || oldEnabled.has(rm));
+      
+      onUpdateProvider(id, { 
+        models: RemoteModels, 
+        enabledModels: newEnabled.length > 0 ? newEnabled : RemoteModels 
+      });
+      alert(`🎉 成功拉取 ${RemoteModels.length} 个模型！`);
+    } catch (e: any) {
+      alert(`⚠️ 无法获取可用模型组: ${e.message}`);
+    } finally {
+      setLoadingFetch(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleToggleModel = (providerId: string, modelId: string, isChecked: boolean, config: AIProviderConfig) => {
+    const activeList = [...(config.enabledModels || [])];
+    if (isChecked) {
+      if (!activeList.includes(modelId)) activeList.push(modelId);
+    } else {
+      const idx = activeList.indexOf(modelId);
+      if (idx !== -1) activeList.splice(idx, 1);
+    }
+    onUpdateProvider(providerId, { enabledModels: activeList });
+  };
+
+  const handleCreateCustom = () => {
+    const rawInput = window.prompt("请输入自定义供应商标识（例如: proxy_openai）：\n*将创建一个新的空白接口点卡片以供使用。");
+    if (rawInput && rawInput.trim() !== '') {
+       const pid = rawInput.trim().toLowerCase();
+       if (!providers[pid]) {
+          onUpdateProvider(pid, { enabled: true, apiKey: '' });
+          setExpandedId(pid);
+       } else {
+          alert('该提供商标签已存在于云脑池中。');
+       }
+    }
   };
 
   return (
     <div className={styles.container}>
-      <h3 className={styles.headerTitle}>大模型服务集成端</h3>
-      <p className={styles.headerSubtitle}>启用的服务商才会出现在对话模型池中。您的 API Key 此刻已受跨进程加密托管。</p>
+      <div className={styles.header}>
+        <div className={styles.titleInfo}>
+          <h3 className={styles.title}>大模型服务集成端</h3>
+          <p className={styles.subtitle}>管控所有云节点与局域网节点。只有启用的服务才会出现，并且你可以手动勾选所需的显式子模型池。</p>
+        </div>
+        <button className={styles.addCustomBtn} onClick={handleCreateCustom}>
+          ➕ 新增自定义供应源
+        </button>
+      </div>
 
       <div className={styles.list}>
-        {KNOWN_PROVIDERS.map((kp) => {
+        {ALL_LIST.map((kp) => {
           const config = providers[kp.id] || { providerId: kp.id, enabled: false, apiKey: '', apiBaseUrl: '' };
           const isExpanded = expandedId === kp.id;
+          const isTesting = loadingTest[kp.id] || false;
+          const isFetching = loadingFetch[kp.id] || false;
 
           return (
-            <div key={kp.id} className={`${styles.providerCard} ${isExpanded ? styles.expanded : ''}`}>
+            <div key={kp.id} className={`${styles.providerCard} ${isExpanded ? styles.expanded : ''} ${!config.enabled ? styles.disabled : ''}`}>
               <div className={styles.cardHeader} onClick={() => toggleExpand(kp.id)}>
                 <div className={styles.brandRow}>
                   <div className={styles.brandIcon}>{kp.icon}</div>
@@ -65,34 +157,78 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({ provid
                     />
                     <span className={styles.slider}></span>
                   </label>
-                  <button className={styles.collapseBtn}>
+                  <div className={styles.collapseBtn}>
                     {isExpanded ? '▲' : '▼'}
-                  </button>
+                  </div>
                 </div>
               </div>
 
               {isExpanded && (
                 <div className={styles.cardBody}>
-                   <div className={styles.inputGroup}>
-                     <label>API Key 鉴权口令</label>
-                     <input 
-                       className={styles.textField}
-                       type="password"
-                       placeholder="sk-..."
-                       value={config.apiKey}
-                       onChange={(e) => onUpdateProvider(kp.id, { apiKey: e.target.value })}
-                     />
+                   <div className={styles.configsGrid}>
+                      <div className={styles.inputGroup}>
+                        <label>🔑 API Key 鉴权口令</label>
+                        <input 
+                          className={styles.textField}
+                          type="password"
+                          placeholder="sk-..."
+                          value={config.apiKey}
+                          onChange={(e) => onUpdateProvider(kp.id, { apiKey: e.target.value })}
+                        />
+                      </div>
+                      <div className={styles.inputGroup}>
+                        <label>🌐 自定义反向代理节点 (Base URL)</label>
+                        <input 
+                          className={styles.textField}
+                          type="text"
+                          placeholder={kp.defaultBase}
+                          value={config.apiBaseUrl || ''}
+                          onChange={(e) => onUpdateProvider(kp.id, { apiBaseUrl: e.target.value })}
+                        />
+                      </div>
                    </div>
-                   <div className={styles.inputGroup}>
-                     <label>自定义反向代理节点 (Base URL)</label>
-                     <input 
-                       className={styles.textField}
-                       type="text"
-                       placeholder={kp.defaultBase}
-                       value={config.apiBaseUrl || ''}
-                       onChange={(e) => onUpdateProvider(kp.id, { apiBaseUrl: e.target.value })}
-                     />
+
+                   {/* Connection Tools */}
+                   <div className={styles.toolsRow}>
+                      <button 
+                        className={styles.toolBtnPrimary} 
+                        onClick={() => handleTest(kp.id, config)}
+                        disabled={isTesting}
+                      >
+                        {isTesting ? '⏳ 正在测速...' : '⚡ 测试连通网关'}
+                      </button>
+                      <button 
+                        className={styles.toolBtnSecondary} 
+                        onClick={() => handleFetch(kp.id, config)}
+                        disabled={isFetching}
+                      >
+                        {isFetching ? '⏳ 读取中...' : '📡 获取可用模型单'}
+                      </button>
                    </div>
+
+                   {/* Model List Checkbox Area */}
+                   {config.models && config.models.length > 0 && (
+                     <div className={styles.modelsContainer}>
+                        <div className={styles.modelsLabel}>
+                           勾选将在对话、补全界面可视化的子模型集合：
+                        </div>
+                        <div className={styles.modelsGrid}>
+                           {config.models.map(mdl => {
+                             const isChecked = (config.enabledModels || []).includes(mdl);
+                             return (
+                               <label key={mdl} className={styles.modelCheckboxItem}>
+                                 <input 
+                                   type="checkbox" 
+                                   checked={isChecked}
+                                   onChange={e => handleToggleModel(kp.id, mdl, e.target.checked, config)}
+                                 />
+                                 <span>{mdl}</span>
+                               </label>
+                             );
+                           })}
+                        </div>
+                     </div>
+                   )}
                 </div>
               )}
             </div>

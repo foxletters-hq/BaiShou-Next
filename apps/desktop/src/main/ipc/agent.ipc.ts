@@ -1,5 +1,4 @@
-import { ipcMain, dialog, BrowserWindow, app } from 'electron'
-import { join } from 'path';
+import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { AgentService, MockAgentSessionRepository, MockAgentMessageRepository } from '@baishou/core'
 import { SessionRepository, AssistantRepository, MessageRepository } from '@baishou/database'
 import { appDb } from '../db'

@@ -1,63 +1,152 @@
 import React from 'react';
 import styles from './IdentitySettingsCard.module.css';
 
-export interface AgentBehaviorConfig {
-  defaultSystemPrompt: string;
-  defaultTemperature: number;
+export interface UserProfileConfig {
+  nickname: string;
+  avatarPath: string;
+  activePersonaId: string;
+  personas: Record<string, Record<string, string>>;
 }
 
-interface IdentitySettingsCardProps {
-  config: AgentBehaviorConfig;
-  onChange: (config: AgentBehaviorConfig) => void;
+export interface IdentitySettingsCardProps {
+  profile: UserProfileConfig;
+  onChange: (profile: UserProfileConfig) => void;
 }
 
-export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ config, onChange }) => {
+export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ profile, onChange }) => {
+  const activeId = profile.activePersonaId || 'Default';
+  // 确保 fallback
+  const allPersonas = profile.personas || { 'Default': {} };
+  
+  if (!allPersonas[activeId]) {
+    allPersonas[activeId] = {};
+  }
+  
+  const currentFacts = allPersonas[activeId];
+
+  // 1. 切换活动 Persona
+  const handleSwitch = (pid: string) => {
+    if (pid !== activeId) {
+      onChange({ ...profile, activePersonaId: pid });
+    } else {
+      // 点击了当前的，可以重命名
+      const newName = window.prompt("重新命名的身份名", pid);
+      if (newName && newName !== pid && !allPersonas[newName]) {
+        const nextPersonas = { ...allPersonas };
+        nextPersonas[newName] = nextPersonas[pid];
+        delete nextPersonas[pid];
+        onChange({ ...profile, personas: nextPersonas, activePersonaId: newName });
+      }
+    }
+  };
+
+  // 2. 新增 Persona
+  const handleAddPersona = () => {
+    const newName = window.prompt("输入新的身份卡名字 (例如：前端专家、法律顾问)");
+    if (newName && !allPersonas[newName]) {
+      const nextPersonas = { ...allPersonas, [newName]: {} };
+      onChange({ ...profile, personas: nextPersonas, activePersonaId: newName });
+    }
+  };
+
+  // 3. 删除当前 Persona
+  const handleDeletePersona = (pid: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (Object.keys(allPersonas).length <= 1) {
+      alert("至少保留一张身份卡！");
+      return;
+    }
+    if (window.confirm(`确定删除身份卡 [${pid}] 吗？`)) {
+      const nextPersonas = { ...allPersonas };
+      delete nextPersonas[pid];
+      const remainingIds = Object.keys(nextPersonas);
+      onChange({ ...profile, personas: nextPersonas, activePersonaId: remainingIds[0] });
+    }
+  };
+
+  // 4. 增改 Fact
+  const handleAddOrEditFact = (oldKey?: string, oldVal?: string) => {
+    const k = window.prompt("键 (例如：年纪、喜好)", oldKey || "");
+    if (!k) return;
+    const v = window.prompt(`[${k}] 的值 (例如：永远的18岁)`, oldVal || "");
+    if (!v) return;
+
+    const nextFacts = { ...currentFacts };
+    if (oldKey && oldKey !== k) {
+      delete nextFacts[oldKey];
+    }
+    nextFacts[k] = v;
+
+    onChange({
+      ...profile,
+      personas: { ...allPersonas, [activeId]: nextFacts }
+    });
+  };
+
+  // 5. 删 Fact
+  const handleDeleteFact = (k: string) => {
+    if (window.confirm(`删除记录 ${k}？`)) {
+      const nextFacts = { ...currentFacts };
+      delete nextFacts[k];
+      onChange({
+        ...profile,
+        personas: { ...allPersonas, [activeId]: nextFacts }
+      });
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h3 className={styles.title}>系统核心人设与心智参数 (Identity & Mind)</h3>
-        <p className={styles.subtitle}>这些底层指令将注入每一轮对话的最顶层。可使用滑块控制其思想的发散程度。</p>
+        <div className={styles.titleLine}>
+          <div className={styles.titleLeft}>
+            <span className={styles.icon}>🎭</span>
+            <h3 className={styles.title}>多重面具预设档 (Personas & Facts)</h3>
+          </div>
+          <button className={styles.addFactBtn} onClick={() => handleAddOrEditFact()}>
+            + 补充记忆链条
+          </button>
+        </div>
+        <p className={styles.subtitle}>白守将基于这些坚固的「自我认知词条」与您对答。</p>
       </div>
 
-      <div className={styles.row}>
-        <div className={styles.inputGroup} style={{ flex: 1 }}>
-          <label className={styles.label}>
-            底层 System Prompt
-            <span className={styles.labelBadge}>高级</span>
-          </label>
-          <textarea 
-            className={styles.textarea}
-            value={config.defaultSystemPrompt}
-            onChange={(e) => onChange({ ...config, defaultSystemPrompt: e.target.value })}
-            placeholder="例如: 你是一个无所不知但只说重点的数字生命..."
-            rows={4}
-          />
-        </div>
+      <div className={styles.chipRow}>
+        {Object.keys(allPersonas).map(pid => {
+          const isActive = pid === activeId;
+          return (
+            <div 
+              key={pid} 
+              className={`${styles.chip} ${isActive ? styles.chipActive : ''}`}
+              onClick={() => handleSwitch(pid)}
+            >
+              {pid}
+              {isActive && Object.keys(allPersonas).length > 1 && (
+                <span className={styles.chipDel} onClick={(e) => handleDeletePersona(pid, e)}>✕</span>
+              )}
+            </div>
+          );
+        })}
+        <button className={styles.addChipBtn} onClick={handleAddPersona}>+ 面具</button>
       </div>
 
-      <div className={styles.row}>
-        <div className={styles.sliderGroup}>
-          <div className={styles.sliderHeader}>
-            <label className={styles.label}>创造力沸点 (Temperature)</label>
-            <span className={styles.valBadge}>{config.defaultTemperature.toFixed(2)}</span>
+      <div className={styles.factsArea}>
+        {Object.entries(currentFacts).length === 0 ? (
+          <div className={styles.emptyFacts}>
+            <span className={styles.emptyIcon}>🧬</span>
+            <p>该面具尚属一片白纸</p>
           </div>
-          <div className={styles.sliderTrackWrapper}>
-            <input 
-              type="range" 
-              className={styles.rangeInput}
-              min="0" 
-              max="2" 
-              step="0.1" 
-              value={config.defaultTemperature}
-              onChange={(e) => onChange({ ...config, defaultTemperature: parseFloat(e.target.value) })}
-            />
-          </div>
-          <div className={styles.sliderScale}>
-            <span>0.0 (极度严谨/确定性)</span>
-            <span>1.0 (平衡)</span>
-            <span>2.0 (极度发散/极富创造)</span>
-          </div>
-        </div>
+        ) : (
+          Object.entries(currentFacts).map(([k, v]) => (
+            <div key={k} className={styles.factRow}>
+              <div className={styles.factKey}>{k}</div>
+              <div className={styles.factVal}>{v}</div>
+              <div className={styles.factActions}>
+                <button title="编辑" onClick={() => handleAddOrEditFact(k, v)}>✎</button>
+                <button title="删除" className={styles.delBtn} onClick={() => handleDeleteFact(k)}>✕</button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

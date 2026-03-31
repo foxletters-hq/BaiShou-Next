@@ -1,28 +1,21 @@
 .container {
   display: flex;
   flex-direction: column;
+  gap: 20px;
 }
 
 .headerTitle {
   font-size: 16px;
   font-weight: 600;
-  margin: 0 0 6px 0;
   color: var(--text-primary);
+  margin: 0 0 6px 0;
 }
 
 .headerSubtitle {
   font-size: 13px;
   color: var(--text-secondary);
-  margin: 0 0 20px 0;
   line-height: 1.5;
-}
-
-code {
-  background: rgba(148, 163, 184, 0.2);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  color: #4ade80;
+  margin: 0 0 16px 0;
 }
 
 .grid {
@@ -32,21 +25,37 @@ code {
 }
 
 .routingCard {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(148, 163, 184, 0.08);
-  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 12px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
 }
 
 .routingCard:hover {
-  background: rgba(0, 0, 0, 0.15);
-  border-color: rgba(74, 222, 128, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.routingCardDanger {
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.routingCardDanger:hover {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.dangerIcon {
+  color: #ef4444;
+}
+
+.dangerName {
+  color: #fca5a5 !important;
 }
 
 .routeHeader {
@@ -56,21 +65,13 @@ code {
 }
 
 .routeIcon {
-  font-size: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
+  font-size: 24px;
 }
 
 .routeMeta {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1;
 }
 
 .routeName {
@@ -80,25 +81,36 @@ code {
 }
 
 .routeDesc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
 }
 
-.routeInput {
-  background: rgba(0, 0, 0, 0.2);
+.routeSelect {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 8px;
-  padding: 10px 14px;
-  color: #4ade80;
+  padding: 10px 12px;
+  color: #9AD4EA;
   font-size: 13px;
-  font-family: monospace;
-  outline: none;
-  transition: border-color 0.2s;
-  width: 100%;
+  font-weight: 500;
+  appearance: none; /* remove native arrow for cross-browser glass styling */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239AD4EA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  transition: all 0.2s;
+  cursor: pointer;
 }
 
-.routeInput:focus {
-  border-color: #4ade80;
-  background: rgba(0, 0, 0, 0.3);
+.routeSelect:focus {
+  outline: none;
+  border-color: #9AD4EA;
+  box-shadow: 0 0 0 2px rgba(154, 212, 234, 0.2);
+}
+
+.routeSelect option {
+  background: #1e293b;
+  color: #f1f5f9;
 }
