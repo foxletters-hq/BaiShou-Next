@@ -11,3 +11,5 @@ export * from './repositories/diary.repository';
 export * from './repositories/diary.repository.impl';
 export * from './repositories/agent.repository';
 export * from './drivers/vec-capability';
+export * from './connection.manager.types';
+export * from './connection.manager';
