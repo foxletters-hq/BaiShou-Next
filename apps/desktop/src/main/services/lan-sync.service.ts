@@ -58,6 +58,12 @@ export class DesktopLanSyncService implements ILanSyncService {
       req.pipe(writeStream);
 
       req.on('end', () => {
+        // 网络请求结束，等待文件流彻底刷入磁盘
+        writeStream.end();
+      });
+
+      writeStream.on('finish', () => {
+        // 此时写入进程正式完成关停，并解除文件句柄占用，可安全进行解压
         if (this.fileReceivedCallback) {
           this.fileReceivedCallback(tempPath);
         }

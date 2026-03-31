@@ -38,14 +38,23 @@ export class WebDavSyncClient implements ICloudSyncClient {
     await this.ensureDirExists(this.basePath);
 
     const remotePath = this.basePath + filename;
-    const fileBuffer = fs.readFileSync(localFilePath);
-    await this.client.putFileContents(remotePath, fileBuffer, { overwrite: true });
+    const readStream = fs.createReadStream(localFilePath);
+    
+    // WebDAV client allows readable streams for putFileContents in newer versions
+    await this.client.putFileContents(remotePath, readStream as any, { overwrite: true });
   }
 
   async downloadFile(remoteFilename: string, localDestPath: string): Promise<void> {
     const remotePath = this.basePath + remoteFilename;
-    const buffer = await this.client.getFileContents(remotePath) as Buffer;
-    fs.writeFileSync(localDestPath, buffer);
+    const writeStream = fs.createWriteStream(localDestPath);
+    const readStream = this.client.createReadStream(remotePath);
+    
+    return new Promise((resolve, reject) => {
+      readStream.pipe(writeStream);
+      writeStream.on('finish', () => resolve());
+      readStream.on('error', reject);
+      writeStream.on('error', reject);
+    });
   }
 
   async listFiles(): Promise<SyncRecord[]> {
