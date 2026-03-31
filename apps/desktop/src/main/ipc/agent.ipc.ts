@@ -1,11 +1,8 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron'
 import { join } from 'path';
 import { AgentService, MockAgentSessionRepository, MockAgentMessageRepository } from '@baishou/core'
-import { initNodeDatabase, SessionRepository, AssistantRepository, MessageRepository } from '@baishou/database'
-
-// 1. 初始化 SQLite
-const dbPath = join(app.getPath('userData'), 'baishou_next_agent.db');
-const appDb = initNodeDatabase(dbPath);
+import { SessionRepository, AssistantRepository, MessageRepository } from '@baishou/database'
+import { appDb } from '../db'
 
 // 2. 初始化持久层 Repositories
 const realSessionRepo = new SessionRepository(appDb);
