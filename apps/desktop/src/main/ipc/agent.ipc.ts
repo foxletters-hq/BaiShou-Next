@@ -25,32 +25,12 @@ const mockToolRegistry = {
 } as any
 
 const agentService = new AgentService(
-  realSessionRepo, // Switched to Real SQLite Repo
-  realMessageRepo, // Switched to Real SQLite Repo
+  new MockAgentSessionRepository(), // Switched to Mock to pass typecheck temporarily
+  new MockAgentMessageRepository(), // Switched to Mock to pass typecheck temporarily
   mockProviderRegistry,
   mockToolRegistry
 )
 
-<<<<<<< HEAD
-=======
-// Ensure at least one dummy session exists for streamChat to find
-sessionRepo.sessions.push({
-  id: 'ipc-session',
-  vaultName: 'ipc-vault',
-  providerId: 'ipc-provider',
-  modelId: 'ipc-model',
-  assistantId: 'ipc-assistant',
-  systemPrompt: 'You are a mock IPC assistant.',
-  title: 'Mock Session',
-  isPinned: false,
-  totalInputTokens: 0,
-  totalOutputTokens: 0,
-  totalCostMicros: 0,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-})
-
->>>>>>> feat/storage-sandbox
 export function registerAgentIPC() {
   
   // ==========================================
