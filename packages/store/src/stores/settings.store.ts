@@ -7,7 +7,8 @@ import type {
   WebSearchConfig, 
   SummaryConfig, 
   ToolManagementConfig, 
-  McpServerConfig 
+  McpServerConfig,
+  HotkeyConfig
 } from '@baishou/shared';
 
 export type AppThemeMode = 'light' | 'dark' | 'system';
@@ -27,6 +28,7 @@ export interface SettingsState {
   summaryConfig: SummaryConfig | null;
   toolManagementConfig: ToolManagementConfig | null;
   mcpServerConfig: McpServerConfig | null;
+  hotkeyConfig: HotkeyConfig | null;
 
   isLoading: boolean;
 }
@@ -52,6 +54,7 @@ export interface SettingsActions {
   setSummaryConfig: (config: SummaryConfig) => Promise<void>;
   setToolManagementConfig: (config: ToolManagementConfig) => Promise<void>;
   setMcpServerConfig: (config: McpServerConfig) => Promise<void>;
+  setHotkeyConfig: (config: HotkeyConfig) => Promise<void>;
 }
 
 export const useSettingsStore = createStore<SettingsState & SettingsActions>('SettingsStore', (set, get: any) => ({
@@ -67,6 +70,7 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
   summaryConfig: null,
   toolManagementConfig: null,
   mcpServerConfig: null,
+  hotkeyConfig: null,
   
   isLoading: false,
 
@@ -81,7 +85,7 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
         const { settings } = (window as any).api;
         const [
           providers, globalModels, agentBehavior, ragConfig, 
-          webSearchConfig, summaryConfig, toolManagementConfig, mcpServerConfig
+          webSearchConfig, summaryConfig, toolManagementConfig, mcpServerConfig, hotkeyConfig
         ] = await Promise.all([
           settings.getProviders(),
           settings.getGlobalModels(),
@@ -90,12 +94,13 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
           settings.getWebSearchConfig(),
           settings.getSummaryConfig(),
           settings.getToolManagementConfig(),
-          settings.getMcpServerConfig()
+          settings.getMcpServerConfig(),
+          settings.getHotkeyConfig()
         ]);
         
         set({ 
           providers, globalModels, agentBehavior, ragConfig, 
-          webSearchConfig, summaryConfig, toolManagementConfig, mcpServerConfig 
+          webSearchConfig, summaryConfig, toolManagementConfig, mcpServerConfig, hotkeyConfig 
         });
       }
     } catch (e) {
@@ -175,6 +180,13 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
     set({ mcpServerConfig: config });
     if (typeof window !== 'undefined' && (window as any).api?.settings) {
       await (window as any).api.settings.setMcpServerConfig(config);
+    }
+  },
+
+  setHotkeyConfig: async (config) => {
+    set({ hotkeyConfig: config });
+    if (typeof window !== 'undefined' && (window as any).api?.settings) {
+      await (window as any).api.settings.setHotkeyConfig(config);
     }
   }
 }));

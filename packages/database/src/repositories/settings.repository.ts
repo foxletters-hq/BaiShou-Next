@@ -2,12 +2,14 @@ import { eq } from 'drizzle-orm';
 import { systemSettingsTable } from '../schema/system-settings';
 import type { 
   AIProviderConfig, GlobalModelsConfig, AgentBehaviorConfig, RagConfig, 
-  WebSearchConfig, SummaryConfig, ToolManagementConfig, McpServerConfig 
+  WebSearchConfig, SummaryConfig, ToolManagementConfig, McpServerConfig,
+  HotkeyConfig
 } from '@baishou/shared';
 import {
   DEFAULT_AI_PROVIDERS, DEFAULT_GLOBAL_MODELS, DEFAULT_AGENT_BEHAVIOR, 
   DEFAULT_RAG_CONFIG, DEFAULT_WEB_SEARCH_CONFIG, DEFAULT_SUMMARY_CONFIG, 
-  DEFAULT_TOOL_MANAGEMENT_CONFIG, DEFAULT_MCP_SERVER_CONFIG
+  DEFAULT_TOOL_MANAGEMENT_CONFIG, DEFAULT_MCP_SERVER_CONFIG,
+  DEFAULT_HOTKEY_CONFIG
 } from './settings.defaults';
 
 export class SettingsRepository {
@@ -121,4 +123,12 @@ export class SettingsRepository {
   async setMcpServerConfig(config: McpServerConfig): Promise<void> {
      await this.set('mcp_server_config', config);
   }
+
+  async getHotkeyConfig(): Promise<HotkeyConfig> {
+     return (await this.get<HotkeyConfig>('hotkey_config')) ?? DEFAULT_HOTKEY_CONFIG;
+  }
+  async setHotkeyConfig(config: HotkeyConfig): Promise<void> {
+     await this.set('hotkey_config', config);
+  }
 }
+
