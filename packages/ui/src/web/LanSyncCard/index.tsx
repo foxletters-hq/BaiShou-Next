@@ -22,6 +22,15 @@ export interface LanSyncCardProps {
   onImportZip?: (filePath: string) => Promise<void>;
 }
 
+const FIXED_POSITIONS = [
+  { top: '20%', left: '20%' },
+  { top: '30%', left: '75%' },
+  { top: '75%', left: '50%' },
+  { top: '65%', left: '15%' },
+  { top: '80%', left: '80%' },
+  { top: '15%', left: '50%' }
+];
+
 export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   onStartBroadcasting,
   onStopBroadcasting,
@@ -91,45 +100,78 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h3 className={styles.title}>跨端局域网双向快传 (LAN Sync)</h3>
+        <div className={styles.titleRow}>
+          <h3 className={styles.title}>跨端局域网双向快传 (LAN Sync)</h3>
+          <div className={`${styles.statusDot} ${isActive ? styles.activeDot : ''}`}></div>
+        </div>
         <p className={styles.subtitle}>
-          无需耗费外网流量即可将庞大的备份从电脑推向手机。开启雷达后将同时激活发现与接收服务。
+          无需耗费外网流量即可将庞大的备份从电脑推向移动哨站。
         </p>
       </div>
 
-      <div className={styles.actions}>
-         <button 
-           className={isActive ? styles.stopBtn : styles.startBtn} 
-           onClick={toggleDualMode}
-         >
-           {isActive ? '关闭局域网雷达' : '全频段雷达点火 (寻找并接收)'}
-         </button>
+      <div className={styles.radarZone}>
+        {isActive && (
+          <div className={styles.radarRings}>
+            <div className={`${styles.ring} ${styles.ring1}`}></div>
+            <div className={`${styles.ring} ${styles.ring2}`}></div>
+            <div className={`${styles.ring} ${styles.ring3}`}></div>
+          </div>
+        )}
+
+        <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
+           <span className={styles.coreIcon}>🛰️</span>
+        </div>
+
+        {!isActive && (
+          <div className={styles.silentHint}>
+             <span className={styles.silentIcon}>📡</span>
+             <p>雷达处于静默休眠状态。</p>
+          </div>
+        )}
+
+        {isActive && devices.length === 0 && (
+          <div className={styles.scanHint}>
+            正在不间断搜寻子网域中的白守节点...
+          </div>
+        )}
+
+        {isActive && devices.map((d, index) => {
+          const pos = FIXED_POSITIONS[index % FIXED_POSITIONS.length];
+          const isSending = sendingTo === d.rawServiceId;
+          return (
+            <div 
+              key={d.rawServiceId} 
+              className={`${styles.deviceBubble} ${isSending ? styles.bubbleSending : ''}`}
+              style={{ top: pos.top, left: pos.left }}
+            >
+              <div className={styles.bubbleIcon}>
+                {d.deviceType === 'mobile' ? '📱' : '💻'}
+              </div>
+              <div className={styles.bubbleInfo}>
+                <span className={styles.bubbleName} title={d.nickname}>{d.nickname}</span>
+                <span className={styles.bubbleIp}>{d.ip}</span>
+              </div>
+              
+              <button 
+                className={styles.sendOverlayBtn}
+                disabled={sendingTo !== null}
+                onClick={(e) => { e.stopPropagation(); handleSend(d); }}
+              >
+                {isSending ? `${progress}%` : '推入快传'}
+              </button>
+            </div>
+          )
+        })}
       </div>
 
-      {isActive && (
-        <div className={styles.radarZone}>
-          <h4 className={styles.radarTitle}>雷达发现设备 ({devices.length})</h4>
-          {devices.length === 0 ? <p className={styles.loading}>📡 扫描中...</p> : (
-            <div className={styles.deviceList}>
-              {devices.map(d => (
-                <div key={d.rawServiceId} className={styles.deviceCard}>
-                  <div>
-                    <div className={styles.deviceName}>{d.nickname} ({d.deviceType})</div>
-                    <div className={styles.deviceIp}>{d.ip}:{d.port}</div>
-                  </div>
-                  <button 
-                    disabled={sendingTo !== null}
-                    onClick={() => handleSend(d)}
-                    className={styles.sendBtn}
-                  >
-                    {sendingTo === d.rawServiceId ? `推送中 ${progress}%` : '推入快传'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <div className={styles.actionsBox}>
+         <button 
+           className={`${styles.controlBtn} ${isActive ? styles.stopBtn : styles.startBtn}`} 
+           onClick={toggleDualMode}
+         >
+           {isActive ? '关闭全频段探测' : '雷达点火引擎 (发现与侦听本机)'}
+         </button>
+      </div>
     </div>
   );
 };
