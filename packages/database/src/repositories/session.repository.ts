@@ -92,6 +92,22 @@ export class SessionRepository {
   }
 
   /**
+   * 更新模型用量流耗散的 Tokens 与其对于美元微单位 (`micros`) 的总花销。
+   * 此更新方式为利用 SQLite 后台进行增量原子累加以确保安全。
+   */
+  async updateTokenUsage(id: string, inputTokens: number, outputTokens: number, costMicros: number = 0): Promise<void> {
+    const { sql } = await import('drizzle-orm');
+    await this.db.update(agentSessionsTable)
+      .set({ 
+        totalInputTokens: sql`${agentSessionsTable.totalInputTokens} + ${inputTokens}`,
+        totalOutputTokens: sql`${agentSessionsTable.totalOutputTokens} + ${outputTokens}`,
+        totalCostMicros: sql`${agentSessionsTable.totalCostMicros} + ${costMicros}`,
+        updatedAt: new Date() 
+      })
+      .where(eq(agentSessionsTable.id, id));
+  }
+
+  /**
    * 获取会话的消息体历史
    */
   async getMessagesBySession(sessionId: string, limit: number = 50) {
