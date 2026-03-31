@@ -33,8 +33,11 @@ sessionRepo.sessions.push({
   modelId: 'ipc-model',
   assistantId: 'ipc-assistant',
   systemPrompt: 'You are a mock IPC assistant.',
+  title: 'Mock Session',
+  isPinned: false,
   totalInputTokens: 0,
   totalOutputTokens: 0,
+  totalCostMicros: 0,
   createdAt: new Date(),
   updatedAt: new Date(),
 })
