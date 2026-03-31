@@ -1,0 +1,92 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settingItem {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.settingItem:not(:last-child) {
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+}
+
+.settingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.settingLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #1A1A1A);
+}
+
+.settingHint {
+  font-size: 12px;
+  color: var(--text-secondary, #475569);
+  line-height: 1.4;
+}
+
+/* Switch */
+.switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.switch[data-on="true"] {
+  background-color: var(--color-primary, #5BA8F5);
+}
+
+.switchHandle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.switch[data-on="true"] .switchHandle {
+  transform: translateX(20px);
+}
+
+/* Range Input */
+.controlGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 200px;
+}
+
+.valueDisplay {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary, #5BA8F5);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}
+
+.rangeInput {
+  flex: 1;
+  accent-color: var(--color-primary, #5BA8F5);
+  height: 6px;
+  cursor: pointer;
+}

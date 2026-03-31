@@ -1,0 +1,217 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #1A1A1A);
+  margin: 0;
+}
+
+.desc {
+  font-size: 13px;
+  color: var(--text-secondary, #475569);
+  margin: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.providerCard {
+  border-radius: 12px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  background-color: var(--bg-surface, #FFFFFF);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.providerCard:hover {
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+}
+
+.expanded {
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.cardHeader {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.cardHeader:hover {
+  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.2);
+}
+
+.cardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardNameRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.providerName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+}
+
+.providerId {
+  font-size: 11px;
+  color: rgba(var(--text-secondary-rgb, 71, 85, 105), 0.6);
+  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.cardStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusIndicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-error, #EF4444);
+}
+
+.statusIndicator[data-active="true"] {
+  background-color: #10B981;
+}
+
+.statusText {
+  font-size: 12px;
+  color: var(--text-secondary, #475569);
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chevron {
+  font-size: 20px;
+  color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.5);
+  font-family: monospace;
+  transition: transform 0.2s ease;
+  transform: rotate(90deg);
+}
+
+.chevronOpen {
+  transform: rotate(-90deg);
+  color: var(--color-primary, #5BA8F5);
+}
+
+/* Switch */
+.switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.switch[data-on="true"] {
+  background-color: var(--color-primary, #5BA8F5);
+}
+
+.switchHandle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.switch[data-on="true"] .switchHandle {
+  transform: translateX(20px);
+}
+
+/* Form */
+.editForm {
+  padding: 0 16px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-top: 1px dashed rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  margin-top: 4px;
+  padding-top: 16px;
+  animation: slideDown 0.2s ease-out forwards;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #1A1A1A);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.labelHint {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(var(--text-secondary-rgb, 71, 85, 105), 0.6);
+}
+
+.formInput {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  background-color: var(--bg-surface-low, #FAFAFA);
+  font-size: 13px;
+  font-family: monospace;
+  color: var(--text-primary, #1A1A1A);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.formInput:focus {
+  border-color: var(--color-primary, #5BA8F5);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+  background-color: var(--bg-surface, #FFFFFF);
+}
