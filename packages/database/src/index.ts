@@ -15,6 +15,9 @@ export * from './repositories/session.repository';
 export * from './repositories/assistant.repository';
 export * from './repositories/message.repository';
 export * from './repositories/settings.repository';
+export * from './repositories/settings.defaults';
+export * from './repositories/user-profile.repository';
+export * from './repositories/prompt-shortcut.repository';
 
 export * from './drivers/vec-capability';
 export * from './drivers/node-sqlite.driver';
