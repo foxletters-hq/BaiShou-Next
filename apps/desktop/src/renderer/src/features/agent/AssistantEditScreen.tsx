@@ -1,61 +1,34 @@
-import React, { useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { AssistantEditPage, type AssistantFormData } from '@baishou/ui';
-import { useAssistantStore } from '@baishou/store';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { AssistantEditPage } from '@baishou/ui';
 
 export const AssistantEditScreen: React.FC = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { assistantId } = useParams<{ assistantId: string }>();
-  const { assistants, fetchAssistants, createAssistant, updateAssistant, deleteAssistant } = useAssistantStore();
-
+  const [assistant, setAssistant] = useState<any>(null);
+  
   useEffect(() => {
-    // Ensure we have data loaded if opening directly via URL
-    if (assistants.length === 0) {
-      fetchAssistants();
+    if (id && id !== 'new') {
+      if (typeof window !== 'undefined' && window.electron) {
+        window.electron.ipcRenderer.invoke('agent:get-assistants')
+          .then((list: any[]) => setAssistant(list.find(a => a.id === id)));
+      }
     }
-  }, [assistants.length, fetchAssistants]);
-
-  // If we are editing, map the backend model to ui form data
-  const backendModel = assistantId && assistantId !== 'new' ? assistants.find(a => a.id === assistantId) : null;
-  const existingData: AssistantFormData | null = backendModel ? {
-    id: backendModel.id,
-    name: backendModel.name,
-    emoji: backendModel.emoji || '',
-    description: backendModel.description || '',
-    systemPrompt: backendModel.systemPrompt || '',
-    contextWindow: backendModel.contextWindow,
-    providerId: backendModel.providerId,
-    modelId: backendModel.modelId,
-    compressTokenThreshold: backendModel.compressTokenThreshold,
-    compressKeepTurns: backendModel.compressKeepTurns || 3,
-  } : null;
-
-  const handleSave = async (data: AssistantFormData) => {
-    if (data.id && assistantId && assistantId !== 'new') {
-      await updateAssistant(data.id, data);
-    } else {
-      await createAssistant({
-        id: crypto.randomUUID(),
-        ...data,
-        providerId: data.providerId || '',
-        modelId: data.modelId || '',
-      });
-    }
-    navigate('/settings/assistants');
-  };
-
-  const handleDelete = async () => {
-    if (assistantId && assistantId !== 'new') {
-      await deleteAssistant(assistantId);
-    }
-    navigate('/settings/assistants');
-  };
-
+  }, [id]);
+  
   return (
     <AssistantEditPage
-      assistant={existingData}
-      onSave={handleSave}
-      onDelete={handleDelete}
+      assistant={assistant}
+      onSave={async (data) => {
+        if (typeof window !== 'undefined' && window.electron) {
+          if (id === 'new') {
+            await window.electron.ipcRenderer.invoke('agent:create-assistant', data);
+          } else {
+            await window.electron.ipcRenderer.invoke('agent:update-assistant', id, data);
+          }
+        }
+        navigate(-1);
+      }}
       onBack={() => navigate(-1)}
     />
   );

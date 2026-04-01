@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TimelineNode, DiaryMetaCard } from '@baishou/ui';
 
 // 本地定义 TimelineNode 数据类型（@baishou/shared 不导出此类型）
@@ -11,6 +11,7 @@ interface TimelineNodeType {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useDiaryData } from './hooks/useDiaryData';
 import './DiaryPage.css';
 
 // TODO: Future Integration 占位。在此刻为了展示日历，扩展 Mock 树
@@ -27,41 +28,41 @@ export const DiaryPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'calendar' | 'timeline' | 'masonry'>('timeline');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1:1 还原 - Mock 瀑布流/时间轴/月历数据（包含动态时间生成）
-  const [nodes, setNodes] = useState<TimelineNodeType[]>([]);
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date(2026, 2, 1)); // 锁定主开发日期所在的月份
+  const { entries } = useDiaryData();
 
-  useEffect(() => {
-    // 构建一波跨三月的散列日记用于测试日历视图
-    const generated: TimelineNodeType[] = [
-      { id: 'sep-1', type: 'month_separator', date: new Date(2026, 2, 31) },
-      {
-        id: 'd-1', type: 'diary_entry', date: new Date(2026, 2, 31, 10),
-        meta: { id: 1, date: new Date(2026, 2, 31, 10), preview: '今天的天气绝佳，阳光明媚。完成了早上的冥想...', tags: ['日常', '冥想'] }
-      },
-      {
-        id: 'd-1-b', type: 'diary_entry', date: new Date(2026, 2, 31, 20),
-        meta: { id: 101, date: new Date(2026, 2, 31, 20), preview: '晚上的灵感爆棚，写了一套算法。', tags: ['工作'] }
-      },
-      {
-        id: 'd-2', type: 'diary_entry', date: new Date(2026, 2, 30, 15),
-        meta: { id: 2, date: new Date(2026, 2, 30, 15), preview: '复刻 BaiShou v3.0 的 UI 是一项庞大的工程...', tags: ['开发笔记'] }
-      },
-      {
-        id: 'd-3', type: 'diary_entry', date: new Date(2026, 2, 29, 8),
-        meta: { id: 3, date: new Date(2026, 2, 29, 8), preview: '休息日读图形学...', tags: ['读书'] }
-      },
-      {
-        id: 'd-4', type: 'diary_entry', date: new Date(2026, 2, 15, 9),
-        meta: { id: 4, date: new Date(2026, 2, 15, 9), preview: '月中复盘，发现很多事情没做完。', tags: ['日常'] }
-      },
-      {
-        id: 'd-5', type: 'diary_entry', date: new Date(2026, 2, 1, 10),
-        meta: { id: 5, date: new Date(2026, 2, 1, 10), preview: '三月第一天！新的计划！', tags: ['规划'] }
+  const nodes = useMemo<TimelineNodeType[]>(() => {
+    if (!entries || entries.length === 0) return [];
+    
+    // Sort descending
+    const sorted = [...entries].sort((a, b) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime());
+    
+    const newNodes: TimelineNodeType[] = [];
+    let currentM = -1;
+    let currentY = -1;
+
+    sorted.forEach((e) => {
+      const d = new Date(e.date || e.createdAt || Date.now());
+      if (d.getMonth() !== currentM || d.getFullYear() !== currentY) {
+        currentM = d.getMonth();
+        currentY = d.getFullYear();
+        // Add month separator
+        newNodes.push({
+          id: `sep-${currentY}-${currentM}`,
+          type: 'month_separator',
+          date: new Date(currentY, currentM, 1)
+        });
       }
-    ];
-    setNodes(generated);
-  }, []);
+      newNodes.push({
+        id: `d-${e.id}`,
+        type: 'diary_entry',
+        date: d,
+        meta: { id: e.id, date: d, preview: e.content?.substring(0, 100) || '无预览...', tags: e.tags || [] }
+      });
+    });
+    return newNodes;
+  }, [entries]);
+
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
   // Handle Search Filtering
   const filteredNodes = useMemo(() => {

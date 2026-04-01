@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-import { useSettingsStore } from '@baishou/store';
+import { useSettingsStore, useUserProfileStore } from '@baishou/store';
 import './SettingsPage.css';
 import { 
   AppearanceSettingsCard, 
@@ -98,19 +98,11 @@ export const SettingsPage: React.FC = () => {
 // ----------------------------------------------------
 
 const ProfilePane: React.FC<{ settings: any }> = ({ settings }) => {
-  const [profileData, setProfileData] = useState<any>({ nickname: '', autoSync: false, avatarUrl: '' });
+  const { profile, fetchProfile } = useUserProfileStore() as any;
   
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const p = await (window as any).api?.profile?.getProfile();
-        if (p) setProfileData(p);
-      } catch (e) {
-        console.warn("API Error (profile.getProfile):", e);
-      }
-    };
-    fetchProfile();
-  }, []);
+    if (fetchProfile) fetchProfile();
+  }, [fetchProfile]);
 
   return (
     <>
@@ -121,10 +113,12 @@ const ProfilePane: React.FC<{ settings: any }> = ({ settings }) => {
 
       <div className="glass-panel-card" style={{ padding: 0 }}>
          <ProfileSettingsCard 
-           profile={profileData}
+           profile={profile || { nickname: '', autoSync: false, avatarUrl: '' }}
            onSave={async (p) => {
-             setProfileData(p);
-             await (window as any).api?.profile?.updateProfile(p);
+             if (typeof window !== 'undefined' && window.electron) {
+               await window.electron.ipcRenderer.invoke('profile:update', p);
+               if (fetchProfile) fetchProfile();
+             }
            }}
          />
       </div>

@@ -6,7 +6,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 // import { useNavigate } from 'react-router-dom'; // TODO: 后续用于跳转到总结详情页
 import { Settings, LayoutDashboard, Layers, Sparkles, CheckCircle2 } from 'lucide-react';
-import { useSummaryDashboardMock } from './hooks/useSummaryDashboardMock';
+import { useSummaryData } from './hooks/useSummaryData';
 import './SummaryPage.css';
 
 // TODO: Replace with Real Translation Hook
@@ -26,13 +26,14 @@ const GEN_PHASES = [
 export const SummaryPage: React.FC = () => {
   const { t } = useTranslation();
   // const navigate = useNavigate(); // TODO: 后续用于跳转
-  const { state, actions } = useSummaryDashboardMock();
+  const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
+  const [lookbackMonths, setLookbackMonths] = useState(1);
+  const { stats, missingSummaries, setMissingSummaries, generateSummary, refreshData } = useSummaryData();
 
-  // 模拟从数据库拦截下的缺失漏洞
-  const [missingPeriods, setMissingPeriods] = useState([
-    { id: 'm-w-13', type: 'weekly' as const, dateRangeStr: '2026 第 13 周 (03.23-03.29)' },
-    { id: 'm-m-03', type: 'monthly' as const, dateRangeStr: '2026 3月 演算特记' }
-  ]);
+  const handleCopyContext = () => {
+    // 调用剪贴板或 RAG 接口
+    alert('Context copied!');
+  };
 
   // 高强度的视觉伪态：记录每个卡片自己的生成进度和文字
   const [generationStates, setGenerationStates] = useState<Record<string, { progress: number, phase: number }>>({});
@@ -56,12 +57,14 @@ export const SummaryPage: React.FC = () => {
 
           // 模拟成功后等待 2s，卡片销毁（表示存入数据库了）
           setTimeout(() => {
-             setMissingPeriods(prev => prev.filter(mp => mp.id !== id));
-             const cloneGenStates = { ...generationStates };
-             delete cloneGenStates[id];
-             setGenerationStates(cloneGenStates);
-             
-             // 如果在真实世界，此时我们将调用 actions.refreshStats() 去更新顶层看板，增加汇总和生成数量
+             // Let the backend handle the real generation instead of just simulating
+             generateSummary(_type, 'auto').finally(() => {
+                setMissingSummaries(prev => prev.filter(mp => mp.id !== id));
+                const cloneGenStates = { ...generationStates };
+                delete cloneGenStates[id];
+                setGenerationStates(cloneGenStates);
+                refreshData();
+             });
           }, 2000);
        } else {
           // 阶段映射 (将 0-100 映射为 4个文段)
@@ -91,14 +94,14 @@ export const SummaryPage: React.FC = () => {
       <div className="sp-header">
         <div className="sp-tabs">
           <div 
-            className={`sp-tab ${state.activeTab === 'panel' ? 'active' : ''}`}
-            onClick={() => actions.setActiveTab('panel')}
+            className={`sp-tab ${activeTab === 'panel' ? 'active' : ''}`}
+            onClick={() => setActiveTab('panel')}
           >
             <LayoutDashboard size={18} /> {t('summary.panel_tab') || '大盘概况'}
           </div>
           <div 
-            className={`sp-tab ${state.activeTab === 'gallery' ? 'active' : ''}`}
-            onClick={() => actions.setActiveTab('gallery')}
+            className={`sp-tab ${activeTab === 'gallery' ? 'active' : ''}`}
+            onClick={() => setActiveTab('gallery')}
           >
             <Layers size={18} /> {t('summary.memory_gallery') || '归档画廊'}
           </div>
@@ -107,17 +110,17 @@ export const SummaryPage: React.FC = () => {
       </div>
 
       <div className="sp-content">
-        {state.activeTab === 'panel' ? (
+        {activeTab === 'panel' ? (
           <div className="sp-panel-view">
             <DashboardHeroBanner />
             
             <div className="sp-dashboard-layout">
               <DashboardSharedMemoryCard 
-                lookbackMonths={state.lookbackMonths}
-                onMonthsChanged={actions.setLookbackMonths}
-                onCopyContext={actions.handleCopyContext}
+                lookbackMonths={lookbackMonths}
+                onMonthsChanged={setLookbackMonths}
+                onCopyContext={handleCopyContext}
               />
-              <DashboardStatsCard {...state.stats} />
+              <DashboardStatsCard {...stats} />
             </div>
 
             {/* AI 缺失自动检测区域 */}
@@ -126,14 +129,14 @@ export const SummaryPage: React.FC = () => {
               variants={containerVariants}
               initial="hidden" animate="show"
             >
-               {missingPeriods.length > 0 && (
+               {missingSummaries.length > 0 && (
                   <div className="sp-missing-section-title">
                      <Sparkles size={18} color="var(--color-primary)" /> AI 智能探针：检索到以下周期缺乏脑图总结
                   </div>
                )}
                
                <AnimatePresence>
-                  {missingPeriods.map((mp) => {
+                  {missingSummaries.map((mp: any) => {
                      const isGen = !!generationStates[mp.id];
                      const progress = generationStates[mp.id]?.progress || 0;
                      const phaseLabel = generationStates[mp.id]?.phase !== undefined 

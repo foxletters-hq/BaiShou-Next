@@ -89,11 +89,21 @@ export const AgentScreen: React.FC = () => {
   }, [fetchAssistants, loadShortcuts]);
   const [providers] = useState<any[]>(settings.providers || []);
 
-  // Aggregated Tokens Cache
-  const totalInputTokens = messages.reduce((acc, m) => acc + (m.inputTokens || 0), 0);
-  const totalOutputTokens = messages.reduce((acc, m) => acc + (m.outputTokens || 0), 0);
-  // Temporary est. cost factor (Ideally pulled from precise DB)
-  const estimatedCost = (totalInputTokens * 0.001) / 1000 + (totalOutputTokens * 0.002) / 1000;
+  // Token Usage IPC hook
+  const [tokenUsage, setTokenUsage] = useState({ inputTokens: 0, outputTokens: 0, totalCostMicros: 0 });
+
+  useEffect(() => {
+    if (!sessionId) return;
+    if (typeof window !== 'undefined' && window.electron) {
+      window.electron.ipcRenderer.invoke('agent:get-token-usage', sessionId)
+        .then(setTokenUsage)
+        .catch(console.error);
+    }
+  }, [sessionId, isStreaming]);
+
+  const totalInputTokens = tokenUsage.inputTokens;
+  const totalOutputTokens = tokenUsage.outputTokens;
+  const estimatedCost = tokenUsage.totalCostMicros / 1000000;
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -133,7 +143,9 @@ export const AgentScreen: React.FC = () => {
   };
 
   const handleStop = () => {
-    // Phase 2 implementation for stopping stream
+    if (typeof window !== 'undefined' && window.electron) {
+      window.electron.ipcRenderer.invoke('agent:stop-stream').catch(console.error);
+    }
   };
 
   return (
@@ -296,8 +308,8 @@ export const AgentScreen: React.FC = () => {
            isLoading={isStreaming}
            onSend={handleSend}
            onStop={handleStop}
-           assistantName={"BaiShou (Core 1.0)"}
-           onAssistantTap={() => {}}
+           assistantName={currentAssistant?.name || 'BaiShou'}
+           onAssistantTap={() => setShowAssistantPicker(true)}
          />
       </div>
     </div>
