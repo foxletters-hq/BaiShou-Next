@@ -56,31 +56,36 @@ export class StreamAccumulator {
    * 处理从 AI SDK 传回的原生 TextStreamPart 碎片
    */
   add(part: TextStreamPart<any>): void {
-    switch (part.type) {
+    const p = part as any;
+    switch (p.type) {
       case 'text-delta': {
-        if (part.text) {
-          this._textBuffer += part.text;
+        if (p.textDelta) {
+          this._textBuffer += p.textDelta;
+        } else if (p.text) {
+          this._textBuffer += p.text;
         }
         break;
       }
       
       case 'reasoning-delta': {
-        if (part.text) {
-          this._reasoningBuffer += part.text;
+        if (p.textDelta) {
+          this._reasoningBuffer += p.textDelta;
+        } else if (p.text) {
+          this._reasoningBuffer += p.text;
         }
         break;
       }
       
       case 'tool-call': {
-        if (part.toolCallId) {
-          const legacyArgs = (part as any).args ?? (part as any).providerMetadata?.raw?.input;
-          const inputArgs = typeof part.input === 'string' 
-            ? part.input 
-            : JSON.stringify(part.input ?? legacyArgs ?? {});
+        if (p.toolCallId) {
+          const legacyArgs = p.args ?? p.providerMetadata?.raw?.input;
+          const inputArgs = typeof p.input === 'string' 
+            ? p.input 
+            : JSON.stringify(p.input ?? legacyArgs ?? {});
 
-          this._toolCalls.set(part.toolCallId, {
-            callId: part.toolCallId,
-            name: part.toolName || '',
+          this._toolCalls.set(p.toolCallId, {
+            callId: p.toolCallId,
+            name: p.toolName || '',
             arguments: inputArgs,
           });
         }
@@ -88,10 +93,10 @@ export class StreamAccumulator {
       }
       
       case 'tool-result': {
-        if (part.toolCallId) {
-          const res = part.output ?? (part as any).result ?? (part as any).providerMetadata?.raw;
-          this._toolResults.set(part.toolCallId, {
-            callId: part.toolCallId,
+        if (p.toolCallId) {
+          const res = p.output ?? p.result ?? p.providerMetadata?.raw;
+          this._toolResults.set(p.toolCallId, {
+            callId: p.toolCallId,
             result: res,
           });
         }
@@ -99,13 +104,12 @@ export class StreamAccumulator {
       }
       
       case 'finish': {
-        // AI SDK 的 finish 提供全流程 Usage 统计
-        if (part.usage) {
-           this._inputTokens = part.usage.promptTokens || 0;
-           this._outputTokens = part.usage.completionTokens || 0;
-        } else if (part.totalUsage) {
-           this._inputTokens = part.totalUsage.promptTokens || 0;
-           this._outputTokens = part.totalUsage.completionTokens || 0;
+        if (p.usage) {
+           this._inputTokens = p.usage.promptTokens || 0;
+           this._outputTokens = p.usage.completionTokens || 0;
+        } else if (p.totalUsage) {
+           this._inputTokens = p.totalUsage.promptTokens || 0;
+           this._outputTokens = p.totalUsage.completionTokens || 0;
         }
         break;
       }

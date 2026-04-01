@@ -3,10 +3,13 @@ import * as fsp from 'fs/promises';
 import * as fs from 'fs';
 import * as path from 'path';
 
-vi.mock('electron', () => ({
-  app: { getPath: vi.fn().mockReturnValue('/mock/userData') },
-  dialog: { showSaveDialog: vi.fn(), showOpenDialog: vi.fn() }
-}));
+vi.mock('electron', () => {
+  const mockElectron = {
+    app: { getPath: vi.fn().mockReturnValue('/mock/userData') },
+    dialog: { showSaveDialog: vi.fn(), showOpenDialog: vi.fn() }
+  };
+  return { ...mockElectron, default: mockElectron };
+});
 
 vi.mock('fs');
 vi.mock('fs/promises');
