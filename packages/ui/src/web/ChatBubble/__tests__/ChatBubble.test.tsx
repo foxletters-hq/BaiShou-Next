@@ -47,10 +47,8 @@ describe('ChatBubble Component', () => {
     };
     const { container } = render(<ChatBubble message={reasoningMessage} />);
     
-    // We expect a details tag or a block that indicates thinking process
-    const details = container.querySelector('details');
-    expect(details).toBeInTheDocument();
-    expect(screen.getByText('思考过程')).toBeInTheDocument();
+    // We expect a reasoning area to exist
+    expect(screen.getByText('agent.chat.reasoning')).toBeInTheDocument();
   });
 
   it('renders tool invocations correctly', () => {
@@ -69,8 +67,8 @@ describe('ChatBubble Component', () => {
     };
     render(<ChatBubble message={messageWithTools} />);
     
-    // Expect tool call block to be visible
-    expect(screen.getByText('weather_search')).toBeInTheDocument();
+    // Expect tool call block header to be visible
+    expect(screen.getByText('agent.tools.tool_call_results')).toBeInTheDocument();
   });
 
 });

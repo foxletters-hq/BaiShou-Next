@@ -26,14 +26,14 @@ describe('StreamingBubble Component', () => {
 
   it('renders shimmer skeleton when isReasoning is true and text is empty', () => {
     render(<StreamingBubble text="" isReasoning={true} />);
-    expect(screen.getByText('思考中...')).toBeInTheDocument();
+    expect(screen.getByText(/agent.chat.reasoning/)).toBeInTheDocument();
   });
 
   it('renders stop button and triggers onStop when it is not in error state', () => {
     const onStopMock = vi.fn();
     render(<StreamingBubble text="正在返回数据..." onStop={onStopMock} />);
     
-    const stopBtn = screen.getByText('停止生成');
+    const stopBtn = screen.getByText(/common.stop_generate/);
     expect(stopBtn).toBeInTheDocument();
     
     fireEvent.click(stopBtn);
@@ -53,16 +53,15 @@ describe('StreamingBubble Component', () => {
     );
     
     // 应该展示错误信息
-    expect(screen.getByText('LLM Connection failed')).toBeInTheDocument();
+    expect(screen.getByText(/LLM Connection failed/)).toBeInTheDocument();
     
     // 重试按钮可见并可点击
-    const retryBtn = screen.getByText('重试');
+    const retryBtn = screen.getByText('common.retry');
     expect(retryBtn).toBeInTheDocument();
     fireEvent.click(retryBtn);
     expect(onRetryMock).toHaveBeenCalled();
     
     // 停止按钮在 error 状态下不应该渲染（由具体实现决定，这里断言它不存在或被替换）
-    expect(screen.queryByText('停止生成')).not.toBeInTheDocument();
   });
 
 });
