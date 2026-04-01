@@ -4,6 +4,15 @@ export type MockChatAttachment = {
   fileName: string;
   isImage: boolean;
   isPdf: boolean;
+  fileSize?: number;
+};
+
+export type MockToolInvocation = {
+  toolCallId: string;
+  toolName: string;
+  state: 'partial-call' | 'call' | 'result';
+  args: any;
+  result?: any;
 };
 
 export type MockChatMessage = {
@@ -19,6 +28,8 @@ export type MockChatMessage = {
   outputTokens?: number;
   costMicros?: number;
   contextMessages?: MockChatMessage[];
+  isReasoning?: boolean;
+  toolInvocations?: MockToolInvocation[];
 };
 
 export const MOCK_MESSAGES: MockChatMessage[] = [

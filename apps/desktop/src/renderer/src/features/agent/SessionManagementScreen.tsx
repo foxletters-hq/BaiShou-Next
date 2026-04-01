@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SessionManagementPage, type SessionInfo } from '@baishou/ui/src/web/SessionManagementPage';
+import { SessionManagementPage, type SessionInfo } from '@baishou/ui';
 import { useSessionStore } from '@baishou/store';
 
 export const SessionManagementScreen: React.FC = () => {

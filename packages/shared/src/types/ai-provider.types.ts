@@ -40,7 +40,7 @@ export interface AiProviderModel {
 /**
  * 根据 ProviderType 返回默认的搜索模式
  */
-export function getDefaultWebSearchMode(type: ProviderType): WebSearchMode {
+export function getDefaultWebSearchMode(_type: ProviderType): WebSearchMode {
   return WebSearchMode.Tool;
 }
 

@@ -1,6 +1,53 @@
+/* =========================================================
+   DIARY EDITOR PAGE - SYNCHING STATE VIBE
+   ========================================================= */
+
 .diary-editor-page-container {
-  padding: 32px;
-  max-width: 1000px;
-  margin: 0 auto;
   height: 100%;
+  position: relative;
+  background-color: var(--bg-surface-lowest, #F8FAFC);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Auto Save Toast Notification */
+.auto-save-toast {
+  position: absolute;
+  top: 16px;
+  right: 50%;
+  transform: translateX(50%);
+  z-index: 1000;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) inset;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #1E293B);
+}
+
+.toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-spin {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary, #5BA8F5);
+}
+
+.toast-success {
+  color: var(--color-secondary, #10B981);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

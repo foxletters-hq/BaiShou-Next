@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AssistantEditPage, type AssistantFormData } from '@baishou/ui/src/web/AssistantEditPage';
+import { AssistantEditPage, type AssistantFormData } from '@baishou/ui';
 import { useAssistantStore } from '@baishou/store';
 
 export const AssistantEditScreen: React.FC = () => {
@@ -35,8 +35,10 @@ export const AssistantEditScreen: React.FC = () => {
       await updateAssistant(data.id, data);
     } else {
       await createAssistant({
-        id: crypto.randomUUID(), // SDD open question: yes, generating ID in frontend store before sending via IPC
+        id: crypto.randomUUID(),
         ...data,
+        providerId: data.providerId || '',
+        modelId: data.modelId || '',
       });
     }
     navigate('/settings/assistants');

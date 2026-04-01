@@ -1,9 +1,20 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TimelineNode, DiaryMetaCard } from '@baishou/ui';
-import type { TimelineNode as TimelineNodeType } from '@baishou/shared';
+
+// 本地定义 TimelineNode 数据类型（@baishou/shared 不导出此类型）
+interface TimelineNodeType {
+  id: string;
+  type: 'month_separator' | 'diary_entry';
+  date: Date;
+  meta?: { id: number; date: Date; preview: string; tags: string[] };
+}
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { BookOpen, Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import './DiaryPage.css';
+
+// TODO: Future Integration 占位。在此刻为了展示日历，扩展 Mock 树
+// import { useDiaryStore } from '@baishou/store';
 
 const useTranslation = (): { t: (key: string) => string } => ({
   t: (key: string) => key,
@@ -13,104 +24,157 @@ export const DiaryPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   
-  const [viewMode, setViewMode] = useState<'timeline' | 'masonry'>('timeline');
+  const [viewMode, setViewMode] = useState<'calendar' | 'timeline' | 'masonry'>('timeline');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1:1 还原 - Mock 瀑布流/时间轴数据
-  const [nodes] = useState<TimelineNodeType[]>([
-    {
-      id: 'sep-1',
-      type: 'month_separator',
-      date: new Date('2026-03-31T00:00:00Z')
-    },
-    {
-      id: 'd-1',
-      type: 'diary_entry',
-      date: new Date('2026-03-31T10:00:00Z'),
-      meta: {
-        id: 1,
-        date: new Date('2026-03-31T10:00:00Z'),
-        preview: '今天的天气绝佳，阳光明媚。完成了早上的冥想和跑步，开始处理手头的 Agent 架构...',
-        tags: ['日常', '工作', '冥想']
+  // 1:1 还原 - Mock 瀑布流/时间轴/月历数据（包含动态时间生成）
+  const [nodes, setNodes] = useState<TimelineNodeType[]>([]);
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date(2026, 2, 1)); // 锁定主开发日期所在的月份
+
+  useEffect(() => {
+    // 构建一波跨三月的散列日记用于测试日历视图
+    const generated: TimelineNodeType[] = [
+      { id: 'sep-1', type: 'month_separator', date: new Date(2026, 2, 31) },
+      {
+        id: 'd-1', type: 'diary_entry', date: new Date(2026, 2, 31, 10),
+        meta: { id: 1, date: new Date(2026, 2, 31, 10), preview: '今天的天气绝佳，阳光明媚。完成了早上的冥想...', tags: ['日常', '冥想'] }
+      },
+      {
+        id: 'd-1-b', type: 'diary_entry', date: new Date(2026, 2, 31, 20),
+        meta: { id: 101, date: new Date(2026, 2, 31, 20), preview: '晚上的灵感爆棚，写了一套算法。', tags: ['工作'] }
+      },
+      {
+        id: 'd-2', type: 'diary_entry', date: new Date(2026, 2, 30, 15),
+        meta: { id: 2, date: new Date(2026, 2, 30, 15), preview: '复刻 BaiShou v3.0 的 UI 是一项庞大的工程...', tags: ['开发笔记'] }
+      },
+      {
+        id: 'd-3', type: 'diary_entry', date: new Date(2026, 2, 29, 8),
+        meta: { id: 3, date: new Date(2026, 2, 29, 8), preview: '休息日读图形学...', tags: ['读书'] }
+      },
+      {
+        id: 'd-4', type: 'diary_entry', date: new Date(2026, 2, 15, 9),
+        meta: { id: 4, date: new Date(2026, 2, 15, 9), preview: '月中复盘，发现很多事情没做完。', tags: ['日常'] }
+      },
+      {
+        id: 'd-5', type: 'diary_entry', date: new Date(2026, 2, 1, 10),
+        meta: { id: 5, date: new Date(2026, 2, 1, 10), preview: '三月第一天！新的计划！', tags: ['规划'] }
       }
-    },
-    {
-      id: 'd-2',
-      type: 'diary_entry',
-      date: new Date('2026-03-30T15:30:00Z'),
-      meta: {
-        id: 2,
-        date: new Date('2026-03-30T15:30:00Z'),
-        preview: '复刻 BaiShou v3.0 的 UI 是一项庞大而精妙的工程，尤其是双端同时推进时的体验一致性考量。',
-        tags: ['开发笔记', 'UI设计']
-      }
-    },
-    {
-      id: 'd-3',
-      type: 'diary_entry',
-      date: new Date('2026-03-29T08:00:00Z'),
-      meta: {
-        id: 3,
-        date: new Date('2026-03-29T08:00:00Z'),
-        preview: '短暂的休息日，读了一本关于图形学的书。很多关于渲染流水线的理解变得清晰了。',
-        tags: ['读书', '图形学']
-      }
-    }
-  ]);
+    ];
+    setNodes(generated);
+  }, []);
 
   // Handle Search Filtering
   const filteredNodes = useMemo(() => {
     if (!searchQuery.trim()) return nodes;
     const lowerQ = searchQuery.toLowerCase();
     return nodes.filter(n => {
-      // Month separators are kept if diaries beneath them exist (simplified here)
       if (n.type === 'month_separator') return false; 
       if (!n.meta) return false;
-      const matchPreview = n.meta.preview.toLowerCase().includes(lowerQ);
-      const matchTag = n.meta.tags.some(tag => tag.toLowerCase().includes(lowerQ));
-      return matchPreview || matchTag;
+      return n.meta.preview.toLowerCase().includes(lowerQ) || 
+             n.meta.tags.some(tag => tag.toLowerCase().includes(lowerQ));
     });
   }, [nodes, searchQuery]);
 
+  // --------------- Calendar Rendering Logic ----------------
+  const generateCalendarDays = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay(); // 0 is Sunday
+    
+    let days: { dateNum: number; isCurrentMonth: boolean; fullDate: Date }[] = [];
+    
+    // Previous month mutable padding
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    for (let i = 0; i < startingDayOfWeek; i++) {
+       days.push({ 
+          dateNum: prevMonthDays - startingDayOfWeek + i + 1, 
+          isCurrentMonth: false, 
+          fullDate: new Date(year, month - 1, prevMonthDays - startingDayOfWeek + i + 1)
+       });
+    }
+    
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+       days.push({ 
+          dateNum: i, 
+          isCurrentMonth: true, 
+          fullDate: new Date(year, month, i)
+       });
+    }
+
+    // Next month mutable padding
+    const remainingSlots = 42 - days.length; // Always render 6 rows structure to avoid jump
+    for (let i = 1; i <= remainingSlots; i++) {
+       days.push({ 
+          dateNum: i, 
+          isCurrentMonth: false, 
+          fullDate: new Date(year, month + 1, i)
+       });
+    }
+
+    return days;
+  };
+
+  const getDiariesForDate = (date: Date) => {
+     return filteredNodes.filter(n => 
+        n.type === 'diary_entry' && 
+        n.date.getFullYear() === date.getFullYear() &&
+        n.date.getMonth() === date.getMonth() &&
+        n.date.getDate() === date.getDate()
+     );
+  };
+
+  // --------------- Animation Variants ----------------
   const containerVariants = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  } as any;
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 30, scale: 0.95 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 350, damping: 25 } },
+    show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring' as const, stiffness: 350, damping: 25 } },
     exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } }
-  } as any;
+  };
+
+  const calendarDays = useMemo(() => generateCalendarDays(currentMonth), [currentMonth]);
+  const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
 
   return (
     <div className="diary-page-container">
       <header className="diary-page-header">
         <div className="dp-header-start">
-          <h1 className="diary-page-title">{t('diary.title') || '我的记录'}</h1>
+          <h1 className="diary-page-title">
+            <BookOpen size={28} color="var(--color-primary)" />
+            {t('diary.title') || '星海神经带 (Diary Box)'}
+          </h1>
           <div className="dp-view-toggles">
+            <button 
+               className={`dp-toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
+               onClick={() => setViewMode('calendar')}
+               title="月相探测 (Calendar View)"
+            >📅</button>
             <button 
                className={`dp-toggle-btn ${viewMode === 'timeline' ? 'active' : ''}`}
                onClick={() => setViewMode('timeline')}
+               title="流光卷轴 (Timeline View)"
             >🗓️</button>
             <button 
                className={`dp-toggle-btn ${viewMode === 'masonry' ? 'active' : ''}`}
                onClick={() => setViewMode('masonry')}
+               title="晶体矩阵 (Masonry View)"
             >🎨</button>
           </div>
         </div>
         
         <div className="dp-header-actions">
            <div className="dp-search-wrapper">
-              <span className="dp-search-icon">🔍</span>
+              <Search size={16} className="dp-search-icon" />
               <input 
                  type="text" 
-                 placeholder="Search diaries... (#tag or text)"
+                 placeholder="Search memories... (#tags / query)"
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                  className="dp-search-input"
@@ -120,14 +184,67 @@ export const DiaryPage: React.FC = () => {
               className="diary-page-add-btn" 
               onClick={() => navigate('/editor')}
            >
-             + {t('diary.editor.new') || '写点什么'}
+             <Plus size={18} /> {t('diary.editor.new') || '拓印新感知'}
            </button>
         </div>
       </header>
       
       <div className="diary-page-content">
         <AnimatePresence mode="wait">
-           {viewMode === 'timeline' ? (
+           {viewMode === 'calendar' ? (
+              <motion.div 
+                 key="calendar-view"
+                 className="calendar-container"
+                 variants={containerVariants}
+                 initial="hidden"
+                 animate="show"
+                 exit="exit"
+              >
+                  <div className="cal-header">
+                     <button className="cal-nav-btn" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
+                        <ChevronLeft size={20} />
+                     </button>
+                     <div className="cal-title">{currentMonth.getFullYear()} - {monthNames[currentMonth.getMonth()]}</div>
+                     <button className="cal-nav-btn" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}>
+                        <ChevronRight size={20} />
+                     </button>
+                  </div>
+
+                  <div className="cal-grid">
+                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className="cal-day-header">{day}</div>
+                     ))}
+                     
+                     {calendarDays.map((dayObj, idx) => {
+                        const diaries = getDiariesForDate(dayObj.fullDate);
+                        const isToday = dayObj.fullDate.toDateString() === new Date().toDateString();
+
+                        return (
+                           <motion.div 
+                              key={`cal-c-${idx}`} 
+                              variants={itemVariants}
+                              className={`cal-cell ${!dayObj.isCurrentMonth ? 'cal-cell-muted' : ''} ${isToday ? 'cal-cell-today' : ''}`}
+                              onClick={() => {
+                                 // 点进去进入当天的瀑布流/或者直接创建当天的日记
+                                 if (diaries.length > 0) {
+                                    // B区扩展：导航到单篇或者切列表。为了演示，直接开编
+                                    navigate(`/editor/${diaries[0].meta!.id}`);
+                                 }
+                              }}
+                           >
+                              <div className="cal-date-number">{dayObj.dateNum}</div>
+                              <div className="cal-indicators">
+                                 {diaries.slice(0, 3).map((_d, i) => (
+                                    <div key={i} className="cal-dot"></div>
+                                 ))}
+                                 {diaries.length > 3 && <div style={{fontSize: 10, alignSelf:'flex-end', marginLeft: 2}}>+</div>}
+                              </div>
+                           </motion.div>
+                        );
+                     })}
+                  </div>
+              </motion.div>
+           ) : viewMode === 'timeline' ? (
               <motion.div 
                  key="timeline-view"
                  className="timeline-container"
@@ -147,7 +264,7 @@ export const DiaryPage: React.FC = () => {
                     </motion.div>
                  ))}
                  {filteredNodes.length === 0 && (
-                    <div className="dp-empty">{t('diary.emptySearchResult') || '没有搜到任何日记'}</div>
+                    <div className="dp-empty"><BookOpen size={48} opacity={0.3} /> {t('diary.emptySearchResult') || '未搜寻到任何历史锚点'}</div>
                  )}
               </motion.div>
            ) : (
@@ -159,7 +276,7 @@ export const DiaryPage: React.FC = () => {
                  animate="show"
                  exit="exit"
               >
-                 {filteredNodes.filter(n => n.type === 'diary_entry').map((node) => (
+                 {filteredNodes.filter(n => n.type === 'diary_entry').map((node, _index) => (
                     <motion.div key={`ms-${node.id}`} variants={itemVariants} className="masonry-item">
                        <DiaryMetaCard 
                           meta={node.meta!} 
@@ -168,7 +285,7 @@ export const DiaryPage: React.FC = () => {
                     </motion.div>
                  ))}
                  {filteredNodes.length === 0 && (
-                    <div className="dp-empty">{t('diary.emptySearchResult') || '没有搜到任何日记'}</div>
+                    <div className="dp-empty"><BookOpen size={48} opacity={0.3} /> {t('diary.emptySearchResult') || '未搜寻到任何历史锚点'}</div>
                  )}
               </motion.div>
            )}

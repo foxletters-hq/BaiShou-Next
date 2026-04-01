@@ -37,18 +37,9 @@ const SETTINGS_TABS: Array<{ id: TabId; icon: string; label: string; desc: strin
   { id: 'storage', icon: '💾', label: '数据与存储', desc: '快照与大局网传输' },
   { id: 'ai', icon: '🧠', label: '大脑引擎', desc: '分发流与 LLM 集群' },
   { id: 'rag', icon: '📚', label: '外脑建设', desc: '搜索与私有记忆层' },
-  { id: 'advanced', icon: '⚙️', label: '极客扩展', desc: 'MCP 面板与调试' },
 ];
->>>>>>> feat/gamma-settings
-
-const MOCK_AVAILABLE_MODELS: ProviderModelMap = {
-  'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  'anthropic': ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229'],
-  'gemini': ['gemini-1.5-pro', 'gemini-1.5-flash']
-};
 
 export const SettingsPage: React.FC = () => {
-
   const settings = useSettingsStore();
   const [activeTab, setActiveTab] = useState<TabId>('profile');
 
@@ -102,12 +93,25 @@ export const SettingsPage: React.FC = () => {
   );
 };
 
-
 // ----------------------------------------------------
-// 拆分子面板集 (目前作为 Phase 分步的入口空壳/占位集成)
+// 拆分子面板集 (全面替换了 Mock 数据)
 // ----------------------------------------------------
 
 const ProfilePane: React.FC<{ settings: any }> = ({ settings }) => {
+  const [profileData, setProfileData] = useState<any>({ nickname: '', autoSync: false, avatarUrl: '' });
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const p = await (window as any).api?.profile?.getProfile();
+        if (p) setProfileData(p);
+      } catch (e) {
+        console.warn("API Error (profile.getProfile):", e);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   return (
     <>
       <div>
@@ -116,14 +120,12 @@ const ProfilePane: React.FC<{ settings: any }> = ({ settings }) => {
       </div>
 
       <div className="glass-panel-card" style={{ padding: 0 }}>
-         {/* 保留原本的 ProfileSettingsCard 挂载位 */}
          <ProfileSettingsCard 
-           profile={{ nickname: '指挥官 (Commander)', autoSync: true, avatarUrl: '' }}
-           onSave={(p) => console.log('Saved profile', p)}
-           onPickAvatar={async () => {
-             // 预留接线：(window.api as any).profile.pickAndSaveAvatar()
+           profile={profileData}
+           onSave={async (p) => {
+             setProfileData(p);
+             await (window as any).api?.profile?.updateProfile(p);
            }}
-           onGenerateAvatar={() => {}}
          />
       </div>
 
@@ -137,13 +139,32 @@ const ProfilePane: React.FC<{ settings: any }> = ({ settings }) => {
       </div>
 
       <div className="glass-panel-card" style={{ padding: 0 }}>
-         <AssistantMatrixCard onLaunchMatrix={async () => console.log('前往特型数字生命车间...')} />
+         <AssistantMatrixCard onLaunchMatrix={async () => {
+           await (window as any).api?.navigation?.navigateTo('matrix');
+         }} />
       </div>
     </>
   );
 };
 
 const GeneralPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const [vaults, setVaults] = useState<any[]>([]);
+  const [activeVault, setActiveVault] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchVaults = async () => {
+      try {
+        const vList = await (window as any).api?.vault?.list();
+        const active = await (window as any).api?.vault?.getActive();
+        if (vList) setVaults(vList);
+        if (active) setActiveVault(active);
+      } catch (e) {
+        console.warn("API Error (vault):", e);
+      }
+    };
+    fetchVaults();
+  }, []);
+
   return (
     <>
       <div>
@@ -164,11 +185,11 @@ const GeneralPane: React.FC<{ settings: any }> = ({ settings }) => {
 
       <div className="glass-panel-card" style={{ padding: 0 }}>
          <WorkspaceSettingsCard 
-            vaults={[{ name: 'Default', path: '~/Documents/BaiShou', createdAt: new Date().toISOString(), lastAccessedAt: new Date().toISOString() }]}
-            activeVault={{ name: 'Default', path: '~/Documents/BaiShou', createdAt: new Date().toISOString(), lastAccessedAt: new Date().toISOString() }}
-            onSwitch={() => {}}
-            onDelete={() => {}}
-            onCreate={async () => {}}
+            vaults={vaults.length > 0 ? vaults : [{ name: 'Loading...', path: '暂无数据' }]}
+            activeVault={activeVault || vaults[0] || null}
+            onSwitch={async (id) => await (window as any).api?.vault?.switchActive(id)}
+            onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
+            onCreate={async () => await (window as any).api?.vault?.createDialog()}
          />
       </div>
 
@@ -184,8 +205,8 @@ const GeneralPane: React.FC<{ settings: any }> = ({ settings }) => {
       <div className="glass-panel-card" style={{ padding: 0 }}>
          <AboutSettingsCard 
              version="v2.0.0-Next-Canary"
-             onOpenPrivacyPolicy={() => console.log('打开开发哲学与隐私协议')}
-             onOpenGithubHost={() => console.log('导航到 Github Issue')}
+             onOpenPrivacyPolicy={async () => await (window as any).api?.shell?.openExternal('https://github.com')}
+             onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou')}
          />
       </div>
     </>
@@ -193,6 +214,28 @@ const GeneralPane: React.FC<{ settings: any }> = ({ settings }) => {
 };
 
 const StoragePane: React.FC = () => {
+  const [snapshots, setSnapshots] = useState<any[]>([]);
+  const [stats, setStats] = useState({ sqliteSizeStats: '...', vectorDbStats: '...', mediaCacheStats: '...' });
+  const [attachments, setAttachments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const snaps = await (window as any).api?.archive?.listSnapshots();
+        if (snaps) setSnapshots(snaps);
+
+        const st = await (window as any).api?.storage?.getStats();
+        if (st) setStats(st);
+
+        const att = await (window as any).api?.attachment?.listAll();
+        if (att) setAttachments(att);
+      } catch (e) {
+        console.warn("API Error (storage/archive/attachment):", e);
+      }
+    };
+    fetchData();
+  }, []);
+
   return (
     <>
       <div>
@@ -202,24 +245,21 @@ const StoragePane: React.FC = () => {
 
       <div className="glass-panel-card" style={{ padding: 0 }}>
         <DataManagementCard 
-          onExportZip={async () => {(window as any).api?.archive.exportZip()}}
-          onImportZip={async (file: string) => {(window as any).api?.archive.importZip(file)}}
-          onPickFile={async () => await (window as any).api?.archive.pickZip()}
-          snapshots={[
-            { filename: 'auto_backup_01.zip', sizeMB: '14.2', fullPath: '/tmp/01.zip', timeLabel: '2 小时前自动留存' },
-            { filename: 'auto_backup_02.zip', sizeMB: '13.8', fullPath: '/tmp/02.zip', timeLabel: '昨天 23:14' }
-          ]}
+          onExportZip={async () => await (window as any).api?.archive?.exportZip()}
+          onImportZip={async (file: string) => await (window as any).api?.archive?.importZip(file)}
+          onPickFile={async () => await (window as any).api?.archive?.pickZip()}
+          snapshots={snapshots}
         />
       </div>
 
       <div className="glass-panel-card" style={{ padding: 0 }}>
         <div style={{ padding: 24 }}>
            <StorageSettingsCard 
-               sqliteSizeStats="142 MB"
-               vectorDbStats="2.1 GB"
-               mediaCacheStats="450 MB"
-               onClearCache={() => alert("清理系统缓存")}
-               onVacuumDb={() => alert("VACUUM 命令已执行")}
+               sqliteSizeStats={stats.sqliteSizeStats}
+               vectorDbStats={stats.vectorDbStats}
+               mediaCacheStats={stats.mediaCacheStats}
+               onClearCache={async () => await (window as any).api?.storage?.clearCache()}
+               onVacuumDb={async () => await (window as any).api?.storage?.vacuumDb()}
            />
         </div>
       </div>
@@ -227,17 +267,14 @@ const StoragePane: React.FC = () => {
       <div className="glass-panel-card" style={{ padding: 0 }}>
         <div style={{ padding: 24 }}>
            <AttachmentManagementView 
-               attachments={[
-                  { id: '1', name: 'midjourney-prompt-ref.png', sizeMB: 2.4, type: 'image', date: '2026-03-31', isOrphan: false, fileCount: 1 },
-                  { id: '2', name: 'claude-3-opus-guidelines.pdf', sizeMB: 1.2, type: 'document', date: '2026-03-29', isOrphan: true, fileCount: 3 }
-               ]}
-               onDeleteSelected={async (ids) => console.log('Delete attachment', ids)}
+               attachments={attachments}
+               onDeleteSelected={async (ids) => await (window as any).api?.attachment?.deleteBatch(ids)}
            />
         </div>
       </div>
 
       <div className="glass-panel-card" style={{ padding: 0 }}>
-         {/* TODO: Phase B 追加 LanSyncCard */}
+         {/* Phase B LAN Sync */}
          <div style={{ padding: 24 }}>
            <h3 style={{ fontSize: 16, marginBottom: 12 }}>近场传输 (Lan Sync)</h3>
            <LanSyncCard
@@ -305,8 +342,8 @@ const AiPane: React.FC<{ settings: any }> = ({ settings }) => {
          <AIModelServicesView 
              providers={settings.aiProviderConfigs || {}}
              onUpdateProvider={(id, updates) => settings.updateAiProviderConfig(id, updates)}
-             onTestConnection={async () => await new Promise(r => setTimeout(r, 800))}
-             onFetchModels={async () => ['gpt-4-turbo', 'gpt-3.5-turbo', 'claude-3-opus']}
+             onTestConnection={async (provId) => await (window as any).api?.settings?.testProviderConnection(provId)}
+             onFetchModels={async (provId) => await (window as any).api?.settings?.fetchModels(provId)}
          />
       </div>
     </>
@@ -314,6 +351,24 @@ const AiPane: React.FC<{ settings: any }> = ({ settings }) => {
 };
 
 const RagPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const [ragStats, setRagStats] = useState<any>({ totalCount: 0, currentDimension: 0, totalSizeText: '0 KB' });
+  const [ragEntries, setRagEntries] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchRagInfo = async () => {
+      try {
+        const s = await (window as any).api?.rag?.getStats();
+        if (s) setRagStats(s);
+
+        const e = await (window as any).api?.rag?.queryEntries({ limit: 50 });
+        if (e) setRagEntries(e);
+      } catch (err) {
+        console.warn("API Error (rag):", err);
+      }
+    };
+    fetchRagInfo();
+  }, []);
+
   return (
     <>
       <div>
@@ -325,21 +380,19 @@ const RagPane: React.FC<{ settings: any }> = ({ settings }) => {
          {settings.ragConfig && (
              <RagMemoryView 
                  config={settings.ragConfig}
-                 stats={{ totalCount: 4210, currentDimension: 1536, totalSizeText: '48.2 MB' }}
+                 stats={ragStats}
                  ragState={{ isRunning: false, type: 'idle', progress: 0, total: 0, statusText: '' }}
                  hasMismatchModel={false}
-                 entries={[
-                    { embeddingId: 'e1', text: '记录了白守初始化配置的一段核心思维...', modelId: 'text-embedding-3-small', createdAt: Date.now() }
-                 ]}
+                 entries={ragEntries}
                  onChange={(config) => settings.setRagConfig(config)}
-                 onClearDimension={async () => {}}
-                 onBatchEmbed={async () => {}}
-                 onAddManualMemory={async () => {}}
-                 onTriggerMigration={async () => {}}
-                 onClearAll={async () => {}}
-                 onSearch={(q) => console.log(q)}
-                 onDeleteEntry={async () => {}}
-                 onEditEntry={async () => {}}
+                 onClearDimension={async () => await (window as any).api?.rag?.clearDimension()}
+                 onBatchEmbed={async () => await (window as any).api?.rag?.triggerBatchEmbed()}
+                 onAddManualMemory={async () => await (window as any).api?.rag?.addManualMemory()}
+                 onTriggerMigration={async () => await (window as any).api?.rag?.triggerMigration()}
+                 onClearAll={async () => await (window as any).api?.rag?.clearAll()}
+                 onSearch={(q) => (window as any).api?.rag?.queryEntries({ keyword: q })}
+                 onDeleteEntry={async (id) => await (window as any).api?.rag?.deleteEntry(id)}
+                 onEditEntry={async (entry) => await (window as any).api?.rag?.editEntry(entry.embeddingId, entry)}
              />
          )}
       </div>
@@ -378,7 +431,7 @@ const AdvancedPane: React.FC<{ settings: any }> = ({ settings }) => {
       <div className="glass-panel-card" style={{ padding: 0 }}>
          {settings.mcpServerConfig ? (
              <McpSettingsCard 
-                 config={settings.mcpServerConfig!}
+                 config={settings.mcpServerConfig}
                  onChange={(config) => settings.setMcpServerConfig(config)}
              />
          ) : null}
