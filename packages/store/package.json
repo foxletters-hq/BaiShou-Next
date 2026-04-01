@@ -11,10 +11,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zustand": "^5.0.0",
-    "@baishou/shared": "workspace:*"
+    "@baishou/shared": "workspace:*",
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@types/uuid": "^11.0.0",
     "typescript": "^5.8.0"
   }
 }
