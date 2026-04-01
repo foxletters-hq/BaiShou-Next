@@ -1,19 +1,78 @@
 .container {
-  padding-top: 6px;
-  padding-right: 4px;
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-secondary, #475569);
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.container:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.container:active {
+  transform: translateY(0);
+}
+
+.iconWrap {
+  display: flex;
   align-items: center;
 }
 
+/* Base text */
 .tokenText {
-  color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.7);
-  font-size: 10px;
-  font-family: monospace;
+  letter-spacing: -0.2px;
 }
 
 .costText {
-  margin-left: 6px;
-  color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.6);
-  font-size: 10px;
-  font-family: monospace;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+/* Threshold Colors Base Defaults (If css vars are missing) */
+/* LOW: < 1000 Green */
+.levelLow {
+  color: #059669; /* emerald-600 */
+  background-color: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+/* MEDIUM: < 5000 Yellow */
+.levelMed {
+  color: #B45309; /* amber-700 */
+  background-color: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+/* HIGH: > 10000 Red */
+.levelHigh {
+  color: #E11D48; /* rose-600 */
+  background-color: rgba(225, 29, 72, 0.08);
+  border-color: rgba(225, 29, 72, 0.25);
+  box-shadow: 0 0 8px rgba(225, 29, 72, 0.2);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.2); }
+  70% { box-shadow: 0 0 0 4px rgba(225, 29, 72, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
+}
+
+.divider {
+  width: 1px;
+  height: 10px;
+  background-color: currentColor;
+  opacity: 0.3;
 }

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import styles from './ModelSwitcher.module.css';
 import { MockAiProviderModel } from '@baishou/shared/src/mock/agent.mock';
 import { useTranslation } from 'react-i18next';
+import { ArrowLeftRight, Search, CheckCircle2, Cpu, Banknote, Settings, Blocks, Sparkles, PlusCircle } from 'lucide-react';
 
 interface ModelSwitcherProps {
   isOpen: boolean;
@@ -10,7 +11,20 @@ interface ModelSwitcherProps {
   currentProviderId?: string | null;
   currentModelId?: string | null;
   onSelect: (providerId: string, modelId: string) => void;
+  onManageProviders?: () => void;
 }
+
+// 模拟的 ModelPricingService 字典 (仅用于 UI Presentation 填充感)
+const MOCK_MODEL_PRICING: Record<string, { price: string, context: string }> = {
+  'gpt-4o': { price: '$5.00/1M', context: '128K' },
+  'gpt-4-turbo': { price: '$10.00/1M', context: '128K' },
+  'gpt-3.5-turbo': { price: '$0.50/1M', context: '16K' },
+  'claude-3-opus': { price: '$15.00/1M', context: '200K' },
+  'claude-3-sonnet': { price: '$3.00/1M', context: '200K' },
+  'claude-3-haiku': { price: '$0.25/1M', context: '200K' },
+  'gemini-1.5-pro': { price: '$3.50/1M', context: '1M+' },
+  'gemini-1.5-flash': { price: '$0.35/1M', context: '1M+' },
+};
 
 export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   isOpen,
@@ -18,7 +32,8 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   providers,
   currentProviderId,
   currentModelId,
-  onSelect
+  onSelect,
+  onManageProviders
 }) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,32 +62,38 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.dialog} onClick={e => e.stopPropagation()}>
-          {/* Header */}
+         {/* Header */}
          <div className={styles.header}>
             <div className={styles.headerTitle}>
-               <span className={styles.titleIcon}>⇄</span>
-               <span>{t('agent.switchModel')}</span>
+               <span className={styles.titleIcon}><ArrowLeftRight size={20} strokeWidth={2.5}/></span>
+               <span>{t('agent.switchModel', '切换心智核心')}</span>
             </div>
          </div>
 
-         {/* Search */}
+         {/* Search Box */}
          <div className={styles.searchBox}>
            <div className={styles.searchInputWrapper}>
-              <span className={styles.searchIcon}>🔍</span>
+              <span className={styles.searchIcon}><Search size={16} /></span>
               <input 
                 type="text"
                 className={styles.searchInput}
-                placeholder="搜索模型..."
+                placeholder={t('common.search', '搜索模型 ...')}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
            </div>
          </div>
 
-         {/* List */}
+         {/* List Container */}
          <div className={styles.listContainer}>
             {filteredProviders.length === 0 ? (
-              <div className={styles.emptyState}>{t('agent.noMatchModel')}</div>
+              <div className={styles.emptyState}>
+                 <Sparkles size={32} opacity={0.3} />
+                 <span>{t('agent.noMatchModel', '未发现可搭载的模型')}</span>
+                 <button className={styles.manageBtn} onClick={onManageProviders} type="button">
+                    <Settings size={14} /> 去配置供应商
+                 </button>
+              </div>
             ) : (
               filteredProviders.map(provider => {
                  const models = filteredModels[provider.id] || [];
@@ -81,7 +102,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                  return (
                    <div key={provider.id} className={styles.providerGroup}>
                       <div className={styles.providerHeader}>
-                         <div className={styles.providerIconPlaceholder}>❖</div>
+                         <div className={styles.providerIconPlaceholder}><Blocks size={14} /></div>
                          <span className={styles.providerName}>{provider.name}</span>
                          <span className={styles.modelCountBadge}>{models.length}</span>
                       </div>
@@ -89,6 +110,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                       <div className={styles.modelList}>
                          {models.map(modelId => {
                             const isSelected = isCurrentProvider && modelId === currentModelId;
+                            const modelMeta = MOCK_MODEL_PRICING[modelId];
                             
                             return (
                                <div 
@@ -99,9 +121,21 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                                     onClose();
                                  }}
                                >
-                                  <div className={styles.modelItemIcon}>❖</div>
-                                  <span className={styles.modelItemName}>{modelId}</span>
-                                  {isSelected && <span className={styles.checkIcon}>✅</span>}
+                                  <div className={styles.modelItemIcon}><Cpu size={18} /></div>
+                                  <div className={styles.modelItemCenter}>
+                                     <span className={styles.modelItemName}>{modelId}</span>
+                                     {modelMeta && (
+                                       <div className={styles.modelPricingBar}>
+                                          <span className={styles.modelBadge}>
+                                            <Banknote size={10} /> {modelMeta.price}
+                                          </span>
+                                          <span className={`${styles.modelBadge} ${styles.modelBadgeHighlighted}`}>
+                                            {modelMeta.context} ctx
+                                          </span>
+                                       </div>
+                                     )}
+                                  </div>
+                                  {isSelected && <div className={styles.checkIcon}><CheckCircle2 size={18} strokeWidth={2.5}/></div>}
                                </div>
                             );
                          })}
@@ -111,6 +145,15 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
               })
             )}
          </div>
+
+         {/* Footer - Only show if not fully empty or if there is something to manage */}
+         {onManageProviders && filteredProviders.length > 0 && (
+           <div className={styles.manageFooter}>
+              <button className={styles.manageBtn} onClick={() => { onManageProviders(); onClose(); }} type="button">
+                 <Settings size={14} /> {t('agent.manageProviders', '管理模型与供应商')}
+              </button>
+           </div>
+         )}
       </div>
     </div>
   );

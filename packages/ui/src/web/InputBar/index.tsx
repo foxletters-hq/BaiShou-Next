@@ -1,9 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle } from 'react';
 import styles from './InputBar.module.css';
 import type { MockChatAttachment } from '@baishou/shared';
 
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../Toast/useToast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Paperclip, Zap, Wrench, Globe, BookOpen, 
+  FileText, Folder, X, ArrowUp, LayoutGrid, Menu, Square 
+} from 'lucide-react';
 export interface InputBarProps {
   isLoading: boolean;
   onSend: (text: string, attachments?: MockChatAttachment[]) => void;
@@ -11,16 +16,23 @@ export interface InputBarProps {
   assistantName?: string;
   onAssistantTap?: () => void;
   onRecall?: () => void;
+  onTriggerShortcut?: () => void;
 }
 
-export const InputBar: React.FC<InputBarProps> = ({
+export interface InputBarRef {
+  insertText: (text: string) => void;
+  focus: () => void;
+}
+
+export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   isLoading,
   onSend,
   onStop,
   assistantName,
   onAssistantTap,
   onRecall,
-}) => {
+  onTriggerShortcut,
+}, ref) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([]);
@@ -28,6 +40,18 @@ export const InputBar: React.FC<InputBarProps> = ({
   const [searchMode, setSearchMode] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toast = useToast();
+
+  useImperativeHandle(ref, () => ({
+    insertText: (newText) => {
+      setText((prev) => prev ? `${prev}\n${newText}` : newText);
+      setTimeout(() => {
+        if (textareaRef.current) textareaRef.current.focus();
+      }, 0);
+    },
+    focus: () => {
+      if (textareaRef.current) textareaRef.current.focus();
+    }
+  }));
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -91,7 +115,8 @@ export const InputBar: React.FC<InputBarProps> = ({
         fileName: file.name,
         filePath: URL.createObjectURL(file), // create local blob string to display
         isImage,
-        isPdf
+        isPdf,
+        fileSize: file.size
       };
     });
 
@@ -106,18 +131,34 @@ export const InputBar: React.FC<InputBarProps> = ({
   };
 
   const handlePromptShortcut = () => {
-    // TODO: PromptShortcutSheet
-    const sample = '帮我解释一下...';
-    setText(prev => prev + sample);
+    if (onTriggerShortcut) {
+      onTriggerShortcut();
+    }
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    
+    // Trigger shortcut modal if '/' is just typed
+    if (val.endsWith('/') && val.length > text.length) {
+       if (onTriggerShortcut) onTriggerShortcut();
+    }
+    setText(val);
   };
 
   const toggleSearchMode = () => setSearchMode(prev => !prev);
 
-  const QuickActionChip = ({ icon, label, onClick, isActive = false }: { icon: string, label: string, onClick?: () => void, isActive?: boolean }) => (
-    <button className={`${styles.quickActionChip} ${isActive ? styles.chipActive : ''}`} onClick={onClick} type="button">
+  const QuickActionChip = ({ icon, label, onClick, isActive = false }: { icon: React.ReactNode, label: string, onClick?: () => void, isActive?: boolean }) => (
+    <motion.button 
+      className={`${styles.quickActionChip} ${isActive ? styles.chipActive : ''}`} 
+      onClick={onClick} 
+      type="button"
+      whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(71, 85, 105, 0.06)' }}
+      whileTap={{ scale: 0.96 }}
+    >
       <span className={styles.chipIcon}>{icon}</span>
       <span className={styles.chipLabel}>{label}</span>
-    </button>
+    </motion.button>
   );
 
   return (
@@ -131,22 +172,32 @@ export const InputBar: React.FC<InputBarProps> = ({
       />
       <div className={styles.constrainedBox}>
         {/* Animated Toolbar */}
-        <div className={`${styles.toolbarWrapper} ${showToolbar ? styles.toolbarVisible : ''}`}>
-           <div className={styles.toolbarScroll}>
-              <QuickActionChip icon="📎" label="上传附件" onClick={handlePickFiles} />
-              <QuickActionChip icon="⚡" label="快捷指令" onClick={handlePromptShortcut} />
-              <QuickActionChip icon="🧩" label={t('agent.tools.tool_call')} onClick={handleOpenToolManager} />
-              <QuickActionChip 
-                icon={searchMode ? "🌐" : "🚫"} 
-                label={searchMode ? t('settings.web_search_mode_tool') : t('settings.web_search_mode_off')} 
-                isActive={searchMode} 
-                onClick={toggleSearchMode} 
-              />
-              {onRecall && (
-                <QuickActionChip icon="📖" label={t('settings.recall_memories')} onClick={onRecall} />
-              )}
-           </div>
-        </div>
+        <AnimatePresence initial={false}>
+          {showToolbar && (
+            <motion.div 
+              className={styles.toolbarWrapper}
+              initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+              animate={{ height: 'auto', opacity: 1, marginBottom: 8 }}
+              exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+              transition={{ duration: 0.25, type: 'spring', bounce: 0, stiffness: 200 }}
+            >
+               <div className={styles.toolbarScroll}>
+                  <QuickActionChip icon={<Paperclip size={14} />} label="上传附件" onClick={handlePickFiles} />
+                  <QuickActionChip icon={<Zap size={14} />} label="快捷指令" onClick={handlePromptShortcut} />
+                  <QuickActionChip icon={<Wrench size={14} />} label={t('agent.tools.tool_call')} onClick={handleOpenToolManager} />
+                  <QuickActionChip 
+                    icon={searchMode ? <Globe size={14} /> : <span style={{opacity: 0.5}}><Globe size={14} /></span>} 
+                    label={searchMode ? t('settings.web_search_mode_tool') : t('settings.web_search_mode_off')} 
+                    isActive={searchMode} 
+                    onClick={toggleSearchMode} 
+                  />
+                  {onRecall && (
+                    <QuickActionChip icon={<BookOpen size={14} />} label={t('settings.recall_memories')} onClick={onRecall} />
+                  )}
+               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Attachments Preview */}
         {attachments.length > 0 && (
@@ -157,10 +208,10 @@ export const InputBar: React.FC<InputBarProps> = ({
                      <img src={att.filePath} className={styles.attPreviewImg} alt={att.fileName}/>
                    ) : (
                      <div className={styles.attFileBox}>
-                       <span className={styles.attFileIcon}>{att.isPdf ? '📄' : '📁'}</span>
+                       <span className={styles.attFileIcon}>{att.isPdf ? <FileText size={18} /> : <Folder size={18} />}</span>
                        <div className={styles.attFileMeta}>
                           <span className={styles.attFileName}>{att.fileName}</span>
-                          <span className={styles.attFileSize}>124 KB</span>
+                          <span className={styles.attFileSize}>{att.fileSize ? (att.fileSize < 1024 * 1024 ? `${(att.fileSize / 1024).toFixed(1)} KB` : `${(att.fileSize / 1024 / 1024).toFixed(1)} MB`) : '124 KB'}</span>
                        </div>
                      </div>
                    )}
@@ -168,7 +219,7 @@ export const InputBar: React.FC<InputBarProps> = ({
                      className={styles.attRemoveBtn} 
                      onClick={() => setAttachments(prev => prev.filter(p => p.id !== att.id))}
                    >
-                     ×
+                     <X size={12} strokeWidth={3} />
                    </button>
                 </div>
              ))}
@@ -182,7 +233,7 @@ export const InputBar: React.FC<InputBarProps> = ({
              onClick={() => setShowToolbar(!showToolbar)}
              type="button"
            >
-              {showToolbar ? '▦' : '▤'}
+              {showToolbar ? <LayoutGrid size={20} /> : <Menu size={20} />}
            </button>
 
            <div className={styles.inputWrapper}>
@@ -191,7 +242,7 @@ export const InputBar: React.FC<InputBarProps> = ({
                className={styles.textarea}
                placeholder={t('agent.chat.input_hint')}
                value={text}
-               onChange={(e) => setText(e.target.value)}
+               onChange={handleTextChange}
                onKeyDown={handleKeyDown}
                rows={1}
              />
@@ -199,22 +250,38 @@ export const InputBar: React.FC<InputBarProps> = ({
 
            <div className={styles.sendBtnWrapper}>
               {isLoading ? (
-                <button className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={onStop} type="button">
-                   <div className={styles.stopSquare}></div>
-                </button>
+                <motion.button 
+                  className={`${styles.actionBtn} ${styles.stopBtn}`} 
+                  onClick={onStop} 
+                  type="button"
+                  whileTap={{ scale: 0.92 }}
+                >
+                   <Square size={12} fill="currentColor" strokeWidth={0} />
+                </motion.button>
               ) : (
-                <button 
+                <motion.button 
                    className={`${styles.actionBtn} ${styles.sendBtn} ${(!text.trim() && attachments.length === 0) ? styles.sendBtnDisabled : ''}`} 
                    onClick={handleSend}
                    disabled={!text.trim() && attachments.length === 0}
                    type="button"
+                   whileTap={{ scale: 0.92 }}
                 >
-                   ➤
-                </button>
+                   <ArrowUp size={18} strokeWidth={3} />
+                </motion.button>
               )}
            </div>
         </div>
       </div>
+      {/* 底部小托盘：显示当前助手 */}
+      {assistantName && (
+        <div className={styles.assistantIndicator} onClick={onAssistantTap}>
+           <span className={styles.botIcon}>🤖</span>
+           {t('agent.chat.current_assistant', '协同分身:')} 
+           <span className={styles.botName}>{assistantName}</span>
+        </div>
+      )}
     </div>
   );
-};
+});
+
+InputBar.displayName = 'InputBar';

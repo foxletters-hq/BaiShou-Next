@@ -12,16 +12,17 @@ export * from './web/Select/Select';
 export * from './web/Badge/Badge';
 export * from './web/Tooltip/Tooltip';
 
-export * from './web/DiaryCard';
-export * from './web/TimelineNode';
-export * from './web/TagInput';
-export * from './web/DatePicker';
-export * from './web/DiaryEditor';
-export * from './web/MarkdownRenderer';
-export * from './web/MarkdownToolbar';
-export * from './web/SummaryCard';
+export * from './web/DiaryCard/index';
+export * from './web/DiaryMetaCard/index';
+export * from './web/TimelineNode/index';
+export * from './web/TagInput/index';
+export * from './web/DatePicker/index';
+export * from './web/DiaryEditor/index';
+export * from './web/MarkdownRenderer/index';
+export * from './web/MarkdownToolbar/index';
+export * from './web/SummaryCard/index';
 export * from './web/MissingSummaryCard/MissingSummaryCard';
-export * from './web/StatisticCard';
+export * from './web/StatisticCard/index';
 
 // Editor Addons
 export * from './web/MarkdownToolbar/MarkdownToolbar';
@@ -31,45 +32,57 @@ export * from './web/DiaryEditorAppBarTitle/DiaryEditorAppBarTitle';
 export * from './web/DashboardHeroBanner/DashboardHeroBanner';
 export * from './web/DashboardStatsCard/DashboardStatsCard';
 export * from './web/DashboardSharedMemoryCard/DashboardSharedMemoryCard';
-export * from './web/SummaryDashboard';
-export * from './web/GalleryPanel';
-export * from './web/SettingsSection';
-export * from './web/SettingsItem';
-export * from './web/ColorPicker';
+export * from './web/SummaryDashboard/index';
+export * from './web/GalleryPanel/index';
+export * from './web/SettingsSection/index';
+export * from './web/SettingsItem/index';
+export * from './web/ColorPicker/index';
 export * from './web/AppearanceSettingsCard/AppearanceSettingsCard';
-export * from './web/WorkspaceSettingsCard';
-export * from './web/DataManagementCard';
-export * from './web/LanSyncCard';
-export * from './web/CloudSyncPanel';
-export * from './web/StorageSettingsCard';
-export * from './web/AttachmentManagementView';
+export * from './web/WorkspaceSettingsCard/index';
+export * from './web/DataManagementCard/index';
+export * from './web/LanSyncCard/index';
+export * from './web/CloudSyncPanel/index';
+export * from './web/StorageSettingsCard/index';
+export * from './web/AttachmentManagementView/index';
 
-export * from './web/AIModelServicesView';
-export * from './web/AIGlobalModelsView';
-export * from './web/AgentBehaviorSettingsCard';
-export * from './web/IdentitySettingsCard';
+export * from './web/AIModelServicesView/index';
+export * from './web/AIGlobalModelsView/index';
+export * from './web/AgentBehaviorSettingsCard/index';
+export * from './web/IdentitySettingsCard/index';
 
-export * from './web/RagMemoryView';
-export * from './web/AgentToolsView';
-export * from './web/WebSearchSettingsView';
+export * from './web/RagMemoryView/index';
+export * from './web/AgentToolsView/index';
+export * from './web/WebSearchSettingsView/index';
 
-export * from './web/ProfileSettingsCard';
-export * from './web/HotkeySettingsCard';
-export * from './web/McpSettingsCard';
-export * from './web/DeveloperOptionsView';
+export * from './web/ProfileSettingsCard/index';
+export * from './web/HotkeySettingsCard/index';
+export * from './web/McpSettingsCard/index';
+export * from './web/DeveloperOptionsView/index';
 
-export * from './web/AboutSettingsCard';
-export * from './web/AssistantMatrixCard';
+export * from './web/AboutSettingsCard/index';
+export * from './web/AssistantMatrixCard/index';
 
 // 仅保证 TypeScript 导出正常，真正跨包可能会区分 web / native 导出策略
 
 // 聊天与Agent组件
-export * from './web/ChatBubble';
-export * from './web/StreamingBubble';
-export * from './web/TokenBadge';
-export * from './web/ToolResultGroupCard';
-export * from './web/InputBar';
-export * from './web/ModelSwitcher';
-export * from './web/AssistantPicker';
-export * from './web/SessionListItem';
-export * from './web/EmojiPicker';
+export * from './web/ChatBubble/index';
+export * from './web/StreamingBubble/index';
+export * from './web/TokenBadge/index';
+export * from './web/ToolResultGroupCard/index';
+export * from './web/InputBar/index';
+export * from './web/ModelSwitcher/index';
+export * from './web/AssistantPicker/index';
+export * from './web/SessionListItem/index';
+export * from './web/EmojiPicker/index';
+export * from './web/ChatAppBar/index';
+export * from './web/AgentSessionList/index';
+
+// Core Management UI (B2)
+export * from './web/SessionManagementPage/index';
+export * from './web/AssistantManagementPage/index';
+export * from './web/AssistantEditPage/index';
+export * from './web/ChatCostDialog/index';
+export { AssistantPickerSheet } from './web/AssistantPickerSheet/index';
+export type { AssistantPickerSheetProps } from './web/AssistantPickerSheet/index';
+export * from './web/PromptShortcutSheet/index';
+export * from './web/RecallBottomSheet/index';
