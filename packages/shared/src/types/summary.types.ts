@@ -1,7 +1,13 @@
 import { z } from 'zod';
 
-export const SummaryTypeSchema = z.enum(['weekly', 'monthly', 'quarterly', 'yearly']);
-export type SummaryType = z.infer<typeof SummaryTypeSchema>;
+export enum SummaryType {
+  weekly = 'weekly',
+  monthly = 'monthly',
+  quarterly = 'quarterly',
+  yearly = 'yearly',
+}
+
+export const SummaryTypeSchema = z.nativeEnum(SummaryType);
 
 export const SummarySchema = z.object({
   id: z.number().int().positive().optional(),
@@ -16,3 +22,21 @@ export const SummarySchema = z.object({
 export type Summary = z.infer<typeof SummarySchema>;
 export type CreateSummaryInput = Omit<Summary, 'id' | 'generatedAt'>;
 export type UpdateSummaryInput = Partial<CreateSummaryInput>;
+
+export interface MissingSummary {
+  type: SummaryType;
+  startDate: Date;
+  endDate: Date;
+  label: string;
+  weekNumber?: number;
+}
+
+export interface ContextResult {
+  text: string;
+  yearCount: number;
+  quarterCount: number;
+  monthCount: number;
+  weekCount: number;
+  diaryCount: number;
+}
+

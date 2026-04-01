@@ -76,6 +76,14 @@ app.whenReady().then(() => {
     // Register Cloud Sync IPC
     const { registerCloudSyncIPC } = require('./ipc/cloud-sync.ipc')
     registerCloudSyncIPC()
+
+    // Register Diary IPC
+    const { registerDiaryIPC } = require('./ipc/diary.ipc')
+    registerDiaryIPC()
+
+    // Register Summary IPC
+    const { registerSummaryIPC } = require('./ipc/summary.ipc')
+    registerSummaryIPC()
     
     createWindow()
   }).catch((err) => {

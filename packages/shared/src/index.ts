@@ -5,6 +5,7 @@ export * from './types/settings.types';
 export * from './types/ai-provider.types';
 export * from './types/user-profile.types';
 export * from './types/prompt-shortcut.types';
+export * from './types/sync.ipc';
 
 export { default as i18n } from './i18n/i18n';
 export * from './i18n/i18n.types';

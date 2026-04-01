@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import { diariesTable } from '../schema/diaries';
+import { summariesTable } from '../schema/summaries';
+import { agentSessionsTable } from '../schema/agent-sessions';
+import { FTS_INIT_SQL } from '../schema/fts';
 
 describe('Database Schema', () => {
   let db: ReturnType<typeof drizzle>;
@@ -12,28 +14,18 @@ describe('Database Schema', () => {
     
     // 简易建表逻辑用于测试
     sqlite.exec(`
-      CREATE TABLE diaries (
+      CREATE TABLE summaries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date INTEGER NOT NULL,
+        target_type TEXT NOT NULL,
+        target_date INTEGER NOT NULL,
         content TEXT NOT NULL,
-        tags TEXT,
-        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
-        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
       );
     `);
   });
 
-  it('should insert and fetch a diary', async () => {
-    const now = new Date();
-    await db.insert(diariesTable).values({
-      date: now,
-      content: 'Database test content',
-      tags: 'test'
-    });
-
-    const result = await db.select().from(diariesTable);
-    expect(result.length).toBe(1);
-    expect(result[0]!.content).toBe('Database test content');
-    expect(result[0]!.date).toBeInstanceOf(Date);
+  it('should execute schema successfully', async () => {
+    const result = await db.select().from(summariesTable);
+    expect(result).toBeDefined();
   });
 });

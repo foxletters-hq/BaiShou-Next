@@ -26,12 +26,4 @@ export class DiaryDateConflictError extends Error {
   }
 }
 
-export interface IDiaryRepository {
-  findById(id: number): Promise<any | null>;
-  findByDate(date: Date): Promise<any | null>;
-  findByDateRange(start: Date, end: Date): Promise<any[]>;
-  create(diary: CreateDiaryInput): Promise<any>;
-  update(id: number, diary: UpdateDiaryInput): Promise<any>;
-  delete(id: number): Promise<void>;
-  search(query: string, limit?: number): Promise<any[]>;
-}
+

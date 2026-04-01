@@ -1,20 +1,21 @@
 import { ipcMain, BrowserWindow } from 'electron';
+import { SyncIpcChannels } from '@baishou/shared';
 import { DesktopLanSyncService } from '../services/lan-sync.service';
 import { archiveService } from './archive.ipc';
 
 export const lanSyncService = new DesktopLanSyncService(archiveService);
 
 export function registerLanIPC() {
-  ipcMain.handle('lan:startBroadcasting', async () => {
+  ipcMain.handle(SyncIpcChannels.LAN_START_BROADCASTING, async () => {
     return await lanSyncService.startBroadcasting();
   });
 
-  ipcMain.handle('lan:stopBroadcasting', async () => {
+  ipcMain.handle(SyncIpcChannels.LAN_STOP_BROADCASTING, async () => {
     await lanSyncService.stopBroadcasting();
     return true;
   });
 
-  ipcMain.handle('lan:startDiscovery', async () => {
+  ipcMain.handle(SyncIpcChannels.LAN_START_DISCOVERY, async () => {
     await lanSyncService.startDiscovery(
       (device) => {
         const windows = BrowserWindow.getAllWindows();
@@ -32,12 +33,12 @@ export function registerLanIPC() {
     return true;
   });
 
-  ipcMain.handle('lan:stopDiscovery', async () => {
+  ipcMain.handle(SyncIpcChannels.LAN_STOP_DISCOVERY, async () => {
     await lanSyncService.stopDiscovery();
     return true;
   });
 
-  ipcMain.handle('lan:sendFile', async (_, ip: string, port: number) => {
+  ipcMain.handle(SyncIpcChannels.LAN_SEND_FILE, async (_, ip: string, port: number) => {
     return await lanSyncService.sendFile(ip, port, (progress) => {
       const windows = BrowserWindow.getAllWindows();
       if (windows.length > 0) {

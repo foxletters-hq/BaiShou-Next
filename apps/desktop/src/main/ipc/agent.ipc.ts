@@ -1,21 +1,40 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { join } from 'path';
-import { SessionRepository, AssistantRepository, MessageRepository } from '@baishou/database'
-import { appDb } from '../db'
+import { SessionRepository, AssistantRepository, MessageRepository, connectionManager } from '@baishou/database'
+import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
+import { 
+  AgentService, 
+  SessionFileService,
+  SessionSyncService,
+  SessionManagerService,
+  AssistantFileService,
+  AssistantManagerService
+} from '@baishou/core'
+import { pathService } from './vault.ipc'
+
 // @ts-ignore
 import { AgentSessionService } from '@baishou/ai/src/agent/agent-session.service'
 // @ts-ignore
 import { ToolRegistry } from '@baishou/ai/src/tools/tool-registry'
-// @ts-ignore
-import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
 
-// @ts-ignore: We need to inject a real AI provider to finally wake it up!
-import { createOpenAI } from '@ai-sdk/openai'
+// 动态工厂：确保每一次响应 IPC 时都锁定在用户当前所切环境的 Database 句柄上
+export function getAgentManagers() {
+  const db = connectionManager.getDb();
+  
+  const realSessionRepo = new SessionRepository(db);
+  const sessionFileService = new SessionFileService(pathService);
+  const sessionSyncService = new SessionSyncService(realSessionRepo, sessionFileService);
+  const sessionManager = new SessionManagerService(realSessionRepo, sessionFileService, sessionSyncService);
 
-const realSessionRepo = new SessionRepository(appDb);
-const realAssistantRepo = new AssistantRepository(appDb);
-const realMessageRepo = new MessageRepository(appDb);
-const realSnapshotRepo = new SnapshotRepository(appDb);
+  const realAssistantRepo = new AssistantRepository(db);
+  const assistantFileService = new AssistantFileService(pathService);
+  const assistantManager = new AssistantManagerService(realAssistantRepo, assistantFileService);
+
+  const realMessageRepo = new MessageRepository(db);
+  const realSnapshotRepo = new SnapshotRepository(db);
+
+  return { sessionManager, assistantManager, realMessageRepo, realSessionRepo, realSnapshotRepo };
+}
 
 // 为了这第一枪实弹测试，我们使用全局预埋的指挥官提供的深求 Token (深求默认支持 OpenAI 协议)
 const deepseekTarget = createOpenAI({
@@ -35,49 +54,57 @@ const agentService = new AgentSessionService();
 export function registerAgentIPC() {
   
   // ==========================================
-  // API: Assistants
+  // API: Assistants (SSOT pipeline connected)
   // ==========================================
   ipcMain.handle('agent:get-assistants', async () => {
-    return await realAssistantRepo.findAll();
+    const { assistantManager } = getAgentManagers();
+    return await assistantManager.findAll();
   });
 
   ipcMain.handle('agent:create-assistant', async (_, input) => {
-    await realAssistantRepo.create(input);
+    const { assistantManager } = getAgentManagers();
+    await assistantManager.create(input);
   });
 
   ipcMain.handle('agent:update-assistant', async (_, id, input) => {
-    await realAssistantRepo.update(id, input);
+    const { assistantManager } = getAgentManagers();
+    await assistantManager.update(id, input);
   });
 
   ipcMain.handle('agent:delete-assistant', async (_, id) => {
-    await realAssistantRepo.delete(id);
+    const { assistantManager } = getAgentManagers();
+    await assistantManager.delete(id);
   });
 
   // ==========================================
-  // API: Sessions
+  // API: Sessions (Refactored to SSOT Sync pipeline)
   // ==========================================
   ipcMain.handle('agent:get-sessions', async () => {
-    return await realSessionRepo.findAllSessions();
+    const { sessionManager } = getAgentManagers();
+    return await sessionManager.findAllSessions();
   });
 
   ipcMain.handle('agent:delete-sessions', async (_, ids: string[]) => {
-    await realSessionRepo.deleteSessions(ids);
+    const { sessionManager } = getAgentManagers();
+    await sessionManager.deleteSessions(ids);
   });
 
   ipcMain.handle('agent:pin-session', async (_, id: string, isPinned: boolean) => {
-    await realSessionRepo.togglePin(id, isPinned);
+    const { sessionManager } = getAgentManagers();
+    await sessionManager.togglePin(id, isPinned);
   });
 
   // ==========================================
   // API: Chat (The Real Stream Pipeline)
   // ==========================================
   ipcMain.handle('agent:get-messages', async (_, sessionId: string) => {
-    const raw = await realMessageRepo.findBySessionId(sessionId, 50);
-    return raw;
+    const { realMessageRepo } = getAgentManagers();
+    return await realMessageRepo.findBySessionId(sessionId, 50);
   });
 
-  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
+    ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
     try {
+      const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers();
       // 开启纯血无Mock的多模态隧道
       await agentService.streamChat({
         sessionId: args.sessionId,
@@ -97,6 +124,12 @@ export function registerAgentIPC() {
         onFinish: () => event.sender.send('agent:stream-finish', { success: true })
       });
 
+      // Phase 8: 发起一次整个气泡 JSON 到 Vault/Sessions 的快照归档持久化
+      try {
+         await sessionManager.flushSessionToDisk(args.sessionId);
+      } catch (e) {
+         console.error('Agent IPC persistence SSOT Error', e);
+      }
       return true
     } catch (error: any) {
       console.error('Agent IPC stream error:', error)

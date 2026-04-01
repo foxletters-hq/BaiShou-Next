@@ -45,35 +45,5 @@ END;
 
 -- 针对 message 的级联删除：由于 agent_parts 依赖 message_id 会产生 cascaded delete，上面的 delete trigger 也会自动连锁清理 FTS 表。
 
--- =======================================================
--- 2. 日记的 FTS5 虚拟表与同步触发器
--- =======================================================
-
-CREATE VIRTUAL TABLE IF NOT EXISTS diaries_fts USING fts5(
-  diary_id UNINDEXED,
-  content,
-  tags,
-  tokenize='unicode61'
-);
-
-CREATE TRIGGER IF NOT EXISTS diaries_fts_insert
-AFTER INSERT ON diaries
-BEGIN
-  INSERT INTO diaries_fts(diary_id, content, tags) 
-  VALUES (NEW.id, NEW.content, NEW.tags);
-END;
-
-CREATE TRIGGER IF NOT EXISTS diaries_fts_update
-AFTER UPDATE OF content, tags ON diaries
-BEGIN
-  UPDATE diaries_fts 
-  SET content = NEW.content, tags = NEW.tags 
-  WHERE diary_id = NEW.id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS diaries_fts_delete
-AFTER DELETE ON diaries
-BEGIN
-  DELETE FROM diaries_fts WHERE diary_id = OLD.id;
-END;
+-- 只保留 Agent 聊天消息的 FTS 表
 `;

@@ -75,4 +75,56 @@ export class DesktopStoragePathService implements IStoragePathService {
     await fs.mkdir(vaultSysDir, { recursive: true });
     return vaultSysDir;
   }
+
+  /**
+   * 获取当前被激活的 Vault（这只是为 Desktop 单一实例使用的辅助方法）
+   */
+  private async getActiveVaultName(): Promise<string> {
+    try {
+      const data = await fs.readFile(this.getSettingsFile(), 'utf-8');
+      const settings = JSON.parse(data);
+      return settings.activeVault || 'default';
+    } catch {
+      return 'default';
+    }
+  }
+
+  private async getActiveVaultDirectory(): Promise<string> {
+    return this.getVaultDirectory(await this.getActiveVaultName());
+  }
+
+  public async getSnapshotsDirectory(): Promise<string> {
+    const root = await this.getRootDirectory();
+    const dir = path.join(root, '.snapshots');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+  public async getJournalsBaseDirectory(): Promise<string> {
+    const activeDir = await this.getActiveVaultDirectory();
+    const dir = path.join(activeDir, 'Journals');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+  public async getSummariesBaseDirectory(): Promise<string> {
+    const activeDir = await this.getActiveVaultDirectory();
+    const dir = path.join(activeDir, 'Summaries');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+  public async getSessionsBaseDirectory(): Promise<string> {
+    const activeDir = await this.getActiveVaultDirectory();
+    const dir = path.join(activeDir, 'Sessions');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+  public async getAssistantsBaseDirectory(): Promise<string> {
+    const activeDir = await this.getActiveVaultDirectory();
+    const dir = path.join(activeDir, 'Assistants');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
 }

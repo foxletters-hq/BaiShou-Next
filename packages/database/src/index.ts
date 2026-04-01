@@ -1,4 +1,3 @@
-export * from './schema/diaries';
 export * from './schema/summaries';
 export * from './schema/agent-sessions';
 export * from './schema/agent-messages';
@@ -7,9 +6,9 @@ export * from './schema/agent-assistants';
 export * from './schema/compression-snapshots';
 export * from './schema/vectors';
 export * from './schema/system-settings';
+export * from './schema/shadow-index';
 
 export * from './repositories/diary.repository';
-export * from './repositories/diary.repository.impl';
 export * from './repositories/agent.repository';
 export * from './repositories/session.repository';
 export * from './repositories/assistant.repository';
@@ -20,6 +19,8 @@ export * from './repositories/snapshot.repository';
 export * from './repositories/settings.defaults';
 export * from './repositories/user-profile.repository';
 export * from './repositories/prompt-shortcut.repository';
+export * from './repositories/shadow-index.repository';
+export * from './repositories/summary.repository.impl';
 
 export * from './drivers/vec-capability';
 export * from './drivers/node-sqlite.driver';
