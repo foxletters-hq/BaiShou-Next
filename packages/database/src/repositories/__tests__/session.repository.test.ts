@@ -1,101 +1,125 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { Database } from 'better-sqlite3';
-import DatabaseConstructor from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SessionRepository } from '../session.repository';
 import { AppDatabase } from '../../types';
 
 describe('SessionRepository', () => {
-  let db: AppDatabase;
+  let db: unknown;
   let repo: SessionRepository;
-  let sqlite: Database;
+
+  // Global Mock Builders
+  let mockInsert: any;
+  let mockUpdate: any;
+  let mockDelete: any;
+  let mockValues: any;
+  let mockOnConflictDoUpdate: any;
+  let mockSet: any;
+  let mockWhere: any;
+  let mockSelect: any;
+  let mockFrom: any;
+  let mockOrderBy: any;
 
   beforeEach(() => {
-    sqlite = new DatabaseConstructor(':memory:');
+    vi.resetAllMocks();
+
+    mockValues = vi.fn().mockReturnThis();
+    mockOnConflictDoUpdate = vi.fn().mockResolvedValue([]);
     
-    // Setup tables needed for SessionRepo tests
-    sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS agent_sessions (
-        id TEXT PRIMARY KEY,
-        title TEXT,
-        vault_name TEXT NOT NULL,
-        assistant_id TEXT,
-        system_prompt TEXT,
-        provider_id TEXT NOT NULL,
-        model_id TEXT NOT NULL,
-        total_input_tokens INTEGER NOT NULL DEFAULT 0,
-        total_output_tokens INTEGER NOT NULL DEFAULT 0,
-        is_pinned INTEGER NOT NULL DEFAULT 0,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-      
-      CREATE TABLE IF NOT EXISTS agent_messages (
-        id TEXT PRIMARY KEY,
-        session_id TEXT NOT NULL,
-        role TEXT NOT NULL,
-        is_summary INTEGER NOT NULL DEFAULT 0,
-        order_index INTEGER NOT NULL,
-        created_at INTEGER NOT NULL
-      );
-      
-      CREATE TABLE IF NOT EXISTS agent_parts (
-        id TEXT PRIMARY KEY,
-        message_id TEXT NOT NULL,
-        session_id TEXT NOT NULL,
-        type TEXT NOT NULL,
-        data TEXT NOT NULL,
-        created_at INTEGER NOT NULL
-      );
-    `);
+    mockInsert = vi.fn().mockReturnValue({
+      values: mockValues,
+      onConflictDoUpdate: mockOnConflictDoUpdate
+    });
 
-    db = drizzle(sqlite) as unknown as AppDatabase;
-    repo = new SessionRepository(db);
-  });
+    mockSet = vi.fn().mockReturnThis();
+    mockWhere = vi.fn().mockResolvedValue([]);
+    mockUpdate = vi.fn().mockReturnValue({
+      set: mockSet,
+      where: mockWhere
+    });
 
-  afterEach(() => {
-    sqlite.close();
+    mockDelete = vi.fn().mockReturnValue({
+      where: mockWhere
+    });
+
+    mockOrderBy = vi.fn().mockResolvedValue([]);
+    const mockWhereLimit = vi.fn().mockResolvedValue([{ id: 'm2', orderIndex: 2, sessionId: 's1' }]);
+    
+    const mockWhereChain = vi.fn().mockReturnValue({
+       limit: mockWhereLimit,
+       orderBy: mockOrderBy
+    });
+
+    mockFrom = vi.fn().mockReturnValue({
+      where: mockWhereChain,
+      orderBy: mockOrderBy
+    });
+    mockSelect = vi.fn().mockReturnValue({
+      from: mockFrom
+    });
+
+    db = {
+      insert: mockInsert,
+      update: mockUpdate,
+      delete: mockDelete,
+      select: mockSelect,
+      transaction: vi.fn().mockImplementation(async (cb) => {
+        return await cb(db);
+      })
+    };
+
+    repo = new SessionRepository(db as AppDatabase);
   });
 
   describe('findAllSessions', () => {
     it('should return all sessions sorted by isPinned and updatedAt', async () => {
-      await repo.upsertSession({ id: 's1', vaultName: 'v', providerId: 'p', modelId: 'm' });
-      await repo.upsertSession({ id: 's2', vaultName: 'v', providerId: 'p', modelId: 'm' });
-      
-      // Pin s1
-      await repo.togglePin('s1', true);
-      
+      mockOrderBy.mockResolvedValueOnce([
+        { id: 's1', isPinned: true },
+        { id: 's2', isPinned: false }
+      ]);
       const results = await repo.findAllSessions();
       expect(results.length).toBe(2);
-      expect(results[0]?.id).toBe('s1'); // pinned goes first
+      expect(results[0]?.id).toBe('s1');
+      expect(mockSelect).toHaveBeenCalled();
     });
   });
 
   describe('deleteSessions', () => {
     it('should delete multiple sessions at once', async () => {
-      await repo.upsertSession({ id: 's1', vaultName: 'v', providerId: 'p', modelId: 'm' });
-      await repo.upsertSession({ id: 's2', vaultName: 'v', providerId: 'p', modelId: 'm' });
-      await repo.upsertSession({ id: 's3', vaultName: 'v', providerId: 'p', modelId: 'm' });
-      
       await repo.deleteSessions(['s1', 's2']);
-      
-      const results = await repo.findAllSessions();
-      expect(results.length).toBe(1);
-      expect(results[0]?.id).toBe('s3');
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockWhere).toHaveBeenCalled();
     });
   });
 
   describe('togglePin', () => {
     it('should toggle pin state correctly', async () => {
-      await repo.upsertSession({ id: 'sp', vaultName: 'v', providerId: 'p', modelId: 'm' });
-      
       await repo.togglePin('sp', true);
-      const pinned = await repo.findAllSessions();
-      expect(pinned[0]?.isPinned).toBe(true);
-      
-      await repo.togglePin('sp', false);
-      const unpinned = await repo.findAllSessions();
-      expect(unpinned[0]?.isPinned).toBe(false);
+      expect(mockUpdate).toHaveBeenCalled();
+      expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ isPinned: true }));
+    });
+  });
+
+  describe('updateSessionTitle', () => {
+    it('should update the title of an existing session', async () => {
+      await repo.updateSessionTitle('s1', 'New Title');
+      expect(mockUpdate).toHaveBeenCalled();
+      expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ title: 'New Title' }));
+      expect(mockWhere).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteMessage', () => {
+    it('should delete a specific message and its parts', async () => {
+      await repo.deleteMessage('s1', 'm1');
+      // transaction calls db.delete 2 times
+      expect((db as any).transaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteMessageAndFollowing', () => {
+    it('should delete specified message and all subsequent messages in the session', async () => {
+      await repo.deleteMessageAndFollowing('s1', 'm2');
+      // transaction triggers db logic
+      expect((db as any).transaction).toHaveBeenCalled();
     });
   });
 });

@@ -146,6 +146,15 @@ export class SessionRepository {
   }
 
   /**
+   * 按 ID 单独更新标题
+   */
+  async updateSessionTitle(sessionId: string, title: string): Promise<void> {
+    await this.db.update(agentSessionsTable)
+      .set({ title, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, sessionId));
+  }
+
+  /**
    * 批量删除会话
    */
   async deleteSessions(ids: string[]): Promise<void> {
@@ -158,6 +167,42 @@ export class SessionRepository {
       await tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids));
       await tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids));
     });
+  }
+
+  /**
+   * 根据 ID 删除单条消息
+   */
+  async deleteMessage(sessionId: string, messageId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId));
+      await tx.delete(messagesTbl).where(eq(messagesTbl.id, messageId));
+    });
+  }
+
+  /**
+   * 删除消息及其后续所有内容
+   */
+  async deleteMessageAndFollowing(sessionId: string, messageId: string): Promise<void> {
+    const { and, gte, inArray } = await import('drizzle-orm');
+    const msg = await this.db.select().from(messagesTbl).where(eq(messagesTbl.id, messageId)).limit(1);
+    if (!msg.length) return;
+    
+    await this.db.transaction(async (tx) => {
+      const toDelete = await tx.select().from(messagesTbl).where(and(eq(messagesTbl.sessionId, sessionId), gte(messagesTbl.orderIndex, msg[0].orderIndex)));
+      const ids = toDelete.map(m => m.id);
+      if (ids.length > 0) {
+          await tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids));
+          await tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids));
+      }
+    });
+  }
+
+  /**
+   * 获取单一会话
+   */
+  async getSessionById(sessionId: string): Promise<any> {
+    const docs = await this.db.select().from(agentSessionsTable).where(eq(agentSessionsTable.id, sessionId)).limit(1);
+    return docs.length > 0 ? docs[0] : null;
   }
 
   /**
