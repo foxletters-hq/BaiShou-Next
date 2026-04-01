@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { z } from 'zod';
 import { McpService } from '../mcp.service';
 
 describe('McpService', () => {
@@ -51,14 +52,36 @@ describe('McpService', () => {
     expect((service as any).httpServer).toBeDefined();
   });
 
-  it('should expose agent tools via MCP stubs logic', async () => {
-    // 纯逻辑调用覆盖率补偿
-    const stubResult = (service as any).getAgentToolsMcpStub();
-    expect(stubResult).length(1);
-    expect(stubResult[0].name).toBe('baishou_search_memory');
+  it('should expose agent tools via real tool registry if provided', async () => {
+    // Inject a dummy tool registry
+    const dummyRegistry = {
+        getAllRaw: () => [{
+            name: 'test_tool',
+            description: 'A test tool',
+            parameters: z.object({}),
+            execute: async () => 'Test execution result'
+        }],
+        get: (name: string) => {
+            if (name === 'test_tool') {
+                return {
+                    name: 'test_tool',
+                    description: 'A test tool',
+                    parameters: z.object({}),
+                    execute: async () => 'Test execution result'
+                };
+            }
+            return undefined;
+        }
+    } as any;
+    
+    const serviceWithTools = new McpService(mockSettingsRepo, dummyRegistry);
+    const mcpTools = (serviceWithTools as any).getAgentToolsMcp();
+    
+    expect(mcpTools).length(1);
+    expect(mcpTools[0].name).toBe('baishou_test_tool');
 
-    const executeResult = await (service as any).executeAgentToolStub({ name: 'baishou_search_memory' });
+    const executeResult = await (serviceWithTools as any).executeAgentTool({ name: 'baishou_test_tool' });
     expect(executeResult.isError).toBe(false);
-    expect(executeResult.content[0].text).contain('RAG framework is pending integration');
+    expect(executeResult.content[0].text).contain('Test execution result');
   });
 });
