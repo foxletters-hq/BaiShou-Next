@@ -1,119 +1,161 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Search, X, BookHeart, BrainCircuit, Check, ArrowUpCircle, History } from 'lucide-react';
 import styles from './RecallBottomSheet.module.css';
 
-export interface ContextResultPreview {
-  text: string;
-  diaryCount: number;
-  weekCount: number;
-  monthCount: number;
-  quarterCount: number;
-  yearCount: number;
+export interface RecallItem {
+  id: string;
+  type: 'diary' | 'memory';
+  title: string;
+  snippet: string;
+  date: string;
 }
 
-interface RecallBottomSheetProps {
-  isLoading: boolean;
-  preview: ContextResultPreview | null;
-  onLoadPreview: (months: number) => void;
-  onConfirm: (contextText: string, months: number) => void;
+export interface RecallBottomSheetProps {
+  isOpen: boolean;
   onClose: () => void;
+  items: RecallItem[]; // 所有可能的记忆与日记池
+  onInject: (selectedItems: RecallItem[]) => void;
 }
 
 export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
-  isLoading,
-  preview,
-  onLoadPreview,
-  onConfirm,
-  onClose
+  isOpen,
+  onClose,
+  items,
+  onInject
 }) => {
-  const [months, setMonths] = useState(6);
-  // Debounce slider loading to prevent spamming context generation
-  const [sliderIsMoving, setSliderIsMoving] = useState(false);
+  const { t: _t } = useTranslation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'diary' | 'memory'>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (!sliderIsMoving) {
-      onLoadPreview(months);
-    }
-  }, [months, sliderIsMoving, onLoadPreview]);
+  const filteredItems = useMemo(() => {
+     let res = items;
+     if (activeTab !== 'all') {
+        res = res.filter(i => i.type === activeTab);
+     }
+     if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        res = res.filter(i => i.title.toLowerCase().includes(q) || i.snippet.toLowerCase().includes(q));
+     }
+     return res;
+  }, [items, activeTab, searchQuery]);
 
-  const handleConfirm = () => {
-    if (preview?.text) {
-      onConfirm(preview.text, months);
-    }
+  const toggleSelect = (id: string) => {
+     setSelectedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+     });
   };
+
+  const handleInject = () => {
+     const selected = items.filter(i => selectedIds.has(i.id));
+     onInject(selected);
+     setSelectedIds(new Set()); // 清空
+     onClose();
+  };
+
+  if (!isOpen) return null;
 
   return (
     <>
-      <div className={styles.overlay} onClick={onClose} />
-      <div className={styles.sheet}>
-        <div className={styles.header}>
-          <h2>📚 记忆库唤醒</h2>
-          <button className={styles.closeBtn} onClick={onClose}>✕</button>
-        </div>
+      <div className={styles.overlay} onClick={onClose}>
+        <div className={styles.sheet} onClick={e => e.stopPropagation()}>
+           
+           <div className={styles.handleContainer}>
+              <div className={styles.handle} />
+           </div>
 
-        <div className={styles.body}>
-          <p className={styles.desc}>
-            选择需要跨越的时间范围，以此构建出你这段时间来的生命图谱作为对话上下文。
-          </p>
-          
-          <div className={styles.sliderHeader}>
-            <span className={styles.sliderLabel}>时间范围</span>
-            <div className={styles.sliderValueWrap}>
-               <span className={styles.sliderValue}>{months}</span>
-               <span className={styles.sliderUnit}>个月</span>
-            </div>
-          </div>
-          
-          <input 
-            type="range" 
-            min="1" max="60" 
-            value={months} 
-            onChange={(e) => setMonths(parseInt(e.target.value, 10))}
-            onMouseDown={() => setSliderIsMoving(true)}
-            onMouseUp={() => setSliderIsMoving(false)}
-            onTouchStart={() => setSliderIsMoving(true)}
-            onTouchEnd={() => setSliderIsMoving(false)}
-            className={styles.slider}
-          />
+           <div className={styles.header}>
+              <span className={styles.headerTitle}>
+                 <History size={22} className={styles.headerIcon} />
+                 打捞散落上下文 (Context Recovery)
+              </span>
+              <button className={styles.closeBtn} onClick={onClose}>
+                 <X size={16} strokeWidth={3} />
+              </button>
+           </div>
 
-          <div className={styles.previewBox}>
-            {isLoading ? (
-              <div className={styles.loading}>加载生命图谱摘要...</div>
-            ) : preview ? (
-              <div className={styles.badges}>
-                {preview.diaryCount > 0 && <StatBadge icon="📝" count={preview.diaryCount} label="日记" color="#10b981" />}
-                {preview.weekCount > 0 && <StatBadge icon="🗓" count={preview.weekCount} label="周记" color="#6366f1" />}
-                {preview.monthCount > 0 && <StatBadge icon="📊" count={preview.monthCount} label="月记" color="#3b82f6" />}
-                {preview.quarterCount > 0 && <StatBadge icon="📅" count={preview.quarterCount} label="季报" color="#f59e0b" />}
-                {preview.yearCount > 0 && <StatBadge icon="📆" count={preview.yearCount} label="年鉴" color="#f97316" />}
-                
-                {preview.diaryCount === 0 && preview.weekCount === 0 && (
-                   <span className={styles.emptyPrompt}>所选时间内无相关记忆数据</span>
-                )}
+           <div className={styles.toolbar}>
+              <div className={styles.tabs}>
+                 <div 
+                   className={`${styles.tab} ${activeTab === 'all' ? styles.tabActive : ''}`}
+                   onClick={() => setActiveTab('all')}
+                 >
+                    全域检索
+                 </div>
+                 <div 
+                   className={`${styles.tab} ${activeTab === 'diary' ? styles.tabActive : ''}`}
+                   onClick={() => setActiveTab('diary')}
+                 >
+                    日记档案
+                 </div>
+                 <div 
+                   className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
+                   onClick={() => setActiveTab('memory')}
+                 >
+                    向量记忆
+                 </div>
               </div>
-            ) : (
-              <div className={styles.emptyPrompt}>暂无数据</div>
-            )}
-          </div>
-        </div>
+              <div className={styles.searchBox}>
+                 <Search size={16} color="var(--text-secondary)" />
+                 <input 
+                   placeholder="扫描节点或记忆断签..." 
+                   className={styles.searchInput}
+                   value={searchQuery}
+                   onChange={e => setSearchQuery(e.target.value)}
+                 />
+              </div>
+           </div>
 
-        <div className={styles.footer}>
-           <button 
-             className={styles.injectBtn} 
-             onClick={handleConfirm}
-             disabled={isLoading || !preview || preview.text.length === 0}
-           >
-              发送记忆摘要
-           </button>
+           <div className={styles.listArea}>
+              {filteredItems.length === 0 ? (
+                 <div className={styles.emptyState}>探针失效，未匹配到任何过去碎片。</div>
+              ) : (
+                 filteredItems.map(item => {
+                    const isSelected = selectedIds.has(item.id);
+                    return (
+                      <div 
+                        key={item.id} 
+                        className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}
+                        onClick={() => toggleSelect(item.id)}
+                      >
+                         <div className={styles.checkboxWrap}>
+                            {isSelected && <Check size={14} strokeWidth={4} />}
+                         </div>
+                         <div className={styles.cardInfo}>
+                            <div className={styles.cardHeader}>
+                               <span className={styles.cardTitle}>
+                                  {item.type === 'diary' ? <BookHeart size={16} className={styles.diaryIcon} /> : <BrainCircuit size={16} className={styles.memoryIcon} />}
+                                  {item.title}
+                               </span>
+                               <span className={styles.cardDate}>{item.date}</span>
+                            </div>
+                            <div className={styles.cardSnippet}>{item.snippet}</div>
+                         </div>
+                      </div>
+                    )
+                 })
+              )}
+           </div>
+
+           <div className={styles.footer}>
+              <div className={styles.selectionCount}>
+                 已锁定数据块: <span className={styles.countBadge}>{selectedIds.size}</span>
+              </div>
+              <button 
+                className={styles.injectBtn} 
+                disabled={selectedIds.size === 0}
+                onClick={handleInject}
+              >
+                 <ArrowUpCircle size={18} />
+                 注入当前神经链接
+              </button>
+           </div>
         </div>
       </div>
     </>
   );
-};
-
-const StatBadge: React.FC<{ icon: string; count: number; label: string; color: string }> = ({ icon, count, label, color }) => (
-  <div className={styles.statBadge} style={{ '--badge-c': color } as any}>
-    <span className={styles.badgeIcon}>{icon}</span>
-    <span className={styles.badgeCount}>{count}</span>
-    <span className={styles.badgeLabel}>{label}</span>
-  </div>
-);
+}

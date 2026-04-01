@@ -53,3 +53,32 @@
 .themeToggle:hover {
   background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
 }
+
+.windowControls {
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+  margin-left: 8px;
+}
+
+.winBtn {
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #1A1A1A);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.winBtn:hover {
+  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.7);
+}
+
+.winCloseBtn:hover {
+  background-color: #E81123 !important;
+  color: #FFFFFF !important;
+}

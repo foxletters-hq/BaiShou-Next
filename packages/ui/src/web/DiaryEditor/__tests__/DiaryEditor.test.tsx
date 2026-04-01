@@ -18,7 +18,7 @@ describe('DiaryEditor component', () => {
       />
     );
 
-    const textarea = getByPlaceholderText(/记录下/i) as HTMLTextAreaElement;
+    const textarea = getByPlaceholderText('diary.editor_hint') as HTMLTextAreaElement;
     expect(textarea.value).toBe('Hello world');
 
     fireEvent.change(textarea, { target: { value: 'New text' } });
@@ -39,8 +39,8 @@ describe('DiaryEditor component', () => {
       />
     );
 
-    const saveBtn = getByText(/保存|save/i);
-    fireEvent.click(saveBtn);
+    const saveBtns = screen.getAllByText('common.save');
+    fireEvent.click(saveBtns[0]);
     expect(onSave).toHaveBeenCalledWith('Time to save', ['diary'], expect.any(Date));
   });
 });

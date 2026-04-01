@@ -1,67 +1,106 @@
+/* =========================================================
+   SUMMARY PAGE - NEURAL DASHBOARD VIBE
+   ========================================================= */
+
 .summary-page-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--bg-default, #F6F7F8);
+  background-color: var(--bg-surface-lowest, #F8FAFC);
   overflow-y: auto;
+  position: relative;
 }
 
+.summary-page-container::-webkit-scrollbar {
+  width: 6px;
+}
+.summary-page-container::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: 4px;
+}
+
+/* ───────── Chrome Style Top Nav ───────── */
 .sp-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  background: var(--bg-surface, #FFFFFF);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 12px 32px;
+  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
 .sp-tabs {
   display: flex;
-  gap: 24px;
+  gap: 8px;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  padding: 6px;
+  border-radius: 12px;
 }
 
 .sp-tab {
-  padding: 16px 0;
+  padding: 8px 16px;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 15px;
-  color: var(--text-secondary);
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-secondary, #64748B);
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sp-tab:hover {
-  color: var(--text-primary);
+  color: var(--text-primary, #0F172A);
+  background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.5);
 }
 
 .sp-tab.active {
   color: var(--color-primary, #5BA8F5);
-  border-bottom-color: var(--color-primary, #5BA8F5);
-  font-weight: bold;
+  background: var(--bg-surface, #FFFFFF);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .sp-settings-btn {
-  background: transparent;
-  border: none;
-  font-size: 16px;
+  background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.6);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   cursor: pointer;
-  padding: 8px;
+  padding: 10px;
   border-radius: 50%;
-  transition: background 0.2s;
-}
-.sp-settings-btn:hover {
-  background: rgba(148, 163, 184, 0.1);
+  color: var(--text-secondary, #64748B);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
+.sp-settings-btn:hover {
+  background: var(--bg-surface, #FFFFFF);
+  color: var(--text-primary, #0F172A);
+  transform: rotate(45deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+}
+
+/* ───────── Main Content ───────── */
 .sp-content {
   flex: 1;
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .sp-panel-view {
-  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
 }
 
 .sp-dashboard-layout {
@@ -70,12 +109,141 @@
   gap: 24px;
 }
 
-/* 宽屏断点：大于 600px 变为并排 */
-@media (min-width: 600px) {
+@media (min-width: 860px) {
   .sp-dashboard-layout {
     flex-direction: row;
   }
   .sp-dashboard-layout > * {
     flex: 1;
   }
+}
+
+/* ───────── Missing Summary AI Generation Card ───────── */
+.sp-missing-section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary, #0F172A);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-missing-card {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, rgba(var(--bg-surface-rgb, 255, 255, 255), 0.9) 0%, rgba(var(--color-primary-rgb, 91, 168, 245), 0.03) 100%);
+  border: 1px solid rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(91, 168, 245, 0.05), 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+}
+
+.sp-missing-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(var(--color-primary-rgb, 91, 168, 245), 0.1), transparent);
+  transform: skewX(-20deg);
+  transition: all 0.6s;
+}
+
+.sp-missing-card:hover:not(.is-generating) {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(91, 168, 245, 0.12), 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.4) inset;
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.6);
+}
+
+.sp-missing-card:hover::before {
+  left: 150%;
+  transition: all 0.6s ease-out;
+}
+
+.sp-missing-card h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary, #0F172A);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-missing-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #64748B);
+  line-height: 1.5;
+}
+
+/* Generation State UI */
+.is-generating {
+  cursor: default;
+  background: var(--bg-surface, #FFFFFF);
+  border-color: rgba(var(--color-secondary-rgb, 16, 185, 129), 0.5);
+  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.08);
+}
+
+.sp-generation-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  border-radius: 4px;
+  margin-top: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.sp-generation-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary, #5BA8F5), var(--color-secondary, #10B981));
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+  position: relative;
+}
+
+.sp-generation-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0) 100%);
+  animation: pulseScan 1.5s infinite linear;
+}
+
+.sp-generation-status-text {
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: var(--color-secondary, #10B981);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@keyframes pulseScan {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.sp-btn-generate {
+  margin-top: 8px;
+  align-self: flex-start;
+  padding: 10px 24px;
+  border-radius: 12px;
+  background: var(--text-primary, #0F172A);
+  color: #fff;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none; /* Make click pass through to card for simple handling */
 }

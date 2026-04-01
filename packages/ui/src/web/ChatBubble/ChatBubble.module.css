@@ -209,3 +209,143 @@
 .contextBtn:hover {
   background-color: rgba(0,0,0,0.05);
 }
+
+/* --- Added for Context Menu --- */
+.contextMenuOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1000;
+}
+.contextMenu {
+  position: absolute;
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 224, 224, 224), 0.5);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+}
+.contextMenu button {
+  background: none; border: none;
+  padding: 8px 12px; text-align: left;
+  cursor: pointer; font-size: 14px;
+  color: var(--text-primary, #1A1A1A);
+  border-radius: 4px;
+}
+.contextMenu button:hover {
+  background: var(--bg-surface-highlight, #F2F2F2);
+}
+
+/* --- Added for Reasoning --- */
+.reasoningDetails {
+  margin-bottom: 8px;
+  background: rgba(0,0,0,0.02);
+  border-radius: 8px;
+  padding: 8px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 224,224,224), 0.5);
+}
+.reasoningSummary {
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  color: var(--text-secondary, #475569);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.reasoningIcon {
+  font-size: 14px;
+}
+
+/* --- Refactored Tool Result Group (1:1) --- */
+.toolGroupContainer {
+  margin-top: 8px;
+  background-color: var(--color-surface-container-low, #FFFFFF);
+  border-radius: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  width: 100%;
+}
+
+.toolGroupDetails > summary {
+  list-style: none; /* remove default arrow */
+}
+.toolGroupDetails > summary::-webkit-details-marker {
+  display: none;
+}
+
+.toolGroupSummary {
+  cursor: pointer;
+  padding: 8px 14px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  border-radius: 16px;
+  transition: background-color 0.2s;
+}
+
+.toolGroupSummary:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.toolGroupIconWrap {
+  width: 28px;
+  height: 28px;
+  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.5);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, #5BA8F5);
+}
+
+.toolCountBadge {
+  padding: 2px 7px;
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+  color: var(--color-primary, #5BA8F5);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.toolItemDetails {
+  margin: 4px 8px 8px 8px;
+  background-color: var(--bg-surface, #F9F9F9);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.toolItemDetails.isError {
+  background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.3);
+}
+
+.toolItemSummary {
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolItemSummary.isError {
+  color: var(--color-error, #D32F2F);
+}
+
+.toolItemContent {
+  padding: 0 10px 8px 10px;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-secondary-variant, #64748B);
+  max-height: 150px;
+  overflow-y: auto;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

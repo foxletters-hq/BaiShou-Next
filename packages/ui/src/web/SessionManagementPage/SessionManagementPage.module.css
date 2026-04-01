@@ -1,269 +1,428 @@
+/* =========================================================
+   SESSION MANAGEMENT PAGE - NEURAL HUB VIBE
+   ========================================================= */
+
 .page {
-  height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-surface, #FFFFFF);
+  height: 100%;
+  background-color: var(--bg-surface-lowest, #F8FAFC);
+  overflow: hidden;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
 }
 
-/* ─── App Bar ──────────────────────── */
+/* --- App Bar --- */
 .appBar {
-  padding: 16px 24px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  padding: 16px 32px;
+  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
 }
 
 .appBarTitle {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary, #1A1A1A);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary, #0F172A);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: -0.5px;
 }
 
 .appBarActions {
   display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* --- Search & Filter Bar --- */
+.filterBar {
+  padding: 16px 32px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background: var(--bg-surface, #FFFFFF);
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+}
+
+.searchBox {
+  flex: 1;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.8);
+  border-radius: 12px;
+  padding: 10px 16px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) inset;
+}
+
+.searchBox:focus-within {
+  background: var(--bg-surface, #FFFFFF);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+}
+
+.searchInput {
+  border: none;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #1E293B);
+}
+
+.filterTag {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  color: var(--text-secondary, #64748B);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterTag:hover {
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  color: var(--text-primary, #0F172A);
+}
+
+.filterTagActive {
+  background: var(--color-primary, #5BA8F5);
+  color: #FFF;
+}
+
+/* --- Dashboard Stats Panel --- */
+.statsPanel {
+  padding: 24px 32px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.statCard {
+  background: linear-gradient(145deg, var(--bg-surface, #FFFFFF), rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.5));
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+.statLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748B);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.statValue {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--text-primary, #0F172A);
+  display: flex;
+  align-items: baseline;
   gap: 8px;
 }
 
-.actionBtn {
-  padding: 8px 16px;
-  border-radius: 10px;
-  border: none;
+.statTrend {
   font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-weight: 700;
+  color: var(--color-secondary, #10B981);
 }
 
-.actionBtnPrimary {
-  background-color: var(--color-primary, #5BA8F5);
-  color: var(--color-on-primary, #FFFFFF);
-}
-
-.actionBtnPrimary:hover {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
-}
-
-.actionBtnOutline {
-  background-color: transparent;
-  color: var(--color-primary, #5BA8F5);
-  border: 1px solid rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
-}
-
-.actionBtnOutline:hover {
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.06);
-}
-
-.actionBtnDanger {
-  background-color: transparent;
-  color: var(--color-error, #EF4444);
-  border: 1px solid rgba(var(--color-error-rgb, 239, 68, 68), 0.3);
-}
-
-.actionBtnDanger:hover {
-  background-color: rgba(var(--color-error-rgb, 239, 68, 68), 0.06);
-}
-
-/* ─── Session List ──────────────────── */
-.sessionList {
+/* --- List Area --- */
+.sessionListContainer {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 24px;
+  padding: 16px 32px 32px;
 }
 
-.sessionList::-webkit-scrollbar {
-  width: 4px;
+.sessionListContainer::-webkit-scrollbar {
+  width: 6px;
+}
+.sessionListContainer::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: 4px;
 }
 
-.sessionList::-webkit-scrollbar-thumb {
-  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.2);
-  border-radius: 2px;
-}
-
-.emptyState {
-  flex: 1;
+.sessionList {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
+  gap: 12px;
 }
 
-.emptyIcon {
-  font-size: 56px;
-  opacity: 0.15;
-  margin-bottom: 16px;
-}
-
-.emptyText {
-  font-size: 14px;
-  color: var(--text-secondary, #475569);
-  text-align: center;
-}
-
-/* ─── Session Card ──────────────────── */
 .sessionCard {
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border-radius: 16px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
-  padding: 14px 16px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
-  background-color: var(--bg-surface, #FFFFFF);
+  gap: 16px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .sessionCard:hover {
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transform: translateY(-1px);
-}
-
-.sessionCardSelected {
-  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.3);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
   border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
 }
 
+.sessionCardSelected {
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.04);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.6);
+  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.08);
+}
+
 .sessionCheckbox {
-  width: 18px;
-  height: 18px;
-  margin-right: 12px;
-  accent-color: var(--color-primary, #5BA8F5);
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.8);
+  margin: 0;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.sessionCheckbox:checked {
+  background-color: var(--color-primary, #5BA8F5);
+  border-color: var(--color-primary, #5BA8F5);
+}
+
+.sessionCheckbox:checked::after {
+  content: '✓';
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 .sessionInfo {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .sessionTitleRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  margin-bottom: 6px;
 }
 
 .sessionTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary, #0F172A);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .sessionPinBadge {
-  font-size: 11px;
+  font-size: 14px;
+  background: rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.15);
+  padding: 4px 8px;
+  border-radius: 12px;
 }
 
 .sessionMeta {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 11px;
-  color: var(--text-secondary, #475569);
+  font-size: 13px;
+  color: var(--text-secondary, #64748B);
+  font-weight: 500;
 }
 
 .sessionMetaDot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.8);
 }
 
 .sessionActions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transform: translateX(10px);
+  transition: all 0.2s ease;
 }
 
 .sessionCard:hover .sessionActions {
   opacity: 1;
+  transform: translateX(0);
 }
 
 .sessionActionBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
   border: none;
-  background-color: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  transition: background-color 0.15s ease;
+  font-size: 16px;
+  transition: all 0.2s;
 }
 
 .sessionActionBtn:hover {
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
+  background: var(--bg-surface, #FFFFFF);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: scale(1.05);
 }
 
 .sessionActionBtnDanger:hover {
-  background-color: rgba(var(--color-error-rgb, 239, 68, 68), 0.1);
+  color: var(--color-error, #EF4444);
+  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.1);
 }
 
-/* ─── Multi-Select Toolbar ──────────── */
-.multiSelectBar {
-  padding: 12px 24px;
-  background-color: var(--bg-surface-low, #FAFAFA);
-  border-top: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+/* --- Buttons --- */
+.actionBtn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border: none;
 }
 
-.multiSelectCount {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary, #1A1A1A);
+.actionBtnOutline {
+  background: transparent;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  color: var(--text-primary, #0F172A);
+}
+.actionBtnOutline:hover {
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+}
+
+.actionBtnPrimary {
+  background: linear-gradient(135deg, var(--color-primary, #5BA8F5), rgba(var(--color-primary-rgb, 91, 168, 245), 0.8));
+  color: #FFF;
+  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
+}
+.actionBtnPrimary:hover {
+  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.4);
+  transform: translateY(-1px);
+}
+
+.actionBtnDanger {
+  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.1);
+  color: var(--color-error, #EF4444);
+}
+.actionBtnDanger:hover {
+  background: var(--color-error, #EF4444);
+  color: #FFF;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+
+/* --- Empty State --- */
+.emptyState {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-secondary, #64748B);
 }
 
-/* ─── Confirm Dialog ──────────────────── */
+.emptyIcon {
+  font-size: 48px;
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+
+.emptyText {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* --- Dialog --- */
 .dialogOverlay {
   position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  animation: fadeIn 0.3s ease;
 }
 
 .dialogBox {
-  width: 400px;
-  background-color: var(--bg-surface, #FFFFFF);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+  background: var(--bg-surface, #FFFFFF);
+  border-radius: 24px;
+  padding: 32px;
+  width: 90%;
+  max-width: 440px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
 }
 
 .dialogTitle {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary, #1A1A1A);
-  margin-bottom: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary, #0F172A);
 }
 
 .dialogText {
-  font-size: 13px;
-  color: var(--text-secondary, #475569);
-  margin-bottom: 20px;
-  line-height: 1.5;
+  font-size: 15px;
+  color: var(--text-secondary, #64748B);
+  line-height: 1.6;
 }
 
 .dialogActions {
   display: flex;
-  gap: 8px;
   justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }

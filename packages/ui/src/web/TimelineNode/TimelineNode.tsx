@@ -7,7 +7,7 @@ interface TimelineNodeProps {
   isFirst?: boolean;
 }
 
-export const TimelineNode: React.FC<TimelineNodeProps> = ({ children, isLast, isFirst }) => {
+export const TimelineNode: React.FC<TimelineNodeProps> = ({ children, isLast, isFirst: _isFirst }) => {
   return (
     <div className="timeline-node-v2">
       <div className="timeline-track-v2">

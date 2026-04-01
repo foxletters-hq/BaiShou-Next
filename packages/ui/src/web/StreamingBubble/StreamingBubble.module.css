@@ -188,3 +188,88 @@
   from { transform: translateY(0); }
   to { transform: translateY(-6px); }
 }
+
+/* --- Added for B1.2 Streaming Status Effects --- */
+.shimmerBox {
+  margin-top: 4px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.02) 25%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.02) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  color: var(--text-secondary, #475569);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.errorBox {
+  margin-top: 8px;
+  padding: 12px 16px;
+  background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.8);
+  border-radius: 8px;
+  border: 1px solid var(--color-error, #D32F2F);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.errorText {
+  color: var(--color-error, #D32F2F);
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.retryBtn {
+  align-self: flex-start;
+  background-color: var(--color-error, #D32F2F);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.retryBtn:hover {
+  opacity: 0.8;
+}
+
+.stopBtnWrap {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-start; 
+  width: 100%;
+}
+
+.stopBtn {
+  background: transparent;
+  border: 1px solid rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
+  color: var(--text-secondary, #475569);
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stopBtn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary, #1A1A1A);
+  border-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.6);
+}

@@ -1,107 +1,166 @@
 .itemWrapper {
-  padding-bottom: 2px;
+  margin: 2px 8px;
+  position: relative;
 }
 
 .container {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   padding: 10px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  border-radius: 12px;
   background-color: transparent;
-  position: relative;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
 }
 
 .container:hover {
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.3);
+  background-color: rgba(var(--bg-surface-high-rgb, 241, 245, 249), 0.7);
 }
 
-.selected, .selected:hover {
-  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.5);
+.selected {
+  background-color: var(--bg-surface-highest, #FFFFFF);
+  border-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
-.checkbox {
-  margin-right: 8px;
-  cursor: pointer;
+/* Header Line (Title & Time) */
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  overflow: hidden;
 }
 
 .pinIcon {
-  font-size: 13px;
   color: var(--color-primary, #5BA8F5);
-  margin-right: 6px;
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
 }
 
 .title {
-  flex: 1;
   font-size: 14px;
-  color: var(--text-primary, #1A1A1A);
+  font-weight: 600;
+  color: var(--text-primary, #1E293B);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .titleSelected {
-  font-weight: 600;
   color: var(--color-primary, #5BA8F5);
 }
 
-.actionsBox {
-  position: relative;
+.timeLabel {
+  font-size: 11px;
+  color: var(--text-secondary, #94A3B8);
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
-.moreBtn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary, #475569);
-  cursor: pointer;
-  font-size: 18px;
+/* Body Line (Avatar & Snippet) */
+.bodyRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatarBox {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
-  line-height: 1;
-}
-
-.menuOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-}
-
-.dropdownMenu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  background-color: var(--bg-surface, #FFFFFF);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 120px;
-  z-index: 101;
-  padding: 4px 0;
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+  color: var(--color-primary, #5BA8F5);
+  flex-shrink: 0;
+  font-size: 12px;
   overflow: hidden;
 }
 
-.menuItem {
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.snippet {
+  font-size: 12px;
+  color: var(--text-secondary, #64748B);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* Hover Action Bar */
+.actionsBox {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: var(--text-primary, #1A1A1A);
+  gap: 2px;
+  background: rgba(var(--bg-surface-highest-rgb, 255, 255, 255), 0.9);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 2px 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  opacity: 0;
+  transform: translateY(2px);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Show actions on hover */
+.container:hover .actionsBox {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.actionBtn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #64748B);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
-.menuItem:hover {
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
+.actionBtn:hover {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  color: var(--text-primary, #1E293B);
 }
 
-.menuItemDanger {
-  color: var(--color-error, #F44336);
-  border-top: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+.actionBtnDanger:hover {
+  background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.8) !important;
+  color: var(--color-error, #F44336) !important;
 }
 
-.menuIcon {
-  font-size: 14px;
+/* Selection / Checkbox mode */
+.checkbox {
+  width: 16px;
+  height: 16px;
   margin-right: 8px;
+  cursor: pointer;
+  accent-color: var(--color-primary, #5BA8F5);
 }

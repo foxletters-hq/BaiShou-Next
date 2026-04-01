@@ -3,33 +3,33 @@ import '@testing-library/jest-dom';
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { TimelineNode } from '../index';
-import type { TimelineNode as TimelineNodeType } from '@baishou/shared';
-describe('TimelineNode component', () => {
-  it('renders a month separator correctly', () => {
-    const node: TimelineNodeType = {
-      id: 'sep-2026-03',
-      type: 'month_separator',
-      date: new Date('2026-03-31T00:00:00Z')
-    };
 
-    render(<TimelineNode node={node} />);
-    expect(screen.getByText(/2026/)).toBeInTheDocument();
+describe('TimelineNode component', () => {
+  it('renders a month separator via children', () => {
+    render(
+      <TimelineNode>
+        <div>2026-03</div>
+      </TimelineNode>
+    );
+    expect(screen.getByText('2026-03')).toBeInTheDocument();
   });
 
-  it('renders a diary entry node correctly', () => {
-    const node: TimelineNodeType = {
-      id: 1,
-      type: 'diary_entry',
-      date: new Date('2026-03-31T10:00:00Z'),
-      meta: {
-        id: 1,
-        date: new Date('2026-03-31T10:00:00Z'),
-        preview: 'Test entry',
-        tags: []
-      }
-    };
-
-    render(<TimelineNode node={node} />);
+  it('renders a diary entry node via children', () => {
+    render(
+      <TimelineNode>
+        <div>Test entry</div>
+      </TimelineNode>
+    );
     expect(screen.getByText('Test entry')).toBeInTheDocument();
+  });
+  
+  it('hides the timeline track line when isLast is true', () => {
+    const { container } = render(
+      <TimelineNode isLast>
+        <div>Final entry</div>
+      </TimelineNode>
+    );
+    const line = container.querySelector('.timeline-line-v2');
+    expect(line).not.toBeInTheDocument();
   });
 });

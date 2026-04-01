@@ -1,158 +1,72 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { Terminal, Zap } from 'lucide-react';
 import styles from './PromptShortcutSheet.module.css';
 
 export interface PromptShortcut {
   id: string;
-  trigger?: string;
-  command?: string;
-  icon?: string;
-  name?: string;
-  content: string;
-  description?: string;
+  command: string; // 例如 "translate" (不包含斜杠)
+  description: string;
+  tag?: string;
+  content: string; // 实际替换进来的文本
 }
 
-interface PromptShortcutSheetProps {
+export interface PromptShortcutSheetProps {
+  isOpen: boolean;
   shortcuts: PromptShortcut[];
-  onSelect: (content: string) => void;
-  onAdd: (shortcut: Omit<PromptShortcut, 'id'>) => void;
-  onUpdate: (id: string, shortcut: Omit<PromptShortcut, 'id'>) => void;
-  onDelete: (id: string) => void;
-  onReorder: (oldIndex: number, newIndex: number) => void;
-  onClose: () => void;
+  selectedIndex: number; // 由父组件控制键盘上下键以决定哪个被高亮
+  onSelect: (shortcut: PromptShortcut) => void;
 }
 
 export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
+  isOpen,
   shortcuts,
-  onSelect,
-  onAdd,
-  onUpdate,
-  onDelete,
-  onReorder,
-  onClose
+  selectedIndex,
+  onSelect
 }) => {
-  const [editingItem, setEditingItem] = useState<PromptShortcut | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  // Drag and drop state
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  // 当选择的索引改变时，确保将其滚动入视野
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      const selectedEl = listRef.current.children[selectedIndex] as HTMLElement;
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [selectedIndex, isOpen]);
 
-  const handleDragStart = (idx: number) => setDraggedIdx(idx);
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (draggedIdx === null || draggedIdx === idx) return;
-    onReorder(draggedIdx, idx);
-    setDraggedIdx(idx); // Update pointer to new spot fluidly
-  };
-  const handleDragEnd = () => setDraggedIdx(null);
-
-  if (isAdding || editingItem) {
-    return (
-      <ShortcutEditor
-        shortcut={editingItem}
-        onSave={(item) => {
-          if (editingItem) onUpdate(editingItem.id, item);
-          else onAdd(item);
-          setEditingItem(null);
-          setIsAdding(false);
-        }}
-        onCancel={() => {
-          setEditingItem(null);
-          setIsAdding(false);
-        }}
-      />
-    );
-  }
+  if (!isOpen) return null;
 
   return (
-    <>
-      <div className={styles.overlay} onClick={onClose} />
-      <div className={styles.sheet}>
-        <div className={styles.header}>
-          <div className={styles.titleWrap}>
-            <span className={styles.boltIcon}>⚡</span>
-            <h2>快捷指令</h2>
-          </div>
-          <div className={styles.headerActions}>
-            <button className={styles.iconBtn} onClick={() => setIsAdding(true)} title="新建">➕</button>
-            <button className={styles.closeBtn} onClick={onClose}>✕</button>
-          </div>
-        </div>
-
-        <div className={styles.list}>
-          {shortcuts.length === 0 ? (
-            <div className={styles.empty}>暂无快捷指令</div>
-          ) : (
-            shortcuts.map((sc, index) => (
-              <div 
-                key={sc.id} 
-                className={`${styles.shortcutItem} ${draggedIdx === index ? styles.dragging : ''}`}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-              >
-                <div className={styles.dragHandle}>☰</div>
-                <div 
-                   className={styles.clickArea} 
-                   onClick={() => onSelect(sc.content || sc.command || '')}
-                >
-                  <div className={styles.iconBox}>
-                    {sc.icon || sc.trigger?.charAt(0).toUpperCase() || '⚡'}
-                  </div>
-                  <div className={styles.commandContent}>
-                    <span className={styles.description}>{sc.name || sc.description}</span>
-                    <span className={styles.commandPreview}>{sc.content || sc.command}</span>
-                  </div>
+    <div className={styles.overlay}>
+       <div className={styles.header}>
+          <Zap size={14} /> 快捷战术指令 (Shortcut)
+       </div>
+       <div className={styles.listArea} ref={listRef}>
+          {shortcuts.map((shortcut, index) => (
+             <div 
+               key={shortcut.id}
+               className={`${styles.item} ${index === selectedIndex ? styles.itemSelected : ''}`}
+               onClick={() => onSelect(shortcut)}
+             >
+                <div className={styles.itemIcon}>
+                   <Terminal size={14} />
                 </div>
-                
-                <div className={styles.itemActions}>
-                  <button onClick={(e) => { e.stopPropagation(); setEditingItem(sc); }}>✎</button>
-                  <button onClick={(e) => { e.stopPropagation(); onDelete(sc.id); }} className={styles.delBtn}>✖</button>
+                <div className={styles.itemInfo}>
+                   <div className={styles.titleRow}>
+                      <span className={styles.command}>/{shortcut.command}</span>
+                      {shortcut.tag && <span className={styles.tag}>{shortcut.tag}</span>}
+                   </div>
+                   <div className={styles.desc}>{shortcut.description}</div>
                 </div>
-              </div>
-            ))
+             </div>
+          ))}
+          {shortcuts.length === 0 && (
+            <div style={{ padding: '20px', textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
+              找不到匹配的指令协议...
+            </div>
           )}
-        </div>
-      </div>
-    </>
-  );
-};
-
-const ShortcutEditor: React.FC<{
-  shortcut: PromptShortcut | null;
-  onSave: (item: Omit<PromptShortcut, 'id'>) => void;
-  onCancel: () => void;
-}> = ({ shortcut, onSave, onCancel }) => {
-  const [icon, setIcon] = useState(shortcut?.icon || '⚡');
-  const [name, setName] = useState(shortcut?.name || shortcut?.description || '');
-  const [content, setContent] = useState(shortcut?.content || shortcut?.command || '');
-
-  return (
-    <div className={styles.sheet}>
-      <div className={styles.header}>
-        <h2>{shortcut ? '编辑指令' : '新建指令'}</h2>
-        <button className={styles.closeBtn} onClick={onCancel}>✕</button>
-      </div>
-      <div className={styles.editorBody}>
-        <div className={styles.inputRow}>
-           <input className={styles.iconInput} value={icon} onChange={e => setIcon(e.target.value)} maxLength={2} placeholder="图标" />
-           <input className={styles.textInput} value={name} onChange={e => setName(e.target.value)} placeholder="指令名称 (例: 总结提取)" />
-        </div>
-        <textarea 
-          className={styles.textArea} 
-          value={content} 
-          onChange={e => setContent(e.target.value)} 
-          placeholder="输入将要发送给AI的Prompt模板..."
-        />
-      </div>
-      <div className={styles.editorFooter}>
-         <button className={styles.cancelBtn} onClick={onCancel}>取消</button>
-         <button 
-           className={styles.saveBtn} 
-           onClick={() => { if(name && content) onSave({ icon, name, content, description: name, command: content }); }}
-           disabled={!name || !content}
-         >保存</button>
-      </div>
+       </div>
     </div>
   );
 };

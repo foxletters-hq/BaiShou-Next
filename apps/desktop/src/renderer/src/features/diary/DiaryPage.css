@@ -1,38 +1,54 @@
+/* =========================================================
+   DIARY PAGE - NEXT GEN VIBE STYLING
+   ========================================================= */
+
 .diary-page-container {
-  padding: 32px;
-  max-width: 900px;
+  padding: 32px 48px;
+  max-width: 1280px;
   margin: 0 auto;
   height: 100%;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-surface-lowest, #F8FAFC);
 }
 
 .diary-page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 20px;
+  padding: 20px 28px;
+  background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 20px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
 }
 
 .dp-header-start {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
 }
 
 .diary-page-title {
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary, #0F172A);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -0.5px;
 }
 
 .dp-view-toggles {
   display: flex;
-  background: var(--color-surface-container);
-  border-radius: 8px;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  border-radius: 12px;
   padding: 4px;
   gap: 4px;
 }
@@ -40,21 +56,27 @@
 .dp-toggle-btn {
   background: transparent;
   border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
+  border-radius: 8px;
+  padding: 8px 12px;
   cursor: pointer;
   opacity: 0.6;
-  transition: all 0.2s;
+  font-size: 15px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dp-toggle-btn:hover {
-  opacity: 0.8;
-  background: rgba(255, 255, 255, 0.05);
+  opacity: 1;
+  background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.5);
 }
 
 .dp-toggle-btn.active {
   opacity: 1;
-  background: var(--color-primary);
+  background: var(--bg-surface, #FFFFFF);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
 }
 
 .dp-header-actions {
@@ -66,63 +88,84 @@
 .dp-search-wrapper {
   display: flex;
   align-items: center;
-  background: var(--color-surface-container);
-  border-radius: 20px;
+  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.8);
+  border-radius: 12px;
   padding: 8px 16px;
-  border: 1px solid transparent;
-  transition: border-color 0.2s;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) inset;
 }
 
 .dp-search-wrapper:focus-within {
-  border-color: var(--color-primary);
+  background: var(--bg-surface, #FFFFFF);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
 }
 
 .dp-search-icon {
   margin-right: 8px;
-  opacity: 0.5;
+  color: var(--text-secondary, #64748B);
 }
 
 .dp-search-input {
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #1E293B);
   outline: none;
-  min-width: 200px;
+  min-width: 220px;
 }
 
 .diary-page-add-btn {
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary, #5BA8F5), rgba(var(--color-tertiary-rgb, 173, 136, 212), 1));
   color: #fff;
   border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
-  transition: filter 0.2s;
+  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.3);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .diary-page-add-btn:hover {
-  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(91, 168, 245, 0.4);
 }
 
 .diary-page-content {
   flex: 1;
   overflow-y: auto;
-  padding-right: 16px;
+  padding-right: 8px;
+  margin-right: -8px;
 }
 
-/* Timeline specific */
+.diary-page-content::-webkit-scrollbar {
+  width: 6px;
+}
+.diary-page-content::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: 4px;
+}
+
+/* ───────── Timeline specific ───────── */
 .timeline-container {
-  padding-left: 8px;
+  padding: 16px 24px;
 }
 
-/* Masonry Fallback CSS */
+/* ───────── Masonry Fallback ───────── */
 .masonry-container {
   column-count: 2;
-  column-gap: 20px;
+  column-gap: 24px;
+  padding: 16px;
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 1440px) {
   .masonry-container {
     column-count: 3;
   }
@@ -130,14 +173,154 @@
 
 .masonry-item {
   break-inside: avoid;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   display: inline-block;
   width: 100%;
 }
 
+/* =========================================================
+   CALENDAR VIEW (日向轮盘) STYLES
+   ========================================================= */
+
+.calendar-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 24px;
+  background: var(--bg-surface, #FFFFFF);
+  padding: 16px 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3) inset;
+}
+
+.cal-nav-btn {
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-secondary, #64748B);
+}
+
+.cal-nav-btn:hover {
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  color: var(--text-primary, #0F172A);
+  transform: scale(1.05);
+}
+
+.cal-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary, #0F172A);
+  letter-spacing: 2px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 800px;
+}
+
+.cal-day-header {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-secondary, #94A3B8);
+  padding-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.cal-cell {
+  aspect-ratio: 1; /* Make standard square */
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  border-radius: 16px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.cal-cell-muted {
+  background: transparent;
+  border-color: dashed rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  opacity: 0.4;
+}
+
+.cal-cell:not(.cal-cell-muted):hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+  z-index: 10;
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.5);
+}
+
+.cal-cell-today {
+  border: 2px solid var(--color-primary, #5BA8F5);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.03);
+}
+
+.cal-date-number {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748B);
+  align-self: flex-end;
+}
+
+.cal-cell-today .cal-date-number {
+  color: var(--color-primary, #5BA8F5);
+}
+
+.cal-indicators {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.cal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-secondary, #10B981);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+.cal-dot:nth-child(2) {
+  background: var(--color-tertiary, #AD88D4);
+  box-shadow: 0 0 8px rgba(173, 136, 212, 0.4);
+}
+.cal-dot:nth-child(3) {
+  background: var(--color-primary, #5BA8F5);
+  box-shadow: 0 0 8px rgba(91, 168, 245, 0.4);
+}
+
 .dp-empty {
   text-align: center;
-  margin-top: 60px;
-  color: var(--text-secondary);
-  font-size: 1.1rem;
+  margin-top: 80px;
+  color: var(--text-secondary, #94A3B8);
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }

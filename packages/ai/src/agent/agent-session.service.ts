@@ -11,7 +11,6 @@ import { SystemPromptBuilder } from './system-prompt.builder';
 import { ContextWindowBuilder } from './context-window.builder';
 import { TitleGeneratorService } from './title-generator.service';
 import { ContextCompressorService } from './context-compressor.service';
-import { ContextCompressorService } from './context-compressor.service';
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository';
 
@@ -29,7 +28,6 @@ export interface StreamChatOptions {
   provider: IAIProvider;
   modelId: string;
   toolRegistry: ToolRegistry;
-  sessionRepo: SessionRepository;
   sessionRepo: SessionRepository;
   snapshotRepo: SnapshotRepository;
   systemPrompt?: string;
@@ -62,7 +60,6 @@ export class AgentSessionService {
       modelId, 
       toolRegistry, 
       sessionRepo, 
-      snapshotRepo,
       snapshotRepo,
       systemPrompt, 
       userConfig,
@@ -150,7 +147,6 @@ export class AgentSessionService {
         accumulator, 
         sessionRepo, 
         snapshotRepo,
-        snapshotRepo,
         provider,
         modelId,
         attachments,
@@ -177,7 +173,6 @@ export class AgentSessionService {
     streamResult: StreamTextResult<any, any>;
     accumulator: StreamAccumulator;
     sessionRepo: SessionRepository;
-    snapshotRepo: SnapshotRepository;
     snapshotRepo: SnapshotRepository;
     provider: IAIProvider;
     modelId: string;

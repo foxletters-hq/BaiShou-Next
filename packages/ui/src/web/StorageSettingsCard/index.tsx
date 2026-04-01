@@ -17,7 +17,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
   sqliteSizeStats,
   vectorDbStats,
   mediaCacheStats,
-  totalLimit = '10GB',
+  // totalLimit - 保留在 Props 接口中但当前界面未展示，不解构
   onChangeRoot,
   onClearCache,
   onVacuumDb

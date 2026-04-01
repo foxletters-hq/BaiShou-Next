@@ -54,6 +54,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
+    return undefined;
   }, [isRecording, saveKey]);
 
   useEffect(() => {
