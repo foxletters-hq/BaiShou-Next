@@ -1,9 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
-import { join } from 'path';
 import { SessionRepository, AssistantRepository, MessageRepository, connectionManager } from '@baishou/database'
 import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
 import { 
-  AgentService, 
   SessionFileService,
   SessionSyncService,
   SessionManagerService,
@@ -11,11 +9,15 @@ import {
   AssistantManagerService
 } from '@baishou/core'
 import { pathService } from './vault.ipc'
+import { settingsManager } from './settings.ipc'
+import { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared'
 
 // @ts-ignore
 import { AgentSessionService } from '@baishou/ai/src/agent/agent-session.service'
 // @ts-ignore
 import { ToolRegistry } from '@baishou/ai/src/tools/tool-registry'
+// @ts-ignore
+import { AIProviderRegistry } from '@baishou/ai/src/providers/provider.registry'
 
 // 动态工厂：确保每一次响应 IPC 时都锁定在用户当前所切环境的 Database 句柄上
 export function getAgentManagers() {
@@ -36,25 +38,34 @@ export function getAgentManagers() {
   return { sessionManager, assistantManager, realMessageRepo, realSessionRepo, realSnapshotRepo };
 }
 
-// 为了这第一枪实弹测试，我们使用全局预埋的指挥官提供的深求 Token (深求默认支持 OpenAI 协议)
-const deepseekTarget = createOpenAI({
-  baseURL: 'https://api.deepseek.com/v1',
-  apiKey: 'sk-435ddce8f94d4b01abc92b5cbf1e57be'
-});
-
-const mockProviderRegistry = {
-  config: { id: 'deepseek_global' },
-  getLanguageModel: (modelId: string) => deepseekTarget.chat(modelId),
-  getEmbeddingModel: () => undefined // 等待未来 Gamma 设置面板打通向量选择
-} as any;
-
 const toolRegistry = new ToolRegistry();
 const agentService = new AgentSessionService();
+
+let globalAbortController: AbortController | null = null;
+
+async function getActiveProvider() {
+  const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+  const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
+  
+  const providerId = globalModels?.globalDialogueProviderId;
+  const config = providers.find((p: AIProviderConfig) => p.id === providerId);
+  
+  const actualConfig = config || providers.find((p: AIProviderConfig) => p.isActive || p.isEnabled);
+  if (!actualConfig) throw new Error('No active provider configured');
+  
+  const registry = AIProviderRegistry.getInstance();
+  if (!registry.hasProvider(actualConfig.id)) {
+      registry.registerProvider((registry as any).createProviderInstance(actualConfig));
+  }
+  const provider = registry.getProvider(actualConfig.id);
+  if (!provider) throw new Error(`Failed to instantiate provider ${actualConfig.id}`);
+  return provider;
+}
 
 export function registerAgentIPC() {
   
   // ==========================================
-  // API: Assistants (SSOT pipeline connected)
+  // API: Assistants
   // ==========================================
   ipcMain.handle('agent:get-assistants', async () => {
     const { assistantManager } = getAgentManagers();
@@ -77,7 +88,7 @@ export function registerAgentIPC() {
   });
 
   // ==========================================
-  // API: Sessions (Refactored to SSOT Sync pipeline)
+  // API: Sessions 
   // ==========================================
   ipcMain.handle('agent:get-sessions', async () => {
     const { sessionManager } = getAgentManagers();
@@ -93,28 +104,77 @@ export function registerAgentIPC() {
     const { sessionManager } = getAgentManagers();
     await sessionManager.togglePin(id, isPinned);
   });
+  
+  ipcMain.handle('agent:update-session-title', async (_, sessionId: string, title: string) => {
+    const { realSessionRepo } = getAgentManagers();
+    await realSessionRepo.updateSessionTitle(sessionId, title);
+    return true;
+  });
+  
+  ipcMain.handle('agent:export-session', async (_, sessionId: string) => {
+    const { realSessionRepo } = getAgentManagers();
+    const messages = await realSessionRepo.getMessagesBySession(sessionId, 999);
+    
+    // 格式化为 Markdown
+    const lines: string[] = [];
+    for (const msg of messages.reverse()) {
+      const role = msg.role === 'user' ? '**用户**' : '**AI**';
+      lines.push(`### ${role}\n`);
+      const contentParts = msg.parts ? msg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.data?.text || p.data).join('\n') : '';
+      lines.push(contentParts);
+      lines.push('');
+    }
+    return lines.join('\n');
+  });
+  
+  ipcMain.handle('agent:get-token-usage', async (_, sessionId: string) => {
+    const { realSessionRepo } = getAgentManagers();
+    const session = await realSessionRepo.getSessionById(sessionId);
+    return {
+      inputTokens: session?.totalInputTokens || 0,
+      outputTokens: session?.totalOutputTokens || 0,
+      totalCostMicros: session?.totalCostMicros || 0
+    };
+  });
+  
+  ipcMain.handle('agent:list-sessions-by-assistant', async (_, assistantId: string) => {
+    const { sessionManager } = getAgentManagers();
+    const all = await sessionManager.findAllSessions();
+    return all.filter(s => s.assistantId === assistantId);
+  });
 
   // ==========================================
-  // API: Chat (The Real Stream Pipeline)
+  // API: Chat (Stream)
   // ==========================================
   ipcMain.handle('agent:get-messages', async (_, sessionId: string) => {
     const { realMessageRepo } = getAgentManagers();
     return await realMessageRepo.findBySessionId(sessionId, 50);
   });
+  
+  ipcMain.handle('agent:delete-message', async (_, sessionId: string, messageId: string) => {
+    const { realSessionRepo } = getAgentManagers();
+    await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId);
+    return true;
+  });
 
-    ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
+  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
     try {
       const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers();
-      // 开启纯血无Mock的多模态隧道
+      const provider = await getActiveProvider();
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
+      
+      globalAbortController = new AbortController();
+      
       await agentService.streamChat({
         sessionId: args.sessionId,
         userText: args.text,
-        provider: mockProviderRegistry,
-        modelId: 'deepseek-chat', // 对齐模型的官方代号
+        provider: provider,
+        modelId: globalModels?.globalDialogueModelId || 'deepseek-chat',
         toolRegistry: toolRegistry,
-        sessionRepo: realSessionRepo,
-        snapshotRepo: realSnapshotRepo,
-        systemPrompt: "You are BaiShou-Next, a genius local assistant. Follow the tools when applicable."
+        sessionRepo: realSessionRepo as any,
+        snapshotRepo: realSnapshotRepo as any,
+        systemPrompt: "You are BaiShou-Next, a genius local assistant. Follow the tools when applicable.",
+        abortSignal: globalAbortController.signal
       }, {
         onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
         onReasoningDelta: (chunk) => event.sender.send('agent:reasoning-chunk', chunk),
@@ -124,7 +184,6 @@ export function registerAgentIPC() {
         onFinish: () => event.sender.send('agent:stream-finish', { success: true })
       });
 
-      // Phase 8: 发起一次整个气泡 JSON 到 Vault/Sessions 的快照归档持久化
       try {
          await sessionManager.flushSessionToDisk(args.sessionId);
       } catch (e) {
@@ -132,15 +191,117 @@ export function registerAgentIPC() {
       }
       return true
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+         event.sender.send('agent:stream-finish', { success: true });
+         return true;
+      }
       console.error('Agent IPC stream error:', error)
       event.sender.send('agent:stream-finish', { error: error.message || 'Stream Error' })
       return false
+    } finally {
+      globalAbortController = null;
     }
-  })
+  });
+  
+  ipcMain.handle('agent:regenerate', async (event, sessionId: string) => {
+    const { realSessionRepo, realSnapshotRepo } = getAgentManagers();
+    
+    // 1. 找到最后一条 assistant 消息并删除
+    const messages = await realSessionRepo.getMessagesBySession(sessionId, 2);
+    const lastAi = messages.find((m: any) => m.role === 'assistant');
+    if (lastAi) {
+      await realSessionRepo.deleteMessage(sessionId, lastAi.id);
+    }
+    
+    // 2. 获取最后的 user 消息
+    const userMessages = await realSessionRepo.getMessagesBySession(sessionId, 1);
+    const lastUser = userMessages.find((m: any) => m.role === 'user');
+    if (!lastUser) return false;
+    
+    // 3. 重新发起
+    const provider = await getActiveProvider();
+    const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
+    globalAbortController = new AbortController();
+    
+    try {
+        await agentService.streamChat({
+          sessionId,
+          userText: (lastUser.parts && lastUser.parts.length > 0) ? lastUser.parts.filter((p:any) => p.type === 'text').map((p:any) => p.data?.text || p.data).join('\n') : '',
+          provider,
+          modelId: globalModels?.globalDialogueModelId || 'deepseek-chat',
+          toolRegistry,
+          sessionRepo: realSessionRepo as any,
+          snapshotRepo: realSnapshotRepo as any,
+          abortSignal: globalAbortController.signal
+        }, {
+          onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
+          onToolCallStart: (name, args) => event.sender.send('agent:tool-start', { name, args }),
+          onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { name, result }),
+          onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
+          onFinish: () => event.sender.send('agent:stream-finish', { success: true })
+        });
+        return true;
+    } catch (e: any) {
+        if (e.name === 'AbortError') {
+             event.sender.send('agent:stream-finish', { success: true });
+             return true;
+        }
+        event.sender.send('agent:stream-finish', { error: e.message });
+        return false;
+    } finally {
+        globalAbortController = null;
+    }
+  });
+
+  ipcMain.handle('agent:stop-stream', async () => {
+    if (globalAbortController) {
+      globalAbortController.abort();
+      globalAbortController = null;
+    }
+    return true;
+  });
+
+  ipcMain.handle('agent:edit-message', async (event, sessionId: string, messageId: string, newText: string) => {
+    const { realSessionRepo, realSnapshotRepo } = getAgentManagers();
+    
+    // 1. 删除该消息之后的所有消息
+    await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId);
+    
+    // 2. 用新文本重新发送
+    const provider = await getActiveProvider();
+    const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
+    globalAbortController = new AbortController();
+    
+    try {
+        await agentService.streamChat({
+          sessionId,
+          userText: newText,
+          provider,
+          modelId: globalModels?.globalDialogueModelId || 'deepseek-chat',
+          toolRegistry,
+          sessionRepo: realSessionRepo as any,
+          snapshotRepo: realSnapshotRepo as any,
+          abortSignal: globalAbortController.signal
+        }, {
+          onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
+          onFinish: () => event.sender.send('agent:stream-finish', { success: true }),
+          onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
+        });
+        return true;
+    } catch (e: any) {
+        if (e.name === 'AbortError') {
+             event.sender.send('agent:stream-finish', { success: true });
+             return true;
+        }
+        event.sender.send('agent:stream-finish', { error: e.message });
+        return false;
+    } finally {
+        globalAbortController = null;
+    }
+  });
 
   // Phase 10: File Picker API
   ipcMain.handle('system:pick-files', async (event, options?: Electron.OpenDialogOptions) => {
-    // Get the window associated with the sender
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return []
 
@@ -157,7 +318,6 @@ export function registerAgentIPC() {
       const result = await dialog.showOpenDialog(window, { ...defaultOptions, ...options })
       if (result.canceled) return []
       
-      // We can map these file paths to a simpler object format expected by the frontend
       return result.filePaths.map(filePath => {
         const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(filePath)
         const isPdf = /\.pdf$/i.test(filePath)
@@ -179,25 +339,6 @@ export function registerAgentIPC() {
 
   // Phase 10: Provider Discovery API
   ipcMain.handle('agent:get-providers', async () => {
-    // Eventually this will call real DB or configurations for providers.
-    // For now we simulate the payload bridge to remove static imports in UI.
-    return [
-      {
-        id: 'openai_1',
-        name: 'OpenAI (Global)',
-        type: 'openai',
-        models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-        enabledModels: ['gpt-4o', 'gpt-3.5-turbo'],
-        isActive: true,
-      },
-      {
-        id: 'anthropic_1',
-        name: 'Anthropic Claude',
-        type: 'anthropic',
-        models: ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229'],
-        enabledModels: ['claude-3-5-sonnet-20240620'],
-        isActive: true,
-      }
-    ]
-  })
+    return await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+  });
 }

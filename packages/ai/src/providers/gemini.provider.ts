@@ -27,12 +27,25 @@ export class GeminiAdaptedProvider implements IAIProvider {
   }
 
   async fetchAvailableModels(): Promise<string[]> {
-    // 简化处理，由于 Google Gemini SDK 端点可能不一样，可以按需返回配置数组
-    return ['gemini-1.5-pro', 'gemini-1.5-flash'];
+    const apiKey = this.config.apiKey;
+    if (!apiKey) return [];
+    
+    const baseUrl = this.config.baseUrl || 'https://generativelanguage.googleapis.com';
+    try {
+      const res = await fetch(`${baseUrl}/v1beta/models?key=${apiKey}`);
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      return (data.models || [])
+        .map((m: any) => m.name?.replace('models/', '') || '')
+        .filter(Boolean);
+    } catch (e) {
+      console.error('Gemini fetchAvailableModels error:', e);
+      return ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'];
+    }
   }
 
   async testConnection(): Promise<void> {
-    // 临时桩
-    return Promise.resolve();
+    const models = await this.fetchAvailableModels();
+    if (models.length === 0) throw new Error('Unable to connect to Gemini API');
   }
 }

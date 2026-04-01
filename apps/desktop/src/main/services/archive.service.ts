@@ -237,4 +237,34 @@ export class DesktopArchiveService implements IArchiveService {
       snapshotPath
     };
   }
+
+  public async listSnapshots(): Promise<{filename: string, createdAt: number, size: number}[]> {
+    const snapshotDir = path.join(app.getPath('userData'), 'snapshots');
+    if (!fs.existsSync(snapshotDir)) return [];
+    
+    const files = await fsp.readdir(snapshotDir);
+    const results: {filename: string, createdAt: number, size: number}[] = [];
+    for (const f of files) {
+      if (f.endsWith('.zip')) {
+        const stat = await fsp.stat(path.join(snapshotDir, f));
+        results.push({
+          filename: f,
+          createdAt: stat.mtimeMs,
+          size: stat.size
+        });
+      }
+    }
+    return results.sort((a,b) => b.createdAt - a.createdAt);
+  }
+
+  public async deleteSnapshot(filename: string): Promise<void> {
+    const p = path.join(app.getPath('userData'), 'snapshots', filename);
+    if (fs.existsSync(p)) await fsp.unlink(p);
+  }
+
+  public async restoreFromSnapshot(filename: string): Promise<ImportResult> {
+    const p = path.join(app.getPath('userData'), 'snapshots', filename);
+    if (!fs.existsSync(p)) throw new Error('Snapshot not found');
+    return this.importFromZip(p, false);
+  }
 }

@@ -11,7 +11,10 @@ export function registerProfileIPC() {
   });
 
   ipcMain.handle('profile:save', async (_, diff: any) => {
-    return await repo.updateProfile(diff);
+    const current = await repo.getProfile();
+    const updated = { ...current, ...diff };
+    await repo.saveProfile(updated);
+    return updated;
   });
 
   ipcMain.handle('profile:pick-avatar', async () => {

@@ -23,4 +23,17 @@ export function registerArchiveIPC() {
     });
     return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
   });
+
+  ipcMain.handle('archive:list-snapshots', async () => {
+    return await archiveService.listSnapshots();
+  });
+
+  ipcMain.handle('archive:delete-snapshot', async (_, filename: string) => {
+    await archiveService.deleteSnapshot(filename);
+    return true;
+  });
+
+  ipcMain.handle('archive:restore-snapshot', async (_, filename: string) => {
+    return await archiveService.restoreFromSnapshot(filename);
+  });
 }

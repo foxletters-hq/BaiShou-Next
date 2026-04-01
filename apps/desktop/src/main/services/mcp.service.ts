@@ -6,6 +6,10 @@ import type { SettingsRepository } from '@baishou/database';
 // @ts-ignore
 import { Server as HttpServer } from 'http';
 
+import { ToolRegistry } from '@baishou/ai/src/tools/tool-registry';
+// @ts-ignore
+import { zodToJsonSchema } from 'zod-to-json-schema';
+
 interface McpSession {
   server: Server;
   transport: SSEServerTransport;
@@ -18,7 +22,10 @@ export class McpService {
   private readonly connections = new Map<string, McpSession>();
 
   // 这里为了解耦架构传入 repository（具体实例化将在主入口或者测试里发生）
-  constructor(private readonly settingsRepo: SettingsRepository) {
+  constructor(
+    private readonly settingsRepo: SettingsRepository,
+    private readonly toolRegistry?: ToolRegistry
+  ) {
     this.app.use(express.json());
     this.app.use(this.corsMiddleware);
     this.setupRoutes();
@@ -70,9 +77,9 @@ export class McpService {
                instructions: 'BaiShou is an AI companion diary app. Use the tools below to read/edit diaries, search memories, and manage stored knowledge.'
             };
         } else if (method === 'tools/list') {
-            result = { tools: this.getAgentToolsMcpStub() };
+            result = { tools: this.getAgentToolsMcp() };
         } else if (method === 'tools/call') {
-            result = await this.executeAgentToolStub(params);
+            result = await this.executeAgentTool(params);
         } else if (method === 'ping') {
             result = {};
         } else {
@@ -127,7 +134,7 @@ export class McpService {
   private registerServerHandlers(server: Server) {
     server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
-        tools: this.getAgentToolsMcpStub()
+        tools: this.getAgentToolsMcp()
       };
     });
 
@@ -136,8 +143,8 @@ export class McpService {
       const args = request.params.arguments || {};
       
       try {
-        const result = await this.executeAgentToolStub({ name: toolName, arguments: args });
-        return result;
+        const result = await this.executeAgentTool({ name: toolName, arguments: args });
+        return result as any;
       } catch (e: any) {
         return {
           content: [{ type: 'text', text: `Tool execution failed: ${e.message}` }],
@@ -195,32 +202,35 @@ export class McpService {
   }
 
 
-  // --- 存根区 (TODO Stubs) ---
-  // 等待 Agent Tool 及 RAG 功能上线后于此处提供真正的实现或依赖注入注入。
-
-  private getAgentToolsMcpStub() {
-    // TODO: 调用 _getAgentTools().map(_agentToolToMcpTool)
-    return [
-      {
-        name: 'baishou_search_memory',
-        description: 'Stub for searching memory',
-        inputSchema: { type: 'object', properties: {} }
-      }
-    ];
+  private getAgentToolsMcp() {
+    if (!this.toolRegistry) return [];
+    
+    const tools = this.toolRegistry.getAllRaw();
+    return tools.map((tool: any) => ({
+      name: `baishou_${tool.name}`,
+      description: tool.description,
+      inputSchema: zodToJsonSchema(tool.parameters, { target: 'jsonSchema7' })
+    }));
   }
 
-  private async executeAgentToolStub(params: Record<string, any>) {
-    // TODO: await tool.execute(arguments, context);
-    // 此处要求依赖 activeVaultPath, embeddingService, deduplicationService 以及 toolConfig
-    const toolName = params.name || '';
-    if (!toolName) {
-      throw new Error('Missing required parameter: name');
+  private async executeAgentTool(params: Record<string, any>) {
+    const rawName = (params.name || '').replace(/^baishou_/, '');
+    if (!rawName || !this.toolRegistry) {
+      throw new Error('Missing tool name or registry not initialized');
     }
 
+    const tool = this.toolRegistry.get(rawName);
+    if (!tool) throw new Error(`Tool not found: ${rawName}`);
+
+    const context: any = {
+      sessionId: 'mcp-external',
+      vaultName: 'default', // TODO: 从 Vault Service 获取活跃 vault
+      userConfig: {},
+    };
+
+    const result = await tool.execute(params.arguments || {}, context);
     return {
-      content: [
-         { type: 'text', text: `Stub execution result for ${toolName}. RAG framework is pending integration.` }
-      ],
+      content: [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }],
       isError: false
     };
   }

@@ -37,7 +37,8 @@
     "minio": "^8.0.7",
     "multer": "^2.1.1",
     "react-router-dom": "^7.13.2",
-    "webdav": "^5.9.0"
+    "webdav": "^5.9.0",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

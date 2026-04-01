@@ -27,10 +27,29 @@ export class AnthropicAdaptedProvider implements IAIProvider {
   }
 
   async fetchAvailableModels(): Promise<string[]> {
-    return ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'];
+    return [
+      'claude-3-7-sonnet-20250219',
+      'claude-3-5-sonnet-20241022', 
+      'claude-3-5-haiku-20241022',
+      'claude-3-opus-20240229',
+    ];
   }
 
   async testConnection(): Promise<void> {
-    return Promise.resolve();
+    if (!this.config.apiKey) throw new Error('Anthropic API Key is required');
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': this.config.apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'hi' }]
+      })
+    });
+    if (!res.ok) throw new Error(`Anthropic connection test failed: ${res.statusText}`);
   }
 }

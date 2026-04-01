@@ -81,6 +81,10 @@ app.whenReady().then(() => {
     const { registerDiaryIPC } = require('./ipc/diary.ipc')
     registerDiaryIPC()
 
+    // Register Profile IPC
+    const { registerProfileIPC } = require('./ipc/profile.ipc')
+    registerProfileIPC()
+
     // Register Summary IPC
     const { registerSummaryIPC } = require('./ipc/summary.ipc')
     registerSummaryIPC()
