@@ -28,7 +28,7 @@ export const SummaryPage: React.FC = () => {
   // const navigate = useNavigate(); // TODO: 后续用于跳转
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
   const [lookbackMonths, setLookbackMonths] = useState(1);
-  const { stats, missingSummaries, setMissingSummaries, generateSummary, refreshData } = useSummaryData();
+  const { summaries, stats, missingSummaries, setMissingSummaries, generateSummary, refreshData } = useSummaryData();
 
   const handleCopyContext = () => {
     // 调用剪贴板或 RAG 接口
@@ -57,9 +57,9 @@ export const SummaryPage: React.FC = () => {
 
           // 模拟成功后等待 2s，卡片销毁（表示存入数据库了）
           setTimeout(() => {
-             // Let the backend handle the real generation instead of just simulating
+              // Let the backend handle the real generation instead of just simulating
              generateSummary(_type, 'auto').finally(() => {
-                setMissingSummaries(prev => prev.filter(mp => mp.id !== id));
+                setMissingSummaries(prev => prev.filter(p => `${p.type}_${new Date(p.startDate).getTime()}` !== id));
                 const cloneGenStates = { ...generationStates };
                 delete cloneGenStates[id];
                 setGenerationStates(cloneGenStates);
@@ -137,15 +137,16 @@ export const SummaryPage: React.FC = () => {
                
                <AnimatePresence>
                   {missingSummaries.map((mp: any) => {
-                     const isGen = !!generationStates[mp.id];
-                     const progress = generationStates[mp.id]?.progress || 0;
-                     const phaseLabel = generationStates[mp.id]?.phase !== undefined 
-                                         ? GEN_PHASES[generationStates[mp.id].phase] 
+                     const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`;
+                     const isGen = !!generationStates[uKey];
+                     const progress = generationStates[uKey]?.progress || 0;
+                     const phaseLabel = generationStates[uKey]?.phase !== undefined 
+                                         ? GEN_PHASES[generationStates[uKey].phase] 
                                          : '';
 
                      return (
                        <motion.div 
-                          key={mp.id} 
+                          key={uKey} 
                           variants={itemVariants}
                           exit="exit"
                           style={{ marginBottom: 16 }}
@@ -154,12 +155,12 @@ export const SummaryPage: React.FC = () => {
                             className={`sp-missing-card ${isGen ? 'is-generating' : ''}`}
                             onClick={() => {
                                // Start generation 
-                               if (!isGen) startGenerationSimulation(mp.id, mp.type);
+                               if (!isGen) startGenerationSimulation(uKey, mp.type);
                             }}
                           >
                             <h3>
                                {isGen && progress >= 100 ? <CheckCircle2 size={18} color="var(--color-secondary)" /> : null}
-                               {isGen ? `演算收束中: ${mp.dateRangeStr}` : `缺失检测: ${mp.dateRangeStr}`}
+                               {isGen ? `演算收束中: ${mp.label || mp.dateRangeStr}` : `缺失检测: ${mp.label || mp.dateRangeStr}`}
                             </h3>
                             
                             {!isGen ? (
@@ -193,7 +194,7 @@ export const SummaryPage: React.FC = () => {
 
           </div>
         ) : (
-          <GalleryPanel />
+          <GalleryPanel summaries={summaries} />
         )}
       </div>
     </div>

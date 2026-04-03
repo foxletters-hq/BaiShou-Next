@@ -7,15 +7,29 @@ const useTranslation = (): { t: (key: string) => string } => ({
   t: (key: string) => key,
 });
 
-export const GalleryPanel: React.FC = () => {
+export interface GalleryPanelProps {
+  summaries?: any[];
+}
+
+export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) => {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<'grid' | 'masonry'>('masonry');
 
-  const summaries = [
-    { id: '1', title: '2026年第13周', dateRange: '03.24-03.30', type: 'week' as const, summaryText: '这一周的主题是基础架构的重构。完成了 Agent 2 的分工逻辑，搭建了核心组件骨架。' },
-    { id: '2', title: '2026年3月总结', dateRange: '03.01-03.31', type: 'month' as const, summaryText: '本月完成了旧版 v3.0 的组件库对齐，并在多语言架构下实现了初步联调。' },
-    { id: '3', title: '2026年第1季度', dateRange: '01.01-03.31', type: 'quarter' as const, summaryText: 'Q1 的大事件是启动了 BaiShou Next，一个从底层彻底翻新的版本，双端齐发。' }
-  ];
+  const formatDate = (d: any) => {
+    if (!d) return '';
+    const dateObj = new Date(d);
+    return `${String(dateObj.getMonth() + 1).padStart(2,'0')}.${String(dateObj.getDate()).padStart(2,'0')}`;
+  };
+
+  const getTitle = (s: any) => {
+    if (!s.startDate) return '总结';
+    const dateObj = new Date(s.startDate);
+    if (s.type === 'weekly') return `${dateObj.getFullYear()}年周报`;
+    if (s.type === 'monthly') return `${dateObj.getFullYear()}年${dateObj.getMonth() + 1}月总结`;
+    if (s.type === 'quarterly') return `${dateObj.getFullYear()}年Q${Math.ceil((dateObj.getMonth() + 1) / 3)}`;
+    if (s.type === 'yearly') return `${dateObj.getFullYear()}年度总结`;
+    return '总结';
+  };
 
   return (
     <div className="gallery-panel">
@@ -38,14 +52,14 @@ export const GalleryPanel: React.FC = () => {
       </div>
 
       <div className={`gallery-content gallery-mode-${viewMode}`}>
-        {summaries.map(item => (
+        {summaries.map((item, index) => (
           <SummaryCard 
-            key={item.id}
-            id={item.id}
-            title={item.title}
-            dateRange={item.dateRange}
-            summaryText={item.summaryText}
-            type={item.type}
+            key={item.id ?? index}
+            id={String(item.id ?? index)}
+            title={getTitle(item)}
+            dateRange={`${formatDate(item.startDate)}-${formatDate(item.endDate)}`}
+            summaryText={item.content || ''}
+            type={(item.type || '').replace('ly', '') as any}
             onClick={() => console.log('Open', item.id)}
           />
         ))}

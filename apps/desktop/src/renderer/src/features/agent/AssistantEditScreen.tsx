@@ -6,16 +6,29 @@ export const AssistantEditScreen: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [assistant, setAssistant] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(id !== 'new');
   
   useEffect(() => {
     if (id && id !== 'new') {
       if (typeof window !== 'undefined' && window.electron) {
         window.electron.ipcRenderer.invoke('agent:get-assistants')
-          .then((list: any[]) => setAssistant(list.find(a => a.id === id)));
+          .then((list: any[]) => {
+            setAssistant(list.find(a => a.id === id));
+          })
+          .catch(console.error)
+          .finally(() => setIsLoading(false));
+      } else {
+        setIsLoading(false);
       }
+    } else {
+      setIsLoading(false);
     }
   }, [id]);
   
+  if (isLoading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>数据神经网同步中...</div>;
+  }
+
   return (
     <AssistantEditPage
       assistant={assistant}

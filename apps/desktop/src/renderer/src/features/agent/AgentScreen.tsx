@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ChatBubble, 
   StreamingBubble, 
@@ -20,6 +20,7 @@ import { useAgentStream } from './hooks/useAgentStream';
 
 export const AgentScreen: React.FC = () => {
   const { sessionId } = useParams();
+  const navigate = useNavigate();
   
   // =====================================
   // 接入军火级底层通道
@@ -29,10 +30,12 @@ export const AgentScreen: React.FC = () => {
     reasoning: streamingReasoning, 
     activeTool, 
     isStreaming, 
-    startChat 
+    startChat,
+    editChat
   } = useAgentStream();
-  
+
   const [messages, setMessages] = useState<any[]>([]);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   
   const [showModelSwitcher, setShowModelSwitcher] = useState(false);
   const [showCostDialog, setShowCostDialog] = useState(false);
@@ -130,16 +133,22 @@ export const AgentScreen: React.FC = () => {
 
   const handleSend = async (text: string, attachments?: any[]) => {
     if (!sessionId) return;
-    // 乐观 UI 垫片
-    setMessages(prev => [{ 
-       id: Date.now().toString(), 
-       role: 'user', 
-       content: text, 
-       attachments,
-       createdAt: new Date() 
-    }, ...prev]);
-    // 假设未来 startChat 也能接附件
-    await startChat(sessionId, text);
+    
+    if (editingMessageId) {
+      const eMsgId = editingMessageId;
+      setEditingMessageId(null);
+      await editChat(sessionId, eMsgId, text);
+    } else {
+      // 乐观 UI 垫片
+      setMessages(prev => [{ 
+         id: Date.now().toString(), 
+         role: 'user', 
+         content: text, 
+         attachments,
+         createdAt: new Date() 
+      }, ...prev]);
+      await startChat(sessionId, text);
+    }
   };
 
   const handleStop = () => {
@@ -207,7 +216,7 @@ export const AgentScreen: React.FC = () => {
       <AssistantPickerSheet
         isOpen={showAssistantPicker}
         onClose={() => setShowAssistantPicker(false)}
-        assistants={assistants}
+        assistants={assistants.map(a => ({ ...a, emoji: a.emoji || '🤖' }))}
         onSelect={(ast) => {
           setShowAssistantPicker(false);
           // 强绑定：切换 Agent 即切换会话
@@ -224,7 +233,7 @@ export const AgentScreen: React.FC = () => {
 
       <PromptShortcutSheet
         isOpen={showShortcutSheet}
-        shortcuts={shortcuts}
+        shortcuts={shortcuts as any}
         selectedIndex={0}
         onSelect={(shortcut) => {
            setShowShortcutSheet(false);
@@ -288,13 +297,19 @@ export const AgentScreen: React.FC = () => {
                   isReasoning: msg.isReasoning
                 }}
                 onRegenerate={() => {
-                   if (typeof window !== 'undefined' && (window as any).api?.agent) {
-                      (window as any).api.agent.regenerateMessage(sessionId, msg.id).then(refreshMessages);
+                   if (typeof window !== 'undefined' && window.electron) {
+                      window.electron.ipcRenderer.invoke('agent:regenerate', sessionId).then(refreshMessages);
                    }
                 }}
                 onEdit={() => {
                    if (msg.role === 'user') {
                       inputBarRef.current?.insertText(msg.content);
+                      setEditingMessageId(msg.id);
+                   }
+                }}
+                onDelete={() => {
+                   if (typeof window !== 'undefined' && window.electron) {
+                      window.electron.ipcRenderer.invoke('agent:delete-message', sessionId, msg.id).then(refreshMessages);
                    }
                 }}
               />

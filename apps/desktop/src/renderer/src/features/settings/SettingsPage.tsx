@@ -22,7 +22,8 @@ import {
   AgentToolsView,
   WebSearchSettingsView,
   AboutSettingsCard,
-  AssistantMatrixCard
+  AssistantMatrixCard,
+  useToast
 } from '@baishou/ui';
 
 
@@ -305,6 +306,7 @@ const StoragePane: React.FC = () => {
 };
 
 const AiPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const toast = useToast();
   return (
     <>
       <div>
@@ -336,8 +338,24 @@ const AiPane: React.FC<{ settings: any }> = ({ settings }) => {
          <AIModelServicesView 
              providers={settings.aiProviderConfigs || {}}
              onUpdateProvider={(id, updates) => settings.updateAiProviderConfig(id, updates)}
-             onTestConnection={async (provId) => await (window as any).api?.settings?.testProviderConnection(provId)}
-             onFetchModels={async (provId) => await (window as any).api?.settings?.fetchModels(provId)}
+             onTestConnection={async (provId) => {
+               try {
+                 await (window as any).api?.settings?.testProviderConnection(provId);
+                 toast.showSuccess('测试连接成功 (Connection Successful)');
+               } catch (e: any) {
+                 toast.showError(`连接失败 (Connection Failed): ${e.message}`);
+               }
+             }}
+             onFetchModels={async (provId) => {
+               try {
+                 const models = await (window as any).api?.settings?.fetchModels(provId);
+                 toast.showSuccess(`成功拉取 ${models?.length || 0} 个模型`);
+                 return models;
+               } catch (e: any) {
+                 toast.showError(`拉取失败: ${e.message}`);
+                 return [];
+               }
+             }}
          />
       </div>
     </>

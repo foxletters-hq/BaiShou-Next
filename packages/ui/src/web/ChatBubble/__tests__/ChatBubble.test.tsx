@@ -71,4 +71,34 @@ describe('ChatBubble Component', () => {
     expect(screen.getByText('agent.tools.tool_call_results')).toBeInTheDocument();
   });
 
+  it('triggers onDelete when context menu delete option is clicked', () => {
+    const onDelete = vi.fn();
+    render(<ChatBubble message={baseUserMessage} onDelete={onDelete} />);
+    
+    // Find the message text to trigger context menu
+    const messageNode = screen.getByText('你好，请帮我搜索明天的天气');
+    fireEvent.contextMenu(messageNode);
+    
+    // The context menu should render common.delete (i18n mocked key)
+    const deleteBtn = screen.getByText('common.delete');
+    expect(deleteBtn).toBeInTheDocument();
+    
+    fireEvent.click(deleteBtn);
+    expect(onDelete).toHaveBeenCalled();
+  });
+
+  it('shows regenerate option in context menu for AI messages and triggers onRegenerate', () => {
+    const onRegenerate = vi.fn();
+    render(<ChatBubble message={baseAiMessage} onRegenerate={onRegenerate} />);
+    
+    const messageNode = screen.getByText('这是一条普通的 Markdown 回复。');
+    fireEvent.contextMenu(messageNode);
+    
+    const regenBtn = screen.getByText('common.regenerate');
+    expect(regenBtn).toBeInTheDocument();
+    
+    fireEvent.click(regenBtn);
+    expect(onRegenerate).toHaveBeenCalled();
+  });
+
 });

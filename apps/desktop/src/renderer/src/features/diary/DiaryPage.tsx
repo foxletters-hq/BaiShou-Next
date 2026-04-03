@@ -14,8 +14,7 @@ import { BookOpen, Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useDiaryData } from './hooks/useDiaryData';
 import './DiaryPage.css';
 
-// TODO: Future Integration 占位。在此刻为了展示日历，扩展 Mock 树
-// import { useDiaryStore } from '@baishou/store';
+// Data correctly hydrated from real SQLite IPC pipeline
 
 const useTranslation = (): { t: (key: string) => string } => ({
   t: (key: string) => key,
@@ -257,11 +256,26 @@ export const DiaryPage: React.FC = () => {
                  {filteredNodes.map((node, index) => (
                     <motion.div key={`tl-${node.id}`} variants={itemVariants}>
                        <TimelineNode 
-                          node={node} 
                           isLast={index === filteredNodes.length - 1} 
                           isFirst={index === 0} 
-                          onDiaryClick={(id) => navigate(`/editor/${id}`)}
-                       />
+                       >
+                         {node.type === 'month_separator' ? (
+                            <div className="dp-month-sep" style={{fontWeight: 'bold', margin: '8px 0', color: 'var(--text-secondary)'}}>
+                               {node.date.getFullYear()}年 {node.date.getMonth() + 1}月
+                            </div>
+                         ) : (
+                            <div 
+                              className="dp-timeline-card" 
+                              onClick={() => navigate(`/editor/${node.meta!.id}`)}
+                              style={{ padding: '16px', background: 'var(--bg-glass)', borderRadius: '12px', cursor: 'pointer', marginBottom: '16px' }}
+                            >
+                               <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: 8}}>
+                                  {node.date.getDate()}日 {String(node.date.getHours()).padStart(2, '0')}:{String(node.date.getMinutes()).padStart(2, '0')}
+                               </div>
+                               <div>{node.meta!.preview}</div>
+                            </div>
+                         )}
+                       </TimelineNode>
                     </motion.div>
                  ))}
                  {filteredNodes.length === 0 && (
