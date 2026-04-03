@@ -17,6 +17,7 @@ export interface ChatBubbleProps {
   onRegenerate?: () => void;
   onResend?: () => void;
   onCopy?: () => void;
+  onDelete?: () => void;
   onShowContext?: (msg: MockChatMessage) => void;
 }
 
@@ -28,6 +29,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onRegenerate,
   onResend,
   onCopy,
+  onDelete,
   onShowContext
 }) => {
   const { t } = useTranslation();
@@ -106,6 +108,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
              isAI={false} 
              onCopy={handleCopy} 
              onRetry={onResend} 
+             onEdit={onEdit}
+             onDelete={onDelete}
            />
         </div>
         
@@ -168,6 +172,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                  isAI={true} 
                  onCopy={handleCopy} 
                  onRetry={onRegenerate} 
+                 onDelete={onDelete}
                />
                <div className={styles.footerRight}>
                  {message.inputTokens !== undefined && (
@@ -212,6 +217,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                  {onRegenerate && <button onClick={() => { setContextMenu(null); onRegenerate(); }}>{t('common.regenerate', '重新生成')}</button>}
                </>
              )}
+             {onDelete && <button className={styles.deleteContextBtn} style={{color: '#ff4d4f'}} onClick={() => { setContextMenu(null); onDelete(); }}>{t('common.delete', '删除')}</button>}
           </div>
         </div>
       )}
