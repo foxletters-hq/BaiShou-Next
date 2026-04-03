@@ -1,0 +1,792 @@
+[
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 52,
+    "content": "selectAssistant: '选择伙伴',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 53,
+    "content": "search: '搜索...',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 54,
+    "content": "noAssistant: '没有相关伙伴',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 55,
+    "content": "createAssistant: '新建伙伴',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 56,
+    "content": "current: '当前',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 57,
+    "content": "systemPrompt: '系统提示词',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 58,
+    "content": "modelSettings: '模型设置',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 59,
+    "content": "memoryManagement: '上下文窗口管理',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 60,
+    "content": "contextWindow: '上下文携带 Window',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 61,
+    "content": "compressThreshold: '启用上下文压缩',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 62,
+    "content": "selectThis: '选择此伙伴',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 63,
+    "content": "currentAssistant: '当前伙伴',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 64,
+    "content": "emptyDetail: '选择一个伙伴查看详情',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 65,
+    "content": "switchModel: '切换模型',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 66,
+    "content": "searchModel: '搜索模型...',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 67,
+    "content": "noMatchModel: '没有匹配的模型',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 69,
+    "content": "new_chat: '新对话',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 70,
+    "content": "actions: '操作',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 71,
+    "content": "pin: '置顶',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 72,
+    "content": "unpin: '取消置顶',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 73,
+    "content": "rename: '重命名',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 74,
+    "content": "delete_session: '删除会话'"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 77,
+    "content": "tool_call: '工具调用',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 78,
+    "content": "tool_call_results: '调用了 {{count}} 个操作'"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 81,
+    "content": "input_hint: '输入消息...',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 82,
+    "content": "ai_label: 'AI助手'"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 86,
+    "content": "web_search_mode_off: '搜索关闭',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 87,
+    "content": "web_search_mode_tool: '深度搜索',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 88,
+    "content": "recall_memories: '记忆唤醒'"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\i18n.ts",
+    "line": 91,
+    "content": "copied: '已复制到剪贴板'"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\native\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 152,
+    "content": "{/* 完整一比一复刻自定义 HSL Modal 弹窗逻辑隔离，本身保留纯 UI 特性 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AgentToolsView\\index.tsx",
+    "line": 42,
+    "content": "if (tool && tool.tag.includes('危')) {"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AgentToolsView\\index.tsx",
+    "line": 43,
+    "content": "const sure = window.confirm(`【严重越权告警】\\n您正在赋予 AI 具有操作系统破坏性乃至隐私外泄风险的 ${tool.name}。\\n\\n您确定要向硅基生命敞开物理主机的防线吗？`);"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AgentToolsView\\index.tsx",
+    "line": 112,
+    "content": "const isDanger = tool.tag.includes('危');"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AIGlobalModelsView\\index.tsx",
+    "line": 59,
+    "content": "`【高危警告: 向量塌陷风险】\\n您正在尝试切换系统的脑部索引神经元，从 ${config.defaultEmbeddingModel} 换为 ${val}。\\n这会导致您之前记录的所有上下文、日记将永久无法被新的神经网络读取，需要进行漫长的全盘向量重算！\\n\\n点击【确认】以承受风险并变更。`"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AIGlobalModelsView\\index.tsx",
+    "line": 61,
+    "content": "if (!confirmed) return; // 拦截"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AIGlobalModelsView\\index.tsx",
+    "line": 66,
+    "content": "if (!migrationPass) return; // 后台决断为不再继续"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AIModelServicesView\\index.tsx",
+    "line": 28,
+    "content": "{ id: 'deepseek', name: 'DeepSeek (深度求索)', icon: '🐋', defaultBase: 'https://api.deepseek.com' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AIModelServicesView\\index.tsx",
+    "line": 30,
+    "content": "{ id: 'qwen', name: 'Qwen (阿里通义)', icon: '☁️', defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AIModelServicesView\\index.tsx",
+    "line": 31,
+    "content": "{ id: 'zhipu', name: 'ZhipuAI (智谱清言)', icon: '🧩', defaultBase: 'https://open.bigmodel.cn/api/paas/v4' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AIModelServicesView\\index.tsx",
+    "line": 32,
+    "content": "{ id: 'xunfei', name: 'Xunfei (星火)', icon: '✨', defaultBase: 'https://spark-api-open.xf-yun.com/v1' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 18,
+    "content": "{ val: 'system', label: '跟随系统' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 19,
+    "content": "{ val: 'zh', label: '简体中文' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 20,
+    "content": "{ val: 'zh-TW', label: '繁體中文' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 22,
+    "content": "{ val: 'ja', label: '日本語' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 43,
+    "content": "<h3>环境与感知 (Appearance)</h3>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 44,
+    "content": "<p>全盘接管系统的深浅模式与界面核心强调色调。</p>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 49,
+    "content": "<label>光照模式 (Theme)</label>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 55,
+    "content": "💻 系统跟随"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 61,
+    "content": "☀️ 日间清晰"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 67,
+    "content": "🌙 夜宴暗影"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 73,
+    "content": "<label>基核种子色 (Seed Color)</label>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 99,
+    "content": "<span className=\"color-hint\">选择后点击他处关闭</span>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AppearanceSettingsCard\\AppearanceSettingsCard.tsx",
+    "line": 106,
+    "content": "<label>界译语言 (Locale)</label>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 43,
+    "content": "{ label: '{{user_name}}', desc: '用户昵称' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 44,
+    "content": "{ label: '{{current_date}}', desc: '当前日期' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 45,
+    "content": "{ label: '{{current_time}}', desc: '当前时间' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 46,
+    "content": "{ label: '{{os_info}}', desc: '系统环境' }"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 200,
+    "content": "{/* Section: 行为逻辑与提示词 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 260,
+    "content": "{/* Section: 外部神经连接 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 302,
+    "content": "<div className={styles.selectorTitle}>{ragSpaceId ? `已关联空间：${ragSpaceId}` : '未关联任何知识库实体'}</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 303,
+    "content": "<div className={styles.selectorSubtitle}>{ragSpaceId ? '为助手注入额外的专域向量检索库资料' : '目前不附带任何额外检索设定'}</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 305,
+    "content": "<span className={styles.selectorAction}>{ragSpaceId ? '变更' : '检索'}</span>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 310,
+    "content": "{/* Section: 高级神经参数与压缩 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantEditPage\\index.tsx",
+    "line": 359,
+    "content": "{isUnlimitedContext ? '提交全部当前会话的历史数据。' : '设定大模型每次对话的最大上下文回看历史数。'}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantManagementPage\\index.tsx",
+    "line": 102,
+    "content": "{/* App Bar -- 带战况雷达和微操控制器 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantManagementPage\\index.tsx",
+    "line": 147,
+    "content": "{/* Create Button (始终保持第一个可用槽位或追加为卡) 为了对标原版我们放一个卡片式按钮在这里或最后 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantManagementPage\\index.tsx",
+    "line": 167,
+    "content": "title={isPinned ? '取消置顶锁定' : '置顶锁定特权'}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantManagementPage\\index.tsx",
+    "line": 175,
+    "content": "title=\"裂变克隆本位体\""
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantManagementPage\\index.tsx",
+    "line": 183,
+    "content": "title=\"格式化粉碎\""
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantManagementPage\\index.tsx",
+    "line": 242,
+    "content": "'彻底删除该助手后关联设置将遗失。这是一个不可逆操作！',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantPickerSheet\\index.tsx",
+    "line": 17,
+    "content": "ragSpaceId?: string; // B1.9 针对 Memory 表需要特化显示"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantPickerSheet\\index.tsx",
+    "line": 65,
+    "content": "item = filteredAssistants[0]; // 退避选择搜索结果第一项"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantPickerSheet\\index.tsx",
+    "line": 77,
+    "content": "{/* ─── 左侧机能筛选屏 ─── */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantPickerSheet\\index.tsx",
+    "line": 130,
+    "content": "{/* ─── 右侧属性审析屏 ─── */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AssistantPickerSheet\\index.tsx",
+    "line": 151,
+    "content": "{/* 状态控制 Tab */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AttachmentManagementView\\index.tsx",
+    "line": 78,
+    "content": "{/* 概览大盘 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AttachmentManagementView\\index.tsx",
+    "line": 98,
+    "content": "{/* 操作器栏 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AttachmentManagementView\\index.tsx",
+    "line": 120,
+    "content": "{/* 档案列表 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\AttachmentManagementView\\index.tsx",
+    "line": 164,
+    "content": "{/* 底部悬浮删除面板 (条件显示) */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\ChatAppBar\\index.tsx",
+    "line": 10,
+    "content": "modelIdentifier?: string; // 例如 \"GPT-4o\""
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\ChatAppBar\\index.tsx",
+    "line": 11,
+    "content": "tokenSize?: string;       // 例如 \"128k\""
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\ChatBubble\\ToolCallSkeleton.tsx",
+    "line": 15,
+    "content": "<span className={styles.label}>AI Agent 正在使用工具</span>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\CloudSyncPanel\\index.tsx",
+    "line": 285,
+    "content": "<label>远端路径</label>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DashboardHeroBanner\\DashboardHeroBanner.tsx",
+    "line": 11,
+    "content": "const greeting = \"又见面了，今天过得怎样？\";"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DashboardHeroBanner\\DashboardHeroBanner.tsx",
+    "line": 33,
+    "content": "{/* 装饰性背景球 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DashboardSharedMemoryCard\\DashboardSharedMemoryCard.tsx",
+    "line": 28,
+    "content": "调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DashboardSharedMemoryCard\\DashboardSharedMemoryCard.tsx",
+    "line": 32,
+    "content": "<span className=\"sm-label\">回溯 {lookbackMonths} 个月</span>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DashboardSharedMemoryCard\\DashboardSharedMemoryCard.tsx",
+    "line": 44,
+    "content": "✨ Copy 给 AI"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DataManagementCard\\index.tsx",
+    "line": 42,
+    "content": "若要继续操作，请在弹窗验证行键入 \"CONFIRM\"：')"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DataManagementCard\\index.tsx",
+    "line": 71,
+    "content": "此后，现今累积的所有状态更迭均将随之消尽。"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DataManagementCard\\index.tsx",
+    "line": 72,
+    "content": "确定降级？', { timeLabel: snapshot.timeLabel, sizeMB: snapshot.sizeMB }));"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatePicker\\DatePicker.tsx",
+    "line": 7,
+    "content": "mode?: 'date' | 'month' | 'year'; // 年、年月、年月日"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 39,
+    "content": "<div className={styles.wheelItem}>2024年</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 40,
+    "content": "<div className={styles.wheelItemActive}>2025年</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 41,
+    "content": "<div className={styles.wheelItem}>2026年</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 44,
+    "content": "<div className={styles.wheelItem}>02月</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 45,
+    "content": "<div className={styles.wheelItemActive}>03月</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 46,
+    "content": "<div className={styles.wheelItem}>04月</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 49,
+    "content": "<div className={styles.wheelItem}>28日</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 50,
+    "content": "<div className={styles.wheelItemActive}>29日</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DatetimePickerSheet\\index.tsx",
+    "line": 51,
+    "content": "<div className={styles.wheelItem}>30日</div>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DiaryCard\\DiaryCard.tsx",
+    "line": 32,
+    "content": "const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][createdAt.getDay()];"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DiaryCard\\DiaryCard.tsx",
+    "line": 61,
+    "content": "{year} · {month}月"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DiaryCard\\index.tsx",
+    "line": 19,
+    "content": "const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DiaryCard\\index.tsx",
+    "line": 26,
+    "content": "const yearMonth = `${diary.date.getFullYear()} · ${diary.date.getMonth() + 1}月`;"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DiaryCard\\index.tsx",
+    "line": 79,
+    "content": "✏️ 编辑"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DiaryCard\\index.tsx",
+    "line": 85,
+    "content": "🗑️ 删除"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\DiaryEditorAppBarTitle\\DiaryEditorAppBarTitle.tsx",
+    "line": 33,
+    "content": "<span className=\"title-text\">编辑总结</span>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\EmojiPickerDialog\\index.tsx",
+    "line": 20,
+    "content": "<span className={styles.title}>回应此消息</span>"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\InputBar\\index.tsx",
+    "line": 275,
+    "content": "{/* 底部小托盘：显示当前助手 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\ProfileSettingsCard\\index.tsx",
+    "line": 28,
+    "content": "const [cropBox, setCropBox] = useState({ x: 0, y: 0, size: 200 }); // 正方形裁剪框"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\ProfileSettingsCard\\index.tsx",
+    "line": 55,
+    "content": "const initSize = Math.min(naturalWidth, naturalHeight, 300); // 适度初始大小"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\ProfileSettingsCard\\index.tsx",
+    "line": 197,
+    "content": "{/* 蒙版框，简单利用边框模拟位置，不阻挡事件 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\ProfileSettingsCard\\index.tsx",
+    "line": 221,
+    "content": "{/* 隐藏画板 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\PromptShortcutSheet\\index.tsx",
+    "line": 9,
+    "content": "command: string; // 例如 \"translate\" (不包含斜杠)"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\PromptShortcutSheet\\index.tsx",
+    "line": 12,
+    "content": "content: string; // 实际替换进来的文本"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\PromptShortcutSheet\\index.tsx",
+    "line": 18,
+    "content": "selectedIndex: number; // 由父组件控制键盘上下键以决定哪个被高亮"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\RagMemoryView\\index.tsx",
+    "line": 9,
+    "content": "ragEnabled: boolean; // 新增全域开关"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\RagMemoryView\\index.tsx",
+    "line": 103,
+    "content": "{/* 统计横幅 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\RagMemoryView\\index.tsx",
+    "line": 119,
+    "content": "{/* 参数区 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\RagMemoryView\\index.tsx",
+    "line": 156,
+    "content": "{/* 迁移与进度 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\RagMemoryView\\index.tsx",
+    "line": 180,
+    "content": "{/* 控制按钮 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\RagMemoryView\\index.tsx",
+    "line": 198,
+    "content": "{/* 搜索与卡片区块 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\RecallBottomSheet\\index.tsx",
+    "line": 17,
+    "content": "items: RecallItem[]; // 所有可能的记忆与日记池"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\SessionManagementPage\\index.tsx",
+    "line": 196,
+    "content": "{/* 顶控大盘 App Bar */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\SessionManagementPage\\index.tsx",
+    "line": 241,
+    "content": "{/* 搜索与过滤卡槽 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\SessionManagementPage\\index.tsx",
+    "line": 262,
+    "content": "{/* 演算总盘 Stats Board */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\SessionManagementPage\\index.tsx",
+    "line": 265,
+    "content": "{/* 会话矩阵 List */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\packages\\ui\\src\\web\\StorageSettingsCard\\index.tsx",
+    "line": 66,
+    "content": "{/* 假定占比，在实际业务中建议传入 size 取百分比 */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\ipc\\agent.ipc.ts",
+    "line": 121,
+    "content": "const role = msg.role === 'user' ? '**用户**' : '**AI**';"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\ipc\\archive.ipc.ts",
+    "line": 20,
+    "content": "title: '选择白守容灾备份文件 (ZIP)',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\archive.service.ts",
+    "line": 124,
+    "content": "title: '导出白守数据备份',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\cloud-sync.service.ts",
+    "line": 49,
+    "content": "return { success: false, message: '当前同步目标为本地，无需云同步' };"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\cloud-sync.service.ts",
+    "line": 58,
+    "content": "return { success: false, message: '生成备份 ZIP 失败' };"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\cloud-sync.service.ts",
+    "line": 70,
+    "content": "return { success: true, message: '同步成功' };"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\cloud-sync.service.ts",
+    "line": 72,
+    "content": "return { success: false, message: `同步失败: ${e.message || e}` };"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\cloud-sync.service.ts",
+    "line": 108,
+    "content": "return { success: true, message: `云端恢复成功，共还原 ${result.fileCount} 个文件` };"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\cloud-sync.service.ts",
+    "line": 110,
+    "content": "return { success: false, message: '导入完成但未检测到文件' };"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\cloud-sync.service.ts",
+    "line": 113,
+    "content": "return { success: false, message: `恢复失败: ${e.message || e}` };"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\hotkey.service.ts",
+    "line": 123,
+    "content": "case 'cmd': modStr = 'Super'; break; // Electron 里 Windows 徽标键/Mac Cmd键统一可用 Super 表示，或者用 CmdOrCtrl/Command"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\mcp.service.ts",
+    "line": 227,
+    "content": "vaultName: 'default', // TODO: 从 Vault Service 获取活跃 vault"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\profile.service.ts",
+    "line": 19,
+    "content": "title: '选择新头像',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\profile.service.ts",
+    "line": 20,
+    "content": "buttonLabel: '确定',"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\s3-sync.client.ts",
+    "line": 31,
+    "content": "pathStyle: false, // 兼容腾讯云 COS 的 Virtual-hosted style 寻址"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\main\\services\\webdav-sync.client.ts",
+    "line": 80,
+    "content": "throw new Error(`WebDAV 列出文件失败: ${e.message || e}`);"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\components\\Sidebar\\index.tsx",
+    "line": 33,
+    "content": "'diary': { icon: <MdTimeline />, label: '日记', path: '/diary' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\components\\Sidebar\\index.tsx",
+    "line": 34,
+    "content": "'summary': { icon: <MdAutoStories />, label: '全域仪表盘', path: '/summary' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\agent\\AgentScreen.tsx",
+    "line": 126,
+    "content": "}, [sessionId, isStreaming]); // 改变房间或输出结束时强制同步真库"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\agent\\AgentScreen.tsx",
+    "line": 276,
+    "content": "{/* ==== 激战实录：流动气泡 ==== */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\agent\\AgentScreen.tsx",
+    "line": 285,
+    "content": "{/* ==== 沉积历史 ==== */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\diary\\DiaryEditorPage.tsx",
+    "line": 9,
+    "content": "const { date } = useParams(); // 日期格式: YYYY-MM-DD"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\storage\\StoragePage.tsx",
+    "line": 22,
+    "content": "snapshots={[]} // TODO: 从 archive:list-snapshots 获取"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\summary\\hooks\\useSummaryDashboardMock.ts",
+    "line": 23,
+    "content": "{ id: '1', title: '2026年第13周', dateRange: '03.24-03.30', type: 'week' as const, summaryText: '本周完成了跨 Agent 并行流的设计。' },"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\summary\\hooks\\useSummaryDashboardMock.ts",
+    "line": 24,
+    "content": "{ id: '2', title: '2026年3月总结', dateRange: '03.01-03.31', type: 'month' as const, summaryText: '整个三月都沉浸在 BaiShou Next 的双端架构中。' }"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\summary\\SummaryPage.tsx",
+    "line": 51,
+    "content": "currentProgress += Math.random() * 8; // 随机跳动进度以显得真实"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\summary\\SummaryPage.tsx",
+    "line": 93,
+    "content": "{/* 顶部标签栏 Chrome Style */}"
+  },
+  {
+    "file": "d:\\Projects\\BaiShou-Next\\apps\\desktop\\src\\renderer\\src\\features\\summary\\SummaryPage.tsx",
+    "line": 126,
+    "content": "{/* AI 缺失自动检测区域 */}"
+  }
+]

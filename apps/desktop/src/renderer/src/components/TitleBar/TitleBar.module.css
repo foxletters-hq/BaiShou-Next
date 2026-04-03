@@ -1,9 +1,9 @@
 .titleBar {
-  height: 38px;
-  background-color: var(--bg-surface, #FFFFFF);
+  height: 48px;
+  background-color: var(--color-surface-container-low);
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  border-bottom: 1px solid rgba(208, 208, 208, 0.5); /* outlineVariant equivalent */
   position: relative;
   z-index: 9999;
 }
@@ -11,71 +11,146 @@
 .dragRegion {
   flex: 1;
   height: 100%;
-  -webkit-app-region: drag; /* Electron drag property */
+  -webkit-app-region: drag;
   display: flex;
   align-items: center;
-  padding-left: 80px; /* Leave space for macOS traffic lights */
+  padding-left: 16px; 
 }
 
-/* Windows no-drag areas */
-.dragRegion span {
+.tabsContainer {
+  display: flex;
+  height: 100%;
+  width: 320px;
   -webkit-app-region: no-drag;
+  margin-top: 8px; /* Push down to align bottom */
+  gap: 2px;
 }
 
-.title {
+.tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-on-surface-variant);
   font-size: 13px;
+  font-weight: 500;
+  background-color: transparent;
+  border-radius: 12px 12px 0 0;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.tab:hover {
+  background-color: rgba(26, 26, 26, 0.04);
+}
+
+.activeTab {
+  color: var(--color-primary);
   font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
-  user-select: none;
+  background-color: var(--color-surface);
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.02);
+}
+
+.activeTab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--color-primary);
+  border-radius: 12px 12px 0 0;
+}
+
+.tabIcon {
+  font-size: 16px;
+  margin-right: 6px;
 }
 
 .actions {
   -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
-  padding-right: 12px;
 }
 
-.themeToggle {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  width: 28px;
-  height: 28px;
+.vaultSwitcher {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 6px;
+  cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.themeToggle:hover {
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.5);
+.vaultSwitcher:hover {
+  background-color: rgba(26, 26, 26, 0.08); /* onSurface 0.08 opacity */
+}
+
+.actionIconSm {
+  font-size: 16px;
+  color: var(--color-on-surface-variant);
+}
+
+.vaultName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+  margin: 0 8px 0 4px;
+}
+
+.actionBtn {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0 4px;
+  transition: background-color 0.2s;
+}
+
+.actionBtn:hover {
+  background-color: rgba(26, 26, 26, 0.08);
+}
+
+.actionIcon {
+  font-size: 20px;
+  color: var(--color-on-surface-variant);
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background-color: rgba(208, 208, 208, 0.5);
+  margin: 0 8px;
 }
 
 .windowControls {
   display: flex;
   height: 100%;
-  -webkit-app-region: no-drag;
-  margin-left: 8px;
 }
 
 .winBtn {
   width: 46px;
-  height: 100%;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  color: var(--text-primary, #1A1A1A);
+  border-radius: 4px;
+  color: var(--color-on-surface-variant);
   cursor: pointer;
   transition: all 0.1s;
 }
 
 .winBtn:hover {
-  background-color: rgba(var(--color-surface-container-highest-rgb, 224, 224, 224), 0.7);
+  background-color: rgba(26, 26, 26, 0.08);
 }
 
 .winCloseBtn:hover {

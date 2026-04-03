@@ -1,5 +1,7 @@
 import React from 'react';
 import styles from './SummaryGalleryTab.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface GalleryAsset {
   id: string;
@@ -14,6 +16,7 @@ interface SummaryGalleryTabProps {
 }
 
 export const SummaryGalleryTab: React.FC<SummaryGalleryTabProps> = ({ assets, onAssetClick }) => {
+  const { t } = useTranslation();
   // Group assets by Month/Year for section headers
   const grouped = assets.reduce((group, asset) => {
      // Extract YYYY-MM
@@ -30,14 +33,14 @@ export const SummaryGalleryTab: React.FC<SummaryGalleryTabProps> = ({ assets, on
        {months.length === 0 ? (
           <div className={styles.emptyState}>
              <div className={styles.emptyIcon}>🖼️</div>
-             <p>画廊空空如也，多往日记里塞点照片吧！</p>
+             <p>{t('gallery.empty_desc', '当前记录为空。多在对话或日记中添加些相片吧！')}</p>
           </div>
        ) : (
           months.map(month => (
              <div key={month} className={styles.monthSection}>
                 <div className={styles.monthHeader}>
-                   <h3>{month.replace('-', ' 年 ')} 月</h3>
-                   <span className={styles.countBadge}>{grouped[month].length} 碎片</span>
+                   <h3>{month.replace('-', ` ${t('common.year_unit', '年')} `)} {t('common.month_unit', '月')}</h3>
+                   <span className={styles.countBadge}>{grouped[month].length} {t('gallery.record_unit', '条记录')}</span>
                 </div>
                 
                 <div className={styles.masonryGrid}>

@@ -1,10 +1,13 @@
 import React from 'react';
 import { StorageSettingsCard, DataManagementCard } from '@baishou/ui';
+import { useTranslation } from 'react-i18next';
+
 
 export const StoragePage: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="glass-panel" style={{ margin: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <h1>知识库与存储</h1>
+      <h1>{t('storage.title', '物理硬盘隔离项')}</h1>
       <DataManagementCard 
         onExport={() => {
           if (typeof window !== 'undefined' && window.electron) {

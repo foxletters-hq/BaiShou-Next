@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styles from './WorkspaceSettingsCard.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 // Reuse type from core if available, but define locally to keep ui package independent
 export interface VaultInfo {
@@ -28,6 +30,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   customRootPath,
   onPickCustomRoot
 }) => {
+  const { t } = useTranslation();
   const [newVaultName, setNewVaultName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [currentRoot, setCurrentRoot] = useState<string | null>(customRootPath || null);
@@ -96,7 +99,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
                     </button>
                     <button className={styles.deleteBtn} onClick={() => {
                       const input = window.prompt(
-                        `危险操作！您确定要永久删除工作空间 [${vault.name}] 吗？\n此操作将销毁该空间下的所有日志记录和关联档案，且不可恢复！\n\n请输入工作空间名称以确认删除：`
+                        t('workspace.delete_confirm', '危险：您确定要彻底删除工作空间 [{{name}}] 吗？\n此操作将销毁该空间下的所有日志记录和关联档案，不可逆！\n\n请输入工作区名称以确认删除：', { name: vault.name })
                       );
                       if (input === vault.name) {
                         onDelete(vault.name);

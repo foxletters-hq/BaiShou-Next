@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useNativeTheme } from '../theme';
+import { useTranslation } from 'react-i18next';
+
 
 export interface NativeSelectOption {
   label: string;
@@ -17,6 +19,7 @@ export interface NativeSelectProps {
 }
 
 export const Select: React.FC<NativeSelectProps> = ({ options, value, onValueChange, placeholder, error, style }) => {
+  const { t } = useTranslation();
   const { colors, tokens } = useNativeTheme();
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -65,7 +68,7 @@ export const Select: React.FC<NativeSelectProps> = ({ options, value, onValueCha
                   )}
                 />
                 <TouchableOpacity style={{ padding: tokens.spacing.md, marginBottom: tokens.spacing.lg }} onPress={() => setModalVisible(false)}>
-                  <Text style={{ color: colors.primary, fontSize: 16, textAlign: 'center', fontWeight: 'bold' }}>取消</Text>
+                  <Text style={{ color: colors.primary, fontSize: 16, textAlign: 'center', fontWeight: 'bold' }}>{t('common.cancel', '取消')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>

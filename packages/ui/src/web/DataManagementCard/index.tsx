@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styles from './DataManagementCard.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface SnapshotInfo {
   filename: string;
@@ -21,6 +23,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   onPickFile,
   snapshots = []
 }) => {
+  const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [showSnapshots, setShowSnapshots] = useState(false);
@@ -36,7 +39,8 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
 
   const executeImport = async (filePath: string) => {
     const confirmText = window.prompt(
-      '【高危操作警告】\n导入全量存档将直接销毁当前系统内的所有工作区与知识数据库设定，且不可逆转！\n\n请在下方输入 "CONFIRM" 以二次确认您知道自己在做什么：'
+      t('data.import_confirm_msg', '【替换警报】导入本地备份将抹平目前工作区拥有的全体聊天记录、属性集与上下文。
+若要继续操作，请在弹窗验证行键入 "CONFIRM"：')
     );
     if (confirmText !== 'CONFIRM') {
       alert('已取消导入热重启');
@@ -64,7 +68,9 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   };
 
   const handleRestoreSnapshot = async (snapshot: SnapshotInfo) => {
-    const flag = window.confirm(`您将使用 ${snapshot.timeLabel} (${snapshot.sizeMB} MB) 的快照覆盖现在的全部记录。\n覆盖后现在的修改统统消失，继续吗？`);
+    const flag = window.confirm(t('data.snapshot_confirm', '即刻调用 {{timeLabel}} 版本 ({{sizeMB}} MB) 对现役存储域执行整体降级/回档。
+此后，现今累积的所有状态更迭均将随之消尽。
+确定降级？', { timeLabel: snapshot.timeLabel, sizeMB: snapshot.sizeMB }));
     if (!flag) return;
     await executeImport(snapshot.fullPath);
   };
@@ -73,9 +79,9 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.titleInfo}>
-           <h3 className={styles.title}>数据全量备份与容灾 (Data Vault)</h3>
+           <h3 className={styles.title}>{t('data.title', '物理隔离层本地存档 (Data Vault)')}</h3>
            <p className={styles.subtitle}>
-             白守数据由零构建、不受云端绑架。你可以随时将整个库无损封存为 ZIP 文件（跳过缓存），或将备份文件强制热加载回系统。
+             {t('data.desc', '由于白守采取纯净的本地优先体系，在此您可以自由将全体库数据打入无损压缩的 ZIP 进行冷备份或多端移动流转。')}
            </p>
         </div>
       </div>
@@ -83,15 +89,15 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
       <div className={styles.actionsBox}>
         <div className={styles.cardSection}>
           <div className={styles.sectionHeader}>
-            <h4>📦 铸造数据母体归档</h4>
-            <p className={styles.sectionDesc}>导出所有工作区 (Vaults) 、日记片段、模型预设与超参设定。</p>
+            <h4>📦 {t('data.export_title', '整体提纯导出快照模块')}</h4>
+            <p className={styles.sectionDesc}>{t('data.export_desc', '将包含您现役的主工作层状态、助手属性面具及历史对话生成一个离线压缩体。')}</p>
           </div>
           <button 
             className={styles.exportBtn} 
             onClick={handleExport}
             disabled={isExporting || isImporting}
           >
-            {isExporting ? '⏳ 打包压制中...' : '生成完整 ZIP 母体备份'}
+            {isExporting ? t('data.exporting', '🧩 档案打包转储进度进行...') : t('data.export_btn', '压缩并产出完整单体包 (ZIP)')}
           </button>
         </div>
 
@@ -99,15 +105,15 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
 
         <div className={styles.cardSection}>
           <div className={styles.sectionHeader}>
-            <h4 className={styles.dangerText}>☢️ 高危异体数据注入</h4>
-            <p className={styles.sectionDesc}>警告：导入外部 ZIP 备份将强行切断当前所有数据库连接，并彻底覆写本地数据卷。</p>
+            <h4 className={styles.dangerText}>☢️ {t('data.import_title', '强覆盖性异体录入模块')}</h4>
+            <p className={styles.sectionDesc}>{t('data.import_desc', '引入已存在的 ZIP 快照来全局重置当前库资料。这一途径将引起灾难级的记录切断抹除，注意确认版本对应。')}</p>
           </div>
           <button 
             className={styles.importBtn} 
             onClick={handleImport}
             disabled={isExporting || isImporting || !onPickFile}
           >
-            {isImporting ? '☢️ 数据灌入中...' : '选择 ZIP 强行覆盖合并'}
+            {isImporting ? t('data.importing', '⚠️ 置换核心层录入...') : t('data.import_btn', '提取外部包裹执行系统置换')}
           </button>
         </div>
 
@@ -116,8 +122,8 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
         <div className={styles.cardSection}>
            <div className={styles.sectionHeaderHistory} onClick={() => setShowSnapshots(!showSnapshots)}>
              <div className={styles.historyTitleRow}>
-                <h4>⏱️ 时序快照自动找回 (Auto Snapshots)</h4>
-                <p className={styles.sectionDesc}>白守在重要节点会自动留下最多 10 份短期数据快照，以便您在崩溃或手误后吃后悔药。</p>
+                <h4>⏱️ {t('data.auto_snapshot_title', '内建断层点无缝召回 (Snapshots)')}</h4>
+                <p className={styles.sectionDesc}>{t('data.auto_snapshot_desc', '系统引擎会在重大变更执行前自持暂存不超过一定数量的副本帧，供遇灾或不可控操作后的“时光倒流”救援干预使用。')}</p>
              </div>
              <div className={styles.collapseIndicator}>{showSnapshots ? '▲' : '▼'}</div>
            </div>
@@ -125,7 +131,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
            {showSnapshots && (
               <div className={styles.snapshotList}>
                 {snapshots.length === 0 ? (
-                   <div className={styles.noSnapshots}>当前宿主机未保留任何近期时序快照。</div>
+                   <div className={styles.noSnapshots}>{t('data.no_snapshots', '暂未能探知到任意短期驻留切片可供取用。')}</div>
                 ) : (
                    snapshots.map(sn => (
                      <div key={sn.filename} className={styles.snapshotItem}>
@@ -138,7 +144,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
                            onClick={() => handleRestoreSnapshot(sn)}
                            disabled={isExporting || isImporting}
                         >
-                           从该断点复活
+                           {t('data.recover_btn', '复苏回滚指令下达')}
                         </button>
                      </div>
                    ))

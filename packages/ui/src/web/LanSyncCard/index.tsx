@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './LanSyncCard.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface DiscoveredDevice {
   nickname: string;
@@ -32,6 +34,7 @@ const FIXED_POSITIONS = [
 ];
 
 export const LanSyncCard: React.FC<LanSyncCardProps> = ({
+  const { t } = useTranslation();
   onStartBroadcasting,
   onStopBroadcasting,
   onStartDiscovery,
@@ -49,7 +52,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     if (onFileReceivedListener && onImportZip) {
       const unsub = onFileReceivedListener((zipPath) => {
         const confirmText = window.prompt(
-          '【局域网快传接收】\n您收到了一个全量备份包，是否立即挂载并覆盖本地数据库？\n请输入 "CONFIRM" 确认：'
+          t('lan.receive_confirm_msg', '【局域网快传接收】\n发现来自局域网设备传来的全量备份包，是否立即应用并覆盖本地数据库？\n请输入 "CONFIRM" 以确认覆盖：')
         );
         if (confirmText === 'CONFIRM') {
           onImportZip(zipPath).then(() => {
@@ -101,11 +104,11 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.titleRow}>
-          <h3 className={styles.title}>跨端局域网双向快传 (LAN Sync)</h3>
+          <h3 className={styles.title}>{t('lan.title', '局域网设备互传 (LAN Sync)')}</h3>
           <div className={`${styles.statusDot} ${isActive ? styles.activeDot : ''}`}></div>
         </div>
         <p className={styles.subtitle}>
-          无需耗费外网流量即可将庞大的备份从电脑推向移动哨站。
+          {t('lan.desc', '在同一局域网络内的终端之间相互发现并高速传输备份数据。')}
         </p>
       </div>
 
@@ -125,13 +128,13 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
         {!isActive && (
           <div className={styles.silentHint}>
              <span className={styles.silentIcon}>📡</span>
-             <p>雷达处于静默休眠状态。</p>
+             <p>{t('lan.radar_offline', '局域网侦听处于关闭状态。')}</p>
           </div>
         )}
 
         {isActive && devices.length === 0 && (
           <div className={styles.scanHint}>
-            正在不间断搜寻子网域中的白守节点...
+            {t('lan.radar_online', '正在持续搜寻本网络环境中的其他活跃终端...')}
           </div>
         )}
 
@@ -157,7 +160,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                 disabled={sendingTo !== null}
                 onClick={(e) => { e.stopPropagation(); handleSend(d); }}
               >
-                {isSending ? `${progress}%` : '推入快传'}
+                {isSending ? `${progress}%` : t('lan.send_btn', '发起快传')}
               </button>
             </div>
           )
@@ -169,7 +172,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
            className={`${styles.controlBtn} ${isActive ? styles.stopBtn : styles.startBtn}`} 
            onClick={toggleDualMode}
          >
-           {isActive ? '关闭全频段探测' : '雷达点火引擎 (发现与侦听本机)'}
+           {isActive ? t('lan.stop_radar', '关闭局域网侦听') : t('lan.start_radar', '开启发现与侦听')}
          </button>
       </div>
     </div>

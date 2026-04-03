@@ -1,5 +1,7 @@
 import React from 'react';
 import styles from './IdentitySettingsCard.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface UserProfileConfig {
   nickname: string;
@@ -14,6 +16,7 @@ export interface IdentitySettingsCardProps {
 }
 
 export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ profile, onChange }) => {
+  const { t } = useTranslation();
   const activeId = profile.activePersonaId || 'Default';
   // 确保 fallback
   const allPersonas = profile.personas || { 'Default': {} };
@@ -56,7 +59,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
       alert("至少保留一张身份卡！");
       return;
     }
-    if (window.confirm(`确定删除身份卡 [${pid}] 吗？`)) {
+    if (window.confirm(t('identity.delete_persona', '确定删除身份档案 [{{pid}}] 吗？', { pid }))) {
       const nextPersonas = { ...allPersonas };
       delete nextPersonas[pid];
       const remainingIds = Object.keys(nextPersonas);
@@ -85,7 +88,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
 
   // 5. 删 Fact
   const handleDeleteFact = (k: string) => {
-    if (window.confirm(`删除记录 ${k}？`)) {
+    if (window.confirm(t('identity.delete_record', '确认删除记录 {{k}}？', { k }))) {
       const nextFacts = { ...currentFacts };
       delete nextFacts[k];
       onChange({
@@ -101,13 +104,13 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
         <div className={styles.titleLine}>
           <div className={styles.titleLeft}>
             <span className={styles.icon}>🎭</span>
-            <h3 className={styles.title}>多重面具预设档 (Personas & Facts)</h3>
+            <h3 className={styles.title}>{t('identity.personas_title', '预设核心档案 (Personas & Facts)')}</h3>
           </div>
           <button className={styles.addFactBtn} onClick={() => handleAddOrEditFact()}>
-            + 补充记忆链条
+            + {t('identity.add_fact', '补充属性链条')}
           </button>
         </div>
-        <p className={styles.subtitle}>白守将基于这些坚固的「自我认知词条」与您对答。</p>
+        <p className={styles.subtitle}>{t('identity.personas_desc', '助手将自动组合这些底层的核心认知词条与您对答。')}</p>
       </div>
 
       <div className={styles.chipRow}>
@@ -126,14 +129,14 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
             </div>
           );
         })}
-        <button className={styles.addChipBtn} onClick={handleAddPersona}>+ 面具</button>
+        <button className={styles.addChipBtn} onClick={handleAddPersona}>+ {t('identity.add_persona', '预设档')}</button>
       </div>
 
       <div className={styles.factsArea}>
         {Object.entries(currentFacts).length === 0 ? (
           <div className={styles.emptyFacts}>
             <span className={styles.emptyIcon}>🧬</span>
-            <p>该面具尚属一片白纸</p>
+            <p>{t('identity.empty_persona', '当前配置项为空')}</p>
           </div>
         ) : (
           Object.entries(currentFacts).map(([k, v]) => (

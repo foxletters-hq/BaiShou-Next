@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styles from './AIModelServicesView.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface AIProviderConfig {
   providerId: string;
@@ -30,7 +32,8 @@ const BASE_KNOWN_PROVIDERS = [
   { id: 'xunfei', name: 'Xunfei (星火)', icon: '✨', defaultBase: 'https://spark-api-open.xf-yun.com/v1' },
 ];
 
-export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({ 
+export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
+  const { t } = useTranslation(); 
   providers, 
   onUpdateProvider, 
   onTestConnection, 
@@ -125,11 +128,11 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.titleInfo}>
-          <h3 className={styles.title}>大模型服务集成端</h3>
-          <p className={styles.subtitle}>管控所有云节点与局域网节点。只有启用的服务才会出现，并且你可以手动勾选所需的显式子模型池。</p>
+          <h3 className={styles.title}>{t('services.title', '大模型服务集成配置')}</h3>
+          <p className={styles.subtitle}>{t('services.subtitle', '管控所有云端与局域网供应商 API。仅展示您已启用的服务商。')}</p>
         </div>
         <button className={styles.addCustomBtn} onClick={handleCreateCustom}>
-          ➕ 新增自定义供应源
+          ➕ {t('services.add_custom', '新增自定义供应源')}
         </button>
       </div>
 
@@ -167,7 +170,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                 <div className={styles.cardBody}>
                    <div className={styles.configsGrid}>
                       <div className={styles.inputGroup}>
-                        <label>🔑 API Key 鉴权口令</label>
+                        <label>🔑 {t('services.api_key', 'API Key 授权秘钥')}</label>
                         <input 
                           className={styles.textField}
                           type="password"
@@ -177,7 +180,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                         />
                       </div>
                       <div className={styles.inputGroup}>
-                        <label>🌐 自定义反向代理节点 (Base URL)</label>
+                        <label>🌐 {t('services.base_url', '自定义请求地址 (Base URL)')}</label>
                         <input 
                           className={styles.textField}
                           type="text"
@@ -195,14 +198,14 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                         onClick={() => handleTest(kp.id, config)}
                         disabled={isTesting}
                       >
-                        {isTesting ? '⏳ 正在测速...' : '⚡ 测试连通网关'}
+                        {isTesting ? t('services.testing', '⏳ 测速中...') : t('services.test_conn', '⚡ 测试连接')}
                       </button>
                       <button 
                         className={styles.toolBtnSecondary} 
                         onClick={() => handleFetch(kp.id, config)}
                         disabled={isFetching}
                       >
-                        {isFetching ? '⏳ 读取中...' : '📡 获取可用模型单'}
+                        {isFetching ? t('services.fetching', '⏳ 读取中...') : t('services.fetch_models', '📡 获取模型列表')}
                       </button>
                    </div>
 
@@ -210,7 +213,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                    {config.models && config.models.length > 0 && (
                      <div className={styles.modelsContainer}>
                         <div className={styles.modelsLabel}>
-                           勾选将在对话、补全界面可视化的子模型集合：
+                           {t('services.select_models', '勾选您将在对话界面显示的模型组合：')}
                         </div>
                         <div className={styles.modelsGrid}>
                            {config.models.map(mdl => {

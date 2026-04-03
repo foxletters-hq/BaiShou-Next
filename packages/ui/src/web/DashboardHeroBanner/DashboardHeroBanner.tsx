@@ -1,9 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 
 // TODO: [Agent1-Dependency] 替换
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation();

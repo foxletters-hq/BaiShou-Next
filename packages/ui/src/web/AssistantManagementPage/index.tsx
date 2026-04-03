@@ -111,7 +111,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
               <Search size={16} color="var(--text-secondary)"/>
               <input 
                  className={styles.searchInput}
-                 placeholder="检索呼号 / 职能..."
+                 placeholder={t('assistant.search_placeholder', '通过名称检索...')}
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -122,9 +122,9 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
               value={sortMode} 
               onChange={(e) => setSortMode(e.target.value as SortMode)}
            >
-              <option value="newest">按最新唤醒 (Newest)</option>
-              <option value="frequent">按呼叫热度 (Frequent)</option>
-              <option value="name">按系统全称 (A-Z)</option>
+              <option value="newest">{t('assistant.sort_newest', '按创建时间')}</option>
+              <option value="frequent">{t('assistant.sort_frequent', '按使用频率')}</option>
+              <option value="name">{t('assistant.sort_name', '按名称字母排序')}</option>
            </select>
         </div>
       </div>
@@ -239,7 +239,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
             <div className={styles.dialogText}>
               {t(
                 'agent.assistant.delete_confirm_content',
-                '一旦彻底删除 [该伙伴身份]，其下绑定的专属神经记忆片段也将失去宿主索引。此决定绝对不可逆转！',
+                '彻底删除该助手后关联设置将遗失。这是一个不可逆操作！',
               )}
             </div>
             <div className={styles.dialogActions}>

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Terminal, Zap } from 'lucide-react';
 import styles from './PromptShortcutSheet.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface PromptShortcut {
   id: string;
@@ -23,6 +25,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   selectedIndex,
   onSelect
 }) => {
+  const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
 
   // 当选择的索引改变时，确保将其滚动入视野
@@ -40,7 +43,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   return (
     <div className={styles.overlay}>
        <div className={styles.header}>
-          <Zap size={14} /> 快捷战术指令 (Shortcut)
+          <Zap size={14} /> {t('shortcut.title', '快捷控制指令 (Shortcut)')}
        </div>
        <div className={styles.listArea} ref={listRef}>
           {shortcuts.map((shortcut, index) => (
@@ -63,7 +66,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
           ))}
           {shortcuts.length === 0 && (
             <div style={{ padding: '20px', textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
-              找不到匹配的指令协议...
+              {t('shortcut.no_match', '找不到任何匹配的快捷指令...')}
             </div>
           )}
        </div>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styles from './AttachmentManagementView.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface AttachmentItem {
   id: string;
@@ -19,6 +21,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   attachments,
   onDeleteSelected
 }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'all' | 'orphans'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
@@ -49,7 +52,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
 
   const handleDelete = async () => {
     if (selectedIds.size === 0) return;
-    const confirmText = window.confirm(`防呆确定：您将从硬盘上永久抹杀被选定的 ${selectedIds.size} 个附录库会话文件夹！\n删除后不可找回。该操作只删附件不删纯文本记忆。继续？`);
+    const confirmText = window.confirm(t('attachment.delete_confirm', '【操作确认】您将彻底删除选中的 {{count}} 个附件包。操作不可逆（仅删除文件，不影响聊天记录文本）。是否执行？', { count: selectedIds.size }));
     if (!confirmText) return;
 
     setIsDeleting(true);
@@ -68,25 +71,25 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
     <div className={styles.container}>
        <div className={styles.header}>
           <div className={styles.titleInfo}>
-             <h3 className={styles.title}>核心系统附录库 (Attachment Center)</h3>
-             <p className={styles.subtitle}>跨域文件、媒体记忆帧的物理留存中枢。红色条目即“遗落的孤岛孤标文件”。</p>
+             <h3 className={styles.title}>{t('attachment.title', '附件与隔离数据管理')}</h3>
+             <p className={styles.subtitle}>{t('attachment.desc', '集中管理所有对话产生的媒体及文件，被标记为红色的条目是已丢失会话依据的孤立碎片。')}</p>
           </div>
        </div>
 
        {/* 概览大盘 */}
        <div className={styles.statsBoard}>
           <div className={styles.statBox}>
-             <span className={styles.statLabel}>宿命总吞吐量</span>
+             <span className={styles.statLabel}>{t('attachment.stat_total', '总计使用空间')}</span>
              <span className={styles.statValue}>{totalSizeMB.toFixed(2)} <small>MB</small></span>
           </div>
           <div className={styles.statDivider} />
           <div className={styles.statBox}>
-             <span className={styles.statLabel}>散落游离碎片总计</span>
+             <span className={styles.statLabel}>{t('attachment.stat_orphans', '孤立碎片体积')}</span>
              <span className={styles.statValue}>{totalFiles} <small>Files</small></span>
           </div>
           <div className={styles.statDivider} />
           <div className={styles.statBox}>
-             <span className={`${styles.statLabel} ${styles.dangerTextLabel}`}>无对证的幽灵数据 (Orphans)</span>
+             <span className={`${styles.statLabel} ${styles.dangerTextLabel}`}>{t('attachment.stat_orphans_count', '无记录对证的孤立文件')}</span>
              <span className={`${styles.statValue} ${orphanSizeMB > 0 ? styles.dangerText : ''}`}>
                {orphanSizeMB.toFixed(2)} <small>MB</small>
              </span>
@@ -100,18 +103,18 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
                className={`${styles.tabBtn} ${activeTab === 'all' ? styles.tabActive : ''}`}
                onClick={() => { setActiveTab('all'); setSelectedIds(new Set()); }}
              >
-               🪐 恒星群合集 <span className={styles.badge}>{attachments.length}</span>
+               📁 {t('attachment.tab_all', '系统完整附件集')} <span className={styles.badge}>{attachments.length}</span>
              </button>
              <button 
                className={`${styles.tabBtn} ${activeTab === 'orphans' ? styles.tabActive : ''}`}
                onClick={() => { setActiveTab('orphans'); setSelectedIds(new Set()); }}
              >
-               🛸 漂流无归档陨石区 <span className={styles.badgeDanger}>{orphans.length}</span>
+               ⚠️ {t('attachment.tab_orphans', '无关联孤立区')} <span className={styles.badgeDanger}>{orphans.length}</span>
              </button>
           </div>
           
           <button className={styles.selectAllBtn} onClick={handleSelectAll} disabled={displayList.length === 0}>
-             {displayList.length > 0 && selectedIds.size === displayList.length ? '取消群选' : '框选全视域'}
+             {displayList.length > 0 && selectedIds.size === displayList.length ? t('common.deselect_all', '取消全选') : t('common.select_all', '全选')}
           </button>
        </div>
 
@@ -120,7 +123,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
           {displayList.length === 0 ? (
              <div className={styles.empty}>
                 <div className={styles.emptyIcon}>{activeTab === 'orphans' ? '🎐' : '🗂️'}</div>
-                <div className={styles.emptyText}>{activeTab === 'orphans' ? '未感测到任何未能关联归档的孤岛件。' : '当前工作区无任何留存的附件。'}</div>
+                <div className={styles.emptyText}>{activeTab === 'orphans' ? t('attachment.no_orphans', '系统中不存在未关联的孤立文件。') : t('attachment.empty', '工作空间没有留存任何附件记录。')}</div>
              </div>
           ) : (
              displayList.map(att => {
@@ -145,7 +148,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
                        {att.isOrphan && <span className={styles.orphanTag}>ORPHAN</span>}
                      </div>
                      <div className={styles.cardSubRow}>
-                       <span className={styles.fileCountHint}>{att.fileCount} 个档案封套</span>
+                       <span className={styles.fileCountHint}>{t('attachment.file_count_badge', '{{count}} 件物理档案', { count: att.fileCount })}</span>
                      </div>
                    </div>
 
@@ -163,14 +166,14 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
        {selectedIds.size > 0 && (
          <div className={styles.massActionFooter}>
             <div className={styles.footerInfo}>
-               您已锁定 <span className={styles.highlight}>{selectedIds.size}</span> 个附件组列。
+               {t('attachment.selected_count', '已选择')} <span className={styles.highlight}>{selectedIds.size}</span> {t('attachment.selected_count_suffix', '个组列.')}
             </div>
             <button 
                className={styles.massiveDeleteBtn} 
                onClick={handleDelete}
                disabled={isDeleting}
             >
-               {isDeleting ? '☄️ 碎星武器发射中...' : '☄️ 从物理层面碾碎遣除 (EXECUTE)'}
+               {isDeleting ? t('attachment.deleting', '🗑️ 彻底删除执行中...') : t('attachment.delete_btn', '🗑️ 从磁盘执行删除')}
             </button>
          </div>
        )}

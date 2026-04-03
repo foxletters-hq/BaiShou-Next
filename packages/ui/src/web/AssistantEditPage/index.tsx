@@ -127,7 +127,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   const formatTokens = (tokens: number) => {
     if (tokens >= 10000) {
       const w = tokens / 10000;
-      return `${w % 1 === 0 ? w.toFixed(0) : w.toFixed(1)}万`;
+      return `${w % 1 === 0 ? w.toFixed(0) : w.toFixed(1)}${t('common.ten_thousand', '万')}`;
     }
     return String(tokens);
   };
@@ -159,11 +159,11 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
       <div className={styles.formBody}>
         <div className={styles.formContainer}>
           
-          {/* Section: 身份名片 */}
+          
           <div className={styles.formSection}>
              <div className={styles.sectionHeader}>
                 <Sparkles size={18} className={styles.sectionIcon} />
-                <span>核心身份标识</span>
+                <span>{t('assistant.identity_card', '核心身份')}</span>
              </div>
              
              <div className={styles.avatarSection}>
@@ -201,9 +201,9 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           <div className={styles.formSection}>
              <div className={styles.sectionHeader}>
                 <Cpu size={18} className={styles.sectionIcon} />
-                <span>底层行为链路 (System Prompt)</span>
+                <span>{t('assistant.system_prompt', '底层系统设定 (System Prompt)')}</span>
              </div>
-             <p className={styles.fieldHint}>定义该心智的思想边界、语言风格和回答惯性。</p>
+             <p className={styles.fieldHint}>{t('assistant.system_prompt_hint', '定义该助手的边界设定、语言回答风格。')}</p>
              
              <div className={styles.fieldGroup}>
                 <div className={styles.promptToolbar}>
@@ -219,13 +219,13 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                          className={`${styles.tabBtn} ${promptMode === 'edit' ? styles.tabBtnActive : ''}`}
                          onClick={() => setPromptMode('edit')}
                       >
-                         编辑代码
+                         {t('common.edit_code', '编辑')}
                       </button>
                       <button 
                          className={`${styles.tabBtn} ${promptMode === 'preview' ? styles.tabBtnActive : ''}`}
                          onClick={() => setPromptMode('preview')}
                       >
-                         全息预览
+                         {t('common.preview', '预览')}
                       </button>
                    </div>
                 </div>
@@ -239,18 +239,18 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                    />
                 ) : (
                    <div className={styles.fieldTextarea} style={{ minHeight: 160, overflowY: 'auto' }}>
-                      {systemPrompt.trim() ? <MarkdownRenderer content={systemPrompt} /> : <span style={{color: 'var(--text-secondary)'}}>无系统指令流录入...</span>}
+                      {systemPrompt.trim() ? <MarkdownRenderer content={systemPrompt} /> : <span style={{color: 'var(--text-secondary)'}}>{t('assistant.no_system_prompt', '无系统设定录入...')}</span>}
                    </div>
                 )}
              </div>
 
              <div className={styles.fieldGroup} style={{ marginTop: 12 }}>
                 <label className={styles.fieldLabel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <MessageSquareText size={16}/> 握手欢迎语 (Welcome Message)
+                  <MessageSquareText size={16}/> {t('assistant.welcome_msg', '欢迎语 (Welcome Message)')}
                 </label>
                 <input
                   className={styles.fieldInput}
-                  placeholder="用户开启新会话时自动发送的第一句话..."
+                  placeholder={t('assistant.welcome_msg_hint', '用户开启新会话时自动发送的第一句话...')}
                   value={welcomeMessage}
                   onChange={(e) => setWelcomeMessage(e.target.value)}
                 />
@@ -261,36 +261,36 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           <div className={styles.formSection}>
              <div className={styles.sectionHeader}>
                 <Database size={18} className={styles.sectionIcon} />
-                <span>神经突触绑定</span>
+                <span>{t('assistant.advanced_bindings', '外挂组件绑定')}</span>
              </div>
 
              <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>主干计算流 (Model)</label>
+                <label className={styles.fieldLabel}>{t('assistant.main_model', '专属大模型 (Model)')}</label>
                 {providerId && modelId ? (
                    <div className={styles.selectorCard} onClick={() => {/* TODO: Pop out Provider picker */}}>
                       <div className={styles.selectorIcon}><Box size={20}/></div>
                       <div className={styles.selectorContent}>
                          <div className={styles.selectorTitle}>{modelId}</div>
-                         <div className={styles.selectorSubtitle}>{providerId} 引擎提供算力支持</div>
+                         <div className={styles.selectorSubtitle}>{providerId} {t('assistant.provider_support', '提供计算服务')}</div>
                       </div>
                       <span className={styles.selectorAction} onClick={(e) => { e.stopPropagation(); setProviderId(undefined); setModelId(undefined);}}>
-                         解除
+                         {t('common.unbind', '解除')}
                       </span>
                    </div>
                 ) : (
                    <div className={styles.selectorCard} onClick={() => {/* Pick model */}}>
                       <div className={styles.selectorIcon}><Box size={20}/></div>
                       <div className={styles.selectorContent}>
-                         <div className={styles.selectorTitle}>全局默认协同列阵</div>
-                         <div className={styles.selectorSubtitle}>继承系统配置中的主模型设置</div>
+                         <div className={styles.selectorTitle}>{t('assistant.global_default', '全局默认设置')}</div>
+                         <div className={styles.selectorSubtitle}>{t('assistant.inherit_global', '继承系统配置中的主要模型集合')}</div>
                       </div>
-                      <span className={styles.selectorAction}>更改</span>
+                      <span className={styles.selectorAction}>{t('common.change', '更改')}</span>
                    </div>
                 )}
              </div>
 
              <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>外挂记忆库 (RAG Knowledge)</label>
+                <label className={styles.fieldLabel}>{t('assistant.rag_knowledge', '关联知识库 (RAG Knowledge)')}</label>
                 <div className={styles.selectorCard} onClick={async () => {
                    if(onPickRagSpace) {
                       const space = await onPickRagSpace();
@@ -299,8 +299,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                 }}>
                    <div className={styles.selectorIcon}><Database size={20}/></div>
                    <div className={styles.selectorContent}>
-                      <div className={styles.selectorTitle}>{ragSpaceId ? `已挂接扇区：${ragSpaceId}` : '未挂接任何记忆矩阵'}</div>
-                      <div className={styles.selectorSubtitle}>{ragSpaceId ? '注入特化领域的极速高维向量查询' : '目前仅使用上下文裸存'}</div>
+                      <div className={styles.selectorTitle}>{ragSpaceId ? `已关联空间：${ragSpaceId}` : '未关联任何知识库实体'}</div>
+                      <div className={styles.selectorSubtitle}>{ragSpaceId ? '为助手注入额外的专域向量检索库资料' : '目前不附带任何额外检索设定'}</div>
                    </div>
                    <span className={styles.selectorAction}>{ragSpaceId ? '变更' : '检索'}</span>
                 </div>
@@ -311,15 +311,15 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           <div className={styles.formSection}>
              <div className={styles.sectionHeader}>
                 <Thermometer size={18} className={styles.sectionIcon} />
-                <span>高级神经节控制 (Advanced)</span>
+                <span>{t('assistant.advanced_control', '高级上下文控制 (Advanced)')}</span>
              </div>
              
              {/* Temperature */}
              <div className={styles.sliderWrapper}>
                 <div className={styles.sliderHeaderLine}>
                    <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>发散温度 (Temperature)</span>
-                      <span className={styles.sliderSub}>降低数值更理性严谨，升高则更具跳跃创造力</span>
+                      <span className={styles.sliderLabel}>{t('settings.temperature', '创造力 / 发散度 (Temperature)')}</span>
+                      <span className={styles.sliderSub}>{t('assistant.temp_desc', '降低数值更理性严谨，升高则更具发散创造力')}</span>
                    </div>
                    <span className={styles.sliderValueBox}>{temperature.toFixed(2)}</span>
                 </div>
@@ -336,8 +336,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
                 <div className={styles.sliderHeaderLine}>
                    <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>采样熵界限 (Top P)</span>
-                      <span className={styles.sliderSub}>控制概率词汇分布范围，通常不建议与 Temperature 同时大幅调整</span>
+                      <span className={styles.sliderLabel}>{t('assistant.top_p', '取样平衡限制 (Top P)')}</span>
+                      <span className={styles.sliderSub}>{t('assistant.top_p_desc', '截断低概率词汇，通常不建议与 Temperature 同时进行调整')}</span>
                    </div>
                    <span className={styles.sliderValueBox}>{topP.toFixed(2)}</span>
                 </div>
@@ -354,13 +354,13 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
                 <div className={styles.sliderHeaderLine}>
                    <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>短期记忆轮跨度 (Context Limit)</span>
+                      <span className={styles.sliderLabel}>{t('assistant.context_limit', '追溯对话轮次 (Context Limit)')}</span>
                       <span className={styles.sliderSub}>
-                         {isUnlimitedContext ? '无限吸收当前全部会话数据（小心过载）。' : '设定当前向大模型投喂的最大追溯轮数。'}
+                         {isUnlimitedContext ? '提交全部当前会话的历史数据。' : '设定大模型每次对话的最大上下文回看历史数。'}
                       </span>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                     {!isUnlimitedContext && <span className={styles.sliderValueBox}>{contextWindow} 轮</span>}
+                     {!isUnlimitedContext && <span className={styles.sliderValueBox}>{contextWindow} {t('common.turns', '轮')}</span>}
                      <label className={styles.toggleSwitch}>
                        <input type="checkbox" checked={!isUnlimitedContext} onChange={(e) => setContextWindow(e.target.checked ? 10 : -1)} />
                        <span className={styles.toggleSlider}></span>
@@ -382,8 +382,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
                 <div className={styles.sliderHeaderLine}>
                    <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>长栈无损蒸馏压缩 (Auto-Compression)</span>
-                      <span className={styles.sliderSub}>开启后到达设定阈值时执行摘要打包。保留轮数：{compressKeepTurns}。</span>
+                      <span className={styles.sliderLabel}>{t('assistant.auto_compress', '超限长文总结压缩 (Auto-Compression)')}</span>
+                      <span className={styles.sliderSub}>{t('assistant.auto_compress_desc', '超出截断设定时对较远的对话执行合并总结。保留记录轮数：{{n}}。', { n: compressKeepTurns })}</span>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                      {!isCompressDisabled && <span className={styles.sliderValueBox}>{formatTokens(compressThreshold)} TK</span>}
@@ -404,7 +404,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                      />
                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                         <Hash size={14} color="var(--text-secondary)"/>
-                        <span style={{ fontSize: 13, color: 'var(--text-secondary)'}}>保留末尾未压缩裸轮数：</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)'}}>{t('assistant.keep_uncompressed', '不压缩的末尾会话留存轮数：')}</span>
                         <input
                           type="range"
                           className={styles.sliderInput}
@@ -423,8 +423,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
                 <div className={styles.sliderHeaderLine}>
                    <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>单次爆发峰值 (Max Tokens)</span>
-                      <span className={styles.sliderSub}>限制助手单次回复的最大词汇量。关闭限制代表允许大模型尽情输出直至受限。</span>
+                      <span className={styles.sliderLabel}>{t('assistant.max_tokens', '单次回复长度 (Max Tokens)')}</span>
+                      <span className={styles.sliderSub}>{t('assistant.max_tokens_desc', '限制大模型所能生成的最大长度边界。')}</span>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                      {!isUnlimitedMaxTokens && <span className={styles.sliderValueBox}>{formatTokens(maxTokens)} TK</span>}

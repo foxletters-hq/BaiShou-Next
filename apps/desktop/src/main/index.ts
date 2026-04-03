@@ -2,6 +2,15 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { registerAgentIPC } from './ipc/agent.ipc'
+import { registerSettingsIPC } from './ipc/settings.ipc'
+import { initVaultSystem, registerVaultIPC } from './ipc/vault.ipc'
+import { registerArchiveIPC } from './ipc/archive.ipc'
+import { registerLanIPC } from './ipc/lan.ipc'
+import { registerCloudSyncIPC } from './ipc/cloud-sync.ipc'
+import { registerDiaryIPC } from './ipc/diary.ipc'
+import { registerProfileIPC } from './ipc/profile.ipc'
+import { registerSummaryIPC } from './ipc/summary.ipc'
 
 function createWindow(): void {
   // Create the browser window.
@@ -53,40 +62,31 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
   
   // Register Agent Streaming IPC
-  const { registerAgentIPC } = require('./ipc/agent.ipc')
   registerAgentIPC()
 
   // Register Settings IPC
-  const { registerSettingsIPC } = require('./ipc/settings.ipc')
   registerSettingsIPC()
 
   // Register Vault IPC
-  const { initVaultSystem, registerVaultIPC } = require('./ipc/vault.ipc')
   initVaultSystem().then(() => {
     registerVaultIPC()
 
     // Register Archive IPC
-    const { registerArchiveIPC } = require('./ipc/archive.ipc')
     registerArchiveIPC()
     
     // Register LAN Sync IPC
-    const { registerLanIPC } = require('./ipc/lan.ipc')
     registerLanIPC()
     
     // Register Cloud Sync IPC
-    const { registerCloudSyncIPC } = require('./ipc/cloud-sync.ipc')
     registerCloudSyncIPC()
 
     // Register Diary IPC
-    const { registerDiaryIPC } = require('./ipc/diary.ipc')
     registerDiaryIPC()
 
     // Register Profile IPC
-    const { registerProfileIPC } = require('./ipc/profile.ipc')
     registerProfileIPC()
 
     // Register Summary IPC
-    const { registerSummaryIPC } = require('./ipc/summary.ipc')
     registerSummaryIPC()
     
     createWindow()

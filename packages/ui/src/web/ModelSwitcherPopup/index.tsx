@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styles from './ModelSwitcherPopup.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface AiProviderModel {
   id: string;
@@ -24,6 +26,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
   onSelect,
   onClose
 }) => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter providers and models
@@ -49,7 +52,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
         <div className={styles.header}>
           <div className={styles.headerTitle}>
             <span className={styles.headerIcon}>🔃</span>
-            <h2>切换模型</h2>
+            <h2>{t('models.switch_model', '切换计算模型')}</h2>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
@@ -59,7 +62,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
           <span className={styles.searchIcon}>🔍</span>
           <input 
             type="text" 
-            placeholder="搜索模型..." 
+            placeholder={t('common.search_model', '搜索模型...')} 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={styles.searchInput}
@@ -70,7 +73,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
         {/* Lists */}
         <div className={styles.listContainer}>
           {filteredData.length === 0 ? (
-            <div className={styles.emptyState}>没有匹配的模型</div>
+            <div className={styles.emptyState}>{t('common.no_match_model', '没有匹配的可用模型')}</div>
           ) : (
             filteredData.map(provider => (
               <div key={provider.id} className={styles.providerGroup}>

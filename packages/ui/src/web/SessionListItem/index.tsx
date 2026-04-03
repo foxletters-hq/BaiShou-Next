@@ -75,7 +75,7 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
                  />
                )}
                {session.isPinned && (
-                 <span className={styles.pinIcon} title="已置顶"><Pin size={12} fill="currentColor"/></span>
+                 <span className={styles.pinIcon} title={t('chat.pinned', '已固定')}><Pin size={12} fill="currentColor"/></span>
                )}
                <span className={`${styles.title} ${isSelected ? styles.titleSelected : ''}`}>
                  {displayTitle}

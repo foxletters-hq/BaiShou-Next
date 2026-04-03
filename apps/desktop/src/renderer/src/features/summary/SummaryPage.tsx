@@ -16,11 +16,11 @@ const useTranslation = (): { t: (key: string) => string } => ({
 
 // 仿真状态机的步骤流
 const GEN_PHASES = [
-  '正在扫描未归档的散落记忆碎片...',
-  '神经树突对接，提取时序因果...',
-  '多维度交叉联想与精炼...',
-  '总结流式输出并覆写入神经节...',
-  '构建完成！已转入历史画廊。'
+  t('summary.step_scan', '获取游离区的所有活跃记录...'),
+  t('summary.step_time', '基于时间顺序排列内容池...'),
+  t('summary.step_extract', '执行跨域特征解析提纯...'),
+  t('summary.step_write', 'AI 总结正流式接收生成...'),
+  t('summary.step_done', '摘要归档完毕，已永久存盘。')
 ];
 
 export const SummaryPage: React.FC = () => {
@@ -131,7 +131,7 @@ export const SummaryPage: React.FC = () => {
             >
                {missingSummaries.length > 0 && (
                   <div className="sp-missing-section-title">
-                     <Sparkles size={18} color="var(--color-primary)" /> AI 智能探针：检索到以下周期缺乏脑图总结
+                     <Sparkles size={18} color="var(--color-primary)" /> {t('summary.probe_missing', '缺失检测系统：检测到以下时间段缺少宏观分析记录')}
                   </div>
                )}
                
@@ -160,11 +160,11 @@ export const SummaryPage: React.FC = () => {
                           >
                             <h3>
                                {isGen && progress >= 100 ? <CheckCircle2 size={18} color="var(--color-secondary)" /> : null}
-                               {isGen ? `演算收束中: ${mp.label || mp.dateRangeStr}` : `缺失检测: ${mp.label || mp.dateRangeStr}`}
+                               {isGen ? t('summary.generating_date', '正在总结生成：{{label}}', { label: mp.label || mp.dateRangeStr }) : t('summary.missing_date', '存在空洞：{{label}}', { label: mp.label || mp.dateRangeStr })}
                             </h3>
                             
                             {!isGen ? (
-                               <p>神经元探测到本周期的活动区块庞大且未做汇总。单击以命令您的代理启动全卷面 AI 审阅与压缩总结流水线。</p>
+                               <p>{t('summary.probe_desc', '针对这一历史段的活动，建议激活 AI 在后台完整分析并生成总结，有助于长期关联检索质量。')}</p>
                             ) : (
                                <div className="sp-generation-ui">
                                   <div className="sp-generation-status-text">
@@ -182,7 +182,7 @@ export const SummaryPage: React.FC = () => {
 
                             {!isGen && (
                                <button className="sp-btn-generate">
-                                  <Sparkles size={14} /> 即刻激活补全协议
+                                  <Sparkles size={14} /> {t('summary.start_gen', '一键激活合并作业')}
                                </button>
                             )}
                           </div>

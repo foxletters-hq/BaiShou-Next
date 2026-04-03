@@ -1,4 +1,5 @@
-import './assets/main.css'
+import './styles/variables.css';
+import './styles/index.css';
 
 window.onerror = (message, _s, _l, _c, error) => {
   document.body.innerHTML = `<div style="background:#222;color:red;padding:20px;font-size:16px;white-space:pre-wrap;height:100vh;">

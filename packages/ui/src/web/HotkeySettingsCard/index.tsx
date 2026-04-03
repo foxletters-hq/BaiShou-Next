@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styles from './HotkeySettingsCard.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface HotkeyConfig {
   hotkeyEnabled: boolean;
@@ -13,6 +15,7 @@ interface HotkeySettingsCardProps {
 }
 
 export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, onChange }) => {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [localModifier, setLocalModifier] = useState(config.hotkeyModifier);
   const [localKey, setLocalKey] = useState(config.hotkeyKey);
@@ -70,8 +73,8 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
     <div className={styles.container}>
       <div className={styles.row}>
         <div className={styles.info}>
-          <span className={styles.title}>启用全局快捷键唤出</span>
-          <span className={styles.subtitle}>跨应用随时呼出或隐藏沉浸式窗口</span>
+          <span className={styles.title}>{t('hotkey.enable_global', '启用全局快捷键唤出')}</span>
+          <span className={styles.subtitle}>{t('hotkey.enable_global_desc', '跨应用随时呼出或隐藏控制台界面')}</span>
         </div>
         <label className={styles.switch}>
           <input 
@@ -86,14 +89,14 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
       <div className={`${styles.row} ${styles.colRow}`}>
         <div className={styles.hotkeyHeader}>
           <div className={styles.info}>
-            <span className={styles.title}>录入专属组合键</span>
-            <span className={styles.subtitle}>尝试按下您偏好的组合键（不支持单键哦）</span>
+            <span className={styles.title}>{t('hotkey.record_combo', '录入快捷组合键')}</span>
+            <span className={styles.subtitle}>{t('hotkey.record_combo_desc', '尝试按下您偏好的组合键以录入（不支持单击）')}</span>
           </div>
           
           <div className={`${styles.inputGroup} ${isConflict ? styles.conflictGroup : ''}`}>
             <input 
                className={`${styles.keyInput} ${isConflict ? styles.conflictText : ''}`} 
-               value={isRecording ? '正在监听按键输入...' : displayString} 
+               value={isRecording ? t('hotkey.listening', '正在监听按键输入...') : displayString} 
                readOnly 
             />
             <button 
@@ -102,14 +105,14 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
                disabled={!config.hotkeyEnabled}
                style={{ opacity: config.hotkeyEnabled ? 1 : 0.5 }}
             >
-               {isRecording ? '中止' : '重录'}
+               {isRecording ? t('common.abort', '中止') : t('hotkey.rerecord', '重新录入')}
             </button>
           </div>
         </div>
         
         {isConflict && (
           <div className={styles.conflictWarningBox}>
-             ⚠️ 警报：此组合键极易与系统原生操作或常用应用快捷键重叠，建议更改。
+             ⚠️ {t('hotkey.warning', '警告：此组合键可能会与系统原生操作或浏览器快捷键产生冲突。')}
           </div>
         )}
       </div>

@@ -26,7 +26,7 @@ export function App() {
           <Route path="/diary" element={<DiaryPage />} />
           <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
           <Route path="/summary" element={<SummaryPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/*" element={<SettingsPage />} />
 
           {/* AI / Agent Role Routing */}
           <Route path="/c/:sessionId" element={<AgentScreen />} />

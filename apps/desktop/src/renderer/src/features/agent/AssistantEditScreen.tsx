@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AssistantEditPage } from '@baishou/ui';
+import { useTranslation } from 'react-i18next';
+
 
 export const AssistantEditScreen: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [assistant, setAssistant] = useState<any>(null);
@@ -26,7 +29,7 @@ export const AssistantEditScreen: React.FC = () => {
   }, [id]);
   
   if (isLoading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>数据神经网同步中...</div>;
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>{t('common.loading', '模块加载中...')}</div>;
   }
 
   return (

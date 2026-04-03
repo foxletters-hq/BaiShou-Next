@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styles from './DatetimePickerSheet.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 interface DatetimePickerSheetProps {
   initialDate?: Date;
@@ -12,6 +14,7 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
   onConfirm, 
   onClose 
 }) => {
+  const { t } = useTranslation();
   // A simplistic mock for the wheel picker since Native wheel is complex to recreate in bare React CSS
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
 
@@ -26,9 +29,9 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
       <div className={styles.sheet}>
          <div className={styles.handleBar} />
          <div className={styles.header}>
-            <button className={styles.cancelBtn} onClick={onClose}>取消</button>
-            <h3>选择时间</h3>
-            <button className={styles.confirmBtn} onClick={handleConfirm}>确定</button>
+            <button className={styles.cancelBtn} onClick={onClose}>{t('common.cancel', '取消')}</button>
+            <h3>{t('common.select_time', '选择时间')}</h3>
+            <button className={styles.confirmBtn} onClick={handleConfirm}>{t('common.confirm', '确定')}</button>
          </div>
 
          <div className={styles.fakePickerContainer}>

@@ -17,8 +17,11 @@ import { useSettingsStore, useAssistantStore, usePromptShortcutStore } from '@ba
 import type { RecallItem } from '@baishou/ui';
 import styles from './AgentScreen.module.css';
 import { useAgentStream } from './hooks/useAgentStream';
+import { useTranslation } from 'react-i18next';
+
 
 export const AgentScreen: React.FC = () => {
+  const { t } = useTranslation();
   const { sessionId } = useParams();
   const navigate = useNavigate();
   
@@ -82,7 +85,7 @@ export const AgentScreen: React.FC = () => {
            setRecallItems(res.slice(0, 30).map(r => ({
              id: r.embeddingId,
              type: 'memory',
-             title: `片段追踪 [${r.modelId || '系统'}]`,
+             title: t('agent.trace_title', '调用追踪 [{{modelId}}]', { modelId: r.modelId || t('common.system', '系统') }),
              snippet: r.text,
              date: new Date(r.createdAt || Date.now()).toISOString().split('T')[0]
            })));

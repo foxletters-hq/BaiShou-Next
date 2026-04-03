@@ -5,9 +5,9 @@ import {
 } from '@baishou/database';
 import { 
   DiaryService,
-  FileSyncService,
+  FileSyncServiceImpl,
   ShadowIndexSyncService,
-  VaultIndexService
+  VaultIndexServiceImpl
 } from '@baishou/core';
 
 import { pathService, vaultService } from './vault.ipc';
@@ -18,9 +18,9 @@ export function getDiaryManager() {
   const db = connectionManager.getDb();
   
   const shadowRepo = new ShadowIndexRepository(db);
-  const fileSync = new FileSyncService(pathService);
+  const fileSync = new FileSyncServiceImpl(pathService);
   const shadowSync = new ShadowIndexSyncService(shadowRepo, pathService, vaultService);
-  const vaultIndex = new VaultIndexService();
+  const vaultIndex = new VaultIndexServiceImpl();
   
   const diaryService = new DiaryService(
     shadowRepo,
@@ -54,6 +54,10 @@ export function registerDiaryIPC() {
   });
   
   ipcMain.handle('diary:listAll', async (_, options?: { limit?: number; offset?: number }) => {
+    return await getDiaryManager().listAll(options);
+  });
+  
+  ipcMain.handle('diary:list', async (_, options?: { limit?: number; offset?: number }) => {
     return await getDiaryManager().listAll(options);
   });
   

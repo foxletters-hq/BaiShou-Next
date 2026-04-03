@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
+
 
 interface DiaryEditorAppBarTitleProps {
   isSummaryMode: boolean;
@@ -12,12 +14,13 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   selectedDate,
   onDateChanged
 }) => {
+  const { t } = useTranslation();
   const month = selectedDate.getMonth() + 1;
   const day = selectedDate.getDate();
-  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const days = [t('common.sunday', '周日'), t('common.monday', '周一'), t('common.tuesday', '周二'), t('common.wednesday', '周三'), t('common.thursday', '周四'), t('common.friday', '周五'), t('common.saturday', '周六')];
   const weekDay = days[selectedDate.getDay()];
   
-  const formattedDate = `${month}月${day}日 ${weekDay}`;
+  const formattedDate = `${month}${t('common.month_unit', '月')}${day}${t('common.day_unit', '日')} ${weekDay}`;
 
   return (
     <TouchableOpacity 
@@ -30,7 +33,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
       }}
     >
       <View style={styles.titleContent}>
-        <Text style={styles.titleText}>{isSummaryMode ? '编辑总结' : formattedDate}</Text>
+        <Text style={styles.titleText}>{isSummaryMode ? t('diary.edit_summary', '编辑总结') : formattedDate}</Text>
         {!isSummaryMode && <Text style={styles.titleIcon}>▼</Text>}
       </View>
     </TouchableOpacity>

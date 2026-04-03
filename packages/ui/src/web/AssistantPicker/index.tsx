@@ -58,7 +58,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                <span className={styles.searchIcon}>🔍</span>
                <input 
                  className={styles.searchInput}
-                 placeholder="搜索..."
+                 placeholder={t('common.search', '搜索...')}
                  value={searchQuery}
                  onChange={e => setSearchQuery(e.target.value)}
                />
@@ -123,13 +123,13 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                       className={`${styles.tabItem} ${activeTab === 'prompt' ? styles.tabSelected : ''}`}
                       onClick={() => setActiveTab('prompt')}
                     >
-                      提示词
+                      {t('assistant.prompt', '提示词')}
                     </div>
                     <div 
                       className={`${styles.tabItem} ${activeTab === 'memory' ? styles.tabSelected : ''}`}
                       onClick={() => setActiveTab('memory')}
                     >
-                      记忆
+                      {t('assistant.memory', '记忆')}
                     </div>
                  </div>
 
@@ -157,7 +157,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                          </div>
                          <div className={styles.settingRow}>
                             <span>{t('agent.compressThreshold')}:</span>
-                            <span>{activeAssistant.compressTokenThreshold > 0 ? `阈值 ${activeAssistant.compressTokenThreshold}` : '关闭'}</span>
+                            <span>{activeAssistant.compressTokenThreshold > 0 ? t('assistant.threshold_val', '阈值 {{val}}', { val: activeAssistant.compressTokenThreshold }) : t('common.off', '关闭')}</span>
                          </div>
                        </div>
                     )}

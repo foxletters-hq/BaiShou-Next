@@ -136,7 +136,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
             {!activeAssistant ? (
                <div className={styles.emptyDetail}>
                   <Cpu size={48} opacity={0.3} />
-                  <span>未捕捉到焦点，请在左侧指定心智实体。</span>
+                  <span>{t('assistant.picker_no_selection', '未选中对象，请在左侧列表指定一个助手。')}</span>
                </div>
             ) : (
                <div className={styles.detailContent}>
@@ -154,43 +154,43 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                        className={`${styles.tab} ${activeTab === 'prompt' ? styles.tabActive : ''}`}
                        onClick={() => setActiveTab('prompt')}
                      >
-                        <Command size={16}/> 潜意识网 (Prompt)
+                        <Command size={16}/> {t('assistant.picker_tab_prompt', '提示词与预设')}
                      </div>
                      <div 
                        className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
                        onClick={() => setActiveTab('memory')}
                      >
-                        <Database size={16}/> 神经簇状态 (RAG)
+                        <Database size={16}/> {t('assistant.picker_tab_rag', '知识库连通性 (RAG)')}
                      </div>
                   </div>
 
                   <div className={styles.tabContent}>
                      {activeTab === 'prompt' ? (
                         <>
-                           <h3 className={styles.sectionTitle}>主被动心智指北</h3>
+                           <h3 className={styles.sectionTitle}>{t('assistant.picker_core_setting', '核心设定概要')}</h3>
                            <div className={styles.promptBox}>
-                              {activeAssistant.systemPrompt || '未编写核心控制参数，系统将进入空运行默认状态。'}
+                              {activeAssistant.systemPrompt || t('assistant.picker_no_prompt', '未编写系统提示词，助手将使用默认的通用回答模型设定。')}
                            </div>
                         </>
                      ) : (
                         <>
-                           <h3 className={styles.sectionTitle}>突触与模型连接报告</h3>
+                           <h3 className={styles.sectionTitle}>{t('assistant.picker_connection_report', '模型接入情况')}</h3>
                            <div className={styles.metaGrid}>
                               <div className={styles.metaItem}>
-                                 <span className={styles.metaLabel}>大模型供应商</span>
+                                 <span className={styles.metaLabel}>{t('assistant.provider', '模型供应商')}</span>
                                  <span className={styles.metaValue}>{activeAssistant.providerId || 'System Primary'}</span>
                               </div>
                               <div className={styles.metaItem}>
-                                 <span className={styles.metaLabel}>算力集群</span>
+                                 <span className={styles.metaLabel}>{t('assistant.compute_cluster', '计算模型配置')}</span>
                                  <span className={styles.metaValue}>{activeAssistant.modelId || 'Default Cluster'}</span>
                               </div>
                               <div className={styles.metaItem}>
-                                 <span className={styles.metaLabel}>上下文轮跨度限制</span>
-                                 <span className={styles.metaValue}>{activeAssistant.contextWindow < 0 ? 'Infinite 无限' : activeAssistant.contextWindow + ' 轮'}</span>
+                                 <span className={styles.metaLabel}>{t('assistant.context_limit_title', '追溯对话限制')}</span>
+                                 <span className={styles.metaValue}>{activeAssistant.contextWindow < 0 ? '{t('common.infinite', 'Infinite / 无限')}' : activeAssistant.contextWindow + ' 轮'}</span>
                               </div>
                               <div className={styles.metaItem}>
-                                 <span className={styles.metaLabel}>向量挂载区 (RAG)</span>
-                                 <span className={styles.metaValue}>{activeAssistant.ragSpaceId || '未锁定'}</span>
+                                 <span className={styles.metaLabel}>{t('assistant.rag_mount', '关联的 RAG 知识库')}</span>
+                                 <span className={styles.metaValue}>{activeAssistant.ragSpaceId || '{t('common.unbound', '未关联检索范围')}'}</span>
                               </div>
                            </div>
                         </>
@@ -206,11 +206,11 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                              onClose();
                           }}
                         >
-                          <CheckSquare size={18} /> 连接覆盖：启动 {activeAssistant.name}
+                          <CheckSquare size={18} /> {t('assistant.picker_launch', '应用关联并立即呼出 {{name}}', { name: activeAssistant.name })}
                         </button>
                      ) : (
                         <button className={`${styles.applyBtn} ${styles.applyBtnCurrent}`} disabled>
-                           该心智已处于热载执行期
+                           {t('assistant.picker_already_active', '当前对话框里该助手已是活动状态')}
                         </button>
                      )}
                   </div>

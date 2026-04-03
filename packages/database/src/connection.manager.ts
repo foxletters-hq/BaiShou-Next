@@ -1,6 +1,5 @@
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as sqliteVec from 'sqlite-vec';
+import { createClient, Client } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
 import { AppDatabase } from './types';
 import {
   IDatabaseConnectionManager,
@@ -10,7 +9,7 @@ import {
 } from './connection.manager.types';
 
 export class DatabaseConnectionManager implements IDatabaseConnectionManager {
-  private _sqliteDb: Database.Database | null = null;
+  private _sqliteDb: Client | null = null;
   private _drizzleDb: AppDatabase | null = null;
   private _currentPath: string | null = null;
   
@@ -29,12 +28,7 @@ export class DatabaseConnectionManager implements IDatabaseConnectionManager {
     }
 
     try {
-      this._sqliteDb = new Database(dbPath);
-      // Ensure WAL mode for better concurrency performance
-      this._sqliteDb.pragma('journal_mode = WAL');
-      
-      // Load vector extension
-      sqliteVec.load(this._sqliteDb);
+      this._sqliteDb = createClient({ url: `file:${dbPath}` });
       
       this._drizzleDb = drizzle(this._sqliteDb);
       this._currentPath = dbPath;

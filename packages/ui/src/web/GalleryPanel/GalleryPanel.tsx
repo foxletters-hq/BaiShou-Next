@@ -3,9 +3,7 @@ import { SummaryCard } from '../SummaryCard';
 import './GalleryPanel.css';
 
 // TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export interface GalleryPanelProps {
   summaries?: any[];
@@ -22,13 +20,13 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) =>
   };
 
   const getTitle = (s: any) => {
-    if (!s.startDate) return '总结';
+    if (!s.startDate) return t('gallery.summary', '总结');
     const dateObj = new Date(s.startDate);
-    if (s.type === 'weekly') return `${dateObj.getFullYear()}年周报`;
-    if (s.type === 'monthly') return `${dateObj.getFullYear()}年${dateObj.getMonth() + 1}月总结`;
-    if (s.type === 'quarterly') return `${dateObj.getFullYear()}年Q${Math.ceil((dateObj.getMonth() + 1) / 3)}`;
-    if (s.type === 'yearly') return `${dateObj.getFullYear()}年度总结`;
-    return '总结';
+    if (s.type === 'weekly') return `${dateObj.getFullYear()}${t('common.year_unit', '年')}${t('gallery.weekly_report', '周报')}`;
+    if (s.type === 'monthly') return `${dateObj.getFullYear()}${t('common.year_unit', '年')}${dateObj.getMonth() + 1}${t('common.month_unit', '月')}${t('gallery.summary', '总结')}`;
+    if (s.type === 'quarterly') return `${dateObj.getFullYear()}${t('common.year_unit', '年')}Q${Math.ceil((dateObj.getMonth() + 1) / 3)}`;
+    if (s.type === 'yearly') return `${dateObj.getFullYear()}${t('gallery.yearly_summary', '年度总结')}`;
+    return t('gallery.summary', '总结');
   };
 
   return (

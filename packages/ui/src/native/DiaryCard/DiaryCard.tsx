@@ -12,9 +12,7 @@ interface DiaryCardProps {
 }
 
 // TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export const DiaryCard: React.FC<DiaryCardProps> = ({ 
   contentSnippet, 
@@ -29,7 +27,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   const day = createdAt.getDate().toString().padStart(2, '0');
   const month = createdAt.getMonth() + 1;
   const year = createdAt.getFullYear();
-  const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][createdAt.getDay()];
+  const weekday = [t('common.sunday', '周日'), t('common.monday', '周一'), t('common.tuesday', '周二'), t('common.wednesday', '周三'), t('common.thursday', '周四'), t('common.friday', '周五'), t('common.saturday', '周六')][createdAt.getDay()];
 
   const getTagColor = (tag: string) => {
     const colors = [
@@ -55,7 +53,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           <View style={styles.dateMeta}>
             <Text style={styles.weekday}>{weekday}</Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{year} · {month}月</Text>
+              <Text style={styles.badgeText}>{year} · {month}{t('common.month_unit', '月')}</Text>
             </View>
           </View>
         </View>

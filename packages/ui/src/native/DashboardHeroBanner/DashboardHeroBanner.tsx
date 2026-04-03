@@ -1,13 +1,12 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation();
-  const greeting = "又见面了，今天过得怎样？";
+  const greeting = t('dashboard.greeting', '又见面了，今天过得怎样？');
 
   return (
     <View style={styles.banner}>

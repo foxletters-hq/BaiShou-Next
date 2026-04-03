@@ -24,6 +24,7 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
   items,
   onInject
 }) => {
+  const { t } = useTranslation();
   const { t: _t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'diary' | 'memory'>('all');
@@ -71,7 +72,7 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
            <div className={styles.header}>
               <span className={styles.headerTitle}>
                  <History size={22} className={styles.headerIcon} />
-                 打捞散落上下文 (Context Recovery)
+                 {t('recall.title', '上下文补充与唤醒 (Context Recovery)')}
               </span>
               <button className={styles.closeBtn} onClick={onClose}>
                  <X size={16} strokeWidth={3} />
@@ -84,25 +85,25 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
                    className={`${styles.tab} ${activeTab === 'all' ? styles.tabActive : ''}`}
                    onClick={() => setActiveTab('all')}
                  >
-                    全域检索
+                    {t('recall.tab_all', '全域探索')}
                  </div>
                  <div 
                    className={`${styles.tab} ${activeTab === 'diary' ? styles.tabActive : ''}`}
                    onClick={() => setActiveTab('diary')}
                  >
-                    日记档案
+                    {t('recall.tab_diary', '日记档案')}
                  </div>
                  <div 
                    className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
                    onClick={() => setActiveTab('memory')}
                  >
-                    向量记忆
+                    {t('recall.tab_memory', '向量知识')}
                  </div>
               </div>
               <div className={styles.searchBox}>
                  <Search size={16} color="var(--text-secondary)" />
                  <input 
-                   placeholder="扫描节点或记忆断签..." 
+                   placeholder={t('recall.search_hint', '检索关键字或记忆片段...')} 
                    className={styles.searchInput}
                    value={searchQuery}
                    onChange={e => setSearchQuery(e.target.value)}
@@ -112,7 +113,7 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
 
            <div className={styles.listArea}>
               {filteredItems.length === 0 ? (
-                 <div className={styles.emptyState}>探针失效，未匹配到任何过去碎片。</div>
+                 <div className={styles.emptyState}>{t('recall.no_results', '未在库中匹配到任何历史记忆碎片。')}</div>
               ) : (
                  filteredItems.map(item => {
                     const isSelected = selectedIds.has(item.id);
@@ -143,7 +144,7 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
 
            <div className={styles.footer}>
               <div className={styles.selectionCount}>
-                 已锁定数据块: <span className={styles.countBadge}>{selectedIds.size}</span>
+                 {t('recall.selected')} <span className={styles.countBadge}>{selectedIds.size}</span>
               </div>
               <button 
                 className={styles.injectBtn} 
@@ -151,7 +152,7 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
                 onClick={handleInject}
               >
                  <ArrowUpCircle size={18} />
-                 注入当前神经链接
+                 {t('recall.inject', '提取至当前上下文对话')}
               </button>
            </div>
         </div>

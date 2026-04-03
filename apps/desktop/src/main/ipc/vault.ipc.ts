@@ -1,6 +1,6 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { VaultService } from '@baishou/core';
-import { connectionManager } from '@baishou/database';
+import { connectionManager, installDatabaseSchema } from '@baishou/database';
 import { DesktopStoragePathService } from '../services/path.service';
 
 export const pathService = new DesktopStoragePathService();
@@ -9,8 +9,11 @@ export const vaultService = new VaultService(pathService, connectionManager);
 export async function initVaultSystem() {
   await vaultService.initRegistry();
   
+  // Create schema on first boot automatically if using a blank database
+  await installDatabaseSchema(connectionManager.getDb());
+  
   // App Boot: Enforce SSOT consistency scan for potential offline cloud-disk changes
-  const { globalBootstrapper } = require('../services/bootstrapper.service');
+  const { globalBootstrapper } = await import('../services/bootstrapper.service');
   await globalBootstrapper.fullyResyncAllEcosystems();
 }
 
@@ -51,7 +54,7 @@ export function registerVaultIPC() {
     await vaultService.switchVault(vaultName);
     
     // Vault Switch: Enforce SSOT
-    const { globalBootstrapper } = require('../services/bootstrapper.service');
+    const { globalBootstrapper } = await import('../services/bootstrapper.service');
     await globalBootstrapper.fullyResyncAllEcosystems();
     
     return vaultService.getActiveVault();

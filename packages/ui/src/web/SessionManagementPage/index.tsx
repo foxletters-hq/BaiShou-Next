@@ -45,6 +45,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
   return (
     <div className={styles.dialogOverlay} onClick={onCancel}>
@@ -56,7 +57,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             className={`${styles.actionBtn} ${styles.actionBtnOutline}`}
             onClick={onCancel}
           >
-            取消撤离
+            {t('common.cancel', '取消')}
           </button>
           <button
             className={`${styles.actionBtn} ${isDanger ? styles.actionBtnDanger : styles.actionBtnPrimary}`}
@@ -73,27 +74,28 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 // ─── 统计仪表盘子件 ────────────────────────────────────────────
 
 const StatsDashboard: React.FC<{ sessions: SessionInfo[] }> = ({ sessions }) => {
+  const { t } = useTranslation();
   const totalMessages = sessions.reduce((acc, curr) => acc + (curr.messageCount || 0), 0);
   const activeAssistants = new Set(sessions.map(s => s.assistantName)).size;
 
   return (
     <div className={styles.statsPanel}>
        <div className={styles.statCard}>
-          <div className={styles.statLabel}>总机承载会话数</div>
+          <div className={styles.statLabel}>{t('agent.sessions.total_count', '会话总数')}</div>
           <div className={styles.statValue}>
-             {sessions.length} <span className={styles.statTrend}>↑ 2%</span>
+             {sessions.length}
           </div>
        </div>
        <div className={styles.statCard}>
-          <div className={styles.statLabel}>脑部神经突触 (总消息)</div>
+          <div className={styles.statLabel}>{t('agent.sessions.total_messages', '总消息数')}</div>
           <div className={styles.statValue}>
-             {totalMessages} <span className={styles.statTrend}>↑ 活跃</span>
+             {totalMessages}
           </div>
        </div>
        <div className={styles.statCard}>
-          <div className={styles.statLabel}>动用的具象化分身 (Agents)</div>
+          <div className={styles.statLabel}>{t('agent.sessions.active_agents', '活跃伙伴数')}</div>
           <div className={styles.statValue}>
-             {activeAssistants} <span>/ 15</span>
+             {activeAssistants}
           </div>
        </div>
     </div>
@@ -182,9 +184,9 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-    if (days === 0) return '今天';
-    if (days === 1) return '昨天';
-    if (days < 7) return `${days}天前`;
+    if (days === 0) return t('common.today', '今天');
+    if (days === 1) return t('common.yesterday', '昨天');
+    if (days < 7) return `${days}${t('common.days_ago', '天前')}`;
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
@@ -195,11 +197,11 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
       <div className={styles.appBar}>
         <span className={styles.appBarTitle}>
           <ListChecks size={28} color="var(--color-primary)" />
-          {t('agent.sessions.management_title', '全系会话监控网 (Sessions Audit)')}
+          {t('agent.sessions.management_title', '会话管理')}
         </span>
         <div className={styles.appBarActions}>
-          <button className={`${styles.actionBtn} ${styles.actionBtnOutline}`} title="导出快照备份">
-             <ArrowDownToLine size={16} /> 数据外溢
+          <button className={`${styles.actionBtn} ${styles.actionBtnOutline}`} title={t('common.export', '导出')}>
+             <ArrowDownToLine size={16} /> {t('common.export', '导出')}
           </button>
 
           {isMultiSelect ? (
@@ -208,20 +210,20 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
                 className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
                 onClick={selectAll}
               >
-                全域圈定
+                {t('agent.chat.select_all', '全选')}
               </button>
               <button
                 className={`${styles.actionBtn} ${styles.actionBtnOutline}`}
                 onClick={clearSelection}
               >
-                取消
+                {t('common.cancel', '取消')}
               </button>
               {selectedIds.size > 0 && (
                 <button
                   className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                   onClick={() => setDeleteTarget({ type: 'multiple' })}
                 >
-                  <Trash2 size={16} /> 重置 ({selectedIds.size})
+                  <Trash2 size={16} /> {t('common.delete', '删除')} ({selectedIds.size})
                 </button>
               )}
             </>
@@ -230,7 +232,7 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
               className={`${styles.actionBtn} ${styles.actionBtnOutline}`}
               onClick={() => setIsMultiSelect(true)}
             >
-              <ListChecks size={16} /> 批处理编队
+              <ListChecks size={16} /> {t('agent.sessions.batch_manage', '批量管理')}
             </button>
           )}
         </div>
@@ -242,7 +244,7 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
             <Search size={16} color="var(--text-secondary)" style={{marginRight: 8}} />
             <input 
                className={styles.searchInput}
-               placeholder="通过代号或神经元探踪遗留物..." 
+               placeholder={t('common.search_hint', '搜索记忆...')} 
                value={searchQuery}
                onChange={e => setSearchQuery(e.target.value)}
             />
@@ -250,11 +252,11 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
          <div 
            className={`${styles.filterTag} ${filterMode === 'all' ? styles.filterTagActive : ''}`}
            onClick={() => setFilterMode('all')}
-         >全时域</div>
+         >{t('common.view_all', '查看全部')}</div>
          <div 
            className={`${styles.filterTag} ${filterMode === 'pinned' ? styles.filterTagActive : ''}`}
            onClick={() => setFilterMode('pinned')}
-         >已钉选靶点 📌</div>
+         >{t('agent.sessions.pinned_only', '已置顶 📌')}</div>
       </div>
 
       {/* 演算总盘 Stats Board */}
@@ -266,7 +268,7 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
           <div className={styles.emptyState}>
             <span className={styles.emptyIcon}>🕳️</span>
             <span className={styles.emptyText}>
-              {t('agent.sessions.empty', '此区域已成为物理虚空。没有任何记录...')}
+              {t('agent.sessions.empty', '暂无会话记录...')}
             </span>
           </div>
         ) : (
@@ -296,7 +298,7 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
                 <div className={styles.sessionInfo}>
                   <div className={styles.sessionTitleRow}>
                     <span className={styles.sessionTitle}>
-                      {session.title || t('agent.sessions.new_chat', '游离的对话节点')}
+                      {session.title || t('agent.chat.new_chat_label', '新对话')}
                     </span>
                     {session.isPinned && (
                       <span className={styles.sessionPinBadge}>📌</span>
@@ -307,7 +309,7 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
                       {session.assistantEmoji} {session.assistantName}
                     </span>
                     <span className={styles.sessionMetaDot} />
-                    <span>{session.messageCount} 个上下文交汇</span>
+                    <span>{session.messageCount} {t('common.count_items').replace('$count', '')}</span>
                     <span className={styles.sessionMetaDot} />
                     <span>{formatDate(session.updatedAt)}</span>
                   </div>
@@ -317,7 +319,7 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
                   <div className={styles.sessionActions}>
                     <button
                       className={styles.sessionActionBtn}
-                      title={ session.isPinned ? '取消强力锚定' : '强力锚定' }
+                      title={ session.isPinned ? t('agent.sessions.unpin', '取消置顶') : t('agent.sessions.pin', '置顶') }
                       onClick={(e) => {
                         e.stopPropagation();
                         onPinToggle(session.id);
@@ -327,7 +329,7 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
                     </button>
                     <button
                       className={`${styles.sessionActionBtn} ${styles.sessionActionBtnDanger}`}
-                      title="格式化粉碎"
+                      title={t('common.delete', '删除')}
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteTarget({ type: 'single', id: session.id });
@@ -347,11 +349,11 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
         isOpen={deleteTarget !== null}
         title={
           deleteTarget?.type === 'multiple'
-            ? `确已判定粉碎 ${selectedIds.size} 个神经节点阵列？`
-            : '格式化并粉碎此突触？'
+            ? t('agent.chat.delete_confirm_multi', `确定删除 $count 个对话？此操作不可撤销。`).replace('$count', selectedIds.size.toString())
+            : t('summary.delete_confirm_title', '确认删除')
         }
-        message="协议生效后，其内部包含的所有记忆标记均永久脱离宇宙网，无法复原！"
-        confirmLabel="抹除此痕迹"
+        message={t('settings.attachment_delete_selected_confirm', '确定要删除吗？此操作不可撤销。').replace(/\$count/g, (deleteTarget?.type === 'multiple' ? selectedIds.size : 1).toString())}
+        confirmLabel={t('common.delete', '删除')}
         isDanger
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}

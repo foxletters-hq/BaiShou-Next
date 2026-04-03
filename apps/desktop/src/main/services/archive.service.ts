@@ -228,7 +228,7 @@ export class DesktopArchiveService implements IArchiveService {
     // 7. Global Ecosystem Wake-up! 
     // This is CRITICAL for the SSOT mechanism to perceive the newly dropped files.
     // 避免因循环引用在此进行隐式调用，需引入 bootstrapper (注意保持解耦，可从外部直接调，或在此 import)
-    const { globalBootstrapper } = require('./bootstrapper.service');
+    const { globalBootstrapper } = await import('./bootstrapper.service');
     await globalBootstrapper.fullyResyncAllEcosystems();
 
     return {

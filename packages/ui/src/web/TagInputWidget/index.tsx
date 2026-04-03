@@ -1,5 +1,7 @@
 import React, { useState, KeyboardEvent } from 'react';
 import styles from './TagInputWidget.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 interface TagInputWidgetProps {
   tags: string[];
@@ -10,8 +12,9 @@ interface TagInputWidgetProps {
 export const TagInputWidget: React.FC<TagInputWidgetProps> = ({ 
   tags, 
   onChange, 
-  placeholder = "输入标签并按回车添加..." 
+  placeholder={t('common.enter_tags', '输入标签并按回车添加...')} 
 }) => {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {

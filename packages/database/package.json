@@ -6,17 +6,15 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:generate": "echo 'not implemented'",
-    "db:push": "echo 'not implemented'"
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@baishou/shared": "workspace:^",
-    "better-sqlite3": "^12.8.0",
-    "drizzle-orm": "^0.45.2",
-    "sqlite-vec": "^0.1.7"
+    "@libsql/client": "0.14.0",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "drizzle-kit": "^0.31.10",
     "typescript": "^5.8.0",
     "vitest": "^4.1.2"

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useRef } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar';
@@ -16,9 +17,7 @@ interface DiaryEditorProps {
   onCancel?: () => void;
 }
 
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,

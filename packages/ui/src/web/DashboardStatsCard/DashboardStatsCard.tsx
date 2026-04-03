@@ -10,9 +10,7 @@ interface DashboardStatsCardProps {
 }
 
 // TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
   totalDiaryCount,

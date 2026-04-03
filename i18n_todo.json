@@ -1,0 +1,1910 @@
+{
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/AppearanceSettingsCard/AppearanceSettingsCard.tsx": [
+    {
+      "lineNum": 99,
+      "text": "{mode === 'system' ? '跟随系统' : mode === 'light' ? '浅色' : '深色'}"
+    },
+    {
+      "lineNum": 152,
+      "text": "{/* 完整一比一复刻自定义 HSL Modal 弹窗逻辑隔离，本身保留纯 UI 特性 */}"
+    },
+    {
+      "lineNum": 161,
+      "text": "<Text style={styles.sliderLabel}>色相</Text>"
+    },
+    {
+      "lineNum": 173,
+      "text": "<Text style={styles.sliderLabel}>饱和</Text>"
+    },
+    {
+      "lineNum": 185,
+      "text": "<Text style={styles.sliderLabel}>明度</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/ChatBubble/index.tsx": [
+    {
+      "lineNum": 21,
+      "text": "<Text style={styles.actionText}>编辑</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/DashboardHeroBanner/DashboardHeroBanner.tsx": [
+    {
+      "lineNum": 9,
+      "text": "const greeting = \"又见面了，今天过得怎样？\";"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/DashboardSharedMemoryCard/DashboardSharedMemoryCard.tsx": [
+    {
+      "lineNum": 30,
+      "text": "调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。"
+    },
+    {
+      "lineNum": 34,
+      "text": "<Text style={styles.label}>回溯 {lookbackMonths} 个月</Text>"
+    },
+    {
+      "lineNum": 49,
+      "text": "<Text style={styles.btnText}>✨ Copy 给 AI</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/DiaryCard/DiaryCard.tsx": [
+    {
+      "lineNum": 30,
+      "text": "const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][createdAt.getDay()];"
+    },
+    {
+      "lineNum": 56,
+      "text": "<Text style={styles.badgeText}>{year} · {month}月</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/DiaryEditorAppBarTitle/DiaryEditorAppBarTitle.tsx": [
+    {
+      "lineNum": 17,
+      "text": "const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];"
+    },
+    {
+      "lineNum": 20,
+      "text": "const formattedDate = `${month}月${day}日 ${weekDay}`;"
+    },
+    {
+      "lineNum": 33,
+      "text": "<Text style={styles.titleText}>{isSummaryMode ? '编辑总结' : formattedDate}</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/InputBar/index.tsx": [
+    {
+      "lineNum": 94,
+      "text": "placeholder={`发给 ${assistantName}...`}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/Select/Select.tsx": [
+    {
+      "lineNum": 68,
+      "text": "<Text style={{ color: colors.primary, fontSize: 16, textAlign: 'center', fontWeight: 'bold' }}>取消</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/SessionListItem/index.tsx": [
+    {
+      "lineNum": 33,
+      "text": "{session.title || '新对话'}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AboutSettingsCard/index.tsx": [
+    {
+      "lineNum": 21,
+      "text": "<h1>白守 (BaiShou Next)</h1>"
+    },
+    {
+      "lineNum": 26,
+      "text": "下一代全链路本地优先的极客终端系统。您的思维火花，由您自己捍卫。"
+    },
+    {
+      "lineNum": 32,
+      "text": "<span className={styles.btnIcon}>📜</span> 开发哲学与无痕承诺"
+    },
+    {
+      "lineNum": 35,
+      "text": "<span className={styles.btnIcon}>🐙</span> GitHub 开源协议与建议反馈"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/ActivityHeatmap/index.tsx": [
+    {
+      "lineNum": 11,
+      "text": "const MONTHS = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];"
+    },
+    {
+      "lineNum": 12,
+      "text": "const DAYS = ['日', '一', '二', '三', '四', '五', '六'];"
+    },
+    {
+      "lineNum": 28,
+      "text": "<h3>{year} 年度数字印迹</h3>"
+    },
+    {
+      "lineNum": 29,
+      "text": "<span className={styles.totalBadge}>{data.reduce((a, b) => a + b.count, 0)} 次交互</span>"
+    },
+    {
+      "lineNum": 68,
+      "text": "<span className={styles.axisLabel}>空闲</span>"
+    },
+    {
+      "lineNum": 74,
+      "text": "<span className={styles.axisLabel}>高频</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AgentBehaviorSettingsCard/index.tsx": [
+    {
+      "lineNum": 18,
+      "text": "<h3 className={styles.title}>系统核心人设与心智参数 (Identity & Mind)</h3>"
+    },
+    {
+      "lineNum": 19,
+      "text": "<p className={styles.subtitle}>这些底层指令将注入每一轮对话的最顶层。可使用滑块控制其思想的发散程度。</p>"
+    },
+    {
+      "lineNum": 25,
+      "text": "底层 System Prompt"
+    },
+    {
+      "lineNum": 26,
+      "text": "<span className={styles.labelBadge}>高级</span>"
+    },
+    {
+      "lineNum": 32,
+      "text": "placeholder=\"例如: 你是一个无所不知但只说重点的数字生命...\""
+    },
+    {
+      "lineNum": 41,
+      "text": "<label className={styles.label}>创造力沸点 (Temperature)</label>"
+    },
+    {
+      "lineNum": 56,
+      "text": "<span>0.0 (极度严谨/确定性)</span>"
+    },
+    {
+      "lineNum": 57,
+      "text": "<span>1.0 (平衡)</span>"
+    },
+    {
+      "lineNum": 58,
+      "text": "<span>2.0 (极度发散/极富创造)</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AgentToolsView/index.tsx": [
+    {
+      "lineNum": 15,
+      "text": "{ id: 'web_search', category: 'search', name: '全网神经链爬虫', icon: '🕷', desc: '准许 AI 隐秘访问实时网络。', tag: '安全' },"
+    },
+    {
+      "lineNum": 16,
+      "text": "{ id: 'diary_parser', category: 'diary', name: '时序日记溯源器', icon: '📖', desc: '准许白守在过去发生的日子中穿梭并比对事态', tag: '安全' },"
+    },
+    {
+      "lineNum": 17,
+      "text": "{ id: 'memory_synapse', category: 'memory', name: '向量突触调取器', icon: '🧠', desc: '通过 RAG 数据库进行全盘模糊关联检索。', tag: '安全' },"
+    },
+    {
+      "lineNum": 18,
+      "text": "{ id: 'calculator', category: 'general', name: '数学推理沙盒', icon: '🧮', desc: '绝对精确的推演运算，避免大模型幻觉。', tag: '安全' },"
+    },
+    {
+      "lineNum": 19,
+      "text": "{ id: 'code_interpreter', category: 'general', name: '安全仓代码执行', icon: '💻', desc: '执行分析或图表绘制 (Python/JS)。', tag: '风险' },"
+    },
+    {
+      "lineNum": 20,
+      "text": "{ id: 'local_file_read', category: 'memory', name: '设备卷宗透视', icon: '📂', desc: '极度越权！准许只读访问本地磁盘文档及画像。', tag: '高危' },"
+    },
+    {
+      "lineNum": 21,
+      "text": "{ id: 'system_commander', category: 'general', name: '指令下达接管', icon: '⚡', desc: '可直接操控您的操作系统的终极特权。', tag: '极端高危' },"
+    },
+    {
+      "lineNum": 25,
+      "text": "diary: { label: '私域编年史 (Diary)', icon: '📚' },"
+    },
+    {
+      "lineNum": 26,
+      "text": "memory: { label: '潜意识海 (Memory & RAG)', icon: '🌊' },"
+    },
+    {
+      "lineNum": 27,
+      "text": "search: { label: '外部天线 (Search)', icon: '📡' },"
+    },
+    {
+      "lineNum": 28,
+      "text": "general: { label: '执行体扩展 (General)', icon: '🔧' },"
+    },
+    {
+      "lineNum": 40,
+      "text": "if (tool && tool.tag.includes('危')) {"
+    },
+    {
+      "lineNum": 41,
+      "text": "const sure = window.confirm(`【严重越权告警】\\n您正在赋予 AI 具有操作系统破坏性乃至隐私外泄风险的 ${tool.name}。\\n\\n您确定要向硅基生命敞开物理主机的防线吗？`);"
+    },
+    {
+      "lineNum": 59,
+      "text": "<h3 className={styles.title}>系统能力生态装配 (Tools Ecosystem)</h3>"
+    },
+    {
+      "lineNum": 60,
+      "text": "<p className={styles.subtitle}>为超级个体挂载插件能力。红色标识工具将直接触及物理世界底线。</p>"
+    },
+    {
+      "lineNum": 69,
+      "text": "🔒 核心内置引擎 ({ALL_TOOLS.length})"
+    },
+    {
+      "lineNum": 75,
+      "text": "🌐 共生体集市"
+    },
+    {
+      "lineNum": 81,
+      "text": "<span className={styles.approveTitle}>静默全速流转 (Auto-Approve Safe)</span>"
+    },
+    {
+      "lineNum": 82,
+      "text": "<span className={styles.approveDesc}>对标定为“安全”的高频查询操作予以绿色通道放行，大幅提升硅基推演帧率。</span>"
+    },
+    {
+      "lineNum": 110,
+      "text": "const isDanger = tool.tag.includes('危');"
+    },
+    {
+      "lineNum": 140,
+      "text": "<h4 className={styles.communityTitle}>共生体集市正在跃迁中</h4>"
+    },
+    {
+      "lineNum": 141,
+      "text": "<p className={styles.communityDesc}>不久后，您将能够在这里挂载由其他用户手刻的生态能力接口。</p>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AIGlobalModelsView/index.tsx": [
+    {
+      "lineNum": 57,
+      "text": "`【高危警告: 向量塌陷风险】\\n您正在尝试切换系统的脑部索引神经元，从 ${config.defaultEmbeddingModel} 换为 ${val}。\\n这会导致您之前记录的所有上下文、日记将永久无法被新的神经网络读取，需要进行漫长的全盘向量重算！\\n\\n点击【确认】以承受风险并变更。`"
+    },
+    {
+      "lineNum": 59,
+      "text": "if (!confirmed) return; // 拦截"
+    },
+    {
+      "lineNum": 64,
+      "text": "if (!migrationPass) return; // 后台决断为不再继续"
+    },
+    {
+      "lineNum": 80,
+      "text": "<option value=\"\" disabled>当前没有激活可用的模型，请前往服务商处获取</option>"
+    },
+    {
+      "lineNum": 93,
+      "text": "<h3 className={styles.headerTitle}>全局算力集群派遣分流 (Routing)</h3>"
+    },
+    {
+      "lineNum": 95,
+      "text": "白守会在不同的专业领域调派最适合的模型子节点。所有模型选项皆采自从您的【大模型服务集成端】中启用的名单。"
+    },
+    {
+      "lineNum": 105,
+      "text": "<span className={styles.routeName}>逻辑智核 (Chat & Main)</span>"
+    },
+    {
+      "lineNum": 106,
+      "text": "<span className={styles.routeDesc}>负责高并发的流式文本对答与思维链推理。</span>"
+    },
+    {
+      "lineNum": 117,
+      "text": "<span className={styles.routeName}>视觉中枢 (Vision Analysis)</span>"
+    },
+    {
+      "lineNum": 118,
+      "text": "<span className={styles.routeDesc}>负责对图像输入做基于光学意图的深度解析。建议选中多模态版本。</span>"
+    },
+    {
+      "lineNum": 129,
+      "text": "<span className={styles.routeName}>归档摘要机 (Summarizer)</span>"
+    },
+    {
+      "lineNum": 130,
+      "text": "<span className={styles.routeDesc}>负责将长文无损压缩，要求极高的上下文容量与速读。</span>"
+    },
+    {
+      "lineNum": 141,
+      "text": "<span className={`${styles.routeName} ${styles.dangerName}`}>向量嵌入引擎 (Embeddings)</span>"
+    },
+    {
+      "lineNum": 142,
+      "text": "<span className={styles.routeDesc}>极高频特征。一旦设定将切忌随意更改，否则导致知识库孤岛化！推荐本地计算模型。</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AIModelServicesView/index.tsx": [
+    {
+      "lineNum": 26,
+      "text": "{ id: 'deepseek', name: 'DeepSeek (深度求索)', icon: '🐋', defaultBase: 'https://api.deepseek.com' },"
+    },
+    {
+      "lineNum": 28,
+      "text": "{ id: 'qwen', name: 'Qwen (阿里通义)', icon: '☁️', defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },"
+    },
+    {
+      "lineNum": 29,
+      "text": "{ id: 'zhipu', name: 'ZhipuAI (智谱清言)', icon: '🧩', defaultBase: 'https://open.bigmodel.cn/api/paas/v4' },"
+    },
+    {
+      "lineNum": 30,
+      "text": "{ id: 'xunfei', name: 'Xunfei (星火)', icon: '✨', defaultBase: 'https://spark-api-open.xf-yun.com/v1' },"
+    },
+    {
+      "lineNum": 128,
+      "text": "<h3 className={styles.title}>大模型服务集成端</h3>"
+    },
+    {
+      "lineNum": 129,
+      "text": "<p className={styles.subtitle}>管控所有云节点与局域网节点。只有启用的服务才会出现，并且你可以手动勾选所需的显式子模型池。</p>"
+    },
+    {
+      "lineNum": 132,
+      "text": "➕ 新增自定义供应源"
+    },
+    {
+      "lineNum": 170,
+      "text": "<label>🔑 API Key 鉴权口令</label>"
+    },
+    {
+      "lineNum": 180,
+      "text": "<label>🌐 自定义反向代理节点 (Base URL)</label>"
+    },
+    {
+      "lineNum": 198,
+      "text": "{isTesting ? '⏳ 正在测速...' : '⚡ 测试连通网关'}"
+    },
+    {
+      "lineNum": 205,
+      "text": "{isFetching ? '⏳ 读取中...' : '📡 获取可用模型单'}"
+    },
+    {
+      "lineNum": 213,
+      "text": "勾选将在对话、补全界面可视化的子模型集合："
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AppearanceSettingsCard/AppearanceSettingsCard.tsx": [
+    {
+      "lineNum": 18,
+      "text": "{ val: 'system', label: '跟随系统' },"
+    },
+    {
+      "lineNum": 19,
+      "text": "{ val: 'zh', label: '简体中文' },"
+    },
+    {
+      "lineNum": 20,
+      "text": "{ val: 'zh-TW', label: '繁體中文' },"
+    },
+    {
+      "lineNum": 22,
+      "text": "{ val: 'ja', label: '日本語' },"
+    },
+    {
+      "lineNum": 43,
+      "text": "<h3>环境与感知 (Appearance)</h3>"
+    },
+    {
+      "lineNum": 44,
+      "text": "<p>全盘接管系统的深浅模式与界面核心强调色调。</p>"
+    },
+    {
+      "lineNum": 49,
+      "text": "<label>光照模式 (Theme)</label>"
+    },
+    {
+      "lineNum": 55,
+      "text": "💻 系统跟随"
+    },
+    {
+      "lineNum": 61,
+      "text": "☀️ 日间清晰"
+    },
+    {
+      "lineNum": 67,
+      "text": "🌙 夜宴暗影"
+    },
+    {
+      "lineNum": 73,
+      "text": "<label>基核种子色 (Seed Color)</label>"
+    },
+    {
+      "lineNum": 99,
+      "text": "<span className=\"color-hint\">选择后点击他处关闭</span>"
+    },
+    {
+      "lineNum": 106,
+      "text": "<label>界译语言 (Locale)</label>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AssistantEditPage/index.tsx": [
+    {
+      "lineNum": 43,
+      "text": "{ label: '{{user_name}}', desc: '用户昵称' },"
+    },
+    {
+      "lineNum": 44,
+      "text": "{ label: '{{current_date}}', desc: '当前日期' },"
+    },
+    {
+      "lineNum": 45,
+      "text": "{ label: '{{current_time}}', desc: '当前时间' },"
+    },
+    {
+      "lineNum": 46,
+      "text": "{ label: '{{os_info}}', desc: '系统环境' }"
+    },
+    {
+      "lineNum": 130,
+      "text": "return `${w % 1 === 0 ? w.toFixed(0) : w.toFixed(1)}万`;"
+    },
+    {
+      "lineNum": 162,
+      "text": "{/* Section: 身份名片 */}"
+    },
+    {
+      "lineNum": 166,
+      "text": "<span>核心身份标识</span>"
+    },
+    {
+      "lineNum": 200,
+      "text": "{/* Section: 行为逻辑与提示词 */}"
+    },
+    {
+      "lineNum": 204,
+      "text": "<span>底层行为链路 (System Prompt)</span>"
+    },
+    {
+      "lineNum": 206,
+      "text": "<p className={styles.fieldHint}>定义该心智的思想边界、语言风格和回答惯性。</p>"
+    },
+    {
+      "lineNum": 222,
+      "text": "编辑代码"
+    },
+    {
+      "lineNum": 228,
+      "text": "全息预览"
+    },
+    {
+      "lineNum": 242,
+      "text": "{systemPrompt.trim() ? <MarkdownRenderer content={systemPrompt} /> : <span style={{color: 'var(--text-secondary)'}}>无系统指令流录入...</span>}"
+    },
+    {
+      "lineNum": 249,
+      "text": "<MessageSquareText size={16}/> 握手欢迎语 (Welcome Message)"
+    },
+    {
+      "lineNum": 253,
+      "text": "placeholder=\"用户开启新会话时自动发送的第一句话...\""
+    },
+    {
+      "lineNum": 260,
+      "text": "{/* Section: 外部神经连接 */}"
+    },
+    {
+      "lineNum": 264,
+      "text": "<span>神经突触绑定</span>"
+    },
+    {
+      "lineNum": 268,
+      "text": "<label className={styles.fieldLabel}>主干计算流 (Model)</label>"
+    },
+    {
+      "lineNum": 274,
+      "text": "<div className={styles.selectorSubtitle}>{providerId} 引擎提供算力支持</div>"
+    },
+    {
+      "lineNum": 277,
+      "text": "解除"
+    },
+    {
+      "lineNum": 284,
+      "text": "<div className={styles.selectorTitle}>全局默认协同列阵</div>"
+    },
+    {
+      "lineNum": 285,
+      "text": "<div className={styles.selectorSubtitle}>继承系统配置中的主模型设置</div>"
+    },
+    {
+      "lineNum": 287,
+      "text": "<span className={styles.selectorAction}>更改</span>"
+    },
+    {
+      "lineNum": 293,
+      "text": "<label className={styles.fieldLabel}>外挂记忆库 (RAG Knowledge)</label>"
+    },
+    {
+      "lineNum": 302,
+      "text": "<div className={styles.selectorTitle}>{ragSpaceId ? `已挂接扇区：${ragSpaceId}` : '未挂接任何记忆矩阵'}</div>"
+    },
+    {
+      "lineNum": 303,
+      "text": "<div className={styles.selectorSubtitle}>{ragSpaceId ? '注入特化领域的极速高维向量查询' : '目前仅使用上下文裸存'}</div>"
+    },
+    {
+      "lineNum": 305,
+      "text": "<span className={styles.selectorAction}>{ragSpaceId ? '变更' : '检索'}</span>"
+    },
+    {
+      "lineNum": 310,
+      "text": "{/* Section: 高级神经参数与压缩 */}"
+    },
+    {
+      "lineNum": 314,
+      "text": "<span>高级神经节控制 (Advanced)</span>"
+    },
+    {
+      "lineNum": 321,
+      "text": "<span className={styles.sliderLabel}>发散温度 (Temperature)</span>"
+    },
+    {
+      "lineNum": 322,
+      "text": "<span className={styles.sliderSub}>降低数值更理性严谨，升高则更具跳跃创造力</span>"
+    },
+    {
+      "lineNum": 339,
+      "text": "<span className={styles.sliderLabel}>采样熵界限 (Top P)</span>"
+    },
+    {
+      "lineNum": 340,
+      "text": "<span className={styles.sliderSub}>控制概率词汇分布范围，通常不建议与 Temperature 同时大幅调整</span>"
+    },
+    {
+      "lineNum": 357,
+      "text": "<span className={styles.sliderLabel}>短期记忆轮跨度 (Context Limit)</span>"
+    },
+    {
+      "lineNum": 359,
+      "text": "{isUnlimitedContext ? '无限吸收当前全部会话数据（小心过载）。' : '设定当前向大模型投喂的最大追溯轮数。'}"
+    },
+    {
+      "lineNum": 363,
+      "text": "{!isUnlimitedContext && <span className={styles.sliderValueBox}>{contextWindow} 轮</span>}"
+    },
+    {
+      "lineNum": 385,
+      "text": "<span className={styles.sliderLabel}>长栈无损蒸馏压缩 (Auto-Compression)</span>"
+    },
+    {
+      "lineNum": 386,
+      "text": "<span className={styles.sliderSub}>开启后到达设定阈值时执行摘要打包。保留轮数：{compressKeepTurns}。</span>"
+    },
+    {
+      "lineNum": 407,
+      "text": "<span style={{ fontSize: 13, color: 'var(--text-secondary)'}}>保留末尾未压缩裸轮数：</span>"
+    },
+    {
+      "lineNum": 426,
+      "text": "<span className={styles.sliderLabel}>单次爆发峰值 (Max Tokens)</span>"
+    },
+    {
+      "lineNum": 427,
+      "text": "<span className={styles.sliderSub}>限制助手单次回复的最大词汇量。关闭限制代表允许大模型尽情输出直至受限。</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AssistantManagementPage/index.tsx": [
+    {
+      "lineNum": 102,
+      "text": "{/* App Bar -- 带战况雷达和微操控制器 */}"
+    },
+    {
+      "lineNum": 114,
+      "text": "placeholder=\"检索呼号 / 职能...\""
+    },
+    {
+      "lineNum": 125,
+      "text": "<option value=\"newest\">按最新唤醒 (Newest)</option>"
+    },
+    {
+      "lineNum": 126,
+      "text": "<option value=\"frequent\">按呼叫热度 (Frequent)</option>"
+    },
+    {
+      "lineNum": 127,
+      "text": "<option value=\"name\">按系统全称 (A-Z)</option>"
+    },
+    {
+      "lineNum": 147,
+      "text": "{/* Create Button (始终保持第一个可用槽位或追加为卡) 为了对标原版我们放一个卡片式按钮在这里或最后 */}"
+    },
+    {
+      "lineNum": 167,
+      "text": "title={isPinned ? '取消置顶锁定' : '置顶锁定特权'}"
+    },
+    {
+      "lineNum": 175,
+      "text": "title=\"裂变克隆本位体\""
+    },
+    {
+      "lineNum": 183,
+      "text": "title=\"格式化粉碎\""
+    },
+    {
+      "lineNum": 242,
+      "text": "'一旦彻底删除 [该伙伴身份]，其下绑定的专属神经记忆片段也将失去宿主索引。此决定绝对不可逆转！',"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AssistantMatrixCard/index.tsx": [
+    {
+      "lineNum": 16,
+      "text": "<h3 className={styles.title}>数字生命孵化工坊 (Assistant Matrix)</h3>"
+    },
+    {
+      "lineNum": 17,
+      "text": "<p className={styles.subtitle}>这是一个独立的庞大车间，用于孕育拥有特定职业记忆、专署 RAG 通道与工具集的多态智能分身。</p>"
+    },
+    {
+      "lineNum": 21,
+      "text": "进入副脑矩阵 ➔"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AssistantPicker/index.tsx": [
+    {
+      "lineNum": 61,
+      "text": "placeholder=\"搜索...\""
+    },
+    {
+      "lineNum": 126,
+      "text": "提示词"
+    },
+    {
+      "lineNum": 132,
+      "text": "记忆"
+    },
+    {
+      "lineNum": 160,
+      "text": "<span>{activeAssistant.compressTokenThreshold > 0 ? `阈值 ${activeAssistant.compressTokenThreshold}` : '关闭'}</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AssistantPickerSheet/index.tsx": [
+    {
+      "lineNum": 17,
+      "text": "ragSpaceId?: string; // B1.9 针对 Memory 表需要特化显示"
+    },
+    {
+      "lineNum": 65,
+      "text": "item = filteredAssistants[0]; // 退避选择搜索结果第一项"
+    },
+    {
+      "lineNum": 77,
+      "text": "{/* ─── 左侧机能筛选屏 ─── */}"
+    },
+    {
+      "lineNum": 130,
+      "text": "{/* ─── 右侧属性审析屏 ─── */}"
+    },
+    {
+      "lineNum": 139,
+      "text": "<span>未捕捉到焦点，请在左侧指定心智实体。</span>"
+    },
+    {
+      "lineNum": 151,
+      "text": "{/* 状态控制 Tab */}"
+    },
+    {
+      "lineNum": 157,
+      "text": "<Command size={16}/> 潜意识网 (Prompt)"
+    },
+    {
+      "lineNum": 163,
+      "text": "<Database size={16}/> 神经簇状态 (RAG)"
+    },
+    {
+      "lineNum": 170,
+      "text": "<h3 className={styles.sectionTitle}>主被动心智指北</h3>"
+    },
+    {
+      "lineNum": 172,
+      "text": "{activeAssistant.systemPrompt || '未编写核心控制参数，系统将进入空运行默认状态。'}"
+    },
+    {
+      "lineNum": 177,
+      "text": "<h3 className={styles.sectionTitle}>突触与模型连接报告</h3>"
+    },
+    {
+      "lineNum": 180,
+      "text": "<span className={styles.metaLabel}>大模型供应商</span>"
+    },
+    {
+      "lineNum": 184,
+      "text": "<span className={styles.metaLabel}>算力集群</span>"
+    },
+    {
+      "lineNum": 188,
+      "text": "<span className={styles.metaLabel}>上下文轮跨度限制</span>"
+    },
+    {
+      "lineNum": 189,
+      "text": "<span className={styles.metaValue}>{activeAssistant.contextWindow < 0 ? 'Infinite 无限' : activeAssistant.contextWindow + ' 轮'}</span>"
+    },
+    {
+      "lineNum": 192,
+      "text": "<span className={styles.metaLabel}>向量挂载区 (RAG)</span>"
+    },
+    {
+      "lineNum": 193,
+      "text": "<span className={styles.metaValue}>{activeAssistant.ragSpaceId || '未锁定'}</span>"
+    },
+    {
+      "lineNum": 209,
+      "text": "<CheckSquare size={18} /> 连接覆盖：启动 {activeAssistant.name}"
+    },
+    {
+      "lineNum": 213,
+      "text": "该心智已处于热载执行期"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AttachmentManagementView/index.tsx": [
+    {
+      "lineNum": 52,
+      "text": "const confirmText = window.confirm(`防呆确定：您将从硬盘上永久抹杀被选定的 ${selectedIds.size} 个附录库会话文件夹！\\n删除后不可找回。该操作只删附件不删纯文本记忆。继续？`);"
+    },
+    {
+      "lineNum": 71,
+      "text": "<h3 className={styles.title}>核心系统附录库 (Attachment Center)</h3>"
+    },
+    {
+      "lineNum": 72,
+      "text": "<p className={styles.subtitle}>跨域文件、媒体记忆帧的物理留存中枢。红色条目即“遗落的孤岛孤标文件”。</p>"
+    },
+    {
+      "lineNum": 76,
+      "text": "{/* 概览大盘 */}"
+    },
+    {
+      "lineNum": 79,
+      "text": "<span className={styles.statLabel}>宿命总吞吐量</span>"
+    },
+    {
+      "lineNum": 84,
+      "text": "<span className={styles.statLabel}>散落游离碎片总计</span>"
+    },
+    {
+      "lineNum": 89,
+      "text": "<span className={`${styles.statLabel} ${styles.dangerTextLabel}`}>无对证的幽灵数据 (Orphans)</span>"
+    },
+    {
+      "lineNum": 96,
+      "text": "{/* 操作器栏 */}"
+    },
+    {
+      "lineNum": 103,
+      "text": "🪐 恒星群合集 <span className={styles.badge}>{attachments.length}</span>"
+    },
+    {
+      "lineNum": 109,
+      "text": "🛸 漂流无归档陨石区 <span className={styles.badgeDanger}>{orphans.length}</span>"
+    },
+    {
+      "lineNum": 114,
+      "text": "{displayList.length > 0 && selectedIds.size === displayList.length ? '取消群选' : '框选全视域'}"
+    },
+    {
+      "lineNum": 118,
+      "text": "{/* 档案列表 */}"
+    },
+    {
+      "lineNum": 123,
+      "text": "<div className={styles.emptyText}>{activeTab === 'orphans' ? '未感测到任何未能关联归档的孤岛件。' : '当前工作区无任何留存的附件。'}</div>"
+    },
+    {
+      "lineNum": 148,
+      "text": "<span className={styles.fileCountHint}>{att.fileCount} 个档案封套</span>"
+    },
+    {
+      "lineNum": 162,
+      "text": "{/* 底部悬浮删除面板 (条件显示) */}"
+    },
+    {
+      "lineNum": 166,
+      "text": "您已锁定 <span className={styles.highlight}>{selectedIds.size}</span> 个附件组列。"
+    },
+    {
+      "lineNum": 173,
+      "text": "{isDeleting ? '☄️ 碎星武器发射中...' : '☄️ 从物理层面碾碎遣除 (EXECUTE)'}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/ChatAppBar/index.tsx": [
+    {
+      "lineNum": 10,
+      "text": "modelIdentifier?: string; // 例如 \"GPT-4o\""
+    },
+    {
+      "lineNum": 11,
+      "text": "tokenSize?: string;       // 例如 \"128k\""
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/ChatBubble/ToolCallSkeleton.tsx": [
+    {
+      "lineNum": 15,
+      "text": "<span className={styles.label}>AI Agent 正在使用工具</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/CloudSyncPanel/index.tsx": [
+    {
+      "lineNum": 110,
+      "text": "`【高危操作】从云端恢复 \"${filename}\" 到本地将彻底覆盖当前的工作区数据。\\n请输入 \"CONFIRM\" 确认：`"
+    },
+    {
+      "lineNum": 124,
+      "text": "if (!window.confirm(`确定要删除云端备份 \"${filename}\" 吗？此操作不可逆！`)) return;"
+    },
+    {
+      "lineNum": 135,
+      "text": "if (!window.confirm(`确定要批量删除选中的 ${selected.size} 个备份吗？`)) return;"
+    },
+    {
+      "lineNum": 166,
+      "text": "<h3 className={styles.title}>数据云同步 (Cloud Sync)</h3>"
+    },
+    {
+      "lineNum": 168,
+      "text": "将白守数据安全分发至 WebDAV 或 S3 兼容的云端，跨设备异步漫游。"
+    },
+    {
+      "lineNum": 176,
+      "text": "<span className={styles.statLabel}>分发终点 (Target)</span>"
+    },
+    {
+      "lineNum": 184,
+      "text": "<span className={styles.statLabel}>云端容载 (Size)</span>"
+    },
+    {
+      "lineNum": 192,
+      "text": "<span className={styles.statLabel}>母体存数 (Count)</span>"
+    },
+    {
+      "lineNum": 193,
+      "text": "<span className={styles.statValue}>{records.length} <small>份</small></span>"
+    },
+    {
+      "lineNum": 202,
+      "text": "{showConfig ? '关闭设置' : '⚙ 同步设置'}"
+    },
+    {
+      "lineNum": 205,
+      "text": "<button className={styles.manageBtn} onClick={() => setManageMode(true)}>批量管理</button>"
+    },
+    {
+      "lineNum": 211,
+      "text": "☄️ 核爆选定档 ({selected.size})"
+    },
+    {
+      "lineNum": 217,
+      "text": "{isSyncing ? '同步中...' : '立即同步'}"
+    },
+    {
+      "lineNum": 225,
+      "text": "<label>同步目标</label>"
+    },
+    {
+      "lineNum": 227,
+      "text": "<option value=\"local\">本地 (关闭云同步)</option>"
+    },
+    {
+      "lineNum": 229,
+      "text": "<option value=\"s3\">S3 (兼容)</option>"
+    },
+    {
+      "lineNum": 234,
+      "text": "<label>最大备份份数</label>"
+    },
+    {
+      "lineNum": 246,
+      "text": "<label>用户名</label>"
+    },
+    {
+      "lineNum": 250,
+      "text": "<label>密码/授权码</label>"
+    },
+    {
+      "lineNum": 254,
+      "text": "<label>远端路径</label>"
+    },
+    {
+      "lineNum": 283,
+      "text": "<label>远端路径</label>"
+    },
+    {
+      "lineNum": 294,
+      "text": "<span>同步记录</span>"
+    },
+    {
+      "lineNum": 299,
+      "text": "<div className={styles.loadingState}>链接亚空间与握手中...</div>"
+    },
+    {
+      "lineNum": 302,
+      "text": "{config.target === 'local' ? '云同步引擎已处于离线沉睡状态。' : '此目标宇宙目前暂无发现您的数据遗迹。'}"
+    },
+    {
+      "lineNum": 314,
+      "text": "<span className={styles.selectAllLabel}>全选所有 {records.length} 个锚点进行歼灭</span>"
+    },
+    {
+      "lineNum": 335,
+      "text": "<button onClick={() => handleRestore(r.filename)} className={styles.restoreBtn} disabled={isSyncing}>恢复</button>"
+    },
+    {
+      "lineNum": 336,
+      "text": "<button onClick={() => handleRename(r.filename)}>重命名</button>"
+    },
+    {
+      "lineNum": 337,
+      "text": "<button onClick={() => handleDelete(r.filename)} className={styles.deleteSingleBtn}>删除</button>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DashboardHeroBanner/DashboardHeroBanner.tsx": [
+    {
+      "lineNum": 11,
+      "text": "const greeting = \"又见面了，今天过得怎样？\";"
+    },
+    {
+      "lineNum": 33,
+      "text": "{/* 装饰性背景球 */}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DashboardSharedMemoryCard/DashboardSharedMemoryCard.tsx": [
+    {
+      "lineNum": 28,
+      "text": "调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。"
+    },
+    {
+      "lineNum": 32,
+      "text": "<span className=\"sm-label\">回溯 {lookbackMonths} 个月</span>"
+    },
+    {
+      "lineNum": 44,
+      "text": "✨ Copy 给 AI"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DataManagementCard/index.tsx": [
+    {
+      "lineNum": 39,
+      "text": "'【高危操作警告】\\n导入全量存档将直接销毁当前系统内的所有工作区与知识数据库设定，且不可逆转！\\n\\n请在下方输入 \"CONFIRM\" 以二次确认您知道自己在做什么：'"
+    },
+    {
+      "lineNum": 67,
+      "text": "const flag = window.confirm(`您将使用 ${snapshot.timeLabel} (${snapshot.sizeMB} MB) 的快照覆盖现在的全部记录。\\n覆盖后现在的修改统统消失，继续吗？`);"
+    },
+    {
+      "lineNum": 76,
+      "text": "<h3 className={styles.title}>数据全量备份与容灾 (Data Vault)</h3>"
+    },
+    {
+      "lineNum": 78,
+      "text": "白守数据由零构建、不受云端绑架。你可以随时将整个库无损封存为 ZIP 文件（跳过缓存），或将备份文件强制热加载回系统。"
+    },
+    {
+      "lineNum": 86,
+      "text": "<h4>📦 铸造数据母体归档</h4>"
+    },
+    {
+      "lineNum": 87,
+      "text": "<p className={styles.sectionDesc}>导出所有工作区 (Vaults) 、日记片段、模型预设与超参设定。</p>"
+    },
+    {
+      "lineNum": 94,
+      "text": "{isExporting ? '⏳ 打包压制中...' : '生成完整 ZIP 母体备份'}"
+    },
+    {
+      "lineNum": 102,
+      "text": "<h4 className={styles.dangerText}>☢️ 高危异体数据注入</h4>"
+    },
+    {
+      "lineNum": 103,
+      "text": "<p className={styles.sectionDesc}>警告：导入外部 ZIP 备份将强行切断当前所有数据库连接，并彻底覆写本地数据卷。</p>"
+    },
+    {
+      "lineNum": 110,
+      "text": "{isImporting ? '☢️ 数据灌入中...' : '选择 ZIP 强行覆盖合并'}"
+    },
+    {
+      "lineNum": 119,
+      "text": "<h4>⏱️ 时序快照自动找回 (Auto Snapshots)</h4>"
+    },
+    {
+      "lineNum": 120,
+      "text": "<p className={styles.sectionDesc}>白守在重要节点会自动留下最多 10 份短期数据快照，以便您在崩溃或手误后吃后悔药。</p>"
+    },
+    {
+      "lineNum": 128,
+      "text": "<div className={styles.noSnapshots}>当前宿主机未保留任何近期时序快照。</div>"
+    },
+    {
+      "lineNum": 141,
+      "text": "从该断点复活"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DatePicker/DatePicker.tsx": [
+    {
+      "lineNum": 7,
+      "text": "mode?: 'date' | 'month' | 'year'; // 年、年月、年月日"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DatetimePickerSheet/index.tsx": [
+    {
+      "lineNum": 29,
+      "text": "<button className={styles.cancelBtn} onClick={onClose}>取消</button>"
+    },
+    {
+      "lineNum": 30,
+      "text": "<h3>选择时间</h3>"
+    },
+    {
+      "lineNum": 31,
+      "text": "<button className={styles.confirmBtn} onClick={handleConfirm}>确定</button>"
+    },
+    {
+      "lineNum": 37,
+      "text": "<div className={styles.wheelItem}>2024年</div>"
+    },
+    {
+      "lineNum": 38,
+      "text": "<div className={styles.wheelItemActive}>2025年</div>"
+    },
+    {
+      "lineNum": 39,
+      "text": "<div className={styles.wheelItem}>2026年</div>"
+    },
+    {
+      "lineNum": 42,
+      "text": "<div className={styles.wheelItem}>02月</div>"
+    },
+    {
+      "lineNum": 43,
+      "text": "<div className={styles.wheelItemActive}>03月</div>"
+    },
+    {
+      "lineNum": 44,
+      "text": "<div className={styles.wheelItem}>04月</div>"
+    },
+    {
+      "lineNum": 47,
+      "text": "<div className={styles.wheelItem}>28日</div>"
+    },
+    {
+      "lineNum": 48,
+      "text": "<div className={styles.wheelItemActive}>29日</div>"
+    },
+    {
+      "lineNum": 49,
+      "text": "<div className={styles.wheelItem}>30日</div>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DeveloperOptionsView/index.tsx": [
+    {
+      "lineNum": 11,
+      "text": "<h3 style={{ marginBottom: 12, fontSize: 18, fontWeight: 600 }}>🛠 实验性特性与高级调试</h3>"
+    },
+    {
+      "lineNum": 13,
+      "text": "您即将踏入赛博最深处：这涉及白守底层的内存压测截断、特级 IPC 通信拦截器以及未公开的局域网高频探嗅功能。请谨慎操作。<br />"
+    },
+    {
+      "lineNum": 14,
+      "text": "<span style={{ color: '#4ade80' }}>（敬请期待后续实验仓释出）</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DiaryCard/DiaryCard.tsx": [
+    {
+      "lineNum": 32,
+      "text": "const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][createdAt.getDay()];"
+    },
+    {
+      "lineNum": 61,
+      "text": "{year} · {month}月"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DiaryCard/index.tsx": [
+    {
+      "lineNum": 19,
+      "text": "const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];"
+    },
+    {
+      "lineNum": 26,
+      "text": "const yearMonth = `${diary.date.getFullYear()} · ${diary.date.getMonth() + 1}月`;"
+    },
+    {
+      "lineNum": 79,
+      "text": "✏️ 编辑"
+    },
+    {
+      "lineNum": 85,
+      "text": "🗑️ 删除"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DiaryEditorAppBarTitle/DiaryEditorAppBarTitle.tsx": [
+    {
+      "lineNum": 33,
+      "text": "<span className=\"title-text\">编辑总结</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/EmojiPickerDialog/index.tsx": [
+    {
+      "lineNum": 20,
+      "text": "<span className={styles.title}>回应此消息</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/GalleryPanel/GalleryPanel.tsx": [
+    {
+      "lineNum": 23,
+      "text": "if (!s.startDate) return '总结';"
+    },
+    {
+      "lineNum": 25,
+      "text": "if (s.type === 'weekly') return `${dateObj.getFullYear()}年周报`;"
+    },
+    {
+      "lineNum": 26,
+      "text": "if (s.type === 'monthly') return `${dateObj.getFullYear()}年${dateObj.getMonth() + 1}月总结`;"
+    },
+    {
+      "lineNum": 27,
+      "text": "if (s.type === 'quarterly') return `${dateObj.getFullYear()}年Q${Math.ceil((dateObj.getMonth() + 1) / 3)}`;"
+    },
+    {
+      "lineNum": 28,
+      "text": "if (s.type === 'yearly') return `${dateObj.getFullYear()}年度总结`;"
+    },
+    {
+      "lineNum": 29,
+      "text": "return '总结';"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/HotkeySettingsCard/index.tsx": [
+    {
+      "lineNum": 73,
+      "text": "<span className={styles.title}>启用全局快捷键唤出</span>"
+    },
+    {
+      "lineNum": 74,
+      "text": "<span className={styles.subtitle}>跨应用随时呼出或隐藏沉浸式窗口</span>"
+    },
+    {
+      "lineNum": 89,
+      "text": "<span className={styles.title}>录入专属组合键</span>"
+    },
+    {
+      "lineNum": 90,
+      "text": "<span className={styles.subtitle}>尝试按下您偏好的组合键（不支持单键哦）</span>"
+    },
+    {
+      "lineNum": 96,
+      "text": "value={isRecording ? '正在监听按键输入...' : displayString}"
+    },
+    {
+      "lineNum": 105,
+      "text": "{isRecording ? '中止' : '重录'}"
+    },
+    {
+      "lineNum": 112,
+      "text": "⚠️ 警报：此组合键极易与系统原生操作或常用应用快捷键重叠，建议更改。"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/IdentitySettingsCard/index.tsx": [
+    {
+      "lineNum": 59,
+      "text": "if (window.confirm(`确定删除身份卡 [${pid}] 吗？`)) {"
+    },
+    {
+      "lineNum": 88,
+      "text": "if (window.confirm(`删除记录 ${k}？`)) {"
+    },
+    {
+      "lineNum": 104,
+      "text": "<h3 className={styles.title}>多重面具预设档 (Personas & Facts)</h3>"
+    },
+    {
+      "lineNum": 107,
+      "text": "+ 补充记忆链条"
+    },
+    {
+      "lineNum": 110,
+      "text": "<p className={styles.subtitle}>白守将基于这些坚固的「自我认知词条」与您对答。</p>"
+    },
+    {
+      "lineNum": 129,
+      "text": "<button className={styles.addChipBtn} onClick={handleAddPersona}>+ 面具</button>"
+    },
+    {
+      "lineNum": 136,
+      "text": "<p>该面具尚属一片白纸</p>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/InputBar/index.tsx": [
+    {
+      "lineNum": 185,
+      "text": "<QuickActionChip icon={<Paperclip size={14} />} label=\"上传附件\" onClick={handlePickFiles} />"
+    },
+    {
+      "lineNum": 186,
+      "text": "<QuickActionChip icon={<Zap size={14} />} label=\"快捷指令\" onClick={handlePromptShortcut} />"
+    },
+    {
+      "lineNum": 275,
+      "text": "{/* 底部小托盘：显示当前助手 */}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/LanSyncCard/index.tsx": [
+    {
+      "lineNum": 52,
+      "text": "'【局域网快传接收】\\n您收到了一个全量备份包，是否立即挂载并覆盖本地数据库？\\n请输入 \"CONFIRM\" 确认：'"
+    },
+    {
+      "lineNum": 104,
+      "text": "<h3 className={styles.title}>跨端局域网双向快传 (LAN Sync)</h3>"
+    },
+    {
+      "lineNum": 108,
+      "text": "无需耗费外网流量即可将庞大的备份从电脑推向移动哨站。"
+    },
+    {
+      "lineNum": 128,
+      "text": "<p>雷达处于静默休眠状态。</p>"
+    },
+    {
+      "lineNum": 134,
+      "text": "正在不间断搜寻子网域中的白守节点..."
+    },
+    {
+      "lineNum": 160,
+      "text": "{isSending ? `${progress}%` : '推入快传'}"
+    },
+    {
+      "lineNum": 172,
+      "text": "{isActive ? '关闭全频段探测' : '雷达点火引擎 (发现与侦听本机)'}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/MarkdownToolbar/index.tsx": [
+    {
+      "lineNum": 27,
+      "text": "<button className={styles.toolBtn} onClick={(e) => handleAction(e, 'bold')} title=\"加粗 (Ctrl+B)\">B</button>"
+    },
+    {
+      "lineNum": 28,
+      "text": "<button className={styles.toolBtn} onClick={(e) => handleAction(e, 'italic')} title=\"斜体 (Ctrl+I)\">I</button>"
+    },
+    {
+      "lineNum": 29,
+      "text": "<button className={styles.toolBtn} onClick={(e) => handleAction(e, 'strikethrough')} title=\"删除线\">S</button>"
+    },
+    {
+      "lineNum": 31,
+      "text": "<button className={styles.toolBtn} onClick={(e) => handleAction(e, 'header')} title=\"转换为标题\">H</button>"
+    },
+    {
+      "lineNum": 32,
+      "text": "<button className={styles.toolBtn} onClick={(e) => handleAction(e, 'quote')} title=\"引用\">”</button>"
+    },
+    {
+      "lineNum": 34,
+      "text": "<button className={styles.toolBtn} onClick={(e) => handleAction(e, 'link')} title=\"插入链接\">🔗</button>"
+    },
+    {
+      "lineNum": 35,
+      "text": "<button className={styles.toolBtn} onClick={(e) => handleAction(e, 'code')} title=\"行内代码\">&lt;/&gt;</button>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/McpSettingsCard/index.tsx": [
+    {
+      "lineNum": 19,
+      "text": "<span className={styles.title}>启用 Model Context Protocol (MCP Server)</span>"
+    },
+    {
+      "lineNum": 20,
+      "text": "<span className={styles.subtitle}>将白守数据核心局域暴露给兼容 MCP 的顶级 IDE 或外部构建大模型</span>"
+    },
+    {
+      "lineNum": 34,
+      "text": "<span className={styles.title}>本地侦听端口控制 (Host Port)</span>"
+    },
+    {
+      "lineNum": 35,
+      "text": "<span className={styles.subtitle}>修改默认长连接端口（默认建议保留 31004）。如果需要多开请注意回避冲突。</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/MissingSummaryCard/index.tsx": [
+    {
+      "lineNum": 21,
+      "text": "<h4>{dateStr} 记录缺失</h4>"
+    },
+    {
+      "lineNum": 22,
+      "text": "<p>你今天似乎还没有让 AI 总结过日记记录，现在要一键生成吗？</p>"
+    },
+    {
+      "lineNum": 25,
+      "text": "✨ 立即生成总结"
+    },
+    {
+      "lineNum": 29,
+      "text": "忽 略"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/ModelSwitcher/index.tsx": [
+    {
+      "lineNum": 94,
+      "text": "<Settings size={14} /> 去配置供应商"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/ModelSwitcherPopup/index.tsx": [
+    {
+      "lineNum": 52,
+      "text": "<h2>切换模型</h2>"
+    },
+    {
+      "lineNum": 62,
+      "text": "placeholder=\"搜索模型...\""
+    },
+    {
+      "lineNum": 73,
+      "text": "<div className={styles.emptyState}>没有匹配的模型</div>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/ProfileSettingsCard/index.tsx": [
+    {
+      "lineNum": 26,
+      "text": "const [cropBox, setCropBox] = useState({ x: 0, y: 0, size: 200 }); // 正方形裁剪框"
+    },
+    {
+      "lineNum": 53,
+      "text": "const initSize = Math.min(naturalWidth, naturalHeight, 300); // 适度初始大小"
+    },
+    {
+      "lineNum": 167,
+      "text": "<button className={styles.editBtn} onClick={handleEditNickname} title=\"修改昵称\">"
+    },
+    {
+      "lineNum": 171,
+      "text": "<p className={styles.desc}>点击左侧头像可更改全息投射的电子样貌，支持自定义图片裁剪。</p>"
+    },
+    {
+      "lineNum": 178,
+      "text": "<h3 className={styles.cropTitle}>剪裁实体切片</h3>"
+    },
+    {
+      "lineNum": 195,
+      "text": "{/* 蒙版框，简单利用边框模拟位置，不阻挡事件 */}"
+    },
+    {
+      "lineNum": 215,
+      "text": "<button className={styles.cancelBtn} onClick={cancelCrop}>舍弃并中止</button>"
+    },
+    {
+      "lineNum": 216,
+      "text": "<button className={styles.confirmBtn} onClick={finishCrop}>✅ 固定影像印记</button>"
+    },
+    {
+      "lineNum": 219,
+      "text": "{/* 隐藏画板 */}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/PromptShortcutSheet/index.tsx": [
+    {
+      "lineNum": 7,
+      "text": "command: string; // 例如 \"translate\" (不包含斜杠)"
+    },
+    {
+      "lineNum": 10,
+      "text": "content: string; // 实际替换进来的文本"
+    },
+    {
+      "lineNum": 16,
+      "text": "selectedIndex: number; // 由父组件控制键盘上下键以决定哪个被高亮"
+    },
+    {
+      "lineNum": 43,
+      "text": "<Zap size={14} /> 快捷战术指令 (Shortcut)"
+    },
+    {
+      "lineNum": 66,
+      "text": "找不到匹配的指令协议..."
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/RagMemoryView/index.tsx": [
+    {
+      "lineNum": 9,
+      "text": "ragEnabled: boolean; // 新增全域开关"
+    },
+    {
+      "lineNum": 103,
+      "text": "{/* 统计横幅 */}"
+    },
+    {
+      "lineNum": 119,
+      "text": "{/* 参数区 */}"
+    },
+    {
+      "lineNum": 156,
+      "text": "{/* 迁移与进度 */}"
+    },
+    {
+      "lineNum": 180,
+      "text": "{/* 控制按钮 */}"
+    },
+    {
+      "lineNum": 198,
+      "text": "{/* 搜索与卡片区块 */}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/RecallBottomSheet/index.tsx": [
+    {
+      "lineNum": 17,
+      "text": "items: RecallItem[]; // 所有可能的记忆与日记池"
+    },
+    {
+      "lineNum": 74,
+      "text": "打捞散落上下文 (Context Recovery)"
+    },
+    {
+      "lineNum": 87,
+      "text": "全域检索"
+    },
+    {
+      "lineNum": 93,
+      "text": "日记档案"
+    },
+    {
+      "lineNum": 99,
+      "text": "向量记忆"
+    },
+    {
+      "lineNum": 105,
+      "text": "placeholder=\"扫描节点或记忆断签...\""
+    },
+    {
+      "lineNum": 115,
+      "text": "<div className={styles.emptyState}>探针失效，未匹配到任何过去碎片。</div>"
+    },
+    {
+      "lineNum": 146,
+      "text": "已锁定数据块: <span className={styles.countBadge}>{selectedIds.size}</span>"
+    },
+    {
+      "lineNum": 154,
+      "text": "注入当前神经链接"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/SessionListItem/index.tsx": [
+    {
+      "lineNum": 78,
+      "text": "<span className={styles.pinIcon} title=\"已置顶\"><Pin size={12} fill=\"currentColor\"/></span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/SessionManagementPage/index.tsx": [
+    {
+      "lineNum": 196,
+      "text": "{/* 顶控大盘 App Bar */}"
+    },
+    {
+      "lineNum": 241,
+      "text": "{/* 搜索与过滤卡槽 */}"
+    },
+    {
+      "lineNum": 262,
+      "text": "{/* 演算总盘 Stats Board */}"
+    },
+    {
+      "lineNum": 265,
+      "text": "{/* 会话矩阵 List */}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/Sidebar/index.tsx": [
+    {
+      "lineNum": 70,
+      "text": "<span className={styles.tagline}>全能 AI 伴侣</span>"
+    },
+    {
+      "lineNum": 102,
+      "text": "<span className={styles.itemLabel}>设置</span>"
+    },
+    {
+      "lineNum": 116,
+      "text": "<span className={styles.nickname}>{user?.nickname || '未设置昵称'}</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/StorageSettingsCard/index.tsx": [
+    {
+      "lineNum": 66,
+      "text": "{/* 假定占比，在实际业务中建议传入 size 取百分比 */}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/SummaryCard/index.tsx": [
+    {
+      "lineNum": 24,
+      "text": "<span>{wordCount} 字合成</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/SummaryGalleryTab/index.tsx": [
+    {
+      "lineNum": 33,
+      "text": "<p>画廊空空如也，多往日记里塞点照片吧！</p>"
+    },
+    {
+      "lineNum": 39,
+      "text": "<h3>{month.replace('-', ' 年 ')} 月</h3>"
+    },
+    {
+      "lineNum": 40,
+      "text": "<span className={styles.countBadge}>{grouped[month].length} 碎片</span>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/TagInputWidget/index.tsx": [
+    {
+      "lineNum": 13,
+      "text": "placeholder = \"输入标签并按回车添加...\""
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/WorkspaceSettingsCard/index.tsx": [
+    {
+      "lineNum": 99,
+      "text": "`危险操作！您确定要永久删除工作空间 [${vault.name}] 吗？\\n此操作将销毁该空间下的所有日志记录和关联档案，且不可恢复！\\n\\n请输入工作空间名称以确认删除：`"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/components/ErrorBoundary.tsx": [
+    {
+      "lineNum": 40,
+      "text": "<h2>渲染崩溃 / Rendering Crashed</h2>"
+    },
+    {
+      "lineNum": 64,
+      "text": "重新加载页面 / Reload"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/components/Sidebar/index.tsx": [
+    {
+      "lineNum": 9,
+      "text": "{ id: 'diary', branchIndex: 0, icon: <MdTimeline />, label: '日记', path: '/diary' },"
+    },
+    {
+      "lineNum": 10,
+      "text": "{ id: 'summary', branchIndex: 2, icon: <MdAutoStories />, label: '全域仪表盘', path: '/summary' },"
+    },
+    {
+      "lineNum": 31,
+      "text": "'diary': { icon: <MdTimeline />, label: '日记', path: '/diary' },"
+    },
+    {
+      "lineNum": 32,
+      "text": "'summary': { icon: <MdAutoStories />, label: '全域仪表盘', path: '/summary' },"
+    },
+    {
+      "lineNum": 33,
+      "text": "'lan': { icon: <MdSettings />, label: '局域网互传', path: '/settings/lan-transfer' }, // using Settings as fallback icon"
+    },
+    {
+      "lineNum": 34,
+      "text": "'sync': { icon: <MdSync />, label: '数据同步', path: '/settings/data-sync' }"
+    },
+    {
+      "lineNum": 64,
+      "text": "<div className={styles.brandSlogan}>懂你的赛博记忆舱</div>"
+    },
+    {
+      "lineNum": 117,
+      "text": "<span className={styles.navLabel}>偏好设置</span>"
+    },
+    {
+      "lineNum": 125,
+      "text": "<div className={styles.userName}>Anson 空间站</div>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/components/TitleBar/index.tsx": [
+    {
+      "lineNum": 22,
+      "text": "<span>日记</span>"
+    },
+    {
+      "lineNum": 37,
+      "text": "<span className={styles.vaultName}>默认空间</span>"
+    },
+    {
+      "lineNum": 48,
+      "text": "<button className={styles.winBtn} onClick={() => (window as any).api?.window?.minimize()} title=\"最小化\" >"
+    },
+    {
+      "lineNum": 51,
+      "text": "<button className={styles.winBtn} onClick={() => (window as any).api?.window?.toggleMaximize()} title=\"最大化\" >"
+    },
+    {
+      "lineNum": 54,
+      "text": "<button className={`${styles.winBtn} ${styles.winCloseBtn}`} onClick={() => (window as any).api?.window?.close()} title=\"关闭\" >"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/agent/AgentScreen.tsx": [
+    {
+      "lineNum": 85,
+      "text": "title: `片段追踪 [${r.modelId || '系统'}]`,"
+    },
+    {
+      "lineNum": 124,
+      "text": "}, [sessionId, isStreaming]); // 改变房间或输出结束时强制同步真库"
+    },
+    {
+      "lineNum": 274,
+      "text": "{/* ==== 激战实录：流动气泡 ==== */}"
+    },
+    {
+      "lineNum": 283,
+      "text": "{/* ==== 沉积历史 ==== */}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/agent/AssistantEditScreen.tsx": [
+    {
+      "lineNum": 29,
+      "text": "return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>数据神经网同步中...</div>;"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/diary/DiaryEditorPage.tsx": [
+    {
+      "lineNum": 7,
+      "text": "const { date } = useParams(); // 日期格式: YYYY-MM-DD"
+    },
+    {
+      "lineNum": 66,
+      "text": "if (confirm('有未保存的更改，确定要离开吗？')) {"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/diary/DiaryPage.tsx": [
+    {
+      "lineNum": 58,
+      "text": "meta: { id: e.id, date: d, preview: e.content?.substring(0, 100) || '无预览...', tags: e.tags || [] }"
+    },
+    {
+      "lineNum": 143,
+      "text": "const monthNames = [\"一月\", \"二月\", \"三月\", \"四月\", \"五月\", \"六月\", \"七月\", \"八月\", \"九月\", \"十月\", \"十一月\", \"十二月\"];"
+    },
+    {
+      "lineNum": 157,
+      "text": "title=\"月相探测 (Calendar View)\""
+    },
+    {
+      "lineNum": 162,
+      "text": "title=\"流光卷轴 (Timeline View)\""
+    },
+    {
+      "lineNum": 167,
+      "text": "title=\"晶体矩阵 (Masonry View)\""
+    },
+    {
+      "lineNum": 264,
+      "text": "{node.date.getFullYear()}年 {node.date.getMonth() + 1}月"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/home/HomePage.tsx": [
+    {
+      "lineNum": 6,
+      "text": "<h1>概览面板 (Home)</h1>"
+    },
+    {
+      "lineNum": 7,
+      "text": "<p>这里是迁移自 Flutter 版的首页，展示近期的记忆与日记。</p>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/onboarding/OnboardingPage.tsx": [
+    {
+      "lineNum": 6,
+      "text": "<h1>欢迎来到 BaiShou Next</h1>"
+    },
+    {
+      "lineNum": 7,
+      "text": "<p>这是一个全屏的初始化与新手指引流程页面。</p>"
+    },
+    {
+      "lineNum": 9,
+      "text": "开始体验"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/onboarding/OnboardingScreen.tsx": [
+    {
+      "lineNum": 11,
+      "text": "title: '欢迎来到 BaiShou Next',"
+    },
+    {
+      "lineNum": 12,
+      "text": "subtitle: '基于先进的大语言模型，结合本地优先架构，为您打造极速、隐私的 AI 协同伴侣。',"
+    },
+    {
+      "lineNum": 17,
+      "text": "title: '多 Agent 生态系统',"
+    },
+    {
+      "lineNum": 18,
+      "text": "subtitle: '不仅是聊天。你可以创建专属数字分身，组建 AI 团队，自动生成周期总结并关联长时记忆。',"
+    },
+    {
+      "lineNum": 23,
+      "text": "title: '数据资产，尽在掌握',"
+    },
+    {
+      "lineNum": 24,
+      "text": "subtitle: '您的所有对话、日记与向量记忆数据默认存储在本地，真正保障隐私与自主权。',"
+    },
+    {
+      "lineNum": 29,
+      "text": "title: '最后一步，准备点火',"
+    },
+    {
+      "lineNum": 30,
+      "text": "subtitle: '配置您的核心 AI 提供商以激活应用。您随时可以在设置中修改或添加更多模型。',"
+    },
+    {
+      "lineNum": 88,
+      "text": "<label className={styles.inputLabel}>模型提供商</label>"
+    },
+    {
+      "lineNum": 94,
+      "text": "<option value=\"openai\">OpenAI (推荐)</option>"
+    },
+    {
+      "lineNum": 97,
+      "text": "<option value=\"ollama\">Ollama (本地部署)</option>"
+    },
+    {
+      "lineNum": 103,
+      "text": "<label className={styles.inputLabel}>API Key {provider === 'ollama' ? '(留空)' : ''}</label>"
+    },
+    {
+      "lineNum": 106,
+      "text": "placeholder={provider === 'ollama' ? '不需要 Key' : '输入您的秘钥 sk-...'}"
+    },
+    {
+      "lineNum": 115,
+      "text": "<label className={styles.inputLabel}>Base URL (可选)</label>"
+    },
+    {
+      "lineNum": 147,
+      "text": "跳过"
+    },
+    {
+      "lineNum": 156,
+      "text": "{isLastPage ? '开始旅程 ✨' : '下一步'}"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/settings/SettingsPage.tsx": [
+    {
+      "lineNum": 31,
+      "text": "{ id: 0, label: '通用', icon: <MdSettings /> },"
+    },
+    {
+      "lineNum": 33,
+      "text": "{ id: 1, label: 'AI 配置', icon: <MdCloudQueue /> },"
+    },
+    {
+      "lineNum": 34,
+      "text": "{ id: 2, label: 'AI 模型设定', icon: <MdStarBorder /> },"
+    },
+    {
+      "lineNum": 35,
+      "text": "{ id: 3, label: '助理编排', icon: <MdSchool /> },"
+    },
+    {
+      "lineNum": 37,
+      "text": "{ id: 4, label: '知识库', icon: <MdColorLens /> },"
+    },
+    {
+      "lineNum": 38,
+      "text": "{ id: 5, label: '搜索引擎', icon: <MdExplore /> },"
+    },
+    {
+      "lineNum": 39,
+      "text": "{ id: 6, label: '技能插件', icon: <MdExtension /> },"
+    },
+    {
+      "lineNum": 40,
+      "text": "{ id: 7, label: '自动总结', icon: <MdAutoAwesome /> },"
+    },
+    {
+      "lineNum": 42,
+      "text": "{ id: 8, label: '局域网互传', icon: <MdWifi /> },"
+    },
+    {
+      "lineNum": 43,
+      "text": "{ id: 9, label: '数据同步', icon: <MdSync /> },"
+    },
+    {
+      "lineNum": 44,
+      "text": "{ id: 10, label: '附件清理', icon: <MdDeleteOutline /> },"
+    },
+    {
+      "lineNum": 97,
+      "text": "return <div style={{ display: 'flex', justifyContent: 'center', marginTop: 100, color: 'var(--color-on-surface-variant)' }}>加载系统环境配置中...</div>;"
+    },
+    {
+      "lineNum": 119,
+      "text": "<button className=\"settings-back-btn\" onClick={() => navigate(-1)} title=\"取消\">"
+    },
+    {
+      "lineNum": 122,
+      "text": "<h1 className=\"settings-title\">偏好设置</h1>"
+    },
+    {
+      "lineNum": 201,
+      "text": "vaults={vaults.length > 0 ? vaults : [{ name: 'Loading...', path: '暂无数据' }]}"
+    },
+    {
+      "lineNum": 238,
+      "text": "toast.showSuccess('测试连接成功');"
+    },
+    {
+      "lineNum": 240,
+      "text": "toast.showError(`连接失败: ${e.message}`);"
+    },
+    {
+      "lineNum": 246,
+      "text": "toast.showSuccess(`成功拉取模型`);"
+    },
+    {
+      "lineNum": 249,
+      "text": "toast.showError(`拉取失败: ${e.message}`);"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/storage/StoragePage.tsx": [
+    {
+      "lineNum": 7,
+      "text": "<h1>知识库与存储</h1>"
+    },
+    {
+      "lineNum": 20,
+      "text": "snapshots={[]} // TODO: 从 archive:list-snapshots 获取"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/summary/SummaryPage.tsx": [
+    {
+      "lineNum": 19,
+      "text": "'正在扫描未归档的散落记忆碎片...',"
+    },
+    {
+      "lineNum": 20,
+      "text": "'神经树突对接，提取时序因果...',"
+    },
+    {
+      "lineNum": 21,
+      "text": "'多维度交叉联想与精炼...',"
+    },
+    {
+      "lineNum": 22,
+      "text": "'总结流式输出并覆写入神经节...',"
+    },
+    {
+      "lineNum": 23,
+      "text": "'构建完成！已转入历史画廊。'"
+    },
+    {
+      "lineNum": 51,
+      "text": "currentProgress += Math.random() * 8; // 随机跳动进度以显得真实"
+    },
+    {
+      "lineNum": 93,
+      "text": "{/* 顶部标签栏 Chrome Style */}"
+    },
+    {
+      "lineNum": 126,
+      "text": "{/* AI 缺失自动检测区域 */}"
+    },
+    {
+      "lineNum": 134,
+      "text": "<Sparkles size={18} color=\"var(--color-primary)\" /> AI 智能探针：检索到以下周期缺乏脑图总结"
+    },
+    {
+      "lineNum": 163,
+      "text": "{isGen ? `演算收束中: ${mp.label || mp.dateRangeStr}` : `缺失检测: ${mp.label || mp.dateRangeStr}`}"
+    },
+    {
+      "lineNum": 167,
+      "text": "<p>神经元探测到本周期的活动区块庞大且未做汇总。单击以命令您的代理启动全卷面 AI 审阅与压缩总结流水线。</p>"
+    },
+    {
+      "lineNum": 185,
+      "text": "<Sparkles size={14} /> 即刻激活补全协议"
+    }
+  ]
+}

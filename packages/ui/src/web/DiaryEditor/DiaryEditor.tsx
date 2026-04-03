@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useRef } from 'react';
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar';
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle';
@@ -18,9 +19,7 @@ interface DiaryEditorProps {
 }
 
 // TODO: [Agent1-Dependency] 替换
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,

@@ -43,7 +43,7 @@ export function registerSettingsIPC() {
     if (!config) throw new Error(`Provider ${providerId} not found`);
     
     // @ts-ignore
-    const { AIProviderRegistry } = require('@baishou/ai/src/providers/provider.registry');
+    const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry');
     const registry = AIProviderRegistry.getInstance();
     if (!registry.hasProvider(config.id)) {
         registry.registerProvider(registry.createProviderInstance(config));
@@ -98,7 +98,7 @@ export function registerSettingsIPC() {
     if (!config) throw new Error('Provider not found');
     
     // @ts-ignore
-    const { AIProviderRegistry } = require('@baishou/ai/src/providers/provider.registry');
+    const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry');
     const registry = AIProviderRegistry.getInstance();
     if (!registry.hasProvider(config.id)) {
         registry.registerProvider(registry.createProviderInstance(config));

@@ -2,8 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DiaryEditor, DiaryEditorAppBarTitle, MarkdownToolbar } from '@baishou/ui';
 import { useNavigate, useParams } from 'react-router-dom';
 import './DiaryEditorPage.css';
+import { useTranslation } from 'react-i18next';
+
 
 export const DiaryEditorPage: React.FC = () => {
+  const { t } = useTranslation();
   const { date } = useParams(); // 日期格式: YYYY-MM-DD
   const navigate = useNavigate();
   
@@ -63,7 +66,7 @@ export const DiaryEditorPage: React.FC = () => {
   // 退出确认
   const handleBack = () => {
     if (isDirty) {
-      if (confirm('有未保存的更改，确定要离开吗？')) {
+      if (confirm(t('diary.editor_leave_confirm', '尚有未保存的更改，确定要弃用并离开吗？'))) {
         navigate(-1);
       }
     } else {

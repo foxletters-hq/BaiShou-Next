@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './OnboardingScreen.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 // ─── Pages Config ───────────────────────────────────────────────────────────
 
@@ -8,31 +10,32 @@ const ONBOARDING_PAGES = [
   {
     id: 'welcome',
     icon: '✨',
-    title: '欢迎来到 BaiShou Next',
-    subtitle: '基于先进的大语言模型，结合本地优先架构，为您打造极速、隐私的 AI 协同伴侣。',
+    title: t('onboarding.welcome', '欢迎来到 BaiShou Next'),
+    subtitle: t('onboarding.welcome_desc', '结合大语言模型与本地优先原则，打造极速、安全、无限制的隐私AI伴侣。'),
   },
   {
     id: 'features',
     icon: '🧠',
-    title: '多 Agent 生态系统',
-    subtitle: '不仅是聊天。你可以创建专属数字分身，组建 AI 团队，自动生成周期总结并关联长时记忆。',
+    title: t('onboarding.agent_title', 'Agent 生态架构'),
+    subtitle: t('onboarding.agent_desc', '包含全链路智能交互、自动数据流总结和记忆RAG连接。'),
   },
   {
     id: 'privacy',
     icon: '🔒',
-    title: '数据资产，尽在掌握',
-    subtitle: '您的所有对话、日记与向量记忆数据默认存储在本地，真正保障隐私与自主权。',
+    title: t('onboarding.privacy_title', '数据属于你自己'),
+    subtitle: t('onboarding.privacy_desc', '所有聊天与日志资料只保留在终端硬盘，完全脱开云端服务商审查绑定，隐私获得铁桶防护。'),
   },
   {
     id: 'setup',
     icon: '⚙️',
-    title: '最后一步，准备点火',
-    subtitle: '配置您的核心 AI 提供商以激活应用。您随时可以在设置中修改或添加更多模型。',
+    title: t('onboarding.final_title', '配置 AI 动力源'),
+    subtitle: t('onboarding.final_desc', '请为工作站配置提供底层回复能力的核心厂商。之后您可进一步在设置更改。'),
     isSetup: true,
   },
 ];
 
 export const OnboardingScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -85,25 +88,25 @@ export const OnboardingScreen: React.FC = () => {
                 {page.isSetup && (
                   <div className={styles.setupForm}>
                     <div className={styles.inputGroup}>
-                      <label className={styles.inputLabel}>模型提供商</label>
+                      <label className={styles.inputLabel}>{t('onboarding.provider', '模型提供商')}</label>
                       <select 
                         className={styles.inputField} 
                         value={provider} 
                         onChange={(e) => setProvider(e.target.value)}
                       >
-                        <option value="openai">OpenAI (推荐)</option>
+                        <option value="openai">{t('onboarding.openai', 'OpenAI 或兼容通用口')}</option>
                         <option value="anthropic">Anthropic Claude</option>
                         <option value="gemini">Google Gemini</option>
-                        <option value="ollama">Ollama (本地部署)</option>
+                        <option value="ollama">{t('onboarding.ollama', 'Ollama (本地离线推理)')}</option>
                         <option value="deepseek">DeepSeek</option>
                       </select>
                     </div>
 
                     <div className={styles.inputGroup}>
-                      <label className={styles.inputLabel}>API Key {provider === 'ollama' ? '(留空)' : ''}</label>
+                      <label className={styles.inputLabel}>{t('common.api_key', 'API Key')} {provider === 'ollama' ? t('onboarding.leave_blank', '(本地方案可留空)') : ''}</label>
                       <input 
                         type="password" 
-                        placeholder={provider === 'ollama' ? '不需要 Key' : '输入您的秘钥 sk-...'} 
+                        placeholder={provider === 'ollama' ? t('onboarding.no_key', '无须输入 Key') : t('onboarding.enter_key', '输入服务商分发的 sk-... 密钥格式')} 
                         className={styles.inputField}
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
@@ -112,7 +115,7 @@ export const OnboardingScreen: React.FC = () => {
                     </div>
                     
                     <div className={styles.inputGroup}>
-                      <label className={styles.inputLabel}>Base URL (可选)</label>
+                      <label className={styles.inputLabel}>{t('common.base_url', '基础 URL (Base URL, 可选)')}</label>
                       <input 
                         type="text" 
                         placeholder="https://api.openai.com/v1" 
@@ -144,7 +147,7 @@ export const OnboardingScreen: React.FC = () => {
           <div className={styles.btnGroup}>
             {!isLastPage && (
               <button className={`${styles.btn} ${styles.btnSkip}`} onClick={handleSkip}>
-                跳过
+                {t('common.skip', '跳过配置')}
               </button>
             )}
             
@@ -153,7 +156,7 @@ export const OnboardingScreen: React.FC = () => {
               onClick={handleNext}
               disabled={isLastPage && provider !== 'ollama' && !apiKey.trim()}
             >
-              {isLastPage ? '开始旅程 ✨' : '下一步'}
+              {isLastPage ? t('onboarding.finish', '初始化启动 ✨') : t('onboarding.next', '下一步')}
             </button>
           </div>
         </div>

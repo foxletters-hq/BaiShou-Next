@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CreateDiaryInput, Diary } from '@baishou/shared';
-
+import { IStoragePathService } from '../vault/storage-path.types';
 /**
  * 负责日记内容的 Markdown 文件系统落盘与读取。
  */
@@ -15,7 +15,7 @@ export interface FileSyncService {
 
 export class FileSyncServiceImpl implements FileSyncService {
   constructor(
-    private readonly rootPath: string, 
+    private readonly pathService: IStoragePathService, 
     // private readonly dbRepo: DiaryRepository // Inject this to sync data back inside fullScanVault if needed
   ) {}
 
@@ -34,7 +34,8 @@ export class FileSyncServiceImpl implements FileSyncService {
   }
 
   async writeJournal(diary: CreateDiaryInput | Diary): Promise<void> {
-    const yearDir = path.join(this.rootPath, diary.date.getFullYear().toString());
+    const rootPath = await this.pathService.getJournalsBaseDirectory();
+    const yearDir = path.join(rootPath, diary.date.getFullYear().toString());
     const monthDir = path.join(yearDir, this.pad(diary.date.getMonth() + 1));
     await this.ensureDir(monthDir);
 
@@ -62,7 +63,8 @@ export class FileSyncServiceImpl implements FileSyncService {
   }
 
   async readJournal(date: Date): Promise<Diary | null> {
-    const yearDir = path.join(this.rootPath, date.getFullYear().toString());
+    const rootPath = await this.pathService.getJournalsBaseDirectory();
+    const yearDir = path.join(rootPath, date.getFullYear().toString());
     const monthDir = path.join(yearDir, this.pad(date.getMonth() + 1));
     const fileName = `${this.formatDateString(date)}.md`;
     const filePath = path.join(monthDir, fileName);
@@ -103,7 +105,8 @@ export class FileSyncServiceImpl implements FileSyncService {
   }
 
   async deleteJournalFile(date: Date): Promise<void> {
-    const yearDir = path.join(this.rootPath, date.getFullYear().toString());
+    const rootPath = await this.pathService.getJournalsBaseDirectory();
+    const yearDir = path.join(rootPath, date.getFullYear().toString());
     const monthDir = path.join(yearDir, this.pad(date.getMonth() + 1));
     const fileName = `${this.formatDateString(date)}.md`;
     const filePath = path.join(monthDir, fileName);

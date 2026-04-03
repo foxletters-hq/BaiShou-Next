@@ -1,0 +1,162 @@
+{
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/SessionManagementPage/index.tsx": {
+    "replacements": []
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/Sidebar/index.tsx": {
+    "replacements": [
+      { "search": "<span className={styles.tagline}>全能 AI 伴侣</span>", "replace": "<span className={styles.tagline}>{t('sidebar.tagline', 'AI 终端伴侣')}</span>" },
+      { "search": "<span className={styles.itemLabel}>设置</span>", "replace": "<span className={styles.itemLabel}>{t('common.settings', '设置')}</span>" },
+      { "search": "<span className={styles.nickname}>{user?.nickname || '未设置昵称'}</span>", "replace": "<span className={styles.nickname}>{user?.nickname || t('profile.no_nickname', '未设置昵称')}</span>" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/StorageSettingsCard/index.tsx": {
+    "replacements": []
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/SummaryCard/index.tsx": {
+    "replacements": [
+      { "search": "<span>{wordCount} 字合成</span>", "replace": "<span>{wordCount} {t('summary.word_count_suffix', '字总结')}</span>" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/SummaryGalleryTab/index.tsx": {
+    "replacements": [
+      { "search": "<p>画廊空空如也，多往日记里塞点照片吧！</p>", "replace": "<p>{t('gallery.empty_desc', '当前记录为空。多在对话或日记中添加些相片吧！')}</p>" },
+      { "search": "<h3>{month.replace('-', ' 年 ')} 月</h3>", "replace": "<h3>{month.replace('-', ` ${t('common.year_unit', '年')} `)} {t('common.month_unit', '月')}</h3>" },
+      { "search": "<span className={styles.countBadge}>{grouped[month].length} 碎片</span>", "replace": "<span className={styles.countBadge}>{grouped[month].length} {t('gallery.record_unit', '条记录')}</span>" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/TagInputWidget/index.tsx": {
+    "replacements": [
+      { "search": "placeholder = \"输入标签并按回车添加...\"", "replace": "placeholder={t('common.enter_tags', '输入标签并按回车添加...')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/WorkspaceSettingsCard/index.tsx": {
+    "replacements": [
+      { "search": "`危险操作！您确定要永久删除工作空间 [${vault.name}] 吗？\\n此操作将销毁该空间下的所有日志记录和关联档案，且不可恢复！\\n\\n请输入工作空间名称以确认删除：`", "replace": "t('workspace.delete_confirm', '危险：您确定要彻底删除工作空间 [{{name}}] 吗？\\n此操作将销毁该空间下的所有日志记录和关联档案，不可逆！\\n\\n请输入工作区名称以确认删除：', { name: vault.name })" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/components/ErrorBoundary.tsx": {
+    "replacements": [
+      { "search": "<h2>渲染崩溃 / Rendering Crashed</h2>", "replace": "<h2>{t('error.crash_title', '应用崩溃 / Rendering Crashed')}</h2>" },
+      { "search": "重新加载页面 / Reload", "replace": "{t('error.reload', '尝试重新加载 / Reload')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/components/Sidebar/index.tsx": {
+    "replacements": [
+      { "search": "label: '日记'", "replace": "label: t('nav.diary', '日记')" },
+      { "search": "label: '全域仪表盘'", "replace": "label: t('nav.summary', '概览面板')" },
+      { "search": "label: '局域网互传'", "replace": "label: t('nav.lan_transfer', '局域网快传')" },
+      { "search": "label: '数据同步'", "replace": "label: t('nav.data_sync', '数据同步')" },
+      { "search": "<div className={styles.brandSlogan}>懂你的赛博记忆舱</div>", "replace": "<div className={styles.brandSlogan}>{t('sidebar.slogan', '下一代本地优先 AI 记忆终端')}</div>" },
+      { "search": "<span className={styles.navLabel}>偏好设置</span>", "replace": "<span className={styles.navLabel}>{t('common.settings', '偏好设置')}</span>" },
+      { "search": "<div className={styles.userName}>Anson 空间站</div>", "replace": "<div className={styles.userName}>{t('sidebar.default_vault', '默认工作站')}</div>" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/components/TitleBar/index.tsx": {
+    "replacements": [
+      { "search": "<span>日记</span>", "replace": "<span>{t('nav.diary', '日记')}</span>" },
+      { "search": "<span className={styles.vaultName}>默认空间</span>", "replace": "<span className={styles.vaultName}>{t('titlebar.default_vault', '默认空间')}</span>" },
+      { "search": "title=\"最小化\"", "replace": "title={t('titlebar.minimize', '最小化')}" },
+      { "search": "title=\"最大化\"", "replace": "title={t('titlebar.maximize', '最大化')}" },
+      { "search": "title=\"关闭\"", "replace": "title={t('titlebar.close', '关闭')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/agent/AgentScreen.tsx": {
+    "replacements": [
+      { "search": "title: `片段追踪 [${r.modelId || '系统'}]`,", "replace": "title: t('agent.trace_title', '调用追踪 [{{modelId}}]', { modelId: r.modelId || t('common.system', '系统') })," }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/agent/AssistantEditScreen.tsx": {
+    "replacements": [
+      { "search": "return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>数据神经网同步中...</div>;", "replace": "return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--text-secondary)' }}>{t('common.loading', '模块加载中...')}</div>;" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/diary/DiaryEditorPage.tsx": {
+    "replacements": [
+      { "search": "if (confirm('有未保存的更改，确定要离开吗？')) {", "replace": "if (confirm(t('diary.editor_leave_confirm', '尚有未保存的更改，确定要弃用并离开吗？'))) {" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/diary/DiaryPage.tsx": {
+    "replacements": [
+      { "search": "|| '无预览...'", "replace": "|| t('common.no_preview', '无预览...')" },
+      { "search": "const monthNames = [\"一月\", \"二月\", \"三月\", \"四月\", \"五月\", \"六月\", \"七月\", \"八月\", \"九月\", \"十月\", \"十一月\", \"十二月\"];", "replace": "const monthNames = [t('common.jan', '一月'), t('common.feb', '二月'), t('common.mar', '三月'), t('common.apr', '四月'), t('common.may', '五月'), t('common.jun', '六月'), t('common.jul', '七月'), t('common.aug', '八月'), t('common.sep', '九月'), t('common.oct', '十月'), t('common.nov', '十一月'), t('common.dec', '十二月')];" },
+      { "search": "title=\"月相探测 (Calendar View)\"", "replace": "title={t('diary.view_calendar', '日历视图 (Calendar View)')}" },
+      { "search": "title=\"流光卷轴 (Timeline View)\"", "replace": "title={t('diary.view_timeline', '时间轴视图 (Timeline View)')}" },
+      { "search": "title=\"晶体矩阵 (Masonry View)\"", "replace": "title={t('diary.view_masonry', '瀑布流视图 (Masonry View)')}" },
+      { "search": "{node.date.getFullYear()}年 {node.date.getMonth() + 1}月", "replace": "{node.date.getFullYear()}{t('common.year_unit', '年')} {node.date.getMonth() + 1}{t('common.month_unit', '月')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/home/HomePage.tsx": {
+    "replacements": [
+      { "search": "<h1>概览面板 (Home)</h1>", "replace": "<h1>{t('nav.summary', '概览面板')} (Home)</h1>" },
+      { "search": "<p>这里是迁移自 Flutter 版的首页，展示近期的记忆与日记。</p>", "replace": "<p>{t('home.desc', '仪表盘暂未施工完成，可切换前往日记页查看以往记录。')}</p>" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/onboarding/OnboardingPage.tsx": {
+    "replacements": [
+      { "search": "<h1>欢迎来到 BaiShou Next</h1>", "replace": "<h1>{t('onboarding.welcome', '欢迎来到 BaiShou Next')}</h1>" },
+      { "search": "<p>这是一个全屏的初始化与新手指引流程页面。</p>", "replace": "<p>{t('onboarding.welcome_sub', '正在为您分配个人工作区及初始化索引配置。')}</p>" },
+      { "search": "开始体验", "replace": "{t('onboarding.start', '开始旅程')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/onboarding/OnboardingScreen.tsx": {
+    "replacements": [
+      { "search": "title: '欢迎来到 BaiShou Next',", "replace": "title: t('onboarding.welcome', '欢迎来到 BaiShou Next')," },
+      { "search": "subtitle: '基于先进的大语言模型，结合本地优先架构，为您打造极速、隐私的 AI 协同伴侣。',", "replace": "subtitle: t('onboarding.welcome_desc', '结合大语言模型与本地优先原则，打造极速、安全、无限制的隐私AI伴侣。')," },
+      { "search": "title: '多 Agent 生态系统',", "replace": "title: t('onboarding.agent_title', 'Agent 生态架构')," },
+      { "search": "subtitle: '不仅是聊天。你可以创建专属数字分身，组建 AI 团队，自动生成周期总结并关联长时记忆。',", "replace": "subtitle: t('onboarding.agent_desc', '包含全链路智能交互、自动数据流总结和记忆RAG连接。')," },
+      { "search": "title: '数据资产，尽在掌握',", "replace": "title: t('onboarding.privacy_title', '数据属于你自己')," },
+      { "search": "subtitle: '您的所有对话、日记与向量记忆数据默认存储在本地，真正保障隐私与自主权。',", "replace": "subtitle: t('onboarding.privacy_desc', '所有聊天与日志资料只保留在终端硬盘，完全脱开云端服务商审查绑定，隐私获得铁桶防护。')," },
+      { "search": "title: '最后一步，准备点火',", "replace": "title: t('onboarding.final_title', '配置 AI 动力源')," },
+      { "search": "subtitle: '配置您的核心 AI 提供商以激活应用。您随时可以在设置中修改或添加更多模型。',", "replace": "subtitle: t('onboarding.final_desc', '请为工作站配置提供底层回复能力的核心厂商。之后您可进一步在设置更改。')," },
+      { "search": "<label className={styles.inputLabel}>模型提供商</label>", "replace": "<label className={styles.inputLabel}>{t('onboarding.provider', '模型提供商')}</label>" },
+      { "search": "<option value=\"openai\">OpenAI (推荐)</option>", "replace": "<option value=\"openai\">{t('onboarding.openai', 'OpenAI 或兼容通用口')}</option>" },
+      { "search": "<option value=\"ollama\">Ollama (本地部署)</option>", "replace": "<option value=\"ollama\">{t('onboarding.ollama', 'Ollama (本地离线推理)')}</option>" },
+      { "search": "<label className={styles.inputLabel}>API Key {provider === 'ollama' ? '(留空)' : ''}</label>", "replace": "<label className={styles.inputLabel}>{t('common.api_key', 'API Key')} {provider === 'ollama' ? t('onboarding.leave_blank', '(本地方案可留空)') : ''}</label>" },
+      { "search": "placeholder={provider === 'ollama' ? '不需要 Key' : '输入您的秘钥 sk-...'}", "replace": "placeholder={provider === 'ollama' ? t('onboarding.no_key', '无须输入 Key') : t('onboarding.enter_key', '输入服务商分发的 sk-... 密钥格式')}" },
+      { "search": "<label className={styles.inputLabel}>Base URL (可选)</label>", "replace": "<label className={styles.inputLabel}>{t('common.base_url', '基础 URL (Base URL, 可选)')}</label>" },
+      { "search": "跳过", "replace": "{t('common.skip', '跳过配置')}" },
+      { "search": "{isLastPage ? '开始旅程 ✨' : '下一步'}", "replace": "{isLastPage ? t('onboarding.finish', '初始化启动 ✨') : t('onboarding.next', '下一步')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/settings/SettingsPage.tsx": {
+    "replacements": [
+      { "search": "{ id: 0, label: '通用', icon: <MdSettings /> },", "replace": "{ id: 0, label: t('settings.nav_general', '常规'), icon: <MdSettings /> }," },
+      { "search": "{ id: 1, label: 'AI 配置', icon: <MdCloudQueue /> },", "replace": "{ id: 1, label: t('settings.nav_ai_settings', '核心 AI 提供商'), icon: <MdCloudQueue /> }," },
+      { "search": "{ id: 2, label: 'AI 模型设定', icon: <MdStarBorder /> },", "replace": "{ id: 2, label: t('settings.nav_ai_models', '大模型路由'), icon: <MdStarBorder /> }," },
+      { "search": "{ id: 3, label: '助理编排', icon: <MdSchool /> },", "replace": "{ id: 3, label: t('settings.nav_assistant', '助手默认参数'), icon: <MdSchool /> }," },
+      { "search": "{ id: 4, label: '知识库', icon: <MdColorLens /> },", "replace": "{ id: 4, label: t('settings.nav_knowledge', '外接脑容量(RAG)'), icon: <MdColorLens /> }," },
+      { "search": "{ id: 5, label: '搜索引擎', icon: <MdExplore /> },", "replace": "{ id: 5, label: t('settings.nav_search', '网络搜索 API'), icon: <MdExplore /> }," },
+      { "search": "{ id: 6, label: '技能插件', icon: <MdExtension /> },", "replace": "{ id: 6, label: t('settings.nav_tools', '内置组件与授权'), icon: <MdExtension /> }," },
+      { "search": "{ id: 7, label: '自动总结', icon: <MdAutoAwesome /> },", "replace": "{ id: 7, label: t('settings.nav_summary', '自动日记归档'), icon: <MdAutoAwesome /> }," },
+      { "search": "{ id: 8, label: '局域网互传', icon: <MdWifi /> },", "replace": "{ id: 8, label: t('settings.nav_lan', '局域网互传联机'), icon: <MdWifi /> }," },
+      { "search": "{ id: 9, label: '数据同步', icon: <MdSync /> },", "replace": "{ id: 9, label: t('settings.nav_sync', '远端云存储配置'), icon: <MdSync /> }," },
+      { "search": "{ id: 10, label: '附件清理', icon: <MdDeleteOutline /> },", "replace": "{ id: 10, label: t('settings.nav_attachment', '附件与垃圾清理'), icon: <MdDeleteOutline /> }," },
+      { "search": "return <div style={{ display: 'flex', justifyContent: 'center', marginTop: 100, color: 'var(--color-on-surface-variant)' }}>加载系统环境配置中...</div>;", "replace": "return <div style={{ display: 'flex', justifyContent: 'center', marginTop: 100, color: 'var(--color-on-surface-variant)' }}>{t('common.loading_settings', '读取配置表项状态中...')}</div>;" },
+      { "search": "<button className=\"settings-back-btn\" onClick={() => navigate(-1)} title=\"取消\">", "replace": "<button className=\"settings-back-btn\" onClick={() => navigate(-1)} title={t('common.close', '关闭返回')}>" },
+      { "search": "<h1 className=\"settings-title\">偏好设置</h1>", "replace": "<h1 className=\"settings-title\">{t('common.settings', '偏好设置')}</h1>" },
+      { "search": "vaults={vaults.length > 0 ? vaults : [{ name: 'Loading...', path: '暂无数据' }]}", "replace": "vaults={vaults.length > 0 ? vaults : [{ name: t('common.loading', 'Loading...'), path: '--' }]}" },
+      { "search": "toast.showSuccess('测试连接成功');", "replace": "toast.showSuccess(t('services.test_success', '访问连接成功，连通无碍'));" },
+      { "search": "toast.showError(`连接失败: ${e.message}`);", "replace": "toast.showError(t('services.test_fail', '连接或测试验证失败。') + e.message);" },
+      { "search": "toast.showSuccess(`成功拉取模型`);", "replace": "toast.showSuccess(t('services.fetch_success', '成功拉取模型名单结构'));" },
+      { "search": "toast.showError(`拉取失败: ${e.message}`);", "replace": "toast.showError(t('services.fetch_fail', '获取列表失败：') + e.message);" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/storage/StoragePage.tsx": {
+    "replacements": [
+      { "search": "<h1>知识库与存储</h1>", "replace": "<h1>{t('storage.title', '物理硬盘隔离项')}</h1>" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/apps/desktop/src/renderer/src/features/summary/SummaryPage.tsx": {
+    "replacements": [
+      { "search": "'正在扫描未归档的散落记忆碎片...',", "replace": "t('summary.step_scan', '获取游离区的所有活跃记录...')," },
+      { "search": "'神经树突对接，提取时序因果...',", "replace": "t('summary.step_time', '基于时间顺序排列内容池...')," },
+      { "search": "'多维度交叉联想与精炼...',", "replace": "t('summary.step_extract', '执行跨域特征解析提纯...')," },
+      { "search": "'总结流式输出并覆写入神经节...',", "replace": "t('summary.step_write', 'AI 总结正流式接收生成...')," },
+      { "search": "'构建完成！已转入历史画廊。'", "replace": "t('summary.step_done', '摘要归档完毕，已永久存盘。')" },
+      { "search": "<Sparkles size={18} color=\"var(--color-primary)\" /> AI 智能探针：检索到以下周期缺乏脑图总结", "replace": "<Sparkles size={18} color=\"var(--color-primary)\" /> {t('summary.probe_missing', '缺失检测系统：检测到以下时间段缺少宏观分析记录')}" },
+      { "search": "{isGen ? `演算收束中: ${mp.label || mp.dateRangeStr}` : `缺失检测: ${mp.label || mp.dateRangeStr}`}", "replace": "{isGen ? t('summary.generating_date', '正在总结生成：{{label}}', { label: mp.label || mp.dateRangeStr }) : t('summary.missing_date', '存在空洞：{{label}}', { label: mp.label || mp.dateRangeStr })}" },
+      { "search": "<p>神经元探测到本周期的活动区块庞大且未做汇总。单击以命令您的代理启动全卷面 AI 审阅与压缩总结流水线。</p>", "replace": "<p>{t('summary.probe_desc', '针对这一历史段的活动，建议激活 AI 在后台完整分析并生成总结，有助于长期关联检索质量。')}</p>" },
+      { "search": "<Sparkles size={14} /> 即刻激活补全协议", "replace": "<Sparkles size={14} /> {t('summary.start_gen', '一键激活合并作业')}" }
+    ]
+  }
+}

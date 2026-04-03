@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styles from './Sidebar.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface NavItem {
   id: string;
@@ -25,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOrderChange,
   user
 }) => {
+  const { t } = useTranslation();
   const [orderedItems, setOrderedItems] = useState(items);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
@@ -67,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
         <div className={styles.headerText}>
           <h2 className={styles.appName}>BaiShou Next</h2>
-          <span className={styles.tagline}>全能 AI 伴侣</span>
+          <span className={styles.tagline}>{t('sidebar.tagline', 'AI 终端伴侣')}</span>
         </div>
       </div>
 
@@ -99,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => onItemClick('settings')}
         >
           <div className={`${styles.itemIcon} ${styles.staticIcon}`}>⚙️</div>
-          <span className={styles.itemLabel}>设置</span>
+          <span className={styles.itemLabel}>{t('common.settings', '设置')}</span>
         </div>
       </div>
 
@@ -113,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
         <div className={styles.userInfo}>
-          <span className={styles.nickname}>{user?.nickname || '未设置昵称'}</span>
+          <span className={styles.nickname}>{user?.nickname || t('profile.no_nickname', '未设置昵称')}</span>
         </div>
       </div>
     </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Text, Image, ScrollView } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import type { MockChatAttachment } from '@baishou/shared';
+import { useTranslation } from 'react-i18next';
+
 
 interface InputBarProps {
   isLoading: boolean;
@@ -18,6 +20,7 @@ export const InputBar: React.FC<InputBarProps> = ({
   onStop,
   assistantName = 'Assistant'
 }) => {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([]);
 
@@ -91,7 +94,7 @@ export const InputBar: React.FC<InputBarProps> = ({
              style={styles.input}
              value={text}
              onChangeText={setText}
-             placeholder={`发给 ${assistantName}...`}
+             placeholder={t('chat.send_to', '发给 {{name}}...', { name: assistantName })}
              placeholderTextColor="#999"
              multiline
              maxLength={4000}

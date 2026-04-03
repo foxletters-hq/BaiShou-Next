@@ -182,8 +182,8 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
               transition={{ duration: 0.25, type: 'spring', bounce: 0, stiffness: 200 }}
             >
                <div className={styles.toolbarScroll}>
-                  <QuickActionChip icon={<Paperclip size={14} />} label="上传附件" onClick={handlePickFiles} />
-                  <QuickActionChip icon={<Zap size={14} />} label="快捷指令" onClick={handlePromptShortcut} />
+                  <QuickActionChip icon={<Paperclip size={14} />} label={t('input.upload_attachment', '上传附件')} onClick={handlePickFiles} />
+                  <QuickActionChip icon={<Zap size={14} />} label={t('input.shortcut_command', '快捷指令')} onClick={handlePromptShortcut} />
                   <QuickActionChip icon={<Wrench size={14} />} label={t('agent.tools.tool_call')} onClick={handleOpenToolManager} />
                   <QuickActionChip 
                     icon={searchMode ? <Globe size={14} /> : <span style={{opacity: 0.5}}><Globe size={14} /></span>} 

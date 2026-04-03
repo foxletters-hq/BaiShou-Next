@@ -8,9 +8,7 @@ interface ColorPickerProps {
 }
 
 // TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({ 
   value, 

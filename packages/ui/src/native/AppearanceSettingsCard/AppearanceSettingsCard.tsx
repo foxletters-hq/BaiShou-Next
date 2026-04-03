@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, 
@@ -22,9 +23,7 @@ interface AppearanceSettingsProps {
 }
 
 // TODO: [Agent1-Dependency] 替换
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 function hslToHex(h: number, s: number, l: number) {
   l /= 100;
@@ -97,7 +96,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
                 onPress={() => onThemeModeChange(mode)}
               >
                 <Text style={[styles.segmentText, themeMode === mode && styles.segmentTextActive]}>
-                  {mode === 'system' ? '跟随系统' : mode === 'light' ? '浅色' : '深色'}
+                  {mode === 'system' ? t('settings.theme_system', '跟随系统') : mode === 'light' ? t('settings.theme_light', '浅色') : t('settings.theme_dark', '深色')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -159,7 +158,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
             <View style={[styles.colorPreview, { backgroundColor: previewColor, shadowColor: previewColor }]} />
             
             <View style={styles.sliderRow}>
-              <Text style={styles.sliderLabel}>色相</Text>
+              <Text style={styles.sliderLabel}>{t('settings.theme_hue', '色相')}</Text>
               <Slider
                 style={{ flex: 1, height: 40 }}
                 minimumValue={0}
@@ -171,7 +170,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               />
             </View>
             <View style={styles.sliderRow}>
-              <Text style={styles.sliderLabel}>饱和</Text>
+              <Text style={styles.sliderLabel}>{t('settings.theme_saturation', '饱和')}</Text>
               <Slider
                 style={{ flex: 1, height: 40 }}
                 minimumValue={0}
@@ -183,7 +182,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               />
             </View>
             <View style={styles.sliderRow}>
-              <Text style={styles.sliderLabel}>明度</Text>
+              <Text style={styles.sliderLabel}>{t('settings.theme_lightness', '明度')}</Text>
               <Slider
                 style={{ flex: 1, height: 40 }}
                 minimumValue={20}

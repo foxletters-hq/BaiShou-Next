@@ -4,4 +4,5 @@ import { initNodeDatabase } from '@baishou/database';
 
 // 全局单例数据库实例
 const dbPath = join(app.getPath('userData'), 'baishou_next_agent.db');
+console.log('--- DATABASE PATH ---', dbPath);
 export const appDb = initNodeDatabase(dbPath);

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Slider from '@react-native-community/slider';
@@ -9,9 +10,7 @@ interface DashboardSharedMemoryCardProps {
 }
 
 // TODO: [Agent1-Dependency] 替换
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
+
 
 export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps> = ({
   lookbackMonths,
@@ -28,11 +27,11 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
       </View>
       
       <Text style={styles.desc}>
-        调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。
+        {t('dashboard.shared_memory_desc', '调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。')}
       </Text>
 
       <View style={styles.controls}>
-        <Text style={styles.label}>回溯 {lookbackMonths} 个月</Text>
+        <Text style={styles.label}>{t('dashboard.lookback_months', '回溯 {{count}} 个月', { count: lookbackMonths })}</Text>
         <Slider
           style={styles.slider}
           minimumValue={1}
@@ -47,7 +46,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
       </View>
 
       <TouchableOpacity activeOpacity={0.7} style={styles.btn} onPress={onCopyContext}>
-        <Text style={styles.btnText}>✨ Copy 给 AI</Text>
+        <Text style={styles.btnText}>✨ {t('dashboard.copy_to_ai', 'Copy 给 AI')}</Text>
       </TouchableOpacity>
     </View>
   );

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styles from './AgentToolsView.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface ToolManagementConfig {
   enabledTools: string[];
@@ -12,23 +14,24 @@ interface AgentToolsViewProps {
 }
 
 const ALL_TOOLS = [
-  { id: 'web_search', category: 'search', name: '全网神经链爬虫', icon: '🕷', desc: '准许 AI 隐秘访问实时网络。', tag: '安全' },
-  { id: 'diary_parser', category: 'diary', name: '时序日记溯源器', icon: '📖', desc: '准许白守在过去发生的日子中穿梭并比对事态', tag: '安全' },
-  { id: 'memory_synapse', category: 'memory', name: '向量突触调取器', icon: '🧠', desc: '通过 RAG 数据库进行全盘模糊关联检索。', tag: '安全' },
-  { id: 'calculator', category: 'general', name: '数学推理沙盒', icon: '🧮', desc: '绝对精确的推演运算，避免大模型幻觉。', tag: '安全' },
-  { id: 'code_interpreter', category: 'general', name: '安全仓代码执行', icon: '💻', desc: '执行分析或图表绘制 (Python/JS)。', tag: '风险' },
-  { id: 'local_file_read', category: 'memory', name: '设备卷宗透视', icon: '📂', desc: '极度越权！准许只读访问本地磁盘文档及画像。', tag: '高危' },
-  { id: 'system_commander', category: 'general', name: '指令下达接管', icon: '⚡', desc: '可直接操控您的操作系统的终极特权。', tag: '极端高危' },
+  { id: 'web_search', category: 'search', name: t('tools.web_search', '网络搜索'), icon: '🕷', desc: '准许 AI 隐秘访问实时网络。', tag: '安全' },
+  { id: 'diary_parser', category: 'diary', name: t('tools.diary_parser', '日记解析检索'), icon: '📖', desc: '准许白守在过去发生的日子中穿梭并比对事态', tag: '安全' },
+  { id: 'memory_synapse', category: 'memory', name: t('tools.memory_synapse', '向量记忆检索'), icon: '🧠', desc: '通过 RAG 数据库进行全盘模糊关联检索。', tag: '安全' },
+  { id: 'calculator', category: 'general', name: t('tools.calculator', '沙盒运算与代码'), icon: '🧮', desc: '绝对精确的推演运算，避免大模型幻觉。', tag: '安全' },
+  { id: 'code_interpreter', category: 'general', name: t('tools.code_interpreter', '图表与独立代码执行'), icon: '💻', desc: '执行分析或图表绘制 (Python/JS)。', tag: '风险' },
+  { id: 'local_file_read', category: 'memory', name: t('tools.local_file_read', '本地文件读取'), icon: '📂', desc: '极度越权！准许只读访问本地磁盘文档及画像。', tag: '高危' },
+  { id: 'system_commander', category: 'general', name: t('tools.system_commander', '系统命令行执行'), icon: '⚡', desc: '可直接操控您的操作系统的终极特权。', tag: '极端高危' },
 ];
 
 const CATEGORY_META: Record<string, { label: string; icon: string }> = {
-  diary: { label: '私域编年史 (Diary)', icon: '📚' },
-  memory: { label: '潜意识海 (Memory & RAG)', icon: '🌊' },
-  search: { label: '外部天线 (Search)', icon: '📡' },
-  general: { label: '执行体扩展 (General)', icon: '🔧' },
+  diary: { label: t('tools.cat_diary', '日记分析 (Diary)'), icon: '📚' },
+  memory: { label: t('tools.cat_memory', '记忆库与RAG (Memory & RAG)'), icon: '🌊' },
+  search: { label: t('tools.cat_search', '外部搜索 (Search)'), icon: '📡' },
+  general: { label: t('tools.cat_general', '辅助执行 (General)'), icon: '🔧' },
 };
 
-export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange }) => {
+export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
+  const { t } = useTranslation(); config, onChange }) => {
   const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
 
   const toggleTool = (toolId: string) => {
@@ -56,8 +59,8 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.titleInfo}>
-          <h3 className={styles.title}>系统能力生态装配 (Tools Ecosystem)</h3>
-          <p className={styles.subtitle}>为超级个体挂载插件能力。红色标识工具将直接触及物理世界底线。</p>
+          <h3 className={styles.title}>{t('tools.ecosystem_title', '能力生态配置 (Tools Ecosystem)')}</h3>
+          <p className={styles.subtitle}>{t('tools.ecosystem_desc', '为 AI 助手挂载额外插件能力，带有危险标记的插件拥有越权系统操作特征。')}</p>
         </div>
       </div>
 
@@ -66,20 +69,20 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
             className={`${styles.tabBtn} ${activeTab === 'builtin' ? styles.tabActive : ''}`}
             onClick={() => setActiveTab('builtin')}
          >
-           🔒 核心内置引擎 ({ALL_TOOLS.length})
+           🔒 {t('tools.core_engine', '核心内置引擎')} ({ALL_TOOLS.length})
          </div>
          <div 
             className={`${styles.tabBtn} ${activeTab === 'community' ? styles.tabActive : ''}`}
             onClick={() => setActiveTab('community')}
          >
-           🌐 共生体集市
+           🌐 {t('tools.community_market', '插件集市')}
          </div>
       </div>
 
       <div className={styles.autoApproveBar}>
         <div className={styles.approveMeta}>
-          <span className={styles.approveTitle}>静默全速流转 (Auto-Approve Safe)</span>
-          <span className={styles.approveDesc}>对标定为“安全”的高频查询操作予以绿色通道放行，大幅提升硅基推演帧率。</span>
+          <span className={styles.approveTitle}>{t('tools.auto_approve', '静默通过安全操作 (Auto-Approve Safe)')}</span>
+          <span className={styles.approveDesc}>{t('tools.auto_approve_desc', '对标定为“安全”的高频查询操作予以直接放行，无需确认操作弹窗。')}</span>
         </div>
         <label className={styles.switch}>
           <input 
@@ -137,8 +140,8 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
          ) : (
             <div className={styles.communityBlank}>
                <div className={styles.communityIcon}>🚀</div>
-               <h4 className={styles.communityTitle}>共生体集市正在跃迁中</h4>
-               <p className={styles.communityDesc}>不久后，您将能够在这里挂载由其他用户手刻的生态能力接口。</p>
+               <h4 className={styles.communityTitle}>{t('tools.market_soon', '插件集市即将上线')}</h4>
+               <p className={styles.communityDesc}>{t('tools.market_soon_desc', '不久后，您将能够在这里挂载由其他用户开发的生态能力接口。')}</p>
             </div>
          )}
       </div>

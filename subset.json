@@ -1,0 +1,52 @@
+{
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/ChatBubble/index.tsx": [
+    {
+      "lineNum": 21,
+      "text": "<Text style={styles.actionText}>编辑</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/DashboardHeroBanner/DashboardHeroBanner.tsx": [
+    {
+      "lineNum": 9,
+      "text": "const greeting = \"又见面了，今天过得怎样？\";"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/DashboardSharedMemoryCard/DashboardSharedMemoryCard.tsx": [
+    {
+      "lineNum": 30,
+      "text": "调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。"
+    },
+    {
+      "lineNum": 34,
+      "text": "<Text style={styles.label}>回溯 {lookbackMonths} 个月</Text>"
+    },
+    {
+      "lineNum": 49,
+      "text": "<Text style={styles.btnText}>✨ Copy 给 AI</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/DiaryCard/DiaryCard.tsx": [
+    {
+      "lineNum": 30,
+      "text": "const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][createdAt.getDay()];"
+    },
+    {
+      "lineNum": 56,
+      "text": "<Text style={styles.badgeText}>{year} · {month}月</Text>"
+    }
+  ],
+  "d:/Projects/BaiShou-Next/packages/ui/src/native/DiaryEditorAppBarTitle/DiaryEditorAppBarTitle.tsx": [
+    {
+      "lineNum": 17,
+      "text": "const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];"
+    },
+    {
+      "lineNum": 20,
+      "text": "const formattedDate = `${month}月${day}日 ${weekDay}`;"
+    },
+    {
+      "lineNum": 33,
+      "text": "<Text style={styles.titleText}>{isSummaryMode ? '编辑总结' : formattedDate}</Text>"
+    }
+  ]
+}

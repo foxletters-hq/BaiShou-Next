@@ -7,6 +7,7 @@ export * from './schema/compression-snapshots';
 export * from './schema/vectors';
 export * from './schema/system-settings';
 export * from './schema/shadow-index';
+export * from './schema/migrations';
 
 export * from './repositories/diary.repository';
 export * from './repositories/agent.repository';
@@ -26,3 +27,4 @@ export * from './drivers/vec-capability';
 export * from './drivers/node-sqlite.driver';
 export * from './connection.manager.types';
 export * from './connection.manager';
+export * from './migration.service';

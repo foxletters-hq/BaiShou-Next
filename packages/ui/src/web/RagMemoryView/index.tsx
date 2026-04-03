@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import styles from './RagMemoryView.module.css';
 
 export interface RagConfig {
@@ -52,6 +53,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onChange, onClearDimension, onBatchEmbed, onAddManualMemory, 
   onTriggerMigration, onClearAll, onSearch, onDeleteEntry, onEditEntry 
 }) => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,12 +76,12 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
     <div className={styles.container}>
       <div className={styles.headerRow}>
         <div className={styles.titleInfo}>
-          <h3 className={styles.title}>神经网格集簇 (RAG Brain)</h3>
-          <p className={styles.subtitle}>管控您的私域知识向量化进程与下潜探索阈限。</p>
+          <h3 className={styles.title}>{t('settings.rag_title', '语义搜索库 (RAG)')}</h3>
+          <p className={styles.subtitle}>{t('settings.rag_subtitle', '管理本地知识的向量化进度与搜索参数。')}</p>
         </div>
         <div className={styles.globalSwitchRow}>
            <span className={config.ragEnabled ? styles.tagSafe : styles.tagDanger}>
-             {config.ragEnabled ? '网格映射激活' : '感知系统已休眠'}
+             {config.ragEnabled ? t('status_on', 'ON') : t('status_off', 'OFF')}
            </span>
            <label className={styles.switch}>
              <input 
@@ -94,31 +96,31 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
 
       {!config.ragEnabled && (
          <div className={styles.disabledAlert}>
-           ⚠️ 当前 RAG 内省系统已被禁用。白守在对话时将不会加载下方的知识片段，所有对过去的搜索将被物理切断。
+           ⚠️ {t('settings.rag_disabled_alert', '语义搜索已被禁用。AI 在对话时将无法隐式搜索并参考您的本地知识库内容。')}
          </div>
       )}
 
       {/* 统计横幅 */}
       <div className={styles.statsBoard}>
         <div className={styles.statBox}>
-          <span className={styles.statLabel}>脑突触总数</span>
-          <span className={styles.statValue}>{stats.totalCount} <small>Cells</small></span>
+          <span className={styles.statLabel}>{t('settings.rag_total_count', '向量块总数')}</span>
+          <span className={styles.statValue}>{stats.totalCount} <small>{t('common.count_items').replace('$count', '')}</small></span>
         </div>
         <div className={styles.statBox}>
-          <span className={styles.statLabel}>阵列算子维度</span>
-          <span className={styles.statValue}>{stats.currentDimension > 0 ? stats.currentDimension : '---'} <small>Dims</small></span>
+          <span className={styles.statLabel}>{t('settings.rag_dimension', '向量维度')}</span>
+          <span className={styles.statValue}>{stats.currentDimension > 0 ? stats.currentDimension : '---'}</span>
         </div>
         <div className={styles.statBox}>
-          <span className={styles.statLabel}>物理缓存</span>
+          <span className={styles.statLabel}>{t('settings.rag_cache_size', '缓存空间')}</span>
           <span className={styles.statValue}>{stats.totalSizeText}</span>
         </div>
       </div>
 
-      {/* 神经网格调优参数区 */}
+      {/* 参数区 */}
       <div className={styles.grid}>
         <div className={styles.paramCard}>
           <div className={styles.paramHeader}>
-             <span className={styles.paramTitle}>Top-K 切片召回量</span>
+             <span className={styles.paramTitle}>{t('settings.rag_top_k', '召回数量上限 (Top-K)')}</span>
              <span className={styles.paramValue}>{config.topK}</span>
           </div>
           <input 
@@ -129,7 +131,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         </div>
         <div className={styles.paramCard}>
           <div className={styles.paramHeader}>
-             <span className={styles.paramTitle}>余弦严谨限阀</span>
+             <span className={styles.paramTitle}>{t('settings.rag_similarity_threshold', '相似度阈值')}</span>
              <span className={styles.paramValue}>{config.similarityThreshold.toFixed(2)}</span>
           </div>
           <input 
@@ -140,7 +142,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         </div>
         <div className={styles.paramCard}>
           <div className={styles.paramHeader}>
-             <span className={styles.paramTitle}>单次组流熔断</span>
+             <span className={styles.paramTitle}>{t('settings.rag_max_tokens_limit', '召回截断上限 (Tokens)')}</span>
              <span className={styles.paramValue}>{config.maxTokensLimit}</span>
           </div>
           <input 
@@ -151,14 +153,14 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         </div>
       </div>
 
-      {/* 迁移与进度高光警示 */}
+      {/* 迁移与进度 */}
       {ragState.isRunning && ragState.type === 'migration' && (
         <div className={styles.migrationAlert}>
           <div className={styles.migrationRow}>
             <div className={styles.spinner}></div>
-            <span className={styles.migTitle}>异构基因迁移重组中...</span>
+            <span className={styles.migTitle}>{t('settings.rag_migrating', '知识库正在迁移中...')}</span>
           </div>
-          <p className={styles.migDesc}>{ragState.statusText || '正在刷新重洗庞大的旧知识片段到新模型维度...'}</p>
+          <p className={styles.migDesc}>{ragState.statusText || t('settings.rag_migrating_desc', '正在根据新模型重新生成知识库向量...')}</p>
           <div className={styles.progressBar}>
              <div className={styles.progressFill} style={{ width: `${Math.min(100, Math.max(0, (ragState.progress / ragState.total) * 100))}%` }}></div>
           </div>
@@ -168,27 +170,27 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
       {!ragState.isRunning && hasMismatchModel && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
-            <span className={styles.dangerTitle}>⚠️ 特征算子基因排斥警告！</span>
+            <span className={styles.dangerTitle}>⚠️ {t('settings.rag_model_mismatch', '模型版本不匹配')}</span>
           </div>
-          <p className={styles.dangerDesc}>系统检测到您当前的记忆神经元中有由不同版本的 Embedding 模型所编码的切片。如果不发起强制大迁徙，这些数据在矩阵乘算时将使主控宕机。</p>
-          <button className={styles.dangerBtn} onClick={onTriggerMigration}>执行洗牌与强制大迁徙</button>
+          <p className={styles.dangerDesc}>{t('settings.rag_model_mismatch_desc', '系统检测到当前的向量库由不同的嵌入模型(Embedding)生成。必须执行数据迁移，否则搜索功能将无法正确工作或引发错误。')}</p>
+          <button className={styles.dangerBtn} onClick={onTriggerMigration}>{t('settings.rag_trigger_migration', '执行向量库迁移')}</button>
         </div>
       )}
 
-      {/* RAG 控制端（四大硬切按钮） */}
+      {/* 控制按钮 */}
       <div className={styles.controlChipsRow}>
         <button className={styles.chipDanger} onClick={onClearDimension} disabled={ragState.isRunning}>
-           🗑 洗空当前维度映射
+           🗑 {t('settings.rag_clear_dimension', '清理当前维度数据')}
         </button>
         <button className={styles.chipPrimary} onClick={onBatchEmbed} disabled={ragState.isRunning}>
-           {ragState.isRunning && ragState.type === 'batchEmbed' ? `⏳ 加挂中 ${ragState.progress}/${ragState.total}` : '📖 强扫未绑定日记'}
+           {ragState.isRunning && ragState.type === 'batchEmbed' ? `⏳ ${t('common.processing', '处理中')} ${ragState.progress}/${ragState.total}` : `📖 ${t('settings.rag_batch_embed', '全量扫描未索引日记')}`}
         </button>
         <button className={styles.chipTertiary} onClick={onAddManualMemory} disabled={ragState.isRunning}>
-           ✍️ 手动凝结思想块
+           ✍️ {t('settings.rag_add_manual', '添加手动记忆片段')}
         </button>
         {stats.totalCount > 0 && (
            <button className={styles.chipNuke} onClick={onClearAll} disabled={ragState.isRunning}>
-             ☢️ 炸毁全部记忆层
+             ☢️ {t('settings.rag_clear_all', '清空所有向量数据')}
            </button>
         )}
       </div>
@@ -199,7 +201,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
            <div className={styles.searchIcon}>🔍</div>
            <input 
              type="text" 
-             placeholder="搜索特定词元或引用的模型 ID..." 
+             placeholder={t('common.search_hint', '搜索记忆...')} 
              className={styles.searchInput}
              value={searchQuery}
              onChange={handleSearch}
@@ -213,8 +215,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
            {entries.length === 0 ? (
              <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}>🕳️</div>
-                <div className={styles.emptyTitle}>{searchQuery ? '查无此相关记忆分形' : '此处正处于原始虚空状态'}</div>
-                <div className={styles.emptyDesc}>当白守阅读日记、生成笔记时，此区域会自动结晶出能够闪聚思想池的向量数据。</div>
+                <div className={styles.emptyTitle}>{searchQuery ? t('common.no_search_result', '没有找到相关结果') : t('common.no_content', '暂无内容')}</div>
+                <div className={styles.emptyDesc}>{t('settings.rag_empty_desc', '当 AI 阅读日记或生成内容时，底层向量数据将在这里自动生成并被管理。')}</div>
              </div>
            ) : (
              entries.map(e => (

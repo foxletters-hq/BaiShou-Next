@@ -55,7 +55,7 @@ export const DiaryPage: React.FC = () => {
         id: `d-${e.id}`,
         type: 'diary_entry',
         date: d,
-        meta: { id: e.id, date: d, preview: e.content?.substring(0, 100) || '无预览...', tags: e.tags || [] }
+        meta: { id: e.id, date: d, preview: e.content?.substring(0, 100) || t('common.no_preview', '无预览...'), tags: e.tags || [] }
       });
     });
     return newNodes;
@@ -140,7 +140,7 @@ export const DiaryPage: React.FC = () => {
   };
 
   const calendarDays = useMemo(() => generateCalendarDays(currentMonth), [currentMonth]);
-  const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+  const monthNames = [t('common.jan', '一月'), t('common.feb', '二月'), t('common.mar', '三月'), t('common.apr', '四月'), t('common.may', '五月'), t('common.jun', '六月'), t('common.jul', '七月'), t('common.aug', '八月'), t('common.sep', '九月'), t('common.oct', '十月'), t('common.nov', '十一月'), t('common.dec', '十二月')];
 
   return (
     <div className="diary-page-container">
@@ -154,17 +154,17 @@ export const DiaryPage: React.FC = () => {
             <button 
                className={`dp-toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
                onClick={() => setViewMode('calendar')}
-               title="月相探测 (Calendar View)"
+               title={t('diary.view_calendar', '日历视图 (Calendar View)')}
             >📅</button>
             <button 
                className={`dp-toggle-btn ${viewMode === 'timeline' ? 'active' : ''}`}
                onClick={() => setViewMode('timeline')}
-               title="流光卷轴 (Timeline View)"
+               title={t('diary.view_timeline', '时间轴视图 (Timeline View)')}
             >🗓️</button>
             <button 
                className={`dp-toggle-btn ${viewMode === 'masonry' ? 'active' : ''}`}
                onClick={() => setViewMode('masonry')}
-               title="晶体矩阵 (Masonry View)"
+               title={t('diary.view_masonry', '瀑布流视图 (Masonry View)')}
             >🎨</button>
           </div>
         </div>
@@ -261,7 +261,7 @@ export const DiaryPage: React.FC = () => {
                        >
                          {node.type === 'month_separator' ? (
                             <div className="dp-month-sep" style={{fontWeight: 'bold', margin: '8px 0', color: 'var(--text-secondary)'}}>
-                               {node.date.getFullYear()}年 {node.date.getMonth() + 1}月
+                               {node.date.getFullYear()}{t('common.year_unit', '年')} {node.date.getMonth() + 1}{t('common.month_unit', '月')}
                             </div>
                          ) : (
                             <div 

@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './WebSearchSettingsView.module.css';
+import { useTranslation } from 'react-i18next';
 
 export interface WebSearchConfig {
   enabled: boolean;
@@ -25,19 +26,20 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
   onSearchChange,
   onSummaryChange
 }) => {
+  const { t } = useTranslation();
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.titleInfo}>
-          <h3 className={styles.title}>神经网搜与长文归纳控制台</h3>
-          <p className={styles.subtitle}>管控大模型主动爬取万维网时的嗅探引擎，及长篇文书的预处理归卷策略。</p>
+          <h3 className={styles.title}>{t('settings.web_search_config_title', '网络搜索与长文归纳')}</h3>
+          <p className={styles.subtitle}>{t('settings.web_search_config_desc', '管理网络检索引擎及长文本内容的预处理策略。')}</p>
         </div>
       </div>
 
       <div className={styles.cardSection}>
         <div className={styles.cardHeader}>
           <div className={styles.cardTitleLine}>
-            <span>🌐 万维网神经探针 (Web Search)</span>
+            <span>🌐 {t('settings.web_search_title', '网络搜索 (Web Search)')}</span>
             <label className={styles.switch}>
               <input 
                 type="checkbox" 
@@ -47,28 +49,28 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
               <span className={styles.slider}></span>
             </label>
           </div>
-          <p className={styles.cardDesc}>赋予 AI 随时绕过沙箱，直接访问互联网读取实时新闻或资料集的能力。</p>
+          <p className={styles.cardDesc}>{t('settings.web_search_desc', '允许 AI 访问互联网以读取最新资料库。')}</p>
         </div>
 
         <div className={styles.cardBody} style={{ opacity: searchConfig.enabled ? 1 : 0.4 }}>
           <div className={styles.row}>
-            <label className={styles.label}>底盘检索引擎</label>
+            <label className={styles.label}>{t('settings.web_search_engine_label', '搜索引擎')}</label>
             <select 
               className={styles.selectBox}
               value={searchConfig.searchEngine}
               disabled={!searchConfig.enabled}
               onChange={(e) => onSearchChange({ ...searchConfig, searchEngine: e.target.value as any })}
             >
-              <option value="duckduckgo">DuckDuckGo (无需密钥 / 隐匿追踪)</option>
-              <option value="tavily">Tavily (专业级 AI 信息收割)</option>
-              <option value="jina">Jina Reader (强力页面清洗器)</option>
-              <option value="google">Google API (经典精准)</option>
-              <option value="bing">Bing Search (实时强悍)</option>
+              <option value="duckduckgo">{t('settings.web_search_engine_duckduckgo', 'DuckDuckGo')}</option>
+              <option value="tavily">{t('settings.web_search_engine_tavily', 'Tavily API')}</option>
+              <option value="jina">{t('settings.web_search_engine_jina', 'Jina Reader')}</option>
+              <option value="google">{t('settings.web_search_engine_google', 'Google API')}</option>
+              <option value="bing">{t('settings.web_search_engine_bing', 'Bing Search')}</option>
             </select>
           </div>
           
           <div className={styles.row}>
-            <label className={styles.label}>截取引用数阈值</label>
+            <label className={styles.label}>{t('agent.tools.param_max_results', '搜索结果上限')}</label>
             <div className={styles.sliderWrapper}>
                <input 
                  type="range" 
@@ -78,7 +80,7 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
                  value={searchConfig.searchResultLimit}
                  onChange={(e) => onSearchChange({ ...searchConfig, searchResultLimit: parseInt(e.target.value) })}
                />
-               <span className={styles.valBadge}>{searchConfig.searchResultLimit} 条</span>
+               <span className={styles.valBadge}>{searchConfig.searchResultLimit} {t('common.count_items').replace('$count', '')}</span>
             </div>
           </div>
         </div>
@@ -87,14 +89,14 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
       <div className={styles.cardSection}>
          <div className={styles.cardHeader}>
            <div className={styles.cardTitleLine}>
-             <span>📑 大部头典籍压缩器 (Summarizer)</span>
+             <span>📑 {t('settings.summary_compress_title', '文本内容压缩 (Summarizer)')}</span>
            </div>
-           <p className={styles.cardDesc}>防止冗长无用的垃圾信息塞爆您的显存或消耗海量 API Token 计费。</p>
+           <p className={styles.cardDesc}>{t('settings.summary_compress_desc', '自动归纳超长文本以节省上下文及处理成本。')}</p>
          </div>
 
          <div className={styles.cardBody}>
            <div className={styles.row}>
-             <label className={styles.label}>自动压缩触发线 (Threshold)</label>
+             <label className={styles.label}>{t('settings.summary_threshold', '自动压缩字数阈值')}</label>
              <div className={styles.sliderWrapper}>
                <input 
                  type="range" 
@@ -103,19 +105,19 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
                  value={summaryConfig.autoSummarizeThreshold}
                  onChange={(e) => onSummaryChange({ ...summaryConfig, autoSummarizeThreshold: parseInt(e.target.value) })}
                />
-               <span className={styles.valBadge}>{summaryConfig.autoSummarizeThreshold} 字</span>
+               <span className={styles.valBadge}>{summaryConfig.autoSummarizeThreshold}</span>
              </div>
            </div>
 
            <div className={styles.row}>
-             <label className={styles.label}>坍缩归纳心法</label>
+             <label className={styles.label}>{t('settings.summary_method', '归纳方式')}</label>
              <select 
                className={styles.selectBox}
                value={summaryConfig.summarizeMethod}
                onChange={(e) => onSummaryChange({ ...summaryConfig, summarizeMethod: e.target.value as any })}
              >
-               <option value="extract">抽取式 (Extract) - 原汁原味抽取关键句，保留文本指纹</option>
-               <option value="abstract">生成式 (Abstract) - 彻底打碎后经由专属分析大模型重写大纲 (消耗算力)</option>
+               <option value="extract">{t('settings.summary_method_extract', '抽取式 (Extract) - 抽取原文本的关键句')}</option>
+               <option value="abstract">{t('settings.summary_method_abstract', '生成式 (Abstract) - 经过大模型重写大纲')}</option>
              </select>
            </div>
          </div>

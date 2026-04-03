@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
+
 
 interface ChatBubbleProps {
   message: { role: 'user' | 'assistant'; content: string };
@@ -7,6 +9,7 @@ interface ChatBubbleProps {
 }
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onEdit }) => {
+  const { t } = useTranslation();
   const isUser = message.role === 'user';
   
   return (
@@ -18,7 +21,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onEdit }) => {
        </View>
        {isUser && onEdit && (
          <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
-           <Text style={styles.actionText}>编辑</Text>
+           <Text style={styles.actionText}>{t('common.edit', '编辑')}</Text>
          </TouchableOpacity>
        )}
     </View>

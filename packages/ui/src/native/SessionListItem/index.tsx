@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
+
 
 interface SessionData {
   id: string;
@@ -18,6 +20,7 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
   isSelected,
   onTap
 }) => {
+  const { t } = useTranslation();
   return (
     <TouchableOpacity 
       onPress={onTap} 
@@ -30,7 +33,7 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
            style={[styles.title, isSelected && styles.titleSelected]}
            numberOfLines={1}
          >
-           {session.title || '新对话'}
+           {session.title || t('chat.new_session', '新对话')}
          </Text>
        </View>
        <Text style={styles.moreIcon}>⋮</Text>

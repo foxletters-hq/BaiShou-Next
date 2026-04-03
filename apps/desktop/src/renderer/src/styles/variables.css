@@ -1,0 +1,37 @@
+:root {
+  /* Colors from Flutter AppTheme.dart */
+  --color-primary: #5BA8F5;
+  --color-background-light: #F6F7F8;
+  --color-background-dark: #101922;
+  --color-surface-dark: #192633;
+  --color-surface-highlight: #233648;
+  
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #92ADC9;
+  --color-text-secondary-light: #475569;
+  --color-text-secondary-dark: #94A3B8;
+
+  --color-primary-container: #5BA8F5; /* Seed color */
+  --color-on-primary-container: #1565C0;
+  
+  --color-secondary: #78909C;
+  --color-tertiary: #4CAF50;
+  --color-on-tertiary: #FFFFFF;
+  --color-tertiary-container: #E8F5E9;
+  
+  --color-surface: #FFFFFF;
+  --color-on-surface: #1A1A1A;
+  --color-on-surface-variant: #475569;
+  
+  --color-surface-container-highest: #E8E8E8;
+  --color-surface-container-high: #EEEEEE;
+  --color-surface-container: #F2F2F2;
+  --color-surface-container-low: #F6F7F8;
+  --color-surface-container-lowest: #FFFFFF;
+  
+  --color-outline: #9E9E9E;
+  --color-outline-variant: #D0D0D0;
+
+  /* Fonts */
+  --font-family-main: 'Manrope', 'Microsoft YaHei', 'Noto Sans SC', 'PingFang SC', sans-serif;
+}

@@ -1,0 +1,100 @@
+{
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AssistantPickerSheet/index.tsx": {
+    "replacements": [
+      { "search": "<span>未捕捉到焦点，请在左侧指定心智实体。</span>", "replace": "<span>{t('assistant.picker_no_selection', '未选中对象，请在左侧列表指定一个助手。')}</span>" },
+      { "search": "<Command size={16}/> 潜意识网 (Prompt)", "replace": "<Command size={16}/> {t('assistant.picker_tab_prompt', '提示词与预设')}" },
+      { "search": "<Database size={16}/> 神经簇状态 (RAG)", "replace": "<Database size={16}/> {t('assistant.picker_tab_rag', '知识库连通性 (RAG)')}" },
+      { "search": "<h3 className={styles.sectionTitle}>主被动心智指北</h3>", "replace": "<h3 className={styles.sectionTitle}>{t('assistant.picker_core_setting', '核心设定概要')}</h3>" },
+      { "search": "{activeAssistant.systemPrompt || '未编写核心控制参数，系统将进入空运行默认状态。'}", "replace": "{activeAssistant.systemPrompt || t('assistant.picker_no_prompt', '未编写系统提示词，助手将使用默认的通用回答模型设定。')}" },
+      { "search": "<h3 className={styles.sectionTitle}>突触与模型连接报告</h3>", "replace": "<h3 className={styles.sectionTitle}>{t('assistant.picker_connection_report', '模型接入情况')}</h3>" },
+      { "search": "<span className={styles.metaLabel}>大模型供应商</span>", "replace": "<span className={styles.metaLabel}>{t('assistant.provider', '模型供应商')}</span>" },
+      { "search": "<span className={styles.metaLabel}>算力集群</span>", "replace": "<span className={styles.metaLabel}>{t('assistant.compute_cluster', '计算模型配置')}</span>" },
+      { "search": "<span className={styles.metaLabel}>上下文轮跨度限制</span>", "replace": "<span className={styles.metaLabel}>{t('assistant.context_limit_title', '追溯对话限制')}</span>" },
+      { "search": "Infinite 无限", "replace": "{t('common.infinite', 'Infinite / 无限')}" },
+      { "search": "<span className={styles.metaLabel}>向量挂载区 (RAG)</span>", "replace": "<span className={styles.metaLabel}>{t('assistant.rag_mount', '关联的 RAG 知识库')}</span>" },
+      { "search": "未锁定", "replace": "{t('common.unbound', '未关联检索范围')}" },
+      { "search": "连接覆盖：启动 {activeAssistant.name}", "replace": "{t('assistant.picker_launch', '应用关联并立即呼出 {{name}}', { name: activeAssistant.name })}" },
+      { "search": "该心智已处于热载执行期", "replace": "{t('assistant.picker_already_active', '当前对话框里该助手已是活动状态')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/AttachmentManagementView/index.tsx": {
+    "replacements": [
+      { "search": "const confirmText = window.confirm(`防呆确定：您将从硬盘上永久抹杀被选定的 ${selectedIds.size} 个附录库会话文件夹！\\n删除后不可找回。该操作只删附件不删纯文本记忆。继续？`);", "replace": "const confirmText = window.confirm(t('attachment.delete_confirm', '【操作确认】您将彻底删除选中的 {{count}} 个附件包。操作不可逆（仅删除文件，不影响聊天记录文本）。是否执行？', { count: selectedIds.size }));" },
+      { "search": "<h3 className={styles.title}>核心系统附录库 (Attachment Center)</h3>", "replace": "<h3 className={styles.title}>{t('attachment.title', '附件与隔离数据管理')}</h3>" },
+      { "search": "<p className={styles.subtitle}>跨域文件、媒体记忆帧的物理留存中枢。红色条目即“遗落的孤岛孤标文件”。</p>", "replace": "<p className={styles.subtitle}>{t('attachment.desc', '集中管理所有对话产生的媒体及文件，被标记为红色的条目是已丢失会话依据的孤立碎片。')}</p>" },
+      { "search": "<span className={styles.statLabel}>宿命总吞吐量</span>", "replace": "<span className={styles.statLabel}>{t('attachment.stat_total', '总计使用空间')}</span>" },
+      { "search": "<span className={styles.statLabel}>散落游离碎片总计</span>", "replace": "<span className={styles.statLabel}>{t('attachment.stat_orphans', '孤立碎片体积')}</span>" },
+      { "search": "<span className={`${styles.statLabel} ${styles.dangerTextLabel}`}>无对证的幽灵数据 (Orphans)</span>", "replace": "<span className={`${styles.statLabel} ${styles.dangerTextLabel}`}>{t('attachment.stat_orphans_count', '无记录对证的孤立文件')}</span>" },
+      { "search": "🪐 恒星群合集", "replace": "📁 {t('attachment.tab_all', '系统完整附件集')}" },
+      { "search": "🛸 漂流无归档陨石区", "replace": "⚠️ {t('attachment.tab_orphans', '无关联孤立区')}" },
+      { "search": "{displayList.length > 0 && selectedIds.size === displayList.length ? '取消群选' : '框选全视域'}", "replace": "{displayList.length > 0 && selectedIds.size === displayList.length ? t('common.deselect_all', '取消全选') : t('common.select_all', '全选')}" },
+      { "search": "<div className={styles.emptyText}>{activeTab === 'orphans' ? '未感测到任何未能关联归档的孤岛件。' : '当前工作区无任何留存的附件。'}</div>", "replace": "<div className={styles.emptyText}>{activeTab === 'orphans' ? t('attachment.no_orphans', '系统中不存在未关联的孤立文件。') : t('attachment.empty', '工作空间没有留存任何附件记录。')}</div>" },
+      { "search": "<span className={styles.fileCountHint}>{att.fileCount} 个档案封套</span>", "replace": "<span className={styles.fileCountHint}>{t('attachment.file_count_badge', '{{count}} 件物理档案', { count: att.fileCount })}</span>" },
+      { "search": "您已锁定 <span className={styles.highlight}>{selectedIds.size}</span> 个附件组列。", "replace": "{t('attachment.selected_count', '已选择')} <span className={styles.highlight}>{selectedIds.size}</span> {t('attachment.selected_count_suffix', '个组列.')}" },
+      { "search": "{isDeleting ? '☄️ 碎星武器发射中...' : '☄️ 从物理层面碾碎遣除 (EXECUTE)'}", "replace": "{isDeleting ? t('attachment.deleting', '🗑️ 彻底删除执行中...') : t('attachment.delete_btn', '🗑️ 从磁盘执行删除')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/CloudSyncPanel/index.tsx": {
+    "replacements": [
+      { "search": "`【高危操作】从云端恢复 \"${filename}\" 到本地将彻底覆盖当前的工作区数据。\\n请输入 \"CONFIRM\" 确认：`", "replace": "t('sync.restore_confirm_msg', '【覆盖警告】从云端下拉 \"{{filename}}\" 将覆盖本地现存的所有数据设定。\\n请输入 \"CONFIRM\" 提交确认意向：', { filename })" },
+      { "search": "if (!window.confirm(`确定要删除云端备份 \"${filename}\" 吗？此操作不可逆！`)) return;", "replace": "if (!window.confirm(t('sync.delete_confirm', '真的要删除云端备份 \"{{filename}}\" 吗？', { filename }))) return;" },
+      { "search": "if (!window.confirm(`确定要批量删除选中的 ${selected.size} 个备份吗？`)) return;", "replace": "if (!window.confirm(t('sync.bulk_delete_confirm', '是否彻底删除选定的 {{count}} 个备份档案？', { count: selected.size }))) return;" },
+      { "search": "<h3 className={styles.title}>数据云同步 (Cloud Sync)</h3>", "replace": "<h3 className={styles.title}>{t('sync.title', '数据云端同步 (Cloud Config)')}</h3>" },
+      { "search": "将白守数据安全分发至 WebDAV 或 S3 兼容的云端，跨设备异步漫游。", "replace": "{t('sync.subtitle', '建立连接同步本地的所有状态到您具有私属权限的 WebDAV / S3 对象存储空间。')}" },
+      { "search": "<span className={styles.statLabel}>分发终点 (Target)</span>", "replace": "<span className={styles.statLabel}>{t('sync.target_label', '分发目标 (Target)')}</span>" },
+      { "search": "<span className={styles.statLabel}>云端容载 (Size)</span>", "replace": "<span className={styles.statLabel}>{t('sync.size_label', '占用容量 (Size)')}</span>" },
+      { "search": "<span className={styles.statLabel}>母体存数 (Count)</span>", "replace": "<span className={styles.statLabel}>{t('sync.count_label', '快照分布数 (Count)')}</span>" },
+      { "search": "<span className={styles.statValue}>{records.length} <small>份</small></span>", "replace": "<span className={styles.statValue}>{records.length} <small>{t('common.copies_unit', '份')}</small></span>" },
+      { "search": "{showConfig ? '关闭设置' : '⚙ 同步设置'}", "replace": "{showConfig ? t('common.close_settings', '关闭设置板块') : t('sync.open_settings', '⚙ 配置连接')}" },
+      { "search": "<button className={styles.manageBtn} onClick={() => setManageMode(true)}>批量管理</button>", "replace": "<button className={styles.manageBtn} onClick={() => setManageMode(true)}>{t('common.batch_manage', '批量管理')}</button>" },
+      { "search": "☄️ 核爆选定档 ({selected.size})", "replace": "{t('sync.delete_selected', '删除选中行')} ({selected.size})" },
+      { "search": "{isSyncing ? '同步中...' : '立即同步'}", "replace": "{isSyncing ? t('sync.syncing', '正在交接拉链...') : t('sync.sync_now', '触发立即同步')}" },
+      { "search": "<label>同步目标</label>", "replace": "<label>{t('sync.target_type', '服务通道')}</label>" },
+      { "search": "<option value=\"local\">本地 (关闭云同步)</option>", "replace": "<option value=\"local\">{t('sync.local_only', '系统本地（切断云连接）')}</option>" },
+      { "search": "<option value=\"s3\">S3 (兼容)</option>", "replace": "<option value=\"s3\">{t('sync.s3_compatible', 'S3 (通用对象存储)')}</option>" },
+      { "search": "<label>最大备份份数</label>", "replace": "<label>{t('sync.max_count', '最高留存上限数')}</label>" },
+      { "search": "<label>用户名</label>", "replace": "<label>{t('common.username', '用户名身份')}</label>" },
+      { "search": "<label>密码/授权码</label>", "replace": "<label>{t('common.password', '授权秘钥/密码')}</label>" },
+      { "search": "<label>远端路径</label>", "replace": "<label>{t('sync.remote_path', '存放路径地址')}</label>" },
+      { "search": "<span>同步记录</span>", "replace": "<span>{t('sync.records', '近期远端发现记录')}</span>" },
+      { "search": "<div className={styles.loadingState}>链接亚空间与握手中...</div>", "replace": "<div className={styles.loadingState}>{t('sync.connecting', '正在通过信道提取端列...')}</div>" },
+      { "search": "{config.target === 'local' ? '云同步引擎已处于离线沉睡状态。' : '此目标宇宙目前暂无发现您的数据遗迹。'}", "replace": "{config.target === 'local' ? t('sync.offline_desc', '主引擎已被物理降频，目前处于断开云端的休眠状态。') : t('sync.no_records', '尚未在对应的云空间发现归属备份条目。')}" },
+      { "search": "<span className={styles.selectAllLabel}>全选所有 {records.length} 个锚点进行歼灭</span>", "replace": "<span className={styles.selectAllLabel}>{t('common.select_all_items', '一键勾选视野内全量内容 ({{count}} 项)', { count: records.length })}</span>" },
+      { "search": "<button onClick={() => handleRestore(r.filename)} className={styles.restoreBtn} disabled={isSyncing}>恢复</button>", "replace": "<button onClick={() => handleRestore(r.filename)} className={styles.restoreBtn} disabled={isSyncing}>{t('common.restore', '追溯恢复')}</button>" },
+      { "search": "<button onClick={() => handleRename(r.filename)}>重命名</button>", "replace": "<button onClick={() => handleRename(r.filename)}>{t('common.rename', '修改标注')}</button>" },
+      { "search": "<button onClick={() => handleDelete(r.filename)} className={styles.deleteSingleBtn}>删除</button>", "replace": "<button onClick={() => handleDelete(r.filename)} className={styles.deleteSingleBtn}>{t('common.delete', '废弃')}</button>" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DataManagementCard/index.tsx": {
+    "replacements": [
+      { "search": "'【高危操作警告】\\n导入全量存档将直接销毁当前系统内的所有工作区与知识数据库设定，且不可逆转！\\n\\n请在下方输入 \"CONFIRM\" 以二次确认您知道自己在做什么：'", "replace": "t('data.import_confirm_msg', '【替换警报】导入本地备份将抹平目前工作区拥有的全体聊天记录、属性集与上下文。\n若要继续操作，请在弹窗验证行键入 \"CONFIRM\"：')" },
+      { "search": "const flag = window.confirm(`您将使用 ${snapshot.timeLabel} (${snapshot.sizeMB} MB) 的快照覆盖现在的全部记录。\\n覆盖后现在的修改统统消失，继续吗？`);", "replace": "const flag = window.confirm(t('data.snapshot_confirm', '即刻调用 {{timeLabel}} 版本 ({{sizeMB}} MB) 对现役存储域执行整体降级/回档。\n此后，现今累积的所有状态更迭均将随之消尽。\n确定降级？', { timeLabel: snapshot.timeLabel, sizeMB: snapshot.sizeMB }));" },
+      { "search": "<h3 className={styles.title}>数据全量备份与容灾 (Data Vault)</h3>", "replace": "<h3 className={styles.title}>{t('data.title', '物理隔离层本地存档 (Data Vault)')}</h3>" },
+      { "search": "白守数据由零构建、不受云端绑架。你可以随时将整个库无损封存为 ZIP 文件（跳过缓存），或将备份文件强制热加载回系统。", "replace": "{t('data.desc', '由于白守采取纯净的本地优先体系，在此您可以自由将全体库数据打入无损压缩的 ZIP 进行冷备份或多端移动流转。')}" },
+      { "search": "<h4>📦 铸造数据母体归档</h4>", "replace": "<h4>📦 {t('data.export_title', '整体提纯导出快照模块')}</h4>" },
+      { "search": "<p className={styles.sectionDesc}>导出所有工作区 (Vaults) 、日记片段、模型预设与超参设定。</p>", "replace": "<p className={styles.sectionDesc}>{t('data.export_desc', '将包含您现役的主工作层状态、助手属性面具及历史对话生成一个离线压缩体。')}</p>" },
+      { "search": "{isExporting ? '⏳ 打包压制中...' : '生成完整 ZIP 母体备份'}", "replace": "{isExporting ? t('data.exporting', '🧩 档案打包转储进度进行...') : t('data.export_btn', '压缩并产出完整单体包 (ZIP)')}" },
+      { "search": "<h4 className={styles.dangerText}>☢️ 高危异体数据注入</h4>", "replace": "<h4 className={styles.dangerText}>☢️ {t('data.import_title', '强覆盖性异体录入模块')}</h4>" },
+      { "search": "<p className={styles.sectionDesc}>警告：导入外部 ZIP 备份将强行切断当前所有数据库连接，并彻底覆写本地数据卷。</p>", "replace": "<p className={styles.sectionDesc}>{t('data.import_desc', '引入已存在的 ZIP 快照来全局重置当前库资料。这一途径将引起灾难级的记录切断抹除，注意确认版本对应。')}</p>" },
+      { "search": "{isImporting ? '☢️ 数据灌入中...' : '选择 ZIP 强行覆盖合并'}", "replace": "{isImporting ? t('data.importing', '⚠️ 置换核心层录入...') : t('data.import_btn', '提取外部包裹执行系统置换')}" },
+      { "search": "<h4>⏱️ 时序快照自动找回 (Auto Snapshots)</h4>", "replace": "<h4>⏱️ {t('data.auto_snapshot_title', '内建断层点无缝召回 (Snapshots)')}</h4>" },
+      { "search": "<p className={styles.sectionDesc}>白守在重要节点会自动留下最多 10 份短期数据快照，以便您在崩溃或手误后吃后悔药。</p>", "replace": "<p className={styles.sectionDesc}>{t('data.auto_snapshot_desc', '系统引擎会在重大变更执行前自持暂存不超过一定数量的副本帧，供遇灾或不可控操作后的“时光倒流”救援干预使用。')}</p>" },
+      { "search": "<div className={styles.noSnapshots}>当前宿主机未保留任何近期时序快照。</div>", "replace": "<div className={styles.noSnapshots}>{t('data.no_snapshots', '暂未能探知到任意短期驻留切片可供取用。')}</div>" },
+      { "search": "从该断点复活", "replace": "{t('data.recover_btn', '复苏回滚指令下达')}" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DatetimePickerSheet/index.tsx": {
+    "replacements": [
+      { "search": "<h3>选择时间</h3>", "replace": "<h3>{t('common.select_time', '选择时间')}</h3>" },
+      { "search": "<button className={styles.cancelBtn} onClick={onClose}>取消</button>", "replace": "<button className={styles.cancelBtn} onClick={onClose}>{t('common.cancel', '取消')}</button>" },
+      { "search": "<button className={styles.confirmBtn} onClick={handleConfirm}>确定</button>", "replace": "<button className={styles.confirmBtn} onClick={handleConfirm}>{t('common.confirm', '确定')}</button>" }
+    ]
+  },
+  "d:/Projects/BaiShou-Next/packages/ui/src/web/DeveloperOptionsView/index.tsx": {
+    "replacements": [
+      { "search": "<h3 style={{ marginBottom: 12, fontSize: 18, fontWeight: 600 }}>🛠 实验性特性与高级调试</h3>", "replace": "<h3 style={{ marginBottom: 12, fontSize: 18, fontWeight: 600 }}>{t('dev.title', '🛠 实验区特性干预与黑盒操纵')}</h3>" },
+      { "search": "您即将踏入赛博最深处：这涉及白守底层的内存压测截断、特级 IPC 通信拦截器以及未公开的局域网高频探嗅功能。请谨慎操作。<br />", "replace": "{t('dev.desc', '这可能包含主 IPC 链探查、系统端口层截流甚至底层数据库压测。无专业背景请止步于此，不规范动作大概率可诱发终端崩溃。')}<br />" },
+      { "search": "<span style={{ color: '#4ade80' }}>（敬请期待后续实验仓释出）</span>", "replace": "<span style={{ color: '#4ade80' }}>{t('dev.coming_soon', '（待核心权限实验仓释放）')}</span>" }
+    ]
+  }
+}

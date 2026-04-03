@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import styles from './ProfileSettingsCard.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export interface ProfileData {
   nickname: string;
@@ -15,6 +17,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
   profile,
   onSave
 }) => {
+  const { t } = useTranslation();
   const [inEditAvatar, setInEditAvatar] = useState(false);
   const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
   
@@ -164,18 +167,18 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
         <div className={styles.infoZone}>
            <div className={styles.nameRow}>
              <h2 className={styles.nickname}>{profile.nickname}</h2>
-             <button className={styles.editBtn} onClick={handleEditNickname} title="修改昵称">
+             <button className={styles.editBtn} onClick={handleEditNickname} title={t('profile.edit_nickname', '修改昵称')}>
                ✎
              </button>
            </div>
-           <p className={styles.desc}>点击左侧头像可更改全息投射的电子样貌，支持自定义图片裁剪。</p>
+           <p className={styles.desc}>{t('profile.avatar_desc', '点击当前头像进行上传更改，支持图片的自定义缩放编辑。')}</p>
         </div>
       </div>
 
       {inEditAvatar && tempImageSrc && (
         <div className={styles.cropOverlay}>
            <div className={styles.cropModal}>
-              <h3 className={styles.cropTitle}>剪裁实体切片</h3>
+              <h3 className={styles.cropTitle}>{t('profile.crop_title', '编辑个人头像')}</h3>
               <div 
                 className={styles.imageWorkspace}
                 onMouseMove={onDrag}
@@ -212,8 +215,8 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
                  )}
               </div>
               <div className={styles.cropActions}>
-                 <button className={styles.cancelBtn} onClick={cancelCrop}>舍弃并中止</button>
-                 <button className={styles.confirmBtn} onClick={finishCrop}>✅ 固定影像印记</button>
+                 <button className={styles.cancelBtn} onClick={cancelCrop}>{t('common.discard', '舍弃更改')}</button>
+                 <button className={styles.confirmBtn} onClick={finishCrop}>✅ {t('common.save_changes', '保存应用')}</button>
               </div>
            </div>
            {/* 隐藏画板 */}

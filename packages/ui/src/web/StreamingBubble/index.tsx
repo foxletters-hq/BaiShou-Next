@@ -1,16 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import styles from './StreamingBubble.module.css';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import { motion } from 'framer-motion';
 
 // TODO: [Agent1-Dependency] i18n
-const useTranslation = (): { t: (key: string, options?: any) => string } => ({
-  t: (key: string) => {
-    if (key === 'agent.chat.ai_label') return 'AI';
-    if (key === 'agent.tools.tool_call') return '工具调用';
-    return key;
-  },
-});
+
 
 export interface ToolExecution {
   name: string;

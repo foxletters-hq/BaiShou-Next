@@ -1,4 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next';
+
 
 interface Props {
   children?: ReactNode
@@ -37,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
             justifyContent: 'center'
           }}
         >
-          <h2>渲染崩溃 / Rendering Crashed</h2>
+          <h2>{t('error.crash_title', '应用崩溃 / Rendering Crashed')}</h2>
           <pre
             style={{
               backgroundColor: '#222',
@@ -61,7 +63,7 @@ export class ErrorBoundary extends Component<Props, State> {
               cursor: 'pointer'
             }}
           >
-            重新加载页面 / Reload
+            {t('error.reload', '尝试重新加载 / Reload')}
           </button>
         </div>
       )

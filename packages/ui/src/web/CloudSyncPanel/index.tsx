@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styles from './CloudSyncPanel.module.css';
+import { useTranslation } from 'react-i18next';
+
 
 export type SyncTarget = 'local' | 's3' | 'webdav';
 
@@ -60,6 +62,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   savedConfig,
   onSaveConfig
 }) => {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<SyncConfig>(savedConfig || DEFAULT_CONFIG);
   const [records, setRecords] = useState<SyncRecord[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -107,7 +110,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
 
   const handleRestore = async (filename: string) => {
     const confirmText = window.prompt(
-      `【高危操作】从云端恢复 "${filename}" 到本地将彻底覆盖当前的工作区数据。\n请输入 "CONFIRM" 确认：`
+      t('sync.restore_confirm_msg', '【覆盖警告】从云端下拉 "{{filename}}" 将覆盖本地现存的所有数据设定。\n请输入 "CONFIRM" 提交确认意向：', { filename })
     );
     if (confirmText !== 'CONFIRM') return;
     setIsSyncing(true);
@@ -121,7 +124,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   };
 
   const handleDelete = async (filename: string) => {
-    if (!window.confirm(`确定要删除云端备份 "${filename}" 吗？此操作不可逆！`)) return;
+    if (!window.confirm(t('sync.delete_confirm', '真的要删除云端备份 "{{filename}}" 吗？', { filename }))) return;
     try {
       await onDeleteRecord(config, filename);
       await fetchRecords();
@@ -132,7 +135,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
 
   const handleBatchDelete = async () => {
     if (selected.size === 0) return;
-    if (!window.confirm(`确定要批量删除选中的 ${selected.size} 个备份吗？`)) return;
+    if (!window.confirm(t('sync.bulk_delete_confirm', '是否彻底删除选定的 {{count}} 个备份档案？', { count: selected.size }))) return;
     try {
       await onBatchDelete(config, Array.from(selected));
       await fetchRecords();
@@ -163,9 +166,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     <div className={styles.container}>
       {/* Header Stats */}
       <div className={styles.header}>
-        <h3 className={styles.title}>数据云同步 (Cloud Sync)</h3>
+        <h3 className={styles.title}>{t('sync.title', '数据云端同步 (Cloud Config)')}</h3>
         <p className={styles.subtitle}>
-          将白守数据安全分发至 WebDAV 或 S3 兼容的云端，跨设备异步漫游。
+          {t('sync.subtitle', '建立连接同步本地的所有状态到您具有私属权限的 WebDAV / S3 对象存储空间。')}
         </p>
       </div>
 
@@ -173,7 +176,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         <div className={styles.statCard}>
           <div className={styles.statIcon}>☁️</div>
           <div className={styles.statText}>
-            <span className={styles.statLabel}>分发终点 (Target)</span>
+            <span className={styles.statLabel}>{t('sync.target_label', '分发目标 (Target)')}</span>
             <span className={styles.statValue}>{config.target.toUpperCase()}</span>
           </div>
         </div>
@@ -181,7 +184,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         <div className={styles.statCard}>
           <div className={styles.statIcon}>💾</div>
           <div className={styles.statText}>
-            <span className={styles.statLabel}>云端容载 (Size)</span>
+            <span className={styles.statLabel}>{t('sync.size_label', '占用容量 (Size)')}</span>
             <span className={styles.statValue}>{totalSizeMb > 0 ? totalSizeMb.toFixed(2) + ' MB' : '0 MB'}</span>
           </div>
         </div>
@@ -189,8 +192,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         <div className={styles.statCard}>
           <div className={styles.statIcon}>📦</div>
           <div className={styles.statText}>
-             <span className={styles.statLabel}>母体存数 (Count)</span>
-             <span className={styles.statValue}>{records.length} <small>份</small></span>
+             <span className={styles.statLabel}>{t('sync.count_label', '快照分布数 (Count)')}</span>
+             <span className={styles.statValue}>{records.length} <small>{t('common.copies_unit', '份')}</small></span>
           </div>
         </div>
       </div>
@@ -199,22 +202,22 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
           <button className={styles.configBtn} onClick={() => setShowConfig(!showConfig)}>
-            {showConfig ? '关闭设置' : '⚙ 同步设置'}
+            {showConfig ? t('common.close_settings', '关闭设置板块') : t('sync.open_settings', '⚙ 配置连接')}
           </button>
           {!manageMode && records.length > 0 && (
-            <button className={styles.manageBtn} onClick={() => setManageMode(true)}>批量管理</button>
+            <button className={styles.manageBtn} onClick={() => setManageMode(true)}>{t('common.batch_manage', '批量管理')}</button>
           )}
           {manageMode && (
             <>
               <button className={styles.cancelBtn} onClick={() => { setManageMode(false); setSelected(new Set()); }}>取消选定</button>
               <button className={styles.deleteBtn} onClick={handleBatchDelete} disabled={selected.size === 0}>
-                ☄️ 核爆选定档 ({selected.size})
+                {t('sync.delete_selected', '删除选中行')} ({selected.size})
               </button>
             </>
           )}
         </div>
         <button className={styles.syncBtn} onClick={handleSync} disabled={isSyncing || config.target === 'local'}>
-          {isSyncing ? '同步中...' : '立即同步'}
+          {isSyncing ? t('sync.syncing', '正在交接拉链...') : t('sync.sync_now', '触发立即同步')}
         </button>
       </div>
 
@@ -222,16 +225,16 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       {showConfig && (
         <div className={styles.configPanel}>
           <div className={styles.configGroup}>
-            <label>同步目标</label>
+            <label>{t('sync.target_type', '服务通道')}</label>
             <select value={config.target} onChange={(e) => updateField('target', e.target.value)}>
-              <option value="local">本地 (关闭云同步)</option>
+              <option value="local">{t('sync.local_only', '系统本地（切断云连接）')}</option>
               <option value="webdav">WebDAV</option>
-              <option value="s3">S3 (兼容)</option>
+              <option value="s3">{t('sync.s3_compatible', 'S3 (通用对象存储)')}</option>
             </select>
           </div>
 
           <div className={styles.configGroup}>
-            <label>最大备份份数</label>
+            <label>{t('sync.max_count', '最高留存上限数')}</label>
             <input type="number" min={1} max={100} value={config.maxBackupCount}
               onChange={(e) => updateField('maxBackupCount', parseInt(e.target.value) || 20)} />
           </div>
@@ -243,15 +246,15 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 <input value={config.webdavUrl} onChange={(e) => updateField('webdavUrl', e.target.value)} placeholder="https://dav.jianguoyun.com/dav/" />
               </div>
               <div className={styles.configGroup}>
-                <label>用户名</label>
+                <label>{t('common.username', '用户名身份')}</label>
                 <input value={config.webdavUsername} onChange={(e) => updateField('webdavUsername', e.target.value)} />
               </div>
               <div className={styles.configGroup}>
-                <label>密码/授权码</label>
+                <label>{t('common.password', '授权秘钥/密码')}</label>
                 <input type="password" value={config.webdavPassword} onChange={(e) => updateField('webdavPassword', e.target.value)} />
               </div>
               <div className={styles.configGroup}>
-                <label>远端路径</label>
+                <label>{t('sync.remote_path', '存放路径地址')}</label>
                 <input value={config.webdavPath} onChange={(e) => updateField('webdavPath', e.target.value)} />
               </div>
             </>
@@ -291,15 +294,15 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       {/* Records List */}
       <div className={styles.recordsSection}>
         <div className={styles.recordsHeader}>
-          <span>同步记录</span>
+          <span>{t('sync.records', '近期远端发现记录')}</span>
           <button className={styles.refreshBtn} onClick={fetchRecords} disabled={isLoading}>🔄</button>
         </div>
 
         {isLoading ? (
-          <div className={styles.loadingState}>链接亚空间与握手中...</div>
+          <div className={styles.loadingState}>{t('sync.connecting', '正在通过信道提取端列...')}</div>
         ) : records.length === 0 ? (
           <div className={styles.emptyState}>
-            {config.target === 'local' ? '云同步引擎已处于离线沉睡状态。' : '此目标宇宙目前暂无发现您的数据遗迹。'}
+            {config.target === 'local' ? t('sync.offline_desc', '主引擎已被物理降频，目前处于断开云端的休眠状态。') : t('sync.no_records', '尚未在对应的云空间发现归属备份条目。')}
           </div>
         ) : (
           <div className={styles.recordList}>
@@ -311,7 +314,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                    checked={selected.size === records.length && records.length > 0} 
                    onChange={handleSelectAll} 
                  />
-                 <span className={styles.selectAllLabel}>全选所有 {records.length} 个锚点进行歼灭</span>
+                 <span className={styles.selectAllLabel}>{t('common.select_all_items', '一键勾选视野内全量内容 ({{count}} 项)', { count: records.length })}</span>
                </div>
             )}
             {records.map((r) => (
@@ -332,9 +335,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 </div>
                 {!manageMode && (
                   <div className={styles.recordActions}>
-                    <button onClick={() => handleRestore(r.filename)} className={styles.restoreBtn} disabled={isSyncing}>恢复</button>
-                    <button onClick={() => handleRename(r.filename)}>重命名</button>
-                    <button onClick={() => handleDelete(r.filename)} className={styles.deleteSingleBtn}>删除</button>
+                    <button onClick={() => handleRestore(r.filename)} className={styles.restoreBtn} disabled={isSyncing}>{t('common.restore', '追溯恢复')}</button>
+                    <button onClick={() => handleRename(r.filename)}>{t('common.rename', '修改标注')}</button>
+                    <button onClick={() => handleDelete(r.filename)} className={styles.deleteSingleBtn}>{t('common.delete', '废弃')}</button>
                   </div>
                 )}
               </div>

@@ -91,7 +91,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                  <Sparkles size={32} opacity={0.3} />
                  <span>{t('agent.noMatchModel', '未发现可搭载的模型')}</span>
                  <button className={styles.manageBtn} onClick={onManageProviders} type="button">
-                    <Settings size={14} /> 去配置供应商
+                    <Settings size={14} /> {t('models.goto_settings', '配置供应商')}
                  </button>
               </div>
             ) : (
