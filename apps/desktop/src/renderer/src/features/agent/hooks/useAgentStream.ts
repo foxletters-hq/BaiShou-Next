@@ -7,6 +7,7 @@ export interface UseAgentStreamResult {
   activeTool: { name: string; args: any } | null;
   error: string | null;
   startChat: (sessionId: string, text: string) => Promise<void>;
+  editChat: (sessionId: string, messageId: string, text: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -71,6 +72,18 @@ export function useAgentStream(): UseAgentStreamResult {
     await window.electron.ipcRenderer.invoke('agent:chat', { sessionId, text: userText });
   }, []);
 
+  const editChat = useCallback(async (sessionId: string, messageId: string, userText: string) => {
+    setIsStreaming(true);
+    setError(null);
+    setActiveTool(null);
+    textRef.current = '';
+    reasoningRef.current = '';
+    setText('');
+    setReasoning('');
+
+    await window.electron.ipcRenderer.invoke('agent:edit-message', sessionId, messageId, userText);
+  }, []);
+
   const reset = useCallback(() => {
     textRef.current = '';
     reasoningRef.current = '';
@@ -88,6 +101,7 @@ export function useAgentStream(): UseAgentStreamResult {
     activeTool,
     error,
     startChat,
+    editChat,
     reset
   };
 }
