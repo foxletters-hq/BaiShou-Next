@@ -17,6 +17,9 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
+// Add sqlite wasm support
+config.resolver.assetExts.push('wasm');
+
 // 3. Force Metro to resolve (sub)dependencies only from the `nodeModulesPaths` (REMOVED - breaks pnpm symlink traversal in Expo 50+)
 // config.resolver.disableHierarchicalLookup = true;
 

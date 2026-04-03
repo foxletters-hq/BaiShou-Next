@@ -49,4 +49,4 @@ export * from './network/cloud-sync.interface';
 export * from './shadow-index/shadow-index-sync.service';
 
 // 开发阶段的内存模拟仓库——在真实数据库 Repository 就绪后替换
-export * from './__tests__/mock.agent-repository';
+// export * from './__tests__/mock.agent-repository';

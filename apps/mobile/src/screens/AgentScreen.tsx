@@ -6,8 +6,11 @@ import {
 import { ChatBubble, InputBar, TokenBadge } from '@baishou/ui/native';
 import { useAgentStore } from '@baishou/store/src/stores/agent.store';
 
+import { useBaishou } from '../providers/BaishouProvider';
+
 export const AgentScreen = () => {
-  const { messages, isLoading, setLoading, addMessage } = useAgentStore();
+  const { messages, isLoading, setLoading, addMessage, updateMessage } = useAgentStore();
+  const { startAgentChat } = useBaishou();
   const flatListRef = useRef<FlatList>(null);
   
   useEffect(() => {
@@ -18,21 +21,34 @@ export const AgentScreen = () => {
     }
   }, [messages]);
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
     if (!text.trim()) return;
     addMessage({ id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() });
-    setLoading(true);
     
-    // Simulate latency and generative animation placeholder
-    setTimeout(() => {
-      addMessage({ 
-        id: Date.now().toString(), 
-        role: 'assistant', 
-        content: '# 传输协议接入\n这是一个来源于 **Agent-B** 移动端的降维打击演示回控。\n目前状态：*极光深空就绪*！', 
-        timestamp: new Date() 
+    const sessionId = 'mobile-session-01'; // Default session for mobile quick chat
+    const astId = (Date.now() + 1).toString();
+    addMessage({ id: astId, role: 'assistant', content: '', timestamp: new Date() });
+    setLoading(true);
+
+    try {
+      let currentText = '';
+      await startAgentChat?.(sessionId, text, {
+        onTextDelta: (chunk) => {
+          currentText += chunk;
+          updateMessage(astId, { content: currentText });
+        },
+        onFinish: () => {
+          setLoading(false);
+        },
+        onError: (err) => {
+          setLoading(false);
+          updateMessage(astId, { content: currentText + '\n\n[ERR] 传输链路破裂：' + err.message });
+        }
       });
+    } catch (e: any) {
       setLoading(false);
-    }, 1500);
+      updateMessage(astId, { content: '[系统灾难] ' + e.message });
+    }
   };
 
   return (

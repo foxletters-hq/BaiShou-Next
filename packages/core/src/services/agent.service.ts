@@ -1,5 +1,5 @@
 import { AgentSessionRepository, AgentMessageRepository } from '@baishou/database';
-import { AIProviderRegistry, AgentToolRegistry } from '@baishou/ai';
+import { AIProviderRegistry, ToolRegistry } from '@baishou/ai';
 import { streamText, CoreMessage } from 'ai';
 import { SessionNotFoundError } from '../errors/agent.errors';
 
@@ -15,7 +15,7 @@ export class AgentService {
     private readonly sessionRepo: AgentSessionRepository,
     private readonly messageRepo: AgentMessageRepository,
     private readonly providerRegistry: AIProviderRegistry,
-    private readonly toolRegistry: AgentToolRegistry,
+    private readonly toolRegistry: ToolRegistry,
   ) {}
 
   /**
@@ -52,7 +52,7 @@ export class AgentService {
 
     // 3. 构建 tools 环境
     // Vercel 会在生成过程中自动匹配对应的 tools 并执行 
-    const vercelTools = this.toolRegistry.toVercelTools({
+    const vercelTools = this.toolRegistry.getEnabledToolsAsVercel({
       sessionId: input.sessionId,
       vaultName: session.vaultName,
     });

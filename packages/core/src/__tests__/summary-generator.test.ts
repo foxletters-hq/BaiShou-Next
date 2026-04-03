@@ -6,12 +6,11 @@ import {
   buildYearlyPrompt,
   getDefaultTemplate,
 } from '../summary/summary-prompt-templates';
-import {
-  SummaryGeneratorService,
-  type SummaryDiarySource,
-  type SummarySource,
-  type SummaryLLM,
-} from '../summary/summary-generator.service';
+import { SummaryType } from '@baishou/shared';
+
+// Mock database deps
+vi.mock('better-sqlite3', () => ({ default: class {} }));
+vi.mock('drizzle-orm/better-sqlite3', () => ({ drizzle: () => ({}) }));
 
 describe('SummaryPromptTemplates', () => {
   it('should replace placeholders in weekly prompt', () => {
@@ -86,92 +85,112 @@ describe('SummaryPromptTemplates', () => {
 });
 
 describe('SummaryGeneratorService', () => {
-  const mockDiarySource: SummaryDiarySource = {
-    getDiariesInRange: vi.fn(async () => [
-      {
-        date: new Date('2026-03-24'),
-        content: '今天完成了白守 Next 的核心引擎移植',
-        tags: ['coding', 'baishou'],
-      },
-      {
-        date: new Date('2026-03-25'),
-        content: '完成了全部 15 个 Agent 工具的复刻',
-        tags: ['coding'],
-      },
-    ]),
-  };
+  it('should generate weekly summary via AsyncGenerator', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service');
 
-  const mockSummarySource: SummarySource = {
-    getSummaries: vi.fn(async () => []),
-  };
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => [
+        {
+          date: new Date('2026-03-24'),
+          content: '今天完成了白守 Next 的核心引擎移植',
+          tags: 'coding,baishou',
+        },
+      ]),
+    };
 
-  const mockLlm: SummaryLLM = {
-    generateContent: vi.fn(async () => '# AI 生成的总结内容'),
-  };
+    const mockSummaryRepo = {
+      getSummaries: vi.fn(async () => []),
+    };
 
-  it('should generate weekly summary', async () => {
-    const service = new SummaryGeneratorService(
-      mockDiarySource,
-      mockSummarySource,
-      mockLlm,
-      () => 'gpt-4o',
-    );
-
-    const result = await service.generate({
-      type: 'weekly',
-      startDate: new Date('2026-03-23'),
-      endDate: new Date('2026-03-29'),
-      weekNumber: 4,
-    });
-
-    expect(result).toBe('# AI 生成的总结内容');
-    expect(mockLlm.generateContent).toHaveBeenCalled();
-    const prompt = (mockLlm.generateContent as ReturnType<typeof vi.fn>).mock
-      .calls[0]![0] as string;
-    expect(prompt).toContain('核心引擎移植');
-    expect(prompt).toContain('Agent 工具');
-  });
-
-  it('should throw when no data available', async () => {
-    const emptyDiary: SummaryDiarySource = {
-      getDiariesInRange: vi.fn(async () => []),
+    const mockAiClient = {
+      generateContent: vi.fn(async () => '# AI 生成的总结内容'),
     };
 
     const service = new SummaryGeneratorService(
-      emptyDiary,
-      mockSummarySource,
-      mockLlm,
-      () => 'gpt-4o',
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any,
     );
 
-    await expect(
-      service.generate({
-        type: 'weekly',
-        startDate: new Date('2026-03-23'),
-        endDate: new Date('2026-03-29'),
-      }),
-    ).rejects.toThrow('没有找到可用的数据');
+    const target = {
+      type: SummaryType.weekly,
+      startDate: new Date('2026-03-23'),
+      endDate: new Date('2026-03-29'),
+      label: 'Week 4',
+    };
+
+    const outputs: string[] = [];
+    for await (const chunk of service.generate(target)) {
+      outputs.push(chunk);
+    }
+
+    // 应该至少有 STATUS: 消息和最终内容
+    expect(outputs.some(o => o.startsWith('STATUS:'))).toBe(true);
+    expect(outputs.some(o => o.includes('AI 生成的总结内容'))).toBe(true);
+    expect(mockAiClient.generateContent).toHaveBeenCalled();
   });
 
-  it('should call onStatus callback', async () => {
+  it('should yield no_data status when no diaries in range', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service');
+
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => []),
+    };
+    const mockSummaryRepo = { getSummaries: vi.fn(async () => []) };
+    const mockAiClient = { generateContent: vi.fn(async () => '') };
+
     const service = new SummaryGeneratorService(
-      mockDiarySource,
-      mockSummarySource,
-      mockLlm,
-      () => 'claude-4',
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any,
     );
 
-    const statuses: string[] = [];
-    await service.generate(
-      {
-        type: 'weekly',
-        startDate: new Date('2026-03-23'),
-        endDate: new Date('2026-03-29'),
-      },
-      (s) => statuses.push(s),
+    const target = {
+      type: SummaryType.weekly,
+      startDate: new Date('2026-03-23'),
+      endDate: new Date('2026-03-29'),
+      label: 'Week 4',
+    };
+
+    const outputs: string[] = [];
+    for await (const chunk of service.generate(target)) {
+      outputs.push(chunk);
+    }
+
+    expect(outputs).toContain('STATUS:no_data_error');
+    // LLM 不应被调用
+    expect(mockAiClient.generateContent).not.toHaveBeenCalled();
+  });
+
+  it('should include model name in status', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service');
+
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => [
+        { date: new Date('2026-03-24'), content: '一些内容', tags: '' },
+      ]),
+    };
+    const mockSummaryRepo = { getSummaries: vi.fn(async () => []) };
+    const mockAiClient = { generateContent: vi.fn(async () => '结果') };
+
+    const service = new SummaryGeneratorService(
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any,
     );
 
-    expect(statuses).toContain('正在读取数据...');
-    expect(statuses.some((s) => s.includes('claude-4'))).toBe(true);
+    const target = {
+      type: SummaryType.weekly,
+      startDate: new Date('2026-03-23'),
+      endDate: new Date('2026-03-29'),
+      label: 'Week 4',
+    };
+
+    const outputs: string[] = [];
+    for await (const chunk of service.generate(target, 'claude-4')) {
+      outputs.push(chunk);
+    }
+
+    expect(outputs.some(s => s.includes('claude-4'))).toBe(true);
   });
 });

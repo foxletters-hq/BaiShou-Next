@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentService } from '../services/agent.service';
 import { MockAgentSessionRepository, MockAgentMessageRepository } from './mock.agent-repository';
 import { SessionNotFoundError } from '../errors/agent.errors';
-import { AIProviderRegistry, AgentToolRegistry } from '@baishou/ai';
+import { AIProviderRegistry, ToolRegistry } from '@baishou/ai';
 
 // 模拟返回 Stream 的 Provider
 const mockProvider = {
@@ -14,14 +14,14 @@ describe('AgentService', () => {
   let sessionRepo: MockAgentSessionRepository;
   let messageRepo: MockAgentMessageRepository;
   let providerRegistry: AIProviderRegistry;
-  let toolRegistry: AgentToolRegistry;
+  let toolRegistry: ToolRegistry;
   let service: AgentService;
 
   beforeEach(() => {
     sessionRepo = new MockAgentSessionRepository();
     messageRepo = new MockAgentMessageRepository();
     providerRegistry = new AIProviderRegistry();
-    toolRegistry = new AgentToolRegistry();
+    toolRegistry = new ToolRegistry();
 
     providerRegistry.register('mock-provider', mockProvider as any);
 
@@ -48,6 +48,5 @@ describe('AgentService', () => {
     });
 
     expect(session.id).toBeDefined();
-    // 类似于旧逻辑：业务流调用
   });
 });

@@ -62,7 +62,14 @@ describe('SessionRepository', () => {
       delete: mockDelete,
       select: mockSelect,
       transaction: vi.fn().mockImplementation(async (cb) => {
-        return await cb(db);
+        // Transaction provides a 'tx' that behaves like 'db' — select/delete chains return arrays
+        const txWhere = vi.fn().mockResolvedValue([]);
+        const txFrom = vi.fn().mockReturnValue({ where: txWhere, orderBy: vi.fn().mockResolvedValue([]) });
+        const txSelect = vi.fn().mockReturnValue({ from: txFrom });
+        const txDeleteWhere = vi.fn().mockResolvedValue(undefined);
+        const txDelete = vi.fn().mockReturnValue({ where: txDeleteWhere });
+        const tx = { select: txSelect, delete: txDelete, insert: mockInsert, update: mockUpdate };
+        return await cb(tx);
       })
     };
 
@@ -85,8 +92,8 @@ describe('SessionRepository', () => {
   describe('deleteSessions', () => {
     it('should delete multiple sessions at once', async () => {
       await repo.deleteSessions(['s1', 's2']);
-      expect(mockDelete).toHaveBeenCalled();
-      expect(mockWhere).toHaveBeenCalled();
+      // deleteSessions uses a transaction with tx.delete inside
+      expect((db as any).transaction).toHaveBeenCalled();
     });
   });
 

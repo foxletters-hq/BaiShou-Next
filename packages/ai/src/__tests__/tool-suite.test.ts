@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AgentToolRegistry } from '../tools/tool-registry';
+import { ToolRegistry } from '../tools/tool-registry';
 import { CurrentTimeTool } from '../tools/current-time.tool';
 import { DiaryReadTool } from '../tools/diary-read.tool';
 import { DiaryListTool } from '../tools/diary-list.tool';
@@ -14,71 +14,87 @@ import { SummaryReadTool } from '../tools/summary-read.tool';
 import { WebSearchTool } from '../tools/web-search.tool';
 import { UrlReadTool } from '../tools/url-read.tool';
 
-describe('AgentToolRegistry — Full Tool Suite', () => {
-  it('should register all 13 built-in tools without conflicts', () => {
-    const registry = new AgentToolRegistry();
-    const tools = [
-      new CurrentTimeTool(),
-      new DiaryReadTool(),
-      new DiaryListTool(),
-      new DiaryEditTool(),
-      new DiaryDeleteTool(),
-      new DiarySearchTool(),
-      new MemoryStoreTool(),
-      new MemoryDeleteTool(),
-      new VectorSearchTool(),
-      new MessageSearchTool(),
-      new SummaryReadTool(),
-      new WebSearchTool(),
-      new UrlReadTool(),
-    ];
+describe('ToolRegistry — Full Tool Suite', () => {
+  it('should auto-register all 13 built-in tools on construction', () => {
+    const registry = new ToolRegistry();
+    const allTools = registry.getAllRaw();
 
-    for (const tool of tools) {
-      registry.register(tool);
-    }
+    expect(allTools).toHaveLength(13);
 
-    expect(registry.ids).toHaveLength(13);
-    expect(registry.hasTool('current_time')).toBe(true);
-    expect(registry.hasTool('diary_read')).toBe(true);
-    expect(registry.hasTool('diary_edit')).toBe(true);
-    expect(registry.hasTool('diary_delete')).toBe(true);
-    expect(registry.hasTool('diary_list')).toBe(true);
-    expect(registry.hasTool('diary_search')).toBe(true);
-    expect(registry.hasTool('memory_store')).toBe(true);
-    expect(registry.hasTool('memory_delete')).toBe(true);
-    expect(registry.hasTool('vector_search')).toBe(true);
-    expect(registry.hasTool('message_search')).toBe(true);
-    expect(registry.hasTool('summary_read')).toBe(true);
-    expect(registry.hasTool('web_search')).toBe(true);
-    expect(registry.hasTool('url_read')).toBe(true);
+    // 检验每个预期工具都被注册了
+    const toolNames = allTools.map(t => t.name);
+    expect(toolNames).toContain('current_time');
+    expect(toolNames).toContain('diary_read');
+    expect(toolNames).toContain('diary_edit');
+    expect(toolNames).toContain('diary_delete');
+    expect(toolNames).toContain('diary_list');
+    expect(toolNames).toContain('diary_search');
+    expect(toolNames).toContain('memory_store');
+    expect(toolNames).toContain('memory_delete');
+    expect(toolNames).toContain('vector_search');
+    expect(toolNames).toContain('message_search');
+    expect(toolNames).toContain('summary_read');
+    expect(toolNames).toContain('web_search');
+    expect(toolNames).toContain('url_read');
   });
 
-  it('should convert all tools to Vercel format', () => {
-    const registry = new AgentToolRegistry();
-    registry.register(new CurrentTimeTool());
-    registry.register(new DiaryReadTool());
-    registry.register(new MemoryStoreTool());
-    registry.register(new VectorSearchTool());
+  it('should convert enabled tools to Vercel format', () => {
+    const registry = new ToolRegistry();
 
-    const vercelTools = registry.toVercelTools({
+    const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
       vaultName: '/tmp',
     });
 
-    expect(Object.keys(vercelTools)).toHaveLength(4);
+    // 所有 13 个工具都应该被启用（无禁用列表）
+    expect(Object.keys(vercelTools)).toHaveLength(13);
     expect(vercelTools['current_time']).toBeDefined();
     expect(vercelTools['diary_read']).toBeDefined();
     expect(vercelTools['memory_store']).toBeDefined();
     expect(vercelTools['vector_search']).toBeDefined();
   });
 
-  it('should throw when registering duplicate tool', () => {
-    const registry = new AgentToolRegistry();
-    registry.register(new CurrentTimeTool());
+  it('should respect disabledToolIds in userConfig', () => {
+    const registry = new ToolRegistry();
 
-    expect(() => {
-      registry.register(new CurrentTimeTool());
-    }).toThrow("AgentTool 'current_time' is already registered.");
+    const vercelTools = registry.getEnabledToolsAsVercel({
+      sessionId: 'test',
+      vaultName: '/tmp',
+      userConfig: {
+        disabledToolIds: ['web_search', 'url_read'],
+      },
+    });
+
+    expect(vercelTools['web_search']).toBeUndefined();
+    expect(vercelTools['url_read']).toBeUndefined();
+    expect(vercelTools['current_time']).toBeDefined();
+    expect(Object.keys(vercelTools)).toHaveLength(11);
+  });
+
+  it('should disable RAG tools when ragEnabled is false', () => {
+    const registry = new ToolRegistry();
+
+    const vercelTools = registry.getEnabledToolsAsVercel({
+      sessionId: 'test',
+      vaultName: '/tmp',
+      userConfig: {
+        ragEnabled: false,
+      },
+    });
+
+    expect(vercelTools['vector_search']).toBeUndefined();
+    expect(vercelTools['memory_store']).toBeUndefined();
+    // 非 RAG 工具仍然应该存在
+    expect(vercelTools['current_time']).toBeDefined();
+    expect(vercelTools['diary_read']).toBeDefined();
+  });
+
+  it('should allow looking up tools by name', () => {
+    const registry = new ToolRegistry();
+
+    expect(registry.get('current_time')).toBeInstanceOf(CurrentTimeTool);
+    expect(registry.get('memory_store')).toBeInstanceOf(MemoryStoreTool);
+    expect(registry.get('nonexistent_tool')).toBeUndefined();
   });
 
   it('each tool should have name, description, and parameters', () => {

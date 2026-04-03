@@ -105,4 +105,25 @@ export class MobileStoragePathService implements IStoragePathService {
     }
     return vaultSysDir;
   }
+
+  // --- IStoragePathService Specific Domain Folders ---
+  public async getSnapshotsDirectory(): Promise<string> {
+    return this.getVaultSystemDirectory('default').then(p => `${p}/snapshots`);
+  }
+
+  public async getJournalsBaseDirectory(): Promise<string> {
+    return this.getVaultDirectory('default').then(p => `${p}/Journals`);
+  }
+
+  public async getSummariesBaseDirectory(): Promise<string> {
+    return this.getVaultSystemDirectory('default').then(p => `${p}/summaries`);
+  }
+
+  public async getSessionsBaseDirectory(): Promise<string> {
+    return this.getVaultSystemDirectory('default').then(p => `${p}/sessions`);
+  }
+
+  public async getAssistantsBaseDirectory(): Promise<string> {
+    return this.getVaultSystemDirectory('default').then(p => `${p}/assistants`);
+  }
 }

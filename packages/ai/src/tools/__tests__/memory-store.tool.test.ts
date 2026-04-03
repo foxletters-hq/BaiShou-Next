@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryStoreTool } from '../memory-store.tool';
-import { AgentTool } from '../agent.tool';
-import { ToolContext } from '../agent.tool';
+import type { ToolContext } from '../agent.tool';
 
 describe('MemoryStoreTool', () => {
   it('should intercept and return skipped message if deduplicationService returns "skipped"', async () => {
@@ -9,7 +8,8 @@ describe('MemoryStoreTool', () => {
     const mockDedup = {
       checkAndMerge: vi.fn().mockResolvedValue({ 
         action: 'skipped', 
-        highestSimilarity: 0.95 
+        highestSimilarity: 0.95,
+        removedIds: []
       })
     };
     
@@ -35,7 +35,9 @@ describe('MemoryStoreTool', () => {
     const mockDedup = {
       checkAndMerge: vi.fn().mockResolvedValue({ 
         action: 'merged', 
-        mergedContent: 'Merged content!' 
+        mergedContent: 'Merged content!',
+        removedIds: [],
+        highestSimilarity: 0.85
       })
     };
     
@@ -52,6 +54,34 @@ describe('MemoryStoreTool', () => {
     expect(result).toContain('Merged content!');
   });
 
+  it('should store normally when deduplicationService returns "stored"', async () => {
+    const tool = new MemoryStoreTool();
+    const mockDedup = {
+      checkAndMerge: vi.fn().mockResolvedValue({ 
+        action: 'stored', 
+        removedIds: [],
+        highestSimilarity: 0.3
+      })
+    };
+    const mockEmbedService = { 
+      isConfigured: true,
+      embedText: vi.fn().mockResolvedValue(undefined)
+    };
+    
+    const context: ToolContext = {
+      sessionId: 'sess-1',
+      vaultName: 'default',
+      embeddingService: mockEmbedService as any,
+      deduplicationService: mockDedup as any,
+    };
+
+    const result = await tool.execute({ content: 'Brand new info' }, context);
+    
+    expect(mockDedup.checkAndMerge).toHaveBeenCalled();
+    expect(mockEmbedService.embedText).toHaveBeenCalled();
+    expect(result).toContain('记忆已成功存储并建立向量索引');
+  });
+
   it('should fallback to basic insertion if deduplicationService is not provided in context', async () => {
     const tool = new MemoryStoreTool();
     const mockEmbedService = { 
@@ -63,7 +93,7 @@ describe('MemoryStoreTool', () => {
       sessionId: 'sess-1',
       vaultName: 'default',
       embeddingService: mockEmbedService as any
-      // deduplicationService OMITTED
+      // deduplicationService OMITTED — should use fallback path
     };
 
     const result = await tool.execute({ content: 'Test fallback' }, context);
@@ -75,5 +105,28 @@ describe('MemoryStoreTool', () => {
     
     expect(result).toContain('记忆已成功存储并建立向量索引');
     expect(result).toContain('Test fallback');
+  });
+
+  it('should reject empty content', async () => {
+    const tool = new MemoryStoreTool();
+    const context: ToolContext = {
+      sessionId: 'sess-1',
+      vaultName: 'default',
+    };
+
+    const result = await tool.execute({ content: '   ' }, context);
+    expect(result).toContain('请提供要存储的记忆内容');
+  });
+
+  it('should reject when embedding service is not configured', async () => {
+    const tool = new MemoryStoreTool();
+    const context: ToolContext = {
+      sessionId: 'sess-1',
+      vaultName: 'default',
+      embeddingService: { isConfigured: false } as any
+    };
+
+    const result = await tool.execute({ content: 'hello' }, context);
+    expect(result).toContain('嵌入模型未配置');
   });
 });

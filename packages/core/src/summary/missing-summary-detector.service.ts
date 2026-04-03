@@ -1,6 +1,6 @@
 import { Diary, Summary, SummaryType, MissingSummary } from '@baishou/shared';
-import { DiaryRepository } from '@baishou/database/src/repositories/diary.repository';
-import { SummaryRepository } from '@baishou/database/src/repositories/summary.repository';
+import type { DiaryRepository } from '@baishou/database/src/repositories/diary.repository';
+import type { SummaryRepository } from '@baishou/database/src/repositories/summary.repository';
 
 export class MissingSummaryDetector {
   constructor(
@@ -26,13 +26,13 @@ export class MissingSummaryDetector {
     };
 
     for (const s of summaries) {
-      summaryMap[s.type].push(s);
+      (summaryMap[s.type] ??= []).push(s);
     }
 
-    const weekly = this.getMissingWeekly(diaries, summaryMap[SummaryType.weekly], locale);
-    const monthly = this.getMissingMonthly(summaryMap[SummaryType.weekly], summaryMap[SummaryType.monthly], locale);
-    const quarterly = this.getMissingQuarterly(summaryMap[SummaryType.monthly], summaryMap[SummaryType.quarterly], locale);
-    const yearly = this.getMissingYearly(summaryMap[SummaryType.quarterly], summaryMap[SummaryType.yearly], locale);
+    const weekly = this.getMissingWeekly(diaries, summaryMap[SummaryType.weekly] ?? [], locale);
+    const monthly = this.getMissingMonthly(summaryMap[SummaryType.weekly] ?? [], summaryMap[SummaryType.monthly] ?? [], locale);
+    const quarterly = this.getMissingQuarterly(summaryMap[SummaryType.monthly] ?? [], summaryMap[SummaryType.quarterly] ?? [], locale);
+    const yearly = this.getMissingYearly(summaryMap[SummaryType.quarterly] ?? [], summaryMap[SummaryType.yearly] ?? [], locale);
 
     const result = [...weekly, ...monthly, ...quarterly, ...yearly];
     result.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
@@ -40,9 +40,10 @@ export class MissingSummaryDetector {
   }
 
   private getMissingWeekly(diaries: Diary[], existingSummaries: Summary[], locale: string): MissingSummary[] {
+    if (diaries.length === 0) return [];
     const missing: MissingSummary[] = [];
     const dates = diaries.map(d => d.date.getTime()).sort((a, b) => a - b);
-    const firstDate = new Date(dates[0]);
+    const firstDate = new Date(dates[0]!);
     const now = new Date();
 
     // 调整到周一 (JS Date.getDay(): 0 is Sunday, 1 is Monday)
@@ -94,8 +95,8 @@ export class MissingSummaryDetector {
 
     for (const key of monthsSet) {
       const [yearStr, monthStr] = key.split('-');
-      const year = parseInt(yearStr, 10);
-      const month = parseInt(monthStr, 10);
+      const year = parseInt(yearStr!, 10);
+      const month = parseInt(monthStr!, 10);
 
       const mStart = new Date(year, month, 1);
       const mEnd = new Date(year, month + 1, 0, 23, 59, 59); // 最后一天最后时刻
@@ -129,8 +130,8 @@ export class MissingSummaryDetector {
 
     for (const qKey of quartersSet) {
       const [yearStr, qStr] = qKey.split('-');
-      const year = parseInt(yearStr, 10);
-      const quarter = parseInt(qStr, 10);
+      const year = parseInt(yearStr!, 10);
+      const quarter = parseInt(qStr!, 10);
 
       const startMonth = (quarter - 1) * 3;
       const qStart = new Date(year, startMonth, 1);

@@ -69,6 +69,23 @@ export interface ToolSummaryReader {
 }
 
 /**
+ * 去重服务接口——用于记忆去重合并
+ */
+export interface ToolDeduplicationService {
+  checkAndMerge(options: {
+    newMemoryContent: string;
+    sessionId: string;
+    sourceType?: string;
+    sourceId?: string;
+  }): Promise<{
+    action: 'stored' | 'skipped' | 'merged';
+    mergedContent?: string;
+    removedIds: string[];
+    highestSimilarity: number;
+  }>;
+}
+
+/**
  * 传递给工具执行的上下文
  */
 export interface ToolContext {
@@ -78,6 +95,7 @@ export interface ToolContext {
   vectorStore?: ToolVectorStore;
   messageSearcher?: ToolMessageSearcher;
   summaryReader?: ToolSummaryReader;
+  deduplicationService?: ToolDeduplicationService;
   userConfig?: Record<string, unknown>;
   /** 允许外部注入基于宿主系统（如 Electron / Web）的真正搜索页面执行器，如果没有则降级走 Native Fetch */
   webSearchResultFetcher?: (url: string) => Promise<string>;

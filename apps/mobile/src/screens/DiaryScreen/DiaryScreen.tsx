@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { DiaryCard, TimelineNode } from '@baishou/ui';
+import { useBaishou } from '../../providers/BaishouProvider';
+import { useRouter } from 'expo-router';
 
 const useTranslation = (): { t: (key: string) => string } => ({
   t: (key: string) => key,
@@ -8,21 +10,27 @@ const useTranslation = (): { t: (key: string) => string } => ({
 
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation();
+  const { services, dbReady } = useBaishou();
+  const router = useRouter();
 
-  const [diaries] = useState([
-    {
-      id: '1',
-      contentSnippet: '# 强子对撞报告\n天气预报系统报告异常，区域呈现高度的数据扭曲。我开始着手拆解最近几小时内的代理执行链...',
-      tags: ['日常波动', '系统维护', 'Agent-Tuning'],
-      createdAt: new Date(),
-    },
-    {
-      id: '2',
-      contentSnippet: '复刻 BaiShou 的底层协议确实充满了变数。在与 Web 端形成火力网交织后，终于成功突围移动端，重塑深空色域。',
-      tags: ['超维记忆', 'UI 引擎重燃'],
-      createdAt: new Date(Date.now() - 3600000),
+  const [diaries, setDiaries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDiaries = useCallback(async () => {
+    if (!dbReady || !services) return;
+    try {
+      const list = await services.diaryService.listAll({ limit: 50 });
+      setDiaries(list);
+    } catch (e) {
+      console.error('Failed to fetch diaries', e);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }, [dbReady, services]);
+
+  useEffect(() => {
+    fetchDiaries();
+  }, [fetchDiaries]);
 
   return (
     <>
@@ -35,29 +43,38 @@ export const DiaryScreen: React.FC = () => {
               <Text style={styles.headerTitle}>记忆节点</Text>
               <Text style={styles.headerSubtitle}>NEURAL SNAPSHOTS (B8.1)</Text>
             </View>
-            <TouchableOpacity style={styles.addBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.addBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/diary-editor')}>
               <Text style={styles.addBtnIcon}>✍️</Text>
               <Text style={styles.addBtnText}>刻录新痕</Text>
             </TouchableOpacity>
           </View>
           
           <ScrollView style={styles.contentContainer} contentContainerStyle={styles.timelinePadding} indicatorStyle="white">
-            {diaries.map((diary, index) => (
-              <TimelineNode key={diary.id} isLast={index === diaries.length - 1} isFirst={index === 0}>
-                {/* 借用原版 Web/通用层组件，此处外部包裹调整层提供一点深色感 */}
-                <View style={styles.cardWrapper}>
-                  <DiaryCard 
-                    id={diary.id}
-                    contentSnippet={diary.contentSnippet}
-                    tags={diary.tags}
-                    createdAt={diary.createdAt}
-                    onClick={() => console.log('Decode memory:', diary.id)}
-                  />
-                  {/* 叠加光晕掩码进行降噪隔离 */}
-                  <View style={styles.glassMask} pointerEvents="none" />
-                </View>
-              </TimelineNode>
-            ))}
+            {loading ? (
+               <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 40 }} />
+            ) : diaries.length === 0 ? (
+               <View style={{ alignItems: 'center', marginTop: 60, opacity: 0.5 }}>
+                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🌌</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 16 }}>记忆荒原，一无所有</Text>
+               </View>
+            ) : (
+              diaries.map((diary, index) => (
+                <TimelineNode key={diary.id} isLast={index === diaries.length - 1} isFirst={index === 0}>
+                  {/* 借用原版 Web/通用层组件，此处外部包裹调整层提供一点深色感 */}
+                  <View style={styles.cardWrapper}>
+                    <DiaryCard 
+                      id={diary.id}
+                      contentSnippet={diary.preview || diary.contentSnippet || '暂无预览...'}
+                      tags={diary.tags || []}
+                      createdAt={diary.date || diary.createdAt}
+                      onClick={() => router.push(`/(tabs)/diary-editor?id=${diary.id}`)}
+                    />
+                    {/* 叠加光晕掩码进行降噪隔离 */}
+                    <View style={styles.glassMask} pointerEvents="none" />
+                  </View>
+                </TimelineNode>
+              ))
+            )}
             
             <View style={styles.footerMarker}>
                <Text style={styles.footerMarkerText}>=== 已触达此神经链路的底层 ===</Text>

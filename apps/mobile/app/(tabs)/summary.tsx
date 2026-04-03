@@ -1,28 +1,14 @@
-import { StyleSheet, View, Text } from 'react-native';
+import { SummaryScreen } from '@/src/screens/SummaryScreen/SummaryScreen';
+import { View, StyleSheet } from 'react-native';
 
-export default function SummaryScreen() {
+export default function SummaryTab() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Data Summary / Archive</Text>
-      <Text style={styles.subtitle}>Feature is coming soon...</Text>
+      <SummaryScreen />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#666',
-  },
+  container: { flex: 1 }
 });

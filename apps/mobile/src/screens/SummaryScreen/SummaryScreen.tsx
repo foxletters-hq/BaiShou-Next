@@ -1,16 +1,71 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { 
   SummaryCard, DashboardHeroBanner, 
   DashboardStatsCard, DashboardSharedMemoryCard 
 } from '@baishou/ui';
-import { useSummaryDashboardMock } from './hooks/useSummaryDashboardMock';
+import { useBaishou } from '../../providers/BaishouProvider';
 
 export const SummaryScreen: React.FC = () => {
   const { width } = useWindowDimensions();
-  const { state, actions } = useSummaryDashboardMock();
+  const { services, dbReady } = useBaishou();
+
+  const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
+  const [lookbackMonths, setLookbackMonths] = useState(1);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [loading, setLoading] = useState(true);
+
+  const [stats, setStats] = useState({
+    totalDiaryCount: 0,
+    totalWeeklyCount: 0,
+    totalMonthlyCount: 0,
+    totalQuarterlyCount: 0,
+    totalYearlyCount: 0,
+  });
+
+  const [summaries, setSummaries] = useState<any[]>([]);
+
+  const fetchDashboardData = useCallback(async () => {
+    if (!dbReady || !services) return;
+    try {
+      const [sumList, diaryCount] = await Promise.all([
+        services.summaryManager.list(),
+        services.diaryService.count()
+      ]);
+      
+      setSummaries(sumList.map(s => ({
+         id: String(s.id),
+         title: `${s.type === 'weekly' ? '周' : s.type === 'monthly' ? '月' : '度'}复盘`,
+         dateRange: `${new Date(s.startDate).toISOString().split('T')[0]} - ${new Date(s.endDate).toISOString().split('T')[0]}`,
+         type: s.type,
+         summaryText: s.content.substring(0, 100) + '...'
+      })));
+
+      setStats({
+        totalDiaryCount: diaryCount,
+        totalWeeklyCount: sumList.filter(s => s.type === 'weekly').length,
+        totalMonthlyCount: sumList.filter(s => s.type === 'monthly').length,
+        totalQuarterlyCount: sumList.filter(s => s.type === 'quarterly').length,
+        totalYearlyCount: sumList.filter(s => s.type === 'yearly').length,
+      });
+
+    } catch (e) {
+      console.warn('Failed to load summary stats', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [dbReady, services]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const isWide = width > 600;
+
+  const handleCopyContext = () => {
+     // TODO: 结合 AgentService 提供真实导出逻辑，待后续 Phase 补完
+     console.log('Copy context mock: to be implemented via FileSync');
+  };
 
   return (
     <>
@@ -30,16 +85,16 @@ export const SummaryScreen: React.FC = () => {
             </View>
 
             <View style={styles.tabs}>
-              <TouchableOpacity onPress={() => actions.setActiveTab('panel')} style={[styles.tab, state.activeTab === 'panel' && styles.tabActive]}>
-                <Text style={[styles.tabText, state.activeTab === 'panel' && styles.tabTextActive]}>大盘脉冲</Text>
+              <TouchableOpacity onPress={() => setActiveTab('panel')} style={[styles.tab, activeTab === 'panel' && styles.tabActive]}>
+                <Text style={[styles.tabText, activeTab === 'panel' && styles.tabTextActive]}>大盘脉冲</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => actions.setActiveTab('gallery')} style={[styles.tab, state.activeTab === 'gallery' && styles.tabActive]}>
-                <Text style={[styles.tabText, state.activeTab === 'gallery' && styles.tabTextActive]}>碎片画廊</Text>
+              <TouchableOpacity onPress={() => setActiveTab('gallery')} style={[styles.tab, activeTab === 'gallery' && styles.tabActive]}>
+                <Text style={[styles.tabText, activeTab === 'gallery' && styles.tabTextActive]}>碎片画廊</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {state.activeTab === 'panel' ? (
+          {activeTab === 'panel' ? (
             <ScrollView contentContainerStyle={styles.panelContent} indicatorStyle="white">
               <View style={styles.moduleWrapper}>
                  <DashboardHeroBanner />
@@ -47,39 +102,48 @@ export const SummaryScreen: React.FC = () => {
               <View style={isWide ? styles.wideLayout : styles.narrowLayout}>
                 <View style={[styles.moduleWrapper, { flex: 1 }]}>
                   <DashboardSharedMemoryCard 
-                    lookbackMonths={state.lookbackMonths}
-                    onMonthsChanged={actions.setLookbackMonths}
-                    onCopyContext={actions.handleCopyContext}
+                    lookbackMonths={lookbackMonths}
+                    onMonthsChanged={setLookbackMonths}
+                    onCopyContext={handleCopyContext}
                   />
                 </View>
                 <View style={[styles.moduleWrapper, { flex: 1 }]}>
-                  <DashboardStatsCard {...state.stats} />
+                  <DashboardStatsCard {...stats} />
                 </View>
               </View>
             </ScrollView>
           ) : (
             <View style={styles.galleryContent}>
               <View style={styles.galleryActions}>
-                  <TouchableOpacity onPress={() => actions.setViewMode('list')} style={[styles.toggleBtn, state.viewMode === 'list' && styles.toggleBtnActive]}>
-                    <Text style={[styles.toggleBtnText, state.viewMode === 'list' && styles.toggleBtnTextActive]}>☵</Text>
+                  <TouchableOpacity onPress={() => setViewMode('list')} style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}>
+                    <Text style={[styles.toggleBtnText, viewMode === 'list' && styles.toggleBtnTextActive]}>☵</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => actions.setViewMode('grid')} style={[styles.toggleBtn, state.viewMode === 'grid' && styles.toggleBtnActive]}>
-                    <Text style={[styles.toggleBtnText, state.viewMode === 'grid' && styles.toggleBtnTextActive]}>☷</Text>
+                  <TouchableOpacity onPress={() => setViewMode('grid')} style={[styles.toggleBtn, viewMode === 'grid' && styles.toggleBtnActive]}>
+                    <Text style={[styles.toggleBtnText, viewMode === 'grid' && styles.toggleBtnTextActive]}>☷</Text>
                   </TouchableOpacity>
               </View>
               <ScrollView contentContainerStyle={styles.scrollItems} indicatorStyle="white">
-                {state.summaries.map(item => (
-                  <View key={item.id} style={styles.cardContainer}>
-                    <SummaryCard 
-                      id={item.id}
-                      title={item.title}
-                      dateRange={item.dateRange}
-                      summaryText={item.summaryText}
-                      type={item.type}
-                      onClick={() => console.log('HyperJump to:', item.id)}
-                    />
-                  </View>
-                ))}
+                {loading ? (
+                  <ActivityIndicator size="large" color="#AD88D4" style={{ marginTop: 40 }} />
+                ) : summaries.length === 0 ? (
+                   <View style={{ alignItems: 'center', marginTop: 40, opacity: 0.5 }}>
+                      <Text style={{ fontSize: 32, marginBottom: 12 }}>🕸️</Text>
+                      <Text style={{ color: '#94A3B8', fontSize: 15 }}>无聚合数据产生</Text>
+                   </View>
+                ) : (
+                  summaries.map(item => (
+                    <View key={item.id} style={styles.cardContainer}>
+                      <SummaryCard 
+                        id={item.id}
+                        title={item.title}
+                        dateRange={item.dateRange}
+                        summaryText={item.summaryText}
+                        type={item.type}
+                        onClick={() => console.log('HyperJump to:', item.id)}
+                      />
+                    </View>
+                  ))
+                )}
               </ScrollView>
             </View>
           )}

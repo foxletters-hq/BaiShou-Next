@@ -1,7 +1,6 @@
-/**
- * 供应商类型枚举
- */
-export type ProviderType = 'openai' | 'gemini' | 'anthropic' | 'deepseek' | 'kimi' | 'ollama' | 'siliconflow' | 'openrouter' | 'dashscope' | 'doubao' | 'grok' | 'mistral' | 'lmstudio' | 'custom' | string;
+// ProviderType enum 从 ai-provider.types.ts 统一导出，此处不再重复定义
+import { ProviderType } from './ai-provider.types';
+export { ProviderType };
 
 /**
  * AI 供应商配置模型

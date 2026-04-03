@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
-import { SqliteHybridSearchRepository } from '../hybrid-search.repository';
+import { SqliteHybridSearchRepository } from '../repositories/hybrid-search.repository';
 import * as sqliteVec from 'sqlite-vec';
 
 describe('SqliteHybridSearchRepository with native vec support', () => {

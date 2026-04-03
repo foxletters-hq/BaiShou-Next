@@ -1,5 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, TextInput, ActivityIndicator } from 'react-native';
+import { useBaishou } from '../../providers/BaishouProvider';
+import { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared';
 
 const useTranslation = (): { t: (key: string) => string } => ({
   t: (key: string) => key,
@@ -7,6 +9,76 @@ const useTranslation = (): { t: (key: string) => string } => ({
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation();
+  const { services, dbReady } = useBaishou();
+
+  const [deepseekKey, setDeepseekKey] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!dbReady || !services) return;
+    const loadSettings = async () => {
+      try {
+        const providers = await services.settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+        const dsProvider = providers.find(p => p.type === 'deepseek');
+        if (dsProvider && dsProvider.apiKey) {
+          setDeepseekKey(dsProvider.apiKey);
+        }
+      } catch (e) {
+        console.warn('Load settings failed', e);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+    loadSettings();
+  }, [dbReady, services]);
+
+  const handleSaveKey = async () => {
+    if (!services || !dbReady) return;
+    setIsSaving(true);
+    try {
+      let providers = await services.settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+      const dsIndex = providers.findIndex(p => p.type === 'deepseek');
+      
+      if (dsIndex !== -1) {
+        providers[dsIndex] = { ...providers[dsIndex], apiKey: deepseekKey, isEnabled: true };
+      } else {
+        providers.push({
+          id: 'provider-deepseek-default',
+          name: 'DeepSeek',
+          type: 'deepseek',
+          apiKey: deepseekKey,
+          baseUrl: 'https://api.deepseek.com/v1',
+          models: ['deepseek-chat', 'deepseek-coder'],
+          enabledModels: ['deepseek-chat'],
+          defaultDialogueModel: 'deepseek-chat',
+          defaultNamingModel: 'deepseek-chat',
+          isEnabled: true,
+          isSystem: false,
+          sortOrder: 1,
+        });
+      }
+
+      await services.settingsManager.set('ai_providers', providers);
+
+      // Force it to be the global active model for testing
+      let globalModels = await services.settingsManager.get<GlobalModelsConfig>('global_models') || {} as GlobalModelsConfig;
+      const targetProviderId = dsIndex !== -1 ? providers[dsIndex].id : 'provider-deepseek-default';
+      
+      globalModels.globalDialogueProviderId = targetProviderId;
+      globalModels.globalDialogueModelId = 'deepseek-chat';
+      globalModels.globalNamingProviderId = targetProviderId;
+      globalModels.globalNamingModelId = 'deepseek-chat';
+      
+      await services.settingsManager.set('global_models', globalModels);
+      
+      console.log('Saved DeepSeek key to Shadow DB & File system successfully');
+    } catch(e) {
+       console.error(e);
+    } finally {
+       setIsSaving(false);
+    }
+  };
 
   return (
     <>
@@ -18,51 +90,43 @@ export const SettingsScreen: React.FC = () => {
             <Text style={styles.headerSubtitle}>CORE PARAMETERS (B8.3)</Text>
           </View>
           
-          <ScrollView style={styles.contentContainer} indicatorStyle="white">
+          <ScrollView style={styles.contentContainer} indicatorStyle="white" keyboardShouldPersistTaps="handled">
             <View style={styles.warningBox}>
                <Text style={styles.warningIcon}>🛡️</Text>
                <Text style={styles.warningText}>
-                  核心协议连接已加密。移动端配置正在与跨星区网络（Desktop WebDAV）握手同步。
+                  核心协议连接已加密。SSOT 配置管线已对接本地数据库。
                </Text>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>通用架构</Text>
+              <Text style={styles.sectionTitle}>大语言模型 API 注入 (测试区)</Text>
               
-              <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
-                <View style={styles.settingItemLeft}>
-                  <View style={styles.iconBg}><Text style={styles.iconText}>🧠</Text></View>
-                  <Text style={styles.settingText}>接入模型与算力</Text>
-                </View>
-                <Text style={styles.arrowText}>&gt;</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
-                <View style={styles.settingItemLeft}>
-                   <View style={styles.iconBg}><Text style={styles.iconText}>🗄️</Text></View>
-                   <Text style={styles.settingText}>记忆与存储节点</Text>
-                </View>
-                <Text style={styles.arrowText}>&gt;</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
-                <View style={styles.settingItemLeft}>
-                   <View style={styles.iconBg}><Text style={styles.iconText}>🌐</Text></View>
-                   <Text style={styles.settingText}>语言界限 (Language)</Text>
-                </View>
-                <Text style={styles.arrowText}>&gt;</Text>
-              </TouchableOpacity>
+              <View style={styles.inputCard}>
+                 <Text style={styles.inputLabel}>DeepSeek API Key</Text>
+                 <TextInput 
+                   style={styles.keyInput} 
+                   value={deepseekKey}
+                   onChangeText={setDeepseekKey}
+                   placeholder="sk-..."
+                   placeholderTextColor="#475569"
+                   autoCapitalize="none"
+                   secureTextEntry
+                 />
+                 <TouchableOpacity style={styles.saveButton} onPress={handleSaveKey} disabled={isSaving || !isLoaded}>
+                    {isSaving ? <ActivityIndicator size="small" color="#10B981" /> : <Text style={styles.saveBtnText}>写 入 核 心</Text>}
+                 </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>危险区 (Danger Zone)</Text>
-              <TouchableOpacity style={[styles.settingItem, styles.dangerItem]} activeOpacity={0.7}>
-                 <Text style={styles.dangerText}>☢️ 切断所有神经元注入</Text>
+              <TouchableOpacity style={[styles.settingItem, styles.dangerItem]} activeOpacity={0.7} onPress={() => { /* 预留清空逻辑 */ }}>
+                 <Text style={styles.dangerText}>☢️ 切断并遗忘所有凭证</Text>
               </TouchableOpacity>
             </View>
             
             <View style={styles.footerMarker}>
-               <Text style={styles.footerMarkerText}>[ VERSION: v4.0.0-Next.Alpha ]</Text>
+               <Text style={styles.footerMarkerText}>[ VERSION: MOBILE-BETA-PHASE2 ]</Text>
             </View>
           </ScrollView>
         </View>
@@ -108,9 +172,32 @@ const styles = StyleSheet.create({
   settingText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
   arrowText: { fontSize: 16, color: '#64748B', fontWeight: '900' },
   
-  dangerItem: { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.2)', justifyContent: 'center' },
+  dangerItem: { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.2)', justifyContent: 'center', padding: 16, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
   dangerText: { color: '#EF4444', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
 
   footerMarker: { alignItems: 'center', marginTop: 24, marginBottom: 40, opacity: 0.2 },
   footerMarkerText: { color: '#94A3B8', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
+  
+  inputCard: {
+     backgroundColor: 'rgba(255, 255, 255, 0.03)',
+     padding: 20, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  inputLabel: {
+     fontSize: 14, color: '#94A3B8', fontWeight: '800', marginBottom: 12,
+  },
+  keyInput: {
+     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+     borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)',
+     borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12,
+     color: '#FFF', fontSize: 16, fontFamily: 'monospace',
+     marginBottom: 16
+  },
+  saveButton: {
+     backgroundColor: 'rgba(16, 185, 129, 0.15)',
+     paddingVertical: 14, borderRadius: 10, alignItems: 'center',
+     borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  saveBtnText: {
+     color: '#10B981', fontSize: 15, fontWeight: '900', letterSpacing: 2
+  }
 });

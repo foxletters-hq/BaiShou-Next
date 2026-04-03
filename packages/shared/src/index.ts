@@ -2,7 +2,7 @@ export * from './types/diary.types';
 export * from './types/summary.types';
 export * from './types/agent.types';
 export * from './types/settings.types';
-export { WebSearchMode, getDefaultWebSearchMode, createAiProvider } from './types/ai-provider.types';
+export { ProviderType, WebSearchMode, getDefaultWebSearchMode, createAiProvider } from './types/ai-provider.types';
 export type { AiProviderModel } from './types/ai-provider.types';
 export * from './types/user-profile.types';
 export * from './types/prompt-shortcut.types';

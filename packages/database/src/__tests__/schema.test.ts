@@ -3,7 +3,6 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import { summariesTable } from '../schema/summaries';
 import { agentSessionsTable } from '../schema/agent-sessions';
-import { FTS_INIT_SQL } from '../schema/fts';
 
 describe('Database Schema', () => {
   let db: ReturnType<typeof drizzle>;
@@ -11,21 +10,25 @@ describe('Database Schema', () => {
   beforeAll(() => {
     const sqlite = new Database(':memory:');
     db = drizzle(sqlite);
-    
-    // 简易建表逻辑用于测试
+
+    // 建表 SQL 匹配真实 Drizzle schema
     sqlite.exec(`
       CREATE TABLE summaries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        target_type TEXT NOT NULL,
-        target_date INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        start_date INTEGER NOT NULL,
+        end_date INTEGER NOT NULL,
         content TEXT NOT NULL,
-        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+        source_ids TEXT,
+        generated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+        UNIQUE(type, start_date, end_date)
       );
     `);
   });
 
-  it('should execute schema successfully', async () => {
+  it('should execute schema query successfully', async () => {
     const result = await db.select().from(summariesTable);
     expect(result).toBeDefined();
+    expect(Array.isArray(result)).toBe(true);
   });
 });

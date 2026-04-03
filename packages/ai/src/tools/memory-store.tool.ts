@@ -57,7 +57,36 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
     const fullContent = args.tags ? `${args.content}\n[标签: ${args.tags}]` : args.content;
 
     try {
-      // 在写入之前执行【去重过滤器】！
+      // ═══ 路径 A: 使用外部 MemoryDeduplicationService（推荐，支持 LLM 合并） ═══
+      if (context.deduplicationService) {
+         const dedupResult = await context.deduplicationService.checkAndMerge({
+           newMemoryContent: fullContent,
+           sessionId: context.sessionId,
+         });
+
+         switch (dedupResult.action) {
+           case 'skipped':
+             return `[MemoryDeduplication Intercept]: Content is too similar to an existing memory (similarity=${dedupResult.highestSimilarity?.toFixed(3) ?? 'N/A'}). Operation cancelled to prevent duplication!`;
+           case 'merged':
+             return `记忆已被智能合并更新。\n合并后: ${dedupResult.mergedContent ?? fullContent}`;
+           case 'stored':
+           default:
+             // 继续存储
+             break;
+         }
+
+         await embeddingService.embedText({
+           text: fullContent,
+           sourceType: 'chat',
+           sourceId: `mem_${Date.now()}`,
+           groupId: context.sessionId,
+         });
+
+         const preview = args.content.length > 100 ? args.content.slice(0, 100) + '...' : args.content;
+         return `记忆已成功存储并建立向量索引。\n内容: ${preview}` + (args.tags ? `\n标签: ${args.tags}` : '');
+      }
+
+      // ═══ 路径 B: Fallback 内联去重（仅依赖 vectorStore） ═══
       if (context.vectorStore) {
          const embArray = await embeddingService.embedQuery(fullContent);
          if (embArray) {
@@ -65,13 +94,7 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
              const threshold = (context.userConfig?.['memory_dedup_threshold'] as number | undefined) ?? 0.90;
              const firstSimilar = similarCount[0];
              if (firstSimilar) {
-                // searchSimilar 按照设定，当 score (打分) 大于门限时！
-                // 这里的 distance 从 sqlite 中拿出来实际已经被转化成了 score, 需要做个推断。
-                // 比如 假如返回的 distance 是原样，那距离 < (1-threashold) 为重复。
-                // 约定上文我们将 score 设置为返回了。如果是通过 searchSimilar 的 distance 字段，我们需要统一它的定义：如果它是 score（越大越好），> 0.9 则去重。
-                // 我们之前封装 hybrid-search 是把 `score: 1.0 - rawDist` 交给上游的，为统一抽象 `distance`，我们将其定为差异度度量（距）：
-                const theDiffDistance = firstSimilar.distance || 0; 
-                // 防护兼容：(如果是 Score，它会逼近 1，这里兼容两者表示法)
+                const theDiffDistance = firstSimilar.distance || 0;
                 const isDupe = (theDiffDistance < (1 - threshold)) || (theDiffDistance > threshold && threshold > 0.5);
                 
                 if (isDupe) {
