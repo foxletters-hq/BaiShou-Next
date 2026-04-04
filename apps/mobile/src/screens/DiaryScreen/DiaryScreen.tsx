@@ -4,9 +4,6 @@ import { DiaryCard, TimelineNode } from '@baishou/ui';
 import { useBaishou } from '../../providers/BaishouProvider';
 import { useRouter } from 'expo-router';
 
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
 
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation();

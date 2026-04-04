@@ -3,9 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Sta
 import { useBaishou } from '../../providers/BaishouProvider';
 import { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared';
 
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation();
