@@ -90,6 +90,65 @@
   color: #fff;
 }
 
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.radioLabel:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.radioLabel input:checked + .radioText {
+  color: #9AD4EA;
+}
+
+.radioText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.radioText span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.radioText small {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.textInput {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: monospace;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.textInput:focus {
+  border-color: #9AD4EA;
+}
+
 .sliderWrapper {
   display: flex;
   align-items: center;
@@ -122,7 +181,8 @@
 }
 
 .valBadge {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(154, 212, 234, 0.1);
+  color: #9AD4EA;
   padding: 4px 10px;
   border-radius: 6px;
   font-family: monospace;

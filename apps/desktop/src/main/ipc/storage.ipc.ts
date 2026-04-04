@@ -1,12 +1,14 @@
 import { ipcMain, app } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { vaultService, pathService } from './vault.ipc';
 
 export function registerStorageIPC() {
   ipcMain.handle('storage:getStats', async () => {
     try {
-      const userDataPath = app.getPath('userData');
-      const sqlitePath = path.join(userDataPath, 'baishou_next_agent.db');
+      const activeVault = vaultService.getActiveVault();
+      const storageRootPath = activeVault ? activeVault.path : await pathService.getRootDirectory();
+      const sqlitePath = activeVault ? path.join(activeVault.path, 'data.db') : path.join(app.getPath('userData'), 'data.db');
       
       let sqliteSize = 0;
       if (fs.existsSync(sqlitePath)) {
@@ -27,7 +29,7 @@ export function registerStorageIPC() {
       };
 
       return {
-        storageRootPath: userDataPath,
+        storageRootPath,
         sqliteSizeStats: formatBytes(sqliteSize),
         vectorDbStats: formatBytes(vectorDbSize),
         mediaCacheStats: formatBytes(mediaCacheSize)
@@ -35,7 +37,7 @@ export function registerStorageIPC() {
     } catch (e) {
       console.error('[Storage IPC] Failed to get stats', e);
       return {
-        storageRootPath: app.getPath('userData'),
+        storageRootPath: await pathService.getRootDirectory(),
         sqliteSizeStats: 'Unknown',
         vectorDbStats: 'Unknown',
         mediaCacheStats: 'Unknown'

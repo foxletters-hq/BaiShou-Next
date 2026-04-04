@@ -63,12 +63,15 @@ export const api = {
   deleteAssistant: (id: string) => ipcRenderer.invoke('agent:delete-assistant', id),
 
   // Vault/Workspace System
-  vaultGetAll: () => ipcRenderer.invoke('vault:getAll'),
-  vaultGetActive: () => ipcRenderer.invoke('vault:getActive'),
-  vaultSwitch: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
-  vaultDelete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
-  vaultPickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
-  vaultGetCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
+  vault: {
+    list: () => ipcRenderer.invoke('vault:getAll'),
+    getActive: () => ipcRenderer.invoke('vault:getActive'),
+    switchActive: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
+    delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
+    createDialog: () => ipcRenderer.invoke('vault:createDialog'),
+    pickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
+    getCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
+  },
 
   // Profile System
   profile: {

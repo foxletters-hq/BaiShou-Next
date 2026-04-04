@@ -20,17 +20,20 @@ export interface AIModelServicesViewProps {
   onFetchModels?: (providerId: string, apiKey: string, baseUrl?: string) => Promise<string[]>;
 }
 
+import { SiOpenai, SiGoogle, SiAnthropic } from 'react-icons/si';
+import { MdCloud, MdPrecisionManufacturing, MdAutoAwesome, MdExtension } from 'react-icons/md';
+
 // 核心自带云脑，可追加后续通过新增按钮自定义的类型
 const BASE_KNOWN_PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', icon: '🧠', defaultBase: 'https://api.openai.com/v1' },
-  { id: 'anthropic', name: 'Anthropic (Claude)', icon: '🔮', defaultBase: 'https://api.anthropic.com' },
-  { id: 'google', name: 'Google (Gemini)', icon: '🌌', defaultBase: 'https://generativelanguage.googleapis.com' },
-  { id: 'ollama', name: 'Ollama (Local)', icon: '🦙', defaultBase: 'http://localhost:11434/v1' },
-  { id: 'deepseek', name: 'DeepSeek (深度求索)', icon: '🐋', defaultBase: 'https://api.deepseek.com' },
-  { id: 'kimi', name: 'Moonshot (Kimi)', icon: '🌙', defaultBase: 'https://api.moonshot.cn/v1' },
-  { id: 'qwen', name: 'Qwen (阿里通义)', icon: '☁️', defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-  { id: 'zhipu', name: 'ZhipuAI (智谱清言)', icon: '🧩', defaultBase: 'https://open.bigmodel.cn/api/paas/v4' },
-  { id: 'xunfei', name: 'Xunfei (星火)', icon: '✨', defaultBase: 'https://spark-api-open.xf-yun.com/v1' },
+  { id: 'openai', name: 'OpenAI', icon: <SiOpenai />, defaultBase: 'https://api.openai.com/v1' },
+  { id: 'anthropic', name: 'Anthropic', icon: <SiAnthropic />, defaultBase: 'https://api.anthropic.com' },
+  { id: 'google', name: 'Gemini', icon: <SiGoogle />, defaultBase: 'https://generativelanguage.googleapis.com' },
+  { id: 'ollama', name: 'Ollama', icon: <MdPrecisionManufacturing />, defaultBase: 'http://localhost:11434/v1' },
+  { id: 'deepseek', name: 'DeepSeek', icon: <MdAutoAwesome />, defaultBase: 'https://api.deepseek.com' },
+  { id: 'kimi', name: 'Moonshot', icon: <MdExtension />, defaultBase: 'https://api.moonshot.cn/v1' },
+  { id: 'qwen', name: 'Alibaba Qwen', icon: <MdCloud />, defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { id: 'zhipu', name: 'ZhipuAI', icon: <MdExtension />, defaultBase: 'https://open.bigmodel.cn/api/paas/v4' },
+  { id: 'xunfei', name: 'Xunfei Spark', icon: <MdAutoAwesome />, defaultBase: 'https://spark-api-open.xf-yun.com/v1' },
 ];
 
 export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
@@ -54,7 +57,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
   const ALL_LIST = Array.from(displayIds).map(id => {
     const base = BASE_KNOWN_PROVIDERS.find(b => b.id === id);
     if (base) return base;
-    return { id, name: id.toUpperCase(), icon: '🌐', defaultBase: '' }; // Fallback for custom added
+    return { id, name: id.toUpperCase(), icon: <MdCloud />, defaultBase: '' }; // Fallback for custom added
   });
 
   const toggleExpand = (id: string) => {

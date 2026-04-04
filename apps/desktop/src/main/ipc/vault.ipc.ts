@@ -64,4 +64,15 @@ export function registerVaultIPC() {
     await vaultService.deleteVault(vaultName);
     return true;
   });
+
+  ipcMain.handle('vault:createDialog', async () => {
+    const newName = 'Workspace_' + Math.floor(Math.random() * 10000);
+    await vaultService.switchVault(newName);
+    
+    // Vault Switch: Enforce SSOT
+    const { globalBootstrapper } = await import('../services/bootstrapper.service');
+    await globalBootstrapper.fullyResyncAllEcosystems();
+    
+    return vaultService.getActiveVault();
+  });
 }

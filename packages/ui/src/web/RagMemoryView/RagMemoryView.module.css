@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .headerRow {
@@ -51,8 +51,8 @@
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(148, 163, 184, 0.15);
   border-radius: 12px;
-  padding: 16px;
-  gap: 24px;
+  padding: 12px 16px;
+  gap: 16px;
 }
 
 .statBox {
@@ -86,10 +86,10 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(148, 163, 184, 0.1);
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .paramHeader {
@@ -150,8 +150,8 @@
 }
 .controlChipsRow button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.chipDanger { background: rgba(239, 68, 68, 0.15); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
-.chipDanger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.25); }
+.chipDanger { background: rgba(239, 68, 68, 0.8); color: #fff; border-color: rgba(239, 68, 68, 1); text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.chipDanger:hover:not(:disabled) { background: rgba(220, 38, 38, 1); box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3); }
 
 .chipPrimary { background: rgba(154, 212, 234, 0.15); color: #9AD4EA; border-color: rgba(154, 212, 234, 0.3); }
 .chipPrimary:hover:not(:disabled) { background: rgba(154, 212, 234, 0.25); }
@@ -159,8 +159,8 @@
 .chipTertiary { background: rgba(250, 204, 21, 0.15); color: #facc15; border-color: rgba(250, 204, 21, 0.3); }
 .chipTertiary:hover:not(:disabled) { background: rgba(250, 204, 21, 0.25); }
 
-.chipNuke { background: rgba(153, 27, 27, 0.4); color: #f87171; border-color: rgba(239, 68, 68, 0.5); font-weight: 700;}
-.chipNuke:hover:not(:disabled) { background: rgba(153, 27, 27, 0.6); }
+.chipNuke { background: #b91c1c; color: #fff; border-color: #991b1b; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.chipNuke:hover:not(:disabled) { background: #991b1b; box-shadow: 0 4px 6px rgba(185, 28, 28, 0.4); }
 
 /* Alerts */
 .migrationAlert {
@@ -201,10 +201,10 @@
   background: rgba(0,0,0,0.1);
   border: 1px solid rgba(148, 163, 184, 0.1);
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .searchBox {

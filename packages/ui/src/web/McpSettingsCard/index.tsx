@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdOutlineHub, MdOutlineLan, MdChevronRight } from 'react-icons/md';
 import '../shared/SettingsListTile.css';
+import styles from './McpSettingsCard.module.css';
 
 export interface McpServerConfig {
   mcpEnabled: boolean;
@@ -24,7 +25,10 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           <MdOutlineHub size={24} />
         </div>
         <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">{t('settings.mcp_title', 'MCP Server')}</span>
+          <span className="settings-list-tile-title">
+            {t('settings.mcp_title', 'MCP Server')}
+            {config.mcpEnabled && <div className={styles.statusIndicator} />}
+          </span>
           <span className="settings-list-tile-subtitle">
             {config.mcpEnabled
               ? t('settings.mcp_running', 'MCP 服务运行中，端口: {{port}}', { port: config.mcpPort })

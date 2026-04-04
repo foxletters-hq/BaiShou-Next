@@ -12,12 +12,17 @@ import { registerDiaryIPC } from './ipc/diary.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
 import { registerStorageIPC } from './ipc/storage.ipc'
-import { installDatabaseSchema } from '@baishou/database'
+import { installDatabaseSchema, SettingsRepository } from '@baishou/database'
 import { appDb } from './db'
+import { HotkeyService } from './services/hotkey.service'
+import { setHotkeyService } from './ipc/settings.ipc'
+
+let mainWindow: BrowserWindow | null = null;
+
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,

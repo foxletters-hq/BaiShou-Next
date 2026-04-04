@@ -336,12 +336,42 @@ const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
   const { t } = useTranslation();
   const toast = useToast();
 
+  const providerRecord = React.useMemo(() => {
+    const rec: Record<string, any> = {};
+    if (Array.isArray(settings.providers)) {
+      settings.providers.forEach((p: any) => {
+        rec[p.id] = {
+          providerId: p.id,
+          enabled: p.isEnabled,
+          apiKey: p.apiKey,
+          apiBaseUrl: p.baseUrl,
+          models: p.models,
+          enabledModels: p.enabledModels
+        };
+      });
+    }
+    return rec;
+  }, [settings.providers]);
+
   return (
     <div className="settings-pane">
       <div className="glass-panel-card">
          <AIModelServicesView 
-             providers={settings.aiProviderConfigs || {}}
-             onUpdateProvider={(id, updates) => settings.updateAiProviderConfig(id, updates)}
+             providers={providerRecord}
+             onUpdateProvider={(id, updates) => {
+               const existing = (Array.isArray(settings.providers) ? settings.providers : []).find((p: any) => p.id === id) || { 
+                 id: id, name: id, type: 'openai', isSystem: true, sortOrder: 0
+               };
+               
+               const newConfig = { ...existing };
+               if (updates.enabled !== undefined) newConfig.isEnabled = updates.enabled;
+               if (updates.apiKey !== undefined) newConfig.apiKey = updates.apiKey;
+               if (updates.apiBaseUrl !== undefined) newConfig.baseUrl = updates.apiBaseUrl;
+               if (updates.models !== undefined) newConfig.models = updates.models;
+               if (updates.enabledModels !== undefined) newConfig.enabledModels = updates.enabledModels;
+
+               settings.updateProvider(newConfig);
+             }}
              onTestConnection={async (provId) => {
                try {
                  await (window as any).api?.settings?.testProviderConnection(provId);
@@ -367,14 +397,31 @@ const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
 };
 
 const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const providerRecord = React.useMemo(() => {
+    const rec: Record<string, any> = {};
+    if (Array.isArray(settings.providers)) {
+      settings.providers.forEach((p: any) => {
+        rec[p.id] = {
+          providerId: p.id,
+          enabled: p.isEnabled,
+          apiKey: p.apiKey,
+          apiBaseUrl: p.baseUrl,
+          models: p.models,
+          enabledModels: p.enabledModels
+        };
+      });
+    }
+    return rec;
+  }, [settings.providers]);
+
   return (
     <div className="settings-pane">
-      {settings.globalModelsConfig && (
+      {settings.globalModels && (
         <div className="glass-panel-card">
            <AIGlobalModelsView 
-               config={settings.globalModelsConfig}
-               availableProviders={settings.aiProviderConfigs || {}}
-               onChange={(config) => settings.setGlobalModelsConfig(config)}
+               config={settings.globalModels}
+               availableProviders={providerRecord}
+               onChange={(config) => settings.setGlobalModels(config)}
                onEmbeddingMigrationRequest={async () => true}
            />
         </div>
@@ -392,6 +439,7 @@ const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
 };
 
 const AssistantPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const navigate = useNavigate();
   return (
     <div className="settings-pane">
       {settings.userProfileConfig && (
@@ -403,8 +451,8 @@ const AssistantPane: React.FC<{ settings: any }> = ({ settings }) => {
         </div>
       )}
       <div className="glass-panel-card">
-         <AssistantMatrixCard onLaunchMatrix={async () => {
-           await (window as any).api?.navigation?.navigateTo('matrix');
+         <AssistantMatrixCard onLaunchMatrix={() => {
+           navigate('/assistants');
          }} />
       </div>
     </div>

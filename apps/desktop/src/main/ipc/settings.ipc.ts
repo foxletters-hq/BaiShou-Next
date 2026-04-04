@@ -9,6 +9,12 @@ const settingsRepo = new SettingsRepository(appDb);
 const settingsFileService = new SettingsFileService(pathService);
 export const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService);
 
+import type { HotkeyService } from '../services/hotkey.service';
+let currentHotkeyService: HotkeyService | null = null;
+export function setHotkeyService(service: HotkeyService) {
+  currentHotkeyService = service;
+}
+
 export function registerSettingsIPC() {
   ipcMain.handle('settings:get-providers', async () => {
     return await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
@@ -97,6 +103,9 @@ export function registerSettingsIPC() {
 
   ipcMain.handle('settings:set-hotkey-config', async (_, config: any) => {
     await settingsManager.set('hotkey_config', config);
+    if (currentHotkeyService) {
+      currentHotkeyService.update(config);
+    }
     return true;
   });
 
