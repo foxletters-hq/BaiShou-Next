@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next';
 
 // ─── Pages Config ───────────────────────────────────────────────────────────
 
-const ONBOARDING_PAGES = [
+
+
+export const OnboardingScreen: React.FC = () => {
+  const { t } = useTranslation();
+  const ONBOARDING_PAGES = [
   {
     id: 'welcome',
     icon: '✨',
@@ -33,9 +37,6 @@ const ONBOARDING_PAGES = [
     isSetup: true,
   },
 ];
-
-export const OnboardingScreen: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -47,7 +48,7 @@ export const OnboardingScreen: React.FC = () => {
   const isLastPage = currentIndex === ONBOARDING_PAGES.length - 1;
 
   const handleNext = () => {
-    if (isLastPage) {
+  if (isLastPage) {
       handleComplete();
     } else {
       setCurrentIndex((prev) => prev + 1);
@@ -55,11 +56,11 @@ export const OnboardingScreen: React.FC = () => {
   };
 
   const handleSkip = () => {
-    handleComplete();
+  handleComplete();
   };
 
   const handleComplete = () => {
-    // In real app: save provider, apiKey, baseUrl to Zustand and mark onboarding as complete
+  // In real app: save provider, apiKey, baseUrl to Zustand and mark onboarding as complete
     navigate('/');
   };
 
@@ -72,6 +73,8 @@ export const OnboardingScreen: React.FC = () => {
       <div className={styles.contentBox}>
         <div className={styles.pageContainer}>
           {ONBOARDING_PAGES.map((page, index) => {
+
+
             const isActive = index === currentIndex;
             const isPrevious = index < currentIndex;
             

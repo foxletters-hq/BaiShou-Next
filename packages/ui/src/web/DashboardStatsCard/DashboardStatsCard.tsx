@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import './DashboardStatsCard.css';
 
@@ -20,6 +21,7 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
   totalYearlyCount,
 }) => {
   const { t } = useTranslation();
+
 
   const renderStatTile = (icon: string, count: number, label: string, colorVariant: string) => (
     <div className={`stats-tile ${colorVariant}`}>

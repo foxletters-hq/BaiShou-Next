@@ -21,6 +21,7 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
   onTap
 }) => {
   const { t } = useTranslation();
+
   return (
     <TouchableOpacity 
       onPress={onTap} 

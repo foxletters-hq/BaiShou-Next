@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 
@@ -23,6 +24,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onDelete
 }) => {
   const { t } = useTranslation();
+
 
   return (
     <TouchableOpacity 

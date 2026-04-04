@@ -39,7 +39,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const { filteredProviders, filteredModels } = useMemo(() => {
-    const pList: MockAiProviderModel[] = [];
+  const pList: MockAiProviderModel[] = [];
     const mDict: Record<string, string[]> = {};
 
     const query = searchQuery.toLowerCase();
@@ -96,7 +96,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
               </div>
             ) : (
               filteredProviders.map(provider => {
-                 const models = filteredModels[provider.id] || [];
+  const models = filteredModels[provider.id] || [];
                  const isCurrentProvider = provider.id === currentProviderId;
 
                  return (
@@ -108,8 +108,8 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                       </div>
 
                       <div className={styles.modelList}>
-                         {models.map(modelId => {
-                            const isSelected = isCurrentProvider && modelId === currentModelId;
+                         {(models || []).map(modelId => {
+  const isSelected = isCurrentProvider && modelId === currentModelId;
                             const modelMeta = MOCK_MODEL_PRICING[modelId];
                             
                             return (
@@ -117,7 +117,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
                                  key={modelId}
                                  className={`${styles.modelItem} ${isSelected ? styles.modelItemSelected : ''}`}
                                  onClick={() => {
-                                    onSelect(provider.id, modelId);
+  onSelect(provider.id, modelId);
                                     onClose();
                                  }}
                                >
@@ -149,7 +149,9 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
          {/* Footer - Only show if not fully empty or if there is something to manage */}
          {onManageProviders && filteredProviders.length > 0 && (
            <div className={styles.manageFooter}>
-              <button className={styles.manageBtn} onClick={() => { onManageProviders(); onClose(); }} type="button">
+              <button className={styles.manageBtn} onClick={() => {
+
+ onManageProviders(); onClose(); }} type="button">
                  <Settings size={14} /> {t('agent.manageProviders', '管理模型与供应商')}
               </button>
            </div>

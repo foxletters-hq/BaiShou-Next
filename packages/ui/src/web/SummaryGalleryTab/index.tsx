@@ -19,6 +19,8 @@ export const SummaryGalleryTab: React.FC<SummaryGalleryTabProps> = ({ assets, on
   const { t } = useTranslation();
   // Group assets by Month/Year for section headers
   const grouped = assets.reduce((group, asset) => {
+
+
      // Extract YYYY-MM
      const month = asset.dateStr.substring(0, 7);
      if (!group[month]) group[month] = [];

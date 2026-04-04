@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { StatisticCard } from '../StatisticCard';
 import './SummaryDashboard.css';
@@ -7,6 +8,7 @@ import './SummaryDashboard.css';
 
 export const SummaryDashboard: React.FC = () => {
   const { t } = useTranslation();
+
 
   return (
     <div className="summary-dashboard">

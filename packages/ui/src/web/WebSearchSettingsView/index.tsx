@@ -27,6 +27,7 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
   onSummaryChange
 }) => {
   const { t } = useTranslation();
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>

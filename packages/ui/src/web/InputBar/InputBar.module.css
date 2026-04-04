@@ -182,12 +182,11 @@
 .inputCard {
   background-color: var(--bg-surface-highlight, #F7F9FB); /* Add deeper surface */
   border-radius: 26px; /* 胶囊圆角 */
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  padding: 8px 10px;
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  padding: 6px;
   display: flex;
   align-items: flex-end;
   transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 
 .inputCard:focus-within {
@@ -266,7 +265,7 @@
 .sendBtn {
   background-color: var(--color-primary, #5BA8F5);
   color: var(--text-on-primary, #FFFFFF);
-  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
   font-size: 16px;
 }
 

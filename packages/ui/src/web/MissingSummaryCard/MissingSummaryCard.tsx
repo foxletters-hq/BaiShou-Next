@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import './MissingSummaryCard.css';
 
@@ -16,6 +17,7 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
   onGenerate 
 }) => {
   const { t } = useTranslation();
+
 
   return (
     <div className={`missing-summary-card-v2`}>

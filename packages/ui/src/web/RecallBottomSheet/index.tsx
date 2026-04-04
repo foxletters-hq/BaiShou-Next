@@ -31,7 +31,7 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filteredItems = useMemo(() => {
-     let res = items;
+  let res = items;
      if (activeTab !== 'all') {
         res = res.filter(i => i.type === activeTab);
      }
@@ -43,8 +43,8 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
   }, [items, activeTab, searchQuery]);
 
   const toggleSelect = (id: string) => {
-     setSelectedIds(prev => {
-        const next = new Set(prev);
+  setSelectedIds(prev => {
+  const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
         return next;
@@ -52,7 +52,7 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
   };
 
   const handleInject = () => {
-     const selected = items.filter(i => selectedIds.has(i.id));
+  const selected = items.filter(i => selectedIds.has(i.id));
      onInject(selected);
      setSelectedIds(new Set()); // 清空
      onClose();
@@ -116,6 +116,8 @@ export const RecallBottomSheet: React.FC<RecallBottomSheetProps> = ({
                  <div className={styles.emptyState}>{t('recall.no_results', '未在库中匹配到任何历史记忆碎片。')}</div>
               ) : (
                  filteredItems.map(item => {
+
+
                     const isSelected = selectedIds.has(item.id);
                     return (
                       <div 

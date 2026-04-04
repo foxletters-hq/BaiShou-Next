@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import './DiaryCard.css';
 
@@ -33,7 +34,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
 
   // Tags Color Hash Logic
   const getTagColor = (tag: string) => {
-    // Web mock colors based on flutter source
+  // Web mock colors based on flutter source
     const colors = [
       { bg: 'rgba(33, 150, 243, 0.1)', fg: '#1976D2' }, // Blue
       { bg: 'rgba(76, 175, 80, 0.1)', fg: '#388E3C' },  // Green
@@ -74,7 +75,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       {tags.length > 0 && (
         <div className="diary-card-v2-tags">
           {tags.map(tag => {
-            const { bg, fg } = getTagColor(tag);
+  const { bg, fg } = getTagColor(tag);
             return (
               <span key={tag} className="diary-card-v2-tag" style={{ backgroundColor: bg, color: fg }}>
                 #{tag}
@@ -88,10 +89,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       <div className={`diary-card-v2-actions ${isHovered ? 'visible' : ''}`}>
         <div className="actions-divider" />
         <div className="actions-buttons">
-          <button className="action-btn edit-btn" onClick={(e) => { e.stopPropagation(); onEdit?.(); }}>
+          <button className="action-btn edit-btn" onClick={(e) => {
+  e.stopPropagation(); onEdit?.(); }}>
             ✏️ {t('common.edit') || '编辑'}
           </button>
-          <button className="action-btn delete-btn" onClick={(e) => { e.stopPropagation(); onDelete?.(); }}>
+          <button className="action-btn delete-btn" onClick={(e) => {
+
+ e.stopPropagation(); onDelete?.(); }}>
             🗑️ {t('common.delete') || '删除'}
           </button>
         </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import './DashboardSharedMemoryCard.css';
 
@@ -16,6 +17,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   onCopyContext
 }) => {
   const { t } = useTranslation();
+
 
   return (
     <div className="dashboard-shared-memory-card">

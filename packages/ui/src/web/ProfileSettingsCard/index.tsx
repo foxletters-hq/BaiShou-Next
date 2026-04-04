@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import styles from './ProfileSettingsCard.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog } from '../Dialog';
 
 export interface ProfileData {
   nickname: string;
@@ -18,6 +18,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
   onSave
 }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
   const [inEditAvatar, setInEditAvatar] = useState(false);
   const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
   
@@ -134,8 +135,8 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
   };
 
   // 编辑昵称
-  const handleEditNickname = () => {
-    const nextName = window.prompt("修改您的大使称呼：", profile.nickname);
+  const handleEditNickname = async () => {
+    const nextName = await dialog.prompt("修改您的大使称呼：", profile.nickname);
     if (nextName && nextName.trim() !== '' && nextName !== profile.nickname) {
       onSave({ ...profile, nickname: nextName.trim() });
     }

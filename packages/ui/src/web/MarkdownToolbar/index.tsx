@@ -18,6 +18,8 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
   if (!visible) return null;
 
   const handleAction = (e: React.MouseEvent, format: string) => {
+
+
     e.preventDefault();
     onAction(format);
   };

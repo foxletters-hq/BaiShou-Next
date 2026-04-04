@@ -12,13 +12,13 @@ interface TagInputWidgetProps {
 export const TagInputWidget: React.FC<TagInputWidgetProps> = ({ 
   tags, 
   onChange, 
-  placeholder={t('common.enter_tags', '输入标签并按回车添加...')} 
+  placeholder 
 }) => {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
+  if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       const newTag = inputValue.trim().replace(/,/g, '');
       if (newTag && !tags.includes(newTag)) {
@@ -34,6 +34,8 @@ export const TagInputWidget: React.FC<TagInputWidgetProps> = ({
   };
 
   const removeTag = (indexToRemove: number) => {
+
+
     onChange(tags.filter((_, index) => index !== indexToRemove));
   };
 
@@ -57,7 +59,7 @@ export const TagInputWidget: React.FC<TagInputWidgetProps> = ({
              value={inputValue}
              onChange={(e) => setInputValue(e.target.value)}
              onKeyDown={handleKeyDown}
-             placeholder={tags.length === 0 ? placeholder : ''}
+             placeholder={tags.length === 0 ? (placeholder || t("common.enter_tags", "输入标签并按回车添加...")) : ""}
              className={styles.inputField}
           />
        </div>

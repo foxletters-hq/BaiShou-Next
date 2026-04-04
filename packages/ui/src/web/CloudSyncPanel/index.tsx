@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styles from './CloudSyncPanel.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useToast } from '../Toast/useToast';
+import { useDialog } from '../Dialog';
 
 export type SyncTarget = 'local' | 's3' | 'webdav';
 
@@ -63,6 +64,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   onSaveConfig
 }) => {
   const { t } = useTranslation();
+  const toast = useToast();
+  const dialog = useDialog();
   const [config, setConfig] = useState<SyncConfig>(savedConfig || DEFAULT_CONFIG);
   const [records, setRecords] = useState<SyncRecord[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -86,22 +89,24 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       const r = await onListRecords(config);
       setRecords(r);
     } catch (e: any) {
-      alert('获取备份列表失败: ' + (e.message || e));
+      toast.showError('获取备份列表失败: ' + (e.message || e));
     } finally {
       setIsLoading(false);
       setManageMode(false);
       setSelected(new Set());
     }
-  }, [config, onListRecords]);
+  }, [config, onListRecords, toast]);
 
-  useEffect(() => { fetchRecords(); }, [config.target]);
+  useEffect(() => {
+    fetchRecords();
+  }, [config.target, fetchRecords]);
 
   const handleSync = async () => {
-    if (config.target === 'local') { alert('当前同步目标为本地，请先配置云端'); return; }
+    if (config.target === 'local') { toast.show('当前同步目标为本地，请先配置云端'); return; }
     setIsSyncing(true);
     try {
       const res = await onSyncNow(config);
-      alert(res.message);
+      if (res.success) toast.showSuccess(res.message); else toast.showError(res.message);
       if (res.success) await fetchRecords();
     } finally {
       setIsSyncing(false);
@@ -109,49 +114,53 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   };
 
   const handleRestore = async (filename: string) => {
-    const confirmText = window.prompt(
+    const confirmText = await dialog.prompt(
       t('sync.restore_confirm_msg', '【覆盖警告】从云端下拉 "{{filename}}" 将覆盖本地现存的所有数据设定。\n请输入 "CONFIRM" 提交确认意向：', { filename })
     );
     if (confirmText !== 'CONFIRM') return;
     setIsSyncing(true);
     try {
       const res = await onRestore(config, filename);
-      alert(res.message);
-      if (res.success) window.location.reload();
+      if (res.success) toast.showSuccess(res.message); else toast.showError(res.message);
+      if (res.success) {
+        setTimeout(() => window.location.reload(), 1500);
+      }
     } finally {
       setIsSyncing(false);
     }
   };
 
   const handleDelete = async (filename: string) => {
-    if (!window.confirm(t('sync.delete_confirm', '真的要删除云端备份 "{{filename}}" 吗？', { filename }))) return;
+    const confirmed = await dialog.confirm(t('sync.delete_confirm', '真的要删除云端备份 "{{filename}}" 吗？', { filename }));
+    if (!confirmed) return;
     try {
       await onDeleteRecord(config, filename);
       await fetchRecords();
     } catch (e: any) {
-      alert('删除失败: ' + e.message);
+      toast.showError('删除失败: ' + e.message);
     }
   };
 
   const handleBatchDelete = async () => {
     if (selected.size === 0) return;
-    if (!window.confirm(t('sync.bulk_delete_confirm', '是否彻底删除选定的 {{count}} 个备份档案？', { count: selected.size }))) return;
+    const confirmed = await dialog.confirm(t('sync.bulk_delete_confirm', '是否彻底删除选定的 {{count}} 个备份档案？', { count: selected.size }));
+    if (!confirmed) return;
     try {
       await onBatchDelete(config, Array.from(selected));
       await fetchRecords();
     } catch (e: any) {
-      alert('批量删除失败: ' + e.message);
+      toast.showError('批量删除失败: ' + e.message);
     }
   };
 
   const handleRename = async (oldName: string) => {
-    const newName = window.prompt('输入新的文件名：', oldName);
+    const newName = await dialog.prompt('输入新的文件名：', oldName);
     if (!newName || newName === oldName) return;
     try {
       await onRename(config, oldName, newName);
       await fetchRecords();
     } catch (e: any) {
-      alert('重命名失败: ' + e.message);
+      toast.showError('重命名失败: ' + e.message);
     }
   };
 
@@ -209,7 +218,10 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           )}
           {manageMode && (
             <>
-              <button className={styles.cancelBtn} onClick={() => { setManageMode(false); setSelected(new Set()); }}>取消选定</button>
+              <button className={styles.cancelBtn} onClick={() => {
+                setManageMode(false); 
+                setSelected(new Set()); 
+              }}>取消选定</button>
               <button className={styles.deleteBtn} onClick={handleBatchDelete} disabled={selected.size === 0}>
                 {t('sync.delete_selected', '删除选中行')} ({selected.size})
               </button>
@@ -226,7 +238,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         <div className={styles.configPanel}>
           <div className={styles.configGroup}>
             <label>{t('sync.target_type', '服务通道')}</label>
-            <select value={config.target} onChange={(e) => updateField('target', e.target.value)}>
+            <select value={config.target} onChange={(e) => updateField('target', e.target.value as SyncTarget)}>
               <option value="local">{t('sync.local_only', '系统本地（切断云连接）')}</option>
               <option value="webdav">WebDAV</option>
               <option value="s3">{t('sync.s3_compatible', 'S3 (通用对象存储)')}</option>

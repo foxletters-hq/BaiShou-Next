@@ -9,8 +9,9 @@ export interface ToolResultGroupProps {
 }
 
 export const ToolResultGroup: React.FC<ToolResultGroupProps> = ({ invocations }) => {
-  const [expanded, setExpanded] = useState(false);
   const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+
 
   if (!invocations || invocations.length === 0) return null;
 

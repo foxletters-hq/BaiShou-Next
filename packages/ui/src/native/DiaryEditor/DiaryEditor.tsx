@@ -36,7 +36,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const textInputRef = useRef<TextInput>(null);
 
   const handleInsertText = (prefix: string, suffix: string = '') => {
-    const val = content;
+  const val = content;
     const start = selection.start;
     const end = selection.end;
     const selectedText = val.substring(start, end);
@@ -45,6 +45,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     onContentChange(newText);
     
     setTimeout(() => {
+
+
        textInputRef.current?.focus();
     }, 100);
   };

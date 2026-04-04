@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styles from './AgentToolsView.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog } from '../Dialog';
 
 export interface ToolManagementConfig {
   enabledTools: string[];
@@ -13,35 +13,37 @@ interface AgentToolsViewProps {
   onChange: (config: ToolManagementConfig) => void;
 }
 
-const ALL_TOOLS = [
-  { id: 'web_search', category: 'search', name: t('tools.web_search', '网络搜索'), icon: '🕷', desc: '准许 AI 隐秘访问实时网络。', tag: '安全' },
-  { id: 'diary_parser', category: 'diary', name: t('tools.diary_parser', '日记解析检索'), icon: '📖', desc: '准许白守在过去发生的日子中穿梭并比对事态', tag: '安全' },
-  { id: 'memory_synapse', category: 'memory', name: t('tools.memory_synapse', '向量记忆检索'), icon: '🧠', desc: '通过 RAG 数据库进行全盘模糊关联检索。', tag: '安全' },
-  { id: 'calculator', category: 'general', name: t('tools.calculator', '沙盒运算与代码'), icon: '🧮', desc: '绝对精确的推演运算，避免大模型幻觉。', tag: '安全' },
-  { id: 'code_interpreter', category: 'general', name: t('tools.code_interpreter', '图表与独立代码执行'), icon: '💻', desc: '执行分析或图表绘制 (Python/JS)。', tag: '风险' },
-  { id: 'local_file_read', category: 'memory', name: t('tools.local_file_read', '本地文件读取'), icon: '📂', desc: '极度越权！准许只读访问本地磁盘文档及画像。', tag: '高危' },
-  { id: 'system_commander', category: 'general', name: t('tools.system_commander', '系统命令行执行'), icon: '⚡', desc: '可直接操控您的操作系统的终极特权。', tag: '极端高危' },
-];
-
-const CATEGORY_META: Record<string, { label: string; icon: string }> = {
-  diary: { label: t('tools.cat_diary', '日记分析 (Diary)'), icon: '📚' },
-  memory: { label: t('tools.cat_memory', '记忆库与RAG (Memory & RAG)'), icon: '🌊' },
-  search: { label: t('tools.cat_search', '外部搜索 (Search)'), icon: '📡' },
-  general: { label: t('tools.cat_general', '辅助执行 (General)'), icon: '🔧' },
-};
-
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
-  const { t } = useTranslation(); config, onChange }) => {
+  config, onChange }) => {
+  const { t } = useTranslation();
+  const dialog = useDialog();
+  const ALL_TOOLS = [
+    { id: 'web_search', category: 'search', name: t('tools.web_search', '网络搜索'), icon: '🕷', desc: '准许 AI 隐秘访问实时网络。', tag: '安全' },
+    { id: 'diary_parser', category: 'diary', name: t('tools.diary_parser', '日记解析检索'), icon: '📖', desc: '准许白守在过去发生的日子中穿梭并比对事态', tag: '安全' },
+    { id: 'memory_synapse', category: 'memory', name: t('tools.memory_synapse', '向量记忆检索'), icon: '🧠', desc: '通过 RAG 数据库进行全盘模糊关联检索。', tag: '安全' },
+    { id: 'calculator', category: 'general', name: t('tools.calculator', '沙盒运算与代码'), icon: '🧮', desc: '绝对精确的推演运算，避免大模型幻觉。', tag: '安全' },
+    { id: 'code_interpreter', category: 'general', name: t('tools.code_interpreter', '图表与独立代码执行'), icon: '💻', desc: '执行分析或图表绘制 (Python/JS)。', tag: '风险' },
+    { id: 'local_file_read', category: 'memory', name: t('tools.local_file_read', '本地文件读取'), icon: '📂', desc: '极度越权！准许只读访问本地磁盘文档及画像。', tag: '高危' },
+    { id: 'system_commander', category: 'general', name: t('tools.system_commander', '系统命令行执行'), icon: '⚡', desc: '可直接操控您的操作系统的终极特权。', tag: '极端高危' },
+  ];
+
+  const CATEGORY_META: Record<string, { label: string; icon: string }> = {
+    diary: { label: t('tools.cat_diary', '日记分析 (Diary)'), icon: '📚' },
+    memory: { label: t('tools.cat_memory', '记忆库与RAG (Memory & RAG)'), icon: '🌊' },
+    search: { label: t('tools.cat_search', '外部搜索 (Search)'), icon: '📡' },
+    general: { label: t('tools.cat_general', '辅助执行 (General)'), icon: '🔧' },
+  };
+
   const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
 
-  const toggleTool = (toolId: string) => {
+  const toggleTool = async (toolId: string) => {
     let freshList = [...config.enabledTools];
     if (freshList.includes(toolId)) {
       freshList = freshList.filter(id => id !== toolId);
     } else {
       const tool = ALL_TOOLS.find(t => t.id === toolId);
       if (tool && tool.tag.includes('危')) {
-        const sure = window.confirm(`【严重越权告警】\n您正在赋予 AI 具有操作系统破坏性乃至隐私外泄风险的 ${tool.name}。\n\n您确定要向硅基生命敞开物理主机的防线吗？`);
+        const sure = await dialog.confirm(`【严重越权告警】\n您正在赋予 AI 具有操作系统破坏性乃至隐私外泄风险的 ${tool.name}。\n\n您确定要向硅基生命敞开物理主机的防线吗？`);
         if (!sure) return;
       }
       freshList.push(toolId);

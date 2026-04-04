@@ -25,7 +25,7 @@ export const InputBar: React.FC<InputBarProps> = ({
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([]);
 
   const handlePickFiles = async () => {
-    try {
+  try {
       const result = await DocumentPicker.getDocumentAsync({
         multiple: true,
         type: '*/*', // Allow all, can be restricted later
@@ -33,7 +33,7 @@ export const InputBar: React.FC<InputBarProps> = ({
       
       if (!result.canceled && result.assets) {
         const newAtts = result.assets.map(asset => {
-          const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(asset.name) || (asset.mimeType?.startsWith('image/') ?? false);
+  const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(asset.name) || (asset.mimeType?.startsWith('image/') ?? false);
           const isPdf = /\.pdf$/i.test(asset.name) || asset.mimeType === 'application/pdf';
           return {
             id: Math.random().toString(36).substring(7),
@@ -51,7 +51,9 @@ export const InputBar: React.FC<InputBarProps> = ({
   };
 
   const handleSend = () => {
-    if ((text.trim() || attachments.length > 0) && !isLoading) {
+  if ((text.trim() || attachments.length > 0) && !isLoading) {
+
+
       onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined);
       setText('');
       setAttachments([]);

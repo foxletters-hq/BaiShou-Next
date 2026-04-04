@@ -1,7 +1,8 @@
 import React from 'react';
 import styles from './IdentitySettingsCard.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog } from '../Dialog';
+import { useToast } from '../Toast/useToast';
 
 export interface UserProfileConfig {
   nickname: string;
@@ -17,6 +18,9 @@ export interface IdentitySettingsCardProps {
 
 export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ profile, onChange }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
+  const toast = useToast();
+  
   const activeId = profile.activePersonaId || 'Default';
   // 确保 fallback
   const allPersonas = profile.personas || { 'Default': {} };
@@ -28,12 +32,12 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   const currentFacts = allPersonas[activeId];
 
   // 1. 切换活动 Persona
-  const handleSwitch = (pid: string) => {
+  const handleSwitch = async (pid: string) => {
     if (pid !== activeId) {
       onChange({ ...profile, activePersonaId: pid });
     } else {
       // 点击了当前的，可以重命名
-      const newName = window.prompt("重新命名的身份名", pid);
+      const newName = await dialog.prompt("重新命名的身份名", pid);
       if (newName && newName !== pid && !allPersonas[newName]) {
         const nextPersonas = { ...allPersonas };
         nextPersonas[newName] = nextPersonas[pid];
@@ -44,8 +48,8 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   };
 
   // 2. 新增 Persona
-  const handleAddPersona = () => {
-    const newName = window.prompt("输入新的身份卡名字 (例如：前端专家、法律顾问)");
+  const handleAddPersona = async () => {
+    const newName = await dialog.prompt("输入新的身份卡名字 (例如：前端专家、法律顾问)");
     if (newName && !allPersonas[newName]) {
       const nextPersonas = { ...allPersonas, [newName]: {} };
       onChange({ ...profile, personas: nextPersonas, activePersonaId: newName });
@@ -53,13 +57,14 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   };
 
   // 3. 删除当前 Persona
-  const handleDeletePersona = (pid: string, e: React.MouseEvent) => {
+  const handleDeletePersona = async (pid: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (Object.keys(allPersonas).length <= 1) {
-      alert("至少保留一张身份卡！");
+      toast.showError("至少保留一张身份卡！");
       return;
     }
-    if (window.confirm(t('identity.delete_persona', '确定删除身份档案 [{{pid}}] 吗？', { pid }))) {
+    const confirmed = await dialog.confirm(t('identity.delete_persona', '确定删除身份档案 [{{pid}}] 吗？', { pid }));
+    if (confirmed) {
       const nextPersonas = { ...allPersonas };
       delete nextPersonas[pid];
       const remainingIds = Object.keys(nextPersonas);
@@ -68,10 +73,10 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   };
 
   // 4. 增改 Fact
-  const handleAddOrEditFact = (oldKey?: string, oldVal?: string) => {
-    const k = window.prompt("键 (例如：年纪、喜好)", oldKey || "");
+  const handleAddOrEditFact = async (oldKey?: string, oldVal?: string) => {
+    const k = await dialog.prompt("键 (例如：年纪、喜好)", oldKey || "");
     if (!k) return;
-    const v = window.prompt(`[${k}] 的值 (例如：永远的18岁)`, oldVal || "");
+    const v = await dialog.prompt(`[${k}] 的值 (例如：永远的18岁)`, oldVal || "");
     if (!v) return;
 
     const nextFacts = { ...currentFacts };
@@ -87,8 +92,9 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   };
 
   // 5. 删 Fact
-  const handleDeleteFact = (k: string) => {
-    if (window.confirm(t('identity.delete_record', '确认删除记录 {{k}}？', { k }))) {
+  const handleDeleteFact = async (k: string) => {
+    const confirmed = await dialog.confirm(t('identity.delete_record', '确认删除记录 {{k}}？', { k }));
+    if (confirmed) {
       const nextFacts = { ...currentFacts };
       delete nextFacts[k];
       onChange({

@@ -4,23 +4,34 @@ export function useDiaryData() {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadEntries = useCallback(async (year?: number, month?: number) => {
+  const loadEntries = useCallback(async () => {
     setLoading(true);
     try {
-      if (typeof window !== 'undefined' && window.electron) {
-        const result = await window.electron.ipcRenderer.invoke('diary:list', { year, month });
-        // Assume result is an array of diary entries
+      const api = (window as any).api;
+      if (api?.diary?.listAll) {
+        const result = await api.diary.listAll();
+        setEntries(result || []);
+      } else if (typeof window !== 'undefined' && (window as any).electron) {
+        // Fallback to raw IPC
+        const result = await (window as any).electron.ipcRenderer.invoke('diary:listAll');
         setEntries(result || []);
       }
+    } catch (err) {
+      console.error('Failed to load diary entries:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   const searchEntries = useCallback(async (query: string) => {
-    if (typeof window !== 'undefined' && window.electron) {
-      const result = await window.electron.ipcRenderer.invoke('diary:search', query);
-      setEntries(result || []);
+    try {
+      const api = (window as any).api;
+      if (api?.diary?.search) {
+        const result = await api.diary.search(query);
+        setEntries(result || []);
+      }
+    } catch (err) {
+      console.error('Failed to search diary entries:', err);
     }
   }, []);
 

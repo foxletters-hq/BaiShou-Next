@@ -30,8 +30,8 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter providers and models
-  const filteredData = providers.map(provider => {
-    const modelList = provider.enabledModels.length > 0 ? provider.enabledModels : provider.models;
+  const filteredData = (providers || []).map(provider => {
+  const modelList = provider.enabledModels.length > 0 ? provider.enabledModels : provider.models;
     const matchedModels = searchQuery.trim() === '' 
       ? modelList 
       : modelList.filter(m => m.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -40,7 +40,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
   }).filter(p => p.matchedModels.length > 0);
 
   const ProviderIcon = ({ type }: { type: string }) => {
-    // Determine icon based on type mimicking Flutter getProviderIcon logic
+  // Determine icon based on type mimicking Flutter getProviderIcon logic
     return <span className={styles.providerIcon}>⚙️</span>; 
   };
 
@@ -84,6 +84,8 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
                 </div>
                 <div className={styles.modelsGrid}>
                   {provider.matchedModels.map(modelId => {
+
+
                     const isSelected = provider.id === currentProviderId && modelId === currentModelId;
                     return (
                       <div 

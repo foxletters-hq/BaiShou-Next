@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import styles from './DataManagementCard.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog } from '../Dialog';
+import { useToast } from '../Toast/useToast';
 
 export interface SnapshotInfo {
   filename: string;
@@ -24,6 +25,8 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   snapshots = []
 }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
+  const toast = useToast();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [showSnapshots, setShowSnapshots] = useState(false);
@@ -38,23 +41,22 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   };
 
   const executeImport = async (filePath: string) => {
-    const confirmText = window.prompt(
-      t('data.import_confirm_msg', '【替换警报】导入本地备份将抹平目前工作区拥有的全体聊天记录、属性集与上下文。
-若要继续操作，请在弹窗验证行键入 "CONFIRM"：')
+    const confirmText = await dialog.prompt(
+      t('data.import_confirm_msg', `【替换警报】导入本地备份将抹平目前工作区拥有的全体聊天记录、属性集与上下文。\n若要继续操作，请在弹窗验证行键入 "CONFIRM"：`)
     );
     if (confirmText !== 'CONFIRM') {
-      alert('已取消导入热重启');
+      toast.show('已取消导入热重启');
       return;
     }
 
     setIsImporting(true);
     try {
       await onImportZip(filePath);
-      alert('🎉 导入成功！白守即将挂载最新数据引擎...');
-      window.location.reload();
+      toast.showSuccess('🎉 导入成功！白守即将挂载最新数据引擎...');
+      setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
       console.error(e);
-      alert(`导入彻底失败，请检查文件权限或格式: ${e.message || '未知错误'}`);
+      toast.showError(`导入彻底失败，请检查文件权限或格式: ${e.message || '未知错误'}`);
     } finally {
       setIsImporting(false);
     }
@@ -68,9 +70,9 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   };
 
   const handleRestoreSnapshot = async (snapshot: SnapshotInfo) => {
-    const flag = window.confirm(t('data.snapshot_confirm', '即刻调用 {{timeLabel}} 版本 ({{sizeMB}} MB) 对现役存储域执行整体降级/回档。
+    const flag = await dialog.confirm(t('data.snapshot_confirm', `即刻调用 {{timeLabel}} 版本 ({{sizeMB}} MB) 对现役存储域执行整体降级/回档。
 此后，现今累积的所有状态更迭均将随之消尽。
-确定降级？', { timeLabel: snapshot.timeLabel, sizeMB: snapshot.sizeMB }));
+确定降级？`, { timeLabel: snapshot.timeLabel, sizeMB: snapshot.sizeMB }));
     if (!flag) return;
     await executeImport(snapshot.fullPath);
   };

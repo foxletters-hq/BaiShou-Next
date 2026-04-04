@@ -57,17 +57,19 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value;
+  const v = e.target.value;
     setSearchQuery(v);
     if (onSearch) onSearch(v);
   };
 
   const handleClearSearch = () => {
-    setSearchQuery('');
+  setSearchQuery('');
     if (onSearch) onSearch('');
   };
 
   const formatDate = (ms: number) => {
+
+
     const d = new Date(ms);
     return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };

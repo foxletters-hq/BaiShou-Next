@@ -37,7 +37,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleInsertText = (prefix: string, suffix: string = '') => {
-    const el = textAreaRef.current;
+  const el = textAreaRef.current;
     if (!el) {
       onContentChange(content + '\n' + prefix + suffix);
       return;
@@ -51,15 +51,19 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     onContentChange(newText);
     
     setTimeout(() => {
+
+
       el.focus();
       el.setSelectionRange(start + prefix.length, end + prefix.length);
     }, 0);
   };
 
   return (
-    <div className="diary-editor-container">
+    <div className="diary-editor-scaffold">
       <div className="de-app-bar">
-        <button className="de-icon-btn" onClick={onCancel}>←</button>
+        <button className="de-icon-btn" onClick={onCancel}>
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
         <div className="de-app-bar-center">
           <DiaryEditorAppBarTitle 
             isSummaryMode={isSummaryMode} 
@@ -67,13 +71,15 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             onDateChanged={onDateChange} 
           />
         </div>
-        <button className="de-save-btn" onClick={() => onSave?.(content, tags, selectedDate)}>
-          {t('common.save') || '保存'}
-        </button>
+        <div className="de-app-bar-actions">
+          <button className="de-save-btn" onClick={() => onSave?.(content, tags, selectedDate)}>
+            {t('common.save') || '保存'}
+          </button>
+        </div>
       </div>
 
-      <div className="de-body">
-        <div className="de-scroll-area">
+      <div className="de-body-column">
+        <div className="de-expanded-list">
           {!isSummaryMode && (
             <div className="de-tags-section">
               <TagInput tags={tags} onChange={onTagsChange} />
@@ -97,12 +103,14 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           </div>
         </div>
 
-        <MarkdownToolbar 
-          isPreview={isPreview} 
-          onTogglePreview={() => setIsPreview(!isPreview)} 
-          onHideKeyboard={() => textAreaRef.current?.blur()}
-          onInsertText={handleInsertText}
-        />
+        <div className="de-bottom-toolbar-wrap">
+          <MarkdownToolbar 
+            isPreview={isPreview} 
+            onTogglePreview={() => setIsPreview(!isPreview)} 
+            onHideKeyboard={() => textAreaRef.current?.blur()}
+            onInsertText={handleInsertText}
+          />
+        </div>
       </div>
     </div>
   );

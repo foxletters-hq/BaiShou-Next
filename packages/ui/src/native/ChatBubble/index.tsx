@@ -10,6 +10,7 @@ interface ChatBubbleProps {
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onEdit }) => {
   const { t } = useTranslation();
+
   const isUser = message.role === 'user';
   
   return (

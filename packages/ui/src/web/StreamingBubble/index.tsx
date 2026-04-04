@@ -130,7 +130,7 @@ const ToolExecutionGroup: React.FC<{
        
        <div className={styles.toolList}>
           {completedTools.map((tool, idx) => {
-             const durationText = tool.durationMs < 1000 
+  const durationText = tool.durationMs < 1000 
                 ? `${tool.durationMs}ms` 
                 : `${(tool.durationMs / 1000).toFixed(1)}s`;
              return (
@@ -154,6 +154,10 @@ const ToolExecutionGroup: React.FC<{
 };
 
 const BouncingDotsIndicator: React.FC = () => {
+
+
+
+
   return (
     <div className={styles.bouncingDots}>
       <div className={styles.dot}></div>

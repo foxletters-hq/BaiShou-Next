@@ -19,6 +19,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
 }) => {
   const { t } = useTranslation();
 
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>

@@ -9,6 +9,7 @@ import {
   Paperclip, Zap, Wrench, Globe, BookOpen, 
   FileText, Folder, X, ArrowUp, LayoutGrid, Menu, Square 
 } from 'lucide-react';
+import { MdSend, MdStop } from 'react-icons/md';
 export interface InputBarProps {
   isLoading: boolean;
   onSend: (text: string, attachments?: MockChatAttachment[]) => void;
@@ -25,6 +26,7 @@ export interface InputBarRef {
 }
 
 export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
+
   isLoading,
   onSend,
   onStop,
@@ -43,25 +45,25 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
 
   useImperativeHandle(ref, () => ({
     insertText: (newText) => {
-      setText((prev) => prev ? `${prev}\n${newText}` : newText);
+  setText((prev) => prev ? `${prev}\n${newText}` : newText);
       setTimeout(() => {
-        if (textareaRef.current) textareaRef.current.focus();
+  if (textareaRef.current) textareaRef.current.focus();
       }, 0);
     },
     focus: () => {
-      if (textareaRef.current) textareaRef.current.focus();
+  if (textareaRef.current) textareaRef.current.focus();
     }
   }));
 
   useEffect(() => {
-    if (textareaRef.current) {
+  if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`; // approx 6 lines
     }
   }, [text]);
 
   const handleSend = () => {
-    if ((!text.trim() && attachments.length === 0) || isLoading) return;
+  if ((!text.trim() && attachments.length === 0) || isLoading) return;
     onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined);
     setText('');
     setAttachments([]);
@@ -71,7 +73,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -81,7 +83,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePickFiles = async () => {
-    // Phase 10: Use Electron Native `dialog` if available
+  // Phase 10: Use Electron Native `dialog` if available
     // @ts-ignore
     if (typeof window !== 'undefined' && window.api && window.api.pickFiles) {
       try {
@@ -103,12 +105,12 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   };
 
   const handleNativeWebFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
+  if (!e.target.files?.length) return;
     
     // Simulate reading via standard Web File API and converting to MockChatAttachment
     // Note: In a complete implementation we might read Blob/DataURL
     const newAtts = Array.from(e.target.files).map(file => {
-      const isImage = file.type.startsWith('image/');
+  const isImage = file.type.startsWith('image/');
       const isPdf = file.type === 'application/pdf';
       return {
         id: Math.random().toString(36).substring(7),
@@ -126,6 +128,8 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   };
 
   const handleOpenToolManager = () => {
+
+
     // TODO: Connect this to actual Agent Screen props event when agent UI needs Tool Modals
     toast.showSuccess(t('agent.tools.tool_call') + ' Manager Triggered');
   };
@@ -256,7 +260,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
                   type="button"
                   whileTap={{ scale: 0.92 }}
                 >
-                   <Square size={12} fill="currentColor" strokeWidth={0} />
+                   <MdStop size={20} />
                 </motion.button>
               ) : (
                 <motion.button 
@@ -266,7 +270,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
                    type="button"
                    whileTap={{ scale: 0.92 }}
                 >
-                   <ArrowUp size={18} strokeWidth={3} />
+                   <MdSend size={18} />
                 </motion.button>
               )}
            </div>

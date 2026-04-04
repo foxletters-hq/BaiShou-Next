@@ -27,6 +27,8 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
   const [isScanning, setIsScanning] = useState(false);
 
   const handleChangeRoot = async () => {
+
+
     if (!onChangeRoot) return;
     setIsScanning(true);
     try {

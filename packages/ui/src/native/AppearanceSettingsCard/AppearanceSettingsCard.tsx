@@ -51,16 +51,18 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const previewColor = hslToHex(hue, sat, lit);
 
   const toggleExpand = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded(!expanded);
   };
 
   const openColorPicker = () => {
-    setHue(190); setSat(60); setLit(75);
+  setHue(190); setSat(60); setLit(75);
     setShowColorModal(true);
   };
 
   const saveColor = () => {
+
+
     onSeedColorChange(previewColor);
     setShowColorModal(false);
   };

@@ -59,7 +59,9 @@ export const Select: React.FC<NativeSelectProps> = ({ options, value, onValueCha
                   renderItem={({ item }) => (
                     <TouchableOpacity 
                       style={{ padding: tokens.spacing.md, borderBottomWidth: 1, borderBottomColor: colors.bgSurfaceNormal }}
-                      onPress={() => { onValueChange?.(item.value); setModalVisible(false); }}
+                      onPress={() => {
+
+ onValueChange?.(item.value); setModalVisible(false); }}
                     >
                       <Text style={{ color: colors.textPrimary, fontSize: 16, textAlign: 'center' }}>
                         {item.label}

@@ -15,6 +15,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
   onOpenGithubHost,
 }) => {
   const { t } = useTranslation();
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>

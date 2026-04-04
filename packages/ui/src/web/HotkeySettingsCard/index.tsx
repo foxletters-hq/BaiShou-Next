@@ -32,13 +32,13 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
   ];
 
   const saveKey = useCallback((modifier: string, keyStr: string) => {
-    onChange({ ...config, hotkeyModifier: modifier, hotkeyKey: keyStr });
+  onChange({ ...config, hotkeyModifier: modifier, hotkeyKey: keyStr });
   }, [config, onChange]);
 
   useEffect(() => {
-    if (isRecording) {
+  if (isRecording) {
       const handleKeyDown = (e: KeyboardEvent) => {
-        e.preventDefault();
+  e.preventDefault();
         const key = e.key.toUpperCase();
         if (['ALT', 'CONTROL', 'META', 'SHIFT'].includes(key)) return; 
 
@@ -61,6 +61,8 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
   }, [isRecording, saveKey]);
 
   useEffect(() => {
+
+
     setLocalModifier(config.hotkeyModifier);
     setLocalKey(config.hotkeyKey);
   }, [config.hotkeyModifier, config.hotkeyKey]);

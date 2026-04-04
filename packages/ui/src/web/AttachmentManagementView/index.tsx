@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import styles from './AttachmentManagementView.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog } from '../Dialog';
+import { useToast } from '../Toast/useToast';
 
 export interface AttachmentItem {
   id: string;
@@ -22,6 +23,8 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   onDeleteSelected
 }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'all' | 'orphans'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,16 +55,16 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
 
   const handleDelete = async () => {
     if (selectedIds.size === 0) return;
-    const confirmText = window.confirm(t('attachment.delete_confirm', '【操作确认】您将彻底删除选中的 {{count}} 个附件包。操作不可逆（仅删除文件，不影响聊天记录文本）。是否执行？', { count: selectedIds.size }));
-    if (!confirmText) return;
+    const confirmed = await dialog.confirm(t('attachment.delete_confirm', '【操作确认】您将彻底删除选中的 {{count}} 个附件包。操作不可逆（仅删除文件，不影响聊天记录文本）。是否执行？', { count: selectedIds.size }));
+    if (!confirmed) return;
 
     setIsDeleting(true);
     try {
       await onDeleteSelected(Array.from(selectedIds));
-      alert('清除完毕，物理存储已释放。');
+      toast.showSuccess('清除完毕，物理存储已释放。');
       setSelectedIds(new Set());
     } catch (e: any) {
-      alert(`删除过程抛出异常：${e.message}`);
+      toast.showError(`删除过程抛出异常：${e.message}`);
     } finally {
       setIsDeleting(false);
     }
@@ -101,13 +104,17 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
           <div className={styles.tabsRow}>
              <button 
                className={`${styles.tabBtn} ${activeTab === 'all' ? styles.tabActive : ''}`}
-               onClick={() => { setActiveTab('all'); setSelectedIds(new Set()); }}
+               onClick={() => {
+                 setActiveTab('all'); setSelectedIds(new Set()); 
+               }}
              >
                📁 {t('attachment.tab_all', '系统完整附件集')} <span className={styles.badge}>{attachments.length}</span>
              </button>
              <button 
                className={`${styles.tabBtn} ${activeTab === 'orphans' ? styles.tabActive : ''}`}
-               onClick={() => { setActiveTab('orphans'); setSelectedIds(new Set()); }}
+               onClick={() => {
+                 setActiveTab('orphans'); setSelectedIds(new Set()); 
+               }}
              >
                ⚠️ {t('attachment.tab_orphans', '无关联孤立区')} <span className={styles.badgeDanger}>{orphans.length}</span>
              </button>

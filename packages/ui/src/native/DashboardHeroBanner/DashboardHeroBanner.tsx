@@ -6,6 +6,7 @@ import { View, Text, StyleSheet } from 'react-native';
 
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation();
+
   const greeting = t('dashboard.greeting', '又见面了，今天过得怎样？');
 
   return (

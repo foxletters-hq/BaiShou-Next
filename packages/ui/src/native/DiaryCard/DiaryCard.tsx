@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 
@@ -23,14 +24,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   onDelete
 }) => {
   const { t } = useTranslation();
-  
   const day = createdAt.getDate().toString().padStart(2, '0');
   const month = createdAt.getMonth() + 1;
   const year = createdAt.getFullYear();
   const weekday = [t('common.sunday', '周日'), t('common.monday', '周一'), t('common.tuesday', '周二'), t('common.wednesday', '周三'), t('common.thursday', '周四'), t('common.friday', '周五'), t('common.saturday', '周六')][createdAt.getDay()];
 
   const getTagColor = (tag: string) => {
-    const colors = [
+  const colors = [
       { bg: 'rgba(33, 150, 243, 0.1)', fg: '#1976D2' },
       { bg: 'rgba(76, 175, 80, 0.1)', fg: '#388E3C' },
       { bg: 'rgba(255, 152, 0, 0.1)', fg: '#F57C00' },
@@ -68,6 +68,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       {tags.length > 0 && (
         <View style={styles.tagsContainer}>
           {tags.map(tag => {
+
+
             const { bg, fg } = getTagColor(tag);
             return (
               <View key={tag} style={[styles.tag, { backgroundColor: bg }]}>

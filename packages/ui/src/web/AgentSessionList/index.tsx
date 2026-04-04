@@ -34,11 +34,11 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
 
   // Built-in intelligent list grouper
   const groupedSessions = useMemo(() => {
-    let filtered = sessions;
+  let filtered = sessions;
     const query = searchQuery.trim().toLowerCase();
     
     if (query) {
-      filtered = sessions.filter(
+  filtered = sessions.filter(
         s => s.title?.toLowerCase().includes(query) || s.snippet?.toLowerCase().includes(query)
       );
     }
@@ -53,22 +53,24 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
     const msInDay = 24 * 60 * 60 * 1000;
 
     for (const session of filtered) {
-      if (session.isPinned) {
-        pinned.push(session);
+  if (session.isPinned) {
+  pinned.push(session);
         continue;
       }
 
       if (!session.updatedAt) {
-        older.push(session);
+  older.push(session);
         continue;
       }
 
       const diff = now - session.updatedAt;
       if (diff < msInDay) {
-        today.push(session);
+  today.push(session);
       } else if (diff < msInDay * 2) {
-        yesterday.push(session);
+  yesterday.push(session);
       } else if (diff < msInDay * 7) {
+
+
         previous7.push(session);
       } else {
         older.push(session);
@@ -115,7 +117,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
            groupedSessions.map(group => (
              <div key={group.titleKey}>
                <div className={styles.groupHeader}>{group.titleKey}</div>
-               {group.items.map(session => (
+               {(group.items || []).map(session => (
                  <SessionListItem 
                    key={session.id}
                    session={session}

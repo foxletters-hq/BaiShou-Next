@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { SummaryCard } from '../SummaryCard';
 import './GalleryPanel.css';
@@ -14,12 +15,14 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) =>
   const [viewMode, setViewMode] = useState<'grid' | 'masonry'>('masonry');
 
   const formatDate = (d: any) => {
-    if (!d) return '';
+  if (!d) return '';
     const dateObj = new Date(d);
     return `${String(dateObj.getMonth() + 1).padStart(2,'0')}.${String(dateObj.getDate()).padStart(2,'0')}`;
   };
 
   const getTitle = (s: any) => {
+
+
     if (!s.startDate) return t('gallery.summary', '总结');
     const dateObj = new Date(s.startDate);
     if (s.type === 'weekly') return `${dateObj.getFullYear()}${t('common.year_unit', '年')}${t('gallery.weekly_report', '周报')}`;

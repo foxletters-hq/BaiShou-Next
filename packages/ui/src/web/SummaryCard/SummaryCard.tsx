@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import './SummaryCard.css';
 
@@ -23,7 +24,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onDelete
 }) => {
   const { t } = useTranslation();
-
   return (
     <div className={`summary-card-v2`} onClick={onClick}>
       <div className="summary-card-v2-header">
@@ -43,7 +43,9 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
       
       {onDelete && (
         <div className="summary-card-v2-actions">
-           <button className="summary-action-icon" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+           <button className="summary-action-icon" onClick={(e) => {
+
+ e.stopPropagation(); onDelete(); }}>
               🗑️
            </button>
         </div>

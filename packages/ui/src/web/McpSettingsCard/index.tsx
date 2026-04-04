@@ -45,6 +45,8 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           min={1000}
           max={65535}
           onChange={(e) => {
+
+
             const val = parseInt(e.target.value);
             // 简单的边界与回滚预判
             if (!isNaN(val)) onChange({ ...config, mcpPort: val });

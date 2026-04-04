@@ -18,6 +18,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   highlighted = false
 }) => {
   const { t } = useTranslation();
+
   return (
     <div className={`${styles.card} ${highlighted ? styles.highlighted : ''}`}>
        <div className={styles.header}>

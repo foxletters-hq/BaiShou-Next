@@ -6,6 +6,7 @@ import React from 'react';
 
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation();
+
   
   // mock random greeting
   const greeting = "又见面了，今天过得怎样？";

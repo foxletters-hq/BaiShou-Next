@@ -26,12 +26,13 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
   onChange,
 }) => {
   const { t } = useTranslation();
-
   const handleToggle = (key: keyof FeatureSettingsConfig) => {
-    onChange({ ...config, [key]: !config[key] });
+  onChange({ ...config, [key]: !config[key] });
   };
 
   const handleChange = (key: keyof FeatureSettingsConfig, value: number) => {
+
+
     onChange({ ...config, [key]: value });
   };
 

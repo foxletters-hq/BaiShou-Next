@@ -30,9 +30,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
   // 当选择的索引改变时，确保将其滚动入视野
   useEffect(() => {
-    if (isOpen && listRef.current) {
-      const selectedEl = listRef.current.children[selectedIndex] as HTMLElement;
+  if (isOpen && listRef.current) {
+  const selectedEl = listRef.current.children[selectedIndex] as HTMLElement;
       if (selectedEl) {
+
+
         selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
     }
@@ -46,7 +48,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
           <Zap size={14} /> {t('shortcut.title', '快捷控制指令 (Shortcut)')}
        </div>
        <div className={styles.listArea} ref={listRef}>
-          {shortcuts.map((shortcut, index) => (
+          {(shortcuts || []).map((shortcut, index) => (
              <div 
                key={shortcut.id}
                className={`${styles.item} ${index === selectedIndex ? styles.itemSelected : ''}`}

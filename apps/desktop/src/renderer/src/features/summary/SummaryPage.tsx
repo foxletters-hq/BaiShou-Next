@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { 
   GalleryPanel, 
-  DashboardHeroBanner, DashboardStatsCard, DashboardSharedMemoryCard
+  DashboardHeroBanner, DashboardStatsCard, DashboardSharedMemoryCard,
+  useToast
 } from '@baishou/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 // import { useNavigate } from 'react-router-dom'; // TODO: 后续用于跳转到总结详情页
@@ -9,12 +11,13 @@ import { Settings, LayoutDashboard, Layers, Sparkles, CheckCircle2 } from 'lucid
 import { useSummaryData } from './hooks/useSummaryData';
 import './SummaryPage.css';
 
-// TODO: Replace with Real Translation Hook
-const useTranslation = (): { t: (key: string) => string } => ({
-  t: (key: string) => key,
-});
 
-// 仿真状态机的步骤流
+
+
+export const SummaryPage: React.FC = () => {
+  const { t } = useTranslation();
+  const toast = useToast();
+  // 仿真状态机的步骤流
 const GEN_PHASES = [
   t('summary.step_scan', '获取游离区的所有活跃记录...'),
   t('summary.step_time', '基于时间顺序排列内容池...'),
@@ -22,24 +25,25 @@ const GEN_PHASES = [
   t('summary.step_write', 'AI 总结正流式接收生成...'),
   t('summary.step_done', '摘要归档完毕，已永久存盘。')
 ];
-
-export const SummaryPage: React.FC = () => {
-  const { t } = useTranslation();
   // const navigate = useNavigate(); // TODO: 后续用于跳转
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
   const [lookbackMonths, setLookbackMonths] = useState(1);
   const { summaries, stats, missingSummaries, setMissingSummaries, generateSummary, refreshData } = useSummaryData();
 
-  const handleCopyContext = () => {
-    // 调用剪贴板或 RAG 接口
-    alert('Context copied!');
+  const handleCopyContext = async () => {
+    try {
+      await navigator.clipboard.writeText('');
+      toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'));
+    } catch {
+      toast.showError(t('common.copy_failed', '复制失败'));
+    }
   };
 
   // 高强度的视觉伪态：记录每个卡片自己的生成进度和文字
   const [generationStates, setGenerationStates] = useState<Record<string, { progress: number, phase: number }>>({});
 
   const startGenerationSimulation = (id: string, _type: string) => {
-    // 保护网：禁止重复触发同一实体
+  // 保护网：禁止重复触发同一实体
     if (generationStates[id]) return;
 
     setGenerationStates(prev => ({ ...prev, [id]: { progress: 0, phase: 0 } }));
@@ -48,7 +52,7 @@ export const SummaryPage: React.FC = () => {
     
     // 开辟独立时钟轨道模拟 IPC 握手
     const timer = setInterval(() => {
-       currentProgress += Math.random() * 8; // 随机跳动进度以显得真实
+  currentProgress += Math.random() * 8; // 随机跳动进度以显得真实
 
        if (currentProgress >= 100) {
           currentProgress = 100;
@@ -57,9 +61,9 @@ export const SummaryPage: React.FC = () => {
 
           // 模拟成功后等待 2s，卡片销毁（表示存入数据库了）
           setTimeout(() => {
-              // Let the backend handle the real generation instead of just simulating
+  // Let the backend handle the real generation instead of just simulating
              generateSummary(_type, 'auto').finally(() => {
-                setMissingSummaries(prev => prev.filter(p => `${p.type}_${new Date(p.startDate).getTime()}` !== id));
+  setMissingSummaries(prev => prev.filter(p => `${p.type}_${new Date(p.startDate).getTime()}` !== id));
                 const cloneGenStates = { ...generationStates };
                 delete cloneGenStates[id];
                 setGenerationStates(cloneGenStates);
@@ -137,7 +141,7 @@ export const SummaryPage: React.FC = () => {
                
                <AnimatePresence>
                   {missingSummaries.map((mp: any) => {
-                     const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`;
+  const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`;
                      const isGen = !!generationStates[uKey];
                      const progress = generationStates[uKey]?.progress || 0;
                      const phaseLabel = generationStates[uKey]?.phase !== undefined 
@@ -154,6 +158,8 @@ export const SummaryPage: React.FC = () => {
                           <div 
                             className={`sp-missing-card ${isGen ? 'is-generating' : ''}`}
                             onClick={() => {
+
+
                                // Start generation 
                                if (!isGen) startGenerationSimulation(uKey, mp.type);
                             }}

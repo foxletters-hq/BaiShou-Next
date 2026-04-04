@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 export const DeveloperOptionsView: React.FC = () => {
   const { t } = useTranslation();
+
   return (
     <div style={{ 
       padding: '32px 24px', 

@@ -24,6 +24,8 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
+
+
     onCopy();
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

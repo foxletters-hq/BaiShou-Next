@@ -45,6 +45,8 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
                   key={i} 
                   className={styles.emojiBtn}
                   onClick={() => {
+
+
                      onSelect(emoji);
                      onClose();
                   }}

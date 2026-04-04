@@ -27,6 +27,8 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
       style={styles.container} 
       activeOpacity={0.6}
       onPress={() => {
+
+
         // Native would show DateTimePicker here, mocking log for now
         console.log('Would open native date picker');
         if (onDateChanged) onDateChanged(new Date());

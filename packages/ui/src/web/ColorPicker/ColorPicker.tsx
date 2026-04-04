@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import './ColorPicker.css';
 
@@ -16,6 +17,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   presets = ['#5BA8F5', '#4CAF50', '#FF9800', '#F44336', '#9C27B0']
 }) => {
   const { t } = useTranslation();
+
 
   return (
     <div className="color-picker-container">

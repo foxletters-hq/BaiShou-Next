@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 export const OnboardingPage: React.FC = () => {
   const { t } = useTranslation();
+
   return (
     <div className="glass-panel" style={{ margin: '2rem', textAlign: 'center' }}>
       <h1>{t('onboarding.welcome', '欢迎来到 BaiShou Next')}</h1>

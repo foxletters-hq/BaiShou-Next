@@ -15,6 +15,7 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
   onSkip 
 }) => {
   const { t } = useTranslation();
+
   return (
     <div className={styles.card}>
       <div className={styles.iconBox}>

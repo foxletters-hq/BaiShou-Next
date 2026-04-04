@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import styles from './AIModelServicesView.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog } from '../Dialog';
+import { useToast } from '../Toast/useToast';
 
 export interface AIProviderConfig {
   providerId: string;
@@ -33,12 +34,14 @@ const BASE_KNOWN_PROVIDERS = [
 ];
 
 export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
-  const { t } = useTranslation(); 
   providers, 
   onUpdateProvider, 
   onTestConnection, 
   onFetchModels 
 }) => {
+  const { t } = useTranslation();
+  const dialog = useDialog();
+  const toast = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loadingTest, setLoadingTest] = useState<Record<string, boolean>>({});
   const [loadingFetch, setLoadingFetch] = useState<Record<string, boolean>>({});
@@ -61,15 +64,15 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
   const handleTest = async (id: string, config: AIProviderConfig) => {
     if (!onTestConnection) return;
     if (!config.apiKey) {
-      alert('请先填写 API Key (鉴权口令) 后再测试连通性！');
+      toast.show('请先填写 API Key (鉴权口令) 后再测试连通性！');
       return;
     }
     setLoadingTest(prev => ({ ...prev, [id]: true }));
     try {
       await onTestConnection(id, config.apiKey, config.apiBaseUrl);
-      alert('✅ 测通成功！该节点返回的信号良好。');
+      toast.showSuccess('✅ 测通成功！该节点返回的信号良好。');
     } catch (e: any) {
-      alert(`❌ 测通失败: ${e.message}`);
+      toast.showError(`❌ 测通失败: ${e.message}`);
     } finally {
       setLoadingTest(prev => ({ ...prev, [id]: false }));
     }
@@ -78,7 +81,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
   const handleFetch = async (id: string, config: AIProviderConfig) => {
     if (!onFetchModels) return;
     if (!config.apiKey) {
-      alert('请先填写 API Key，以获取您的账户有权访问的流式图表。');
+      toast.show('请先填写 API Key，以获取您的账户有权访问的流式图表。');
       return;
     }
     setLoadingFetch(prev => ({ ...prev, [id]: true }));
@@ -92,9 +95,9 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
         models: RemoteModels, 
         enabledModels: newEnabled.length > 0 ? newEnabled : RemoteModels 
       });
-      alert(`🎉 成功拉取 ${RemoteModels.length} 个模型！`);
+      toast.showSuccess(`🎉 成功拉取 ${RemoteModels.length} 个模型！`);
     } catch (e: any) {
-      alert(`⚠️ 无法获取可用模型组: ${e.message}`);
+      toast.showError(`⚠️ 无法获取可用模型组: ${e.message}`);
     } finally {
       setLoadingFetch(prev => ({ ...prev, [id]: false }));
     }
@@ -111,15 +114,15 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
     onUpdateProvider(providerId, { enabledModels: activeList });
   };
 
-  const handleCreateCustom = () => {
-    const rawInput = window.prompt("请输入自定义供应商标识（例如: proxy_openai）：\n*将创建一个新的空白接口点卡片以供使用。");
+  const handleCreateCustom = async () => {
+    const rawInput = await dialog.prompt("请输入自定义供应商标识（例如: proxy_openai）：\n*将创建一个新的空白接口点卡片以供使用。");
     if (rawInput && rawInput.trim() !== '') {
        const pid = rawInput.trim().toLowerCase();
        if (!providers[pid]) {
           onUpdateProvider(pid, { enabled: true, apiKey: '' });
           setExpandedId(pid);
        } else {
-          alert('该提供商标签已存在于云脑池中。');
+          toast.show('该提供商标签已存在于云脑池中。');
        }
     }
   };
@@ -216,7 +219,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                            {t('services.select_models', '勾选您将在对话界面显示的模型组合：')}
                         </div>
                         <div className={styles.modelsGrid}>
-                           {config.models.map(mdl => {
+                           {(config.models || []).map(mdl => {
                              const isChecked = (config.enabledModels || []).includes(mdl);
                              return (
                                <label key={mdl} className={styles.modelCheckboxItem}>

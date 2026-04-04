@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styles from './WorkspaceSettingsCard.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog, useToast } from '../..';
 
 // Reuse type from core if available, but define locally to keep ui package independent
 export interface VaultInfo {
@@ -31,6 +31,8 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   onPickCustomRoot
 }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
+  const toast = useToast();
   const [newVaultName, setNewVaultName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [currentRoot, setCurrentRoot] = useState<string | null>(customRootPath || null);
@@ -43,7 +45,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
       setIsCreating(false);
     } catch (e) {
       console.error(e);
-      alert('Failed to create workspace');
+      toast.showError('Failed to create workspace');
     }
   };
 
@@ -97,14 +99,14 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
                     <button className={styles.switchBtn} onClick={() => onSwitch(vault.name)}>
                       Switch
                     </button>
-                    <button className={styles.deleteBtn} onClick={() => {
-                      const input = window.prompt(
+                    <button className={styles.deleteBtn} onClick={async () => {
+                      const input = await dialog.prompt(
                         t('workspace.delete_confirm', '危险：您确定要彻底删除工作空间 [{{name}}] 吗？\n此操作将销毁该空间下的所有日志记录和关联档案，不可逆！\n\n请输入工作区名称以确认删除：', { name: vault.name })
                       );
                       if (input === vault.name) {
                         onDelete(vault.name);
                       } else if (input !== null) {
-                        alert('工作空间名称不匹配，删除已取消。');
+                        toast.showError('工作空间名称不匹配，删除已取消。');
                       }
                     }}>
                       Delete

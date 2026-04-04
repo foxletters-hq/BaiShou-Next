@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './AIGlobalModelsView.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog } from '../Dialog';
 
 export interface GlobalModelsConfig {
   defaultChatModel: string;
@@ -32,6 +32,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   onEmbeddingMigrationRequest
 }) => {
   const { t } = useTranslation();
+  const dialog = useDialog();
   // 生成可用的模型下拉清单对象 "providerId:modelId"
   const getSelectableModels = () => {
     const list: { id: string; providerName: string; modelName: string }[] = [];
@@ -56,8 +57,8 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     if (field === 'defaultEmbeddingModel' && val !== config.defaultEmbeddingModel) {
       if (config.defaultEmbeddingModel) {
         // 如果旧的引擎存在，弹出高危替换提示
-        const confirmed = window.confirm(
-          `t('models.embedding_warning', '【高危险警告: 向量库脱节】\n您尝试将系统核心嵌入模型从 {{old}} 切换到 {{new}}。旧有记忆将可能作废，需要进入重新推导演算程序。\n点击确认应用', {old: config.defaultEmbeddingModel, new: val})`
+        const confirmed = await dialog.confirm(
+          t('models.embedding_warning', '【高危险警告: 向量库脱节】\n您尝试将系统核心嵌入模型从 {{old}} 切换到 {{new}}。旧有记忆将可能作废，需要进入重新推导演算程序。\n点击确认应用', {old: config.defaultEmbeddingModel, new: val})
         );
         if (!confirmed) return; // 拦截
         

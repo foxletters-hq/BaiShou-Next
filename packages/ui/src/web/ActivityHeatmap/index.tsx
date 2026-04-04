@@ -10,14 +10,17 @@ interface ActivityHeatmapProps {
   year: number;
 }
 
-const MONTHS = [t('common.jan', '一月'), t('common.feb', '二月'), t('common.mar', '三月'), t('common.apr', '四月'), t('common.may', '五月'), t('common.jun', '六月'), t('common.jul', '七月'), t('common.aug', '八月'), t('common.sep', '九月'), t('common.oct', '十月'), t('common.nov', '十一月'), t('common.dec', '十二月')];
-const DAYS = [t('common.sun', '日'), t('common.mon', '一'), t('common.tue', '二'), t('common.wed', '三'), t('common.thu', '四'), t('common.fri', '五'), t('common.sat', '六')];
+
 
 export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ data, year }) => {
   const { t } = useTranslation();
+  const MONTHS = [t('common.jan', '一月'), t('common.feb', '二月'), t('common.mar', '三月'), t('common.apr', '四月'), t('common.may', '五月'), t('common.jun', '六月'), t('common.jul', '七月'), t('common.aug', '八月'), t('common.sep', '九月'), t('common.oct', '十月'), t('common.nov', '十一月'), t('common.dec', '十二月')];
+const DAYS = [t('common.sun', '日'), t('common.mon', '一'), t('common.tue', '二'), t('common.wed', '三'), t('common.thu', '四'), t('common.fri', '五'), t('common.sat', '六')];
   const gridMatrix = useMemo(() => generateHeatmapMatrix(data, year), [data, year]);
 
   const getColorLevel = (count: number) => {
+
+
     if (count === 0) return styles.level0;
     if (count < 3) return styles.level1;
     if (count < 6) return styles.level2;

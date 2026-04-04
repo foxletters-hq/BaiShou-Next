@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import './TagInput.css';
 
@@ -14,7 +15,7 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onChange }) => {
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+  if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       const newTag = inputValue.trim().replace(/^#/, '');
       if (newTag && !tags.includes(newTag)) {
@@ -27,6 +28,8 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onChange }) => {
   };
 
   const removeTag = (indexToRemove: number) => {
+
+
     onChange(tags.filter((_, index) => index !== indexToRemove));
   };
 

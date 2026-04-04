@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 export const HomePage: React.FC = () => {
   const { t } = useTranslation();
+
   return (
     <div className="glass-panel" style={{ margin: '2rem' }}>
       <h1>{t('nav.summary', '概览面板')} (Home)</h1>

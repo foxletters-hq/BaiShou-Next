@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
@@ -16,6 +17,7 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
   onGenerate 
 }) => {
   const { t } = useTranslation();
+
 
   return (
     <View style={styles.card}>

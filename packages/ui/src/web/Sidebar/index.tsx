@@ -32,7 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedId(id);
+  setDraggedId(id);
     e.dataTransfer.effectAllowed = 'move';
     // Transparent drag image
     const img = new Image();
@@ -41,11 +41,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault();
+  e.preventDefault();
     if (!draggedId || draggedId === id) return;
     
     setOrderedItems((prev) => {
-      const oldIndex = prev.findIndex((i) => i.id === draggedId);
+  const oldIndex = prev.findIndex((i) => i.id === draggedId);
       const newIndex = prev.findIndex((i) => i.id === id);
       const newArray = [...prev];
       const [movedItem] = newArray.splice(oldIndex, 1);
@@ -55,8 +55,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleDragEnd = () => {
-    setDraggedId(null);
+  setDraggedId(null);
     if (onOrderChange) {
+
+
       onOrderChange(orderedItems.map(i => i.id));
     }
   };

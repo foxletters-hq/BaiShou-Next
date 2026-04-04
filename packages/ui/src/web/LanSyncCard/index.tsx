@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styles from './LanSyncCard.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { useDialog } from '../Dialog';
+import { useToast } from '../Toast/useToast';
 
 export interface DiscoveredDevice {
   nickname: string;
@@ -34,7 +35,6 @@ const FIXED_POSITIONS = [
 ];
 
 export const LanSyncCard: React.FC<LanSyncCardProps> = ({
-  const { t } = useTranslation();
   onStartBroadcasting,
   onStopBroadcasting,
   onStartDiscovery,
@@ -43,6 +43,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   onFileReceivedListener,
   onImportZip
 }) => {
+  const { t } = useTranslation();
+  const dialog = useDialog();
+  const toast = useToast();
   const [isActive, setIsActive] = useState(false);
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
@@ -50,23 +53,26 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
 
   useEffect(() => {
     if (onFileReceivedListener && onImportZip) {
-      const unsub = onFileReceivedListener((zipPath) => {
-        const confirmText = window.prompt(
+      const unsub = onFileReceivedListener(async (zipPath) => {
+        const confirmText = await dialog.prompt(
           t('lan.receive_confirm_msg', '【局域网快传接收】\n发现来自局域网设备传来的全量备份包，是否立即应用并覆盖本地数据库？\n请输入 "CONFIRM" 以确认覆盖：')
         );
         if (confirmText === 'CONFIRM') {
           onImportZip(zipPath).then(() => {
-            alert('导入成功，应用即将重载');
-            window.location.reload();
-          }).catch(console.error);
+            toast.showSuccess('导入成功，应用即将重载');
+            setTimeout(() => window.location.reload(), 1500);
+          }).catch((e) => {
+            console.error(e);
+            toast.showError('重载导入失败');
+          });
         } else {
-          alert('已取消接收与挂载');
+          toast.show('已取消接收与挂载');
         }
       });
       return unsub;
     }
     return undefined;
-  }, [onFileReceivedListener, onImportZip]);
+  }, [onFileReceivedListener, onImportZip, dialog, t, toast]);
 
   const toggleDualMode = async () => {
     if (isActive) {
@@ -94,9 +100,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     const success = await onSendFile(device.ip, device.port, (p) => setProgress(p));
     setSendingTo(null);
     if (success) {
-      alert(`已成功静默推送到 ${device.nickname}`);
+      toast.showSuccess(`已成功静默推送到 ${device.nickname}`);
     } else {
-      alert(`发送至 ${device.nickname} 失败，可能对端已掉线或文件过大超时。`);
+      toast.showError(`发送至 ${device.nickname} 失败，可能对端已掉线或文件过大超时。`);
     }
   };
 
@@ -158,7 +164,10 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
               <button 
                 className={styles.sendOverlayBtn}
                 disabled={sendingTo !== null}
-                onClick={(e) => { e.stopPropagation(); handleSend(d); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSend(d);
+                }}
               >
                 {isSending ? `${progress}%` : t('lan.send_btn', '发起快传')}
               </button>

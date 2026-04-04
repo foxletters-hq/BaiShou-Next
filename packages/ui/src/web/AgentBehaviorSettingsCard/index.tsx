@@ -15,6 +15,7 @@ interface AgentBehaviorSettingsCardProps {
 
 export const AgentBehaviorSettingsCard: React.FC<AgentBehaviorSettingsCardProps> = ({ config, onChange }) => {
   const { t } = useTranslation();
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
