@@ -10,7 +10,6 @@ export interface GlobalModelsConfig {
   defaultEmbeddingModel: string;
 }
 
-// 这里复用前一个组件的数据结构接口定义
 export interface AIProviderConfigInfo {
   providerId: string;
   enabled: boolean;
@@ -33,7 +32,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
 }) => {
   const { t } = useTranslation();
   const dialog = useDialog();
-  // 生成可用的模型下拉清单对象 "providerId:modelId"
+
   const getSelectableModels = () => {
     const list: { id: string; providerName: string; modelName: string }[] = [];
     Object.values(availableProviders).forEach(provider => {
@@ -53,19 +52,16 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   const selectableOptions = getSelectableModels();
 
   const handleFieldChange = async (field: keyof GlobalModelsConfig, val: string) => {
-    // 对 Embedding 设置一个特殊的防卫机制
     if (field === 'defaultEmbeddingModel' && val !== config.defaultEmbeddingModel) {
       if (config.defaultEmbeddingModel) {
-        // 如果旧的引擎存在，弹出高危替换提示
         const confirmed = await dialog.confirm(
           t('models.embedding_warning', '【高危险警告: 向量库脱节】\n您尝试将系统核心嵌入模型从 {{old}} 切换到 {{new}}。旧有记忆将可能作废，需要进入重新推导演算程序。\n点击确认应用', {old: config.defaultEmbeddingModel, new: val})
         );
-        if (!confirmed) return; // 拦截
+        if (!confirmed) return;
         
-        // 尝试通报父容器进行重算
         if (onEmbeddingMigrationRequest) {
           const migrationPass = await onEmbeddingMigrationRequest(config.defaultEmbeddingModel, val);
-          if (!migrationPass) return; // 后台决断为不再继续
+          if (!migrationPass) return;
         }
       }
     }
@@ -94,59 +90,51 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
 
   return (
     <div className={styles.container}>
-      <h3 className={styles.headerTitle}>{t('models.routing_title', '全局默认模型分流 (Routing)')}</h3>
+      <h3 className={styles.headerTitle}>{t('models.routing_title', '全局默认模型配置')}</h3>
       <p className={styles.headerSubtitle}>
-        {t('models.routing_desc', '白守会在不同的专业领域调派最适合的模型。所有模型选项皆采自从您的模型服务中心启用的名单。')}
+        {t('models.routing_desc', '允许为不同专业领域调派并指定默认模型。')}
       </p>
 
       <div className={styles.grid}>
         
-        {/* Chat Model */}
-        <div className={styles.routingCard}>
-          <div className={styles.routeHeader}>
-            <div className={styles.routeIcon}>💬</div>
-            <div className={styles.routeMeta}>
-              <span className={styles.routeName}>{t('models.route_chat', '默认对话核心 (Chat & Main)')}</span>
-              <span className={styles.routeDesc}>{t('models.route_chat_desc', '负责普通流式文本对答与基础推理。')}</span>
-            </div>
-          </div>
-          {renderSelect('defaultChatModel', '选择一个旗舰对话模型...')}
-        </div>
-
-        {/* Vision Model */}
-        <div className={styles.routingCard}>
-          <div className={styles.routeHeader}>
-            <div className={styles.routeIcon}>👁️</div>
-            <div className={styles.routeMeta}>
-              <span className={styles.routeName}>{t('models.route_vision', '视觉分析验证 (Vision)')}</span>
-              <span className={styles.routeDesc}>{t('models.route_vision_desc', '负责对图像输入做深度解析。若要识别图像，必须选中多模态版本模型。')}</span>
-            </div>
-          </div>
-          {renderSelect('defaultVisionModel', '选择一个多模态视觉模型...')}
-        </div>
-
-        {/* Summary Model */}
+        {/* Summary Model (长文总结模块) */}
         <div className={styles.routingCard}>
           <div className={styles.routeHeader}>
             <div className={styles.routeIcon}>📑</div>
-            <div className={styles.routeMeta}>
-              <span className={styles.routeName}>{t('models.route_summarizer', '长文总结模块 (Summarizer)')}</span>
-              <span className={styles.routeDesc}>{t('models.route_summarizer_desc', '负责将长文压缩或进行日记报告总结。')}</span>
-            </div>
+            <span className={styles.routeName}>{t('ai_config.summary_model_title', '长文总结模块 (Summarizer)')}</span>
           </div>
-          {renderSelect('defaultSummaryModel', '选择专长文本吞吐的模型...')}
+          {renderSelect('defaultSummaryModel', '选择专长文本压栈概括的模型')}
+          <div className={styles.routeDesc}>{t('ai_config.summary_model_desc', '负责将长文压缩或进行超文本报告总结工作。')}</div>
+        </div>
+
+        {/* Chat Model (默认对话核心) */}
+        <div className={styles.routingCard}>
+          <div className={styles.routeHeader}>
+            <div className={styles.routeIcon}>💬</div>
+            <span className={styles.routeName}>{t('ai_config.dialogue_model_title', '默认对话核心 (Dialogue Model)')}</span>
+          </div>
+          {renderSelect('defaultChatModel', '选择首选闲聊问答模型')}
+          <div className={styles.routeDesc}>{t('ai_config.dialogue_model_desc', '负责普通的基础推测对答。')}</div>
+        </div>
+
+        {/* Vision / Naming Model (视觉命名推断 - we had Vison/Naming) */}
+        <div className={styles.routingCard}>
+          <div className={styles.routeHeader}>
+            <div className={styles.routeIcon}>👁️</div>
+            <span className={styles.routeName}>{t('ai_config.vision_model_title', '核心视觉理解 (Vision Input)')}</span>
+          </div>
+          {renderSelect('defaultVisionModel', '指定视觉输入模型')}
+          <div className={styles.routeDesc}>{t('ai_config.vision_model_desc', '负责多模态文件的深度图片解析处理和理解。')}</div>
         </div>
 
         {/* Embedding Model */}
         <div className={`${styles.routingCard} ${styles.routingCardDanger}`}>
           <div className={styles.routeHeader}>
             <div className={`${styles.routeIcon} ${styles.dangerIcon}`}>🔢</div>
-            <div className={styles.routeMeta}>
-              <span className={`${styles.routeName} ${styles.dangerName}`}>{t('models.route_embeddings', '向量嵌入模型 (Embeddings)')}</span>
-              <span className={styles.routeDesc}>{t('models.route_embeddings_desc', '构建检索记忆的关键特征。由于更改将导致过往本地索引失效，更换请务必慎重。')}</span>
-            </div>
+            <span className={`${styles.routeName} ${styles.dangerName}`}>{t('ai_config.embedding_model_title', '向量嵌入模型 (Embeddings)')}</span>
           </div>
-          {renderSelect('defaultEmbeddingModel', '高危：选择并绑定特征算计算子...')}
+          {renderSelect('defaultEmbeddingModel', '分配文本映射成特征算子的核模型')}
+          <div className={styles.routeDesc}>{t('ai_config.embedding_model_desc', '构建检索记忆的关键特征。发生底层迁移时必定触怒 RAG 重建机制，请慎重对待。')}</div>
         </div>
 
       </div>

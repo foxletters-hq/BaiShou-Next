@@ -102,8 +102,12 @@ export class DesktopArchiveService implements IArchiveService {
         const configStr = JSON.stringify(devicePreferences, null, 2);
         archive.append(configStr, { name: 'config/device_preferences.json' });
 
-        // Avatar not supported yet but reserve bucket:
-        // archive.append(buffer, { name: 'config/avatar.png' });
+        // Database Export: Copy the main SQLite Database
+        const sqliteDbPath = path.join(app.getPath('userData'), 'baishou_next_agent.db');
+        if (fs.existsSync(sqliteDbPath)) {
+            // Force checkpoint or just copy. We skip WAL/SHM as they may cause locking or bloat.
+            archive.file(sqliteDbPath, { name: 'database/baishou_next_agent.db' });
+        }
 
         await archive.finalize();
       } catch (err) {
@@ -220,6 +224,20 @@ export class DesktopArchiveService implements IArchiveService {
       await fsp.rm(path.join(rootDir, 'config'), { recursive: true, force: true }).catch(() => {});
     } catch (e) {
       console.error('Failed to restore device preferences', e);
+    }
+
+    // 5.5 Restore Database if it exists in the archive!
+    try {
+      const extractedDbPath = path.join(rootDir, 'database', 'baishou_next_agent.db');
+      if (fs.existsSync(extractedDbPath)) {
+        // Warning: connectionManager is disconnected. We can safely overwrite the SQLite db.
+        const actualDbPath = path.join(app.getPath('userData'), 'baishou_next_agent.db');
+        await fsp.copyFile(extractedDbPath, actualDbPath);
+        // Clean up extracted folder
+        await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {});
+      }
+    } catch (e) {
+      console.error('Failed to restore database from archive', e);
     }
 
     // 6. Regenerate and reload system registry completely

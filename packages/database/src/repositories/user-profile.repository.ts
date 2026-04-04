@@ -5,7 +5,7 @@ import type { UserProfile } from '@baishou/shared';
 const KEY = 'user_profile_data';
 
 export const DEFAULT_PROFILE: UserProfile = {
-  nickname: '主人', // t.settings.default_nickname
+  nickname: '白守用户', // t.settings.default_nickname
   avatarPath: null,
   activePersonaId: '默认身份卡', // t.settings.default_identity
   personas: {

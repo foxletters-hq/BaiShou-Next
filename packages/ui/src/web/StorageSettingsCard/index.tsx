@@ -11,6 +11,7 @@ export interface StorageSettingsCardProps {
   mediaCacheStats: string;
   totalLimit?: string;
   onChangeRoot?: () => Promise<void>;
+  onNavigateToAttachments?: () => void;
   onClearCache?: () => void;
   onVacuumDb?: () => void;
 }
@@ -18,6 +19,7 @@ export interface StorageSettingsCardProps {
 export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
   storageRootPath = '...',
   onChangeRoot,
+  onNavigateToAttachments,
 }) => {
   const { t } = useTranslation();
 
@@ -28,7 +30,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
       subtitle={t('settings.storage_root_desc', '管理数据存储路径与附件')}
     >
         {/* 附件管理 - 跳转 */}
-        <button className="settings-list-tile">
+        <button className="settings-list-tile" onClick={onNavigateToAttachments}>
           <div className="settings-list-tile-leading" />
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">{t('settings.attachment_management', '附件管理')}</span>
