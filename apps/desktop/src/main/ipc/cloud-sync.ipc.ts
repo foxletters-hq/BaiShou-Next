@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
-import { SyncConfig, SyncIpcChannels } from '@baishou/shared';
+import { SyncIpcChannels } from '@baishou/shared';
+import { SyncConfig } from '@baishou/core';
 import { DesktopCloudSyncService } from '../services/cloud-sync.service';
 import { archiveService } from './archive.ipc';
 

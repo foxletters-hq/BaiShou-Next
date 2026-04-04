@@ -50,7 +50,7 @@ async function getActiveProvider() {
   const providerId = globalModels?.globalDialogueProviderId;
   const config = providers.find((p: AIProviderConfig) => p.id === providerId);
   
-  const actualConfig = config || providers.find((p: AIProviderConfig) => p.isActive || p.isEnabled);
+  const actualConfig = config || providers.find((p: AIProviderConfig) => p.isEnabled);
   if (!actualConfig) throw new Error('No active provider configured');
   
   const registry = AIProviderRegistry.getInstance();
@@ -85,6 +85,11 @@ export function registerAgentIPC() {
   ipcMain.handle('agent:delete-assistant', async (_, id) => {
     const { assistantManager } = getAgentManagers();
     await assistantManager.delete(id);
+  });
+
+  ipcMain.handle('agent:pin-assistant', async (_, id: string, isPinned: boolean) => {
+    const { assistantManager } = getAgentManagers();
+    await assistantManager.togglePin(id, isPinned);
   });
 
   // ==========================================

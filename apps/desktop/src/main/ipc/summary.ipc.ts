@@ -6,12 +6,11 @@ import {
 import { 
   SummaryManagerService,
   SummarySyncService,
-  SummaryFileService,
-  SummaryType
+  SummaryFileService
 } from '@baishou/core';
 
 import { pathService } from './vault.ipc';
-import { CreateSummaryInput, UpdateSummaryInput } from '@baishou/shared';
+import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared';
 
 export function getSummaryManager() {
   const db = connectionManager.getDb();
@@ -50,5 +49,24 @@ export function registerSummaryIPC() {
     // Deserialize optional date object if present
     const parsedOptions = options?.start ? { start: new Date(options.start) } : undefined;
     return await getSummaryManager().list(parsedOptions);
+  });
+
+  ipcMain.handle('summary:stats', async () => {
+    // 目前使用空桩实现以阻断报错，日后可替换为真实的探测器调用
+    return {
+      totalDiaryCount: 0,
+      weeklyCount: 0,
+      monthlyCount: 0,
+      quarterlyCount: 0,
+      yearlyCount: 0
+    };
+  });
+
+  ipcMain.handle('summary:detect-missing', async () => {
+    return [];
+  });
+
+  ipcMain.handle('summary:generate', async (_, args: any) => {
+    return null;
   });
 }

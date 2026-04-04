@@ -3,7 +3,7 @@ import { SettingsRepository } from '@baishou/database';
 import { SettingsFileService, SettingsManagerService } from '@baishou/core';
 import { appDb } from '../db';
 import { pathService } from './vault.ipc';
-import { AIProviderConfig, GlobalModelsConfig, FeatureSettingsConfig } from '@baishou/shared';
+import { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared';
 
 const settingsRepo = new SettingsRepository(appDb);
 const settingsFileService = new SettingsFileService(pathService);
@@ -29,10 +29,10 @@ export function registerSettingsIPC() {
   });
 
   ipcMain.handle('settings:get-features', async () => {
-    return await settingsManager.get<FeatureSettingsConfig>('feature_settings') || null;
+    return await settingsManager.get<Record<string, any>>('feature_settings') || null;
   });
 
-  ipcMain.handle('settings:set-features', async (_, config: FeatureSettingsConfig) => {
+  ipcMain.handle('settings:set-features', async (_, config: Record<string, any>) => {
     await settingsManager.set('feature_settings', config);
     return true;
   });
@@ -49,6 +49,7 @@ export function registerSettingsIPC() {
         registry.registerProvider(registry.createProviderInstance(config));
     }
     const providerInstance = registry.getProvider(config.id);
+    if (!providerInstance) throw new Error('Provider instance creation failed');
     return await providerInstance.fetchAvailableModels();
   });
 
@@ -104,6 +105,7 @@ export function registerSettingsIPC() {
         registry.registerProvider(registry.createProviderInstance(config));
     }
     const provider = registry.getProvider(config.id);
+    if (!provider) throw new Error('Provider instance creation failed');
     await provider.testConnection();
     return { success: true };
   });

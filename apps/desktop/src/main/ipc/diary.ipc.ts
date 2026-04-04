@@ -34,10 +34,16 @@ export function getDiaryManager() {
 
 export function registerDiaryIPC() {
   ipcMain.handle('diary:create', async (_, input: CreateDiaryInput) => {
+    if (input.date && typeof input.date === 'string') {
+      input.date = new Date(input.date);
+    }
     return await getDiaryManager().create(input);
   });
   
   ipcMain.handle('diary:update', async (_, id: number, input: UpdateDiaryInput) => {
+    if (input.date && typeof input.date === 'string') {
+      input.date = new Date(input.date);
+    }
     return await getDiaryManager().update(id, input);
   });
   
