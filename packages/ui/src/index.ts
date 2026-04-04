@@ -6,6 +6,7 @@ export * from './web/Card/Card';
 export * from './web/Input/Input';
 export * from './web/Toast/Toast';
 export * from './web/Toast/useToast';
+export * from './web/Dialog/index';
 export * from './web/Modal/Modal';
 export * from './web/Switch/Switch';
 export * from './web/Select/Select';
