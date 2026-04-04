@@ -10,6 +10,7 @@ export interface InsertAssistantInput {
   avatarPath?: string;
   systemPrompt?: string;
   isDefault?: boolean;
+  isPinned?: boolean;
   contextWindow?: number;
   providerId: string;
   modelId: string;
@@ -59,6 +60,7 @@ export class AssistantRepository {
       avatarPath: input.avatarPath,
       systemPrompt: input.systemPrompt,
       isDefault: input.isDefault ?? false,
+      isPinned: input.isPinned ?? false,
       contextWindow: input.contextWindow ?? 10,
       providerId: input.providerId,
       modelId: input.modelId,
@@ -79,6 +81,16 @@ export class AssistantRepository {
 
     await this.db.update(agentAssistantsTable).set({
       ...input,
+      updatedAt: new Date()
+    }).where(eq(agentAssistantsTable.id, id));
+  }
+
+  /**
+   * 切换助手的置顶状态
+   */
+  async togglePin(id: string, isPinned: boolean): Promise<void> {
+    await this.db.update(agentAssistantsTable).set({
+      isPinned,
       updatedAt: new Date()
     }).where(eq(agentAssistantsTable.id, id));
   }

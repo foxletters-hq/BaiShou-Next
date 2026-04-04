@@ -9,7 +9,7 @@ describe('FileSyncService', () => {
   let service: FileSyncServiceImpl;
 
   beforeEach(() => {
-    service = new FileSyncServiceImpl(rootPath);
+    service = new FileSyncServiceImpl({ getJournalsBaseDirectory: async () => rootPath } as any);
     if (fs.existsSync(rootPath)) {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
