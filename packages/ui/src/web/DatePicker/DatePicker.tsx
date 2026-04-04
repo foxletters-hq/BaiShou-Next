@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import './DatePicker.css';
 
@@ -12,10 +13,9 @@ interface DatePickerProps {
 
 export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, mode = 'date' }) => {
   const { t } = useTranslation();
-
   // 临时使用原生 input date 验证逻辑
   const toLocalISOString = (date: Date) => {
-    const tzoffset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+  const tzoffset = date.getTimezoneOffset() * 60000; // offset in milliseconds
     const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 10);
     return localISOTime;
   }
@@ -26,7 +26,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, mode = 
         type={mode === 'month' ? 'month' : 'date'}
         value={toLocalISOString(value)}
         onChange={(e) => {
-          if (e.target.value) {
+  if (e.target.value) {
+
+
             onChange(new Date(e.target.value));
           }
         }}
