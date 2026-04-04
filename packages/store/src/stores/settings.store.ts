@@ -103,9 +103,73 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
           settings.getHotkeyConfig()
         ]);
         
+        const defaultGlobalModels: GlobalModelsConfig = {
+          globalDialogueProviderId: '',
+          globalDialogueModelId: '',
+          globalNamingProviderId: '',
+          globalNamingModelId: '',
+          globalSummaryProviderId: '',
+          globalSummaryModelId: '',
+          globalEmbeddingProviderId: '',
+          globalEmbeddingModelId: '',
+          monthlySummarySource: 'weeklies'
+        };
+
+        const defaultAgentBehavior: AgentBehaviorConfig = {
+          agentContextWindowSize: 20,
+          companionCompressTokens: 8000,
+          companionTruncateTokens: 4000,
+          agentPersona: '',
+          agentGuidelines: '',
+          pinnedAssistantIds: []
+        };
+
+        const defaultRagConfig: RagConfig = {
+          ragEnabled: true,
+          ragTopK: 20,
+          ragSimilarityThreshold: 0.4
+        };
+
+        const defaultWebSearchConfig: WebSearchConfig = {
+          webSearchEngine: 'duckduckgo',
+          webSearchMaxResults: 5,
+          webSearchRagEnabled: false,
+          tavilyApiKey: '',
+          webSearchRagMaxChunks: 12,
+          webSearchRagChunksPerSource: 4,
+          webSearchPlainSnippetLength: 3000
+        };
+
+        const defaultSummaryConfig: SummaryConfig = {
+          instructions: {}
+        };
+
+        const defaultToolManagementConfig: ToolManagementConfig = {
+          disabledToolIds: [],
+          customConfigs: {}
+        };
+
+        const defaultMcpServerConfig: McpServerConfig = {
+          mcpEnabled: false,
+          mcpPort: 31004
+        };
+
+        const defaultHotkeyConfig: HotkeyConfig = {
+          hotkeyEnabled: false,
+          hotkeyModifier: 'Alt',
+          hotkeyKey: 'Space'
+        };
+        
         set({ 
-          providers, globalModels, agentBehavior, ragConfig, 
-          webSearchConfig, summaryConfig, toolManagementConfig, mcpServerConfig, hotkeyConfig 
+          providers: providers || [], 
+          globalModels: globalModels || defaultGlobalModels, 
+          agentBehavior: agentBehavior || defaultAgentBehavior, 
+          ragConfig: ragConfig || defaultRagConfig, 
+          webSearchConfig: webSearchConfig || defaultWebSearchConfig, 
+          summaryConfig: summaryConfig || defaultSummaryConfig, 
+          toolManagementConfig: toolManagementConfig || defaultToolManagementConfig, 
+          mcpServerConfig: mcpServerConfig || defaultMcpServerConfig, 
+          hotkeyConfig: hotkeyConfig || defaultHotkeyConfig 
         });
       }
     } catch (e) {

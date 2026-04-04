@@ -26,12 +26,11 @@ export interface LanSyncCardProps {
 }
 
 const FIXED_POSITIONS = [
-  { top: '20%', left: '20%' },
-  { top: '30%', left: '75%' },
-  { top: '75%', left: '50%' },
-  { top: '65%', left: '15%' },
-  { top: '80%', left: '80%' },
-  { top: '15%', left: '50%' }
+  { top: '20%', left: '20%' }, // top-left
+  { top: '30%', left: '75%' }, // top-right
+  { top: '80%', left: '50%' }, // bottom-center
+  { top: '75%', left: '25%' }, // bottom-left
+  { top: '75%', left: '75%' }, // bottom-right
 ];
 
 export const LanSyncCard: React.FC<LanSyncCardProps> = ({
@@ -46,10 +45,46 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   const { t } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive] = useState(true); // Start active like Flutter
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+
+  const startDualMode = async () => {
+    setIsActive(true);
+    await onStartBroadcasting();
+    await onStartDiscovery(
+      (dev) => setDevices(prev => {
+        const idx = prev.findIndex(d => d.rawServiceId === dev.rawServiceId);
+        if (idx !== -1) return prev;
+        return [...prev, dev];
+      }),
+      (id) => setDevices(prev => prev.filter(d => d.rawServiceId !== id))
+    );
+  };
+
+  const stopDualMode = async () => {
+    setIsActive(false);
+    setDevices([]);
+    await onStopDiscovery();
+    await onStopBroadcasting();
+  };
+
+  const restartDualMode = async () => {
+    await stopDualMode();
+    setTimeout(() => {
+      startDualMode();
+    }, 500);
+  };
+
+  // Mount/Unmount effect
+  useEffect(() => {
+    startDualMode();
+    return () => {
+      stopDualMode();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (onFileReceivedListener && onImportZip) {
@@ -74,51 +109,30 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     return undefined;
   }, [onFileReceivedListener, onImportZip, dialog, t, toast]);
 
-  const toggleDualMode = async () => {
-    if (isActive) {
-      await onStopDiscovery();
-      await onStopBroadcasting();
-      setIsActive(false);
-      setDevices([]);
-    } else {
-      await onStartBroadcasting();
-      await onStartDiscovery(
-        (dev) => setDevices(prev => {
-          const idx = prev.findIndex(d => d.rawServiceId === dev.rawServiceId);
-          if (idx !== -1) return prev;
-          return [...prev, dev];
-        }),
-        (id) => setDevices(prev => prev.filter(d => d.rawServiceId !== id))
-      );
-      setIsActive(true);
-    }
-  };
-
   const handleSend = async (device: DiscoveredDevice) => {
     setSendingTo(device.rawServiceId);
     setProgress(0);
     const success = await onSendFile(device.ip, device.port, (p) => setProgress(p));
     setSendingTo(null);
     if (success) {
-      toast.showSuccess(`已成功静默推送到 ${device.nickname}`);
+      toast.showSuccess(`已成功发送至 ${device.nickname}`);
     } else {
-      toast.showError(`发送至 ${device.nickname} 失败，可能对端已掉线或文件过大超时。`);
+      toast.showError(`发送至 ${device.nickname} 失败，对端离线或超时。`);
     }
   };
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.titleRow}>
-          <h3 className={styles.title}>{t('lan.title', '局域网设备互传 (LAN Sync)')}</h3>
-          <div className={`${styles.statusDot} ${isActive ? styles.activeDot : ''}`}></div>
-        </div>
-        <p className={styles.subtitle}>
-          {t('lan.desc', '在同一局域网络内的终端之间相互发现并高速传输备份数据。')}
-        </p>
+      <div className={styles.appBar}>
+         <div style={{ flex: 1 }} />
+         <button className={styles.refreshBtn} onClick={restartDualMode} title={t('common.refresh', '刷新')}>
+            ⟳
+         </button>
       </div>
 
       <div className={styles.radarZone}>
+        <div className={styles.radarCross}></div>
+        {isActive && <div className={styles.radarSweep}></div>}
         {isActive && (
           <div className={styles.radarRings}>
             <div className={`${styles.ring} ${styles.ring1}`}></div>
@@ -128,30 +142,26 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
         )}
 
         <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
-           <span className={styles.coreIcon}>🛰️</span>
+           <span className={styles.coreIcon}>📶</span>
         </div>
 
-        {!isActive && (
-          <div className={styles.silentHint}>
-             <span className={styles.silentIcon}>📡</span>
-             <p>{t('lan.radar_offline', '局域网侦听处于关闭状态。')}</p>
-          </div>
-        )}
-
         {isActive && devices.length === 0 && (
-          <div className={styles.scanHint}>
-            {t('lan.radar_online', '正在持续搜寻本网络环境中的其他活跃终端...')}
+          <div className={styles.scanHintWrapper}>
+             <div className={styles.scanTitle}>{t('lan_transfer.scanning_nearby', '正在扫描附近设备...')}</div>
+             <div className={styles.scanSubtitle}>{t('lan_transfer.scan_hint', '请确保两台设备处于相同的 Wi-Fi 网络下')}</div>
           </div>
         )}
 
         {isActive && devices.map((d, index) => {
           const pos = FIXED_POSITIONS[index % FIXED_POSITIONS.length];
           const isSending = sendingTo === d.rawServiceId;
+          const delayStyle = { animationDelay: `${index * 0.5}s` };
+          
           return (
             <div 
               key={d.rawServiceId} 
               className={`${styles.deviceBubble} ${isSending ? styles.bubbleSending : ''}`}
-              style={{ top: pos.top, left: pos.left }}
+              style={{ top: pos.top, left: pos.left, ...delayStyle }}
             >
               <div className={styles.bubbleIcon}>
                 {d.deviceType === 'mobile' ? '📱' : '💻'}
@@ -169,20 +179,11 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                   handleSend(d);
                 }}
               >
-                {isSending ? `${progress}%` : t('lan.send_btn', '发起快传')}
+                {isSending ? `${progress}%` : t('common.export', '发送')}
               </button>
             </div>
           )
         })}
-      </div>
-
-      <div className={styles.actionsBox}>
-         <button 
-           className={`${styles.controlBtn} ${isActive ? styles.stopBtn : styles.startBtn}`} 
-           onClick={toggleDualMode}
-         >
-           {isActive ? t('lan.stop_radar', '关闭局域网侦听') : t('lan.start_radar', '开启发现与侦听')}
-         </button>
       </div>
     </div>
   );

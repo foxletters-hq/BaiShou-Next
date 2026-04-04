@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdOutlineFolderShared, MdOutlineFolderDelete, MdChevronRight, MdExpandMore } from 'react-icons/md';
+import { MdOutlineFolderShared, MdOutlineFolderDelete, MdChevronRight } from 'react-icons/md';
 import '../shared/SettingsListTile.css';
+import { SettingsExpansionTile } from '../shared/SettingsExpansionTile';
 
 export interface StorageSettingsCardProps {
   storageRootPath?: string;
@@ -21,19 +22,11 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
   const { t } = useTranslation();
 
   return (
-    <details className="settings-expansion-tile">
-      <summary className="settings-expansion-summary">
-        <div className="settings-list-tile-leading">
-          <MdOutlineFolderShared size={24} />
-        </div>
-        <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">{t('settings.storage_manager', '存储管理')}</span>
-          <span className="settings-list-tile-subtitle">{t('settings.storage_root_desc', '管理数据存储路径与附件')}</span>
-        </div>
-        <MdExpandMore className="settings-expansion-arrow" size={24} />
-      </summary>
-
-      <div className="settings-expansion-children">
+    <SettingsExpansionTile
+      icon={<MdOutlineFolderShared size={24} />}
+      title={t('settings.storage_manager', '存储管理')}
+      subtitle={t('settings.storage_root_desc', '管理数据存储路径与附件')}
+    >
         {/* 附件管理 - 跳转 */}
         <button className="settings-list-tile">
           <div className="settings-list-tile-leading" />
@@ -59,7 +52,6 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
             </button>
           )}
         </div>
-      </div>
-    </details>
+    </SettingsExpansionTile>
   );
 };

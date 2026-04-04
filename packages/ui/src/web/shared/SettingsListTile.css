@@ -42,20 +42,41 @@
   flex-shrink: 0;
 }
 
-.settings-expansion-tile[open] .settings-expansion-arrow {
+.settings-expansion-tile[open] .settings-expansion-arrow,
+.settings-expansion-tile.settings-open .settings-expansion-arrow {
   transform: rotate(180deg);
 }
 
-/* 子项容器 */
-.settings-expansion-children {
-  padding: 0;
+/* 子项容器与双向高度展开过渡动画 (CSS Grid transition) */
+.settings-expansion-grid-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  overflow: hidden; /* CRITICAL: Clips the grid items' padding during 0fr height */
+  transition: grid-template-rows 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease-out;
+}
+
+.settings-expansion-grid-wrapper.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.settings-expansion-grid-item {
+  min-height: 0;
+}
+
+.settings-expansion-content {
+  display: flex;
+  flex-direction: column;
 }
 
 /* 通用 ListTile 行 */
 .settings-list-tile {
   display: flex;
   align-items: center;
-  padding: 14px 16px;
+  padding: 8px 16px;
+  min-height: 54px;
+  box-sizing: border-box;
   width: 100%;
   background: none;
   border: none;

@@ -61,7 +61,8 @@
   transform: rotate(180deg);
 }
 
-.settings-expansion-content {
+/* Scope strictly to avoid bleeding into other SettingsExpansionTile instances */
+.appearance-settings-wrapper .settings-expansion-content {
   padding: 0 16px 16px 16px;
   display: flex;
   flex-direction: column;

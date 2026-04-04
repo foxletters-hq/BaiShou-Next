@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdOutlineStorage, MdOutlineDownload, MdOutlineUploadFile, MdHistory, MdChevronRight, MdExpandMore } from 'react-icons/md';
+import { MdOutlineStorage, MdOutlineDownload, MdOutlineUploadFile, MdHistory, MdChevronRight } from 'react-icons/md';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
 import '../shared/SettingsListTile.css';
+import { SettingsExpansionTile } from '../shared/SettingsExpansionTile';
 
 export interface SnapshotInfo {
   filename: string;
@@ -72,19 +73,11 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   };
 
   return (
-    <details className="settings-expansion-tile">
-      <summary className="settings-expansion-summary">
-        <div className="settings-list-tile-leading">
-          <MdOutlineStorage size={24} />
-        </div>
-        <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">{t('settings.data_management', '数据管理')}</span>
-          <span className="settings-list-tile-subtitle">{t('settings.data_management_desc', '导出、导入和恢复数据')}</span>
-        </div>
-        <MdExpandMore className="settings-expansion-arrow" size={24} />
-      </summary>
-
-      <div className="settings-expansion-children">
+    <SettingsExpansionTile
+      icon={<MdOutlineStorage size={24} />}
+      title={t('settings.data_management', '数据管理')}
+      subtitle={t('settings.data_management_desc', '导出、导入和恢复数据')}
+    >
         {/* 导出数据 */}
         <button className="settings-list-tile" onClick={handleExport} disabled={isExporting || isImporting}>
           <div className="settings-list-tile-leading">
@@ -114,18 +107,12 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
         <div className="settings-list-divider" />
 
         {/* 恢复快照 */}
-        <details className="settings-expansion-tile settings-nested">
-          <summary className="settings-list-tile">
-            <div className="settings-list-tile-leading">
-              <MdHistory size={22} />
-            </div>
-            <div className="settings-list-tile-content">
-              <span className="settings-list-tile-title">{t('settings.restore_snapshot', '从快照恢复')}</span>
-              <span className="settings-list-tile-subtitle">{t('settings.restore_desc', '从系统自动创建的本地快照中恢复数据')}</span>
-            </div>
-            <MdChevronRight size={22} className="settings-list-tile-trailing" />
-          </summary>
-          <div className="settings-expansion-children">
+        <SettingsExpansionTile
+          icon={<MdHistory size={22} />}
+          title={t('settings.restore_snapshot', '从快照恢复')}
+          subtitle={t('settings.restore_desc', '从系统自动创建的本地快照中恢复数据')}
+          nested={true}
+        >
             {snapshots.length === 0 ? (
               <div className="settings-empty-hint">{t('settings.no_snapshots_available', '暂无可用快照')}</div>
             ) : (
@@ -142,9 +129,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
                 </button>
               ))
             )}
-          </div>
-        </details>
-      </div>
-    </details>
+        </SettingsExpansionTile>
+    </SettingsExpansionTile>
   );
 };

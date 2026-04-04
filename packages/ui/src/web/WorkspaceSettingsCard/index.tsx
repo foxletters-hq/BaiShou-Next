@@ -1,9 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdWorkspacesOutline, MdFolderSpecial, MdAdd, MdCheckCircle, MdExpandMore } from 'react-icons/md';
+import { MdWorkspacesOutline, MdFolderSpecial, MdAdd, MdCheckCircle } from 'react-icons/md';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
 import '../shared/SettingsListTile.css';
+import { SettingsExpansionTile } from '../shared/SettingsExpansionTile';
 
 export interface VaultInfo {
   name: string;
@@ -65,21 +66,11 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   };
 
   return (
-    <details className="settings-expansion-tile">
-      <summary className="settings-expansion-summary">
-        <div className="settings-list-tile-leading">
-          <MdWorkspacesOutline size={24} />
-        </div>
-        <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">{t('workspace.title', '工作空间 (Workspaces)')}</span>
-          <span className="settings-list-tile-subtitle">
-            {t('workspace.current', '当前空间: {{name}}', { name: activeVault?.name ?? '未知' })}
-          </span>
-        </div>
-        <MdExpandMore className="settings-expansion-arrow" size={24} />
-      </summary>
-
-      <div className="settings-expansion-children">
+    <SettingsExpansionTile
+      icon={<MdWorkspacesOutline size={24} />}
+      title={t('workspace.title', '工作空间')}
+      subtitle={t('workspace.current', '当前空间: {{name}}', { name: activeVault?.name ?? '未知' })}
+    >
         {vaults.map(vault => {
           const isActive = activeVault?.name === vault.name;
           return (
@@ -120,7 +111,6 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
             <span className="settings-list-tile-title">{t('workspace.create_new', '创建新空间')}</span>
           </div>
         </button>
-      </div>
-    </details>
+    </SettingsExpansionTile>
   );
 };

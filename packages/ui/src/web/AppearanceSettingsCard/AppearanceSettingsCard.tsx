@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import './AppearanceSettingsCard.css';
 import { useTranslation } from 'react-i18next';
-import { MdOutlinePalette, MdExpandMore } from 'react-icons/md';
+import { MdOutlinePalette } from 'react-icons/md';
+import { SettingsExpansionTile } from '../shared/SettingsExpansionTile';
 
 export interface AppearanceSettingsProps {
   themeMode: 'system' | 'light' | 'dark';
@@ -47,28 +48,16 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   };
 
   const getLangText = () => {
-
-
     return LANGS.find(l => l.val === language)?.label || t('settings.language_system', '跟随系统');
   };
 
   return (
-    <div>
-      <details className="settings-expansion-tile">
-        <summary className="settings-expansion-summary">
-          <div className="settings-list-tile-leading">
-            <MdOutlinePalette size={24} />
-          </div>
-          <div className="settings-list-tile-content">
-            <span className="settings-list-tile-title">{t('settings.appearance', '外观与主题')}</span>
-            <span className="settings-list-tile-subtitle">{getThemeText()} · {getLangText()}</span>
-          </div>
-          <div className="settings-trailing-icon">
-            <MdExpandMore size={24} />
-          </div>
-        </summary>
-        
-        <div className="settings-expansion-content">
+    <div className="appearance-settings-wrapper">
+      <SettingsExpansionTile
+        icon={<MdOutlinePalette size={24} />}
+        title={t('settings.appearance', '外观与主题')}
+        subtitle={`${getThemeText()} · ${getLangText()}`}
+      >
           <div className="appearance-row">
             <label className="settings-label">{t('settings.theme_mode', '光照模式')}</label>
             <div className="theme-segmented-btn">
@@ -145,8 +134,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               ))}
             </div>
           </div>
-        </div>
-      </details>
+      </SettingsExpansionTile>
     </div>
   );
 };

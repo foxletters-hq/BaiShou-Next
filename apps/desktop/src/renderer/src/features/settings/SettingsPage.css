@@ -200,13 +200,13 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 /* Glass panel equivalent to Flutter cards (Card with elevation 0 or 1) */
 .glass-panel-card {
   background-color: var(--color-surface, #FFFFFF);
-  border: 1px solid rgba(208, 208, 208, 0.5);
+  border: 1px solid rgba(175, 175, 175, 0.6);
   border-radius: 16px;
   padding: 0;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
@@ -219,7 +219,7 @@
 [data-theme="dark"] .settings-content-area,
 [data-theme="dark"] .glass-panel-card {
   background-color: var(--color-surface-dark, #121212);
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 [data-theme="dark"] .settings-back-btn:hover,

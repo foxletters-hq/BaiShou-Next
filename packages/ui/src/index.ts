@@ -54,6 +54,7 @@ export * from './web/IdentitySettingsCard/index';
 export * from './web/RagMemoryView/index';
 export * from './web/AgentToolsView/index';
 export * from './web/WebSearchSettingsView/index';
+export * from './web/SummarySettingsView/index';
 
 export * from './web/ProfileSettingsCard/index';
 export * from './web/HotkeySettingsCard/index';

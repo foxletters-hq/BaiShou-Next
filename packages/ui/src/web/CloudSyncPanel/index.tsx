@@ -74,14 +74,6 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [manageMode, setManageMode] = useState(false);
 
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelected(new Set(records.map(r => r.filename)));
-    } else {
-      setSelected(new Set());
-    }
-  };
-
   const fetchRecords = useCallback(async () => {
     if (config.target === 'local') { setRecords([]); return; }
     setIsLoading(true);
@@ -114,10 +106,10 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   };
 
   const handleRestore = async (filename: string) => {
-    const confirmText = await dialog.prompt(
-      t('sync.restore_confirm_msg', '【覆盖警告】从云端下拉 "{{filename}}" 将覆盖本地现存的所有数据设定。\n请输入 "CONFIRM" 提交确认意向：', { filename })
+    const confirmed = await dialog.confirm(
+      t('sync.restore_confirm_msg', `确定要恢复备份 ${filename} 吗？\n当前本地数据将被覆盖。`)
     );
-    if (confirmText !== 'CONFIRM') return;
+    if (!confirmed) return;
     setIsSyncing(true);
     try {
       const res = await onRestore(config, filename);
@@ -131,11 +123,12 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   };
 
   const handleDelete = async (filename: string) => {
-    const confirmed = await dialog.confirm(t('sync.delete_confirm', '真的要删除云端备份 "{{filename}}" 吗？', { filename }));
+    const confirmed = await dialog.confirm(t('sync.delete_confirm', `真的要删除云端备份 "${filename}" 吗？`));
     if (!confirmed) return;
     try {
       await onDeleteRecord(config, filename);
       await fetchRecords();
+      toast.showSuccess('删除成功');
     } catch (e: any) {
       toast.showError('删除失败: ' + e.message);
     }
@@ -143,220 +136,241 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
 
   const handleBatchDelete = async () => {
     if (selected.size === 0) return;
-    const confirmed = await dialog.confirm(t('sync.bulk_delete_confirm', '是否彻底删除选定的 {{count}} 个备份档案？', { count: selected.size }));
+    const confirmed = await dialog.confirm(t('sync.bulk_delete_confirm', `是否彻底删除选定的 ${selected.size} 个备份档案？此操作不可逆。`));
     if (!confirmed) return;
     try {
       await onBatchDelete(config, Array.from(selected));
       await fetchRecords();
+      toast.showSuccess('批量删除成功');
     } catch (e: any) {
       toast.showError('批量删除失败: ' + e.message);
     }
   };
 
   const handleRename = async (oldName: string) => {
-    const newName = await dialog.prompt('输入新的文件名：', oldName);
+    const newName = await dialog.prompt('重命名', oldName);
     if (!newName || newName === oldName) return;
     try {
       await onRename(config, oldName, newName);
       await fetchRecords();
+      toast.showSuccess('重命名成功');
     } catch (e: any) {
       toast.showError('重命名失败: ' + e.message);
     }
   };
 
   const totalSizeMb = records.reduce((sum, r) => sum + r.sizeInBytes, 0) / (1024 * 1024);
+  const sizeString = totalSizeMb > 0 ? totalSizeMb.toFixed(2) + ' MB' : '0 MB';
+
   const updateField = (key: keyof SyncConfig, value: any) => {
     const next = { ...config, [key]: value };
     setConfig(next);
     onSaveConfig?.(next);
   };
 
+  const getTargetIcon = (target: string) => {
+    if (target === 's3') return '☁️';
+    if (target === 'webdav') return '🌐';
+    return '📁';
+  };
+
+  const getTargetColor = (target: string) => {
+    if (target === 's3') return '#0ea5e9'; // blue
+    if (target === 'webdav') return '#8b5cf6'; // purple
+    return '#64748b'; // slate
+  };
+
   return (
     <div className={styles.container}>
-      {/* Header Stats */}
-      <div className={styles.header}>
-        <h3 className={styles.title}>{t('sync.title', '数据云端同步 (Cloud Config)')}</h3>
-        <p className={styles.subtitle}>
-          {t('sync.subtitle', '建立连接同步本地的所有状态到您具有私属权限的 WebDAV / S3 对象存储空间。')}
-        </p>
+      <div className={styles.statCardsRow}>
+        <div className={styles.statCard}>
+          <div className={styles.statIconWrapper} style={{ backgroundColor: `${getTargetColor(config.target)}15`, color: getTargetColor(config.target) }}>
+            {getTargetIcon(config.target)}
+          </div>
+          <div className={styles.statInfo}>
+             <div className={styles.statLabel}>{t('data_sync.sync_target', '同步目标 (Target)')}</div>
+             <div className={styles.statValue}>{config.target.toUpperCase()}</div>
+          </div>
+        </div>
+
+        <div className={styles.statCard}>
+          <div className={styles.statIconWrapper} style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+            💾
+          </div>
+          <div className={styles.statInfo}>
+             <div className={styles.statLabel}>{t('data_sync.total_backup_size', '总备份大小')}</div>
+             <div className={styles.statValue}>{sizeString}</div>
+          </div>
+        </div>
+
+        <div className={styles.statCard}>
+          <div className={styles.statIconWrapper} style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
+            🔄
+          </div>
+          <div className={styles.statInfo}>
+             <div className={styles.statLabel}>{t('data_sync.backup_count', '备份数量')}</div>
+             <div className={styles.statValue}>{records.length} <span style={{fontSize: 14, fontWeight:'normal'}}>{t('common.copies_unit', '份')}</span></div>
+          </div>
+        </div>
       </div>
 
-      <div className={styles.statBar}>
-        <div className={styles.statCard}>
-          <div className={styles.statIcon}>☁️</div>
-          <div className={styles.statText}>
-            <span className={styles.statLabel}>{t('sync.target_label', '分发目标 (Target)')}</span>
-            <span className={styles.statValue}>{config.target.toUpperCase()}</span>
+      <div className={styles.headerRow}>
+        <div className={styles.titleArea}>
+          <div className={styles.titleBlock}>
+            <span className={styles.titleLabel}>{t('data_sync.sync_records', '同步记录')}</span>
+            <span className={styles.targetBadge}>{config.target.toUpperCase()}</span>
+            <button className={styles.refreshBtn} onClick={fetchRecords} disabled={isLoading} title={t('common.refresh', '刷新')}>
+               ⟳
+            </button>
           </div>
+          <span className={styles.subtitle}>{t('data_sync.records_scope_hint', '所选节点范围内的全部记录档案。')}</span>
         </div>
-        <div className={styles.statDivider} />
-        <div className={styles.statCard}>
-          <div className={styles.statIcon}>💾</div>
-          <div className={styles.statText}>
-            <span className={styles.statLabel}>{t('sync.size_label', '占用容量 (Size)')}</span>
-            <span className={styles.statValue}>{totalSizeMb > 0 ? totalSizeMb.toFixed(2) + ' MB' : '0 MB'}</span>
-          </div>
-        </div>
-        <div className={styles.statDivider} />
-        <div className={styles.statCard}>
-          <div className={styles.statIcon}>📦</div>
-          <div className={styles.statText}>
-             <span className={styles.statLabel}>{t('sync.count_label', '快照分布数 (Count)')}</span>
-             <span className={styles.statValue}>{records.length} <small>{t('common.copies_unit', '份')}</small></span>
-          </div>
-        </div>
-      </div>
 
-      {/* Action Bar */}
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <button className={styles.configBtn} onClick={() => setShowConfig(!showConfig)}>
-            {showConfig ? t('common.close_settings', '关闭设置板块') : t('sync.open_settings', '⚙ 配置连接')}
-          </button>
-          {!manageMode && records.length > 0 && (
-            <button className={styles.manageBtn} onClick={() => setManageMode(true)}>{t('common.batch_manage', '批量管理')}</button>
-          )}
-          {manageMode && (
+        <div className={styles.actionsGroup}>
+          {manageMode ? (
             <>
-              <button className={styles.cancelBtn} onClick={() => {
-                setManageMode(false); 
-                setSelected(new Set()); 
-              }}>取消选定</button>
-              <button className={styles.deleteBtn} onClick={handleBatchDelete} disabled={selected.size === 0}>
-                {t('sync.delete_selected', '删除选中行')} ({selected.size})
+              <button className={`${styles.actionBtn} ${styles.textBtn}`} onClick={() => { setManageMode(false); setSelected(new Set()); }}>
+                {t('common.cancel', '取消')}
+              </button>
+              <button className={`${styles.actionBtn} ${styles.btnDangerFilled}`} onClick={handleBatchDelete} disabled={selected.size === 0}>
+                🗑️ {t('common.delete', '删除')} ({selected.size})
               </button>
             </>
+          ) : (
+             <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setManageMode(true)} disabled={records.length === 0 || isLoading}>
+               ☑️ 批量管理
+             </button>
           )}
+
+          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowConfig(!showConfig)}>
+            ⚙️ {t('data_sync.sync_settings_button', '同步设置')}
+          </button>
+          
+          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
+            dialog.prompt('设置最大备份数', config.maxBackupCount.toString()).then((v) => {
+               if(v && !isNaN(parseInt(v))) updateField('maxBackupCount', parseInt(v));
+            });
+          }}>
+            🗑 {t('data_sync.max_backup_count_value', `保留: ${config.maxBackupCount}`)}
+          </button>
+
+          <button className={`${styles.actionBtn} ${styles.btnFilled}`} onClick={handleSync} disabled={isSyncing || config.target === 'local'}>
+             {isSyncing ? '⏳ ' + t('data_sync.syncing_status', '同步中...') : '🔄 ' + t('data_sync.sync_now_button', '立即同步')}
+          </button>
         </div>
-        <button className={styles.syncBtn} onClick={handleSync} disabled={isSyncing || config.target === 'local'}>
-          {isSyncing ? t('sync.syncing', '正在交接拉链...') : t('sync.sync_now', '触发立即同步')}
-        </button>
       </div>
 
-      {/* Config Panel (collapsible) */}
       {showConfig && (
-        <div className={styles.configPanel}>
-          <div className={styles.configGroup}>
-            <label>{t('sync.target_type', '服务通道')}</label>
-            <select value={config.target} onChange={(e) => updateField('target', e.target.value as SyncTarget)}>
-              <option value="local">{t('sync.local_only', '系统本地（切断云连接）')}</option>
-              <option value="webdav">WebDAV</option>
-              <option value="s3">{t('sync.s3_compatible', 'S3 (通用对象存储)')}</option>
-            </select>
+        <div className={styles.configPageWrapper}>
+          <div className={styles.configAppBar}>
+            <button className={styles.configBackButton} onClick={() => setShowConfig(false)}>←</button>
+            <div className={styles.configAppTitle}>{t('data_sync.config_title', '同步节点设置')}</div>
           </div>
+          
+          <div className={styles.configContent}>
+            <div className={styles.targetCardsLayout}>
+              <div 
+                className={`${styles.targetCardBig} ${config.target === 'local' ? styles.targetCardSelected : ''}`}
+                onClick={() => updateField('target', 'local')}
+              >
+                <div className={styles.targetCardIcon}>📁</div>
+                <div className={styles.targetCardTitle}>{t('data_sync.target_local', '本地存储')}</div>
+                <div className={styles.targetCardDesc}>{t('data_sync.local_storage_desc', '直接将备份转储保存在应用所运行设备的本地磁盘中。')}</div>
+              </div>
+              <div 
+                className={`${styles.targetCardBig} ${config.target === 's3' ? styles.targetCardSelected : ''}`}
+                onClick={() => updateField('target', 's3')}
+              >
+                <div className={styles.targetCardIcon}>☁️</div>
+                <div className={styles.targetCardTitle}>{t('data_sync.target_s3', 'S3 对象存储')}</div>
+                <div className={styles.targetCardDesc}>{t('data_sync.s3_storage_desc', '对接基于亚马逊云标准的 S3 兼容级云存储协议。')}</div>
+              </div>
+              <div 
+                className={`${styles.targetCardBig} ${config.target === 'webdav' ? styles.targetCardSelected : ''}`}
+                onClick={() => updateField('target', 'webdav')}
+              >
+                <div className={styles.targetCardIcon}>🌐</div>
+                <div className={styles.targetCardTitle}>{t('data_sync.target_webdav', 'WebDAV 协议')}</div>
+                <div className={styles.targetCardDesc}>{t('data_sync.webdav_storage_desc', '使用开放标准的 WebDAV 扩展以将备份接入私有云。')}</div>
+              </div>
+            </div>
 
-          <div className={styles.configGroup}>
-            <label>{t('sync.max_count', '最高留存上限数')}</label>
-            <input type="number" min={1} max={100} value={config.maxBackupCount}
-              onChange={(e) => updateField('maxBackupCount', parseInt(e.target.value) || 20)} />
+            <div className={styles.configSection}>
+              <div className={styles.configSectionHeader}>
+                <div className={styles.configSectionTitle}>
+                  {config.target === 'local' ? '本地暂无额外配置' : 
+                   config.target === 's3' ? 'S3 资源配置参数' : 'WebDAV 身份验证与连接'}
+                </div>
+                <button className={`${styles.actionBtn} ${styles.btnFilled}`} onClick={() => setShowConfig(false)}>
+                  ✔️ {t('data_sync.save_config_button', '保存并应用')}
+                </button>
+              </div>
+
+              {config.target === 'local' && (
+                <div className={styles.emptyLocalState}>
+                  <div style={{ fontSize: 40}}>🏠</div>
+                  <div>当前模式下产生的数据仅会存放于本地应用目录中，无需输入远程凭据。</div>
+                </div>
+              )}
+
+              {config.target === 'webdav' && (
+                <div className={styles.configGrid}>
+                  <div className={styles.configField}><label>WebDAV URL</label><input value={config.webdavUrl} onChange={(e) => updateField('webdavUrl', e.target.value)} /></div>
+                  <div className={styles.configField}><label>Base Path</label><input value={config.webdavPath} onChange={(e) => updateField('webdavPath', e.target.value)} /></div>
+                  <div className={styles.configField}><label>Username</label><input value={config.webdavUsername} onChange={(e) => updateField('webdavUsername', e.target.value)} /></div>
+                  <div className={styles.configField}><label>Password</label><input type="password" value={config.webdavPassword} onChange={(e) => updateField('webdavPassword', e.target.value)} /></div>
+                </div>
+              )}
+
+              {config.target === 's3' && (
+                <div className={styles.configGrid}>
+                  <div className={styles.configField}><label>Endpoint</label><input value={config.s3Endpoint} onChange={(e) => updateField('s3Endpoint', e.target.value)} /></div>
+                  <div className={styles.configField}><label>Region</label><input value={config.s3Region} onChange={(e) => updateField('s3Region', e.target.value)} /></div>
+                  <div className={styles.configField}><label>Bucket</label><input value={config.s3Bucket} onChange={(e) => updateField('s3Bucket', e.target.value)} /></div>
+                  <div className={styles.configField}><label>Base Path</label><input value={config.s3Path} onChange={(e) => updateField('s3Path', e.target.value)} /></div>
+                  <div className={styles.configField}><label>Access Key (AK)</label><input value={config.s3AccessKey} onChange={(e) => updateField('s3AccessKey', e.target.value)} /></div>
+                  <div className={styles.configField}><label>Secret Key (SK)</label><input type="password" value={config.s3SecretKey} onChange={(e) => updateField('s3SecretKey', e.target.value)} /></div>
+                </div>
+              )}
+            </div>
           </div>
-
-          {config.target === 'webdav' && (
-            <>
-              <div className={styles.configGroup}>
-                <label>WebDAV URL</label>
-                <input value={config.webdavUrl} onChange={(e) => updateField('webdavUrl', e.target.value)} placeholder="https://dav.jianguoyun.com/dav/" />
-              </div>
-              <div className={styles.configGroup}>
-                <label>{t('common.username', '用户名身份')}</label>
-                <input value={config.webdavUsername} onChange={(e) => updateField('webdavUsername', e.target.value)} />
-              </div>
-              <div className={styles.configGroup}>
-                <label>{t('common.password', '授权秘钥/密码')}</label>
-                <input type="password" value={config.webdavPassword} onChange={(e) => updateField('webdavPassword', e.target.value)} />
-              </div>
-              <div className={styles.configGroup}>
-                <label>{t('sync.remote_path', '存放路径地址')}</label>
-                <input value={config.webdavPath} onChange={(e) => updateField('webdavPath', e.target.value)} />
-              </div>
-            </>
-          )}
-
-          {config.target === 's3' && (
-            <>
-              <div className={styles.configGroup}>
-                <label>Endpoint</label>
-                <input value={config.s3Endpoint} onChange={(e) => updateField('s3Endpoint', e.target.value)} placeholder="https://cos.ap-shanghai.myqcloud.com" />
-              </div>
-              <div className={styles.configGroup}>
-                <label>Region</label>
-                <input value={config.s3Region} onChange={(e) => updateField('s3Region', e.target.value)} placeholder="ap-shanghai" />
-              </div>
-              <div className={styles.configGroup}>
-                <label>Bucket</label>
-                <input value={config.s3Bucket} onChange={(e) => updateField('s3Bucket', e.target.value)} />
-              </div>
-              <div className={styles.configGroup}>
-                <label>Access Key</label>
-                <input value={config.s3AccessKey} onChange={(e) => updateField('s3AccessKey', e.target.value)} />
-              </div>
-              <div className={styles.configGroup}>
-                <label>Secret Key</label>
-                <input type="password" value={config.s3SecretKey} onChange={(e) => updateField('s3SecretKey', e.target.value)} />
-              </div>
-              <div className={styles.configGroup}>
-                <label>远端路径</label>
-                <input value={config.s3Path} onChange={(e) => updateField('s3Path', e.target.value)} />
-              </div>
-            </>
-          )}
         </div>
       )}
 
-      {/* Records List */}
-      <div className={styles.recordsSection}>
-        <div className={styles.recordsHeader}>
-          <span>{t('sync.records', '近期远端发现记录')}</span>
-          <button className={styles.refreshBtn} onClick={fetchRecords} disabled={isLoading}>🔄</button>
-        </div>
-
-        {isLoading ? (
-          <div className={styles.loadingState}>{t('sync.connecting', '正在通过信道提取端列...')}</div>
-        ) : records.length === 0 ? (
-          <div className={styles.emptyState}>
-            {config.target === 'local' ? t('sync.offline_desc', '主引擎已被物理降频，目前处于断开云端的休眠状态。') : t('sync.no_records', '尚未在对应的云空间发现归属备份条目。')}
-          </div>
-        ) : (
-          <div className={styles.recordList}>
-            {manageMode && (
-               <div className={styles.selectAllHeader}>
-                 <input 
-                   type="checkbox" 
-                   className={styles.customCheck}
-                   checked={selected.size === records.length && records.length > 0} 
-                   onChange={handleSelectAll} 
-                 />
-                 <span className={styles.selectAllLabel}>{t('common.select_all_items', '一键勾选视野内全量内容 ({{count}} 项)', { count: records.length })}</span>
-               </div>
-            )}
-            {records.map((r) => (
-              <div key={r.filename} className={`${styles.recordItem} ${selected.has(r.filename) ? styles.itemSelected : ''}`}>
-                {manageMode && (
-                  <input type="checkbox" className={styles.customCheck} checked={selected.has(r.filename)}
-                    onChange={(e) => {
-                      const next = new Set(selected);
-                      e.target.checked ? next.add(r.filename) : next.delete(r.filename);
-                      setSelected(next);
-                    }} />
-                )}
-                <div className={styles.recordInfo}>
-                  <div className={styles.recordName}>{r.filename}</div>
-                  <div className={styles.recordMeta}>
-                    {new Date(r.lastModified).toLocaleString()} · {(r.sizeInBytes / 1024 / 1024).toFixed(2)} MB
-                  </div>
+      {isLoading ? (
+        <div className={styles.loadingState}>加载中...</div>
+      ) : records.length === 0 ? (
+        <div className={styles.emptyState}>{t('data_sync.no_records_hint', '暂无同步记录')}</div>
+      ) : (
+        <div className={styles.recordList}>
+          {records.map((r) => (
+            <div key={r.filename} className={`${styles.recordItem} ${selected.has(r.filename) ? styles.itemSelected : ''}`}>
+              {manageMode && (
+                <input type="checkbox" className={styles.customCheck} checked={selected.has(r.filename)}
+                  onChange={(e) => {
+                    const next = new Set(selected);
+                    e.target.checked ? next.add(r.filename) : next.delete(r.filename);
+                    setSelected(next);
+                  }} />
+              )}
+              <div className={styles.recordIcon}>📦</div>
+              <div className={styles.recordInfo}>
+                <div className={styles.recordName}>{r.filename}</div>
+                <div className={styles.recordMeta}>
+                  {new Date(r.lastModified).toLocaleString()} · {(r.sizeInBytes / 1024 / 1024).toFixed(2)} MB
                 </div>
-                {!manageMode && (
-                  <div className={styles.recordActions}>
-                    <button onClick={() => handleRestore(r.filename)} className={styles.restoreBtn} disabled={isSyncing}>{t('common.restore', '追溯恢复')}</button>
-                    <button onClick={() => handleRename(r.filename)}>{t('common.rename', '修改标注')}</button>
-                    <button onClick={() => handleDelete(r.filename)} className={styles.deleteSingleBtn}>{t('common.delete', '废弃')}</button>
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              {!manageMode && (
+                <div className={styles.recordActions}>
+                  <button className={`${styles.iconBtn} ${styles.iconBtnRestore}`} onClick={() => handleRestore(r.filename)} title="恢复此备份">⎔</button>
+                  <button className={styles.iconBtn} onClick={() => handleRename(r.filename)} title="重命名">✎</button>
+                  <button className={`${styles.iconBtn} ${styles.iconBtnDelete}`} onClick={() => handleDelete(r.filename)} title="删除">🗑</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
