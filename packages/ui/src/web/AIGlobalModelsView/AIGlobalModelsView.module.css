@@ -1,116 +1,97 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  padding: 8px;
+  background-color: var(--color-surface);
+  border-radius: 16px;
 }
 
 .headerTitle {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 6px 0;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--color-on-surface);
 }
 
 .headerSubtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: var(--color-on-surface-variant);
+  margin-bottom: 32px;
 }
 
 .grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .routingCard {
-  background: rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background-color: var(--color-surface);
+  border: 1px solid rgba(128, 128, 128, 0.2);
   border-radius: 12px;
-  padding: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  transition: all 0.2s;
-}
-
-.routingCard:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(148, 163, 184, 0.2);
 }
 
 .routingCardDanger {
-  border-color: rgba(239, 68, 68, 0.2);
-  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
-.routingCardDanger:hover {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.08);
+.routeHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.routeIcon {
+  font-size: 24px;
+  color: var(--color-primary);
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
 }
 
 .dangerIcon {
   color: #ef4444;
 }
 
-.dangerName {
-  color: #fca5a5 !important;
-}
-
-.routeHeader {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.routeIcon {
-  font-size: 24px;
-}
-
-.routeMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .routeName {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-on-surface);
 }
 
-.routeDesc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.4;
+.dangerName {
+  color: #ef4444;
 }
 
 .routeSelect {
   width: 100%;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 16px;
   border-radius: 8px;
-  padding: 10px 12px;
-  color: #9AD4EA;
-  font-size: 13px;
-  font-weight: 500;
-  appearance: none; /* remove native arrow for cross-browser glass styling */
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239AD4EA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
-  transition: all 0.2s;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-variant);
+  color: var(--color-on-surface);
+  font-size: 15px;
+  outline: none;
   cursor: pointer;
+  transition: all 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
 }
 
 .routeSelect:focus {
-  outline: none;
-  border-color: #9AD4EA;
-  box-shadow: 0 0 0 2px rgba(154, 212, 234, 0.2);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
 }
 
-.routeSelect option {
-  background: #1e293b;
-  color: #f1f5f9;
+.routeDesc {
+  font-size: 13px;
+  color: var(--color-on-surface-variant);
+  margin-top: 12px;
+  line-height: 1.5;
 }

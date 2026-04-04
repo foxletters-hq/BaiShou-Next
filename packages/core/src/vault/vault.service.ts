@@ -82,6 +82,11 @@ export class VaultService implements IVaultService {
     // Auto-connect to active vault at boot
     const activeVault = this.getActiveVault();
     if (activeVault) {
+      await fs.mkdir(activeVault.path, { recursive: true });
+      try {
+        await fs.mkdir(path.join(activeVault.path, 'config'), { recursive: true });
+      } catch (e) {}
+      
       await this.dbManager.connect(path.join(activeVault.path, 'data.db'));
     }
   }

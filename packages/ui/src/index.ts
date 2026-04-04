@@ -57,12 +57,13 @@ export * from './web/WebSearchSettingsView/index';
 export * from './web/SummarySettingsView/index';
 
 export * from './web/ProfileSettingsCard/index';
+export * from './web/AvatarCropModal/index';
 export * from './web/HotkeySettingsCard/index';
 export * from './web/McpSettingsCard/index';
 export * from './web/DeveloperOptionsView/index';
 
 export * from './web/AboutSettingsCard/index';
-export * from './web/AssistantMatrixCard/index';
+export * from './web/AssistantManagementView/index';
 
 // 仅保证 TypeScript 导出正常，真正跨包可能会区分 web / native 导出策略
 
