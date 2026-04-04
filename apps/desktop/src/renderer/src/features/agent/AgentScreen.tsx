@@ -68,21 +68,21 @@ export const AgentScreen: React.FC = () => {
                            { name: 'BaiShou (Core)', emoji: '🤖' };
 
   // 用于在前端乐观更新 AppBar 的名称
-  const [chatTitle, setChatTitle] = useState(currentAssistant.name);
+  const [chatTitle, setChatTitle] = useState(currentAssistant?.name ?? 'BaiShou');
 
   useEffect(() => {
-    setChatTitle(currentAssistant.name);
-  }, [currentAssistant.name]);
+    setChatTitle(currentAssistant?.name ?? 'BaiShou');
+  }, [currentAssistant?.name]);
 
   useEffect(() => {
-    fetchAssistants();
+  fetchAssistants();
     loadShortcuts();
 
     // 加载 RAG 模块最初始的几十条最新记忆/日记用于记忆打捞展示
     if (typeof window !== 'undefined' && (window as any).api?.rag) {
       (window as any).api.rag.queryEntries({ keyword: '' })
         .then((res: any[]) => {
-           setRecallItems(res.slice(0, 30).map(r => ({
+  setRecallItems(res.slice(0, 30).map(r => ({
              id: r.embeddingId,
              type: 'memory',
              title: t('agent.trace_title', '调用追踪 [{{modelId}}]', { modelId: r.modelId || t('common.system', '系统') }),
@@ -93,29 +93,29 @@ export const AgentScreen: React.FC = () => {
         .catch((e: Error) => console.error('[AgentScreen] Failed to load initial RAG memories:', e));
     }
   }, [fetchAssistants, loadShortcuts]);
-  const [providers] = useState<any[]>(settings.providers || []);
+  const [providers] = useState<any[]>(settings?.providers || []);
 
   // Token Usage IPC hook
   const [tokenUsage, setTokenUsage] = useState({ inputTokens: 0, outputTokens: 0, totalCostMicros: 0 });
 
   useEffect(() => {
-    if (!sessionId) return;
+  if (!sessionId) return;
     if (typeof window !== 'undefined' && window.electron) {
       window.electron.ipcRenderer.invoke('agent:get-token-usage', sessionId)
-        .then(setTokenUsage)
+        .then(res => { if(res) setTokenUsage(res); })
         .catch(console.error);
     }
   }, [sessionId, isStreaming]);
 
-  const totalInputTokens = tokenUsage.inputTokens;
-  const totalOutputTokens = tokenUsage.outputTokens;
-  const estimatedCost = tokenUsage.totalCostMicros / 1000000;
+  const totalInputTokens = tokenUsage?.inputTokens || 0;
+  const totalOutputTokens = tokenUsage?.outputTokens || 0;
+  const estimatedCost = (tokenUsage?.totalCostMicros || 0) / 1000000;
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 加载真正的持久化聊天记录
   const refreshMessages = async () => {
-    if (!sessionId) return;
+  if (!sessionId) return;
     try {
       const msgs = await window.electron.ipcRenderer.invoke('agent:get-messages', sessionId);
       setMessages(msgs || []);
@@ -123,19 +123,19 @@ export const AgentScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    refreshMessages();
+  refreshMessages();
   }, [sessionId, isStreaming]); // 改变房间或输出结束时强制同步真库
 
   const scrollToBottom = () => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  if (scrollRef.current) scrollRef.current.scrollTop = 0;
   };
 
   useEffect(() => {
-    scrollToBottom();
+  scrollToBottom();
   }, [messages, streamingText, streamingReasoning, isStreaming, activeTool]);
 
   const handleSend = async (text: string, attachments?: any[]) => {
-    if (!sessionId) return;
+  if (!sessionId) return;
     
     if (editingMessageId) {
       const eMsgId = editingMessageId;
@@ -155,6 +155,8 @@ export const AgentScreen: React.FC = () => {
   };
 
   const handleStop = () => {
+
+
     if (typeof window !== 'undefined' && window.electron) {
       window.electron.ipcRenderer.invoke('agent:stop-stream').catch(console.error);
     }
@@ -165,8 +167,8 @@ export const AgentScreen: React.FC = () => {
       <ChatAppBar 
         profile={{
           name: chatTitle,
-          emoji: (currentAssistant as any).emoji,
-          modelIdentifier: currentModelId,
+          emoji: (currentAssistant as any)?.emoji || '🤖',
+          modelIdentifier: currentModelId ?? 'gpt-4o',
         }}
         onRenameChat={(newName) => {
           setChatTitle(newName);
@@ -219,7 +221,7 @@ export const AgentScreen: React.FC = () => {
       <AssistantPickerSheet
         isOpen={showAssistantPicker}
         onClose={() => setShowAssistantPicker(false)}
-        assistants={assistants.map(a => ({ ...a, emoji: a.emoji || '🤖' }))}
+        assistants={(assistants || []).map(a => ({ ...a, emoji: a.emoji || '🤖' }))}
         onSelect={(ast) => {
           setShowAssistantPicker(false);
           // 强绑定：切换 Agent 即切换会话

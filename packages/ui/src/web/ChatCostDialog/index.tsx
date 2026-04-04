@@ -19,10 +19,11 @@ export interface ChatCostDialogProps {
 
 export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ details, onClose, isOpen }) => {
   const { t } = useTranslation();
-
   // Close on Escape 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
+  const handleEsc = (e: KeyboardEvent) => {
+
+
       if (e.key === 'Escape' && isOpen) onClose();
     };
     window.addEventListener('keydown', handleEsc);

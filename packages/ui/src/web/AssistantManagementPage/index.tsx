@@ -9,7 +9,7 @@ export interface AssistantInfo {
   id: string;
   name: string;
   emoji: string;
-  description: string;
+  description?: string;
   systemPrompt: string;
   contextWindow: number;
   providerId?: string;
@@ -46,26 +46,25 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
   onTogglePin,
 }) => {
   const { t } = useTranslation();
-  
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
 
   const handleConfirmDelete = () => {
-    if (deleteTargetId) {
+  if (deleteTargetId) {
       onDelete(deleteTargetId);
       setDeleteTargetId(null);
     }
   };
 
   const formatContextWindow = (n: number) => {
-    if (n < 0) return '∞';
+  if (n < 0) return '∞';
     return String(n);
   };
   
   // 核心过滤器和排序引擎
   const processedAssistants = useMemo(() => {
-     let filtered = assistants;
+  let filtered = assistants;
      
      // 1. 过滤流
      const query = searchQuery.trim().toLowerCase();
@@ -78,7 +77,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
      
      // 2. 排序流
      return [...filtered].sort((a, b) => {
-        // 首先，无论什么情况：置顶的必须浮于表层
+  // 首先，无论什么情况：置顶的必须浮于表层
         const aPinned = pinnedIds.has(a.id);
         const bPinned = pinnedIds.has(b.id);
         if (aPinned && !bPinned) return -1;
@@ -153,7 +152,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
           </div>
 
           {processedAssistants.map((assistant) => {
-            const isPinned = pinnedIds.has(assistant.id);
+  const isPinned = pinnedIds.has(assistant.id);
             return (
               <div
                 key={assistant.id}
@@ -165,7 +164,8 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                   <button
                     className={styles.cardActionBtn}
                     title={isPinned ? '取消置顶锁定' : '置顶锁定特权'}
-                    onClick={(e) => { e.stopPropagation(); onTogglePin(assistant.id); }}
+                    onClick={(e) => {
+  e.stopPropagation(); onTogglePin(assistant.id); }}
                   >
                     {isPinned ? <PinOff size={15}/> : <Pin size={15}/>}
                   </button>
@@ -173,7 +173,8 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                      <button
                         className={styles.cardActionBtn}
                         title="裂变克隆本位体"
-                        onClick={(e) => { e.stopPropagation(); onClone(assistant); }}
+                        onClick={(e) => {
+  e.stopPropagation(); onClone(assistant); }}
                      >
                         <Copy size={15}/>
                      </button>
@@ -181,7 +182,9 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                   <button
                     className={`${styles.cardActionBtn} ${styles.cardActionBtnDanger}`}
                     title="格式化粉碎"
-                    onClick={(e) => { e.stopPropagation(); setDeleteTargetId(assistant.id); }}
+                    onClick={(e) => {
+
+ e.stopPropagation(); setDeleteTargetId(assistant.id); }}
                   >
                     <Trash2 size={15}/>
                   </button>

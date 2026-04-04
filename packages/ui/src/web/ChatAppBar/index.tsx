@@ -36,12 +36,12 @@ export const ChatAppBar: React.FC<ChatAppBarProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setEditName(profile.name);
+  setEditName(profile.name);
   }, [profile.name]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+  const handleClickOutside = (e: MouseEvent) => {
+  if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMoreMenu(false);
       }
     };
@@ -50,8 +50,10 @@ export const ChatAppBar: React.FC<ChatAppBarProps> = ({
   }, []);
 
   const submitRename = () => {
-    setIsEditing(false);
+  setIsEditing(false);
     if (editName.trim() && editName.trim() !== profile.name) {
+
+
       onRenameChat?.(editName.trim());
     } else {
       setEditName(profile.name);

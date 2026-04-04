@@ -23,7 +23,8 @@ export function useAgentStream(): UseAgentStreamResult {
   const reasoningRef = useRef('');
 
   useEffect(() => {
-    // 注册所有来自下行大引擎的脉冲侦听器
+    if (typeof window === 'undefined' || !window.electron || !window.electron.ipcRenderer) return () => {};
+
     const cleanupChunk = window.electron.ipcRenderer.on('agent:stream-chunk', (_, chunk: string) => {
       textRef.current += chunk;
       setText(textRef.current);

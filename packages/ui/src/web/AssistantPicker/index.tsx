@@ -27,7 +27,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
   const [activeTab, setActiveTab] = useState<'prompt'|'memory'>('prompt');
   
   const filteredAssistants = useMemo(() => {
-    return assistants.filter(a => 
+  return assistants.filter(a => 
       a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       a.description.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -35,7 +35,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
 
   // Try to default select first if current not found or selectedId not in filtered
   const activeAssistant = useMemo(() => {
-     let item = filteredAssistants.find(a => a.id === selectedId);
+  let item = filteredAssistants.find(a => a.id === selectedId);
      if (!item && filteredAssistants.length > 0) {
        item = filteredAssistants[0];
      }
@@ -69,7 +69,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                  <div className={styles.emptyHint}>{t('agent.noAssistant')}</div>
                ) : (
                  filteredAssistants.map(a => {
-                    const isSelected = activeAssistant?.id === a.id;
+  const isSelected = activeAssistant?.id === a.id;
                     const isCurrent = a.id === currentAssistantId;
                     return (
                       <div 
@@ -168,6 +168,8 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
                       variant={activeAssistant.id === currentAssistantId ? 'outlined' : 'elevated'}
                       className={`${styles.selectBtn} ${activeAssistant.id === currentAssistantId ? styles.selectBtnCurrent : ''}`}
                       onClick={() => {
+
+
                         onSelect(activeAssistant);
                         onClose();
                       }}

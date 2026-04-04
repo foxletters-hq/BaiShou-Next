@@ -1,5 +1,5 @@
 .itemWrapper {
-  margin: 2px 8px;
+  padding-bottom: 2px;
   position: relative;
 }
 
@@ -10,19 +10,16 @@
   border-radius: 12px;
   background-color: transparent;
   cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background-color 0.2s;
   user-select: none;
 }
 
 .container:hover {
-  background-color: rgba(var(--bg-surface-high-rgb, 241, 245, 249), 0.7);
+  background-color: rgba(224, 242, 254, 0.2);
 }
 
 .selected {
-  background-color: var(--bg-surface-highest, #FFFFFF);
-  border-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  background-color: rgba(224, 242, 254, 0.5);
 }
 
 /* Header Line (Title & Time) */

@@ -87,7 +87,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   const isUnlimitedMaxTokens = maxTokens <= 0;
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+  if (!name.trim()) return;
     setSaving(true);
     try {
       onSave({
@@ -114,18 +114,18 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   };
 
   const handlePickEmoji = async () => {
-    if (onPickEmoji) {
+  if (onPickEmoji) {
       const picked = await onPickEmoji();
       if (picked) setEmoji(picked);
     }
   };
 
   const insertVariable = (variable: string) => {
-    setSystemPrompt(prev => prev + variable);
+  setSystemPrompt(prev => prev + variable);
   };
 
   const formatTokens = (tokens: number) => {
-    if (tokens >= 10000) {
+  if (tokens >= 10000) {
       const w = tokens / 10000;
       return `${w % 1 === 0 ? w.toFixed(0) : w.toFixed(1)}${t('common.ten_thousand', '万')}`;
     }
@@ -267,18 +267,21 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>{t('assistant.main_model', '专属大模型 (Model)')}</label>
                 {providerId && modelId ? (
-                   <div className={styles.selectorCard} onClick={() => {/* TODO: Pop out Provider picker */}}>
+                   <div className={styles.selectorCard} onClick={() => {
+  /* TODO: Pop out Provider picker */}}>
                       <div className={styles.selectorIcon}><Box size={20}/></div>
                       <div className={styles.selectorContent}>
                          <div className={styles.selectorTitle}>{modelId}</div>
                          <div className={styles.selectorSubtitle}>{providerId} {t('assistant.provider_support', '提供计算服务')}</div>
                       </div>
-                      <span className={styles.selectorAction} onClick={(e) => { e.stopPropagation(); setProviderId(undefined); setModelId(undefined);}}>
+                      <span className={styles.selectorAction} onClick={(e) => {
+  e.stopPropagation(); setProviderId(undefined); setModelId(undefined);}}>
                          {t('common.unbind', '解除')}
                       </span>
                    </div>
                 ) : (
-                   <div className={styles.selectorCard} onClick={() => {/* Pick model */}}>
+                   <div className={styles.selectorCard} onClick={() => {
+  /* Pick model */}}>
                       <div className={styles.selectorIcon}><Box size={20}/></div>
                       <div className={styles.selectorContent}>
                          <div className={styles.selectorTitle}>{t('assistant.global_default', '全局默认设置')}</div>
@@ -292,7 +295,9 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>{t('assistant.rag_knowledge', '关联知识库 (RAG Knowledge)')}</label>
                 <div className={styles.selectorCard} onClick={async () => {
-                   if(onPickRagSpace) {
+  if(onPickRagSpace) {
+
+
                       const space = await onPickRagSpace();
                       if(space) setRagSpaceId(space);
                    }

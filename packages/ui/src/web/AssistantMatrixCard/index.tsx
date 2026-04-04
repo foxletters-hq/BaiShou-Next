@@ -7,8 +7,9 @@ export interface AssistantMatrixCardProps {
   onLaunchMatrix: () => void;
 }
 
-export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
-  const { t } = useTranslation(); onLaunchMatrix }) => {
+export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({ onLaunchMatrix }) => {
+  const { t } = useTranslation();
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>

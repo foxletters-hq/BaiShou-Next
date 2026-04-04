@@ -112,7 +112,6 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
   onPinToggle,
 }) => {
   const { t } = useTranslation();
-  
   // 过滤与搜索状态
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'pinned'>('all');
@@ -127,7 +126,7 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
 
   // 打捞与排序核心算法
   const filteredAndSortedSessions = useMemo(() => {
-    let result = [...sessions];
+  let result = [...sessions];
     
     // 标签过滤
     if (filterMode === 'pinned') {
@@ -145,12 +144,18 @@ export const SessionManagementPage: React.FC<SessionManagementPageProps> = ({
 
     // 按 pinned → 更新时间排序
     return result.sort((a, b) => {
+
+
+
+
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
       return b.updatedAt.getTime() - a.updatedAt.getTime();
     });
   }, [sessions, filterMode, searchQuery]);
 
   const toggleSelect = useCallback((id: string) => {
+
+
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);

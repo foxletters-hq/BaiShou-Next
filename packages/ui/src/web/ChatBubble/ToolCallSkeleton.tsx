@@ -8,6 +8,7 @@ interface ToolCallSkeletonProps {
 
 export const ToolCallSkeleton: React.FC<ToolCallSkeletonProps> = ({ toolName }) => {
   const { t } = useTranslation();
+
   return (
     <div className={styles.container}>
       <div className={styles.iconPulse}>

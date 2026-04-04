@@ -36,13 +36,12 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
   onCheckChanged,
 }) => {
   const { t } = useTranslation();
-
   const displayTitle = session.title || t('agent.sessions.new_chat', '新的对话');
   const fallbackSnippet = t('agent.sessions.empty_history', '暂无聊天记录...');
   
   // A simple relative time formatter fallback
   const formatTime = (ts?: number) => {
-    if (!ts) return '';
+  if (!ts) return '';
     const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return t('common.justNow', '刚刚');
@@ -53,6 +52,8 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
   };
 
   const handleAction = (e: React.MouseEvent, action?: () => void) => {
+
+
     e.stopPropagation();
     if (action) action();
   };

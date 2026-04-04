@@ -33,7 +33,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onShowContext
 }) => {
   const { t } = useTranslation();
-  
   const toast = useToast();
   const [contextMenu, setContextMenu] = useState<{x: number, y: number} | null>(null);
   
@@ -44,7 +43,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const isUser = message.role === 'user';
   
   const formatTime = (date: Date) => {
-    const diff = (new Date().getTime() - date.getTime()) / 1000;
+  const diff = (new Date().getTime() - date.getTime()) / 1000;
     if (diff < 60) return t('common.just_now', '刚刚');
     if (diff < 3600) return `${Math.floor(diff / 60)} ${t('common.minutes_ago', '分钟前')}`;
     if (diff < 86400) return `${Math.floor(diff / 3600)} ${t('common.hours_ago', '小时前')}`;
@@ -52,12 +51,12 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
+  e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
   
   const handleCopy = () => {
-    if (onCopy) {
+  if (onCopy) {
       onCopy();
     } else {
       if (message.content) {
@@ -69,7 +68,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   };
   
   const renderAttachments = (isUserBubble: boolean) => {
-    if (!message.attachments || message.attachments.length === 0) return null;
+  if (!message.attachments || message.attachments.length === 0) return null;
     return (
       <div className={`${styles.attachmentsWrap} ${isUserBubble ? styles.alignEnd : styles.alignStart}`}>
         {message.attachments.map((att: MockChatAttachment) => (
@@ -89,7 +88,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   };
 
   const renderUserBubble = () => {
-    return (
+  return (
       <div className={`${styles.bubbleRow} ${styles.userRow}`}>
         <div className={styles.messageCol}>
            <div className={`${styles.nameTimeRow} ${styles.justifyEnd}`}>
@@ -125,7 +124,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   };
 
   const renderAiBubble = () => {
-    const aiName = aiProfile.name || t('agent.chat.ai_label');
+  const aiName = aiProfile.name || t('agent.chat.ai_label');
     return (
       <div className={`${styles.bubbleRow} ${styles.aiRow}`}>
          <div className={styles.avatarWrap}>
@@ -203,18 +202,23 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         <div 
           className={styles.contextMenuOverlay} 
           onClick={() => setContextMenu(null)}
-          onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+          onContextMenu={(e) => {
+  e.preventDefault(); setContextMenu(null); }}
         >
           <div className={styles.contextMenu} style={{ top: contextMenu.y, left: contextMenu.x }}>
              <button onClick={handleCopy}>{t('common.copy', '复制')}</button>
              {isUser ? (
                <>
-                 {onResend && <button onClick={() => { setContextMenu(null); onResend(); }}>{t('common.retry', '重新发送')}</button>}
-                 {onEdit && <button onClick={() => { setContextMenu(null); onEdit(); }}>{t('common.edit', '编辑')}</button>}
+                 {onResend && <button onClick={() => {
+  setContextMenu(null); onResend(); }}>{t('common.retry', '重新发送')}</button>}
+                 {onEdit && <button onClick={() => {
+  setContextMenu(null); onEdit(); }}>{t('common.edit', '编辑')}</button>}
                </>
              ) : (
                <>
-                 {onRegenerate && <button onClick={() => { setContextMenu(null); onRegenerate(); }}>{t('common.regenerate', '重新生成')}</button>}
+                 {onRegenerate && <button onClick={() => {
+
+ setContextMenu(null); onRegenerate(); }}>{t('common.regenerate', '重新生成')}</button>}
                </>
              )}
              {onDelete && <button className={styles.deleteContextBtn} style={{color: '#ff4d4f'}} onClick={() => { setContextMenu(null); onDelete(); }}>{t('common.delete', '删除')}</button>}

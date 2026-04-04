@@ -24,7 +24,7 @@ export const SessionManagementScreen: React.FC = () => {
       }}
       onDeleteSession={async (id) => {
         if (typeof window !== 'undefined' && window.electron) {
-          await window.electron.ipcRenderer.invoke('agent:delete-session', id);
+          await window.electron.ipcRenderer.invoke('agent:delete-sessions', [id]);
           loadSessions();
         }
       }}
@@ -47,7 +47,7 @@ export const SessionManagementScreen: React.FC = () => {
       }}
       onRename={async (id, newTitle) => {
         if (typeof window !== 'undefined' && window.electron) {
-          await window.electron.ipcRenderer.invoke('agent:rename-session', id, newTitle);
+          await window.electron.ipcRenderer.invoke('agent:update-session-title', id, newTitle);
           loadSessions();
         }
       }}

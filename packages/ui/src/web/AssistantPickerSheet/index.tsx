@@ -8,7 +8,7 @@ export interface AssistantInfo {
   id: string;
   name: string;
   emoji: string;
-  description: string;
+  description?: string;
   systemPrompt: string;
   contextWindow: number;
   providerId?: string;
@@ -35,7 +35,6 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
   onCreateNew
 }) => {
   const { t } = useTranslation();
-  
   const [searchQuery, setSearchQuery] = useState('');
   // 保持当前系统使用的助手在一打开时即为 selected 状态以供查看，或首个助手。
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -45,13 +44,13 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
 
   // 当外部 currentAssistantId 传入或变化时（如打开新面板），重新对齐焦点
   React.useEffect(() => {
-    if (isOpen && currentAssistantId) {
+  if (isOpen && currentAssistantId) {
        setSelectedId(currentAssistantId);
     }
   }, [isOpen, currentAssistantId]);
 
   const filteredAssistants = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+  const q = searchQuery.trim().toLowerCase();
     if (!q) return assistants;
     return assistants.filter(a => 
       a.name.toLowerCase().includes(q) || 
@@ -60,7 +59,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
   }, [assistants, searchQuery]);
 
   const activeAssistant = useMemo(() => {
-     let item = filteredAssistants.find(a => a.id === selectedId);
+  let item = filteredAssistants.find(a => a.id === selectedId);
      if (!item && filteredAssistants.length > 0) {
         item = filteredAssistants[0]; // 退避选择搜索结果第一项
      }
@@ -97,7 +96,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                  <div className={styles.emptyText}>{t('agent.noMatch', '信号隔离，未发现对应节点。')}</div>
                ) : (
                  filteredAssistants.map(ast => {
-                   const isSelected = activeAssistant?.id === ast.id;
+  const isSelected = activeAssistant?.id === ast.id;
                    const isCurrent = ast.id === currentAssistantId;
 
                    return (
@@ -121,7 +120,8 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
             </div>
 
             <div className={styles.bottomArea}>
-               <button className={styles.createBtn} onClick={() => { if(onCreateNew) onCreateNew(); }}>
+               <button className={styles.createBtn} onClick={() => {
+  if(onCreateNew) onCreateNew(); }}>
                   <Plus size={16} /> {t('agent.createNew', '编织全新连接')}
                </button>
             </div>
@@ -186,11 +186,11 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                               </div>
                               <div className={styles.metaItem}>
                                  <span className={styles.metaLabel}>{t('assistant.context_limit_title', '追溯对话限制')}</span>
-                                 <span className={styles.metaValue}>{activeAssistant.contextWindow < 0 ? '{t('common.infinite', 'Infinite / 无限')}' : activeAssistant.contextWindow + ' 轮'}</span>
+                                 <span className={styles.metaValue}>{activeAssistant.contextWindow < 0 ? t('common.infinite', 'Infinite / 无限') : activeAssistant.contextWindow + ' 轮'}</span>
                               </div>
                               <div className={styles.metaItem}>
                                  <span className={styles.metaLabel}>{t('assistant.rag_mount', '关联的 RAG 知识库')}</span>
-                                 <span className={styles.metaValue}>{activeAssistant.ragSpaceId || '{t('common.unbound', '未关联检索范围')}'}</span>
+                                 <span className={styles.metaValue}>{activeAssistant.ragSpaceId || t('common.unbound', '未关联检索范围')}</span>
                               </div>
                            </div>
                         </>
@@ -202,6 +202,8 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                         <button 
                           className={styles.applyBtn} 
                           onClick={() => {
+
+
                              onSelect(activeAssistant);
                              onClose();
                           }}
