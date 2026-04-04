@@ -1,0 +1,1 @@
+ALTER TABLE `agent_assistants` ADD `is_pinned` integer DEFAULT false NOT NULL;

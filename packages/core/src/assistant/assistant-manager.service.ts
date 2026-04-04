@@ -29,6 +29,12 @@ export class AssistantManagerService {
       await this.fileService.deleteAssistant(id);
   }
 
+  async togglePin(id: string, isPinned: boolean): Promise<void> {
+      await this.repo.togglePin(id, isPinned);
+      const full = await this.repo.findById(id);
+      if (full) await this.fileService.writeAssistant(id, full);
+  }
+
   // Queries directly proxy to db since they are identical and cached
   async findAll() {
       return this.repo.findAll();

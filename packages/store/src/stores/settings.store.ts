@@ -1,4 +1,5 @@
 import { createStore } from '../create-store';
+import { i18n } from '@baishou/shared';
 import type { 
   AIProviderConfig, 
   GlobalModelsConfig, 
@@ -76,7 +77,11 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
 
   setThemeMode: (themeMode) => set({ themeMode }),
   toggleGlassmorphism: (useGlassmorphism) => set({ useGlassmorphism }),
-  setLocale: (locale) => set({ locale }),
+  setLocale: (locale) => {
+    set({ locale });
+    // 同步更新 i18next 语言，确保所有使用 useTranslation() 的组件立即重渲染
+    i18n.changeLanguage(locale === 'system' ? navigator.language.split('-')[0] : locale);
+  },
 
   loadConfig: async () => {
     set({ isLoading: true });

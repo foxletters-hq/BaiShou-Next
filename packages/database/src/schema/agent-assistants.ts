@@ -8,6 +8,7 @@ export const agentAssistantsTable = sqliteTable('agent_assistants', {
   avatarPath: text('avatar_path'),
   systemPrompt: text('system_prompt'),
   isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
   contextWindow: integer('context_window').notNull().default(10),
   providerId: text('provider_id').notNull(),
   modelId: text('model_id').notNull(),
