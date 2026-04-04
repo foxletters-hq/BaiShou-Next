@@ -11,7 +11,7 @@ interface State {
   error: Error | null
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundaryClass extends Component<Props & { t: any }, State> {
   public state: State = {
     hasError: false,
     error: null
@@ -26,6 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public render() {
+    const { t } = this.props;
     if (this.state.hasError) {
       return (
         <div
@@ -71,4 +72,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children
   }
+}
+
+export function ErrorBoundary(props: Props) {
+  const { t } = useTranslation();
+  return <ErrorBoundaryClass {...props} t={t} />;
 }

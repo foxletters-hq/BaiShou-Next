@@ -1,27 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { MdTimeline, MdAutoStories, MkWifi, MdSync, MdSettings, MdDragIndicator } from 'react-icons/md';
+import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator } from 'react-icons/md';
 import styles from './Sidebar.module.css';
 import { useTranslation } from 'react-i18next';
 
 
-// Default nav items
-const defaultNavItems = [
-  { id: 'diary', branchIndex: 0, icon: <MdTimeline />, label: t('nav.diary', '日记'), path: '/diary' },
-  { id: 'summary', branchIndex: 2, icon: <MdAutoStories />, label: t('nav.summary', '概览面板'), path: '/summary' },
-  // using some standard icons since MkWifi might not exist, but let's use MdSettings for now just to make sure
-  // Wait, let's use standard icons
-];
+
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
+  // Default nav items
   const navigate = useNavigate();
   const location = useLocation();
-  const isAgent = location.pathname.startsWith('/agent') || location.pathname.startsWith('/c/');
   
   const [navOrder, setNavOrder] = useState(() => {
-    const saved = localStorage.getItem('desktop_sidebar_nav_order');
+  const saved = localStorage.getItem('desktop_sidebar_nav_order');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -38,18 +32,20 @@ export const Sidebar: React.FC = () => {
   };
 
   useEffect(() => {
-    localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder));
+  localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder));
   }, [navOrder]);
 
   const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+  if (!result.destination) return;
     const newOrder = Array.from(navOrder);
     const [reorderedItem] = newOrder.splice(result.source.index, 1);
     newOrder.splice(result.destination.index, 0, reorderedItem as string);
     setNavOrder(newOrder);
   };
 
-  if (isAgent) return null; // Hide sidebar in Agent view
+  const isAgentMode = location.pathname.startsWith('/c/') || location.pathname.startsWith('/agent');
+
+  if (isAgentMode) return null; // 完全将左侧空间交接给 AgentSidebar
 
   return (
     <div className={styles.sidebar}>
@@ -57,7 +53,7 @@ export const Sidebar: React.FC = () => {
          <div className={styles.logoBox}>
            {/* Replace with actual image later, using U for now as per flutter avatar logic but this is Brand */}
            <img src="assets/icon/icon.png" alt="Logo" className={styles.brandLogo} onError={(e) => {
-               (e.target as HTMLImageElement).style.display = 'none';
+  (e.target as HTMLImageElement).style.display = 'none';
                (e.target as HTMLImageElement).nextElementSibling!.classList.remove(styles.hidden);
            }}/>
            <div className={`${styles.logoFallback} styles.hidden`}>✨</div>
@@ -74,6 +70,8 @@ export const Sidebar: React.FC = () => {
             {(provided) => (
               <div {...provided.droppableProps} ref={provided.innerRef} className={styles.navList}>
                 {navOrder.map((id, index) => {
+
+
                   const item = allItems[id as keyof typeof allItems];
                   if (!item) return null;
                   const isSelected = location.pathname.startsWith(item.path);

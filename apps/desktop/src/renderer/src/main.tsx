@@ -1,5 +1,7 @@
 import './styles/variables.css';
 import './styles/index.css';
+// 必须最早导入，确保 i18n 在任何组件渲染前初始化
+import '@baishou/shared';
 
 window.onerror = (message, _s, _l, _c, error) => {
   document.body.innerHTML = `<div style="background:#222;color:red;padding:20px;font-size:16px;white-space:pre-wrap;height:100vh;">
