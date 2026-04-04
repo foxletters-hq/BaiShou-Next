@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore, useUserProfileStore } from '@baishou/store';
-import { useNavigate } from 'react-router-dom';
-import { MdSettings, MdCloudQueue, MdStarBorder, MdSchool, MdColorLens, MdExplore, MdExtension, MdAutoAwesome, MdWifi, MdSync, MdDeleteOutline, MdArrowBack } from 'react-icons/md';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { MdSettings, MdCloudQueue, MdStarBorder, MdSchool, MdColorLens, MdExplore, MdExtension, MdAutoAwesome, MdWifi, MdSync, MdFolderSpecial, MdArrowBack } from 'react-icons/md';
+import { TitleBar } from '../../components/TitleBar';
 import './SettingsPage.css';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -30,31 +31,33 @@ import {
 
 export const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
+
   const settings = useSettingsStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<number>(0);
+  const [isClosing, setIsClosing] = useState(false);
 
   const TABS = [
-    { id: 0, label: t('settings.nav_general', '常规'), icon: <MdSettings /> },
+    { id: 0, label: t('settings.nav_general', '通用'), icon: <MdSettings /> },
     { type: 'divider' },
-    { id: 1, label: t('settings.nav_ai_settings', '核心 AI 提供商'), icon: <MdCloudQueue /> },
-    { id: 2, label: t('settings.nav_ai_models', '大模型路由'), icon: <MdStarBorder /> },
-    { id: 3, label: t('settings.nav_assistant', '助手默认参数'), icon: <MdSchool /> },
+    { id: 1, label: t('settings.nav_ai_settings', 'AI 模型服务配置'), icon: <MdCloudQueue /> },
+    { id: 2, label: t('settings.nav_ai_models', '全局默认大模型'), icon: <MdStarBorder /> },
+    { id: 3, label: t('settings.nav_assistant', '专属助手'), icon: <MdSchool /> },
     { type: 'divider' },
     { id: 4, label: t('settings.nav_knowledge', '外接脑容量(RAG)'), icon: <MdColorLens /> },
     { id: 5, label: t('settings.nav_search', '网络搜索 API'), icon: <MdExplore /> },
-    { id: 6, label: t('settings.nav_tools', '内置组件与授权'), icon: <MdExtension /> },
-    { id: 7, label: t('settings.nav_summary', '自动日记归档'), icon: <MdAutoAwesome /> },
+    { id: 6, label: t('settings.nav_tools', 'Agent 工具与扩展'), icon: <MdExtension /> },
+    { id: 7, label: t('settings.nav_summary', '总结与归档偏好'), icon: <MdAutoAwesome /> },
     { type: 'divider' },
-    { id: 8, label: t('settings.nav_lan', '局域网互传联机'), icon: <MdWifi /> },
-    { id: 9, label: t('settings.nav_sync', '远端云存储配置'), icon: <MdSync /> },
-    { id: 10, label: t('settings.nav_attachment', '附件与垃圾清理'), icon: <MdDeleteOutline /> },
+    { id: 8, label: t('settings.nav_lan', '局域网快传'), icon: <MdWifi /> },
+    { id: 9, label: t('settings.nav_sync', '数据同步'), icon: <MdSync /> },
+    { id: 10, label: t('settings.nav_attachment', '附件管理'), icon: <MdFolderSpecial /> },
   ];
 
   const location = useLocation();
 
   useEffect(() => {
-    switch (location.pathname) {
+  switch (location.pathname) {
       case '/settings/ai-services': setActiveTab(1); break;
       case '/settings/ai-models': setActiveTab(2); break;
       case '/settings/assistants': setActiveTab(3); break;
@@ -73,12 +76,12 @@ export const SettingsPage: React.FC = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    settings.loadConfig();
+  settings.loadConfig();
   }, [settings.loadConfig]);
 
   // Sync state to URL without pushing history excessively
   const handleTabChange = (tabId: number) => {
-    setActiveTab(tabId);
+  setActiveTab(tabId);
     switch (tabId) {
       case 0: navigate('/settings/general', { replace: true }); break;
       case 1: navigate('/settings/ai-services', { replace: true }); break;
@@ -95,7 +98,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   const renderActiveView = () => {
-     if (settings.isLoading) {
+  if (settings.isLoading) {
          return <div style={{ display: 'flex', justifyContent: 'center', marginTop: 100, color: 'var(--color-on-surface-variant)' }}>{t('common.loading_settings', '读取配置表项状态中...')}</div>;
      }
      switch (activeTab) {
@@ -114,20 +117,30 @@ export const SettingsPage: React.FC = () => {
      }
   };
 
+  const handleBack = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      navigate(-1);
+    }, 250); // Matches the exit animation duration
+  };
+
   return (
-    <div className="settings-page-wrapper">
-      <div className="settings-sidebar">
-         <div className="settings-header">
-            <button className="settings-back-btn" onClick={() => navigate(-1)} title={t('common.close', '关闭返回')}>
-               <MdArrowBack />
-            </button>
-            <h1 className="settings-title">{t('common.settings', '偏好设置')}</h1>
-         </div>
-         
-         <div className="settings-nav-scroll">
-            <div className="settings-nav-group">
+    <div className={`settings-page-wrapper ${isClosing ? 'settings-closing' : ''}`}>
+      <TitleBar />
+
+      <div className="settings-layout-body">
+        <div className="settings-sidebar">
+           <div className="settings-header">
+              <button className="settings-back-btn" onClick={handleBack} title={t('common.close', '关闭返回')}>
+                 <MdArrowBack />
+              </button>
+              <h1 className="settings-title">{t('common.settings', '偏好设置')}</h1>
+           </div>
+           
+           <div className="settings-nav-scroll">
+              <div className="settings-nav-group">
               {TABS.map((tab, idx) => {
-                if (tab.type === 'divider') {
+  if (tab.type === 'divider') {
                    return <div key={`div-${idx}`} className="settings-divider" />;
                 }
                 const isSelected = activeTab === tab.id;
@@ -151,6 +164,7 @@ export const SettingsPage: React.FC = () => {
             {renderActiveView()}
          </div>
       </div>
+      </div>
     </div>
   );
 };
@@ -158,9 +172,19 @@ export const SettingsPage: React.FC = () => {
 // --- Sub-Panes Implementation ---
 
 const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
+  const { t } = useTranslation();
   const { profile, fetchProfile } = useUserProfileStore() as any;
   const [vaults, setVaults] = useState<any[]>([]);
   const [activeVault, setActiveVault] = useState<any>(null);
+  
+  // Local state stubs for unlinked backend properties to achieve 1:1 UI parity
+  const [mcpConfig, setMcpConfig] = useState({ mcpEnabled: false, mcpPort: 31004 });
+  const [identityProfile, setIdentityProfile] = useState({
+    nickname: profile?.nickname || '',
+    avatarPath: profile?.avatarUrl || '',
+    activePersonaId: 'Default',
+    personas: { 'Default': {} } as Record<string, Record<string, string>>
+  });
 
   useEffect(() => {
     if (fetchProfile) fetchProfile();
@@ -177,6 +201,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
 
   return (
     <div className="settings-pane">
+       
        <div className="glass-panel-card">
          <ProfileSettingsCard 
            profile={profile || { nickname: '', autoSync: false, avatarUrl: '' }}
@@ -188,6 +213,14 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
            }}
          />
        </div>
+
+       <div className="glass-panel-card">
+         <IdentitySettingsCard 
+           profile={identityProfile}
+           onChange={setIdentityProfile}
+         />
+       </div>
+
        <div className="glass-panel-card">
          <AppearanceSettingsCard 
            themeMode={settings.themeMode}
@@ -198,6 +231,23 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
            onLanguageChange={settings.setLocale}
          />
        </div>
+
+       {settings.hotkeyConfig && (
+         <div className="glass-panel-card">
+            <HotkeySettingsCard 
+               config={settings.hotkeyConfig}
+               onChange={(config) => settings.setHotkeyConfig(config)}
+            />
+         </div>
+       )}
+
+       <div className="glass-panel-card">
+         <McpSettingsCard 
+           config={mcpConfig}
+           onChange={setMcpConfig}
+         />
+       </div>
+
        <div className="glass-panel-card">
          <WorkspaceSettingsCard 
             vaults={vaults.length > 0 ? vaults : [{ name: t('common.loading', 'Loading...'), path: '--' }]}
@@ -207,14 +257,27 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
             onCreate={async () => await (window as any).api?.vault?.createDialog()}
          />
        </div>
-       {settings.hotkeyConfig && (
-         <div className="glass-panel-card">
-            <HotkeySettingsCard 
-               config={settings.hotkeyConfig}
-               onChange={(config) => settings.setHotkeyConfig(config)}
-            />
-         </div>
-       )}
+
+       <div className="glass-panel-card">
+         <StorageSettingsCard 
+           storageRootPath="C:\Users\Default\BaishouStorage"
+           sqliteSizeStats="12 MB"
+           vectorDbStats="45 MB"
+           mediaCacheStats="128 MB"
+           onClearCache={() => {}}
+           onVacuumDb={() => {}}
+         />
+       </div>
+
+       <div className="glass-panel-card">
+         <DataManagementCard 
+           onExportZip={async () => {}}
+           onImportZip={async () => {}}
+           onPickFile={async () => null}
+           snapshots={[{ filename: 'backup_v1.zip', timeLabel: '2023-11-20 14:00', sizeMB: '15.4', fullPath: '/test1' }]}
+         />
+       </div>
+
        <div className="glass-panel-card">
           <AboutSettingsCard 
               version="v2.0.0-Next-Canary"
@@ -222,12 +285,15 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
               onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou')}
           />
        </div>
+
     </div>
   );
 };
 
 const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const { t } = useTranslation();
   const toast = useToast();
+
   return (
     <div className="settings-pane">
       <div className="glass-panel-card">
@@ -385,7 +451,7 @@ const AgentToolsPane: React.FC<{ settings: any }> = ({ settings }) => {
   );
 };
 
-const SummarySettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
+const SummarySettingsPane: React.FC<{ settings: any }> = () => {
   return (
     <div className="settings-pane">
        <div className="glass-panel-card">
