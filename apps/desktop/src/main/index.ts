@@ -11,6 +11,7 @@ import { registerCloudSyncIPC } from './ipc/cloud-sync.ipc'
 import { registerDiaryIPC } from './ipc/diary.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
+import { registerStorageIPC } from './ipc/storage.ipc'
 import { installDatabaseSchema } from '@baishou/database'
 import { appDb } from './db'
 
@@ -112,6 +113,9 @@ app.whenReady().then(async () => {
 
     // Register Summary IPC
     registerSummaryIPC()
+    
+    // Register Storage IPC
+    registerStorageIPC()
     
     createWindow()
   }).catch((err) => {

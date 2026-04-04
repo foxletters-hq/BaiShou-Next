@@ -29,6 +29,27 @@ export const api = {
     setGlobalModels: (config: any) => ipcRenderer.invoke('settings:set-global-models', config),
     getFeatures: () => ipcRenderer.invoke('settings:get-features'),
     setFeatures: (config: any) => ipcRenderer.invoke('settings:set-features', config),
+    
+    getAgentBehaviorConfig: () => ipcRenderer.invoke('settings:get-agent-behavior-config'),
+    setAgentBehaviorConfig: (config: any) => ipcRenderer.invoke('settings:set-agent-behavior-config', config),
+    
+    getRagConfig: () => ipcRenderer.invoke('settings:get-rag-config'),
+    setRagConfig: (config: any) => ipcRenderer.invoke('settings:set-rag-config', config),
+    
+    getWebSearchConfig: () => ipcRenderer.invoke('settings:get-web-search-config'),
+    setWebSearchConfig: (config: any) => ipcRenderer.invoke('settings:set-web-search-config', config),
+    
+    getSummaryConfig: () => ipcRenderer.invoke('settings:get-summary-config'),
+    setSummaryConfig: (config: any) => ipcRenderer.invoke('settings:set-summary-config', config),
+    
+    getToolManagementConfig: () => ipcRenderer.invoke('settings:get-tool-management-config'),
+    setToolManagementConfig: (config: any) => ipcRenderer.invoke('settings:set-tool-management-config', config),
+    
+    getMcpServerConfig: () => ipcRenderer.invoke('settings:get-mcp-server-config'),
+    setMcpServerConfig: (config: any) => ipcRenderer.invoke('settings:set-mcp-server-config', config),
+    
+    getHotkeyConfig: () => ipcRenderer.invoke('settings:get-hotkey-config'),
+    setHotkeyConfig: (config: any) => ipcRenderer.invoke('settings:set-hotkey-config', config),
   },
 
   // Data Routing API (Phase 11: Data Wiring)
@@ -48,6 +69,20 @@ export const api = {
   vaultDelete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
   vaultPickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
   vaultGetCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
+
+  // Profile System
+  profile: {
+    getProfile: () => ipcRenderer.invoke('profile:get-all'),
+    saveProfile: (profile: any) => ipcRenderer.invoke('profile:save', profile),
+    pickAndSaveAvatar: () => ipcRenderer.invoke('profile:pick-avatar')
+  },
+
+  // Storage System
+  storage: {
+    getStats: () => ipcRenderer.invoke('storage:getStats'),
+    clearCache: () => ipcRenderer.invoke('storage:clearCache'),
+    vacuumDb: () => ipcRenderer.invoke('storage:vacuumDb')
+  },
 
   // Archive System (Phase B1)
   archive: {
