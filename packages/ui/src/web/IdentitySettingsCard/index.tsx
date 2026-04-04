@@ -3,6 +3,16 @@ import styles from './IdentitySettingsCard.module.css';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
+import { 
+  MdOutlineBadge, 
+  MdOutlineAddCircleOutline, 
+  MdClose, 
+  MdAdd, 
+  MdOutlinePersonAddAlt1, 
+  MdOutlineLabel, 
+  MdOutlineEdit, 
+  MdOutlineDeleteOutline 
+} from 'react-icons/md';
 
 export interface UserProfileConfig {
   nickname: string;
@@ -37,7 +47,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
       onChange({ ...profile, activePersonaId: pid });
     } else {
       // 点击了当前的，可以重命名
-      const newName = await dialog.prompt("重新命名的身份名", pid);
+      const newName = await dialog.prompt(t('settings.rename_identity_card', "重命名身份卡"), pid);
       if (newName && newName !== pid && !allPersonas[newName]) {
         const nextPersonas = { ...allPersonas };
         nextPersonas[newName] = { ...nextPersonas[pid], id: newName };
@@ -49,7 +59,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
 
   // 2. 新增 Persona
   const handleAddPersona = async () => {
-    const newName = await dialog.prompt("输入新的身份卡名字 (例如：前端专家、法律顾问)");
+    const newName = await dialog.prompt(t('settings.new_identity_card', "新建身份卡"), "");
     if (newName && !allPersonas[newName]) {
       const nextPersonas = { ...allPersonas, [newName]: { id: newName, facts: {} } };
       onChange({ ...profile, personas: nextPersonas, activePersonaId: newName });
@@ -60,10 +70,10 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   const handleDeletePersona = async (pid: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (Object.keys(allPersonas).length <= 1) {
-      toast.showError("至少保留一张身份卡！");
+      toast.showError(t('settings.identity_min_one', "至少保留一张身份卡！"));
       return;
     }
-    const confirmed = await dialog.confirm(t('identity.delete_persona', '确定删除身份档案 [{{pid}}] 吗？', { pid }));
+    const confirmed = await dialog.confirm(t('settings.delete_identity_card', '确定删除身份卡 [{{pid}}] 吗？', { pid }));
     if (confirmed) {
       const nextPersonas = { ...allPersonas };
       delete nextPersonas[pid];
@@ -74,9 +84,13 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
 
   // 4. 增改 Fact
   const handleAddOrEditFact = async (oldKey?: string, oldVal?: string) => {
-    const k = await dialog.prompt("键 (例如：年纪、喜好)", oldKey || "");
+    const isEditing = !!oldKey;
+    const title = isEditing 
+      ? t('settings.edit_identity_entry', "编辑特征点") 
+      : t('settings.add_identity_entry', "新增特征点");
+    const k = await dialog.prompt(`${title} - 属性名 (例如：年纪、职业)`, oldKey || "");
     if (!k) return;
-    const v = await dialog.prompt(`[${k}] 的值 (例如：永远的18岁)`, oldVal || "");
+    const v = await dialog.prompt(`属性 [${k}] 的值 (例如：永远的18岁)`, oldVal || "");
     if (!v) return;
 
     const nextFacts = { ...currentFacts };
@@ -93,7 +107,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
 
   // 5. 删 Fact
   const handleDeleteFact = async (k: string) => {
-    const confirmed = await dialog.confirm(t('identity.delete_record', '确认删除记录 {{k}}？', { k }));
+    const confirmed = await dialog.confirm(t('settings.delete_identity_confirm', '确认删除属性 {{k}}？', { k }));
     if (confirmed) {
       const nextFacts = { ...currentFacts };
       delete nextFacts[k];
@@ -105,58 +119,83 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.titleLine}>
-          <div className={styles.titleLeft}>
-            <span className={styles.icon}>🎭</span>
-            <h3 className={styles.title}>{t('identity.personas_title', '预设核心档案 (Personas & Facts)')}</h3>
-          </div>
-          <button className={styles.addFactBtn} onClick={() => handleAddOrEditFact()}>
-            + {t('identity.add_fact', '补充属性链条')}
-          </button>
+    <div className={styles.flutterCardContainer}>
+      {/* 头部标题区 */}
+      <div className={styles.headerRow}>
+        <div className={styles.headerTitleGroup}>
+          <MdOutlineBadge size={20} className={styles.primaryIcon} />
+          <span className={styles.headerText}>{t('settings.identity_card', '身份卡')}</span>
         </div>
-        <p className={styles.subtitle}>{t('identity.personas_desc', '助手将自动组合这些底层的核心认知词条与您对答。')}</p>
+        <button 
+          className={styles.iconIconButton}
+          title={t('settings.add_identity_entry', '新增特征点')}
+          onClick={() => handleAddOrEditFact()}
+        >
+          <MdOutlineAddCircleOutline size={20} />
+        </button>
+      </div>
+      
+      {/* 描述信息 */}
+      <div className={styles.descriptionText}>
+        {t('settings.identity_card_desc', '助手将自动结合这些核心词条构筑角色认知与您对话。')}
       </div>
 
-      <div className={styles.chipRow}>
-        {Object.keys(allPersonas).map(pid => {
-          const isActive = pid === activeId;
-          return (
-            <div 
-              key={pid} 
-              className={`${styles.chip} ${isActive ? styles.chipActive : ''}`}
-              onClick={() => handleSwitch(pid)}
-            >
-              {pid}
-              {isActive && Object.keys(allPersonas).length > 1 && (
-                <span className={styles.chipDel} onClick={(e) => handleDeletePersona(pid, e)}>✕</span>
-              )}
-            </div>
-          );
-        })}
-        <button className={styles.addChipBtn} onClick={handleAddPersona}>+ {t('identity.add_persona', '预设档')}</button>
-      </div>
-
-      <div className={styles.factsArea}>
-        {Object.entries(currentFacts).length === 0 ? (
-          <div className={styles.emptyFacts}>
-            <span className={styles.emptyIcon}>🧬</span>
-            <p>{t('identity.empty_persona', '当前配置项为空')}</p>
+      {/* 动态 Chips 选项卡 */}
+      <div className={styles.chipsScrollArea}>
+        <div className={styles.chipsContainer}>
+          {Object.keys(allPersonas).map(pid => {
+            const isActive = pid === activeId;
+            return (
+              <div 
+                key={pid} 
+                className={`${styles.inputChip} ${isActive ? styles.inputChipActive : ''}`}
+                onClick={() => handleSwitch(pid)}
+              >
+                <span>{pid}</span>
+                {isActive && Object.keys(allPersonas).length > 1 && (
+                  <button className={styles.chipCloseBtn} onClick={(e) => handleDeletePersona(pid, e)}>
+                    <MdClose size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          <div className={styles.actionChip} onClick={handleAddPersona}>
+            <MdAdd size={16} />
+            <span>{t('settings.new_identity', '新身份')}</span>
           </div>
-        ) : (
-          Object.entries(currentFacts).map(([k, v]) => (
-            <div key={k} className={styles.factRow}>
-              <div className={styles.factKey}>{k}</div>
-              <div className={styles.factVal}>{v}</div>
-              <div className={styles.factActions}>
-                <button title="编辑" onClick={() => handleAddOrEditFact(k, v)}>✎</button>
-                <button title="删除" className={styles.delBtn} onClick={() => handleDeleteFact(k)}>✕</button>
+        </div>
+      </div>
+
+      {/* 核心词条区域 */}
+      {Object.keys(currentFacts).length === 0 ? (
+        <div className={styles.emptyContainer}>
+          <MdOutlinePersonAddAlt1 size={32} />
+          <span>{t('settings.identity_card_empty_hint', '当前身份为空白，不妨添加一些基本特征描述吧。')}</span>
+        </div>
+      ) : (
+        <div className={styles.factsList}>
+          {Object.entries(currentFacts).map(([k, v]) => (
+            <div key={k} className={styles.factListTile}>
+              <div className={styles.factLeading}>
+                <MdOutlineLabel size={18} className={styles.primaryIcon} />
+              </div>
+              <div className={styles.factContent}>
+                <span className={styles.factKey}>{k}</span>
+                <span className={styles.factValue}>{v}</span>
+              </div>
+              <div className={styles.factTrailing}>
+                <button className={styles.iconIconButton} onClick={() => handleAddOrEditFact(k, v)}>
+                  <MdOutlineEdit size={16} />
+                </button>
+                <button className={`${styles.iconIconButton} ${styles.dangerIcon}`} onClick={() => handleDeleteFact(k)}>
+                  <MdOutlineDeleteOutline size={16} />
+                </button>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
