@@ -1,0 +1,257 @@
+/* =====================================================
+   共享 SettingsListTile 样式 — 1:1 还原 Flutter Material
+   所有设置页卡片组件均引用此文件
+   ===================================================== */
+
+/* ExpansionTile 外层 */
+.settings-expansion-tile {
+  width: 100%;
+}
+
+/* ExpansionTile 标题行 (summary) */
+.settings-expansion-summary {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: background-color 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.settings-expansion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-expansion-summary:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="dark"] .settings-expansion-summary:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* 展开箭头 */
+.settings-expansion-arrow {
+  color: var(--color-on-surface-variant, #475569);
+  transition: transform 0.25s;
+  flex-shrink: 0;
+}
+
+.settings-expansion-tile[open] .settings-expansion-arrow {
+  transform: rotate(180deg);
+}
+
+/* 子项容器 */
+.settings-expansion-children {
+  padding: 0;
+}
+
+/* 通用 ListTile 行 */
+.settings-list-tile {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s;
+  font-family: inherit;
+  color: inherit;
+}
+
+.settings-list-tile:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="dark"] .settings-list-tile:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* 非交互 ListTile（无 cursor pointer） */
+.settings-list-tile-noclick {
+  cursor: default;
+}
+
+.settings-list-tile-noclick:hover {
+  background-color: transparent;
+}
+
+/* Leading 图标区 */
+.settings-list-tile-leading {
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: var(--color-on-surface-variant, #475569);
+  flex-shrink: 0;
+}
+
+/* 文本内容区 */
+.settings-list-tile-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-list-tile-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-on-surface, #1a1a1a);
+  line-height: 1.4;
+}
+
+[data-theme="dark"] .settings-list-tile-title {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.settings-list-tile-subtitle {
+  font-size: 12px;
+  color: var(--color-on-surface-variant, #64748b);
+  line-height: 1.4;
+}
+
+[data-theme="dark"] .settings-list-tile-subtitle {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* monospace 字体（路径显示等） */
+.settings-monospace {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+/* Trailing 图标 */
+.settings-list-tile-trailing {
+  color: var(--color-on-surface-variant, #94a3b8);
+  flex-shrink: 0;
+}
+
+/* 分割线 */
+.settings-list-divider {
+  height: 1px;
+  background-color: var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  margin: 0;
+}
+
+.settings-list-divider.indent {
+  margin-left: 56px;
+  margin-right: 16px;
+}
+
+/* 嵌套 ExpansionTile */
+.settings-nested .settings-expansion-summary {
+  padding-left: 16px;
+}
+
+/* 空内容提示 */
+.settings-empty-hint {
+  padding: 16px 56px;
+  font-size: 13px;
+  color: var(--color-on-surface-variant, #94a3b8);
+}
+
+/* TextButton 样式（用于 trailing 操作按钮） */
+.settings-text-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary, #5BA8F5);
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.settings-text-btn:hover {
+  background-color: rgba(91, 168, 245, 0.1);
+}
+
+/* ---- Switch 开关 (复制 Flutter Switch 外观) ---- */
+.settings-switch-label {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.settings-switch-label input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(148, 163, 184, 0.4);
+  transition: 0.3s;
+  border-radius: 28px;
+}
+
+.settings-switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.settings-switch-label input:checked + .settings-switch-slider {
+  background-color: var(--color-primary, #5BA8F5);
+}
+
+.settings-switch-label input:checked + .settings-switch-slider:before {
+  transform: translateX(24px);
+}
+
+/* ---- Number input (for port fields etc.) ---- */
+.settings-number-input {
+  width: 100px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--color-on-surface, #1a1a1a);
+  font-size: 14px;
+  font-family: inherit;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.settings-number-input:focus {
+  border-color: var(--color-primary, #5BA8F5);
+}
+
+[data-theme="dark"] .settings-number-input {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+

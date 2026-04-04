@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import styles from './DataManagementCard.module.css';
 import { useTranslation } from 'react-i18next';
+import { MdOutlineStorage, MdOutlineDownload, MdOutlineUploadFile, MdHistory, MdChevronRight, MdExpandMore } from 'react-icons/md';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
+import '../shared/SettingsListTile.css';
 
 export interface SnapshotInfo {
   filename: string;
@@ -29,133 +30,121 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   const toast = useToast();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [showSnapshots, setShowSnapshots] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
-    try {
-      await onExportZip();
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const executeImport = async (filePath: string) => {
-    const confirmText = await dialog.prompt(
-      t('data.import_confirm_msg', `【替换警报】导入本地备份将抹平目前工作区拥有的全体聊天记录、属性集与上下文。\n若要继续操作，请在弹窗验证行键入 "CONFIRM"：`)
-    );
-    if (confirmText !== 'CONFIRM') {
-      toast.show('已取消导入热重启');
-      return;
-    }
-
-    setIsImporting(true);
-    try {
-      await onImportZip(filePath);
-      toast.showSuccess('🎉 导入成功！白守即将挂载最新数据引擎...');
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (e: any) {
-      console.error(e);
-      toast.showError(`导入彻底失败，请检查文件权限或格式: ${e.message || '未知错误'}`);
-    } finally {
-      setIsImporting(false);
-    }
+    try { await onExportZip(); } finally { setIsExporting(false); }
   };
 
   const handleImport = async () => {
     if (!onPickFile) return;
     const filePath = await onPickFile();
     if (!filePath) return;
-    await executeImport(filePath);
+
+    const confirmed = await dialog.confirm(t('settings.confirm_restore_desc', '引入备份将覆盖当前所有数据，此操作不可恢复！确认继续？'));
+    if (!confirmed) return;
+
+    setIsImporting(true);
+    try {
+      await onImportZip(filePath);
+      toast.showSuccess(t('settings.restore_success_simple', '恢复成功'));
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e: any) {
+      toast.showError(t('settings.restore_failed', '恢复失败：') + e.message);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleRestoreSnapshot = async (snapshot: SnapshotInfo) => {
-    const flag = await dialog.confirm(t('data.snapshot_confirm', `即刻调用 {{timeLabel}} 版本 ({{sizeMB}} MB) 对现役存储域执行整体降级/回档。
-此后，现今累积的所有状态更迭均将随之消尽。
-确定降级？`, { timeLabel: snapshot.timeLabel, sizeMB: snapshot.sizeMB }));
-    if (!flag) return;
-    await executeImport(snapshot.fullPath);
+    const confirmed = await dialog.confirm(t('settings.confirm_restore', '确认从快照恢复？'));
+    if (!confirmed) return;
+    setIsImporting(true);
+    try {
+      await onImportZip(snapshot.fullPath);
+      toast.showSuccess(t('settings.restore_success_simple', '恢复成功'));
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e: any) {
+      toast.showError(t('settings.restore_failed', '恢复失败：') + e.message);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.titleInfo}>
-           <h3 className={styles.title}>{t('data.title', '物理隔离层本地存档 (Data Vault)')}</h3>
-           <p className={styles.subtitle}>
-             {t('data.desc', '由于白守采取纯净的本地优先体系，在此您可以自由将全体库数据打入无损压缩的 ZIP 进行冷备份或多端移动流转。')}
-           </p>
+    <details className="settings-expansion-tile">
+      <summary className="settings-expansion-summary">
+        <div className="settings-list-tile-leading">
+          <MdOutlineStorage size={24} />
         </div>
-      </div>
+        <div className="settings-list-tile-content">
+          <span className="settings-list-tile-title">{t('settings.data_management', '数据管理')}</span>
+          <span className="settings-list-tile-subtitle">{t('settings.data_management_desc', '导出、导入和恢复数据')}</span>
+        </div>
+        <MdExpandMore className="settings-expansion-arrow" size={24} />
+      </summary>
 
-      <div className={styles.actionsBox}>
-        <div className={styles.cardSection}>
-          <div className={styles.sectionHeader}>
-            <h4>📦 {t('data.export_title', '整体提纯导出快照模块')}</h4>
-            <p className={styles.sectionDesc}>{t('data.export_desc', '将包含您现役的主工作层状态、助手属性面具及历史对话生成一个离线压缩体。')}</p>
+      <div className="settings-expansion-children">
+        {/* 导出数据 */}
+        <button className="settings-list-tile" onClick={handleExport} disabled={isExporting || isImporting}>
+          <div className="settings-list-tile-leading">
+            <MdOutlineDownload size={22} />
           </div>
-          <button 
-            className={styles.exportBtn} 
-            onClick={handleExport}
-            disabled={isExporting || isImporting}
-          >
-            {isExporting ? t('data.exporting', '🧩 档案打包转储进度进行...') : t('data.export_btn', '压缩并产出完整单体包 (ZIP)')}
-          </button>
-        </div>
-
-        <div className={styles.divider} />
-
-        <div className={styles.cardSection}>
-          <div className={styles.sectionHeader}>
-            <h4 className={styles.dangerText}>☢️ {t('data.import_title', '强覆盖性异体录入模块')}</h4>
-            <p className={styles.sectionDesc}>{t('data.import_desc', '引入已存在的 ZIP 快照来全局重置当前库资料。这一途径将引起灾难级的记录切断抹除，注意确认版本对应。')}</p>
+          <div className="settings-list-tile-content">
+            <span className="settings-list-tile-title">{t('settings.export_data', '导出数据')}</span>
+            <span className="settings-list-tile-subtitle">{t('settings.export_desc', '将所有数据导出为 ZIP 压缩包')}</span>
           </div>
-          <button 
-            className={styles.importBtn} 
-            onClick={handleImport}
-            disabled={isExporting || isImporting || !onPickFile}
-          >
-            {isImporting ? t('data.importing', '⚠️ 置换核心层录入...') : t('data.import_btn', '提取外部包裹执行系统置换')}
-          </button>
-        </div>
+          <MdChevronRight size={22} className="settings-list-tile-trailing" />
+        </button>
 
-        <div className={styles.divider} />
+        <div className="settings-list-divider" />
 
-        <div className={styles.cardSection}>
-           <div className={styles.sectionHeaderHistory} onClick={() => setShowSnapshots(!showSnapshots)}>
-             <div className={styles.historyTitleRow}>
-                <h4>⏱️ {t('data.auto_snapshot_title', '内建断层点无缝召回 (Snapshots)')}</h4>
-                <p className={styles.sectionDesc}>{t('data.auto_snapshot_desc', '系统引擎会在重大变更执行前自持暂存不超过一定数量的副本帧，供遇灾或不可控操作后的“时光倒流”救援干预使用。')}</p>
-             </div>
-             <div className={styles.collapseIndicator}>{showSnapshots ? '▲' : '▼'}</div>
-           </div>
-           
-           {showSnapshots && (
-              <div className={styles.snapshotList}>
-                {snapshots.length === 0 ? (
-                   <div className={styles.noSnapshots}>{t('data.no_snapshots', '暂未能探知到任意短期驻留切片可供取用。')}</div>
-                ) : (
-                   snapshots.map(sn => (
-                     <div key={sn.filename} className={styles.snapshotItem}>
-                        <div className={styles.snapInfo}>
-                           <span className={styles.snapTime}>{sn.timeLabel}</span>
-                           <span className={styles.snapSize}>{sn.sizeMB} MB</span>
-                        </div>
-                        <button 
-                           className={styles.snapRestoreBtn} 
-                           onClick={() => handleRestoreSnapshot(sn)}
-                           disabled={isExporting || isImporting}
-                        >
-                           {t('data.recover_btn', '复苏回滚指令下达')}
-                        </button>
-                     </div>
-                   ))
-                )}
-              </div>
-           )}
-        </div>
+        {/* 导入数据 */}
+        <button className="settings-list-tile" onClick={handleImport} disabled={isExporting || isImporting || !onPickFile}>
+          <div className="settings-list-tile-leading">
+            <MdOutlineUploadFile size={22} />
+          </div>
+          <div className="settings-list-tile-content">
+            <span className="settings-list-tile-title">{t('settings.import_data', '导入数据')}</span>
+            <span className="settings-list-tile-subtitle">{t('settings.import_desc', '从 ZIP 备份文件恢复数据（将覆盖当前数据）')}</span>
+          </div>
+          <MdChevronRight size={22} className="settings-list-tile-trailing" />
+        </button>
 
+        <div className="settings-list-divider" />
+
+        {/* 恢复快照 */}
+        <details className="settings-expansion-tile settings-nested">
+          <summary className="settings-list-tile">
+            <div className="settings-list-tile-leading">
+              <MdHistory size={22} />
+            </div>
+            <div className="settings-list-tile-content">
+              <span className="settings-list-tile-title">{t('settings.restore_snapshot', '从快照恢复')}</span>
+              <span className="settings-list-tile-subtitle">{t('settings.restore_desc', '从系统自动创建的本地快照中恢复数据')}</span>
+            </div>
+            <MdChevronRight size={22} className="settings-list-tile-trailing" />
+          </summary>
+          <div className="settings-expansion-children">
+            {snapshots.length === 0 ? (
+              <div className="settings-empty-hint">{t('settings.no_snapshots_available', '暂无可用快照')}</div>
+            ) : (
+              snapshots.map(sn => (
+                <button key={sn.filename} className="settings-list-tile" onClick={() => handleRestoreSnapshot(sn)} disabled={isImporting}>
+                  <div className="settings-list-tile-leading">
+                    <MdHistory size={20} />
+                  </div>
+                  <div className="settings-list-tile-content">
+                    <span className="settings-list-tile-title">{sn.timeLabel}</span>
+                    <span className="settings-list-tile-subtitle">{sn.sizeMB} MB</span>
+                  </div>
+                  <MdChevronRight size={22} className="settings-list-tile-trailing" />
+                </button>
+              ))
+            )}
+          </div>
+        </details>
       </div>
-    </div>
+    </details>
   );
 };

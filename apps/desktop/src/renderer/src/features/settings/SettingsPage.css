@@ -207,9 +207,10 @@
 .glass-panel-card {
   background-color: var(--color-surface, #FFFFFF);
   border: 1px solid rgba(208, 208, 208, 0.5);
-  border-radius: 12px;
-  padding: 0; 
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
 }
 
 /* Match dark mode nicely */

@@ -1,7 +1,7 @@
 import React from 'react';
-import styles from './McpSettingsCard.module.css';
 import { useTranslation } from 'react-i18next';
-
+import { MdOutlineHub, MdOutlineLan, MdChevronRight } from 'react-icons/md';
+import '../shared/SettingsListTile.css';
 
 export interface McpServerConfig {
   mcpEnabled: boolean;
@@ -15,44 +15,65 @@ interface McpSettingsCardProps {
 
 export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChange }) => {
   const { t } = useTranslation();
+
   return (
-    <div className={styles.container}>
-      <div className={styles.row}>
-        <div className={styles.info}>
-          <span className={styles.title}>{t('mcp.enable_title', '启用 Model Context Protocol (MCP Server)')}</span>
-          <span className={styles.subtitle}>{t('mcp.enable_desc', '将终端数据以 MCP 协议提供给外部 IDE 或智能应用读取。')}</span>
+    <div>
+      {/* SwitchListTile: MCP 启用开关 */}
+      <div className="settings-list-tile settings-list-tile-noclick">
+        <div className="settings-list-tile-leading">
+          <MdOutlineHub size={24} />
         </div>
-        <label className={styles.switch}>
-          <input 
-            type="checkbox" 
+        <div className="settings-list-tile-content">
+          <span className="settings-list-tile-title">{t('settings.mcp_title', 'MCP Server')}</span>
+          <span className="settings-list-tile-subtitle">
+            {config.mcpEnabled
+              ? t('settings.mcp_running', 'MCP 服务运行中，端口: {{port}}', { port: config.mcpPort })
+              : t('settings.mcp_desc', '将数据以 MCP 协议提供给外部 IDE 或智能应用')}
+          </span>
+        </div>
+        <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
             checked={config.mcpEnabled}
             onChange={(e) => onChange({ ...config, mcpEnabled: e.target.checked })}
           />
-          <span className={styles.slider}></span>
+          <span className="settings-switch-slider" />
         </label>
       </div>
 
-      <div className={styles.row} style={{ opacity: config.mcpEnabled ? 1 : 0.4, transition: 'opacity 0.3s' }}>
-        <div className={styles.info}>
-          <span className={styles.title}>{t('mcp.port_title', '本地 MCP 端口控制 (Host Port)')}</span>
-          <span className={styles.subtitle}>{t('mcp.port_desc', '修改侦听端口（强烈建议保留 31004 默认口）。遇到端口冲突请手动修改。')}</span>
-        </div>
-        <input 
-          type="number"
-          className={styles.inputArea}
-          value={config.mcpPort}
-          disabled={!config.mcpEnabled}
-          min={1000}
-          max={65535}
-          onChange={(e) => {
-
-
-            const val = parseInt(e.target.value);
-            // 简单的边界与回滚预判
-            if (!isNaN(val)) onChange({ ...config, mcpPort: val });
-          }}
-        />
-      </div>
+      {config.mcpEnabled && (
+        <>
+          <div className="settings-list-divider" />
+          {/* 端口配置行 */}
+          <div className="settings-list-tile settings-list-tile-noclick">
+            <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }}>
+              <MdOutlineLan size={20} />
+            </div>
+            <div className="settings-list-tile-content">
+              <span className="settings-list-tile-title">{t('settings.mcp_port', '监听端口')}</span>
+            </div>
+            <input
+              type="number"
+              className="settings-number-input"
+              value={config.mcpPort}
+              min={1000}
+              max={65535}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (!isNaN(val)) onChange({ ...config, mcpPort: val });
+              }}
+            />
+          </div>
+          <div className="settings-list-divider indent" />
+          {/* 状态行 */}
+          <div className="settings-list-tile settings-list-tile-noclick" style={{ paddingBottom: 12 }}>
+            <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }} />
+            <span className="settings-list-tile-subtitle settings-monospace">
+              http://localhost:{config.mcpPort}/mcp
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 };

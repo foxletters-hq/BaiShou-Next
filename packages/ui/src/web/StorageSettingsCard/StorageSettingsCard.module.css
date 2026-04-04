@@ -3,6 +3,7 @@
   flex-direction: column;
   gap: 24px;
   position: relative;
+  padding: 24px;
 }
 
 .scanOverlay {

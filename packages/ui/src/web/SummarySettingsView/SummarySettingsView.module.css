@@ -1,0 +1,202 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  margin-bottom: 8px;
+}
+
+.titleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-on-surface-variant);
+}
+
+.cardSection {
+  background: var(--color-surface);
+  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.cardTitleLine {
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-on-surface);
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.cardDesc {
+  margin: 0 0 16px 0;
+  font-size: 0.85rem;
+  color: var(--color-on-surface-variant);
+}
+
+.btnGroup {
+  display: flex;
+  gap: 8px;
+  background-color: var(--color-surface-container-low);
+  padding: 4px;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.segBtn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.segBtn:hover {
+  background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.segBtn.active {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  font-weight: 500;
+}
+
+.tabBar {
+  display: flex;
+  gap: 4px;
+  background: rgba(var(--color-surface-container-highest-rgb), 0.3);
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.tabBtn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tabBtn:hover {
+  background: rgba(var(--color-primary-rgb), 0.05);
+}
+
+.tabBtn.active {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.textAreaWrapper {
+  display: flex;
+  flex-direction: column;
+  height: 300px;
+}
+
+.textArea {
+  flex: 1;
+  width: 100%;
+  resize: none;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--color-on-surface);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  transition: border-color 0.2s;
+}
+
+.textArea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.actionsRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.resetBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.resetBtn:hover {
+  background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.saveBtn {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  font-size: 0.85rem;
+  padding: 6px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.saveBtn:hover {
+  filter: brightness(1.1);
+}
+
+.infoBox {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(var(--color-surface-container-highest-rgb), 0.3);
+  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.3);
+  border-radius: 12px;
+}
+
+.infoIcon {
+  color: var(--color-on-surface-variant);
+  font-size: 1.2rem;
+}
+
+.infoDesc {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-on-surface-variant);
+  line-height: 1.5;
+}

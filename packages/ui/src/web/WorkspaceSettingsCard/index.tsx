@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import styles from './WorkspaceSettingsCard.module.css';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDialog, useToast } from '../..';
+import { MdWorkspacesOutline, MdFolderSpecial, MdAdd, MdCheckCircle, MdExpandMore } from 'react-icons/md';
+import { useDialog } from '../Dialog';
+import { useToast } from '../Toast/useToast';
+import '../shared/SettingsListTile.css';
 
-// Reuse type from core if available, but define locally to keep ui package independent
 export interface VaultInfo {
   name: string;
   path: string;
@@ -27,121 +28,99 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   onSwitch,
   onDelete,
   onCreate,
-  customRootPath,
-  onPickCustomRoot
 }) => {
   const { t } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
-  const [newVaultName, setNewVaultName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [currentRoot, setCurrentRoot] = useState<string | null>(customRootPath || null);
 
   const handleCreate = async () => {
-    if (!newVaultName.trim()) return;
+    const name = await dialog.prompt(t('workspace.new_name', '空间名称'), '');
+    if (!name?.trim()) return;
     try {
-      await onCreate(newVaultName.trim());
-      setNewVaultName('');
-      setIsCreating(false);
+      await onCreate(name.trim());
     } catch (e) {
-      console.error(e);
-      toast.showError('Failed to create workspace');
+      toast.showError(t('workspace.create_failed', '创建失败'));
     }
   };
 
-  const handlePickRoot = async () => {
-    if (!onPickCustomRoot) return;
+  const handleDelete = async (vaultName: string) => {
+    const input = await dialog.prompt(
+      t('workspace.delete_confirm_input', '请输入工作区名称 "{{name}}" 以确认删除：', { name: vaultName })
+    );
+    if (input === vaultName) {
+      onDelete(vaultName);
+    } else if (input !== null) {
+      toast.showError(t('workspace.delete_name_mismatch', '名称不匹配，删除已取消。'));
+    }
+  };
+
+  const lastAccessed = (v: VaultInfo) => {
+    if (!v.lastAccessedAt) return t('common.unknown_time', '未知时间');
     try {
-      const newPath = await onPickCustomRoot();
-      if (newPath) {
-        setCurrentRoot(newPath);
-      }
-    } catch (e) {
-      console.error('Pick root failed', e);
+      const d = typeof v.lastAccessedAt === 'string' ? new Date(v.lastAccessedAt) : v.lastAccessedAt;
+      return d.toLocaleString().split('.')[0].replace('T', ' ');
+    } catch {
+      return t('common.unknown_time', '未知时间');
     }
   };
 
   return (
-    <div className={styles.container}>
-      {onPickCustomRoot && (
-        <div className={styles.rootConfig}>
-          <div className={styles.rootInfo}>
-            <span className={styles.rootLabel}>Storage Root (Advanced):</span>
-            <span className={styles.rootPath}>{currentRoot || 'Default AppData'}</span>
-          </div>
-          <button className={styles.switchBtn} onClick={handlePickRoot}>
-            Change Root...
-          </button>
+    <details className="settings-expansion-tile">
+      <summary className="settings-expansion-summary">
+        <div className="settings-list-tile-leading">
+          <MdWorkspacesOutline size={24} />
         </div>
-      )}
+        <div className="settings-list-tile-content">
+          <span className="settings-list-tile-title">{t('workspace.title', '工作空间 (Workspaces)')}</span>
+          <span className="settings-list-tile-subtitle">
+            {t('workspace.current', '当前空间: {{name}}', { name: activeVault?.name ?? '未知' })}
+          </span>
+        </div>
+        <MdExpandMore className="settings-expansion-arrow" size={24} />
+      </summary>
 
-      <div className={styles.header}>
-        <h3 className={styles.title}>Workspace (Vault) Settings</h3>
-        <p className={styles.subtitle}>
-          Each workspace is an isolated sandbox with its own database, embeddings, and settings.
-        </p>
-      </div>
-
-      <div className={styles.vaultList}>
+      <div className="settings-expansion-children">
         {vaults.map(vault => {
           const isActive = activeVault?.name === vault.name;
           return (
-            <div key={vault.name} className={`${styles.vaultItem} ${isActive ? styles.active : ''}`}>
-              <div className={styles.vaultInfo}>
-                <div className={styles.vaultName}>
-                  {vault.name} {isActive && <span className={styles.activeBadge}>Active</span>}
+            <div key={vault.name} className="settings-list-tile settings-list-tile-noclick">
+              <div className="settings-list-tile-leading">
+                <MdFolderSpecial size={22} />
+              </div>
+              <div className="settings-list-tile-content">
+                <span className="settings-list-tile-title">{vault.name}</span>
+                <span className="settings-list-tile-subtitle">
+                  {t('workspace.last_accessed', '上次访问: {{time}}', { time: lastAccessed(vault) })}
+                </span>
+              </div>
+              {isActive ? (
+                <MdCheckCircle size={22} style={{ color: 'var(--color-primary, #5BA8F5)', flexShrink: 0 }} />
+              ) : (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button className="settings-text-btn" onClick={() => onSwitch(vault.name)}>
+                    {t('workspace.switch', '切换')}
+                  </button>
+                  <button className="settings-text-btn" style={{ color: '#ef4444' }} onClick={() => handleDelete(vault.name)}>
+                    {t('workspace.delete', '删除')}
+                  </button>
                 </div>
-                <div className={styles.vaultPath}>{vault.path}</div>
-              </div>
-              <div className={styles.vaultActions}>
-                {!isActive && (
-                  <>
-                    <button className={styles.switchBtn} onClick={() => onSwitch(vault.name)}>
-                      Switch
-                    </button>
-                    <button className={styles.deleteBtn} onClick={async () => {
-                      const input = await dialog.prompt(
-                        t('workspace.delete_confirm', '危险：您确定要彻底删除工作空间 [{{name}}] 吗？\n此操作将销毁该空间下的所有日志记录和关联档案，不可逆！\n\n请输入工作区名称以确认删除：', { name: vault.name })
-                      );
-                      if (input === vault.name) {
-                        onDelete(vault.name);
-                      } else if (input !== null) {
-                        toast.showError('工作空间名称不匹配，删除已取消。');
-                      }
-                    }}>
-                      Delete
-                    </button>
-                  </>
-                )}
-              </div>
+              )}
             </div>
           );
         })}
-      </div>
 
-      <div className={styles.createAction}>
-        {isCreating ? (
-          <div className={styles.createForm}>
-            <input
-              className={styles.input}
-              value={newVaultName}
-              onChange={e => setNewVaultName(e.target.value)}
-              placeholder="New workspace name"
-              autoFocus
-            />
-            <button className={styles.saveBtn} onClick={handleCreate} disabled={!newVaultName.trim()}>
-              Create
-            </button>
-            <button className={styles.cancelBtn} onClick={() => setIsCreating(false)}>
-              Cancel
-            </button>
+        <div className="settings-list-divider" />
+
+        {/* 创建新空间 */}
+        <button className="settings-list-tile" onClick={handleCreate}>
+          <div className="settings-list-tile-leading">
+            <MdAdd size={22} />
           </div>
-        ) : (
-          <button className={styles.createBtn} onClick={() => setIsCreating(true)}>
-            + Create New Workspace
-          </button>
-        )}
+          <div className="settings-list-tile-content">
+            <span className="settings-list-tile-title">{t('workspace.create_new', '创建新空间')}</span>
+          </div>
+        </button>
       </div>
-    </div>
+    </details>
   );
 };

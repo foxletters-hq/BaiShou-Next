@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
 
 export interface ToolManagementConfig {
-  enabledTools: string[];
-  autoApproveSafeTools: boolean;
+  disabledToolIds: string[];
+  customConfigs: Record<string, Record<string, any>>;
 }
 
 interface AgentToolsViewProps {
@@ -13,8 +13,7 @@ interface AgentToolsViewProps {
   onChange: (config: ToolManagementConfig) => void;
 }
 
-export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
-  config, onChange }) => {
+export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange }) => {
   const { t } = useTranslation();
   const dialog = useDialog();
   const ALL_TOOLS = [
@@ -37,18 +36,24 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
 
   const toggleTool = async (toolId: string) => {
-    let freshList = [...config.enabledTools];
-    if (freshList.includes(toolId)) {
-      freshList = freshList.filter(id => id !== toolId);
+    // Determine enabled state based on absence in disabledToolIds array
+    const disabledList = Array.isArray(config.disabledToolIds) ? [...config.disabledToolIds] : [];
+    const isCurrentlyEnabled = !disabledList.includes(toolId);
+    
+    if (isCurrentlyEnabled) {
+      // User wants to disable it
+      disabledList.push(toolId);
     } else {
+      // User wants to enable it
       const tool = ALL_TOOLS.find(t => t.id === toolId);
       if (tool && tool.tag.includes('危')) {
         const sure = await dialog.confirm(`【严重越权告警】\n您正在赋予 AI 具有操作系统破坏性乃至隐私外泄风险的 ${tool.name}。\n\n您确定要向硅基生命敞开物理主机的防线吗？`);
         if (!sure) return;
       }
-      freshList.push(toolId);
+      const idx = disabledList.indexOf(toolId);
+      if (idx > -1) disabledList.splice(idx, 1);
     }
-    onChange({ ...config, enabledTools: freshList });
+    onChange({ ...config, disabledToolIds: disabledList });
   };
 
   const groupedTools = ALL_TOOLS.reduce((acc, tool) => {
@@ -81,21 +86,6 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
          </div>
       </div>
 
-      <div className={styles.autoApproveBar}>
-        <div className={styles.approveMeta}>
-          <span className={styles.approveTitle}>{t('tools.auto_approve', '静默通过安全操作 (Auto-Approve Safe)')}</span>
-          <span className={styles.approveDesc}>{t('tools.auto_approve_desc', '对标定为“安全”的高频查询操作予以直接放行，无需确认操作弹窗。')}</span>
-        </div>
-        <label className={styles.switch}>
-          <input 
-            type="checkbox" 
-            checked={config.autoApproveSafeTools}
-            onChange={(e) => onChange({ ...config, autoApproveSafeTools: e.target.checked })}
-          />
-          <span className={styles.slider}></span>
-        </label>
-      </div>
-
       <div className={styles.contentArea}>
          {activeTab === 'builtin' ? (
             <div className={styles.list}>
@@ -111,7 +101,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                       </div>
                       <div className={styles.categoryGrid}>
                         {list.map((tool) => {
-                            const isEnabled = config.enabledTools.includes(tool.id);
+                            const isEnabled = !(config.disabledToolIds || []).includes(tool.id);
                             const isDanger = tool.tag.includes('危');
                             return (
                               <div key={tool.id} className={`${styles.toolItem} ${isEnabled ? styles.enabled : ''} ${isEnabled && isDanger ? styles.dangerEnabled : ''}`}>

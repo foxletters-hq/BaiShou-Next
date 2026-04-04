@@ -3,10 +3,9 @@ import { useTranslation } from 'react-i18next';
 import styles from './RagMemoryView.module.css';
 
 export interface RagConfig {
-  topK: number;
-  similarityThreshold: number;
-  maxTokensLimit: number;
-  ragEnabled: boolean; // 新增全域开关
+  ragTopK: number;
+  ragSimilarityThreshold: number;
+  ragEnabled: boolean;
 }
 
 export interface RagStats {
@@ -57,19 +56,17 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const v = e.target.value;
+    const v = e.target.value;
     setSearchQuery(v);
     if (onSearch) onSearch(v);
   };
 
   const handleClearSearch = () => {
-  setSearchQuery('');
+    setSearchQuery('');
     if (onSearch) onSearch('');
   };
 
   const formatDate = (ms: number) => {
-
-
     const d = new Date(ms);
     return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
@@ -123,34 +120,23 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         <div className={styles.paramCard}>
           <div className={styles.paramHeader}>
              <span className={styles.paramTitle}>{t('settings.rag_top_k', '召回数量上限 (Top-K)')}</span>
-             <span className={styles.paramValue}>{config.topK}</span>
+             <span className={styles.paramValue}>{config.ragTopK}</span>
           </div>
           <input 
              type="range" className={styles.rangeInput}
-             min="1" max="50" step="1" value={config.topK}
-             onChange={(e) => onChange({ ...config, topK: parseInt(e.target.value) })}
+             min="1" max="50" step="1" value={config.ragTopK || 20}
+             onChange={(e) => onChange({ ...config, ragTopK: parseInt(e.target.value) })}
           />
         </div>
         <div className={styles.paramCard}>
           <div className={styles.paramHeader}>
              <span className={styles.paramTitle}>{t('settings.rag_similarity_threshold', '相似度阈值')}</span>
-             <span className={styles.paramValue}>{config.similarityThreshold.toFixed(2)}</span>
+             <span className={styles.paramValue}>{(config.ragSimilarityThreshold || 0).toFixed(2)}</span>
           </div>
           <input 
              type="range" className={styles.rangeInput}
-             min="0" max="1" step="0.05" value={config.similarityThreshold}
-             onChange={(e) => onChange({ ...config, similarityThreshold: parseFloat(e.target.value) })}
-          />
-        </div>
-        <div className={styles.paramCard}>
-          <div className={styles.paramHeader}>
-             <span className={styles.paramTitle}>{t('settings.rag_max_tokens_limit', '召回截断上限 (Tokens)')}</span>
-             <span className={styles.paramValue}>{config.maxTokensLimit}</span>
-          </div>
-          <input 
-             type="range" className={styles.rangeInput}
-             min="500" max="100000" step="500" value={config.maxTokensLimit}
-             onChange={(e) => onChange({ ...config, maxTokensLimit: parseInt(e.target.value) })}
+             min="0" max="1" step="0.05" value={config.ragSimilarityThreshold || 0.4}
+             onChange={(e) => onChange({ ...config, ragSimilarityThreshold: parseFloat(e.target.value) })}
           />
         </div>
       </div>

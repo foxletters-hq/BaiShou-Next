@@ -6,9 +6,9 @@ import { useToast } from '../Toast/useToast';
 
 export interface UserProfileConfig {
   nickname: string;
-  avatarPath: string;
+  avatarPath?: string;
   activePersonaId: string;
-  personas: Record<string, Record<string, string>>;
+  personas: Record<string, { id: string; facts: Record<string, string> }>;
 }
 
 export interface IdentitySettingsCardProps {
@@ -23,13 +23,13 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   
   const activeId = profile.activePersonaId || 'Default';
   // 确保 fallback
-  const allPersonas = profile.personas || { 'Default': {} };
+  const allPersonas = profile.personas || { 'Default': { id: 'Default', facts: {} } };
   
   if (!allPersonas[activeId]) {
-    allPersonas[activeId] = {};
+    allPersonas[activeId] = { id: activeId, facts: {} };
   }
   
-  const currentFacts = allPersonas[activeId];
+  const currentFacts = allPersonas[activeId].facts || {};
 
   // 1. 切换活动 Persona
   const handleSwitch = async (pid: string) => {
@@ -40,7 +40,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
       const newName = await dialog.prompt("重新命名的身份名", pid);
       if (newName && newName !== pid && !allPersonas[newName]) {
         const nextPersonas = { ...allPersonas };
-        nextPersonas[newName] = nextPersonas[pid];
+        nextPersonas[newName] = { ...nextPersonas[pid], id: newName };
         delete nextPersonas[pid];
         onChange({ ...profile, personas: nextPersonas, activePersonaId: newName });
       }
@@ -51,7 +51,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
   const handleAddPersona = async () => {
     const newName = await dialog.prompt("输入新的身份卡名字 (例如：前端专家、法律顾问)");
     if (newName && !allPersonas[newName]) {
-      const nextPersonas = { ...allPersonas, [newName]: {} };
+      const nextPersonas = { ...allPersonas, [newName]: { id: newName, facts: {} } };
       onChange({ ...profile, personas: nextPersonas, activePersonaId: newName });
     }
   };
@@ -87,7 +87,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
 
     onChange({
       ...profile,
-      personas: { ...allPersonas, [activeId]: nextFacts }
+      personas: { ...allPersonas, [activeId]: { ...allPersonas[activeId], facts: nextFacts } }
     });
   };
 
@@ -99,7 +99,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
       delete nextFacts[k];
       onChange({
         ...profile,
-        personas: { ...allPersonas, [activeId]: nextFacts }
+        personas: { ...allPersonas, [activeId]: { ...allPersonas[activeId], facts: nextFacts } }
       });
     }
   };

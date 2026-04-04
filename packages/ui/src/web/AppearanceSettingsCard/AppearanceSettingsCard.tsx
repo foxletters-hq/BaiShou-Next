@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './AppearanceSettingsCard.css';
 import { useTranslation } from 'react-i18next';
-import { MdPalette, MdExpandMore } from 'react-icons/md';
+import { MdOutlinePalette, MdExpandMore } from 'react-icons/md';
 
 export interface AppearanceSettingsProps {
   themeMode: 'system' | 'light' | 'dark';
@@ -53,15 +53,15 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   };
 
   return (
-    <div className="appearance-card-container settings-card">
+    <div>
       <details className="settings-expansion-tile">
         <summary className="settings-expansion-summary">
-          <div className="settings-leading-icon">
-            <MdPalette size={24} />
+          <div className="settings-list-tile-leading">
+            <MdOutlinePalette size={24} />
           </div>
-          <div className="settings-title-group">
-            <h3 className="settings-title">{t('settings.appearance', '外观与主题')}</h3>
-            <p className="settings-subtitle">{getThemeText()} · {getLangText()}</p>
+          <div className="settings-list-tile-content">
+            <span className="settings-list-tile-title">{t('settings.appearance', '外观与主题')}</span>
+            <span className="settings-list-tile-subtitle">{getThemeText()} · {getLangText()}</span>
           </div>
           <div className="settings-trailing-icon">
             <MdExpandMore size={24} />

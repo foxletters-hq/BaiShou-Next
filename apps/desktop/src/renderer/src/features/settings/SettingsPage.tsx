@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore, useUserProfileStore } from '@baishou/store';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MdSettings, MdCloudQueue, MdStarBorder, MdSchool, MdColorLens, MdExplore, MdExtension, MdAutoAwesome, MdWifi, MdSync, MdFolderSpecial, MdArrowBack } from 'react-icons/md';
+import { MdOutlineSettings, MdOutlineCloudQueue, MdOutlineStarBorder, MdSchool, MdColorLens, MdTravelExplore, MdOutlineExtension, MdOutlineAutoAwesome, MdOutlineWifiProtectedSetup, MdSync, MdOutlineFolderDelete, MdArrowBack } from 'react-icons/md';
 import { TitleBar } from '../../components/TitleBar';
 import './SettingsPage.css';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ import {
   WebSearchSettingsView,
   AboutSettingsCard,
   AssistantMatrixCard,
+  SummarySettingsView,
   useToast
 } from '@baishou/ui';
 
@@ -38,20 +39,20 @@ export const SettingsPage: React.FC = () => {
   const [isClosing, setIsClosing] = useState(false);
 
   const TABS = [
-    { id: 0, label: t('settings.nav_general', '通用'), icon: <MdSettings /> },
+    { id: 0, label: t('settings.general', '常规设置'), icon: <MdOutlineSettings /> },
     { type: 'divider' },
-    { id: 1, label: t('settings.nav_ai_settings', 'AI 模型服务配置'), icon: <MdCloudQueue /> },
-    { id: 2, label: t('settings.nav_ai_models', '全局默认大模型'), icon: <MdStarBorder /> },
-    { id: 3, label: t('settings.nav_assistant', '专属助手'), icon: <MdSchool /> },
+    { id: 1, label: t('settings.ai_services', '供应商管理'), icon: <MdOutlineCloudQueue /> },
+    { id: 2, label: t('settings.ai_global_models', '全局默认模型'), icon: <MdOutlineStarBorder /> },
+    { id: 3, label: t('agent.assistant.settings_entry', '伙伴管理'), icon: <MdSchool /> },
     { type: 'divider' },
-    { id: 4, label: t('settings.nav_knowledge', '外接脑容量(RAG)'), icon: <MdColorLens /> },
-    { id: 5, label: t('settings.nav_search', '网络搜索 API'), icon: <MdExplore /> },
-    { id: 6, label: t('settings.nav_tools', 'Agent 工具与扩展'), icon: <MdExtension /> },
-    { id: 7, label: t('settings.nav_summary', '总结与归档偏好'), icon: <MdAutoAwesome /> },
+    { id: 4, label: t('agent.rag.title', '语义搜索库 (RAG)'), icon: <MdColorLens /> },
+    { id: 5, label: t('agent.tools.web_search', '网络搜索'), icon: <MdTravelExplore /> },
+    { id: 6, label: t('settings.agent_tools_title', '工具管理'), icon: <MdOutlineExtension /> },
+    { id: 7, label: t('settings.summary_settings_title', '回忆生成设置'), icon: <MdOutlineAutoAwesome /> },
     { type: 'divider' },
-    { id: 8, label: t('settings.nav_lan', '局域网快传'), icon: <MdWifi /> },
-    { id: 9, label: t('settings.nav_sync', '数据同步'), icon: <MdSync /> },
-    { id: 10, label: t('settings.nav_attachment', '附件管理'), icon: <MdFolderSpecial /> },
+    { id: 8, label: t('settings.lan_transfer', '局域网传输'), icon: <MdOutlineWifiProtectedSetup /> },
+    { id: 9, label: t('data_sync.title', '数据同步'), icon: <MdSync /> },
+    { id: 10, label: t('settings.attachment_management', '附件管理'), icon: <MdOutlineFolderDelete /> },
   ];
 
   const location = useLocation();
@@ -131,10 +132,10 @@ export const SettingsPage: React.FC = () => {
       <div className="settings-layout-body">
         <div className="settings-sidebar">
            <div className="settings-header">
-              <button className="settings-back-btn" onClick={handleBack} title={t('common.close', '关闭返回')}>
+              <button className="settings-back-btn" onClick={handleBack} title={t('common.cancel', '取消')}>
                  <MdArrowBack />
               </button>
-              <h1 className="settings-title">{t('common.settings', '偏好设置')}</h1>
+              <h1 className="settings-title">{t('settings.title', '系统设置')}</h1>
            </div>
            
            <div className="settings-nav-scroll">
@@ -177,13 +178,11 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
   const [vaults, setVaults] = useState<any[]>([]);
   const [activeVault, setActiveVault] = useState<any>(null);
   
-  // Local state stubs for unlinked backend properties to achieve 1:1 UI parity
-  const [mcpConfig, setMcpConfig] = useState({ mcpEnabled: false, mcpPort: 31004 });
-  const [identityProfile, setIdentityProfile] = useState({
-    nickname: profile?.nickname || '',
-    avatarPath: profile?.avatarUrl || '',
-    activePersonaId: 'Default',
-    personas: { 'Default': {} } as Record<string, Record<string, string>>
+  const [storageStats, setStorageStats] = useState({ 
+    storageRootPath: 'Loading...', 
+    sqliteSizeStats: '0 MB', 
+    vectorDbStats: '0 MB', 
+    mediaCacheStats: '0 MB' 
   });
 
   useEffect(() => {
@@ -196,7 +195,18 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
         if (active) setActiveVault(active);
       } catch (e) {}
     };
+    
+    const fetchStorage = async () => {
+      try {
+        if ((window as any).api?.storage) {
+          const stats = await (window as any).api.storage.getStats();
+          if (stats) setStorageStats(stats);
+        }
+      } catch (e) {}
+    };
+
     fetchVaults();
+    fetchStorage();
   }, [fetchProfile]);
 
   return (
@@ -207,8 +217,8 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
            profile={profile || { nickname: '', autoSync: false, avatarUrl: '' }}
            onSave={async (p) => {
              if (typeof window !== 'undefined' && window.electron) {
-               await window.electron.ipcRenderer.invoke('profile:update', p);
-               if (fetchProfile) fetchProfile();
+               await window.electron.ipcRenderer.invoke('profile:save', p);
+               if (fetchProfile) await fetchProfile();
              }
            }}
          />
@@ -216,8 +226,13 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
 
        <div className="glass-panel-card">
          <IdentitySettingsCard 
-           profile={identityProfile}
-           onChange={setIdentityProfile}
+           profile={profile || { nickname: '', avatarPath: '', activePersonaId: 'Default', personas: { 'Default': { id: 'Default', facts: {} } } }}
+           onChange={async (newProfile) => {
+             if (typeof window !== 'undefined' && window.electron) {
+               await window.electron.ipcRenderer.invoke('profile:save', newProfile);
+               if (fetchProfile) await fetchProfile();
+             }
+           }}
          />
        </div>
 
@@ -233,18 +248,18 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
        </div>
 
        {settings.hotkeyConfig && (
-         <div className="glass-panel-card">
+          <div className="glass-panel-card">
             <HotkeySettingsCard 
                config={settings.hotkeyConfig}
                onChange={(config) => settings.setHotkeyConfig(config)}
             />
-         </div>
+          </div>
        )}
 
        <div className="glass-panel-card">
          <McpSettingsCard 
-           config={mcpConfig}
-           onChange={setMcpConfig}
+           config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
+           onChange={settings.setMcpServerConfig}
          />
        </div>
 
@@ -260,30 +275,51 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
 
        <div className="glass-panel-card">
          <StorageSettingsCard 
-           storageRootPath="C:\Users\Default\BaishouStorage"
-           sqliteSizeStats="12 MB"
-           vectorDbStats="45 MB"
-           mediaCacheStats="128 MB"
-           onClearCache={() => {}}
-           onVacuumDb={() => {}}
+           storageRootPath={storageStats.storageRootPath}
+           sqliteSizeStats={storageStats.sqliteSizeStats}
+           vectorDbStats={storageStats.vectorDbStats}
+           mediaCacheStats={storageStats.mediaCacheStats}
+           onClearCache={async () => {
+             await (window as any).api?.storage?.clearCache();
+             if ((window as any).api?.storage) {
+                const s = await (window as any).api.storage.getStats();
+                if (s) setStorageStats(s);
+             }
+           }}
+           onVacuumDb={async () => {
+             await (window as any).api?.storage?.vacuumDb();
+             if ((window as any).api?.storage) {
+                const s = await (window as any).api.storage.getStats();
+                if (s) setStorageStats(s);
+             }
+           }}
          />
        </div>
 
        <div className="glass-panel-card">
          <DataManagementCard 
-           onExportZip={async () => {}}
-           onImportZip={async () => {}}
-           onPickFile={async () => null}
-           snapshots={[{ filename: 'backup_v1.zip', timeLabel: '2023-11-20 14:00', sizeMB: '15.4', fullPath: '/test1' }]}
+           onExportZip={async () => {
+              await (window as any).api?.archive?.exportZip();
+           }}
+           onImportZip={async () => {
+              const file = await (window as any).api?.archive?.pickZip();
+              if (file) {
+                 await (window as any).api?.archive?.importZip(file);
+              }
+           }}
+           onPickFile={async () => {
+              return await (window as any).api?.archive?.pickZip();
+           }}
+           snapshots={[]}
          />
        </div>
 
        <div className="glass-panel-card">
-          <AboutSettingsCard 
-              version="v2.0.0-Next-Canary"
-              onOpenPrivacyPolicy={async () => await (window as any).api?.shell?.openExternal('https://github.com')}
-              onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou')}
-          />
+         <AboutSettingsCard 
+             version="v2.0.0-Next-Canary"
+             onOpenPrivacyPolicy={async () => await (window as any).api?.shell?.openExternal('https://github.com')}
+             onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou')}
+         />
        </div>
 
     </div>
@@ -411,15 +447,13 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
 };
 
 const WebSearchPane: React.FC<{ settings: any }> = ({ settings }) => {
-  if (!settings.webSearchConfig || !settings.summaryConfig) return <div />;
+  if (!settings.webSearchConfig) return <div />;
   return (
     <div className="settings-pane">
        <div className="glass-panel-card">
          <WebSearchSettingsView 
              searchConfig={settings.webSearchConfig}
-             summaryConfig={settings.summaryConfig}
              onSearchChange={(config) => settings.setWebSearchConfig(config)}
-             onSummaryChange={(config) => settings.setSummaryConfig(config)}
          />
        </div>
     </div>
@@ -451,11 +485,39 @@ const AgentToolsPane: React.FC<{ settings: any }> = ({ settings }) => {
   );
 };
 
-const SummarySettingsPane: React.FC<{ settings: any }> = () => {
+const SummarySettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
+  // If settings are not loaded yet, wait.
+  if (settings.isLoading || !settings.summaryConfig || !settings.globalModels) return <div />;
+
+  const combinedConfig = {
+    monthlySummarySource: settings.globalModels.monthlySummarySource || 'weeklies',
+    templates: settings.summaryConfig.instructions || {
+        weekly: '',
+        monthly: '',
+        quarterly: '',
+        yearly: ''
+    }
+  };
+
   return (
     <div className="settings-pane">
        <div className="glass-panel-card">
-          <p style={{ color: 'var(--color-on-surface-variant)' }}>Summary settings logic mapped here.</p>
+          <SummarySettingsView 
+             config={combinedConfig}
+             onChange={(newConfig) => {
+               settings.setGlobalModels({
+                 ...settings.globalModels,
+                 monthlySummarySource: newConfig.monthlySummarySource
+               });
+               settings.setSummaryConfig({
+                 ...settings.summaryConfig,
+                 instructions: newConfig.templates
+               });
+             }}
+             onResetTemplate={(type) => {
+               return `You are a helpful assistant. Please summarize the attached ${type} content properly.`;
+             }}
+          />
        </div>
     </div>
   );
