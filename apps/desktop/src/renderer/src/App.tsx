@@ -14,7 +14,7 @@ import { DiaryPage } from './features/diary/DiaryPage';
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { SummaryPage } from './features/summary/SummaryPage';
-import { useToast, DialogProvider } from '@baishou/ui';
+import { useToast, DialogProvider, ToastProvider } from '@baishou/ui';
 import { useEffect } from 'react';
 import { useSettingsStore } from '@baishou/store';
 import { i18n } from '@baishou/shared';
@@ -59,6 +59,7 @@ export function App() {
   return (
     <HashRouter>
       <DialogProvider>
+        <ToastProvider />
         <GlobalErrorHandler />
         <Routes>
           <Route path="/welcome" element={<OnboardingScreen />} />
