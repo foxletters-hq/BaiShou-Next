@@ -13,12 +13,14 @@
   },
   "include": [
     "src/env.d.ts",
+    "src/images.d.ts",
     "src/index.ts",
     "src/i18n.ts",
     "src/web/**/*",
     "src/hooks/**/*",
     "src/theme/**/*",
-    "src/utils/**/*"
+    "src/utils/**/*",
+    "src/assets/**/*"
   ],
   "exclude": ["src/native/**/*"]
 }

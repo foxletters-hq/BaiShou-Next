@@ -5,6 +5,7 @@ import { MdOutlineSettings, MdOutlineCloudQueue, MdOutlineStarBorder, MdSchool, 
 import { TitleBar } from '../../components/TitleBar';
 import './SettingsPage.css';
 import { useTranslation } from 'react-i18next';
+import baishouHeroImg from '../../assets/images/BaiShou-v0.0.1.jpeg';
 import { 
   AppearanceSettingsCard, 
   DataManagementCard, 
@@ -160,10 +161,14 @@ export const SettingsPage: React.FC = () => {
          </div>
       </div>
 
-      <div className="settings-content-area">
-         <div className="settings-content-scroll" key={activeTab}>
-            {renderActiveView()}
-         </div>
+      <div className="settings-content-area" style={{ position: 'relative' }}>
+         {activeTab === 8 ? (
+             renderActiveView()
+         ) : (
+             <div className="settings-content-scroll" key={activeTab}>
+                {renderActiveView()}
+             </div>
+         )}
       </div>
       </div>
     </div>
@@ -317,6 +322,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
        <div className="glass-panel-card">
          <AboutSettingsCard 
              version="v2.0.0-Next-Canary"
+             heroImageSrc={baishouHeroImg}
              onOpenPrivacyPolicy={async () => await (window as any).api?.shell?.openExternal('https://github.com')}
              onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou')}
          />
@@ -525,8 +531,7 @@ const SummarySettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
 
 const LanTransferPane: React.FC = () => {
   return (
-    <div className="settings-pane">
-      <div className="glass-panel-card">
+    <div style={{ position: 'absolute', inset: 0, padding: 0, overflow: 'hidden' }}>
          <LanSyncCard
           onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
           onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}
@@ -543,7 +548,6 @@ const LanTransferPane: React.FC = () => {
           onFileReceivedListener={(cb: any) => (window as any).api?.lan?.onFileReceived(cb)}
           onImportZip={async (file: string) => {(window as any).api?.archive.importZip(file)}}
         />
-      </div>
     </div>
   );
 };
@@ -551,32 +555,24 @@ const LanTransferPane: React.FC = () => {
 const DataSyncPane: React.FC = () => {
   return (
     <div className="settings-pane">
-      <div className="glass-panel-card">
-        <CloudSyncPanel
-          onSyncNow={async (config: any) => (window as any).api?.cloud?.syncNow(config)}
-          onListRecords={async (config: any) => (window as any).api?.cloud?.listRecords(config)}
-          onRestore={async (config: any, filename: string) => (window as any).api?.cloud?.restore(config, filename)}
-          onDeleteRecord={async (config: any, filename: string) => (window as any).api?.cloud?.deleteRecord(config, filename)}
-          onBatchDelete={async (config: any, filenames: string[]) => (window as any).api?.cloud?.batchDelete(config, filenames)}
-          onRename={async (config: any, oldName: string, newName: string) => (window as any).api?.cloud?.rename(config, oldName, newName)}
-        />
-      </div>
+       <CloudSyncPanel
+         onSyncNow={async (config: any) => (window as any).api?.cloud?.syncNow(config)}
+         onListRecords={async (config: any) => (window as any).api?.cloud?.listRecords(config)}
+         onRestore={async (config: any, filename: string) => (window as any).api?.cloud?.restore(config, filename)}
+         onDeleteRecord={async (config: any, filename: string) => (window as any).api?.cloud?.deleteRecord(config, filename)}
+         onBatchDelete={async (config: any, filenames: string[]) => (window as any).api?.cloud?.batchDelete(config, filenames)}
+         onRename={async (config: any, oldName: string, newName: string) => (window as any).api?.cloud?.rename(config, oldName, newName)}
+       />
     </div>
   );
 };
 
 const AttachmentManagementPane: React.FC = () => {
-  const [snapshots, setSnapshots] = useState<any[]>([]);
-  const [stats, setStats] = useState({ sqliteSizeStats: '...', vectorDbStats: '...', mediaCacheStats: '...' });
   const [attachments, setAttachments] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const snaps = await (window as any).api?.archive?.listSnapshots();
-        if (snaps) setSnapshots(snaps);
-        const st = await (window as any).api?.storage?.getStats();
-        if (st) setStats(st);
         const att = await (window as any).api?.attachment?.listAll();
         if (att) setAttachments(att);
       } catch (e) {}
@@ -586,24 +582,7 @@ const AttachmentManagementPane: React.FC = () => {
 
   return (
     <div className="settings-pane">
-      <div className="glass-panel-card">
-        <DataManagementCard 
-          onExportZip={async () => await (window as any).api?.archive?.exportZip()}
-          onImportZip={async (file: string) => await (window as any).api?.archive?.importZip(file)}
-          onPickFile={async () => await (window as any).api?.archive?.pickZip()}
-          snapshots={snapshots}
-        />
-      </div>
-      <div className="glass-panel-card">
-         <StorageSettingsCard 
-             sqliteSizeStats={stats.sqliteSizeStats}
-             vectorDbStats={stats.vectorDbStats}
-             mediaCacheStats={stats.mediaCacheStats}
-             onClearCache={async () => await (window as any).api?.storage?.clearCache()}
-             onVacuumDb={async () => await (window as any).api?.storage?.vacuumDb()}
-         />
-      </div>
-      <div className="glass-panel-card">
+      <div className="attachment-management-wrapper" style={{ marginTop: 16 }}>
          <AttachmentManagementView 
              attachments={attachments}
              onDeleteSelected={async (ids) => await (window as any).api?.attachment?.deleteBatch(ids)}
