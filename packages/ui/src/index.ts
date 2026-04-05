@@ -64,6 +64,7 @@ export * from './web/DeveloperOptionsView/index';
 
 export * from './web/AboutSettingsCard/index';
 export * from './web/AssistantManagementView/index';
+export * from './web/AssistantMatrixCard/index';
 
 // 仅保证 TypeScript 导出正常，真正跨包可能会区分 web / native 导出策略
 

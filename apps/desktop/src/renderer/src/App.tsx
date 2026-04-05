@@ -45,6 +45,8 @@ const GlobalErrorHandler = () => {
   return null;
 };
 
+import { ErrorBoundary } from './ErrorBoundary';
+
 export function App() {
   const locale = useSettingsStore(s => s.locale);
 
@@ -61,6 +63,7 @@ export function App() {
       <DialogProvider>
         <ToastProvider />
         <GlobalErrorHandler />
+        <ErrorBoundary>
         <Routes>
           <Route path="/welcome" element={<OnboardingScreen />} />
           <Route path="/settings/*" element={<SettingsPage />} />
@@ -84,6 +87,7 @@ export function App() {
             <Route path="/assistants/:assistantId/edit" element={<AssistantEditScreen />} />
           </Route>
         </Routes>
+        </ErrorBoundary>
       </DialogProvider>
     </HashRouter>
   );
