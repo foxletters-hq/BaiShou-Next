@@ -71,7 +71,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
              <img className={styles.avatarImg} src={profile.avatarPath} alt="avatar" />
            ) : (
              <div className={styles.avatarFallback}>
-               {profile.nickname.charAt(0).toUpperCase() || 'A'}
+               {(profile.nickname || '白').charAt(0).toUpperCase()}
              </div>
            )}
            <div className={styles.avatarHover}>
@@ -88,12 +88,11 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
 
         <div className={styles.infoZone}>
            <div className={styles.nameRow}>
-             <h2 className={styles.nickname}>{profile.nickname}</h2>
+             <h2 className={styles.nickname}>{profile.nickname || '白守用户'}</h2>
              <button className={styles.editBtn} onClick={handleEditNickname} title={t('profile.edit_nickname', '修改昵称')}>
                ✎
              </button>
            </div>
-           <p className={styles.desc}>{t('profile.avatar_desc', '点击当前头像进行上传更改，支持图片的自定义缩放编辑。')}</p>
         </div>
       </div>
 

@@ -31,7 +31,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           </span>
           <span className="settings-list-tile-subtitle">
             {config.mcpEnabled
-              ? t('settings.mcp_running', 'MCP 服务运行中，端口: {{port}}', { port: config.mcpPort })
+              ? t('settings.mcp_running', 'MCP 服务运行中，端口: $port').replace('$port', config.mcpPort.toString())
               : t('settings.mcp_desc', '将数据以 MCP 协议提供给外部 IDE 或智能应用')}
           </span>
         </div>

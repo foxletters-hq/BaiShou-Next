@@ -179,7 +179,7 @@ export const SettingsPage: React.FC = () => {
 
 const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
   const { t } = useTranslation();
-  const { profile, fetchProfile } = useUserProfileStore() as any;
+  const { profile, loadProfile } = useUserProfileStore() as any;
   const [vaults, setVaults] = useState<any[]>([]);
   const [activeVault, setActiveVault] = useState<any>(null);
   
@@ -191,7 +191,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
   });
 
   useEffect(() => {
-    if (fetchProfile) fetchProfile();
+    if (loadProfile) loadProfile();
     const fetchVaults = async () => {
       try {
         const vList = await (window as any).api?.vault?.list();
@@ -212,7 +212,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
 
     fetchVaults();
     fetchStorage();
-  }, [fetchProfile]);
+  }, [loadProfile]);
 
   return (
     <div className="settings-pane">
@@ -223,7 +223,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
            onSave={async (p) => {
              if (typeof window !== 'undefined' && window.electron) {
                await window.electron.ipcRenderer.invoke('profile:save', p);
-               if (fetchProfile) await fetchProfile();
+               if (loadProfile) await loadProfile();
              }
            }}
          />
@@ -235,7 +235,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
            onChange={async (newProfile) => {
              if (typeof window !== 'undefined' && window.electron) {
                await window.electron.ipcRenderer.invoke('profile:save', newProfile);
-               if (fetchProfile) await fetchProfile();
+               if (loadProfile) await loadProfile();
              }
            }}
          />
