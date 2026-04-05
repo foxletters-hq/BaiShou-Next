@@ -5,7 +5,7 @@
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.3); /* Lighter backdrop */
-  z-index: 99999;
+  z-index: 1100;
   display: flex;
   justify-content: center;
   align-items: center;

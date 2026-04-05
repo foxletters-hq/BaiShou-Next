@@ -62,7 +62,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     <DialogContext.Provider value={{ alert, confirm, prompt }}>
       {children}
       {state.isOpen && (
-        <Modal isOpen={state.isOpen} onClose={() => closeDialog(state.type === 'prompt' ? null : false)} title={state.title || '提示'}>
+        <Modal isOpen={state.isOpen} onClose={() => closeDialog(state.type === 'prompt' ? null : false)} title={state.title}>
           <div className={styles.dialogContent}>
             <div className={styles.message}>{state.message}</div>
             

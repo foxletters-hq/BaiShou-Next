@@ -1,16 +1,16 @@
 .button {
-  font-family: var(--font-family);
+  font-family: var(--font-family, sans-serif);
   border: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm);
-  border-radius: var(--radius-full);
-  padding: var(--spacing-sm) var(--spacing-lg);
+  gap: 8px;
+  border-radius: 9999px;
+  padding: 10px 24px;
   font-size: 14px;
-  font-weight: 500;
-  transition: all var(--duration-fast) ease-in-out;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
 }
 
 .button:disabled {
@@ -19,23 +19,25 @@
 }
 
 .elevated {
-  background-color: var(--color-primary);
-  color: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--color-primary, #5BA8F5);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
 }
 
 .elevated:hover:not(:disabled) {
   opacity: 0.9;
-  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.4);
 }
 
 .text {
   background-color: transparent;
-  color: var(--color-primary);
+  color: var(--text-secondary, #475569);
 }
 
 .text:hover:not(:disabled) {
-  background-color: var(--bg-surface-normal);
+  background-color: var(--bg-surface-normal, #f2f2f2);
+  color: var(--text-primary, #1a1a1a);
 }
 
 .outlined {
