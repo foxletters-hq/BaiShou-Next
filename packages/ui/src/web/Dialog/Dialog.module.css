@@ -1,15 +1,16 @@
 .dialogContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-width: 320px;
+  gap: 12px;
+  min-width: 340px;
 }
 
 .message {
-  font-size: 14px;
-  color: var(--text-primary);
-  line-height: 1.5;
+  font-size: 15px;
+  color: var(--text-primary, #1a1a1a);
+  line-height: 1.6;
   white-space: pre-wrap;
+  font-weight: 500;
 }
 
 .promptInput {
@@ -19,6 +20,6 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 12px;
+  margin-top: 4px;
 }

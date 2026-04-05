@@ -4,39 +4,39 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.1);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: fadeIn var(--duration-fast) ease-out;
-  backdrop-filter: blur(2px);
 }
 
 .modal {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  min-width: 320px;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--bg-surface-highest, #e8e8e8);
+  color: var(--text-primary, #1a1a1a);
+  border-radius: var(--radius-xl, 20px);
+  padding: 24px 28px;
+  min-width: 400px;
   max-width: 90vw;
   max-height: 90vh;
-  box-shadow: var(--shadow-md);
-  font-family: var(--font-family);
-  animation: scaleUp var(--duration-normal) cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  font-family: var(--font-family, sans-serif);
+  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;
 }
 
 .header {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: var(--spacing-md);
-  color: var(--text-primary);
+  margin-bottom: 16px;
+  color: var(--text-primary, #1a1a1a);
 }
 
 .body {
-  font-size: 14px;
-  color: var(--text-secondary);
+  font-size: 15px;
+  color: var(--text-secondary, #475569);
 }
 
 @keyframes fadeIn {

@@ -9,13 +9,12 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input: React.FC<InputProps> = ({ label, error, className = '', ...props }) => {
   return (
     <div className={`${styles.container} ${className}`.trim()}>
+      {label && <label className={styles.label}>{label}</label>}
       <div className={styles.inputWrapper}>
         <input 
           className={`${styles.input} ${error ? styles.hasError : ''}`}
-          placeholder=" " 
           {...props} 
         />
-        {label && <label className={styles.label}>{label}</label>}
       </div>
       {error && <span className={styles.errorText}>{error}</span>}
     </div>
