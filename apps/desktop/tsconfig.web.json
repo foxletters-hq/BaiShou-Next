@@ -11,6 +11,7 @@
     "jsx": "react-jsx",
     "types": [],
     "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"

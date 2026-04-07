@@ -20,13 +20,13 @@ export * from './web/TagInput/index';
 export * from './web/DatePicker/index';
 export * from './web/DiaryEditor/index';
 export * from './web/MarkdownRenderer/index';
-export * from './web/MarkdownToolbar/index';
+
 export * from './web/SummaryCard/index';
 export * from './web/MissingSummaryCard/MissingSummaryCard';
 export * from './web/StatisticCard/index';
 
 // Editor Addons
-export * from './web/MarkdownToolbar/MarkdownToolbar';
+
 export * from './web/DiaryEditorAppBarTitle/DiaryEditorAppBarTitle';
 
 // Dashboard
