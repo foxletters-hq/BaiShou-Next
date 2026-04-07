@@ -52,14 +52,36 @@ export function registerSummaryIPC() {
   });
 
   ipcMain.handle('summary:stats', async () => {
-    // 目前使用空桩实现以阻断报错，日后可替换为真实的探测器调用
-    return {
-      totalDiaryCount: 0,
-      weeklyCount: 0,
-      monthlyCount: 0,
-      quarterlyCount: 0,
-      yearlyCount: 0
-    };
+    try {
+      let totalDiaryCount = 0;
+      try {
+        const { shadowConnectionManager } = require('@baishou/database');
+        const client = shadowConnectionManager.getClient();
+        const result = await client.execute('SELECT COUNT(*) as c FROM journals_index');
+        totalDiaryCount = (result.rows[0]?.c as number) || 0;
+      } catch(e) {
+        // shadow_index table might not be initialized yet
+        console.error('Failed to get shadow_index count', e);
+      }
+
+      const summaries = await getSummaryManager().list();
+      return {
+        totalDiaryCount,
+        weeklyCount: summaries.filter((s:any) => s.type === 'weekly').length,
+        monthlyCount: summaries.filter((s:any) => s.type === 'monthly').length,
+        quarterlyCount: summaries.filter((s:any) => s.type === 'quarterly').length,
+        yearlyCount: summaries.filter((s:any) => s.type === 'yearly').length
+      };
+    } catch (err) {
+      console.error('Failed to calculate summary stats:', err);
+      return {
+        totalDiaryCount: 0,
+        weeklyCount: 0,
+        monthlyCount: 0,
+        quarterlyCount: 0,
+        yearlyCount: 0
+      };
+    }
   });
 
   ipcMain.handle('summary:detect-missing', async () => {

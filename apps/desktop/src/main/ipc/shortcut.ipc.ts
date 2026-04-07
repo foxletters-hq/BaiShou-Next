@@ -1,11 +1,10 @@
 import { ipcMain } from 'electron';
 import { PromptShortcut } from '@baishou/shared';
 import { PromptShortcutRepository } from '@baishou/database';
-import { appDb } from '../db';
-
-const repo = new PromptShortcutRepository(appDb);
-
+import { getAppDb } from '../db';
 export function registerShortcutIPC() {
+  const repo = new PromptShortcutRepository(getAppDb());
+
   ipcMain.handle('shortcuts:get-all', async () => {
     return await repo.getShortcuts();
   });

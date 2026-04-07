@@ -19,6 +19,7 @@ export interface SettingsState {
   themeMode: AppThemeMode;
   useGlassmorphism: boolean;
   locale: string;
+  themeColor: string;
 
   // --- Domain Config Blocks ---
   providers: AIProviderConfig[];
@@ -38,6 +39,7 @@ export interface SettingsActions {
   setThemeMode: (mode: AppThemeMode) => void;
   toggleGlassmorphism: (enabled: boolean) => void;
   setLocale: (locale: string) => void;
+  setThemeColor: (color: string) => void;
 
   // AI 设定异步操作
   loadConfig: () => Promise<void>;
@@ -62,6 +64,7 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
   themeMode: 'system',
   useGlassmorphism: true,
   locale: 'zh',
+  themeColor: '#5BA8F5',
   
   providers: [],
   globalModels: null,
@@ -77,6 +80,7 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
 
   setThemeMode: (themeMode) => set({ themeMode }),
   toggleGlassmorphism: (useGlassmorphism) => set({ useGlassmorphism }),
+  setThemeColor: (themeColor) => set({ themeColor }),
   setLocale: (locale) => {
     set({ locale });
     // 同步更新 i18next 语言，确保所有使用 useTranslation() 的组件立即重渲染

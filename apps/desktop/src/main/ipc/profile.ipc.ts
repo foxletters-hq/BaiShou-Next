@@ -1,11 +1,10 @@
 import { ipcMain } from 'electron';
 import { UserProfileRepository } from '@baishou/database';
-import { appDb } from '../db';
+import { getAppDb } from '../db';
 import { profileService } from '../services/profile.service';
-
-const repo = new UserProfileRepository(appDb);
-
 export function registerProfileIPC() {
+  const repo = new UserProfileRepository(getAppDb());
+
   ipcMain.handle('profile:get-all', async () => {
     return await repo.getProfile();
   });

@@ -7,6 +7,7 @@ import {
   ShadowIndexRepository,
   UpsertShadowIndexPayload,
 } from '@baishou/database';
+import { formatLocalDate, parseDateStr } from '@baishou/shared';
 
 import { IStoragePathService } from '../vault/storage-path.types';
 import { IVaultService } from '../vault/vault.types';
@@ -173,7 +174,8 @@ export class ShadowIndexSyncService {
     const journalBase = await this.pathService.getJournalsBaseDirectory();
     const filePath = this._getJournalFilePath(journalBase, date);
     const dayStr = this._formatDayStr(date);
-    const dateIso = date.toISOString();
+    // DB date 字段统一存 YYYY-MM-DD（本地时区）
+    const dateKey = formatLocalDate(date);
 
     // ── Step 1: 物理文件不存在的孤立检测 ──
     if (!fs.existsSync(filePath)) {
@@ -205,7 +207,7 @@ export class ShadowIndexSyncService {
 
     // ── Step 2: Hash 脏检测 ──
     const currentHash = await this._computeFileHash(filePath);
-    const existingHash = await this.shadowRepo.getHashByDate(dateIso);
+    const existingHash = await this.shadowRepo.getHashByDate(dateKey);
 
     if (existingHash !== null && existingHash === currentHash) {
       // 内容无变化，跳过
@@ -233,7 +235,8 @@ export class ShadowIndexSyncService {
     const payload: UpsertShadowIndexPayload = {
       id: diary.id || undefined,
       filePath: relFilePath,
-      date: diary.date.toISOString(),
+      // date 存 YYYY-MM-DD 本地日期字符串，与文件名一一对应，便于前缀查询
+      date: formatLocalDate(diary.date),
       createdAt: diary.createdAt.toISOString(),
       updatedAt: diary.updatedAt.toISOString(),
       contentHash: currentHash,
@@ -410,20 +413,18 @@ export class ShadowIndexSyncService {
    * 遵循 yyyy/MM/yyyy-MM-dd.md 存储规约
    */
   private _getJournalFilePath(journalBase: string, date: Date): string {
-    const year = date.getUTCFullYear().toString();
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = date.getUTCDate().toString().padStart(2, '0');
-    return path.join(journalBase, year, month, `${year}-${month}-${day}.md`);
+    // 使用本地时区（对齐原版 Flutter DateFormat）
+    const dateStr = formatLocalDate(date);
+    const [year, month] = dateStr.split('-');
+    return path.join(journalBase, year!, month!, `${dateStr}.md`);
   }
 
   /**
-   * 格式化日期为 yyyy-MM-dd 字符串
+   * 格式化日期为 YYYY-MM-DD 字符串（本地时区）
+   * 用于文件前缀查询与日志输出
    */
   private _formatDayStr(date: Date): string {
-    const year = date.getUTCFullYear();
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = date.getUTCDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return formatLocalDate(date);
   }
 
   /**
@@ -466,9 +467,9 @@ export class ShadowIndexSyncService {
       tags = tagStr.split(',').map(s => s.trim()).filter(Boolean);
     }
 
-    // 解析日期
+    // 解析日期：使用本地时区（禁止 new Date('YYYY-MM-DD') 会被解析为 UTC）
     const dateStr = meta['date'];
-    const parsedDate = dateStr ? new Date(dateStr + 'T00:00:00.000Z') : fallbackDate;
+    const parsedDate = dateStr ? parseDateStr(dateStr) : fallbackDate;
 
     // 解析媒体路径
     let mediaPaths: string[] = [];

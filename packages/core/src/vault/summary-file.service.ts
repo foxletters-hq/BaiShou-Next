@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { IStoragePathService } from './storage-path.types';
-import { SummaryType } from '@baishou/shared';
+import { SummaryType, formatLocalDate } from '@baishou/shared';
 
 export class SummaryFileService {
   constructor(private readonly pathProvider: IStoragePathService) {}
@@ -20,8 +20,9 @@ export class SummaryFileService {
    * Monthly: 2026-03.md
    */
   private buildFileName(type: SummaryType, startDate: Date): string {
-    const year = startDate.getUTCFullYear().toString();
-    const month = (startDate.getUTCMonth() + 1).toString().padStart(2, '0');
+    // 使用本地时区提取年月日
+    const year = startDate.getFullYear().toString();
+    const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
 
     switch (type) {
       case SummaryType.monthly:
@@ -29,20 +30,20 @@ export class SummaryFileService {
       case SummaryType.yearly:
         return `${year}.md`;
       case SummaryType.quarterly: {
-        const quarter = Math.floor(startDate.getUTCMonth() / 3) + 1;
+        const quarter = Math.floor(startDate.getMonth() / 3) + 1;
         return `${year}-Q${quarter}.md`;
       }
       case SummaryType.weekly: {
-        // 近似计算白守规则：以周四所在周为锚点
-        const d = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
-        const dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-        const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
-        return `${year}-W${weekNo.toString().padStart(2, '0')}.md`;
+        // ISO 周数算法：以周四所在周为锄点（纯数学计算，募时区int）
+        const d = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const dayNum = d.getDay() || 7;
+        d.setDate(d.getDate() + 4 - dayNum);
+        const yearStart = new Date(d.getFullYear(), 0, 1);
+        const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+        return `${d.getFullYear()}-W${weekNo.toString().padStart(2, '0')}.md`;
       }
       default:
-        return `${year}-${month}-${startDate.getUTCDate().toString().padStart(2, '0')}.md`;
+        return `${formatLocalDate(startDate)}.md`;
     }
   }
 
@@ -117,32 +118,34 @@ export class SummaryFileService {
     if (isNaN(year)) return null;
 
     if (type === SummaryType.yearly) {
-      return { startDate: new Date(Date.UTC(year, 0, 1)), endDate: new Date(Date.UTC(year, 11, 31, 23, 59, 59)) };
+      // 全年：1.1 — 12.31
+      return {
+        startDate: new Date(year, 0, 1),
+        endDate: new Date(year, 11, 31, 23, 59, 59),
+      };
     }
     if (type === SummaryType.monthly && parts.length === 2) {
-      const monthStr = parts[1] ?? '';
-      const month = parseInt(monthStr, 10) - 1;
-      return { 
-        startDate: new Date(Date.UTC(year, month, 1)), 
-        endDate: new Date(Date.UTC(year, month + 1, 0, 23, 59, 59)) 
+      const month = parseInt(parts[1] ?? '', 10) - 1;
+      return {
+        startDate: new Date(year, month, 1),
+        endDate: new Date(year, month + 1, 0, 23, 59, 59),
       };
     }
     if (type === SummaryType.quarterly && parts.length === 2 && (parts[1] || '').startsWith('Q')) {
-      const qStr = parts[1] ?? '';
-      const q = parseInt(qStr.substring(1), 10);
+      const q = parseInt((parts[1] ?? '').substring(1), 10);
       const startMonth = (q - 1) * 3;
-      return { 
-        startDate: new Date(Date.UTC(year, startMonth, 1)), 
-        endDate: new Date(Date.UTC(year, startMonth + 3, 0, 23, 59, 59)) 
+      return {
+        startDate: new Date(year, startMonth, 1),
+        endDate: new Date(year, startMonth + 3, 0, 23, 59, 59),
       };
     }
     if (type === SummaryType.weekly && parts.length === 2 && (parts[1] || '').startsWith('W')) {
-      const wStr = parts[1] ?? '';
-      const week = parseInt(wStr.substring(1), 10);
-      const simpleDate = new Date(Date.UTC(year, 0, 4 + (week - 1) * 7));
-      const dayOfWeek = simpleDate.getUTCDay();
-      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
-      const start = new Date(Date.UTC(simpleDate.getUTCFullYear(), simpleDate.getUTCMonth(), simpleDate.getUTCDate() - diff, 0, 0, 0));
+      const week = parseInt((parts[1] ?? '').substring(1), 10);
+      // 以 ISO 周界定周一和周日（本地时区）
+      const simpleDate = new Date(year, 0, 4 + (week - 1) * 7);
+      const dayOfWeek = simpleDate.getDay();
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const start = new Date(simpleDate.getFullYear(), simpleDate.getMonth(), simpleDate.getDate() - diff, 0, 0, 0);
       const end = new Date(start.getTime() + 6 * 86400000 + 23 * 3600000 + 59 * 60000 + 59000);
       return { startDate: start, endDate: end };
     }

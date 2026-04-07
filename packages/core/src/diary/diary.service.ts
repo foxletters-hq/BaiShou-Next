@@ -2,7 +2,7 @@ import { FileSyncService } from './file-sync.service';
 import { VaultIndexService } from './vault-index.service';
 import { ShadowIndexSyncService } from '../shadow-index/shadow-index-sync.service';
 import { ShadowIndexRepository } from '@baishou/database';
-import { CreateDiaryInput, UpdateDiaryInput, Diary, DiaryMeta } from '@baishou/shared';
+import { CreateDiaryInput, UpdateDiaryInput, Diary, DiaryMeta, formatLocalDate, parseDateStr } from '@baishou/shared';
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types';
 
 /**
@@ -57,10 +57,7 @@ export class DiaryService {
     return finalDiary;
   }
 
-  // 辅助函数，对齐原版的 fmt.format(date)
-  private formatDateString(date: Date): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }
+  // formatDateString 已移除，全链路统一使用 @baishou/shared 的 formatLocalDate
 
   async update(id: number, input: UpdateDiaryInput): Promise<Diary> {
     // 使用影子索引查询要修改的文件的历史日历
@@ -70,7 +67,8 @@ export class DiaryService {
     }
     
     const sdStr = String(existingShadow.date);
-    const existingDate = sdStr.includes('T') ? new Date(sdStr) : new Date(sdStr + 'T00:00:00.000Z');
+    // DB date 存 YYYY-MM-DD，用 parseDateStr 解析为本地时区 Date
+    const existingDate = parseDateStr(sdStr.split('T')[0]!);
 
     // 尝试拉出物理正本文件
     const existingDiary = await this.fileSync.readJournal(existingDate);
@@ -80,18 +78,22 @@ export class DiaryService {
     }
 
     // 确保 input.date 是 Date 对象（前端 IPC 传递可能会变成 string）
-    const inputDate = input.date ? (input.date instanceof Date ? input.date : new Date(input.date as any)) : undefined;
+    const inputDate = input.date
+      ? (input.date instanceof Date ? input.date : parseDateStr(String(input.date).split('T')[0]!))
+      : undefined;
 
-    // 比对日期字符串（对标原版 oldDateStr != fmt.format(date)）避免跨时区毫秒比较的 BUG
-    const existingDateStr = this.formatDateString(existingDate);
-    const inputDateStr = inputDate ? this.formatDateString(inputDate) : existingDateStr;
+    // 比对日期字符串（对齐原版 oldDateStr != fmt.format(date)）
+    const existingDateStr = formatLocalDate(existingDate);
+    const inputDateStr = inputDate ? formatLocalDate(inputDate) : existingDateStr;
     const isDateJumped = inputDateStr !== existingDateStr;
 
     // 检查日期跳转时的覆盖合并
+    let conflictId: number | undefined;
     if (inputDate && isDateJumped) {
       const conflict = await this.fileSync.readJournal(inputDate);
       if (conflict) {
-        throw new DiaryDateConflictError(inputDate);
+        this._mergeDiaries(input, conflict);
+        conflictId = conflict.id; // 保留目标（存量文件）的主键，防止孤儿或者冲撞
       }
       
       try {
@@ -102,7 +104,8 @@ export class DiaryService {
     }
 
     // 模拟数据落盘（此时文件指纹一定会变动）
-    const mergedDiaryToSave: Diary = { ...existingDiary, ...input, id: id, updatedAt: new Date() };
+    const finalId = conflictId || id;
+    const mergedDiaryToSave: Diary = { ...existingDiary, ...input, id: finalId, updatedAt: new Date() };
     if (inputDate) mergedDiaryToSave.date = inputDate;
     await this.fileSync.writeJournal(mergedDiaryToSave);
 
@@ -132,8 +135,7 @@ export class DiaryService {
   async delete(id: number): Promise<void> {
     const existingShadow = await this.shadowRepo.findById(id);
     if (existingShadow) {
-      const sdStr = String(existingShadow.date);
-      const existingDate = sdStr.includes('T') ? new Date(sdStr) : new Date(sdStr + 'T00:00:00.000Z');
+      const existingDate = parseDateStr(String(existingShadow.date).split('T')[0]!);
       await this.fileSync.deleteJournalFile(existingDate);
       
       // 触发脏检测将会使其判定为孤立索引并级联删除向量、重置一切缓存
@@ -146,14 +148,20 @@ export class DiaryService {
   async findById(id: number): Promise<Diary | null> {
     const shadow = await this.shadowRepo.findById(id);
     if (!shadow) return null;
-    const sdStr = String(shadow.date);
-    const date = sdStr.includes('T') ? new Date(sdStr) : new Date(sdStr + 'T00:00:00.000Z');
+    const date = parseDateStr(String(shadow.date).split('T')[0]!);
     return this.fileSync.readJournal(date);
   }
 
   async findByDate(date: Date): Promise<Diary | null> {
     // 穿透底层：真相直接来在物理文件
-    return this.fileSync.readJournal(date);
+    const diary = await this.fileSync.readJournal(date);
+    
+    // 补救机制：如果物理文件遗漏了头部属性的 ID
+    if (diary && !diary.id) {
+       const shadow = await this.shadowRepo.findByDate(formatLocalDate(date));
+       if (shadow) diary.id = shadow.id;
+    }
+    return diary;
   }
 
   async listAll(options?: { limit?: number; offset?: number }): Promise<DiaryMeta[]> {
@@ -165,10 +173,11 @@ export class DiaryService {
       }
       return {
          id: s.id,
-         date: new Date(s.date + 'T00:00:00.000Z'),
+         // DB date 字段存 YYYY-MM-DD，用 parseDateStr 解析为本地时区 Date
+         date: parseDateStr(s.date.split('T')[0]!),
          preview: s.rawContent ? s.rawContent.substring(0, 500) : "",
          tags: parsedTags,
-         updatedAt: new Date(s.updatedAt + 'T00:00:00.000Z'),
+         updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
       };
     });
   }
@@ -180,5 +189,38 @@ export class DiaryService {
 
   async count(): Promise<number> {
     return this.shadowRepo.count();
+  }
+
+  /**
+   * SOLID: 单一职责，处理由于日期飞跃造成的覆盖冲撞时，对文本和内部属性的安全合并
+   * @param source 正在迁移的原件更新负荷
+   * @param target 目标日期的驻留文件体
+   */
+  private _mergeDiaries(source: UpdateDiaryInput, target: Diary): void {
+    const oldContent = (target.content || '').trimEnd();
+    const newContent = (source.content || '').trimEnd();
+    
+    // 合流机制：如果目标已有内容，用两个空行追加。
+    source.content = oldContent ? `${oldContent}\n\n${newContent}` : newContent;
+
+    // 标签去重归并
+    const mergedTags = new Set<string>();
+    const parseTags = (t: any): string[] => {
+      if (!t) return [];
+      if (Array.isArray(t)) return t;
+      if (typeof t === 'string') return t.split(',').map(s => s.trim()).filter(Boolean);
+      return [];
+    };
+    
+    parseTags(target.tags).forEach(t => mergedTags.add(t));
+    parseTags(source.tags).forEach(t => mergedTags.add(t));
+    source.tags = Array.from(mergedTags).join(',');
+    
+    // 其他必要元数据如果有丢失则补充
+    source.weather = source.weather ?? target.weather;
+    source.mood = source.mood ?? target.mood;
+    source.location = source.location ?? target.location;
+    source.locationDetail = source.locationDetail ?? target.locationDetail;
+    source.isFavorite = source.isFavorite ?? target.isFavorite;
   }
 }

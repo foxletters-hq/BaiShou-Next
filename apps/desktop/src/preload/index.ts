@@ -122,6 +122,25 @@ export const api = {
     list: (options?: any) => ipcRenderer.invoke('summary:list', options),
   },
 
+  // RAG System
+  rag: {
+    getStats: () => ipcRenderer.invoke('rag:get-stats'),
+    detectDimension: () => ipcRenderer.invoke('rag:detect-dimension'),
+    clearDimension: () => ipcRenderer.invoke('rag:clear-dimension'),
+    triggerBatchEmbed: () => ipcRenderer.invoke('rag:trigger-batch-embed'),
+    addManualMemory: (text: string) => ipcRenderer.invoke('rag:add-manual-memory', text),
+    clearAll: () => ipcRenderer.invoke('rag:clear-all'),
+    triggerMigration: () => ipcRenderer.invoke('rag:trigger-migration'),
+    queryEntries: (params: any) => ipcRenderer.invoke('rag:query-entries', params),
+    deleteEntry: (id: string) => ipcRenderer.invoke('rag:delete-entry', id),
+    editEntry: (params: { embeddingId: string, newText: string }) => ipcRenderer.invoke('rag:edit-entry', params),
+    onRagProgress: (callback: (state: any) => void) => {
+      const handler = (_: any, state: any) => callback(state);
+      ipcRenderer.on('agent:rag-progress', handler);
+      return () => ipcRenderer.off('agent:rag-progress', handler);
+    }
+  },
+
   // LAN Sync (Phase B)
   lan: {
     startBroadcasting: () => ipcRenderer.invoke('lan:startBroadcasting'),

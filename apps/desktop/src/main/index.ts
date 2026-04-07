@@ -12,6 +12,7 @@ import { registerDiaryIPC } from './ipc/diary.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
 import { registerStorageIPC } from './ipc/storage.ipc'
+import { registerRagIPC } from './ipc/rag.ipc'
 import { installDatabaseSchema, SettingsRepository, connectionManager } from '@baishou/database'
 import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
@@ -148,6 +149,9 @@ app.whenReady().then(async () => {
     
     // Register Storage IPC
     registerStorageIPC()
+
+    // Register RAG IPC
+    registerRagIPC()
     
     createWindow()
 
