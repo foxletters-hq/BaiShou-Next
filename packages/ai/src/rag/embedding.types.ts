@@ -54,4 +54,5 @@ export interface IEmbeddingConfig {
   getGlobalEmbeddingProviderId(): string;
   getGlobalEmbeddingDimension(): number;
   setGlobalEmbeddingDimension(dimension: number): Promise<void>;
+  getProviderInstance(): Promise<any>;
 }

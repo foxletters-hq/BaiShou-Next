@@ -51,15 +51,19 @@ interface RagMemoryViewProps {
   onSearch?: (query: string) => void;
   onDeleteEntry?: (id: string) => Promise<void>;
   onEditEntry?: (entry: RagEntry) => Promise<void>;
+  onNavigateToConfig?: () => void;
+  onDetectDimension?: () => Promise<void>;
 }
 
 export const RagMemoryView: React.FC<RagMemoryViewProps> = ({ 
   config, stats, ragState, hasMismatchModel, embeddingModelId, entries,
   onChange, onClearDimension, onBatchEmbed, onAddManualMemory, 
-  onTriggerMigration, onClearAll, onSearch, onDeleteEntry, onEditEntry 
+  onTriggerMigration, onClearAll, onSearch, onDeleteEntry, onEditEntry,
+  onNavigateToConfig, onDetectDimension
 }) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
@@ -123,17 +127,34 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         <div className={`${styles.statChip} ${styles.chipGreen}`}>
           <span className={styles.chipIcon}><MdMemory size={14} /></span>
           <span className={styles.chipLabel}>模型:</span>
-          <span className={styles.chipStrong}>{embeddingModelId || 'Unassigned'}</span>
+          {embeddingModelId ? (
+            <span className={styles.chipStrong}>{embeddingModelId}</span>
+          ) : (
+            <span 
+              className={styles.chipStrong} 
+              style={{ cursor: 'pointer', textDecoration: 'underline', opacity: 0.9 }}
+              onClick={onNavigateToConfig}
+            >
+              {t('settings.rag_model_unassigned', '未配置(点击跳转)')}
+            </span>
+          )}
         </div>
         <div className={`${styles.statChip} ${styles.chipGrey}`}>
           <span className={styles.chipIcon}><MdStorage size={14} /></span>
           <span className={styles.chipLabel}>维度:</span>
           <span className={styles.chipStrong}>{stats.currentDimension > 0 ? stats.currentDimension : '---'}</span>
         </div>
-        <div className={`${styles.statChip} ${styles.chipGreenLight}`}>
+        <div 
+          className={`${styles.statChip} ${styles.chipGreenLight}`}
+          style={{ 
+            cursor: isBusy ? 'not-allowed' : 'pointer', 
+            userSelect: 'none',
+            opacity: isBusy ? 0.5 : 1
+          }}
+          onClick={isBusy ? undefined : onDetectDimension}
+        >
           <span className={styles.chipIcon}><MdCheckCircleOutline size={14} /></span>
-          <span className={styles.chipLabel}>自动检测:</span>
-          <span className={styles.chipStrong}>{stats.currentDimension > 0 ? `${stats.currentDimension}维` : '---'}</span>
+          <span className={styles.chipStrong}>{t('settings.rag_detect_dimension', '检测维度')}</span>
           <span className={styles.chipActionIcon}><MdRefresh size={14} /></span>
         </div>
       </div>
@@ -229,7 +250,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
       <div className={styles.entriesListContainer}>
         {entries.length === 0 ? (
           <div className={styles.emptyStateContainer}>
-            <div className={styles.emptyIconBig}><MdMemory size={64} /></div>
+            <div className={styles.emptyIconBig}><MdAutoStories size={64} /></div>
             <div className={styles.emptyTitleLarge}>{searchQuery ? t('common.no_search_result', '没有找到相关结果') : t('common.no_content', '暂无内容')}</div>
             <div className={styles.emptyDescSub}>{t('settings.rag_empty_desc', '当 AI 阅读日记或生成内容时，底层向量数据将在这里自动生成并被管理。')}</div>
           </div>
@@ -249,9 +270,26 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
                        <span>{formatDate(e.createdAt)}</span>
                     </div>
                  </div>
-                 <div className={styles.memoryEntryActionsBlock}>
-                    <button className={styles.memoryMoreBtn} onClick={() => onEditEntry && onEditEntry(e)}><MdMoreVert size={20} /></button>
-                 </div>
+                  <div className={styles.memoryEntryActionsBlock} style={{ position: 'relative' }}>
+                     <button className={styles.memoryMoreBtn} onClick={() => setActiveMenuId(activeMenuId === e.embeddingId ? null : e.embeddingId)}>
+                        <MdMoreVert size={20} />
+                     </button>
+                     {activeMenuId === e.embeddingId && (
+                       <>
+                         <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={(ev) => { ev.stopPropagation(); setActiveMenuId(null); }} />
+                         <div style={{ position: 'absolute', right: 0, top: 32, background: 'var(--bg-color-primary, #fff)', border: '1px solid var(--border-color, #eee)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, minWidth: 100, overflow: 'hidden' }}>
+                            <div style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: 'var(--text-color, #333)', transition: 'background 0.2s', whiteSpace: 'nowrap', position: 'relative', zIndex: 11 }} 
+                                 onMouseEnter={(ev) => (ev.currentTarget.style.background = 'var(--bg-color-secondary, #f5f5f5)')}
+                                 onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
+                                 onClick={() => { setActiveMenuId(null); onEditEntry && onEditEntry(e); }}>{t('common.edit', '编辑片段')}</div>
+                            <div style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#ef4444', transition: 'background 0.2s', whiteSpace: 'nowrap', position: 'relative', zIndex: 11 }} 
+                                 onMouseEnter={(ev) => (ev.currentTarget.style.background = 'var(--bg-color-secondary, #f5f5f5)')}
+                                 onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
+                                 onClick={() => { setActiveMenuId(null); onDeleteEntry && onDeleteEntry(e.embeddingId); }}>{t('common.delete', '删除片段')}</div>
+                         </div>
+                       </>
+                     )}
+                  </div>
               </div>
             ))}
           </div>

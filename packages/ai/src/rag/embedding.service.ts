@@ -11,7 +11,7 @@ const logger = {
   debug: (msg: string, meta?: any) => console.debug(`DEBUG: ${msg}`, meta),
 };
 
-import { AIProviderRegistry } from '../providers/provider.registry';
+
 import { IEmbeddingConfig, IEmbeddingStorage, ChunkResult, MigrationProgress } from './embedding.types';
 
 export class EmbeddingService {
@@ -42,9 +42,7 @@ export class EmbeddingService {
 
     try {
       const modelId = this.config.getGlobalEmbeddingModelId();
-      const providerId = this.config.getGlobalEmbeddingProviderId();
-      const registry = AIProviderRegistry.getInstance();
-      const provider = registry.getProvider(providerId);
+      const provider = await this.config.getProviderInstance();
 
       if (!provider) return 0;
 
@@ -57,9 +55,9 @@ export class EmbeddingService {
       await this.config.setGlobalEmbeddingDimension(dimension);
       logger.debug(`EmbeddingService: Detected dimension ${dimension} (${modelId})`);
       return dimension;
-    } catch (e) {
+    } catch (e: any) {
       logger.error('EmbeddingService: Dimension detection failed', { error: e });
-      return 0;
+      throw new Error(`连接或鉴权失败: ${e.message || String(e)}`);
     }
   }
 
@@ -68,8 +66,7 @@ export class EmbeddingService {
 
     try {
       const modelId = this.config.getGlobalEmbeddingModelId();
-      const providerId = this.config.getGlobalEmbeddingProviderId();
-      const provider = AIProviderRegistry.getInstance().getProvider(providerId);
+      const provider = await this.config.getProviderInstance();
       if (!provider) return;
 
       const aiModel = provider.getEmbeddingModel(modelId);
@@ -110,8 +107,7 @@ export class EmbeddingService {
     if (!this.isConfigured) return null;
     try {
       const modelId = this.config.getGlobalEmbeddingModelId();
-      const providerId = this.config.getGlobalEmbeddingProviderId();
-      const provider = AIProviderRegistry.getInstance().getProvider(providerId);
+      const provider = await this.config.getProviderInstance();
       if (!provider) return null;
 
       const aiModel = provider.getEmbeddingModel(modelId);
@@ -131,8 +127,7 @@ export class EmbeddingService {
     if (!this.isConfigured || !params.newText.trim()) return;
 
     const modelId = this.config.getGlobalEmbeddingModelId();
-    const providerId = this.config.getGlobalEmbeddingProviderId();
-    const provider = AIProviderRegistry.getInstance().getProvider(providerId);
+    const provider = await this.config.getProviderInstance();
     if (!provider) return;
 
     const aiModel = provider.getEmbeddingModel(modelId);
@@ -170,8 +165,7 @@ export class EmbeddingService {
 
     try {
       const modelId = this.config.getGlobalEmbeddingModelId();
-      const providerId = this.config.getGlobalEmbeddingProviderId();
-      const provider = AIProviderRegistry.getInstance().getProvider(providerId);
+      const provider = await this.config.getProviderInstance();
       if (!provider) return;
 
       const aiModel = provider.getEmbeddingModel(modelId);
@@ -271,8 +265,7 @@ export class EmbeddingService {
         return;
       }
       const modelId = this.config.getGlobalEmbeddingModelId();
-      const providerId = this.config.getGlobalEmbeddingProviderId();
-      const provider = AIProviderRegistry.getInstance().getProvider(providerId);
+      const provider = await this.config.getProviderInstance();
       if (!provider) {
         yield { total: 0, completed: 0, status: '供应商未找到' };
         return;
@@ -324,8 +317,7 @@ export class EmbeddingService {
         return;
       }
       const modelId = this.config.getGlobalEmbeddingModelId();
-      const providerId = this.config.getGlobalEmbeddingProviderId();
-      const provider = AIProviderRegistry.getInstance().getProvider(providerId);
+      const provider = await this.config.getProviderInstance();
       if (!provider) {
         yield { total: 0, completed: 0, status: '供应商未找到' };
         return;
