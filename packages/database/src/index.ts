@@ -7,7 +7,7 @@ export * from './schema/compression-snapshots';
 export * from './schema/vectors';
 export * from './schema/system-settings';
 export * from './schema/shadow-index';
-export * from './schema/migrations';
+export * from './schema/migration-table';
 
 export * from './repositories/diary.repository';
 export * from './repositories/agent.repository';
