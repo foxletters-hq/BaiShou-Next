@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Calendar, Edit, Trash2, AlignJustify } from 'lucide-react';
+import { Search, Plus, Calendar, Trash2, Edit3, CalendarCheck } from 'lucide-react';
 import { useDiaryData } from './hooks/useDiaryData';
+import { motion } from 'framer-motion';
 import './DiaryPage.css';
 
 // 星期几名称
@@ -11,7 +12,7 @@ const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月',
 
 // 标签颜色映射
 const TAG_COLORS = ['tag-blue', 'tag-green', 'tag-orange', 'tag-purple'] as const;
-import { YearMonthPicker } from '@baishou/ui';
+import { YearMonthPicker, useToast } from '@baishou/ui';
 
 function getTagColor(tag: string): string {
   const sum = tag.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -44,7 +45,60 @@ export const DiaryPage: React.FC = () => {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
-  const { entries } = useDiaryData();
+  const { entries, loadEntries } = useDiaryData();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const toast = useToast();
+
+  const performDelete = async () => {
+    if (deletingId === null) return;
+    try {
+      await (window as any).api.diary.delete(deletingId);
+      loadEntries();
+      setDeletingId(null);
+      toast.showSuccess(t('diary.delete_success', '日记已删除'));
+    } catch (e) {
+      console.error('Delete failed', e);
+      toast.showError(t('diary.delete_failed', '删除失败'));
+    }
+  };
+
+  // 查找今天的日记条目（参考原版 BaiShou todayMeta 逻辑）
+  const todayEntry = useMemo(() => {
+    if (!entries) return null;
+    const today = new Date();
+    return entries.find((e: any) => {
+      const d = e.date ? new Date(e.date) : null;
+      return d && d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate();
+    }) || null;
+  }, [entries]);
+
+  // 原版 BaiShou 写日记逻辑：有今天的就用追加模式打开，没有就新建
+  const handleEditToday = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
+    if (todayEntry) {
+      // 追加模式：带 append=1 参数，编辑器会在内容末尾追加时间戳
+      navigate(`/diary/${dateStr}?append=1`);
+    } else {
+      // 本日首开模式
+      navigate(`/diary/${dateStr}`);
+    }
+  };
+
+  const handleAddNew = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
+    // 新建模式（无参数不传 append，直接拉起纯净画板）
+    navigate(`/diary/new?date=${dateStr}`);
+  };
 
   // Click outside closed natively by YearMonthPicker now
 
@@ -54,10 +108,21 @@ export const DiaryPage: React.FC = () => {
     if (!entries || entries.length === 0) return [];
     
     let filtered = [...entries].map(e => {
-      const d = new Date(e.date || e.createdAt || Date.now());
+      let parsedDate = new Date();
+      if (e.date) {
+        const pd = new Date(e.date);
+        if (!isNaN(pd.getTime())) parsedDate = pd;
+      }
+      if (isNaN(parsedDate.getTime()) || !e.date) {
+        if (e.createdAt) {
+          const cd = new Date(e.createdAt);
+          if (!isNaN(cd.getTime())) parsedDate = cd;
+        }
+      }
+
       return {
         id: e.id,
-        date: d,
+        date: parsedDate,
         content: e.content || '',
         tags: e.tags || [],
         preview: e.content?.substring(0, 500) || ''
@@ -88,7 +153,13 @@ export const DiaryPage: React.FC = () => {
   }, [entries, selectedMonth, searchQuery]);
 
   return (
-    <div className="diary-page-container">
+    <motion.div 
+      className="diary-page-container"
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{ duration: 0.2 }}
+    >
       {/* AppBar */}
       <div className="diary-appbar">
         <div className="diary-appbar-left">
@@ -113,16 +184,21 @@ export const DiaryPage: React.FC = () => {
             />
           </div>
 
-          <button className="diary-calendar-btn" title={t('diary.view_calendar', '日历')}>
-            <Calendar size={18} />
+
+          <button 
+            className="diary-today-btn"
+            onClick={handleEditToday}
+            title={todayEntry ? t('settings.edit_today_tooltip', '编辑今日记录') : t('settings.write_today_tooltip', '记录今天')}
+          >
+            {todayEntry ? <Edit3 size={18} /> : <CalendarCheck size={18} />}
           </button>
 
           <button 
-            className="diary-add-btn" 
-            onClick={() => navigate('/diary/new')}
+            className="diary-add-btn"
+            onClick={handleAddNew}
           >
             <Plus size={18} />
-            {t('diary.write_diary', '写日记')}
+            {t('settings.write_diary_button', '写日记')}
           </button>
         </div>
       </div>
@@ -130,7 +206,7 @@ export const DiaryPage: React.FC = () => {
       {/* 内容区 */}
       {filteredEntries.length === 0 ? (
         <div className="diary-empty-state">
-          <Edit size={80} className="diary-empty-icon" />
+          <Edit3 size={56} className="diary-empty-icon" />
           <div className="diary-empty-text">
             {selectedMonth
               ? t('diary.no_diaries_month', '本月暂无日记')
@@ -157,27 +233,52 @@ export const DiaryPage: React.FC = () => {
         <div className="diary-grid">
           <div className="diary-grid-inner">
             {filteredEntries.map((entry) => (
-              <DiaryCard
-                key={entry.id}
-                entry={entry}
-                onClick={() => {
-                  const dateStr = new Date(entry.date.getTime() - entry.date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                  navigate(`/diary/${dateStr}`);
-                }}
-                onEdit={() => {
-                  const dateStr = new Date(entry.date.getTime() - entry.date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                  navigate(`/diary/${dateStr}`);
-                }}
-                onDelete={() => {
-                  // TODO: delete confirmation
-                }}
-                t={t}
-              />
+              <motion.div layout="position" key={entry.id} style={{ height: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}>
+                <DiaryCard
+                  entry={entry}
+                  onClick={() => {
+                    const y = entry.date.getFullYear();
+                    const m = String(entry.date.getMonth() + 1).padStart(2, '0');
+                    const dStr = String(entry.date.getDate()).padStart(2, '0');
+                    navigate(`/diary/${y}-${m}-${dStr}`);
+                  }}
+                  onEdit={() => {
+                    const y = entry.date.getFullYear();
+                    const m = String(entry.date.getMonth() + 1).padStart(2, '0');
+                    const dStr = String(entry.date.getDate()).padStart(2, '0');
+                    navigate(`/diary/${y}-${m}-${dStr}`);
+                  }}
+                  onDelete={() => {
+                    setDeletingId(entry.id);
+                  }}
+                  t={t}
+                />
+              </motion.div>
             ))}
           </div>
         </div>
       )}
-    </div>
+
+      {/* Delete Confirmation Modal */}
+      {deletingId !== null && (
+        <div className="diary-delete-modal-overlay" onClick={() => setDeletingId(null)}>
+          <div className="diary-delete-modal" onClick={e => e.stopPropagation()}>
+            <div className="dd-modal-title">{t('common.confirm_delete', '确认删除')}</div>
+            <div className="dd-modal-content">
+              {t('diary.delete_warning', '您确定要永久删除这篇日记吗？此操作不可逆转。')}
+            </div>
+            <div className="dd-modal-actions">
+              <button className="dd-btn-cancel" onClick={() => setDeletingId(null)}>
+                {t('common.cancel', '取消')}
+              </button>
+              <button className="dd-btn-confirm" onClick={performDelete}>
+                {t('common.delete', '删除')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </motion.div>
   );
 };
 
@@ -211,7 +312,6 @@ const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete,
             </div>
           </div>
         </div>
-        <AlignJustify size={20} className="diary-card-menu-icon" />
       </div>
 
       {/* Time */}
@@ -238,7 +338,7 @@ const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete,
       {/* Hover Actions */}
       <div className="diary-card-actions" onClick={(e) => e.stopPropagation()}>
         <button className="diary-card-action-btn edit-btn" onClick={onEdit}>
-          <Edit size={14} />
+          <Edit3 size={14} />
           {t('common.edit', '编辑')}
         </button>
         <button className="diary-card-action-btn delete-btn" onClick={onDelete}>

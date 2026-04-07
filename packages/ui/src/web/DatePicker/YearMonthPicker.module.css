@@ -49,71 +49,88 @@
   gap: 4px;
 }
 
-.dropdownPicker {
-  position: absolute;
-  top: 100%;
+.modalOverlay {
+  position: fixed;
+  top: 0;
   left: 0;
-  margin-top: 8px;
-  width: 260px;
-  background: var(--color-surface, #FFFFFF);
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(208, 208, 208, 0.3);
-  z-index: 1000;
-  padding: 16px;
-  overflow: hidden;
-  /* backdrop-filter on the parent might not work if it's solid, but we add it just in case */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-/* Header */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.viewToggleBtn {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-on-surface, #1A1A1A);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px 12px;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
-
-.viewToggleBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.navBtn {
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  background-color: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: transparent;
-  border: none;
-  color: var(--color-on-surface-variant, #64748B);
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.navBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--color-on-surface, #1A1A1A);
+.modalContent {
+  width: 420px;
+  background: var(--color-surface, #FFFFFF);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  padding: 24px;
+  overflow: hidden;
 }
 
-/* Grid */
-.monthGrid {
+/* Two Pane Layout */
+.twoPaneContainer {
+  display: flex;
+  height: 260px;
+  gap: 24px;
+}
+
+.yearPane {
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  padding-right: 8px;
+  border-right: 1px solid rgba(208, 208, 208, 0.4);
+}
+
+.yearPane::-webkit-scrollbar {
+  width: 4px;
+}
+.yearPane::-webkit-scrollbar-thumb {
+  background: rgba(208, 208, 208, 0.5);
+  border-radius: 4px;
+}
+
+.monthPane {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  align-content: start;
+}
+
+.paneItem {
+  padding: 8px 0;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-on-surface, #1A1A1A);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.paneItem:hover {
+  background: rgba(91, 168, 245, 0.1);
+  color: var(--color-primary, #5BA8F5);
+}
+
+.paneItemActive {
+  background: rgba(91, 168, 245, 0.15);
+  color: var(--color-primary, #5BA8F5);
+  font-weight: 600;
+}
+
+.paneItemSelected {
+  color: var(--color-primary, #5BA8F5);
+  font-weight: 600;
 }
 
 .monthBtn {
@@ -138,6 +155,12 @@
   color: #FFFFFF !important;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
+}
+
+.monthBtnCurrent {
+  color: var(--color-primary, #5BA8F5);
+  font-weight: 600;
+  border: 1px solid var(--color-primary, #5BA8F5);
 }
 
 .divider {
@@ -192,16 +215,18 @@
 [data-theme="dark"] .triggerBtn:hover {
   background: rgba(255, 255, 255, 0.05);
 }
-[data-theme="dark"] .dropdownPicker {
+[data-theme="dark"] .modalContent {
   background: var(--color-surface-dark, #1A1A1A);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
-[data-theme="dark"] .viewToggleBtn,
+[data-theme="dark"] .yearPane {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .paneItem,
 [data-theme="dark"] .monthBtn {
   color: rgba(255, 255, 255, 0.9);
 }
-[data-theme="dark"] .viewToggleBtn:hover,
-[data-theme="dark"] .navBtn:hover,
+[data-theme="dark"] .paneItem:hover,
 [data-theme="dark"] .monthBtn:hover {
   background: rgba(255, 255, 255, 0.1);
 }

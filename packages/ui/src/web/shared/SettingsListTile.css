@@ -135,19 +135,19 @@
 }
 
 .settings-list-tile-subtitle {
-  font-size: 12px;
-  color: var(--color-on-surface-variant, #64748b);
+  font-size: 13px;
+  color: var(--color-on-surface-variant, #475569);
   line-height: 1.4;
 }
 
 [data-theme="dark"] .settings-list-tile-subtitle {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 /* monospace 字体（路径显示等） */
 .settings-monospace {
   font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 11px;
+  font-size: 14px;
   word-break: break-all;
 }
 

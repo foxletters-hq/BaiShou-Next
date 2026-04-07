@@ -169,7 +169,7 @@
 .settings-content-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 48px;
+
 }
 
 .settings-content-scroll::-webkit-scrollbar {
@@ -203,13 +203,19 @@
   gap: 16px;
 }
 
+.settings-pane-full {
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  padding-bottom: 0;
+}
+
 /* Glass panel equivalent to Flutter cards (Card with elevation 0 or 1) */
 .glass-panel-card {
   background-color: var(--color-surface, #FFFFFF);
-  border: 1px solid rgba(175, 175, 175, 0.6);
-  border-radius: 16px;
+  border: 1px solid rgba(208, 208, 208, 0.7);
+  border-radius: 12px;
   padding: 0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 

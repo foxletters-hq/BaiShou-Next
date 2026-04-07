@@ -111,11 +111,13 @@
   border-radius: 12px;
   font-size: 11px;
   font-weight: bold;
-  background: var(--color-primary-container, #e0f2fe);
-  color: var(--color-on-primary-container, #0369a1);
+  background: transparent;
+  border: 1px solid var(--color-primary, #0ea5e9);
+  color: var(--color-primary, #0ea5e9);
 }
 :global(body[data-theme='dark']) .targetBadge {
-  background: rgba(91, 168, 245, 0.2);
+  background: transparent;
+  border-color: #5ba8f5;
   color: #5ba8f5;
 }
 
@@ -245,25 +247,12 @@
   box-shadow: none;
 }
 
-/* Config Page Overlay (Mimicking DataSyncConfigPage) */
 .configPageWrapper {
-  position: fixed;
-  inset: 0;
-  background: var(--color-surface, #fff);
-  z-index: 99999;
   display: flex;
   flex-direction: column;
-  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y: auto;
-}
-
-:global(body[data-theme='dark']) .configPageWrapper {
-  background: var(--color-surface-container-lowest, #0f172a);
-}
-
-@keyframes slideInRight {
-  from { transform: translateX(30%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  width: 100%;
+  height: 100%;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .configAppBar {
@@ -325,6 +314,11 @@
   display: flex;
   gap: 16px;
   margin-bottom: 32px;
+}
+@media (max-width: 768px) {
+  .targetCardsLayout {
+    flex-direction: column;
+  }
 }
 @media (max-width: 600px) {
   .targetCardsLayout {
@@ -594,3 +588,27 @@
 }
 .iconBtnRestore { color: #f59e0b; }
 .iconBtnDelete { color: #ef4444; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modalOverlay { position: fixed; inset: 0; background: transparent; z-index: 100000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out; }
+.countModal { background: var(--color-surface, #fff); border-radius: 16px; padding: 24px; width: 90%; max-width: 400px; box-shadow: 0 12px 32px rgba(0,0,0,0.15); animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; gap: 16px; }
+:global(body[data-theme='dark']) .countModal { background: var(--color-surface-container-high, #1e293b); border: 1px solid rgba(255,255,255,0.05); }
+@keyframes modalPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.countModalHeader { display: flex; align-items: center; gap: 8px; font-size: 18px; color: var(--color-on-surface, #333); }
+:global(body[data-theme='dark']) .countModalHeader { color: #f3f4f6; }
+.countModalBody { display: flex; flex-direction: column; }
+.sliderRow { display: flex; align-items: center; gap: 16px; margin-top: 12px; margin-bottom: 12px; }
+.rangeSlider { flex: 1; accent-color: var(--color-primary, #0ea5e9); height: 6px; border-radius: 3px; background: var(--color-outline-variant, rgba(0,0,0,0.1)); appearance: none; outline: none; }
+:global(body[data-theme='dark']) .rangeSlider { background: rgba(255,255,255,0.1); }
+.rangeSlider::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--color-primary, #0ea5e9); cursor: pointer; transition: transform 0.1s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.rangeSlider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.rangeSlider:disabled { opacity: 0.5; cursor: not-allowed; }
+.rangeSlider:disabled::-webkit-slider-thumb { cursor: not-allowed; }
+.countValueText { font-size: 20px; font-weight: bold; color: var(--color-on-surface, #333); min-width: 32px; text-align: right; }
+:global(body[data-theme='dark']) .countValueText { color: #f3f4f6; }
+.countModalFooter { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.noLimitBtn { background: transparent; border: 1px solid var(--color-outline, #cbd5e1); padding: 8px 12px; border-radius: 8px; font-size: 13px; color: var(--color-on-surface-variant, #666); cursor: pointer; transition: all 0.2s; }
+:global(body[data-theme='dark']) .noLimitBtn { border-color: rgba(255,255,255,0.2); color: #9ca3af; }
+.noLimitBtn:hover { background: var(--color-surface-variant, rgba(0,0,0,0.05)); color: var(--color-on-surface, #333); }
+:global(body[data-theme='dark']) .noLimitBtn:hover { background: rgba(255,255,255,0.1); color: #f3f4f6; }

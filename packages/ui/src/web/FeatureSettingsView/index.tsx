@@ -135,7 +135,7 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
         <div className={styles.settingItem}>
           <div className={styles.settingInfo}>
             <div className={styles.settingLabel}>{t('settings.features.dev_mode', '开发者模式')}</div>
-            <div className={styles.settingHint}>{t('settings.features.dev_mode_hint', '开启日志诊断、Agent 工具链调用追踪与 MCP 调试')}</div>
+            <div className={styles.settingHint}>{t('settings.features.dev_mode_hint', '开启日志诊断、伙伴 工具链调用追踪与 MCP 调试')}</div>
           </div>
           <div 
             className={styles.switch} 

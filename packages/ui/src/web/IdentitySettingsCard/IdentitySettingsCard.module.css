@@ -233,6 +233,72 @@
   background-color: rgba(255, 255, 255, 0.03);
 }
 
+
 [data-theme="dark"] .actionChip:hover {
   background-color: rgba(255, 255, 255, 0.08);
+}
+
+.factContentEditing {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.factEditInput {
+  background: var(--color-surface-container-highest, #E2E2E2);
+  border: 1px solid var(--color-outline, #79747E);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--color-on-surface, #1C1B1F);
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.factEditInput:focus {
+  border-color: var(--color-primary, #0056D2);
+  background: var(--color-surface, #FDFBFF);
+}
+
+.factEditDivider {
+  color: var(--color-outline, #79747E);
+  font-weight: 500;
+}
+
+[data-theme="dark"] .factEditInput {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 320px;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modalField label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-on-surface, #1C1B1F);
+}
+
+[data-theme="dark"] .modalField label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
 }

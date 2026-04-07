@@ -5,12 +5,8 @@
   width: 100%;
   position: relative;
   overflow: hidden;
-  background-color: var(--color-surface, #F6F7F8);
+  background-color: transparent;
   border-radius: inherit;
-}
-
-:global(body[data-theme='dark']) .container {
-  background-color: #101922;
 }
 
 /* Simulated App Bar */
@@ -30,7 +26,7 @@
 
 .appBarTitle {
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--color-on-surface, #333);
 }
 
@@ -93,11 +89,11 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 1200px;
-  height: 1200px;
+  width: 200vmax;
+  height: 200vmax;
   transform-origin: center;
-  margin-top: -600px;
-  margin-left: -600px;
+  margin-top: -100vmax;
+  margin-left: -100vmax;
   border-radius: 50%;
   background: conic-gradient(
     from 0deg,
@@ -105,7 +101,7 @@
     rgba(91, 168, 245, 0.02) 90%,
     rgba(91, 168, 245, 0.1) 100%
   );
-  animation: radarSpin 4s linear infinite;
+  animation: radarSpin 8s linear infinite;
   pointer-events: none;
 }
 
@@ -133,16 +129,16 @@
   border: 1px solid var(--color-primary, #5BA8F5);
   box-shadow: none;
   opacity: 0;
-  animation: radarWave 4.5s infinite ease-out;
+  animation: radarWave 6s infinite ease-out;
 }
 
 .ring1 { animation-delay: 0s; }
-.ring2 { animation-delay: 1.5s; }
-.ring3 { animation-delay: 3.0s; }
+.ring2 { animation-delay: 2s; }
+.ring3 { animation-delay: 4s; }
 
 @keyframes radarWave {
   0% { width: 0; height: 0; opacity: 0.4; }
-  100% { width: 800px; height: 800px; opacity: 0; }
+  100% { width: 150vmax; height: 150vmax; opacity: 0; }
 }
 
 .radarCore {

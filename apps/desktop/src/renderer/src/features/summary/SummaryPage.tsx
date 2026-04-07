@@ -3,12 +3,13 @@ import React, { useState } from 'react';
 import { 
   GalleryPanel, 
   DashboardHeroBanner, DashboardStatsCard, DashboardSharedMemoryCard,
-  useToast
+  useToast, DiaryCard
 } from '@baishou/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 // import { useNavigate } from 'react-router-dom'; // TODO: 后续用于跳转到总结详情页
 import { Settings, LayoutDashboard, Layers, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useSummaryData } from './hooks/useSummaryData';
+import { useDiaryData } from '../diary/hooks/useDiaryData';
 import './SummaryPage.css';
 
 
@@ -29,6 +30,8 @@ const GEN_PHASES = [
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
   const [lookbackMonths, setLookbackMonths] = useState(1);
   const { summaries, stats, missingSummaries, setMissingSummaries, generateSummary, refreshData } = useSummaryData();
+  const { entries } = useDiaryData();
+  const recentDiaries = entries.slice(0, 3);
 
   const handleCopyContext = async () => {
     try {
@@ -127,6 +130,34 @@ const GEN_PHASES = [
               <DashboardStatsCard {...stats} />
             </div>
 
+            {/* 最近日记（今日记忆）预览模块 */}
+            {recentDiaries && recentDiaries.length > 0 && (
+              <motion.div 
+                className="sp-recent-diary-section"
+                variants={containerVariants}
+                initial="hidden" animate="show"
+                style={{ marginTop: 24, display: 'flex', flexDirection: 'column' }}
+              >
+                <div className="sp-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <div className="sp-section-title" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {t('summary.recent_diaries', '近期记录')}
+                  </div>
+                </div>
+                <div className="sp-recent-diary-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {recentDiaries.map((entry: any) => (
+                    <DiaryCard
+                      key={entry.id}
+                      id={String(entry.id)}
+                      createdAt={entry.date}
+                      contentSnippet={entry.preview}
+                      tags={entry.tags || []}
+                      onClick={() => {}}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {/* AI 缺失自动检测区域 */}
             <motion.div 
               style={{ marginTop: 16 }}
@@ -206,3 +237,4 @@ const GEN_PHASES = [
     </div>
   );
 };
+

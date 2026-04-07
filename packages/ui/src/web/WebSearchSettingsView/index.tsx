@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styles from './WebSearchSettingsView.module.css';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../Toast/useToast';
+import { MdFormatListNumbered, MdAutoAwesome, MdCompress, MdLibraryBooks, MdShortText, MdVisibility, MdVisibilityOff, MdSave, MdKey } from 'react-icons/md';
 
 export interface WebSearchConfig {
   webSearchEngine: string;
@@ -38,153 +39,173 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.titleInfo}>
-          <h3 className={styles.title}>{t('settings.web_search_config_title', '网络搜索配置')}</h3>
-          <p className={styles.subtitle}>{t('settings.web_search_config_desc', '管理网络检索引擎及文档拉取策略。')}</p>
-        </div>
-      </div>
-
+      {/* Engine Selection */}
       <div className={styles.cardSection}>
         <div className={styles.cardHeader}>
-          <div className={styles.cardTitleLine}>
-            <span>🌐 {t('agent.tools.param_search_engine', '搜索引擎')}</span>
-          </div>
+           <h3 className={styles.cardTitle}>{t('agent.tools.param_search_engine', '搜索引擎')}</h3>
         </div>
         <div className={styles.cardBody}>
-          <div className={styles.radioGroup}>
-             <label className={styles.radioLabel}>
-               <input 
-                 type="radio" 
-                 name="engine" 
-                 value="duckduckgo" 
-                 checked={searchConfig.webSearchEngine === 'duckduckgo'}
-                 onChange={(e) => handleChange('webSearchEngine', e.target.value)}
-               />
-               <div className={styles.radioText}>
-                 <span>{t('settings.web_search_engine_duckduckgo', 'DuckDuckGo')}</span>
-                 <small>{t('settings.web_search_engine_duckduckgo_desc', '免费通用型查询（推荐）')}</small>
-               </div>
-             </label>
-
-             <label className={styles.radioLabel}>
-               <input 
-                 type="radio" 
-                 name="engine" 
-                 value="tavily" 
-                 checked={searchConfig.webSearchEngine === 'tavily'}
-                 onChange={(e) => handleChange('webSearchEngine', e.target.value)}
-               />
-               <div className={styles.radioText}>
-                 <span>{t('settings.web_search_engine_tavily', 'Tavily API')}</span>
-                 <small>{t('settings.web_search_engine_tavily_desc', '高速智能搜索引擎（需配置密钥）')}</small>
-               </div>
-             </label>
-          </div>
+           <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'duckduckgo' ? styles.radioSelected : ''}`}>
+             <input 
+               type="radio" 
+               name="engine" 
+               value="duckduckgo" 
+               className={styles.radioInput}
+               checked={searchConfig.webSearchEngine === 'duckduckgo'}
+               onChange={(e) => handleChange('webSearchEngine', e.target.value)}
+             />
+             <div className={styles.radioCustomContainer}>
+                <div className={styles.radioCustomRing}>
+                   {searchConfig.webSearchEngine === 'duckduckgo' && <div className={styles.radioCustomDot} />}
+                </div>
+             </div>
+             <div className={styles.radioContent}>
+               <span className={styles.radioTitle}>{t('settings.web_search_engine_duckduckgo', 'DuckDuckGo')}</span>
+               <span className={styles.radioSubtitle}>{t('settings.web_search_engine_duckduckgo_desc', '免费通用型查询（推荐）')}</span>
+             </div>
+           </label>
+           
+           <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'tavily' ? styles.radioSelected : ''}`}>
+             <input 
+               type="radio" 
+               name="engine" 
+               value="tavily" 
+               className={styles.radioInput}
+               checked={searchConfig.webSearchEngine === 'tavily'}
+               onChange={(e) => handleChange('webSearchEngine', e.target.value)}
+             />
+             <div className={styles.radioCustomContainer}>
+                <div className={styles.radioCustomRing}>
+                   {searchConfig.webSearchEngine === 'tavily' && <div className={styles.radioCustomDot} />}
+                </div>
+             </div>
+             <div className={styles.radioContent}>
+               <span className={styles.radioTitle}>{t('settings.web_search_engine_tavily', 'Tavily API')}</span>
+               <span className={styles.radioSubtitle}>{t('settings.web_search_engine_tavily_desc', '高速智能搜索引擎（需配置密钥）')}</span>
+             </div>
+           </label>
+           <div style={{ height: 12 }} />
         </div>
       </div>
 
+      {/* API Config Panel */}
       {searchConfig.webSearchEngine === 'tavily' && (
         <div className={styles.cardSection}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardTitleLine}>
-              <span>🔑 {t('agent.tools.param_tavily_api_key', 'Tavily API 密钥')}</span>
-            </div>
-            <p className={styles.cardDesc}>{t('agent.tools.param_tavily_api_key_desc', '请前往 tvly 官网申请您的私人密钥')}</p>
-          </div>
-          <div className={styles.cardBody}>
-             <div className={styles.row}>
-               <div className={styles.sliderWrapper}>
-                 <input 
-                   type={apiKeyVisible ? 'text' : 'password'}
-                   placeholder="tvly-xxxxxx"
-                   className={`${styles.rangeInputColored} ${styles.textInput}`}
-                   style={{ width: '100%', flex: 1 }}
-                   value={localApiKey}
-                   onChange={(e) => setLocalApiKey(e.target.value)}
-                   onKeyDown={(e) => e.key === 'Enter' && saveApiKey()}
-                 />
-                 <button onClick={() => setApiKeyVisible(!apiKeyVisible)} style={{ margin: '0 8px' }}>
-                   {apiKeyVisible ? '👁️‍🗨️' : '👁️'}
-                 </button>
-                 <button onClick={saveApiKey}>
-                   💾
-                 </button>
-               </div>
+          <div className={styles.apiConfigBody}>
+             <h3 className={styles.cardTitle}>{t('agent.tools.param_tavily_api_key', 'Tavily API 密钥')}</h3>
+             <span className={styles.cardDesc}>{t('agent.tools.param_tavily_api_key_desc', '请前往 tvly 官网申请您的私人密钥')}</span>
+             
+             <div className={styles.textFieldWrapper}>
+               <MdKey size={20} className={styles.textFieldIcon} />
+               <input 
+                 type={apiKeyVisible ? 'text' : 'password'}
+                 placeholder="tvly-xxxxxx"
+                 className={styles.textFieldInput}
+                 value={localApiKey}
+                 onChange={(e) => setLocalApiKey(e.target.value)}
+                 onKeyDown={(e) => e.key === 'Enter' && saveApiKey()}
+               />
+               <button className={styles.iconIconButton} onClick={() => setApiKeyVisible(!apiKeyVisible)}>
+                 {apiKeyVisible ? <MdVisibility size={20} /> : <MdVisibilityOff size={20} />}
+               </button>
+               <button className={styles.iconIconButton} onClick={saveApiKey}>
+                 <MdSave size={20} />
+               </button>
              </div>
           </div>
         </div>
       )}
 
+      {/* General Settings Card */}
       <div className={styles.cardSection}>
         <div className={styles.cardHeader}>
-          <div className={styles.cardTitleLine}>
-            <span>⚙️ {t('settings.general', '通用拉取设定')}</span>
-          </div>
+           <h3 className={styles.cardTitle}>{t('settings.general', '通用规则设置')}</h3>
         </div>
         <div className={styles.cardBody}>
-          <div className={styles.row}>
-             <div className={styles.labelGroup}>
-               <label className={styles.label}>{t('agent.tools.param_max_results', '搜索结果上限')}</label>
-               <span className={styles.cardDesc}>{t('agent.tools.param_max_results_desc', '返回的最大条目')}</span>
+           <div className={styles.sliderRow}>
+             <div className={styles.sliderRowHeader}>
+               <MdFormatListNumbered className={styles.sliderIcon} />
+               <div className={styles.sliderTextGroup}>
+                 <span className={styles.sliderTitle}>{t('agent.tools.param_max_results', '搜索结果上限')}</span>
+                 <span className={styles.sliderDesc}>{t('agent.tools.param_max_results_desc', '最多返回的条目数')}</span>
+               </div>
              </div>
-             <div className={styles.sliderWrapper}>
-                <input type="range" min="1" max="30" value={searchConfig.webSearchMaxResults} onChange={(e) => handleChange('webSearchMaxResults', parseInt(e.target.value))} className={styles.rangeInput} />
-                <span className={styles.valBadge}>{searchConfig.webSearchMaxResults}</span>
+             <div className={styles.sliderControlRow}>
+               <input type="range" min="1" max="30" value={searchConfig.webSearchMaxResults} onChange={(e) => handleChange('webSearchMaxResults', parseInt(e.target.value))} className={styles.sliderInput} />
+               <span className={styles.sliderValue}>{searchConfig.webSearchMaxResults}</span>
              </div>
-          </div>
-
-          <div className={styles.row} style={{ margin: '16px 0' }}>
-             <div className={styles.labelGroup}>
-               <label className={styles.label}>{t('agent.tools.param_rag_enabled', '网页智能抽取 (Web-RAG)')}</label>
-               <span className={styles.cardDesc}>{t('agent.tools.param_rag_enabled_desc', '开启深入阅读理解')}</span>
+           </div>
+           
+           <div className={styles.divider} />
+           
+           <div className={styles.switchTile}>
+             <MdAutoAwesome className={styles.switchIcon} />
+             <div className={styles.switchTextGroup}>
+               <span className={styles.sliderTitle}>{t('agent.tools.param_rag_enabled', '网页智能抽取 (Web-RAG)')}</span>
+               <span className={styles.sliderDesc}>{t('agent.tools.param_rag_enabled_desc', '开启深入阅读理解')}</span>
              </div>
-             <label className={styles.switch}>
+             <label className={styles.switchControl}>
                <input 
                  type="checkbox" 
                  checked={searchConfig.webSearchRagEnabled}
                  onChange={(e) => handleChange('webSearchRagEnabled', e.target.checked)}
                />
-               <span className={styles.slider}></span>
+               <span className={styles.switchSlider}></span>
              </label>
-          </div>
-
-          {searchConfig.webSearchRagEnabled ? (
-            <>
-              <div className={styles.row}>
-                 <div className={styles.labelGroup}>
-                   <label className={styles.label}>{t('agent.tools.param_rag_max_chunks', '总片段上限')}</label>
-                   <span className={styles.cardDesc}>{t('agent.tools.param_rag_max_chunks_desc', '最多提取的片段数')}</span>
+           </div>
+           
+           {searchConfig.webSearchRagEnabled ? (
+             <>
+               <div className={styles.divider} />
+               <div className={styles.sliderRow}>
+                 <div className={styles.sliderRowHeader}>
+                   <MdCompress className={styles.sliderIcon} />
+                   <div className={styles.sliderTextGroup}>
+                     <span className={styles.sliderTitle}>{t('agent.tools.param_rag_max_chunks', '总片段上限')}</span>
+                     <span className={styles.sliderDesc}>{t('agent.tools.param_rag_max_chunks_desc', '最多提取的片段数')}</span>
+                   </div>
                  </div>
-                 <div className={styles.sliderWrapper}>
-                    <input type="range" min="1" max="50" value={searchConfig.webSearchRagMaxChunks} onChange={(e) => handleChange('webSearchRagMaxChunks', parseInt(e.target.value))} className={styles.rangeInput} />
-                    <span className={styles.valBadge}>{searchConfig.webSearchRagMaxChunks}</span>
+                 <div className={styles.sliderControlRow}>
+                   <input type="range" min="1" max="50" value={searchConfig.webSearchRagMaxChunks} onChange={(e) => handleChange('webSearchRagMaxChunks', parseInt(e.target.value))} className={styles.sliderInput} />
+                   <span className={styles.sliderValue}>{searchConfig.webSearchRagMaxChunks}</span>
                  </div>
-              </div>
-              <div className={styles.row} style={{ marginTop: '16px' }}>
-                 <div className={styles.labelGroup}>
-                   <label className={styles.label}>{t('agent.tools.param_rag_chunks_per_source', '单站抽取块数')}</label>
-                   <span className={styles.cardDesc}>{t('agent.tools.param_rag_chunks_per_source_desc', '单个网页提取最大数')}</span>
-                 </div>
-                 <div className={styles.sliderWrapper}>
-                    <input type="range" min="1" max="20" value={searchConfig.webSearchRagChunksPerSource} onChange={(e) => handleChange('webSearchRagChunksPerSource', parseInt(e.target.value))} className={styles.rangeInput} />
-                    <span className={styles.valBadge}>{searchConfig.webSearchRagChunksPerSource}</span>
-                 </div>
-              </div>
-            </>
-          ) : (
-            <div className={styles.row}>
-               <div className={styles.labelGroup}>
-                 <label className={styles.label}>{t('agent.tools.param_plain_snippet_length', '简单摘要截取长度')}</label>
-                 <span className={styles.cardDesc}>{t('agent.tools.param_plain_snippet_length_desc', '不开抽取的全文上限')}</span>
                </div>
-               <div className={styles.sliderWrapper}>
-                  <input type="range" min="500" max="30000" step="100" value={searchConfig.webSearchPlainSnippetLength} onChange={(e) => handleChange('webSearchPlainSnippetLength', parseInt(e.target.value))} className={styles.rangeInput} />
-                  <span className={styles.valBadge}>{searchConfig.webSearchPlainSnippetLength}</span>
-               </div>
-            </div>
-          )}
 
+               <div className={styles.divider} />
+               
+               <div className={styles.sliderRow}>
+                 <div className={styles.sliderRowHeader}>
+                   <MdLibraryBooks className={styles.sliderIcon} />
+                   <div className={styles.sliderTextGroup}>
+                     <span className={styles.sliderTitle}>{t('agent.tools.param_rag_chunks_per_source', '单站抽取块数')}</span>
+                     <span className={styles.sliderDesc}>{t('agent.tools.param_rag_chunks_per_source_desc', '单个网页提取最大数')}</span>
+                   </div>
+                 </div>
+                 <div className={styles.sliderControlRow}>
+                   <input type="range" min="1" max="20" value={searchConfig.webSearchRagChunksPerSource} onChange={(e) => handleChange('webSearchRagChunksPerSource', parseInt(e.target.value))} className={styles.sliderInput} />
+                   <span className={styles.sliderValue}>{searchConfig.webSearchRagChunksPerSource}</span>
+                 </div>
+               </div>
+             </>
+           ) : (
+             <>
+               <div className={styles.divider} />
+               <div className={styles.sliderRow}>
+                 <div className={styles.sliderRowHeader}>
+                   <MdShortText className={styles.sliderIcon} />
+                   <div className={styles.sliderTextGroup}>
+                     <span className={styles.sliderTitle}>{t('agent.tools.param_plain_snippet_length', '简单摘要截取长度')}</span>
+                     <span className={styles.sliderDesc}>{t('agent.tools.param_plain_snippet_length_desc', '当不启用 RAG 时提取正文的字符数')}</span>
+                   </div>
+                 </div>
+                 <div className={styles.sliderControlRow}>
+                   <input type="range" min="500" max="30000" step="100" value={searchConfig.webSearchPlainSnippetLength} onChange={(e) => handleChange('webSearchPlainSnippetLength', parseInt(e.target.value))} className={styles.sliderInput} />
+                   <span className={styles.sliderValue}>{searchConfig.webSearchPlainSnippetLength}</span>
+                 </div>
+               </div>
+             </>
+           )}
+           
         </div>
       </div>
     </div>
