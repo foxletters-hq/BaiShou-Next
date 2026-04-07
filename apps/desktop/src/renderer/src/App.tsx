@@ -14,6 +14,8 @@ import { DiaryPage } from './features/diary/DiaryPage';
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { SummaryPage } from './features/summary/SummaryPage';
+import { LanTransferPage } from './features/settings/LanTransferPage';
+import { CloudSyncPage } from './features/settings/CloudSyncPage';
 import { useToast, DialogProvider, ToastProvider } from '@baishou/ui';
 import { useEffect } from 'react';
 import { useSettingsStore } from '@baishou/store';
@@ -75,6 +77,10 @@ export function App() {
             <Route path="/diary" element={<DiaryPage />} />
             <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
             <Route path="/summary" element={<SummaryPage />} />
+            
+            {/* Tools Routing */}
+            <Route path="/lan-transfer" element={<LanTransferPage />} />
+            <Route path="/data-sync" element={<CloudSyncPage />} />
 
             {/* AI / Agent Role Routing - Wrapped in AgentLayout */}
             <Route element={<AgentLayout />}>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator } from 'react-icons/md';
+import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiFind } from 'react-icons/md';
 import styles from './Sidebar.module.css';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 
 
 
@@ -25,10 +26,10 @@ export const Sidebar: React.FC = () => {
   });
 
   const allItems = {
-     'diary': { icon: <MdTimeline />, label: '日记', path: '/diary' },
-     'summary': { icon: <MdAutoStories />, label: '全域仪表盘', path: '/summary' },
-     'lan': { icon: <MdSettings />, label: t('nav.lan_transfer', '局域网快传'), path: '/settings/lan-transfer' }, // using Settings as fallback icon
-     'sync': { icon: <MdSync />, label: t('nav.data_sync', '数据同步'), path: '/settings/data-sync' }
+     'diary': { icon: <MdTimeline />, label: t('diary.title', '日记'), path: '/diary' },
+     'summary': { icon: <MdAutoStories />, label: t('summary.dashboard_title', '全域仪表盘'), path: '/summary' },
+     'lan': { icon: <MdWifiFind />, label: t('settings.lan_transfer', '局域网快传'), path: '/lan-transfer' },
+     'sync': { icon: <MdSync />, label: t('common.data_sync', '数据同步'), path: '/data-sync' }
   };
 
   useEffect(() => {
@@ -45,13 +46,17 @@ export const Sidebar: React.FC = () => {
 
   const isAgentMode = location.pathname.startsWith('/c/') || location.pathname.startsWith('/agent');
 
-  if (isAgentMode) return null; // 完全将左侧空间交接给 AgentSidebar
+  if (isAgentMode) return null;
 
   return (
-    <div className={styles.sidebar}>
+    <motion.div 
+      className={styles.sidebar}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+    >
       <div className={styles.brandRow}>
          <div className={styles.logoBox}>
-           {/* Replace with actual image later, using U for now as per flutter avatar logic but this is Brand */}
            <img src="assets/icon/icon.png" alt="Logo" className={styles.brandLogo} onError={(e) => {
   (e.target as HTMLImageElement).style.display = 'none';
                (e.target as HTMLImageElement).nextElementSibling!.classList.remove(styles.hidden);
@@ -59,8 +64,8 @@ export const Sidebar: React.FC = () => {
            <div className={`${styles.logoFallback} styles.hidden`}>✨</div>
          </div>
          <div className={styles.brandText}>
-            <div className={styles.brandName}>BaiShou AI</div>
-            <div className={styles.brandSlogan}>{t('sidebar.slogan', '下一代本地优先 AI 记忆终端')}</div>
+            <div className={styles.brandName}>{t('common.app_title', 'BaiShou AI')}</div>
+            <div className={styles.brandSlogan}>{t('settings.tagline_short', '下一代本地优先 AI 记忆终端')}</div>
          </div>
       </div>
 
@@ -115,7 +120,7 @@ export const Sidebar: React.FC = () => {
              onClick={() => navigate('/settings')}
           >
              <span className={styles.navIcon}><MdSettings /></span>
-             <span className={styles.navLabel}>{t('common.settings', '偏好设置')}</span>
+             <span className={styles.navLabel}>{t('settings.title', '设置')}</span>
           </div>
         </div>
       </div>
@@ -123,9 +128,9 @@ export const Sidebar: React.FC = () => {
       <div className={styles.userCard}>
          <div className={styles.avatar}>A</div>
          <div className={styles.userInfo}>
-            <div className={styles.userName}>{t('sidebar.default_vault', '默认工作站')}</div>
+            <div className={styles.userName}>{t('settings.no_nickname', '默认用户')}</div>
          </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

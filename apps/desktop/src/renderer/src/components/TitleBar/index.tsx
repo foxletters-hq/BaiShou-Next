@@ -57,7 +57,22 @@ export const TitleBar: React.FC = () => {
         <div className={styles.tabsContainer}>
           <div 
             className={`${styles.tab} ${!isAgent ? styles.activeTab : ''}`}
-            onClick={() => navigate('/diary')}
+            onClick={() => {
+              try {
+                const saved = localStorage.getItem('desktop_sidebar_nav_order');
+                if (saved) {
+                   const parsed = JSON.parse(saved);
+                   if (Array.isArray(parsed) && parsed.length > 0) {
+                      const paths: Record<string, string> = { diary: '/diary', summary: '/summary', lan: '/settings/lan-transfer', sync: '/settings/data-sync' };
+                      if (paths[parsed[0]]) {
+                         navigate(paths[parsed[0]]);
+                         return;
+                      }
+                   }
+                }
+              } catch (e) {}
+              navigate('/diary');
+            }}
           >
             <MdAutoStories className={styles.tabIcon} />
             <span>{t('nav.diary', '日记')}</span>
@@ -67,7 +82,7 @@ export const TitleBar: React.FC = () => {
             onClick={() => navigate('/agent')}
           >
             <MdAutoAwesome className={styles.tabIcon} />
-            <span>Agent</span>
+            <span>{t('nav.agent', '伙伴')}</span>
           </div>
         </div>
       </div>
