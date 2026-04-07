@@ -59,7 +59,16 @@
     "time": "時間",
     "exit_hint": "もう一度押すと終了します",
     "search_hint": "記憶を検索...",
-    "weekdays": ["", "月", "火", "水", "木", "金", "土", "日"],
+    "weekdays": [
+      "",
+      "月",
+      "火",
+      "水",
+      "木",
+      "金",
+      "土",
+      "日"
+    ],
     "months": [
       "1月",
       "2月",
@@ -519,7 +528,8 @@
     "error_dual_edit": "日記と要約を同時に編集することはできません",
     "exit_without_saving": "保存せずに終了しますか？",
     "exit_confirmation_hint": "保存されていない変更があります。移動するとこれらの変更は失われます。",
-    "exit_without_saving_confirm": "保存せずに終了"
+    "exit_without_saving_confirm": "保存せずに終了",
+    "editor_tag_placeholder": "タグを入力し、Enterで保存"
   },
   "summary": {
     "dashboard_title": "思い出",
@@ -640,12 +650,12 @@
     "provider": "プロバイダー",
     "model": "モデル",
     "model_config_title": "モデル構成",
-    "save_success": "$id の構成が保存されました",
+    "save_success": "{{id}} の構成が保存されました",
     "reset_success": "デフォルトに戻し API キーをクリアしました。保存してください。",
     "test_connection_success": "接続テスト成功！🎉",
-    "test_connection_failed": "接続失敗: $e",
+    "test_connection_failed": "接続失敗: {{e}}",
     "fetch_models_success": "モデル一覧の取得と保存に成功しました",
-    "fetch_models_failed": "モデルの取得に失敗しました: $e",
+    "fetch_models_failed": "モデルの取得に失敗しました: {{e}}",
     "fill_api_key_hint": "先に API キーを入力して保存してください",
     "fetch_models_first_hint": "右下の「モデル取得」ボタンを先に押してください",
     "providers_label": "サービスプロバイダー",
