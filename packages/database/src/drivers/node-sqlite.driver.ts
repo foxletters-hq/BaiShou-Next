@@ -1,6 +1,9 @@
 import { createClient, type Client } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
+import * as path from 'path';
+import * as fs from 'fs';
 import { AppDatabase } from '../types';
+import { MigrationService } from '../migration.service';
 
 /**
  * 初始化适用于 Desktop / Node 端的 SQLite 数据库实例
@@ -22,8 +25,6 @@ export function initNodeDatabase(dbPath: string): AppDatabase {
 }
 
 export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
-  const { MigrationService } = await import('../migration.service');
-  
   const internalDb = db as any;
   const client: Client = internalDb.session?.client;
   
@@ -38,8 +39,6 @@ export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
   
   if (isDev) {
     // During dev, process.cwd() could be either root or apps/desktop
-    const path = await import('path');
-    const fs = await import('fs');
     if (fs.existsSync(path.join(process.cwd(), 'apps', 'desktop', 'resources', 'database', 'drizzle'))) {
       migrationDir = path.join(process.cwd(), 'apps', 'desktop', 'resources', 'database', 'drizzle');
     } else {
@@ -47,7 +46,6 @@ export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
     }
   } else {
     // In production, app.asar.unpacked/resources handles it
-    const path = await import('path');
     migrationDir = path.join(process.resourcesPath || process.cwd(), 'database', 'drizzle');
   }
 

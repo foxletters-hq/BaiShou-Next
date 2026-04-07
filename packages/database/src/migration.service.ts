@@ -2,7 +2,7 @@ import { Client } from '@libsql/client';
 import { AppDatabase } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
-import { migrationsTable } from './schema/migrations';
+import { migrationsTable } from './schema/migration-table';
 
 export interface MigrationJournal {
   version: string;
