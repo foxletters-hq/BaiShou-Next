@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { AgentSidebar } from './components/AgentSidebar';
 import type { AgentAssistant } from './components/AgentSidebar';
-import { useAssistantStore } from '@baishou/store';
-import { type SessionData, useToast } from '@baishou/ui';
+import { useAssistantStore, useSettingsStore, useUserProfileStore } from '@baishou/store';
+import { type SessionData, useToast, AssistantPickerSheet, Modal, AssistantEditPage } from '@baishou/ui';
 import { MdAutoAwesome } from 'react-icons/md';
 import styles from './AgentLayout.module.css';
 
@@ -11,11 +11,16 @@ export const AgentLayout: React.FC = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   
-  const { assistants, fetchAssistants } = useAssistantStore();
+  const { assistants, fetchAssistants, isLoading: isAssistantsLoading } = useAssistantStore();
+  const { agentBehavior, loadConfig } = useSettingsStore();
+  const { loadProfile } = useUserProfileStore();
+  
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [pinnedAssistants, setPinnedAssistants] = useState<AgentAssistant[]>([]);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false);
+  
   // 重命名 inline modal 状态
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -35,20 +40,20 @@ export const AgentLayout: React.FC = () => {
   useEffect(() => {
     fetchAssistants();
     loadSessions();
-  }, [fetchAssistants]);
+    loadConfig();
+    loadProfile();
+  }, [fetchAssistants, loadConfig, loadProfile]);
 
-  useEffect(() => {
-    // Populate fake pinned assistants if assistants load
-    if (assistants.length > 0 && pinnedAssistants.length === 0) {
-      // Just pin the first 3 for UI testing
-      setPinnedAssistants(assistants.slice(0, 3).map(a => ({
-        id: String(a.id),
-        name: a.name,
-        emoji: a.emoji,
-        avatarPath: (a as any).avatarPath
-      })));
-    }
-  }, [assistants, pinnedAssistants.length]);
+  const pinnedIds = agentBehavior?.pinnedAssistantIds || [];
+  const pinnedAssistants: AgentAssistant[] = pinnedIds
+    .map(id => assistants.find(a => String(a.id) === String(id)))
+    .filter(Boolean)
+    .map(a => ({
+      id: String(a!.id),
+      name: a!.name,
+      emoji: a!.emoji,
+      avatarPath: (a as any).avatarPath
+    }));
 
   const currentAssistant = assistants.find(a => String(a.id) === sessionId) || 
                            assistants.find(a => a.isDefault) || 
@@ -61,7 +66,12 @@ export const AgentLayout: React.FC = () => {
     description: currentAssistant.description || '通用 AI 伙伴',
     emoji: currentAssistant.emoji,
     avatarPath: (currentAssistant as any).avatarPath
-  } : undefined; // undefined 触发骨架态
+  } : (!isAssistantsLoading ? {
+    id: 'default',
+    name: '默认伙伴',
+    description: '通用 AI 伙伴',
+    emoji: '✨'
+  } : undefined); // undefined 触发骨架态
 
   const handleNewChat = async () => {
     try {
@@ -157,6 +167,7 @@ export const AgentLayout: React.FC = () => {
           onRenameSession={handleRename}
           onBatchDelete={handleBatchDelete}
           onCollapse={() => setIsSidebarCollapsed(true)}
+          onShowPicker={() => setIsPickerOpen(true)}
         />
       ) : (
         /* 折叠态：显示一个紧凑的图标栏，点击展开 */
@@ -226,6 +237,50 @@ export const AgentLayout: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ─── Assistant Picker Sheet ─── */}
+      <AssistantPickerSheet
+        isOpen={isPickerOpen}
+        assistants={assistants as any}
+        currentAssistantId={mappedAssistant?.id}
+        onSelect={(ast) => {
+          setIsPickerOpen(false);
+          handleAssistantSwitched(ast as any);
+        }}
+        onClose={() => setIsPickerOpen(false)}
+        onCreateNew={() => {
+          setIsPickerOpen(false);
+          setIsCreateAssistantOpen(true);
+        }}
+      />
+
+      {/* ─── Assistant Create Modal ─── */}
+      <Modal
+        isOpen={isCreateAssistantOpen}
+        onClose={() => {
+          setIsCreateAssistantOpen(false);
+          setIsPickerOpen(true);
+        }}
+        closeOnOverlayClick={false}
+        style={{ padding: 0 }}
+      >
+        <div style={{ width: '80vw', maxWidth: '800px', height: '85vh', overflow: 'hidden' }}>
+          <AssistantEditPage
+            assistant={null}
+            onSave={async (data) => {
+              if (typeof window !== 'undefined' && window.electron) {
+                await window.electron.ipcRenderer.invoke('agent:create-assistant', data);
+                await fetchAssistants();
+                setIsCreateAssistantOpen(false);
+              }
+            }}
+            onBack={() => {
+              setIsCreateAssistantOpen(false);
+              setIsPickerOpen(true);
+            }}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

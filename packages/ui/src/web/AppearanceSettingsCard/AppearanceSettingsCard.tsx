@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './AppearanceSettingsCard.css';
 import { useTranslation } from 'react-i18next';
-import { MdOutlinePalette } from 'react-icons/md';
+import { MdOutlinePalette, MdDevices, MdWbSunny, MdDarkMode } from 'react-icons/md';
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile';
 
 export interface AppearanceSettingsProps {
@@ -14,7 +14,7 @@ export interface AppearanceSettingsProps {
 }
 
 const PRESET_COLORS = [
-  '#9AD4EA', '#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#C77DFF'
+  '#5BA8F5', '#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#C77DFF'
 ];
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
@@ -60,23 +60,26 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       >
           <div className="appearance-row">
             <label className="settings-label">{t('settings.theme_mode', '光照模式')}</label>
-            <div className="theme-segmented-btn">
+            <div className="theme-toggle-group">
               <button 
-                className={`seg-btn ${themeMode === 'system' ? 'active' : ''}`}
+                className={`theme-btn ${themeMode === 'system' ? 'active' : ''}`}
                 onClick={() => onThemeModeChange('system')}
               >
+                <MdDevices size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
                 {t('settings.theme_system', '系统跟随')}
               </button>
               <button 
-                className={`seg-btn ${themeMode === 'light' ? 'active' : ''}`}
+                className={`theme-btn ${themeMode === 'light' ? 'active' : ''}`}
                 onClick={() => onThemeModeChange('light')}
               >
+                <MdWbSunny size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
                 {t('settings.theme_light', '日间清晰')}
               </button>
               <button 
-                className={`seg-btn ${themeMode === 'dark' ? 'active' : ''}`}
+                className={`theme-btn ${themeMode === 'dark' ? 'active' : ''}`}
                 onClick={() => onThemeModeChange('dark')}
               >
+                <MdDarkMode size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
                 {t('settings.theme_dark', '夜宴暗影')}
               </button>
             </div>

@@ -1,25 +1,23 @@
 .overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: transparent;
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: auto;
 }
 
 .dialog {
-  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.85);
+  background: var(--bg-surface-lowest, #f8fafc);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4) inset;
   border-radius: 28px;
   width: 90%;
-  max-width: 860px;
+  max-width: 800px;
   height: 80vh;
-  max-height: 680px;
+  max-height: 600px;
   display: flex;
   overflow: hidden;
   animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -28,7 +26,7 @@
 /* ───────── Left Sidebar ───────── */
 .sidebar {
   width: 300px;
-  background-color: rgba(var(--bg-surface-low-rgb, 241, 245, 249), 0.5);
+  background-color: var(--bg-surface-low, #f1f5f9);
   border-right: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   display: flex;
   flex-direction: column;
@@ -209,7 +207,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.9) 0%, rgba(var(--bg-surface-low-rgb, 241, 245, 249), 0.95) 100%);
+  background: var(--bg-surface-low, #f1f5f9);
 }
 
 .closeBtn {

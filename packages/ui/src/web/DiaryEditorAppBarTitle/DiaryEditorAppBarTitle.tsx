@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { smoothScrollToCenter } from '../../utils/scroll';
+import { getPickerYearRange } from '../../utils/date';
 import './DiaryEditorAppBarTitle.css';
 
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -20,6 +22,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   const [pickerMonth, setPickerMonth] = useState(selectedDate.getMonth() + 1);
   const [pickerDay, setPickerDay] = useState(selectedDate.getDate());
   const pickerRef = useRef<HTMLDivElement>(null);
+  const isInitialOpen = useRef(true);
 
   // 格式化标题
   const day = selectedDate.getDate();
@@ -45,6 +48,33 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, [showPicker]);
 
+  // 自动滚动选中项到中间
+  useEffect(() => {
+    if (!showPicker) {
+      isInitialOpen.current = true;
+      return undefined;
+    }
+
+    let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+    if (showPicker && pickerRef.current) {
+      scrollTimer = setTimeout(() => {
+        const selectedElements = pickerRef.current?.querySelectorAll('.dp-col-item.selected');
+        selectedElements?.forEach((el) => {
+          const container = el.parentElement as HTMLElement;
+          if (container) {
+            const duration = isInitialOpen.current ? 0 : 600;
+            smoothScrollToCenter(container, el as HTMLElement, duration);
+          }
+        });
+        isInitialOpen.current = false;
+      }, 0); // 0ms delay so it starts instantly without noticeable pause
+    }
+    
+    return () => {
+      if (scrollTimer) clearTimeout(scrollTimer);
+    };
+  }, [showPicker, pickerYear, pickerMonth, pickerDay]);
+
   // 确认选择
   const handleConfirm = () => {
     const daysInMonth = new Date(pickerYear, pickerMonth, 0).getDate();
@@ -57,9 +87,8 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
     setShowPicker(false);
   };
 
-  // 生成年份选项
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
+  // 生成年份选项: 全局同步算法
+  const years = getPickerYearRange(false); // 不倒序，按原样从小到大
 
   // 生成当月天数
   const daysInSelectedMonth = new Date(pickerYear, pickerMonth, 0).getDate();

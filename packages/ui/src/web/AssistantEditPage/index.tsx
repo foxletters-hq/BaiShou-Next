@@ -142,14 +142,14 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           </button>
           <span className={styles.appBarTitle}>
             {isEditing
-              ? t('agent.assistant.edit_title', '特调伙伴档案')
-              : t('agent.assistant.create_title', '新建数字心智')}
+              ? t('assistant.edit_title', '编辑伙伴')
+              : t('assistant.create_title', '创建伙伴')}
           </span>
         </div>
         {isEditing && !isLastAssistant && onDelete && (
           <div className={styles.appBarActions}>
             <button className={styles.deleteBtn} onClick={onDelete}>
-              <Trash2 size={14} /> {t('common.delete', '清除数据流')}
+              <Trash2 size={14} /> {t('common.delete', '删除')}
             </button>
           </div>
         )}
@@ -172,25 +172,25 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                   <span className={styles.avatarBadge}>✦</span>
                 </div>
                 <span className={styles.avatarHint}>
-                  {t('agent.assistant.avatar_hint', '指派外显情绪粒子')}
+                  {t('assistant.avatar_hint', '点击选 emoji · 长按选图片')}
                 </span>
              </div>
 
              <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>{t('agent.assistant.name_label', '系统代号 (Name)')}</label>
+                <label className={styles.fieldLabel}>{t('assistant.name_label', '伙伴名称')}</label>
                 <input
                   className={styles.fieldInput}
-                  placeholder={t('agent.assistant.name_hint', '例如：机要助理、代码专家')}
+                  placeholder={t('assistant.name_hint', '例如：知识伙伴、写作伙伴...')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
              </div>
 
              <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>{t('agent.assistant.description_label', '职能描述 (Description)')}</label>
+                <label className={styles.fieldLabel}>{t('assistant.description_label', '简介')}</label>
                 <input
                   className={styles.fieldInput}
-                  placeholder={t('agent.assistant.description_hint', '一句话描述该心智的特长与使命')}
+                  placeholder={t('assistant.description_hint', '简短描述伙伴的用途...')}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -201,9 +201,9 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           <div className={styles.formSection}>
              <div className={styles.sectionHeader}>
                 <Cpu size={18} className={styles.sectionIcon} />
-                <span>{t('assistant.system_prompt', '底层系统设定 (System Prompt)')}</span>
+                <span>{t('assistant.prompt_label', '系统提示词')}</span>
              </div>
-             <p className={styles.fieldHint}>{t('assistant.system_prompt_hint', '定义该助手的边界设定、语言回答风格。')}</p>
+             <p className={styles.fieldHint}>{t('assistant.prompt_hint', '定义伙伴的角色、行为和回复风格...')}</p>
              
              <div className={styles.fieldGroup}>
                 <div className={styles.promptToolbar}>
@@ -233,7 +233,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                 {promptMode === 'edit' ? (
                    <textarea
                      className={`${styles.fieldTextarea} ${styles.systemPromptArea}`}
-                     placeholder={t('agent.assistant.prompt_hint', '我是白守，你的人工智能助手...')}
+                     placeholder={t('assistant.prompt_hint', '定义伙伴的角色、行为和回复风格...')}
                      value={systemPrompt}
                      onChange={(e) => setSystemPrompt(e.target.value)}
                    />
@@ -265,7 +265,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              </div>
 
              <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>{t('assistant.main_model', '专属大模型 (Model)')}</label>
+                <label className={styles.fieldLabel}>{t('assistant.bind_model_label', '绑定模型')}</label>
                 {providerId && modelId ? (
                    <div className={styles.selectorCard} onClick={() => {
   /* TODO: Pop out Provider picker */}}>
@@ -284,8 +284,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   /* Pick model */}}>
                       <div className={styles.selectorIcon}><Box size={20}/></div>
                       <div className={styles.selectorContent}>
-                         <div className={styles.selectorTitle}>{t('assistant.global_default', '全局默认设置')}</div>
-                         <div className={styles.selectorSubtitle}>{t('assistant.inherit_global', '继承系统配置中的主要模型集合')}</div>
+                         <div className={styles.selectorTitle}>{t('assistant.use_global_model', '使用全局模型')}</div>
+                         <div className={styles.selectorSubtitle}>{t('assistant.bind_model_desc', '绑定后，使用此伙伴的会话将始终使用指定模型')}</div>
                       </div>
                       <span className={styles.selectorAction}>{t('common.change', '更改')}</span>
                    </div>
@@ -359,9 +359,9 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
                 <div className={styles.sliderHeaderLine}>
                    <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>{t('assistant.context_limit', '追溯对话轮次 (Context Limit)')}</span>
+                      <span className={styles.sliderLabel}>{t('assistant.context_window_label', '上下文轮数')}</span>
                       <span className={styles.sliderSub}>
-                         {isUnlimitedContext ? '提交全部当前会话的历史数据。' : '设定大模型每次对话的最大上下文回看历史数。'}
+                         {isUnlimitedContext ? t('assistant.context_unlimited_desc', '将发送所有历史消息给模型') : t('assistant.context_window_desc', '每次对话发送给模型的历史消息条数，越大记忆越多但消耗更多 Token')}
                       </span>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -387,8 +387,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
              <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
                 <div className={styles.sliderHeaderLine}>
                    <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>{t('assistant.auto_compress', '超限长文总结压缩 (Auto-Compression)')}</span>
-                      <span className={styles.sliderSub}>{t('assistant.auto_compress_desc', '超出截断设定时对较远的对话执行合并总结。保留记录轮数：{{n}}。', { n: compressKeepTurns })}</span>
+                      <span className={styles.sliderLabel}>{t('assistant.compress_label', '自动压缩')}</span>
+                      <span className={styles.sliderSub}>{!isCompressDisabled ? t('assistant.compress_enabled_desc', '对话超过阈值时自动将旧消息压缩为摘要') : t('assistant.compress_disabled_desc', '对话不会自动压缩，所有消息将完整保留')}</span>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                      {!isCompressDisabled && <span className={styles.sliderValueBox}>{formatTokens(compressThreshold)} TK</span>}
@@ -409,7 +409,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                      />
                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                         <Hash size={14} color="var(--text-secondary)"/>
-                        <span style={{ fontSize: 13, color: 'var(--text-secondary)'}}>{t('assistant.keep_uncompressed', '不压缩的末尾会话留存轮数：')}</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)'}}>{t('assistant.compress_keep_turns_label', '保留互动轮数')}</span>
                         <input
                           type="range"
                           className={styles.sliderInput}
@@ -455,7 +455,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           <div className={styles.saveBtnContainer}>
              <button className={styles.saveBtn} onClick={handleSave} disabled={saving || !name.trim()}>
                 <Sparkles size={16} /> 
-                {saving ? '脑波刻录中...' : t('common.save', '锁定潜意识写入')}
+                {saving ? t('common.saving', '保存中...') : t('common.save', '保存')}
              </button>
           </div>
           

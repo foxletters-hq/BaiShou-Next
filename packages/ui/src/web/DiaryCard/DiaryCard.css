@@ -65,23 +65,26 @@
 }
 
 .diary-card-v2-content {
-  height: 120px;
+  height: 120px; /* Force consistent bounding box height to prevent card collapsing on short contents */
   width: 100%;
 }
 
 .markdown-snippet-mask {
   height: 100%;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
 }
 
 .markdown-snippet-mask p {
   font-size: 15px;
-  line-height: 1.6;
-  color: var(--text-primary);
-  opacity: 0.9;
+  line-height: 1.7;
+  color: #0f172a !important; /* Pitch black matching editor */
   margin: 0;
+}
+
+[data-theme="dark"] .markdown-snippet-mask p {
+  color: #f1f5f9 !important;
 }
 
 .diary-card-v2-tags {

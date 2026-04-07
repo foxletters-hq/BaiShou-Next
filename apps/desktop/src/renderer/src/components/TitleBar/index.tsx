@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './TitleBar.module.css';
-import { MdAutoStories, MdAutoAwesome, MdSettings, MdMinimize, MdCropSquare, MdClose, MdFolderShared, MdArrowDropDown } from 'react-icons/md';
+import { MdAutoStories, MdAutoAwesome, MdMinimize, MdCropSquare, MdClose, MdFolderShared, MdArrowDropDown } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 
 export const TitleBar: React.FC = () => {
@@ -114,10 +114,6 @@ export const TitleBar: React.FC = () => {
             </div>
           )}
         </div>
-
-        <button className={styles.actionBtn} onClick={() => navigate('/settings')} title="Settings">
-          <MdSettings className={styles.actionIcon} />
-        </button>
 
         <div className={styles.divider}></div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, Plus, X, Cpu, Database, Command, CheckSquare } from 'lucide-react';
+import { Search, Plus, X, Star, Database, Command, CheckSquare } from 'lucide-react';
 import styles from './AssistantPickerSheet.module.css';
 
 // 使用与管理页一致的核心 Contract
@@ -68,23 +69,22 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <>
-      <div className={styles.overlay} onClick={onClose} />
-      <div className={styles.dialog}>
+  return createPortal(
+    <div className={styles.overlay}>
+      <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
          
          {/* ─── 左侧机能筛选屏 ─── */}
          <div className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
-               <Cpu size={24} className={styles.headerIcon} />
-               <span className={styles.headerTitle}>{t('agent.selectAssistant', '热载心智')}</span>
+               <Star size={24} className={styles.headerIcon} />
+               <span className={styles.headerTitle}>{t('assistant.select_title', '选择伙伴')}</span>
             </div>
 
             <div className={styles.searchBox}>
                <Search size={16} color="var(--text-secondary)" />
                <input 
                  type="text"
-                 placeholder={t('agent.searchP', '扫描标识...')}
+                 placeholder={t('common.search_hint', '搜索...')}
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                  className={styles.searchInput}
@@ -93,7 +93,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
 
             <div className={styles.listArea}>
                {filteredAssistants.length === 0 ? (
-                 <div className={styles.emptyText}>{t('agent.noMatch', '信号隔离，未发现对应节点。')}</div>
+                 <div className={styles.emptyText}>{t('assistant.no_assistant', '无伙伴')}</div>
                ) : (
                  filteredAssistants.map(ast => {
   const isSelected = activeAssistant?.id === ast.id;
@@ -122,7 +122,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
             <div className={styles.bottomArea}>
                <button className={styles.createBtn} onClick={() => {
   if(onCreateNew) onCreateNew(); }}>
-                  <Plus size={16} /> {t('agent.createNew', '编织全新连接')}
+                  <Plus size={16} /> {t('assistant.create_title', '创建伙伴')}
                </button>
             </div>
          </div>
@@ -135,8 +135,8 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
             
             {!activeAssistant ? (
                <div className={styles.emptyDetail}>
-                  <Cpu size={48} opacity={0.3} />
-                  <span>{t('assistant.picker_no_selection', '未选中对象，请在左侧列表指定一个助手。')}</span>
+                  <Star size={48} opacity={0.3} />
+                  <span>{t('assistant.picker_no_selection', '选择一个伙伴查看详情')}</span>
                </div>
             ) : (
                <div className={styles.detailContent}>
@@ -154,14 +154,14 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                        className={`${styles.tab} ${activeTab === 'prompt' ? styles.tabActive : ''}`}
                        onClick={() => setActiveTab('prompt')}
                      >
-                        <Command size={16}/> {t('assistant.picker_tab_prompt', '提示词与预设')}
-                     </div>
-                     <div 
-                       className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
-                       onClick={() => setActiveTab('memory')}
-                     >
-                        <Database size={16}/> {t('assistant.picker_tab_rag', '知识库连通性 (RAG)')}
-                     </div>
+                         <Command size={16}/> {t('assistant.prompt_label', '系统提示词')}
+                      </div>
+                      <div 
+                        className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
+                        onClick={() => setActiveTab('memory')}
+                      >
+                         <Database size={16}/> {t('rag.title', '语义搜索库 (RAG)')}
+                      </div>
                   </div>
 
                   <div className={styles.tabContent}>
@@ -202,18 +202,16 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                         <button 
                           className={styles.applyBtn} 
                           onClick={() => {
-
-
                              onSelect(activeAssistant);
                              onClose();
                           }}
                         >
-                          <CheckSquare size={18} /> {t('assistant.picker_launch', '应用关联并立即呼出 {{name}}', { name: activeAssistant.name })}
-                        </button>
-                     ) : (
-                        <button className={`${styles.applyBtn} ${styles.applyBtnCurrent}`} disabled>
-                           {t('assistant.picker_already_active', '当前对话框里该助手已是活动状态')}
-                        </button>
+                           <CheckSquare size={18} /> {t('agent.chat.select_partner', '选择伙伴')}
+                         </button>
+                      ) : (
+                         <button className={`${styles.applyBtn} ${styles.applyBtnCurrent}`} disabled>
+                            {t('assistant.picker_already_active', '当前已选择此伙伴')}
+                         </button>
                      )}
                   </div>
                </div>
@@ -221,6 +219,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
          </div>
 
       </div>
-    </>
+    </div>,
+    document.body
   );
 };

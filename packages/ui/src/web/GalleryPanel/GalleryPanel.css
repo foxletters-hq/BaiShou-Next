@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-top: 32px;
+  
 }
 
 .gallery-header {
@@ -17,46 +17,44 @@
   margin: 0;
 }
 
-.gallery-actions {
+.gallery-tabs-container {
   display: flex;
   gap: 8px;
   background: var(--bg-surface-highlight);
   padding: 4px;
   border-radius: 8px;
+  width: fit-content;
+  margin-bottom: 8px;
 }
 
-.view-btn {
+.gallery-tab-btn {
   background: transparent;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 6px;
   color: var(--text-secondary);
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.view-btn.active {
+.gallery-tab-btn.active {
   background: var(--bg-surface);
-  color: var(--text-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Mock shadow-xs */
+  color: var(--color-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* 瀑布流布局 Mock */
-.gallery-mode-masonry {
-  display: columns;
-  column-count: 2;
-  column-gap: 16px;
-}
-
-.gallery-mode-masonry > * {
-  break-inside: avoid;
-  margin-bottom: 16px;
-}
-
-/* 网格布局 Mock */
 .gallery-mode-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
+}
+
+.gallery-empty-state {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  grid-column: 1 / -1;
 }

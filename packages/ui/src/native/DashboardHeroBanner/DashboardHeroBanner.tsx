@@ -11,8 +11,8 @@ export const DashboardHeroBanner: React.FC = () => {
 
   return (
     <View style={styles.banner}>
-      <Text style={styles.title}>{t('summary.dashboard_greeting_morning') || greeting}</Text>
-      <Text style={styles.subtitle}>{t('summary.dashboard_subtitle') || '过去的日子都在这里闪闪发光'}</Text>
+      <Text style={styles.title}>{t('common.app_title', '白守')} · {t('summary.collective_memories_title', '回忆')}</Text>
+      <Text style={styles.subtitle}>{t('summary.algorithm_desc', '基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。')}</Text>
       
       <View style={[styles.circle, { right: -20, top: -40, width: 140, height: 140, backgroundColor: 'rgba(255,154,158,0.2)' }]} />
       <View style={[styles.circle, { right: 80, bottom: -30, width: 80, height: 80, backgroundColor: 'rgba(161,196,253,0.3)' }]} />

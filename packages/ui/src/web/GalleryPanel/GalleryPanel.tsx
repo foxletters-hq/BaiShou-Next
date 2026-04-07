@@ -12,7 +12,7 @@ export interface GalleryPanelProps {
 
 export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) => {
   const { t } = useTranslation();
-  const [viewMode, setViewMode] = useState<'grid' | 'masonry'>('masonry');
+  const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('weekly');
 
   const formatDate = (d: any) => {
   if (!d) return '';
@@ -32,28 +32,28 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) =>
     return t('gallery.summary', '总结');
   };
 
+  const filteredSummaries = summaries.filter(s => (s.type || '').replace('ly', '') === activeTab.replace('ly', '') || s.type === activeTab);
+
   return (
     <div className="gallery-panel">
       <div className="gallery-header">
-        <h3 className="gallery-title">{t('summary.gallery_title')}</h3>
-        <div className="gallery-actions">
+        <h3 className="gallery-title">{t('summary.memory_gallery', '记忆画廊')}</h3>
+      </div>
+      
+      <div className="gallery-tabs-container">
+        {(['weekly', 'monthly', 'quarterly', 'yearly'] as const).map(tab => (
           <button 
-            className={`view-btn ${viewMode === 'masonry' ? 'active' : ''}`}
-            onClick={() => setViewMode('masonry')}
+            key={tab}
+            className={`gallery-tab-btn ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab as any)}
           >
-            {t('summary.view_masonry')}
+            {t(`summary.tab_${tab}`)}
           </button>
-          <button 
-            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-            onClick={() => setViewMode('grid')}
-          >
-            {t('summary.view_grid')}
-          </button>
-        </div>
+        ))}
       </div>
 
-      <div className={`gallery-content gallery-mode-${viewMode}`}>
-        {summaries.map((item, index) => (
+      <div className="gallery-content gallery-mode-grid">
+        {filteredSummaries.map((item, index) => (
           <SummaryCard 
             key={item.id ?? index}
             id={String(item.id ?? index)}
@@ -64,6 +64,11 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) =>
             onClick={() => console.log('Open', item.id)}
           />
         ))}
+        {filteredSummaries.length === 0 && (
+          <div className="gallery-empty-state">
+            {t('diary.no_content', '暂无内容')}
+          </div>
+        )}
       </div>
     </div>
   );

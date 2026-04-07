@@ -5,12 +5,15 @@ import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiF
 import styles from './Sidebar.module.css';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { useUserProfileStore } from '@baishou/store';
 
 
 
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
+  const { profile, loadProfile } = useUserProfileStore();
+
   // Default nav items
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,8 +36,12 @@ export const Sidebar: React.FC = () => {
   };
 
   useEffect(() => {
-  localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder));
+    localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder));
   }, [navOrder]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const onDragEnd = (result: DropResult) => {
   if (!result.destination) return;
@@ -126,9 +133,19 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <div className={styles.userCard}>
-         <div className={styles.avatar}>A</div>
+         <div className={styles.avatar}>
+           {profile?.avatarPath && profile.avatarPath !== 'default' ? (
+             <img 
+               src={profile.avatarPath.startsWith('http') || profile.avatarPath.startsWith('data:') ? profile.avatarPath : `file://${profile.avatarPath}`} 
+               alt="avatar" 
+               style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} 
+             />
+           ) : (
+             (profile?.nickname || 'U').charAt(0).toUpperCase()
+           )}
+         </div>
          <div className={styles.userInfo}>
-            <div className={styles.userName}>{t('settings.no_nickname', '默认用户')}</div>
+            <div className={styles.userName}>{profile?.nickname || t('settings.no_nickname', '默认用户')}</div>
          </div>
       </div>
     </motion.div>

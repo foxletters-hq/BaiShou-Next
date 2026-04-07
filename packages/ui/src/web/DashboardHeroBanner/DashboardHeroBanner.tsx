@@ -25,10 +25,10 @@ export const DashboardHeroBanner: React.FC = () => {
       overflow: 'hidden'
     }}>
       <div style={{ fontSize: 24, fontWeight: 'bold', color: 'var(--text-primary)', zIndex: 1 }}>
-        {t('summary.dashboard_greeting_morning') || greeting}
+        {t('common.app_title', '白守')} · {t('summary.collective_memories_title', '回忆')}
       </div>
       <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 8, zIndex: 1 }}>
-        {t('summary.dashboard_subtitle') || '过去的日子都在这里闪闪发光'}
+        {t('summary.algorithm_desc', '基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。')}
       </div>
       
       {/* 装饰性背景球 */}

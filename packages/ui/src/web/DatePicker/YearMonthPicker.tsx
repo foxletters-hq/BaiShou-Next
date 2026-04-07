@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { smoothScrollToCenter } from '../../utils/scroll';
+import { getPickerYearRange } from '../../utils/date';
 import styles from './YearMonthPicker.module.css';
 
 export interface YearMonthPickerProps {
@@ -52,19 +54,28 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
 
   const months = [1,2,3,4,5,6,7,8,9,10,11,12];
   const currentPhysicalYear = new Date().getFullYear();
-  // 最早从2000年开始，最晚到今年之后加30年
-  const startYear = 2000;
-  const endYear = currentPhysicalYear + 30;
-  const yearsBlock = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i).reverse();
+  const yearsBlock = getPickerYearRange(true);
 
   // Make sure to scroll to the active year when opening
   const yearListRef = useRef<HTMLDivElement>(null);
+  const isInitialOpen = useRef(true);
+
   useEffect(() => {
+    if (!isOpen) {
+      isInitialOpen.current = true;
+      return;
+    }
+
     if (isOpen && yearListRef.current) {
-      const activeEl = yearListRef.current.querySelector('[data-active="true"]');
-      if (activeEl) {
-        activeEl.scrollIntoView({ block: 'center' });
-      }
+      // 延迟一帧确保 DOM 和样式渲染完毕
+      setTimeout(() => {
+        const activeEl = yearListRef.current?.querySelector('[data-active="true"]') as HTMLElement;
+        if (activeEl && yearListRef.current) {
+          const duration = isInitialOpen.current ? 0 : 600;
+          smoothScrollToCenter(yearListRef.current, activeEl, duration);
+          isInitialOpen.current = false;
+        }
+      }, 50);
     }
   }, [isOpen, viewYear]);
 

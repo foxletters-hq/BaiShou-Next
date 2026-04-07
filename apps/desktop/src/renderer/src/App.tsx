@@ -52,6 +52,8 @@ import { ErrorBoundary } from './ErrorBoundary';
 export function App() {
   const locale = useSettingsStore(s => s.locale);
 
+  const themeColor = useSettingsStore(s => s.themeColor);
+
   // 确保 store 中持久化的语言设置在每次启动时同步到 i18n
   useEffect(() => {
     const lang = locale === 'system' ? navigator.language.split('-')[0] : locale;
@@ -59,6 +61,20 @@ export function App() {
       i18n.changeLanguage(lang);
     }
   }, [locale]);
+
+  useEffect(() => {
+    if (themeColor) {
+      document.documentElement.style.setProperty('--color-primary', themeColor);
+      let hex = themeColor.replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
+      if (hex.length === 6) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        document.documentElement.style.setProperty('--color-primary-rgb', `${r}, ${g}, ${b}`);
+      }
+    }
+  }, [themeColor]);
 
   return (
     <HashRouter>

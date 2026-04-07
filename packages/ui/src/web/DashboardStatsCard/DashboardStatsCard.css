@@ -52,9 +52,21 @@
   transform: translateY(-2px);
 }
 
+.stats-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+
 .stats-icon {
-  font-size: 22px;
-  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stats-info {

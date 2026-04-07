@@ -91,7 +91,7 @@
 .theme-toggle-group {
   display: flex;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.04);
   padding: 6px;
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.1);
@@ -115,9 +115,9 @@
 }
 
 .theme-btn.active {
-  background: rgba(255, 255, 255, 0.15);
-  color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: var(--color-surface, #FFFFFF);
+  color: var(--color-primary, #5BA8F5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .color-palette {

@@ -273,19 +273,42 @@
 
 /* 内容预览 */
 .diary-card-content {
-  height: 120px;
+  height: 120px; /* Force consistent minimum bound so empty cards have same stable layout presence */
   overflow: hidden;
   position: relative;
   margin-bottom: 8px;
-  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  /* Shift mask down slightly so more text is visible before fading */
+  -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
 }
 
-.diary-card-content-text {
+.diary-card-content-text,
+.diary-card-content-text p,
+.diary-card-content-text h1,
+.diary-card-content-text h2,
+.diary-card-content-text h3,
+.diary-card-content-text h4,
+.diary-card-content-text h5,
+.diary-card-content-text h6,
+.diary-card-content-text li,
+.diary-card-content-text blockquote {
   font-size: 15px;
-  line-height: 1.6;
-  color: rgba(0, 0, 0, 0.85);
+  line-height: 1.7;
+  color: #0f172a !important; /* Pitch black matching editor */
   word-break: break-word;
+}
+
+[data-theme="dark"] .diary-card-content-text,
+[data-theme="dark"] .diary-card-content-text p,
+[data-theme="dark"] .diary-card-content-text h1,
+[data-theme="dark"] .diary-card-content-text h2,
+[data-theme="dark"] .diary-card-content-text h3,
+[data-theme="dark"] .diary-card-content-text h4,
+[data-theme="dark"] .diary-card-content-text h5,
+[data-theme="dark"] .diary-card-content-text h6,
+[data-theme="dark"] .diary-card-content-text li,
+[data-theme="dark"] .diary-card-content-text blockquote {
+  color: #f1f5f9 !important; /* Light slate matching editor */
 }
 
 /* 标签区域 */
@@ -398,8 +421,7 @@
 .diary-delete-modal-overlay {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
+  background: transparent;
   z-index: 9999;
   display: flex;
   align-items: center;

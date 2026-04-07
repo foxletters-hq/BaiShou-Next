@@ -31,6 +31,7 @@ export interface AgentSidebarProps {
   onRenameSession?: (id: string) => void;
   onBatchDelete?: (ids: string[]) => void;
   onCollapse?: () => void;
+  onShowPicker?: () => void;
 }
 
 // 原版 buildAssistantAvatar 逻辑 — 支持图片路径或 emoji fallback
@@ -77,6 +78,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
   onRenameSession,
   onBatchDelete,
   onCollapse,
+  onShowPicker,
 }) => {
   const navigate = useNavigate();
   const [isMultiSelect, setIsMultiSelect] = useState(false);
@@ -118,7 +120,13 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
         <div className={styles.currentAssistantWrapper}>
           <div
             className={styles.currentAssistantCard}
-            onClick={() => currentAssistant && onAssistantSwitched(currentAssistant)}
+            onClick={() => {
+              if (onShowPicker) {
+                onShowPicker();
+              } else if (currentAssistant) {
+                onAssistantSwitched(currentAssistant);
+              }
+            }}
           >
             {currentAssistant ? (
               <>
@@ -144,6 +152,33 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
             )}
           </div>
         </div>
+
+        <div className={styles.pinnedRow}>
+          {pinnedAssistants.length === 0 && (
+             <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', flex: 1 }}>
+               这里可以置顶伙伴
+             </div>
+          )}
+          {pinnedAssistants.map(assistant => {
+            const isSelected = currentAssistant?.id === assistant.id;
+            return (
+              <div
+                key={assistant.id}
+                className={`${styles.pinnedAvatarWrapper} ${isSelected ? styles.selected : ''}`}
+                title={assistant.name}
+                onClick={() => {
+                  if (!isSelected) {
+                    onAssistantSwitched(assistant);
+                  }
+                }}
+              >
+                <AssistantAvatar assistant={assistant} size={isSelected ? 36 : 40} />
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ height: 4 }} />
 
         {/* ─── 新对话按钮 — 原版 FilledButton padding:vertical:14 ─── */}
         <div className={styles.newChatWrapper}>
@@ -257,8 +292,6 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
             </button>
           </div>
         )}
-
-
       </div>
     </div>
   );

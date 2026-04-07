@@ -1,35 +1,34 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { DiaryEditor } from '@baishou/ui';
+import { DiaryEditor, useToast } from '@baishou/ui';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import './DiaryEditorPage.css';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { formatLocalDate, safeParseDate } from '@baishou/shared';
 
 export const DiaryEditorPage: React.FC = () => {
   const { t } = useTranslation();
   const { dateStr } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const toast = useToast();
 
-  // 是否是追加模式（原版 BaiShou append=1）
+  // 是否是追加模式（仅在通过首页快捷按钮点击时带 append=1 参数才生效，不要直接点开今天的日记卡片也强制加时间）
   const isAppendMode = searchParams.get('append') === '1';
 
-  // 日期解析：严格使用 YYYY-MM-DD 手动构建避免时区问题（修复 RangeError）
-  const parseDate = (str: string | undefined): Date => {
-    if (!str || str === 'new') return new Date();
-    // YYYY-MM-DD 格式
-    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+  // 日期解析：优先取 URL dateStr 参数，新建模式下取 ?date= query param，兜底取今天
+  const parseInitialDate = (): Date => {
+    if (!dateStr || dateStr === 'new') {
+      const dParam = searchParams.get('date');
+      return safeParseDate(dParam ?? undefined);
     }
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? new Date() : d;
+    return safeParseDate(dateStr);
   };
 
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date>(() => parseDate(dateStr));
+  const [selectedDate, setSelectedDate] = useState<Date>(() => parseInitialDate());
   const [weather, setWeather] = useState('');
   const [mood, setMood] = useState('');
   const [isDirty, setIsDirty] = useState(false);
@@ -46,7 +45,7 @@ export const DiaryEditorPage: React.FC = () => {
   // 根据日期查找已有日记，支持追加模式（appendOnLoad）
   useEffect(() => {
     if (!dateStr || dateStr === 'new') {
-      const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n`;
+      const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
       setContent(timeMark);
       setIsLoading(false);
       return;
@@ -63,19 +62,19 @@ export const DiaryEditorPage: React.FC = () => {
 
             if (isAppendMode) {
               const existing = (diary.content || '').trimEnd();
-              const timeMark = `\n\n##### ${format(new Date(), 'HH:mm:ss')}\n\n`;
-              setContent(existing + timeMark);
+              const timeMark = `\n\n##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
+              setContent(existing ? existing + timeMark : timeMark.trimStart());
             } else {
               setContent(diary.content || '');
             }
           } else {
-            const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n`;
+            const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
             setContent(timeMark);
           }
         })
         .catch((e: any) => {
           console.error('Failed to load diary:', e);
-          const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n`;
+          const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
           setContent(timeMark);
         })
         .finally(() => {
@@ -85,26 +84,17 @@ export const DiaryEditorPage: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStr, isAppendMode]);
 
-  // ── 日期转 ISO 字符串（时区安全）──
-  const dateToISOString = (d: Date): string => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}T00:00:00.000Z`;
-  };
-
   // ── 保存（严格还原原版双分支逻辑）──────────────────────────────────────
   const autoSave = useCallback(async (newContent: string) => {
     if (!newContent.trim()) return;
     try {
       if (typeof window !== 'undefined' && (window as any).api?.diary) {
-        let saveDateStr = dateStr;
-        if (!saveDateStr || saveDateStr === 'new') {
-          saveDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-        }
+        // 统一使用 UTC 日期字符串，与后端 IPC new Date(dateStr) 的解析行为保持一致
+        // 使用本地时区 YYYY-MM-DD，与后端 IPC parseDateStr 成对
+        const selectedDateStr = formatLocalDate(selectedDate);
         
         const payload = {
-          date: dateToISOString(selectedDate),
+          date: selectedDateStr,  // YYYY-MM-DD 纯日期字符串
           content: newContent,
           title: newContent.replace(/^#{1,6}\s*/gm, '').split('\n')[0].substring(0, 50),
           tags: tagsRef.current,
@@ -113,11 +103,17 @@ export const DiaryEditorPage: React.FC = () => {
         };
 
         if (diaryId) {
-          await (window as any).api.diary.update(diaryId, payload);
+          // 编辑已有日记：直接使用 update，payload.date 已化为用户选择的新日期
+          const updated = await (window as any).api.diary.update(diaryId, payload);
+          // 如果日期跳转导致后端返回了新 ID（合并场景），同步更新前端的 diaryId
+          if (updated && updated.id && updated.id !== diaryId) {
+            setDiaryId(updated.id);
+          }
         } else {
-          const existing = await (window as any).api.diary.findByDate(saveDateStr);
+          // 新建模式：查询用户当前选择的新日期
+          const existing = await (window as any).api.diary.findByDate(selectedDateStr);
           if (existing && existing.id) {
-             // Merging content logic for newly found overlapping diary
+             // 当天已有日记：合并内容
             const oldContent = (existing.content || '').trimEnd();
             const mergedContent = oldContent ? `${oldContent}\n\n${newContent}` : newContent;
             const mergedTags = [...new Set([...(existing.tags || []), ...tagsRef.current])];
@@ -134,10 +130,11 @@ export const DiaryEditorPage: React.FC = () => {
         }
       }
       setIsDirty(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Save failed:', e);
+      throw e;
     }
-  }, [selectedDate, weather, mood, diaryId, dateStr]);
+  }, [selectedDate, weather, mood, diaryId]);
 
   const handleContentChange = (newContent: string) => {
     setContent(newContent);
@@ -145,6 +142,7 @@ export const DiaryEditorPage: React.FC = () => {
   };
 
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleBack = () => {
     if (isDirty) {
@@ -155,10 +153,18 @@ export const DiaryEditorPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     // 延迟 100ms，以确保 TagInput 等失焦事件触发的 React 状态能完全更新到了 tagsRef
     setTimeout(async () => {
-      await autoSave(content);
-      navigate(-1);
+      try {
+        await autoSave(content);
+        navigate(-1);
+      } catch (e: any) {
+        toast.showError(e?.message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'));
+      } finally {
+        setIsSaving(false);
+      }
     }, 100);
   };
 

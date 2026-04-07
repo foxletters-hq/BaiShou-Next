@@ -3,13 +3,12 @@ import React, { useState } from 'react';
 import { 
   GalleryPanel, 
   DashboardHeroBanner, DashboardStatsCard, DashboardSharedMemoryCard,
-  useToast, DiaryCard
+  useToast
 } from '@baishou/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 // import { useNavigate } from 'react-router-dom'; // TODO: 后续用于跳转到总结详情页
-import { Settings, LayoutDashboard, Layers, Sparkles, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, Layers, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useSummaryData } from './hooks/useSummaryData';
-import { useDiaryData } from '../diary/hooks/useDiaryData';
 import './SummaryPage.css';
 
 
@@ -30,8 +29,6 @@ const GEN_PHASES = [
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
   const [lookbackMonths, setLookbackMonths] = useState(1);
   const { summaries, stats, missingSummaries, setMissingSummaries, generateSummary, refreshData } = useSummaryData();
-  const { entries } = useDiaryData();
-  const recentDiaries = entries.slice(0, 3);
 
   const handleCopyContext = async () => {
     try {
@@ -113,7 +110,6 @@ const GEN_PHASES = [
             <Layers size={18} /> {t('summary.memory_gallery') || '归档画廊'}
           </div>
         </div>
-        <button className="sp-settings-btn" title="Summary Settings"><Settings size={18} /></button>
       </div>
 
       <div className="sp-content">
@@ -130,33 +126,34 @@ const GEN_PHASES = [
               <DashboardStatsCard {...stats} />
             </div>
 
-            {/* 最近日记（今日记忆）预览模块 */}
-            {recentDiaries && recentDiaries.length > 0 && (
-              <motion.div 
-                className="sp-recent-diary-section"
-                variants={containerVariants}
-                initial="hidden" animate="show"
-                style={{ marginTop: 24, display: 'flex', flexDirection: 'column' }}
-              >
-                <div className="sp-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <div className="sp-section-title" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {t('summary.recent_diaries', '近期记录')}
-                  </div>
+            {/* AI 建议补全区域 */}
+            <motion.div 
+              className="sp-ai-suggestions-section"
+              variants={containerVariants}
+              initial="hidden" animate="show"
+              style={{ marginTop: 24, display: 'flex', flexDirection: 'column' }}
+            >
+              <div className="sp-section-header" style={{ marginBottom: 16 }}>
+                <div className="sp-section-title" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Sparkles size={18} color="var(--color-primary)" />
+                  {t('summary.ai_suggestions', 'AI 建议补全')}
                 </div>
-                <div className="sp-recent-diary-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {recentDiaries.map((entry: any) => (
-                    <DiaryCard
-                      key={entry.id}
-                      id={String(entry.id)}
-                      createdAt={entry.date}
-                      contentSnippet={entry.preview}
-                      tags={entry.tags || []}
-                      onClick={() => {}}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            )}
+              </div>
+              <div className="sp-ai-suggestions-container" style={{
+                padding: '24px',
+                borderRadius: '16px',
+                background: 'rgba(var(--color-primary-rgb, 91, 168, 245), 0.04)',
+                border: '1px dashed rgba(var(--color-primary-rgb, 91, 168, 245), 0.3)',
+                color: 'var(--text-secondary)',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '100px'
+              }}>
+                {t('summary.no_ai_suggestions', '暂无更多 AI 扩展建议，保持当前记录节奏即可。')}
+              </div>
+            </motion.div>
 
             {/* AI 缺失自动检测区域 */}
             <motion.div 

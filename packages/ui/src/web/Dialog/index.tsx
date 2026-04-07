@@ -6,7 +6,7 @@ import styles from './Dialog.module.css';
 
 export interface DialogContextState {
   confirm: (message: ReactNode, title?: string) => Promise<boolean>;
-  prompt: (message: ReactNode, defaultValue?: string, title?: string) => Promise<string | null>;
+  prompt: (message: ReactNode, defaultValue?: string, title?: string, isMultiline?: boolean) => Promise<string | null>;
   alert: (message: ReactNode, title?: string) => Promise<void>;
 }
 
@@ -20,6 +20,7 @@ interface DialogState {
   title?: string;
   message: ReactNode;
   defaultValue?: string;
+  isMultiline?: boolean;
   resolve?: (value: any) => void;
 }
 
@@ -51,10 +52,10 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
   }, []);
 
-  const prompt = useCallback((message: ReactNode, defaultValue?: string, title?: string): Promise<string | null> => {
+  const prompt = useCallback((message: ReactNode, defaultValue?: string, title?: string, isMultiline?: boolean): Promise<string | null> => {
     return new Promise((resolve) => {
       setPromptValue(defaultValue || '');
-      setState({ isOpen: true, type: 'prompt', message, title, defaultValue, resolve });
+      setState({ isOpen: true, type: 'prompt', message, title, defaultValue, isMultiline, resolve });
     });
   }, []);
 
@@ -67,15 +68,26 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             <div className={styles.message}>{state.message}</div>
             
             {state.type === 'prompt' && (
-              <Input 
-                autoFocus
-                value={promptValue}
-                onChange={(e) => setPromptValue(e.target.value)}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === 'Enter') closeDialog(promptValue);
-                }}
-                className={styles.promptInput}
-              />
+              state.isMultiline ? (
+                <textarea 
+                  autoFocus
+                  value={promptValue}
+                  onChange={(e) => setPromptValue(e.target.value)}
+                  className={styles.promptInput}
+                  rows={6}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-outline-variant)', background: 'var(--color-surface)', color: 'var(--color-on-surface)', marginTop: '16px', fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
+                />
+              ) : (
+                <Input 
+                  autoFocus
+                  value={promptValue}
+                  onChange={(e) => setPromptValue(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                    if (e.key === 'Enter') closeDialog(promptValue);
+                  }}
+                  className={styles.promptInput}
+                />
+              )
             )}
             
             <div className={styles.actions}>

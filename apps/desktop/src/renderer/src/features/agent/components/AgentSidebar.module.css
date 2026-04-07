@@ -150,6 +150,50 @@
   50% { opacity: 1; }
 }
 
+/* ─── Pinned Assistants ─── */
+.pinnedRow {
+  display: flex;
+  align-items: center;
+  padding: 4px 16px;
+  gap: 10px;
+  overflow-x: auto;
+  height: 44px;
+}
+.pinnedRow::-webkit-scrollbar {
+  display: none;
+}
+.pinnedAvatarWrapper {
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+  transition: opacity 0.2s;
+  box-sizing: border-box;
+}
+.pinnedAvatarWrapper:hover {
+  opacity: 0.8;
+}
+.pinnedAvatarWrapper.selected {
+  padding: 2px;
+  border: 2px solid var(--color-primary, #5BA8F5);
+}
+.managePinnedBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 22px;
+  background-color: var(--color-surface-container-highest, rgba(148, 163, 184, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--text-secondary, #94a3b8);
+  transition: background-color 0.2s;
+}
+.managePinnedBtn:hover {
+  background-color: var(--color-surface-container-highest, rgba(148, 163, 184, 0.2));
+}
+
 /* ─── 新建对话按钮 — FilledButton, padding:vertical:14, r:12 ─── */
 .newChatWrapper {
   padding: 8px 16px;

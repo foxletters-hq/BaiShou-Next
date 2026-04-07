@@ -26,8 +26,11 @@ import {
   WebSearchSettingsView,
   AboutSettingsCard,
   AssistantMatrixCard,
-  SummarySettingsView
+  SummarySettingsView,
+  useDialog,
+  useToast
 } from '@baishou/ui';
+import { AssistantManagementScreen } from '../agent/AssistantManagementScreen';
 
 export const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -242,10 +245,10 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
        <div className="glass-panel-card">
          <AppearanceSettingsCard 
            themeMode={settings.themeMode}
-           seedColor="#5BA8F5"
+           seedColor={settings.themeColor || '#5BA8F5'}
            language={settings.locale}
            onThemeModeChange={settings.setThemeMode}
-           onSeedColorChange={() => {}}
+           onSeedColorChange={settings.setThemeColor}
            onLanguageChange={settings.setLocale}
          />
        </div>
@@ -456,40 +459,53 @@ const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
 };
 
 const AssistantPane: React.FC<{ settings: any }> = ({ settings }) => {
-  const navigate = useNavigate();
   return (
-    <div>
+    <div className="settings-pane settings-pane-full" style={{ padding: 0 }}>
       {settings.userProfileConfig && (
-        <div className="glass-panel-card">
+        <div className="glass-panel-card" style={{ margin: '16px 16px 0 16px' }}>
             <IdentitySettingsCard 
                 profile={settings.userProfileConfig}
                 onChange={(profile) => settings.setUserProfileConfig(profile)}
             />
         </div>
       )}
-      <div className="glass-panel-card">
-         <AssistantMatrixCard onLaunchMatrix={() => {
-           navigate('/assistants');
-         }} />
+      <div style={{ flex: 1, position: 'relative' }}>
+         <AssistantManagementScreen />
       </div>
     </div>
   );
 };
 
 const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [ragStats, setRagStats] = useState<any>({ totalCount: 0, currentDimension: 0, totalSizeText: '0 KB' });
   const [ragEntries, setRagEntries] = useState<any[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [activeRagState, setActiveRagState] = useState<any>({ isRunning: false, type: 'idle', progress: 0, total: 0, statusText: '' });
+  const { confirm, prompt, alert } = useDialog();
+  const toast = useToast();
+
+  const fetchRagInfo = async () => {
+    try {
+      const s = await (window as any).api?.rag?.getStats();
+      if (s) setRagStats(s);
+      const e = await (window as any).api?.rag?.queryEntries({ limit: 50 });
+      if (e) setRagEntries(e);
+    } catch (err) {}
+  };
 
   useEffect(() => {
-    const fetchRagInfo = async () => {
-      try {
-        const s = await (window as any).api?.rag?.getStats();
-        if (s) setRagStats(s);
-        const e = await (window as any).api?.rag?.queryEntries({ limit: 50 });
-        if (e) setRagEntries(e);
-      } catch (err) {}
-    };
     fetchRagInfo();
+    let cleanup: any;
+    if ((window as any).api?.rag?.onRagProgress) {
+      cleanup = (window as any).api.rag.onRagProgress((state: any) => {
+        setActiveRagState(state);
+      });
+    }
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, []);
 
   if (!settings.ragConfig) return <div />;
@@ -498,19 +514,95 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
          <RagMemoryView 
              config={settings.ragConfig}
              stats={ragStats}
-             ragState={{ isRunning: false, type: 'idle', progress: 0, total: 0, statusText: '' }}
+             ragState={activeRagState.isRunning ? activeRagState : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }}
              hasMismatchModel={false}
-             embeddingModelId={settings.globalModelsConfig?.globalEmbeddingModelId}
+             embeddingModelId={settings.globalModels?.globalEmbeddingModelId}
              entries={ragEntries}
              onChange={(config) => settings.setRagConfig(config)}
-             onClearDimension={async () => await (window as any).api?.rag?.clearDimension()}
-             onBatchEmbed={async () => await (window as any).api?.rag?.triggerBatchEmbed()}
-             onAddManualMemory={async () => await (window as any).api?.rag?.addManualMemory()}
-             onTriggerMigration={async () => await (window as any).api?.rag?.triggerMigration()}
-             onClearAll={async () => await (window as any).api?.rag?.clearAll()}
-             onSearch={(q) => (window as any).api?.rag?.queryEntries({ keyword: q })}
-             onDeleteEntry={async (id) => await (window as any).api?.rag?.deleteEntry(id)}
-             onEditEntry={async (entry) => await (window as any).api?.rag?.editEntry(entry.embeddingId, entry)}
+             onNavigateToConfig={() => navigate('/settings/ai-models')}
+             onDetectDimension={async () => {
+               setIsProcessing(true);
+               try {
+                 const detectedDim = await (window as any).api?.rag?.detectDimension();
+                 await fetchRagInfo();
+                 if (detectedDim > 0) {
+                    toast.showSuccess(`检测完成，该模型向量维度为：${detectedDim}`);
+                 } else {
+                    await alert(t('ai_config.error_no_model', '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'), t('common.error', '错误'));
+                 }
+               } catch (e: any) {
+                 await alert(`检测发生错误：${e.message}`, t('common.error', '错误'));
+               } finally { setIsProcessing(false); }
+             }}
+             onClearDimension={async () => {
+               if (!await confirm(t('settings.rag_clear_dimension', '清理当前维度数据') + '?', t('common.warning', '警告'))) return;
+               setIsProcessing(true);
+               try {
+                 await (window as any).api?.rag?.clearDimension();
+                 await fetchRagInfo();
+               } finally { setIsProcessing(false); }
+             }}
+             onBatchEmbed={async () => {
+               if (!await confirm(t('settings.rag_batch_embed', '全量扫描未索引日记') + '?', t('common.warning', '警告'))) return;
+               setIsProcessing(true);
+               try {
+                 await (window as any).api?.rag?.triggerBatchEmbed();
+                 await fetchRagInfo();
+               } finally { setIsProcessing(false); }
+             }}
+             onAddManualMemory={async () => {
+               const text = await prompt('', '', t('settings.rag_add_manual', '添加手动记忆片段'), true);
+               if (!text || text.trim().length === 0) return;
+               setIsProcessing(true);
+               try {
+                 await (window as any).api?.rag?.addManualMemory?.(text);
+                 toast.showSuccess(t('common.success', '操作成功'));
+                 await fetchRagInfo();
+               } finally { setIsProcessing(false); }
+             }}
+             onTriggerMigration={async () => {
+               if (!await confirm(t('settings.rag_trigger_migration', '执行向量库迁移') + '?', t('common.warning', '警告'))) return;
+               setIsProcessing(true);
+               try {
+                 await (window as any).api?.rag?.triggerMigration();
+                 await fetchRagInfo();
+               } finally { setIsProcessing(false); }
+             }}
+             onClearAll={async () => {
+               if (!await confirm(t('settings.rag_clear_all', '清空所有向量数据') + '?', t('common.dangerous_action', '危险操作'))) return;
+               setIsProcessing(true);
+               try {
+                 await (window as any).api?.rag?.clearAll();
+                 await fetchRagInfo();
+               } finally { setIsProcessing(false); }
+             }}
+             onSearch={async (q) => {
+               setIsProcessing(true);
+               try {
+                 const e = await (window as any).api?.rag?.queryEntries({ keyword: q, limit: 50 });
+                 if (e) setRagEntries(e);
+               } catch (err) {}
+               finally { setIsProcessing(false); }
+             }}
+             onDeleteEntry={async (id) => {
+               if (!await confirm(t('common.delete', '删除') + '?', t('common.warning', '警告'))) return;
+               setIsProcessing(true);
+               try {
+                 await (window as any).api?.rag?.deleteEntry(id);
+                 await fetchRagInfo();
+               } finally { setIsProcessing(false); }
+             }}
+             onEditEntry={async (entry) => {
+               const newText = await prompt(t('settings.rag_edit_prompt', '请修改下方的记忆片段内容：'), entry.text, t('settings.rag_edit_manual', '编辑记忆内容'), true);
+               if (!newText || newText === entry.text) return;
+               setIsProcessing(true);
+               try {
+                 await (window as any).api?.rag?.editEntry({ embeddingId: entry.embeddingId, newText: newText });
+                 await fetchRagInfo();
+               } catch (e: any) {
+                 await alert(e.message, t('common.error', '错误'));
+               } finally { setIsProcessing(false); }
+             }}
          />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Calendar, Trash2, Edit3, CalendarCheck } from 'lucide-react';
+import { Search, Plus, Trash2, Edit3, CalendarCheck } from 'lucide-react';
 import { useDiaryData } from './hooks/useDiaryData';
 import { motion } from 'framer-motion';
 import './DiaryPage.css';
@@ -12,7 +12,7 @@ const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月',
 
 // 标签颜色映射
 const TAG_COLORS = ['tag-blue', 'tag-green', 'tag-orange', 'tag-purple'] as const;
-import { YearMonthPicker, useToast } from '@baishou/ui';
+import { YearMonthPicker, useToast, MarkdownRenderer } from '@baishou/ui';
 
 function getTagColor(tag: string): string {
   const sum = tag.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -125,7 +125,7 @@ export const DiaryPage: React.FC = () => {
         date: parsedDate,
         content: e.content || '',
         tags: e.tags || [],
-        preview: e.content?.substring(0, 500) || ''
+        preview: e.preview || e.content?.substring(0, 500) || ''
       } as DiaryEntry;
     });
 
@@ -296,7 +296,6 @@ const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete,
   const day = String(entry.date.getDate()).padStart(2, '0');
   const weekday = WEEKDAY_NAMES[entry.date.getDay()];
   const yearMonth = `${entry.date.getFullYear()} · ${MONTH_NAMES[entry.date.getMonth()]}`;
-  const time = formatTime(entry.date);
   const visibleTags = entry.tags.filter(t => t.trim().length > 0);
 
   return (
@@ -314,13 +313,10 @@ const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete,
         </div>
       </div>
 
-      {/* Time */}
-      <div className="diary-card-time">{time}</div>
-
       {/* Content Preview */}
       <div className="diary-card-content">
         <div className="diary-card-content-text">
-          {entry.preview}
+          <MarkdownRenderer content={entry.preview} />
         </div>
       </div>
 
