@@ -15,3 +15,5 @@ export * from './utils/pricing.util';
 
 // Mock 数据与类型（供开发阶段跨包使用）
 export * from './mock/agent.mock';
+
+export * from './utils/embedding.utils';

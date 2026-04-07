@@ -21,7 +21,7 @@ export class VaultIndexServiceImpl implements VaultIndexService {
     }
     const d = diary as Diary;
     const content = d.content || '';
-    const tagsArray = typeof d.tags === 'string' ? d.tags.split(',').filter(Boolean).map(t => t.trim()) : [];
+    const tagsArray = Array.isArray(d.tags) ? d.tags : (typeof d.tags === 'string' ? d.tags.split(',').filter(Boolean).map(t => t.trim()) : []);
     return {
       id: d.id!,  // Assuming id is safely present in DB format at this stage
       date: d.date,

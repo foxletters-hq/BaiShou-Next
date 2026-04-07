@@ -26,10 +26,14 @@ describe('Database Storage Export / Import Simulator', () => {
     // For pure storage copy testing, if the file exists and is copied, we can test file existence or basic KV inserts.
   });
 
-  afterAll(async () => {
+    afterAll(async () => {
     await connectionManager.disconnect();
-    if (fs.existsSync(tempDir)) {
-      await fsp.rm(tempDir, { recursive: true, force: true });
+    try {
+      if (fs.existsSync(tempDir)) {
+        await fsp.rm(tempDir, { recursive: true, force: true });
+      }
+    } catch (e) {
+      // Ignore EBUSY on Windows
     }
   });
 

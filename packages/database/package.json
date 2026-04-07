@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@baishou/shared": "workspace:^",
-    "@libsql/client": "0.14.0",
+    "@libsql/client": "0.17.2",
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.10",
-    "typescript": "^5.8.0",
+    "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   }
 }

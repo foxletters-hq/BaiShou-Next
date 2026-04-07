@@ -73,6 +73,15 @@ export class DatabaseConnectionManager implements IDatabaseConnectionManager {
     return this._drizzleDb;
   }
 
+  /**
+   * 直接注入已创建的 AppDatabase 实例（用于全局 Agent DB 预初始化场景）
+   * 不需要冗余的路径重连。
+   */
+  public setDb(db: AppDatabase): void {
+    this._drizzleDb = db;
+    // _sqliteDb 和 _currentPath 在这种模式下不需要，第一次 connect 调用仍行
+  }
+
   public isConnected(): boolean {
     return this._drizzleDb !== null;
   }

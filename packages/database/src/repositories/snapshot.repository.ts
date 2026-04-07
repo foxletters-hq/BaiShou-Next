@@ -6,9 +6,9 @@ export interface Snapshot {
   id: number;
   sessionId: string;
   summaryText: string;
-  coveredUpToMessageId: number;
+  coveredUpToMessageId: string;
   messageCount: number;
-  tokenCount: number;
+  tokenCount: number | null;
   createdAt: Date;
 }
 
@@ -16,39 +16,42 @@ export class SnapshotRepository {
   constructor(private readonly db: AppDatabase) {}
 
   /**
-   * 写入/覆盖某个会话的历史压缩提纲
+   * 写入一条会话压缩快照（追加，不覆盖旧快照）
+   * 对标原版 Flutter `appendSnapshot()`
    */
   async appendSnapshot(params: Omit<Snapshot, 'id' | 'createdAt'>): Promise<void> {
     await this.db.insert(compressionSnapshotsTable).values({
-      sessionId: params.sessionId as unknown as number, // 历史架构 schema 用了 integer 但是外系统使用 uuid string，此处如果是强转先适配
+      sessionId: params.sessionId,            // TEXT UUID，直接存储，无需强转
       summaryText: params.summaryText,
-      coveredUpToMessageId: params.coveredUpToMessageId,
+      coveredUpToMessageId: params.coveredUpToMessageId, // TEXT UUID
       messageCount: params.messageCount,
-      tokenCount: params.tokenCount,
-      createdAt: new Date()
+      tokenCount: params.tokenCount ?? null,
+      createdAt: new Date(),
     });
   }
 
   /**
    * 取得指定会话最近的前情提要快照
+   * 对标原版 Flutter `getLatestSnapshot()`
    */
   async getLatestSnapshot(sessionId: string): Promise<Snapshot | null> {
-    const result = await this.db.select()
+    const result = await this.db
+      .select()
       .from(compressionSnapshotsTable)
-      .where(eq(compressionSnapshotsTable.sessionId, sessionId as unknown as number))
-      .orderBy(desc(compressionSnapshotsTable.createdAt))
+      .where(eq(compressionSnapshotsTable.sessionId, sessionId))
+      .orderBy(desc(compressionSnapshotsTable.createdAt), desc(compressionSnapshotsTable.id))
       .limit(1)
       .get();
-      
+
     if (!result) return null;
-    
+
     return {
       id: result.id,
-      sessionId: result.sessionId.toString(),
+      sessionId: result.sessionId,
       summaryText: result.summaryText,
       coveredUpToMessageId: result.coveredUpToMessageId,
       messageCount: result.messageCount,
-      tokenCount: result.tokenCount,
+      tokenCount: result.tokenCount ?? null,
       createdAt: result.createdAt,
     };
   }

@@ -50,6 +50,8 @@ export class FileSyncServiceImpl implements FileSyncService {
       if (typeof diary.tags === 'string') {
         const arr = diary.tags.split(',').map(t => t.trim()).filter(Boolean);
         sb.push(`tags: [${arr.join(', ')}]`);
+      } else if (Array.isArray(diary.tags)) {
+        sb.push(`tags: [${diary.tags.join(', ')}]`);
       }
     }
     if ('updatedAt' in diary && diary.updatedAt) {
@@ -96,7 +98,7 @@ export class FileSyncServiceImpl implements FileSyncService {
       if (key.trim() === 'id') diary.id = Number(valStr);
       if (key.trim() === 'tags') {
          const cleanStr = valStr.replace(/^\[/, '').replace(/\]$/, '');
-         diary.tags = cleanStr.split(',').map(s => s.trim()).filter(Boolean).join(',');
+         diary.tags = cleanStr.split(',').map(s => s.trim()).filter(Boolean);
       }
       if (key.trim() === 'updated_at') diary.updatedAt = new Date(valStr);
     }

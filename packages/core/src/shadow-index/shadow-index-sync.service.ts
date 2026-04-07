@@ -231,6 +231,7 @@ export class ShadowIndexSyncService {
     );
 
     const payload: UpsertShadowIndexPayload = {
+      id: diary.id || undefined,
       filePath: relFilePath,
       date: diary.date.toISOString(),
       createdAt: diary.createdAt.toISOString(),

@@ -3,14 +3,23 @@ import * as path from 'node:path';
 import { IVaultService, VaultInfo } from './vault.types';
 import { IStoragePathService } from './storage-path.types';
 import { VaultActiveDeleteError, VaultNotFoundError } from './vault.errors';
-import { IDatabaseConnectionManager } from '@baishou/database';
 
+/**
+ * VaultService — Vault 注册表管理服务
+ *
+ * 架构调整（双库分离版本）：
+ * - 去掉了 `IDatabaseConnectionManager` 依赖
+ * - Agent DB 现在是全局共用库（不随 Vault 切换），在 desktop app 层一次性初始化
+ * - Shadow Index DB（per-vault）的连接由 vault.ipc.ts 在 Vault 切换/初始化后
+ *   调用 `shadowConnectionManager.connect(vaultSystemDir)` 来管理
+ *
+ * 此服务只负责 Vault 注册表（vault_registry.json）的 CRUD。
+ */
 export class VaultService implements IVaultService {
   private _vaults: VaultInfo[] = [];
 
   constructor(
     private readonly pathService: IStoragePathService,
-    private readonly dbManager: IDatabaseConnectionManager
   ) {}
 
   public async initRegistry(): Promise<void> {
@@ -20,7 +29,7 @@ export class VaultService implements IVaultService {
 
     let shouldSave = false;
     let content: string | null = null;
-    
+
     try {
       content = await fs.readFile(registryFile, 'utf-8');
     } catch (e: any) {
@@ -32,7 +41,7 @@ export class VaultService implements IVaultService {
     if (!content) {
       const defaultVaultName = 'Personal';
       const defaultVaultPath = await this.pathService.getVaultDirectory(defaultVaultName);
-      
+
       this._vaults = [{
         name: defaultVaultName,
         path: defaultVaultPath,
@@ -55,7 +64,7 @@ export class VaultService implements IVaultService {
           const vault = this._vaults[i];
           if (!vault) continue;
           const expectedPath = path.join(rootDir, vault.name);
-          // 容错匹配：移除路径末尾可能多余的横杠并将反斜杠转为正斜杠归一化后比对
+          // 容错匹配：路径归一化后比对
           const normalize = (p: string) => path.resolve(p).replace(/\\/g, '/');
           if (normalize(vault.path) !== normalize(expectedPath)) {
             vault.path = expectedPath;
@@ -78,22 +87,21 @@ export class VaultService implements IVaultService {
     if (shouldSave) {
       await this.saveRegistry(registryFile);
     }
-    
-    // Auto-connect to active vault at boot
+
+    // 确保活跃 Vault 的物理目录存在
     const activeVault = this.getActiveVault();
     if (activeVault) {
       await fs.mkdir(activeVault.path, { recursive: true });
       try {
         await fs.mkdir(path.join(activeVault.path, 'config'), { recursive: true });
       } catch (e) {}
-      
-      await this.dbManager.connect(path.join(activeVault.path, 'data.db'));
+      // 注意：Shadow DB 连接由 vault.ipc.ts 在此调用后触发 shadowConnectionManager.connect()
     }
   }
 
   public getActiveVault(): VaultInfo | null {
     if (this._vaults.length === 0) return null;
-    
+
     return [...this._vaults].sort(
       (a, b) => b.lastAccessedAt.getTime() - a.lastAccessedAt.getTime()
     )[0] || null;
@@ -107,17 +115,15 @@ export class VaultService implements IVaultService {
     const existingIndex = this._vaults.findIndex(v => v.name === vaultName);
     const globalDir = await this.pathService.getGlobalRegistryDirectory();
     const registryFile = path.join(globalDir, 'vault_registry.json');
-    let targetPath = '';
 
     if (existingIndex !== -1) {
       const existing = this._vaults[existingIndex];
       if (existing) {
         existing.lastAccessedAt = new Date();
-        targetPath = existing.path;
       }
     } else {
       const newPath = await this.pathService.getVaultDirectory(vaultName);
-      // Ensure physical directories exist
+      // 确保物理目录结构已创建
       await fs.mkdir(newPath, { recursive: true });
       await fs.mkdir(await this.pathService.getVaultSystemDirectory(vaultName), { recursive: true });
 
@@ -128,11 +134,10 @@ export class VaultService implements IVaultService {
         lastAccessedAt: new Date(),
       };
       this._vaults.push(newVault);
-      targetPath = newPath;
     }
 
     await this.saveRegistry(registryFile);
-    await this.dbManager.connect(path.join(targetPath, 'data.db'));
+    // 注意：Shadow DB 连接由 vault.ipc.ts 在此调用后触发 shadowConnectionManager.connect()
   }
 
   public async deleteVault(vaultName: string): Promise<void> {
@@ -170,21 +175,20 @@ export class VaultService implements IVaultService {
     try {
       await fs.rm(vaultPath, { recursive: true, force: true });
     } catch (e) {
-      // Ignored: UI should handle this but specification says 'throw error' or ignore.
+      // 文件删除失败时忽略（UI 层处理）
     }
   }
 
   private async saveRegistry(registryFile: string): Promise<void> {
-    // Ensure dir exists
     await fs.mkdir(path.dirname(registryFile), { recursive: true });
-    
+
     const jsonStr = JSON.stringify(this._vaults.map(v => ({
       name: v.name,
       path: v.path,
       createdAt: v.createdAt.toISOString(),
       lastAccessedAt: v.lastAccessedAt.toISOString()
     })));
-    
+
     await fs.writeFile(registryFile, jsonStr, 'utf-8');
   }
 }

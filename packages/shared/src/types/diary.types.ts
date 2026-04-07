@@ -26,6 +26,7 @@ export interface DiaryMeta {
   date: Date;
   preview: string;
   tags: string[];
+  updatedAt?: Date;
 }
 
 export interface TimelineNode {

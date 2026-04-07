@@ -1,100 +1,124 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createClient, Client } from '@libsql/client';
 import { SqliteHybridSearchRepository } from '../repositories/hybrid-search.repository';
-import * as sqliteVec from 'sqlite-vec';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import * as os from 'node:os';
 
-describe('SqliteHybridSearchRepository with native vec support', () => {
-  let db: Database.Database;
+describe('SqliteHybridSearchRepository (LibSQL)', () => {
+  let db: Client;
   let repo: SqliteHybridSearchRepository;
+  let tempDir: string;
+  let dbPath: string;
 
-  beforeEach(() => {
-    // 启动完全内存模式的原生 SQL 测试（不会在机器落地文件垃圾），毫秒级完成
-    db = new Database(':memory:');
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baishou-vec-test-'));
+    dbPath = path.join(tempDir, 'vec_test.db');
+    
+    db = createClient({ url: `file:${dbPath}` });
     repo = new SqliteHybridSearchRepository(db);
 
-    // 目前 SqliteVec 在 Node V20 及以下通常可以直接装载起作用
-    // 特此构建初始表（指定维度为 3 的测试环境维度）
-    repo.initVectorTables(3);
+    await repo.initVectorTables(3); // init with dimension 3
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     db.close();
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch (e) {
+      // ignore
+    }
   });
 
-  it('should explicitly load sqlite-vec capabilities', () => {
-    // 如果构建机器具备该版本，应当为 true
-    // sqlite-vec 有时依赖系统或者特定的预编译模块，无论它返回真假，
-    // 我们至少能验证探针是否能够稳定回退
-    expect(repo.supportsNativeVectorSearch()).toBeDefined();
+  describe('Initialization Pipeline', () => {
+    it('creates agent_embeddings table', async () => {
+      const res = await db.execute(`SELECT name FROM sqlite_master WHERE type='table' AND name='agent_embeddings'`);
+      expect(res.rows.length).toBe(1);
+    });
+
+    it('can dynamically probe for native native vector search support via vector_top_k', async () => {
+      // We probe whether vector extensions exist.
+      // Depending on the environment, it may or may not exist (pure JS or fully loaded native)
+      const isNative = repo.supportsNativeVectorSearch();
+      expect(typeof isNative).toBe('boolean');
+    });
   });
 
-  describe('Trigger Automation and Memory Fetch Sync', () => {
-    it('creates triggers linking agent_embeddings to vec_agent_embeddings seamlessly', () => {
-      if (!repo.supportsNativeVectorSearch()) {
-        console.warn('Skipping native vector test as extension failed to load on this architecture.');
-        return;
-      }
+  describe('Fallback: JS Cosine Similarity Calculation', () => {
+    it('should correctly fallback to JS pure cosine similarity calculation when native vector search is disabled or mocked out', async () => {
+        // Manually insert vectors via insertEmbedding, bypassing F32_BLOB raw manipulation to keep it abstract 
+        // We will insert embeddings
+        await repo.insertEmbedding({
+           id: 'f1', sourceType: 'c', sourceId: 's', groupId: 'fallback_group', chunkIndex: 0,
+           chunkText: 'Match node', embedding: [0.9, 0.1, 0], modelId: 'm'
+        });
+        
+        await repo.insertEmbedding({
+           id: 'f2', sourceType: 'c', sourceId: 's', groupId: 'fallback_group', chunkIndex: 0,
+           chunkText: 'Non match node', embedding: [0, 1, 0], modelId: 'm'
+        });
 
-      // 测试插入实体表 (手动插一条用 float32 array 装载成 buffer 进去的数据)
-      const dataToInsert = [0.1, 0.2, 0.3];
-      const buffer = Buffer.from(new Float32Array(dataToInsert).buffer);
+        // Force native support to fail dynamically to trigger JS fallback
+        const originalSupport = repo.supportsNativeVectorSearch;
+        repo.supportsNativeVectorSearch = () => false;
 
-      db.prepare(`
-        INSERT INTO agent_embeddings (id, source_type, source_id, group_id, chunk_index, chunk_text, metadata_json, embedding, model_id, source_created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run('msg1', 'chat', 'src1', 'sessionA', 0, 'This is a magic trigger test context', '{}', buffer, 'model1', 123456);
+        // Note: queryNativeVector automatically handles the fallback
+        const target = [1, 0, 0];
+        const results = await repo.queryNativeVector(target, 2);
+        
+        expect(results.length).toBe(2);
+        expect(results[0].messageId).toBe('f1');
+        // JS cosine similarity fallback check
+        expect(results[0].score).toBeGreaterThan(0.85); // should be quite similar to target
+        expect(results[1].messageId).toBe('f2');
+        expect(results[1].score).toBe(0); // target [1,0,0] and nonMatch [0,1,0] are orthogonal
 
-      // 直接从虚拟表抽查，看 Trigger 有没有发威！
-      const vecRows = db.prepare('SELECT id FROM vec_agent_embeddings').all() as any[];
-      expect(vecRows.length).toBe(1);
-      expect(vecRows[0].id).toBe('msg1');
-
-      // 验证通过 Memory 模式获取原汁原味的相量结构是否正确
-      const fetchAllRes = repo.fetchAllEmbeddingsForDecoupledSearch('sessionA');
-      fetchAllRes.then(rows => {
-         expect(rows.length).toBe(1);
-         expect(rows[0].chunkText).toBe('This is a magic trigger test context');
-         // 浮点数精度校验
-         expect(rows[0].embedding[0]).toBeCloseTo(0.1, 3);
-      });
+        // Restore
+        repo.supportsNativeVectorSearch = originalSupport;
     });
-
-    it('should correctly fetch matching neighbors via queryNativeVector with low distance (high cosine)', async () => {
-      if (!repo.supportsNativeVectorSearch()) return; // 防御性判断
-
-      const target = [1, 0, 0];
-      const other = [0, 1, 0];
-
-      db.prepare(`INSERT INTO agent_embeddings (id, source_type, source_id, group_id, chunk_index, chunk_text, embedding, model_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
-        'm1', 'c', 's', 'g', 0, 'Target!', Buffer.from(new Float32Array(target).buffer), 'm'
-      );
+    
+    it('should properly process missing or corrupted embeddings gracefully during JS fallback', async () => {
+      // mock a bad row manually (it shouldn't throw error or crash the fallback loop)
+      await db.execute(`INSERT INTO agent_embeddings (id, source_type, source_id, group_id, chunk_index, chunk_text, embedding, model_id) VALUES ('bad1', 'c', 's', 'fallback_group', 0, 'corrupt', vector('[error'), 'm')`).catch(() => {});
       
-      db.prepare(`INSERT INTO agent_embeddings (id, source_type, source_id, group_id, chunk_index, chunk_text, embedding, model_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
-        'm2', 'c', 's', 'g', 0, 'Other!', Buffer.from(new Float32Array(other).buffer), 'm'
-      );
+      const originalSupport = repo.supportsNativeVectorSearch;
+      repo.supportsNativeVectorSearch = () => false;
 
-      // 寻找 [1,0,0] 的极似项
-      const results = await repo.queryNativeVector([1, 0, 0], 2);
-      expect(results.length).toBeGreaterThan(0);
-      
-      // 第一个命中的必然是最近的（即 m1）因为两者完全一样
-      expect(results[0].messageId).toBe('m1');
-      // score 是由原生 SQLite Vec 引擎计算的 `distance` （这里转换为了 1 - dist = 1 - 0 = 1.0)
-      expect(results[0].score).toBeCloseTo(1.0, 3);
+      // Ensure it doesn't throw and resolves normally 
+      await expect(repo.queryNativeVector([1, 0, 0], 2)).resolves.toBeInstanceOf(Array);
+      repo.supportsNativeVectorSearch = originalSupport;
     });
+  });
 
-    it('test updating main table triggers update in vec table', () => {
-      if (!repo.supportsNativeVectorSearch()) return;
-      db.prepare(`INSERT INTO agent_embeddings (id, source_type, source_id, group_id, chunk_index, chunk_text, embedding, model_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
-        'm3', 'c', 's', 'g', 0, 'Will update', Buffer.from(new Float32Array([1, 1, 1]).buffer), 'm'
-      );
+  describe('Decoupled Search Support', () => {
+    it('fetchAllEmbeddingsForDecoupledSearch pulls out valid structured JSON data', async () => {
+       await repo.insertEmbedding({
+           id: 'mem1', sourceType: 'test', sourceId: 'src_test', groupId: 'sessionA', chunkIndex: 1,
+           chunkText: 'Memory context hello', embedding: [0.1, 0.2, 0.3], modelId: 'modern-model'
+       });
 
-      const newBuffer = Buffer.from(new Float32Array([2, 2, 2]).buffer);
-      db.prepare('UPDATE agent_embeddings SET embedding = ? WHERE id = ?').run(newBuffer, 'm3');
-      
-      const v = db.prepare('SELECT embedding as vec_data FROM vec_agent_embeddings WHERE id = ?').get('m3') as any;
-      expect(v).toBeDefined();
-      // 在底层这应该被映射，虽然我们不需要手动验证 C 后端数组二进制格式，但只要确保它还有这条记录没丢失即可
+       const res = await repo.fetchAllEmbeddingsForDecoupledSearch('sessionA');
+       expect(res).toHaveLength(1);
+       expect(res[0].messageId).toBe('mem1');
+       expect(res[0].chunkText).toBe('Memory context hello');
+       expect(res[0].embedding).toEqual([0.1, 0.2, 0.3]);
+    });
+  });
+
+  describe('FTS Query', () => {
+    it('queryFTS works flawlessly using general LIKE matching over chunks', async () => {
+       await repo.insertEmbedding({
+           id: 'fts1', sourceType: 'test', sourceId: 'src', groupId: 'sess', chunkIndex: 0,
+           chunkText: 'The quick brown fox jumps over the lazy dog', embedding: [1,0,0], modelId: 'x'
+       });
+       await repo.insertEmbedding({
+           id: 'fts2', sourceType: 'test', sourceId: 'src', groupId: 'sess', chunkIndex: 1,
+           chunkText: 'A completely unrelated sentence', embedding: [0,1,0], modelId: 'x'
+       });
+
+       const res = await repo.queryFTS('fox', 5);
+       expect(res).toHaveLength(1);
+       expect(res[0].messageId).toBe('fts1');
     });
   });
 });

@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1775222854921,
-      "tag": "0000_massive_mockingbird",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1775275281939,
-      "tag": "0001_deep_ezekiel",
+      "when": 1775340000000,
+      "tag": "0000_agent_schema",
       "breakpoints": true
     }
   ]

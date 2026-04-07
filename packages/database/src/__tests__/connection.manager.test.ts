@@ -38,6 +38,18 @@ describe('DatabaseConnectionManager', () => {
     });
   });
 
+  describe('setDb()', () => {
+    it('should directly inject an existing app database instance', () => {
+      const mockDb = { someLibSQLMethod: true } as any;
+      manager.setDb(mockDb);
+      
+      expect(manager.isConnected()).toBe(true);
+      expect(manager.getDb()).toBe(mockDb);
+      expect(manager.getCurrentPath()).toBeNull();
+    });
+  });
+
+
   describe('connect() & disconnect()', () => {
     it('should successfully connect to a valid path', async () => {
       const dbPath = path.join(tempDir, 'test1.db');

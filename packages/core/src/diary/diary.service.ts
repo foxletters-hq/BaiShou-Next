@@ -27,33 +27,39 @@ export class DiaryService {
       throw new DiaryDateConflictError(input.date);
     }
     
-    // 2. 物理写入 Markdown 文件 (完全不存在 ID。让它为空)
-    await this.fileSync.writeJournal(input);
+    // 2. 补全必要的主键和时间戳（对标原版：targetId = id ?? DateTime.now().millisecondsSinceEpoch）
+    // 完全摒弃依赖数据库下发 ID 导致的「双写（覆盖写）」问题。
+    const now = new Date();
+    const finalDiary: Diary = {
+      ...input,
+      id: (input as any).id ?? Date.now(),
+      createdAt: (input as any).createdAt ?? now,
+      updatedAt: now,
+      isFavorite: input.isFavorite ?? false,
+      mediaPaths: input.mediaPaths ? (typeof input.mediaPaths === 'string' ? JSON.parse(input.mediaPaths) : input.mediaPaths) : [],
+    };
 
-    // 3. 同步到 SQLite 影子索引中，这将计算 hash，写入 db，并产生唯一 ID
+    // 3. 执行单次物理落盘
+    await this.fileSync.writeJournal(finalDiary);
+
+    // 4. 同步到 SQLite 影子索引中重建缓存并下发向量任务
     const syncResult = await this.shadowSync.syncJournal(input.date);
     if (!syncResult.meta) {
         throw new Error("写入文件后却无法建立影子索引");
     }
 
-    // 更新文件上的前缀信息（主要是为了让被自动生成的 ID 固定在新写入的 MD 文件的 YAML frontmatter 里）
-    // 第二次写入会触发文件保存，但因为 hash，ShadowSync 一会儿如果再调也不会冲突，或者直接使用内存状态即可。
-    const finalDiary: Diary = {
-      ...input,
-      id: syncResult.meta.id,
-      createdAt: syncResult.meta.date,
-      updatedAt: syncResult.meta.updatedAt,
-      isFavorite: input.isFavorite ?? false,
-      mediaPaths: input.mediaPaths ? JSON.parse(input.mediaPaths) : [], // shared 侧假设我们在这里将其展开
-    };
-    
-    // 覆盖写一次以便为裸创的 MD 附加 ID（原版也是这么做的，如果有 ID，下次重建或拉取不会变）。
-    await this.fileSync.writeJournal(finalDiary); 
-
-    // 4. 重置/更新界面内存索引以供列表呈现
+    // 5. 更新界面内存索引以供列表呈现
     this.vaultIndex.upsert(syncResult.meta);
 
+    // 确保返回给前端的 ID 始终与数据库实际插入/更新的行 ID 保持强一致（防止脏数据与自增偏离）
+    finalDiary.id = syncResult.meta.id;
+
     return finalDiary;
+  }
+
+  // 辅助函数，对齐原版的 fmt.format(date)
+  private formatDateString(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
   async update(id: number, input: UpdateDiaryInput): Promise<Diary> {
@@ -63,7 +69,8 @@ export class DiaryService {
       throw new DiaryNotFoundError(id);
     }
     
-    const existingDate = new Date(existingShadow.date + 'T00:00:00.000Z');
+    const sdStr = String(existingShadow.date);
+    const existingDate = sdStr.includes('T') ? new Date(sdStr) : new Date(sdStr + 'T00:00:00.000Z');
 
     // 尝试拉出物理正本文件
     const existingDiary = await this.fileSync.readJournal(existingDate);
@@ -72,11 +79,19 @@ export class DiaryService {
        throw new DiaryNotFoundError(id);
     }
 
+    // 确保 input.date 是 Date 对象（前端 IPC 传递可能会变成 string）
+    const inputDate = input.date ? (input.date instanceof Date ? input.date : new Date(input.date as any)) : undefined;
+
+    // 比对日期字符串（对标原版 oldDateStr != fmt.format(date)）避免跨时区毫秒比较的 BUG
+    const existingDateStr = this.formatDateString(existingDate);
+    const inputDateStr = inputDate ? this.formatDateString(inputDate) : existingDateStr;
+    const isDateJumped = inputDateStr !== existingDateStr;
+
     // 检查日期跳转时的覆盖合并
-    if (input.date && input.date.getTime() !== existingDate.getTime()) {
-      const conflict = await this.fileSync.readJournal(input.date);
+    if (inputDate && isDateJumped) {
+      const conflict = await this.fileSync.readJournal(inputDate);
       if (conflict) {
-        throw new DiaryDateConflictError(input.date);
+        throw new DiaryDateConflictError(inputDate);
       }
       
       try {
@@ -88,20 +103,24 @@ export class DiaryService {
 
     // 模拟数据落盘（此时文件指纹一定会变动）
     const mergedDiaryToSave: Diary = { ...existingDiary, ...input, id: id, updatedAt: new Date() };
+    if (inputDate) mergedDiaryToSave.date = inputDate;
     await this.fileSync.writeJournal(mergedDiaryToSave);
 
     // 呼唤影子同步引擎进行更新重算和提取
     // 如果修改了日期，那么目标文件名也变了，要对新的日期发出同步令，对旧日期由于删除了它会自动触发孤立清除
-    const targetDate = input.date ? input.date : existingDate;
+    const targetDate = inputDate ? inputDate : existingDate;
     
-    if (input.date && input.date.getTime() !== existingDate.getTime()) {
+    if (inputDate && isDateJumped) {
        await this.shadowSync.syncJournal(existingDate); // 这会触发删除旧索引的孤立清理
+       this.vaultIndex.remove(id); // 安全清理防鬼影
     }
     
     const syncResult = await this.shadowSync.syncJournal(targetDate);
 
     if (syncResult.meta) {
       this.vaultIndex.upsert(syncResult.meta);
+      // 同步最新真实 rowId
+      mergedDiaryToSave.id = syncResult.meta.id;
     } else {
       // 预防性清理防止鬼影
       this.vaultIndex.remove(id);
@@ -113,7 +132,8 @@ export class DiaryService {
   async delete(id: number): Promise<void> {
     const existingShadow = await this.shadowRepo.findById(id);
     if (existingShadow) {
-      const existingDate = new Date(existingShadow.date + 'T00:00:00.000Z');
+      const sdStr = String(existingShadow.date);
+      const existingDate = sdStr.includes('T') ? new Date(sdStr) : new Date(sdStr + 'T00:00:00.000Z');
       await this.fileSync.deleteJournalFile(existingDate);
       
       // 触发脏检测将会使其判定为孤立索引并级联删除向量、重置一切缓存
@@ -126,7 +146,8 @@ export class DiaryService {
   async findById(id: number): Promise<Diary | null> {
     const shadow = await this.shadowRepo.findById(id);
     if (!shadow) return null;
-    const date = new Date(shadow.date + 'T00:00:00.000Z');
+    const sdStr = String(shadow.date);
+    const date = sdStr.includes('T') ? new Date(sdStr) : new Date(sdStr + 'T00:00:00.000Z');
     return this.fileSync.readJournal(date);
   }
 
@@ -136,14 +157,20 @@ export class DiaryService {
   }
 
   async listAll(options?: { limit?: number; offset?: number }): Promise<DiaryMeta[]> {
-    const shadows = await this.shadowRepo.listAll(options);
-    return shadows.map((s) => ({
-       id: s.id,
-       date: new Date(s.date + 'T00:00:00.000Z'),
-       preview: "", // 可选，依赖前台显示
-       tags: s.weather ? [s.weather] : [], // 这里应由上层通过 search 或内存 VaultIndex 管理，简单降级映射
-       updatedAt: new Date(s.updatedAt + 'T00:00:00.000Z'),
-    }));
+    const shadows = await this.shadowRepo.listAllWithFTS(options);
+    return shadows.map((s) => {
+      let parsedTags: string[] = [];
+      if (s.tagsStr) {
+        parsedTags = s.tagsStr.split(',').map((t: string) => t.trim()).filter(Boolean);
+      }
+      return {
+         id: s.id,
+         date: new Date(s.date + 'T00:00:00.000Z'),
+         preview: s.rawContent ? s.rawContent.substring(0, 500) : "",
+         tags: parsedTags,
+         updatedAt: new Date(s.updatedAt + 'T00:00:00.000Z'),
+      };
+    });
   }
 
   async search(query: string, options?: { limit?: number; offset?: number }): Promise<any[]> {

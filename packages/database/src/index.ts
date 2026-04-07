@@ -28,3 +28,6 @@ export * from './drivers/node-sqlite.driver';
 export * from './connection.manager.types';
 export * from './connection.manager';
 export * from './migration.service';
+
+// 影子索引独立连接管理器（per-vault shadow_index.db）
+export * from './shadow-index.connection.manager';
