@@ -21,7 +21,7 @@ export interface IAIProvider {
    * 获取一个适配 Vercel AI SDK 的文本向量嵌入模型
    * @throws {UnsupportedOperationError} 如果该供应商不支持 Embeddings 则抛出
    */
-  getEmbeddingModel(modelId?: string): EmbeddingModel<string>;
+  getEmbeddingModel(modelId?: string): EmbeddingModel;
 
   /**
    * 获取该服务商在此 API 密钥/基础网络下在线可调用的模型架构阵列
@@ -31,5 +31,5 @@ export interface IAIProvider {
   /**
    * 测试该 API Key 组合是否能够成功连接服务
    */
-  testConnection(): Promise<void>;
+  testConnection(testModelId?: string): Promise<void>;
 }

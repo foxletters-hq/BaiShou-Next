@@ -14,6 +14,7 @@ export class ProviderFactory {
    * 用于大模型列表拉取、连通性测试等依赖真实实例的操作。
    */
   static createProviderFromConfig(config: AiProviderModel): IAIProvider {
+    console.log(`[ProviderFactory] createProviderFromConfig. config.id=${config.id}, config.type=${config.type}, typeof type=${typeof config.type}`);
     switch (config.type.toLowerCase()) {
       case 'openai':
       case 'lmstudio':
@@ -29,8 +30,8 @@ export class ProviderFactory {
         return new AnthropicAdaptedProvider(config);
 
       default:
-        // 如果遇到了意外或者尚未实现的提供商类型
-        throw new Error(`Unsupported AI Provider Type: ${config.type}`);
+        // 未知、意外或尚未专门适配的提供商类型，统一作为兜底方案，交由遵循 OpenAI 规范的适配器处理
+        return new OpenAIAdaptedProvider(config);
     }
   }
 }

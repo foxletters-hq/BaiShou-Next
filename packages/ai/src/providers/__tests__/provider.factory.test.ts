@@ -63,7 +63,7 @@ describe('ProviderFactory', () => {
     expect(provider).toBeInstanceOf(AnthropicAdaptedProvider);
   });
 
-  it('should throw Error for unsupported provider types', () => {
+  it('should fallback to OpenAIAdaptedProvider for unsupported provider types', () => {
     const config = { 
       id: 'unknown_provider_123', 
       type: 'unsupported_type',
@@ -78,6 +78,7 @@ describe('ProviderFactory', () => {
       defaultDialogueModel: '', 
       defaultNamingModel: '' 
     };
-    expect(() => ProviderFactory.createProviderFromConfig(config as any)).toThrow('Unsupported AI Provider Type');
+    const provider = ProviderFactory.createProviderFromConfig(config as any);
+    expect(provider).toBeInstanceOf(OpenAIAdaptedProvider);
   });
 });

@@ -1,27 +1,29 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { LanguageModel, EmbeddingModel } from 'ai';
+import { LanguageModel, EmbeddingModel, generateText } from 'ai';
 import { AiProviderModel } from '@baishou/shared';
 import { IAIProvider } from './provider.interface';
+import { getRotatedApiKey } from './provider.utils';
 
 export class AnthropicAdaptedProvider implements IAIProvider {
   public config: AiProviderModel;
-  private sdkInstance: ReturnType<typeof createAnthropic>;
-
   constructor(config: AiProviderModel) {
     this.config = config;
+  }
 
-    this.sdkInstance = createAnthropic({
-      apiKey: config.apiKey,
-      baseURL: config.baseUrl || undefined,
+  private _getSdk() {
+    const rotatedKey = getRotatedApiKey(this.config);
+    return createAnthropic({
+      apiKey: rotatedKey || this.config.apiKey,
+      baseURL: this.config.baseUrl || undefined,
     });
   }
 
   getLanguageModel(modelId?: string): LanguageModel {
     const targetModel = modelId || this.config.defaultDialogueModel || 'claude-3-opus-20240229';
-    return this.sdkInstance(targetModel) as unknown as LanguageModel;
+    return this._getSdk()(targetModel) as unknown as LanguageModel;
   }
 
-  getEmbeddingModel(_modelId?: string): EmbeddingModel<string> {
+  getEmbeddingModel(_modelId?: string): EmbeddingModel {
     // Anthropic 官方目前未提供 embedding_model 对应 @ai-sdk/anthropic 的原生支持
     throw new Error('Embedding is not supported natively by Anthropic adapted provider yet');
   }
@@ -35,21 +37,24 @@ export class AnthropicAdaptedProvider implements IAIProvider {
     ];
   }
 
-  async testConnection(): Promise<void> {
-    if (!this.config.apiKey) throw new Error('Anthropic API Key is required');
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': this.config.apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'hi' }]
-      })
-    });
-    if (!res.ok) throw new Error(`Anthropic connection test failed: ${res.statusText}`);
+  async testConnection(testModelId?: string): Promise<void> {
+    const modelToTest = testModelId || this.config.defaultDialogueModel || 'claude-3-haiku-20240307';
+
+    try {
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort('Connection timeout'), 15000);
+
+      await generateText({
+        model: this.getLanguageModel(modelToTest),
+        prompt: 'test',
+        maxOutputTokens: 1,
+        abortSignal: abortController.signal,
+      });
+
+      clearTimeout(timeoutId);
+    } catch (e: any) {
+      console.error(`Test connection error for ${this.config.name}:`, e);
+      throw new Error(`Connection test failed: ${e.message || 'Unknown network error'}`);
+    }
   }
 }

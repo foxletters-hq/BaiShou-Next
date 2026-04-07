@@ -44,7 +44,7 @@ export const DEFAULT_AI_PROVIDERS: AiProviderModel[] = [
     enabledModels: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
     isSystem: true,
     sortOrder: 2,
-    webSearchMode: WebSearchMode.Native,
+    webSearchMode: WebSearchMode.Tool,
   },
   {
     id: 'deepseek_default',

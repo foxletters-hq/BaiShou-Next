@@ -1,8 +1,6 @@
 import { AiProviderModel, ProviderType, createAiProvider, AIProviderConfig } from '@baishou/shared';
 import { IAIProvider } from './provider.interface';
-import { OpenAIAdaptedProvider } from './openai.provider';
-import { GeminiAdaptedProvider } from './gemini.provider';
-import { AnthropicAdaptedProvider } from './anthropic.provider';
+import { ProviderFactory } from './provider.factory';
 
 /**
  * 全局 AI 提供商中心注册表
@@ -77,14 +75,6 @@ export class AIProviderRegistry {
    * 内部工厂临时桩，待具体 Provider 实现完毕后将补充基于 config.type 的分发调度
    */
   public createProviderInstance(config: AiProviderModel | AIProviderConfig): IAIProvider {
-    switch (config.type) {
-      case ProviderType.Gemini:
-        return new GeminiAdaptedProvider(config as any);
-      case ProviderType.Anthropic:
-        return new AnthropicAdaptedProvider(config as any);
-      default:
-        // OpenAI, DeepSeek, Grok, Kimi, Ollama 等兼容层处理
-        return new OpenAIAdaptedProvider(config as any);
-    }
+    return ProviderFactory.createProviderFromConfig(config as AiProviderModel);
   }
 }
