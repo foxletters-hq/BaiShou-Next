@@ -13,7 +13,7 @@ export const OnboardingScreen = () => {
         </View>
         <Text style={styles.title}>欢迎来到</Text>
         <Text style={styles.brand}>BaiShou Next</Text>
-        <Text style={styles.subtitle}>强大的 Agent 网络系统，为你提供智能且高效的移动端响应。</Text>
+        <Text style={styles.subtitle}>强大的伙伴网络系统，为你提供智能且高效的移动端响应。</Text>
       </View>
 
       <View style={styles.footer}>

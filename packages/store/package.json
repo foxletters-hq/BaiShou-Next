@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "@baishou/shared": "workspace:*",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/uuid": "^11.0.0",
-    "typescript": "^5.8.0"
+    "typescript": "^6.0.2"
   }
 }
