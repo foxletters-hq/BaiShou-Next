@@ -1,9 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState, useRef } from 'react';
-import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar';
+import React from 'react';
+import { MilkdownEditorWrapper } from './MilkdownEditor';
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle';
 import { TagInput } from '../TagInput';
-import { MarkdownRenderer } from '../MarkdownRenderer';
 import './DiaryEditor.css';
 
 interface DiaryEditorProps {
@@ -18,9 +17,6 @@ interface DiaryEditorProps {
   onCancel?: () => void;
 }
 
-// TODO: [Agent1-Dependency] 替换
-
-
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
   tags,
@@ -33,30 +29,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation();
-  const [isPreview, setIsPreview] = useState(false);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleInsertText = (prefix: string, suffix: string = '') => {
-  const el = textAreaRef.current;
-    if (!el) {
-      onContentChange(content + '\n' + prefix + suffix);
-      return;
-    }
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const val = el.value;
-    const selectedText = val.substring(start, end);
-    
-    const newText = val.substring(0, start) + prefix + selectedText + suffix + val.substring(end);
-    onContentChange(newText);
-    
-    setTimeout(() => {
-
-
-      el.focus();
-      el.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
 
   return (
     <div className="diary-editor-scaffold">
@@ -73,7 +45,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         </div>
         <div className="de-app-bar-actions">
           <button className="de-save-btn" onClick={() => onSave?.(content, tags, selectedDate)}>
-            {t('common.save') || '保存'}
+            {t('common.save', '保存')}
           </button>
         </div>
       </div>
@@ -86,30 +58,13 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             </div>
           )}
 
-          <div className="de-content-section">
-            {!isPreview ? (
-              <textarea
-                ref={textAreaRef}
-                className="de-textarea"
-                value={content}
-                onChange={(e) => onContentChange(e.target.value)}
-                placeholder={t('diary.editor_hint') || '记录下这一刻...'}
-              />
-            ) : (
-              <div className="de-preview">
-                <MarkdownRenderer content={content} />
-              </div>
-            )}
+          <div className="de-content-section" data-color-mode="light">
+            <MilkdownEditorWrapper
+              content={content}
+              onChange={(val) => { console.log('Milkdown onChange:', val); onContentChange(val || ''); }}
+              placeholder={t('diary.editor_hint', '记录下这一刻...')}
+            />
           </div>
-        </div>
-
-        <div className="de-bottom-toolbar-wrap">
-          <MarkdownToolbar 
-            isPreview={isPreview} 
-            onTogglePreview={() => setIsPreview(!isPreview)} 
-            onHideKeyboard={() => textAreaRef.current?.blur()}
-            onInsertText={handleInsertText}
-          />
         </div>
       </div>
     </div>
