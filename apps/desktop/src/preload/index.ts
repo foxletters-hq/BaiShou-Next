@@ -50,6 +50,10 @@ export const api = {
     
     getHotkeyConfig: () => ipcRenderer.invoke('settings:get-hotkey-config'),
     setHotkeyConfig: (config: any) => ipcRenderer.invoke('settings:set-hotkey-config', config),
+    
+    reorderProviders: (orderedIds: string[]) => ipcRenderer.invoke('settings:reorder-providers', orderedIds),
+    testProviderConnection: (providerId: string, tempKey?: string, tempUrl?: string, testModelId?: string) => ipcRenderer.invoke('settings:test-connection', providerId, tempKey, tempUrl, testModelId),
+    fetchProviderModels: (providerId: string, tempKey?: string, tempUrl?: string) => ipcRenderer.invoke('settings:fetch-models', providerId, tempKey, tempUrl),
   },
 
   // Data Routing API (Phase 11: Data Wiring)

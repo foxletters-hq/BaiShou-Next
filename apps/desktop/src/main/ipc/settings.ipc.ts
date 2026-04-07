@@ -1,13 +1,23 @@
 import { ipcMain } from 'electron';
 import { SettingsRepository } from '@baishou/database';
 import { SettingsFileService, SettingsManagerService } from '@baishou/core';
-import { appDb } from '../db';
+import { getAppDb } from '../db';
 import { pathService } from './vault.ipc';
 import { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared';
 
-const settingsRepo = new SettingsRepository(appDb);
-const settingsFileService = new SettingsFileService(pathService);
-export const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService);
+let _settingsManager: SettingsManagerService | null = null;
+export const settingsManager = new Proxy({} as SettingsManagerService, {
+  get(target, prop) {
+    if (!_settingsManager) {
+      const settingsRepo = new SettingsRepository(getAppDb());
+      const settingsFileService = new SettingsFileService(pathService);
+      _settingsManager = new SettingsManagerService(settingsRepo, settingsFileService);
+    }
+    const value = Reflect.get(_settingsManager, prop);
+    // Bind functions to the actual instance to avoid 'this' context loss
+    return typeof value === 'function' ? value.bind(_settingsManager) : value;
+  }
+});
 
 import type { HotkeyService } from '../services/hotkey.service';
 let currentHotkeyService: HotkeyService | null = null;
@@ -16,8 +26,32 @@ export function setHotkeyService(service: HotkeyService) {
 }
 
 export function registerSettingsIPC() {
+  const knownSystemIds = ['openai', 'anthropic', 'gemini', 'deepseek', 'kimi', 'ollama', 'siliconflow', 'openrouter', 'dashscope', 'doubao', 'grok', 'mistral', 'lmstudio'];
+
+  const getAutoFixedProviders = async () => {
+    const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+    let needsSave = false;
+    
+    for (const p of providers) {
+      const lowerId = p.id.toLowerCase();
+      // Even if somewhat marked as isSystem: false, if ID matches fundamentally core providers, fix its type
+      if (knownSystemIds.includes(lowerId)) {
+        if (p.type === 'custom' || !p.type || p.type !== lowerId) {
+          p.type = lowerId as any;
+          p.isSystem = true; // Repair isSystem just in case
+          needsSave = true;
+        }
+      }
+    }
+
+    if (needsSave) {
+      await settingsManager.set('ai_providers', providers);
+    }
+    return providers;
+  };
+
   ipcMain.handle('settings:get-providers', async () => {
-    return await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+    return await getAutoFixedProviders();
   });
 
   ipcMain.handle('settings:set-providers', async (_, providers: AIProviderConfig[]) => {
@@ -109,24 +143,9 @@ export function registerSettingsIPC() {
     return true;
   });
 
-  ipcMain.handle('settings:fetch-models', async (_, providerId: string) => {
-    const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
-    const config = providers.find((p: any) => p.id === providerId);
-    if (!config) throw new Error(`Provider ${providerId} not found`);
-    
-    // @ts-ignore
-    const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry');
-    const registry = AIProviderRegistry.getInstance();
-    if (!registry.hasProvider(config.id)) {
-        registry.registerProvider(registry.createProviderInstance(config));
-    }
-    const providerInstance = registry.getProvider(config.id);
-    if (!providerInstance) throw new Error('Provider instance creation failed');
-    return await providerInstance.fetchAvailableModels();
-  });
 
   ipcMain.handle('settings:add-custom-provider', async (_, input: Partial<AIProviderConfig>) => {
-    const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+    const providers = await getAutoFixedProviders();
     const maxSort = providers.reduce((max, p) => Math.max(max, p.sortOrder || 0), 0);
     const newProvider: AIProviderConfig = {
       id: `custom_${Date.now()}`,
@@ -146,7 +165,7 @@ export function registerSettingsIPC() {
   });
 
   ipcMain.handle('settings:delete-provider', async (_, providerId: string) => {
-    const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+    const providers = await getAutoFixedProviders();
     const idx = providers.findIndex(p => p.id === providerId);
     if (idx < 0) throw new Error('Provider not found');
     if (providers[idx].isSystem) throw new Error('Cannot delete system provider');
@@ -156,34 +175,104 @@ export function registerSettingsIPC() {
   });
 
   ipcMain.handle('settings:reorder-providers', async (_, orderedIds: string[]) => {
-    const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+    const providers = await getAutoFixedProviders();
+    
     orderedIds.forEach((id, index) => {
       const p = providers.find(pp => pp.id === id);
-      if (p) p.sortOrder = index;
+      if (p) {
+        p.sortOrder = index;
+      } else {
+        // If sorting a default system provider never modified before, inject it completely
+        providers.push({
+          id,
+          name: id.charAt(0).toUpperCase() + id.slice(1),
+          type: id as any,
+          isSystem: true,
+          isEnabled: false,
+          sortOrder: index,
+          apiKey: '',
+          baseUrl: '',
+          models: [],
+          enabledModels: [],
+          defaultDialogueModel: '',
+          defaultNamingModel: ''
+        } as AIProviderConfig);
+      }
     });
+
     await settingsManager.set('ai_providers', providers);
     return true;
   });
 
-  ipcMain.handle('settings:test-connection', async (_, providerId: string) => {
-    const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
-    const config = providers.find(p => p.id === providerId);
-    if (!config) throw new Error('Provider not found');
+  ipcMain.handle('settings:test-connection', async (_, providerId: string, tempKey?: string, tempUrl?: string, testModelId?: string) => {
+    const providers = await getAutoFixedProviders();
+    let config = providers.find(p => p.id === providerId);
+    if (!config) {
+        config = {
+            id: providerId,
+            type: providerId as any,
+            name: providerId.toUpperCase(),
+            apiKey: '',
+            baseUrl: '',
+            isSystem: true,
+            isEnabled: false,
+            models: [],
+            enabledModels: [],
+            defaultDialogueModel: '',
+            defaultNamingModel: '',
+            sortOrder: 999
+        } as AIProviderConfig;
+    }
     
+    const clone = { ...config } as AIProviderConfig;
+    if (tempKey !== undefined) clone.apiKey = tempKey;
+    if (tempUrl !== undefined) clone.baseUrl = tempUrl;
+
     // @ts-ignore
     const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry');
     const registry = AIProviderRegistry.getInstance();
-    if (!registry.hasProvider(config.id)) {
-        registry.registerProvider(registry.createProviderInstance(config));
-    }
-    const provider = registry.getProvider(config.id);
+    const provider = registry.createProviderInstance(clone);
     if (!provider) throw new Error('Provider instance creation failed');
-    await provider.testConnection();
+    await provider.testConnection(testModelId);
     return { success: true };
   });
 
+  ipcMain.handle('settings:fetch-models', async (_, providerId: string, tempKey?: string, tempUrl?: string) => {
+    const providers = await getAutoFixedProviders();
+    let config = providers.find(p => p.id === providerId);
+    if (!config) {
+        config = {
+            id: providerId,
+            type: providerId as any,
+            name: providerId.toUpperCase(),
+            apiKey: '',
+            baseUrl: '',
+            isSystem: true,
+            isEnabled: false,
+            models: [],
+            enabledModels: [],
+            defaultDialogueModel: '',
+            defaultNamingModel: '',
+            sortOrder: 999
+        } as AIProviderConfig;
+    }
+    
+    const clone = { ...config } as AIProviderConfig;
+    if (tempKey !== undefined) clone.apiKey = tempKey;
+    if (tempUrl !== undefined) clone.baseUrl = tempUrl;
+
+    // @ts-ignore
+    const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry');
+    const registry = AIProviderRegistry.getInstance();
+    const provider = registry.createProviderInstance(clone);
+    if (!provider) throw new Error('Provider instance creation failed');
+    
+    const models = await provider.fetchAvailableModels();
+    return models;
+  });
+
   ipcMain.handle('settings:get-all-available-models', async () => {
-    const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
+    const providers = await getAutoFixedProviders();
     return providers
       .filter((p: any) => p.isEnabled || p.isActive)
       .map((p: any) => ({

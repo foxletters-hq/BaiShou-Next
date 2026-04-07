@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -12,19 +12,23 @@ import { registerDiaryIPC } from './ipc/diary.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
 import { registerStorageIPC } from './ipc/storage.ipc'
-import { installDatabaseSchema, SettingsRepository } from '@baishou/database'
-import { appDb } from './db'
+import { installDatabaseSchema, SettingsRepository, connectionManager } from '@baishou/database'
+import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
 
-let mainWindow: BrowserWindow | null = null;
 
+
+
+let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 900,
-    height: 670,
+    height: 600,
+    minWidth: 860,
+    minHeight: 500,
     show: false,
     frame: false,
     autoHideMenuBar: true,
@@ -36,8 +40,28 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow!.show()
   })
+
+  mainWindow.webContents.on('context-menu', (_event, properties) => {
+    const { isEditable, selectionText, editFlags } = properties;
+    const hasText = selectionText.trim().length > 0;
+
+    if (isEditable || hasText) {
+      const template: Electron.MenuItemConstructorOptions[] = [
+        { id: 'copy', label: '复制', role: 'copy', enabled: editFlags.canCopy, visible: isEditable || hasText },
+        { id: 'paste', label: '粘贴', role: 'paste', enabled: editFlags.canPaste, visible: isEditable },
+        { id: 'cut', label: '剪切', role: 'cut', enabled: editFlags.canCut, visible: isEditable },
+        { id: 'selectAll', label: '全选', role: 'selectAll', enabled: editFlags.canSelectAll, visible: isEditable }
+      ];
+
+      const filtered = template.filter(item => item.visible !== false);
+      if (filtered.length > 0) {
+        const menu = Menu.buildFromTemplate(filtered);
+        menu.popup();
+      }
+    }
+  });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -88,7 +112,10 @@ app.whenReady().then(async () => {
     win?.close()
   })
   
-  // 初始化全局数据库 Schema
+  // 初始化全局 Agent DB Schema（一次性，不随 Vault 切换而重复）
+  // connectionManager 提供全局访问句柄，供所有 Agent 相关 IPC 使用
+  const appDb = getAppDb();
+  connectionManager.setDb(appDb);
   await installDatabaseSchema(appDb);
 
   // Register Agent Streaming IPC
@@ -123,6 +150,13 @@ app.whenReady().then(async () => {
     registerStorageIPC()
     
     createWindow()
+
+    if (mainWindow) {
+      const settingsRepo = new SettingsRepository(getAppDb());
+      const hotkeyService = new HotkeyService(settingsRepo, mainWindow);
+      hotkeyService.start();
+      setHotkeyService(hotkeyService);
+    }
   }).catch((err) => {
     console.error('Failed to init Vault System', err)
   })
@@ -133,6 +167,11 @@ app.whenReady().then(async () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+
+app.on('will-quit', () => {
+  const { globalShortcut } = require('electron');
+  globalShortcut.unregisterAll();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

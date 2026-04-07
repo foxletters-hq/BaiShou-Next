@@ -1,18 +1,41 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { VaultService } from '@baishou/core';
-import { connectionManager, installDatabaseSchema } from '@baishou/database';
+import { shadowConnectionManager } from '@baishou/database';
 import { DesktopStoragePathService } from '../services/path.service';
 
 export const pathService = new DesktopStoragePathService();
-export const vaultService = new VaultService(pathService, connectionManager);
+
+/**
+ * VaultService 不再需要 connectionManager（Agent DB 全局共用，不随 Vault 切换）
+ * Shadow DB 连接由此文件中的 initShadowForActiveVault() 驱动
+ */
+export const vaultService = new VaultService(pathService);
+
+/**
+ * 连接活跃 Vault 对应的影子索引库
+ * 路径：`<vault>/.baishou/shadow_index.db`（对标原版设计）
+ */
+async function connectShadowForActiveVault(): Promise<void> {
+  const activeVault = vaultService.getActiveVault();
+  if (!activeVault) {
+    console.warn('[VaultIPC] 无活跃 Vault，跳过 Shadow DB 连接');
+    return;
+  }
+  const sysDir = await pathService.getVaultSystemDirectory(activeVault.name);
+  await shadowConnectionManager.connect(sysDir);
+  console.log(`[VaultIPC] Shadow DB 已连接: ${activeVault.name}`);
+}
 
 export async function initVaultSystem() {
+  // Agent DB 的 schema 在 index.ts 中一次性安装，此处无需重复
+  // Shadow DB 在 initRegistry() 后 connect
+
   await vaultService.initRegistry();
-  
-  // Create schema on first boot automatically if using a blank database
-  await installDatabaseSchema(connectionManager.getDb());
-  
-  // App Boot: Enforce SSOT consistency scan for potential offline cloud-disk changes
+
+  // 连接当前活跃 Vault 的影子索引库
+  await connectShadowForActiveVault();
+
+  // App Boot: 全量 SSOT 同步
   const { globalBootstrapper } = await import('../services/bootstrapper.service');
   await globalBootstrapper.fullyResyncAllEcosystems();
 }
@@ -33,8 +56,10 @@ export function registerVaultIPC() {
 
     const newPath = result.filePaths[0];
     await pathService.updateRootDirectory(newPath);
-    // Apply changes by re-initializing the registry which moves/rectifies paths
+    // 重新初始化注册表（路径变更）
     await vaultService.initRegistry();
+    // 重新连接 Shadow DB（新路径下的 Vault）
+    await connectShadowForActiveVault();
     return newPath;
   });
 
@@ -52,11 +77,14 @@ export function registerVaultIPC() {
 
   ipcMain.handle('vault:switch', async (_, vaultName: string) => {
     await vaultService.switchVault(vaultName);
-    
-    // Vault Switch: Enforce SSOT
+
+    // Vault 切换后重新连接对应的 Shadow DB
+    await connectShadowForActiveVault();
+
+    // Vault Switch: 全量 SSOT 同步
     const { globalBootstrapper } = await import('../services/bootstrapper.service');
     await globalBootstrapper.fullyResyncAllEcosystems();
-    
+
     return vaultService.getActiveVault();
   });
 
@@ -68,11 +96,14 @@ export function registerVaultIPC() {
   ipcMain.handle('vault:createDialog', async () => {
     const newName = 'Workspace_' + Math.floor(Math.random() * 10000);
     await vaultService.switchVault(newName);
-    
-    // Vault Switch: Enforce SSOT
+
+    // 新 Vault 切换后连接新的 Shadow DB
+    await connectShadowForActiveVault();
+
+    // Vault Switch: 全量 SSOT 同步
     const { globalBootstrapper } = await import('../services/bootstrapper.service');
     await globalBootstrapper.fullyResyncAllEcosystems();
-    
+
     return vaultService.getActiveVault();
   });
 }
