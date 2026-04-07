@@ -20,5 +20,5 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background-color: var(--bg-background, #F9F9F9);
+  background-color: var(--bg-background, #FFFFFF);
 }

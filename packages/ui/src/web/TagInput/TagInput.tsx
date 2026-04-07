@@ -14,17 +14,25 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onChange }) => {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
 
+  const saveCurrentTag = () => {
+    const newTag = inputValue.trim().replace(/^#/, '');
+    if (newTag && !tags.includes(newTag)) {
+      onChange([...tags, newTag]);
+    }
+    setInputValue('');
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-  if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      const newTag = inputValue.trim().replace(/^#/, '');
-      if (newTag && !tags.includes(newTag)) {
-        onChange([...tags, newTag]);
-      }
-      setInputValue('');
+      saveCurrentTag();
     } else if (e.key === 'Backspace' && !inputValue && tags.length > 0) {
       onChange(tags.slice(0, -1));
     }
+  };
+
+  const handleBlur = () => {
+    if (inputValue.trim()) saveCurrentTag();
   };
 
   const removeTag = (indexToRemove: number) => {
@@ -47,7 +55,8 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onChange }) => {
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={tags.length === 0 ? t('diary.editor.tag_placeholder') : ''}
+        onBlur={handleBlur}
+        placeholder={tags.length === 0 ? t('diary.editor_tag_placeholder', '输入标签，按回车保存') : ''}
       />
     </div>
   );

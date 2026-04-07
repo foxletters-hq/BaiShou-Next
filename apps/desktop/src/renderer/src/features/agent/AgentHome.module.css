@@ -20,7 +20,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  background: var(--bg-background, #F9F9F9);
+  background: var(--bg-background, #FFFFFF);
   overflow: hidden;
 }
 

@@ -15,7 +15,6 @@ import {
   HotkeySettingsCard,
   WorkspaceSettingsCard,
   McpSettingsCard,
-  DeveloperOptionsView,
   StorageSettingsCard,
   AttachmentManagementView,
   AIModelServicesView,
@@ -27,8 +26,7 @@ import {
   WebSearchSettingsView,
   AboutSettingsCard,
   AssistantMatrixCard,
-  SummarySettingsView,
-  useToast
+  SummarySettingsView
 } from '@baishou/ui';
 
 export const SettingsPage: React.FC = () => {
@@ -46,7 +44,7 @@ export const SettingsPage: React.FC = () => {
     { id: 2, label: t('settings.ai_global_models', '全局默认模型'), icon: <MdOutlineStarBorder /> },
     { id: 3, label: t('agent.assistant.settings_entry', '伙伴管理'), icon: <MdSchool /> },
     { type: 'divider' },
-    { id: 4, label: t('agent.rag.title', '语义搜索库 (RAG)'), icon: <MdColorLens /> },
+    { id: 4, label: t('agent.rag.title', 'RAG 记忆管理'), icon: <MdColorLens /> },
     { id: 5, label: t('agent.tools.web_search', '网络搜索'), icon: <MdTravelExplore /> },
     { id: 6, label: t('settings.agent_tools_title', '工具管理'), icon: <MdOutlineExtension /> },
     { id: 7, label: t('settings.summary_settings_title', '回忆生成设置'), icon: <MdOutlineAutoAwesome /> },
@@ -162,7 +160,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <div className="settings-content-area" style={{ position: 'relative' }}>
-         {activeTab === 8 ? (
+         {activeTab === 8 || activeTab === 1 || activeTab === 2 ? (
              renderActiveView()
          ) : (
              <div className="settings-content-scroll" key={activeTab}>
@@ -324,7 +322,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
              version="v2.0.0-Next-Canary"
              heroImageSrc={baishouHeroImg}
              onOpenPrivacyPolicy={async () => await (window as any).api?.shell?.openExternal('https://github.com')}
-             onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou')}
+             onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou-Next/issues')}
          />
        </div>
 
@@ -333,20 +331,20 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
 };
 
 const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
-  const { t } = useTranslation();
-  const toast = useToast();
-
   const providerRecord = React.useMemo(() => {
     const rec: Record<string, any> = {};
     if (Array.isArray(settings.providers)) {
       settings.providers.forEach((p: any) => {
         rec[p.id] = {
           providerId: p.id,
+          name: p.name,
+          isSystem: p.isSystem,
           enabled: p.isEnabled,
           apiKey: p.apiKey,
           apiBaseUrl: p.baseUrl,
           models: p.models,
-          enabledModels: p.enabledModels
+          enabledModels: p.enabledModels,
+          sortOrder: p.sortOrder
         };
       });
     }
@@ -354,16 +352,18 @@ const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
   }, [settings.providers]);
 
   return (
-    <div className="settings-pane">
-      <div className="glass-panel-card">
+    <div style={{ height: '100%', display: 'flex', width: '100%' }}>
+      <div style={{ height: '100%', display: 'flex', width: '100%' }}>
          <AIModelServicesView 
              providers={providerRecord}
              onUpdateProvider={(id, updates) => {
                const existing = (Array.isArray(settings.providers) ? settings.providers : []).find((p: any) => p.id === id) || { 
-                 id: id, name: id, type: 'openai', isSystem: true, sortOrder: 0
+                 id: id, name: updates.name || id, type: 'custom', isSystem: false, sortOrder: 999
                };
                
                const newConfig = { ...existing };
+               if (updates.name !== undefined) newConfig.name = updates.name;
+               if (updates.isSystem !== undefined) newConfig.isSystem = updates.isSystem;
                if (updates.enabled !== undefined) newConfig.isEnabled = updates.enabled;
                if (updates.apiKey !== undefined) newConfig.apiKey = updates.apiKey;
                if (updates.apiBaseUrl !== undefined) newConfig.baseUrl = updates.apiBaseUrl;
@@ -372,23 +372,40 @@ const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
 
                settings.updateProvider(newConfig);
              }}
-             onTestConnection={async (provId) => {
+             onDeleteProvider={(id) => {
+               const filtered = (Array.isArray(settings.providers) ? settings.providers : []).filter((p: any) => p.id !== id);
+               settings.setProviders(filtered);
+             }}
+             onReorderProviders={async (orderedIds) => {
+               console.log('[Drag Tracking IPC] Received Reorder request in SettingsPage with ids:', orderedIds);
                try {
-                 await (window as any).api?.settings?.testProviderConnection(provId);
-                 toast.showSuccess(t('services.test_success', '访问连接成功，连通无碍'));
-               } catch (e: any) {
-                 toast.showError(t('services.test_fail', '连接或测试验证失败。') + e.message);
+                 // The main process reads the full DB records and only updates sortOrder
+                 // No stubs needed - this is fully handled server-side
+                 console.log('[Drag Tracking IPC] Awaiting api.settings.reorderProviders IPC bridge...');
+                 await (window as any).api?.settings?.reorderProviders(orderedIds);
+                 console.log('[Drag Tracking IPC] IPC bridge completed successfully.');
+                 
+                 // Refresh local store state to reflect new sortOrder values
+                 console.log('[Drag Tracking IPC] Awaiting api.settings.getProviders to pull refreshed state...');
+                 const updated = await (window as any).api?.settings?.getProviders();
+                 console.log('[Drag Tracking IPC] Fetched updated providers from DB:', updated);
+                 
+                 if (updated) {
+                   settings.setProviders(updated);
+                   console.log('[Drag Tracking IPC] Pushed refreshed sorted list into Zustand settings store.');
+                 } else {
+                   console.warn('[Drag Tracking IPC] getProviders returned null or undefined.');
+                 }
+               } catch (err) {
+                 console.error('[Drag Tracking IPC] Failed to execute Reorder operation:', err);
                }
              }}
-             onFetchModels={async (provId) => {
-               try {
-                 const models = await (window as any).api?.settings?.fetchModels(provId);
-                 toast.showSuccess(t('services.fetch_success', '成功拉取模型名单结构'));
-                 return models;
-               } catch (e: any) {
-                 toast.showError(t('services.fetch_fail', '获取列表失败：') + e.message);
-                 return [];
-               }
+             onTestConnection={async (provId, tempKey, tempUrl, testModelId) => {
+               await (window as any).api?.settings?.testProviderConnection(provId, tempKey, tempUrl, testModelId);
+             }}
+             onFetchModels={async (provId, tempKey, tempUrl) => {
+               const models = await (window as any).api?.settings?.fetchProviderModels(provId, tempKey, tempUrl);
+               return models || [];
              }}
          />
       </div>
@@ -415,9 +432,9 @@ const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
   }, [settings.providers]);
 
   return (
-    <div className="settings-pane">
+    <div className="settings-pane settings-pane-full">
       {settings.globalModels && (
-        <div className="glass-panel-card">
+        <div style={{ height: '100%', display: 'flex', width: '100%' }}>
            <AIGlobalModelsView 
                config={settings.globalModels}
                availableProviders={providerRecord}
@@ -441,7 +458,7 @@ const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
 const AssistantPane: React.FC<{ settings: any }> = ({ settings }) => {
   const navigate = useNavigate();
   return (
-    <div className="settings-pane">
+    <div>
       {settings.userProfileConfig && (
         <div className="glass-panel-card">
             <IdentitySettingsCard 
@@ -477,13 +494,13 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
 
   if (!settings.ragConfig) return <div />;
   return (
-    <div className="settings-pane">
-      <div className="glass-panel-card">
+    <div className="settings-pane settings-pane-full">
          <RagMemoryView 
              config={settings.ragConfig}
              stats={ragStats}
              ragState={{ isRunning: false, type: 'idle', progress: 0, total: 0, statusText: '' }}
              hasMismatchModel={false}
+             embeddingModelId={settings.globalModelsConfig?.globalEmbeddingModelId}
              entries={ragEntries}
              onChange={(config) => settings.setRagConfig(config)}
              onClearDimension={async () => await (window as any).api?.rag?.clearDimension()}
@@ -495,7 +512,6 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
              onDeleteEntry={async (id) => await (window as any).api?.rag?.deleteEntry(id)}
              onEditEntry={async (entry) => await (window as any).api?.rag?.editEntry(entry.embeddingId, entry)}
          />
-      </div>
     </div>
   );
 };
@@ -503,13 +519,11 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
 const WebSearchPane: React.FC<{ settings: any }> = ({ settings }) => {
   if (!settings.webSearchConfig) return <div />;
   return (
-    <div className="settings-pane">
-       <div className="glass-panel-card">
+    <div className="settings-pane settings-pane-full">
          <WebSearchSettingsView 
              searchConfig={settings.webSearchConfig}
              onSearchChange={(config) => settings.setWebSearchConfig(config)}
          />
-       </div>
     </div>
   );
 };
@@ -517,26 +531,168 @@ const WebSearchPane: React.FC<{ settings: any }> = ({ settings }) => {
 const AgentToolsPane: React.FC<{ settings: any }> = ({ settings }) => {
   if (!settings.toolManagementConfig) return <div />;
   return (
-    <div className="settings-pane">
-       <div className="glass-panel-card">
+    <div className="settings-pane settings-pane-full">
          <AgentToolsView 
              config={settings.toolManagementConfig}
              onChange={(config) => settings.setToolManagementConfig(config)}
          />
-       </div>
-       {settings.mcpServerConfig && (
-        <div className="glass-panel-card">
-           <McpSettingsCard 
-               config={settings.mcpServerConfig}
-               onChange={(config) => settings.setMcpServerConfig(config)}
-           />
-        </div>
-       )}
-       <div className="glass-panel-card" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
-         <DeveloperOptionsView />
-       </div>
     </div>
   );
+};
+
+const DEFAULT_SUMMARY_TEMPLATES = {
+  weekly: `你是一个专业的个人传记作家伙伴。
+**重要指令**：禁止输出任何问候语、开场白或结束语。直接输出纯 Markdown 内容。
+
+### Markdown Template:
+\`\`\`markdown
+##### {year}年{month}月第{week}周总结
+
+###### 📅 时间周期
+- **日期范围**: {start} 至 {end}
+
+###### 🎯 本周核心关键词
+**关键词1**, **关键词2**, **关键词3**
+
+---
+
+###### 👥 核心人物与关系进展
+- **(人物 1)**:
+- **(人物 2)**:
+
+---
+
+###### 🎞️ 关键事件回顾 (Timeline)
+- **【事件标题】**
+    - **细节**:
+    - **意义**:
+
+---
+
+###### 💡 思考与认知迭代
+- **关于技术/工作**:
+- **关于生活/自我**:
+
+---
+
+###### 📊 状态评估
+- **身心能量**:
+- **本周遗憾**:
+- **下周展望**:
+
+---
+###### 🍵 给月度总结的"胶囊"
+> (一句话概括)
+\`\`\``,
+  monthly: `你是一个专业的个人传记作家伙伴。
+**重要指令**：禁止输出任何问候语、开场白或结束语。直接输出纯 Markdown 内容。
+
+### Markdown Template:
+\`\`\`markdown
+##### {year}年{month}月度总结
+
+###### 📅 日期范围
+- **范围**: {start} 至 {end}
+
+###### 🎯 本月核心主题
+**主题1**, **主题2**
+
+---
+
+###### 📈 关键进展与成就
+- **工作/技术**:
+- **生活/个人**:
+
+---
+
+###### 👥 核心关系动态
+- **(人物 1)**:
+- **(人物 2)**:
+
+---
+
+###### 💡 深度思考
+
+---
+
+###### 📊 状态评估 (0-10)
+- **状态**:
+- **满意度**:
+
+---
+###### 🔮 下月展望
+- **重点方向**:
+\`\`\``,
+  quarterly: `你是一个专业的个人传记作家伙伴。
+**重要指令**：禁止输出任何问候语、开场白或结束语。直接输出纯 Markdown 内容。
+
+### Markdown Template:
+\`\`\`markdown
+##### {year}年第{quarter}季度总结
+
+###### 📅 日期范围
+- **范围**: {start} 至 {end}
+
+###### 🏆 季度里程碑
+1. 
+2. 
+
+---
+
+###### 🌊 关键趋势回顾
+- **上升趋势**:
+- **下降趋势**:
+
+---
+
+###### 👥 长期关系沉淀
+
+---
+
+###### 💡 季度复盘与洞察
+
+---
+
+###### 🧭 下季度战略重点
+- **核心方向**:
+\`\`\``,
+  yearly: `你是一个专业的个人传记作家伙伴。
+**重要指令**：禁止输出任何问候语、开场白或结束语。直接输出纯 Markdown 内容。
+
+### Markdown Template:
+\`\`\`markdown
+# {year} 年度回顾：(用一个词定义这一年)
+
+###### 📅 日期范围
+- **范围**: {start} 至 {end}
+
+---
+
+###### 🌟 年度高光时刻
+1. 
+2. 
+
+---
+
+###### 🗺️ 生命轨迹回顾
+- **Q1**:
+- **Q2**:
+- **Q3**:
+- **Q4**:
+
+---
+
+###### 👥 年度重要关系
+
+---
+
+###### 🪴 认知觉醒
+
+---
+
+###### 💌 给未来的一封信
+> 
+\`\`\``
 };
 
 const SummarySettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
@@ -546,16 +702,15 @@ const SummarySettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const combinedConfig = {
     monthlySummarySource: settings.globalModels.monthlySummarySource || 'weeklies',
     templates: settings.summaryConfig.instructions || {
-        weekly: '',
-        monthly: '',
-        quarterly: '',
-        yearly: ''
+        weekly: settings.summaryConfig.instructions?.weekly || DEFAULT_SUMMARY_TEMPLATES.weekly,
+        monthly: settings.summaryConfig.instructions?.monthly || DEFAULT_SUMMARY_TEMPLATES.monthly,
+        quarterly: settings.summaryConfig.instructions?.quarterly || DEFAULT_SUMMARY_TEMPLATES.quarterly,
+        yearly: settings.summaryConfig.instructions?.yearly || DEFAULT_SUMMARY_TEMPLATES.yearly
     }
   };
 
   return (
-    <div className="settings-pane">
-       <div className="glass-panel-card">
+    <div className="settings-pane settings-pane-full">
           <SummarySettingsView 
              config={combinedConfig}
              onChange={(newConfig) => {
@@ -569,10 +724,9 @@ const SummarySettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
                });
              }}
              onResetTemplate={(type) => {
-               return `You are a helpful assistant. Please summarize the attached ${type} content properly.`;
+               return DEFAULT_SUMMARY_TEMPLATES[type] || '';
              }}
           />
-       </div>
     </div>
   );
 };
@@ -602,7 +756,7 @@ const LanTransferPane: React.FC = () => {
 
 const DataSyncPane: React.FC = () => {
   return (
-    <div className="settings-pane">
+    <div>
        <CloudSyncPanel
          onSyncNow={async (config: any) => (window as any).api?.cloud?.syncNow(config)}
          onListRecords={async (config: any) => (window as any).api?.cloud?.listRecords(config)}
@@ -629,7 +783,7 @@ const AttachmentManagementPane: React.FC = () => {
   }, []);
 
   return (
-    <div className="settings-pane">
+    <div>
       <div className="attachment-management-wrapper" style={{ marginTop: 16 }}>
          <AttachmentManagementView 
              attachments={attachments}

@@ -2,6 +2,27 @@ import React, { useState } from 'react';
 import styles from './AgentToolsView.module.css';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
+import {
+  Puzzle,
+  Book,
+  Palette,
+  Globe,
+  BadgeCheck,
+  Store,
+  Rocket,
+  BookOpen,
+  PenSquare,
+  Trash2,
+  List,
+  Search,
+  FileText,
+  MessageSquare,
+  Database,
+  DatabaseZap,
+  ListOrdered,
+  Minus,
+  Plus
+} from 'lucide-react';
 
 export interface ToolManagementConfig {
   disabledToolIds: string[];
@@ -13,47 +34,85 @@ interface AgentToolsViewProps {
   onChange: (config: ToolManagementConfig) => void;
 }
 
+interface ToolConfigParam {
+  key: string;
+  label: string;
+  type: 'integer' | 'boolean' | 'string' | 'select';
+  defaultValue: any;
+  min?: number;
+  max?: number;
+  icon?: string;
+}
+
+interface AgentToolDef {
+  id: string;
+  category: string;
+  name: string;
+  icon: React.ReactNode;
+  configurableParams?: ToolConfigParam[];
+}
+
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange }) => {
   const { t } = useTranslation();
   const dialog = useDialog();
-  const ALL_TOOLS = [
-    { id: 'web_search', category: 'search', name: t('tools.web_search', '网络搜索'), icon: '🕷', desc: '准许 AI 隐秘访问实时网络。', tag: '安全' },
-    { id: 'diary_parser', category: 'diary', name: t('tools.diary_parser', '日记解析检索'), icon: '📖', desc: '准许白守在过去发生的日子中穿梭并比对事态', tag: '安全' },
-    { id: 'memory_synapse', category: 'memory', name: t('tools.memory_synapse', '向量记忆检索'), icon: '🧠', desc: '通过 RAG 数据库进行全盘模糊关联检索。', tag: '安全' },
-    { id: 'calculator', category: 'general', name: t('tools.calculator', '沙盒运算与代码'), icon: '🧮', desc: '绝对精确的推演运算，避免大模型幻觉。', tag: '安全' },
-    { id: 'code_interpreter', category: 'general', name: t('tools.code_interpreter', '图表与独立代码执行'), icon: '💻', desc: '执行分析或图表绘制 (Python/JS)。', tag: '风险' },
-    { id: 'local_file_read', category: 'memory', name: t('tools.local_file_read', '本地文件读取'), icon: '📂', desc: '极度越权！准许只读访问本地磁盘文档及画像。', tag: '高危' },
-    { id: 'system_commander', category: 'general', name: t('tools.system_commander', '系统命令行执行'), icon: '⚡', desc: '可直接操控您的操作系统的终极特权。', tag: '极端高危' },
+  
+  const ALL_TOOLS: AgentToolDef[] = [
+    { id: 'diary_read', category: 'diary', name: t('agent.tools.diary_read', '日记读取'), icon: <BookOpen size={20} /> },
+    { id: 'diary_edit', category: 'diary', name: t('agent.tools.diary_edit', '日记编辑'), icon: <PenSquare size={20} /> },
+    { id: 'diary_delete', category: 'diary', name: t('agent.tools.diary_delete', '日记删除'), icon: <Trash2 size={20} /> },
+    { id: 'diary_list', category: 'diary', name: t('agent.tools.diary_list', '日记列表'), icon: <List size={20} /> },
+    { 
+      id: 'diary_search', category: 'diary', name: t('agent.tools.diary_search', '日记搜索'), icon: <Search size={20} />,
+      configurableParams: [
+        { key: 'max_results', label: t('agent.tools.param_max_results', '搜索结果上限'), type: 'integer', defaultValue: 10, min: 1, max: 50, icon: 'ListOrdered' }
+      ]
+    },
+    { id: 'summary_read', category: 'summary', name: t('agent.tools.summary_read', '总结读取'), icon: <FileText size={20} /> },
+    { id: 'message_search', category: 'memory', name: t('agent.tools.message_search', '消息搜索'), icon: <MessageSquare size={20} /> },
+    { id: 'memory_store', category: 'memory', name: t('agent.tools.memory_store', '记忆存储'), icon: <Database size={20} /> },
+    { id: 'memory_delete', category: 'memory', name: t('agent.tools.memory_delete', '记忆删除'), icon: <DatabaseZap size={20} /> },
   ];
 
-  const CATEGORY_META: Record<string, { label: string; icon: string }> = {
-    diary: { label: t('tools.cat_diary', '日记分析 (Diary)'), icon: '📚' },
-    memory: { label: t('tools.cat_memory', '记忆库与RAG (Memory & RAG)'), icon: '🌊' },
-    search: { label: t('tools.cat_search', '外部搜索 (Search)'), icon: '📡' },
-    general: { label: t('tools.cat_general', '辅助执行 (General)'), icon: '🔧' },
+  const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode }> = {
+    diary: { label: t('settings.agent_tools_category_diary', '日记工具'), icon: <Book size={18} /> },
+    summary: { label: t('settings.agent_tools_category_summary', '总结工具'), icon: <FileText size={18} /> },
+    memory: { label: t('settings.agent_tools_category_memory', '记忆工具'), icon: <Palette size={18} /> },
+    search: { label: t('settings.agent_tools_category_search', '搜索工具'), icon: <Globe size={18} /> },
+    general: { label: t('settings.agent_tools_category_general', '通用工具'), icon: <Puzzle size={18} /> },
   };
 
-  const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
+  const [showCommunity, setShowCommunity] = useState(false);
 
   const toggleTool = async (toolId: string) => {
-    // Determine enabled state based on absence in disabledToolIds array
     const disabledList = Array.isArray(config.disabledToolIds) ? [...config.disabledToolIds] : [];
     const isCurrentlyEnabled = !disabledList.includes(toolId);
     
     if (isCurrentlyEnabled) {
-      // User wants to disable it
       disabledList.push(toolId);
     } else {
-      // User wants to enable it
       const tool = ALL_TOOLS.find(t => t.id === toolId);
-      if (tool && tool.tag.includes('危')) {
-        const sure = await dialog.confirm(`【严重越权告警】\n您正在赋予 AI 具有操作系统破坏性乃至隐私外泄风险的 ${tool.name}。\n\n您确定要向硅基生命敞开物理主机的防线吗？`);
-        if (!sure) return;
-      }
+      // Removed tag check as tools no longer have tags, but left logic placeholder if needed in future
       const idx = disabledList.indexOf(toolId);
       if (idx > -1) disabledList.splice(idx, 1);
     }
     onChange({ ...config, disabledToolIds: disabledList });
+  };
+
+  const setToolParam = (toolId: string, key: string, value: any) => {
+    const customConfigs = { ...(config.customConfigs || {}) };
+    if (!customConfigs[toolId]) {
+      customConfigs[toolId] = {};
+    }
+    customConfigs[toolId] = { ...customConfigs[toolId], [key]: value };
+    onChange({ ...config, customConfigs });
+  };
+
+  const getToolParam = (toolId: string, param: ToolConfigParam) => {
+    const customConfigs = config.customConfigs || {};
+    if (customConfigs[toolId] && customConfigs[toolId][param.key] !== undefined) {
+      return customConfigs[toolId][param.key];
+    }
+    return param.defaultValue;
   };
 
   const groupedTools = ALL_TOOLS.reduce((acc, tool) => {
@@ -65,29 +124,33 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <div className={styles.titleInfo}>
-          <h3 className={styles.title}>{t('tools.ecosystem_title', '能力生态配置 (Tools Ecosystem)')}</h3>
-          <p className={styles.subtitle}>{t('tools.ecosystem_desc', '为 AI 助手挂载额外插件能力，带有危险标记的插件拥有越权系统操作特征。')}</p>
+        <Puzzle size={28} className={styles.headerIcon} />
+        <h3 className={styles.title}>{t('settings.agent_tools_title', '工具管理')}</h3>
+      </div>
+      <p className={styles.subtitle}>{t('settings.agent_tools_desc', '管理伙伴可使用的工具，开关或配置工具参数')}</p>
+
+      <div className={styles.tabSwitcherWrapper}>
+        <div className={styles.tabSwitcher}>
+           <div 
+              className={`${styles.tabBtn} ${!showCommunity ? styles.tabActive : ''}`}
+              onClick={() => setShowCommunity(false)}
+           >
+             <BadgeCheck size={16} />
+             <span className={styles.tabText}>{t('agent.tools.built_in', '内置工具')}</span>
+             <span className={styles.tabBadge}>{ALL_TOOLS.length}</span>
+           </div>
+           <div 
+              className={`${styles.tabBtn} ${showCommunity ? styles.tabActive : ''}`}
+              onClick={() => setShowCommunity(true)}
+           >
+             <Store size={16} />
+             <span className={styles.tabText}>{t('agent.tools.community', '社区工具')}</span>
+           </div>
         </div>
       </div>
 
-      <div className={styles.tabSwitcher}>
-         <div 
-            className={`${styles.tabBtn} ${activeTab === 'builtin' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('builtin')}
-         >
-           🔒 {t('tools.core_engine', '核心内置引擎')} ({ALL_TOOLS.length})
-         </div>
-         <div 
-            className={`${styles.tabBtn} ${activeTab === 'community' ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab('community')}
-         >
-           🌐 {t('tools.community_market', '插件集市')}
-         </div>
-      </div>
-
       <div className={styles.contentArea}>
-         {activeTab === 'builtin' ? (
+         {!showCommunity ? (
             <div className={styles.list}>
               {Object.keys(CATEGORY_META).map(catKey => {
                  const list = groupedTools[catKey];
@@ -99,29 +162,80 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
                         <span className={styles.categoryIcon}>{meta.icon}</span>
                         <span className={styles.categoryLabel}>{meta.label}</span>
                       </div>
-                      <div className={styles.categoryGrid}>
+                      <div className={styles.categoryList}>
                         {list.map((tool) => {
                             const isEnabled = !(config.disabledToolIds || []).includes(tool.id);
-                            const isDanger = tool.tag.includes('危');
+                            const hasParams = tool.configurableParams && tool.configurableParams.length > 0;
+                            
                             return (
-                              <div key={tool.id} className={`${styles.toolItem} ${isEnabled ? styles.enabled : ''} ${isEnabled && isDanger ? styles.dangerEnabled : ''}`}>
-                                <div className={styles.toolIcon}>{tool.icon}</div>
-                                <div className={styles.toolInfo}>
-                                  <div className={styles.toolNameRow}>
-                                    <span className={styles.toolName}>{tool.name}</span>
-                                    <span className={`${styles.toolTag} ${isDanger ? styles.tagDanger : styles.tagSafe}`}>
-                                      {tool.tag}
-                                    </span>
-                                  </div>
-                                  <div className={styles.toolDesc}>{tool.desc}</div>
-                                </div>
-                                <button 
-                                  className={`${styles.toggleBtn} ${isEnabled ? styles.on : styles.off}`}
-                                  onClick={() => toggleTool(tool.id)}
-                                >
-                                  {isEnabled ? 'ON' : 'OFF'}
-                                </button>
-                              </div>
+                               <div key={tool.id} className={`${styles.toolCard} ${isEnabled ? styles.enabled : styles.disabled}`}>
+                                 <div className={styles.cardMain}>
+                                   <div className={styles.toolIconWrapper}>
+                                      <span className={styles.toolEmoji}>{tool.icon}</span>
+                                   </div>
+                                   <div className={styles.toolInfo}>
+                                     <div className={styles.toolNameRow}>
+                                       <span className={styles.toolName}>{tool.name}</span>
+                                       <span className={styles.toolIdTag}>{tool.id}</span>
+                                     </div>
+                                   </div>
+                                   <label className={styles.switch}>
+                                     <input type="checkbox" checked={isEnabled} onChange={() => toggleTool(tool.id)} />
+                                     <span className={styles.slider}></span>
+                                   </label>
+                                 </div>
+                                 
+                                 {hasParams && isEnabled && (
+                                   <div className={styles.paramsWrapper}>
+                                     <div className={styles.paramsDivider} />
+                                     <div className={styles.paramsConfigArea}>
+                                       {tool.configurableParams?.map((param, idx) => {
+                                          const val = getToolParam(tool.id, param);
+                                          
+                                          if (param.type === 'integer') {
+                                            return (
+                                              <div key={param.key} className={styles.paramItem}>
+                                                <div className={styles.paramLabelGroup}>
+                                                  {param.icon === 'ListOrdered' && <ListOrdered size={16} className={styles.paramIcon} />}
+                                                  <span className={styles.paramLabel}>{param.label}</span>
+                                                </div>
+                                                <div className={styles.stepperContainer}>
+                                                  <button 
+                                                    className={styles.stepperBtn}
+                                                    disabled={val <= (param.min ?? 1)}
+                                                    onClick={() => setToolParam(tool.id, param.key, val - 1)}
+                                                  >
+                                                    <Minus size={14} />
+                                                  </button>
+                                                  <input 
+                                                    className={styles.stepperInput}
+                                                    type="number"
+                                                    value={val}
+                                                    onChange={(e) => {
+                                                      const parsed = parseInt(e.target.value);
+                                                      if (!isNaN(parsed)) {
+                                                        const clamped = Math.min(Math.max(parsed, param.min ?? 1), param.max ?? 50);
+                                                        setToolParam(tool.id, param.key, clamped);
+                                                      }
+                                                    }}
+                                                  />
+                                                  <button 
+                                                    className={styles.stepperBtn}
+                                                    disabled={val >= (param.max ?? 50)}
+                                                    onClick={() => setToolParam(tool.id, param.key, val + 1)}
+                                                  >
+                                                    <Plus size={14} />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+                                          return null;
+                                       })}
+                                     </div>
+                                   </div>
+                                 )}
+                               </div>
                             );
                         })}
                       </div>
@@ -131,9 +245,9 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
             </div>
          ) : (
             <div className={styles.communityBlank}>
-               <div className={styles.communityIcon}>🚀</div>
-               <h4 className={styles.communityTitle}>{t('tools.market_soon', '插件集市即将上线')}</h4>
-               <p className={styles.communityDesc}>{t('tools.market_soon_desc', '不久后，您将能够在这里挂载由其他用户开发的生态能力接口。')}</p>
+               <Rocket size={56} className={styles.communityIcon} />
+               <h4 className={styles.communityTitle}>{t('agent.tools.community_market_coming', '插件集市即将上线')}</h4>
+               <p className={styles.communityDesc}>{t('agent.tools.community_coming_soon', '不久后，您将能够在这里挂载由其他用户开发的生态能力接口。')}</p>
             </div>
          )}
       </div>

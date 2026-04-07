@@ -3,6 +3,11 @@ import styles from './CloudSyncPanel.module.css';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../Toast/useToast';
 import { useDialog } from '../Dialog';
+import { 
+  Cloud, Globe, Folder, Database, History, RefreshCw, Trash2,
+  CheckSquare, Settings, Archive, CloudUpload, ArrowLeft, Save, 
+  Home, Package, DownloadCloud, Edit3, Loader2
+} from 'lucide-react';
 
 export type SyncTarget = 'local' | 's3' | 'webdav';
 
@@ -73,6 +78,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   const [showConfig, setShowConfig] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [manageMode, setManageMode] = useState(false);
+  const [showCountModal, setShowCountModal] = useState(false);
+  const [tempCount, setTempCount] = useState(config.maxBackupCount);
 
   const fetchRecords = useCallback(async () => {
     if (config.target === 'local') { setRecords([]); return; }
@@ -169,9 +176,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   };
 
   const getTargetIcon = (target: string) => {
-    if (target === 's3') return '☁️';
-    if (target === 'webdav') return '🌐';
-    return '📁';
+    if (target === 's3') return <Cloud size={24} strokeWidth={1.5} />;
+    if (target === 'webdav') return <Globe size={24} strokeWidth={1.5} />;
+    return <Folder size={24} strokeWidth={1.5} />;
   };
 
   const getTargetColor = (target: string) => {
@@ -180,90 +187,12 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     return '#64748b'; // slate
   };
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.statCardsRow}>
-        <div className={styles.statCard}>
-          <div className={styles.statIconWrapper} style={{ backgroundColor: `${getTargetColor(config.target)}15`, color: getTargetColor(config.target) }}>
-            {getTargetIcon(config.target)}
-          </div>
-          <div className={styles.statInfo}>
-             <div className={styles.statLabel}>{t('data_sync.sync_target', '同步目标 (Target)')}</div>
-             <div className={styles.statValue}>{config.target.toUpperCase()}</div>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div className={styles.statIconWrapper} style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-            💾
-          </div>
-          <div className={styles.statInfo}>
-             <div className={styles.statLabel}>{t('data_sync.total_backup_size', '总备份大小')}</div>
-             <div className={styles.statValue}>{sizeString}</div>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div className={styles.statIconWrapper} style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
-            🔄
-          </div>
-          <div className={styles.statInfo}>
-             <div className={styles.statLabel}>{t('data_sync.backup_count', '备份数量')}</div>
-             <div className={styles.statValue}>{records.length} <span style={{fontSize: 14, fontWeight:'normal'}}>{t('common.copies_unit', '份')}</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.headerRow}>
-        <div className={styles.titleArea}>
-          <div className={styles.titleBlock}>
-            <span className={styles.titleLabel}>{t('data_sync.sync_records', '同步记录')}</span>
-            <span className={styles.targetBadge}>{config.target.toUpperCase()}</span>
-            <button className={styles.refreshBtn} onClick={fetchRecords} disabled={isLoading} title={t('common.refresh', '刷新')}>
-               ⟳
-            </button>
-          </div>
-          <span className={styles.subtitle}>{t('data_sync.records_scope_hint', '所选节点范围内的全部记录档案。')}</span>
-        </div>
-
-        <div className={styles.actionsGroup}>
-          {manageMode ? (
-            <>
-              <button className={`${styles.actionBtn} ${styles.textBtn}`} onClick={() => { setManageMode(false); setSelected(new Set()); }}>
-                {t('common.cancel', '取消')}
-              </button>
-              <button className={`${styles.actionBtn} ${styles.btnDangerFilled}`} onClick={handleBatchDelete} disabled={selected.size === 0}>
-                🗑️ {t('common.delete', '删除')} ({selected.size})
-              </button>
-            </>
-          ) : (
-             <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setManageMode(true)} disabled={records.length === 0 || isLoading}>
-               ☑️ 批量管理
-             </button>
-          )}
-
-          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowConfig(!showConfig)}>
-            ⚙️ {t('data_sync.sync_settings_button', '同步设置')}
-          </button>
-          
-          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
-            dialog.prompt('设置最大备份数', config.maxBackupCount.toString()).then((v) => {
-               if(v && !isNaN(parseInt(v))) updateField('maxBackupCount', parseInt(v));
-            });
-          }}>
-            🗑 {t('data_sync.max_backup_count_value', `保留: ${config.maxBackupCount}`)}
-          </button>
-
-          <button className={`${styles.actionBtn} ${styles.btnFilled}`} onClick={handleSync} disabled={isSyncing || config.target === 'local'}>
-             {isSyncing ? '⏳ ' + t('data_sync.syncing_status', '同步中...') : '🔄 ' + t('data_sync.sync_now_button', '立即同步')}
-          </button>
-        </div>
-      </div>
-
-      {showConfig && (
+  if (showConfig) {
+    return (
+      <div className={styles.container} style={{ padding: 0 }}>
         <div className={styles.configPageWrapper}>
           <div className={styles.configAppBar}>
-            <button className={styles.configBackButton} onClick={() => setShowConfig(false)}>←</button>
+            <button className={styles.configBackButton} onClick={() => setShowConfig(false)}><ArrowLeft size={20} /></button>
             <div className={styles.configAppTitle}>{t('data_sync.config_title', '同步节点设置')}</div>
           </div>
           
@@ -273,7 +202,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 className={`${styles.targetCardBig} ${config.target === 'local' ? styles.targetCardSelected : ''}`}
                 onClick={() => updateField('target', 'local')}
               >
-                <div className={styles.targetCardIcon}>📁</div>
+                <div className={styles.targetCardIcon}><Folder size={48} strokeWidth={1} /></div>
                 <div className={styles.targetCardTitle}>{t('data_sync.target_local', '本地存储')}</div>
                 <div className={styles.targetCardDesc}>{t('data_sync.local_storage_desc', '直接将备份转储保存在应用所运行设备的本地磁盘中。')}</div>
               </div>
@@ -281,7 +210,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 className={`${styles.targetCardBig} ${config.target === 's3' ? styles.targetCardSelected : ''}`}
                 onClick={() => updateField('target', 's3')}
               >
-                <div className={styles.targetCardIcon}>☁️</div>
+                <div className={styles.targetCardIcon}><Cloud size={48} strokeWidth={1} /></div>
                 <div className={styles.targetCardTitle}>{t('data_sync.target_s3', 'S3 对象存储')}</div>
                 <div className={styles.targetCardDesc}>{t('data_sync.s3_storage_desc', '对接基于亚马逊云标准的 S3 兼容级云存储协议。')}</div>
               </div>
@@ -289,7 +218,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 className={`${styles.targetCardBig} ${config.target === 'webdav' ? styles.targetCardSelected : ''}`}
                 onClick={() => updateField('target', 'webdav')}
               >
-                <div className={styles.targetCardIcon}>🌐</div>
+                <div className={styles.targetCardIcon}><Globe size={48} strokeWidth={1} /></div>
                 <div className={styles.targetCardTitle}>{t('data_sync.target_webdav', 'WebDAV 协议')}</div>
                 <div className={styles.targetCardDesc}>{t('data_sync.webdav_storage_desc', '使用开放标准的 WebDAV 扩展以将备份接入私有云。')}</div>
               </div>
@@ -302,13 +231,15 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                    config.target === 's3' ? 'S3 资源配置参数' : 'WebDAV 身份验证与连接'}
                 </div>
                 <button className={`${styles.actionBtn} ${styles.btnFilled}`} onClick={() => setShowConfig(false)}>
-                  ✔️ {t('data_sync.save_config_button', '保存并应用')}
+                  <Save size={16} /> {t('data_sync.save_config_button', '保存并应用')}
                 </button>
               </div>
 
               {config.target === 'local' && (
                 <div className={styles.emptyLocalState}>
-                  <div style={{ fontSize: 40}}>🏠</div>
+                  <div style={{ marginBottom: 12, color: 'var(--color-on-surface-variant)' }}>
+                     <Home size={64} strokeWidth={1} style={{ opacity: 0.5 }} />
+                  </div>
                   <div>当前模式下产生的数据仅会存放于本地应用目录中，无需输入远程凭据。</div>
                 </div>
               )}
@@ -335,7 +266,88 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
             </div>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.statCardsRow}>
+        <div className={styles.statCard}>
+          <div className={styles.statIconWrapper} style={{ backgroundColor: `${getTargetColor(config.target)}15`, color: getTargetColor(config.target) }}>
+            {getTargetIcon(config.target)}
+          </div>
+          <div className={styles.statInfo}>
+             <div className={styles.statLabel}>{t('data_sync.sync_target', '同步目标 (Target)')}</div>
+             <div className={styles.statValue}>{config.target.toUpperCase()}</div>
+          </div>
+        </div>
+
+        <div className={styles.statCard}>
+          <div className={styles.statIconWrapper} style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+            <Database size={24} strokeWidth={1.5} />
+          </div>
+          <div className={styles.statInfo}>
+             <div className={styles.statLabel}>{t('data_sync.total_backup_size', '总备份大小')}</div>
+             <div className={styles.statValue}>{sizeString}</div>
+          </div>
+        </div>
+
+        <div className={styles.statCard}>
+          <div className={styles.statIconWrapper} style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
+            <History size={24} strokeWidth={1.5} />
+          </div>
+          <div className={styles.statInfo}>
+             <div className={styles.statLabel}>{t('data_sync.backup_count', '备份数量')}</div>
+             <div className={styles.statValue}>{records.length} <span style={{fontSize: 14, fontWeight:'normal'}}>{t('common.copies_unit', '份')}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.headerRow}>
+        <div className={styles.titleArea}>
+          <div className={styles.titleBlock}>
+            <span className={styles.titleLabel}>{t('data_sync.sync_records', '同步记录')}</span>
+            <span className={styles.targetBadge}>{config.target.toUpperCase()}</span>
+            <button className={styles.refreshBtn} onClick={fetchRecords} disabled={isLoading} title={t('common.refresh', '刷新')}>
+               <RefreshCw size={18} />
+            </button>
+          </div>
+          <span className={styles.subtitle}>{t('data_sync.records_scope_hint', '所选节点范围内的全部记录档案。')}</span>
+        </div>
+
+        <div className={styles.actionsGroup}>
+          {manageMode ? (
+            <>
+              <button className={`${styles.actionBtn} ${styles.textBtn}`} onClick={() => { setManageMode(false); setSelected(new Set()); }}>
+                {t('common.cancel', '取消')}
+              </button>
+              <button className={`${styles.actionBtn} ${styles.btnDangerFilled}`} onClick={handleBatchDelete} disabled={selected.size === 0}>
+                <Trash2 size={16} /> {t('common.delete', '删除')} ({selected.size})
+              </button>
+            </>
+          ) : (
+             <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setManageMode(true)} disabled={records.length === 0 || isLoading}>
+               <CheckSquare size={16} /> 批量管理
+             </button>
+          )}
+
+          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowConfig(true)}>
+            <Settings size={16} /> {t('data_sync.sync_settings_button', '同步设置')}
+          </button>
+          
+          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
+            setTempCount(config.maxBackupCount === -1 ? 20 : config.maxBackupCount);
+            setShowCountModal(true);
+          }}>
+            <Archive size={16} /> {config.maxBackupCount === -1 ? t('data_sync.no_limit', '不限制数量') : t('data_sync.max_backup_count_value', '保留: $count').replace('$count', config.maxBackupCount.toString())}
+          </button>
+
+          <button className={`${styles.actionBtn} ${styles.btnFilled}`} onClick={handleSync} disabled={isSyncing || config.target === 'local'}>
+             {isSyncing ? <><Loader2 size={16} style={{animation: 'spin 1.5s linear infinite'}} /> {t('data_sync.syncing_status', '同步中...')}</> : <><CloudUpload size={16} /> {t('data_sync.sync_now_button', '立即同步')}</>}
+          </button>
+        </div>
+      </div>
 
       {isLoading ? (
         <div className={styles.loadingState}>加载中...</div>
@@ -353,7 +365,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                     setSelected(next);
                   }} />
               )}
-              <div className={styles.recordIcon}>📦</div>
+              <div className={styles.recordIcon}><Package size={24} strokeWidth={1.5} /></div>
               <div className={styles.recordInfo}>
                 <div className={styles.recordName}>{r.filename}</div>
                 <div className={styles.recordMeta}>
@@ -362,13 +374,62 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
               </div>
               {!manageMode && (
                 <div className={styles.recordActions}>
-                  <button className={`${styles.iconBtn} ${styles.iconBtnRestore}`} onClick={() => handleRestore(r.filename)} title="恢复此备份">⎔</button>
-                  <button className={styles.iconBtn} onClick={() => handleRename(r.filename)} title="重命名">✎</button>
-                  <button className={`${styles.iconBtn} ${styles.iconBtnDelete}`} onClick={() => handleDelete(r.filename)} title="删除">🗑</button>
+                  <button className={`${styles.iconBtn} ${styles.iconBtnRestore}`} onClick={() => handleRestore(r.filename)} title="恢复此备份"><DownloadCloud size={16} /></button>
+                  <button className={styles.iconBtn} onClick={() => handleRename(r.filename)} title="重命名"><Edit3 size={16} /></button>
+                  <button className={`${styles.iconBtn} ${styles.iconBtnDelete}`} onClick={() => handleDelete(r.filename)} title="删除"><Trash2 size={16} /></button>
                 </div>
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {showCountModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowCountModal(false)}>
+          <div className={styles.countModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.countModalHeader}>
+              <Archive size={20} color="var(--color-primary, #0ea5e9)" />
+              <div style={{fontWeight: 'bold'}}>设置最大备份数</div>
+            </div>
+            <div className={styles.countModalBody}>
+              <div style={{fontSize: 13, color: 'var(--color-on-surface-variant)', marginBottom: 16}}>超出的旧备份将在同步后自动清理。</div>
+              <div className={styles.sliderRow}>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="50" 
+                  value={tempCount === -1 ? 50 : tempCount}
+                  disabled={tempCount === -1}
+                  onChange={(e) => setTempCount(parseInt(e.target.value))} 
+                  className={styles.rangeSlider}
+                />
+                <span className={styles.countValueText}>{tempCount === -1 ? '∞' : tempCount}</span>
+              </div>
+            </div>
+            <div className={styles.countModalFooter}>
+              <button 
+                className={styles.noLimitBtn} 
+                onClick={() => {
+                  updateField('maxBackupCount', -1);
+                  setShowCountModal(false);
+                }}
+              >
+                不限制上限
+              </button>
+              <div style={{display: 'flex', gap: 8}}>
+                <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowCountModal(false)}>取消</button>
+                <button 
+                  className={`${styles.actionBtn} ${styles.btnFilled}`} 
+                  onClick={() => {
+                    updateField('maxBackupCount', tempCount);
+                    setShowCountModal(false);
+                  }}
+                >
+                  确定
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

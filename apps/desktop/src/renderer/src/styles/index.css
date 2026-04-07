@@ -69,3 +69,15 @@ h1 {
 p {
   color: var(--color-text-secondary);
 }
+
+/* Globally hide all scrollbars while preserving scroll functionality */
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+* {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}

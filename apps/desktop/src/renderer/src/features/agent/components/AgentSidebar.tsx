@@ -82,9 +82,6 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // 与原版 Flutter 对齐的用户昵称 fallback
-  const userNickname = '天光晓';
-  const userAvatarChar = userNickname.charAt(0);
 
   const handleBatchDelete = () => {
     if (selectedIds.size > 0 && onBatchDelete) {
@@ -261,11 +258,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
           </div>
         )}
 
-        {/* 底部用户卡片 — 原版 padding:16, r=18 头像, 1px 分割线 0.3 alpha */}
-        <div className={styles.userCard}>
-          <div className={styles.userAvatar}>{userAvatarChar}</div>
-          <div className={styles.userName}>{userNickname}</div>
-        </div>
+
       </div>
     </div>
   );

@@ -11,8 +11,12 @@ import {
   MdOutlinePersonAddAlt1, 
   MdOutlineLabel, 
   MdOutlineEdit, 
-  MdOutlineDeleteOutline 
+  MdOutlineDeleteOutline,
+  MdCheck
 } from 'react-icons/md';
+import { Modal } from '../Modal/Modal';
+import { Button } from '../Button/Button';
+import { Input } from '../Input/Input';
 
 export interface UserProfileConfig {
   nickname: string;
@@ -66,6 +70,50 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
     }
   };
 
+  const [editingKey, setEditingKey] = React.useState<string | null>(null);
+  const [isFactModalOpen, setIsFactModalOpen] = React.useState(false);
+  const [editKeyInput, setEditKeyInput] = React.useState('');
+  const [editValInput, setEditValInput] = React.useState('');
+
+  const startEdit = (k: string, v: string) => {
+    setEditingKey(k);
+    setEditKeyInput(k);
+    setEditValInput(v);
+    setIsFactModalOpen(true);
+  };
+
+  const handleAddFact = () => {
+    setEditingKey(null);
+    setEditKeyInput('');
+    setEditValInput('');
+    setIsFactModalOpen(true);
+  };
+
+  const saveEdit = () => {
+    const k = editKeyInput.trim();
+    const v = editValInput.trim();
+    if (!k || !v) {
+      toast.showError(t('settings.empty_fact_error', '键名和键值不能为空'));
+      return;
+    }
+    
+    if (k !== editingKey && currentFacts[k]) {
+      toast.showError(t('settings.duplicate_fact_error', '该特征键名已存在'));
+      return;
+    }
+
+    const nextFacts = { ...currentFacts };
+    if (editingKey && editingKey !== k) {
+      delete nextFacts[editingKey];
+    }
+    nextFacts[k] = v;
+    onChange({
+      ...profile,
+      personas: { ...allPersonas, [activeId]: { ...allPersonas[activeId], facts: nextFacts } }
+    });
+    setIsFactModalOpen(false);
+  };
+
   // 3. 删除当前 Persona
   const handleDeletePersona = async (pid: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,28 +130,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
     }
   };
 
-  // 4. 增改 Fact
-  const handleAddOrEditFact = async (oldKey?: string, oldVal?: string) => {
-    const isEditing = !!oldKey;
-    const title = isEditing 
-      ? t('settings.edit_identity_entry', "编辑特征点") 
-      : t('settings.add_identity_entry', "新增特征点");
-    const k = await dialog.prompt(`${title} - 属性名 (例如：年纪、职业)`, oldKey || "");
-    if (!k) return;
-    const v = await dialog.prompt(`属性 [${k}] 的值 (例如：永远的18岁)`, oldVal || "");
-    if (!v) return;
-
-    const nextFacts = { ...currentFacts };
-    if (oldKey && oldKey !== k) {
-      delete nextFacts[oldKey];
-    }
-    nextFacts[k] = v;
-
-    onChange({
-      ...profile,
-      personas: { ...allPersonas, [activeId]: { ...allPersonas[activeId], facts: nextFacts } }
-    });
-  };
+  // Removed handleAddFact direct insertion as it's handled by handleAddFact + saveEdit now.
 
   // 5. 删 Fact
   const handleDeleteFact = async (k: string) => {
@@ -129,7 +156,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
         <button 
           className={styles.iconIconButton}
           title={t('settings.add_identity_entry', '新增特征点')}
-          onClick={() => handleAddOrEditFact()}
+          onClick={handleAddFact}
         >
           <MdOutlineAddCircleOutline size={20} />
         </button>
@@ -175,27 +202,64 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
         </div>
       ) : (
         <div className={styles.factsList}>
-          {Object.entries(currentFacts).map(([k, v]) => (
-            <div key={k} className={styles.factListTile}>
-              <div className={styles.factLeading}>
-                <MdOutlineLabel size={18} className={styles.primaryIcon} />
+          {Object.entries(currentFacts).map(([k, v]) => {
+            return (
+              <div key={k} className={styles.factListTile}>
+                <div className={styles.factLeading}>
+                  <MdOutlineLabel size={18} className={styles.primaryIcon} />
+                </div>
+                
+                <div className={styles.factContent}>
+                  <span className={styles.factKey}>{k}</span>
+                  <span className={styles.factValue}>{v}</span>
+                </div>
+                
+                <div className={styles.factTrailing}>
+                  <button className={styles.iconIconButton} onClick={() => startEdit(k, v)}>
+                    <MdOutlineEdit size={16} />
+                  </button>
+                  <button className={`${styles.iconIconButton} ${styles.dangerIcon}`} onClick={() => handleDeleteFact(k)}>
+                    <MdOutlineDeleteOutline size={16} />
+                  </button>
+                </div>
               </div>
-              <div className={styles.factContent}>
-                <span className={styles.factKey}>{k}</span>
-                <span className={styles.factValue}>{v}</span>
-              </div>
-              <div className={styles.factTrailing}>
-                <button className={styles.iconIconButton} onClick={() => handleAddOrEditFact(k, v)}>
-                  <MdOutlineEdit size={16} />
-                </button>
-                <button className={`${styles.iconIconButton} ${styles.dangerIcon}`} onClick={() => handleDeleteFact(k)}>
-                  <MdOutlineDeleteOutline size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      <Modal 
+        isOpen={isFactModalOpen} 
+        onClose={() => setIsFactModalOpen(false)} 
+        title={editingKey ? t('settings.edit_fact', '编辑特征') : t('settings.new_fact', '新增特征')}
+      >
+         <div className={styles.modalBody}>
+            <div className={styles.modalField}>
+               <label>{t('settings.fact_key', '特征名')}</label>
+               <Input 
+                 value={editKeyInput} 
+                 onChange={e => setEditKeyInput(e.target.value)} 
+                 placeholder="如：年龄、性格、身份" 
+                 autoFocus 
+               />
+            </div>
+            <div className={styles.modalField}>
+               <label>{t('settings.fact_value', '特征值')}</label>
+               <Input 
+                 value={editValInput} 
+                 onChange={e => setEditValInput(e.target.value)} 
+                 placeholder="如：25岁、傲娇、魔法使" 
+                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                   if (e.key === 'Enter') saveEdit();
+                 }}
+               />
+            </div>
+            <div className={styles.modalActions}>
+               <Button variant="text" onClick={() => setIsFactModalOpen(false)}>{t('common.cancel', '取消')}</Button>
+               <Button variant="elevated" onClick={saveEdit}>{t('common.save', '保存')}</Button>
+            </div>
+         </div>
+      </Modal>
     </div>
   );
 };

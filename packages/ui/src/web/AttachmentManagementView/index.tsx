@@ -3,6 +3,13 @@ import styles from './AttachmentManagementView.module.css';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
+import { 
+  CheckCircle,
+  FolderMinus,
+  Folder,
+  Trash2,
+  CheckSquare
+} from 'lucide-react';
 
 export interface AttachmentItem {
   id: string;
@@ -31,7 +38,6 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
 
   const orphans = attachments.filter(a => a.isOrphan);
   
-  // 汇总统计数据
   const totalSizeMB = attachments.reduce((sum, item) => sum + item.sizeMB, 0);
   const totalFiles = attachments.reduce((sum, item) => sum + item.fileCount, 0);
   const orphanSizeMB = orphans.reduce((sum, item) => sum + item.sizeMB, 0);
@@ -53,137 +59,186 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
     setSelectedIds(clone);
   };
 
+  const formatSize = (mb: number) => {
+    if (mb <= 0) return "0 B";
+    if (mb < 1) return (mb * 1024).toFixed(2) + " KB";
+    if (mb >= 1024) return (mb / 1024).toFixed(2) + " GB";
+    return mb.toFixed(2) + " MB";
+  };
+
   const handleDelete = async () => {
     if (selectedIds.size === 0) return;
-    const confirmed = await dialog.confirm(t('attachment.delete_confirm', '【操作确认】您将彻底删除选中的 {{count}} 个附件包。操作不可逆（仅删除文件，不影响聊天记录文本）。是否执行？', { count: selectedIds.size }));
+    
+    let confirmMsg = t('settings.attachment_delete_selected_confirm', '确定要删除选中的 {{count}} 个附件文件夹吗？此操作不可撤销。', { count: selectedIds.size });
+    if (confirmMsg.includes('$count')) {
+      confirmMsg = confirmMsg.replace('$count', selectedIds.size.toString());
+    }
+      
+    const confirmed = await dialog.confirm(confirmMsg);
     if (!confirmed) return;
 
     setIsDeleting(true);
     try {
+      const freedMB = Array.from(selectedIds).reduce((sum, id) => {
+         const folder = attachments.find(a => a.id === id);
+         return sum + (folder ? folder.sizeMB : 0);
+      }, 0);
+      
       await onDeleteSelected(Array.from(selectedIds));
-      toast.showSuccess('清除完毕，物理存储已释放。');
+      
+      let successStr = t('settings.attachment_clear_completed', '清理完成，共释放 $size 空间', { size: formatSize(freedMB) });
+      if (successStr.includes('$size')) {
+        successStr = successStr.replace('$size', formatSize(freedMB));
+      }
+      toast.showSuccess(successStr);
       setSelectedIds(new Set());
     } catch (e: any) {
-      toast.showError(`删除过程抛出异常：${e.message}`);
+      toast.showError(`${t('common.error', '错误')}: ${e.message}`);
     } finally {
       setIsDeleting(false);
     }
   };
 
+  const deleteBtnLabel = (() => {
+    let raw = t('settings.attachment_delete_selected', '删除已选 ({{count}})', { count: selectedIds.size });
+    if (raw.includes('$count')) raw = raw.replace('$count', selectedIds.size.toString());
+    return raw;
+  })();
+
   return (
     <div className={styles.container}>
-       <div className={styles.header}>
-          <div className={styles.titleInfo}>
-             <h3 className={styles.title}>{t('attachment.title', '附件与隔离数据管理')}</h3>
-             <p className={styles.subtitle}>{t('attachment.desc', '集中管理所有对话产生的媒体及文件，被标记为红色的条目是已丢失会话依据的孤立碎片。')}</p>
-          </div>
-       </div>
-
-       {/* 概览大盘 */}
-       <div className={styles.statsBoard}>
-          <div className={styles.statBox}>
-             <span className={styles.statLabel}>{t('attachment.stat_total', '总计使用空间')}</span>
-             <span className={styles.statValue}>{totalSizeMB.toFixed(2)} <small>MB</small></span>
+      {/* 概览大盘 */}
+      <div className={styles.overviewCardWrapper}>
+        <div className={styles.overviewCard}>
+          <div className={styles.statColumn}>
+            <span className={styles.statLabel}>{t('settings.attachment_total_size', '总占用空间')}</span>
+            <span className={`${styles.statValue} ${styles.colorPrimary}`}>{formatSize(totalSizeMB)}</span>
           </div>
           <div className={styles.statDivider} />
-          <div className={styles.statBox}>
-             <span className={styles.statLabel}>{t('attachment.stat_orphans', '孤立碎片体积')}</span>
-             <span className={styles.statValue}>{totalFiles} <small>Files</small></span>
+          <div className={styles.statColumn}>
+            <span className={styles.statLabel}>{t('settings.attachment_total_count', '附件总数')}</span>
+            <span className={`${styles.statValue} ${styles.colorOnSurface}`}>{totalFiles}</span>
           </div>
           <div className={styles.statDivider} />
-          <div className={styles.statBox}>
-             <span className={`${styles.statLabel} ${styles.dangerTextLabel}`}>{t('attachment.stat_orphans_count', '无记录对证的孤立文件')}</span>
-             <span className={`${styles.statValue} ${orphanSizeMB > 0 ? styles.dangerText : ''}`}>
-               {orphanSizeMB.toFixed(2)} <small>MB</small>
-             </span>
+          <div className={styles.statColumn}>
+            <span className={styles.statLabel}>{t('settings.attachment_orphans_size', '孤立附件体积')}</span>
+            <span className={`${styles.statValue} ${orphanSizeMB > 0 ? styles.colorError : styles.colorOnSurface}`}>
+              {formatSize(orphanSizeMB)}
+            </span>
           </div>
-       </div>
+        </div>
+      </div>
 
-       {/* 操作器栏 */}
-       <div className={styles.toolbar}>
-          <div className={styles.tabsRow}>
-             <button 
-               className={`${styles.tabBtn} ${activeTab === 'all' ? styles.tabActive : ''}`}
-               onClick={() => {
-                 setActiveTab('all'); setSelectedIds(new Set()); 
-               }}
-             >
-               📁 {t('attachment.tab_all', '系统完整附件集')} <span className={styles.badge}>{attachments.length}</span>
-             </button>
-             <button 
-               className={`${styles.tabBtn} ${activeTab === 'orphans' ? styles.tabActive : ''}`}
-               onClick={() => {
-                 setActiveTab('orphans'); setSelectedIds(new Set()); 
-               }}
-             >
-               ⚠️ {t('attachment.tab_orphans', '无关联孤立区')} <span className={styles.badgeDanger}>{orphans.length}</span>
-             </button>
-          </div>
-          
-          <button className={styles.selectAllBtn} onClick={handleSelectAll} disabled={displayList.length === 0}>
-             {displayList.length > 0 && selectedIds.size === displayList.length ? t('common.deselect_all', '取消全选') : t('common.select_all', '全选')}
+      {/* Toolbar */}
+      <div className={styles.toolbarWrapper}>
+        <div className={styles.tabsRow}>
+          <button 
+            className={`${styles.actionBtn} ${activeTab === 'all' ? styles.btnFilled : styles.btnOutlined}`}
+            onClick={() => {
+              setActiveTab('all'); setSelectedIds(new Set()); 
+            }}
+          >
+            {t('settings.attachment_tab_all', '全部附件')} {attachments.length}
           </button>
-       </div>
+          <button 
+            className={`${styles.actionBtn} ${activeTab === 'orphans' ? styles.btnFilled : styles.btnOutlined}`}
+            onClick={() => {
+              setActiveTab('orphans'); setSelectedIds(new Set()); 
+            }}
+          >
+            {t('settings.attachment_tab_orphans', '孤立附件')} {orphans.length}
+          </button>
+        </div>
+        
+        <div className={styles.tabsRow}>
+           {displayList.length > 0 && selectedIds.size > 0 && (
+              <button 
+                className={`${styles.actionBtn} ${styles.btnDangerFilled}`} 
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 size={16} /> 
+                {deleteBtnLabel}
+              </button>
+           )}
 
-       {/* 档案列表 */}
-       <div className={styles.listArea}>
-          {displayList.length === 0 ? (
-             <div className={styles.empty}>
-                <div className={styles.emptyIcon}>{activeTab === 'orphans' ? '🎐' : '🗂️'}</div>
-                <div className={styles.emptyText}>{activeTab === 'orphans' ? t('attachment.no_orphans', '系统中不存在未关联的孤立文件。') : t('attachment.empty', '工作空间没有留存任何附件记录。')}</div>
-             </div>
-          ) : (
-             displayList.map(att => {
-                const isChecked = selectedIds.has(att.id);
-                return (
-                 <div key={att.id} className={`${styles.card} ${isChecked ? styles.cardChecked : ''} ${att.isOrphan ? styles.cardOrphan : ''}`}>
-                   <div className={styles.cardSelectCol}>
-                      <input 
-                         type="checkbox" className={styles.customCheck} 
-                         checked={isChecked}
-                         onChange={(e) => toggleSelect(att.id, e.target.checked)}
-                      />
-                   </div>
-                   
-                   <div className={`${styles.cardIconBox} ${att.isOrphan ? styles.cardIconBoxOrphan : ''}`}>
-                      {att.isOrphan ? '🚧' : '📂'}
-                   </div>
-                   
-                   <div className={styles.cardMain}>
-                     <div className={styles.cardHeaderRow}>
-                       <span className={styles.cardName} title={att.name}>{att.name || att.id}</span>
-                       {att.isOrphan && <span className={styles.orphanTag}>ORPHAN</span>}
-                     </div>
-                     <div className={styles.cardSubRow}>
-                       <span className={styles.fileCountHint}>{t('attachment.file_count_badge', '{{count}} 件物理档案', { count: att.fileCount })}</span>
-                     </div>
-                   </div>
+           {displayList.length > 0 && (
+             <button 
+               className={`${styles.actionBtn} ${styles.btnOutlined}`} 
+               onClick={handleSelectAll}
+             >
+               <CheckSquare size={16} />
+               {selectedIds.size === displayList.length 
+                 ? t('settings.attachment_deselect_all', '取消全选') 
+                 : t('settings.attachment_select_all', '全选')}
+             </button>
+           )}
+        </div>
+      </div>
 
-                   <div className={styles.cardSizeBox}>
-                      <div className={styles.cardSize}>{att.sizeMB.toFixed(2)} MB</div>
-                      <div className={styles.cardDate}>{att.date}</div>
-                   </div>
-                 </div>
-               )
-             })
-          )}
-       </div>
+      {/* 列表主体 */}
+      <div className={styles.listArea}>
+        {displayList.length === 0 ? (
+          <div className={styles.emptyState}>
+            {activeTab === 'orphans' ? (
+              <CheckCircle className={styles.emptyIcon} />
+            ) : (
+              <FolderMinus className={styles.emptyIcon} />
+            )}
+            <span className={styles.emptyText}>
+              {activeTab === 'orphans' 
+                ? t('settings.attachment_no_orphans', '暂时没有发现孤立的附件') 
+                : t('settings.attachment_no_attachments', '当前空间没有任何附件')
+              }
+            </span>
+          </div>
+        ) : (
+          displayList.map(folder => {
+            const isChecked = selectedIds.has(folder.id);
+            return (
+              <div 
+                key={folder.id} 
+                className={`${styles.folderItem} ${isChecked ? styles.itemSelected : ''}`}
+                onClick={() => toggleSelect(folder.id, !isChecked)}
+              >
+                <div className={styles.checkboxWrapper}>
+                  <input 
+                    type="checkbox" 
+                    className={styles.customCheck} 
+                    checked={isChecked}
+                    onChange={(e) => toggleSelect(folder.id, e.target.checked)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+                
+                <div className={`${styles.folderIconBox} ${folder.isOrphan ? styles.folderIconBoxOrphan : ''}`}>
+                  {folder.isOrphan ? <FolderMinus /> : <Folder />}
+                </div>
+                
+                <div className={styles.folderInfo}>
+                  <div className={styles.folderTitleRow}>
+                    <span className={styles.folderTitle} title={folder.name || folder.id}>
+                      {folder.name || folder.id}
+                    </span>
+                    {folder.isOrphan && (
+                      <span className={styles.orphanLabel}>
+                        {t('settings.attachment_orphan_label', '孤立')}
+                      </span>
+                    )}
+                  </div>
+                  <span className={styles.folderFilesSubtitle}>
+                    {folder.fileCount} files
+                  </span>
+                </div>
 
-       {/* 底部悬浮删除面板 (条件显示) */}
-       {selectedIds.size > 0 && (
-         <div className={styles.massActionFooter}>
-            <div className={styles.footerInfo}>
-               {t('attachment.selected_count', '已选择')} <span className={styles.highlight}>{selectedIds.size}</span> {t('attachment.selected_count_suffix', '个组列.')}
-            </div>
-            <button 
-               className={styles.massiveDeleteBtn} 
-               onClick={handleDelete}
-               disabled={isDeleting}
-            >
-               {isDeleting ? t('attachment.deleting', '🗑️ 彻底删除执行中...') : t('attachment.delete_btn', '🗑️ 从磁盘执行删除')}
-            </button>
-         </div>
-       )}
+                <div className={styles.folderSizeWrapper}>
+                  <span className={styles.folderSizeValue}>{formatSize(folder.sizeMB)}</span>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
     </div>
   );
 };

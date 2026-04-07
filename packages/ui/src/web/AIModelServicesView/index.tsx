@@ -1,248 +1,831 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  defaultDropAnimationSideEffects
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifiers';
 import styles from './AIModelServicesView.module.css';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
 
+import openaiIcon from '../../assets/ai_provider_icon/openai.png';
+import geminiIcon from '../../assets/ai_provider_icon/gemini-color.png';
+import claudeIcon from '../../assets/ai_provider_icon/claude-color.png';
+import deepseekIcon from '../../assets/ai_provider_icon/deepseek-color.png';
+import kimiIcon from '../../assets/ai_provider_icon/moonshot.png';
+import ollamaIcon from '../../assets/ai_provider_icon/ollama.png';
+import dashscopeIcon from '../../assets/ai_provider_icon/dashscope.png';
+import siliconflowIcon from '../../assets/ai_provider_icon/silicon.png';
+import openrouterIcon from '../../assets/ai_provider_icon/openrouter.png';
+import doubaoIcon from '../../assets/ai_provider_icon/doubao.png';
+import grokIcon from '../../assets/ai_provider_icon/grok.png';
+import mistralIcon from '../../assets/ai_provider_icon/mistral.png';
+import lmstudioIcon from '../../assets/ai_provider_icon/lmstudio.png';
+
+import { 
+  MdCloud, 
+  MdVisibility, 
+  MdVisibilityOff, 
+  MdAdd, 
+  MdDeleteOutline,
+  MdSave,
+  MdApi,
+  MdRestore,
+  MdLink,
+  MdVpnKey,
+  MdWifi,
+  MdViewList,
+  MdSync,
+  MdArrowDropDown,
+  MdDragIndicator,
+  MdClose
+} from 'react-icons/md';
+
 export interface AIProviderConfig {
   providerId: string;
+  name?: string;
+  type?: string;
+  isSystem?: boolean;
+  sortOrder?: number;
   enabled: boolean;
   apiKey: string;
   apiBaseUrl?: string;
   models?: string[];
   enabledModels?: string[];
+  defaultDialogueModel?: string;
 }
 
 export interface AIModelServicesViewProps {
   providers: Record<string, AIProviderConfig>;
   onUpdateProvider: (providerId: string, updates: Partial<AIProviderConfig>) => void;
-  onTestConnection?: (providerId: string, apiKey: string, baseUrl?: string) => Promise<void>;
-  onFetchModels?: (providerId: string, apiKey: string, baseUrl?: string) => Promise<string[]>;
+  onDeleteProvider?: (providerId: string) => void;
+  onReorderProviders?: (orderedIds: string[]) => void;
+  onTestConnection?: (providerId: string, tempKey?: string, tempUrl?: string, testModelId?: string) => Promise<void>;
+  onFetchModels?: (providerId: string, tempKey?: string, tempUrl?: string) => Promise<string[]>;
 }
 
-import { SiOpenai, SiGoogle, SiAnthropic } from 'react-icons/si';
-import { MdCloud, MdPrecisionManufacturing, MdAutoAwesome, MdExtension } from 'react-icons/md';
-
-// 核心自带云脑，可追加后续通过新增按钮自定义的类型
+// 核心自带类型的回退配置
 const BASE_KNOWN_PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', icon: <SiOpenai />, defaultBase: 'https://api.openai.com/v1' },
-  { id: 'anthropic', name: 'Anthropic', icon: <SiAnthropic />, defaultBase: 'https://api.anthropic.com' },
-  { id: 'google', name: 'Gemini', icon: <SiGoogle />, defaultBase: 'https://generativelanguage.googleapis.com' },
-  { id: 'ollama', name: 'Ollama', icon: <MdPrecisionManufacturing />, defaultBase: 'http://localhost:11434/v1' },
-  { id: 'deepseek', name: 'DeepSeek', icon: <MdAutoAwesome />, defaultBase: 'https://api.deepseek.com' },
-  { id: 'kimi', name: 'Moonshot', icon: <MdExtension />, defaultBase: 'https://api.moonshot.cn/v1' },
-  { id: 'qwen', name: 'Alibaba Qwen', icon: <MdCloud />, defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-  { id: 'zhipu', name: 'ZhipuAI', icon: <MdExtension />, defaultBase: 'https://open.bigmodel.cn/api/paas/v4' },
-  { id: 'xunfei', name: 'Xunfei Spark', icon: <MdAutoAwesome />, defaultBase: 'https://spark-api-open.xf-yun.com/v1' },
+  { id: 'openai', name: 'OpenAI', iconUrl: openaiIcon, defaultBase: 'https://api.openai.com/v1', isSystem: true },
+  { id: 'gemini', name: 'Google Gemini', iconUrl: geminiIcon, defaultBase: 'https://generativelanguage.googleapis.com/v1beta', isSystem: true },
+  { id: 'anthropic', name: 'Anthropic Claude', iconUrl: claudeIcon, defaultBase: 'https://api.anthropic.com', isSystem: true },
+  { id: 'deepseek', name: 'DeepSeek', iconUrl: deepseekIcon, defaultBase: 'https://api.deepseek.com', isSystem: true },
+  { id: 'kimi', name: 'Kimi (Moonshot)', iconUrl: kimiIcon, defaultBase: 'https://api.moonshot.cn/v1', isSystem: true },
+  { id: 'ollama', name: 'Ollama', iconUrl: ollamaIcon, defaultBase: 'http://localhost:11434/v1', isSystem: true },
+  { id: 'siliconflow', name: '硅基流动 (SiliconFlow)', iconUrl: siliconflowIcon, defaultBase: 'https://api.siliconflow.cn/v1', isSystem: true },
+  { id: 'openrouter', name: 'OpenRouter', iconUrl: openrouterIcon, defaultBase: 'https://openrouter.ai/api/v1', isSystem: true },
+  { id: 'dashscope', name: '通义千问 (百炼)', iconUrl: dashscopeIcon, defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1', isSystem: true },
+  { id: 'doubao', name: '豆包 (火山引擎)', iconUrl: doubaoIcon, defaultBase: 'https://ark.cn-beijing.volces.com/api/v3', isSystem: true },
+  { id: 'grok', name: 'Grok (xAI)', iconUrl: grokIcon, defaultBase: 'https://api.x.ai/v1', isSystem: true },
+  { id: 'mistral', name: 'Mistral', iconUrl: mistralIcon, defaultBase: 'https://api.mistral.ai/v1', isSystem: true },
+  { id: 'lmstudio', name: 'LM Studio', iconUrl: lmstudioIcon, defaultBase: 'http://localhost:1234/v1', isSystem: true },
+];
+
+const PROVIDER_TYPES = [
+  'openai', 'anthropic', 'gemini', 'deepseek', 'kimi', 'ollama', 
+  'siliconflow', 'openrouter', 'dashscope', 'doubao', 'grok', 'mistral', 'lmstudio'
 ];
 
 export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
   providers, 
   onUpdateProvider, 
+  onDeleteProvider,
+  onReorderProviders,
   onTestConnection, 
   onFetchModels 
 }) => {
   const { t } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [loadingTest, setLoadingTest] = useState<Record<string, boolean>>({});
-  const [loadingFetch, setLoadingFetch] = useState<Record<string, boolean>>({});
 
-  // 合并已知的和用户自行录入的 Providers
-  const displayIds = new Set<string>();
-  BASE_KNOWN_PROVIDERS.forEach(p => displayIds.add(p.id));
-  Object.keys(providers).forEach(pid => displayIds.add(pid));
+  const getCombinedProviders = Object.keys(providers).filter(id => !BASE_KNOWN_PROVIDERS.find(b => b.id === id));
+  
+  const allProvidersList = [
+    ...BASE_KNOWN_PROVIDERS,
+    ...getCombinedProviders.map(id => ({
+      id,
+      name: providers[id]?.name || id.toUpperCase(),
+      iconUrl: undefined as string | undefined,
+      defaultBase: providers[id]?.apiBaseUrl || '',
+      isSystem: false,
+      sortOrder: providers[id]?.sortOrder ?? 999
+    }))
+  ];
 
-  const ALL_LIST = Array.from(displayIds).map(id => {
-    const base = BASE_KNOWN_PROVIDERS.find(b => b.id === id);
-    if (base) return base;
-    return { id, name: id.toUpperCase(), icon: <MdCloud />, defaultBase: '' }; // Fallback for custom added
+  const sortedProvidersList = [...allProvidersList].map(p => ({
+    ...p,
+    sortOrder: providers[p.id]?.sortOrder ?? (p as any).sortOrder ?? 999,
+  })).sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const firstProviderId = sortedProvidersList[0]?.id;
+  const [selectedProviderId, setSelectedProviderId] = useState<string>(firstProviderId || '');
+  
+  const [localFormData, setLocalFormData] = useState<{ baseUrl: string, apiKey: string }>({
+    baseUrl: '',
+    apiKey: ''
   });
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(prev => prev === id ? null : id);
+  const [isObscure, setIsObscure] = useState(true);
+  const [isTesting, setIsTesting] = useState(false);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+
+  const [localProvidersList, setLocalProvidersList] = useState(sortedProvidersList);
+  useEffect(() => {
+    setLocalProvidersList(sortedProvidersList);
+  }, [providers]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const handleDragStart = (event: any) => {
+    console.log('[Drag Tracking] dnd-kit DragStart:', event.active.id);
+    setActiveDragId(event.active.id as string);
   };
 
-  const handleTest = async (id: string, config: AIProviderConfig) => {
-    if (!onTestConnection) return;
-    if (!config.apiKey) {
-      toast.show('请先填写 API Key (鉴权口令) 后再测试连通性！');
-      return;
-    }
-    setLoadingTest(prev => ({ ...prev, [id]: true }));
-    try {
-      await onTestConnection(id, config.apiKey, config.apiBaseUrl);
-      toast.showSuccess('✅ 测通成功！该节点返回的信号良好。');
-    } catch (e: any) {
-      toast.showError(`❌ 测通失败: ${e.message}`);
-    } finally {
-      setLoadingTest(prev => ({ ...prev, [id]: false }));
-    }
-  };
-
-  const handleFetch = async (id: string, config: AIProviderConfig) => {
-    if (!onFetchModels) return;
-    if (!config.apiKey) {
-      toast.show('请先填写 API Key，以获取您的账户有权访问的流式图表。');
-      return;
-    }
-    setLoadingFetch(prev => ({ ...prev, [id]: true }));
-    try {
-      const RemoteModels = await onFetchModels(id, config.apiKey, config.apiBaseUrl);
-      // 默认全选拉取到的模型，或与早期的 enabledModels 进行对冲合并
-      const oldEnabled = new Set(config.enabledModels || []);
-      const newEnabled = RemoteModels.filter(rm => oldEnabled.size === 0 || oldEnabled.has(rm));
-      
-      onUpdateProvider(id, { 
-        models: RemoteModels, 
-        enabledModels: newEnabled.length > 0 ? newEnabled : RemoteModels 
-      });
-      toast.showSuccess(`🎉 成功拉取 ${RemoteModels.length} 个模型！`);
-    } catch (e: any) {
-      toast.showError(`⚠️ 无法获取可用模型组: ${e.message}`);
-    } finally {
-      setLoadingFetch(prev => ({ ...prev, [id]: false }));
-    }
-  };
-
-  const handleToggleModel = (providerId: string, modelId: string, isChecked: boolean, config: AIProviderConfig) => {
-    const activeList = [...(config.enabledModels || [])];
-    if (isChecked) {
-      if (!activeList.includes(modelId)) activeList.push(modelId);
-    } else {
-      const idx = activeList.indexOf(modelId);
-      if (idx !== -1) activeList.splice(idx, 1);
-    }
-    onUpdateProvider(providerId, { enabledModels: activeList });
-  };
-
-  const handleCreateCustom = async () => {
-    const rawInput = await dialog.prompt("请输入自定义供应商标识（例如: proxy_openai）：\n*将创建一个新的空白接口点卡片以供使用。");
-    if (rawInput && rawInput.trim() !== '') {
-       const pid = rawInput.trim().toLowerCase();
-       if (!providers[pid]) {
-          onUpdateProvider(pid, { enabled: true, apiKey: '' });
-          setExpandedId(pid);
-       } else {
-          toast.show('该提供商标签已存在于云脑池中。');
+  const handleDragEnd = (event: any) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    console.log('[Drag Tracking] dnd-kit DragEnd result:', event);
+    if (over && active.id !== over.id) {
+       const oldIndex = localProvidersList.findIndex(p => p.id === active.id);
+       const newIndex = localProvidersList.findIndex(p => p.id === over.id);
+       const updatedList = arrayMove(localProvidersList, oldIndex, newIndex);
+       setLocalProvidersList(updatedList);
+       
+       if (onReorderProviders) {
+         console.log(`[Drag Tracking] dnd-kit invoking onReorderProviders with current ordered IDs`);
+         onReorderProviders(updatedList.map(x => x.id));
        }
     }
   };
 
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [addModalData, setAddModalData] = useState({ name: '', type: 'openai', baseUrl: '' });
+
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [testModelId, setTestModelId] = useState('');
+  const [testModelOptions, setTestModelOptions] = useState<string[]>([]);
+  const [isTestModelDropdownOpen, setIsTestModelDropdownOpen] = useState(false);
+
+  const activeProviderMeta = allProvidersList.find(p => p.id === selectedProviderId) || allProvidersList[0];
+  const activeConfig = providers[selectedProviderId] || { providerId: selectedProviderId, enabled: false, apiKey: '', apiBaseUrl: '' };
+
+  const [delayedEnabledModels, setDelayedEnabledModels] = useState<string[]>(activeConfig.enabledModels || []);
+
+  useEffect(() => {
+    // 立即在一开始同步，但如果是用户点击引发的变化，则延迟 350ms 排序，让打钩动画飞一会
+    const t = setTimeout(() => {
+      setDelayedEnabledModels(activeConfig.enabledModels || []);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [activeConfig.enabledModels, selectedProviderId]);
+
+  useEffect(() => {
+    if (selectedProviderId) {
+      populateControllers(selectedProviderId);
+    }
+  }, [selectedProviderId, providers]);
+
+  const populateControllers = (pid: string) => {
+    const config: Partial<AIProviderConfig> = providers[pid] || {};
+    setLocalFormData({
+      baseUrl: config.apiBaseUrl || '',
+      apiKey: config.apiKey || ''
+    });
+  };
+
+  if (!activeProviderMeta) return null;
+
+  const handleProviderTap = (id: string) => {
+    if (selectedProviderId !== id) {
+       setSelectedProviderId(id);
+    }
+  };
+
+  const handleSaveCurrentProviderConfig = () => {
+    onUpdateProvider(selectedProviderId, {
+      apiBaseUrl: localFormData.baseUrl,
+      apiKey: localFormData.apiKey
+    });
+    toast.showSuccess(t('ai_config.save_success', '$id 配置已保存', { id: selectedProviderId }));
+  };
+
+  const handleResetCurrentProvider = () => {
+    setLocalFormData({
+      baseUrl: activeProviderMeta.defaultBase,
+      apiKey: ''
+    });
+    toast.showSuccess(t('ai_config.reset_success', '已恢复默认地址并清空 API Key，请点击保存'));
+  };
+
+  const handleBaseUrlBlur = () => {
+    let url = localFormData.baseUrl;
+    if (url && url.includes('generativelanguage.googleapis.com') && !url.includes('v1')) {
+      url = url.replace(/\/+$/, '') + '/v1beta';
+    }
+    if (url !== localFormData.baseUrl) {
+      setLocalFormData(prev => ({ ...prev, baseUrl: url }));
+    }
+  };
+
+  const handleTestConnection = async () => {
+    console.log('[TestConnection] handleTestConnection clicked', { onTestConnection: !!onTestConnection, apiKey: !!localFormData.apiKey });
+    if (!onTestConnection) return;
+    if (!localFormData.apiKey) {
+      toast.showError(t('ai_config.fill_api_key_hint', '请先填写 API Key 并保存'));
+      return;
+    }
+
+    const available = activeConfig.enabledModels?.length ? activeConfig.enabledModels : activeConfig.models;
+    console.log('[TestConnection] available models:', available);
+    if (!available || available.length === 0) {
+      toast.showError(t('ai_config.no_models_fetch_first', '没有可用的模型，请先获取模型列表或确保有默认模型'));
+      // 仍然允许用户手动输入
+    }
+    
+    setTestModelOptions(available || []);
+    setTestModelId(activeConfig.defaultDialogueModel || available?.[0] || '');
+    console.log('[TestConnection] opening modal with default:', activeConfig.defaultDialogueModel || available?.[0] || '');
+    setIsTestModalOpen(true);
+  };
+
+  const confirmTestConnection = async () => {
+    if (!testModelId.trim()) {
+      toast.showError(t('ai_config.test_model_empty', '测试模型 ID 不能为空'));
+      return;
+    }
+    setIsTestModalOpen(false);
+
+    onUpdateProvider(selectedProviderId, {
+      apiBaseUrl: localFormData.baseUrl,
+      apiKey: localFormData.apiKey
+    });
+
+    setIsTesting(true);
+    try {
+      await onTestConnection(selectedProviderId, localFormData.apiKey, localFormData.baseUrl, testModelId.trim());
+      toast.showSuccess(t('ai_config.test_connection_success', '连接测试成功！🎉'));
+    } catch (e: any) {
+      toast.showError(t('ai_config.test_connection_failed', '连接失败: {{e}}', { e: e.message || 'Unknown error' }));
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleFetchModels = async () => {
+    if (!onFetchModels) return;
+    if (!localFormData.apiKey) {
+      toast.showError(t('ai_config.fill_api_key_hint', '请先填写 API Key 并保存'));
+      return;
+    }
+
+    onUpdateProvider(selectedProviderId, {
+      apiBaseUrl: localFormData.baseUrl,
+      apiKey: localFormData.apiKey
+    });
+
+    setIsFetchingModels(true);
+    try {
+       const RemoteModels = await onFetchModels(selectedProviderId, localFormData.apiKey, localFormData.baseUrl);
+       const oldEnabled = new Set(activeConfig.enabledModels || []);
+       const newEnabled = RemoteModels.filter(rm => oldEnabled.has(rm));
+
+       onUpdateProvider(selectedProviderId, { 
+          models: RemoteModels, 
+          enabledModels: newEnabled 
+       });
+       toast.showSuccess(t('ai_config.fetch_models_success', '成功获取并保存模型列表'));
+    } catch (e: any) {
+       toast.showError(t('ai_config.fetch_models_failed', '获取模型失败: {{e}}', { e: e.message || 'Unknown error' }));
+    } finally {
+       setIsFetchingModels(false);
+    }
+  };
+
+  const handleDeleteProvider = async () => {
+     const confirmStr = t('agent.provider.delete_confirm', `确定要删除"${activeProviderMeta.name}"吗？`)
+       .replace('$name', activeProviderMeta.name)
+       .replace('{{name}}', activeProviderMeta.name);
+     const res = await dialog.confirm(confirmStr);
+     if (res) {
+       if (onDeleteProvider) onDeleteProvider(selectedProviderId);
+       setSelectedProviderId(firstProviderId || '');
+     }
+  };
+
+  const handleAddCustomProvider = () => {
+    setAddModalData({ name: '', type: 'openai', baseUrl: '' });
+    setIsTypeDropdownOpen(false);
+    setIsAddModalOpen(true);
+  };
+
+  const submitAddCustomProvider = () => {
+    if (!addModalData.name.trim()) return;
+    const pid = 'custom_' + Date.now();
+    onUpdateProvider(pid, { 
+      name: addModalData.name.trim(), 
+      type: addModalData.type,
+      apiBaseUrl: addModalData.baseUrl.trim(),
+      isSystem: false, 
+      enabled: true, 
+      apiKey: '' 
+    });
+    setIsAddModalOpen(false);
+    setSelectedProviderId(pid);
+  };
+
+  const handleToggleEnable = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onUpdateProvider(selectedProviderId, { enabled: e.target.checked });
+  };
+
+  const handleModelToggle = (mdl: string, isChecked: boolean) => {
+    const activeList = [...(activeConfig.enabledModels || [])];
+    if (isChecked) {
+      if (!activeList.includes(mdl)) activeList.push(mdl);
+    } else {
+      const idx = activeList.indexOf(mdl);
+      if (idx !== -1) activeList.splice(idx, 1);
+    }
+    onUpdateProvider(selectedProviderId, { enabledModels: activeList });
+  };
+
+  const renderIcon = (iconUrl?: string) => {
+    return iconUrl ? <img src={iconUrl} alt="icon" className={styles.providerIconImage} /> : <MdCloud className={styles.providerIconFallback} />;
+  };
+
+  const renderTypeIcon = (typeId: string) => {
+    const meta = BASE_KNOWN_PROVIDERS.find(p => p.id === typeId);
+    return meta?.iconUrl ? <img src={meta.iconUrl} className={styles.modalTypeIcon} alt="" /> : <MdCloud className={styles.modalTypeFallback} />;
+  };
+
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.titleInfo}>
-          <h3 className={styles.title}>{t('services.title', '大模型服务集成配置')}</h3>
-          <p className={styles.subtitle}>{t('services.subtitle', '管控所有云端与局域网供应商 API。仅展示您已启用的服务商。')}</p>
+      {/* Left Pane: Provider List */}
+      <div className={styles.leftPane}>
+        <div className={styles.listHeader}>
+          {t('ai_config.providers_label', '服务提供商')}
         </div>
-        <button className={styles.addCustomBtn} onClick={handleCreateCustom}>
-          ➕ {t('services.add_custom', '新增自定义供应源')}
-        </button>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
+        >
+          <div className={styles.listScroll}>
+            <SortableContext 
+              items={localProvidersList.map(p => p.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {localProvidersList.map(p => {
+                const isActive = selectedProviderId === p.id;
+                const provConfig = providers[p.id];
+                const isEnabled = provConfig ? provConfig.enabled : false;
+
+                return (
+                  <ProviderSortableItem 
+                    key={p.id}
+                    p={p}
+                    isActive={isActive}
+                    isEnabled={isEnabled}
+                    onClick={() => setSelectedProviderId(p.id)}
+                    renderIcon={renderIcon}
+                    t={t}
+                  />
+                );
+              })}
+            </SortableContext>
+          </div>
+
+          {createPortal(
+            <DragOverlay 
+              dropAnimation={{
+                sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } })
+              }}
+            >
+              {activeDragId ? (
+                (() => {
+                  const p = localProvidersList.find(x => x.id === activeDragId);
+                  if (!p) return null;
+                  const isActive = selectedProviderId === p.id;
+                  const provConfig = providers[p.id];
+                  const isEnabled = provConfig ? provConfig.enabled : false;
+                  return (
+                    <ProviderStaticItem 
+                      p={p} 
+                      isActive={isActive} 
+                      isEnabled={isEnabled} 
+                      renderIcon={renderIcon} 
+                      t={t} 
+                    />
+                  );
+                })()
+              ) : null}
+            </DragOverlay>,
+            document.body
+          )}
+        </DndContext>
+        <div className={styles.listFooter}>
+          <button className={styles.addButton} onClick={handleAddCustomProvider}>
+            <MdAdd size={18} />
+            <span>{t('agent.provider.add_button', '添加')}</span>
+          </button>
+        </div>
       </div>
 
-      <div className={styles.list}>
-        {ALL_LIST.map((kp) => {
-          const config = providers[kp.id] || { providerId: kp.id, enabled: false, apiKey: '', apiBaseUrl: '' };
-          const isExpanded = expandedId === kp.id;
-          const isTesting = loadingTest[kp.id] || false;
-          const isFetching = loadingFetch[kp.id] || false;
+      {/* Right Pane: Configuration Form */}
+      <div className={styles.rightPane}>
+        <div className={styles.rightContentMask}>
+           <div className={styles.rightContentScroll}>
+             {/* Header */}
+             <div className={styles.configHeader}>
+                <div className={styles.headerLeft}>
+                   <div className={styles.hugeIconBox}>
+                      {renderIcon(activeProviderMeta.iconUrl)}
+                   </div>
+                   <div className={styles.headerTextCol}>
+                      <h2 className={styles.headerTitle}>{activeProviderMeta.name}</h2>
+                      <p className={styles.headerSub}>{t('ai_config.manage_services_desc', '配置并管理大语言模型服务')}</p>
+                   </div>
+                </div>
+                <div className={styles.headerActions}>
+                   <label className={styles.switch}>
+                     <input 
+                       type="checkbox" 
+                       checked={activeConfig.enabled}
+                       onChange={handleToggleEnable}
+                     />
+                     <span className={styles.slider}></span>
+                   </label>
+                   {!activeProviderMeta.isSystem && (
+                      <button className={styles.deleteButton} onClick={handleDeleteProvider} title={t('agent.provider.delete_tooltip', '删除供应商')}>
+                         <MdDeleteOutline size={22} />
+                      </button>
+                   )}
+                </div>
+             </div>
 
-          return (
-            <div key={kp.id} className={`${styles.providerCard} ${isExpanded ? styles.expanded : ''} ${!config.enabled ? styles.disabled : ''}`}>
-              <div className={styles.cardHeader} onClick={() => toggleExpand(kp.id)}>
-                <div className={styles.brandRow}>
-                  <div className={styles.brandIcon}>{kp.icon}</div>
-                  <div className={styles.brandName}>{kp.name}</div>
+             {/* ProviderConfigForm Box */}
+             <div className={styles.formCard}>
+                <div className={styles.formHeaderRow}>
+                   <div className={styles.formHeaderTitle}>
+                      <div className={styles.apiIconBox}>
+                         <MdApi className={styles.apiIcon} />
+                      </div>
+                      <span>{t('settings.api_config', 'API 配置')}</span>
+                   </div>
+                   <button className={styles.resetBtnInline} onClick={handleResetCurrentProvider}>
+                      <MdRestore size={16} />
+                      <span>{t('settings.reset_default', '恢复默认')}</span>
+                   </button>
+                </div>
+
+                <div className={styles.inputGroup}>
+                   <div className={styles.inputContainer}>
+                     <MdLink className={styles.inputPrefixIcon} />
+                     <input 
+                        type="text"
+                        value={localFormData.baseUrl}
+                        onChange={e => setLocalFormData({...localFormData, baseUrl: e.target.value})}
+                        onBlur={handleBaseUrlBlur}
+                        placeholder={activeProviderMeta.defaultBase || "API Base URL"}
+                        className={styles.textFieldWithIcon}
+                     />
+                   </div>
+                </div>
+
+                <div className={styles.inputGroup}>
+                   <div className={styles.inputContainer}>
+                     <MdVpnKey className={styles.inputPrefixIcon} />
+                     <input 
+                        type={isObscure ? 'password' : 'text'}
+                        value={localFormData.apiKey}
+                        onChange={e => setLocalFormData({...localFormData, apiKey: e.target.value})}
+                        placeholder={t('ai_config.api_key_placeholder', 'API Key')}
+                        className={styles.textFieldWithIcon}
+                     />
+                     <button className={styles.revealButton} onClick={() => setIsObscure(!isObscure)}>
+                        {isObscure ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
+                     </button>
+                   </div>
+                </div>
+
+                <button className={styles.testBtnBlock} onClick={handleTestConnection} disabled={isTesting}>
+                   {isTesting ? (
+                      <span className={styles.loadingSpinner}></span>
+                   ) : (
+                      <MdWifi size={18} />
+                   )}
+                   <span>{isTesting ? t('settings.testing_connection', '正在测试连接...') : t('settings.test_connection', '测试连接')}</span>
+                </button>
+             </div>
+
+             {/* ProviderModelList Section */}
+             <div className={styles.modelListSection}>
+                <div className={styles.modelListHeader}>
+                   <div className={styles.modelListTitleBox}>
+                      <MdViewList size={20} className={styles.modelListTitleIcon} />
+                      <span className={styles.modelListTitle}>
+                         {t('settings.model_list_count', '模型列表 ({{enabled}} / {{total}})')
+                            .replace('$enabled', String(activeConfig.enabledModels?.length || 0))
+                            .replace('$total', String(activeConfig.models?.length || 0))
+                            .replace('{{enabled}}', String(activeConfig.enabledModels?.length || 0))
+                            .replace('{{total}}', String(activeConfig.models?.length || 0))}
+                      </span>
+                   </div>
+                   <button className={styles.fetchBtnLine} onClick={handleFetchModels} disabled={isFetchingModels}>
+                      {isFetchingModels ? <span className={styles.loadingSpinnerSmall}></span> : <MdSync size={16} />}
+                      {t('settings.fetch_models', '获取模型')}
+                   </button>
                 </div>
                 
-                <div className={styles.actionsRow} onClick={(e) => e.stopPropagation()}>
-                  <label className={styles.switch}>
-                    <input 
-                      type="checkbox" 
-                      checked={config.enabled}
-                      onChange={(e) => onUpdateProvider(kp.id, { enabled: e.target.checked })}
-                    />
-                    <span className={styles.slider}></span>
-                  </label>
-                  <div className={styles.collapseBtn}>
-                    {isExpanded ? '▲' : '▼'}
-                  </div>
-                </div>
-              </div>
+                {activeConfig.models && activeConfig.models.length > 0 ? (
+                   <div className={styles.modelsCard}>
+                      {(() => {
+                        const sortingSet = new Set(delayedEnabledModels);
+                        const enabledModels = activeConfig.models!.filter(m => sortingSet.has(m));
+                        const disabledModels = activeConfig.models!.filter(m => !sortingSet.has(m));
+                        const sortedModels = [...enabledModels, ...disabledModels];
+                        
+                        const actualEnabledSet = new Set(activeConfig.enabledModels || []);
 
-              {isExpanded && (
-                <div className={styles.cardBody}>
-                   <div className={styles.configsGrid}>
-                      <div className={styles.inputGroup}>
-                        <label>🔑 {t('services.api_key', 'API Key 授权秘钥')}</label>
-                        <input 
-                          className={styles.textField}
-                          type="password"
-                          placeholder="sk-..."
-                          value={config.apiKey}
-                          onChange={(e) => onUpdateProvider(kp.id, { apiKey: e.target.value })}
-                        />
-                      </div>
-                      <div className={styles.inputGroup}>
-                        <label>🌐 {t('services.base_url', '自定义请求地址 (Base URL)')}</label>
-                        <input 
-                          className={styles.textField}
-                          type="text"
-                          placeholder={kp.defaultBase}
-                          value={config.apiBaseUrl || ''}
-                          onChange={(e) => onUpdateProvider(kp.id, { apiBaseUrl: e.target.value })}
-                        />
-                      </div>
-                   </div>
-
-                   {/* Connection Tools */}
-                   <div className={styles.toolsRow}>
-                      <button 
-                        className={styles.toolBtnPrimary} 
-                        onClick={() => handleTest(kp.id, config)}
-                        disabled={isTesting}
-                      >
-                        {isTesting ? t('services.testing', '⏳ 测速中...') : t('services.test_conn', '⚡ 测试连接')}
-                      </button>
-                      <button 
-                        className={styles.toolBtnSecondary} 
-                        onClick={() => handleFetch(kp.id, config)}
-                        disabled={isFetching}
-                      >
-                        {isFetching ? t('services.fetching', '⏳ 读取中...') : t('services.fetch_models', '📡 获取模型列表')}
-                      </button>
-                   </div>
-
-                   {/* Model List Checkbox Area */}
-                   {config.models && config.models.length > 0 && (
-                     <div className={styles.modelsContainer}>
-                        <div className={styles.modelsLabel}>
-                           {t('services.select_models', '勾选您将在对话界面显示的模型组合：')}
-                        </div>
-                        <div className={styles.modelsGrid}>
-                           {(config.models || []).map(mdl => {
-                             const isChecked = (config.enabledModels || []).includes(mdl);
-                             return (
-                               <label key={mdl} className={styles.modelCheckboxItem}>
+                        return sortedModels.map((mdl, idx) => {
+                           const isChecked = actualEnabledSet.has(mdl);
+                           const isLast = idx === (sortedModels.length - 1);
+                           return (
+                             <div key={mdl} className={`${styles.modelLineItem} ${!isLast ? styles.modelLineItemDivider : ''}`}>
+                               <div className={styles.modelLineItemLeft}>
+                                 {renderIcon(activeProviderMeta.iconUrl)}
+                                 <span className={`${styles.modelNameText} ${isChecked ? styles.modelNameChecked : ''}`}>
+                                   {mdl}
+                                 </span>
+                               </div>
+                               <label className={styles.switch}>
                                  <input 
                                    type="checkbox" 
                                    checked={isChecked}
-                                   onChange={e => handleToggleModel(kp.id, mdl, e.target.checked, config)}
+                                   onChange={e => handleModelToggle(mdl, e.target.checked)}
                                  />
-                                 <span>{mdl}</span>
+                                 <span className={styles.slider}></span>
                                </label>
-                             );
-                           })}
+                             </div>
+                           );
+                        });
+                      })()}
+                   </div>
+                ) : (
+                   <div className={styles.emptyModelsCard}>
+                      <MdViewList size={32} className={styles.emptyModelsIcon} />
+                      <span>{t('settings.no_models_hint', '暂无模型，点击右上角按钮获取')}</span>
+                   </div>
+                )}
+             </div>
+           </div>
+        </div>
+
+        {/* Floating Bottom Bar for Saving */}
+        <div className={styles.bottomBarArea}>
+           <div className={styles.bottomBarContainer}>
+              <button className={styles.saveBtn} onClick={handleSaveCurrentProviderConfig}>
+                 <MdSave size={18} />
+                 <span>{t('ai_config.save_changes_button', '保存修改')}</span>
+              </button>
+           </div>
+        </div>
+      </div>
+
+      {isAddModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className={styles.addModalOverlay}>
+          <div className={styles.addModalContent}>
+            <div className={styles.addModalHeader}>{t('agent.provider.add_title', '新增 AI 供应商')}</div>
+            <div className={styles.addModalBody}>
+              <div className={styles.typeFieldContainer}>
+                <span className={styles.typeLabel}>{t('agent.provider.add_type_label', '供应商类型 (Client)')}</span>
+                <div className={styles.customSelectOuter}>
+                  <div className={`${styles.customSelectValue} ${isTypeDropdownOpen ? styles.customSelectValueOpen : ''}`} onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}>
+                    {renderTypeIcon(addModalData.type)}
+                    <span style={{flex: 1}}>{addModalData.type === 'openai' ? 'OpenAI 规范' : addModalData.type.toUpperCase()}</span>
+                    <MdArrowDropDown size={20} className={`${styles.dropdownArrow} ${isTypeDropdownOpen ? styles.dropdownArrowOpen : ''}`} />
+                  </div>
+                  {isTypeDropdownOpen && (
+                    <div className={styles.customSelectMenu}>
+                      {PROVIDER_TYPES.map(type => (
+                        <div 
+                          key={type} 
+                          className={styles.customSelectMenuItem} 
+                          onClick={() => {
+                            setAddModalData({...addModalData, type});
+                            setIsTypeDropdownOpen(false);
+                          }}
+                        >
+                          {renderTypeIcon(type)}
+                          <span>{type === 'openai' ? 'OpenAI 规范' : type.toUpperCase()}</span>
                         </div>
-                     </div>
-                   )}
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+              <div className={styles.materialField}>
+                <span className={styles.materialLabel}>{t('agent.provider.add_name_label', '供应商名称')}</span>
+                <input 
+                  type="text" 
+                  className={styles.addModalInput}
+                  placeholder={t('agent.provider.add_name_hint', '例如: My OpenAI Proxy')}
+                  value={addModalData.name}
+                  onChange={e => setAddModalData({...addModalData, name: e.target.value})}
+                />
+              </div>
+              <div className={styles.materialField}>
+                <span className={styles.materialLabel}>Base URL</span>
+                <input 
+                  type="text" 
+                  className={styles.addModalInput}
+                  placeholder="https://api.example.com/v1"
+                  value={addModalData.baseUrl}
+                  onChange={e => setAddModalData({...addModalData, baseUrl: e.target.value})}
+                />
+              </div>
             </div>
-          );
-        })}
+            <div className={styles.addModalFooter}>
+              <button className={styles.addModalCancel} onClick={() => setIsAddModalOpen(false)}>
+                {t('common.cancel', '取消')}
+              </button>
+              <button className={styles.addModalConfirm} onClick={submitAddCustomProvider}>
+                {t('agent.provider.add_button', '添加')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {isTestModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className={styles.addModalOverlay}>
+          <div className={styles.addModalContent}>
+            <div className={styles.addModalHeader}>
+              <h3>{t('ai_config.test_connection_title', '选择测试模型')}</h3>
+              <button className={styles.closeBtn} onClick={() => setIsTestModalOpen(false)}>
+                <MdClose size={20} />
+              </button>
+            </div>
+            
+            <div className={styles.addModalBody}>
+              <p style={{ color: 'var(--color-text-secondary)', marginBottom: 15, fontSize: 13, userSelect: 'none' }}>
+                {t('ai_config.test_connection_desc', '请选择要用来测试连接的模型。建议使用该供应商提供的体积小、速度快的免费模型进行测试。')}
+              </p>
+              <div className={styles.materialField}>
+                <span className={styles.materialLabel}>{t('ai_config.model_id', 'Model ID')}</span>
+                <div 
+                  style={{ position: 'relative' }} 
+                  className={styles.customSelectOuter}
+                  tabIndex={-1}
+                  onBlur={(e) => {
+                     // Check if new focus is inside the menu
+                     if (!e.currentTarget.contains(e.relatedTarget)) {
+                        setIsTestModelDropdownOpen(false);
+                     }
+                  }}
+                >
+                  <input 
+                    type="text" 
+                    className={styles.addModalInput}
+                    placeholder="请选择测试模型"
+                    value={testModelId}
+                    readOnly
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => setIsTestModelDropdownOpen(true)}
+                    onFocus={() => setIsTestModelDropdownOpen(true)}
+                  />
+                  <MdArrowDropDown 
+                    size={20} 
+                    style={{ position: 'absolute', right: 12, top: 12, color: 'var(--color-text-secondary)', pointerEvents: 'none' }} 
+                  />
+                  {isTestModelDropdownOpen && testModelOptions.length > 0 && (
+                    <div className={styles.customSelectMenu} style={{ maxHeight: 200, overflowY: 'auto' }}>
+                      {testModelOptions.map(m => (
+                        <div 
+                          key={m}
+                          className={styles.customSelectMenuItem}
+                          onClick={() => {
+                            setTestModelId(m);
+                            setIsTestModelDropdownOpen(false);
+                          }}
+                        >
+                          {m}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className={styles.addModalFooter}>
+              <button className={styles.addModalCancel} onClick={() => setIsTestModalOpen(false)}>
+                {t('common.cancel', '取消')}
+              </button>
+              <button className={styles.addModalConfirm} onClick={confirmTestConnection}>
+                {t('ai_config.start_test', '开始测试')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
+const ProviderStaticItem: React.FC<any> = ({ p, isActive, isEnabled, renderIcon, t }) => (
+    <div className={`${styles.listItem} ${isActive ? styles.listItemSelected : ''} ${styles.providerItemDragging}`}>
+      <div className={styles.dragHandle}>
+        <MdDragIndicator size={18} />
+      </div>
+      <div className={styles.listIconBox}>
+        {renderIcon(p.iconUrl)}
+      </div>
+      <div className={styles.listNameCol}>
+        <div className={styles.listNameVal}>{p.name}</div>
+      </div>
+      
+      <div className={styles.tagsArea}>
+        {!p.isSystem && (
+          <div className={styles.customBadge}>{t('agent.provider.custom_tag', '自定义')}</div>
+        )}
+        <div className={`${styles.statusBadge} ${isEnabled ? styles.statusOn : styles.statusOff}`}>
+          {isEnabled ? t('settings.status_on', 'ON') : t('settings.status_off', 'OFF')}
+        </div>
+      </div>
+    </div>
+);
+
+const ProviderSortableItem: React.FC<any> = ({ p, isActive, isEnabled, onClick, renderIcon, t }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: p.id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={`${styles.listItem} ${isActive ? styles.listItemSelected : ''}`}
+      onClick={onClick}
+    >
+      <div 
+        {...attributes}
+        {...listeners}
+        className={styles.dragHandle} 
+        style={{ cursor: 'grab', touchAction: 'none' }}
+      >
+        <MdDragIndicator size={18} />
+      </div>
+      <div className={styles.listIconBox}>
+        {renderIcon(p.iconUrl)}
+      </div>
+      <div className={styles.listNameCol}>
+        <div className={styles.listNameVal}>{p.name}</div>
+      </div>
+      
+      <div className={styles.tagsArea}>
+        {!p.isSystem && (
+          <div className={styles.customBadge}>{t('agent.provider.custom_tag', '自定义')}</div>
+        )}
+        <div className={`${styles.statusBadge} ${isEnabled ? styles.statusOn : styles.statusOff}`}>
+          {isEnabled ? t('settings.status_on', 'ON') : t('settings.status_off', 'OFF')}
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import styles from './LanSyncCard.module.css';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
+import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend } from 'react-icons/md';
 
 export interface DiscoveredDevice {
   nickname: string;
@@ -79,8 +80,17 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
 
   // Mount/Unmount effect
   useEffect(() => {
-    startDualMode();
+    let unmounted = false;
+    const init = async () => {
+      // 延迟加载，确保界面挂载后再启动雷达底层绑定，防止快速进出界面的端口占用竞争
+      await new Promise(r => setTimeout(r, 400));
+      if (unmounted) return;
+      await startDualMode();
+    };
+    init();
+
     return () => {
+      unmounted = true;
       stopDualMode();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,12 +136,11 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
       <div className={styles.appBar}>
          <div style={{ flex: 1 }} />
          <button className={styles.refreshBtn} onClick={restartDualMode} title={t('common.refresh', '刷新')}>
-            ⟳
+            <MdRefresh size={20} />
          </button>
       </div>
 
       <div className={styles.radarZone}>
-        <div className={styles.radarCross}></div>
         {isActive && <div className={styles.radarSweep}></div>}
         {isActive && (
           <div className={styles.radarRings}>
@@ -142,7 +151,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
         )}
 
         <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
-           <span className={styles.coreIcon}>📶</span>
+           <span className={styles.coreIcon}>
+             <MdRadar size={32} />
+           </span>
         </div>
 
         {isActive && devices.length === 0 && (

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import styles from './SummarySettingsView.module.css';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../Toast/useToast';
+import { MilkdownEditorWrapper } from '../DiaryEditor/MilkdownEditor';
+import '../DiaryEditor/DiaryEditor.css';
 
 export interface SummaryInstructionsConfig {
   monthlySummarySource: 'weeklies' | 'diaries';
@@ -26,6 +28,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
   
   // Local state for actively edited text before saving
   const [localText, setLocalText] = useState(config.templates[activeTab] || '');
+  const [resetKey, setResetKey] = useState(0);
 
   // Handle tab switch
   const handleTabChange = (tab: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
@@ -43,6 +46,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
     if (onResetTemplate) {
       const defaultText = onResetTemplate(activeTab);
       setLocalText(defaultText);
+      setResetKey(prev => prev + 1);
       // Auto save on reset? Yes, to keep it simple.
       const nextTemplates = { ...config.templates, [activeTab]: defaultText };
       onChange({ ...config, templates: nextTemplates });
@@ -102,12 +106,14 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
         </div>
 
         <div className={styles.textAreaWrapper}>
-          <textarea 
-            className={styles.textArea}
-            value={localText}
-            onChange={e => setLocalText(e.target.value)}
-            placeholder={t('settings.summary_ai_prompt_hint', '请输入用于引导生成的 Prompt...')}
-          />
+          <div className={styles.milkdownContainer}>
+            <MilkdownEditorWrapper 
+              key={`${activeTab}-${resetKey}`}
+              content={localText}
+              onChange={(val) => setLocalText(val || '')}
+              placeholder={t('settings.summary_ai_prompt_hint', '请输入用于引导生成的 Prompt...')}
+            />
+          </div>
           <div className={styles.actionsRow}>
             <button className={styles.resetBtn} onClick={handleReset}>
               {t('settings.restore_default', '恢复默认出厂设定')}

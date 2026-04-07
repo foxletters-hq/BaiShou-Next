@@ -4,7 +4,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background-color: var(--bg-background, #F9F9F9);
+  background-color: var(--bg-background, #FFFFFF);
 }
 
 .appBar {
@@ -87,6 +87,6 @@
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    var(--bg-background, #F9F9F9) 20%
+    var(--bg-background, #FFFFFF) 20%
   );
 }
