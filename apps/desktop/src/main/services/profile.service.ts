@@ -1,18 +1,20 @@
 import { app, dialog } from 'electron';
-import fs from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
+import { AttachmentManagerService } from '@baishou/core';
+import { DesktopStoragePathService } from './path.service';
 
 /**
  * 后端 User Profile 管理服务封装
  * 处理前端沙箱无法接触的物理文件 IO
  */
 export class ProfileService {
+  private pathService = new DesktopStoragePathService();
+  private attachmentManager = new AttachmentManagerService(this.pathService);
+
   /**
    * 唤起系统文件选择框，让用户选择新头像
-   * 然后拷贝到安全的持久化应用数据目录，返回新路径供前端更新配置使用
+   * 然后调用中央附件管理器导入到 Vault 中，并转译为绝对路径喂回给前端。
    *
-   * @returns 拷贝后的新图片绝对路径。如果用户取消选择，则返回 null。
+   * @returns 拷贝并解析后的新图片绝对路径。如果用户取消选择，则返回 null。
    */
   async pickAndSaveAvatar(): Promise<string | null> {
     const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -29,24 +31,28 @@ export class ProfileService {
     }
 
     const sourcePath = filePaths[0];
-    const extension = path.extname(sourcePath).toLowerCase();
     
-    // 生成安全的目标存储路径
-    const userDataPath = app.getPath('userData');
-    const avatarsDir = path.join(userDataPath, 'avatars');
+    // Delegate to central core logic
+    const relativePath = await this.attachmentManager.importAvatar(sourcePath, 'user_avatar');
+    
+    // Resolve back to absolute since the electron dialog boundary and UI expects physical previews instantly
+    return await this.attachmentManager.resolveAvatarPath(relativePath);
+  }
 
-    // 目录存在性校验
-    if (!existsSync(avatarsDir)) {
-      await fs.mkdir(avatarsDir, { recursive: true });
+  async processProfileInput(input: any) {
+    if (input.avatarPath && typeof input.avatarPath === 'string' && input.avatarPath.trim() !== '') {
+      if (!input.avatarPath.startsWith('avatars/')) {
+        input.avatarPath = await this.attachmentManager.importAvatar(input.avatarPath, 'user_avatar');
+      }
     }
+  }
 
-    const newFileName = `avatar_${Date.now()}${extension}`;
-    const destinationPath = path.join(avatarsDir, newFileName);
-
-    // 物理复制
-    await fs.copyFile(sourcePath, destinationPath);
-    
-    return destinationPath;
+  async mapProfileOutput(profile: any) {
+    if (!profile) return profile;
+    if (profile.avatarPath && profile.avatarPath.startsWith('avatars/')) {
+      profile.avatarPath = await this.attachmentManager.resolveAvatarPath(profile.avatarPath);
+    }
+    return profile;
   }
 }
 

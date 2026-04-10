@@ -13,6 +13,7 @@ import {
 import { pathService, vaultService } from '../ipc/vault.ipc';
 import { getAgentManagers } from '../ipc/agent.ipc';
 import { settingsManager } from '../ipc/settings.ipc';
+import { diaryWatcher } from './diary-watcher.service';
 
 /**
  * 全局数据同步收割机 (Global Bootstrapper)
@@ -52,6 +53,14 @@ export class GlobalDataBootstrapper {
     console.log('--- 🌊 GLOBAL BOOTSTRAPPER TRIGGERED. INITIATING ECOSYSTEM SSOT WATER-CYCLE ---');
 
     try {
+      const activeVault = vaultService.getActiveVault();
+      console.log(`[Bootstrapper] 正在尝试启动监听。activeVault:`, activeVault);
+      if (activeVault) {
+        diaryWatcher.start(activeVault.path);
+      } else {
+        console.warn(`[Bootstrapper] ⚠️ 发现 activeVault 为空！`);
+      }
+
       const shadowScout = this.tryGetShadowBootstrapper();
       const summaryScout = this.tryGetSummaryBootstrapper();
       const { sessionManager, assistantManager } = getAgentManagers();

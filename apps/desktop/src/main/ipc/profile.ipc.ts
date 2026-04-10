@@ -6,21 +6,24 @@ export function registerProfileIPC() {
   const repo = new UserProfileRepository(getAppDb());
 
   ipcMain.handle('profile:get-all', async () => {
-    return await repo.getProfile();
+    const raw = await repo.getProfile();
+    return await profileService.mapProfileOutput(raw);
   });
 
   ipcMain.handle('profile:save', async (_, diff: any) => {
     const current = await repo.getProfile();
     const updated = { ...current, ...diff };
+    await profileService.processProfileInput(updated);
     await repo.saveProfile(updated);
-    return updated;
+    return await profileService.mapProfileOutput(updated);
   });
 
   ipcMain.handle('profile:update', async (_, diff: any) => {
     const current = await repo.getProfile();
     const updated = { ...current, ...diff };
+    await profileService.processProfileInput(updated);
     await repo.saveProfile(updated);
-    return updated;
+    return await profileService.mapProfileOutput(updated);
   });
 
   ipcMain.handle('profile:pick-avatar', async () => {
