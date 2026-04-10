@@ -6,6 +6,8 @@ export * from './vault/vault.types';
 export * from './vault/storage-path.types';
 export * from './vault/vault.errors';
 export * from './vault/vault.service';
+export * from './attachments/attachment-manager.types';
+export * from './attachments/attachment-manager.service';
 export * from './diary/diary.types';
 
 // 会话漫游与数据流 SSOT 基建

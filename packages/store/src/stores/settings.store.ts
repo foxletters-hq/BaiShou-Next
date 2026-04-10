@@ -31,6 +31,7 @@ export interface SettingsState {
   toolManagementConfig: ToolManagementConfig | null;
   mcpServerConfig: McpServerConfig | null;
   hotkeyConfig: HotkeyConfig | null;
+  cloudSyncConfig: any | null;
 
   isLoading: boolean;
 }
@@ -58,6 +59,7 @@ export interface SettingsActions {
   setToolManagementConfig: (config: ToolManagementConfig) => Promise<void>;
   setMcpServerConfig: (config: McpServerConfig) => Promise<void>;
   setHotkeyConfig: (config: HotkeyConfig) => Promise<void>;
+  setCloudSyncConfig: (config: any) => Promise<void>;
 }
 
 export const useSettingsStore = createStore<SettingsState & SettingsActions>('SettingsStore', (set, get: any) => ({
@@ -75,6 +77,7 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
   toolManagementConfig: null,
   mcpServerConfig: null,
   hotkeyConfig: null,
+  cloudSyncConfig: null,
   
   isLoading: false,
 
@@ -94,7 +97,7 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
         const { settings } = (window as any).api;
         const [
           providers, globalModels, agentBehavior, ragConfig, 
-          webSearchConfig, summaryConfig, toolManagementConfig, mcpServerConfig, hotkeyConfig
+          webSearchConfig, summaryConfig, toolManagementConfig, mcpServerConfig, hotkeyConfig, cloudSyncConfig
         ] = await Promise.all([
           settings.getProviders(),
           settings.getGlobalModels(),
@@ -104,7 +107,8 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
           settings.getSummaryConfig(),
           settings.getToolManagementConfig(),
           settings.getMcpServerConfig(),
-          settings.getHotkeyConfig()
+          settings.getHotkeyConfig(),
+          typeof settings.getCloudSyncConfig === 'function' ? settings.getCloudSyncConfig() : Promise.resolve(null)
         ]);
         
         const defaultGlobalModels: GlobalModelsConfig = {
@@ -173,7 +177,8 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
           summaryConfig: summaryConfig || defaultSummaryConfig, 
           toolManagementConfig: toolManagementConfig || defaultToolManagementConfig, 
           mcpServerConfig: mcpServerConfig || defaultMcpServerConfig, 
-          hotkeyConfig: hotkeyConfig || defaultHotkeyConfig 
+          hotkeyConfig: hotkeyConfig || defaultHotkeyConfig,
+          cloudSyncConfig: cloudSyncConfig || null
         });
       }
     } catch (e) {
@@ -187,6 +192,8 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
     set({ providers });
     if (typeof window !== 'undefined' && (window as any).api?.settings) {
       await (window as any).api.settings.setProviders(providers);
+      const updatedGlobalModels = await (window as any).api.settings.getGlobalModels();
+      if (updatedGlobalModels) set({ globalModels: updatedGlobalModels });
     }
   },
 
@@ -260,6 +267,17 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
     set({ hotkeyConfig: config });
     if (typeof window !== 'undefined' && (window as any).api?.settings) {
       await (window as any).api.settings.setHotkeyConfig(config);
+    }
+  },
+
+  setCloudSyncConfig: async (config) => {
+    set({ cloudSyncConfig: config });
+    if (typeof window !== 'undefined' && (window as any).api?.settings) {
+      if (typeof (window as any).api.settings.setCloudSyncConfig === 'function') {
+         await (window as any).api.settings.setCloudSyncConfig(config);
+      } else {
+         console.warn('[SettingsStore] setCloudSyncConfig missing in preload, skipping ipc update');
+      }
     }
   }
 }));

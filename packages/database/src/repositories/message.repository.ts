@@ -11,12 +11,13 @@ export type InsertAgentPartInput = Omit<AgentPart, 'createdAt'>;
 export class MessageRepository implements AgentMessageRepository {
   constructor(private readonly db: AppDatabase) {}
 
-  async findBySessionId(sessionId: string, limit: number = 20): Promise<AgentMessage[]> {
+  async findBySessionId(sessionId: string, limit: number = 20, offset: number = 0): Promise<AgentMessage[]> {
     const rows = await this.db.select()
       .from(agentMessagesTable)
       .where(eq(agentMessagesTable.sessionId, sessionId))
       .orderBy(desc(agentMessagesTable.orderIndex))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
 
     return rows.reverse().map(row => ({
       ...row,

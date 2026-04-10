@@ -69,7 +69,7 @@ export class AssistantRepository {
       sortOrder: input.sortOrder ?? 0,
       createdAt: new Date(),
       updatedAt: new Date()
-    });
+    }).onConflictDoNothing();
   }
 
   /**
@@ -80,7 +80,19 @@ export class AssistantRepository {
     if (!target) return; // Silent return if not found, or throw. Throwing is better but keeping simple for now
 
     await this.db.update(agentAssistantsTable).set({
-      ...input,
+      name: input.name,
+      emoji: input.emoji,
+      description: input.description,
+      avatarPath: input.avatarPath,
+      systemPrompt: input.systemPrompt,
+      isDefault: input.isDefault,
+      isPinned: input.isPinned,
+      contextWindow: input.contextWindow,
+      providerId: input.providerId,
+      modelId: input.modelId,
+      compressTokenThreshold: input.compressTokenThreshold,
+      compressKeepTurns: input.compressKeepTurns,
+      sortOrder: input.sortOrder,
       updatedAt: new Date()
     }).where(eq(agentAssistantsTable.id, id));
   }

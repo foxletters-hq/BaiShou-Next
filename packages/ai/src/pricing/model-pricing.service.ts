@@ -87,9 +87,13 @@ export class ModelPricingService {
     usage: TokenUsage
   ): Promise<number> {
     const price = await this.getPrice(providerId, modelId);
-    if (!price) return 0;
+    if (!price) {
+      console.log(`[ModelPricingService] No price found for ${providerId}/${modelId}. Defaulting to 0.`);
+      return 0;
+    }
     
     const costInUSD = price.calculateCost(usage);
+    console.log(`[ModelPricingService] Calculation for ${providerId}/${modelId}: inputTokens=${usage.inputTokens}, outputTokens=${usage.outputTokens} -> USD=${costInUSD}`);
     return Math.round(costInUSD * 1000000); // 转成 Micros 并确保是整数存入 Int 表
   }
 
@@ -106,11 +110,13 @@ export class ModelPricingService {
 
   private async fetchPrices() {
     try {
-      // 引入超时机制保护网络断开情况下的运行阻塞 (AbortSignal Timeout)
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch('https://models.dev/api.json', { signal: controller.signal });
+      // 自动使用支持系统级别的 fetch (如 Electron net.fetch 注入) 或回落 NodeJS fetch
+      const fetcher = (global as any).customNetFetch || fetch;
+
+      const response = await fetcher('https://models.dev/api.json', { signal: controller.signal });
       clearTimeout(id);
 
       if (!response.ok) {

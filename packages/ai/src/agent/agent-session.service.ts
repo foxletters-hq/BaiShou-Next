@@ -307,6 +307,53 @@ export class AgentSessionService {
        });
      }
 
+     // 从 Vercel AI SDK 获取最终 usage (有时候 finish chunk 不一定有，promise 更有保障)
+     let finalUsage = { 
+        inputTokens: accumulator.usage.inputTokens, 
+        outputTokens: accumulator.usage.outputTokens 
+     };
+     try {
+        const u = await streamResult.usage;
+        console.log('[AgentSessionService Debug] streamResult.usage resolved to:', JSON.stringify(u));
+        if (u) {
+           finalUsage.inputTokens = finalUsage.inputTokens || (u as any).inputTokens || (u as any).promptTokens || 0;
+           finalUsage.outputTokens = finalUsage.outputTokens || (u as any).outputTokens || (u as any).completionTokens || 0;
+        }
+     } catch(e) {
+        console.warn('[AgentSessionService Debug] Failed to read streamResult.usage:', e);
+     }
+
+     // 极端情况兜底：如果模型接口不仅不返回 Token（甚至抛错），但偏偏吐出了字，我们可以做本地量化预估
+     if (finalUsage.inputTokens === 0 && finalUsage.outputTokens === 0) {
+         try {
+             // 如果其实也没生成什么字（例如直接报错中断了），就没必要假装消耗了。
+             if (accumulator.text.length > 0 || rawUserText.length > 0) {
+                 const { get_encoding } = require('tiktoken');
+                 const enc = get_encoding('cl100k_base');
+                 // 预估一个大概的输入 token
+                 finalUsage.inputTokens = enc.encode(rawUserText).length;
+                 // 预估吐出的 token
+                 finalUsage.outputTokens = enc.encode(accumulator.text + accumulator.reasoning).length;
+                 enc.free();
+                 console.log(`[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略!`);
+             }
+         } catch (e) {
+             console.warn('Fallback tiktoken estimation failed', e);
+         }
+     }
+
+     // 累加计算 tokens 及账单微美分成本
+     const costMicros = await ModelPricingService.getInstance().calculateCostMicros(provider.config.id, modelId, finalUsage);
+     
+     console.log('\n================== 计费日志 ==================');
+     console.log(`模型: ${modelId} (${provider.config.id})`);
+     console.log(`Tokens消耗: 输入 ${finalUsage.inputTokens} | 输出 ${finalUsage.outputTokens}`);
+     console.log(`本次费用(Micros微美分): ${costMicros} (约合 $${(costMicros / 1000000).toFixed(6)})`);
+     if (costMicros === 0) {
+        console.log(`提示: 计算费用为 0。可能模型是免费的，或未能从 models.dev 拉取到该模型价格。`);
+     }
+     console.log('==============================================\n');
+
      // 开始事务存放!
      await sessionRepo.insertMessageWithParts(
        {
@@ -314,20 +361,19 @@ export class AgentSessionService {
          sessionId,
          role: 'assistant',
          orderIndex: userOrderIndex + 1,
+         inputTokens: finalUsage.inputTokens,
+         outputTokens: finalUsage.outputTokens,
+         costMicros: costMicros,
+         providerId: provider.config.id,
+         modelId: modelId,
        },
        partsToInsert
      );
 
-     // 累加计算 tokens 及账单微美分成本
-     const costMicros = await ModelPricingService.getInstance().calculateCostMicros(provider.config.id, modelId, {
-        inputTokens: accumulator.usage.inputTokens,
-        outputTokens: accumulator.usage.outputTokens
-     });
-
      await sessionRepo.updateTokenUsage(
         sessionId,
-        accumulator.usage.inputTokens,
-        accumulator.usage.outputTokens,
+        finalUsage.inputTokens,
+        finalUsage.outputTokens,
         costMicros
      );
 

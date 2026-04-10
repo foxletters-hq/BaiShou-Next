@@ -1,5 +1,6 @@
 import { AssistantRepository, InsertAssistantInput, UpdateAssistantInput } from '@baishou/database/src/repositories/assistant.repository';
 import { AssistantFileService } from './assistant-file.service';
+import { IAttachmentManager } from '../attachments/attachment-manager.types';
 
 /**
  * AI 角色身份卡存储漫游总代理。
@@ -8,10 +9,27 @@ import { AssistantFileService } from './assistant-file.service';
 export class AssistantManagerService {
   constructor(
       private readonly repo: AssistantRepository,
-      private readonly fileService: AssistantFileService
+      private readonly fileService: AssistantFileService,
+      private readonly attachmentManager: IAttachmentManager
   ) {}
 
+  private async processAvatarInput(input: { avatarPath?: string | null }) {
+    if (input.avatarPath && input.avatarPath.trim().length > 0) {
+      if (!input.avatarPath.startsWith('avatars/')) {
+        input.avatarPath = await this.attachmentManager.importAvatar(input.avatarPath, 'agent');
+      }
+    }
+  }
+
+  private async mapAvatarOutput<T extends { avatarPath: string | null }>(item: T): Promise<T> {
+    if (item.avatarPath && item.avatarPath.startsWith('avatars/')) {
+        item.avatarPath = await this.attachmentManager.resolveAvatarPath(item.avatarPath);
+    }
+    return item;
+  }
+
   async create(input: InsertAssistantInput): Promise<void> {
+      await this.processAvatarInput(input);
       await this.repo.create(input);
       // 后挂抽样备份流
       const full = await this.repo.findById(input.id);
@@ -19,6 +37,7 @@ export class AssistantManagerService {
   }
 
   async update(id: string, input: UpdateAssistantInput): Promise<void> {
+      await this.processAvatarInput(input);
       await this.repo.update(id, input);
       const full = await this.repo.findById(id);
       if (full) await this.fileService.writeAssistant(id, full);
@@ -37,11 +56,14 @@ export class AssistantManagerService {
 
   // Queries directly proxy to db since they are identical and cached
   async findAll() {
-      return this.repo.findAll();
+      const items = await this.repo.findAll();
+      return Promise.all(items.map(i => this.mapAvatarOutput(i)));
   }
 
   async findById(id: string) {
-      return this.repo.findById(id);
+      const item = await this.repo.findById(id);
+      if (item) return this.mapAvatarOutput(item);
+      return item;
   }
 
   /**

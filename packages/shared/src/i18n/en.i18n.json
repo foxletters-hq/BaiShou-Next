@@ -967,6 +967,12 @@
       "delete_button": "Delete",
       "delete_tooltip": "Delete Provider",
       "custom_tag": "Custom"
+    },
+    "profile": {
+      "default_nickname": "BaiShou User",
+      "no_nickname": "Unset nickname",
+      "edit_nickname": "Edit Nickname",
+      "edit_nickname_prompt": "Please enter a new nickname:"
     }
   }
 }

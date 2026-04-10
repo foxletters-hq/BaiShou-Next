@@ -22,7 +22,15 @@ export class SettingsFileService {
      const fullPath = await this.getSettingsPath();
      try {
        const content = await fs.readFile(fullPath, 'utf8');
-       return JSON.parse(content) || {};
+       if (!content || content.trim() === '') return {};
+       
+       try {
+         return JSON.parse(content) || {};
+       } catch (jsonErr: any) {
+         console.error(`[SettingsFileService] ❌ JSON 解析崩溃 at ${fullPath}:`, jsonErr.message);
+         console.error(`[SettingsFileService] ⚠️ 建议手动检查或删除该文件以重置设置。`);
+         return {}; // 发生损坏时返回空，防止整个 Bootstrapper 挂掉
+       }
      } catch (e: any) {
        if (e.code === 'ENOENT') return {};
        throw e;

@@ -20,6 +20,11 @@ export interface InsertMessageInput {
   role: 'system' | 'user' | 'assistant' | 'tool';
   isSummary?: boolean;
   orderIndex: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  costMicros?: number;
+  providerId?: string;
+  modelId?: string;
 }
 
 export interface InsertPartInput {
@@ -37,14 +42,18 @@ export class SessionRepository {
    * 创建或更新 Session
    */
   async upsertSession(input: InsertSessionInput): Promise<void> {
+    const vaultName = input.vaultName || 'default';
+    const providerId = input.providerId || 'default';
+    const modelId = input.modelId || 'default';
+
     await this.db.insert(agentSessionsTable).values({
       id: input.id,
       title: input.title,
-      vaultName: input.vaultName,
+      vaultName: vaultName,
       assistantId: input.assistantId,
       systemPrompt: input.systemPrompt,
-      providerId: input.providerId,
-      modelId: input.modelId,
+      providerId: providerId,
+      modelId: modelId,
       updatedAt: new Date()
     }).onConflictDoUpdate({
       target: [agentSessionsTable.id],
@@ -68,6 +77,11 @@ export class SessionRepository {
         role: message.role,
         isSummary: message.isSummary ?? false,
         orderIndex: message.orderIndex,
+        inputTokens: message.inputTokens,
+        outputTokens: message.outputTokens,
+        costMicros: message.costMicros,
+        providerId: message.providerId,
+        modelId: message.modelId,
         createdAt: new Date()
       }).onConflictDoNothing();
 
@@ -136,13 +150,15 @@ export class SessionRepository {
   /**
    * 查询所有会话（按置顶和更新时间排序）
    */
-  async findAllSessions() {
+  async findAllSessions(limit: number = 20, offset: number = 0) {
     return await this.db.select()
       .from(agentSessionsTable)
       .orderBy(
         desc(agentSessionsTable.isPinned),
         desc(agentSessionsTable.updatedAt)
-      );
+      )
+      .limit(limit)
+      .offset(offset);
   }
 
   /**
@@ -255,7 +271,11 @@ export class SessionRepository {
      
      await this.db.transaction(async (tx) => {
         // 更新会话自身
-        await tx.insert(agentSessionsTable).values(session).onConflictDoUpdate({
+        await tx.insert(agentSessionsTable).values({
+           ...session,
+           createdAt: new Date(session.createdAt),
+           updatedAt: new Date(session.updatedAt)
+        }).onConflictDoUpdate({
            target: [agentSessionsTable.id],
            set: {
               title: session.title,

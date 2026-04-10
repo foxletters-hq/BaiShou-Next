@@ -447,7 +447,7 @@ export class ShadowIndexSyncService {
     const match = raw.match(frontmatterRegex);
 
     const content = match ? (match[2] || '').trim() : raw.trim();
-    if (!content) return null;
+    // Allow empty text diaries, do not return null here.
 
     const meta: Record<string, string> = {};
     if (match && match[1]) {

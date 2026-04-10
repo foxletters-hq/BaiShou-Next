@@ -23,9 +23,8 @@ export class VaultService implements IVaultService {
   ) {}
 
   public async initRegistry(): Promise<void> {
-    const globalDir = await this.pathService.getGlobalRegistryDirectory();
-    const registryFile = path.join(globalDir, 'vault_registry.json');
     const rootDir = await this.pathService.getRootDirectory();
+    const registryFile = path.join(rootDir, 'vault_registry.json');
 
     let shouldSave = false;
     let content: string | null = null;
@@ -113,8 +112,8 @@ export class VaultService implements IVaultService {
 
   public async switchVault(vaultName: string): Promise<void> {
     const existingIndex = this._vaults.findIndex(v => v.name === vaultName);
-    const globalDir = await this.pathService.getGlobalRegistryDirectory();
-    const registryFile = path.join(globalDir, 'vault_registry.json');
+    const rootDir = await this.pathService.getRootDirectory();
+    const registryFile = path.join(rootDir, 'vault_registry.json');
 
     if (existingIndex !== -1) {
       const existing = this._vaults[existingIndex];
@@ -168,8 +167,8 @@ export class VaultService implements IVaultService {
       });
     }
 
-    const globalDir = await this.pathService.getGlobalRegistryDirectory();
-    const registryFile = path.join(globalDir, 'vault_registry.json');
+    const rootDir = await this.pathService.getRootDirectory();
+    const registryFile = path.join(rootDir, 'vault_registry.json');
     await this.saveRegistry(registryFile);
 
     try {

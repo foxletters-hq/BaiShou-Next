@@ -43,4 +43,14 @@ export interface IStoragePathService {
    * 返回当前活动 Vault 下用于存放用户设置的 AI 模型助手角色位置
    */
   getAssistantsBaseDirectory(): Promise<string>;
+
+  /**
+   * 返回当前活动 Vault 下附件与多媒体中心目录
+   */
+  getAttachmentsBaseDirectory(): Promise<string>;
+
+  /**
+   * 返回专门用于存放全局用户与伙伴头像的统一子目录
+   */
+  getAvatarsDirectory(): Promise<string>;
 }

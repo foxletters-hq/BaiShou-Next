@@ -149,6 +149,10 @@ export class DiaryService {
     const shadow = await this.shadowRepo.findById(id);
     if (!shadow) return null;
     const date = parseDateStr(String(shadow.date).split('T')[0]!);
+    
+    // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
+    this.shadowSync.syncJournal(date).catch(e => console.warn('Lazy sync failed', e));
+    
     return this.fileSync.readJournal(date);
   }
 
@@ -161,6 +165,10 @@ export class DiaryService {
        const shadow = await this.shadowRepo.findByDate(formatLocalDate(date));
        if (shadow) diary.id = shadow.id;
     }
+    
+    // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
+    this.shadowSync.syncJournal(date).catch(e => console.warn('Lazy sync failed', e));
+
     return diary;
   }
 
