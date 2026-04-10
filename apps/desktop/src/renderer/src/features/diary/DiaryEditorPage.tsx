@@ -86,7 +86,7 @@ export const DiaryEditorPage: React.FC = () => {
 
   // ── 保存（严格还原原版双分支逻辑）──────────────────────────────────────
   const autoSave = useCallback(async (newContent: string) => {
-    if (!newContent.trim()) return;
+    if (!newContent.trim() && !diaryId) return;
     try {
       if (typeof window !== 'undefined' && (window as any).api?.diary) {
         // 统一使用 UTC 日期字符串，与后端 IPC new Date(dateStr) 的解析行为保持一致
@@ -196,7 +196,7 @@ export const DiaryEditorPage: React.FC = () => {
         <div className="diary-delete-modal-overlay" onClick={() => setShowExitConfirm(false)}>
           <div className="diary-delete-modal" onClick={e => e.stopPropagation()}>
             <div className="dd-modal-title">{t('common.confirm_leave', '确认离开')}</div>
-            <div className="dd-modal-content" style={{ color: '#64748b', fontSize: '14px', marginTop: '8px' }}>
+            <div className="dd-modal-content" style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '8px' }}>
               {t('diary.editor_leave_confirm', '当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？')}
             </div>
             <div className="dd-modal-actions" style={{ marginTop: '24px' }}>

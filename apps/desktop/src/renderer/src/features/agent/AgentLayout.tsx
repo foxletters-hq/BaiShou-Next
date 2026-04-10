@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { AgentSidebar } from './components/AgentSidebar';
 import type { AgentAssistant } from './components/AgentSidebar';
 import { useAssistantStore, useSettingsStore, useUserProfileStore } from '@baishou/store';
-import { type SessionData, useToast, AssistantPickerSheet, Modal, AssistantEditPage } from '@baishou/ui';
+import { type SessionData, useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui';
 import { MdAutoAwesome } from 'react-icons/md';
 import styles from './AgentLayout.module.css';
 
@@ -16,21 +16,36 @@ export const AgentLayout: React.FC = () => {
   const { loadProfile } = useUserProfileStore();
   
   const [sessions, setSessions] = useState<SessionData[]>([]);
+  const [hasMoreSessions, setHasMoreSessions] = useState(false);
+  const SESSION_LIMIT = 10;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false);
+  const [sidebarScrollKey, setSidebarScrollKey] = useState(0);
   
   // 重命名 inline modal 状态
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  const dialog = useDialog();
 
-  const loadSessions = async () => {
+  const loadSessions = async (resetOffset = false) => {
     try {
       if (typeof window !== 'undefined' && window.electron) {
-        const data = await window.electron.ipcRenderer.invoke('agent:get-sessions');
-        setSessions(data || []);
+        const offset = resetOffset ? 0 : sessions.length;
+        const data = await window.electron.ipcRenderer.invoke('agent:get-sessions', SESSION_LIMIT, offset);
+        if (data && data.length > 0) {
+           setSessions(prev => resetOffset ? data : [...prev, ...data]);
+           setHasMoreSessions(data.length === SESSION_LIMIT);
+        } else {
+           if (resetOffset) setSessions([]);
+           setHasMoreSessions(false);
+        }
+        if (resetOffset) {
+           setSidebarScrollKey(prev => prev + 1);
+        }
       }
     } catch (e) {
       console.error('[AgentLayout] Failed to load sessions:', e);
@@ -38,8 +53,22 @@ export const AgentLayout: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAssistants();
-    loadSessions();
+    fetchAssistants().then(() => {
+      const store = useAssistantStore.getState();
+      if (store.assistants.length === 0 && typeof window !== 'undefined' && window.electron) {
+        window.electron.ipcRenderer.invoke('agent:create-assistant', {
+           id: 'default_' + Date.now(),
+           name: '默认伙伴',
+           emoji: '🍵',
+           systemPrompt: '您好，我是 BaiShou-Next，您的本地AI协作伙伴。',
+           isDefault: true,
+           providerId: useSettingsStore.getState().globalModels?.globalDialogueProviderId || 'openai_1',
+           modelId: useSettingsStore.getState().globalModels?.globalDialogueModelId || 'gpt-4o',
+           contextWindow: 20
+        }).then(() => fetchAssistants()).catch(console.error);
+      }
+    });
+    loadSessions(true);
     loadConfig();
     loadProfile();
   }, [fetchAssistants, loadConfig, loadProfile]);
@@ -70,7 +99,7 @@ export const AgentLayout: React.FC = () => {
     id: 'default',
     name: '默认伙伴',
     description: '通用 AI 伙伴',
-    emoji: '✨'
+    emoji: '🍵'
   } : undefined); // undefined 触发骨架态
 
   const handleNewChat = async () => {
@@ -81,7 +110,7 @@ export const AgentLayout: React.FC = () => {
         });
         if (newId) {
           navigate(`/c/${newId}`);
-          loadSessions();
+          loadSessions(true);
           return;
         }
       }
@@ -99,27 +128,31 @@ export const AgentLayout: React.FC = () => {
         const s = sessions.find(s => s.id === id);
         if (s) {
           await window.electron.ipcRenderer.invoke('agent:pin-session', id, !s.isPinned);
-          loadSessions();
+          loadSessions(true);
         }
       }
     } catch (e) {}
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await dialog.confirm('您确定要永久删除这篇对话吗？此操作不可逆转。', '确认删除');
+    if (!ok) return;
     try {
       if (typeof window !== 'undefined' && window.electron) {
         await window.electron.ipcRenderer.invoke('agent:delete-sessions', [id]);
-        loadSessions();
+        loadSessions(true);
         if (sessionId === id) navigate('/agent');
       }
     } catch (e) {}
   };
 
   const handleBatchDelete = async (ids: string[]) => {
+    const ok = await dialog.confirm(`您确定要删除选中的 ${ids.length} 篇对话吗？此操作不可逆转。`, '确认删除');
+    if (!ok) return;
     try {
       if (typeof window !== 'undefined' && window.electron) {
         await window.electron.ipcRenderer.invoke('agent:delete-sessions', ids);
-        loadSessions();
+        loadSessions(true);
         if (sessionId && ids.includes(sessionId)) navigate('/agent');
       }
     } catch (e) {}
@@ -138,7 +171,7 @@ export const AgentLayout: React.FC = () => {
     const newTitle = renameTarget.title.trim();
     if (newTitle && window.electron) {
       await window.electron.ipcRenderer.invoke('agent:update-session-title', renameTarget.id, newTitle);
-      loadSessions();
+      loadSessions(true);
       toast.showSuccess('已重命名为「' + newTitle + '」');
     }
     setRenameTarget(null);
@@ -155,6 +188,9 @@ export const AgentLayout: React.FC = () => {
         <AgentSidebar
           currentAssistant={mappedAssistant}
           sessions={sessions}
+          hasMore={hasMoreSessions}
+          scrollKey={sidebarScrollKey}
+          onLoadMore={() => loadSessions(false)}
           selectedSessionId={sessionId}
           searchQuery={searchQuery}
           pinnedAssistants={pinnedAssistants}
@@ -179,7 +215,7 @@ export const AgentLayout: React.FC = () => {
       )}
       
       <div className={styles.chatArea}>
-        <Outlet />
+        <Outlet context={{ sessions, loadSessions }} />
       </div>
 
       {/* ─── 内联重命名 Toast Modal ─── */}
@@ -248,6 +284,7 @@ export const AgentLayout: React.FC = () => {
           handleAssistantSwitched(ast as any);
         }}
         onClose={() => setIsPickerOpen(false)}
+        onRefreshAssistants={() => fetchAssistants()}
         onCreateNew={() => {
           setIsPickerOpen(false);
           setIsCreateAssistantOpen(true);
@@ -267,6 +304,7 @@ export const AgentLayout: React.FC = () => {
         <div style={{ width: '80vw', maxWidth: '800px', height: '85vh', overflow: 'hidden' }}>
           <AssistantEditPage
             assistant={null}
+            isLastAssistant={assistants.length <= 1}
             onSave={async (data) => {
               if (typeof window !== 'undefined' && window.electron) {
                 await window.electron.ipcRenderer.invoke('agent:create-assistant', data);

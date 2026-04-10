@@ -6,7 +6,6 @@ import { OnboardingScreen } from './features/onboarding/OnboardingScreen';
 import { SessionManagementScreen } from './features/agent/SessionManagementScreen';
 import { AssistantManagementScreen } from './features/agent/AssistantManagementScreen';
 import { AssistantEditScreen } from './features/agent/AssistantEditScreen';
-import { AgentHomePage } from './features/agent/AgentHomePage';
 import { AgentLayout } from './features/agent/AgentLayout';
 
 // Phase 14: Recover Missing Feature Routes
@@ -20,6 +19,7 @@ import { useToast, DialogProvider, ToastProvider } from '@baishou/ui';
 import { useEffect } from 'react';
 import { useSettingsStore } from '@baishou/store';
 import { i18n } from '@baishou/shared';
+import { TitleBar } from './components/TitleBar';
 
 const GlobalErrorHandler = () => {
   const toast = useToast();
@@ -62,6 +62,30 @@ export function App() {
     }
   }, [locale]);
 
+  const themeMode = useSettingsStore(s => s.themeMode);
+
+  // 监听并应用系统级/应用级的主题模式切换
+  useEffect(() => {
+    const applyTheme = (isDark: boolean) => {
+      if (isDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    };
+
+    if (themeMode === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      applyTheme(mediaQuery.matches);
+      
+      const listener = (e: MediaQueryListEvent) => applyTheme(e.matches);
+      mediaQuery.addEventListener('change', listener);
+      return () => mediaQuery.removeEventListener('change', listener);
+    } else {
+      applyTheme(themeMode === 'dark');
+    }
+  }, [themeMode]);
+
   useEffect(() => {
     if (themeColor) {
       document.documentElement.style.setProperty('--color-primary', themeColor);
@@ -82,7 +106,10 @@ export function App() {
         <ToastProvider />
         <GlobalErrorHandler />
         <ErrorBoundary>
-        <Routes>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+          <TitleBar />
+          <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
+            <Routes>
           <Route path="/welcome" element={<OnboardingScreen />} />
           <Route path="/settings/*" element={<SettingsPage />} />
           
@@ -100,15 +127,16 @@ export function App() {
 
             {/* AI / Agent Role Routing - Wrapped in AgentLayout */}
             <Route element={<AgentLayout />}>
-              <Route path="/agent" element={<AgentHomePage />} />
+              <Route path="/agent" element={<AgentScreen />} />
               <Route path="/c/:sessionId" element={<AgentScreen />} />
             </Route>
             <Route path="/sessions" element={<SessionManagementScreen />} />
             <Route path="/assistants" element={<AssistantManagementScreen />} />
-            <Route path="/assistants/new" element={<AssistantEditScreen />} />
-            <Route path="/assistants/:assistantId/edit" element={<AssistantEditScreen />} />
+            <Route path="/assistants/:id" element={<AssistantEditScreen />} />
           </Route>
         </Routes>
+          </div>
+        </div>
         </ErrorBoundary>
       </DialogProvider>
     </HashRouter>

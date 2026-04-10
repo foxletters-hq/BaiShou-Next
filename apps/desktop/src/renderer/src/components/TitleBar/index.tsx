@@ -18,8 +18,8 @@ export const TitleBar: React.FC = () => {
   useEffect(() => {
     const fetchVaults = async () => {
       try {
-        const vList = await (window as any).api?.vault?.vaultGetAll();
-        const active = await (window as any).api?.vault?.vaultGetActive();
+        const vList = await (window as any).api?.vault?.list();
+        const active = await (window as any).api?.vault?.getActive();
         if (vList) setVaults(vList);
         if (active) setActiveVault(active);
       } catch (e) {}
@@ -39,10 +39,12 @@ export const TitleBar: React.FC = () => {
 
   const handleSwitchVault = async (vaultName: string) => {
     try {
-      await (window as any).api?.vault?.vaultSwitch(vaultName);
-      const active = await (window as any).api?.vault?.vaultGetActive();
+      await (window as any).api?.vault?.switchActive(vaultName);
+      const active = await (window as any).api?.vault?.getActive();
       if (active) setActiveVault(active);
       setShowVaultMenu(false);
+      // Usually need to reload the whole app when switching workspace drastically
+      window.location.reload();
     } catch (e) {
       console.error(e);
     }
@@ -97,15 +99,15 @@ export const TitleBar: React.FC = () => {
           {showVaultMenu && vaults.length > 0 && (
             <div className={styles.vaultMenu} style={{
               position: 'absolute', top: '100%', right: 0, marginTop: '4px',
-              background: 'var(--color-surface, #fff)', border: '1px solid rgba(0,0,0,0.1)',
-              borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1000,
+              background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+              borderRadius: '8px', boxShadow: 'var(--shadow-md)', zIndex: 1000,
               minWidth: '150px', padding: '4px'
             }}>
               {vaults.map((v, i) => (
                 <div key={i} onClick={() => handleSwitchVault(v.name)} style={{
                   padding: '8px 12px', cursor: 'pointer', borderRadius: '4px',
                   display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px',
-                  color: v.name === activeVault?.name ? 'var(--color-primary)' : 'inherit',
+                  color: v.name === activeVault?.name ? 'var(--color-primary)' : 'var(--text-primary)',
                   background: v.name === activeVault?.name ? 'rgba(91,168,245,0.08)' : 'transparent'
                 }}>
                   {v.name}

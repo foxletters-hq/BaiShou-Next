@@ -1,11 +1,11 @@
 .appContainer {
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: var(--bg-surface, #FFFFFF);
-  color: var(--text-primary, #1A1A1A);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
 }
 
 .mainContent {
@@ -20,5 +20,5 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background-color: var(--bg-background, #FFFFFF);
+  background-color: var(--bg-app);
 }

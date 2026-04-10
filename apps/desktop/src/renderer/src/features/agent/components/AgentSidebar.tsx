@@ -20,6 +20,7 @@ export interface AgentSidebarProps {
   selectedSessionId?: string;
   searchQuery?: string;
   hasMore?: boolean;
+  scrollKey?: number;
   pinnedAssistants?: AgentAssistant[];
   onSearchQueryChanged: (q: string) => void;
   onLoadMore?: () => void;
@@ -79,10 +80,20 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
   onBatchDelete,
   onCollapse,
   onShowPicker,
+  hasMore,
+  scrollKey,
+  onLoadMore,
 }) => {
   const navigate = useNavigate();
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const scrollerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (scrollKey && scrollKey > 0 && scrollerRef.current) {
+      scrollerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [scrollKey]);
 
 
   const handleBatchDelete = () => {
@@ -115,7 +126,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
       </div>
 
       {/* 可滚动主体 */}
-      <div className={styles.scroller}>
+      <div className={styles.scroller} ref={scrollerRef}>
         {/* ─── 当前伙伴槽位 — 原版永远显示，即使 loading 也显示 placeholder ─── */}
         <div className={styles.currentAssistantWrapper}>
           <div
@@ -233,34 +244,52 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
           ) : sessions.length === 0 ? (
             <div className={styles.emptyHint}>暂无近期对话，快点开始一个吧~</div>
           ) : (
-            sessions.map(session => (
-              <SessionListItem
-                key={session.id}
-                session={session}
-                isSelected={session.id === selectedSessionId}
-                isMultiSelect={isMultiSelect}
-                isChecked={selectedIds.has(session.id)}
-                onTap={() => {
-                  if (isMultiSelect) {
+            <>
+              {sessions
+                .filter(session => !searchQuery || session.title?.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map(session => (
+                <SessionListItem
+                  key={session.id}
+                  session={session}
+                  isSelected={session.id === selectedSessionId}
+                  isMultiSelect={isMultiSelect}
+                  isChecked={selectedIds.has(session.id)}
+                  onTap={() => {
+                    if (isMultiSelect) {
+                      const next = new Set(selectedIds);
+                      if (next.has(session.id)) next.delete(session.id);
+                      else next.add(session.id);
+                      setSelectedIds(next);
+                    } else {
+                      onSessionSelected(session.id);
+                    }
+                  }}
+                  onPin={onPinSession ? () => onPinSession(session.id) : undefined}
+                  onRename={onRenameSession ? () => onRenameSession(session.id) : undefined}
+                  onDelete={onDeleteSession ? () => onDeleteSession(session.id) : undefined}
+                  onCheckChanged={checked => {
                     const next = new Set(selectedIds);
-                    if (next.has(session.id)) next.delete(session.id);
-                    else next.add(session.id);
+                    if (checked) next.add(session.id);
+                    else next.delete(session.id);
                     setSelectedIds(next);
-                  } else {
-                    onSessionSelected(session.id);
-                  }
-                }}
-                onPin={onPinSession ? () => onPinSession(session.id) : undefined}
-                onRename={onRenameSession ? () => onRenameSession(session.id) : undefined}
-                onDelete={onDeleteSession ? () => onDeleteSession(session.id) : undefined}
-                onCheckChanged={checked => {
-                  const next = new Set(selectedIds);
-                  if (checked) next.add(session.id);
-                  else next.delete(session.id);
-                  setSelectedIds(next);
-                }}
-              />
-            ))
+                  }}
+                />
+              ))}
+              {hasMore && (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0', marginTop: '8px' }}>
+                  <button 
+                    onClick={onLoadMore}
+                    style={{ 
+                      background: 'transparent', border: 'none', 
+                      color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, 
+                      cursor: 'pointer', opacity: 0.8 
+                    }}
+                  >
+                    加载更多对话
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 

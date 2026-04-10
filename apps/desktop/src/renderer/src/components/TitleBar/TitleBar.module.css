@@ -1,6 +1,6 @@
 .titleBar {
   height: 48px;
-  background-color: var(--color-surface-container-low);
+  background-color: var(--bg-app);
   display: flex;
   align-items: center;
   border-bottom: 1px solid rgba(208, 208, 208, 0.5); /* outlineVariant equivalent */
@@ -19,7 +19,7 @@
 
 .tabsContainer {
   display: flex;
-  height: 100%;
+  height: calc(100% - 8px);
   width: 320px;
   -webkit-app-region: no-drag;
   margin-top: 8px; /* Push down to align bottom */
@@ -32,7 +32,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   background-color: transparent;
@@ -48,7 +48,7 @@
 .activeTab {
   color: var(--color-primary);
   font-weight: 600;
-  background-color: var(--color-surface);
+  background-color: var(--bg-surface);
   box-shadow: 0 -2px 6px rgba(0,0,0,0.02);
 }
 
@@ -85,18 +85,18 @@
 }
 
 .vaultSwitcher:hover {
-  background-color: rgba(26, 26, 26, 0.08); /* onSurface 0.08 opacity */
+  background-color: var(--bg-surface-normal);
 }
 
 .actionIconSm {
   font-size: 16px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .vaultName {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   margin: 0 8px 0 4px;
 }
 
@@ -120,7 +120,7 @@
 
 .actionIcon {
   font-size: 20px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .divider {
@@ -144,7 +144,7 @@
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.1s;
 }

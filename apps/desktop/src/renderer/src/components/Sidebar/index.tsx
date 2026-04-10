@@ -136,16 +136,16 @@ export const Sidebar: React.FC = () => {
          <div className={styles.avatar}>
            {profile?.avatarPath && profile.avatarPath !== 'default' ? (
              <img 
-               src={profile.avatarPath.startsWith('http') || profile.avatarPath.startsWith('data:') ? profile.avatarPath : `file://${profile.avatarPath}`} 
+               src={profile.avatarPath.startsWith('http') || profile.avatarPath.startsWith('data:') || profile.avatarPath.startsWith('local://') ? profile.avatarPath : `local://${profile.avatarPath}`} 
                alt="avatar" 
-               style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} 
+               style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', backgroundColor: 'transparent'}} 
              />
            ) : (
              (profile?.nickname || 'U').charAt(0).toUpperCase()
            )}
          </div>
          <div className={styles.userInfo}>
-            <div className={styles.userName}>{profile?.nickname || t('settings.no_nickname', '默认用户')}</div>
+            <div className={styles.userName}>{profile?.nickname || t('profile.default_nickname', '白守用户')}</div>
          </div>
       </div>
     </motion.div>

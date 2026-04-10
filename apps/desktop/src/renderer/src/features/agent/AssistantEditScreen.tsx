@@ -16,7 +16,7 @@ export const AssistantEditScreen: React.FC = () => {
       if (typeof window !== 'undefined' && window.electron) {
         window.electron.ipcRenderer.invoke('agent:get-assistants')
           .then((list: any[]) => {
-  setAssistant(list.find(a => a.id === id));
+            setAssistant(list.find(a => a.id === id));
           })
           .catch(console.error)
           .finally(() => setIsLoading(false));
@@ -36,11 +36,10 @@ export const AssistantEditScreen: React.FC = () => {
     <AssistantEditPage
       assistant={assistant}
       onSave={async (data) => {
-  if (typeof window !== 'undefined' && window.electron) {
-  if (id === 'new') {
-
-
-            await window.electron.ipcRenderer.invoke('agent:create-assistant', data);
+        if (typeof window !== 'undefined' && window.electron) {
+          if (id === 'new') {
+            const newId = `ast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+            await window.electron.ipcRenderer.invoke('agent:create-assistant', { ...data, id: newId });
           } else {
             await window.electron.ipcRenderer.invoke('agent:update-assistant', id, data);
           }

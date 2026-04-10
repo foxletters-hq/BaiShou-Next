@@ -91,7 +91,7 @@
 /* ───────── Main Content ───────── */
 .sp-content {
   flex: 1;
-  padding: 32px;
+  padding: 16px 24px;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;

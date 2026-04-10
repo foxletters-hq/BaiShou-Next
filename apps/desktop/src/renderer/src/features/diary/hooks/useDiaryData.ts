@@ -35,7 +35,37 @@ export function useDiaryData() {
     }
   }, []);
 
-  useEffect(() => { loadEntries(); }, [loadEntries]);
+  useEffect(() => { 
+    loadEntries(); 
+    
+    const api = (window as any).api;
+    let unsubscribe: (() => void) | undefined;
+    
+    if (api?.diary?.onSyncEvent) {
+      unsubscribe = api.diary.onSyncEvent((eventData: any) => {
+        console.log('[useDiaryData] 🔔 收到 diary:sync-event，立刻静默刷新', eventData);
+        const fetchSilently = async () => {
+          try {
+            const apiRef = (window as any).api;
+            if (apiRef?.diary?.listAll) {
+              const result = await apiRef.diary.listAll();
+              console.log('[useDiaryData] ✅ 静默刷新完成，条数:', result?.length);
+              setEntries(result || []);
+            }
+          } catch (err) {
+            console.error('[useDiaryData] 静默刷新失败:', err);
+          }
+        };
+        fetchSilently();
+      });
+    } else {
+      console.warn('[useDiaryData] ⚠️ api.diary.onSyncEvent 不存在，无法订阅文件变动事件');
+    }
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [loadEntries]);
 
   return { entries, loading, loadEntries, searchEntries };
 }

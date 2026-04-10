@@ -8,9 +8,6 @@
 }
 
 body {
-  font-family: var(--font-family-main);
-  background: var(--color-bg);
-  color: var(--color-text-main);
   overflow: hidden; /* Hide scrollbars for the main app container */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

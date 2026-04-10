@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSettingsStore, useUserProfileStore } from '@baishou/store';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MdOutlineSettings, MdOutlineCloudQueue, MdOutlineStarBorder, MdSchool, MdColorLens, MdTravelExplore, MdOutlineExtension, MdOutlineAutoAwesome, MdOutlineWifiProtectedSetup, MdSync, MdOutlineFolderDelete, MdArrowBack } from 'react-icons/md';
-import { TitleBar } from '../../components/TitleBar';
 import './SettingsPage.css';
 import { useTranslation } from 'react-i18next';
 import baishouHeroImg from '../../assets/images/BaiShou-v0.0.1.jpeg';
@@ -114,7 +113,7 @@ export const SettingsPage: React.FC = () => {
        case 6: return <AgentToolsPane settings={settings} />;
        case 7: return <SummarySettingsPane settings={settings} />;
        case 8: return <LanTransferPane />;
-       case 9: return <DataSyncPane />;
+       case 9: return <DataSyncPane settings={settings} />;
        case 10: return <AttachmentManagementPane />;
        default: return <div />;
      }
@@ -129,8 +128,6 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className={`settings-page-wrapper ${isClosing ? 'settings-closing' : ''}`}>
-      <TitleBar />
-
       <div className="settings-layout-body">
         <div className="settings-sidebar">
            <div className="settings-header">
@@ -216,8 +213,9 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
   }, [loadProfile]);
 
   return (
-    <div className="settings-pane">
+    <div className="settings-pane" style={{ paddingBottom: 40 }}>
        
+       {/* 账户设置 */}
        <div className="glass-panel-card">
          <ProfileSettingsCard 
            profile={profile || { nickname: '', autoSync: false, avatarUrl: '' }}
@@ -230,6 +228,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
          />
        </div>
 
+       {/* 身份卡组 */}
        <div className="glass-panel-card">
          <IdentitySettingsCard 
            profile={profile || { nickname: '', avatarPath: '', activePersonaId: 'Default', personas: { 'Default': { id: 'Default', facts: {} } } }}
@@ -242,6 +241,7 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
          />
        </div>
 
+       {/* 偏好设置组 */}
        <div className="glass-panel-card">
          <AppearanceSettingsCard 
            themeMode={settings.themeMode}
@@ -251,40 +251,59 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
            onSeedColorChange={settings.setThemeColor}
            onLanguageChange={settings.setLocale}
          />
-       </div>
-
-       {settings.hotkeyConfig && (
-          <div className="glass-panel-card">
-            <HotkeySettingsCard 
-               config={settings.hotkeyConfig}
-               onChange={(config) => settings.setHotkeyConfig(config)}
-            />
-          </div>
-       )}
-
-       <div className="glass-panel-card">
+         
+         {settings.hotkeyConfig && (
+            <>
+              <div className="settings-item-divider" />
+              <HotkeySettingsCard 
+                 config={settings.hotkeyConfig}
+                 onChange={(config) => settings.setHotkeyConfig(config)}
+              />
+            </>
+         )}
+         
+         <div className="settings-item-divider" />
          <McpSettingsCard 
            config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
            onChange={settings.setMcpServerConfig}
          />
        </div>
 
+       {/* 系统与数据组 */}
        <div className="glass-panel-card">
          <WorkspaceSettingsCard 
             vaults={vaults.length > 0 ? vaults : [{ name: t('common.loading', 'Loading...'), path: '--' }]}
             activeVault={activeVault || vaults[0] || null}
-            onSwitch={async (id) => await (window as any).api?.vault?.switchActive(id)}
+            onSwitch={async (id) => {
+               await (window as any).api?.vault?.switchActive(id);
+               const active = await (window as any).api?.vault?.getActive();
+               if (active) setActiveVault(active);
+               window.location.reload();
+            }}
             onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
             onCreate={async () => await (window as any).api?.vault?.createDialog()}
          />
-       </div>
+         <div className="settings-item-divider" />
 
-       <div className="glass-panel-card">
          <StorageSettingsCard 
            storageRootPath={storageStats.storageRootPath}
            sqliteSizeStats={storageStats.sqliteSizeStats}
            vectorDbStats={storageStats.vectorDbStats}
            mediaCacheStats={storageStats.mediaCacheStats}
+           onChangeRoot={async () => {
+             try {
+                // If the app exposes pickCustomRootPath or similar
+                const newPath = await (window as any).api?.vault?.pickCustomRootPath?.() || await (window as any).api?.system?.pickDirectory?.();
+                if (newPath) {
+                   // Refresh the stats immediately if it caused a change or the backend handles setting it
+                   // Typically the UI will restart or show toast, but we can optimistically query storage
+                   if ((window as any).api?.storage) {
+                      const s = await (window as any).api.storage.getStats();
+                      if (s) setStorageStats(s);
+                   }
+                }
+             } catch (e) { console.error(e); }
+           }}
            onClearCache={async () => {
              await (window as any).api?.storage?.clearCache();
              if ((window as any).api?.storage) {
@@ -300,9 +319,8 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
              }
            }}
          />
-       </div>
+         <div className="settings-item-divider" />
 
-       <div className="glass-panel-card">
          <DataManagementCard 
            onExportZip={async () => {
               await (window as any).api?.archive?.exportZip();
@@ -318,9 +336,8 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
            }}
            snapshots={[]}
          />
-       </div>
+         <div className="settings-item-divider" />
 
-       <div className="glass-panel-card">
          <AboutSettingsCard 
              version="v2.0.0-Next-Canary"
              heroImageSrc={baishouHeroImg}
@@ -846,10 +863,12 @@ const LanTransferPane: React.FC = () => {
   );
 };
 
-const DataSyncPane: React.FC = () => {
+const DataSyncPane: React.FC<{ settings: any }> = ({ settings }) => {
   return (
     <div>
        <CloudSyncPanel
+         savedConfig={settings.cloudSyncConfig}
+         onSaveConfig={settings.setCloudSyncConfig}
          onSyncNow={async (config: any) => (window as any).api?.cloud?.syncNow(config)}
          onListRecords={async (config: any) => (window as any).api?.cloud?.listRecords(config)}
          onRestore={async (config: any, filename: string) => (window as any).api?.cloud?.restore(config, filename)}
@@ -864,13 +883,14 @@ const DataSyncPane: React.FC = () => {
 const AttachmentManagementPane: React.FC = () => {
   const [attachments, setAttachments] = useState<any[]>([]);
 
+  const fetchData = async () => {
+    try {
+      const att = await (window as any).api?.attachment?.listAll();
+      if (att) setAttachments(att);
+    } catch (e) {}
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const att = await (window as any).api?.attachment?.listAll();
-        if (att) setAttachments(att);
-      } catch (e) {}
-    };
     fetchData();
   }, []);
 
@@ -879,7 +899,10 @@ const AttachmentManagementPane: React.FC = () => {
       <div className="attachment-management-wrapper" style={{ marginTop: 16 }}>
          <AttachmentManagementView 
              attachments={attachments}
-             onDeleteSelected={async (ids) => await (window as any).api?.attachment?.deleteBatch(ids)}
+             onDeleteSelected={async (ids) => {
+               await (window as any).api?.attachment?.deleteBatch(ids);
+               await fetchData();
+             }}
          />
       </div>
     </div>

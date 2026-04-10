@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 32px;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: var(--bg-glass-surface);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-bottom: none;
@@ -37,18 +37,18 @@
 .diary-year-text {
   font-size: 16px;
   font-weight: 500;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
 }
 
 .diary-month-text {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
   margin-left: 4px;
 }
 
 .diary-dropdown-icon {
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
   font-size: 18px;
 }
 
@@ -76,7 +76,7 @@
 }
 
 .diary-search-icon {
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
   margin-right: 8px;
   flex-shrink: 0;
 }
@@ -86,13 +86,13 @@
   background: transparent;
   outline: none;
   font-size: 13px;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
   width: 100%;
   font-family: var(--font-family-main);
 }
 
 .diary-search-input::placeholder {
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
 }
 
 /* 日历按钮 */
@@ -106,7 +106,7 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
   transition: background-color 0.2s;
 }
 
@@ -146,7 +146,7 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
   transition: background-color 0.2s;
   margin-right: 4px;
 }
@@ -191,9 +191,9 @@
 
 /* ── 日记卡片 ── */
 .diary-card {
-  background: var(--color-surface, #FFFFFF);
+  background: var(--bg-surface);
   border-radius: 24px;
-  border: 1px solid rgba(208, 208, 208, 0.4);
+  border: 1px solid var(--color-outline-variant);
   padding: 24px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -202,8 +202,17 @@
   flex-direction: column;
 }
 
+[data-theme="dark"] .diary-card {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
 .diary-card:hover {
-  background: #F6F8FA; /* Subtle solid gray */
+  background: var(--bg-surface-high);
+}
+
+[data-theme="dark"] .diary-card:hover {
+  background: var(--bg-surface-high, #323236);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 /* 卡片头部：日期行 */
@@ -223,7 +232,7 @@
 .diary-card-day {
   font-size: 32px;
   font-weight: 800;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
   line-height: 1.0;
 }
 
@@ -242,7 +251,7 @@
 .diary-card-weekday {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
   letter-spacing: 0.5px;
 }
 
@@ -294,22 +303,11 @@
 .diary-card-content-text blockquote {
   font-size: 15px;
   line-height: 1.7;
-  color: #0f172a !important; /* Pitch black matching editor */
+  color: var(--text-primary) !important;
   word-break: break-word;
 }
 
-[data-theme="dark"] .diary-card-content-text,
-[data-theme="dark"] .diary-card-content-text p,
-[data-theme="dark"] .diary-card-content-text h1,
-[data-theme="dark"] .diary-card-content-text h2,
-[data-theme="dark"] .diary-card-content-text h3,
-[data-theme="dark"] .diary-card-content-text h4,
-[data-theme="dark"] .diary-card-content-text h5,
-[data-theme="dark"] .diary-card-content-text h6,
-[data-theme="dark"] .diary-card-content-text li,
-[data-theme="dark"] .diary-card-content-text blockquote {
-  color: #f1f5f9 !important; /* Light slate matching editor */
-}
+
 
 /* 标签区域 */
 .diary-card-tags {
@@ -379,7 +377,7 @@
 }
 
 .diary-card-action-btn.edit-btn {
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
 }
 
 .diary-card-action-btn.edit-btn:hover {
@@ -402,7 +400,7 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  color: var(--color-on-surface-variant, #94A3B8);
+  color: var(--text-primary);
 }
 
 .diary-empty-icon {
@@ -421,7 +419,9 @@
 .diary-delete-modal-overlay {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: transparent;
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
+  backdrop-filter: var(--blur-overlay, blur(4px));
+  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -430,7 +430,7 @@
 }
 
 .diary-delete-modal {
-  background: var(--color-surface, #FFFFFF);
+  background: var(--bg-surface);
   width: 320px;
   border-radius: 12px;
   padding: 24px;
@@ -441,13 +441,13 @@
 .dd-modal-title {
   font-size: 18px;
   font-weight: bold;
-  color: var(--color-on-surface, #1e293b);
+  color: var(--text-primary);
   margin-bottom: 12px;
 }
 
 .dd-modal-content {
   font-size: 14px;
-  color: var(--color-on-surface-variant, #64748b);
+  color: var(--text-primary);
   line-height: 1.5;
   margin-bottom: 24px;
 }
@@ -463,7 +463,7 @@
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-on-surface-variant, #64748b);
+  color: var(--text-primary);
   cursor: pointer;
   padding: 8px 16px;
   border-radius: 6px;

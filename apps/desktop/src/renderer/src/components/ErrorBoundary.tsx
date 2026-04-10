@@ -43,7 +43,7 @@ class ErrorBoundaryClass extends Component<Props & { t: any }, State> {
           <h2>{t('error.crash_title', '应用崩溃 / Rendering Crashed')}</h2>
           <pre
             style={{
-              backgroundColor: '#222',
+              backgroundColor: 'var(--text-primary)',
               padding: '1rem',
               borderRadius: '8px',
               overflow: 'auto',

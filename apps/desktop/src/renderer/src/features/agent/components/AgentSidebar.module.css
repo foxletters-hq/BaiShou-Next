@@ -4,8 +4,8 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-surface, #ffffff);
-  border-right: 1px solid rgba(148, 163, 184, 0.4);
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -87,7 +87,7 @@
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  background-color: rgba(224, 242, 254, 0.3);
+  background-color: var(--bg-surface-normal);
   border-radius: 12px;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -95,7 +95,7 @@
 }
 
 .currentAssistantCard:hover {
-  background-color: rgba(224, 242, 254, 0.6);
+  background-color: var(--bg-surface-high);
 }
 
 .assistantInfo {
@@ -154,10 +154,10 @@
 .pinnedRow {
   display: flex;
   align-items: center;
-  padding: 4px 16px;
+  padding: 8px 16px;
   gap: 10px;
   overflow-x: auto;
-  height: 44px;
+  min-height: 64px;
 }
 .pinnedRow::-webkit-scrollbar {
   display: none;
@@ -201,12 +201,12 @@
 
 .newChatBtn {
   width: 100%;
-  min-height: 46px;
-  border-radius: 12px;
+  min-height: 38px;
+  border-radius: 10px;
   border: none;
   background-color: var(--color-primary, #5BA8F5);
   color: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -238,11 +238,12 @@
   width: 100%;
   padding: 11px 14px;
   border-radius: 10px;
-  transition: background-color 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .menuItemRow:hover .menuItemRowInner {
-  background-color: rgba(224, 242, 254, 0.4);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .menuItemRowIcon {
@@ -256,17 +257,15 @@
   color: var(--text-primary, #1e293b);
 }
 
-/* ─── 历史对话区标题 — labelSmall + letterSpacing ─── */
+/* ─── 历史对话区标题 ─── */
 .historyHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 20px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary, #94a3b8);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
 }
 
 .multiSelectToggle {
@@ -298,11 +297,10 @@
   padding-right: 30px;
   border: none;
   border-radius: 10px;
-  background-color: rgba(241, 245, 249, 0.8);
+  background-color: var(--bg-surface-normal);
+  color: var(--text-primary);
   font-size: 13px;
-  color: var(--text-primary, #1e293b);
   outline: none;
-  box-sizing: border-box;
   transition: background-color 0.2s;
 }
 

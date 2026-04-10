@@ -126,44 +126,18 @@ const GEN_PHASES = [
               <DashboardStatsCard {...stats} />
             </div>
 
-            {/* AI 建议补全区域 */}
-            <motion.div 
-              className="sp-ai-suggestions-section"
-              variants={containerVariants}
-              initial="hidden" animate="show"
-              style={{ marginTop: 24, display: 'flex', flexDirection: 'column' }}
-            >
-              <div className="sp-section-header" style={{ marginBottom: 16 }}>
-                <div className="sp-section-title" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Sparkles size={18} color="var(--color-primary)" />
-                  {t('summary.ai_suggestions', 'AI 建议补全')}
-                </div>
-              </div>
-              <div className="sp-ai-suggestions-container" style={{
-                padding: '24px',
-                borderRadius: '16px',
-                background: 'rgba(var(--color-primary-rgb, 91, 168, 245), 0.04)',
-                border: '1px dashed rgba(var(--color-primary-rgb, 91, 168, 245), 0.3)',
-                color: 'var(--text-secondary)',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '100px'
-              }}>
-                {t('summary.no_ai_suggestions', '暂无更多 AI 扩展建议，保持当前记录节奏即可。')}
-              </div>
-            </motion.div>
-
             {/* AI 缺失自动检测区域 */}
             <motion.div 
-              style={{ marginTop: 16 }}
+              style={{ marginTop: 24 }}
               variants={containerVariants}
               initial="hidden" animate="show"
             >
                {missingSummaries.length > 0 && (
-                  <div className="sp-missing-section-title">
-                     <Sparkles size={18} color="var(--color-primary)" /> {t('summary.probe_missing', '缺失检测系统：检测到以下时间段缺少宏观分析记录')}
+                  <div className="sp-missing-section-title" style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                     <svg viewBox="0 0 24 24" fill="#FFA000" width="20" height="20" style={{ marginRight: 8 }}>
+                       <path d="M7.5 5.6L5 7l1.4-2.5L5 2l2.5 1.4L10 2 8.6 4.5 10 7 7.5 5.6zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14l-2.5 1.4zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5L22 2zm-7.63 5.29c-.39-.39-1.02-.39-1.41 0L1.29 18.96c-.39.39-.39 1.02 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05c.39-.39.39-1.02 0-1.41l-2.33-2.35zm-1.03 5.49l-2.12-2.12 2.44-2.44 2.12 2.12-2.44 2.44z"/>
+                     </svg>
+                     <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{t('summary.ai_suggestions', 'AI 建议补全')}</span>
                   </div>
                )}
                
