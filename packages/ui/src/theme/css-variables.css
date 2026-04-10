@@ -1,26 +1,59 @@
 :root {
-  /* Colors - Light */
+  /* ========================================================= */
+  /* COLOR PALETTE - LIGHT THEME (DEFAULT)                    */
+  /* ========================================================= */
+
+  /* Brand Colors */
   --color-primary: #5BA8F5;
   --color-primary-dark: #3A88D5;
-  --bg-app: #F6F7F8;
-  --bg-surface: #FFFFFF;
-  --bg-surface-highest: #E8E8E8;
-  --bg-surface-high: #EEEEEE;
-  --bg-surface-normal: #F2F2F2;
-  --bg-surface-low: #F6F7F8;
+  --color-primary-light: #E0F0FE;
   
-  --text-primary: #1A1A1A;
-  --text-secondary: #475569;
-  --color-accent-green: #4CAF50;
+  /* Backgrounds: Depth and Elevations (Light) */
+  --bg-app: #F4F5F7;             /* Cool, purely neutral grayish background for sidebar and app shell */
+  --bg-surface: #FFFFFF;         /* Primary container backgrounds - stark white */
+  --bg-surface-raised: #FFFFFF;  /* Cards, Dropdowns */
+  --bg-surface-highest: #E8EAED; /* Modals, Popovers */
+  --bg-surface-high: #F0F2F5;    /* Hover states for surface items */
+  --bg-surface-normal: #EAECEF;  /* Secondary containers (e.g. gray panels) */
+  --bg-surface-low: #F8F9FA;     /* Tertiary background */
+  
+  /* Glassmorphism Overlays (Light) */
+  --bg-overlay: rgba(0, 0, 0, 0.35);
+  --bg-glass-surface: rgba(255, 255, 255, 0.85);
+  --blur-overlay: blur(8px);
+  --blur-glass: blur(12px);
+
+  /* Borders / Dividers (Light) */
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-muted: rgba(0, 0, 0, 0.08); /* faint lines */
+  --border-strong: rgba(0, 0, 0, 0.16);
+  
+  /* Text & Inks (Light) */
+  --text-primary: #1A1C23;       /* Headlines, strong text */
+  --text-secondary: #4A5568;     /* Body text, descriptions */
+  --text-tertiary: #A0AEC0;      /* Placeholders, disabled states */
+  --text-on-primary: #FFFFFF;
+
+  /* Semantic Colors */
+  --color-accent-green: #34D399;
+  --color-accent-blue: #60A5FA;
+  --color-accent-purple: #A78BFA;
+  --color-accent-pink: #F472B6;
   --color-secondary: #78909C;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
 
   /* Typography */
-  --font-family: 'Manrope', 'Microsoft YaHei', 'Noto Sans SC', 'PingFang SC', sans-serif;
+  --font-family: 'Inter', 'Roboto', 'Outfit', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
-  /* Radius */
-  --radius-sm: 4px;
+  /* Border Radii */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-xl: 24px;
   --radius-full: 9999px;
 
   /* Spacing */
@@ -29,30 +62,91 @@
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
+  --spacing-2xl: 48px;
 
-  /* Shadow */
-  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.05); /* Soft drop shadow */
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.15); /* Match flutter toast elevation */
+  /* Global Outline Variants */
+  --color-outline-variant: rgba(208, 208, 208, 0.5);
+  --color-outline-variant-rgb: 208, 208, 208;
 
-  /* Animation */
+  /* Shadows (Light) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04); 
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05); 
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08); 
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 16px rgba(91, 168, 245, 0.3);
+
+  /* Animation Timings */
   --duration-fast: 150ms;
   --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out-cubic: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.68, -0.6, 0.32, 1.6);
 }
 
+/* ========================================================= */
+/* COLOR PALETTE - DARK THEME                                */
+/* ========================================================= */
 [data-theme="dark"] {
-  /* Colors - Dark */
+  /* Brand Colors - Adjusted for dark mode contrast */
   --color-primary: #5BA8F5;
   --color-primary-dark: #3A88D5;
-  --bg-app: #101922;
-  --bg-surface: #192633;
-  --bg-surface-highest: #233648;
-  --bg-surface-high: #233648;
-  --bg-surface-normal: #1C2936;
-  --bg-surface-low: #101922;
+  --color-primary-light: rgba(91, 168, 245, 0.2);
 
-  --text-primary: #FFFFFF;
-  --text-secondary: #94A3B8;
-  --color-accent-green: #4CAF50;
-  --color-secondary: #78909C;
+  /* Backgrounds: Depth and Elevations (Dark) */
+  /* Using sleek, slightly tinted dark grays instead of pure black for a premium look */
+  --bg-app: #1A1A1E;             /* App Sidebar & deeply recessed area */
+  --bg-surface: #262629;         /* Main Content / Chat Windows */
+  --bg-surface-raised: #2D2D31;  /* Cards, Dropdowns */
+  --bg-surface-highest: #38383D; /* Modals, Popovers */
+  --bg-surface-high: #323236;    /* Hover states for surface items */
+  --bg-surface-normal: #1E1E22;  /* Secondary containers (e.g. gray panels, sidebars) */
+  --bg-surface-low: #151518;     /* Tertiary background */
+
+  /* Glassmorphism Overlays (Dark) */
+  --bg-overlay: rgba(0, 0, 0, 0.55);
+  --bg-glass-surface: rgba(38, 38, 41, 0.75);
+
+  /* Borders / Dividers (Dark) */
+  --border-subtle: rgba(255, 255, 255, 0.05); /* very faint */
+  --border-muted: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --color-outline-variant: var(--border-subtle);
+  --color-outline-variant-rgb: 255, 255, 255;
+
+  /* Text & Inks (Dark) */
+  --text-primary: #F8FAFC;       /* Headlines, strong text */
+  --text-secondary: #A1A1AA;     /* Body text, descriptions */
+  --text-tertiary: #71717A;      /* Placeholders, disabled states */
+  --text-on-primary: #FFFFFF;
+
+  /* Semantic Colors (Tweaked slightly for dark mode vibrancy) */
+  --color-accent-green: #10B981;
+  --color-accent-blue: #3B82F6;
+  --color-accent-purple: #8B5CF6;
+  --color-accent-pink: #EC4899;
+  --color-secondary: #64748B;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+
+  /* Shadows (Dark) - Deeper to simulate elevation without strong light sources */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5); 
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6); 
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.7); 
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 20px rgba(91, 168, 245, 0.15);
+}
+
+/* Global utility for smooth theme shifting */
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  transition: background-color var(--duration-normal) var(--ease-out-cubic), 
+              color var(--duration-normal) var(--ease-out-cubic);
+}
+
+* {
+  box-sizing: border-box;
 }

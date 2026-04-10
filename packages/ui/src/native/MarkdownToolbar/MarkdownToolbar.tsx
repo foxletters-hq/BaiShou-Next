@@ -66,12 +66,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'var(--bg-surface)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(148, 163, 184, 0.2)',
     paddingVertical: 8,
     paddingHorizontal: 8,
-    shadowColor: '#000',
+    shadowColor: 'var(--text-primary)',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   },
   btnText: {
     fontSize: 16,
-    color: '#475569',
+    color: 'var(--text-secondary)',
   },
   divider: {
     width: 1,
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     fontSize: 18,
-    color: '#475569',
+    color: 'var(--text-secondary)',
   },
   actionBtnTextActive: {
     color: '#5BA8F5',

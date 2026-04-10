@@ -57,7 +57,8 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
 
   // 编辑昵称
   const handleEditNickname = async () => {
-    const nextName = await dialog.prompt("修改您的大使称呼：", profile.nickname);
+    const promptMessage = t('profile.edit_nickname_prompt', '请输入新的昵称：');
+    const nextName = await dialog.prompt(promptMessage, profile.nickname);
     if (nextName && nextName.trim() !== '' && nextName !== profile.nickname) {
       onSave({ ...profile, nickname: nextName.trim() });
     }
@@ -88,10 +89,10 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
 
         <div className={styles.infoZone}>
            <div className={styles.nameRow}>
-             <h2 className={styles.nickname}>{profile.nickname || '白守用户'}</h2>
              <button className={styles.editBtn} onClick={handleEditNickname} title={t('profile.edit_nickname', '修改昵称')}>
                ✎
              </button>
+             <h2 className={styles.nickname}>{profile.nickname || t('profile.default_nickname', '白守用户')}</h2>
            </div>
         </div>
       </div>

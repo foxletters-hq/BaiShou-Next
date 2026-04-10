@@ -64,7 +64,7 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-surface)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.5)',
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
   },
   grid: {
     flexDirection: 'column',
@@ -118,6 +118,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    color: '#475569',
+    color: 'var(--text-secondary)',
   }
 });

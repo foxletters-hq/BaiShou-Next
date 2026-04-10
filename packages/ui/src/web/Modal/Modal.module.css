@@ -4,7 +4,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
+  backdrop-filter: var(--blur-overlay, blur(4px));
+  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -14,7 +16,7 @@
 
 .modal {
   background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--bg-surface-highest, #e8e8e8);
+  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
   color: var(--text-primary, #1a1a1a);
   border-radius: var(--radius-xl, 20px);
   padding: 24px 28px;

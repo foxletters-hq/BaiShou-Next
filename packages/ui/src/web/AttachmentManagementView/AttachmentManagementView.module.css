@@ -20,14 +20,10 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: var(--color-surface, #fff);
+  background: transparent;
   border-radius: 12px;
   padding: 24px 20px;
-  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.1));
-}
-:global(body[data-theme='dark']) .overviewCard {
-  background: var(--color-surface-container-highest, #1a1e23);
-  border-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-outline-variant);
 }
 
 .statColumn {
@@ -98,64 +94,43 @@
 }
 .btnOutlined {
   background: transparent;
-  border: 1px solid var(--color-outline-variant, #cbd5e1);
-  color: var(--color-primary, #0ea5e9);
-}
-:global(body[data-theme='dark']) .btnOutlined {
-  border-color: rgba(255,255,255,0.2);
-  color: #5ba8f5;
+  border: 1px solid var(--color-outline-variant);
+  color: var(--text-primary);
 }
 .btnOutlined:hover:not(:disabled) {
-  background: var(--color-primary-container-hover, rgba(14, 165, 233, 0.05));
-}
-:global(body[data-theme='dark']) .btnOutlined:hover:not(:disabled) {
-  background: rgba(91, 168, 245, 0.1);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+  color: var(--color-primary);
 }
 
 .btnFilled {
-  background: var(--color-primary, #0ea5e9);
-  border: 1px solid var(--color-primary, #0ea5e9);
-  color: #fff;
-}
-:global(body[data-theme='dark']) .btnFilled {
-  background: #5ba8f5;
-  border-color: #5ba8f5;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
   color: #fff;
 }
 .btnFilled:hover:not(:disabled) {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
 }
 
 .btnDangerFilled {
-  background: var(--color-error, #ef4444);
-  border: 1px solid var(--color-error, #ef4444);
+  background: var(--color-error);
+  border: 1px solid var(--color-error);
   color: #fff;
-}
-:global(body[data-theme='dark']) .btnDangerFilled {
-  background: #f87171;
-  border-color: #f87171;
 }
 .btnDangerFilled:hover:not(:disabled) {
   opacity: 0.9;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 12px rgba(var(--color-error-rgb, 239, 68, 68), 0.3);
 }
 
 .textBtn {
   background: transparent;
   border: none;
-  color: var(--color-primary, #0ea5e9);
+  color: var(--text-primary);
   padding: 8px 12px;
 }
-:global(body[data-theme='dark']) .textBtn {
-  color: #5ba8f5;
-}
 .textBtn:hover {
-  background: rgba(0,0,0,0.05);
-}
-:global(body[data-theme='dark']) .textBtn:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(var(--text-primary-rgb, 255, 255, 255), 0.05);
 }
 
 .actionBtn:disabled {
@@ -170,14 +145,10 @@
 .listArea {
   display: flex;
   flex-direction: column;
-  background: var(--color-surface, #fff);
+  background: transparent;
   border-radius: 12px;
-  border: 1px solid var(--color-outline-variant, rgba(0,0,0,0.1));
+  border: 1px solid var(--color-outline-variant);
   overflow: hidden;
-}
-:global(body[data-theme='dark']) .listArea {
-  background: var(--color-surface-container-low, #1e293b);
-  border-color: rgba(255,255,255,0.05);
 }
 
 .emptyState {

@@ -209,7 +209,7 @@
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--bg-surface);
 }
 
 .sessionCheckbox:checked {

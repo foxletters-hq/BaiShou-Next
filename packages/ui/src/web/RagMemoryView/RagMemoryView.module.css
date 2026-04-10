@@ -8,10 +8,11 @@
 /* === 1. Header === */
 .headerRow {
   display: flex;
-  justify-content: flex-start;
   align-items: center;
-  gap: 16px;
-  margin-top: 12px;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 12px 32px;
+  background-color: transparent;
 }
 
 .titleInfo {
@@ -28,14 +29,12 @@
 .title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: 0.5px;
 }
 
-[data-theme="dark"] .title {
-  color: #fff;
-}
+
 
 .headerClearAllBtn {
   display: flex;
@@ -123,7 +122,7 @@
 
 .chipGrey {
   background: rgba(148, 163, 184, 0.1);
-  color: #64748b;
+  color: var(--text-secondary);
   border-color: rgba(148, 163, 184, 0.2);
 }
 
@@ -133,14 +132,12 @@
   border-color: #22c55e;
 }
 
-[data-theme="dark"] .chipGrey {
-  color: #94a3b8;
-}
+
 
 /* === 3. Config Block === */
 .configBlock {
-  background: var(--color-surface, #FFFFFF);
-  border: 1px solid rgba(208, 208, 208, 0.7);
+  background: var(--bg-surface);
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -148,10 +145,7 @@
   gap: 16px;
 }
 
-[data-theme="dark"] .configBlock {
-  background: var(--color-surface-dark, #121212);
-  border-color: rgba(255, 255, 255, 0.15);
-}
+
 
 .configBlockHeader {
   display: flex;
@@ -162,12 +156,10 @@
 .configBlockTitle {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
 }
 
-[data-theme="dark"] .configBlockTitle {
-  color: #e2e8f0;
-}
+
 
 .paramSliders {
   display: flex;
@@ -184,7 +176,7 @@
 .paramLabel {
   width: 100px;
   font-size: 13px;
-  color: var(--color-on-surface-variant, #64748b);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
@@ -274,15 +266,13 @@
 
 .btnGreyOutlined {
   background: rgba(148, 163, 184, 0.05);
-  color: #64748b;
+  color: var(--text-secondary);
   border-color: rgba(148, 163, 184, 0.3);
 }
 .btnGreyOutlined:hover:not(:disabled) {
   background: rgba(148, 163, 184, 0.1);
 }
-[data-theme="dark"] .btnGreyOutlined {
-  color: #94a3b8;
-}
+
 
 /* === 5. Search Bar === */
 .searchBoxOuter {
@@ -292,7 +282,7 @@
   border-radius: 12px;
   padding: 6px 12px;
   margin-top: 8px;
-  border: 1px solid var(--color-outline, #79747E);
+  border: 1px solid transparent;
   transition: border-color 0.2s;
 }
 
@@ -302,14 +292,11 @@
   padding: 5px 11px;
 }
 
-[data-theme="dark"] .searchBoxOuter {
-  background: transparent;
-  border-color: rgba(255, 255, 255, 0.2);
-}
+
 
 .searchIconOuter {
   font-size: 16px;
-  color: var(--color-on-surface-variant, #64748b);
+  color: var(--text-primary);
   margin-right: 12px;
 }
 
@@ -317,18 +304,16 @@
   flex: 1;
   border: none;
   background: transparent;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
   font-size: 14px;
   outline: none;
   padding: 8px 0;
 }
-[data-theme="dark"] .searchOuterInput {
-  color: #e2e8f0;
-}
+
 
 .clearSearchOuter {
   cursor: pointer;
-  color: var(--color-on-surface-variant, #64748b);
+  color: var(--text-primary);
   margin-left: 12px;
   font-size: 18px;
   font-weight: bold;
@@ -360,12 +345,12 @@
 .emptyTitleLarge {
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-on-surface-variant, #64748b);
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 .emptyDescSub {
   font-size: 13px;
-  color: var(--color-on-surface-variant, #94a3b8);
+  color: var(--text-primary);
   max-width: 400px;
   text-align: center;
 }
@@ -377,8 +362,8 @@
 }
 
 .memoryEntryCard {
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  background: var(--bg-surface);
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -387,17 +372,12 @@
   transition: box-shadow 0.2s;
 }
 
-[data-theme="dark"] .memoryEntryCard {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.08);
-}
+
 
 .memoryEntryCard:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
-[data-theme="dark"] .memoryEntryCard:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
+
 
 .memoryEntryIconBlock {
   display: flex;
@@ -423,7 +403,7 @@
 
 .memoryEntryText {
   font-size: 14px;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -432,16 +412,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-[data-theme="dark"] .memoryEntryText {
-  color: #e2e8f0;
-}
+
 
 .memoryEntryFooter {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: var(--color-on-surface-variant, #94a3b8);
+  color: var(--text-primary);
 }
 
 .memoryEntryActionsBlock {
@@ -452,7 +430,7 @@
 .memoryMoreBtn {
   background: transparent;
   border: none;
-  color: var(--color-on-surface-variant, #94a3b8);
+  color: var(--text-primary);
   font-size: 20px;
   cursor: pointer;
   padding: 4px 8px;
@@ -463,18 +441,15 @@
 }
 .memoryMoreBtn:hover {
   background: rgba(0, 0, 0, 0.05);
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
 }
-[data-theme="dark"] .memoryMoreBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
+
 
 /* Switch UI */
 .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(148, 163, 184, 0.3); transition: .3s; border-radius: 24px; }
-.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: var(--bg-surface); transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 input:checked + .slider { background-color: #5ba8f5; }
 input:checked + .slider:before { transform: translateX(20px); }
 
@@ -493,7 +468,7 @@ input:checked + .slider:before { transform: translateX(20px); }
   animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.migDesc { font-size: 13px; color: var(--color-on-surface-variant, #64748b); margin: 0 0 12px 0;}
+.migDesc { font-size: 13px; color: var(--text-primary); margin: 0 0 12px 0;}
 .progressBar {
   height: 6px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden;
 }
@@ -507,7 +482,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 .dangerRow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px;}
 .dangerTitle { font-size: 14px; font-weight: 700; color: #ef4444; }
-.dangerDesc { font-size: 13px; color: var(--color-on-surface-variant, #64748b); margin: 0 0 12px 0; line-height: 1.5; }
+.dangerDesc { font-size: 13px; color: var(--text-primary); margin: 0 0 12px 0; line-height: 1.5; }
 .dangerBtn {
   background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 6px;
   cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;

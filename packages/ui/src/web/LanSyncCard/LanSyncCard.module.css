@@ -27,18 +27,16 @@
 .appBarTitle {
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-on-surface, #333);
+  color: var(--text-primary);
 }
 
-:global(body[data-theme='dark']) .appBarTitle {
-  color: #f3f4f6;
-}
+
 
 .refreshBtn {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--color-on-surface, #333);
+  color: var(--text-primary);
   font-size: 20px;
   display: flex;
   align-items: center;
@@ -49,17 +47,13 @@
   transition: background 0.2s;
 }
 
-:global(body[data-theme='dark']) .refreshBtn {
-  color: #f3f4f6;
-}
+
 
 .refreshBtn:hover {
   background: rgba(0, 0, 0, 0.05);
 }
 
-:global(body[data-theme='dark']) .refreshBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
+
 
 .radarZone {
   position: relative;
@@ -183,25 +177,21 @@
 .scanTitle {
   font-size: 20px;
   font-weight: bold;
-  color: var(--color-on-surface, #333);
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
-:global(body[data-theme='dark']) .scanTitle {
-  color: white;
-}
+
 
 .scanSubtitle {
   font-size: 14px;
   color: #71717a;
 }
-:global(body[data-theme='dark']) .scanSubtitle {
-  color: #9ca3af;
-}
+
 
 /* Bubbles */
 .deviceBubble {
   position: absolute;
-  background: var(--color-surface-variant, #fff);
+  background: var(--bg-surface);
   border: 1px solid var(--color-primary, #5BA8F5);
   border-radius: 30px;
   padding: 8px 16px 8px 10px;
@@ -216,11 +206,7 @@
   overflow: hidden;
 }
 
-:global(body[data-theme='dark']) .deviceBubble {
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
+
 
 @keyframes floatBubble {
   to { transform: translateY(-10px); }
@@ -261,25 +247,21 @@
 .bubbleName {
   font-size: 14px;
   font-weight: 700;
-  color: var(--color-on-surface, #333);
+  color: var(--text-primary);
   max-width: 120px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-:global(body[data-theme='dark']) .bubbleName {
-  color: #f1f5f9;
-}
+
 
 .bubbleIp {
   font-size: 11px;
-  color: #64748b;
+  color: var(--text-secondary);
   font-family: 'Fira Code', monospace;
   margin-top: 2px;
 }
-:global(body[data-theme='dark']) .bubbleIp {
-  color: #94a3b8;
-}
+
 
 .sendOverlayBtn {
   position: absolute;

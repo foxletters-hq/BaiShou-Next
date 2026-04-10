@@ -14,8 +14,9 @@
 }
 
 .stats-header-icon {
-  font-size: 20px;
   margin-right: 8px;
+  display: flex;
+  align-items: center;
 }
 
 .stats-header-title {
@@ -45,28 +46,15 @@
   border-radius: 12px;
   display: flex;
   align-items: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background: var(--bg-surface-lowest, #F8FAFC) !important;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  transition: transform 0.2s ease;
 }
 
 .stats-tile:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-
-.stats-icon-wrapper {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 12px;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
 }
 
 .stats-icon {
+  margin-right: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -89,23 +77,18 @@
   opacity: 0.8;
 }
 
-/* Color Variants with Solid Icon Backgrounds */
-.color-green { background: var(--bg-surface, #fff); }
-.color-green .stats-icon-wrapper { background: #4CAF50; color: #fff; }
+/* Color Variants exactly mirroring Flutter withValues(alpha: 0.08) */
+.color-green { background: rgba(76, 175, 80, 0.08); }
 .color-green .stats-count { color: #4CAF50; }
 
-.color-indigo { background: var(--bg-surface, #fff); }
-.color-indigo .stats-icon-wrapper { background: #3F51B5; color: #fff; }
+.color-indigo { background: rgba(63, 81, 181, 0.08); }
 .color-indigo .stats-count { color: #3F51B5; }
 
-.color-blue { background: var(--bg-surface, #fff); }
-.color-blue .stats-icon-wrapper { background: #2196F3; color: #fff; }
+.color-blue { background: rgba(33, 150, 243, 0.08); }
 .color-blue .stats-count { color: #2196F3; }
 
-.color-amber { background: var(--bg-surface, #fff); }
-.color-amber .stats-icon-wrapper { background: #FFB300; color: #fff; }
-.color-amber .stats-count { color: #FFB300; }
+.color-amber { background: rgba(251, 192, 45, 0.08); } /* amber.shade700 in flutter is roughly #FBC02D */
+.color-amber .stats-count { color: #FBC02D; }
 
-.color-orange { background: var(--bg-surface, #fff); }
-.color-orange .stats-icon-wrapper { background: #FF9800; color: #fff; }
+.color-orange { background: rgba(255, 152, 0, 0.08); }
 .color-orange .stats-count { color: #FF9800; }

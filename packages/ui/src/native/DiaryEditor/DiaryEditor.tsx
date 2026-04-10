@@ -97,7 +97,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           />
         ) : (
           <View style={styles.previewArea}>
-             <Text style={{ color: '#1A1A1A' }}>{content}</Text>
+             <Text style={{ color: 'var(--text-primary)' }}>{content}</Text>
           </View>
         )}
       </ScrollView>
@@ -113,19 +113,19 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: 'var(--bg-surface)' },
   appBar: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
     paddingTop: 48, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(148, 163, 184, 0.2)'
   },
   iconBtn: { width: 40, height: 40, justifyContent: 'center' },
-  iconText: { fontSize: 24, color: '#1A1A1A' },
+  iconText: { fontSize: 24, color: 'var(--text-primary)' },
   appBarCenter: { flex: 1, alignItems: 'center' },
   saveBtn: { backgroundColor: '#5BA8F5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   saveBtnText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
   body: { flex: 1 },
   bodyContent: { padding: 24 },
   tagsSection: { marginBottom: 16 },
-  textArea: { fontSize: 16, lineHeight: 24, color: '#1A1A1A', minHeight: 300, textAlignVertical: 'top' },
+  textArea: { fontSize: 16, lineHeight: 24, color: 'var(--text-primary)', minHeight: 300, textAlignVertical: 'top' },
   previewArea: { minHeight: 300 }
 });

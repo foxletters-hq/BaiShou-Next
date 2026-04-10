@@ -4,6 +4,8 @@ import { MdOutlineHub, MdOutlineLan, MdChevronRight } from 'react-icons/md';
 import '../shared/SettingsListTile.css';
 import styles from './McpSettingsCard.module.css';
 
+import { SettingsExpansionTile } from '../shared/SettingsExpansionTile';
+
 export interface McpServerConfig {
   mcpEnabled: boolean;
   mcpPort: number;

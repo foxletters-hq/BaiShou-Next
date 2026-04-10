@@ -81,7 +81,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             flexDirection: 'row',
             alignItems: 'center',
             gap: 8,
-            shadowColor: '#000',
+            shadowColor: 'var(--text-primary)',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.15,
             shadowRadius: 16,

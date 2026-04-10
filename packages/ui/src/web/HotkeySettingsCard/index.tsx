@@ -30,21 +30,65 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
     onChange({ ...config, hotkeyModifier: modifier, hotkeyKey: keyStr });
   }, [config, onChange]);
 
+  const getEndKeyFromCode = useCallback((code: string): string | null => {
+    switch (code) {
+      case 'KeyA': case 'KeyB': case 'KeyC': case 'KeyD': case 'KeyE':
+      case 'KeyF': case 'KeyG': case 'KeyH': case 'KeyI': case 'KeyJ':
+      case 'KeyK': case 'KeyL': case 'KeyM': case 'KeyN': case 'KeyO':
+      case 'KeyP': case 'KeyQ': case 'KeyR': case 'KeyS': case 'KeyT':
+      case 'KeyU': case 'KeyV': case 'KeyW': case 'KeyX': case 'KeyY':
+      case 'KeyZ':
+      case 'Digit0': case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4':
+      case 'Digit5': case 'Digit6': case 'Digit7': case 'Digit8': case 'Digit9':
+      case 'Numpad0': case 'Numpad1': case 'Numpad2': case 'Numpad3': case 'Numpad4':
+      case 'Numpad5': case 'Numpad6': case 'Numpad7': case 'Numpad8': case 'Numpad9':
+        return code.slice(-1);
+      case 'Space': return 'Space';
+      case 'Enter': case 'NumpadEnter': return 'Return';
+      case 'ArrowUp': return 'Up';
+      case 'ArrowDown': return 'Down';
+      case 'ArrowLeft': return 'Left';
+      case 'ArrowRight': return 'Right';
+      case 'Escape': return 'Esc';
+      case 'Backquote': return '\`';
+      case 'Period': return '.';
+      case 'Slash': return '/';
+      case 'Semicolon': return ';';
+      case 'BracketLeft': return '[';
+      case 'BracketRight': return ']';
+      case 'Backslash': return '\\\\';
+      case 'Quote': return "'";
+      case 'Comma': return ',';
+      case 'Minus': return '-';
+      case 'Equal': return '=';
+      default: return null;
+    }
+  }, []);
+
   useEffect(() => {
     if (isRecording) {
       const handleKeyDown = (e: KeyboardEvent) => {
         e.preventDefault();
-        const key = e.key.toUpperCase();
-        if (['ALT', 'CONTROL', 'META', 'SHIFT'].includes(key)) return; 
-
+        
         let modifierStr = 'Alt';
         if (e.metaKey || e.ctrlKey) modifierStr = 'CommandOrControl';
-        if (e.altKey) modifierStr = 'Alt';
-        if (e.shiftKey) modifierStr = 'Shift';
+        else if (e.altKey) modifierStr = 'Alt';
+        else if (e.shiftKey) modifierStr = 'Shift';
+
+        const parsedKey = getEndKeyFromCode(e.code);
+        if (!parsedKey) return; // ignore modifier-only presses or unmapped keys
+
+        let finalKey = parsedKey;
+        if (finalKey === 'Return') finalKey = 'Enter';
+        if (finalKey === 'Esc') finalKey = 'Escape';
 
         setLocalModifier(modifierStr);
-        setLocalKey(key);
-        saveKey(modifierStr, key);
+        setLocalKey(finalKey);
+        
+        // Pass standard normalized format to backend (which expects Space, Up, Return etc)
+        // Convert display names back to canonical backend names if needed.
+        const backendKey = parsedKey === '\\\\' ? 'Backslash' : parsedKey;
+        saveKey(modifierStr, backendKey);
         setIsRecording(false);
       };
 
@@ -52,7 +96,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
     return undefined;
-  }, [isRecording, saveKey]);
+  }, [isRecording, saveKey, getEndKeyFromCode]);
 
   useEffect(() => {
     setLocalModifier(config.hotkeyModifier);

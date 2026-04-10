@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
+import { Edit3 } from 'lucide-react';
 import { SummaryCard } from '../SummaryCard';
 import './GalleryPanel.css';
 
@@ -36,10 +37,6 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) =>
 
   return (
     <div className="gallery-panel">
-      <div className="gallery-header">
-        <h3 className="gallery-title">{t('summary.memory_gallery', '记忆画廊')}</h3>
-      </div>
-      
       <div className="gallery-tabs-container">
         {(['weekly', 'monthly', 'quarterly', 'yearly'] as const).map(tab => (
           <button 
@@ -66,7 +63,8 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) =>
         ))}
         {filteredSummaries.length === 0 && (
           <div className="gallery-empty-state">
-            {t('diary.no_content', '暂无内容')}
+            <Edit3 size={48} className="gallery-empty-icon" />
+            <div className="gallery-empty-text">{t('diary.no_content', '暂无内容')}</div>
           </div>
         )}
       </div>

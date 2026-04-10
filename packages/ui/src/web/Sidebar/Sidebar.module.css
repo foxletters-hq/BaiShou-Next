@@ -3,8 +3,8 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--color-surface);
-  border-right: 1px solid rgba(128, 128, 128, 0.15);
+  background: var(--bg-app);
+  border-right: 1px solid var(--border-subtle);
   font-family: var(--font-family-main);
   user-select: none;
 }
@@ -73,21 +73,18 @@
 }
 
 .navItem:hover {
-  background: var(--color-surface-highest-light);
-}
-
-[data-theme="dark"] .navItem:hover {
-  background: var(--color-surface-highest-dark);
+  background: var(--bg-surface-high);
 }
 
 .navItem.active {
-  background: rgba(91, 168, 245, 0.15); /* primary slightly transparent */
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .navItem.dragging {
   opacity: 0.5;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  background: var(--color-surface);
+  background: var(--bg-surface);
 }
 
 .dragHandle {

@@ -37,7 +37,6 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
 }) => {
   const { t } = useTranslation();
   const displayTitle = session.title || t('agent.sessions.new_chat', '新的对话');
-  const fallbackSnippet = t('agent.sessions.empty_history', '暂无聊天记录...');
   
   // A simple relative time formatter fallback
   const formatTime = (ts?: number) => {
@@ -87,20 +86,22 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
             )}
          </div>
 
-         <div className={styles.bodyRow}>
-            <div className={styles.avatarBox}>
-               {typeof session.avatar === 'string' && session.avatar.startsWith('http') ? (
-                 <img src={session.avatar} alt="伙伴" className={styles.avatarImg} />
-               ) : session.avatar ? (
-                 session.avatar
-               ) : (
-                 <Bot size={14} />
-               )}
-            </div>
-            <span className={styles.snippet}>
-               {session.snippet || fallbackSnippet}
-            </span>
-         </div>
+         {session.snippet && (
+           <div className={styles.bodyRow}>
+              {session.avatar && (
+                <div className={styles.avatarBox}>
+                   {typeof session.avatar === 'string' && session.avatar.startsWith('http') ? (
+                     <img src={session.avatar} alt="伙伴" className={styles.avatarImg} />
+                   ) : (
+                     session.avatar
+                   )}
+                </div>
+              )}
+              <span className={styles.snippet}>
+                 {session.snippet}
+              </span>
+           </div>
+         )}
 
          {/* Hover Actions (Replacing clunky menus) */}
          <div className={styles.actionsBox}>

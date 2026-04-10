@@ -18,17 +18,17 @@
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
 }
 
 .subtitle {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .cardSection {
-  background: var(--color-surface);
+  background: var(--bg-surface);
   border: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
   border-radius: 12px;
   padding: 20px;
@@ -39,7 +39,7 @@
   align-items: center;
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   gap: 8px;
   margin-bottom: 4px;
 }
@@ -47,13 +47,13 @@
 .cardDesc {
   margin: 0 0 16px 0;
   font-size: 0.85rem;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .btnGroup {
   display: flex;
   gap: 8px;
-  background-color: var(--color-surface-container-low);
+  background-color: var(--bg-app);
   padding: 4px;
   border-radius: 8px;
   width: fit-content;
@@ -65,7 +65,7 @@
   border-radius: 6px;
   padding: 6px 16px;
   font-size: 0.85rem;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -101,7 +101,7 @@
   border-radius: 6px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -133,7 +133,7 @@
   border-radius: 8px;
   border: 1px solid var(--color-outline-variant);
   background: transparent;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   font-family: inherit;
   font-size: 0.85rem;
   line-height: 1.5;
@@ -188,7 +188,7 @@
 
 .resetBtn:hover {
   background: rgba(0, 0, 0, 0.05);
-  color: var(--color-on-surface);
+  color: var(--text-primary);
 }
 
 :global(body[data-theme='dark']) .resetBtn:hover {
@@ -228,13 +228,13 @@
 }
 
 .infoIcon {
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   font-size: 1.2rem;
 }
 
 .infoDesc {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   line-height: 1.5;
 }

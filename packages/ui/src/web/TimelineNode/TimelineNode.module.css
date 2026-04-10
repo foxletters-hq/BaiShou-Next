@@ -73,14 +73,14 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 0 0 4px var(--color-surface); /* cuts off the line */
+  box-shadow: 0 0 0 4px var(--bg-surface); /* cuts off the line */
   z-index: 2;
 }
 
 .dotInner {
   width: 6px;
   height: 6px;
-  background: var(--color-surface);
+  background: var(--bg-surface);
   border-radius: 50%;
 }
 

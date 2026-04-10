@@ -15,11 +15,12 @@
 }
 
 .container:hover {
-  background-color: rgba(224, 242, 254, 0.2);
+  background-color: var(--bg-surface);
 }
 
 .selected {
-  background-color: rgba(224, 242, 254, 0.5);
+  background-color: var(--bg-surface-normal);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 /* Header Line (Title & Time) */
@@ -80,8 +81,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
-  color: var(--color-primary, #5BA8F5);
+  background-color: var(--bg-surface-lowest);
+  color: var(--text-secondary);
   flex-shrink: 0;
   font-size: 12px;
   overflow: hidden;

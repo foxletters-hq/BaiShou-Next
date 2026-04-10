@@ -153,7 +153,7 @@
 }
 
 .placeholderText {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
@@ -168,7 +168,7 @@
   font-weight: 600;
   text-transform: uppercase;
   background: #f0f0f0;
-  color: #555;
+  color: var(--text-secondary);
   padding: 2px 8px;
   border-radius: 4px;
   letter-spacing: 0.5px;
@@ -191,5 +191,5 @@
 
 .dropdownIcon {
   font-size: 10px;
-  color: #888;
+  color: var(--text-tertiary);
 }

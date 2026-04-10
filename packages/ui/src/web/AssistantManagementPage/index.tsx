@@ -20,6 +20,7 @@ export interface AssistantInfo {
   createdAt?: number;
   lastUsedAt?: number;
   useCount?: number;
+  avatarPath?: string;
 }
 
 export type SortMode = 'name' | 'newest' | 'frequent';
@@ -98,33 +99,18 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
 
   return (
     <div className={styles.page}>
-      {/* App Bar -- 带战况雷达和微操控制器 */}
+
+
+      {/* AppBar */}
       <div className={styles.appBar}>
         <div className={styles.appBarTitle}>
-           <Cpu size={24} color="var(--color-primary, #5BA8F5)" />
-           {t('agent.assistant.management_title', '伙伴指控大本营')}
+          {t('agent.assistant.title', '伙伴管理')}
         </div>
-        
         <div className={styles.appBarControls}>
-           <div className={styles.searchBox}>
-              <Search size={16} color="var(--text-secondary)"/>
-              <input 
-                 className={styles.searchInput}
-                 placeholder={t('assistant.search_placeholder', '通过名称检索...')}
-                 value={searchQuery}
-                 onChange={(e) => setSearchQuery(e.target.value)}
-              />
-           </div>
-           
-           <select 
-              className={styles.sortSelect} 
-              value={sortMode} 
-              onChange={(e) => setSortMode(e.target.value as SortMode)}
-           >
-              <option value="newest">{t('assistant.sort_newest', '按创建时间')}</option>
-              <option value="frequent">{t('assistant.sort_frequent', '按使用频率')}</option>
-              <option value="name">{t('assistant.sort_name', '按名称字母排序')}</option>
-           </select>
+          <button className={styles.createBtn} onClick={onCreate}>
+            <Plus size={18} />
+            {t('agent.assistant.create_new', '新增伙伴')}
+          </button>
         </div>
       </div>
 
@@ -142,14 +128,6 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
         </div>
       ) : (
         <div className={styles.grid}>
-          
-          {/* Create Button (始终保持第一个可用槽位或追加为卡) 为了对标原版我们放一个卡片式按钮在这里或最后 */}
-          <div className={styles.addCard} onClick={onCreate}>
-            <div className={styles.addIcon}><Plus size={32} /></div>
-            <span className={styles.addText}>
-              {t('agent.assistant.create_new', '召唤全新镜像节点')}
-            </span>
-          </div>
 
           {processedAssistants.map((assistant) => {
   const isPinned = pinnedIds.has(assistant.id);
@@ -162,28 +140,9 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                 {/* Secret Hover Actions */}
                 <div className={styles.cardActions}>
                   <button
-                    className={styles.cardActionBtn}
-                    title={isPinned ? '取消置顶锁定' : '置顶锁定特权'}
-                    onClick={(e) => {
-  e.stopPropagation(); onTogglePin(assistant.id); }}
-                  >
-                    {isPinned ? <PinOff size={15}/> : <Pin size={15}/>}
-                  </button>
-                  {onClone && (
-                     <button
-                        className={styles.cardActionBtn}
-                        title="裂变克隆本位体"
-                        onClick={(e) => {
-  e.stopPropagation(); onClone(assistant); }}
-                     >
-                        <Copy size={15}/>
-                     </button>
-                  )}
-                  <button
                     className={`${styles.cardActionBtn} ${styles.cardActionBtnDanger}`}
-                    title="格式化粉碎"
+                    title={t('common.delete', '删除')}
                     onClick={(e) => {
-
  e.stopPropagation(); setDeleteTargetId(assistant.id); }}
                   >
                     <Trash2 size={15}/>
@@ -193,7 +152,20 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                 {/* Header Information */}
                 <div className={styles.cardHeader}>
                   <div className={styles.cardAvatar}>
-                    {assistant.emoji || '🤖'}
+                    {assistant.avatarPath ? (
+                      <div 
+                        style={{
+                          width: '100%', 
+                          height: '100%', 
+                          borderRadius: '50%', 
+                          backgroundImage: `url("${assistant.avatarPath.replace(/\\/g, '/')}")`, 
+                          backgroundSize: 'cover', 
+                          backgroundPosition: 'center'
+                        }} 
+                      />
+                    ) : (
+                      assistant.emoji || '🤖'
+                    )}
                   </div>
                   <div className={styles.cardInfo}>
                     <div className={styles.cardNameRow}>
@@ -206,18 +178,6 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                 {/* Main Readout */}
                 <div className={styles.cardDesc}>
                   {assistant.description || assistant.systemPrompt || t('agent.assistant.no_prompt', '⚠️ 空白系统协议流...')}
-                </div>
-
-                {/* Footnotes & Metadata Tracking */}
-                <div className={styles.cardMeta}>
-                  <span className={styles.cardMetaTag}>
-                    <Activity size={12}/> CTX: {formatContextWindow(assistant.contextWindow)}
-                  </span>
-                  {assistant.modelId && (
-                    <span className={styles.cardMetaTag} title={assistant.providerId}>
-                      ✨ {assistant.modelId.length > 14 ? assistant.modelId.substring(0,14)+'...' : assistant.modelId}
-                    </span>
-                  )}
                 </div>
               </div>
             );
@@ -236,13 +196,16 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
             className={styles.dialogBox}
             onClick={(e) => e.stopPropagation()}
           >
+            <div className={styles.dialogHeaderIcon}>
+               <Trash2 size={32} color="var(--color-error, #F44336)" />
+            </div>
             <div className={styles.dialogTitle}>
-              {t('agent.assistant.delete_confirm_title', '特级警告：抹除智能体？')}
+              {t('agent.assistant.delete_confirm_title', '特级警告：抹除心智模式？')}
             </div>
             <div className={styles.dialogText}>
               {t(
                 'agent.assistant.delete_confirm_content',
-                '彻底删除该助手后关联设置将遗失。这是一个不可逆操作！',
+                '确认要永久销毁此智能体的全部数据吗？一旦抹除将不可撤销。',
               )}
             </div>
             <div className={styles.dialogActions}>
@@ -250,7 +213,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                 className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`}
                 onClick={() => setDeleteTargetId(null)}
               >
-                {t('common.cancel', '暂缓执行')}
+                {t('common.cancel', '暂缓')}
               </button>
               <button
                 className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`}

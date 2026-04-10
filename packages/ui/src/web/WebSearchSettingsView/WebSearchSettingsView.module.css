@@ -7,18 +7,15 @@
 
 /* Flutter Card with Elevation 0 + Border */
 .cardSection {
-  background-color: var(--color-surface, #FFFFFF);
-  border: 1px solid rgba(208, 208, 208, 0.7); /* outlineVariant */
+  background: var(--bg-surface);
+  border: 1px solid transparent; /* outlineVariant */
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-[data-theme="dark"] .cardSection {
-  background-color: var(--color-surface-dark, #121212);
-  border-color: rgba(255, 255, 255, 0.15);
-}
+
 
 .cardHeader {
   padding: 16px 16px 8px 16px;
@@ -27,23 +24,19 @@
 .cardTitle {
   font-size: 16px;
   font-weight: 700;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
   margin: 0;
 }
 
-[data-theme="dark"] .cardTitle {
-  color: rgba(255, 255, 255, 0.9);
-}
+
 
 .cardDesc {
   font-size: 12px;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
   margin-top: 8px;
 }
 
-[data-theme="dark"] .cardDesc {
-  color: rgba(255, 255, 255, 0.6);
-}
+
 
 .cardBody {
   display: flex;
@@ -56,16 +49,14 @@
   align-items: center;
   padding: 12px 16px;
   margin: 6px 16px;
-  border: 1px solid rgba(208, 208, 208, 0.6);
+  border: 1px solid transparent;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.17, 0.89, 0.32, 1.15);
   background-color: transparent;
 }
 
-[data-theme="dark"] .radioListTile {
-  border-color: rgba(255, 255, 255, 0.15);
-}
+
 
 .radioListTile:hover {
   background-color: rgba(128, 128, 128, 0.05);
@@ -73,14 +64,11 @@
 }
 
 .radioSelected {
-  border-color: var(--color-primary, #0056D2);
-  background-color: rgba(0, 86, 210, 0.05) !important;
+  border-color: var(--color-primary);
+  background-color: var(--bg-surface-high) !important;
 }
 
-[data-theme="dark"] .radioSelected {
-  background-color: rgba(91, 168, 245, 0.1) !important;
-  border-color: var(--color-primary, #5ba8f5);
-}
+
 
 .radioInput {
   display: none;
@@ -105,24 +93,20 @@
 }
 
 .radioSelected .radioCustomRing {
-  border-color: var(--color-primary, #0056D2);
+  border-color: var(--color-primary);
 }
 
-[data-theme="dark"] .radioSelected .radioCustomRing {
-  border-color: var(--color-primary, #5ba8f5);
-}
+
 
 .radioCustomDot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background-color: var(--color-primary, #0056D2);
+  background-color: var(--color-primary);
   animation: popIn 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.15);
 }
 
-[data-theme="dark"] .radioCustomDot {
-  background-color: var(--color-primary, #5ba8f5);
-}
+
 
 .radioContent {
   display: flex;
@@ -133,21 +117,17 @@
 
 .radioTitle {
   font-size: 14px;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
 }
 
-[data-theme="dark"] .radioTitle {
-  color: rgba(255, 255, 255, 0.9);
-}
+
 
 .radioSubtitle {
   font-size: 13px;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
 }
 
-[data-theme="dark"] .radioSubtitle {
-  color: rgba(255, 255, 255, 0.6);
-}
+
 
 /* API Config Card */
 .apiConfigBody {
@@ -173,18 +153,14 @@
   padding: 3px 7px; /* compensate for border-width */
 }
 
-[data-theme="dark"] .textFieldWrapper {
-  border-color: rgba(255, 255, 255, 0.2);
-}
+
 
 .textFieldIcon {
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
   margin: 0 8px;
 }
 
-[data-theme="dark"] .textFieldIcon {
-  color: rgba(255, 255, 255, 0.6);
-}
+
 
 .textFieldInput {
   flex: 1;
@@ -193,12 +169,10 @@
   background: transparent;
   padding: 8px 0;
   font-size: 14px;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
 }
 
-[data-theme="dark"] .textFieldInput {
-  color: rgba(255, 255, 255, 0.9);
-}
+
 
 .iconIconButton {
   background: transparent;
@@ -209,7 +183,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -218,13 +192,9 @@
   background: rgba(0, 0, 0, 0.08);
 }
 
-[data-theme="dark"] .iconIconButton {
-  color: rgba(255, 255, 255, 0.6);
-}
 
-[data-theme="dark"] .iconIconButton:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
+
+
 
 /* Slider Row */
 .sliderRow {
@@ -240,15 +210,13 @@
 }
 
 .sliderIcon {
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
   margin-right: 12px;
   font-size: 20px;
   opacity: 0.8;
 }
 
-[data-theme="dark"] .sliderIcon {
-  color: rgba(255, 255, 255, 0.6);
-}
+
 
 .sliderTextGroup {
   display: flex;
@@ -259,22 +227,18 @@
 .sliderTitle {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--text-primary);
 }
 
-[data-theme="dark"] .sliderTitle {
-  color: rgba(255, 255, 255, 0.9);
-}
+
 
 .sliderDesc {
   font-size: 12px;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
   margin-top: 2px;
 }
 
-[data-theme="dark"] .sliderDesc {
-  color: rgba(255, 255, 255, 0.5);
-}
+
 
 .sliderControlRow {
   display: flex;
@@ -311,9 +275,7 @@
   transition: transform 0.15s cubic-bezier(0.17, 0.89, 0.32, 1.15);
 }
 
-[data-theme="dark"] .sliderInput::-webkit-slider-thumb {
-  background: var(--color-primary, #5ba8f5);
-}
+
 
 .sliderInput::-webkit-slider-thumb:hover {
   transform: scale(1.2);
@@ -330,10 +292,7 @@
   border-radius: 6px;
 }
 
-[data-theme="dark"] .sliderValue {
-  color: var(--color-primary, #5ba8f5);
-  background: rgba(91, 168, 245, 0.15);
-}
+
 
 /* Switch Tile */
 .switchTile {
@@ -343,14 +302,12 @@
 }
 
 .switchIcon {
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-primary);
   margin-right: 12px;
   font-size: 20px;
 }
 
-[data-theme="dark"] .switchIcon {
-  color: rgba(255, 255, 255, 0.6);
-}
+
 
 .switchTextGroup {
   display: flex;
@@ -379,7 +336,7 @@
   left: 0; 
   right: 0; 
   bottom: 0;
-  background-color: var(--color-surface-container-highest, #E2E2E2); 
+  background: var(--bg-surface); 
   transition: .2s; 
   border-radius: 24px;
   border: 2px solid transparent;
@@ -406,23 +363,17 @@
   background-color: var(--color-on-primary, #FFFFFF);
 }
 
-[data-theme="dark"] .switchSlider {
-  background-color: rgba(255, 255, 255, 0.1);
-}
 
-[data-theme="dark"] .switchSlider:before {
-  background-color: rgba(255, 255, 255, 0.6);
-}
+
+
 
 .divider {
   height: 1px;
-  background-color: rgba(208, 208, 208, 0.5);
+  background-color: transparent;
   margin: 0;
 }
 
-[data-theme="dark"] .divider {
-  background-color: rgba(255, 255, 255, 0.1);
-}
+
 
 @keyframes popIn {
   0% { transform: scale(0); opacity: 0; }

@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   bubbleAssistant: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-surface)',
     borderBottomLeftRadius: 4,
   },
   text: {
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   textAssistant: {
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
   },
   actionBtn: {
     marginLeft: 8,
@@ -71,6 +71,6 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 12,
-    color: '#888',
+    color: 'var(--text-tertiary)',
   }
 });

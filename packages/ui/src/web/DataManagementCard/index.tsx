@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdOutlineStorage, MdOutlineDownload, MdOutlineUploadFile, MdHistory, MdChevronRight } from 'react-icons/md';
+import { MdOutlineStorage, MdOutlineDownload, MdOutlineUploadFile, MdHistory, MdChevronRight, MdOutlineArchive } from 'react-icons/md';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
 import '../shared/SettingsListTile.css';
@@ -119,7 +119,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
               snapshots.map(sn => (
                 <button key={sn.filename} className="settings-list-tile" onClick={() => handleRestoreSnapshot(sn)} disabled={isImporting}>
                   <div className="settings-list-tile-leading">
-                    <MdHistory size={20} />
+                    <MdOutlineArchive size={22} />
                   </div>
                   <div className="settings-list-tile-content">
                     <span className="settings-list-tile-title">{sn.timeLabel}</span>

@@ -1,15 +1,11 @@
 .dashboard-shared-memory-card {
-  padding: 24px;
+  padding: 20px;
   background: var(--bg-surface, #fff);
-  border-radius: 20px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.3s ease;
-}
-
-.dashboard-shared-memory-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  /* Removed hover box-shadow to match stats card */
 }
 
 .sm-header {
@@ -75,43 +71,39 @@
 
 .sm-slider-container {
   width: 100%;
+  padding: 8px 0;
 }
 
 .sm-slider {
   -webkit-appearance: none;
   width: 100%;
   height: 6px;
-  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
-  border-radius: 6px;
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.24);
+  border-radius: 3px;
   outline: none;
-  /* background size for custom gradient track managed via inline style */
   background-image: linear-gradient(var(--color-primary, #5BA8F5), var(--color-primary, #5BA8F5));
   background-repeat: no-repeat;
-  transition: background-size 0.2s ease-out; /* Smooth transition */
 }
 
-/* Custom Webkit Thumb */
+/* Material Design Thumb */
 .sm-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
-  border: 2px solid var(--color-primary, #5BA8F5);
+  background: var(--color-primary, #5BA8F5);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
+  transition: box-shadow 0.2s;
+  box-shadow: 0 0 0 0 rgba(var(--color-primary-rgb, 91, 168, 245), 0);
 }
 
 .sm-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 4px 10px rgba(91, 168, 245, 0.3);
+  box-shadow: 0 0 0 10px rgba(var(--color-primary-rgb, 91, 168, 245), 0.16);
 }
 
 .sm-slider::-webkit-slider-thumb:active {
-  transform: scale(1.1);
-  box-shadow: 0 2px 4px rgba(91, 168, 245, 0.4);
+  box-shadow: 0 0 0 14px rgba(var(--color-primary-rgb, 91, 168, 245), 0.24);
 }
 
 .sm-btn {
@@ -119,19 +111,16 @@
   color: #ffffff;
   border: none;
   border-radius: 12px;
-  padding: 12px;
+  padding: 14px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.25);
+  transition: opacity 0.2s;
 }
 
 .sm-btn:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.05);
-  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.35);
+  opacity: 0.9;
 }

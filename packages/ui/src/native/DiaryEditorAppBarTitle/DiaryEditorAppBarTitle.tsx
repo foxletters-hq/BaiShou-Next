@@ -58,10 +58,10 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
   },
   titleIcon: {
     fontSize: 10,
-    color: '#475569',
+    color: 'var(--text-secondary)',
   }
 });

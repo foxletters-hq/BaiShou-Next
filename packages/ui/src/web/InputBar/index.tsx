@@ -9,7 +9,8 @@ import {
   Paperclip, Zap, Wrench, Globe, BookOpen, 
   FileText, Folder, X, ArrowUp, LayoutGrid, Menu, Square 
 } from 'lucide-react';
-import { MdSend, MdStop } from 'react-icons/md';
+import { MdSend, MdStop, MdApps } from 'react-icons/md';
+
 export interface InputBarProps {
   isLoading: boolean;
   onSend: (text: string, attachments?: MockChatAttachment[]) => void;
@@ -18,6 +19,7 @@ export interface InputBarProps {
   onAssistantTap?: () => void;
   onRecall?: () => void;
   onTriggerShortcut?: () => void;
+  onOpenTools?: () => void;
 }
 
 export interface InputBarRef {
@@ -26,7 +28,6 @@ export interface InputBarRef {
 }
 
 export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
-
   isLoading,
   onSend,
   onStop,
@@ -34,36 +35,37 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   onAssistantTap,
   onRecall,
   onTriggerShortcut,
+  onOpenTools
 }, ref) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([]);
-  const [showToolbar, setShowToolbar] = useState(true);
+  const [showToolbar, setShowToolbar] = useState(false);
   const [searchMode, setSearchMode] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toast = useToast();
 
   useImperativeHandle(ref, () => ({
     insertText: (newText) => {
-  setText((prev) => prev ? `${prev}\n${newText}` : newText);
+      setText((prev) => prev ? `${prev}\n${newText}` : newText);
       setTimeout(() => {
-  if (textareaRef.current) textareaRef.current.focus();
+        if (textareaRef.current) textareaRef.current.focus();
       }, 0);
     },
     focus: () => {
-  if (textareaRef.current) textareaRef.current.focus();
+      if (textareaRef.current) textareaRef.current.focus();
     }
   }));
 
   useEffect(() => {
-  if (textareaRef.current) {
+    if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`; // approx 6 lines
     }
   }, [text]);
 
   const handleSend = () => {
-  if ((!text.trim() && attachments.length === 0) || isLoading) return;
+    if ((!text.trim() && attachments.length === 0) || isLoading) return;
     onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined);
     setText('');
     setAttachments([]);
@@ -73,7 +75,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -83,7 +85,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePickFiles = async () => {
-  // Phase 10: Use Electron Native `dialog` if available
+    // Phase 10: Use Electron Native `dialog` if available
     // @ts-ignore
     if (typeof window !== 'undefined' && window.api && window.api.pickFiles) {
       try {
@@ -105,12 +107,12 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   };
 
   const handleNativeWebFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  if (!e.target.files?.length) return;
+    if (!e.target.files?.length) return;
     
     // Simulate reading via standard Web File API and converting to MockChatAttachment
     // Note: In a complete implementation we might read Blob/DataURL
     const newAtts = Array.from(e.target.files).map(file => {
-  const isImage = file.type.startsWith('image/');
+      const isImage = file.type.startsWith('image/');
       const isPdf = file.type === 'application/pdf';
       return {
         id: Math.random().toString(36).substring(7),
@@ -128,9 +130,6 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   };
 
   const handleOpenToolManager = () => {
-
-
-    // TODO: Connect this to actual Agent Screen props event when agent UI needs Tool Modals
     toast.showSuccess(t('agent.tools.tool_call') + ' Manager Triggered');
   };
 
@@ -153,16 +152,14 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   const toggleSearchMode = () => setSearchMode(prev => !prev);
 
   const QuickActionChip = ({ icon, label, onClick, isActive = false }: { icon: React.ReactNode, label: string, onClick?: () => void, isActive?: boolean }) => (
-    <motion.button 
+    <button 
       className={`${styles.quickActionChip} ${isActive ? styles.chipActive : ''}`} 
       onClick={onClick} 
       type="button"
-      whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(71, 85, 105, 0.06)' }}
-      whileTap={{ scale: 0.96 }}
     >
       <span className={styles.chipIcon}>{icon}</span>
       <span className={styles.chipLabel}>{label}</span>
-    </motion.button>
+    </button>
   );
 
   return (
@@ -181,14 +178,14 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
             <motion.div 
               className={styles.toolbarWrapper}
               initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-              animate={{ height: 'auto', opacity: 1, marginBottom: 8 }}
+              animate={{ height: 'auto', opacity: 1, marginBottom: 2 }}
               exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-              transition={{ duration: 0.25, type: 'spring', bounce: 0, stiffness: 200 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
             >
                <div className={styles.toolbarScroll}>
                   <QuickActionChip icon={<Paperclip size={14} />} label={t('input.upload_attachment', '上传附件')} onClick={handlePickFiles} />
                   <QuickActionChip icon={<Zap size={14} />} label={t('input.shortcut_command', '快捷指令')} onClick={handlePromptShortcut} />
-                  <QuickActionChip icon={<Wrench size={14} />} label={t('agent.tools.tool_call')} onClick={handleOpenToolManager} />
+                  <QuickActionChip icon={<Wrench size={14} />} label={t('agent.tools.tool_call')} onClick={onOpenTools || handleOpenToolManager} />
                   <QuickActionChip 
                     icon={searchMode ? <Globe size={14} /> : <span style={{opacity: 0.5}}><Globe size={14} /></span>} 
                     label={searchMode ? t('settings.web_search_mode_tool') : t('settings.web_search_mode_off')} 
@@ -276,14 +273,6 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
            </div>
         </div>
       </div>
-      {/* 底部小托盘：显示当前助手 */}
-      {assistantName && (
-        <div className={styles.assistantIndicator} onClick={onAssistantTap}>
-           <span className={styles.botIcon}>🤖</span>
-           {t('agent.chat.current_assistant', '协同分身:')} 
-           <span className={styles.botName}>{assistantName}</span>
-        </div>
-      )}
     </div>
   );
 });

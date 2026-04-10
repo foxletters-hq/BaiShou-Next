@@ -16,7 +16,7 @@
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
-  background-color: var(--color-primary-container, #E3F2FD);
+  background-color: var(--bg-surface-normal);
 }
 
 .avatarFallback {
@@ -28,8 +28,8 @@
   justify-content: center;
   font-weight: 600;
   font-family: var(--font-family, sans-serif);
-  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.6);
-  color: var(--color-primary, #5BA8F5);
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
   font-size: 18px;
 }
 
@@ -50,7 +50,7 @@
 
 .bubbleCard {
   padding: 12px 16px;
-  background-color: var(--bg-surface-highlight, #F2F2F2);
+  background-color: var(--bg-surface-normal);
   border-radius: 4px 20px 20px 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   width: 100%;
@@ -64,7 +64,7 @@
 .toolGroupCard {
   margin-bottom: 8px;
   padding: 12px;
-  background-color: var(--bg-surface-highlight, #FAFAFA);
+  background-color: var(--bg-surface-high);
   border-radius: 16px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
@@ -78,7 +78,7 @@
 .toolIcon {
   width: 28px;
   height: 28px;
-  background-color: rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.5);
+  background-color: var(--color-primary-light);
   border-radius: 7px;
   display: flex;
   align-items: center;
@@ -194,10 +194,10 @@
   margin-top: 4px;
   padding: 10px 16px;
   border-radius: 8px;
-  background: linear-gradient(90deg, rgba(0,0,0,0.02) 25%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.02) 75%);
+  background: linear-gradient(90deg, rgba(128,128,128,0.05) 25%, rgba(128,128,128,0.15) 50%, rgba(128,128,128,0.05) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite linear;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   font-size: 13px;
   display: flex;
   align-items: center;

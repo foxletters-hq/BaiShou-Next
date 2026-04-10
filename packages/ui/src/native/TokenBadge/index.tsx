@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 12,
-    color: '#475569',
+    color: 'var(--text-secondary)',
     fontWeight: '500',
   }
 });

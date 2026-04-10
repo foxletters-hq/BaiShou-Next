@@ -21,7 +21,7 @@ export const Modal: React.FC<NativeModalProps> = ({ title, onClose, children, tr
               borderRadius: tokens.radius.lg, 
               padding: tokens.spacing.lg,
               elevation: 5,
-              shadowColor: '#000',
+              shadowColor: 'var(--text-primary)',
               shadowOpacity: 0.25,
               shadowRadius: 4,
               shadowOffset: { width: 0, height: 2 },

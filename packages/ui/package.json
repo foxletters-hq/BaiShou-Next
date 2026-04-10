@@ -45,17 +45,20 @@
     "@milkdown/preset-commonmark": "^7.5.4",
     "@milkdown/preset-gfm": "^7.5.4",
     "@milkdown/react": "^7.5.4",
-    "prosemirror-model": "^1.24.1",
-    "prosemirror-state": "^1.4.3",
-    "prosemirror-view": "^1.37.2",
     "colord": "^2.9.3",
+    "country-flag-emoji-polyfill": "^0.1.8",
     "date-fns": "^4.1.0",
+    "emoji-picker-element": "^1.29.1",
+    "emoji-picker-element-data": "^1.8.0",
     "expo-document-picker": "^55.0.11",
     "framer-motion": "^12.38.0",
     "highlight.js": "^11.11.1",
     "i18next": "^26.0.3",
     "katex": "^0.16.44",
     "lucide-react": "^1.7.0",
+    "prosemirror-model": "^1.24.1",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-view": "^1.37.2",
     "react-datepicker": "^9.1.0",
     "react-easy-crop": "^5.5.7",
     "react-i18next": "^17.0.2",
@@ -66,4 +69,3 @@
     "remark-math": "^6.0.0"
   }
 }
-

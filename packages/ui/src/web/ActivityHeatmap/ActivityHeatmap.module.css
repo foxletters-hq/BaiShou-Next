@@ -1,6 +1,6 @@
 .container {
   padding: 24px;
-  background: var(--color-surface);
+  background: var(--bg-surface);
   border: 1px solid rgba(128, 128, 128, 0.15);
   border-radius: 16px;
   font-family: var(--font-family-main);

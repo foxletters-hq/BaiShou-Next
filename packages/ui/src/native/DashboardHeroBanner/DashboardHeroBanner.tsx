@@ -32,12 +32,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
     zIndex: 1,
   },
   subtitle: {
     fontSize: 14,
-    color: '#475569',
+    color: 'var(--text-secondary)',
     marginTop: 8,
     zIndex: 1,
   },

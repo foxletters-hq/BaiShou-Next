@@ -10,12 +10,29 @@ interface DashboardStatsCardProps {
   totalYearlyCount: number;
 }
 
-const SolidBook = () => <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,2H6C4.89,2 4,2.89 4,4V20C4,21.11 4.89,22 6,22H19C20.11,22 21,21.11 21,20V4C21,2.89 20.11,2 19,2M14,10C14,10 13.5,9.5 13,9.5C12.5,9.5 12,10 12,10V4H14V10Z" /></svg>;
-const SolidCalendar = () => <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,4H18V2H16V4H8V2H6V4H5C3.89,4 3.01,4.9 3.01,6L3,20C3,21.1 3.89,22 5,22H19C20.1,22 21,21.1 21,20V6C21,4.9 20.1,4 19,4M19,20H5V10H19V20Z" /></svg>;
-const SolidFolder = () => <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M10,4H4C2.89,4 2,4.89 2,6V18C2,19.1 2.89,20 4,20H20C21.1,20 22,19.1 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" /></svg>;
-const SolidPieChart = () => <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2 0v8h8c-.5-4.08-3.92-7.5-8-8zm0 10v10c4.08-.5 7.5-3.92 8-8h-8z"/></svg>;
-const SolidDateRange = () => <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 11H7V13H9V11ZM13 11H11V13H13V11ZM17 11H15V13H17V11ZM19 4H18V2H16V4H8V2H6V4H5C3.89 4 3 4.9 3 6V20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V9H19V20Z" /></svg>;
-const SolidChart = () => <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>;
+const MatAnalytics = ({ color, size }: { color: string, size: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={color}><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-5h2v5zm4 0h-2V7h2v10zm4 0h-2v-3h2v3z"/></svg>
+);
+
+const MatBook = ({ color, size }: { color: string, size: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={color}><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+);
+
+const MatViewWeek = ({ color, size }: { color: string, size: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={color}><path d="M4 5h4v14H4zm6 0h4v14h-4zm6 0h4v14h-4z"/></svg>
+);
+
+const MatGridView = ({ color, size }: { color: string, size: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={color}><path d="M3 11h8V3H3v8zm0 10h8v-8H3v8zm10 0h8v-8h-8v8zm0-18v8h8V3h-8z"/></svg>
+);
+
+const MatDateRange = ({ color, size }: { color: string, size: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={color}><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+);
+
+const MatCalendarToday = ({ color, size }: { color: string, size: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={color}><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
+);
 
 export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
   totalDiaryCount,
@@ -28,9 +45,7 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
 
   const renderStatTile = (icon: React.ReactNode, count: number, label: string, colorVariant: string) => (
     <div className={`stats-tile ${colorVariant}`}>
-      <div className="stats-icon-wrapper">
-        <span className="stats-icon">{icon}</span>
-      </div>
+      <span className="stats-icon">{icon}</span>
       <div className="stats-info">
         <div className="stats-count">{count}</div>
         <div className="stats-label">{label}</div>
@@ -41,9 +56,9 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
   return (
     <div className="dashboard-stats-card">
       <div className="stats-header">
-        <span className="stats-header-icon" style={{ color: '#16a34a' }}>
-          <SolidChart />
-        </span>
+        <div className="stats-header-icon">
+          <MatAnalytics size={20} color="#43A047" /> 
+        </div>
         <span className="stats-header-title">
           {t('common.app_title', '白守')} · {t('summary.stats_panel', '统计面板')}
         </span>
@@ -51,15 +66,15 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
 
       <div className="stats-grid">
         <div className="stats-row">
-          {renderStatTile(<SolidBook />, totalDiaryCount, t('summary.stats_daily', '日记总数'), 'color-green')}
-          {renderStatTile(<SolidCalendar />, totalWeeklyCount, t('summary.stats_weekly', '周统总数'), 'color-indigo')}
+          {renderStatTile(<MatBook size={22} color="#4CAF50" />, totalDiaryCount, t('summary.stats_daily', '日记总数'), 'color-green')}
+          {renderStatTile(<MatViewWeek size={22} color="#3F51B5" />, totalWeeklyCount, t('summary.stats_weekly', '周统总数'), 'color-indigo')}
         </div>
         <div className="stats-row">
-          {renderStatTile(<SolidFolder />, totalMonthlyCount, t('summary.stats_monthly', '月统总数'), 'color-blue')}
-          {renderStatTile(<SolidPieChart />, totalQuarterlyCount, t('summary.stats_quarterly', '季统总数'), 'color-amber')}
+          {renderStatTile(<MatGridView size={22} color="#2196F3" />, totalMonthlyCount, t('summary.stats_monthly', '月统总数'), 'color-blue')}
+          {renderStatTile(<MatDateRange size={22} color="#FBC02D" />, totalQuarterlyCount, t('summary.stats_quarterly', '季统总数'), 'color-amber')}
         </div>
         <div className="stats-row full">
-          {renderStatTile(<SolidDateRange />, totalYearlyCount, t('summary.stats_yearly', '年统总数'), 'color-orange')}
+          {renderStatTile(<MatCalendarToday size={22} color="#FF9800" />, totalYearlyCount, t('summary.stats_yearly', '年统总数'), 'color-orange')}
         </div>
       </div>
     </div>

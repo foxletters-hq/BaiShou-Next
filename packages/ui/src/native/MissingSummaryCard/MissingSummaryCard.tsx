@@ -46,7 +46,7 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF', // surface
+    backgroundColor: 'var(--bg-surface)', // surface
     borderRadius: 16,
     padding: 12,
     borderWidth: 1,
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
     marginBottom: 4,
   },
   meta: {
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 12,
-    color: '#475569',
+    color: 'var(--text-secondary)',
     marginRight: 8,
   },
   suggestionBadge: {

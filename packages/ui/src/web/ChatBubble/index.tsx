@@ -174,13 +174,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                  onDelete={onDelete}
                />
                <div className={styles.footerRight}>
-                 {message.inputTokens !== undefined && (
-                   <TokenBadge 
-                      inputTokens={message.inputTokens} 
-                      outputTokens={message.outputTokens || 0} 
-                      durationMs={message.costMicros} /* fallback for visual display */
-                   />
-                 )}
                  {message.contextMessages && message.contextMessages.length > 0 && (
                    <button className={styles.contextBtn} onClick={() => onShowContext && onShowContext(message)} title="查看对话上下文树">
                       🌿
@@ -195,7 +188,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   return (
     <>
-      <div className={styles.chatBubbleContainer} onContextMenu={handleContextMenu}>
+      <div className={`chat-bubble-container ${styles.chatBubbleContainer}`} onContextMenu={handleContextMenu}>
         {isUser ? renderUserBubble() : renderAiBubble()}
       </div>
       {contextMenu && (

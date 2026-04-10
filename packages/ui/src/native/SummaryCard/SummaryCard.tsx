@@ -58,13 +58,13 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF', // var(--bg-surface)
+    backgroundColor: 'var(--bg-surface)', // var(--bg-surface)
     borderRadius: 16,
     padding: 20,
     marginHorizontal: 20,
     marginVertical: 8,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+      ios: { shadowColor: 'var(--text-primary)', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
       android: { elevation: 2 },
       web: { boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }
     }),
@@ -77,10 +77,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   badgeText: { fontSize: 12, fontWeight: 'bold', color: '#5BA8F5' },
-  date: { fontSize: 12, color: '#475569', opacity: 0.6 },
-  title: { fontSize: 18, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 8 },
+  date: { fontSize: 12, color: 'var(--text-secondary)', opacity: 0.6 },
+  title: { fontSize: 18, fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: 8 },
   contentContainer: { height: 150, overflow: 'hidden' },
-  snippet: { fontSize: 14, lineHeight: 21, color: '#1A1A1A', opacity: 0.8 },
+  snippet: { fontSize: 14, lineHeight: 21, color: 'var(--text-primary)', opacity: 0.8 },
   actionsBox: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
   actionBtn: { padding: 4 },
   deleteIcon: { fontSize: 16, opacity: 0.5 }

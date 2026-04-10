@@ -54,6 +54,7 @@ import {
   MdDragIndicator,
   MdClose
 } from 'react-icons/md';
+import { Switch } from '../Switch/Switch';
 
 export interface AIProviderConfig {
   providerId: string;
@@ -471,14 +472,10 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                    </div>
                 </div>
                 <div className={styles.headerActions}>
-                   <label className={styles.switch}>
-                     <input 
-                       type="checkbox" 
-                       checked={activeConfig.enabled}
-                       onChange={handleToggleEnable}
-                     />
-                     <span className={styles.slider}></span>
-                   </label>
+                   <Switch 
+                     checked={activeConfig.enabled}
+                     onChange={handleToggleEnable}
+                   />
                    {!activeProviderMeta.isSystem && (
                       <button className={styles.deleteButton} onClick={handleDeleteProvider} title={t('agent.provider.delete_tooltip', '删除供应商')}>
                          <MdDeleteOutline size={22} />
@@ -582,14 +579,10 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                                    {mdl}
                                  </span>
                                </div>
-                               <label className={styles.switch}>
-                                 <input 
-                                   type="checkbox" 
-                                   checked={isChecked}
-                                   onChange={e => handleModelToggle(mdl, e.target.checked)}
-                                 />
-                                 <span className={styles.slider}></span>
-                               </label>
+                               <Switch 
+                                 checked={isChecked}
+                                 onChange={e => handleModelToggle(mdl, e.target.checked)}
+                               />
                              </div>
                            );
                         });

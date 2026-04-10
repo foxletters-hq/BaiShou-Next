@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import React from 'react';
-import { Share2, Copy } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import './DashboardSharedMemoryCard.css';
 
 interface DashboardSharedMemoryCardProps {
@@ -19,7 +19,9 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   return (
     <div className="dashboard-shared-memory-card">
       <div className="sm-header">
-         <Share2 size={18} className="sm-header-icon" style={{ color: 'var(--color-primary)' }} />
+         <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--color-primary)" className="sm-header-icon" style={{ marginRight: 8 }}>
+            <path d="M10.74 13.91l-1.92-2.1c.96-1.55 1.57-3.05 1.83-4.5h-1.9c-.43 0-.82-.28-.95-.69a1.002 1.002 0 0 1 .95-1.31h4.08c.55 0 1 .45 1 1 0 3.01-1.28 5.76-3.09 7.6zM18.74 13.91l-1.92-2.1c.96-1.55 1.57-3.05 1.83-4.5h-1.9c-.43 0-.82-.28-.95-.69a1.002 1.002 0 0 1 .95-1.31h4.08c.55 0 1 .45 1 1 0 3.01-1.28 5.76-3.09 7.6z"/>
+         </svg>
          <span className="sm-header-title">{t('summary.shared_memory', '共同回忆')}</span>
       </div>
       
@@ -53,7 +55,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
       </div>
 
       <button className="sm-btn" onClick={onCopyContext}>
-        <Copy size={16} style={{ marginRight: 6 }} /> {t('summary.copy_to_ai', '复制为 AI 上下文')}
+        <Copy size={16} style={{ marginRight: 6 }} /> {t('summary.copy_memories', '复制共同回忆')}
       </button>
     </div>
   );

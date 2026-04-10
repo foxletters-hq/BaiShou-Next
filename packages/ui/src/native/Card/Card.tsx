@@ -18,7 +18,7 @@ export const Card: React.FC<NativeCardProps> = ({ style, children, ...props }) =
           borderRadius: tokens.radius.md,
           padding: tokens.spacing.md,
           elevation: 1,
-          shadowColor: '#000',
+          shadowColor: 'var(--text-primary)',
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.05,
           shadowRadius: 2,

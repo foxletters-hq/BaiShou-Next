@@ -19,7 +19,7 @@
 .input {
   background-color: var(--bg-surface-low, #f6f7f8);
   color: var(--text-primary);
-  border: 1px solid var(--bg-surface-highest, #e8e8e8);
+  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
   border-radius: var(--radius-md, 12px);
   padding: 10px 14px;
   font-size: 14px;

@@ -214,7 +214,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 // ... 原有的 styles.create
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-surface)',
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.5)',
     borderRadius: 16,
@@ -229,11 +229,11 @@ const styles = StyleSheet.create({
   },
   icon: { fontSize: 24, marginRight: 16 },
   headerBody: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
-  subtitle: { fontSize: 14, color: '#475569', marginTop: 4 },
-  arrow: { fontSize: 12, color: '#475569' },
+  title: { fontSize: 16, fontWeight: '500', color: 'var(--text-primary)' },
+  subtitle: { fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 },
+  arrow: { fontSize: 12, color: 'var(--text-secondary)' },
   content: { paddingHorizontal: 16, paddingBottom: 16 },
-  label: { fontSize: 14, fontWeight: '500', color: '#1A1A1A', marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '500', color: 'var(--text-primary)', marginBottom: 8 },
   segmentedControl: {
     flexDirection: 'row',
     borderWidth: 1,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(148, 163, 184, 0.3)',
   },
   segmentBtnActive: { backgroundColor: 'rgba(91, 168, 245, 0.2)' },
-  segmentText: { fontSize: 14, color: '#1A1A1A' },
+  segmentText: { fontSize: 14, color: 'var(--text-primary)' },
   segmentTextActive: { fontWeight: 'bold' },
   colorWrap: { flexDirection: 'row', gap: 12 },
   colorOption: {
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F2', justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.3)',
   },
-  addIcon: { fontSize: 20, color: '#475569' },
+  addIcon: { fontSize: 20, color: 'var(--text-secondary)' },
   divider: { height: 1, backgroundColor: 'rgba(148, 163, 184, 0.2)', marginVertical: 16 },
   langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   langChip: {
@@ -271,17 +271,17 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.3)',
   },
   langChipActive: { backgroundColor: 'rgba(91, 168, 245, 0.2)', borderColor: '#5BA8F5' },
-  langText: { fontSize: 14, color: '#1A1A1A' },
+  langText: { fontSize: 14, color: 'var(--text-primary)' },
   langTextActive: { fontWeight: 'bold' },
   
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'
   },
   modalBox: {
-    width: '85%', backgroundColor: '#FFF', borderRadius: 24, padding: 24, alignItems: 'center'
+    width: '85%', backgroundColor: 'var(--bg-surface)', borderRadius: 24, padding: 24, alignItems: 'center'
   },
   modalTitle: {
-    fontSize: 18, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 20
+    fontSize: 18, fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: 20
   },
   colorPreview: {
     width: 60, height: 60, borderRadius: 30, marginBottom: 20,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 12
   },
   sliderLabel: {
-    width: 40, fontSize: 14, color: '#475569', fontWeight: 'bold'
+    width: 40, fontSize: 14, color: 'var(--text-secondary)', fontWeight: 'bold'
   },
   modalActions: {
     flexDirection: 'row', justifyContent: 'flex-end', width: '100%', marginTop: 24, gap: 12
@@ -299,6 +299,6 @@ const styles = StyleSheet.create({
   modalBtn: {
     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, justifyContent: 'center', alignItems: 'center'
   },
-  modalBtnTextGray: { color: '#475569', fontWeight: 'bold' },
+  modalBtnTextGray: { color: 'var(--text-secondary)', fontWeight: 'bold' },
   modalBtnTextWhite: { color: '#FFF', fontWeight: 'bold' },
 });

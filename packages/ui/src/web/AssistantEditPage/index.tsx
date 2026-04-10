@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, Trash2, Cpu, Sparkles, Database, Thermometer, Box, Hash, MessageSquareText } from 'lucide-react';
+import { ChevronLeft, Trash2, Smile, Plus, ChevronRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { AvatarEditor } from '../AvatarEditor';
+import { ModelSwitcherPopup } from '../ModelSwitcherPopup';
+import { Switch } from '../Switch/Switch';
 import styles from './AssistantEditPage.module.css';
-
-// 假设项目中已挂载此渲染器，如果在 UI 库中尚未暴露，可退化为普通渲染
-import { MarkdownRenderer } from '../MarkdownRenderer';
-
-// ─── 类型定义 ──────────────────────────────────────────────
 
 export interface AssistantFormData {
   id?: string;
@@ -19,8 +17,7 @@ export interface AssistantFormData {
   modelId?: string;
   compressTokenThreshold: number;
   compressKeepTurns: number;
-  
-  // 按照 B2.3 任务书新增指令字段
+  avatarPath?: string;
   welcomeMessage?: string;
   temperature?: number;
   topP?: number;
@@ -35,18 +32,8 @@ export interface AssistantEditPageProps {
   onDelete?: () => void;
   onBack: () => void;
   onPickEmoji?: () => Promise<string | null>;
-  onPickRagSpace?: () => Promise<string | null>;
+  providers?: any[]; // Simplified for providers list
 }
-
-// ─── 变量预设 ─────────────────────────────────────────────
-const PROMPT_VARIABLES = [
-  { label: '{{user_name}}', desc: '用户昵称' },
-  { label: '{{current_date}}', desc: '当前日期' },
-  { label: '{{current_time}}', desc: '当前时间' },
-  { label: '{{os_info}}', desc: '系统环境' }
-];
-
-// ─── 主组件 ──────────────────────────────────────────────────
 
 export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   assistant,
@@ -55,412 +42,334 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   onDelete,
   onBack,
   onPickEmoji,
-  onPickRagSpace,
+  providers = [],
 }) => {
   const { t } = useTranslation();
   const isEditing = assistant !== null;
 
-  // ─── 表单状态 ────────────────────
   const [name, setName] = useState(assistant?.name ?? '');
   const [emoji, setEmoji] = useState(assistant?.emoji ?? '🍵');
   const [description, setDescription] = useState(assistant?.description ?? '');
   const [systemPrompt, setSystemPrompt] = useState(assistant?.systemPrompt ?? '');
-  const [welcomeMessage, setWelcomeMessage] = useState(assistant?.welcomeMessage ?? '');
-  const [ragSpaceId, setRagSpaceId] = useState(assistant?.ragSpaceId ?? '');
-  
   const [contextWindow, setContextWindow] = useState(assistant?.contextWindow ?? -1);
   const [providerId, setProviderId] = useState(assistant?.providerId);
   const [modelId, setModelId] = useState(assistant?.modelId);
-  
   const [compressThreshold, setCompressThreshold] = useState(assistant?.compressTokenThreshold ?? 60000);
   const [compressKeepTurns, setCompressKeepTurns] = useState(assistant?.compressKeepTurns ?? 3);
-
-  const [temperature, setTemperature] = useState(assistant?.temperature ?? 0.7);
-  const [topP, setTopP] = useState(assistant?.topP ?? 1.0);
-  const [maxTokens, setMaxTokens] = useState(assistant?.maxTokens ?? 2000);
-
+  const [avatarPath, setAvatarPath] = useState(assistant?.avatarPath ?? '');
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [promptMode, setPromptMode] = useState<'edit' | 'preview'>('edit');
 
   const isUnlimitedContext = contextWindow < 0;
   const isCompressDisabled = compressThreshold <= 0;
-  const isUnlimitedMaxTokens = maxTokens <= 0;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const customPromptInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = async () => {
-  if (!name.trim()) return;
+  const [providerPickerOpen, setProviderPickerOpen] = useState(false);
+  const [pickerProviders, setPickerProviders] = useState<any[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).electron) {
+      (window as any).electron.ipcRenderer.invoke('agent:get-providers').then((list: any) => {
+         setPickerProviders((list || []).filter((p: any) => p.isEnabled));
+      }).catch(console.error);
+    }
+  }, []);
+
+  const handleSave = () => {
+    if (!name.trim()) return;
     setSaving(true);
-    try {
-      onSave({
-        id: assistant?.id,
-        name: name.trim(),
-        emoji,
-        description: description.trim(),
-        systemPrompt: systemPrompt.trim(),
-        welcomeMessage: welcomeMessage.trim(),
-        ragSpaceId: ragSpaceId || undefined,
-        contextWindow: isUnlimitedContext ? -1 : contextWindow,
-        providerId: providerId ?? undefined,
-        modelId: modelId ?? undefined,
-        compressTokenThreshold: isCompressDisabled ? 0 : compressThreshold,
-        compressKeepTurns,
-        temperature,
-        topP,
-        maxTokens: isUnlimitedMaxTokens ? -1 : maxTokens,
-      });
-    } finally {
-        // Saving state managed externally if navigating away, but we clear spinner here just in case.
-        setTimeout(() => setSaving(false), 800);
-    }
-  };
-
-  const handlePickEmoji = async () => {
-  if (onPickEmoji) {
-      const picked = await onPickEmoji();
-      if (picked) setEmoji(picked);
-    }
-  };
-
-  const insertVariable = (variable: string) => {
-  setSystemPrompt(prev => prev + variable);
+    onSave({
+      id: assistant?.id,
+      name: name.trim(),
+      emoji,
+      description: description.trim(),
+      systemPrompt: systemPrompt.trim(),
+      contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
+      providerId: providerId ?? undefined,
+      modelId: modelId ?? undefined,
+      compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressThreshold),
+      compressKeepTurns: Math.round(compressKeepTurns),
+      avatarPath: avatarRemoved ? '' : avatarPath,
+    });
+    setTimeout(() => setSaving(false), 500); 
   };
 
   const formatTokens = (tokens: number) => {
-  if (tokens >= 10000) {
+    if (tokens >= 10000) {
       const w = tokens / 10000;
-      return `${w % 1 === 0 ? w.toFixed(0) : w.toFixed(1)}${t('common.ten_thousand', '万')}`;
+      return `${w % 1 === 0 ? w.toFixed(0) : w.toFixed(1)}w`;
     }
     return String(tokens);
   };
 
+  const currentAvatarImagePath = (!avatarRemoved && avatarPath) ? avatarPath : null;
+
   return (
-    <div className={styles.page}>
-      {/* App Bar */}
+    <div className={styles.scaffold}>
+      {/* AppBar */}
       <div className={styles.appBar}>
         <div className={styles.appBarLeft}>
-          <button className={styles.backBtn} onClick={onBack}>
-            <ChevronLeft size={18} />
+          <button className={styles.iconBtn} onClick={onBack}>
+            <ChevronLeft size={24} />
           </button>
           <span className={styles.appBarTitle}>
-            {isEditing
-              ? t('assistant.edit_title', '编辑伙伴')
-              : t('assistant.create_title', '创建伙伴')}
+            {isEditing ? t('agent.assistant.edit_title', '编辑伙伴') : t('agent.assistant.create_title', '创建伙伴')}
           </span>
         </div>
         {isEditing && !isLastAssistant && onDelete && (
-          <div className={styles.appBarActions}>
-            <button className={styles.deleteBtn} onClick={onDelete}>
-              <Trash2 size={14} /> {t('common.delete', '删除')}
-            </button>
-          </div>
+          <button className={styles.iconBtn} onClick={() => setShowDeleteConfirm(true)} title={t('common.delete', '删除')}>
+            <Trash2 size={24} />
+          </button>
         )}
       </div>
 
-      {/* Form Area */}
-      <div className={styles.formBody}>
+      {/* Body: SingleChildScrollView */}
+      <div className={styles.scrollArea}>
         <div className={styles.formContainer}>
           
-          
-          <div className={styles.formSection}>
-             <div className={styles.sectionHeader}>
-                <Sparkles size={18} className={styles.sectionIcon} />
-                <span>{t('assistant.identity_card', '核心身份')}</span>
-             </div>
-             
-             <div className={styles.avatarSection}>
-                <div className={styles.avatarCircle} onClick={handlePickEmoji}>
-                  {emoji}
-                  <span className={styles.avatarBadge}>✦</span>
+          {/* Avatar */}
+          <div className={styles.avatarSection}>
+            <AvatarEditor 
+               emoji={emoji} 
+               avatarPath={currentAvatarImagePath || undefined}
+               onChange={(type, value) => {
+                 if (type === 'emoji') {
+                    setEmoji(value);
+                    setAvatarPath('');
+                    setAvatarRemoved(true);
+                 } else {
+                    setAvatarPath(value);
+                    setAvatarRemoved(false);
+                    setEmoji('');
+                 }
+               }}
+            >
+              <div className={styles.avatarStack}>
+                <div className={styles.avatarCircle} style={{ backgroundImage: currentAvatarImagePath ? `url(${currentAvatarImagePath})` : 'none' }}>
+                  {!currentAvatarImagePath && <span className={styles.emojiText}>{emoji}</span>}
                 </div>
-                <span className={styles.avatarHint}>
-                  {t('assistant.avatar_hint', '点击选 emoji · 长按选图片')}
-                </span>
-             </div>
-
-             <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>{t('assistant.name_label', '伙伴名称')}</label>
-                <input
-                  className={styles.fieldInput}
-                  placeholder={t('assistant.name_hint', '例如：知识伙伴、写作伙伴...')}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-             </div>
-
-             <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>{t('assistant.description_label', '简介')}</label>
-                <input
-                  className={styles.fieldInput}
-                  placeholder={t('assistant.description_hint', '简短描述伙伴的用途...')}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-             </div>
+                <div className={styles.avatarBadge}>
+                  <Smile size={16} />
+                </div>
+              </div>
+            </AvatarEditor>
+            <div className={styles.avatarHint}>
+              {t('agent.assistant.avatar_hint', '点击更换伙伴的图标或头像')}
+            </div>
+            {currentAvatarImagePath && (
+              <button className={styles.textBtn} onClick={() => setAvatarRemoved(true)}>
+                {t('agent.assistant.remove_avatar', '移除图片')}
+              </button>
+            )}
           </div>
 
-          {/* Section: 行为逻辑与提示词 */}
-          <div className={styles.formSection}>
-             <div className={styles.sectionHeader}>
-                <Cpu size={18} className={styles.sectionIcon} />
-                <span>{t('assistant.prompt_label', '系统提示词')}</span>
-             </div>
-             <p className={styles.fieldHint}>{t('assistant.prompt_hint', '定义伙伴的角色、行为和回复风格...')}</p>
-             
-             <div className={styles.fieldGroup}>
-                <div className={styles.promptToolbar}>
-                   <div className={styles.variablePills}>
-                      {PROMPT_VARIABLES.map(v => (
-                         <span key={v.label} className={styles.varPill} onClick={() => insertVariable(v.label)} title={v.desc}>
-                            {v.label}
-                         </span>
-                      ))}
-                   </div>
-                   <div className={styles.promptTabs}>
-                      <button 
-                         className={`${styles.tabBtn} ${promptMode === 'edit' ? styles.tabBtnActive : ''}`}
-                         onClick={() => setPromptMode('edit')}
-                      >
-                         {t('common.edit_code', '编辑')}
-                      </button>
-                      <button 
-                         className={`${styles.tabBtn} ${promptMode === 'preview' ? styles.tabBtnActive : ''}`}
-                         onClick={() => setPromptMode('preview')}
-                      >
-                         {t('common.preview', '预览')}
-                      </button>
-                   </div>
-                </div>
+          <div className={styles.spacer24} />
 
-                {promptMode === 'edit' ? (
-                   <textarea
-                     className={`${styles.fieldTextarea} ${styles.systemPromptArea}`}
-                     placeholder={t('assistant.prompt_hint', '定义伙伴的角色、行为和回复风格...')}
-                     value={systemPrompt}
-                     onChange={(e) => setSystemPrompt(e.target.value)}
-                   />
-                ) : (
-                   <div className={styles.fieldTextarea} style={{ minHeight: 160, overflowY: 'auto' }}>
-                      {systemPrompt.trim() ? <MarkdownRenderer content={systemPrompt} /> : <span style={{color: 'var(--text-secondary)'}}>{t('assistant.no_system_prompt', '无系统设定录入...')}</span>}
-                   </div>
-                )}
-             </div>
+          {/* Name */}
+          <label className={styles.fieldLabel}>{t('agent.assistant.name_label', '名称')}</label>
+          <input 
+            className={styles.inputField} 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            placeholder={t('agent.assistant.name_hint', '请输入伙伴名称')} 
+          />
 
-             <div className={styles.fieldGroup} style={{ marginTop: 12 }}>
-                <label className={styles.fieldLabel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <MessageSquareText size={16}/> {t('assistant.welcome_msg', '欢迎语 (Welcome Message)')}
-                </label>
-                <input
-                  className={styles.fieldInput}
-                  placeholder={t('assistant.welcome_msg_hint', '用户开启新会话时自动发送的第一句话...')}
-                  value={welcomeMessage}
-                  onChange={(e) => setWelcomeMessage(e.target.value)}
-                />
-             </div>
+          <div className={styles.spacer16} />
+
+          {/* Description */}
+          <label className={styles.fieldLabel}>{t('agent.assistant.description_label', '简介')}</label>
+          <textarea 
+            className={styles.inputField} 
+            rows={2} 
+            value={description} 
+            onChange={(e) => setDescription(e.target.value)} 
+            placeholder={t('agent.assistant.description_hint', '简短描述你的伙伴')} 
+          />
+
+          <div className={styles.spacer24} />
+
+          {/* Prompt */}
+          <label className={styles.fieldLabel}>{t('agent.assistant.prompt_label', '提示词')}</label>
+          <textarea 
+            className={`${styles.inputField} ${styles.inputFieldMulti}`} 
+            rows={8} 
+            value={systemPrompt} 
+            onChange={(e) => setSystemPrompt(e.target.value)} 
+            placeholder={t('agent.assistant.prompt_hint', '你是一个AI助手...')} 
+          />
+
+          <div className={styles.spacer24} />
+
+          {/* Model Binding */}
+          <div className={styles.row}>
+            <label className={styles.fieldLabel} style={{marginBottom: 0}}>{t('agent.assistant.bind_model_label', '绑定模型')}</label>
+            <div style={{flex: 1}} />
+            {providerId && (
+              <button className={styles.textBtn} onClick={() => { setProviderId(undefined); setModelId(undefined); }}>
+                {t('agent.assistant.use_global_model', '使用全局模型')}
+              </button>
+            )}
+          </div>
+          <div className={styles.spacer8} />
+          {!providerId ? (
+            <button className={styles.outlinedBtn} onClick={() => setProviderPickerOpen(true)}>
+              <Plus size={18} style={{marginRight: 8}} />
+              {t('agent.assistant.select_model_label', '选择模型')}
+            </button>
+          ) : (
+            <div className={styles.modelCard} onClick={() => setProviderPickerOpen(true)}>
+              <div className={styles.modelIcon}>✨</div>
+              <div className={styles.modelInfo}>
+                <span className={styles.modelSup}>{providerId}</span>
+                <span className={styles.modelSub}>{modelId}</span>
+              </div>
+              <ChevronRight size={20} color="var(--text-secondary, #64748B)" />
+            </div>
+          )}
+          <div className={styles.descText} style={{marginTop: 4}}>
+            {t('agent.assistant.bind_model_desc', '如果不绑定，则使用全局默认模型')}
           </div>
 
-          {/* Section: 外部神经连接 */}
-          <div className={styles.formSection}>
-             <div className={styles.sectionHeader}>
-                <Database size={18} className={styles.sectionIcon} />
-                <span>{t('assistant.advanced_bindings', '外挂组件绑定')}</span>
-             </div>
+          <div className={styles.spacer24} />
 
-             <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>{t('assistant.bind_model_label', '绑定模型')}</label>
-                {providerId && modelId ? (
-                   <div className={styles.selectorCard} onClick={() => {
-  /* TODO: Pop out Provider picker */}}>
-                      <div className={styles.selectorIcon}><Box size={20}/></div>
-                      <div className={styles.selectorContent}>
-                         <div className={styles.selectorTitle}>{modelId}</div>
-                         <div className={styles.selectorSubtitle}>{providerId} {t('assistant.provider_support', '提供计算服务')}</div>
-                      </div>
-                      <span className={styles.selectorAction} onClick={(e) => {
-  e.stopPropagation(); setProviderId(undefined); setModelId(undefined);}}>
-                         {t('common.unbind', '解除')}
-                      </span>
-                   </div>
-                ) : (
-                   <div className={styles.selectorCard} onClick={() => {
-  /* Pick model */}}>
-                      <div className={styles.selectorIcon}><Box size={20}/></div>
-                      <div className={styles.selectorContent}>
-                         <div className={styles.selectorTitle}>{t('assistant.use_global_model', '使用全局模型')}</div>
-                         <div className={styles.selectorSubtitle}>{t('assistant.bind_model_desc', '绑定后，使用此伙伴的会话将始终使用指定模型')}</div>
-                      </div>
-                      <span className={styles.selectorAction}>{t('common.change', '更改')}</span>
-                   </div>
-                )}
-             </div>
-
-             <div className={styles.fieldGroup}>
-                <label className={styles.fieldLabel}>{t('assistant.rag_knowledge', '关联知识库 (RAG Knowledge)')}</label>
-                <div className={styles.selectorCard} onClick={async () => {
-  if(onPickRagSpace) {
-
-
-                      const space = await onPickRagSpace();
-                      if(space) setRagSpaceId(space);
-                   }
-                }}>
-                   <div className={styles.selectorIcon}><Database size={20}/></div>
-                   <div className={styles.selectorContent}>
-                      <div className={styles.selectorTitle}>{ragSpaceId ? `已关联空间：${ragSpaceId}` : '未关联任何知识库实体'}</div>
-                      <div className={styles.selectorSubtitle}>{ragSpaceId ? '为助手注入额外的专域向量检索库资料' : '目前不附带任何额外检索设定'}</div>
-                   </div>
-                   <span className={styles.selectorAction}>{ragSpaceId ? '变更' : '检索'}</span>
-                </div>
-             </div>
+          {/* Context Section */}
+          <div className={styles.row}>
+            <label className={styles.fieldLabel} style={{marginBottom: 0}}>{t('agent.assistant.context_window_label', '上下文轮数')}</label>
+            <div style={{flex: 1}} />
+            {!isUnlimitedContext && <span className={styles.valueText}>{Math.round(contextWindow)}</span>}
+            <span className={styles.descText} style={{marginLeft: 4, marginRight: 8}}>
+              {isUnlimitedContext ? t('agent.assistant.context_unlimited', '无限') : t('agent.assistant.context_limited', '有限')}
+            </span>
+            <Switch 
+              checked={isUnlimitedContext} 
+              onChange={(e) => setContextWindow(e.target.checked ? -1 : 20)} 
+            />
+          </div>
+          {!isUnlimitedContext && (
+            <input 
+              type="range" 
+              className={styles.rangeInput} 
+              min={2} max={100} step={1} 
+              value={contextWindow} 
+              onChange={(e) => setContextWindow(Number(e.target.value))} 
+            />
+          )}
+          <div className={styles.descText}>
+            {isUnlimitedContext 
+              ? t('agent.assistant.context_unlimited_desc', '发送所有历史消息（可能消耗大量 Token）') 
+              : t('agent.assistant.context_window_desc', '每次对话携带的历史消息上下文轮数')}
           </div>
 
-          {/* Section: 高级神经参数与压缩 */}
-          <div className={styles.formSection}>
-             <div className={styles.sectionHeader}>
-                <Thermometer size={18} className={styles.sectionIcon} />
-                <span>{t('assistant.advanced_control', '高级上下文控制 (Advanced)')}</span>
-             </div>
-             
-             {/* Temperature */}
-             <div className={styles.sliderWrapper}>
-                <div className={styles.sliderHeaderLine}>
-                   <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>{t('settings.temperature', '创造力 / 发散度 (Temperature)')}</span>
-                      <span className={styles.sliderSub}>{t('assistant.temp_desc', '降低数值更理性严谨，升高则更具发散创造力')}</span>
-                   </div>
-                   <span className={styles.sliderValueBox}>{temperature.toFixed(2)}</span>
-                </div>
-                <input
-                  type="range"
-                  className={styles.sliderInput}
-                  min={0.0} max={2.0} step={0.1}
-                  value={temperature}
-                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                />
-             </div>
+          <div className={styles.spacer24} />
 
-             {/* Top-P */}
-             <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
-                <div className={styles.sliderHeaderLine}>
-                   <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>{t('assistant.top_p', '取样平衡限制 (Top P)')}</span>
-                      <span className={styles.sliderSub}>{t('assistant.top_p_desc', '截断低概率词汇，通常不建议与 Temperature 同时进行调整')}</span>
-                   </div>
-                   <span className={styles.sliderValueBox}>{topP.toFixed(2)}</span>
-                </div>
-                <input
-                  type="range"
-                  className={styles.sliderInput}
-                  min={0.1} max={1.0} step={0.05}
-                  value={topP}
-                  onChange={(e) => setTopP(parseFloat(e.target.value))}
-                />
-             </div>
-
-             {/* Context Window */}
-             <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
-                <div className={styles.sliderHeaderLine}>
-                   <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>{t('assistant.context_window_label', '上下文轮数')}</span>
-                      <span className={styles.sliderSub}>
-                         {isUnlimitedContext ? t('assistant.context_unlimited_desc', '将发送所有历史消息给模型') : t('assistant.context_window_desc', '每次对话发送给模型的历史消息条数，越大记忆越多但消耗更多 Token')}
-                      </span>
-                   </div>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                     {!isUnlimitedContext && <span className={styles.sliderValueBox}>{contextWindow} {t('common.turns', '轮')}</span>}
-                     <label className={styles.toggleSwitch}>
-                       <input type="checkbox" checked={!isUnlimitedContext} onChange={(e) => setContextWindow(e.target.checked ? 10 : -1)} />
-                       <span className={styles.toggleSlider}></span>
-                     </label>
-                   </div>
-                </div>
-                {!isUnlimitedContext && (
-                   <input
-                     type="range"
-                     className={styles.sliderInput}
-                     min={2} max={100} step={1}
-                     value={contextWindow}
-                     onChange={(e) => setContextWindow(Number(e.target.value))}
-                   />
-                )}
-             </div>
-
-             {/* Compression & Token Threshold */}
-             <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
-                <div className={styles.sliderHeaderLine}>
-                   <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>{t('assistant.compress_label', '自动压缩')}</span>
-                      <span className={styles.sliderSub}>{!isCompressDisabled ? t('assistant.compress_enabled_desc', '对话超过阈值时自动将旧消息压缩为摘要') : t('assistant.compress_disabled_desc', '对话不会自动压缩，所有消息将完整保留')}</span>
-                   </div>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                     {!isCompressDisabled && <span className={styles.sliderValueBox}>{formatTokens(compressThreshold)} TK</span>}
-                     <label className={styles.toggleSwitch}>
-                       <input type="checkbox" checked={!isCompressDisabled} onChange={(e) => setCompressThreshold(e.target.checked ? 60000 : 0)} />
-                       <span className={styles.toggleSlider}></span>
-                     </label>
-                   </div>
-                </div>
-                {!isCompressDisabled && (
-                   <>
-                     <input
-                       type="range"
-                       className={styles.sliderInput}
-                       min={10000} max={1000000} step={10000}
-                       value={compressThreshold}
-                       onChange={(e) => setCompressThreshold(Number(e.target.value))}
-                     />
-                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                        <Hash size={14} color="var(--text-secondary)"/>
-                        <span style={{ fontSize: 13, color: 'var(--text-secondary)'}}>{t('assistant.compress_keep_turns_label', '保留互动轮数')}</span>
-                        <input
-                          type="range"
-                          className={styles.sliderInput}
-                          style={{ flex: 1 }}
-                          min={1} max={10} step={1}
-                          value={compressKeepTurns}
-                          onChange={(e) => setCompressKeepTurns(Number(e.target.value))}
-                        />
-                        <span style={{ fontSize: 13, minWidth: 20 }}>{compressKeepTurns}</span>
-                     </div>
-                   </>
-                )}
-             </div>
-
-             {/* Max Tokens */}
-             <div className={styles.sliderWrapper} style={{ marginTop: 12 }}>
-                <div className={styles.sliderHeaderLine}>
-                   <div className={styles.sliderLabelWrap}>
-                      <span className={styles.sliderLabel}>{t('assistant.max_tokens', '单次回复长度 (Max Tokens)')}</span>
-                      <span className={styles.sliderSub}>{t('assistant.max_tokens_desc', '限制大模型所能生成的最大长度边界。')}</span>
-                   </div>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                     {!isUnlimitedMaxTokens && <span className={styles.sliderValueBox}>{formatTokens(maxTokens)} TK</span>}
-                     <label className={styles.toggleSwitch}>
-                       <input type="checkbox" checked={!isUnlimitedMaxTokens} onChange={(e) => setMaxTokens(e.target.checked ? 2000 : -1)} />
-                       <span className={styles.toggleSlider}></span>
-                     </label>
-                   </div>
-                </div>
-                {!isUnlimitedMaxTokens && (
-                   <input
-                     type="range"
-                     className={styles.sliderInput}
-                     min={100} max={100000} step={100}
-                     value={maxTokens}
-                     onChange={(e) => setMaxTokens(Number(e.target.value))}
-                   />
-                )}
-             </div>
-
+          {/* Compression Section */}
+          <div className={styles.row}>
+            <label className={styles.fieldLabel} style={{marginBottom: 0}}>{t('agent.assistant.compress_label', '自动压缩')}</label>
+            <div style={{flex: 1}} />
+            {!isCompressDisabled && <span className={styles.valueText}>{formatTokens(Math.round(compressThreshold))}</span>}
+            <div style={{width: 8}} />
+            <Switch 
+              checked={!isCompressDisabled} 
+              onChange={(e) => setCompressThreshold(e.target.checked ? 60000 : 0)} 
+            />
+          </div>
+          <div className={styles.descText}>
+            {isCompressDisabled 
+              ? t('agent.assistant.compress_disabled_desc', '如果无限制上下文，超过模型上限会导致出错') 
+              : t('agent.assistant.compress_enabled_desc', '超过预设体积将丢弃早期会话（并自动压缩）')}
           </div>
 
-          <div className={styles.saveBtnContainer}>
-             <button className={styles.saveBtn} onClick={handleSave} disabled={saving || !name.trim()}>
-                <Sparkles size={16} /> 
-                {saving ? t('common.saving', '保存中...') : t('common.save', '保存')}
-             </button>
-          </div>
-          
+          {!isCompressDisabled && (
+            <>
+              <input 
+                type="range" 
+                className={styles.rangeInput} 
+                min={10000} max={1000000} step={10000} 
+                value={compressThreshold} 
+                onChange={(e) => setCompressThreshold(Number(e.target.value))} 
+              />
+              <div className={styles.spacer16} />
+              <div className={styles.row}>
+                <label className={styles.fieldLabel} style={{marginBottom: 0}}>{t('agent.assistant.compress_keep_turns_label', '压缩后保留轮数')}</label>
+                <div style={{flex: 1}} />
+                <span className={styles.valueText}>{Math.round(compressKeepTurns)} {t('common.turns', '轮')}</span>
+              </div>
+              <div className={styles.descText}>
+                {t('agent.assistant.compress_keep_turns_desc', '触发压缩时尾部强行保留几轮原文对话')}
+              </div>
+              <input 
+                type="range" 
+                className={styles.rangeInput} 
+                min={1} max={10} step={1} 
+                value={compressKeepTurns} 
+                onChange={(e) => setCompressKeepTurns(Number(e.target.value))} 
+              />
+            </>
+          )}
+
+          <div className={styles.spacer16} />
+
+          {/* Save Button */}
+          <button className={styles.filledBtn} onClick={handleSave} disabled={saving || !name.trim()}>
+            {saving ? <Loader2 size={20} className={styles.spinIcon} /> : t('common.save', '保存')}
+          </button>
         </div>
       </div>
+
+      {providerPickerOpen && (
+        <ModelSwitcherPopup
+          providers={pickerProviders.map(p => ({
+            id: p.id,
+            name: p.name || p.id,
+            type: p.type || 'custom',
+            models: p.models || [],
+            enabledModels: (p.enabledModels && p.enabledModels.length > 0) ? p.enabledModels : (p.models || [])
+          }))}
+          currentProviderId={providerId || ''}
+          currentModelId={modelId || ''}
+          onSelect={(pid, mid) => {
+             setProviderId(pid);
+             setModelId(mid);
+             setProviderPickerOpen(false);
+          }}
+          onClose={() => setProviderPickerOpen(false)}
+        />
+      )}
+
+      {showDeleteConfirm && (
+        <div className={styles.dialogOverlay} onClick={() => setShowDeleteConfirm(false)}>
+          <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.dialogHeaderIcon}>
+               <Trash2 size={32} color="var(--color-error, #F44336)" />
+            </div>
+            <div className={styles.dialogTitle}>
+              {t('agent.assistant.delete_confirm_title', '确定要删除此伙伴吗？')}
+            </div>
+            <div className={styles.dialogText}>
+              {t('agent.assistant.delete_confirm_content', '此操作将永久抹除其所有设定、记忆及对话记录，删除后无法恢复。')}
+            </div>
+            <div className={styles.dialogActions}>
+              <button
+                className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                {t('common.cancel', '取消')}
+              </button>
+              <button
+                className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`}
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  if (onDelete) onDelete();
+                }}
+              >
+                {t('common.delete', '确认删除')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

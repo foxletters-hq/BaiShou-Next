@@ -1,54 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPrimaryDarkColor } from '../utils/color';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export function useTheme() {
-  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
-  const [seedColor, setSeedColor] = useState<string>('#5BA8F5');
   const [isDark, setIsDark] = useState(false);
+  const [seedColor, setSeedColor] = useState<string>('#5BA8F5');
+  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      const primaryDark = getPrimaryDarkColor(seedColor);
-      document.documentElement.style.setProperty('--color-primary', seedColor);
-      document.documentElement.style.setProperty('--color-primary-dark', primaryDark);
-    }
-  }, [seedColor]);
-
-  useEffect(() => {
-    // TODO: [Agent2-Dependency] 未来在此处订阅 settings.store 的 themeMode
-    const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const actualDark = themeMode === 'dark' || (themeMode === 'system' && isSystemDark);
-    setIsDark(actualDark);
-
-    if (typeof document !== 'undefined') {
-      if (actualDark) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      } else {
-        document.documentElement.removeAttribute('data-theme');
-      }
-    }
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => {
-      if (themeMode === 'system') {
-        const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setIsDark(sysDark);
-        if (sysDark) {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        } else {
-          document.documentElement.removeAttribute('data-theme');
+      const el = document.documentElement;
+      
+      const updateState = () => {
+        setIsDark(el.getAttribute('data-theme') === 'dark');
+        const computedColor = getComputedStyle(el).getPropertyValue('--color-primary').trim();
+        if (computedColor) {
+          setSeedColor(computedColor);
         }
-      }
-    };
-    
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, [themeMode]);
+      };
+
+      // Initial read
+      updateState();
+
+      // Passively observe DOM mutations from the Host App (e.g. desktop/mobi App shell)
+      const observer = new MutationObserver(() => {
+        updateState();
+      });
+      observer.observe(el, { attributes: true, attributeFilter: ['data-theme', 'style', 'class'] });
+
+      return () => observer.disconnect();
+    }
+  }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    // Stubbed. Host apps should handle theme toggling natively.
   }, []);
 
   return { themeMode, setThemeMode, isDark, toggleTheme, seedColor, setSeedColor };

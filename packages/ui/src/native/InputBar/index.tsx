@@ -122,7 +122,7 @@ export const InputBar: React.FC<InputBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     padding: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-surface)',
     borderTopWidth: 1,
     borderTopColor: '#EEE',
   },
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     minHeight: 24,
     maxHeight: 120,
     fontSize: 15,
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
     paddingTop: 4,
     paddingBottom: 4,
   },
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#333',
+    backgroundColor: 'var(--text-primary)',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   stopIcon: {
     width: 12,
     height: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: 'var(--bg-surface)',
     borderRadius: 2,
   },
   toolbarRow: {
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   attDocName: {
     fontSize: 9,
     textAlign: 'center',
-    color: '#666',
+    color: 'var(--text-secondary)',
   },
   attRemoveBtn: {
     position: 'absolute',

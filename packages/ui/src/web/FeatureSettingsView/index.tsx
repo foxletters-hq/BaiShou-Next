@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingsSection } from '../SettingsSection/SettingsSection';
+import { Switch } from '../Switch/Switch';
 import styles from './FeatureSettingsView.module.css';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -48,13 +49,10 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
             <div className={styles.settingLabel}>{t('settings.features.rag_enable', '启用自动关联检索')}</div>
             <div className={styles.settingHint}>{t('settings.features.rag_enable_hint', '发送消息时自动搜索相关知识点')}</div>
           </div>
-          <div 
-            className={styles.switch} 
-            data-on={config.ragEnabled}
-            onClick={() => handleToggle('ragEnabled')}
-          >
-            <div className={styles.switchHandle} />
-          </div>
+          <Switch 
+            checked={config.ragEnabled}
+            onChange={() => handleToggle('ragEnabled')}
+          />
         </div>
         
         <div className={styles.settingItem}>
@@ -103,13 +101,10 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
             <div className={styles.settingLabel}>{t('settings.features.search_diary', '站内搜索引擎')}</div>
             <div className={styles.settingHint}>{t('settings.features.search_diary_hint', '允许搜索工具顺带检索本地日记内容')}</div>
           </div>
-          <div 
-            className={styles.switch} 
-            data-on={config.searchIncludeDiary}
-            onClick={() => handleToggle('searchIncludeDiary')}
-          >
-            <div className={styles.switchHandle} />
-          </div>
+          <Switch 
+            checked={config.searchIncludeDiary}
+            onChange={() => handleToggle('searchIncludeDiary')}
+          />
         </div>
       </SettingsSection>
 
@@ -120,13 +115,10 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
             <div className={styles.settingLabel}>{t('settings.features.summary_auto', '每周/每月自动生成总结')}</div>
             <div className={styles.settingHint}>{t('settings.features.summary_auto_hint', '会在后台静默使用推理模型生成周期性回顾')}</div>
           </div>
-          <div 
-            className={styles.switch} 
-            data-on={config.summaryAutoGenerate}
-            onClick={() => handleToggle('summaryAutoGenerate')}
-          >
-            <div className={styles.switchHandle} />
-          </div>
+          <Switch 
+            checked={config.summaryAutoGenerate}
+            onChange={() => handleToggle('summaryAutoGenerate')}
+          />
         </div>
       </SettingsSection>
 
@@ -137,13 +129,10 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
             <div className={styles.settingLabel}>{t('settings.features.dev_mode', '开发者模式')}</div>
             <div className={styles.settingHint}>{t('settings.features.dev_mode_hint', '开启日志诊断、伙伴 工具链调用追踪与 MCP 调试')}</div>
           </div>
-          <div 
-            className={styles.switch} 
-            data-on={config.devModeEnabled}
-            onClick={() => handleToggle('devModeEnabled')}
-          >
-            <div className={styles.switchHandle} />
-          </div>
+          <Switch 
+            checked={config.devModeEnabled}
+            onChange={() => handleToggle('devModeEnabled')}
+          />
         </div>
       </SettingsSection>
 

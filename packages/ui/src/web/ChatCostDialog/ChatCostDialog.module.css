@@ -4,16 +4,15 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
+  backdrop-filter: var(--blur-overlay, blur(4px));
+  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
   z-index: 200;
-  animation: fadeIn 0.25s ease-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; backdrop-filter: blur(0px); }
-  to { opacity: 1; backdrop-filter: blur(8px); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .dialog {
@@ -21,15 +20,14 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 380px;
-  background-color: var(--bg-surface-lowest, #F8FAFC);
-  border-radius: 24px;
+  width: 320px;
+  background-color: var(--bg-surface, #FFFFFF);
+  border-radius: 28px;
   z-index: 201;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5) inset;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  animation: slideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes slideUp {
@@ -37,173 +35,89 @@
   to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
-.header {
-  padding: 24px 24px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.headerTitle {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text-primary, #0F172A);
-  letter-spacing: -0.5px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.closeBtn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary, #64748B);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.closeBtn:hover {
-  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+.title {
+  padding: 24px 24px 16px 24px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
   color: var(--text-primary, #1A1A1A);
-  transform: rotate(90deg);
+  line-height: 32px;
 }
 
-/* Receipt Ticket Body */
-.receiptBody {
-  margin: 0 24px;
-  padding: 20px;
-  background-color: var(--bg-surface, #FFFFFF);
-  border-radius: 16px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+.content {
+  padding: 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  position: relative;
 }
 
-/* jagged edge illusion at top/bottom optional - simple borders instead for clean look */
-
-.modelTag {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
-  color: var(--color-primary, #5BA8F5);
-  font-weight: 700;
+.sectionTitle {
+  margin: 0;
   font-size: 14px;
-  border-radius: 12px;
-  margin-bottom: 4px;
-  border: 1px solid rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  font-weight: 700;
+  color: var(--text-primary, #1A1A1A);
+  line-height: 20px;
 }
 
-.itemRow {
+.spacer8 {
+  height: 8px;
+}
+
+.spacer16 {
+  height: 16px;
+}
+
+.costRow {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.itemLabel {
-  color: var(--text-secondary, #64748B);
-  display: flex;
   align-items: center;
-  gap: 6px;
+  padding: 2px 0;
 }
 
-.itemValue {
-  font-weight: 600;
-  color: var(--text-primary, #1E293B);
-  font-family: var(--font-mono, monospace);
-  font-feature-settings: "tnum";
+.costLabel {
+  font-size: 14px;
+  color: var(--text-secondary, #475569);
+  line-height: 20px;
+}
+
+.costValue {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary, #1A1A1A);
+  line-height: 20px;
 }
 
 .divider {
-  border-bottom: 2px dashed rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  margin: 4px 0;
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  margin: 24px 0;
 }
 
-.totalRow {
-  display: flex;
-  justify-content: space-between;
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--text-primary, #0F172A);
-  padding: 4px 0;
-}
-
-.totalLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.totalValue {
-  font-family: var(--font-mono, monospace);
-  color: var(--text-primary, #0F172A);
-}
-
-.costBox {
-  margin-top: 8px;
-  padding: 16px;
-  background-color: var(--text-primary, #0F172A);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.15);
-}
-
-.costTitle {
+.disclaimer {
+  margin: 0;
   font-size: 12px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  color: var(--text-secondary, #64748B);
+  line-height: 16px;
 }
 
-.costPrice {
-  font-size: 26px;
-  font-weight: 800;
-  color: #FFFFFF;
-  font-family: var(--font-mono, monospace);
-  letter-spacing: -1px;
-}
-
-.footer {
-  padding: 24px;
+.actions {
+  padding: 16px 24px 24px 24px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
-.confirmBtn {
-  width: 100%;
-  padding: 14px 24px;
-  border-radius: 14px;
-  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
-  color: var(--text-primary, #1E293B);
-  font-size: 15px;
-  font-weight: 700;
+.textButton {
+  background: transparent;
   border: none;
+  color: var(--color-primary, #5BA8F5);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 12px;
+  margin-right: -12px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
+  text-transform: uppercase;
 }
 
-.confirmBtn:hover {
-  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.confirmBtn:active {
-  transform: translateY(0px);
+.textButton:hover {
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
 }

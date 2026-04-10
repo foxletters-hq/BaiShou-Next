@@ -23,6 +23,7 @@ import {
   Minus,
   Plus
 } from 'lucide-react';
+import { Switch } from '../Switch/Switch';
 
 export interface ToolManagementConfig {
   disabledToolIds: string[];
@@ -179,10 +180,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
                                        <span className={styles.toolIdTag}>{tool.id}</span>
                                      </div>
                                    </div>
-                                   <label className={styles.switch}>
-                                     <input type="checkbox" checked={isEnabled} onChange={() => toggleTool(tool.id)} />
-                                     <span className={styles.slider}></span>
-                                   </label>
+                                   <Switch checked={isEnabled} onChange={() => toggleTool(tool.id)} />
                                  </div>
                                  
                                  {hasParams && isEnabled && (

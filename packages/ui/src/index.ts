@@ -90,3 +90,5 @@ export { AssistantPickerSheet } from './web/AssistantPickerSheet/index';
 export type { AssistantPickerSheetProps } from './web/AssistantPickerSheet/index';
 export * from './web/PromptShortcutSheet/index';
 export * from './web/RecallBottomSheet/index';
+export * from './web/ModelSwitcherPopup';
+export * from './web/AvatarEditor';

@@ -4,17 +4,17 @@
   --theme-on-primary: var(--color-on-primary, #ffffff);
   --theme-primary-container-50: rgba(91, 168, 245, 0.15);
   
-  --theme-on-surface: var(--color-on-surface, #1A1A1A);
-  --theme-on-surface-variant: var(--color-on-surface-variant, #475569);
+  --theme-on-surface: var(--text-primary);
+  --theme-on-surface-variant: var(--text-secondary);
   
-  --theme-surface-container-low: rgba(0, 0, 0, 0.03);
-  --theme-surface-container-low-40: rgba(0, 0, 0, 0.015);
-  --theme-surface-container-highest: rgba(0, 0, 0, 0.08);
+  --theme-surface-container-low: var(--bg-surface-normal);
+  --theme-surface-container-low-40: var(--bg-surface-high);
+  --theme-surface-container-highest: var(--bg-surface-highest);
   
-  --theme-outline: rgba(140, 140, 140, 0.8);
-  --theme-outline-variant-50: rgba(208, 208, 208, 0.7);
-  --theme-outline-30: rgba(140, 140, 140, 0.3);
-  --theme-surface-variant: rgba(0, 0, 0, 0.05);
+  --theme-outline: var(--border-strong);
+  --theme-outline-variant-50: var(--border-subtle);
+  --theme-outline-30: var(--border-subtle);
+  --theme-surface-variant: var(--bg-surface-normal);
 
   display: flex;
   flex-direction: column;

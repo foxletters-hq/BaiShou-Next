@@ -1,6 +1,6 @@
 .markdownContainer {
-  font-family: var(--font-family-main);
-  color: var(--color-text-main);
+  font-family: var(--font-family-main, inherit);
+  color: var(--text-primary, #1A1C23);
   line-height: 1.6;
   font-size: 15px;
   word-wrap: break-word;
@@ -36,7 +36,7 @@
 }
 
 .inlineCode {
-  background: var(--color-surface);
+  background: var(--bg-surface);
   color: var(--color-text-main);
   padding: 2px 6px;
   border-radius: 4px;
@@ -46,7 +46,7 @@
 }
 
 .codeBlock {
-  background: var(--color-surface);
+  background: var(--bg-surface);
   padding: 12px;
   border-radius: 8px;
   overflow-x: auto;

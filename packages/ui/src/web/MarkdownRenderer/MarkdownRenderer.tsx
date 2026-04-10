@@ -13,11 +13,27 @@ export interface MarkdownRendererProps {
   isStreaming?: boolean;
 }
 
+function remarkBrToBreak() {
+  return (tree: any) => {
+    const walk = (node: any) => {
+      // Find embedded HTML matching <br> and turn them into native remark 'break' nodes
+      if (node.type === 'html' && /<br\s*\/?>/i.test(node.value)) {
+        node.type = 'break';
+        delete node.value;
+      }
+      if (node.children && Array.isArray(node.children)) {
+        node.children.forEach(walk);
+      }
+    };
+    walk(tree);
+  };
+}
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false }) => {
   return (
     <div className={`${styles.markdownContainer} ${isStreaming ? styles.streaming : ''}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
+        remarkPlugins={[remarkBrToBreak, remarkGfm, remarkMath]}
         rehypePlugins={[rehypeHighlight, rehypeKatex]}
         components={{
           ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
@@ -45,12 +61,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
           table({ children }) {
             return <div className={styles.tableWrap}><table>{children}</table></div>;
           },
-          blockquote: ({ node, ...props }) => <blockquote className={styles.blockquote} {...props} />,
+        blockquote: ({ node, ...props }) => <blockquote className={styles.blockquote} {...props} />,
         }}
       >
-        {content}
+        {content + (isStreaming ? ' ▍' : '')}
       </ReactMarkdown>
-      {isStreaming && <span className={styles.blinkingCursor}>▋</span>}
     </div>
   );
 };

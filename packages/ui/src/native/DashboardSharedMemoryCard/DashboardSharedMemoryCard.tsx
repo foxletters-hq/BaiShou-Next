@@ -56,7 +56,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
 const styles = StyleSheet.create({
   card: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: 'var(--bg-surface)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.5)',
@@ -73,11 +73,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: 'bold',
     fontSize: 14,
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
   },
   desc: {
     fontSize: 12,
-    color: '#475569',
+    color: 'var(--text-secondary)',
     lineHeight: 18,
     marginBottom: 20,
   },
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
   },
   slider: {
     width: '100%',

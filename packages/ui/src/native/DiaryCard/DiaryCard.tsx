@@ -96,13 +96,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF', // var(--bg-surface)
+    backgroundColor: 'var(--bg-surface)', // var(--bg-surface)
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.2)', // var(--divider-color)
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 16 },
+      ios: { shadowColor: 'var(--text-primary)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 16 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }
     }),
@@ -110,9 +110,9 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   dateGroup: { flexDirection: 'row', alignItems: 'center' },
-  day: { fontSize: 32, fontWeight: '800', color: '#1A1A1A', lineHeight: 32 },
+  day: { fontSize: 32, fontWeight: '800', color: 'var(--text-primary)', lineHeight: 32 },
   dateMeta: { marginLeft: 12, justifyContent: 'center' },
-  weekday: { fontSize: 13, fontWeight: '600', color: '#475569', letterSpacing: 0.5 },
+  weekday: { fontSize: 13, fontWeight: '600', color: 'var(--text-secondary)', letterSpacing: 0.5 },
   badge: { 
     marginTop: 4, 
     paddingHorizontal: 6, 
@@ -125,13 +125,13 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '900', color: '#5BA8F5', letterSpacing: 0.5 },
   icon: { fontSize: 20, opacity: 0.3 },
   contentContainer: { height: 120, overflow: 'hidden' },
-  snippet: { fontSize: 15, lineHeight: 24, color: '#1A1A1A', opacity: 0.9 },
+  snippet: { fontSize: 15, lineHeight: 24, color: 'var(--text-primary)', opacity: 0.9 },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 20, gap: 8 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   tagText: { fontSize: 12, fontWeight: '600' },
   actionsDivider: { height: 1, backgroundColor: 'rgba(148, 163, 184, 0.3)', marginTop: 20, marginBottom: 12 },
   actionsBox: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', padding: 8 },
-  editText: { fontSize: 13, fontWeight: '600', color: '#475569' },
+  editText: { fontSize: 13, fontWeight: '600', color: 'var(--text-secondary)' },
   deleteText: { fontSize: 13, fontWeight: '600', color: '#EF4444' }
 });

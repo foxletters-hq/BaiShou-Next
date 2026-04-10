@@ -29,17 +29,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
       title={t('settings.storage_manager', '存储管理')}
       subtitle={t('settings.storage_root_desc', '管理数据存储路径与附件')}
     >
-        {/* 附件管理 - 跳转 */}
-        <button className="settings-list-tile" onClick={onNavigateToAttachments}>
-          <div className="settings-list-tile-leading" />
-          <div className="settings-list-tile-content">
-            <span className="settings-list-tile-title">{t('settings.attachment_management', '附件管理')}</span>
-            <span className="settings-list-tile-subtitle">{t('settings.attachment_management_desc', '管理所有对话附件，支持批次删除')}</span>
-          </div>
-          <MdChevronRight size={22} className="settings-list-tile-trailing" />
-        </button>
 
-        <div className="settings-list-divider indent" />
 
         {/* 数据根目录 */}
         <div className="settings-list-tile settings-list-tile-noclick">

@@ -3,6 +3,7 @@ import styles from './WebSearchSettingsView.module.css';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../Toast/useToast';
 import { MdFormatListNumbered, MdAutoAwesome, MdCompress, MdLibraryBooks, MdShortText, MdVisibility, MdVisibilityOff, MdSave, MdKey } from 'react-icons/md';
+import { Switch } from '../Switch/Switch';
 
 export interface WebSearchConfig {
   webSearchEngine: string;
@@ -144,14 +145,10 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
                <span className={styles.sliderTitle}>{t('agent.tools.param_rag_enabled', '网页智能抽取 (Web-RAG)')}</span>
                <span className={styles.sliderDesc}>{t('agent.tools.param_rag_enabled_desc', '开启深入阅读理解')}</span>
              </div>
-             <label className={styles.switchControl}>
-               <input 
-                 type="checkbox" 
-                 checked={searchConfig.webSearchRagEnabled}
-                 onChange={(e) => handleChange('webSearchRagEnabled', e.target.checked)}
-               />
-               <span className={styles.switchSlider}></span>
-             </label>
+             <Switch 
+               checked={searchConfig.webSearchRagEnabled}
+               onChange={(e) => handleChange('webSearchRagEnabled', e.target.checked)}
+             />
            </div>
            
            {searchConfig.webSearchRagEnabled ? (

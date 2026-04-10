@@ -1,46 +1,34 @@
 .actionBarContainer {
-  /* 使得容器可以浮动且被父级气泡所包裹时的位置关系（需要在消费方设为 relative 以包裹，但组件本身也可绝对定位） */
-  position: absolute;
-  bottom: -40px;
-  z-index: 10;
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+  /* hide by default, shown by parent hover */
   opacity: 0;
-  visibility: hidden;
-  transform: translateY(8px);
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all 0.2s ease;
 }
 
 .alignLeft {
-  left: 0;
+  justify-content: flex-start;
 }
 
 .alignRight {
-  right: 0;
-  flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 
-/* 父组件气泡如果被 Hover，那么会触发这个 bar 显示 (这就要求使用这个组件的上层添加类似 .chatBubble:hover .actionBarContainer { opacity: 1, visibility: visible, transform: translateY(0) } 的选择器。) 为了兜底，我们提供一种内聚的方法：如果直接 hover 本身也应该保持显示。此逻辑交由消费它的上层 CSS 控制，或这里提供一个兜底。通常使用时，父级会通过 .actionBarContainer 去控制其可见性。*/
-
-.capsule {
-  display: flex;
-  align-items: center;
-  background-color: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 100px; /* 超大圆角形成胶囊 */
-  padding: 4px 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  gap: 2px;
+/* Let parent .chat-bubble-container control visibility since it wraps both */
+:global(.chat-bubble-container:hover) .actionBarContainer {
+  opacity: 1;
 }
 
 .iconBtn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   border: none;
   background: transparent;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary, #64748b);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -49,27 +37,19 @@
 }
 
 .iconBtn:hover {
-  background-color: var(--bg-surface-low, #F1F5F9);
-  color: var(--text-primary, #1A1A1A);
-  transform: scale(1.05);
+  background-color: var(--bg-surface-normal, rgba(0,0,0,0.05));
+  color: var(--text-primary, #1e293b);
 }
 
 .iconBtn:active {
   transform: scale(0.95);
 }
 
-.divider {
-  width: 1px;
-  height: 14px;
-  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  margin: 0 4px;
-}
-
 .dangerBtn:hover {
   background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.8) !important;
-  color: var(--color-error, #F44336) !important;
+  color: var(--color-error, #ef4444) !important;
 }
 
 .copiedIcon {
-  color: var(--color-success, #10B981);
+  color: var(--color-success, #10b981);
 }

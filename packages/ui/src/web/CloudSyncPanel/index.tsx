@@ -6,8 +6,10 @@ import { useDialog } from '../Dialog';
 import { 
   Cloud, Globe, Folder, Database, History, RefreshCw, Trash2,
   CheckSquare, Settings, Archive, CloudUpload, ArrowLeft, Save, 
-  Home, Package, DownloadCloud, Edit3, Loader2
+  Home, Package, DownloadCloud, Edit3, Loader2,
+  Component, Map, Key, Eye, EyeOff, LayoutTemplate
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export type SyncTarget = 'local' | 's3' | 'webdav';
 
@@ -71,7 +73,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   const { t } = useTranslation();
   const toast = useToast();
   const dialog = useDialog();
-  const [config, setConfig] = useState<SyncConfig>(savedConfig || DEFAULT_CONFIG);
+  const [config, setConfig] = useState<SyncConfig>({ ...DEFAULT_CONFIG, ...(savedConfig || {}) });
   const [records, setRecords] = useState<SyncRecord[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,6 +82,13 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   const [manageMode, setManageMode] = useState(false);
   const [showCountModal, setShowCountModal] = useState(false);
   const [tempCount, setTempCount] = useState(config.maxBackupCount);
+
+  // Keep config in sync if savedConfig is loaded asynchronously or updated externally
+  useEffect(() => {
+    if (savedConfig) {
+      setConfig((prev) => ({ ...DEFAULT_CONFIG, ...savedConfig }));
+    }
+  }, [savedConfig]);
 
   const fetchRecords = useCallback(async () => {
     if (config.target === 'local') { setRecords([]); return; }
@@ -96,9 +105,16 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     }
   }, [config, onListRecords, toast]);
 
+  const handleSaveConfig = () => {
+    onSaveConfig?.(config);
+    setShowConfig(false);
+    fetchRecords();
+  };
+
   useEffect(() => {
     fetchRecords();
-  }, [config.target, fetchRecords]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSync = async () => {
     if (config.target === 'local') { toast.show('当前同步目标为本地，请先配置云端'); return; }
@@ -172,7 +188,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   const updateField = (key: keyof SyncConfig, value: any) => {
     const next = { ...config, [key]: value };
     setConfig(next);
-    onSaveConfig?.(next);
+    onSaveConfig?.(next); // Auto-save to prevent data loss on tab switch
   };
 
   const getTargetIcon = (target: string) => {
@@ -187,53 +203,70 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     return '#64748b'; // slate
   };
 
-  if (showConfig) {
-    return (
-      <div className={styles.container} style={{ padding: 0 }}>
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <AnimatePresence mode="wait">
+      {showConfig ? (
+        <motion.div 
+          key="config"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -15 }}
+          transition={{ duration: 0.2 }}
+          className={styles.container} 
+          style={{ padding: 0 }}
+        >
         <div className={styles.configPageWrapper}>
           <div className={styles.configAppBar}>
-            <button className={styles.configBackButton} onClick={() => setShowConfig(false)}><ArrowLeft size={20} /></button>
-            <div className={styles.configAppTitle}>{t('data_sync.config_title', '同步节点设置')}</div>
+            <button className={styles.configBackButton} onClick={() => setShowConfig(false)}><ArrowLeft size={24} /></button>
+            <div className={styles.configAppTitle}>{t('data_sync.config_title', '数据同步配置')}</div>
+            <div style={{ width: 40 }} /> {/* spacer for centering */}
           </div>
           
           <div className={styles.configContent}>
+            <div className={styles.targetSectionTitle}>选择同步目标</div>
             <div className={styles.targetCardsLayout}>
               <div 
                 className={`${styles.targetCardBig} ${config.target === 'local' ? styles.targetCardSelected : ''}`}
                 onClick={() => updateField('target', 'local')}
               >
-                <div className={styles.targetCardIcon}><Folder size={48} strokeWidth={1} /></div>
-                <div className={styles.targetCardTitle}>{t('data_sync.target_local', '本地存储')}</div>
-                <div className={styles.targetCardDesc}>{t('data_sync.local_storage_desc', '直接将备份转储保存在应用所运行设备的本地磁盘中。')}</div>
+                <div className={styles.targetCardIcon}><Folder size={24} /></div>
+                <div className={styles.targetCardContent}>
+                  <div className={styles.targetCardTitle}>{t('data_sync.target_local', '本地存储')}</div>
+                  <div className={styles.targetCardDesc}>{t('data_sync.local_storage_desc', '直接将备份转储保存在应用所运行设备的本地磁盘中。')}</div>
+                </div>
               </div>
               <div 
                 className={`${styles.targetCardBig} ${config.target === 's3' ? styles.targetCardSelected : ''}`}
                 onClick={() => updateField('target', 's3')}
               >
-                <div className={styles.targetCardIcon}><Cloud size={48} strokeWidth={1} /></div>
-                <div className={styles.targetCardTitle}>{t('data_sync.target_s3', 'S3 对象存储')}</div>
-                <div className={styles.targetCardDesc}>{t('data_sync.s3_storage_desc', '对接基于亚马逊云标准的 S3 兼容级云存储协议。')}</div>
+                <div className={styles.targetCardIcon}><Cloud size={24} /></div>
+                <div className={styles.targetCardContent}>
+                  <div className={styles.targetCardTitle}>{t('data_sync.target_s3', 'S3 兼容存储')}</div>
+                  <div className={styles.targetCardDesc}>{t('data_sync.s3_storage_desc', '兼容 AWS S3 的云存储服务')}</div>
+                </div>
               </div>
               <div 
                 className={`${styles.targetCardBig} ${config.target === 'webdav' ? styles.targetCardSelected : ''}`}
                 onClick={() => updateField('target', 'webdav')}
               >
-                <div className={styles.targetCardIcon}><Globe size={48} strokeWidth={1} /></div>
-                <div className={styles.targetCardTitle}>{t('data_sync.target_webdav', 'WebDAV 协议')}</div>
-                <div className={styles.targetCardDesc}>{t('data_sync.webdav_storage_desc', '使用开放标准的 WebDAV 扩展以将备份接入私有云。')}</div>
+                <div className={styles.targetCardIcon}><Globe size={24} /></div>
+                <div className={styles.targetCardContent}>
+                  <div className={styles.targetCardTitle}>{t('data_sync.target_webdav', 'WebDAV')}</div>
+                  <div className={styles.targetCardDesc}>{t('data_sync.webdav_storage_desc', '通用网络文件存储协议')}</div>
+                </div>
               </div>
             </div>
 
             <div className={styles.configSection}>
               <div className={styles.configSectionHeader}>
                 <div className={styles.configSectionTitle}>
-                  {config.target === 'local' ? '本地暂无额外配置' : 
-                   config.target === 's3' ? 'S3 资源配置参数' : 'WebDAV 身份验证与连接'}
+                  {config.target === 'local' ? '本地存储配置' : 
+                   config.target === 's3' ? 'S3 存储配置' : 'WebDAV 存储配置'}
                 </div>
-                <button className={`${styles.actionBtn} ${styles.btnFilled}`} onClick={() => setShowConfig(false)}>
-                  <Save size={16} /> {t('data_sync.save_config_button', '保存并应用')}
-                </button>
               </div>
+              <div className={styles.formDivider} />
 
               {config.target === 'local' && (
                 <div className={styles.emptyLocalState}>
@@ -246,32 +279,112 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
 
               {config.target === 'webdav' && (
                 <div className={styles.configGrid}>
-                  <div className={styles.configField}><label>WebDAV URL</label><input value={config.webdavUrl} onChange={(e) => updateField('webdavUrl', e.target.value)} /></div>
-                  <div className={styles.configField}><label>Base Path</label><input value={config.webdavPath} onChange={(e) => updateField('webdavPath', e.target.value)} /></div>
-                  <div className={styles.configField}><label>Username</label><input value={config.webdavUsername} onChange={(e) => updateField('webdavUsername', e.target.value)} /></div>
-                  <div className={styles.configField}><label>Password</label><input type="password" value={config.webdavPassword} onChange={(e) => updateField('webdavPassword', e.target.value)} /></div>
+                  <div className={styles.formField}>
+                    <label>WebDAV URL 地址</label>
+                    <div className={styles.inputPill}>
+                      <Globe size={18} className={styles.pillIcon} />
+                      <input value={config.webdavUrl} onChange={(e) => updateField('webdavUrl', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Base Path 子路径</label>
+                    <div className={styles.inputPill}>
+                      <Folder size={18} className={styles.pillIcon} />
+                      <input value={config.webdavPath} onChange={(e) => updateField('webdavPath', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Username 用户名</label>
+                    <div className={styles.inputPill}>
+                      <Component size={18} className={styles.pillIcon} />
+                      <input value={config.webdavUsername} onChange={(e) => updateField('webdavUsername', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Password 密码</label>
+                    <div className={styles.inputPill}>
+                      <Key size={18} className={styles.pillIcon} />
+                      <input type={showPassword ? "text" : "password"} value={config.webdavPassword} onChange={(e) => updateField('webdavPassword', e.target.value)} />
+                      <button className={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {config.target === 's3' && (
                 <div className={styles.configGrid}>
-                  <div className={styles.configField}><label>Endpoint</label><input value={config.s3Endpoint} onChange={(e) => updateField('s3Endpoint', e.target.value)} /></div>
-                  <div className={styles.configField}><label>Region</label><input value={config.s3Region} onChange={(e) => updateField('s3Region', e.target.value)} /></div>
-                  <div className={styles.configField}><label>Bucket</label><input value={config.s3Bucket} onChange={(e) => updateField('s3Bucket', e.target.value)} /></div>
-                  <div className={styles.configField}><label>Base Path</label><input value={config.s3Path} onChange={(e) => updateField('s3Path', e.target.value)} /></div>
-                  <div className={styles.configField}><label>Access Key (AK)</label><input value={config.s3AccessKey} onChange={(e) => updateField('s3AccessKey', e.target.value)} /></div>
-                  <div className={styles.configField}><label>Secret Key (SK)</label><input type="password" value={config.s3SecretKey} onChange={(e) => updateField('s3SecretKey', e.target.value)} /></div>
+                  <div className={styles.formField}>
+                    <label>Endpoint 服务地址</label>
+                    <div className={styles.inputPill}>
+                      <Component size={18} className={styles.pillIcon} />
+                      <input value={config.s3Endpoint} onChange={(e) => updateField('s3Endpoint', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Region 区域名</label>
+                    <div className={styles.inputPill}>
+                      <Map size={18} className={styles.pillIcon} />
+                      <input value={config.s3Region} onChange={(e) => updateField('s3Region', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Bucket 存储桶</label>
+                    <div className={styles.inputPill}>
+                      <Database size={18} className={styles.pillIcon} />
+                      <input value={config.s3Bucket} onChange={(e) => updateField('s3Bucket', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Path 子路径</label>
+                    <div className={styles.inputPill}>
+                      <Folder size={18} className={styles.pillIcon} />
+                      <input value={config.s3Path} onChange={(e) => updateField('s3Path', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Access Key (AK)</label>
+                    <div className={styles.inputPill}>
+                      <Key size={18} className={styles.pillIcon} />
+                      <input type={showPassword ? "text" : "password"} value={config.s3AccessKey} onChange={(e) => updateField('s3AccessKey', e.target.value)} />
+                      <button className={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Secret Key (SK)</label>
+                    <div className={styles.inputPill}>
+                      <Key size={18} className={styles.pillIcon} />
+                      <input type={showPassword ? "text" : "password"} value={config.s3SecretKey} onChange={(e) => updateField('s3SecretKey', e.target.value)} />
+                      <button className={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              <div className={styles.configSectionFooter}>
+                <button className={`${styles.actionBtn} ${styles.btnSave}`} onClick={handleSaveConfig}>
+                  {t('data_sync.save_config_button', '保存配置')}
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.container}>
+      </motion.div>
+      ) : (
+      <motion.div 
+        key="status"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -15 }}
+        transition={{ duration: 0.2 }}
+        className={styles.container}
+      >
       <div className={styles.statCardsRow}>
         <div className={styles.statCard}>
           <div className={styles.statIconWrapper} style={{ backgroundColor: `${getTargetColor(config.target)}15`, color: getTargetColor(config.target) }}>
@@ -332,7 +445,10 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
              </button>
           )}
 
-          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowConfig(true)}>
+          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
+            setConfig({ ...DEFAULT_CONFIG, ...(savedConfig || {}) });
+            setShowConfig(true);
+          }}>
             <Settings size={16} /> {t('data_sync.sync_settings_button', '同步设置')}
           </button>
           
@@ -365,7 +481,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                     setSelected(next);
                   }} />
               )}
-              <div className={styles.recordIcon}><Package size={24} strokeWidth={1.5} /></div>
+              <div className={styles.recordIcon}><Archive size={24} strokeWidth={1.5} /></div>
               <div className={styles.recordInfo}>
                 <div className={styles.recordName}>{r.filename}</div>
                 <div className={styles.recordMeta}>
@@ -411,6 +527,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 className={styles.noLimitBtn} 
                 onClick={() => {
                   updateField('maxBackupCount', -1);
+                  onSaveConfig?.({ ...config, maxBackupCount: -1 });
                   setShowCountModal(false);
                 }}
               >
@@ -422,6 +539,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                   className={`${styles.actionBtn} ${styles.btnFilled}`} 
                   onClick={() => {
                     updateField('maxBackupCount', tempCount);
+                    onSaveConfig?.({ ...config, maxBackupCount: tempCount });
                     setShowCountModal(false);
                   }}
                 >
@@ -432,6 +550,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           </div>
         </div>
       )}
-    </div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

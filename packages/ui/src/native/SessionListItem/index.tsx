@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#EEE',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'var(--bg-surface)',
   },
   containerSelected: {
     backgroundColor: 'rgba(91, 168, 245, 0.1)',
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: 'var(--text-primary)',
   },
   titleSelected: {
     color: '#5BA8F5',
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   },
   moreIcon: {
     fontSize: 18,
-    color: '#999',
+    color: 'var(--text-tertiary)',
     paddingHorizontal: 8,
   }
 });

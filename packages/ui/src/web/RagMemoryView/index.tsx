@@ -5,6 +5,7 @@ import {
   MdRefresh, MdTune, MdLayersClear, MdAutoStories, MdAddComment, 
   MdSync, MdSearch, MdClose, MdMoreVert, MdWarning
 } from 'react-icons/md';
+import { Switch } from '../Switch/Switch';
 import styles from './RagMemoryView.module.css';
 
 export interface RagConfig {
@@ -92,14 +93,10 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         <div className={styles.titleInfo}>
           <div className={styles.titleIcon}><MdColorLens size={24} /></div>
           <h2 className={styles.title}>{t('agent.rag.title', 'RAG 记忆管理')}</h2>
-          <label className={styles.switch}>
-             <input 
-               type="checkbox" 
-               checked={config.ragEnabled}
-               onChange={(e) => onChange({ ...config, ragEnabled: e.target.checked })}
-             />
-             <span className={styles.slider}></span>
-          </label>
+          <Switch 
+            checked={config.ragEnabled}
+            onChange={(e) => onChange({ ...config, ragEnabled: e.target.checked })}
+          />
         </div>
         
         {stats.totalCount > 0 && (

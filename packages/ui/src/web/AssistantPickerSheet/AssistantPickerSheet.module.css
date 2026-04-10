@@ -1,7 +1,9 @@
 .overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: transparent;
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
+  backdrop-filter: var(--blur-overlay, blur(4px));
+  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -10,7 +12,7 @@
 }
 
 .dialog {
-  background: var(--bg-surface-lowest, #f8fafc);
+  background: var(--bg-surface, #FFFFFF);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4) inset;
   border-radius: 28px;
@@ -25,8 +27,8 @@
 
 /* ───────── Left Sidebar ───────── */
 .sidebar {
-  width: 300px;
-  background-color: var(--bg-surface-low, #f1f5f9);
+  width: 220px;
+  background-color: var(--bg-surface, #FFFFFF);
   border-right: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   display: flex;
   flex-direction: column;
@@ -105,11 +107,12 @@
 .listItem {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  border-radius: 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
   border: 1px solid transparent;
+  position: relative;
 }
 
 .listItem:hover {
@@ -117,20 +120,43 @@
 }
 
 .selectedItem {
-  background-color: var(--bg-surface, #FFFFFF);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.08);
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  border-color: transparent;
 }
 
-.itemAvatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(var(--color-primary-rgb, 91, 168, 245), 0.1), rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.1));
+.deleteBtnWrapper {
+  position: absolute;
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background-color: rgba(var(--color-error-rgb, 244, 67, 54), 0.1);
+  color: var(--color-error, #f44336);
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+  cursor: pointer;
+}
+
+.deleteBtnWrapper:hover {
+  background-color: rgba(var(--color-error-rgb, 244, 67, 54), 0.2);
+}
+
+.listItem:hover .deleteBtnWrapper {
+  opacity: 1;
+}
+
+.itemAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
   margin-right: 12px;
   flex-shrink: 0;
 }
@@ -157,12 +183,20 @@
 
 .currentBadge {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   background: var(--color-primary, #5BA8F5);
   color: #fff;
   padding: 2px 6px;
-  border-radius: 6px;
-  text-transform: uppercase;
+  border-radius: 4px;
+}
+
+.defaultBadge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  color: var(--text-secondary, #64748B);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .itemDesc {
@@ -207,7 +241,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--bg-surface-low, #f1f5f9);
+  background: var(--bg-surface, #FFFFFF);
 }
 
 .closeBtn {
@@ -270,14 +304,14 @@
 }
 
 .detailAvatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
   background: linear-gradient(135deg, rgba(var(--color-primary-rgb, 91, 168, 245), 0.15), rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.15));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40px;
+  font-size: 32px;
   box-shadow: 0 8px 24px rgba(91, 168, 245, 0.1);
 }
 
@@ -398,14 +432,13 @@
 .applyBtn {
   flex: 1;
   padding: 12px 24px;
-  background: linear-gradient(135deg, var(--color-primary, #5BA8F5), rgba(var(--color-tertiary-rgb, 173, 136, 212), 1));
+  background: var(--color-primary, #5BA8F5);
   color: #FFFFFF;
   border: none;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.3);
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   display: flex;
   align-items: center;
@@ -414,8 +447,7 @@
 }
 
 .applyBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(91, 168, 245, 0.4);
+  filter: brightness(1.05);
 }
 
 .applyBtnCurrent {
@@ -437,4 +469,70 @@
 @keyframes scaleUp {
   from { opacity: 0; transform: scale(0.95) translateY(10px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.sliderInput {
+  flex: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 6px;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  border-radius: 6px;
+  outline: none;
+  width: 100%;
+}
+
+.sliderInput::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary, #5ba8f5);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.sliderInput::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.toggleSwitch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  transition: .4s;
+  border-radius: 24px;
+}
+.toggleSlider:before {
+  position: absolute;
+  content: '';
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--bg-surface);
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.toggleSwitch input:checked + .toggleSlider {
+  background-color: var(--color-primary, #5ba8f5);
+}
+.toggleSwitch input:checked + .toggleSlider:before {
+  transform: translateX(20px);
 }

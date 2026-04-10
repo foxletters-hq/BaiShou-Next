@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react';
-import { Editor, rootCtx, defaultValueCtx } from '@milkdown/core';
+import { Editor, rootCtx, defaultValueCtx, remarkPluginsCtx } from '@milkdown/core';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
 import { history } from '@milkdown/plugin-history';
@@ -25,9 +25,26 @@ const EditorComponent: React.FC<MilkdownEditorProps> = ({ content, onChange, pla
       .config((ctx) => {
         ctx.set(rootCtx, root);
         ctx.set(defaultValueCtx, content || '');
+        
+        ctx.update(remarkPluginsCtx, (prev) => {
+          const remarkBrToBreak: any = () => (tree: any) => {
+            const walk = (node: any) => {
+              if (node.type === 'html' && /<br\s*\/?>/i.test(node.value)) {
+                node.type = 'break';
+                delete node.value;
+              }
+              if (node.children && Array.isArray(node.children)) {
+                node.children.forEach(walk);
+              }
+            };
+            walk(tree);
+          };
+          return prev.concat(remarkBrToBreak);
+        });
+
         ctx.get(listenerCtx)
           .markdownUpdated((ctx, markdown, prevMarkdown) => {
-             // Avoid triggering onChange repeatedly if it's the exact same
+           // Avoid triggering onChange repeatedly if it's the exact same
              if (markdown !== prevMarkdown) {
                onChangeRef.current(markdown);
              }
