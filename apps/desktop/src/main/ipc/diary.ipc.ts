@@ -33,6 +33,12 @@ export function getDiaryManager() {
   return new DiaryService(shadowRepo, fileSync, shadowSync, vaultIndex);
 }
 
+export function getShadowSync() {
+  const shadowDb = shadowConnectionManager.getDb();
+  const shadowRepo = new ShadowIndexRepository(shadowDb);
+  return new ShadowIndexSyncService(shadowRepo, pathService, vaultService);
+}
+
 /**
  * 统一的日期字符串解析工具
  *

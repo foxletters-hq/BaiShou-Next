@@ -14,53 +14,70 @@ export class HotkeyService {
     private readonly mainWindow: BrowserWindow
   ) {}
 
-  /**
-   * 初始化服务：从数据库中直接读取当前配制决定是否注册热键
-   */
   async start(): Promise<void> {
-    const config = await this.settingsRepo.getHotkeyConfig();
-    this.isEnabled = config.hotkeyEnabled;
-    if (this.isEnabled) {
-      this.register(config);
+    console.log('[HotkeyService] 🚀 Starting HotkeyService initialization...');
+    try {
+      const config = await this.settingsRepo.getHotkeyConfig();
+      console.log('[HotkeyService] 📦 Loaded config from DB:', JSON.stringify(config));
+      
+      this.isEnabled = config?.hotkeyEnabled ?? false;
+      
+      if (this.isEnabled) {
+        console.log('[HotkeyService] ✅ Global shortcut is ENABLED. Proceeding to register...');
+        this.register(config);
+      } else {
+        console.log('[HotkeyService] ⏸️ Global shortcut is DISABLED in settings. Skipping registration.');
+      }
+    } catch (e) {
+      console.error('[HotkeyService] ❌ Failed to start HotkeyService:', e);
     }
   }
 
-  /**
-   * 更新并且重新注册热键
-   */
   update(config: HotkeyConfig): void {
+    console.log('[HotkeyService] ✏️ Hotkey configuration updated:', config);
     this.unregisterAll();
     this.isEnabled = config.hotkeyEnabled;
     if (this.isEnabled) {
       this.register(config);
+    } else {
+      console.log('[HotkeyService] ⏸️ Global shortcut disabled via settings update.');
     }
   }
 
-  /**
-   * 停止所有全局监听
-   */
   stop(): void {
+    console.log('[HotkeyService] 🛑 Stopping hotkey service...');
     this.unregisterAll();
     this.isEnabled = false;
   }
 
   private register(config: HotkeyConfig): void {
+    if (!config.hotkeyKey || !config.hotkeyModifier) {
+      console.log('[HotkeyService] ⚠️ Invalid shortcut configuration. Skipping registration.', config);
+      return;
+    }
+
     const accelerator = this.parseAccelerator(config.hotkeyModifier, config.hotkeyKey);
-    if (!accelerator) return;
+    if (!accelerator) {
+      console.log(`[HotkeyService] ⚠️ Could not parse accelerator for ${config.hotkeyModifier} + ${config.hotkeyKey}`);
+      return;
+    }
+    
+    console.log(`[HotkeyService] 🔄 Attempting to register global shortcut: ${accelerator}`);
 
     try {
       // 注册全局热键拦截
       const success = globalShortcut.register(accelerator, () => {
+        console.log(`[HotkeyService] 🎯 Global shortcut [${accelerator}] triggered! Toggling window...`);
         this.toggleWindow();
       });
 
       if (!success) {
-        console.warn(`[HotkeyService] Failed to register global shortcut: ${accelerator}`);
+        console.warn(`[HotkeyService] ❌ Failed to register global shortcut: ${accelerator}. This is usually because another application has already registered this OS-level shortcut, or it's reserved by Windows.`);
       } else {
-        console.log(`[HotkeyService] Successfully registered global shortcut: ${accelerator}`);
+        console.log(`[HotkeyService] ✅ Successfully registered global shortcut: ${accelerator}`);
       }
     } catch (e) {
-      console.error(`[HotkeyService] Error while registering global shortcut ${accelerator}:`, e);
+      console.error(`[HotkeyService] 💀 Exception thrown while registering global shortcut ${accelerator}:`, e);
     }
   }
 
@@ -80,21 +97,26 @@ export class HotkeyService {
       const isVisible = win.isVisible();
       const isFocused = win.isFocused();
 
-      // 当窗口可见并且拥有焦点并且没有被最小化时，隐藏
       if (isVisible && !isMinimized && isFocused) {
         win.hide();
       } else {
         if (isMinimized) {
           win.restore();
         }
-        if (!isVisible) {
-          win.show();
+        
+        if (process.platform !== 'linux') {
+          win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
         }
         
-        // 强制占据前台及分配焦点
+        // 无论是否 visible 都调用 show，这是拉起焦点的重要前置步骤
+        win.show();
         win.focus();
+
+        if (process.platform !== 'linux') {
+          win.setVisibleOnAllWorkspaces(false);
+        }
         
-        // 针对 Windows 的特别策略还原，强制脱离可能遮挡它的置顶或全屏应用
+        // 保留原有的针对 Windows 置顶 hack (双重保险)
         if (process.platform === 'win32') {
           win.setSkipTaskbar(false);
           win.setAlwaysOnTop(true);
@@ -130,6 +152,24 @@ export class HotkeyService {
     
     // 如果是数字或者特殊功能键
     if (!keyStr) return null;
+
+    // 特殊键位转换映射 (兼容前端直接传递 e.key 及可能的变形)
+    const specialMap: Record<string, string> = {
+      ' ': 'SPACE',
+      'ARROWUP': 'UP',
+      'ARROWDOWN': 'DOWN',
+      'ARROWLEFT': 'LEFT',
+      'ARROWRIGHT': 'RIGHT',
+      'ESCAPE': 'ESC',
+      'ENTER': 'RETURN'
+    };
+
+    if (specialMap[keyStr]) {
+      keyStr = specialMap[keyStr];
+    } else if (keyStr.startsWith('DIGIT')) {
+      // "DIGIT1" -> "1"
+      keyStr = keyStr.replace('DIGIT', '');
+    }
 
     return `${modStr}+${keyStr}`;
   }

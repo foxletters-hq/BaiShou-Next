@@ -7,7 +7,7 @@ import extract from 'extract-zip';
 
 import { IArchiveService, ImportResult, VaultService } from '@baishou/core';
 import { connectionManager, SettingsRepository } from '@baishou/database';
-import { appDb } from '../db';
+import { getAppDb } from '../db';
 import { DesktopStoragePathService } from './path.service';
 
 export class DesktopArchiveService implements IArchiveService {
@@ -17,7 +17,7 @@ export class DesktopArchiveService implements IArchiveService {
     private pathService: DesktopStoragePathService,
     private vaultService: VaultService
   ) {
-    this.settingsRepo = new SettingsRepository(appDb);
+    this.settingsRepo = new SettingsRepository(getAppDb());
   }
 
   public async exportToTempFile(): Promise<string | null> {

@@ -51,6 +51,9 @@ export const api = {
     getHotkeyConfig: () => ipcRenderer.invoke('settings:get-hotkey-config'),
     setHotkeyConfig: (config: any) => ipcRenderer.invoke('settings:set-hotkey-config', config),
     
+    getCloudSyncConfig: () => ipcRenderer.invoke('settings:get-cloud-sync-config'),
+    setCloudSyncConfig: (config: any) => ipcRenderer.invoke('settings:set-cloud-sync-config', config),
+    
     reorderProviders: (orderedIds: string[]) => ipcRenderer.invoke('settings:reorder-providers', orderedIds),
     testProviderConnection: (providerId: string, tempKey?: string, tempUrl?: string, testModelId?: string) => ipcRenderer.invoke('settings:test-connection', providerId, tempKey, tempUrl, testModelId),
     fetchProviderModels: (providerId: string, tempKey?: string, tempUrl?: string) => ipcRenderer.invoke('settings:fetch-models', providerId, tempKey, tempUrl),
@@ -91,6 +94,12 @@ export const api = {
     vacuumDb: () => ipcRenderer.invoke('storage:vacuumDb')
   },
 
+  // Attachment System
+  attachment: {
+    listAll: () => ipcRenderer.invoke('attachment:listAll'),
+    deleteBatch: (ids: string[]) => ipcRenderer.invoke('attachment:deleteBatch', ids)
+  },
+
   // Archive System (Phase B1)
   archive: {
     exportZip: () => ipcRenderer.invoke('archive:export'),
@@ -107,7 +116,12 @@ export const api = {
     findByDate: (dateStr: string) => ipcRenderer.invoke('diary:findByDate', dateStr),
     listAll: (options?: any) => ipcRenderer.invoke('diary:listAll', options),
     search: (query: string, options?: any) => ipcRenderer.invoke('diary:search', query, options),
-    count: () => ipcRenderer.invoke('diary:count')
+    count: () => ipcRenderer.invoke('diary:count'),
+    onSyncEvent: (callback: (event: any) => void) => {
+      const handler = (_: any, event: any) => callback(event);
+      ipcRenderer.on('diary:sync-event', handler);
+      return () => ipcRenderer.off('diary:sync-event', handler);
+    }
   },
 
   // Summary System (Phase 13)
@@ -180,6 +194,19 @@ export const api = {
     deleteRecord: (config: any, filename: string) => ipcRenderer.invoke('cloud:deleteRecord', config, filename),
     batchDelete: (config: any, filenames: string[]) => ipcRenderer.invoke('cloud:batchDelete', config, filenames),
     rename: (config: any, oldName: string, newName: string) => ipcRenderer.invoke('cloud:rename', config, oldName, newName)
+  },
+
+  // Onboarding
+  onboarding: {
+    check: () => ipcRenderer.invoke('onboarding:check'),
+    pickDirectory: () => ipcRenderer.invoke('onboarding:pick-directory'),
+    setDirectory: (path: string) => ipcRenderer.invoke('onboarding:set-directory', path),
+    finish: () => ipcRenderer.invoke('onboarding:finish'),
+    onReady: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('onboarding:ready', handler);
+      return () => ipcRenderer.off('onboarding:ready', handler);
+    }
   },
 
   // Window Controls

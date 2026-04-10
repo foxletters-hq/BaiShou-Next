@@ -6,7 +6,8 @@ import {
   SessionSyncService,
   SessionManagerService,
   AssistantFileService,
-  AssistantManagerService
+  AssistantManagerService,
+  AttachmentManagerService
 } from '@baishou/core'
 import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
@@ -30,7 +31,8 @@ export function getAgentManagers() {
 
   const realAssistantRepo = new AssistantRepository(db);
   const assistantFileService = new AssistantFileService(pathService);
-  const assistantManager = new AssistantManagerService(realAssistantRepo, assistantFileService);
+  const attachmentManager = new AttachmentManagerService(pathService);
+  const assistantManager = new AssistantManagerService(realAssistantRepo, assistantFileService, attachmentManager);
 
   const realMessageRepo = new MessageRepository(db);
   const realSnapshotRepo = new SnapshotRepository(db);
@@ -43,11 +45,11 @@ const agentService = new AgentSessionService();
 
 let globalAbortController: AbortController | null = null;
 
-async function getActiveProvider() {
+async function getActiveProvider(requestedProviderId?: string) {
   const providers = await settingsManager.get<AIProviderConfig[]>('ai_providers') || [];
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
   
-  const providerId = globalModels?.globalDialogueProviderId;
+  const providerId = requestedProviderId || globalModels?.globalDialogueProviderId;
   const config = providers.find((p: AIProviderConfig) => p.id === providerId);
   
   const actualConfig = config || providers.find((p: AIProviderConfig) => p.isEnabled);
@@ -74,6 +76,12 @@ export function registerAgentIPC() {
 
   ipcMain.handle('agent:create-assistant', async (_, input) => {
     const { assistantManager } = getAgentManagers();
+    
+    // Safety fallback: if frontend didn't assign an ID for creation, auto-generate one
+    if (!input.id) {
+      input.id = `ast-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    }
+    
     await assistantManager.create(input);
   });
 
@@ -95,9 +103,50 @@ export function registerAgentIPC() {
   // ==========================================
   // API: Sessions 
   // ==========================================
-  ipcMain.handle('agent:get-sessions', async () => {
+  ipcMain.handle('agent:get-sessions', async (_, limit: number = 20, offset: number = 0) => {
     const { sessionManager } = getAgentManagers();
-    return await sessionManager.findAllSessions();
+    return await sessionManager.findAllSessions(limit, offset);
+  });
+
+  ipcMain.handle('agent:create-session', async (_, { assistantId }) => {
+    const { sessionManager, assistantManager } = getAgentManagers();
+    
+    // Fallbacks for required fields
+    let vaultName = 'default';
+    try {
+        const activeVaultPath = await pathService.getActiveVaultPath();
+        if (activeVaultPath) {
+           vaultName = activeVaultPath.split(/[/\\]/).pop() || 'default';
+        }
+    } catch(e) {}
+
+    let providerId = 'default';
+    let modelId = 'default';
+
+    if (assistantId) {
+       const assistant = await assistantManager.findById(assistantId);
+       if (assistant) {
+          providerId = assistant.providerId || 'default';
+          modelId = assistant.modelId || 'default';
+       }
+    }
+
+    if (providerId === 'default' || modelId === 'default') {
+       const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
+       if (providerId === 'default') providerId = globalModels?.globalDialogueProviderId || 'default';
+       if (modelId === 'default') modelId = globalModels?.globalDialogueModelId || 'default';
+    }
+
+    const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    await sessionManager.upsertSession({
+      id: newId,
+      vaultName,
+      providerId,
+      modelId,
+      assistantId: assistantId || undefined,
+      title: '新对话',
+    } as any);
+    return newId;
   });
 
   ipcMain.handle('agent:delete-sessions', async (_, ids: string[]) => {
@@ -151,9 +200,33 @@ export function registerAgentIPC() {
   // ==========================================
   // API: Chat (Stream)
   // ==========================================
-  ipcMain.handle('agent:get-messages', async (_, sessionId: string) => {
+  ipcMain.handle('agent:get-messages', async (_, sessionId: string, limit: number = 20, offset: number = 0) => {
     const { realMessageRepo } = getAgentManagers();
-    return await realMessageRepo.findBySessionId(sessionId, 50);
+    const rows = await realMessageRepo.findBySessionId(sessionId, limit, offset);
+    
+    // We must manually attach parts and assemble 'content' and 'toolInvocations' for the frontend
+    // because Vercel AI SDK expects msg.content natively, but our DB separates texts into parts.
+    const mapped = [];
+    for (const msg of rows) {
+      const parts = await realMessageRepo.getPartsByMessageId(msg.id);
+      
+      const contentText = parts
+        .filter(p => p.type === 'text')
+        .map(p => p.data?.text || p.data || '')
+        .join('\n');
+        
+      const toolInvocations = parts
+        .filter(p => p.type === 'tool')
+        .map(p => p.data);
+
+      mapped.push({
+        ...msg,
+        content: contentText,
+        toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
+        parts
+      });
+    }
+    return mapped;
   });
   
   ipcMain.handle('agent:delete-message', async (_, sessionId: string, messageId: string) => {
@@ -162,19 +235,39 @@ export function registerAgentIPC() {
     return true;
   });
 
-  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string }) => {
+  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string; providerId?: string; modelId?: string }) => {
     try {
       const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers();
-      const provider = await getActiveProvider();
+      const provider = await getActiveProvider(args.providerId);
       const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
       
       globalAbortController = new AbortController();
       
+      const namingProviderId = globalModels?.globalNamingProviderId || provider.config.id;
+      const namingModelId = globalModels?.globalNamingModelId || args.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat';
+      let namingProvider = provider;
+      if (namingProviderId !== provider.config.id) {
+         try { namingProvider = await getActiveProvider(namingProviderId); } catch(e) {}
+      }
+
+      const summaryProviderId = globalModels?.globalSummaryProviderId || provider.config.id;
+      const summaryModelId = globalModels?.globalSummaryModelId || args.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat';
+      let summaryProvider = provider;
+      if (summaryProviderId !== provider.config.id) {
+         try { summaryProvider = await getActiveProvider(summaryProviderId); } catch(e) {}
+      }
+
       await agentService.streamChat({
         sessionId: args.sessionId,
         userText: args.text,
         provider: provider,
-        modelId: globalModels?.globalDialogueModelId || 'deepseek-chat',
+        modelId: args.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
+        systemModels: {
+           namingProvider,
+           namingModelId,
+           summaryProvider,
+           summaryModelId
+        },
         toolRegistry: toolRegistry,
         sessionRepo: realSessionRepo as any,
         snapshotRepo: realSnapshotRepo as any,
@@ -227,6 +320,20 @@ export function registerAgentIPC() {
     const provider = await getActiveProvider();
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
     globalAbortController = new AbortController();
+
+    const namingProviderId = globalModels?.globalNamingProviderId || provider.config.id;
+    const namingModelId = globalModels?.globalNamingModelId || globalModels?.globalDialogueModelId || 'deepseek-chat';
+    let namingProvider = provider;
+    if (namingProviderId !== provider.config.id) {
+       try { namingProvider = await getActiveProvider(namingProviderId); } catch(e) {}
+    }
+
+    const summaryProviderId = globalModels?.globalSummaryProviderId || provider.config.id;
+    const summaryModelId = globalModels?.globalSummaryModelId || globalModels?.globalDialogueModelId || 'deepseek-chat';
+    let summaryProvider = provider;
+    if (summaryProviderId !== provider.config.id) {
+       try { summaryProvider = await getActiveProvider(summaryProviderId); } catch(e) {}
+    }
     
     try {
         await agentService.streamChat({
@@ -234,6 +341,7 @@ export function registerAgentIPC() {
           userText: (lastUser.parts && lastUser.parts.length > 0) ? lastUser.parts.filter((p:any) => p.type === 'text').map((p:any) => p.data?.text || p.data).join('\n') : '',
           provider,
           modelId: globalModels?.globalDialogueModelId || 'deepseek-chat',
+          systemModels: { namingProvider, namingModelId, summaryProvider, summaryModelId },
           toolRegistry,
           sessionRepo: realSessionRepo as any,
           snapshotRepo: realSnapshotRepo as any,
@@ -266,23 +374,38 @@ export function registerAgentIPC() {
     return true;
   });
 
-  ipcMain.handle('agent:edit-message', async (event, sessionId: string, messageId: string, newText: string) => {
+  ipcMain.handle('agent:edit-message', async (event, sessionId: string, messageId: string, newText: string, requestedProviderId?: string, requestedModelId?: string) => {
     const { realSessionRepo, realSnapshotRepo } = getAgentManagers();
     
     // 1. 删除该消息之后的所有消息
     await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId);
     
     // 2. 用新文本重新发送
-    const provider = await getActiveProvider();
+    const provider = await getActiveProvider(requestedProviderId);
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
     globalAbortController = new AbortController();
+
+    const namingProviderId = globalModels?.globalNamingProviderId || provider.config.id;
+    const namingModelId = globalModels?.globalNamingModelId || requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat';
+    let namingProvider = provider;
+    if (namingProviderId !== provider.config.id) {
+       try { namingProvider = await getActiveProvider(namingProviderId); } catch(e) {}
+    }
+
+    const summaryProviderId = globalModels?.globalSummaryProviderId || provider.config.id;
+    const summaryModelId = globalModels?.globalSummaryModelId || requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat';
+    let summaryProvider = provider;
+    if (summaryProviderId !== provider.config.id) {
+       try { summaryProvider = await getActiveProvider(summaryProviderId); } catch(e) {}
+    }
     
     try {
         await agentService.streamChat({
           sessionId,
           userText: newText,
           provider,
-          modelId: globalModels?.globalDialogueModelId || 'deepseek-chat',
+          modelId: requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
+          systemModels: { namingProvider, namingModelId, summaryProvider, summaryModelId },
           toolRegistry,
           sessionRepo: realSessionRepo as any,
           snapshotRepo: realSnapshotRepo as any,

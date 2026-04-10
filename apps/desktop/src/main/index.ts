@@ -1,5 +1,6 @@
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
 import { join } from 'path'
+import { pathToFileURL, fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerAgentIPC } from './ipc/agent.ipc'
@@ -12,22 +13,23 @@ import { registerDiaryIPC } from './ipc/diary.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
 import { registerStorageIPC } from './ipc/storage.ipc'
+import { registerAttachmentIPC } from './ipc/attachment.ipc'
 import { registerRagIPC } from './ipc/rag.ipc'
+import { registerOnboardingIPC } from './ipc/onboarding.ipc'
 import { installDatabaseSchema, SettingsRepository, connectionManager } from '@baishou/database'
 import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
-
-
-
+import * as fs from 'fs/promises'
 
 let mainWindow: BrowserWindow | null = null;
+let isBootstrapping = false;
 
-function createWindow(): void {
+function createWindow(needsOnboarding: boolean): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 600,
+    width: needsOnboarding ? 860 : 1000,
+    height: needsOnboarding ? 580 : 680,
     minWidth: 860,
     minHeight: 500,
     show: false,
@@ -71,10 +73,64 @@ function createWindow(): void {
 
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  const baseUrl = (is.dev && process.env['ELECTRON_RENDERER_URL']) 
+    ? process.env['ELECTRON_RENDERER_URL'] 
+    : join(__dirname, '../renderer/index.html');
+
+  if (needsOnboarding) {
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      mainWindow.loadURL(`${baseUrl}#/welcome`)
+    } else {
+      mainWindow.loadFile(baseUrl, { hash: '/welcome' })
+    }
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      mainWindow.loadURL(baseUrl)
+    } else {
+      mainWindow.loadFile(baseUrl)
+    }
+  }
+}
+
+/**
+ * 核心初始化阶段：在确定存储路径后（或非首次启动）执行
+ */
+async function completeFullBootstrap() {
+  if (isBootstrapping) return;
+  isBootstrapping = true;
+
+  try {
+    // 1. 初始化 Vault 系统 (此时 path.service 已经可以读到正确的 rootPath)
+    await initVaultSystem();
+    
+    // 2. 注册业务级 IPC
+    registerAgentIPC();
+    registerVaultIPC();
+    registerArchiveIPC();
+    registerLanIPC();
+    registerCloudSyncIPC();
+    registerDiaryIPC();
+    registerProfileIPC();
+    registerSummaryIPC();
+    registerStorageIPC();
+    registerAttachmentIPC();
+    registerRagIPC();
+
+    // 3. 这里的逻辑在引导完成后或者已有配置时执行
+    if (mainWindow) {
+      const settingsRepo = new SettingsRepository(getAppDb());
+      const hotkeyService = new HotkeyService(settingsRepo, mainWindow);
+      hotkeyService.start();
+      setHotkeyService(hotkeyService);
+      
+      // 通知渲染进程引导已就绪，可以跳转了
+      mainWindow.webContents.send('onboarding:ready');
+    }
+    
+    isBootstrapping = false;
+  } catch (err) {
+    console.error('Failed to complete bootstrap:', err);
+    isBootstrapping = false;
   }
 }
 
@@ -82,8 +138,28 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
+  // Inject Electron net.fetch to global scope to automatically bypass network isolation in custom components
+  // like model-pricing.service that may be proxy-sensitive
+  (global as any).customNetFetch = net.fetch;
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  // Register local protocol for secure local asset rendering
+  protocol.handle('local', async (request) => {
+    try {
+      const targetUrl = request.url.replace(/^local:/i, 'file:');
+      const physicalPath = fileURLToPath(targetUrl);
+      const { existsSync } = require('node:fs');
+      if (!existsSync(physicalPath)) {
+        return new Response('Not found', { status: 404 });
+      }
+      return await net.fetch(targetUrl);
+    } catch (e) {
+      // Squash annoying ERR_FILE_NOT_FOUND stack traces when UI loads dead db avatar paths
+      return new Response('Not found', { status: 404 });
+    }
+  })
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -119,56 +195,35 @@ app.whenReady().then(async () => {
   connectionManager.setDb(appDb);
   await installDatabaseSchema(appDb);
 
-  // Register Agent Streaming IPC
-  registerAgentIPC()
-
-  // Register Settings IPC
-  registerSettingsIPC()
-
-  // Register Vault IPC
-  initVaultSystem().then(() => {
-    registerVaultIPC()
-
-    // Register Archive IPC
-    registerArchiveIPC()
-    
-    // Register LAN Sync IPC
-    registerLanIPC()
-    
-    // Register Cloud Sync IPC
-    registerCloudSyncIPC()
-
-    // Register Diary IPC
-    registerDiaryIPC()
-
-    // Register Profile IPC
-    registerProfileIPC()
-
-    // Register Summary IPC
-    registerSummaryIPC()
-    
-    // Register Storage IPC
-    registerStorageIPC()
-
-    // Register RAG IPC
-    registerRagIPC()
-    
-    createWindow()
-
-    if (mainWindow) {
-      const settingsRepo = new SettingsRepository(getAppDb());
-      const hotkeyService = new HotkeyService(settingsRepo, mainWindow);
-      hotkeyService.start();
-      setHotkeyService(hotkeyService);
+  // 引导检查
+  const settingsPath = join(app.getPath('userData'), 'baishou_settings.json');
+  let needsOnboarding = true;
+  try {
+    const data = await fs.readFile(settingsPath, 'utf-8');
+    const settings = JSON.parse(data);
+    if (settings.custom_storage_root) {
+      needsOnboarding = false;
     }
-  }).catch((err) => {
-    console.error('Failed to init Vault System', err)
-  })
+  } catch {}
+
+  // 1. 注册引导 IPC
+  registerOnboardingIPC(() => {
+    completeFullBootstrap();
+  });
+
+  // 2. 注册设置 IPC (基础设置可能在引导中也需要)
+  registerSettingsIPC();
+
+  // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
+  createWindow(needsOnboarding);
+
+  // 4. 决定是否立即执行全量初始化
+  if (!needsOnboarding) {
+    await completeFullBootstrap();
+  }
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(needsOnboarding)
   })
 })
 

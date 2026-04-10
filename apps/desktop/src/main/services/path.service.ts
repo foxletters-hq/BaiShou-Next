@@ -36,7 +36,7 @@ export class DesktopStoragePathService implements IStoragePathService {
         await fs.mkdir(customPath, { recursive: true });
         
         // 可写性测试 (Writeability test)
-        const testFile = path.join(customPath, '.write_test');
+        const testFile = path.join(customPath, `.write_test_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
         await fs.writeFile(testFile, 'test', 'utf-8');
         try {
           await fs.unlink(testFile);
@@ -76,16 +76,17 @@ export class DesktopStoragePathService implements IStoragePathService {
     return vaultSysDir;
   }
 
-  /**
-   * 获取当前被激活的 Vault（这只是为 Desktop 单一实例使用的辅助方法）
-   */
   private async getActiveVaultName(): Promise<string> {
     try {
-      const data = await fs.readFile(this.getSettingsFile(), 'utf-8');
-      const settings = JSON.parse(data);
-      return settings.activeVault || 'default';
+      const rootDir = await this.getRootDirectory();
+      const registryFile = path.join(rootDir, 'vault_registry.json');
+      const data = await fs.readFile(registryFile, 'utf-8');
+      const vaults = JSON.parse(data);
+      if (vaults.length === 0) return 'Personal';
+      const active = vaults.sort((a: any, b: any) => new Date(b.lastAccessedAt).getTime() - new Date(a.lastAccessedAt).getTime())[0];
+      return active?.name || 'Personal';
     } catch {
-      return 'default';
+      return 'Personal';
     }
   }
 
@@ -124,6 +125,20 @@ export class DesktopStoragePathService implements IStoragePathService {
   public async getAssistantsBaseDirectory(): Promise<string> {
     const activeDir = await this.getActiveVaultDirectory();
     const dir = path.join(activeDir, 'Assistants');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+  public async getAttachmentsBaseDirectory(): Promise<string> {
+    const activeDir = await this.getActiveVaultDirectory();
+    const dir = path.join(activeDir, 'Attachments');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+  public async getAvatarsDirectory(): Promise<string> {
+    const attDir = await this.getAttachmentsBaseDirectory();
+    const dir = path.join(attDir, 'avatars');
     await fs.mkdir(dir, { recursive: true });
     return dir;
   }

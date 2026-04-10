@@ -54,8 +54,48 @@ export function registerSettingsIPC() {
     return await getAutoFixedProviders();
   });
 
+  const pruneGlobalModels = async (providers: AIProviderConfig[]) => {
+    const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
+    if (!globalModels) return;
+
+    let changed = false;
+    const isValid = (pId: string, mId: string) => {
+        if (!pId || !mId) return true;
+        const prov = providers.find(p => p.id === pId && p.isEnabled);
+        if (!prov) return false;
+        if (prov.enabledModels && !prov.enabledModels.includes(mId)) return false;
+        return true;
+    };
+
+    if (!isValid(globalModels.globalDialogueProviderId, globalModels.globalDialogueModelId)) {
+        globalModels.globalDialogueProviderId = '';
+        globalModels.globalDialogueModelId = '';
+        changed = true;
+    }
+    if (!isValid(globalModels.globalNamingProviderId, globalModels.globalNamingModelId)) {
+        globalModels.globalNamingProviderId = '';
+        globalModels.globalNamingModelId = '';
+        changed = true;
+    }
+    if (!isValid(globalModels.globalSummaryProviderId, globalModels.globalSummaryModelId)) {
+        globalModels.globalSummaryProviderId = '';
+        globalModels.globalSummaryModelId = '';
+        changed = true;
+    }
+    if (!isValid(globalModels.globalEmbeddingProviderId, globalModels.globalEmbeddingModelId)) {
+        globalModels.globalEmbeddingProviderId = '';
+        globalModels.globalEmbeddingModelId = '';
+        changed = true;
+    }
+
+    if (changed) {
+        await settingsManager.set('global_models', globalModels);
+    }
+  };
+
   ipcMain.handle('settings:set-providers', async (_, providers: AIProviderConfig[]) => {
     await settingsManager.set('ai_providers', providers);
+    await pruneGlobalModels(providers);
     return true;
   });
 
@@ -142,6 +182,15 @@ export function registerSettingsIPC() {
     }
     return true;
   });
+  ipcMain.handle('settings:get-cloud-sync-config', async () => {
+    return await settingsManager.get<any>('cloud_sync_config') || null;
+  });
+
+  ipcMain.handle('settings:set-cloud-sync-config', async (_, config: any) => {
+    await settingsManager.set('cloud_sync_config', config);
+    return true;
+  });
+
 
 
   ipcMain.handle('settings:add-custom-provider', async (_, input: Partial<AIProviderConfig>) => {
@@ -171,6 +220,7 @@ export function registerSettingsIPC() {
     if (providers[idx].isSystem) throw new Error('Cannot delete system provider');
     providers.splice(idx, 1);
     await settingsManager.set('ai_providers', providers);
+    await pruneGlobalModels(providers);
     return true;
   });
 
