@@ -91,7 +91,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
     setSaving(true);
     try {
       onSave({
-        id: assistant?.id,
+        id: assistant?.id ?? crypto.randomUUID(),
         name: name.trim(),
         emoji,
         description: description.trim(),
@@ -107,6 +107,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
         topP,
         maxTokens: isUnlimitedMaxTokens ? -1 : maxTokens,
       });
+   }catch(e){
+      console.error(e);
     } finally {
         // Saving state managed externally if navigating away, but we clear spinner here just in case.
         setTimeout(() => setSaving(false), 800);
