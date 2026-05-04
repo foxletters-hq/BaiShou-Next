@@ -16,10 +16,13 @@ import { registerStorageIPC } from './ipc/storage.ipc'
 import { registerAttachmentIPC } from './ipc/attachment.ipc'
 import { registerRagIPC } from './ipc/rag.ipc'
 import { registerOnboardingIPC } from './ipc/onboarding.ipc'
+import { registerDeveloperIPC } from './ipc/developer.ipc'
+import { registerSearchIPC } from './ipc/search.ipc'
 import { installDatabaseSchema, SettingsRepository, connectionManager } from '@baishou/database'
 import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
+import { logger } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 let mainWindow: BrowserWindow | null = null;
@@ -115,6 +118,8 @@ async function completeFullBootstrap() {
     registerStorageIPC();
     registerAttachmentIPC();
     registerRagIPC();
+    registerDeveloperIPC();
+    registerSearchIPC();
 
     // 3. 这里的逻辑在引导完成后或者已有配置时执行
     if (mainWindow) {
@@ -129,7 +134,7 @@ async function completeFullBootstrap() {
     
     isBootstrapping = false;
   } catch (err) {
-    console.error('Failed to complete bootstrap:', err);
+    logger.error('Failed to complete bootstrap:', err);
     isBootstrapping = false;
   }
 }
@@ -169,7 +174,7 @@ app.whenReady().then(async () => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('ping', () => logger.info('pong'))
 
   // Window control IPC handlers
   ipcMain.on('window:minimize', (event) => {
@@ -198,13 +203,43 @@ app.whenReady().then(async () => {
   // 引导检查
   const settingsPath = join(app.getPath('userData'), 'baishou_settings.json');
   let needsOnboarding = true;
+  let customStorageRoot = '';
   try {
     const data = await fs.readFile(settingsPath, 'utf-8');
     const settings = JSON.parse(data);
     if (settings.custom_storage_root) {
+      customStorageRoot = settings.custom_storage_root;
       needsOnboarding = false;
     }
   } catch {}
+
+  // ======================================
+  // 5. 自动升级探测 (Legacy Migration Check)
+  // 如果当前是全新安装，尝试探查本地默认目录下是否遗留旧版白守的数据库
+  // ======================================
+  if (needsOnboarding) {
+    try {
+      const defaultLegacyRoot = join(app.getPath('documents'), 'BaiShou_Root');
+      const { LegacyMigrationService } = await import('./services/legacy-migration.service');
+      const legacyService = new LegacyMigrationService();
+      
+      const isLegacyPresent = await legacyService.isLegacyAppRoot(defaultLegacyRoot);
+      if (isLegacyPresent) {
+        logger.info('[Bootstrapper] Discovered Local Legacy Installation at', defaultLegacyRoot);
+        // 执行无损原地热升迁
+        await legacyService.migrate(defaultLegacyRoot, defaultLegacyRoot);
+        
+        // 升迁成功后，保存路径配置并跳过引导页面
+        await fs.writeFile(settingsPath, JSON.stringify({ custom_storage_root: defaultLegacyRoot }), 'utf-8');
+        customStorageRoot = defaultLegacyRoot;
+        needsOnboarding = false;
+        
+        logger.info('[Bootstrapper] Local Auto-Migration Completed! Skipped Onboarding.');
+      }
+    } catch (e) {
+      logger.error('[Bootstrapper] Local Auto-Migration Failed. Falling back to Onboarding:', e);
+    }
+  }
 
   // 1. 注册引导 IPC
   registerOnboardingIPC(() => {

@@ -1,6 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { VaultService } from '@baishou/core';
 import { shadowConnectionManager } from '@baishou/database';
+import { logger } from '@baishou/shared';
 import { DesktopStoragePathService } from '../services/path.service';
 
 export const pathService = new DesktopStoragePathService();
@@ -15,15 +16,15 @@ export const vaultService = new VaultService(pathService);
  * 连接活跃 Vault 对应的影子索引库
  * 路径：`<vault>/.baishou/shadow_index.db`（对标原版设计）
  */
-async function connectShadowForActiveVault(): Promise<void> {
+export async function connectShadowForActiveVault(): Promise<void> {
   const activeVault = vaultService.getActiveVault();
   if (!activeVault) {
-    console.warn('[VaultIPC] 无活跃 Vault，跳过 Shadow DB 连接');
+    logger.warn('[VaultIPC] 无活跃 Vault，跳过 Shadow DB 连接');
     return;
   }
   const sysDir = await pathService.getVaultSystemDirectory(activeVault.name);
   await shadowConnectionManager.connect(sysDir);
-  console.log(`[VaultIPC] Shadow DB 已连接: ${activeVault.name}`);
+  logger.info(`[VaultIPC] Shadow DB 已连接: ${activeVault.name}`);
 }
 
 export async function initVaultSystem() {

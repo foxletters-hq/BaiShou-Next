@@ -1,50 +1,25 @@
-import { streamText, StreamTextResult } from 'ai';
+import { streamText, wrapLanguageModel, extractReasoningMiddleware, smoothStream } from 'ai';
+import type { LanguageModelV3Middleware } from '@ai-sdk/provider';
 import { IAIProvider } from '../providers/provider.interface';
 import { ToolRegistry } from '../tools/tool-registry';
 import { SessionRepository } from '@baishou/database';
 import { MessageAdapter } from './message.adapter';
 import { StreamAccumulator } from './stream-accumulator';
-import { ModelPricingService } from '../pricing/model-pricing.service';
+import { StreamChunkAdapter } from './stream-chunk.adapter';
+import { ChunkType } from './stream-chunk.types';
+import type { StreamChunk } from './stream-chunk.types';
 import { SystemPromptBuilder } from './system-prompt.builder';
+import { logger } from '@baishou/shared';
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder';
-import { TitleGeneratorService } from './title-generator.service';
-import { ContextCompressorService } from './context-compressor.service';
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository';
 
-export interface AttachmentInput {
-  type: 'image' | 'file';
-  url?: string;
-  data?: string; // base64
-  mimeType?: string;
-  name?: string;
-}
+import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types';
+import { persistResult } from './agent-session-persist';
 
-export interface StreamChatOptions {
-  sessionId: string;
-  userText: string;
-  provider: IAIProvider;
-  modelId: string;
-  toolRegistry: ToolRegistry;
-  sessionRepo: SessionRepository;
-  snapshotRepo: SnapshotRepository;
-  systemPrompt?: string;
-  userConfig?: Record<string, unknown>;
-  attachments?: AttachmentInput[];
-  contextSnapshots?: { title?: string; content: string }[];
-  abortSignal?: AbortSignal;
-}
-
-export interface StreamChatCallbacks {
-  onTextDelta?: (text: string) => void;
-  onReasoningDelta?: (text: string) => void;
-  onToolCallStart?: (toolName: string, args: unknown) => void;
-  onToolCallResult?: (toolName: string, result: unknown) => void;
-  onError?: (error: Error) => void;
-  onFinish?: () => void;
-}
+export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types';
 
 export class AgentSessionService {
   /**
@@ -62,15 +37,21 @@ export class AgentSessionService {
       sessionRepo, 
       snapshotRepo,
       systemPrompt, 
+      systemModels,
       userConfig,
       attachments,
       contextSnapshots,
+      webSearchResultFetcher,
       abortSignal
     } = options;
 
     try {
-      // 1. 获取模型
-      const model = provider.getLanguageModel(modelId);
+      // 1. 获取基础模型，然后用 Vercel 原生 middleware 包装
+      const baseModel = provider.getLanguageModel(modelId);
+      const middlewares = this.buildMiddlewares(provider);
+      const model = middlewares.length > 0
+        ? wrapLanguageModel({ model: baseModel as any, middleware: middlewares })
+        : baseModel;
 
       // 2. 加载历史并使用 Builder+Adapter 进行超长截断和压缩感知注入
       const configRecentCount = typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30;
@@ -83,19 +64,107 @@ export class AgentSessionService {
       );
       const coreMessages = MessageAdapter.toVercelMessages(dbHistory);
 
-      // 追加当前用户的发送内容
-      coreMessages.push({ role: 'user', content: userText });
+      // 2.5. 立即保存用户消息到数据库（解决消息消失问题）
+      if (!options.skipUserMessageRecording) {
+         const history = await sessionRepo.getMessagesBySession(sessionId, 1);
+         const lastOrder = history.length > 0 ? history[0].orderIndex : 0;
+         const userOrderIndex = lastOrder + 1;
+         const userMsgId = crypto.randomUUID();
+
+         const initialParts: any[] = [
+             {
+               id: crypto.randomUUID(),
+               messageId: userMsgId,
+               sessionId,
+               type: 'text',
+               data: { text: userText },
+             }
+         ];
+
+         if (attachments && attachments.length > 0) {
+            for (const att of attachments) {
+               initialParts.push({
+                 id: crypto.randomUUID(),
+                 messageId: userMsgId,
+                 sessionId,
+                 type: 'attachment',
+                 data: att
+               });
+            }
+         }
+
+         if (contextSnapshots && contextSnapshots.length > 0) {
+            initialParts.push({
+               id: crypto.randomUUID(),
+               messageId: userMsgId,
+               sessionId,
+               type: 'context_snapshot',
+               data: { snapshots: contextSnapshots }
+            });
+         }
+
+         await sessionRepo.insertMessageWithParts(
+           {
+             id: userMsgId,
+             sessionId,
+             role: 'user',
+             orderIndex: userOrderIndex,
+           },
+           initialParts
+         );
+
+         // 将用户消息添加到上下文窗口
+         if (attachments && attachments.length > 0) {
+            const contentParts: any[] = [{ type: 'text', text: userText }];
+            for (const att of attachments) {
+               if (att.type === 'image') {
+                  if (att.url) {
+                     contentParts.push({ type: 'image', image: new URL(att.url) });
+                  } else if (att.data) {
+                     const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`;
+                     const base64Data = att.data.startsWith('data:') ? att.data : (prefix + att.data);
+                     contentParts.push({ type: 'image', image: base64Data });
+                  }
+               } else if (att.type === 'file') {
+                  contentParts.push({
+                     type: 'file',
+                     mimeType: att.mimeType || 'application/octet-stream',
+                     data: att.url ? new URL(att.url) : (att.data || '')
+                  });
+               }
+            }
+            coreMessages.push({ role: 'user', content: contentParts });
+         } else {
+            coreMessages.push({ role: 'user', content: userText });
+         }
+      }
 
       // 3. 构建可用的 Tools 及其底层接续支持
       const { SqliteHybridSearchRepository, MessageRepository } = await import('@baishou/database');
       const { DatabaseAdapter } = await import('../tools/adapters/database.adapter');
       const { EmbeddingAdapter } = await import('../tools/adapters/embedding.adapter');
       
-      const hsRepo = new SqliteHybridSearchRepository((sessionRepo as any).db || (sessionRepo as any).database);
-      const msgRepo = new MessageRepository((sessionRepo as any).db || (sessionRepo as any).database);
+      const drizzleDb = (sessionRepo as any).db || (sessionRepo as any).database;
+      const rawClient = drizzleDb?.session?.client || drizzleDb;
+      const hsRepo = new SqliteHybridSearchRepository(rawClient);
+      const msgRepo = new MessageRepository(drizzleDb);
 
       const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo);
-      const embAdapter = new EmbeddingAdapter(provider, modelId, hsRepo);
+      let embAdapter = undefined;
+      if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
+         embAdapter = new EmbeddingAdapter(systemModels.embeddingProvider, systemModels.embeddingModelId, hsRepo);
+      } else if (provider && modelId && userConfig?.['hasEmbeddingModel']) {
+         embAdapter = new EmbeddingAdapter(provider, modelId, hsRepo);
+      }
+
+      // 构建记忆去重服务
+      let dedupService = undefined;
+      if (embAdapter && systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
+         const { MemoryDeduplicationServiceImpl } = await import('../rag/memory-deduplication.service');
+         dedupService = new MemoryDeduplicationServiceImpl(
+           embAdapter, dbAdapter, systemModels.embeddingProvider, systemModels.embeddingModelId
+         );
+      }
 
       const sessionObj = await sessionRepo.getSessionById?.(sessionId);
 
@@ -106,7 +175,10 @@ export class AgentSessionService {
          embeddingService: embAdapter,
          vectorStore: dbAdapter,
          messageSearcher: dbAdapter,
-         summaryReader: dbAdapter
+         summaryReader: dbAdapter,
+         deduplicationService: dedupService,
+         diarySearcher: options.diarySearcher,
+         webSearchResultFetcher: webSearchResultFetcher
       });
 
       // --- 灵魂注入 (如果有 Assistant 绑定) ---
@@ -133,29 +205,48 @@ export class AgentSessionService {
         messages: coreMessages,
         system: builtSystemPrompt,
         tools: enabledTools,
-        maxSteps: 5, // 开启强效自动调用工具特性 (多轮递归直至工具完结)
+        maxSteps: 5,
         abortSignal,
+        experimental_transform: smoothStream(),
+      } as any);
+
+      // 5. 使用统一的 StreamChunkAdapter 消费流
+      const accumulator = new StreamAccumulator();
+      const adapter = new StreamChunkAdapter(accumulator, {
+        onChunk: (chunk) => this.dispatchChunkToCallbacks(chunk, callbacks),
       });
 
-      const accumulator = new StreamAccumulator();
+      const { error: streamError } = await adapter.consumeStream(streamResult);
 
-      // 这里直接返回 streamText 的迭代，但是我们在后台异步消费它
-      await this.consumeAndPersistStream({
+      // 记录性能指标
+      const metrics = adapter.getMetrics();
+      logger.info(`[AgentSessionService] 性能指标: TTFT=${metrics.timeToFirstToken}ms, 总耗时=${metrics.totalDuration}ms, 速度=${metrics.tokensPerSecond} tok/s`);
+
+      if (streamError) {
+        logger.warn('[AgentSessionService] Stream encountered a fatal error:', streamError);
+      }
+
+      // 6. 落盘
+      await persistResult({
         sessionId,
         rawUserText: userText,
-        streamResult, 
-        accumulator, 
-        sessionRepo, 
+        streamResult,
+        accumulator,
+        sessionRepo,
         snapshotRepo,
         provider,
         modelId,
-        attachments,
-        contextSnapshots,
-        callbacks
+        skipUserMessageRecording: options.skipUserMessageRecording,
+        streamError,
       });
 
+      // 7. 向外抛出完成回调
+      if (callbacks?.onFinish) {
+        callbacks.onFinish();
+      }
+
     } catch (e: any) {
-      console.error('[AgentSessionService] Error in streamChat:', e);
+      logger.error('[AgentSessionService] Error in streamChat:', e);
       if (callbacks?.onError) {
         callbacks.onError(e);
       }
@@ -163,236 +254,53 @@ export class AgentSessionService {
     }
   }
 
+  // ─── 构建 Vercel AI SDK 原生中间件链 ───
+
   /**
-   * 异步消费 streamText 的完整输出流（fullStream）。
-   * 实时将解析后的内容通过回调发送给 UI，并在终点执行落盘。
+   * 根据 Provider 类型构建 Vercel AI SDK 原生 LanguageModelMiddleware 列表。
    */
-  private async consumeAndPersistStream(params: {
-    sessionId: string;
-    rawUserText: string;
-    streamResult: StreamTextResult<any, any>;
-    accumulator: StreamAccumulator;
-    sessionRepo: SessionRepository;
-    snapshotRepo: SnapshotRepository;
-    provider: IAIProvider;
-    modelId: string;
-    attachments?: AttachmentInput[];
-    contextSnapshots?: { title?: string; content: string }[];
-    callbacks?: StreamChatCallbacks;
-  }): Promise<void> {
-     const { sessionId, rawUserText, streamResult, accumulator, sessionRepo, snapshotRepo, provider, modelId, attachments, contextSnapshots, callbacks } = params;
+  private buildMiddlewares(provider: IAIProvider): LanguageModelV3Middleware[] {
+    const middlewares: LanguageModelV3Middleware[] = [];
+    const providerType = provider.config?.type || '';
 
-     // 首先立刻把用户说的这句话存进数据库！
-     // 由于是新的，我们先计算一个 orderIndex
-     const history = await sessionRepo.getMessagesBySession(sessionId, 1);
-     const lastOrder = history.length > 0 ? history[0].orderIndex : 0;
-     const userOrderIndex = lastOrder + 1;
-     const userMsgId = crypto.randomUUID();
+    // 1. 推理提取中间件 — 适用于 DeepSeek-R1、QwQ 等在文本中嵌入 <think> 标签的模型
+    if (providerType === 'deepseek' || providerType === 'openai') {
+      try {
+        middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as any);
+      } catch (e) {
+        logger.warn('[AgentSessionService] extractReasoningMiddleware not available:', e);
+      }
+    }
 
-     const initialParts: any[] = [
-         {
-           id: crypto.randomUUID(),
-           messageId: userMsgId,
-           sessionId,
-           type: 'text',
-           data: { text: rawUserText }, // JSON 自动入库
-         }
-     ];
+    return middlewares;
+  }
 
-     if (attachments && attachments.length > 0) {
-        for (const att of attachments) {
-           initialParts.push({
-             id: crypto.randomUUID(),
-             messageId: userMsgId,
-             sessionId,
-             type: 'attachment',
-             data: att
-           });
+  // ─── 将标准化 Chunk 分发到旧式回调 ───
+
+  /**
+   * 将统一的 StreamChunk 分发到 IPC 层的老式回调接口。
+   */
+  private dispatchChunkToCallbacks(chunk: StreamChunk, callbacks?: StreamChatCallbacks): void {
+    if (!callbacks) return;
+
+    switch (chunk.type) {
+      case ChunkType.TEXT_DELTA:
+        callbacks.onTextDelta?.(chunk.text);
+        break;
+      case ChunkType.REASONING_DELTA:
+        callbacks.onReasoningDelta?.(chunk.text);
+        break;
+      case ChunkType.TOOL_CALL:
+        callbacks.onToolCallStart?.(chunk.toolName, chunk.input);
+        break;
+      case ChunkType.TOOL_RESULT:
+        callbacks.onToolCallResult?.(chunk.toolName, chunk.output);
+        break;
+      case ChunkType.ERROR:
+        if (callbacks.onError && chunk.error instanceof Error) {
+          callbacks.onError(chunk.error);
         }
-     }
-
-     if (contextSnapshots && contextSnapshots.length > 0) {
-        initialParts.push({
-           id: crypto.randomUUID(),
-           messageId: userMsgId,
-           sessionId,
-           type: 'context_snapshot',
-           data: { snapshots: contextSnapshots }
-        });
-     }
-
-     await sessionRepo.insertMessageWithParts(
-       {
-         id: userMsgId,
-         sessionId,
-         role: 'user',
-         orderIndex: userOrderIndex,
-       },
-       initialParts
-     );
-
-     // ======== 开始吞吐流 ========
-     if (!streamResult.fullStream) return;
-     
-     const reader = streamResult.fullStream.getReader();
-
-     while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) break;
-        
-        // 交给累积器保存进度
-        accumulator.add(value);
-
-        // 如果是部分我们关心的事件流形式，同步发送给 UI
-        if (value.type === 'text-delta' && callbacks?.onTextDelta) {
-           const chunkStr = (value as any).textDelta || (value as any).text;
-           if (chunkStr) callbacks.onTextDelta(chunkStr);
-        }
-        else if ((value.type as string) === 'reasoning-delta' && callbacks?.onReasoningDelta) {
-           const chunkStr = (value as any).textDelta || (value as any).text;
-           if (chunkStr) callbacks.onReasoningDelta(chunkStr);
-        }
-        else if (value.type === 'tool-call' && callbacks?.onToolCallStart) {
-           // 工具开始工作
-           callbacks.onToolCallStart(value.toolName, value.args);
-        }
-        else if (value.type === 'tool-result' && callbacks?.onToolCallResult) {
-           callbacks.onToolCallResult(value.toolName, value.result);
-        }
-     }
-
-     // ======== 处理完毕，进入 Finish 并完成原子落表 ========
-     const assistantMsgId = crypto.randomUUID();
-     const partsToInsert: any[] = [];
-
-     // 推送文本 Part
-     if (accumulator.text) {
-       partsToInsert.push({
-          id: crypto.randomUUID(),
-          messageId: assistantMsgId,
-          sessionId,
-          type: 'text',
-          data: { text: accumulator.text }
-       });
-     }
-
-     // 推送推理 Part (如果有)
-     if (accumulator.reasoning) {
-       partsToInsert.push({
-          id: crypto.randomUUID(),
-          messageId: assistantMsgId,
-          sessionId,
-          type: 'text',
-          data: { text: accumulator.reasoning, isReasoning: true } // 白守老版本可能存做特殊属性，或者拆新 Type
-       });
-     }
-
-     // 推送工具 Call & Result Part
-     // 因为 AI SDK 的 ToolCall 和 ToolResult 是分开进来的，我们在 accumulator 里存了。
-     for (const tc of accumulator.toolCalls) {
-       const resultObj = accumulator.toolResults.find(tr => tr.callId === tc.callId);
-       partsToInsert.push({
-          id: crypto.randomUUID(),
-          messageId: assistantMsgId,
-          sessionId,
-          type: 'tool',
-          data: {
-             callId: tc.callId,
-             name: tc.name,
-             arguments: tc.arguments,
-             result: resultObj ? resultObj.result : undefined,
-             status: resultObj ? 'completed' : 'failed'
-          }
-       });
-     }
-
-     // 从 Vercel AI SDK 获取最终 usage (有时候 finish chunk 不一定有，promise 更有保障)
-     let finalUsage = { 
-        inputTokens: accumulator.usage.inputTokens, 
-        outputTokens: accumulator.usage.outputTokens 
-     };
-     try {
-        const u = await streamResult.usage;
-        console.log('[AgentSessionService Debug] streamResult.usage resolved to:', JSON.stringify(u));
-        if (u) {
-           finalUsage.inputTokens = finalUsage.inputTokens || (u as any).inputTokens || (u as any).promptTokens || 0;
-           finalUsage.outputTokens = finalUsage.outputTokens || (u as any).outputTokens || (u as any).completionTokens || 0;
-        }
-     } catch(e) {
-        console.warn('[AgentSessionService Debug] Failed to read streamResult.usage:', e);
-     }
-
-     // 极端情况兜底：如果模型接口不仅不返回 Token（甚至抛错），但偏偏吐出了字，我们可以做本地量化预估
-     if (finalUsage.inputTokens === 0 && finalUsage.outputTokens === 0) {
-         try {
-             // 如果其实也没生成什么字（例如直接报错中断了），就没必要假装消耗了。
-             if (accumulator.text.length > 0 || rawUserText.length > 0) {
-                 const { get_encoding } = require('tiktoken');
-                 const enc = get_encoding('cl100k_base');
-                 // 预估一个大概的输入 token
-                 finalUsage.inputTokens = enc.encode(rawUserText).length;
-                 // 预估吐出的 token
-                 finalUsage.outputTokens = enc.encode(accumulator.text + accumulator.reasoning).length;
-                 enc.free();
-                 console.log(`[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略!`);
-             }
-         } catch (e) {
-             console.warn('Fallback tiktoken estimation failed', e);
-         }
-     }
-
-     // 累加计算 tokens 及账单微美分成本
-     const costMicros = await ModelPricingService.getInstance().calculateCostMicros(provider.config.id, modelId, finalUsage);
-     
-     console.log('\n================== 计费日志 ==================');
-     console.log(`模型: ${modelId} (${provider.config.id})`);
-     console.log(`Tokens消耗: 输入 ${finalUsage.inputTokens} | 输出 ${finalUsage.outputTokens}`);
-     console.log(`本次费用(Micros微美分): ${costMicros} (约合 $${(costMicros / 1000000).toFixed(6)})`);
-     if (costMicros === 0) {
-        console.log(`提示: 计算费用为 0。可能模型是免费的，或未能从 models.dev 拉取到该模型价格。`);
-     }
-     console.log('==============================================\n');
-
-     // 开始事务存放!
-     await sessionRepo.insertMessageWithParts(
-       {
-         id: assistantMsgId,
-         sessionId,
-         role: 'assistant',
-         orderIndex: userOrderIndex + 1,
-         inputTokens: finalUsage.inputTokens,
-         outputTokens: finalUsage.outputTokens,
-         costMicros: costMicros,
-         providerId: provider.config.id,
-         modelId: modelId,
-       },
-       partsToInsert
-     );
-
-     await sessionRepo.updateTokenUsage(
-        sessionId,
-        finalUsage.inputTokens,
-        finalUsage.outputTokens,
-        costMicros
-     );
-
-     // ==========================================
-     // 触发闲置后台服务 (不阻塞用户收到结束的回调)
-     // ==========================================
-     setTimeout(() => {
-        // 检测新对话（由于可能前面只有欢迎语、第一次对话等，通常 Order 较小）
-        if (userOrderIndex <= 2) {
-           TitleGeneratorService.autoTitle(provider, modelId, sessionRepo, sessionId, rawUserText);
-        }
-        
-        // 并行起跳长文压缩归纳检测机
-        ContextCompressorService.compress(provider, modelId, sessionRepo, snapshotRepo, sessionId);
-     }, 500);
-
-     // 向外抛出回调
-     if (callbacks?.onFinish) {
-       callbacks.onFinish();
-     }
+        break;
+    }
   }
 }

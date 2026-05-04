@@ -7,6 +7,7 @@ import type { SettingsRepository } from '@baishou/database';
 import { Server as HttpServer } from 'http';
 
 import { ToolRegistry } from '@baishou/ai/src/tools/tool-registry';
+import { logger } from '@baishou/shared';
 // @ts-ignore
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -168,11 +169,11 @@ export class McpService {
       try {
         this.httpServer = this.app.listen(port, () => {
           this.isRunning = true;
-          console.log(`[McpService] Server started on http://localhost:${port}/sse`);
+          logger.info(`[McpService] Server started on http://localhost:${port}/sse`);
           resolve();
         });
       } catch (e) {
-        console.error(`[McpService] Failed to start on port ${port}`, e);
+        logger.error(`[McpService] Failed to start on port ${port}`, e);
         reject(e);
       }
     });
@@ -190,7 +191,7 @@ export class McpService {
       this.httpServer!.close(() => {
         this.isRunning = false;
         this.httpServer = null;
-        console.log(`[McpService] Server stopped`);
+        logger.info(`[McpService] Server stopped`);
         resolve();
       });
     });

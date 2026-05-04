@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { logger } from '@baishou/shared';
 
 export function useDiaryData() {
   const [entries, setEntries] = useState<any[]>([]);
@@ -17,7 +18,7 @@ export function useDiaryData() {
         setEntries(result || []);
       }
     } catch (err) {
-      console.error('Failed to load diary entries:', err);
+      logger.error('Failed to load diary entries:', err);
     } finally {
       setLoading(false);
     }
@@ -31,7 +32,7 @@ export function useDiaryData() {
         setEntries(result || []);
       }
     } catch (err) {
-      console.error('Failed to search diary entries:', err);
+      logger.error('Failed to search diary entries:', err);
     }
   }, []);
 
@@ -43,23 +44,23 @@ export function useDiaryData() {
     
     if (api?.diary?.onSyncEvent) {
       unsubscribe = api.diary.onSyncEvent((eventData: any) => {
-        console.log('[useDiaryData] 🔔 收到 diary:sync-event，立刻静默刷新', eventData);
+        logger.info('[useDiaryData] 🔔 收到 diary:sync-event，立刻静默刷新', eventData);
         const fetchSilently = async () => {
           try {
             const apiRef = (window as any).api;
             if (apiRef?.diary?.listAll) {
               const result = await apiRef.diary.listAll();
-              console.log('[useDiaryData] ✅ 静默刷新完成，条数:', result?.length);
+              logger.info('[useDiaryData] ✅ 静默刷新完成，条数:', result?.length);
               setEntries(result || []);
             }
           } catch (err) {
-            console.error('[useDiaryData] 静默刷新失败:', err);
+            logger.error('[useDiaryData] 静默刷新失败:', err);
           }
         };
         fetchSilently();
       });
     } else {
-      console.warn('[useDiaryData] ⚠️ api.diary.onSyncEvent 不存在，无法订阅文件变动事件');
+      logger.warn('[useDiaryData] ⚠️ api.diary.onSyncEvent 不存在，无法订阅文件变动事件');
     }
     
     return () => {

@@ -2,6 +2,7 @@ import { app } from 'electron';
 import { join } from 'path';
 import { initNodeDatabase } from '@baishou/database';
 import type { AppDatabase } from '@baishou/database';
+import { logger } from '@baishou/shared';
 
 /**
  * 全局 Agent DB（baishou_agent.db）— 懒加载单例
@@ -19,7 +20,7 @@ let _appDb: AppDatabase | null = null;
 export function getAppDb(): AppDatabase {
   if (!_appDb) {
     const agentDbPath = join(app.getPath('userData'), 'baishou_agent.db');
-    console.log('[DB] Agent DB 路径:', agentDbPath);
+    logger.info('[DB] Agent DB 路径:', agentDbPath);
     _appDb = initNodeDatabase(agentDbPath);
   }
   return _appDb;

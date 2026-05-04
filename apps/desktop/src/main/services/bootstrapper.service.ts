@@ -9,11 +9,13 @@ import {
   connectionManager,
   shadowConnectionManager
 } from '@baishou/database';
+import { logger } from '@baishou/shared';
 
 import { pathService, vaultService } from '../ipc/vault.ipc';
 import { getAgentManagers } from '../ipc/agent.ipc';
 import { settingsManager } from '../ipc/settings.ipc';
 import { diaryWatcher } from './diary-watcher.service';
+import { summaryWatcher } from './summary-watcher.service';
 
 /**
  * 全局数据同步收割机 (Global Bootstrapper)
@@ -32,7 +34,7 @@ export class GlobalDataBootstrapper {
     const db = connectionManager.getDb();
     const summaryRepo = new SummaryRepositoryImpl(db);
     const summaryFileService = new SummaryFileService(pathService);
-    return new SummarySyncService({} as any, {} as any, summaryRepo, summaryFileService);
+    return new SummarySyncService(null, null, summaryRepo, summaryFileService);
   }
 
   /**
@@ -50,15 +52,16 @@ export class GlobalDataBootstrapper {
    * 必须在确保 Shadow DB 已连接（shadowConnectionManager.connect() 已调用）的状态下执行。
    */
   async fullyResyncAllEcosystems(): Promise<void> {
-    console.log('--- 🌊 GLOBAL BOOTSTRAPPER TRIGGERED. INITIATING ECOSYSTEM SSOT WATER-CYCLE ---');
+    logger.info('--- 🌊 GLOBAL BOOTSTRAPPER TRIGGERED. INITIATING ECOSYSTEM SSOT WATER-CYCLE ---');
 
     try {
       const activeVault = vaultService.getActiveVault();
-      console.log(`[Bootstrapper] 正在尝试启动监听。activeVault:`, activeVault);
+      logger.info(`[Bootstrapper] 正在尝试启动监听。activeVault:`, activeVault);
       if (activeVault) {
         diaryWatcher.start(activeVault.path);
+        summaryWatcher.start(activeVault.path);
       } else {
-        console.warn(`[Bootstrapper] ⚠️ 发现 activeVault 为空！`);
+        logger.warn(`[Bootstrapper] ⚠️ 发现 activeVault 为空！`);
       }
 
       const shadowScout = this.tryGetShadowBootstrapper();
@@ -66,28 +69,28 @@ export class GlobalDataBootstrapper {
       const { sessionManager, assistantManager } = getAgentManagers();
 
       // 1. 日记层：从 shadow_index.db 同步影子索引（最海量的数据）
-      console.log('[Bootstrapper] 正在同步核心日记 (Diary Shadow Index)...');
+      logger.info('[Bootstrapper] 正在同步核心日记 (Diary Shadow Index)...');
       await shadowScout.fullScanVault(true);
 
       // 2. 总结层：从 baishou_agent.db 同步 Summary 存档
-      console.log('[Bootstrapper] 正在同步阶段总结 (Summary Archives)...');
+      logger.info('[Bootstrapper] 正在同步阶段总结 (Summary Archives)...');
       await summaryScout.fullScanArchives();
 
       // 3. AI 预设角色：从 baishou_agent.db 同步助手配置
-      console.log('[Bootstrapper] 正在同步助理设定 (Assistant Assets)...');
+      logger.info('[Bootstrapper] 正在同步助理设定 (Assistant Assets)...');
       await assistantManager.fullResyncFromDisks();
 
       // 4. AI 漫游会话：从 baishou_agent.db 同步会话快照
-      console.log('[Bootstrapper] 正在同步智能体对话上下文 (Agent Session Snapshots)...');
+      logger.info('[Bootstrapper] 正在同步智能体对话上下文 (Agent Session Snapshots)...');
       await sessionManager.fullResyncFromDisks();
 
       // 5. 应用设置
-      console.log('[Bootstrapper] 正在同步用户级全局设定 (Settings Blueprint)...');
+      logger.info('[Bootstrapper] 正在同步用户级全局设定 (Settings Blueprint)...');
       await settingsManager.fullResyncFromDisk();
 
-      console.log('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---');
+      logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---');
     } catch (e) {
-      console.error('--- ❌ GLOBAL BOOTSTRAPPER FAILED. SEVERE SYNCHRONIZATION ERROR ---', e);
+      logger.error('--- ❌ GLOBAL BOOTSTRAPPER FAILED. SEVERE SYNCHRONIZATION ERROR ---', e);
     }
   }
 }

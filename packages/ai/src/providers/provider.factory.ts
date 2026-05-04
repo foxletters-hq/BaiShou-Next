@@ -1,4 +1,4 @@
-import { AiProviderModel } from '@baishou/shared';
+import { AiProviderModel, logger } from '@baishou/shared';
 import { IAIProvider } from './provider.interface';
 import { OpenAIAdaptedProvider } from './openai.provider';
 import { GeminiAdaptedProvider } from './gemini.provider';
@@ -14,7 +14,7 @@ export class ProviderFactory {
    * 用于大模型列表拉取、连通性测试等依赖真实实例的操作。
    */
   static createProviderFromConfig(config: AiProviderModel): IAIProvider {
-    console.log(`[ProviderFactory] createProviderFromConfig. config.id=${config.id}, config.type=${config.type}, typeof type=${typeof config.type}`);
+    logger.info(`[ProviderFactory] createProviderFromConfig. config.id=${config.id}, config.type=${config.type}, typeof type=${typeof config.type}`);
     switch (config.type.toLowerCase()) {
       case 'openai':
       case 'lmstudio':

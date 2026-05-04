@@ -1,6 +1,7 @@
 import { generateText } from 'ai';
 import { IAIProvider } from '../providers/provider.interface';
 import { SessionRepository } from '@baishou/database';
+import { logger } from '@baishou/shared';
 
 export class TitleGeneratorService {
   /**
@@ -43,11 +44,15 @@ export class TitleGeneratorService {
            providerId: currentSession.providerId,
            modelId: currentSession.modelId,
          });
-         console.log(`[AutoTitler] -> Session(${sessionId}) title updated to: ${cleanTitle}`);
+         logger.info(`[AutoTitler] -> Session(${sessionId}) title updated to: ${cleanTitle}`);
       }
 
     } catch (e: any) {
-      console.warn('[AutoTitler] Failed to generate title silently.', e.message);
+      if (e.name === 'AbortError') {
+        // Ignored silently, user stopped before title generation could finish
+      } else {
+        logger.warn('[AutoTitler] Failed to generate title silently.', e.message);
+      }
     }
   }
 }

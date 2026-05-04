@@ -1,4 +1,5 @@
 import { TextStreamPart } from 'ai';
+import { logger } from '@baishou/shared';
 
 export interface ToolCallSnapshot {
   callId: string;
@@ -107,13 +108,13 @@ export class StreamAccumulator {
         if (p.usage) {
            this._inputTokens = p.usage.promptTokens || p.usage.inputTokens || 0;
            this._outputTokens = p.usage.completionTokens || p.usage.outputTokens || 0;
-           console.log('[StreamAccumulator] Finish chunk usage parsed:', this._inputTokens, this._outputTokens);
+           logger.info('[StreamAccumulator] Finish chunk usage parsed:', this._inputTokens, this._outputTokens);
         } else if (p.totalUsage) {
            this._inputTokens = p.totalUsage.promptTokens || p.totalUsage.inputTokens || 0;
            this._outputTokens = p.totalUsage.completionTokens || p.totalUsage.outputTokens || 0;
-           console.log('[StreamAccumulator] Finish chunk totalUsage parsed:', this._inputTokens, this._outputTokens);
+           logger.info('[StreamAccumulator] Finish chunk totalUsage parsed:', this._inputTokens, this._outputTokens);
         } else {
-           console.log('[StreamAccumulator] Finish chunk received but NO usage data found:', JSON.stringify(p));
+           logger.info('[StreamAccumulator] Finish chunk received but NO usage data found:', JSON.stringify(p));
         }
         break;
       }
@@ -121,7 +122,7 @@ export class StreamAccumulator {
       default:
         // if some unknown chunk has usage, log it
         if ((part as any).usage || (part as any).usageMetadata || (part as any).providerMetadata) {
-            console.log('[StreamAccumulator] Unknown chunk with potential usage metadata:', JSON.stringify(part));
+            logger.info('[StreamAccumulator] Unknown chunk with potential usage metadata:', JSON.stringify(part));
         }
         break;
     }

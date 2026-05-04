@@ -2,7 +2,7 @@ import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getShadowSync } from '../ipc/diary.ipc';
-import { parseDateStr } from '@baishou/shared';
+import { parseDateStr, logger } from '@baishou/shared';
 import * as chokidar from 'chokidar';
 
 /**
@@ -14,22 +14,24 @@ import * as chokidar from 'chokidar';
 export class DiaryWatcherService {
   private watcher: chokidar.FSWatcher | null = null;
   private journalsPath: string | null = null;
-  /** 防止高频触发多次 performSync */
-  private debounceMap = new Map<string, NodeJS.Timeout>();
+  /** 收集短期内发生变动的文件路径 */
+  private pendingPaths = new Set<string>();
+  private isProcessing = false;
+  private globalDebounceTimer: NodeJS.Timeout | null = null;
 
   public start(vaultPath: string) {
     this.stop();
     this.journalsPath = path.join(vaultPath, 'Journals');
     
-    console.log(`[DiaryWatcher] 🚀 journalsPath = ${this.journalsPath}`);
+    logger.info(`[DiaryWatcher] 🚀 journalsPath = ${this.journalsPath}`);
 
     // 确保 Journals 目录存在（第一次打开可能未创建）
     if (!fs.existsSync(this.journalsPath)) {
       try {
         fs.mkdirSync(this.journalsPath, { recursive: true });
-        console.log(`[DiaryWatcher] 📁 Journals 目录已创建`);
+        logger.info(`[DiaryWatcher] 📁 Journals 目录已创建`);
       } catch (e) {
-        console.error(`[DiaryWatcher] ❌ 无法创建 Journals 目录:`, e);
+        logger.error(`[DiaryWatcher] ❌ 无法创建 Journals 目录:`, e);
       }
     }
 
@@ -48,7 +50,7 @@ export class DiaryWatcherService {
       }
     });
 
-    console.log(`[DiaryWatcher] ✅ Chokidar 监听已启动（最高速响应模式）`);
+    logger.info(`[DiaryWatcher] ✅ Chokidar 监听已启动（最高速响应模式）`);
   }
 
   public stop() {
@@ -56,53 +58,74 @@ export class DiaryWatcherService {
       this.watcher.close();
       this.watcher = null;
     }
-    this.debounceMap.forEach((t) => clearTimeout(t));
-    this.debounceMap.clear();
+    if (this.globalDebounceTimer) clearTimeout(this.globalDebounceTimer);
+    this.pendingPaths.clear();
+    this.isProcessing = false;
     this.journalsPath = null;
-    console.log(`[DiaryWatcher] 🛑 监听已停止`);
+    logger.info(`[DiaryWatcher] 🛑 监听已停止`);
   }
 
   // ── 内部方法 ──────────────────────────────────────
 
   private scheduleSync(changedPath: string) {
-    if (this.debounceMap.has(changedPath)) {
-      clearTimeout(this.debounceMap.get(changedPath)!);
+    this.pendingPaths.add(changedPath);
+    if (this.globalDebounceTimer) {
+      clearTimeout(this.globalDebounceTimer);
     }
-    const timer = setTimeout(async () => {
-      this.debounceMap.delete(changedPath);
-      await this.performSync(changedPath);
-    }, 300);
-    this.debounceMap.set(changedPath, timer);
+    // 延迟更长一点，收集一波连续的文件变动
+    this.globalDebounceTimer = setTimeout(async () => {
+      await this.processQueue();
+    }, 500);
   }
 
-  private async performSync(changedPath: string) {
-    const fileName = path.basename(changedPath);
-    const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/;
-    const match = dateFileRegex.exec(fileName);
-
-    if (!match || !match[1]) {
-      return;
-    }
-
-    const dateStr = match[1];
-    const date = parseDateStr(dateStr);
+  private async processQueue() {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
 
     try {
-      const shadowSync = getShadowSync();
-      const result = await shadowSync.syncJournal(date);
+      while (this.pendingPaths.size > 0) {
+        // 取出当前的子集
+        const pathsToProcess = Array.from(this.pendingPaths);
+        this.pendingPaths.clear();
 
-      const wins = BrowserWindow.getAllWindows();
+        // 批量提取有效日期
+        const datesToProcess: Date[] = [];
+        const validPaths: string[] = [];
+        const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/;
 
-      wins.forEach(w => {
-        w.webContents.send('diary:sync-event', {
-          path: changedPath,
-          date: dateStr,
-          result,
-          forced: true,
-        });
-      });
-    } catch (e) {
-      console.error('[DiaryWatcher] ❌ 同步失败:', e);
+        for (const changedPath of pathsToProcess) {
+          const fileName = path.basename(changedPath);
+          const match = dateFileRegex.exec(fileName);
+          if (match && match[1]) {
+            datesToProcess.push(parseDateStr(match[1]));
+            validPaths.push(changedPath);
+          }
+        }
+
+        if (datesToProcess.length > 0) {
+          try {
+             const shadowSync = getShadowSync();
+             const results = await shadowSync.syncJournalsBatch(datesToProcess);
+
+             const wins = BrowserWindow.getAllWindows();
+             wins.forEach(w => {
+               // 批量发送单独的变化事件给UI (为了兼容现有的 diary:sync-event 监听器)
+               for (let i = 0; i < results.length; i++) {
+                 w.webContents.send('diary:sync-event', {
+                   path: validPaths[i],
+                   date: datesToProcess[i]!.toISOString().split('T')[0],
+                   result: results[i],
+                   forced: true,
+                 });
+               }
+             });
+          } catch (e) {
+             logger.error('[DiaryWatcher] ❌ 批量同步失败:', e);
+          }
+        }
+      }
+    } finally {
+      this.isProcessing = false;
     }
   }
 }

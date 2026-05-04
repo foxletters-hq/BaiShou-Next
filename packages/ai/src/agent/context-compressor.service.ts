@@ -5,6 +5,7 @@ import { SessionRepository } from '@baishou/database';
 import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository';
 // @ts-ignore
 import { MessageWithParts, MessageAdapter } from './message.adapter';
+import { logger } from '@baishou/shared';
 
 export class ContextCompressorService {
   /**
@@ -54,7 +55,7 @@ export class ContextCompressorService {
       await snapshotRepo.appendSnapshot({
          sessionId: sessionId as any,
          summaryText: text,
-         coveredUpToMessageId: coveredLastMsg.orderIndex,
+         coveredUpToMessageId: String(coveredLastMsg.orderIndex),
          messageCount: latestSnapshot ? latestSnapshot.messageCount + uncompressedChunk.length : uncompressedChunk.length,
          tokenCount: latestSnapshot ? latestSnapshot.tokenCount + (usage.completionTokens ?? 0) : (usage.completionTokens ?? 0)
       });
@@ -87,14 +88,14 @@ export class ContextCompressorService {
       if (partsToPrune.length > 0) {
         try {
            await (sessionRepo as any).updatePartsDataFallback(partsToPrune, { text: '[工具输出过长，已在后台压缩池中安全剥离]' });
-           console.log(`[ContextCompressor] -> Physically pruned ${partsToPrune.length} heavy tool outputs.`);
+           logger.info(`[ContextCompressor] -> Physically pruned ${partsToPrune.length} heavy tool outputs.`);
         } catch(e) { }
       }
 
-      console.log(`[ContextCompressor] -> Silently generated deep memory snapshot for Session(${sessionId})! Token usage: ${usage.totalTokens}`);
+      logger.info(`[ContextCompressor] -> Silently generated deep memory snapshot for Session(${sessionId})! Token usage: ${usage.totalTokens}`);
 
     } catch (e: any) {
-      console.error('[ContextCompressor] Compression job failed in background:', e.message);
+      logger.error('[ContextCompressor] Compression job failed in background:', e.message);
     }
   }
 }

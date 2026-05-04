@@ -2,6 +2,7 @@ import { createClient, Client } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 import * as path from 'path';
 import * as fs from 'fs';
+import { logger } from '@baishou/shared';
 
 import type { AppDatabase } from './types';
 
@@ -33,36 +34,38 @@ export class ShadowIndexConnectionManager {
    * @param vaultSystemDir Vault 的系统目录路径（即 `<vault>/.baishou`）
    */
   async connect(vaultSystemDir: string): Promise<void> {
-    const dbPath = path.join(vaultSystemDir, 'shadow_index.db');
+    // 采用 V2 独立命名，与遗留或正在被 Windows 取用的旧版物理文件天然隔离，杜绝 SQLITE_CORRUPT 等底层文件复刻竞态
+    const dbPath = path.join(vaultSystemDir, 'shadow_index_v2.db');
 
     // 如果是同一个路径且连接正常，复用旧连接
     if (this._currentDbPath === dbPath && this._client && this._db) {
-      console.log(`[ShadowDB] 复用已有连接: ${dbPath}`);
+      logger.info(`[ShadowDB] 复用已有连接: ${dbPath}`);
       return;
     }
 
     // 关闭旧连接
     this._disconnect();
 
-    console.log(`[ShadowDB] 正在连接影子索引库: ${dbPath}`);
+    logger.info(`[ShadowDB] 正在连接影子索引库: ${dbPath}`);
 
     try {
       await this._initDatabase(dbPath);
     } catch (e: any) {
-      // 崩溃恢复：文件损坏时删除并重建（对标原版 `_initDatabase` 的 catch & retry 逻辑）
-      console.error(`[ShadowDB] 数据库初始化失败，尝试重建: ${e.message}`);
+      // _ensureHealthyFile 已经在 _initDatabase 内部完成了损坏检测和文件清理。
+      // 如果走到这里说明是建表/WAL等初始化本身出了意外，做一次简单重试即可。
+      logger.error(`[ShadowDB] 数据库初始化失败: ${e.message}`);
       this._disconnect();
 
-      if (fs.existsSync(dbPath)) {
-        console.warn(`[ShadowDB] 删除损坏的数据库文件: ${dbPath}`);
-        fs.unlinkSync(dbPath);
+      try {
+        await this._initDatabase(dbPath);
+      } catch (retryErr: any) {
+        // 二次失败不再阻塞应用启动——影子索引是纯缓存，可降级运行
+        logger.error(`[ShadowDB] 重建仍失败，影子索引将不可用: ${retryErr.message}`);
+        return;
       }
-
-      // 最后一次尝试，若仍失败则向上抛出
-      await this._initDatabase(dbPath);
     }
 
-    console.log(`[ShadowDB] 影子索引库连接成功: ${dbPath}`);
+    logger.info(`[ShadowDB] 影子索引库连接成功: ${dbPath}`);
   }
 
   /**
@@ -102,6 +105,65 @@ export class ShadowIndexConnectionManager {
 
   // ── 内部方法 ─────────────────────────────────
 
+  /**
+   * 如果数据库文件已存在，检测其是否损坏。若损坏则删除。
+   *
+   * 关键设计：**绝不用 libsql 打开原始文件**。
+   * Windows 的 libsql native addon 在 close() 后仍会延迟释放文件锁，
+   * 导致同一进程内无法删除刚刚打开过的文件（EBUSY）。
+   *
+   * 解决方案：先用 fs.copyFileSync 复制到临时路径，用 libsql 探测副本，
+   * 原始文件从未被 native addon 打开过，因此可以自由删除。
+   */
+  private async _ensureHealthyFile(dbPath: string): Promise<void> {
+    if (!fs.existsSync(dbPath)) return; // 全新文件，无需探测
+
+    const probePath = dbPath + '.probe';
+    let isCorrupt = false;
+
+    try {
+      // 复制原始文件到探针路径（仅需读权限，不锁定原文件）
+      fs.copyFileSync(dbPath, probePath);
+
+      let probe: Client | null = null;
+      try {
+        probe = createClient({ url: `file:${probePath}` });
+        const res = await probe.execute('PRAGMA quick_check;');
+        const firstRow = res.rows[0];
+        isCorrupt = !firstRow || firstRow['quick_check'] !== 'ok';
+      } catch {
+        isCorrupt = true;
+      } finally {
+        try { probe?.close(); } catch {}
+      }
+    } catch {
+      // copyFileSync 失败（无读权限或并发删除），默认视作健康或让外边抛错
+      return;
+    } finally {
+      // 尽力清理探针副本
+      for (const f of [probePath, `${probePath}-wal`, `${probePath}-shm`]) {
+        try { fs.unlinkSync(f); } catch {}
+      }
+    }
+
+    if (!isCorrupt) return; // 文件健康
+
+    logger.warn(`[ShadowDB] 检测到损坏的影子索引库，正在清理: ${dbPath}`);
+    let canDelete = true;
+    for (const file of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
+      try {
+        if (fs.existsSync(file)) fs.unlinkSync(file);
+      } catch (e: any) {
+        logger.error(`[ShadowDB] 删除损坏文件失败: ${file}`, e.message);
+        canDelete = false;
+      }
+    }
+
+    if (!canDelete) {
+      throw new Error(`无法清理损坏的影子索引库: ${dbPath}。文件可能正被其他程序占用，请关闭后重试。`);
+    }
+  }
+
   private async _initDatabase(dbPath: string): Promise<void> {
     // 确保父目录已存在
     const dir = path.dirname(dbPath);
@@ -109,16 +171,24 @@ export class ShadowIndexConnectionManager {
       fs.mkdirSync(dir, { recursive: true });
     }
 
+    // 核心改进：先探后开。在创建正式连接之前，确保文件健康或已被抛出错误。
+    await this._ensureHealthyFile(dbPath);
+
     const client = createClient({ url: `file:${dbPath}` });
 
-    // WAL 模式：提升并发写入性能，对标原版 SQLite WAL 配置
-    await client.execute('PRAGMA journal_mode=WAL');
+    try {
+      // WAL 模式：提升并发写入性能，对标原版 SQLite WAL 配置
+      await client.execute('PRAGMA journal_mode=WAL');
 
-    // 建表（幂等，始终 CREATE TABLE IF NOT EXISTS）
-    await this._createTables(client);
+      // 建表（幂等，始终 CREATE TABLE IF NOT EXISTS）
+      await this._createTables(client);
+    } catch (e: any) {
+      try { client.close(); } catch {}
+      throw e;
+    }
 
     this._client = client;
-    // Drizzle 包装（只用于 ShadowIndexRepository 的类型安全 ORM 操作）
+    // Drizzle 包装
     this._db = drizzle(client) as unknown as AppDatabase;
     this._currentDbPath = dbPath;
   }
@@ -166,9 +236,9 @@ export class ShadowIndexConnectionManager {
           tokenize = 'unicode61'
         )
       `);
-      console.log('[ShadowDB] journals_fts FTS5 虚拟表创建成功');
+      logger.info('[ShadowDB] journals_fts FTS5 虚拟表创建成功');
     } catch (e: any) {
-      console.warn('[ShadowDB] FTS5 不可用，降级为普通表:', e.message);
+      logger.warn('[ShadowDB] FTS5 不可用，降级为普通表:', e.message);
       await client.execute(`
         CREATE TABLE IF NOT EXISTS journals_fts (
           rowid   INTEGER PRIMARY KEY,

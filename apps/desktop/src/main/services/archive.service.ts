@@ -6,7 +6,8 @@ import archiver from 'archiver';
 import extract from 'extract-zip';
 
 import { IArchiveService, ImportResult, VaultService } from '@baishou/core';
-import { connectionManager, SettingsRepository } from '@baishou/database';
+import { connectionManager, SettingsRepository, UserProfileRepository } from '@baishou/database';
+import { logger } from '@baishou/shared';
 import { getAppDb } from '../db';
 import { DesktopStoragePathService } from './path.service';
 
@@ -74,7 +75,7 @@ export class DesktopArchiveService implements IArchiveService {
               }
             }
           } catch (e) {
-            console.error(`Failed to pack dir ${dirPath}`, e);
+            logger.error(`Failed to pack dir ${dirPath}`, e);
           }
         }
 
@@ -93,20 +94,38 @@ export class DesktopArchiveService implements IArchiveService {
         }
 
         // Collect Settings Data from global settings Repo created by Agent A
-        const devicePreferences: Record<string, any> = {
-          ai_providers: await this.settingsRepo.get('ai_providers'),
-          global_models: await this.settingsRepo.get('global_models'),
-          feature_settings: await this.settingsRepo.get('feature_settings')
-        };
+        // 导出全部 settings key，确保备份恢复时不丢失任何配置
+        const allSettingsKeys = [
+          'ai_providers', 'global_models', 'feature_settings',
+          'agent_behavior', 'rag_config', 'web_search_config',
+          'summary_config', 'tool_management_config', 'mcp_server_config',
+          'hotkey_config', 'cloud_sync_config', 'tool_configs',
+          'theme_seed_color', 'theme_mode'
+        ];
+        const devicePreferences: Record<string, any> = {};
+        for (const key of allSettingsKeys) {
+          devicePreferences[key] = await this.settingsRepo.get(key);
+        }
+        // 同时导出 user_profile_data
+        const profileRepo = new UserProfileRepository(getAppDb());
+        devicePreferences['user_profile_data'] = await profileRepo.getProfile();
         
         const configStr = JSON.stringify(devicePreferences, null, 2);
         archive.append(configStr, { name: 'config/device_preferences.json' });
 
         // Database Export: Copy the main SQLite Database
-        const sqliteDbPath = path.join(app.getPath('userData'), 'baishou_next_agent.db');
+        const sqliteDbPath = path.join(app.getPath('userData'), 'baishou_agent.db');
         if (fs.existsSync(sqliteDbPath)) {
+            try {
+              const dbInstance: any = getAppDb();
+              if (dbInstance?.session?.client) {
+                await dbInstance.session.client.execute('PRAGMA wal_checkpoint(TRUNCATE)');
+              }
+            } catch (e) {
+              logger.error('Failed to checkpoint WAL:', e);
+            }
             // Force checkpoint or just copy. We skip WAL/SHM as they may cause locking or bloat.
-            archive.file(sqliteDbPath, { name: 'database/baishou_next_agent.db' });
+            archive.file(sqliteDbPath, { name: 'database/baishou_agent.db' });
         }
 
         await archive.finalize();
@@ -166,82 +185,150 @@ export class DesktopArchiveService implements IArchiveService {
 
     // 1. Cut off SQLite bindings to unlock file handles globally!
     await connectionManager.disconnect();
-    
-    // TODO: also close global appDb if we were overwriting it, but we only update rows!
-
-    // 2. Erase existing Vault Workspace Root
-    const rootDir = await this.pathService.getRootDirectory();
-    if (fs.existsSync(rootDir)) {
-      try {
-        await fsp.rm(rootDir, { recursive: true, force: true });
-      } catch (e) {
-        console.error('Fatal file lock error while wiping root', e);
-      }
-    }
-    await fsp.mkdir(rootDir, { recursive: true });
-
-    // 3. Extract Archive directly into the Root Directory
-    // Extract-zip doesn't support omitting root paths natively easily, so we extract directly. Wait, config/ is inside!
-    // But config/ doesn't hurt to be inside the physical folder, we just parse it.
-    await extract(zipFilePath, { dir: rootDir });
-
-    // 4. Remap cross-device paths in vault_registry.json
     try {
-      const registryFile = path.join(rootDir, '.baishou', 'vault_registry.json');
-      if (fs.existsSync(registryFile)) {
-        const raw = await fsp.readFile(registryFile, 'utf8');
-        const vaults: any[] = JSON.parse(raw);
-        let modified = false;
+      shadowConnectionManager.disconnect();
+    } catch(e) {}
+    
+    // We extract everything to a temporary sandbox first to inspect format safely
+    const tempExtractDir = path.join(app.getPath('temp'), `archive_extract_${Date.now()}`);
+    await fsp.mkdir(tempExtractDir, { recursive: true });
+    
+    try {
+      await extract(zipFilePath, { dir: tempExtractDir });
+    } catch (e) {
+      // clean up if extract fails
+      await fsp.rm(tempExtractDir, { recursive: true, force: true }).catch(() => {});
+      throw e;
+    }
 
-        for (const v of vaults) {
-          const correctPath = path.join(rootDir, v.name);
-          if (v.path !== correctPath) {
-            v.path = correctPath;
-            modified = true;
+    const { LegacyMigrationService } = await import('./legacy-migration.service');
+    const legacyService = new LegacyMigrationService();
+    const isLegacy = await legacyService.isLegacyAppRoot(tempExtractDir);
+    const rootDir = await this.pathService.getRootDirectory();
+
+    if (isLegacy) {
+      logger.info('ArchiveService: Detected Legacy Architecture. Initiating Legacy Migration...');
+      // Note: Legacy migration expects to cleanly merge or overwrite.
+      // We can securely wipe rootDir if we want a clean slate since it's a full restore.
+      if (fs.existsSync(rootDir)) {
+        await fsp.rm(rootDir, { recursive: true, force: true }).catch(() => {});
+      }
+      await fsp.mkdir(rootDir, { recursive: true });
+      
+      // Perform translation migration
+      await legacyService.migrate(tempExtractDir, rootDir);
+
+      // 清理旧版带过来的可能损坏的 shadow_index.db 文件
+      // shadow_index 只是 Markdown 文件的缓存索引，会在 bootstrapper 中自动重建
+      await this.cleanShadowIndexFiles(rootDir);
+      
+    } else {
+      logger.info('ArchiveService: Detected Next Architecture. Restoring Standard Data...');
+      
+      // Original Next Version Restore Logic: Step 2: Erase existing Root
+      if (fs.existsSync(rootDir)) {
+        try {
+          await fsp.rm(rootDir, { recursive: true, force: true });
+        } catch (e) {
+          logger.error('Fatal file lock error while wiping root', e);
+        }
+      }
+      await fsp.mkdir(rootDir, { recursive: true });
+
+      // Step 3: Move from temporary sandbox to Target Root
+      async function moveAll(src: string, dest: string) {
+        const entries = await fsp.readdir(src, { withFileTypes: true });
+        for (const entry of entries) {
+           const srcFile = path.join(src, entry.name);
+           const destFile = path.join(dest, entry.name);
+           await fsp.rename(srcFile, destFile);
+        }
+      }
+      await moveAll(tempExtractDir, rootDir);
+
+      // 4. Remap cross-device paths in vault_registry.json
+      try {
+        const registryFile = path.join(rootDir, '.baishou', 'vault_registry.json');
+        if (fs.existsSync(registryFile)) {
+          const raw = await fsp.readFile(registryFile, 'utf8');
+          const vaults: any[] = JSON.parse(raw);
+          let modified = false;
+
+          for (const v of vaults) {
+            const correctPath = path.join(rootDir, v.name);
+            if (v.path !== correctPath) {
+              v.path = correctPath;
+              modified = true;
+            }
+          }
+          if (modified) {
+            await fsp.writeFile(registryFile, JSON.stringify(vaults, null, 2), 'utf8');
           }
         }
-        if (modified) {
-          await fsp.writeFile(registryFile, JSON.stringify(vaults, null, 2), 'utf8');
+      } catch (e) {
+        logger.error('Failed to remap vault paths', e);
+      }
+
+      // 5. Restore Global configurations from config/
+      try {
+        const configPath = path.join(rootDir, 'config', 'device_preferences.json');
+        if (fs.existsSync(configPath)) {
+          const raw = await fsp.readFile(configPath, 'utf8');
+          const prefs = JSON.parse(raw);
+
+          // 恢复全部 settings key
+          const allSettingsKeys = [
+            'ai_providers', 'global_models', 'feature_settings',
+            'agent_behavior', 'rag_config', 'web_search_config',
+            'summary_config', 'tool_management_config', 'mcp_server_config',
+            'hotkey_config', 'cloud_sync_config', 'tool_configs',
+            'theme_seed_color', 'theme_mode'
+          ];
+          for (const key of allSettingsKeys) {
+            if (prefs[key] !== undefined && prefs[key] !== null) {
+              await this.settingsRepo.set(key, prefs[key]);
+            }
+          }
+
+          // 恢复 user_profile_data
+          if (prefs['user_profile_data']) {
+            const profileRepo = new UserProfileRepository(getAppDb());
+            await profileRepo.saveProfile(prefs['user_profile_data']);
+          }
         }
+        
+        await fsp.rm(path.join(rootDir, 'config'), { recursive: true, force: true }).catch(() => {});
+      } catch (e) {
+        logger.error('Failed to restore device preferences', e);
       }
-    } catch (e) {
-      console.error('Failed to remap vault paths', e);
-    }
 
-    // 5. Restore Global configurations from config/
-    try {
-      const configPath = path.join(rootDir, 'config', 'device_preferences.json');
-      if (fs.existsSync(configPath)) {
-        const raw = await fsp.readFile(configPath, 'utf8');
-        const prefs = JSON.parse(raw);
-
-        if (prefs.ai_providers) await this.settingsRepo.set('ai_providers', prefs.ai_providers);
-        if (prefs.global_models) await this.settingsRepo.set('global_models', prefs.global_models);
-        if (prefs.feature_settings) await this.settingsRepo.set('feature_settings', prefs.feature_settings);
+      // 5.5 Restore Database if it exists in the archive!
+      try {
+        const extractedDbPath = path.join(rootDir, 'database', 'baishou_agent.db');
+        if (fs.existsSync(extractedDbPath)) {
+          // Warning: connectionManager is disconnected. We can safely overwrite the SQLite db.
+          const actualDbPath = path.join(app.getPath('userData'), 'baishou_agent.db');
+          await fsp.copyFile(extractedDbPath, actualDbPath);
+          await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {});
+        }
+      } catch (e) {
+        logger.error('Failed to restore database from archive', e);
       }
-      
-      // We can optionally delete the 'config' folder so it doesn't pollute the root
-      await fsp.rm(path.join(rootDir, 'config'), { recursive: true, force: true }).catch(() => {});
-    } catch (e) {
-      console.error('Failed to restore device preferences', e);
     }
-
-    // 5.5 Restore Database if it exists in the archive!
-    try {
-      const extractedDbPath = path.join(rootDir, 'database', 'baishou_next_agent.db');
-      if (fs.existsSync(extractedDbPath)) {
-        // Warning: connectionManager is disconnected. We can safely overwrite the SQLite db.
-        const actualDbPath = path.join(app.getPath('userData'), 'baishou_next_agent.db');
-        await fsp.copyFile(extractedDbPath, actualDbPath);
-        // Clean up extracted folder
-        await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {});
-      }
-    } catch (e) {
-      console.error('Failed to restore database from archive', e);
-    }
+    
+    // Cleanup temporary extraction dir safely
+    await fsp.rm(tempExtractDir, { recursive: true, force: true }).catch(() => {});
 
     // 6. Regenerate and reload system registry completely
     await this.vaultService.initRegistry();
+
+    // 6.5 重新连接 Shadow DB（旧连接已经失效，新文件可能已变更）
+    try {
+      const { connectShadowForActiveVault } = await import('../ipc/vault.ipc');
+      await connectShadowForActiveVault();
+    } catch (e) {
+      logger.error('Failed to reconnect Shadow DB after import:', e);
+    }
     
     // 7. Global Ecosystem Wake-up! 
     // This is CRITICAL for the SSOT mechanism to perceive the newly dropped files.
@@ -284,5 +371,51 @@ export class DesktopArchiveService implements IArchiveService {
     const p = path.join(app.getPath('userData'), 'snapshots', filename);
     if (!fs.existsSync(p)) throw new Error('Snapshot not found');
     return this.importFromZip(p, false);
+  }
+
+  /**
+   * 扫描 rootDir 下所有 vault 的 .baishou 目录，删除 shadow_index.db 及其附属文件。
+   * shadow_index 是纯缓存索引，可以由 bootstrapper 的 fullScanVault 从 Markdown 文件重建。
+   * 旧版备份包中携带的 shadow_index.db 可能在跨平台/跨 SQLite 版本时损坏。
+   */
+  private async cleanShadowIndexFiles(rootDir: string): Promise<void> {
+    try {
+      const entries = await fsp.readdir(rootDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const baishouDir = path.join(rootDir, entry.name, '.baishou');
+        if (!fs.existsSync(baishouDir)) continue;
+
+        for (const suffix of ['', '-wal', '-shm', '-journal']) {
+          const filePath = path.join(baishouDir, `shadow_index.db${suffix}`);
+          try {
+            if (fs.existsSync(filePath)) {
+              await fsp.unlink(filePath);
+              logger.info(`[ArchiveService] Cleaned shadow_index file: ${filePath}`);
+            }
+          } catch (e) {
+            logger.error(`[ArchiveService] Failed to clean shadow_index file: ${filePath}`, e);
+          }
+        }
+      }
+
+      // 也检查根级 .baishou 目录
+      const rootBaishou = path.join(rootDir, '.baishou');
+      if (fs.existsSync(rootBaishou)) {
+        for (const suffix of ['', '-wal', '-shm', '-journal']) {
+          const filePath = path.join(rootBaishou, `shadow_index.db${suffix}`);
+          try {
+            if (fs.existsSync(filePath)) {
+              await fsp.unlink(filePath);
+              logger.info(`[ArchiveService] Cleaned root shadow_index file: ${filePath}`);
+            }
+          } catch (e) {
+            logger.error(`[ArchiveService] Failed to clean root shadow_index file: ${filePath}`, e);
+          }
+        }
+      }
+    } catch (e) {
+      logger.error('[ArchiveService] Failed to clean shadow index files:', e);
+    }
   }
 }

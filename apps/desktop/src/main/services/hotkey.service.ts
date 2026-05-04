@@ -1,6 +1,7 @@
 import { globalShortcut, BrowserWindow } from 'electron';
 import type { SettingsRepository } from '@baishou/database';
 import type { HotkeyConfig } from '@baishou/shared';
+import { logger } from '@baishou/shared';
 
 /**
  * 全局快捷键服务 (桌面端系统级)
@@ -15,69 +16,69 @@ export class HotkeyService {
   ) {}
 
   async start(): Promise<void> {
-    console.log('[HotkeyService] 🚀 Starting HotkeyService initialization...');
+    logger.info('[HotkeyService] 🚀 Starting HotkeyService initialization...');
     try {
       const config = await this.settingsRepo.getHotkeyConfig();
-      console.log('[HotkeyService] 📦 Loaded config from DB:', JSON.stringify(config));
+      logger.info('[HotkeyService] 📦 Loaded config from DB:', JSON.stringify(config));
       
       this.isEnabled = config?.hotkeyEnabled ?? false;
       
       if (this.isEnabled) {
-        console.log('[HotkeyService] ✅ Global shortcut is ENABLED. Proceeding to register...');
+        logger.info('[HotkeyService] ✅ Global shortcut is ENABLED. Proceeding to register...');
         this.register(config);
       } else {
-        console.log('[HotkeyService] ⏸️ Global shortcut is DISABLED in settings. Skipping registration.');
+        logger.info('[HotkeyService] ⏸️ Global shortcut is DISABLED in settings. Skipping registration.');
       }
     } catch (e) {
-      console.error('[HotkeyService] ❌ Failed to start HotkeyService:', e);
+      logger.error('[HotkeyService] ❌ Failed to start HotkeyService:', e);
     }
   }
 
   update(config: HotkeyConfig): void {
-    console.log('[HotkeyService] ✏️ Hotkey configuration updated:', config);
+    logger.info('[HotkeyService] ✏️ Hotkey configuration updated:', config);
     this.unregisterAll();
     this.isEnabled = config.hotkeyEnabled;
     if (this.isEnabled) {
       this.register(config);
     } else {
-      console.log('[HotkeyService] ⏸️ Global shortcut disabled via settings update.');
+      logger.info('[HotkeyService] ⏸️ Global shortcut disabled via settings update.');
     }
   }
 
   stop(): void {
-    console.log('[HotkeyService] 🛑 Stopping hotkey service...');
+    logger.info('[HotkeyService] 🛑 Stopping hotkey service...');
     this.unregisterAll();
     this.isEnabled = false;
   }
 
   private register(config: HotkeyConfig): void {
     if (!config.hotkeyKey || !config.hotkeyModifier) {
-      console.log('[HotkeyService] ⚠️ Invalid shortcut configuration. Skipping registration.', config);
+      logger.info('[HotkeyService] ⚠️ Invalid shortcut configuration. Skipping registration.', config);
       return;
     }
 
     const accelerator = this.parseAccelerator(config.hotkeyModifier, config.hotkeyKey);
     if (!accelerator) {
-      console.log(`[HotkeyService] ⚠️ Could not parse accelerator for ${config.hotkeyModifier} + ${config.hotkeyKey}`);
+      logger.info(`[HotkeyService] ⚠️ Could not parse accelerator for ${config.hotkeyModifier} + ${config.hotkeyKey}`);
       return;
     }
     
-    console.log(`[HotkeyService] 🔄 Attempting to register global shortcut: ${accelerator}`);
+    logger.info(`[HotkeyService] 🔄 Attempting to register global shortcut: ${accelerator}`);
 
     try {
       // 注册全局热键拦截
       const success = globalShortcut.register(accelerator, () => {
-        console.log(`[HotkeyService] 🎯 Global shortcut [${accelerator}] triggered! Toggling window...`);
+        logger.info(`[HotkeyService] 🎯 Global shortcut [${accelerator}] triggered! Toggling window...`);
         this.toggleWindow();
       });
 
       if (!success) {
-        console.warn(`[HotkeyService] ❌ Failed to register global shortcut: ${accelerator}. This is usually because another application has already registered this OS-level shortcut, or it's reserved by Windows.`);
+        logger.warn(`[HotkeyService] ❌ Failed to register global shortcut: ${accelerator}. This is usually because another application has already registered this OS-level shortcut, or it's reserved by Windows.`);
       } else {
-        console.log(`[HotkeyService] ✅ Successfully registered global shortcut: ${accelerator}`);
+        logger.info(`[HotkeyService] ✅ Successfully registered global shortcut: ${accelerator}`);
       }
     } catch (e) {
-      console.error(`[HotkeyService] 💀 Exception thrown while registering global shortcut ${accelerator}:`, e);
+      logger.error(`[HotkeyService] 💀 Exception thrown while registering global shortcut ${accelerator}:`, e);
     }
   }
 
@@ -124,7 +125,7 @@ export class HotkeyService {
         }
       }
     } catch (e) {
-      console.error('[HotkeyService] Toggle window failed', e);
+      logger.error('[HotkeyService] Toggle window failed', e);
     }
   }
 

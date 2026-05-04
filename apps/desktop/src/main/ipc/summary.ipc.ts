@@ -1,13 +1,23 @@
 import { ipcMain } from 'electron';
 import { 
   SummaryRepositoryImpl,
-  connectionManager 
+  connectionManager,
+  shadowConnectionManager,
+  ShadowIndexRepository
 } from '@baishou/database';
 import { 
   SummaryManagerService,
   SummarySyncService,
-  SummaryFileService
+  SummaryFileService,
+  MissingSummaryDetector,
+  SummaryGeneratorService,
+  SummaryAiClient
 } from '@baishou/core';
+import { generateText } from 'ai';
+import { settingsManager } from './settings.ipc';
+import { getActiveProvider } from './agent-helpers';
+import { GlobalModelsConfig, logger } from '@baishou/shared';
+import { SummaryQueueService } from '../services/summary-queue.service';
 
 import { pathService } from './vault.ipc';
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared';
@@ -15,9 +25,27 @@ import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/sh
 export function getSummaryManager() {
   const db = connectionManager.getDb();
   
+  // Ensure the table exists in local.db since migrations may not have run
+  try {
+    const rawClient = (connectionManager as any)._sqliteDb;
+    if (rawClient) {
+      rawClient.execute(`
+        CREATE TABLE IF NOT EXISTS summaries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          type TEXT NOT NULL,
+          start_date TEXT NOT NULL,
+          end_date TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `).catch(() => {});
+    }
+  } catch (e) {}
+  
   const summaryRepo = new SummaryRepositoryImpl(db);
   const fileSync = new SummaryFileService(pathService);
-  const summarySync = new SummarySyncService({} as any, {} as any, summaryRepo, fileSync);
+  const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync);
   
   const summaryManager = new SummaryManagerService(
     summaryRepo,
@@ -29,6 +57,58 @@ export function getSummaryManager() {
 }
 
 export function registerSummaryIPC() {
+  const queueService = SummaryQueueService.getInstance();
+  queueService.setDependencies(getSummaryManager(), async () => {
+    // Dynamic factory for Generator Service to ensure db connections are fresh
+    const db = connectionManager.getDb();
+    const shadowDb = shadowConnectionManager.getDb();
+    
+    const summaryRepo = new SummaryRepositoryImpl(db);
+    const shadowRepo = new ShadowIndexRepository(shadowDb as any);
+    
+    const diaryRepoAdapter = {
+      async findByDateRange(start: Date, end: Date) {
+          const records = await shadowRepo.listAll();
+          return records.filter((r: any) => {
+             const d = new Date(r.date).getTime();
+             return d >= start.getTime() && d <= end.getTime();
+          }).map((r: any) => ({
+             id: r.id.toString(),
+             title: r.title,
+             date: new Date(r.date),
+             content: r.content,
+             tags: r.tags || '',
+             createdAt: r.createdAt ? new Date(r.createdAt) : new Date(r.date),
+             updatedAt: r.updatedAt ? new Date(r.updatedAt) : new Date(r.date)
+          }));
+      }
+    } as any;
+    
+    const aiClient: SummaryAiClient = {
+      async generateContent(prompt: string, modelId: string): Promise<string> {
+         const provider = await getActiveProvider();
+         const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
+         
+         const summaryProviderId = globalModels?.globalSummaryProviderId || provider.config.id;
+         let finalProvider = provider;
+         if (summaryProviderId !== provider.config.id) {
+            try { finalProvider = await getActiveProvider(summaryProviderId); } catch(e) {}
+         }
+         
+         const finalModelId = globalModels?.globalSummaryModelId || modelId || 'deepseek-chat';
+         const model = finalProvider.getLanguageModel(finalModelId);
+         
+         const { text } = await generateText({
+            model,
+            prompt,
+            maxSteps: 1
+         });
+         return text;
+      }
+    };
+    
+    return new SummaryGeneratorService(diaryRepoAdapter, summaryRepo, aiClient);
+  });
   ipcMain.handle('summary:save', async (_, input: CreateSummaryInput) => {
     return await getSummaryManager().save(input);
   });
@@ -46,22 +126,25 @@ export function registerSummaryIPC() {
   });
   
   ipcMain.handle('summary:list', async (_, options?: { start?: Date }) => {
-    // Deserialize optional date object if present
-    const parsedOptions = options?.start ? { start: new Date(options.start) } : undefined;
-    return await getSummaryManager().list(parsedOptions);
+    try {
+       const parsedOptions = options?.start ? { start: new Date(options.start) } : undefined;
+       return await getSummaryManager().list(parsedOptions);
+    } catch (e) {
+       logger.warn('[SummaryIPC] list error (likely table missing):', e);
+       return [];
+    }
   });
 
   ipcMain.handle('summary:stats', async () => {
     try {
       let totalDiaryCount = 0;
       try {
-        const { shadowConnectionManager } = require('@baishou/database');
         const client = shadowConnectionManager.getClient();
         const result = await client.execute('SELECT COUNT(*) as c FROM journals_index');
         totalDiaryCount = (result.rows[0]?.c as number) || 0;
       } catch(e) {
         // shadow_index table might not be initialized yet
-        console.error('Failed to get shadow_index count', e);
+        logger.error('Failed to get shadow_index count', e);
       }
 
       const summaries = await getSummaryManager().list();
@@ -73,7 +156,7 @@ export function registerSummaryIPC() {
         yearlyCount: summaries.filter((s:any) => s.type === 'yearly').length
       };
     } catch (err) {
-      console.error('Failed to calculate summary stats:', err);
+      logger.error('Failed to calculate summary stats:', err);
       return {
         totalDiaryCount: 0,
         weeklyCount: 0,
@@ -84,11 +167,74 @@ export function registerSummaryIPC() {
     }
   });
 
-  ipcMain.handle('summary:detect-missing', async () => {
-    return [];
+  ipcMain.handle('summary:detect-missing', async (_, locale: string = 'zh') => {
+    try {
+      const db = connectionManager.getDb();
+      const shadowDb = shadowConnectionManager.getDb();
+      if (!shadowDb) return [];
+      
+      try {
+         const rawClient = (connectionManager as any)._sqliteDb;
+         if (rawClient) {
+            await rawClient.execute(`
+              CREATE TABLE IF NOT EXISTS summaries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                type TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+              )
+            `);
+         }
+      } catch (e) {}
+
+      const shadowRepo = new ShadowIndexRepository(shadowDb as any);
+      const summaryRepo = new SummaryRepositoryImpl(db);
+
+      const diaryRepoAdapter = {
+        async list() {
+            const records = await shadowRepo.listAll();
+            logger.info('[DEBUG-IPC] shadowRepo.listAll count:', records.length);
+            if (records.length > 0) {
+               logger.info('[DEBUG-IPC] Sample record date field:', records[0].date, typeof records[0].date);
+            }
+            return records.map((r: any) => ({
+              id: r.id.toString(),
+              title: r.title,
+              date: new Date(r.date),
+              content: r.content,
+              createdAt: r.createdAt ? new Date(r.createdAt) : new Date(r.date),
+              updatedAt: r.updatedAt ? new Date(r.updatedAt) : new Date(r.date),
+              path: r.path || ''
+            }));
+        }
+      } as any;
+
+      const detector = new MissingSummaryDetector(diaryRepoAdapter, summaryRepo);
+      const res = await detector.getAllMissing(locale);
+      
+      require('fs').writeFileSync(require('path').join(process.cwd(), 'detect-debug.log'), JSON.stringify({ count: res.length }));
+      
+      return res;
+    } catch(err: any) {
+      logger.error('[SummaryIPC] detect-missing error:', err);
+      try {
+         require('fs').writeFileSync(require('path').join(process.cwd(), 'detect-err.log'), err.stack || err.toString());
+      } catch (e) {}
+      return [];
+    }
   });
 
-  ipcMain.handle('summary:generate', async (_, args: any) => {
-    return null;
+  ipcMain.handle('summary:queue-generation', async (_, items: any[]) => {
+    const queueService = SummaryQueueService.getInstance();
+    queueService.enqueue(items);
+    return true;
+  });
+
+  ipcMain.handle('summary:get-queue-state', async () => {
+    const queueService = SummaryQueueService.getInstance();
+    return queueService.getQueueState();
   });
 }

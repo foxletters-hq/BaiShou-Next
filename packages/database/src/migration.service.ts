@@ -3,6 +3,7 @@ import { AppDatabase } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { migrationsTable } from './schema/migration-table';
+import { logger } from '@baishou/shared';
 
 export interface MigrationJournal {
   version: string;
@@ -42,19 +43,19 @@ export class MigrationService {
 
   public async runMigrations(): Promise<void> {
     try {
-      console.log('[MigrationService] 检查 Agent DB 迁移，目录:', this.migrationDir);
+      logger.info('[MigrationService] 检查 Agent DB 迁移，目录:', this.migrationDir);
 
       let hasMigrationsTable = await this.migrationsTableExists();
 
       if (!hasMigrationsTable) {
-        console.log('[MigrationService] 未发现迁移跟踪表，判断是否为旧库...');
+        logger.info('[MigrationService] 未发现迁移跟踪表，判断是否为旧库...');
         try {
           // 检测旧版 DB：如果有 agent_sessions 表但没有迁移跟踪，视为旧库
           const legacyCheck = await this.client.execute(
             `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_sessions'`
           );
           if (legacyCheck.rows.length > 0) {
-            console.log('[MigrationService] 检测到旧版 Agent DB，回填迁移记录表...');
+            logger.info('[MigrationService] 检测到旧版 Agent DB，回填迁移记录表...');
             await this.client.execute(`
               CREATE TABLE IF NOT EXISTS __drizzle_migrations (
                 version INTEGER PRIMARY KEY NOT NULL,
@@ -75,18 +76,18 @@ export class MigrationService {
 
               // 确保旧库中的 compression_snapshots 有正确的字段类型
               // （旧库中 session_id 是 INTEGER，需要通过重建表迁移）
-              console.log('[MigrationService] 检查旧库 compression_snapshots 字段兼容性...');
+              logger.info('[MigrationService] 检查旧库 compression_snapshots 字段兼容性...');
               await this._ensureCompressionSnapshotsCompatibility();
             }
           }
         } catch (e) {
-          console.warn('[MigrationService] 旧库检测失败，将使用全新迁移流程:', e);
+          logger.warn('[MigrationService] 旧库检测失败，将使用全新迁移流程:', e);
         }
       }
 
       const journal = await this.readMigrationJournal();
       if (journal.entries.length === 0) {
-        console.log('[MigrationService] 迁移日志为空，无需执行。');
+        logger.info('[MigrationService] 迁移日志为空，无需执行。');
         return;
       }
 
@@ -98,9 +99,9 @@ export class MigrationService {
         .sort((a, b) => a.idx - b.idx);
 
       if (pendingMigrations.length === 0) {
-        console.log('[MigrationService] Agent DB Schema 已是最新版本。');
+        logger.info('[MigrationService] Agent DB Schema 已是最新版本。');
       } else {
-        console.log(`[MigrationService] 发现 ${pendingMigrations.length} 个待执行迁移...`);
+        logger.info(`[MigrationService] 发现 ${pendingMigrations.length} 个待执行迁移...`);
         for (const migration of pendingMigrations) {
           await this.executeMigration(migration);
         }
@@ -108,7 +109,7 @@ export class MigrationService {
 
       // Agent 消息 FTS 虚拟表（仅服务于 Agent 聊天记录全文搜索）
       // 注意：影子索引 FTS (journals_fts) 由 ShadowIndexConnectionManager 独立管理
-      console.log('[MigrationService] 确保 Agent 消息 FTS5 虚拟表存在...');
+      logger.info('[MigrationService] 确保 Agent 消息 FTS5 虚拟表存在...');
       try {
         await this.client.execute(`
           CREATE VIRTUAL TABLE IF NOT EXISTS agent_messages_fts USING fts5(
@@ -120,12 +121,12 @@ export class MigrationService {
           )
         `);
       } catch (ftsError: any) {
-        console.warn('[MigrationService] FTS5 不支持，跳过 Agent FTS 表:', ftsError.message);
+        logger.warn('[MigrationService] FTS5 不支持，跳过 Agent FTS 表:', ftsError.message);
       }
 
-      console.log('[MigrationService] Agent DB 迁移同步完成！');
+      logger.info('[MigrationService] Agent DB 迁移同步完成！');
     } catch (error) {
-      console.error('[MigrationService] 迁移执行过程中发生致命错误:', error);
+      logger.error('[MigrationService] 迁移执行过程中发生致命错误:', error);
       throw error;
     }
   }
@@ -140,7 +141,7 @@ export class MigrationService {
       const cols = tableInfo.rows;
       const sessionIdCol = cols.find((c: any) => c.name === 'session_id');
       if (sessionIdCol && (sessionIdCol.type as string).toUpperCase() === 'INTEGER') {
-        console.log('[MigrationService] 重建 compression_snapshots（INTEGER→TEXT）...');
+        logger.info('[MigrationService] 重建 compression_snapshots（INTEGER→TEXT）...');
         await this.client.execute(`ALTER TABLE compression_snapshots RENAME TO _comp_snap_old`);
         await this.client.execute(`
           CREATE TABLE compression_snapshots (
@@ -161,10 +162,10 @@ export class MigrationService {
           FROM _comp_snap_old
         `);
         await this.client.execute(`DROP TABLE _comp_snap_old`);
-        console.log('[MigrationService] compression_snapshots 重建完成。');
+        logger.info('[MigrationService] compression_snapshots 重建完成。');
       }
     } catch (e: any) {
-      console.warn('[MigrationService] compression_snapshots 兼容性检查失败（非阻塞）:', e.message);
+      logger.warn('[MigrationService] compression_snapshots 兼容性检查失败（非阻塞）:', e.message);
     }
   }
 
@@ -175,7 +176,7 @@ export class MigrationService {
       );
       return table.rows.length > 0;
     } catch (error) {
-      console.warn('[MigrationService] 检查迁移表存在性时出错。', error);
+      logger.warn('[MigrationService] 检查迁移表存在性时出错。', error);
       return false;
     }
   }
@@ -184,7 +185,7 @@ export class MigrationService {
     const journalPath = path.join(this.migrationDir, 'meta', '_journal.json');
 
     if (!fs.existsSync(journalPath)) {
-      console.warn('[MigrationService] 未找到 _journal.json，路径:', journalPath);
+      logger.warn('[MigrationService] 未找到 _journal.json，路径:', journalPath);
       return { version: '7', dialect: 'sqlite', entries: [] };
     }
 
@@ -192,7 +193,7 @@ export class MigrationService {
       const journalContent = fs.readFileSync(journalPath, 'utf-8');
       return JSON.parse(journalContent) as MigrationJournal;
     } catch (error) {
-      console.error('[MigrationService] 读取 _journal.json 失败:', error);
+      logger.error('[MigrationService] 读取 _journal.json 失败:', error);
       throw error;
     }
   }
@@ -201,7 +202,7 @@ export class MigrationService {
     try {
       return await this.db.select({ version: migrationsTable.version }).from(migrationsTable);
     } catch (error) {
-      console.error('[MigrationService] 读取已执行迁移记录失败！', error);
+      logger.error('[MigrationService] 读取已执行迁移记录失败！', error);
       throw error;
     }
   }
@@ -214,7 +215,7 @@ export class MigrationService {
     }
 
     try {
-      console.log(`[MigrationService] -> 执行迁移: ${migration.tag}.sql (v${migration.idx})`);
+      logger.info(`[MigrationService] -> 执行迁移: ${migration.tag}.sql (v${migration.idx})`);
       const startTime = Date.now();
 
       const sqlContent = fs.readFileSync(sqlFilePath, 'utf-8');
@@ -227,7 +228,7 @@ export class MigrationService {
         try {
           await this.client.execute(statement);
         } catch (err) {
-          console.error(`[MigrationService] 语句执行失败:\n---\n${statement}\n---`);
+          logger.error(`[MigrationService] 语句执行失败:\n---\n${statement}\n---`);
           throw err;
         }
       }
@@ -249,9 +250,9 @@ export class MigrationService {
         executedAt: Date.now()
       });
 
-      console.log(`[MigrationService] <- 迁移 ${migration.tag} 成功，耗时 ${Date.now() - startTime}ms`);
+      logger.info(`[MigrationService] <- 迁移 ${migration.tag} 成功，耗时 ${Date.now() - startTime}ms`);
     } catch (error) {
-      console.error(`[MigrationService] x- 迁移失败: ${migration.tag}`, error);
+      logger.error(`[MigrationService] x- 迁移失败: ${migration.tag}`, error);
       throw error;
     }
   }

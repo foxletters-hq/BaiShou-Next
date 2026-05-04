@@ -4,6 +4,8 @@
  * 返回微美分 (costMicros)。
  */
 
+import { logger } from '@baishou/shared';
+
 export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
@@ -88,12 +90,12 @@ export class ModelPricingService {
   ): Promise<number> {
     const price = await this.getPrice(providerId, modelId);
     if (!price) {
-      console.log(`[ModelPricingService] No price found for ${providerId}/${modelId}. Defaulting to 0.`);
+      logger.info(`[ModelPricingService] No price found for ${providerId}/${modelId}. Defaulting to 0.`);
       return 0;
     }
     
     const costInUSD = price.calculateCost(usage);
-    console.log(`[ModelPricingService] Calculation for ${providerId}/${modelId}: inputTokens=${usage.inputTokens}, outputTokens=${usage.outputTokens} -> USD=${costInUSD}`);
+    logger.info(`[ModelPricingService] Calculation for ${providerId}/${modelId}: inputTokens=${usage.inputTokens}, outputTokens=${usage.outputTokens} -> USD=${costInUSD}`);
     return Math.round(costInUSD * 1000000); // 转成 Micros 并确保是整数存入 Int 表
   }
 
@@ -120,7 +122,7 @@ export class ModelPricingService {
       clearTimeout(id);
 
       if (!response.ok) {
-        console.warn(`[ModelPricingService] models.dev returned HTTP ${response.status}`);
+        logger.warn(`[ModelPricingService] models.dev returned HTTP ${response.status}`);
         return;
       }
 
@@ -164,7 +166,7 @@ export class ModelPricingService {
 
       this.lastFetchTime = new Date();
     } catch (e) {
-      console.warn('[ModelPricingService] prices fetch failed:', e);
+      logger.warn('[ModelPricingService] prices fetch failed:', e);
       // 网络打不开没关系，失败的话大不了不扣钱，决不能让 Agent 崩溃停止回答
     }
   }

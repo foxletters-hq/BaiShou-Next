@@ -1,6 +1,7 @@
 import { Client } from '@libsql/client';
 import { IHybridSearchStorage, ISearchResult } from '@baishou/ai/src/rag/hybrid-search.types';
 import { IEmbeddingStorage } from '@baishou/ai/src/rag/embedding.types';
+import { logger } from '@baishou/shared';
 
 /**
  * SQLite + libsql 混合搜索仓库
@@ -66,9 +67,9 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
         await this.db.execute(
           `CREATE INDEX IF NOT EXISTS ${this.INDEX_NAME} ON agent_embeddings (libsql_vector_idx(embedding, 'metric=cosine'))`
         );
-        console.log(`[VectorSearch] ANN 索引已就绪（dim=${dimension}, metric=cosine）`);
+        logger.info(`[VectorSearch] ANN 索引已就绪（dim=${dimension}, metric=cosine）`);
       } catch (e: any) {
-        console.warn('[VectorSearch] ANN 索引创建失败（将使用全表扫描降级）:', e.message);
+        logger.warn('[VectorSearch] ANN 索引创建失败（将使用全表扫描降级）:', e.message);
       }
     }
   }
