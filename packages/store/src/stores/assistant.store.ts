@@ -8,6 +8,7 @@ export interface Assistant {
   avatarPath?: string;
   systemPrompt?: string;
   isDefault: boolean;
+  isPinned?: boolean;
   contextWindow: number;
   providerId: string;
   modelId: string;

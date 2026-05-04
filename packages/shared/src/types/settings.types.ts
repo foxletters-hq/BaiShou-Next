@@ -62,7 +62,7 @@ export interface RagConfig {
  * 网络搜索配置 (Web Search Config)
  */
 export interface WebSearchConfig {
-  webSearchEngine: 'duckduckgo' | 'tavily' | string; // 使用的搜索引擎 (默认 duckduckgo)
+  webSearchEngine: 'duckduckgo' | 'tavily' | 'local-bing' | 'local-google' | string; // 使用的搜索引擎
   webSearchMaxResults: number;                       // 搜索返回的最大结果数 (1-30，默认 5)
   webSearchRagEnabled: boolean;                      // 是否启用了 Web-RAG (网页压缩读取)
   tavilyApiKey: string;                              // Tavily API 密钥

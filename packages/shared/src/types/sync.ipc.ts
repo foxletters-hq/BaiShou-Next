@@ -36,6 +36,7 @@ export enum SyncIpcChannels {
   CLOUD_SYNC_NOW = 'cloud:syncNow',
   CLOUD_LIST_RECORDS = 'cloud:listRecords',
   CLOUD_RESTORE = 'cloud:restore',
+  CLOUD_DOWNLOAD_RECORD = 'cloud:downloadRecord',
   CLOUD_DELETE_RECORD = 'cloud:deleteRecord',
   CLOUD_BATCH_DELETE = 'cloud:batchDelete',
   CLOUD_RENAME = 'cloud:rename'

@@ -27,6 +27,10 @@ export interface DiaryMeta {
   preview: string;
   tags: string[];
   updatedAt?: Date;
+  weather?: string;
+  mood?: string;
+  location?: string;
+  isFavorite?: boolean;
 }
 
 export interface TimelineNode {

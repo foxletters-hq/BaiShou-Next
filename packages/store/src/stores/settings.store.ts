@@ -1,4 +1,6 @@
-import { createStore } from '../create-store';
+import { createStore as createStoreWrapper } from '../create-store';
+import { create } from 'zustand';
+import { persist, devtools } from 'zustand/middleware';
 import { i18n } from '@baishou/shared';
 import type { 
   AIProviderConfig, 
@@ -62,7 +64,10 @@ export interface SettingsActions {
   setCloudSyncConfig: (config: any) => Promise<void>;
 }
 
-export const useSettingsStore = createStore<SettingsState & SettingsActions>('SettingsStore', (set, get: any) => ({
+export const useSettingsStore = create<SettingsState & SettingsActions>()(
+  persist(
+    devtools(
+      (set, get: any) => ({
   themeMode: 'system',
   useGlassmorphism: true,
   locale: 'zh',
@@ -280,4 +285,17 @@ export const useSettingsStore = createStore<SettingsState & SettingsActions>('Se
       }
     }
   }
-}));
+      }),
+      { name: 'SettingsStore' }
+    ),
+    {
+      name: 'baishou-ui-settings-storage',
+      partialize: (state) => ({
+        themeMode: state.themeMode,
+        useGlassmorphism: state.useGlassmorphism,
+        locale: state.locale,
+        themeColor: state.themeColor
+      })
+    }
+  )
+);
