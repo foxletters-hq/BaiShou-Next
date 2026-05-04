@@ -186,6 +186,10 @@ export class DiaryService {
          preview: s.rawContent ? s.rawContent.substring(0, 500) : "",
          tags: parsedTags,
          updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
+         weather: s.weather || undefined,
+         mood: s.mood || undefined,
+         location: s.location || undefined,
+         isFavorite: s.isFavorite || false,
       };
     });
   }

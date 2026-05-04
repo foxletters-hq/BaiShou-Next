@@ -12,8 +12,8 @@ export interface InsertAssistantInput {
   isDefault?: boolean;
   isPinned?: boolean;
   contextWindow?: number;
-  providerId: string;
-  modelId: string;
+  providerId?: string | null;
+  modelId?: string | null;
   compressTokenThreshold?: number;
   compressKeepTurns?: number;
   sortOrder?: number;

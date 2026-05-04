@@ -1,6 +1,7 @@
 export * from './diary/diary.service';
 export * from './diary/file-sync.service';
 export * from './diary/vault-index.service';
+export * from './diary/diary-export.service';
 export * from './services/agent.service';
 export * from './vault/vault.types';
 export * from './vault/storage-path.types';
@@ -40,6 +41,9 @@ export * from './summary/missing-summary-detector.service';
 
 // 存档系统
 export * from './archive/archive.interface';
+
+// 旧版数据导入兼容
+export * from './import/legacy-import.service';
 
 // 局域网系统
 export * from './network/lan-sync.interface';

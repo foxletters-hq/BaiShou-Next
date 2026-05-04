@@ -23,10 +23,15 @@ export class VaultIndexServiceImpl implements VaultIndexService {
     const content = d.content || '';
     const tagsArray = Array.isArray(d.tags) ? d.tags : (typeof d.tags === 'string' ? d.tags.split(',').filter(Boolean).map(t => t.trim()) : []);
     return {
-      id: d.id!,  // Assuming id is safely present in DB format at this stage
+      id: d.id!,
       date: d.date,
       preview: content.length > 120 ? content.substring(0, 120) : content,
       tags: tagsArray,
+      updatedAt: d.updatedAt,
+      weather: d.weather || undefined,
+      mood: d.mood || undefined,
+      location: d.location || undefined,
+      isFavorite: d.isFavorite || false,
     };
   }
 

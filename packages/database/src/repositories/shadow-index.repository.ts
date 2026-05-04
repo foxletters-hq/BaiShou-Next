@@ -121,6 +121,60 @@ export class ShadowIndexRepository {
   }
 
   /**
+   * 批量 Upsert 多个影子索引（开启单一大事务）
+   * 对高并发下 SQLite 写锁非常友好
+   */
+  async batchUpsert(payloads: UpsertShadowIndexPayload[]): Promise<number[]> {
+    if (payloads.length === 0) return [];
+
+    const rowIds: number[] = [];
+
+    await this.database.transaction(async (tx) => {
+      for (const payload of payloads) {
+        const { rawContent, tags, ...indexData } = payload;
+        
+        // 1. 主表写入
+        const result = await tx
+          .insert(shadowJournalIndexTable)
+          .values({ ...indexData, rawContent, tags })
+          .onConflictDoUpdate({
+            target: [shadowJournalIndexTable.filePath],
+            set: {
+              date: indexData.date,
+              createdAt: indexData.createdAt,
+              updatedAt: indexData.updatedAt,
+              contentHash: indexData.contentHash,
+              weather: indexData.weather ?? null,
+              mood: indexData.mood ?? null,
+              location: indexData.location ?? null,
+              locationDetail: indexData.locationDetail ?? null,
+              isFavorite: indexData.isFavorite,
+              hasMedia: indexData.hasMedia,
+              rawContent,
+              tags,
+            },
+          })
+          .returning({ id: shadowJournalIndexTable.id });
+
+        const rowId = result[0]?.id;
+        if (rowId != null) {
+          rowIds.push(rowId);
+          
+          // 2. FTS 同步
+          try {
+            await tx.run(sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`);
+            await tx.run(sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${rawContent}, ${tags})`);
+          } catch (e: any) {
+            console.warn(`[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]:`, e.message);
+          }
+        }
+      }
+    });
+
+    return rowIds;
+  }
+
+  /**
    * 删除指定 ID 的影子索引记录（同步清理 FTS 表）
    * 对标原版 `deleteJournalIndex()`
    */
@@ -235,18 +289,39 @@ export class ShadowIndexRepository {
    * 对标原版 `SELECT i.*, f.content, f.tags FROM journals_index i LEFT JOIN journals_fts f ON i.id = f.rowid`
    */
   async listAllWithFTS(options?: { limit?: number; offset?: number; orderBy?: 'asc' | 'desc' }): Promise<(ShadowJournalRecord & { rawContent: string; tagsStr: string })[]> {
-    const orderClause = options?.orderBy === 'asc' ? 'i.date ASC' : 'i.date DESC';
-    let queryStr = `
+    // 显式校验排序方向，防止 SQL 注入
+    const direction = options?.orderBy === 'asc' ? sql.raw('ASC') : sql.raw('DESC');
+    const limit = Math.max(0, Math.floor(options?.limit ?? 0));
+    const offset = Math.max(0, Math.floor(options?.offset ?? 0));
+
+    let queryStr = sql`
       SELECT i.*, f.content as rawContent, f.tags as rawTags
       FROM journals_index i
       LEFT JOIN journals_fts f ON i.id = f.rowid
-      ORDER BY ${orderClause}
+      ORDER BY i.date ${direction}
     `;
-    if (options?.limit) queryStr += ` LIMIT ${options.limit}`;
-    if (options?.offset) queryStr += ` OFFSET ${options.offset}`;
+    if (limit > 0) queryStr = sql`${queryStr} LIMIT ${limit}`;
+    if (offset > 0) queryStr = sql`${queryStr} OFFSET ${offset}`;
 
     try {
-      const rawResults = await this.database.all(sql.raw(queryStr)) as any[];
+      // 定义原始查询结果的行类型
+      interface RawFTSRow {
+        id: number;
+        file_path: string;
+        date: string;
+        created_at: string;
+        updated_at: string;
+        content_hash: string;
+        weather: string | null;
+        mood: string | null;
+        location: string | null;
+        location_detail: string | null;
+        is_favorite: number;
+        has_media: number;
+        rawContent: string | null;
+        rawTags: string | null;
+      }
+      const rawResults = await this.database.all(queryStr) as RawFTSRow[];
       return rawResults.map(row => ({
         id: row.id,
         filePath: row.file_path,
@@ -263,8 +338,9 @@ export class ShadowIndexRepository {
         rawContent: row.rawContent || '',
         tagsStr: row.rawTags || '',
       }));
-    } catch (e: any) {
-      console.warn('[ShadowIndex] listAllWithFTS error:', e.message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[ShadowIndex] listAllWithFTS error:', msg);
       return [];
     }
   }
@@ -287,5 +363,26 @@ export class ShadowIndexRepository {
       .select({ count: sql<number>`count(*)` })
       .from(shadowJournalIndexTable);
     return result[0]?.count || 0;
+  }
+
+  /**
+   * 获取指定年份的日记活跃度数据（每天的日记数量）
+   * 用于活跃热力图展示
+   */
+  async getActivityData(year: number): Promise<{ date: string; count: number }[]> {
+    try {
+      const rows = await this.database.all(
+        sql`
+          SELECT date, 1 as count
+          FROM journals_index
+          WHERE date >= ${`${year}-01-01`} AND date <= ${`${year}-12-31`}
+          ORDER BY date ASC
+        `
+      ) as any[];
+      return rows.map(row => ({ date: row.date, count: Number(row.count) || 1 }));
+    } catch (e: any) {
+      console.warn('[ShadowIndex] getActivityData error:', e.message);
+      return [];
+    }
   }
 }

@@ -24,39 +24,29 @@ export class FTSRepository {
   }
 
   /**
-   * 多表合并搜索 (同时匹配 Diaries 和 AgentMessages)
+   * 聊天消息全文搜索
+   *
+   * 仅搜索 agent_messages_fts（agent DB 内）。
+   * 日记 FTS 由 ShadowIndexRepository.searchFTS() 在独立的 shadow_index.db 中处理，
+   * 此处不跨库引用 diaries_fts。
    */
   async searchAll(query: string, limit: number = 20): Promise<FTSResult[]> {
     if (!query || query.trim().length === 0) return [];
 
-    // FTS5 MATCH 对于普通中文搜索常常使用双引号括起来当做 phrase 短语强制命中
     const cleanedQuery = query.replace(/"/g, ' ').trim();
     if (!cleanedQuery) return [];
 
-    // 我们使用 UNION ALL 同时搜索 diary_fts 和 agent_messages_fts
-    // 并结合 rank 返回 (注意：负数 rank 越小越匹配！)
     const rawMatch = sql`
-      SELECT 
-        CAST(diary_id AS TEXT) as source_id,
-        'diary' as source_type,
-        snippet(diaries_fts, 1, '<b>', '</b>', '...', 64) as snippet,
-        rank as fts_rank
-      FROM diaries_fts WHERE diaries_fts MATCH '"' || ${cleanedQuery} || '"'
-      
-      UNION ALL
-      
-      SELECT 
+      SELECT
         message_id as source_id,
         'chat' as source_type,
         snippet(agent_messages_fts, 3, '<b>', '</b>', '...', 64) as snippet,
         rank as fts_rank
       FROM agent_messages_fts WHERE agent_messages_fts MATCH '"' || ${cleanedQuery} || '"'
-      
       ORDER BY fts_rank ASC
       LIMIT ${limit}
     `;
 
-    // 这里绕过 ORM Mapping，直接获取原始 Row 数据
     const results = await this.database.all(rawMatch) as any[];
 
     return results.map(row => ({

@@ -46,8 +46,8 @@ export class SessionManagerService {
     return this.sessionRepo.getMessagesBySession(sessionId, limit);
   }
 
-  async findAllSessions(limit: number = 20, offset: number = 0) {
-    return this.sessionRepo.findAllSessions(limit, offset);
+  async findAllSessions(limit: number = 20, offset: number = 0, assistantId?: string) {
+    return this.sessionRepo.findAllSessions(limit, offset, assistantId);
   }
 
   // ========== Internal Engine ==========

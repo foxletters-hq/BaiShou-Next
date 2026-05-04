@@ -14,8 +14,8 @@ export class SummarySyncService {
   private isSyncing = false;
 
   constructor(
-    private readonly detector: MissingSummaryDetector,
-    private readonly generator: SummaryGeneratorService,
+    private readonly detector: MissingSummaryDetector | null,
+    private readonly generator: SummaryGeneratorService | null,
     private readonly summaryRepo: SummaryRepository,
     private readonly fileService: SummaryFileService
   ) {}
@@ -25,7 +25,7 @@ export class SummarySyncService {
    * @param callbacks 用于 UI 层反馈当前进度的回调。
    */
   async syncMissingSummaries(callbacks?: SummarySyncCallbacks): Promise<void> {
-    if (this.isSyncing) return;
+    if (this.isSyncing || !this.detector || !this.generator) return;
     this.isSyncing = true;
 
     try {

@@ -150,10 +150,12 @@ export class SessionRepository {
   /**
    * 查询所有会话（按置顶和更新时间排序）
    */
-  async findAllSessions(limit: number = 20, offset: number = 0) {
-    return await this.db.select()
-      .from(agentSessionsTable)
-      .orderBy(
+  async findAllSessions(limit: number = 20, offset: number = 0, assistantId?: string) {
+    let q = this.db.select().from(agentSessionsTable);
+    if (assistantId) {
+       q = q.where(eq(agentSessionsTable.assistantId, assistantId)) as any;
+    }
+    return await q.orderBy(
         desc(agentSessionsTable.isPinned),
         desc(agentSessionsTable.updatedAt)
       )
@@ -211,6 +213,55 @@ export class SessionRepository {
           await tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids));
       }
     });
+  }
+
+  /**
+   * Retrieves a single message by ID
+   */
+  async getMessageById(messageId: string): Promise<any> {
+    const rows = await this.db.select().from(messagesTbl).where(eq(messagesTbl.id, messageId)).limit(1);
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  /**
+   * Deletes all messages strictly AFTER the given orderIndex
+   */
+  async deleteMessagesAfter(sessionId: string, orderIndex: number): Promise<void> {
+    const { and, gt, inArray } = await import('drizzle-orm');
+    await this.db.transaction(async (tx) => {
+      const toDelete = await tx.select().from(messagesTbl).where(and(eq(messagesTbl.sessionId, sessionId), gt(messagesTbl.orderIndex, orderIndex)));
+      const ids = toDelete.map(m => m.id);
+      if (ids.length > 0) {
+          await tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids));
+          await tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids));
+      }
+    });
+  }
+
+  /**
+   * Updates only the text content part of a specific message
+   */
+  async updateMessageTextPart(messageId: string, newText: string): Promise<void> {
+    const { and } = await import('drizzle-orm');
+    const rows = await this.db.select().from(partsTbl).where(and(eq(partsTbl.messageId, messageId), eq(partsTbl.type, 'text')));
+    if (rows.length > 0) {
+       await this.db.update(partsTbl)
+         .set({ data: { text: newText } })
+         .where(eq(partsTbl.id, rows[0].id));
+    } else {
+       const parent = await this.db.select().from(messagesTbl).where(eq(messagesTbl.id, messageId)).limit(1);
+       if (parent.length > 0) {
+          const crypto = require('crypto');
+          await this.db.insert(partsTbl).values({
+             id: crypto.randomUUID(),
+             messageId,
+             sessionId: parent[0].sessionId,
+             type: 'text',
+             data: { text: newText },
+             createdAt: new Date()
+          });
+       }
+    }
   }
 
   /**

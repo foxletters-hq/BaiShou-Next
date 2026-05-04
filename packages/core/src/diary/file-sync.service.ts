@@ -59,6 +59,9 @@ export class FileSyncServiceImpl implements FileSyncService {
 
     if ('weather' in diary && diary.weather) lines.push(`weather: ${diary.weather}`);
     if ('mood' in diary && diary.mood) lines.push(`mood: ${diary.mood}`);
+    if ('location' in diary && diary.location) lines.push(`location: ${diary.location}`);
+    if ('locationDetail' in diary && diary.locationDetail) lines.push(`location_detail: ${diary.locationDetail}`);
+    if ('isFavorite' in diary && diary.isFavorite) lines.push(`is_favorite: true`);
 
     if ('updatedAt' in diary && diary.updatedAt) {
       lines.push(`updated_at: ${diary.updatedAt.toISOString()}`);
@@ -134,7 +137,6 @@ export class FileSyncServiceImpl implements FileSyncService {
           diary.id = Number(val);
           break;
         case 'date':
-          // 使用本地时区解析，不加 Z 后缀
           diary.date = parseDateStr(val) ?? fallbackDate;
           break;
         case 'tags': {
@@ -148,9 +150,28 @@ export class FileSyncServiceImpl implements FileSyncService {
         case 'mood':
           diary.mood = val;
           break;
+        case 'location':
+          diary.location = val;
+          break;
+        case 'location_detail':
+        case 'locationDetail':
+          diary.locationDetail = val;
+          break;
+        case 'is_favorite':
+        case 'isFavorite':
+          diary.isFavorite = val === 'true';
+          break;
         case 'updated_at':
+        case 'updatedAt':
           diary.updatedAt = new Date(val);
           break;
+        case 'createdAt':
+          diary.createdAt = new Date(val);
+          break;
+        case 'mediaPaths': {
+          try { diary.mediaPaths = JSON.parse(val); } catch {}
+          break;
+        }
       }
     }
 

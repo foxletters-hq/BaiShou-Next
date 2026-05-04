@@ -160,12 +160,18 @@ export class CompressionService {
     let userTurnsSeen = 0;
     let retainFromIndex = messagesAfterPoint.length;
     for (let i = messagesAfterPoint.length - 1; i >= 0; i--) {
-      if (messagesAfterPoint[i]!.role === 'user') {
+      const msg = messagesAfterPoint[i]!;
+      const nextMsgInTimeline = i < messagesAfterPoint.length - 1 ? messagesAfterPoint[i + 1] : null;
+      const isUser = msg.role === 'user';
+
+      if (isUser && (!nextMsgInTimeline || nextMsgInTimeline.role !== 'user')) {
         userTurnsSeen++;
-        if (userTurnsSeen >= retainTurns) {
-          retainFromIndex = i;
-          break;
-        }
+      }
+
+      if (userTurnsSeen === retainTurns && isUser) {
+        retainFromIndex = i;
+      } else if (userTurnsSeen > retainTurns) {
+        break;
       }
     }
     // 如果 user 轮数不足 retainTurns，说明消息太少，不需要压缩

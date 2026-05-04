@@ -99,6 +99,7 @@ export class LegacyImportService {
     await this.restoreRagAndTools(config);
     await this.restoreWebSearch(config);
     await this.restoreMcp(config);
+    await this.restoreCloudSync(config);
   }
 
   private async restoreProviders(config: Record<string, any>) {
@@ -179,6 +180,9 @@ export class LegacyImportService {
       globalModels.globalEmbeddingProviderId = config['global_embedding_provider_id'];
       globalModels.globalEmbeddingModelId = config['global_embedding_model_id'] || '';
     }
+    if (config['global_embedding_dimension'] !== undefined) {
+      (globalModels as any).globalEmbeddingDimension = config['global_embedding_dimension'];
+    }
     if (config['monthly_summary_source']) {
       globalModels.monthlySummarySource = config['monthly_summary_source'];
     }
@@ -242,5 +246,37 @@ export class LegacyImportService {
     if (config['mcp_server_enabled'] !== undefined) mcp.mcpEnabled = config['mcp_server_enabled'];
     if (config['mcp_server_port'] !== undefined) mcp.mcpPort = config['mcp_server_port'];
     await this.settingsRepo.setMcpServerConfig(mcp);
+  }
+
+  /**
+   * 恢复云同步配置（WebDAV / S3）
+   * 旧版将 sync_target / webdav_* / s3_* 平铺在顶层，
+   * Next 版统一收纳到 cloud_sync_config settings key 中。
+   */
+  private async restoreCloudSync(config: Record<string, any>) {
+    const syncTargetMap = ['local', 's3', 'webdav'];
+    const hasAnySyncField =
+      config['sync_target'] !== undefined ||
+      config['webdav_url'] ||
+      config['s3_endpoint'];
+
+    if (!hasAnySyncField) return;
+
+    const cloudSync: Record<string, any> = {
+      target: syncTargetMap[config['sync_target']] || 'local',
+      webdavUrl: config['webdav_url'] || '',
+      webdavUsername: config['webdav_username'] || '',
+      webdavPassword: config['webdav_password'] || '',
+      webdavPath: config['webdav_path'] || '/baishou_backup',
+      s3Endpoint: config['s3_endpoint'] || '',
+      s3AccessKey: config['s3_access_key'] || '',
+      s3SecretKey: config['s3_secret_key'] || '',
+      s3Bucket: config['s3_bucket'] || '',
+      s3Region: config['s3_region'] || '',
+      s3Path: config['s3_path'] || '/baishou_backup',
+      maxBackupCount: 5,
+    };
+
+    await this.settingsRepo.set('cloud_sync_config', cloudSync);
   }
 }
