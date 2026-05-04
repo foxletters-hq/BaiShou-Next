@@ -1,7 +1,7 @@
 .container {
   /* Adapting to BaiShou-Next's global theme variables, defaulting to light mode (dark text) */
-  --theme-primary: var(--color-primary, #5BA8F5);
-  --theme-on-primary: var(--color-on-primary, #ffffff);
+  --theme-primary: var(--color-primary);
+  --theme-on-primary: var(--color-on-primary);
   --theme-primary-container-50: rgba(91, 168, 245, 0.15);
   
   --theme-on-surface: var(--text-primary);
@@ -129,24 +129,38 @@
 }
 
 .categoryList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
 
 .toolCard {
   border-radius: 12px;
   border: 1px solid var(--theme-outline-variant-50);
-  transition: background-color 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-surface-container-low);
+}
+
+.toolCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .toolCard.enabled {
-  background-color: transparent;
+  /* 仅保留正常状态，依靠 switch 判断是否开启 */
+}
+
+.toolCard.enabled:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .toolCard.disabled {
-  background-color: transparent;
+  background-color: rgba(0, 0, 0, 0.02);
+  opacity: 0.8;
 }
 
 .cardMain {
@@ -185,13 +199,13 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center;
 }
 
 .toolNameRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
 }
 
 .toolName {
@@ -380,6 +394,11 @@ input:checked + .slider:before {
   }
   .slider:before {
     background-color: rgba(148, 163, 184, 0.4);
+  }
+  
+  .toolCard.disabled {
+    background-color: rgba(255, 255, 255, 0.05);
+    opacity: 0.8;
   }
 }
 

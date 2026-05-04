@@ -1,29 +1,49 @@
 .flutterCardContainer {
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 0 0 16px 0; /* Changed padding: Removed top padding so the header goes edge-to-edge */
 }
 
 .headerRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  padding: 16px; /* Moved top/side padding to here */
+}
+
+.headerRowHover {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.headerRowHover:hover {
+  background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
+}
+
+[data-theme="dark"] .headerRowHover:hover {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .headerTitleGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
 }
 
 .primaryIcon {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .headerText {
   font-size: 14px;
   font-weight: 700;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface);
+}
+
+.headerFactCount {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin-left: 4px;
 }
 
 .iconIconButton {
@@ -35,7 +55,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--color-on-surface-variant);
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -45,7 +65,7 @@
 }
 
 .dangerIcon {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .dangerIcon:hover {
@@ -54,9 +74,27 @@
 
 .descriptionText {
   font-size: 12px;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--color-on-surface-variant);
   margin-top: 4px;
   margin-bottom: 16px;
+}
+
+/* ─── 折叠/展开动画 (CSS Grid 技巧) ─── */
+.collapseWrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s ease;
+  opacity: 0;
+}
+
+.collapseWrapper.collapseOpen {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.collapseInner {
+  overflow: hidden;
 }
 
 .chipsScrollArea {
@@ -86,7 +124,7 @@
   border: 1px solid rgba(208, 208, 208, 0.5);
   border-radius: 8px;
   background-color: transparent;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface);
   font-size: 14px;
   cursor: pointer;
   white-space: nowrap;
@@ -100,7 +138,7 @@
 .inputChipActive {
   background-color: rgba(91, 168, 245, 0.15);
   border-color: transparent;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .inputChipActive:hover {
@@ -133,7 +171,7 @@
   padding: 0 12px;
   background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
   border-radius: 8px;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -155,9 +193,62 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--color-on-surface-variant);
   font-size: 12px;
   text-align: center;
+}
+
+.factsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.factsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.factsHeaderTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+}
+
+.addFactButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--color-outline-variant);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-on-surface);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.addFactButton:hover {
+  background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
+  border-color: var(--color-outline);
+}
+
+[data-theme="dark"] .factsHeaderTitle {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="dark"] .addFactButton {
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .addFactButton:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .factsList {
@@ -189,13 +280,13 @@
 .factKey {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface);
   line-height: 1.4;
 }
 
 .factValue {
   font-size: 14px;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--color-on-surface-variant);
   line-height: 1.4;
 }
 
@@ -246,24 +337,24 @@
 }
 
 .factEditInput {
-  background: var(--color-surface-container-highest, #E2E2E2);
-  border: 1px solid var(--color-outline, #79747E);
+  background: var(--color-surface-container-highest);
+  border: 1px solid var(--color-outline);
   border-radius: 4px;
   padding: 4px 8px;
   font-size: 13px;
-  color: var(--color-on-surface, #1C1B1F);
+  color: var(--color-on-surface);
   outline: none;
   flex: 1;
   min-width: 0;
 }
 
 .factEditInput:focus {
-  border-color: var(--color-primary, #0056D2);
-  background: var(--color-surface, #FDFBFF);
+  border-color: var(--color-primary);
+  background: var(--color-surface);
 }
 
 .factEditDivider {
-  color: var(--color-outline, #79747E);
+  color: var(--color-outline);
   font-weight: 500;
 }
 
@@ -289,7 +380,7 @@
 .modalField label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-on-surface, #1C1B1F);
+  color: var(--color-on-surface);
 }
 
 [data-theme="dark"] .modalField label {

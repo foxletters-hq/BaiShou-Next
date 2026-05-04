@@ -35,7 +35,7 @@
   display: flex;
   flex-direction: column;
   background: rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  border: 1px solid transparent;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -73,7 +73,7 @@
 }
 
 .dangerText {
-  color: #ef4444 !important;
+  color: var(--color-error) !important;
 }
 
 .divider {
@@ -94,7 +94,7 @@
 
 .exportBtn {
   background: rgba(154, 212, 234, 0.15);
-  color: #9AD4EA;
+  color: var(--color-accent-blue);
   border: 1px solid rgba(154, 212, 234, 0.3);
 }
 
@@ -105,13 +105,13 @@
 
 .importBtn {
   background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: var(--color-error);
   border: 1px dashed rgba(239, 68, 68, 0.4);
 }
 
 .importBtn:hover:not(:disabled) {
-  background: #ef4444;
-  color: white;
+  background: var(--color-error);
+  color: var(--text-on-primary);
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
 }
 
@@ -136,7 +136,7 @@
 .historyTitleRow h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #fbbf24;
+  color: var(--color-warning);
   margin: 0;
 }
 
@@ -172,7 +172,7 @@
   align-items: center;
   padding: 12px 16px;
   background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(148, 163, 184, 0.05);
+  border: 1px solid transparent;
   border-radius: 8px;
   transition: background 0.2s;
 }
@@ -201,7 +201,7 @@
 
 .snapRestoreBtn {
   background: transparent;
-  color: #fbbf24;
+  color: var(--color-warning);
   border: 1px solid rgba(251, 191, 36, 0.3);
   padding: 6px 12px;
   border-radius: 6px;

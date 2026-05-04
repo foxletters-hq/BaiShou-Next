@@ -33,7 +33,7 @@
   z-index: 100;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-app);
+  background-color: var(--bg-surface);
   animation: settingsPopup 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
@@ -52,8 +52,8 @@
 .settings-sidebar {
   width: 260px;
   flex-shrink: 0;
-  background-color: var(--bg-app);
-  border-right: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  border-right: 1px solid transparent;
   display: flex;
   flex-direction: column;
 }
@@ -131,10 +131,9 @@
 }
 
 .settings-nav-item.active {
-  background-color: var(--bg-surface);
+  background-color: var(--bg-surface-high);
   color: var(--color-primary);
   font-weight: 600;
-  box-shadow: var(--shadow-sm);
 }
 
 .settings-nav-item.active .settings-nav-label {
@@ -165,7 +164,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-app);
+  background-color: var(--bg-surface);
 }
 
 .settings-content-scroll {
@@ -197,12 +196,12 @@
 
 .settings-pane {
   animation: paneFadeIn 0.2s ease-out forwards;
-  max-width: 860px;
-  margin: 0 auto; /* Center alignment to match flutter visual feel when screen is wide */
+  max-width: none;
+  margin: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
 }
 
 .settings-pane-full {
@@ -215,10 +214,15 @@
 /* Glass panel equivalent to Flutter cards (Card with elevation 0 or 1) */
 .glass-panel-card {
   background: var(--bg-surface);
-  border: 1px solid transparent;
-  border-radius: 12px;
+  border: none;
+  border-bottom: 1px solid var(--color-outline-variant);
+  border-radius: 0;
   padding: 0;
   overflow: hidden;
+}
+
+.glass-panel-card:last-child {
+  border-bottom: none;
 }
 
 .settings-item-divider {

@@ -1,5 +1,5 @@
 .card {
-  background: var(--color-surface, #FFFFFF);
+  background: var(--bg-surface);
   border-radius: 24px;
   border: 1px solid rgba(208, 208, 208, 0.4);
   padding: 24px;
@@ -33,7 +33,7 @@
 .day {
   font-size: 32px;
   font-weight: 800;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface);
   line-height: 1.0;
 }
 
@@ -52,7 +52,7 @@
 .weekday {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--color-on-surface-variant);
   letter-spacing: 0.5px;
 }
 
@@ -64,8 +64,19 @@
   border-radius: 4px;
   font-size: 10px;
   font-weight: 900;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   letter-spacing: 0.5px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.favStar {
+  color: var(--color-warning);
+  font-size: 16px;
 }
 
 .menuIcon {
@@ -73,10 +84,29 @@
   font-size: 20px;
 }
 
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.metaBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--color-surface-variant);
+  color: var(--color-on-surface-variant);
+}
+
 .time {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   margin-bottom: 12px;
 }
 
@@ -98,7 +128,7 @@
   left: 0;
   right: 0;
   height: 40px;
-  background: linear-gradient(to bottom, transparent, var(--color-surface, #FFFFFF));
+  background: linear-gradient(to bottom, transparent, var(--bg-surface));
   pointer-events: none;
 }
 
@@ -117,8 +147,8 @@
 }
 
 .tagBlue {
-  background-color: #EFF6FF;
-  color: #1D4ED8;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary-dark);
 }
 
 .tagGreen {
@@ -145,7 +175,7 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  color: #DC2626;
+  color: var(--color-error);
 }
 
 .card:hover .deleteBtn {

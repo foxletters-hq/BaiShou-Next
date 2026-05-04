@@ -37,7 +37,7 @@
 
 /* 展开箭头 */
 .settings-expansion-arrow {
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--color-on-surface-variant);
   transition: transform 0.25s;
   flex-shrink: 0;
 }
@@ -110,7 +110,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--color-on-surface-variant);
   flex-shrink: 0;
 }
 
@@ -125,8 +125,8 @@
 
 .settings-list-tile-title {
   font-size: 14px;
-  font-weight: 500;
-  color: var(--color-on-surface, #1a1a1a);
+  font-weight: normal;
+  color: var(--color-on-surface);
   line-height: 1.4;
 }
 
@@ -136,7 +136,7 @@
 
 .settings-list-tile-subtitle {
   font-size: 13px;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--color-on-surface-variant);
   line-height: 1.4;
 }
 
@@ -153,7 +153,7 @@
 
 /* Trailing 图标 */
 .settings-list-tile-trailing {
-  color: var(--color-on-surface-variant, #94a3b8);
+  color: var(--color-on-surface-variant);
   flex-shrink: 0;
 }
 
@@ -178,7 +178,7 @@
 .settings-empty-hint {
   padding: 16px 56px;
   font-size: 13px;
-  color: var(--color-on-surface-variant, #94a3b8);
+  color: var(--color-on-surface-variant);
 }
 
 /* TextButton 样式（用于 trailing 操作按钮） */
@@ -187,8 +187,8 @@
   border: none;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--color-primary, #5BA8F5);
+  font-weight: normal;
+  color: var(--color-primary);
   padding: 4px 8px;
   border-radius: 6px;
   transition: background-color 0.15s;
@@ -243,7 +243,7 @@
 }
 
 .settings-switch-label input:checked + .settings-switch-slider {
-  background-color: var(--color-primary, #5BA8F5);
+  background-color: var(--color-primary);
 }
 
 .settings-switch-label input:checked + .settings-switch-slider:before {
@@ -257,7 +257,7 @@
   border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.3);
   background: rgba(0, 0, 0, 0.05);
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--color-on-surface);
   font-size: 14px;
   font-family: inherit;
   text-align: center;
@@ -267,7 +267,7 @@
 }
 
 .settings-number-input:focus {
-  border-color: var(--color-primary, #5BA8F5);
+  border-color: var(--color-primary);
 }
 
 [data-theme="dark"] .settings-number-input {

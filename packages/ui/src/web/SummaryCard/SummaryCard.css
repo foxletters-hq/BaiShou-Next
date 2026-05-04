@@ -23,8 +23,8 @@
 }
 
 .summary-card-v2-type-badge {
-  background: var(--color-primary-light, rgba(91, 168, 245, 0.1));
-  color: var(--color-primary, #5BA8F5);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
   font-size: 12px;
   font-weight: bold;
   padding: 4px 10px;
@@ -81,3 +81,43 @@
 .summary-action-icon:hover {
   opacity: 1;
 }
+.diary-card-v2-actions {
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin-top: 20px;
+  transform: translateY(10px);
+}
+
+.diary-card-v2-actions.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.actions-divider {
+  height: 1px;
+  background-color: var(--border-color, rgba(148, 163, 184, 0.3));
+  margin-bottom: 12px;
+}
+
+.actions-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.edit-btn { color: var(--text-secondary); }
+.delete-btn { color: var(--color-error); } /* Red for delete */

@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   position: relative;
 }
 
@@ -50,8 +50,8 @@
 }
 
 .de-save-btn {
-  background: var(--color-primary, #5BA8F5);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   border: none;
   border-radius: 100px;
   padding: 8px 24px;
@@ -86,8 +86,79 @@
 }
 
 .de-tags-section {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   flex-shrink: 0;
+}
+
+/* 元数据栏 */
+.de-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.de-meta-select {
+  appearance: none;
+  background: var(--bg-surface-lowest);
+  border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.de-meta-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.de-meta-input {
+  background: var(--bg-surface-lowest);
+  border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.de-meta-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.de-meta-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.de-meta-fav-btn {
+  background: transparent;
+  border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: color 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.de-meta-fav-btn:hover {
+  border-color: var(--color-primary);
+}
+
+.de-meta-fav-btn.active {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
 }
 
 .de-content-section {
@@ -113,7 +184,7 @@
 
 .w-md-editor-toolbar {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
-  background-color: var(--bg-surface-lowest, #F8FAFC) !important;
+  background-color: var(--bg-surface-lowest) !important;
 }
 
 /* Milkdown Custom Overrides */
@@ -128,7 +199,7 @@
 .milkdown-wrapper .ProseMirror {
   min-height: 100%;
   padding-bottom: 20vh; /* Extra padding so the click area runs down to the bottom */
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
   font-size: 15px;
   line-height: 1.7;
 }
@@ -143,7 +214,7 @@
 .milkdown-wrapper .ProseMirror h6,
 .milkdown-wrapper .ProseMirror li,
 .milkdown-wrapper .ProseMirror blockquote {
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .milkdown-wrapper .ProseMirror p,
@@ -155,7 +226,7 @@
 [data-theme="dark"] .milkdown-wrapper .ProseMirror h6,
 [data-theme="dark"] .milkdown-wrapper .ProseMirror li,
 [data-theme="dark"] .milkdown-wrapper .ProseMirror blockquote {
-  color: #f1f5f9 !important;
+  color: var(--text-on-primary) !important;
 }
 
 .milkdown-wrapper .ProseMirror pre {
@@ -172,7 +243,7 @@
 [data-theme="dark"] .milkdown-wrapper .ProseMirror pre {
   background: rgba(0, 0, 0, 0.2);
   border-color: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
+  color: var(--text-secondary);
 }
 
 .milkdown-wrapper .ProseMirror code {
@@ -185,7 +256,7 @@
 
 [data-theme="dark"] .milkdown-wrapper .ProseMirror code {
   background: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
+  color: var(--text-secondary);
 }
 
 .milkdown-wrapper .ProseMirror pre code {

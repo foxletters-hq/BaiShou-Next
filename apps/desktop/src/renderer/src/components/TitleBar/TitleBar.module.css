@@ -3,7 +3,7 @@
   background-color: var(--bg-app);
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(208, 208, 208, 0.5); /* outlineVariant equivalent */
+  border-bottom: 1px solid var(--border-subtle);
   position: relative;
   z-index: 9999;
 }
@@ -20,14 +20,13 @@
 .tabsContainer {
   display: flex;
   height: calc(100% - 8px);
-  width: 320px;
   -webkit-app-region: no-drag;
   margin-top: 8px; /* Push down to align bottom */
   gap: 2px;
 }
 
 .tab {
-  flex: 1;
+  width: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -42,7 +41,7 @@
 }
 
 .tab:hover {
-  background-color: rgba(26, 26, 26, 0.04);
+  background-color: rgba(var(--text-primary-rgb), 0.04);
 }
 
 .activeTab {
@@ -115,7 +114,7 @@
 }
 
 .actionBtn:hover {
-  background-color: rgba(26, 26, 26, 0.08);
+  background-color: rgba(var(--text-primary-rgb), 0.08);
 }
 
 .actionIcon {
@@ -126,7 +125,7 @@
 .divider {
   width: 1px;
   height: 20px;
-  background-color: rgba(208, 208, 208, 0.5);
+  background-color: var(--border-subtle);
   margin: 0 8px;
 }
 
@@ -150,10 +149,10 @@
 }
 
 .winBtn:hover {
-  background-color: rgba(26, 26, 26, 0.08);
+  background-color: rgba(var(--text-primary-rgb), 0.08);
 }
 
 .winCloseBtn:hover {
   background-color: #E81123 !important;
-  color: #FFFFFF !important;
+  color: var(--text-on-primary) !important;
 }

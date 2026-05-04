@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  border: 1px solid var(--color-outline-variant, rgba(0,0,0,0.1));
+  border: 1px solid transparent;
 }
 
 
@@ -83,7 +83,7 @@
   -webkit-backdrop-filter: blur(12px);
   background: transparent;
   padding: 16px 0;
-  border-bottom: 1px solid var(--color-outline-variant, rgba(0,0,0,0.08));
+  border-bottom: 1px solid var(--color-outline-variant);
 }
 
 
@@ -113,8 +113,8 @@
   font-size: 11px;
   font-weight: bold;
   background: transparent;
-  border: 1px solid var(--color-primary, #0ea5e9);
-  color: var(--color-primary, #0ea5e9);
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
 }
 
 
@@ -170,19 +170,19 @@
 
 .btnOutlined {
   background: transparent;
-  border: 1px solid var(--color-outline-variant, #cbd5e1);
-  color: var(--color-primary, #0ea5e9);
+  border: 1px solid var(--color-outline-variant);
+  color: var(--color-primary);
 }
 
 .btnOutlined:hover:not(:disabled) {
-  background: var(--color-primary-container-hover, rgba(14, 165, 233, 0.05));
+  background: var(--color-primary-container-hover);
 }
 
 
 .btnFilled {
-  background: var(--color-primary, #0ea5e9);
-  border: 1px solid var(--color-primary, #0ea5e9);
-  color: #fff;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: var(--text-on-primary);
 }
 
 .btnFilled:hover:not(:disabled) {
@@ -192,9 +192,9 @@
 }
 
 .btnDangerFilled {
-  background: var(--color-error, #ef4444);
-  border: 1px solid var(--color-error, #ef4444);
-  color: #fff;
+  background: var(--color-error);
+  border: 1px solid var(--color-error);
+  color: var(--text-on-primary);
 }
 
 .btnDangerFilled:hover:not(:disabled) {
@@ -205,7 +205,7 @@
 .textBtn {
   background: transparent;
   border: none;
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary);
   padding: 8px 12px;
 }
 
@@ -240,7 +240,7 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   background: transparent;
-  border-bottom: 1px solid var(--color-outline-variant, rgba(0,0,0,0.08));
+  border-bottom: 1px solid var(--color-outline-variant);
 }
 
 
@@ -307,7 +307,7 @@
   align-items: center;
   padding: 18px 20px;
   border-radius: 12px;
-  border: 1px solid var(--color-outline, rgba(0,0,0,0.1));
+  border: 1px solid var(--color-outline);
   cursor: pointer;
   transition: all 0.2s;
   background: var(--bg-surface);
@@ -320,24 +320,24 @@
   gap: 4px;
 }
 .targetCardCheck {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
 }
 
 
 .targetCardBig:hover {
-  background: var(--color-surface-variant, rgba(0,0,0,0.02));
+  background: var(--color-surface-variant);
 }
 
 
 .targetCardSelected {
-  border-color: var(--color-primary, #0ea5e9);
+  border-color: var(--color-primary);
   border-width: 2px;
-  background: var(--color-primary-container, #e0f2fe) !important;
+  background: var(--color-primary-container) !important;
 }
 .targetCardSelected .targetCardIcon {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary);
 }
 
 
@@ -373,22 +373,22 @@
 
 .formDivider {
   height: 1px;
-  background: var(--color-outline-variant, rgba(0,0,0,0.08));
+  background: var(--color-outline-variant);
   margin-bottom: 24px;
 }
 
 
 .btnSave {
-  background: var(--color-primary-container, #e0f2fe);
+  background: var(--color-primary-container);
   border: none;
-  color: var(--color-primary-on-container, #0369a1);
+  color: var(--color-primary-on-container);
   padding: 6px 16px;
   font-weight: bold;
   border-radius: 16px;
 }
 
 .btnSave:hover {
-  background: #bae6fd;
+  background: var(--color-primary-light);
 }
 
 
@@ -421,7 +421,7 @@
   display: flex;
   align-items: center;
   background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant, var(--border-subtle));
+  border: 1px solid var(--color-outline-variant);
   border-radius: 10px;
   padding: 0 14px;
   height: 44px;
@@ -431,7 +431,7 @@
 
 
 .inputPill:focus-within {
-  border-color: var(--color-primary, #0ea5e9);
+  border-color: var(--color-primary);
   background: var(--bg-surface);
 }
 
@@ -479,8 +479,10 @@
   flex-direction: column;
   background: transparent;
   border-radius: 12px;
-  border: 1px solid var(--color-outline-variant, rgba(0,0,0,0.1));
-  overflow: hidden;
+  border: 1px solid transparent;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 400px;
 }
 
 
@@ -489,7 +491,7 @@
   align-items: center;
   padding: 16px 20px;
   gap: 16px;
-  border-bottom: 1px solid var(--color-outline-variant, rgba(0,0,0,0.05));
+  border-bottom: 1px solid var(--color-outline-variant);
   transition: background 0.2s;
 }
 
@@ -497,14 +499,14 @@
   border-bottom: none;
 }
 .itemSelected {
-  background: var(--color-primary-container, rgba(14, 165, 233, 0.05)) !important;
+  background: var(--color-primary-container) !important;
 }
 
 
 .customCheck {
   width: 18px;
   height: 18px;
-  accent-color: var(--color-primary, #0ea5e9);
+  accent-color: var(--color-primary);
   cursor: pointer;
 }
 
@@ -512,8 +514,8 @@
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: var(--color-primary-container, #e0f2fe);
-  color: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-container);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -575,8 +577,8 @@
   color: var(--text-primary);
 }
 
-.iconBtnRestore { color: #f59e0b; }
-.iconBtnDelete { color: #ef4444; }
+.iconBtnRestore { color: var(--color-warning); }
+.iconBtnDelete { color: var(--color-error); }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -592,7 +594,7 @@
 .targetCardBig {
   flex: 1;
   background: transparent;
-  border: 1px solid var(--color-outline-variant, var(--border-subtle));
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -605,14 +607,14 @@
   overflow: hidden;
 }
 .targetCardBig:hover {
-  border-color: var(--color-primary, #0ea5e9);
+  border-color: var(--color-primary);
   background: var(--bg-surface);
 }
 .targetCardSelected {
-  border-color: var(--color-primary, #0ea5e9);
+  border-color: var(--color-primary);
   border-width: 2px;
-  background: var(--color-primary, #0ea5e9) !important;
-  color: #fff !important;
+  background: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
 }
 .targetCardIcon {
   color: var(--text-primary);
@@ -621,7 +623,7 @@
   justify-content: center;
 }
 .targetCardSelected .targetCardIcon {
-  color: #fff !important;
+  color: var(--text-on-primary) !important;
 }
 .targetCardContent {
   display: flex;
@@ -635,7 +637,7 @@
   margin-bottom: 4px;
 }
 .targetCardSelected .targetCardTitle {
-  color: #fff !important;
+  color: var(--text-on-primary) !important;
 }
 .targetCardDesc {
   font-size: 12px;
@@ -643,20 +645,21 @@
   line-height: 1.4;
 }
 .targetCardSelected .targetCardDesc {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: var(--text-on-primary) !important;
+  opacity: 0.8;
 }
 .targetCardCheck {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .targetCardSelected .targetCardCheck {
-  color: #fff !important;
+  color: var(--text-on-primary) !important;
 }
 .configSection {
   background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant, var(--border-subtle));
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 24px;
 }
@@ -685,7 +688,7 @@
   display: flex;
   align-items: center;
   background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant, var(--border-subtle));
+  border: 1px solid var(--color-outline-variant);
   border-radius: 12px;
   padding: 0 14px;
   height: 44px;
@@ -693,9 +696,9 @@
   color: var(--text-primary);
 }
 .inputPill:focus-within {
-  border-color: var(--color-primary, #0ea5e9);
+  border-color: var(--color-primary);
   background: var(--bg-surface);
-  box-shadow: 0 0 0 3px var(--color-primary-container, #e0f2fe);
+  box-shadow: 0 0 0 3px var(--color-primary-container);
 }
 .inputPill input {
   flex: 1;
@@ -729,20 +732,20 @@
   background: var(--bg-surface);
 }
 .btnSave {
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary);
   border: none;
-  color: #fff;
+  color: var(--text-on-primary);
   padding: 6px 16px;
   font-weight: bold;
   border-radius: 16px;
   cursor: pointer;
 }
 .btnSave:hover {
-  background: var(--color-primary-dark, #0284c7);
+  background: var(--color-primary-dark);
 }
 .formDivider {
   height: 1px;
-  background: var(--color-outline-variant, #e2e8f0);
+  background: var(--color-outline-variant);
   margin: 16px 0 24px;
 }
 

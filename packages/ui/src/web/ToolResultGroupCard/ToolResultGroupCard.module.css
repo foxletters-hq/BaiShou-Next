@@ -10,7 +10,7 @@
 }
 
 .groupCard {
-  background-color: var(--bg-surface-low, #FAFAFA);
+  background-color: var(--bg-surface-low);
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   border-radius: 16px;
   overflow: hidden;
@@ -40,7 +40,7 @@
   height: 26px;
   border-radius: 8px;
   background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   margin-right: 12px;
 }
 
@@ -54,14 +54,14 @@
 .titleText {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary);
 }
 
 .countBadge {
   font-size: 11px;
   font-weight: 700;
   background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   padding: 2px 6px;
   border-radius: 10px;
 }
@@ -70,7 +70,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
@@ -87,7 +87,7 @@
 }
 
 .itemCard {
-  background-color: var(--bg-surface, #FFFFFF);
+  background-color: var(--bg-surface);
   display: flex;
   flex-direction: column;
   transition: background-color 0.2s ease;
@@ -96,7 +96,7 @@
 .itemHeader {
   display: flex;
   align-items: center;
-  padding: 10px 14px 10px 48px; /* Offset for internal icons */
+  padding: 10px 14px 10px 14px; /* Offset for internal icons */
   cursor: pointer;
   user-select: none;
 }
@@ -110,13 +110,14 @@
   align-items: center;
   justify-content: center;
   margin-right: 10px;
+  color: var(--color-primary);
 }
 
 .itemName {
   flex: 1;
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   font-family: var(--font-mono, monospace);
   white-space: nowrap;
   overflow: hidden;
@@ -138,8 +139,8 @@
 }
 
 .contentWrapper {
-  margin: 0 14px 0 48px;
-  background-color: var(--bg-surface-low, #FAFAFA);
+  margin: 0 14px 0 14px;
+  background-color: var(--bg-surface-low);
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   border-radius: 8px;
   padding: 10px;
@@ -150,7 +151,7 @@
   margin: 0;
   font-family: var(--font-mono, monospace);
   font-size: 11px;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   white-space: pre-wrap;
   word-wrap: break-word;
   line-height: 1.4;
@@ -164,7 +165,7 @@
 }
 
 .structItem {
-  background-color: var(--bg-surface, #FFFFFF);
+  background-color: var(--bg-surface);
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200,200,200), 0.4);
   padding: 8px 10px;
   border-radius: 6px;
@@ -176,13 +177,13 @@
 .structTitle {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary);
   margin-bottom: 2px;
 }
 
 .structLink {
   font-size: 11px;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   text-decoration: none;
   word-break: break-all;
 }
@@ -194,7 +195,7 @@
 .structSnippet {
   font-size: 11px;
   line-height: 1.5;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
 }
 
 .structValueRow {
@@ -211,11 +212,11 @@
 
 .structKey {
   font-weight: 600;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .structVal {
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   font-family: var(--font-mono, monospace);
   max-width: 60%;
   text-align: right;
@@ -226,7 +227,7 @@
 
 /* Error States */
 .errorText {
-  color: var(--color-error, #F44336) !important;
+  color: var(--color-error) !important;
 }
 
 .itemError .contentWrapper {
@@ -234,41 +235,4 @@
   border-color: rgba(var(--color-error-rgb, 244, 67, 54), 0.3);
 }
 
-/* Coloring Themes by Category */
 
-/* Diary - Teal */
-.themeBook .iconBox {
-  background-color: rgba(0, 150, 136, 0.1);
-  color: #009688;
-}
-
-.themeBook .itemStatusWrap {
-  color: #009688;
-}
-
-/* Memory - Purple */
-.themeBrain .iconBox {
-  background-color: rgba(156, 39, 176, 0.1);
-  color: #9c27b0;
-}
-.themeBrain .itemStatusWrap {
-  color: #9c27b0;
-}
-
-/* Web - Blue */
-.themeGlobe .iconBox {
-  background-color: rgba(33, 150, 243, 0.1);
-  color: #2196F3;
-}
-.themeGlobe .itemStatusWrap {
-  color: #2196F3;
-}
-
-/* Fallback - Slate */
-.themeWrench .iconBox {
-  background-color: rgba(100, 116, 139, 0.1);
-  color: var(--text-secondary);
-}
-.themeWrench .itemStatusWrap {
-  color: var(--text-secondary);
-}

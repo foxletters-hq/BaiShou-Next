@@ -1,7 +1,7 @@
 .sidebar {
-  width: 250px;
+  width: 280px;
   background-color: var(--bg-surface);
-  border-right: 1px solid rgba(208, 208, 208, 0.5); /* outlineVariant */
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -94,7 +94,7 @@
 }
 
 .navItem:hover {
-  background-color: rgba(26, 26, 26, 0.04);
+  background-color: rgba(var(--text-primary-rgb), 0.04);
 }
 
 .selected {
@@ -142,12 +142,12 @@
 
 .divider {
   height: 1px;
-  background-color: rgba(208, 208, 208, 0.5); /* outlineVariant */
+  background-color: var(--border-subtle);
 }
 
 .userCard {
   padding: 20px;
-  border-top: 1px solid rgba(208, 208, 208, 0.5);
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   background-color: var(--bg-surface);
@@ -159,8 +159,8 @@
   height: 36px;
   border-radius: 50%;
   background-color: transparent;
-  border: 1px solid rgba(208, 208, 208, 0.4);
-  color: var(--color-on-surface, #1A1C23);
+  border: 1px solid var(--border-subtle);
+  color: var(--color-on-surface);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -4,8 +4,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fdfdfd;
-  color: #1a1c1e;
+  background: var(--bg-surface);
+  color: var(--text-primary);
   overflow: hidden;
   position: relative;
   transition: background 0.8s ease;
@@ -19,7 +19,7 @@
   width: 50vw;
   height: 50vw;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--theme-color, #9ad4ea33) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--theme-color) 0%, transparent 70%);
   filter: blur(40px);
   animation: float 15s infinite alternate ease-in-out;
   opacity: 0.6;
@@ -32,7 +32,7 @@
   width: 45vw;
   height: 45vw;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.1) 0%, transparent 70%);
   filter: blur(40px);
   animation: float 12s infinite alternate-reverse ease-in-out;
   opacity: 0.4;
@@ -46,7 +46,9 @@
 .contentBox {
   width: 100%;
   max-width: 500px;
-  height: 600px;
+  height: 85vh;
+  max-height: 600px;
+  min-height: 360px;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -109,37 +111,30 @@
   font-weight: 800;
   margin-bottom: 20px;
   letter-spacing: -0.5px;
-  color: #1a1c1e;
+  color: var(--text-primary);
 }
 
 .subtitle {
   font-size: 16px;
   line-height: 1.7;
-  color: #44474e;
+  color: var(--text-secondary);
   max-width: 360px;
   margin-bottom: 40px;
 }
 
-.componentWrapper {
-  width: 100%;
-  height: 200px;
-  margin-bottom: 20px;
-}
-
-/* Storage Box */
 .storageBox {
   width: 100%;
   padding: 20px;
   background: var(--bg-surface);
   border-radius: 20px;
-  border: 1px solid #e1e2e4;
+  border: 1px solid var(--border-subtle);
   box-shadow: 0 4px 12px rgba(0,0,0,0.02);
 }
 
 .pathLabel {
   font-size: 12px;
   font-weight: 700;
-  color: #74777f;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -149,10 +144,10 @@
 .pathText {
   font-size: 13px;
   font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-  background: #f1f3f4;
+  background: var(--bg-surface-low);
   padding: 12px;
   border-radius: 12px;
-  color: #1a1c1e;
+  color: var(--text-primary);
   margin-bottom: 16px;
   word-break: break-all;
   text-align: left;
@@ -181,7 +176,7 @@
 .slogan {
   margin-top: 20px;
   font-size: 16px;
-  color: #74777f;
+  color: var(--text-secondary);
   letter-spacing: 4px;
   font-weight: 300;
 }
@@ -203,7 +198,7 @@
   width: 8px;
   height: 8px;
   border-radius: 4px;
-  background: #e1e2e4;
+  background: var(--border-subtle);
   transition: all 0.3s ease;
   cursor: pointer;
 }
@@ -230,17 +225,17 @@
 
 .btnBack {
   background: transparent;
-  color: #44474e;
+  color: var(--text-secondary);
   padding: 12px 16px;
 }
 
 .btnBack:hover {
-  color: #1a1c1e;
+  color: var(--text-primary);
 }
 
 .btnNext {
-  background: #1a1c1e;
-  color: white;
+  background: var(--text-primary);
+  color: var(--text-on-primary);
   padding: 12px 24px;
   border-radius: 24px;
 }
@@ -252,7 +247,7 @@
 
 .btnPrimary {
   background: var(--theme-color);
-  color: white;
+  color: var(--text-on-primary);
   padding: 12px 32px;
   border-radius: 24px;
   box-shadow: 0 8px 20px rgba(var(--theme-color-rgb), 0.3);

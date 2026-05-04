@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  padding: 24px 32px;
 }
 
 .header {
@@ -29,7 +30,7 @@
 
 .cardSection {
   background: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 20px;
 }
@@ -78,8 +79,8 @@
 }
 
 .segBtn.active {
-  background: var(--color-primary, #0ea5e9);
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
 }
@@ -115,8 +116,8 @@
 }
 
 .tabBtn.active {
-  background: var(--color-primary, #0ea5e9);
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
 }
 
@@ -171,8 +172,8 @@
 
 .resetBtn {
   background: transparent;
-  border: 1px solid var(--color-outline-variant, #cbd5e1);
-  color: var(--color-on-surface-variant, #64748b);
+  border: 1px solid var(--color-outline-variant);
+  color: var(--text-tertiary);
   font-size: 0.85rem;
   padding: 8px 20px;
   border-radius: 8px;
@@ -183,7 +184,7 @@
 
 :global(body[data-theme='dark']) .resetBtn {
   border-color: rgba(255, 255, 255, 0.15);
-  color: #94a3b8;
+  color: var(--text-tertiary);
 }
 
 .resetBtn:hover {
@@ -193,12 +194,12 @@
 
 :global(body[data-theme='dark']) .resetBtn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #f8fafc;
+  color: var(--bg-surface);
 }
 
 .saveBtn {
-  background: linear-gradient(135deg, var(--color-primary, #0ea5e9), #3b82f6);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: var(--text-on-primary);
   border: none;
   font-size: 0.85rem;
   padding: 8px 28px;
@@ -223,7 +224,7 @@
   gap: 12px;
   padding: 16px;
   background: rgba(var(--color-surface-container-highest-rgb), 0.3);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.3);
+  border: 1px solid transparent;
   border-radius: 12px;
 }
 

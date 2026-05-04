@@ -1,5 +1,5 @@
 /* =========================================================
-   DIARY PAGE - 复刻原版白守 DiaryListPage UI
+   日记页面样式 — 严格遵循语义化 CSS 变量规范
    ========================================================= */
 
 .diary-page-container {
@@ -9,15 +9,15 @@
   background-color: transparent;
 }
 
-/* ── AppBar ── */
+/* ── 顶部导航栏 ── */
 .diary-appbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 32px;
   background-color: var(--bg-glass-surface);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: var(--blur-overlay);
+  -webkit-backdrop-filter: var(--blur-overlay);
   border-bottom: none;
   min-height: 56px;
   flex-shrink: 0;
@@ -64,15 +64,15 @@
   align-items: center;
   width: 200px;
   height: 36px;
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-surface-normal);
   border-radius: 18px;
   padding: 0 12px;
   transition: all 0.2s;
 }
 
 .diary-search-wrapper:focus-within {
-  background-color: rgba(91, 168, 245, 0.08);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+  background-color: var(--bg-surface-high);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
 .diary-search-icon {
@@ -88,11 +88,11 @@
   font-size: 13px;
   color: var(--text-primary);
   width: 100%;
-  font-family: var(--font-family-main);
+  font-family: var(--font-family);
 }
 
 .diary-search-input::placeholder {
-  color: var(--text-primary);
+  color: var(--text-tertiary);
 }
 
 /* 日历按钮 */
@@ -104,14 +104,14 @@
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-primary);
   transition: background-color 0.2s;
 }
 
 .diary-calendar-btn:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-surface-high);
 }
 
 /* 写日记按钮 */
@@ -120,20 +120,20 @@
   align-items: center;
   gap: 6px;
   padding: 8px 20px;
-  background-color: var(--color-primary, #5BA8F5);
-  color: #fff;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: var(--font-family-main);
+  font-family: var(--font-family);
 }
 
 .diary-add-btn:hover {
-  background-color: #4a97e4;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
+  background-color: var(--color-primary-dark);
+  box-shadow: var(--shadow-glow);
 }
 
 .diary-today-btn {
@@ -144,7 +144,7 @@
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-primary);
   transition: background-color 0.2s;
@@ -152,7 +152,31 @@
 }
 
 .diary-today-btn:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-surface-high);
+}
+
+.diary-export-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background-color 0.2s;
+}
+
+.diary-export-btn:hover {
+  background-color: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.diary-export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── 瀑布流卡片网格 ── */
@@ -171,7 +195,7 @@
 }
 
 .diary-grid::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--border-muted);
   border-radius: 3px;
 }
 
@@ -192,27 +216,19 @@
 /* ── 日记卡片 ── */
 .diary-card {
   background: var(--bg-surface);
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   border: 1px solid var(--color-outline-variant);
   padding: 24px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  transition: all var(--duration-fast) var(--ease-in-out);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
 }
 
-[data-theme="dark"] .diary-card {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
 .diary-card:hover {
   background: var(--bg-surface-high);
-}
-
-[data-theme="dark"] .diary-card:hover {
-  background: var(--bg-surface-high, #323236);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 /* 卡片头部：日期行 */
@@ -258,17 +274,17 @@
 .diary-card-yearmonth {
   display: inline-flex;
   padding: 2px 6px;
-  background-color: rgba(91, 168, 245, 0.1);
-  border: 0.5px solid rgba(91, 168, 245, 0.2);
-  border-radius: 4px;
+  background-color: var(--color-primary-light);
+  border: 0.5px solid var(--border-muted);
+  border-radius: var(--radius-xs);
   font-size: 10px;
   font-weight: 900;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   letter-spacing: 0.5px;
 }
 
 .diary-card-menu-icon {
-  color: rgba(0, 0, 0, 0.15);
+  color: var(--text-tertiary);
   font-size: 20px;
 }
 
@@ -276,19 +292,20 @@
 .diary-card-time {
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   margin-bottom: 12px;
 }
 
 /* 内容预览 */
 .diary-card-content {
-  height: 120px; /* Force consistent minimum bound so empty cards have same stable layout presence */
+  height: 120px;
   overflow: hidden;
   position: relative;
   margin-bottom: 8px;
-  /* Shift mask down slightly so more text is visible before fading */
-  -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+  /* 遮罩渐变：使用 currentColor 保持主题一致 */
+  -webkit-mask-image: linear-gradient(to bottom, currentColor 75%, transparent 100%);
+  mask-image: linear-gradient(to bottom, currentColor 75%, transparent 100%);
+  color: var(--text-primary);
 }
 
 .diary-card-content-text,
@@ -307,8 +324,6 @@
   word-break: break-word;
 }
 
-
-
 /* 标签区域 */
 .diary-card-tags {
   display: flex;
@@ -319,36 +334,63 @@
 
 .diary-card-tag {
   padding: 4px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
 }
 
-/* 标签颜色变体 */
+/* 标签颜色变体 — 使用语义化强调色 */
 .diary-card-tag.tag-blue {
-  background-color: #EFF6FF;
-  color: #1D4ED8;
+  background-color: var(--color-accent-blue);
+  color: var(--text-on-primary);
 }
 
 .diary-card-tag.tag-green {
-  background-color: #F0FDF4;
-  color: #15803D;
+  background-color: var(--color-accent-green);
+  color: var(--text-on-primary);
 }
 
 .diary-card-tag.tag-orange {
-  background-color: #FFF7ED;
-  color: #C2410C;
+  background-color: var(--color-warning);
+  color: var(--text-on-primary);
 }
 
 .diary-card-tag.tag-purple {
-  background-color: #FAF5FF;
-  color: #7E22CE;
+  background-color: var(--color-accent-purple);
+  color: var(--text-on-primary);
+}
+
+/* 收藏星标 */
+.diary-card-fav-star {
+  color: var(--color-warning);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* 元数据行 */
+.diary-card-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.diary-card-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--bg-surface-normal);
+  color: var(--text-secondary);
 }
 
 /* 悬浮操作按钮 */
 .diary-card-actions {
   margin-top: 12px;
-  border-top: 1px solid rgba(208, 208, 208, 0.3);
+  border-top: 1px solid var(--border-subtle);
   padding-top: 12px;
   display: flex;
   justify-content: flex-end;
@@ -368,12 +410,12 @@
   padding: 6px 12px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s;
-  font-family: var(--font-family-main);
+  font-family: var(--font-family);
 }
 
 .diary-card-action-btn.edit-btn {
@@ -381,15 +423,16 @@
 }
 
 .diary-card-action-btn.edit-btn:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-surface-high);
 }
 
 .diary-card-action-btn.delete-btn {
-  color: #DC2626;
+  color: var(--color-error);
 }
 
 .diary-card-action-btn.delete-btn:hover {
-  background-color: rgba(220, 38, 38, 0.06);
+  background-color: var(--color-error);
+  color: var(--text-on-primary);
 }
 
 /* ── 空状态 ── */
@@ -406,22 +449,31 @@
 .diary-empty-icon {
   font-size: 80px;
   opacity: 0.5;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .diary-empty-text {
   font-size: 16px;
-  color: #9CA3AF;
+  color: var(--text-tertiary);
 }
 
+.diary-view-all-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font-family);
+}
 
 /* ── 删除确认弹窗 ── */
 .diary-delete-modal-overlay {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
-  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
-  backdrop-filter: var(--blur-overlay, blur(4px));
-  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
+  background-color: var(--bg-overlay);
+  backdrop-filter: var(--blur-overlay);
+  -webkit-backdrop-filter: var(--blur-overlay);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -432,10 +484,10 @@
 .diary-delete-modal {
   background: var(--bg-surface);
   width: 320px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 24px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-lg);
+  animation: scaleUp 0.2s var(--ease-out-cubic);
 }
 
 .dd-modal-title {
@@ -466,28 +518,28 @@
   color: var(--text-primary);
   cursor: pointer;
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   transition: background 0.2s;
 }
 
 .dd-btn-cancel:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--bg-surface-high);
 }
 
 .dd-btn-confirm {
-  background: #DC2626;
+  background: var(--color-error);
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: white;
+  color: var(--text-on-primary);
   cursor: pointer;
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   transition: background 0.2s;
 }
 
 .dd-btn-confirm:hover {
-  background: #B91C1C;
+  opacity: 0.9;
 }
 
 @keyframes fadeIn {

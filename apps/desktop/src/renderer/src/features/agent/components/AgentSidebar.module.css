@@ -22,7 +22,7 @@
 .brandIconBox {
   width: 40px;
   height: 40px;
-  background-color: var(--color-primary, #5BA8F5);
+  background-color: var(--color-primary);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -31,7 +31,7 @@
 }
 
 .brandIcon {
-  color: #ffffff;
+  color: var(--text-on-primary);
   font-size: 22px;
 }
 
@@ -39,7 +39,7 @@
   margin-left: 12px;
   font-size: 16px;
   font-weight: 700;
-  color: var(--text-primary, #1e293b);
+  color: var(--text-primary);
   flex: 1;
 }
 
@@ -48,7 +48,7 @@
   border: none;
   padding: 4px;
   cursor: pointer;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,7 +107,7 @@
 .assistantName {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary, #1e293b);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -115,7 +115,7 @@
 
 .assistantDesc {
   font-size: 11px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -124,7 +124,7 @@
 
 .unfoldIcon {
   font-size: 18px;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -175,23 +175,23 @@
 }
 .pinnedAvatarWrapper.selected {
   padding: 2px;
-  border: 2px solid var(--color-primary, #5BA8F5);
+  border: 2px solid var(--color-primary);
 }
 .managePinnedBtn {
   width: 40px;
   height: 40px;
   border-radius: 22px;
-  background-color: var(--color-surface-container-highest, rgba(148, 163, 184, 0.1));
+  background-color: var(--color-surface-container-highest);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   transition: background-color 0.2s;
 }
 .managePinnedBtn:hover {
-  background-color: var(--color-surface-container-highest, rgba(148, 163, 184, 0.2));
+  background-color: var(--color-surface-container-highest);
 }
 
 /* ─── 新建对话按钮 — FilledButton, padding:vertical:14, r:12 ─── */
@@ -204,8 +204,8 @@
   min-height: 38px;
   border-radius: 10px;
   border: none;
-  background-color: var(--color-primary, #5BA8F5);
-  color: #ffffff;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
   font-size: 13px;
   font-weight: 600;
   display: flex;
@@ -247,14 +247,14 @@
 }
 
 .menuItemRowIcon {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .menuItemRow span {
   margin-left: 12px;
   font-size: 14px;
-  color: var(--text-primary, #1e293b);
+  color: var(--text-primary);
 }
 
 /* ─── 历史对话区标题 ─── */
@@ -262,10 +262,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 20px;
+  padding: 8px 16px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
 }
 
 .multiSelectToggle {
@@ -320,7 +320,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   font-size: 11px;
   padding: 2px;
 }
@@ -335,7 +335,7 @@
 .emptyHint {
   padding: 24px 20px;
   font-size: 13px;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   text-align: center;
 }
 
@@ -357,7 +357,7 @@
 .selectAllBtn {
   background: none;
   border: none;
-  color: var(--text-primary, #1e293b);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -368,8 +368,8 @@
   padding: 6px 14px;
   border-radius: 100px;
   border: none;
-  background-color: var(--color-error, #ef4444);
-  color: #ffffff;
+  background-color: var(--color-error);
+  color: var(--text-on-primary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -378,7 +378,7 @@
 
 .batchDeleteBtn:disabled {
   background-color: rgba(148, 163, 184, 0.2);
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary);
   cursor: not-allowed;
 }
 
@@ -394,11 +394,11 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: var(--color-primary-container, #e0f2fe);
+  background-color: var(--color-primary-container);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-on-primary-container, #0369a1);
+  color: var(--color-on-primary-container);
   font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
@@ -408,7 +408,7 @@
   margin-left: 10px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary, #1e293b);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
