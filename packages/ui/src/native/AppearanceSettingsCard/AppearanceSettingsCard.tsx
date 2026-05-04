@@ -76,7 +76,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       >
         <Text style={styles.icon}>🎨</Text>
         <View style={styles.headerBody}>
-          <Text style={styles.title}>{t('settings.appearance') || '外观与多语言'}</Text>
+          <Text style={styles.title}>{t('settings.appearance', '外观与多语言')}</Text>
           <Text style={styles.subtitle}>{themeMode} · {language}</Text>
         </View>
         <Text style={[styles.arrow, { transform: [{ rotate: expanded ? '180deg' : '0deg' }] }]}>▼</Text>
@@ -84,7 +84,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
       {expanded && (
         <View style={styles.content}>
-          <Text style={styles.label}>{t('settings.theme_mode') || '主题模式'}</Text>
+          <Text style={styles.label}>{t('settings.theme_mode', '主题模式')}</Text>
           <View style={styles.segmentedControl}>
             {(['system', 'light', 'dark'] as const).map((mode, index) => (
               <TouchableOpacity
@@ -104,7 +104,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
             ))}
           </View>
 
-          <Text style={[styles.label, { marginTop: 16 }]}>{t('settings.theme_color') || '种子主题色'}</Text>
+          <Text style={[styles.label, { marginTop: 16 }]}>{t('settings.theme_color', '种子主题色')}</Text>
           <View style={styles.colorWrap}>
             <TouchableOpacity 
               activeOpacity={0.8}
@@ -135,7 +135,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
           <View style={styles.divider} />
 
-          <Text style={styles.label}>{t('settings.language') || '显示语言'}</Text>
+          <Text style={styles.label}>{t('settings.language', '显示语言')}</Text>
           <View style={styles.langWrap}>
             {(['system', 'zh', 'zh-TW', 'en', 'ja'] as const).map(lang => (
               <TouchableOpacity
@@ -155,7 +155,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       <Modal visible={showColorModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>{t('settings.custom_color') || '自定义颜色'}</Text>
+            <Text style={styles.modalTitle}>{t('settings.custom_color', '自定义颜色')}</Text>
             
             <View style={[styles.colorPreview, { backgroundColor: previewColor, shadowColor: previewColor }]} />
             
@@ -198,10 +198,10 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => setShowColorModal(false)} style={styles.modalBtn}>
-                <Text style={styles.modalBtnTextGray}>{t('common.cancel') || '取消'}</Text>
+                <Text style={styles.modalBtnTextGray}>{t('common.cancel', '取消')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={saveColor} style={[styles.modalBtn, { backgroundColor: '#5BA8F5' }]}>
-                <Text style={styles.modalBtnTextWhite}>{t('common.save') || '保存'}</Text>
+                <Text style={styles.modalBtnTextWhite}>{t('common.save', '保存')}</Text>
               </TouchableOpacity>
             </View>
           </View>

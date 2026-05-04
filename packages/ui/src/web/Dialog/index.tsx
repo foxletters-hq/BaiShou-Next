@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal } from '../Modal/Modal';
 import { Button } from '../Button/Button';
 import { Input } from '../Input/Input';
@@ -25,6 +26,7 @@ interface DialogState {
 }
 
 export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { t } = useTranslation();
   const [state, setState] = useState<DialogState>({
     isOpen: false,
     type: 'alert',
@@ -93,11 +95,11 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             <div className={styles.actions}>
               {state.type !== 'alert' && (
                 <Button variant="text" onClick={() => closeDialog(state.type === 'prompt' ? null : false)}>
-                  取消
+                  {t('common.cancel', '取消')}
                 </Button>
               )}
               <Button variant="elevated" onClick={() => closeDialog(state.type === 'prompt' ? promptValue : true)}>
-                确定
+                {t('common.confirm', '确定')}
               </Button>
             </div>
           </div>

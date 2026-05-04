@@ -1,34 +1,102 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState } from 'react';
-import { 
-  GalleryPanel, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  GalleryPanel,
   DashboardHeroBanner, DashboardStatsCard, DashboardSharedMemoryCard,
+  ActivityHeatmap,
   useToast
 } from '@baishou/ui';
+import type { ActivityData } from '@baishou/ui';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { useNavigate } from 'react-router-dom'; // TODO: 后续用于跳转到总结详情页
-import { LayoutDashboard, Layers, Sparkles, CheckCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Layers, Sparkles, CheckCircle2, Gauge, Calendar, RefreshCw } from 'lucide-react';
 import { useSummaryData } from './hooks/useSummaryData';
 import './SummaryPage.css';
 
 
 
 
+/** 并发数下拉选择器属性 */
+interface ConcurrencyDropdownProps {
+  value: number;
+  onChange: (n: number) => void;
+  disabled: boolean;
+  t: (key: string, fallback?: string) => string;
+}
+
+/** 并发数下拉选择器 */
+const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({ value, onChange, disabled, t }) => {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="concurrency-dropdown">
+      <button
+        className="concurrency-trigger"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(!open)}
+      >
+        <Gauge size={14} className="concurrency-trigger-icon" />
+        <span className="concurrency-trigger-text">{t('summary.concurrency', '并发')}: {value}</span>
+      </button>
+      {open && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setOpen(false)} />
+          <div className="concurrency-menu">
+            {[1, 2, 3, 4, 5].map(n => (
+              <div
+                key={n}
+                className={`concurrency-option ${n === value ? 'active' : ''}`}
+                onClick={() => { onChange(n); setOpen(false); }}
+              >
+                {t('summary.concurrency', '并发')}: {n}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export const SummaryPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { language } = i18n;
   const toast = useToast();
-  // 仿真状态机的步骤流
-const GEN_PHASES = [
-  t('summary.step_scan', '获取游离区的所有活跃记录...'),
-  t('summary.step_time', '基于时间顺序排列内容池...'),
-  t('summary.step_extract', '执行跨域特征解析提纯...'),
-  t('summary.step_write', 'AI 总结正流式接收生成...'),
-  t('summary.step_done', '摘要归档完毕，已永久存盘。')
-];
-  // const navigate = useNavigate(); // TODO: 后续用于跳转
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
   const [lookbackMonths, setLookbackMonths] = useState(1);
-  const { summaries, stats, missingSummaries, setMissingSummaries, generateSummary, refreshData } = useSummaryData();
+  const [isBatchGenerating, setIsBatchGenerating] = useState(false);
+  const [concurrencyLimit, setConcurrencyLimit] = useState(3);
+  const { summaries, stats, missingSummaries, setMissingSummaries, queueGeneration, generationStates, refreshData } = useSummaryData();
+  const [activityData, setActivityData] = useState<ActivityData[]>([]);
+  const currentYear = new Date().getFullYear();
+
+  const prevStatesRef = useRef<typeof generationStates>({});
+
+  useEffect(() => {
+    const fetchActivityData = async () => {
+      if (typeof window !== 'undefined' && window.electron) {
+        try {
+          const data = await window.electron.ipcRenderer.invoke('diary:activityData', currentYear);
+          setActivityData(data || []);
+        } catch (e) {
+          console.warn('[SummaryPage] fetch activity data failed:', e);
+        }
+      }
+    };
+    fetchActivityData();
+  }, [currentYear]);
+
+  useEffect(() => {
+    Object.keys(generationStates).forEach(uKey => {
+       const cur = generationStates[uKey];
+       const prev = prevStatesRef.current[uKey];
+       if (cur.status === 'error' && (!prev || prev.status !== 'error')) {
+           const errText = cur.error?.includes('active provider') ? t('summary.model_not_configured', '模型未配置') : (cur.error || t('common.error', '错误'));
+           toast.showError(`${t('summary.generation_failed', '生成失败')}: ${errText}`);
+       }
+    });
+    prevStatesRef.current = generationStates;
+  }, [generationStates, t, toast]);
 
   const handleCopyContext = async () => {
     try {
@@ -39,58 +107,37 @@ const GEN_PHASES = [
     }
   };
 
-  // 高强度的视觉伪态：记录每个卡片自己的生成进度和文字
-  const [generationStates, setGenerationStates] = useState<Record<string, { progress: number, phase: number }>>({});
-
-  const startGenerationSimulation = (id: string, _type: string) => {
-  // 保护网：禁止重复触发同一实体
-    if (generationStates[id]) return;
-
-    setGenerationStates(prev => ({ ...prev, [id]: { progress: 0, phase: 0 } }));
+  const handleBatchGenerate = async () => {
+    if (isBatchGenerating) return;
+    setIsBatchGenerating(true);
     
-    let currentProgress = 0;
-    
-    // 开辟独立时钟轨道模拟 IPC 握手
-    const timer = setInterval(() => {
-  currentProgress += Math.random() * 8; // 随机跳动进度以显得真实
+    // 找出尚未处于生成状态的项，加入待处理队列
+    const pendingTasks = missingSummaries.filter(mp => {
+       const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`;
+       const state = generationStates[uKey];
+       return !state || state.status === 'pending' || state.status === 'error';
+    });
 
-       if (currentProgress >= 100) {
-          currentProgress = 100;
-          clearInterval(timer);
-          setGenerationStates(prev => ({ ...prev, [id]: { progress: 100, phase: GEN_PHASES.length - 1 } }));
+    if (pendingTasks.length > 0) {
+       await queueGeneration(pendingTasks);
+        toast.showSuccess(t('summary.batch_queued', '已将 $count 项任务加入后台构建队列，您可以离开页面。').replace('$count', pendingTasks.length.toString()));
+    } else {
+        toast.showSuccess(t('summary.all_processing', '所有检测到的遗失项均已在处理中。'));
+    }
 
-          // 模拟成功后等待 2s，卡片销毁（表示存入数据库了）
-          setTimeout(() => {
-  // Let the backend handle the real generation instead of just simulating
-             generateSummary(_type, 'auto').finally(() => {
-  setMissingSummaries(prev => prev.filter(p => `${p.type}_${new Date(p.startDate).getTime()}` !== id));
-                const cloneGenStates = { ...generationStates };
-                delete cloneGenStates[id];
-                setGenerationStates(cloneGenStates);
-                refreshData();
-             });
-          }, 2000);
-       } else {
-          // 阶段映射 (将 0-100 映射为 4个文段)
-          const phaseIdx = Math.floor((currentProgress / 100) * (GEN_PHASES.length - 1));
-          setGenerationStates(prev => ({ 
-             ...prev, 
-             [id]: { progress: currentProgress, phase: phaseIdx } 
-          }));
-       }
-    }, 300);
+    setTimeout(() => setIsBatchGenerating(false), 800);
   };
 
   const containerVariants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  } as any;
+  };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 15, scale: 0.98 },
     show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
     exit: { opacity: 0, height: 0, overflow: 'hidden', padding: 0, margin: 0, transition: { duration: 0.4 } }
-  } as any;
+  };
 
   return (
     <div className="summary-page-container">
@@ -101,13 +148,13 @@ const GEN_PHASES = [
             className={`sp-tab ${activeTab === 'panel' ? 'active' : ''}`}
             onClick={() => setActiveTab('panel')}
           >
-            <LayoutDashboard size={18} /> {t('summary.panel_tab') || '大盘概况'}
+            <LayoutDashboard size={18} /> {t('summary.panel_tab', '大盘概况')}
           </div>
           <div 
             className={`sp-tab ${activeTab === 'gallery' ? 'active' : ''}`}
             onClick={() => setActiveTab('gallery')}
           >
-            <Layers size={18} /> {t('summary.memory_gallery') || '归档画廊'}
+            <Layers size={18} /> {t('summary.memory_gallery', '归档画廊')}
           </div>
         </div>
       </div>
@@ -118,7 +165,7 @@ const GEN_PHASES = [
             <DashboardHeroBanner />
             
             <div className="sp-dashboard-layout">
-              <DashboardSharedMemoryCard 
+              <DashboardSharedMemoryCard
                 lookbackMonths={lookbackMonths}
                 onMonthsChanged={setLookbackMonths}
                 onCopyContext={handleCopyContext}
@@ -126,83 +173,117 @@ const GEN_PHASES = [
               <DashboardStatsCard {...stats} />
             </div>
 
+            {activityData.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <ActivityHeatmap data={activityData} year={currentYear} />
+              </div>
+            )}
+
             {/* AI 缺失自动检测区域 */}
             <motion.div 
               style={{ marginTop: 24 }}
               variants={containerVariants}
               initial="hidden" animate="show"
             >
-               {missingSummaries.length > 0 && (
-                  <div className="sp-missing-section-title" style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-                     <svg viewBox="0 0 24 24" fill="#FFA000" width="20" height="20" style={{ marginRight: 8 }}>
-                       <path d="M7.5 5.6L5 7l1.4-2.5L5 2l2.5 1.4L10 2 8.6 4.5 10 7 7.5 5.6zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14l-2.5 1.4zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5L22 2zm-7.63 5.29c-.39-.39-1.02-.39-1.41 0L1.29 18.96c-.39.39-.39 1.02 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05c.39-.39.39-1.02 0-1.41l-2.33-2.35zm-1.03 5.49l-2.12-2.12 2.44-2.44 2.12 2.12-2.44 2.44z"/>
-                     </svg>
-                     <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{t('summary.ai_suggestions', 'AI 建议补全')}</span>
+               {(missingSummaries.length > 0 || stats.totalDiaryCount > 0) && (
+                  <div className="sp-missing-section-title">
+                     <Sparkles size={18} color="var(--color-warning)" />
+                     <span>{t('summary.ai_suggestions', 'AI 建议补全')}</span>
+                     
+                     <button
+                        className="sp-batch-generate-btn"
+                        onClick={handleBatchGenerate}
+                        disabled={isBatchGenerating}
+                     >
+                        <Sparkles size={14} />
+                        {isBatchGenerating ? t('summary.generating', '生成中...') : t('summary.generate_all', '全部生成')}
+                     </button>
+                     
+                     <ConcurrencyDropdown value={concurrencyLimit} onChange={setConcurrencyLimit} disabled={isBatchGenerating} t={t} />
+
+                     <div className="sp-missing-count">
+                        {t('common.count_items', '$count个').replace('$count', missingSummaries.length.toString())}
+                     </div>
                   </div>
                )}
                
-               <AnimatePresence>
-                  {missingSummaries.map((mp: any) => {
-  const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`;
-                     const isGen = !!generationStates[uKey];
-                     const progress = generationStates[uKey]?.progress || 0;
-                     const phaseLabel = generationStates[uKey]?.phase !== undefined 
-                                         ? GEN_PHASES[generationStates[uKey].phase] 
-                                         : '';
+               <div className="sp-missing-grid">
+                  {missingSummaries.length === 0 && stats.totalDiaryCount > 0 && (
+                     <div className="sp-missing-empty">
+                        {t('summary.no_missing', '暂无待合并生成')}
+                     </div>
+                  )}
+                  <AnimatePresence>
+                     {missingSummaries.map((mp: { type: string; startDate: string; endDate: string; label?: string; dateRangeStr?: string }) => {
+                        const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`;
+                        const isGen = !!generationStates[uKey] && generationStates[uKey].status !== 'error';
+                        const progress = generationStates[uKey]?.progress || 0;
 
-                     return (
-                       <motion.div 
-                          key={uKey} 
-                          variants={itemVariants}
-                          exit="exit"
-                          style={{ marginBottom: 16 }}
-                       >
-                          <div 
-                            className={`sp-missing-card ${isGen ? 'is-generating' : ''}`}
-                            onClick={() => {
-
-
-                               // Start generation 
-                               if (!isGen) startGenerationSimulation(uKey, mp.type);
-                            }}
+                        return (
+                          <motion.div
+                             key={uKey}
+                             variants={itemVariants}
+                             exit="exit"
+                             style={{ display: 'flex' }}
                           >
-                            <h3>
-                               {isGen && progress >= 100 ? <CheckCircle2 size={18} color="var(--color-secondary)" /> : null}
-                               {isGen ? t('summary.generating_date', '正在总结生成：{{label}}', { label: mp.label || mp.dateRangeStr }) : t('summary.missing_date', '存在空洞：{{label}}', { label: mp.label || mp.dateRangeStr })}
-                            </h3>
-                            
-                            {!isGen ? (
-                               <p>{t('summary.probe_desc', '针对这一历史段的活动，建议激活 AI 在后台完整分析并生成总结，有助于长期关联检索质量。')}</p>
-                            ) : (
-                               <div className="sp-generation-ui">
-                                  <div className="sp-generation-status-text">
-                                     <span>{phaseLabel}</span>
-                                     <span>{Math.floor(progress)}%</span>
-                                  </div>
-                                  <div className="sp-generation-track">
-                                     <div 
-                                        className="sp-generation-bar" 
-                                        style={{ width: `${progress}%` }} 
-                                     />
-                                  </div>
-                               </div>
-                            )}
+                             <div className="sp-missing-card">
+                                {/* 图标区域 */}
+                                <div className="sp-missing-card-icon">
+                                   <Calendar size={20} />
+                                </div>
 
-                            {!isGen && (
-                               <button className="sp-btn-generate">
-                                  <Sparkles size={14} /> {t('summary.start_gen', '一键激活合并作业')}
-                               </button>
-                            )}
-                          </div>
-                       </motion.div>
-                     );
-                  })}
-               </AnimatePresence>
+                                <div className="sp-missing-card-body">
+                                   <div className="sp-missing-card-title">
+                                      {mp.label || mp.dateRangeStr}
+                                   </div>
+                                   <div className="sp-missing-card-meta">
+                                      <span className="sp-missing-card-date">
+                                         {mp.startDate && new Date(mp.startDate).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
+                                         {' - '}
+                                         {mp.endDate && new Date(mp.endDate).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
+                                      </span>
+                                      <span className="sp-missing-card-badge">
+                                         {t('summary.suggestion_generate', '建议生成')}
+                                      </span>
+                                   </div>
+                                </div>
+
+                                {/* 按钮区域 */}
+                                <div>
+                                  {isGen && progress < 100 ? (
+                                     <div className="sp-missing-card-action processing">
+                                       <style>{`@keyframes baishouSpin { 100% { transform: rotate(360deg); } }`}</style>
+                                       <RefreshCw size={20} className="concurrency-trigger-icon" style={{ animation: 'baishouSpin 1.5s linear infinite' }} />
+                                     </div>
+                                  ) : isGen && progress >= 100 ? (
+                                     <div className="sp-missing-card-action processing">
+                                       <CheckCircle2 size={22} color="var(--color-success)" />
+                                     </div>
+                                  ) : (
+                                     <div
+                                       className="sp-missing-card-action"
+                                       onClick={() => queueGeneration([mp])}
+                                     >
+                                       <Sparkles size={18} />
+                                     </div>
+                                  )}
+                                </div>
+                             </div>
+                          </motion.div>
+                        );
+                     })}
+                  </AnimatePresence>
+               </div>
             </motion.div>
 
           </div>
         ) : (
-          <GalleryPanel summaries={summaries} />
+          <GalleryPanel
+            summaries={summaries}
+            onOpen={(id) => navigate(`/summary/${id}`)}
+            onEdit={(id) => toast.showSuccess(t('common.edit', '编辑') + ' (ID: ' + id + ')')}
+            onDelete={(id) => toast.showSuccess(t('common.delete', '删除') + ' (ID: ' + id + ')')}
+          />
         )}
       </div>
     </div>

@@ -118,12 +118,12 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
       <div className={styles.statsChipsRow}>
         <div className={`${styles.statChip} ${styles.chipBlue}`}>
           <span className={styles.chipIcon}><MdStorage size={14} /></span>
-          <span className={styles.chipLabel}>总条目:</span>
+          <span className={styles.chipLabel}>{t('settings.rag_total_count', '总条目:')}</span>
           <span className={styles.chipStrong}>{stats.totalCount}</span>
         </div>
         <div className={`${styles.statChip} ${styles.chipGreen}`}>
           <span className={styles.chipIcon}><MdMemory size={14} /></span>
-          <span className={styles.chipLabel}>模型:</span>
+          <span className={styles.chipLabel}>{t('settings.rag_model', '模型:')}</span>
           {embeddingModelId ? (
             <span className={styles.chipStrong}>{embeddingModelId}</span>
           ) : (
@@ -138,7 +138,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         </div>
         <div className={`${styles.statChip} ${styles.chipGrey}`}>
           <span className={styles.chipIcon}><MdStorage size={14} /></span>
-          <span className={styles.chipLabel}>维度:</span>
+          <span className={styles.chipLabel}>{t('settings.rag_dimension', '维度:')}</span>
           <span className={styles.chipStrong}>{stats.currentDimension > 0 ? stats.currentDimension : '---'}</span>
         </div>
         <div 
@@ -173,7 +173,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
               <span className={styles.paramValueBlue}>{config.ragTopK || 30}</span>
             </div>
             <div className={styles.paramSliderRow}>
-              <span className={styles.paramLabel}>相似度阈值</span>
+              <span className={styles.paramLabel}>{t('settings.rag_similarity_threshold', '相似度阈值')}</span>
               <input 
                 type="range" className={styles.rangeInput}
                 min="0" max="1" step="0.05" value={config.ragSimilarityThreshold ?? 0.4}
@@ -224,7 +224,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
            <MdAddComment size={16} /> {t('settings.rag_add_manual', '手动添加记忆')}
         </button>
         <button className={`${styles.actionBtn} ${styles.btnGreyOutlined}`} onClick={onTriggerMigration} disabled={isBusy}>
-           <MdSync size={16} /> 手动迁移模型配置
+           <MdSync size={16} /> {t('settings.rag_trigger_migration', '手动迁移模型配置')}
         </button>
       </div>
 

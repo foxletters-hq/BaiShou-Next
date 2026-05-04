@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './cropImage';
 import styles from './AvatarCropModal.module.css';
@@ -11,6 +12,7 @@ export interface AvatarCropModalProps {
 }
 
 export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, onCanceled, onCropped }) => {
+  const { t } = useTranslation();
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
@@ -54,7 +56,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, onCa
         
         <div className={styles.controls}>
           <div className={styles.sliderGroup}>
-            <label>缩放</label>
+            <label>{t('avatarCrop.zoom', '缩放')}</label>
             <input
               type="range"
               value={zoom}
@@ -67,8 +69,8 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, onCa
           </div>
           
           <div className={styles.actions}>
-            <button className={styles.cancelBtn} onClick={onCanceled}>取消</button>
-            <button className={styles.confirmBtn} onClick={handleConfirm}>保存裁剪</button>
+            <button className={styles.cancelBtn} onClick={onCanceled}>{t('common.cancel', '取消')}</button>
+            <button className={styles.confirmBtn} onClick={handleConfirm}>{t('avatarCrop.saveCrop', '保存裁剪')}</button>
           </div>
         </div>
       </div>

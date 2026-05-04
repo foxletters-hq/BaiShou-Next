@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { InputBar } from '@baishou/ui';
 import { MdAutoAwesome } from 'react-icons/md';
 import styles from './AgentHome.module.css';
@@ -12,12 +13,13 @@ import styles from './AgentHome.module.css';
  * - 下方固定的 InputBar（与 AgentScreen 共享同款胶囊输入框）
  */
 export const AgentHomePage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleSend = (text: string) => {
     // 直接发起新会话并携带第一条消息
     const newId = `new-${Date.now()}`;
-    navigate(`/c/${newId}?init=${encodeURIComponent(text)}`);
+    navigate(`/chat/${newId}?init=${encodeURIComponent(text)}`);
   };
 
   return (
@@ -26,8 +28,8 @@ export const AgentHomePage: React.FC = () => {
         <div className={styles.iconCircle}>
           <MdAutoAwesome className={styles.awesomeIcon} />
         </div>
-        <h2 className={styles.emptyTitle}>开始新的对话</h2>
-        <p className={styles.emptySubtitle}>在下方输入框随便说点什么，或者点击左侧发起新对话～</p>
+        <h2 className={styles.emptyTitle}>{t('agent.home.start_new_chat', '开始新的对话')}</h2>
+        <p className={styles.emptySubtitle}>{t('agent.home.empty_subtitle', '在下方输入框随便说点什么，或者点击左侧发起新对话～')}</p>
       </div>
 
       {/* 与原版完全对齐：底部固定输入栏 */}
@@ -35,6 +37,8 @@ export const AgentHomePage: React.FC = () => {
         <InputBar
           isLoading={false}
           onSend={handleSend}
+          onTriggerShortcut={() => navigate('/chat/new-session?focus=shortcut')}
+          onManageShortcuts={() => navigate('/chat/new-session?focus=manage-shortcuts')}
         />
       </div>
     </div>

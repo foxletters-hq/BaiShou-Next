@@ -80,7 +80,7 @@ export interface AIModelServicesViewProps {
 }
 
 // 核心自带类型的回退配置
-const BASE_KNOWN_PROVIDERS = [
+const BASE_KNOWN_PROVIDERS_CONFIG = [
   { id: 'openai', name: 'OpenAI', iconUrl: openaiIcon, defaultBase: 'https://api.openai.com/v1', isSystem: true },
   { id: 'gemini', name: 'Google Gemini', iconUrl: geminiIcon, defaultBase: 'https://generativelanguage.googleapis.com/v1beta', isSystem: true },
   { id: 'anthropic', name: 'Anthropic Claude', iconUrl: claudeIcon, defaultBase: 'https://api.anthropic.com', isSystem: true },
@@ -95,6 +95,12 @@ const BASE_KNOWN_PROVIDERS = [
   { id: 'mistral', name: 'Mistral', iconUrl: mistralIcon, defaultBase: 'https://api.mistral.ai/v1', isSystem: true },
   { id: 'lmstudio', name: 'LM Studio', iconUrl: lmstudioIcon, defaultBase: 'http://localhost:1234/v1', isSystem: true },
 ];
+
+const PROVIDER_NAME_I18N_MAP: Record<string, string> = {
+  'siliconflow': 'aiProviders.siliconflow',
+  'dashscope': 'aiProviders.dashscope',
+  'doubao': 'aiProviders.doubao',
+};
 
 const PROVIDER_TYPES = [
   'openai', 'anthropic', 'gemini', 'deepseek', 'kimi', 'ollama', 
@@ -112,6 +118,11 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
   const { t } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
+
+  const BASE_KNOWN_PROVIDERS = BASE_KNOWN_PROVIDERS_CONFIG.map(p => ({
+    ...p,
+    name: PROVIDER_NAME_I18N_MAP[p.id] ? t(PROVIDER_NAME_I18N_MAP[p.id], p.name) : p.name,
+  }));
 
   const getCombinedProviders = Object.keys(providers).filter(id => !BASE_KNOWN_PROVIDERS.find(b => b.id === id));
   
@@ -619,7 +630,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                 <div className={styles.customSelectOuter}>
                   <div className={`${styles.customSelectValue} ${isTypeDropdownOpen ? styles.customSelectValueOpen : ''}`} onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}>
                     {renderTypeIcon(addModalData.type)}
-                    <span style={{flex: 1}}>{addModalData.type === 'openai' ? 'OpenAI 规范' : addModalData.type.toUpperCase()}</span>
+                    <span style={{flex: 1}}>{addModalData.type === 'openai' ? t('provider.openai_spec', 'OpenAI 规范') : addModalData.type.toUpperCase()}</span>
                     <MdArrowDropDown size={20} className={`${styles.dropdownArrow} ${isTypeDropdownOpen ? styles.dropdownArrowOpen : ''}`} />
                   </div>
                   {isTypeDropdownOpen && (
@@ -634,7 +645,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                           }}
                         >
                           {renderTypeIcon(type)}
-                          <span>{type === 'openai' ? 'OpenAI 规范' : type.toUpperCase()}</span>
+                          <span>{type === 'openai' ? t('provider.openai_spec', 'OpenAI 规范') : type.toUpperCase()}</span>
                         </div>
                       ))}
                     </div>
@@ -705,7 +716,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                   <input 
                     type="text" 
                     className={styles.addModalInput}
-                    placeholder="请选择测试模型"
+                    placeholder={t('aiConfig.selectTestModel', '请选择测试模型')}
                     value={testModelId}
                     readOnly
                     style={{ cursor: 'pointer', userSelect: 'none' }}

@@ -103,8 +103,11 @@
     "timeout": "請求超時",
     "copied": "已複製到剪貼簿",
     "copy": "複製",
+    "copy_success": "已複製到剪貼簿",
     "copy_failed": "複製失敗",
-    "back": "上一步",
+    "delete_success": "已刪除",
+    "delete_failed": "刪除失敗",
+    "back": "返回",
     "errors": {
       "storage_path_not_found": "無法取得裝置的基礎儲存路徑",
       "data_load_failed": "資料載入失敗",
@@ -116,7 +119,99 @@
     "permission": {
       "storage_granted": "權限已獲得，正在掃描日記...",
       "storage_denied": "權限被拒絕，無法讀取日記文件"
-    }
+    },
+    "system": "系統",
+    "untitled": "無標題",
+    "confirm_delete": "確認刪除",
+    "load_more": "點擊加載更多記錄",
+    "use": "使用",
+    "year_unit_label": "年",
+    "month_unit_label": "月",
+    "day_unit_label": "日",
+    "search_model": "搜索模型...",
+    "no_match_model": "沒有匹配的可用模型",
+    "multi_select": "多選",
+    "load_more_chats": "加載更多對話",
+    "sunday": "周日",
+    "monday": "周一",
+    "tuesday": "周二",
+    "wednesday": "周三",
+    "thursday": "周四",
+    "friday": "周五",
+    "saturday": "周六",
+    "month_unit": "月",
+    "day_unit": "日",
+    "jan": "一月",
+    "feb": "二月",
+    "mar": "三月",
+    "apr": "四月",
+    "may": "五月",
+    "jun": "六月",
+    "jul": "七月",
+    "aug": "八月",
+    "sep": "九月",
+    "oct": "十月",
+    "nov": "十一月",
+    "dec": "十二月",
+    "sun": "日",
+    "mon": "一",
+    "tue": "二",
+    "wed": "三",
+    "thu": "四",
+    "fri": "五",
+    "sat": "六",
+    "search": "搜索模型 ...",
+    "turns": "轮",
+    "off": "关闭",
+    "edit_avatar": "点击修改头像",
+    "settings": "設置",
+    "clear": "清空历史",
+    "just_now": "刚刚",
+    "minutes_ago": "分钟前",
+    "hours_ago": "小时前",
+    "regenerate": "重新生成",
+    "copies_unit": "份",
+    "all_dates": "全部日期",
+    "this_month": "跳转本月",
+    "select_time": "选择日期",
+    "emoji_title": "特派情绪粒子",
+    "emoji_subtitle": "选择该心智的外發特征图标",
+    "year_unit": "年",
+    "ignore": "忽略",
+    "processing": "处理中",
+    "no_search_result": "没有找到相关结果",
+    "no_content": "暂无内容",
+    "justNow": "刚刚",
+    "yesterday": "昨天",
+    "days_ago": "天前",
+    "stop_generate": "停止生成",
+    "enter_tags": "输入标签并按回车添加...",
+    "unknown_time": "未知时间",
+    "confirm_leave": "确认离开",
+    "leave": "强行离开",
+    "loading_settings": "读取配置表项状态中..."
+  },
+  "cloud": {
+    "fetch_backup_list_failed": "獲取備份列表失敗",
+    "sync_target_local_hint": "當前同步目標為本機，請先配置雲端",
+    "download_failed": "下載失敗",
+    "download_to_local": "下載至本機",
+    "delete_success": "刪除成功",
+    "delete_failed": "刪除失敗",
+    "batch_delete_success": "批次刪除成功",
+    "batch_delete_failed": "批次刪除失敗",
+    "rename": "重新命名",
+    "rename_success": "重新命名成功",
+    "rename_failed": "重新命名失敗",
+    "restore_to_local": "覆蓋並恢復至本機",
+    "delete": "刪除"
+  },
+  "lan": {
+    "import_success": "匯入成功，應用程式即將重新載入",
+    "import_failed": "重新載入匯入失敗",
+    "receive_cancelled": "已取消接收與掛載",
+    "send_success": "已成功發送至 {{name}}",
+    "send_failed": "發送至 {{name}} 失敗，對端離線或逾時"
   },
   "onboarding": {
     "welcome_title": "歡迎來到白守",
@@ -148,7 +243,19 @@
     "weekly_report": "週報",
     "monthly_report": "月報",
     "quarterly_report": "季報",
-    "yearbook": "年鑑"
+    "yearbook": "年鑑",
+    "welcome": "歡迎來到 BaiShou Next",
+    "welcome_sub": "正在為您分配個人工作區及初始化索引配置。",
+    "start": "開始旅程",
+    "ai_config_title": "配置你的 AI 智慧",
+    "ai_config_desc": "白守本身不儲存你的 AI 金鑰。請配置標準的 OpenAI 相容協議，開啟你們的靈魂對話。",
+    "ai_config_hint": "前往「設定 > 供應商管理」配置 API Key。",
+    "ai_config_steps": "1. 開啟設定 → 供應商管理\n2. 選擇供應商並輸入 API Key\n3. 取得並啟用模型\n4. 設定全域預設模型",
+    "import_title": "匯入資料",
+    "import_desc": "從先前的備份中還原你的資料。",
+    "import_hint": "前往「設定 > 資料管理」選擇 ZIP 檔案進行匯入。",
+    "import_steps": "1. 開啟設定 → 資料管理\n2. 選擇「從外部 ZIP 匯入」\n3. 選擇備份檔案 (.zip)\n4. 確認並開始還原",
+    "slogan": "「純白誓約，守護一生」"
   },
   "settings": {
     "title": "系統設定",
@@ -392,7 +499,54 @@
     "rag_batch_embed": "全量掃描未索引日記",
     "rag_add_manual": "新增手動記憶片段",
     "rag_clear_all": "清空所有向量資料",
-    "rag_empty_desc": "當 AI 閱讀日記或生成內容時，底層向量資料將在這裡自動生成並被管理。"
+    "rag_empty_desc": "當 AI 閱讀日記或生成內容時，底層向量資料將在這裡自動生成並被管理。",
+    "theme_hue": "色相",
+    "theme_saturation": "饱和",
+    "theme_lightness": "明度",
+    "agent_identity": "系统核心设定 (Identity & Mind)",
+    "agent_identity_desc": "这些指令将作用于每一轮对话的最顶层。您可调整滑动条来控制回答的發散度。",
+    "system_prompt": "底層 System Prompt",
+    "advanced": "高级",
+    "system_prompt_hint": "例如: 你是一個无所不知但只說重点的AI助手...",
+    "temperature": "創造力/發散度 (Temperature)",
+    "temp_low": "0.0 (严谨/确定)",
+    "temp_mid": "1.0 (平衡)",
+    "temp_high": "2.0 (發散/創造)",
+    "features": {
+      "rag_title": "RAG 记忆检索",
+      "rag_desc": "配置 AI 在对话时如何從历史日记和记忆中召回上下文。",
+      "rag_enable": "启用自动关联检索",
+      "rag_enable_hint": "發送消息时自动搜索相关知识点",
+      "rag_threshold": "相似度匹配阈值",
+      "rag_threshold_hint": "数值越高，召回的关联内容越精准，但数量越少。",
+      "search_title": "網络搜索 API",
+      "search_max": "最大搜索结果数",
+      "search_max_hint": "单次搜索时返回的最大網页数量 (影响部分模型的上下文窗口)",
+      "search_diary": "站内搜索引擎",
+      "search_diary_hint": "允许搜索工具顺带检索本地日记内容",
+      "summary_title": "自动总结服务",
+      "summary_auto": "每周/每月自动生成总结",
+      "summary_auto_hint": "会在后台静默使用推理模型生成周期性回顾",
+      "dev_title": "高级选项",
+      "dev_mode": "开發者模式",
+      "dev_mode_hint": "开启日志诊断、伙伴 工具链调用追踪与 MCP 调试"
+    },
+    "empty_fact_error": "键名和键值不能为空",
+    "duplicate_fact_error": "该特征键名已存在",
+    "identity_min_one": "至少保留一张身份卡！",
+    "edit_fact": "编辑特征",
+    "new_fact": "新增特征",
+    "fact_key": "特征名",
+    "fact_value": "特征值",
+    "fact_key_placeholder": "如：年齡、性格、身份",
+    "fact_value_placeholder": "如：25歲、傲嬌、魔法使",
+    "rag_model_unassigned": "未配置(点击跳转)",
+    "rag_detect_dimension": "检测维度",
+    "rag_config_params": "检索参数调节",
+    "rag_edit_prompt": "请修改下方的记忆片段内容：",
+    "rag_edit_manual": "编辑记忆内容",
+    "dimension_detected": "偵測完成，該模型向量維度為",
+    "dimension_detection_error": "偵測發生錯誤"
   },
   "data_sync": {
     "title": "資料同步",
@@ -498,7 +652,9 @@
     "max_backup_auto_cleaned": "已自動清理 $count 個舊備份",
     "download_backup": "下載至本機",
     "downloading": "正在下載...",
-    "download_success": "已儲存至: $path"
+    "download_success": "已儲存至: $path",
+    "no_limit": "不限制数量",
+    "loading_records": "正在连线获取云端记录..."
   },
   "lan_transfer": {
     "status_idle": "等待發現...",
@@ -537,7 +693,10 @@
     "received_backup_title": "收到資料備份",
     "received_backup_content": "來自區域網路裝置的資料 ($size MB)。\n是否立即覆蓋目前資料並匯入？\n\n注意：匯入前會自動建立目前資料的快照。",
     "qr_scan_title": "掃描 QR Code",
-    "file_received": "已接收文件：$name"
+    "file_received": "已接收文件：$name",
+    "show_qr": "顯示二維碼",
+    "scan_to_connect": "掃碼連接",
+    "qr_hint": "使用白守行動端掃描此二維碼即可連接"
   },
   "diary": {
     "title": "日記",
@@ -571,7 +730,50 @@
     "exit_without_saving": "離開且不儲存？",
     "exit_confirmation_hint": "目前內容有未儲存的修改，離開將遺失這些更改喔。",
     "exit_without_saving_confirm": "不儲存並離開",
-    "editor_tag_placeholder": "輸入標籤，按Enter儲存"
+    "editor_tag_placeholder": "輸入標籤，按Enter儲存",
+    "date_format_editor_title": "{{year}}年{{month}}{{day}}日 {{weekday}}",
+    "edit_summary": "编辑总结",
+    "editor_leave_confirm": "当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？",
+    "delete_success": "日记已删除",
+    "delete_failed": "删除失败",
+    "delete_warning": "您确定要永久删除这篇日记吗？此操作不可逆转。",
+    "export_success": "匯出成功",
+    "export_failed": "匯出失敗",
+    "export_markdown": "匯出為 Markdown",
+    "weather_label": "天氣",
+    "weather": {
+      "sunny": "晴",
+      "cloudy": "多雲",
+      "overcast": "陰",
+      "light_rain": "小雨",
+      "heavy_rain": "大雨",
+      "snow": "雪",
+      "fog": "霧",
+      "windy": "風"
+    },
+    "mood_label": "心情",
+    "mood": {
+      "happy": "開心",
+      "satisfied": "滿足",
+      "calm": "平靜",
+      "excited": "興奮",
+      "grateful": "感恩",
+      "thoughtful": "沉思",
+      "sad": "憂傷",
+      "anxious": "焦慮",
+      "radiant": "燦爛"
+    },
+    "location_placeholder": "📍 位置",
+    "unfavorite": "取消收藏",
+    "favorite": "收藏",
+    "weekday_sun": "週日",
+    "weekday_mon": "週一",
+    "weekday_tue": "週二",
+    "weekday_wed": "週三",
+    "weekday_thu": "週四",
+    "weekday_fri": "週五",
+    "weekday_sat": "週六",
+    "month_suffix": "月"
   },
   "summary": {
     "dashboard_title": "白守資料概覽",
@@ -673,7 +875,31 @@
     "card_week_title": "第 $week 週",
     "card_date_range": "$start - $end",
     "card_month_title": "$month月",
-    "card_year_suffix": "$year年"
+    "card_year_suffix": "$year年",
+    "lookback_label": "回溯范围 (月)",
+    "missing_title": "总结缺失",
+    "missing_desc": "在这段时间内还未生成过总结，现在是否需要一键补全？",
+    "generate_now": "立即生成日记总结",
+    "delete_confirm_title": "确认删除",
+    "word_count_suffix": "字总结",
+    "concurrency": "并發",
+    "step_scan": "获取游离区的所有活跃记录...",
+    "step_time": "基于时间顺序排列内容池...",
+    "step_extract": "执行跨域特征解析提纯...",
+    "step_write": "AI 总结正流式接收生成...",
+    "step_done": "摘要归档完毕，已永久存盘。",
+    "generating": "生成中...",
+    "no_missing": "暂无待合并生成",
+    "not_found": "找不到總結",
+    "generated_at": "生成時間",
+    "open_not_implemented": "詳情頁面正在建設中",
+    "stats_week": "週度",
+    "stats_month": "月度",
+    "stats_quarter": "季度",
+    "stats_year": "年度",
+    "reset_template_success": "已恢復預設範本",
+    "batch_generate_queued": "已將 {{count}} 項任務加入後台建構佇列，您可以離開頁面",
+    "all_missing_in_progress": "所有偵測到的遺失項目均已在處理中"
   },
   "ai": {
     "error_response_format": "回應格式錯誤：$e",
@@ -714,7 +940,15 @@
     "naming_model_title": "預設命名模型",
     "naming_model_desc": "執行標題命名、短句提取等簡單任務時使用的模型。建議使用響應快、成本低的輕量級模型。",
     "embedding_model_title": "嵌入模型 (Embedding)",
-    "embedding_model_desc": "用於文字向量化的模型，支撐 RAG 語意搜尋功能。如 text-embedding-3-small。如果列表為空，請先在供應商處取得並啟用 Embedding 類型的模型。"
+    "embedding_model_desc": "用於文字向量化的模型，支撐 RAG 語意搜尋功能。如 text-embedding-3-small。如果列表為空，請先在供應商處取得並啟用 Embedding 類型的模型。",
+    "no_models_fetch_first": "没有可用的模型，请先获取模型列表或确保有默认模型",
+    "test_model_empty": "测试模型 ID 不能为空",
+    "api_key_placeholder": "API Key",
+    "test_connection_title": "选择测试模型",
+    "test_connection_desc": "请选择要用来测试连接的模型。建议使用该供应商提供的体积小、速度快的免费模型进行测试。",
+    "model_id": "Model ID",
+    "start_test": "开始测试",
+    "error_no_model": "检测失败：可能是未配置有效的 Embedding 模型或服务未连通。"
   },
   "about": {
     "title": "關於白守",
@@ -742,7 +976,12 @@
     "debug_title": "🛠 開發者除錯",
     "data_management": "資料管理",
     "load_demo_full_desc": "載入示範資料會向資料庫寫入一批範例日記，用於測試和展示。\n如果已有資料，會強制覆蓋寫入（不清空現有資料）。",
-    "loading_status": "載入中..."
+    "loading_status": "載入中...",
+    "clear_all_success": "所有核心数据与环境已抹除，点击确认重启容器以进入安全着陆模式。",
+    "clear_success": "清理完成",
+    "clear_agent_db_desc": "删除 Agent 会话、伙伴、消息数据（重启后自动重建）",
+    "clear_agent_db": "清理 Agent 数据库",
+    "clear_agent_success": "Agent 数据库碎片已清空并安全关闭连结，系统需硬重启进行热重建。"
   },
   "privacy": {
     "title": "隱私政策與理念",
@@ -755,6 +994,10 @@
   },
   "agent": {
     "partner_label": "夥伴",
+    "no_model_selected": "暫未選擇模型",
+    "start_new_conversation": "開始新的對話",
+    "start_conversation_hint": "在下方輸入框隨便說點什麼，或者點擊左側發起新對話～",
+    "load_more_conversations": "載入更多對話",
     "tools": {
       "built_in": "內建工具",
       "community": "社群工具",
@@ -793,7 +1036,7 @@
       "param_tavily_api_key_desc": "Tavily 搜尋 API 金鑰（https://app.tavily.com 免費取得）",
       "shortcuts": {
         "translate_name": "翻譯",
-        "translate_content": "請把下面這段話信達雅地翻譯為中文（含專業術語解釋）：\n\n",
+        "translate_content": "請把下面這段話信達雅地翻譯為繁體中文（含專業術語解釋）：\n\n",
         "summarize_name": "總結",
         "summarize_content": "請總結以下內容背後的核心要義：\n\n"
       }
@@ -856,7 +1099,14 @@
       "search_recent": "搜尋近期對話...",
       "no_search_results": "無符合的搜尋結果",
       "load_more": "載入更多",
-      "manage_pinned": "管理固定夥伴"
+      "manage_pinned": "管理固定夥伴",
+      "delete_msg_confirm": "您確定要刪除這條消息歷史嗎？此操作不可逆轉。",
+      "scroll_to_bottom": "回到最新消息",
+      "cancel_select_all": "取消全選",
+      "memory": "AI 记忆",
+      "reasoning": "思考中...",
+      "using_tool": "AI 核心协议激活并流转中",
+      "readAloud": "语音朗读"
     },
     "sessions": {
       "history": "對話歷史",
@@ -896,7 +1146,14 @@
       "management_title": "會話管理",
       "batch_manage": "批次管理",
       "pinned_only": "已置頂 📌",
-      "empty": "暫無會話記錄..."
+      "empty": "暫無會話記錄...",
+      "groupPinned": "已置顶",
+      "groupToday": "今天",
+      "groupYesterday": "昨天",
+      "groupWeek": "近 7 天",
+      "groupOlder": "更早",
+      "newChat": "發 起 超 链",
+      "noResults": "一片虚无..."
     },
     "rag": {
       "title": "RAG 記憶管理",
@@ -982,7 +1239,7 @@
       "clear_selection": "清除",
       "default_tag": "預設",
       "no_assistant": "無夥伴",
-      "pin_to_sidebar": "固定到側邊欄",
+      "pin_to_sidebar": "置頂並顯示在側邊欄",
       "unpin_from_sidebar": "取消側邊欄固定",
       "avatar_hint": "點擊選 emoji · 長按選圖片",
       "description_label": "簡介",
@@ -1003,7 +1260,20 @@
       "compress_keep_turns_desc": "當觸發壓縮時，對話末尾最近幾次互動將作為原文倖存（一輪包含一問一答），其餘則被縮減為摘要",
       "default_assistant_name": "預設夥伴",
       "default_assistant_desc": "通用 AI 夥伴",
-      "keep_one_error": "至少保留一個夥伴"
+      "keep_one_error": "至少保留一個夥伴",
+      "new_name_prompt": "請輸入新的夥伴名稱：",
+      "edit_name_title": "修改夥伴名稱",
+      "unpin": "取消置頂",
+      "window_size": "窗口大小",
+      "status": "狀態",
+      "delete_confirm_desc": "此操作將永久刪除該夥伴的所有配置，該操作不可恢復。",
+      "title": "夥伴管理",
+      "create_new": "新增夥伴",
+      "create": "新建伙伴",
+      "current": "当前",
+      "memory_label": "记忆",
+      "current_partner": "当前伙伴",
+      "delete_confirm": "是否确认删除该伙伴？"
     },
     "provider": {
       "add_title": "新增 AI 供應商",
@@ -1016,6 +1286,226 @@
       "delete_button": "刪除",
       "delete_tooltip": "刪除供應商",
       "custom_tag": "自訂"
-    }
+    },
+    "recall": {
+      "title": "上下文補充與喚醒",
+      "tab_diary": "日記檔案",
+      "tab_memory": "向量知識",
+      "search_hint": "檢索關鍵字",
+      "no_results": "未在庫中匹配到任何歷史記憶碎片。",
+      "selected": "已選擇",
+      "inject": "提取至當前上下文對話"
+    },
+    "error": {
+      "api_key": "API Key 已過期或無效，請轉至模型設定中更新您的金鑰。",
+      "rate_limit": "請求過於頻繁或超出並發限制，請稍後再試。",
+      "network": "網路連線失敗，請檢查您的網路連線或代理設定。",
+      "timeout": "請求回應超時，請重試。",
+      "quota": "模型服務商提示帳號額度不足。",
+      "unknown": "出錯了：{{msg}}",
+      "create_session": "由於系統原因創建會話失敗: {{msg}}"
+    },
+    "generation_failed": "回覆生成失敗",
+    "trace_title": "調用追踪 [{{modelId}}]",
+    "default_assistant_name": "默認夥伴",
+    "default_assistant_prompt": "你是一個友善且有創意的AI助手。",
+    "default_assistant_desc": "通用 AI 夥伴",
+    "delete_session_confirm": "您確定要永久刪除這篇對話嗎？此操作不可逆轉。",
+    "batch_delete_confirm": "您確定要刪除選中的 {{count}} 篇對話嗎？此操作不可逆轉。",
+    "renamed_toast": "已重命名為「{{title}}」",
+    "rename_session": "重命名對話",
+    "sidebar": {
+      "expand": "展開側邊欄",
+      "collapse": "折疊側邊欄",
+      "pin_hint": "這裡可以置頂夥伴",
+      "recent_chats": "最近對話",
+      "search_hint": "搜索近期聊天...",
+      "no_recent_chats": "暫無近期對話，快點開始一個吧~"
+    },
+    "switchModel": "切换心智核心",
+    "noMatchModel": "未發现可搭载的模型",
+    "manageProviders": "管理模型与供应商"
+  },
+  "input": {
+    "upload_attachment": "上傳附件",
+    "shortcut_command": "快捷指令"
+  },
+  "shortcut": {
+    "label_name": "指令標識名 (展示標籤)",
+    "label_hint": "例如: Code Review",
+    "content_prompt": "實際注入內容 (Prompt)",
+    "content_hint": "在此輸入將會插入到對話框的長文本預設指令...",
+    "default_tag": "指令",
+    "title": "快捷控制指令 (Shortcut)",
+    "no_match": "找不到任何匹配的快捷指令...",
+    "manager_title": "快捷指令组合面板",
+    "add_custom_command": "新增自訂指令",
+    "back": "返回",
+    "edit": "編輯"
+  },
+  "models": {
+    "switch_model": "切換計算模型",
+    "click_to_assign": "点击分配默认处理模型",
+    "routing_desc": "允许为您日常面对的不同维度的复杂任务，挂载不同的专长模型。",
+    "goto_settings": "配置供应商"
+  },
+  "dashboard": {
+    "greeting": "又见面了，今天过得怎样？",
+    "shared_memory_desc": "调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。",
+    "lookback_months": "回溯 {{count}} 個月",
+    "copy_to_ai": "Copy 给 AI"
+  },
+  "chat": {
+    "send_to": "發给 {{name}}...",
+    "new_session": "新对话",
+    "pinned": "已固定",
+    "respond_to_message": "回應此訊息",
+    "copy_code": "複製",
+    "view_context_tree": "檢視對話上下文樹",
+    "click_to_rename": "點擊修改名稱",
+    "partner_avatar": "夥伴",
+    "times_count": "次",
+    "items_count": "條"
+  },
+  "**": "**",
+  "*": "*",
+  "[": "](url)",
+  "![": "](image_url)",
+  "activity": {
+    "yearly_records": "年度交互记录",
+    "interactions": "次交互",
+    "idle": "空闲",
+    "frequent": "高频"
+  },
+  "assistant": {
+    "matrix_title": "AI 助手控制台 (Assistant Matrix)",
+    "matrix_desc": "用来精细化管理和創造专属助理对象，包含预设提示词配置与单独工作空间关联。",
+    "enter_matrix": "进入控制管理",
+    "prompt": "提示词",
+    "memory": "记忆",
+    "threshold_val": "阈值 {{val}}",
+    "select_title": "选择伙伴",
+    "no_assistant": "无伙伴",
+    "create_title": "創建伙伴",
+    "picker_no_selection": "选择一個伙伴查看详情"
+  },
+  "gallery": {
+    "summary": "总结",
+    "weekly_report": "周报",
+    "yearly_summary": "年度总结",
+    "empty_desc": "当前记录为空。多在对话或日记中添加些相片吧！",
+    "record_unit": "条记录"
+  },
+  "hotkey": {
+    "enable_global": "啟用全局快捷鍵喚出",
+    "enable_global_desc": "跨应用随时呼出或隐藏控制台界面",
+    "enable_global_desc_disabled": "未开启全局呼出快捷键",
+    "record_combo": "錄入快捷組合鍵",
+    "warning": "警告：可能会产生按键冲突",
+    "listening": "正在监听..."
+  },
+  "profile": {
+    "edit_nickname_prompt": "请输入新的昵称：",
+    "edit_nickname": "修改昵称",
+    "default_nickname": "白守用户",
+    "no_nickname": "未设置昵称",
+    "avatar_fallback": "白"
+  },
+  "recall": {
+    "title": "上下文补充与唤醒",
+    "tab_diary": "日记档案",
+    "tab_memory": "向量知识",
+    "search_hint": "检索关键字或记忆片段...",
+    "no_results": "未在库中匹配到任何历史记忆碎片。",
+    "selected": "已选择",
+    "inject": "提取至当前上下文对话"
+  },
+  "sidebar": {
+    "tagline": "AI 终端伴侣"
+  },
+  "workspace": {
+    "new_name": "空间名称",
+    "create_failed": "創建失败",
+    "delete_name_mismatch": "名称不匹配，删除已取消。",
+    "title": "工作空間",
+    "current": "當前空間: {{name}}",
+    "last_accessed": "上次訪問: {{time}}",
+    "switch": "切換",
+    "delete": "刪除",
+    "create_new": "創建新空間"
+  },
+  "error": {
+    "crash_title": "应用崩溃 / Rendering Crashed",
+    "reload": "尝试重新加载 / Reload"
+  },
+  "nav": {
+    "diary": "日記",
+    "agent": "夥伴",
+    "summary": "概覽"
+  },
+  "titlebar": {
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "close": "關閉"
+  },
+  "home": {
+    "desc": "仪表盘暂未施工完成，可切换前往日记页查看以往记录。"
+  },
+  "storage": {
+    "title": "物理硬盘隔离项"
+  },
+  "emoji": {
+    "categories": "類別",
+    "no_native_support": "您的瀏覽器不支援彩色表情符號",
+    "favorites": "收藏",
+    "loading": "載入中…",
+    "error_load": "無法載入表情符號",
+    "picker_title": "表情符號選擇器",
+    "keyboard_hint": "有搜尋結果時，按鍵盤選擇。",
+    "search": "搜尋",
+    "search_results": "搜尋結果",
+    "skin_tone_hint": "展開時選擇膚色。",
+    "select_skin_tone": "選擇膚色（目前膚色：{{skinTone}}）",
+    "skin_tone": "膚色",
+    "skin_default": "預設",
+    "skin_light": "淺色",
+    "skin_medium_light": "中淺色",
+    "skin_medium": "中等",
+    "skin_medium_dark": "中深色",
+    "skin_dark": "深色",
+    "category_custom": "自訂",
+    "category_smileys": "表情與情感",
+    "category_people": "人物與身體",
+    "category_animals": "動物與自然",
+    "category_food": "食物與飲料",
+    "category_travel": "旅行與地點",
+    "category_activities": "活動",
+    "category_objects": "物品",
+    "category_symbols": "符號",
+    "category_flags": "旗幟",
+    "personalize_avatar": "個人化圖示",
+    "upload_avatar_hint": "從本機上傳圖片作為大頭貼"
+  },
+  "avatar": {
+    "zoom": "縮放",
+    "cancel": "取消",
+    "save_crop": "儲存裁剪"
+  },
+  "datetime": {
+    "year_suffix": "年",
+    "month_suffix": "月",
+    "day_suffix": "日"
+  },
+  "provider": {
+    "siliconflow": "矽基流動 (SiliconFlow)",
+    "ali_bailian": "通義千問 (百鍊)",
+    "volcengine": "豆包 (火山引擎)",
+    "select_test_model": "請選擇測試模型"
+  },
+  "app": {
+    "operation_error": "操作異常",
+    "unknown_error": "未知網路或系統錯誤",
+    "system_warning": "系統警告",
+    "unknown_program_error": "程式發生未知錯誤"
   }
 }

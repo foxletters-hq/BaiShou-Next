@@ -29,7 +29,7 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
         <h4 className="missing-title-v2">{t(`summary.missing_title_${type}`)}</h4>
         <div className="missing-meta-v2">
            <span className="missing-date-v2">{dateRange}</span>
-           <span className="missing-suggestion-v2">{t('summary.suggestion_generate') || '建议生成'}</span>
+           <span className="missing-suggestion-v2">{t('summary.suggestion_generate', '建议生成')}</span>
         </div>
       </div>
       

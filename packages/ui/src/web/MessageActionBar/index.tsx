@@ -49,11 +49,11 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
          </button>
        )}
 
-       {!isAI && onEdit && (
+       {onEdit && (
          <button 
            className={styles.iconBtn} 
            onClick={onEdit} 
-           title={t('agent.chat.edit', '编辑我的消息')}
+           title={t(isAI ? 'agent.chat.edit_ai' : 'agent.chat.edit', isAI ? '编辑AI回复' : '编辑我的消息')}
          >
             <Edit3 size={14} />
          </button>

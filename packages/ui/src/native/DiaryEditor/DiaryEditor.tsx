@@ -73,7 +73,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           style={styles.saveBtn} 
           onPress={() => onSave?.(content, tags, selectedDate)}
         >
-           <Text style={styles.saveBtnText}>{t('common.save') || '保存'}</Text>
+           <Text style={styles.saveBtnText}>{t('common.save', '保存')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -89,7 +89,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
              ref={textInputRef}
              style={styles.textArea}
              multiline
-             placeholder={t('diary.editor_hint') || '记录下这一刻...'}
+             placeholder={t('diary.editor_hint', '记录下这一刻...')}
              placeholderTextColor="#94A3B8"
              value={content}
              onChangeText={onContentChange}

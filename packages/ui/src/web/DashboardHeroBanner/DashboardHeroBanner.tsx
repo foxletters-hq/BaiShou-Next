@@ -9,25 +9,26 @@ export const DashboardHeroBanner: React.FC = () => {
 
   
   // mock random greeting
-  const greeting = "又见面了，今天过得怎样？";
+  const greeting = t('dashboard.greeting', '又见面了，今天过得怎样？');
 
   return (
     <div style={{
       width: '100%',
       height: 140,
-      backgroundColor: 'var(--color-primary-light, rgba(91, 168, 245, 0.2))',
-      borderRadius: 16,
+      backgroundColor: 'var(--color-primary, #5BA8F5)',
+      borderRadius: 20,
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
-      padding: '0 24px',
+      padding: '0 28px',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      boxShadow: '0 8px 20px rgba(91, 168, 245, 0.25)'
     }}>
-      <div style={{ fontSize: 24, fontWeight: 'bold', color: 'var(--text-primary)', zIndex: 1 }}>
+      <div style={{ fontSize: 22, fontWeight: 'bold', color: '#ffffff', zIndex: 1, letterSpacing: '-0.5px' }}>
         {t('common.app_title', '白守')} · {t('summary.collective_memories_title', '回忆')}
       </div>
-      <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 8, zIndex: 1 }}>
+      <div style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.8)', marginTop: 8, zIndex: 1 }}>
         {t('summary.algorithm_desc', '基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。')}
       </div>
       

@@ -29,7 +29,7 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
         <View style={styles.meta}>
           <Text style={styles.date}>{dateRange}</Text>
           <View style={styles.suggestionBadge}>
-            <Text style={styles.suggestionText}>{t('summary.suggestion_generate') || '建议生成'}</Text>
+            <Text style={styles.suggestionText}>{t('summary.suggestion_generate', '建议生成')}</Text>
           </View>
         </View>
       </View>

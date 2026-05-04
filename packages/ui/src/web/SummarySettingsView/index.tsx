@@ -50,7 +50,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
       // Auto save on reset? Yes, to keep it simple.
       const nextTemplates = { ...config.templates, [activeTab]: defaultText };
       onChange({ ...config, templates: nextTemplates });
-      toast.show('已恢复默认模板');
+      toast.show(t('summary.reset_template_success', '已恢复默认模板'));
     }
   };
 
