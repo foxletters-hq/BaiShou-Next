@@ -122,6 +122,9 @@ temp/
 *.bak
 *.orig
 *.txt
+*.db
+*.sqlite
+scratch_*
 
 # ─── Secret / Key ─────────────────────────────────────────
 *.pem
