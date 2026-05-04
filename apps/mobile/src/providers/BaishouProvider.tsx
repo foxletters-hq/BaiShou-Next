@@ -125,11 +125,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             
             if (!config) throw new Error('No active provider configured');
             
-            if (!registry.hasProvider(config.id)) {
-               // 建立真实的映射
-               registry.registerProvider((registry as any).createProviderInstance(config));
-            }
-            const provider = registry.getProvider(config.id)!;
+            // 使用刚引入的单例模式，避免移动端长时间存活导致的过期缓存问题
+            const provider = registry.getOrUpdateProvider(config)!;
             
             await agentService.streamChat({
                sessionId,

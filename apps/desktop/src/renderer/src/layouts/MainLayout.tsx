@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 
 export const MainLayout: React.FC = () => {
   const location = useLocation();
-  const isAgent = location.pathname.startsWith('/agent') || location.pathname.startsWith('/c/');
+  const isAgent = location.pathname.startsWith('/agent') || location.pathname.startsWith('/chat');
 
   return (
     <div className={styles.appContainer}>

@@ -1,39 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Trash2, Edit3, CalendarCheck } from 'lucide-react';
+import { Search, Plus, Edit3, CalendarCheck, Download } from 'lucide-react';
 import { useDiaryData } from './hooks/useDiaryData';
 import { motion } from 'framer-motion';
+import { DiaryCard } from './DiaryCard';
+import type { DiaryEntry } from './DiaryCard';
+import { YearMonthPicker, useToast } from '@baishou/ui';
 import './DiaryPage.css';
-
-// 星期几名称
-const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
-
-// 标签颜色映射
-const TAG_COLORS = ['tag-blue', 'tag-green', 'tag-orange', 'tag-purple'] as const;
-import { YearMonthPicker, useToast, MarkdownRenderer } from '@baishou/ui';
-
-function getTagColor(tag: string): string {
-  const sum = tag.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return TAG_COLORS[sum % TAG_COLORS.length];
-}
-
-// 格式化时间
-function formatTime(date: Date): string {
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
-  const s = String(date.getSeconds()).padStart(2, '0');
-  return `${h}:${m}:${s}`;
-}
-
-interface DiaryEntry {
-  id: number;
-  date: Date;
-  content: string;
-  tags: string[];
-  preview: string;
-}
 
 export const DiaryPage: React.FC = () => {
   const { t } = useTranslation();
@@ -47,12 +21,14 @@ export const DiaryPage: React.FC = () => {
 
   const { entries, loadEntries } = useDiaryData();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const toast = useToast();
 
+  /** 执行删除操作 */
   const performDelete = async () => {
     if (deletingId === null) return;
     try {
-      await (window as any).api.diary.delete(deletingId);
+      await window.api.diary.delete(deletingId);
       loadEntries();
       setDeletingId(null);
       toast.showSuccess(t('diary.delete_success', '日记已删除'));
@@ -62,11 +38,32 @@ export const DiaryPage: React.FC = () => {
     }
   };
 
-  // 查找今天的日记条目（参考原版 BaiShou todayMeta 逻辑）
+  /** 导出日记为 Markdown */
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const result = await window.electron.ipcRenderer.invoke(
+        'diary:export', 'md', undefined, t('diary.export_markdown', 'Export Markdown')
+      ) as { success: boolean; error?: string } | undefined;
+      if (result?.success) {
+        toast.showSuccess(t('diary.export_success', '导出成功'));
+      } else if (result?.error !== 'Cancelled') {
+        toast.showError(t('diary.export_failed', '导出失败'));
+      }
+    } catch (e) {
+      console.error('Export failed', e);
+      toast.showError(t('diary.export_failed', '导出失败'));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  /** 查找今天的日记条目 */
   const todayEntry = useMemo(() => {
     if (!entries) return null;
     const today = new Date();
-    return entries.find((e: any) => {
+    return entries.find((e: DiaryEntry) => {
       const d = e.date ? new Date(e.date) : null;
       return d && d.getFullYear() === today.getFullYear() &&
         d.getMonth() === today.getMonth() &&
@@ -74,7 +71,7 @@ export const DiaryPage: React.FC = () => {
     }) || null;
   }, [entries]);
 
-  // 原版 BaiShou 写日记逻辑：有今天的就用追加模式打开，没有就新建
+  /** 编辑今日日记：有则追加，无则新建 */
   const handleEditToday = () => {
     const today = new Date();
     const y = today.getFullYear();
@@ -82,31 +79,26 @@ export const DiaryPage: React.FC = () => {
     const d = String(today.getDate()).padStart(2, '0');
     const dateStr = `${y}-${m}-${d}`;
     if (todayEntry) {
-      // 追加模式：带 append=1 参数，编辑器会在内容末尾追加时间戳
       navigate(`/diary/${dateStr}?append=1`);
     } else {
-      // 本日首开模式
       navigate(`/diary/${dateStr}`);
     }
   };
 
+  /** 新建日记 */
   const handleAddNew = () => {
     const today = new Date();
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
     const dateStr = `${y}-${m}-${d}`;
-    // 新建模式（无参数不传 append，直接拉起纯净画板）
     navigate(`/diary/new?date=${dateStr}`);
   };
 
-  // Click outside closed natively by YearMonthPicker now
-
-
-  // 处理过滤
+  /** 处理过滤和排序 */
   const filteredEntries = useMemo(() => {
     if (!entries || entries.length === 0) return [];
-    
+
     let filtered = [...entries].map(e => {
       let parsedDate = new Date();
       if (e.date) {
@@ -125,13 +117,17 @@ export const DiaryPage: React.FC = () => {
         date: parsedDate,
         content: e.content || '',
         tags: e.tags || [],
-        preview: e.preview || e.content?.substring(0, 500) || ''
+        preview: e.preview || e.content?.substring(0, 500) || '',
+        weather: e.weather,
+        mood: e.mood,
+        location: e.location,
+        isFavorite: e.isFavorite,
       } as DiaryEntry;
     });
 
     // 月份过滤
     if (selectedMonth) {
-      filtered = filtered.filter(e => 
+      filtered = filtered.filter(e =>
         e.date.getFullYear() === selectedMonth.getFullYear() &&
         e.date.getMonth() === selectedMonth.getMonth()
       );
@@ -140,7 +136,7 @@ export const DiaryPage: React.FC = () => {
     // 搜索过滤
     if (searchQuery.trim()) {
       const lowerQ = searchQuery.trim().toLowerCase();
-      filtered = filtered.filter(e => 
+      filtered = filtered.filter(e =>
         e.preview.toLowerCase().includes(lowerQ) ||
         e.tags.some(tag => tag.toLowerCase().includes(lowerQ))
       );
@@ -152,19 +148,27 @@ export const DiaryPage: React.FC = () => {
     return filtered;
   }, [entries, selectedMonth, searchQuery]);
 
+  /** 格式化日期字符串为 YYYY-MM-DD */
+  const formatDateStr = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   return (
-    <motion.div 
+    <motion.div
       className="diary-page-container"
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.2 }}
     >
-      {/* AppBar */}
+      {/* 顶部工具栏 */}
       <div className="diary-appbar">
         <div className="diary-appbar-left">
           <div className="diary-month-selector">
-            <YearMonthPicker 
+            <YearMonthPicker
               selectedMonth={selectedMonth}
               onChange={setSelectedMonth}
               titlePlaceholder={t('diary.all_diaries', '全部日记')}
@@ -184,8 +188,7 @@ export const DiaryPage: React.FC = () => {
             />
           </div>
 
-
-          <button 
+          <button
             className="diary-today-btn"
             onClick={handleEditToday}
             title={todayEntry ? t('settings.edit_today_tooltip', '编辑今日记录') : t('settings.write_today_tooltip', '记录今天')}
@@ -193,12 +196,18 @@ export const DiaryPage: React.FC = () => {
             {todayEntry ? <Edit3 size={18} /> : <CalendarCheck size={18} />}
           </button>
 
-          <button 
-            className="diary-add-btn"
-            onClick={handleAddNew}
-          >
+          <button className="diary-add-btn" onClick={handleAddNew}>
             <Plus size={18} />
             {t('settings.write_diary_button', '写日记')}
+          </button>
+
+          <button
+            className="diary-export-btn"
+            onClick={handleExport}
+            disabled={isExporting}
+            title={t('diary.export_markdown', '导出 Markdown')}
+          >
+            <Download size={18} />
           </button>
         </div>
       </div>
@@ -214,17 +223,7 @@ export const DiaryPage: React.FC = () => {
             }
           </div>
           {selectedMonth && (
-            <button
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--color-primary, #5BA8F5)',
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 500
-              }}
-              onClick={() => setSelectedMonth(null)}
-            >
+            <button className="diary-view-all-btn" onClick={() => setSelectedMonth(null)}>
               {t('common.view_all', '查看全部')}
             </button>
           )}
@@ -236,21 +235,9 @@ export const DiaryPage: React.FC = () => {
               <motion.div layout="position" key={entry.id} style={{ height: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}>
                 <DiaryCard
                   entry={entry}
-                  onClick={() => {
-                    const y = entry.date.getFullYear();
-                    const m = String(entry.date.getMonth() + 1).padStart(2, '0');
-                    const dStr = String(entry.date.getDate()).padStart(2, '0');
-                    navigate(`/diary/${y}-${m}-${dStr}`);
-                  }}
-                  onEdit={() => {
-                    const y = entry.date.getFullYear();
-                    const m = String(entry.date.getMonth() + 1).padStart(2, '0');
-                    const dStr = String(entry.date.getDate()).padStart(2, '0');
-                    navigate(`/diary/${y}-${m}-${dStr}`);
-                  }}
-                  onDelete={() => {
-                    setDeletingId(entry.id);
-                  }}
+                  onClick={() => navigate(`/diary/${formatDateStr(entry.date)}`)}
+                  onEdit={() => navigate(`/diary/${formatDateStr(entry.date)}`)}
+                  onDelete={() => setDeletingId(entry.id)}
                   t={t}
                 />
               </motion.div>
@@ -259,7 +246,7 @@ export const DiaryPage: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* 删除确认弹窗 */}
       {deletingId !== null && (
         <div className="diary-delete-modal-overlay" onClick={() => setDeletingId(null)}>
           <div className="diary-delete-modal" onClick={e => e.stopPropagation()}>
@@ -279,69 +266,5 @@ export const DiaryPage: React.FC = () => {
         </div>
       )}
     </motion.div>
-  );
-};
-
-// ── DiaryCard 组件（复刻原版 DiaryCard） ──
-
-interface DiaryCardProps {
-  entry: DiaryEntry;
-  onClick: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  t: any;
-}
-
-const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete, t }) => {
-  const day = String(entry.date.getDate()).padStart(2, '0');
-  const weekday = WEEKDAY_NAMES[entry.date.getDay()];
-  const yearMonth = `${entry.date.getFullYear()} · ${MONTH_NAMES[entry.date.getMonth()]}`;
-  const visibleTags = entry.tags.filter(t => t.trim().length > 0);
-
-  return (
-    <div className="diary-card" onClick={onClick}>
-      {/* Header: Day + Weekday + Year-Month */}
-      <div className="diary-card-header">
-        <div className="diary-card-date-row">
-          <span className="diary-card-day">{day}</span>
-          <div className="diary-card-weekday-col">
-            <div className="diary-card-weekday-row">
-              <span className="diary-card-weekday">{weekday}</span>
-              <span className="diary-card-yearmonth">{yearMonth}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content Preview */}
-      <div className="diary-card-content">
-        <div className="diary-card-content-text">
-          <MarkdownRenderer content={entry.preview} />
-        </div>
-      </div>
-
-      {/* Tags */}
-      {visibleTags.length > 0 && (
-        <div className="diary-card-tags">
-          {visibleTags.map((tag, idx) => (
-            <span key={idx} className={`diary-card-tag ${getTagColor(tag)}`}>
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Hover Actions */}
-      <div className="diary-card-actions" onClick={(e) => e.stopPropagation()}>
-        <button className="diary-card-action-btn edit-btn" onClick={onEdit}>
-          <Edit3 size={14} />
-          {t('common.edit', '编辑')}
-        </button>
-        <button className="diary-card-action-btn delete-btn" onClick={onDelete}>
-          <Trash2 size={14} />
-          {t('common.delete', '删除')}
-        </button>
-      </div>
-    </div>
   );
 };

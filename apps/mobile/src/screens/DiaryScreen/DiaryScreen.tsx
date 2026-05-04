@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Sta
 import { DiaryCard, TimelineNode } from '@baishou/ui';
 import { useBaishou } from '../../providers/BaishouProvider';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 
 export const DiaryScreen: React.FC = () => {
