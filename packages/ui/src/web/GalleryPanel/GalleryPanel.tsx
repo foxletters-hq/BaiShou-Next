@@ -9,9 +9,12 @@ import './GalleryPanel.css';
 
 export interface GalleryPanelProps {
   summaries?: any[];
+  onOpen?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) => {
+export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [], onOpen, onEdit, onDelete }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('weekly');
 
@@ -58,7 +61,9 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({ summaries = [] }) =>
             dateRange={`${formatDate(item.startDate)}-${formatDate(item.endDate)}`}
             summaryText={item.content || ''}
             type={(item.type || '').replace('ly', '') as any}
-            onClick={() => console.log('Open', item.id)}
+            onClick={() => onOpen?.(item.id)}
+            onEdit={() => onEdit?.(item.id)}
+            onDelete={() => onDelete?.(item.id)}
           />
         ))}
         {filteredSummaries.length === 0 && (

@@ -248,13 +248,16 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
             />
           </div>
           {!isUnlimitedContext && (
-            <input 
-              type="range" 
-              className={styles.rangeInput} 
-              min={2} max={100} step={1} 
-              value={contextWindow} 
-              onChange={(e) => setContextWindow(Number(e.target.value))} 
-            />
+            <div className={styles.sliderContainer}>
+              <input 
+                type="range" 
+                className={styles.rangeInput} 
+                min={2} max={100} step={1} 
+                value={contextWindow} 
+                onChange={(e) => setContextWindow(Number(e.target.value))} 
+                style={{ backgroundSize: `${((contextWindow - 2) * 100) / 98}% 100%` }}
+              />
+            </div>
           )}
           <div className={styles.descText}>
             {isUnlimitedContext 
@@ -283,13 +286,16 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
 
           {!isCompressDisabled && (
             <>
-              <input 
-                type="range" 
-                className={styles.rangeInput} 
-                min={10000} max={1000000} step={10000} 
-                value={compressThreshold} 
-                onChange={(e) => setCompressThreshold(Number(e.target.value))} 
-              />
+              <div className={styles.sliderContainer}>
+                <input 
+                  type="range" 
+                  className={styles.rangeInput} 
+                  min={10000} max={1000000} step={10000} 
+                  value={compressThreshold} 
+                  onChange={(e) => setCompressThreshold(Number(e.target.value))} 
+                  style={{ backgroundSize: `${((compressThreshold - 10000) * 100) / 990000}% 100%` }}
+                />
+              </div>
               <div className={styles.spacer16} />
               <div className={styles.row}>
                 <label className={styles.fieldLabel} style={{marginBottom: 0}}>{t('agent.assistant.compress_keep_turns_label', '压缩后保留轮数')}</label>
@@ -299,13 +305,16 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               <div className={styles.descText}>
                 {t('agent.assistant.compress_keep_turns_desc', '触发压缩时尾部强行保留几轮原文对话')}
               </div>
-              <input 
-                type="range" 
-                className={styles.rangeInput} 
-                min={1} max={10} step={1} 
-                value={compressKeepTurns} 
-                onChange={(e) => setCompressKeepTurns(Number(e.target.value))} 
-              />
+              <div className={styles.sliderContainer}>
+                <input 
+                  type="range" 
+                  className={styles.rangeInput} 
+                  min={1} max={10} step={1} 
+                  value={compressKeepTurns} 
+                  onChange={(e) => setCompressKeepTurns(Number(e.target.value))} 
+                  style={{ backgroundSize: `${((compressKeepTurns - 1) * 100) / 9}% 100%` }}
+                />
+              </div>
             </>
           )}
 

@@ -20,6 +20,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const monthNames = t('common.months', { returnObjects: true }) as string[];
   
   // 维护内部试图切换状态 (以“年”为单位)
   const currentInitial = selectedMonth || new Date();
@@ -102,10 +103,10 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
         {!selectedMonth ? (
            <span className={styles.placeholderText}>{titlePlaceholder || t('common.all_dates', '全部日期')}</span>
         ) : (
-           <div className={styles.flexBaseline}>
-             <span className={styles.yearText}>{selectedMonth.getFullYear()}</span>
-             <span className={styles.monthText}>{selectedMonth.getMonth() + 1}月</span>
-           </div>
+             <div className={styles.flexBaseline}>
+               <span className={styles.yearText}>{selectedMonth.getFullYear()}</span>
+               <span className={styles.monthText}>{monthNames[selectedMonth.getMonth()]}</span>
+             </div>
         )}
         <CalendarDays size={16} className={styles.icon} />
       </button>
@@ -157,7 +158,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
                        className={`${styles.monthBtn} ${isSelected ? styles.monthBtnSelected : ''} ${isCurrentMonth && !isSelected ? styles.monthBtnCurrent : ''}`}
                        onClick={() => handleSelectMonth(m)}
                      >
-                       {m}月
+                       {monthNames[m - 1]}
                      </button>
                    );
                  })}

@@ -1,3 +1,7 @@
+/* =========================================================
+   局域网传输卡片样式 — 雷达扫描动效为特殊视觉元素
+   ========================================================= */
+
 .container {
   display: flex;
   flex-direction: column;
@@ -9,7 +13,7 @@
   border-radius: inherit;
 }
 
-/* Simulated App Bar */
+/* 顶部导航栏 */
 .appBar {
   position: absolute;
   top: 0;
@@ -30,8 +34,6 @@
   color: var(--text-primary);
 }
 
-
-
 .refreshBtn {
   background: transparent;
   border: none;
@@ -43,18 +45,15 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   transition: background 0.2s;
 }
 
-
-
 .refreshBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--bg-surface-high);
 }
 
-
-
+/* 雷达扫描区域 */
 .radarZone {
   position: relative;
   flex: 1;
@@ -65,7 +64,7 @@
   justify-content: center;
 }
 
-/* Background Cross lines */
+/* 十字准线背景 */
 .radarCross {
   position: absolute;
   width: 100%;
@@ -74,11 +73,12 @@
   left: 0;
   pointer-events: none;
   opacity: 0.1;
-  background: 
-    linear-gradient(to right, transparent 49.8%, var(--color-primary, #5BA8F5) 49.8%, var(--color-primary, #5BA8F5) 50.2%, transparent 50.2%),
-    linear-gradient(to bottom, transparent 49.8%, var(--color-primary, #5BA8F5) 49.8%, var(--color-primary, #5BA8F5) 50.2%, transparent 50.2%);
+  background:
+    linear-gradient(to right, transparent 49.8%, var(--color-primary) 49.8%, var(--color-primary) 50.2%, transparent 50.2%),
+    linear-gradient(to bottom, transparent 49.8%, var(--color-primary) 49.8%, var(--color-primary) 50.2%, transparent 50.2%);
 }
 
+/* 雷达扫描旋转 — 特殊视觉效果，持续时间不受 0.2s 限制 */
 .radarSweep {
   position: absolute;
   top: 50%;
@@ -92,8 +92,8 @@
   background: conic-gradient(
     from 0deg,
     transparent 80%,
-    rgba(91, 168, 245, 0.02) 90%,
-    rgba(91, 168, 245, 0.1) 100%
+    var(--color-primary-light) 90%,
+    var(--color-primary) 100%
   );
   animation: radarSpin 8s linear infinite;
   pointer-events: none;
@@ -104,6 +104,7 @@
   to { transform: rotate(360deg); }
 }
 
+/* 雷达波纹容器 */
 .radarRings {
   position: absolute;
   top: 50%;
@@ -114,13 +115,14 @@
   pointer-events: none;
 }
 
+/* 雷达扩散波纹 — 特殊视觉效果 */
 .ring {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 1px solid var(--color-primary, #5BA8F5);
+  border: 1px solid var(--color-primary);
   box-shadow: none;
   opacity: 0;
   animation: radarWave 6s infinite ease-out;
@@ -135,22 +137,23 @@
   100% { width: 150vmax; height: 150vmax; opacity: 0; }
 }
 
+/* 雷达中心核心 */
 .radarCore {
   position: absolute;
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--color-primary, #5BA8F5);
+  background: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  box-shadow: 0 0 12px rgba(91, 168, 245, 0.2);
+  box-shadow: var(--shadow-glow);
 }
 
 .coreIcon {
   font-size: 24px;
-  color: white;
+  color: var(--text-on-primary);
 }
 
 .corePulse {
@@ -163,6 +166,7 @@
   100% { transform: scale(1); box-shadow: 0 0 8px rgba(91, 168, 245, 0.2); }
 }
 
+/* 扫描提示区域 */
 .scanHintWrapper {
   position: absolute;
   bottom: 80px;
@@ -181,32 +185,28 @@
   margin-bottom: 8px;
 }
 
-
 .scanSubtitle {
   font-size: 14px;
-  color: #71717a;
+  color: var(--text-tertiary);
 }
 
-
-/* Bubbles */
+/* 设备气泡 */
 .deviceBubble {
   position: absolute;
   background: var(--bg-surface);
-  border: 1px solid var(--color-primary, #5BA8F5);
-  border-radius: 30px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-full);
   padding: 8px 16px 8px 10px;
   display: flex;
   align-items: center;
   gap: 12px;
   cursor: pointer;
   z-index: 20;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   animation: floatBubble 4s infinite ease-in-out alternate;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--duration-fast) var(--ease-in-out);
   overflow: hidden;
 }
-
-
 
 @keyframes floatBubble {
   to { transform: translateY(-10px); }
@@ -215,13 +215,13 @@
 
 .deviceBubble:hover {
   transform: scale(1.05) translateY(0);
-  border-color: var(--color-primary, #5BA8F5);
-  box-shadow: 0 0 20px rgba(91, 168, 245, 0.4);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-glow);
   animation-play-state: paused;
 }
 
 .bubbleSending {
-  border-color: #f59e0b;
+  border-color: var(--color-warning);
   box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
   animation: none;
   transform: scale(1.05);
@@ -231,12 +231,12 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(91, 168, 245, 0.15);
+  background: var(--color-primary-light);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .bubbleInfo {
@@ -254,22 +254,21 @@
   text-overflow: ellipsis;
 }
 
-
 .bubbleIp {
   font-size: 11px;
   color: var(--text-secondary);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-family-mono);
   margin-top: 2px;
 }
 
-
+/* 发送覆盖按钮 */
 .sendOverlayBtn {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   width: 100%; height: 100%;
-  background: rgba(91, 168, 245, 0.95);
+  background: var(--color-primary);
   border: none;
-  color: white;
+  color: var(--text-on-primary);
   font-size: 14px;
   font-weight: 700;
   opacity: 0;
@@ -285,7 +284,103 @@
 }
 
 .sendOverlayBtn:disabled {
-  background: rgba(245, 158, 11, 0.95);
+  background: var(--color-warning);
   opacity: 1;
   cursor: not-allowed;
+}
+
+/* 二维码样式 */
+.qrToggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: var(--color-primary-light);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qrToggleBtn:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--color-primary);
+}
+
+.qrOverlay {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: var(--blur-overlay);
+}
+
+.qrCard {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-xl);
+  max-width: 320px;
+  width: 90%;
+}
+
+.qrTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.qrCodeWrapper {
+  padding: 16px;
+  background: var(--bg-surface-raised);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.qrInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.qrIp {
+  font-size: 14px;
+  font-family: var(--font-family-mono);
+  color: var(--text-secondary);
+}
+
+.qrHint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.qrCloseBtn {
+  margin-top: 8px;
+  padding: 10px 24px;
+  background: var(--color-primary-light);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qrCloseBtn:hover {
+  background: var(--bg-surface-high);
 }

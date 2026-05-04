@@ -47,7 +47,7 @@
 }
 
 .searchBox:focus-within {
-  background-color: var(--bg-surface, #FFFFFF);
+  background-color: var(--bg-surface);
   border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.5);
   box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
 }
@@ -172,18 +172,18 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--text-secondary, #64748B);
+  color: var(--text-secondary);
   transition: all 0.15s;
 }
 
 .cardActionBtn:hover {
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .cardActionBtnDanger:hover {
   background: rgba(var(--color-error-rgb, 244, 67, 54), 0.1);
-  color: var(--color-error, #F44336);
+  color: var(--color-error);
 }
 
 /* Card Content Structure */
@@ -215,7 +215,7 @@
 .cardName {
   font-size: 16px;
   font-weight: 800;
-  color: var(--text-primary, #0F172A);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,7 +224,7 @@
 .cardDesc {
   font-size: 13px;
   line-height: 1.5;
-  color: var(--text-secondary, #64748B);
+  color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -247,7 +247,7 @@
   font-size: 11px;
   font-family: var(--font-mono, monospace);
   font-weight: 600;
-  color: var(--text-secondary, #94A3B8);
+  color: var(--text-secondary);
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
   padding: 4px 8px;
   border-radius: 6px;
@@ -269,7 +269,7 @@
   min-height: 200px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .addCard:hover {
@@ -305,7 +305,7 @@
   justify-content: center;
   gap: 16px;
   padding: 64px 24px;
-  color: var(--text-secondary, #64748B);
+  color: var(--text-secondary);
 }
 
 .emptyIcon {
@@ -320,22 +320,24 @@
 }
 
 .emptyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin-top: 12px;
-  padding: 12px 28px;
-  background: linear-gradient(135deg, var(--color-primary, #5BA8F5), rgba(var(--color-tertiary-rgb, 173, 136, 212), 1));
-  color: #FFFFFF;
+  padding: 8px 16px;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
   border: none;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.3);
-  transition: all 0.2s;
+  transition: opacity 0.2s;
 }
 
 .emptyBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(91, 168, 245, 0.4);
+  opacity: 0.9;
 }
 
 /* Delete Confirm Overlay */
@@ -353,7 +355,7 @@
 }
 
 .dialogBox {
-  background: var(--bg-surface, #FFFFFF);
+  background: var(--bg-surface);
   border-radius: 20px;
   padding: 24px;
   width: 90%;
@@ -379,13 +381,13 @@
 .dialogTitle {
   font-size: 18px;
   font-weight: 800;
-  color: var(--text-primary, #0F172A);
+  color: var(--text-primary);
   text-align: center;
 }
 
 .dialogText {
   font-size: 14px;
-  color: var(--text-secondary, #64748B);
+  color: var(--text-secondary);
   line-height: 1.5;
   text-align: center;
 }
@@ -409,43 +411,21 @@
 
 .dialogBtnCancel {
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
-  color: var(--text-secondary, #64748B);
+  color: var(--text-secondary);
 }
 .dialogBtnCancel:hover {
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  color: var(--text-primary, #0F172A);
+  color: var(--text-primary);
 }
 
 .dialogBtnDanger {
   background: rgba(var(--color-error-rgb, 244, 67, 54), 0.1);
-  color: var(--color-error, #F44336);
+  color: var(--color-error);
 }
 .dialogBtnDanger:hover {
   background: rgba(var(--color-error-rgb, 244, 67, 54), 1);
-  color: #FFFFFF;
-  transform: translateY(-1px);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.createBtn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: var(--text-on-primary);
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
 }

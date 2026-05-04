@@ -85,6 +85,47 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
                <span className={styles.radioSubtitle}>{t('settings.web_search_engine_tavily_desc', '高速智能搜索引擎（需配置密钥）')}</span>
              </div>
            </label>
+           
+           <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'local-bing' ? styles.radioSelected : ''}`}>
+             <input 
+               type="radio" 
+               name="engine" 
+               value="local-bing" 
+               className={styles.radioInput}
+               checked={searchConfig.webSearchEngine === 'local-bing'}
+               onChange={(e) => handleChange('webSearchEngine', e.target.value)}
+             />
+             <div className={styles.radioCustomContainer}>
+                <div className={styles.radioCustomRing}>
+                   {searchConfig.webSearchEngine === 'local-bing' && <div className={styles.radioCustomDot} />}
+                </div>
+             </div>
+             <div className={styles.radioContent}>
+               <span className={styles.radioTitle}>{t('settings.web_search_engine_local_bing', 'Bing 本地搜索')}</span>
+               <span className={styles.radioSubtitle}>{t('settings.web_search_engine_local_bing_desc', '使用本地浏览器搜索 Bing，无需 API 密钥')}</span>
+             </div>
+           </label>
+           
+           <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'local-google' ? styles.radioSelected : ''}`}>
+             <input 
+               type="radio" 
+               name="engine" 
+               value="local-google" 
+               className={styles.radioInput}
+               checked={searchConfig.webSearchEngine === 'local-google'}
+               onChange={(e) => handleChange('webSearchEngine', e.target.value)}
+             />
+             <div className={styles.radioCustomContainer}>
+                <div className={styles.radioCustomRing}>
+                   {searchConfig.webSearchEngine === 'local-google' && <div className={styles.radioCustomDot} />}
+                </div>
+             </div>
+             <div className={styles.radioContent}>
+               <span className={styles.radioTitle}>{t('settings.web_search_engine_local_google', 'Google 本地搜索')}</span>
+               <span className={styles.radioSubtitle}>{t('settings.web_search_engine_local_google_desc', '使用本地浏览器搜索 Google，无需 API 密钥')}</span>
+             </div>
+           </label>
+           
            <div style={{ height: 12 }} />
         </div>
       </div>

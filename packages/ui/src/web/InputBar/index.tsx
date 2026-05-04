@@ -13,12 +13,13 @@ import { MdSend, MdStop, MdApps } from 'react-icons/md';
 
 export interface InputBarProps {
   isLoading: boolean;
-  onSend: (text: string, attachments?: MockChatAttachment[]) => void;
+  onSend: (text: string, attachments?: MockChatAttachment[], searchMode?: boolean) => void;
   onStop?: () => void;
   assistantName?: string;
   onAssistantTap?: () => void;
   onRecall?: () => void;
   onTriggerShortcut?: () => void;
+  onManageShortcuts?: () => void;
   onOpenTools?: () => void;
 }
 
@@ -35,12 +36,18 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   onAssistantTap,
   onRecall,
   onTriggerShortcut,
+  onManageShortcuts,
   onOpenTools
 }, ref) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([]);
-  const [showToolbar, setShowToolbar] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('baishou_toolbar_open') === 'true';
+    }
+    return false;
+  });
   const [searchMode, setSearchMode] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toast = useToast();
@@ -66,7 +73,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
 
   const handleSend = () => {
     if ((!text.trim() && attachments.length === 0) || isLoading) return;
-    onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined);
+    onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined, searchMode);
     setText('');
     setAttachments([]);
     if (textareaRef.current) {
@@ -134,7 +141,9 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   };
 
   const handlePromptShortcut = () => {
-    if (onTriggerShortcut) {
+    if (onManageShortcuts) {
+      onManageShortcuts();
+    } else if (onTriggerShortcut) {
       onTriggerShortcut();
     }
   };
@@ -172,6 +181,33 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
         style={{ display: 'none' }}
       />
       <div className={styles.constrainedBox}>
+        {/* Attachments Preview */}
+        {attachments.length > 0 && (
+          <div className={styles.attachmentList}>
+             {attachments.map(att => (
+                <div key={att.id} className={styles.attachmentChip}>
+                   {att.isImage ? (
+                     <img src={att.filePath} className={styles.attPreviewImg} alt={att.fileName}/>
+                   ) : (
+                     <div className={styles.attFileBox}>
+                       <span className={styles.attFileIcon}>{att.isPdf ? <FileText size={18} /> : <Folder size={18} />}</span>
+                       <div className={styles.attFileMeta}>
+                          <span className={styles.attFileName}>{att.fileName}</span>
+                          <span className={styles.attFileSize}>{att.fileSize ? (att.fileSize < 1024 * 1024 ? `${(att.fileSize / 1024).toFixed(1)} KB` : `${(att.fileSize / 1024 / 1024).toFixed(1)} MB`) : '124 KB'}</span>
+                       </div>
+                     </div>
+                   )}
+                   <button 
+                     className={styles.attRemoveBtn} 
+                     onClick={() => setAttachments(prev => prev.filter(p => p.id !== att.id))}
+                   >
+                     <X size={12} strokeWidth={3} />
+                   </button>
+                </div>
+             ))}
+          </div>
+        )}
+
         {/* Animated Toolbar */}
         <AnimatePresence initial={false}>
           {showToolbar && (
@@ -200,38 +236,17 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
           )}
         </AnimatePresence>
 
-        {/* Attachments Preview */}
-        {attachments.length > 0 && (
-          <div className={styles.attachmentList}>
-             {attachments.map(att => (
-                <div key={att.id} className={styles.attachmentChip}>
-                   {att.isImage ? (
-                     <img src={att.filePath} className={styles.attPreviewImg} alt={att.fileName}/>
-                   ) : (
-                     <div className={styles.attFileBox}>
-                       <span className={styles.attFileIcon}>{att.isPdf ? <FileText size={18} /> : <Folder size={18} />}</span>
-                       <div className={styles.attFileMeta}>
-                          <span className={styles.attFileName}>{att.fileName}</span>
-                          <span className={styles.attFileSize}>{att.fileSize ? (att.fileSize < 1024 * 1024 ? `${(att.fileSize / 1024).toFixed(1)} KB` : `${(att.fileSize / 1024 / 1024).toFixed(1)} MB`) : '124 KB'}</span>
-                       </div>
-                     </div>
-                   )}
-                   <button 
-                     className={styles.attRemoveBtn} 
-                     onClick={() => setAttachments(prev => prev.filter(p => p.id !== att.id))}
-                   >
-                     <X size={12} strokeWidth={3} />
-                   </button>
-                </div>
-             ))}
-          </div>
-        )}
-
         {/* Input Card */}
         <div className={styles.inputCard}>
            <button 
              className={styles.appMenuBtn} 
-             onClick={() => setShowToolbar(!showToolbar)}
+             onClick={() => setShowToolbar(prev => {
+                const next = !prev;
+                if (typeof window !== 'undefined') {
+                   localStorage.setItem('baishou_toolbar_open', String(next));
+                }
+                return next;
+             })}
              type="button"
            >
               {showToolbar ? <LayoutGrid size={20} /> : <Menu size={20} />}

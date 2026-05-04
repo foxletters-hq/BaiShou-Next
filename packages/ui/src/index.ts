@@ -1,5 +1,6 @@
 export * from './theme';
 export * from './hooks';
+export * from './utils/heatmap-matrix';
 
 export * from './web/Button/Button';
 export * from './web/Card/Card';
@@ -33,6 +34,7 @@ export * from './web/DiaryEditorAppBarTitle/DiaryEditorAppBarTitle';
 export * from './web/DashboardHeroBanner/DashboardHeroBanner';
 export * from './web/DashboardStatsCard/DashboardStatsCard';
 export * from './web/DashboardSharedMemoryCard/DashboardSharedMemoryCard';
+export * from './web/ActivityHeatmap/index';
 export * from './web/SummaryDashboard/index';
 export * from './web/GalleryPanel/index';
 export * from './web/SettingsSection/index';
@@ -86,9 +88,10 @@ export * from './web/SessionManagementPage/index';
 export * from './web/AssistantManagementPage/index';
 export * from './web/AssistantEditPage/index';
 export * from './web/ChatCostDialog/index';
+export * from './web/ContextChainDialog/index';
 export { AssistantPickerSheet } from './web/AssistantPickerSheet/index';
 export type { AssistantPickerSheetProps } from './web/AssistantPickerSheet/index';
 export * from './web/PromptShortcutSheet/index';
-export * from './web/RecallBottomSheet/index';
+export * from './web/RecallDialog/index';
 export * from './web/ModelSwitcherPopup';
 export * from './web/AvatarEditor';

@@ -1,6 +1,6 @@
 import React from 'react';
 import styles from './TokenBadge.module.css';
-import { Zap } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 export interface TokenBadgeProps {
   inputTokens?: number;
@@ -26,18 +26,10 @@ export const TokenBadge: React.FC<TokenBadgeProps> = ({
   const costText = (actualCostMicros / 1000000).toFixed(4);
   const total = inputTokens + outputTokens;
 
-  // Determine stress level of the token consumption
-  let levelClass = styles.levelLow; // < 1k
-  if (total >= 10000) {
-    levelClass = styles.levelHigh;
-  } else if (total >= 5000) {
-    levelClass = styles.levelMed;
-  }
-
   return (
-    <div className={`${styles.container} ${levelClass}`} onClick={onClick}>
+    <div className={`${styles.container}`} onClick={onClick}>
       <span className={styles.iconWrap}>
-         <Zap size={12} strokeWidth={2.5} />
+         <Activity size={12} strokeWidth={2.5} />
       </span>
       <span className={styles.tokenText}>
         {formatTokens(total)}

@@ -59,6 +59,7 @@
     "prosemirror-model": "^1.24.1",
     "prosemirror-state": "^1.4.3",
     "prosemirror-view": "^1.37.2",
+    "qrcode.react": "^4.2.0",
     "react-datepicker": "^9.1.0",
     "react-easy-crop": "^5.5.7",
     "react-i18next": "^17.0.2",

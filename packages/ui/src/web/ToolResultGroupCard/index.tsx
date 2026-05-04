@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styles from './ToolResultGroupCard.module.css';
 import { MockToolInvocation } from '@baishou/shared/src/mock/agent.mock';
 import { useTranslation } from 'react-i18next';
-import { Wrench, ChevronDown, CheckCircle2, XCircle, BrainCircuit, Book, Globe, Clock, MessageCircle } from 'lucide-react';
+import { ChevronDown, CheckCircle2, XCircle } from 'lucide-react';
 
 export interface ToolResultGroupProps {
   invocations: MockToolInvocation[];
@@ -12,42 +12,15 @@ export const ToolResultGroup: React.FC<ToolResultGroupProps> = ({ invocations })
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
-
   if (!invocations || invocations.length === 0) return null;
-
-  // Derive domain from the first available invocation
-  let primaryTheme = styles.themeWrench;
-  let MasterIcon = Wrench;
-
-  const sampleTool = invocations[0]?.toolName?.toLowerCase() || '';
-  if (sampleTool.includes('diary')) {
-    primaryTheme = styles.themeBook;
-    MasterIcon = Book;
-  } else if (sampleTool.includes('memory') || sampleTool.includes('vector')) {
-    primaryTheme = styles.themeBrain;
-    MasterIcon = BrainCircuit;
-  } else if (sampleTool.includes('web') || sampleTool.includes('url')) {
-    primaryTheme = styles.themeGlobe;
-    MasterIcon = Globe;
-  } else if (sampleTool.includes('message') || sampleTool.includes('summary')) {
-    primaryTheme = styles.themeGlobe;
-    MasterIcon = MessageCircle;
-  } else if (sampleTool.includes('time')) {
-    primaryTheme = styles.themeWrench;
-    MasterIcon = Clock;
-  }
 
   return (
     <div className={styles.groupContainer}>
-       <div className={`${styles.groupCard} ${primaryTheme}`}>
+       <div className={styles.groupCard}>
           <div 
             className={styles.headerRow} 
             onClick={() => setExpanded(!expanded)}
           >
-             <div className={styles.iconBox}>
-                <MasterIcon size={16} strokeWidth={2.5} />
-             </div>
-             
              <div className={styles.titleArea}>
                 <span className={styles.titleText}>
                    {t('agent.tools.tool_call_results', { count: invocations.length })}
@@ -62,7 +35,7 @@ export const ToolResultGroup: React.FC<ToolResultGroupProps> = ({ invocations })
           
           {expanded && (
              <div className={styles.childrenArea}>
-                {invocations.map((inv, index) => <ToolResultItem key={inv.toolCallId || index} invocation={inv} themeClass={primaryTheme} />)}
+                {invocations.map((inv, index) => <ToolResultItem key={inv.toolCallId || index} invocation={inv} />)}
              </div>
           )}
        </div>
@@ -70,7 +43,7 @@ export const ToolResultGroup: React.FC<ToolResultGroupProps> = ({ invocations })
   );
 };
 
-const ToolResultItem: React.FC<{ invocation: MockToolInvocation, themeClass: string }> = ({ invocation, themeClass }) => {
+const ToolResultItem: React.FC<{ invocation: MockToolInvocation }> = ({ invocation }) => {
   const [expanded, setExpanded] = useState(false);
   
   const getToolName = () => {
@@ -141,7 +114,7 @@ const ToolResultItem: React.FC<{ invocation: MockToolInvocation, themeClass: str
   };
 
   return (
-    <div className={`${styles.itemCard} ${themeClass} ${isError ? styles.itemError : ''}`}>
+    <div className={`${styles.itemCard} ${isError ? styles.itemError : ''}`}>
        <div 
          className={styles.itemHeader} 
          onClick={() => setExpanded(!expanded)}

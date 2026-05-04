@@ -33,10 +33,10 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
   const LANGS = [
     { val: 'system', label: t('settings.language_system', '跟随系统') },
-    { val: 'zh', label: t('settings.language_zh', '简体中文') },
-    { val: 'zh-TW', label: t('settings.language_zh_tw', '繁體中文') },
-    { val: 'en', label: t('settings.language_en', 'English') },
-    { val: 'ja', label: t('settings.language_ja', '日本語') },
+    { val: 'zh', label: '简体中文' },
+    { val: 'zh-TW', label: '繁體中文' },
+    { val: 'en', label: 'English' },
+    { val: 'ja', label: '日本語' },
   ];
 
   const getThemeText = () => {

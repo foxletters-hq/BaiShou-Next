@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Pin, PinOff, Trash2, Copy, Plus, Activity, Cpu } from 'lucide-react';
+import { Search, Pin, PinOff, Trash2, Copy, Plus, Activity, Sparkles } from 'lucide-react';
 import styles from './AssistantManagementPage.module.css';
 
 // ─── 类型定义 ──────────────────────────────────────────────
@@ -118,11 +118,12 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
       <div className={styles.scrollArea}>
       {assistants.length === 0 ? (
         <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}><Cpu size={72} strokeWidth={1} /></div>
+          <div className={styles.emptyIcon}><Sparkles size={72} strokeWidth={1} /></div>
           <span className={styles.emptyText}>
             {t('agent.assistant.empty_hint', '全列阵空爆：您的矩阵里还没有服役的心智')}
           </span>
           <button className={styles.emptyBtn} onClick={onCreate}>
+            <Plus size={18} />
             {t('agent.assistant.create_first', '执行首建协议')}
           </button>
         </div>
