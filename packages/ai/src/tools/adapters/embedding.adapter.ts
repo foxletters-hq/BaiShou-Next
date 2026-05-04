@@ -3,6 +3,11 @@ import { IAIProvider } from '../../providers/provider.interface';
 import { embed } from 'ai';
 import { SqliteHybridSearchRepository } from '@baishou/database';
 
+/** 最大分块 token 数（对齐原版 1024 字符≈512 token） */
+const MAX_CHUNK_LENGTH = 1024;
+/** 分块重叠字符数 */
+const CHUNK_OVERLAP = 128;
+
 export class EmbeddingAdapter implements ToolEmbeddingService {
   /**
    * @param provider BaiShou 核心层提供的带有 Vercel 标准转化能力的 AI 供应商
@@ -42,21 +47,52 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         throw new Error('hybridRepo must be provided to store embeddings permanently.');
      }
 
-     const embVector = await this.embedQuery(options.text);
-     if (!embVector) {
-        throw new Error('Failed to extract vector from provided text string.');
-     }
+     // 对齐原版：长文本先分块，每块独立嵌入入库
+     const chunks = splitIntoChunks(options.text);
 
-     await this.hybridRepo.insertEmbedding({
-        id: crypto.randomUUID(),
-        sourceType: options.sourceType,
-        sourceId: options.sourceId,
-        groupId: options.groupId,
-        chunkIndex: 0,
-        chunkText: options.text,
-        embedding: embVector,
-        modelId: this.modelId,
-        sourceCreatedAt: Date.now()
-     });
+     for (let i = 0; i < chunks.length; i++) {
+       const chunk = chunks[i]!;
+       const embVector = await this.embedQuery(chunk);
+       if (!embVector) {
+         console.warn(`[EmbeddingAdapter] 分块 ${i} 嵌入失败，跳过`);
+         continue;
+       }
+
+       await this.hybridRepo.insertEmbedding({
+         id: `${options.sourceId}_chunk_${i}`,
+         sourceType: options.sourceType,
+         sourceId: options.sourceId,
+         groupId: options.groupId,
+         chunkIndex: i,
+         chunkText: chunk,
+         embedding: embVector,
+         modelId: this.modelId,
+         sourceCreatedAt: Date.now()
+       });
+     }
   }
+}
+
+/**
+ * 滑动窗口分块（对齐原版 EmbeddingService._splitIntoChunks）
+ *
+ * 纯字符长度滑动窗口，不做自然断句。
+ * 短文本（≤MAX_CHUNK_LENGTH）返回单块。
+ */
+function splitIntoChunks(text: string): string[] {
+  if (text.length <= MAX_CHUNK_LENGTH) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  let start = 0;
+
+  while (start < text.length) {
+    const end = Math.min(start + MAX_CHUNK_LENGTH, text.length);
+    chunks.push(text.substring(start, end));
+    if (end >= text.length) break;
+    start = end - CHUNK_OVERLAP;
+  }
+
+  return chunks;
 }

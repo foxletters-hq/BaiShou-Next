@@ -49,8 +49,10 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
         defaultValue: 'duckduckgo',
         enumOptions: [
           { label: 'DuckDuckGo (Free / No Key Required)', value: 'duckduckgo' },
-          { label: 'Tavily (Requires API Key)', value: 'tavily' }
-        ] // 老白守支持的两大内置引擎适配
+          { label: 'Tavily (Requires API Key)', value: 'tavily' },
+          { label: 'Bing (Local Browser)', value: 'local-bing' },
+          { label: 'Google (Local Browser)', value: 'local-google' }
+        ]
       },
       {
         key: 'tavily_api_key',
@@ -99,16 +101,22 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
               queries, engine: actualEngine, 
               maxResultsPerQuery: maxResults, 
               totalMaxResults: maxResults + 5,
-              apiKey: tavilyKey
+              apiKey: tavilyKey,
+              webSearchResultFetcher: context.webSearchResultFetcher
            });
        } catch (primaryErr) {
            console.warn(`[WebSearchTool] Primary engine ${actualEngine} failed, trying fallback. Error:`, primaryErr);
+           // 本地搜索引擎失败时不 fallback 到其他引擎
+           if (actualEngine.startsWith('local-')) {
+             throw primaryErr;
+           }
            actualEngine = actualEngine === 'tavily' ? 'duckduckgo' : 'tavily';
            results = await WebSearchService.multiSearch({
               queries, engine: actualEngine, 
               maxResultsPerQuery: maxResults, 
               totalMaxResults: maxResults,
-              apiKey: tavilyKey
+              apiKey: tavilyKey,
+              webSearchResultFetcher: context.webSearchResultFetcher
            });
        }
 

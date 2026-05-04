@@ -29,8 +29,9 @@ export class DiaryDeleteTool extends AgentTool<typeof diaryDeleteParams> {
     }
 
     const year = args.date.substring(0, 4);
+    const month = args.date.substring(5, 7);
     const fileName = `${args.date}.md`;
-    const filePath = join(context.vaultName, 'Entries', year, fileName);
+    const filePath = join(context.vaultName, 'Journals', year, month, fileName);
 
     try {
       await access(filePath);

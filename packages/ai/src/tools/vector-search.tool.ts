@@ -2,14 +2,14 @@
  * VectorSearchTool — 向量语义搜索工具
  *
  * 支持纯向量搜索和 FTS5+向量混合搜索两种模式。
- * Agent 通过此工具搜索历史消息和存储的记忆。
- *
- * 原始实现：lib/agent/tools/memory/vector_search_tool.dart (246 行)
+ * 混合搜索使用 RRF (Reciprocal Rank Fusion) 算法融合排序。
  */
 
 import { z } from 'zod';
 import { AgentTool } from './agent.tool';
 import type { ToolContext } from './agent.tool';
+import { HybridSearchUtils } from '../rag/hybrid-search';
+import type { ISearchResult } from '../rag/hybrid-search.types';
 
 const vectorSearchParams = z.object({
   query: z
@@ -28,13 +28,6 @@ const vectorSearchParams = z.object({
       '最低相似度阈值(0-1)，低于此分数的结果将被过滤。默认 0.4',
     ),
 });
-
-interface ScoredResult {
-  chunkText: string;
-  score: number;
-  source: string;
-  createdAt?: Date;
-}
 
 export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
   readonly name = 'vector_search';
@@ -79,15 +72,17 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
         `⚙️ 参数: topK=${maxResults}, 阈值=${minScore.toFixed(2)}, 模式=${mode}`,
       );
 
-      let results: ScoredResult[] = [];
+      let results: ISearchResult[] = [];
 
       // 向量搜索
       const vectorRaw = await vectorStore.searchSimilar(queryEmbedding, maxResults);
-      const vectorResults: ScoredResult[] = vectorRaw.map((r) => ({
+      const vectorResults: ISearchResult[] = vectorRaw.map((r) => ({
+        messageId: r.sourceId,
+        sessionId: r.groupId,
         chunkText: r.chunkText,
         score: 1.0 - r.distance,
-        source: 'vector',
-        createdAt: r.createdAt ? new Date(r.createdAt) : undefined,
+        source: 'vector' as const,
+        createdAt: r.createdAt,
       }));
 
       const bestVecScore = vectorResults.length > 0
@@ -102,34 +97,22 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
         const ftsRaw = await vectorStore.searchFts(args.query, maxResults);
         pipeline.push(`📝 FTS关键词搜索: ${ftsRaw.length} 条命中`);
 
-        // 简单 RRF 融合
-        const ftsResults: ScoredResult[] = ftsRaw.map((r) => ({
+        const ftsResults: ISearchResult[] = ftsRaw.map((r) => ({
+          messageId: r.messageId,
+          sessionId: r.sessionId,
           chunkText: r.snippet,
           score: 0,
-          source: 'fts',
+          source: 'fts' as const,
         }));
 
-        // 合并：向量结果优先，FTS 补充
-        const seen = new Set<string>();
-        for (const r of vectorResults) {
-          if (!seen.has(r.chunkText)) {
-            results.push(r);
-            seen.add(r.chunkText);
-          }
-        }
-        for (const r of ftsResults) {
-          if (!seen.has(r.chunkText)) {
-            results.push({ ...r, score: 0.3 }); // FTS 兜底分
-            seen.add(r.chunkText);
-          }
-        }
+        // 使用 RRF 算法融合排序（对齐原版 k=60, ftsWeight=0.3, vectorWeight=0.7）
+        results = HybridSearchUtils.mergeRRF(ftsResults, vectorResults, maxResults);
         pipeline.push(`🔀 RRF融合排序: ${results.length} 条合并`);
       } else {
         results = vectorResults;
       }
 
-      // 排序 + 过滤
-      results.sort((a, b) => b.score - a.score);
+      // 过滤低分
       const beforeCount = results.length;
       if (minScore > 0) {
         results = results.filter((r) => r.score >= minScore);
@@ -156,7 +139,7 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
           r.source === 'hybrid' ? '混合' : r.source === 'fts' ? 'FTS' : '向量';
         lines.push(`--- 结果 ${i + 1} [${sourceLabel}] ---`);
         if (r.createdAt) {
-          const t = r.createdAt;
+          const t = new Date(r.createdAt);
           const y = t.getFullYear();
           const m = String(t.getMonth() + 1).padStart(2, '0');
           const d = String(t.getDate()).padStart(2, '0');

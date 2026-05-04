@@ -63,6 +63,27 @@ export class AIProviderRegistry {
     return this.providers.has(id);
   }
 
+  /**
+   * 智能获取或更新单例提供商实例（Smart Singleton）
+   * 对比配置对象，如果有变动则自动重建缓存并返回新实例，无变动则直接返回现有缓存。
+   */
+  public getOrUpdateProvider(config: AiProviderModel | AIProviderConfig): IAIProvider {
+    const existing = this.providers.get(config.id);
+    
+    if (existing) {
+        // 使用序列化比对，确保配置无变动时复用单例
+        const oldStr = JSON.stringify(existing.config || {});
+        const newStr = JSON.stringify(config || {});
+        if (oldStr === newStr) {
+            return existing;
+        }
+    }
+    
+    const newProvider = this.createProviderInstance(config);
+    this.providers.set(config.id, newProvider);
+    return newProvider;
+  }
+
   public removeProvider(id: string): void {
     this.providers.delete(id);
   }

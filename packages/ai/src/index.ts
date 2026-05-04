@@ -32,6 +32,8 @@ export * from './middleware/middleware-factory';
 // Agent Handlers
 export * from './agent/message.adapter';
 export * from './agent/stream-accumulator';
+export * from './agent/stream-chunk.types';
+export * from './agent/stream-chunk.adapter';
 export * from './agent/agent-session.service';
 
 // Memory & Context Engine

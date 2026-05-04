@@ -1,9 +1,6 @@
-import { ToolRegistry } from '../tools/tool-registry';
-import { CoreTool } from 'ai';
-
 export interface SystemPromptBuilderOptions {
   vaultName: string;
-  tools: Record<string, CoreTool>; // 此刻所有通过了验证准备好交给模型的 Tool 实例集
+  tools: Record<string, any>; // 此刻所有通过了验证准备好交给模型的 Tool 实例集
   customPersona?: string;
   customGuidelines?: string;
   userProfileBlock?: string;
@@ -74,6 +71,20 @@ export class SystemPromptBuilder {
         );
         buffer.push('');
       }
+
+      // 网络搜索工具未启用时，告知模型
+      if (!availableToolIds.includes('web_search')) {
+        buffer.push(
+          'Note: Web search tool is currently disabled by the user. ' +
+          'You cannot search the internet for real-time information. ' +
+          'If the user asks about recent events or current information that requires web search, ' +
+          'politely inform them that the search feature is not enabled and suggest they enable it in the toolbar if needed.'
+        );
+        buffer.push('');
+      }
+    } else {
+      buffer.push('No tools are currently available.');
+      buffer.push('');
     }
 
     // 额外的行为准则补丁

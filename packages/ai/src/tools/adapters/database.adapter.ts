@@ -32,6 +32,14 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     await this.hybridRepo.deleteEmbeddingsBySource(sourceType, sourceId);
   }
 
+  async deleteFile(filePath: string): Promise<void> {
+    await this.hybridRepo.deleteEmbeddingsBySource('diary', filePath);
+  }
+
+  async indexFile(_filePath: string): Promise<void> {
+    // 日记文件的向量索引由 ShadowIndexSyncService 的文件监听自动处理，此处为 no-op
+  }
+
   async searchFts(query: string, limit: number) {
     const rows = await this.hybridRepo.queryFTS(query, limit);
     return rows.map((r: any) => ({

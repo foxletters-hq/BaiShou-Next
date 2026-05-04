@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { tool, CoreTool } from 'ai';
 
 /**
  * 嵌入服务接口——工具不关心具体实现（DIP）
@@ -86,6 +85,18 @@ export interface ToolDeduplicationService {
 }
 
 /**
+ * 日记全文搜索接口 (FTS5)
+ */
+export interface ToolDiarySearcher {
+  searchFTS(query: string, limit?: number): Promise<Array<{
+    date: string;
+    contentSnippet: string;
+    tags: string;
+    rankScore: number;
+  }>>;
+}
+
+/**
  * 传递给工具执行的上下文
  */
 export interface ToolContext {
@@ -96,6 +107,7 @@ export interface ToolContext {
   messageSearcher?: ToolMessageSearcher;
   summaryReader?: ToolSummaryReader;
   deduplicationService?: ToolDeduplicationService;
+  diarySearcher?: ToolDiarySearcher;
   userConfig?: Record<string, unknown>;
   /** 允许外部注入基于宿主系统（如 Electron / Web）的真正搜索页面执行器，如果没有则降级走 Native Fetch */
   webSearchResultFetcher?: (url: string) => Promise<string>;
@@ -167,13 +179,22 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
   /**
    * 将面向对象的 AgentTool 转化为 Vercel AI SDK 的 CoreTool 格式
    */
-  toVercelTool(context: ToolContext): CoreTool {
-    return tool({
+  toVercelTool(context: ToolContext): any {
+    // tool() 只是透传函数，直接返回对象即可
+    return {
       description: this.description,
       parameters: this.parameters,
       execute: async (args: z.infer<TArgs>) => {
-        return await this.execute(args, context);
+        try {
+          console.log(`[AgentTool] Executing tool "${this.name}" with args:`, JSON.stringify(args).slice(0, 200));
+          const result = await this.execute(args, context);
+          console.log(`[AgentTool] Tool "${this.name}" completed successfully`);
+          return result;
+        } catch (e: any) {
+          console.error(`[AgentTool] Tool "${this.name}" threw an unhandled error:`, e);
+          return `工具执行失败 (${this.name}): ${e?.message || String(e)}`;
+        }
       },
-    });
+    };
   }
 }

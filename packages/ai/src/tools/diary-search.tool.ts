@@ -1,13 +1,10 @@
 /**
  * DiarySearchTool — 关键词搜索日记内容
  *
- * 基于文件系统的全文搜索（遍历 Journals 目录）。
- * Agent 通过此工具按关键词查找日记，无需知道具体日期。
+ * 优先使用 FTS5 全文索引（通过 ToolContext.diarySearcher）。
+ * 若 FTS5 不可用，降级为文件遍历实现。
  *
- * 注意：生产环境应替换为基于 FTS5 索引的实现。
- * 当前使用文件遍历实现，保证基础功能可用。
- *
- * 原始实现：lib/agent/tools/diary/diary_search_tool.dart (206 行)
+ * 对标原版 `diary_search_tool.dart`
  */
 
 import { z } from 'zod';
@@ -61,6 +58,69 @@ export class DiarySearchTool extends AgentTool<typeof diarySearchParams> {
     }
 
     const limit = args.limit ?? 10;
+
+    // 优先使用 FTS5 索引
+    if (context.diarySearcher) {
+      return this.executeFTS(args, context, keywords, limit);
+    }
+
+    // 降级为文件遍历
+    return this.executeFileScan(args, context, keywords, limit);
+  }
+
+  private async executeFTS(
+    args: z.infer<typeof diarySearchParams>,
+    context: ToolContext,
+    keywords: string[],
+    limit: number,
+  ): Promise<string> {
+    const results: Array<{ date: string; snippet: string }> = [];
+
+    for (const keyword of keywords) {
+      const ftsResults = await context.diarySearcher!.searchFTS(keyword, limit * 2);
+
+      for (const r of ftsResults) {
+        // 日期范围过滤
+        if (args.start_date && r.date < args.start_date) continue;
+        if (args.end_date && r.date > args.end_date) continue;
+
+        // 去重
+        if (results.some(existing => existing.date === r.date)) continue;
+
+        results.push({
+          date: r.date,
+          snippet: r.contentSnippet || '(no preview)',
+        });
+
+        if (results.length >= limit) break;
+      }
+      if (results.length >= limit) break;
+    }
+
+    if (results.length === 0) {
+      return `No diary entries found matching "${args.query}".`;
+    }
+
+    results.sort((a, b) => b.date.localeCompare(a.date));
+
+    const lines = [
+      `Found ${results.length} diary entries matching "${args.query}" (FTS):\n`,
+    ];
+    for (const r of results) {
+      lines.push(`## ${r.date}`);
+      lines.push(r.snippet);
+      lines.push('');
+    }
+
+    return lines.join('\n');
+  }
+
+  private async executeFileScan(
+    args: z.infer<typeof diarySearchParams>,
+    context: ToolContext,
+    keywords: string[],
+    limit: number,
+  ): Promise<string> {
     const journalsDir = join(context.vaultName, 'Journals');
     const results: Array<{ date: string; snippet: string }> = [];
 
@@ -83,7 +143,6 @@ export class DiarySearchTool extends AgentTool<typeof diarySearchParams> {
             if (!file.endsWith('.md')) continue;
             const date = file.replace('.md', '');
 
-            // 日期范围过滤
             if (args.start_date && date < args.start_date) continue;
             if (args.end_date && date > args.end_date) continue;
 
@@ -98,7 +157,6 @@ export class DiarySearchTool extends AgentTool<typeof diarySearchParams> {
             );
 
             if (matched && content.length > 0) {
-              // 生成 snippet
               let snippet = '';
               for (const k of keywords) {
                 const idx = lowerContent.indexOf(k.toLowerCase());
@@ -140,7 +198,6 @@ export class DiarySearchTool extends AgentTool<typeof diarySearchParams> {
       return `No diary entries found matching "${args.query}".`;
     }
 
-    // 按日期降序排列
     results.sort((a, b) => b.date.localeCompare(a.date));
 
     const lines = [

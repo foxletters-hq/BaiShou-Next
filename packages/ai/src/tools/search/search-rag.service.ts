@@ -1,7 +1,77 @@
 import { cosineSimilarity } from 'ai';
 import { ToolEmbeddingService } from '../agent.tool';
 
+export interface CompressInput {
+  query: string;
+  results: Array<{ title: string; url: string; content: string }>;
+  embeddingService: ToolEmbeddingService;
+  totalMaxChunks?: number;
+}
+
+export interface CompressedResult {
+  title: string;
+  url: string;
+  content: string;
+  avgScore: number;
+}
+
 export class SearchRagService {
+  /**
+   * 对网络搜索结果进行语义压缩：按与 query 的相关度排序，返回最相关的 Top-K 结果。
+   */
+  static async compress(input: CompressInput): Promise<CompressedResult[]> {
+    const { query, results, embeddingService, totalMaxChunks = 5 } = input;
+
+    if (!embeddingService.isConfigured || results.length === 0) {
+      return results.map(r => ({ ...r, avgScore: 0 }));
+    }
+
+    try {
+      const queryEmbedding = await embeddingService.embedQuery(query);
+      if (!queryEmbedding) {
+        return results.map(r => ({ ...r, avgScore: 0 }));
+      }
+
+      // 对每个 result 的 content 做分块、嵌入、计算相似度
+      const scoredResults: CompressedResult[] = [];
+
+      for (const result of results) {
+        const text = result.content || '';
+        if (!text.trim()) {
+          scoredResults.push({ ...result, content: text, avgScore: 0 });
+          continue;
+        }
+
+        const chunks = this.splitIntoChunks(text, 600);
+        const limitedChunks = chunks.slice(0, 10); // 每个结果最多 10 块
+
+        let totalScore = 0;
+        let scoredChunkCount = 0;
+
+        for (const chunk of limitedChunks) {
+          try {
+            const chunkEmb = await embeddingService.embedQuery(chunk);
+            if (chunkEmb) {
+              totalScore += cosineSimilarity(queryEmbedding, chunkEmb);
+              scoredChunkCount++;
+            }
+          } catch { /* skip failed chunks */ }
+        }
+
+        const avgScore = scoredChunkCount > 0 ? totalScore / scoredChunkCount : 0;
+        scoredResults.push({ ...result, content: text, avgScore });
+      }
+
+      // 按平均相似度降序排列，取前 totalMaxChunks 个
+      scoredResults.sort((a, b) => b.avgScore - a.avgScore);
+      return scoredResults.slice(0, totalMaxChunks);
+
+    } catch (e: any) {
+      console.warn('[SearchRagService] compress failed, returning unranked:', e.message);
+      return results.map(r => ({ ...r, avgScore: 0 }));
+    }
+  }
+
   /**
    * 在提取超大型文档时，不在外层建库，而是生成临时的单文件切片与 Embedding
    * 以期直接返回和用户查询 (query) 最相关的 Top-K 内容。

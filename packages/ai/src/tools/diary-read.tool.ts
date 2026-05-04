@@ -5,16 +5,19 @@ import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const diaryReadParams = z.object({
-  date: z
-    .string()
-    .describe('The exact date of the diary to read. Format: YYYY-MM-DD.'),
+  dates: z
+    .array(z.string())
+    .min(1)
+    .max(20)
+    .describe('One or more dates to read. Format: YYYY-MM-DD. Maximum 20 dates per request.'),
 });
 
 export class DiaryReadTool extends AgentTool<typeof diaryReadParams> {
   readonly name = 'diary_read';
 
   readonly description =
-    'Read the full content of a specific diary entry by its exact date. ' +
+    'Read the full content of one or more diary entries by their exact dates. ' +
+    'Supports reading up to 20 entries at once. ' +
     'Use diary_list or diary_search first if you do not know the exact date.';
 
   readonly parameters = diaryReadParams;
@@ -24,20 +27,28 @@ export class DiaryReadTool extends AgentTool<typeof diaryReadParams> {
     context: ToolContext,
   ): Promise<string> {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(args.date)) {
-      return `Error: Invalid date format "${args.date}". Expected YYYY-MM-DD.`;
+    const results: string[] = [];
+
+    for (const date of args.dates.slice(0, 20)) {
+      if (!dateRegex.test(date)) {
+        results.push(`## ${date}\nError: Invalid date format. Expected YYYY-MM-DD.\n`);
+        continue;
+      }
+
+      const year = date.substring(0, 4);
+      const month = date.substring(5, 7);
+      const fileName = `${date}.md`;
+      const filePath = join(context.vaultName, 'Journals', year, month, fileName);
+
+      try {
+        await access(filePath);
+        const content = await readFile(filePath, 'utf-8');
+        results.push(`## ${date}\n\n${content}\n`);
+      } catch {
+        results.push(`## ${date}\nNo diary entry found.\n`);
+      }
     }
 
-    const year = args.date.substring(0, 4);
-    const fileName = `${args.date}.md`;
-    const filePath = join(context.vaultName, 'Entries', year, fileName);
-
-    try {
-      await access(filePath);
-      const content = await readFile(filePath, 'utf-8');
-      return `Diary entry for ${args.date}:\n\n${content}`;
-    } catch {
-      return `No diary entry found for date ${args.date}.`;
-    }
+    return results.join('\n---\n\n');
   }
 }

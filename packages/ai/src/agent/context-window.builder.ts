@@ -37,8 +37,9 @@ export class ContextWindowBuilder {
     // 1. 挂接记忆 Snapshot 快照
     const snapshot = await snapshotRepo.getLatestSnapshot(sessionId);
     if (snapshot) {
-      // 在旧架构里 coveredUpToMessageId 其实在 Next 里我们通过 OrderIndex 对接
-      const cutoffIndex = rawMessages.findIndex(m => m.orderIndex === snapshot.coveredUpToMessageId);
+      // coveredUpToMessageId 存储为 text，需要转为 number 与 orderIndex 比较
+      const coveredUpTo = Number(snapshot.coveredUpToMessageId);
+      const cutoffIndex = rawMessages.findIndex(m => m.orderIndex === coveredUpTo);
 
       if (cutoffIndex >= 0 && cutoffIndex < rawMessages.length - 1) {
         // 创建一条伪善的系统快照信息
@@ -65,13 +66,33 @@ export class ContextWindowBuilder {
       effectiveMessages = [...rawMessages];
     }
 
-    // 2. 软限界滑动窗口
-    if (config.recentCount <= 0 || effectiveMessages.length <= config.recentCount) {
+    // 2. 滑动窗口：按“对话轮数”截断
+    // 0 表示尽量不截断（除了走 Snapshot 之外）
+    if (config.recentCount <= 0) {
       return effectiveMessages;
     }
 
-    // 例如还有 50 条，但只留 30 条 => endIndex-30 => 20
-    let startIndex = effectiveMessages.length - config.recentCount;
+    let startIndex = 0;
+    let rounds = 0;
+
+    for (let i = effectiveMessages.length - 1; i >= 0; i--) {
+      const msg = effectiveMessages[i];
+      const nextMsgInTimeline = i < effectiveMessages.length - 1 ? effectiveMessages[i + 1] : null;
+      const isUser = msg.role === 'user';
+
+      // 视一个或连续多个 user 消息为同一轮对话的起点
+      if (isUser && (!nextMsgInTimeline || nextMsgInTimeline.role !== 'user')) {
+        rounds++;
+      }
+
+      if (rounds === config.recentCount && isUser) {
+        // 所属目标轮的 user 消息，将其纳入起点
+        startIndex = i;
+      } else if (rounds > config.recentCount) {
+        // 超出目标轮数，结束搜索
+        break;
+      }
+    }
 
     // 假设首条已被刚才注入了 Summary System，死保它！
     if (snapshot && startIndex > 0) {

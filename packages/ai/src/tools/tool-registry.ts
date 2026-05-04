@@ -1,5 +1,4 @@
 import { AgentTool, ToolContext } from './agent.tool';
-import { CoreTool } from 'ai';
 import { WebSearchTool } from './web-search.tool';
 import { UrlReadTool } from './url-read.tool';
 import { DiaryListTool } from './diary-list.tool';
@@ -7,6 +6,7 @@ import { DiarySearchTool } from './diary-search.tool';
 import { DiaryReadTool } from './diary-read.tool';
 import { DiaryEditTool } from './diary-edit.tool';
 import { DiaryDeleteTool } from './diary-delete.tool';
+import { DiaryWriteTool } from './diary-write.tool';
 import { SummaryReadTool } from './summary-read.tool';
 import { MemoryStoreTool } from './memory-store.tool';
 import { MemoryDeleteTool } from './memory-delete.tool';
@@ -26,6 +26,7 @@ export class ToolRegistry {
       new DiaryReadTool(),
       new DiaryEditTool(),
       new DiaryDeleteTool(),
+      new DiaryWriteTool(),
       new SummaryReadTool(),
       new MemoryStoreTool(),
       new MemoryDeleteTool(),
@@ -66,7 +67,7 @@ export class ToolRegistry {
   /**
    * 将可供模型调用的工具转换为 Vercel 映射字典并排除用户被禁用的项。
    */
-  getEnabledToolsAsVercel(context: ToolContext): Record<string, CoreTool> {
+  getEnabledToolsAsVercel(context: ToolContext): Record<string, any> {
     const disabledIds = new Set(
        Array.isArray(context.userConfig?.['disabledToolIds']) 
          ? context.userConfig!['disabledToolIds'] as string[]
@@ -76,15 +77,25 @@ export class ToolRegistry {
     // 如果大局关掉了 RAG，则所有带记忆向量检索的模块主动切断防患于未然
     const ragEnabled = context.userConfig?.['ragEnabled'] !== false;
     
-    const configuredTools: Record<string, CoreTool> = {};
+    // 如果用户并未配置合法的切入模型
+    const hasEmbedding = context.userConfig?.['hasEmbeddingModel'] === true;
+    
+    // 检查网络搜索是否被用户启用
+    const webSearchEnabled = context.userConfig?.['web_search_enabled'] === true;
+    
+    const configuredTools: Record<string, any> = {};
 
     for (const [name, tool] of this.tools.entries()) {
       // 被显式手动关闭禁言的 Tool
       if (tool.canBeDisabled && disabledIds.has(name)) {
         continue;
       }
-      // RAG 全局防呆拦截
-      if (!ragEnabled && (name === 'vector_search' || name === 'memory_store')) {
+      // RAG 全局防呆拦截及物理模型防呆拦截
+      if ((!ragEnabled || !hasEmbedding) && (name === 'vector_search' || name === 'memory_store')) {
+        continue;
+      }
+      // 网络搜索工具需要用户显式启用
+      if (name === 'web_search' && !webSearchEnabled) {
         continue;
       }
 

@@ -1,4 +1,6 @@
 import { HtmlToMarkdownConverter } from './html-to-markdown';
+import { LocalBingProvider } from './local-bing-provider';
+import { LocalGoogleProvider } from './local-google-provider';
 
 export interface SearchResult {
   title: string;
@@ -6,7 +8,7 @@ export interface SearchResult {
   snippet: string;
 }
 
-export type SearchEngineType = 'tavily' | 'duckduckgo';
+export type SearchEngineType = 'tavily' | 'duckduckgo' | 'local-bing' | 'local-google';
 
 /**
  * 搜索引擎分流网关及底层抓取器（无头实现）
@@ -44,18 +46,20 @@ export class WebSearchService {
     maxResultsPerQuery?: number;
     totalMaxResults?: number;
     apiKey?: string;
+    webSearchResultFetcher?: (url: string) => Promise<string>;
   }): Promise<SearchResult[]> {
     const { 
       queries, engine, 
-      maxResultsPerQuery = 5, totalMaxResults = 10, apiKey 
+      maxResultsPerQuery = 5, totalMaxResults = 10, apiKey,
+      webSearchResultFetcher
     } = params;
 
     if (queries.length === 0) return [];
     if (queries.length === 1) {
-      return this.search(queries[0]!, engine, totalMaxResults, apiKey);
+      return this.search(queries[0]!, engine, totalMaxResults, apiKey, webSearchResultFetcher);
     }
 
-    const promises = queries.map(q => this.search(q, engine, maxResultsPerQuery, apiKey));
+    const promises = queries.map(q => this.search(q, engine, maxResultsPerQuery, apiKey, webSearchResultFetcher));
     const allResultsRaw = await Promise.allSettled(promises);
     
     const seen = new Set<string>();
@@ -80,10 +84,17 @@ export class WebSearchService {
     query: string, 
     engine: SearchEngineType, 
     maxResults: number = this.defaultMaxResults,
-    apiKey?: string
+    apiKey?: string,
+    webSearchResultFetcher?: (url: string) => Promise<string>
   ): Promise<SearchResult[]> {
     if (engine === 'duckduckgo') {
       return this.searchDuckDuckGo(query, maxResults);
+    }
+    if (engine === 'local-bing') {
+      return this.searchLocalBing(query, maxResults, webSearchResultFetcher);
+    }
+    if (engine === 'local-google') {
+      return this.searchLocalGoogle(query, maxResults, webSearchResultFetcher);
     }
     return this.searchTavily(query, maxResults, apiKey);
   }
@@ -214,5 +225,47 @@ export class WebSearchService {
     }
     
     return results;
+  }
+
+  // --- 本地 Bing 搜索 ---
+  private static async searchLocalBing(
+    query: string, 
+    maxResults: number,
+    webSearchResultFetcher?: (url: string) => Promise<string>
+  ): Promise<SearchResult[]> {
+    try {
+      const provider = new LocalBingProvider();
+      const response = await provider.search(query, maxResults, webSearchResultFetcher);
+      
+      return response.results.map(r => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.content.substring(0, 300) // 截取前300字符作为 snippet
+      }));
+    } catch (e) {
+      console.error('[WebSearchService] Local Bing search failed:', e);
+      throw new Error(`Local Bing search failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  // --- 本地 Google 搜索 ---
+  private static async searchLocalGoogle(
+    query: string, 
+    maxResults: number,
+    webSearchResultFetcher?: (url: string) => Promise<string>
+  ): Promise<SearchResult[]> {
+    try {
+      const provider = new LocalGoogleProvider();
+      const response = await provider.search(query, maxResults, webSearchResultFetcher);
+      
+      return response.results.map(r => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.content.substring(0, 300) // 截取前300字符作为 snippet
+      }));
+    } catch (e) {
+      console.error('[WebSearchService] Local Google search failed:', e);
+      throw new Error(`Local Google search failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 }
