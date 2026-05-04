@@ -5,8 +5,8 @@ import { settingsManager } from './settings.ipc';
 import { DesktopEmbeddingStorage } from './rag.storage';
 import { getDiaryManager } from './diary.ipc';
 import { getAppDb } from '../db';
-import { memoryEmbeddingsTable } from '@baishou/database';
-import { eq, sql, desc, like } from 'drizzle-orm';
+import { memoryEmbeddingsTable, agentMessagesTable, agentPartsTable } from '@baishou/database';
+import { eq, sql, desc, like, and } from 'drizzle-orm';
 import { AIProviderConfig } from '@baishou/shared';
 
 
@@ -43,7 +43,7 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
     if (!pConfig) return null;
 
     const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry');
-    return AIProviderRegistry.getInstance().createProviderInstance(pConfig);
+    return AIProviderRegistry.getInstance().getOrUpdateProvider(pConfig);
   }
 }
 
@@ -110,8 +110,53 @@ export function registerRagIPC() {
           sourceCreatedAt: diary.date.getTime()
         });
       }
-      
-      event.sender.send('agent:rag-progress', { isRunning: false, progress: total, total, type: 'idle' });
+
+      // ── 阶段 2: 聊天消息嵌入 ──
+      const db = getAppDb();
+      const messageRows = await db
+        .select({
+          messageId: agentMessagesTable.id,
+          sessionId: agentMessagesTable.sessionId,
+          role: agentMessagesTable.role,
+          createdAt: agentMessagesTable.createdAt,
+          partData: agentPartsTable.data,
+        })
+        .from(agentMessagesTable)
+        .innerJoin(
+          agentPartsTable,
+          and(
+            eq(agentPartsTable.messageId, agentMessagesTable.id),
+            eq(agentPartsTable.type, 'text')
+          )
+        )
+        .where(eq(agentMessagesTable.isSummary, false))
+        .orderBy(desc(agentMessagesTable.createdAt))
+        .limit(5000);
+
+      const msgTotal = messageRows.length;
+      let msgProgress = 0;
+
+      for (const row of messageRows) {
+        msgProgress++;
+        event.sender.send('agent:rag-progress', {
+          isRunning: true, type: 'batchEmbed',
+          progress: progress + msgProgress,
+          total: total + msgTotal,
+          statusText: `处理消息: ${row.role} (${msgProgress}/${msgTotal})`
+        });
+
+        const partData = row.partData as any;
+        const text = partData?.text;
+        if (!text || !text.trim()) continue;
+
+        await embeddingService.reEmbedMessage({
+          messageId: row.messageId,
+          sessionId: row.sessionId,
+          content: text,
+        });
+      }
+
+      event.sender.send('agent:rag-progress', { isRunning: false, progress: total + msgTotal, total: total + msgTotal, type: 'idle' });
       return true;
     } catch (e: any) {
       console.error('Batch Embed failed:', e);

@@ -1,5 +1,5 @@
 /* =========================================================
-   SUMMARY PAGE - NEURAL DASHBOARD VIBE
+   总结仪表板样式 — 使用语义化 CSS 变量
    ========================================================= */
 
 .summary-page-container {
@@ -15,20 +15,20 @@
   width: 6px;
 }
 .summary-page-container::-webkit-scrollbar-thumb {
-  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  background-color: var(--border-muted);
+  border-radius: var(--radius-xs);
 }
 
-/* ───────── Chrome Style Top Nav ───────── */
+/* ── 顶部标签栏 ── */
 .sp-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 32px;
-  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-overlay);
+  -webkit-backdrop-filter: var(--blur-overlay);
+  border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -37,9 +37,9 @@
 .sp-tabs {
   display: flex;
   gap: 8px;
-  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  background: var(--bg-surface-normal);
   padding: 6px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .sp-tab {
@@ -47,48 +47,26 @@
   cursor: pointer;
   font-weight: 700;
   font-size: 14px;
-  color: var(--text-secondary, #64748B);
-  border-radius: 8px;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s var(--ease-in-out);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .sp-tab:hover {
-  color: var(--text-primary, #0F172A);
-  background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.5);
+  color: var(--text-primary);
+  background: var(--bg-surface);
 }
 
 .sp-tab.active {
-  color: var(--color-primary, #5BA8F5);
-  background: var(--bg-surface, #FFFFFF);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  color: var(--color-primary);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
 }
 
-.sp-settings-btn {
-  background: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.6);
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  cursor: pointer;
-  padding: 10px;
-  border-radius: 50%;
-  color: var(--text-secondary, #64748B);
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-}
-
-.sp-settings-btn:hover {
-  background: var(--bg-surface, #FFFFFF);
-  color: var(--text-primary, #0F172A);
-  transform: rotate(45deg);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
-}
-
-/* ───────── Main Content ───────── */
+/* ── 主内容区 ── */
 .sp-content {
   flex: 1;
   padding: 16px 24px;
@@ -118,132 +96,217 @@
   }
 }
 
-/* ───────── Missing Summary AI Generation Card ───────── */
+/* ── AI 建议补全区域 ── */
 .sp-missing-section-title {
   font-size: 16px;
   font-weight: 800;
-  color: var(--text-primary, #0F172A);
+  color: var(--text-primary);
   margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.sp-missing-card {
+/* 并发下拉菜单 */
+.concurrency-dropdown {
   position: relative;
-  overflow: hidden;
-  padding: 24px 32px;
-  background: linear-gradient(135deg, rgba(var(--bg-surface-rgb, 255, 255, 255), 0.9) 0%, rgba(var(--color-primary-rgb, 91, 168, 245), 0.03) 100%);
-  border: 1px solid rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(91, 168, 245, 0.05), 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) inset;
+}
+
+.concurrency-trigger {
+  display: flex;
+  align-items: center;
+  background: var(--color-primary-light);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  border: none;
+  opacity: 1;
+  cursor: pointer;
+  gap: 6px;
+}
+
+.concurrency-trigger:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.concurrency-trigger-icon {
+  color: var(--color-primary);
+}
+
+.concurrency-trigger-text {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--color-primary);
+}
+
+.concurrency-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+  min-width: 90px;
+  padding: 4px;
+}
+
+.concurrency-option {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: normal;
+  text-align: center;
+}
+
+.concurrency-option:hover {
+  background: var(--bg-surface-high);
+}
+
+.concurrency-option.active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* 批量生成按钮 */
+.sp-batch-generate-btn {
+  padding: 4px 12px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.sp-batch-generate-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* 缺失项计数 */
+.sp-missing-count {
+  padding: 4px 8px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* 缺失项卡片网格 */
+.sp-missing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+/* 空状态 */
+.sp-missing-empty {
+  padding: 24px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* 缺失项卡片 */
+.sp-missing-card {
+  padding: 12px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+.sp-missing-card-icon {
+  width: 44px;
+  height: 44px;
+  background: var(--color-warning);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-on-primary);
+}
+
+.sp-missing-card-body {
+  flex: 1;
+  margin-left: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  cursor: pointer;
-}
-
-.sp-missing-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 50%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(var(--color-primary-rgb, 91, 168, 245), 0.1), transparent);
-  transform: skewX(-20deg);
-  transition: all 0.6s;
-}
-
-.sp-missing-card:hover:not(.is-generating) {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 48px rgba(91, 168, 245, 0.12), 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.4) inset;
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.6);
-}
-
-.sp-missing-card:hover::before {
-  left: 150%;
-  transition: all 0.6s ease-out;
-}
-
-.sp-missing-card h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text-primary, #0F172A);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sp-missing-card p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-secondary, #64748B);
-  line-height: 1.5;
-}
-
-/* Generation State UI */
-.is-generating {
-  cursor: default;
-  background: var(--bg-surface, #FFFFFF);
-  border-color: rgba(var(--color-secondary-rgb, 16, 185, 129), 0.5);
-  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.08);
-}
-
-.sp-generation-track {
-  width: 100%;
-  height: 6px;
-  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  border-radius: 4px;
-  margin-top: 12px;
   overflow: hidden;
-  position: relative;
 }
 
-.sp-generation-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-primary, #5BA8F5), var(--color-secondary, #10B981));
-  border-radius: 4px;
-  transition: width 0.3s ease-out;
-  position: relative;
+.sp-missing-card-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sp-generation-bar::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0) 100%);
-  animation: pulseScan 1.5s infinite linear;
-}
-
-.sp-generation-status-text {
-  font-size: 12px;
-  font-family: var(--font-mono, monospace);
-  font-weight: 700;
-  color: var(--color-secondary, #10B981);
-  margin-top: 8px;
+.sp-missing-card-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-@keyframes pulseScan {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
-}
-
-.sp-btn-generate {
-  margin-top: 8px;
-  align-self: flex-start;
-  padding: 10px 24px;
-  border-radius: 12px;
-  background: var(--text-primary, #0F172A);
-  color: #fff;
-  border: none;
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
+  margin-top: 4px;
   gap: 8px;
-  pointer-events: none; /* Make click pass through to card for simple handling */
+}
+
+.sp-missing-card-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sp-missing-card-badge {
+  padding: 2px 8px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.sp-missing-card-action {
+  margin-left: 12px;
+  width: 38px;
+  height: 38px;
+  background: var(--color-accent-purple);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--text-on-primary);
+}
+
+.sp-missing-card-action:hover {
+  opacity: 0.9;
+}
+
+.sp-missing-card-action.processing {
+  background: transparent;
+  cursor: default;
 }

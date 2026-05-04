@@ -20,17 +20,6 @@ export const CompressionChart: React.FC = () => {
             const height = canvas.height;
             const centerY = height / 2;
 
-            // Draw Original Line (Top)
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
-            ctx.lineWidth = 2;
-            for (let x = 0; x < width; x++) {
-                const y = 30 + Math.sin(x * 0.05 + time) * 10;
-                if (x === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-
             // Draw Compression Curves
             const drawWave = (offset: number, color: string, amplitude: number, speed: number) => {
                 ctx.beginPath();
@@ -74,7 +63,7 @@ export const CompressionChart: React.FC = () => {
         <canvas 
             ref={canvasRef} 
             width={400} 
-            height={200} 
+            height={140} 
             style={{ width: '100%', height: '100%', borderRadius: '12px' }} 
         />
     );

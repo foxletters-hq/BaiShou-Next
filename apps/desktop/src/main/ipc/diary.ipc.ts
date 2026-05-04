@@ -1,15 +1,17 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog, BrowserWindow } from 'electron';
 import {
   ShadowIndexRepository,
   shadowConnectionManager
 } from '@baishou/database';
 import {
   DiaryService,
+  DiaryExportServiceImpl,
   FileSyncServiceImpl,
   ShadowIndexSyncService,
   VaultIndexServiceImpl
 } from '@baishou/core';
 import { parseDateStr } from '@baishou/shared';
+import * as fs from 'fs/promises';
 
 import { pathService, vaultService } from './vault.ipc';
 import { CreateDiaryInput, UpdateDiaryInput } from '@baishou/shared';
@@ -59,12 +61,12 @@ function parseInputDate(raw: string | Date | undefined): Date | undefined {
 
 export function registerDiaryIPC() {
   ipcMain.handle('diary:create', async (_, input: CreateDiaryInput) => {
-    if (input.date) input.date = parseInputDate(input.date as any) as Date;
+    if (input.date) input.date = parseInputDate(String(input.date)) as Date;
     return await getDiaryManager().create(input);
   });
 
   ipcMain.handle('diary:update', async (_, id: number, input: UpdateDiaryInput) => {
-    if (input.date) input.date = parseInputDate(input.date as any);
+    if (input.date) input.date = parseInputDate(String(input.date));
     return await getDiaryManager().update(id, input);
   });
 
@@ -95,5 +97,58 @@ export function registerDiaryIPC() {
 
   ipcMain.handle('diary:count', async () => {
     return await getDiaryManager().count();
+  });
+
+  ipcMain.handle('diary:activityData', async (_, year: number) => {
+    const shadowDb = shadowConnectionManager.getDb();
+    const shadowRepo = new ShadowIndexRepository(shadowDb);
+    return await shadowRepo.getActivityData(year);
+  });
+
+  ipcMain.handle('diary:export', async (_, format: 'txt' | 'json' | 'md', dateRange?: { start: string; end: string }, dialogTitle?: string) => {
+    const win = BrowserWindow.getFocusedWindow();
+    if (!win) return { success: false, error: 'No focused window' };
+
+    const result = await dialog.showSaveDialog(win, {
+      title: dialogTitle || 'Export Diary',
+      defaultPath: `baishou-diary-export.${format}`,
+      filters: [
+        { name: format.toUpperCase(), extensions: [format] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, error: 'Cancelled' };
+    }
+
+    try {
+      const manager = getDiaryManager();
+      const diaries = await manager.listAll();
+
+      // 按日期范围过滤
+      const filtered = dateRange
+        ? diaries.filter(d => {
+            const date = d.date;
+            return date >= dateRange.start && date <= dateRange.end;
+          })
+        : diaries;
+
+      const fullDiaries = [];
+      for (const meta of filtered) {
+        const full = await manager.findById(meta.id);
+        if (full) fullDiaries.push(full);
+      }
+
+      const exporter = new DiaryExportServiceImpl();
+      const buffer = await exporter.export(fullDiaries, { format });
+      await fs.writeFile(result.filePath, buffer);
+
+      return { success: true, filePath: result.filePath };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('[DiaryExport] error:', msg);
+      return { success: false, error: msg };
+    }
   });
 }

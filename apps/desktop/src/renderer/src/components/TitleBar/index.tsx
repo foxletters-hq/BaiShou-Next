@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './TitleBar.module.css';
-import { MdAutoStories, MdAutoAwesome, MdMinimize, MdCropSquare, MdClose, MdFolderShared, MdArrowDropDown } from 'react-icons/md';
+import { MdAutoStories, MdAutoAwesome, MdMinimize, MdCropSquare, MdClose, MdFolderShared, MdArrowDropDown, MdSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 
 export const TitleBar: React.FC = () => {
@@ -16,15 +16,23 @@ export const TitleBar: React.FC = () => {
   const vaultMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let timeoutId: any;
+    let retries = 0;
     const fetchVaults = async () => {
       try {
         const vList = await (window as any).api?.vault?.list();
         const active = await (window as any).api?.vault?.getActive();
         if (vList) setVaults(vList);
         if (active) setActiveVault(active);
+
+        if ((!vList || vList.length === 0) && retries < 10) {
+          retries++;
+          timeoutId = setTimeout(fetchVaults, 500);
+        }
       } catch (e) {}
     };
     fetchVaults();
+    return () => clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {
@@ -51,49 +59,61 @@ export const TitleBar: React.FC = () => {
   };
 
   // Tabs logic corresponding to Flutter tab controller
-  const isAgent = location.pathname.startsWith('/agent') || location.pathname.startsWith('/c/');
+  const isAgent = location.pathname.startsWith('/agent') || location.pathname.startsWith('/chat');
+  const isSettings = location.pathname.startsWith('/settings');
+  const isOnboarding = location.pathname.startsWith('/welcome');
 
   return (
     <div className={styles.titleBar}>
       <div className={styles.dragRegion}>
-        <div className={styles.tabsContainer}>
-          <div 
-            className={`${styles.tab} ${!isAgent ? styles.activeTab : ''}`}
-            onClick={() => {
-              try {
-                const saved = localStorage.getItem('desktop_sidebar_nav_order');
-                if (saved) {
-                   const parsed = JSON.parse(saved);
-                   if (Array.isArray(parsed) && parsed.length > 0) {
-                      const paths: Record<string, string> = { diary: '/diary', summary: '/summary', lan: '/settings/lan-transfer', sync: '/settings/data-sync' };
-                      if (paths[parsed[0]]) {
-                         navigate(paths[parsed[0]]);
-                         return;
-                      }
-                   }
-                }
-              } catch (e) {}
-              navigate('/diary');
-            }}
-          >
-            <MdAutoStories className={styles.tabIcon} />
-            <span>{t('nav.diary', '日记')}</span>
+        {!isOnboarding && (
+          <div className={styles.tabsContainer}>
+            <div 
+              className={`${styles.tab} ${!isAgent && !isSettings ? styles.activeTab : ''}`}
+              onClick={() => {
+                try {
+                  const saved = localStorage.getItem('desktop_sidebar_nav_order');
+                  if (saved) {
+                     const parsed = JSON.parse(saved);
+                     if (Array.isArray(parsed) && parsed.length > 0) {
+                        const paths: Record<string, string> = { diary: '/diary', summary: '/summary', lan: '/settings/lan-transfer', sync: '/settings/data-sync' };
+                        if (paths[parsed[0]]) {
+                           navigate(paths[parsed[0]]);
+                           return;
+                        }
+                     }
+                  }
+                } catch (e) {}
+                navigate('/diary');
+              }}
+            >
+              <MdAutoStories className={styles.tabIcon} />
+              <span>{t('nav.diary', '日记')}</span>
+            </div>
+            <div 
+              className={`${styles.tab} ${isAgent && !isSettings ? styles.activeTab : ''}`}
+              onClick={() => navigate('/chat')}
+            >
+              <MdAutoAwesome className={styles.tabIcon} />
+              <span>{t('nav.agent', '伙伴')}</span>
+            </div>
+            {isSettings && (
+              <div className={`${styles.tab} ${styles.activeTab}`}>
+                <MdSettings className={styles.tabIcon} />
+                <span>{t('settings.title', '设置')}</span>
+              </div>
+            )}
           </div>
-          <div 
-            className={`${styles.tab} ${isAgent ? styles.activeTab : ''}`}
-            onClick={() => navigate('/agent')}
-          >
-            <MdAutoAwesome className={styles.tabIcon} />
-            <span>{t('nav.agent', '伙伴')}</span>
-          </div>
-        </div>
+        )}
       </div>
       
       <div className={styles.actions}>
-        <div className={styles.vaultSwitcherWrapper} ref={vaultMenuRef} style={{ position: 'relative' }}>
+        {!isOnboarding && (
+          <>
+            <div className={styles.vaultSwitcherWrapper} ref={vaultMenuRef} style={{ position: 'relative' }}>
           <div className={styles.vaultSwitcher} onClick={() => setShowVaultMenu(!showVaultMenu)}>
             <MdFolderShared className={styles.actionIconSm} />
-            <span className={styles.vaultName}>{activeVault?.name || t('titlebar.default_vault', '默认空间')}</span>
+            <span className={styles.vaultName}>{activeVault?.name || ''}</span>
             <MdArrowDropDown className={styles.actionIconSm} />
           </div>
           {showVaultMenu && vaults.length > 0 && (
@@ -118,6 +138,8 @@ export const TitleBar: React.FC = () => {
         </div>
 
         <div className={styles.divider}></div>
+        </>
+        )}
 
         <div className={styles.windowControls}>
           <button className={styles.winBtn} onClick={() => (window as any).api?.window?.minimize()} title={t('titlebar.minimize', '最小化')} >

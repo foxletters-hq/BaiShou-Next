@@ -6,8 +6,9 @@ export interface UseAgentStreamResult {
   isStreaming: boolean;
   activeTool: { name: string; args: any } | null;
   error: string | null;
-  startChat: (sessionId: string, text: string, providerId?: string, modelId?: string) => Promise<void>;
-  editChat: (sessionId: string, messageId: string, text: string, providerId?: string, modelId?: string) => Promise<void>;
+  startChat: (sessionId: string, text: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean) => Promise<void>;
+  editChat: (sessionId: string, messageId: string, text: string, providerId?: string, modelId?: string, attachments?: any[]) => Promise<void>;
+  resendChat: (sessionId: string, messageId: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -61,7 +62,7 @@ export function useAgentStream(): UseAgentStreamResult {
     };
   }, []);
 
-  const startChat = useCallback(async (sessionId: string, userText: string, providerId?: string, modelId?: string) => {
+  const startChat = useCallback(async (sessionId: string, userText: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean) => {
     setIsStreaming(true);
     setError(null);
     setActiveTool(null);
@@ -70,10 +71,10 @@ export function useAgentStream(): UseAgentStreamResult {
     setText('');
     setReasoning('');
 
-    await window.electron.ipcRenderer.invoke('agent:chat', { sessionId, text: userText, providerId, modelId });
+    await window.electron.ipcRenderer.invoke('agent:chat', { sessionId, text: userText, providerId, modelId, attachments, searchMode });
   }, []);
 
-  const editChat = useCallback(async (sessionId: string, messageId: string, userText: string, providerId?: string, modelId?: string) => {
+  const editChat = useCallback(async (sessionId: string, messageId: string, userText: string, providerId?: string, modelId?: string, attachments?: any[]) => {
     setIsStreaming(true);
     setError(null);
     setActiveTool(null);
@@ -82,7 +83,19 @@ export function useAgentStream(): UseAgentStreamResult {
     setText('');
     setReasoning('');
 
-    await window.electron.ipcRenderer.invoke('agent:edit-message', sessionId, messageId, userText, providerId, modelId);
+    await window.electron.ipcRenderer.invoke('agent:edit-message', sessionId, messageId, userText, providerId, modelId, attachments);
+  }, []);
+
+  const resendChat = useCallback(async (sessionId: string, messageId: string) => {
+    setIsStreaming(true);
+    setError(null);
+    setActiveTool(null);
+    textRef.current = '';
+    reasoningRef.current = '';
+    setText('');
+    setReasoning('');
+
+    await window.electron.ipcRenderer.invoke('agent:resend', sessionId, messageId);
   }, []);
 
   const reset = useCallback(() => {
@@ -103,6 +116,7 @@ export function useAgentStream(): UseAgentStreamResult {
     error,
     startChat,
     editChat,
+    resendChat,
     reset
   };
 }

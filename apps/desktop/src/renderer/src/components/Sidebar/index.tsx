@@ -51,7 +51,7 @@ export const Sidebar: React.FC = () => {
     setNavOrder(newOrder);
   };
 
-  const isAgentMode = location.pathname.startsWith('/c/') || location.pathname.startsWith('/agent');
+  const isAgentMode = location.pathname.startsWith('/chat') || location.pathname.startsWith('/agent');
 
   if (isAgentMode) return null;
 

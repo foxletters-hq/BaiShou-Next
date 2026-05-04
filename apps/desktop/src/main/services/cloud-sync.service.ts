@@ -104,13 +104,31 @@ export class DesktopCloudSyncService {
       // 清理临时文件
       await fsp.unlink(tempPath).catch(() => {});
 
-      if (result.fileCount > 0) {
-        return { success: true, message: `云端恢复成功，共还原 ${result.fileCount} 个文件` };
+      if (result.fileCount > 0 || result.fileCount === -1) {
+        const countMsg = result.fileCount > 0 ? `，共还原 ${result.fileCount} 个文件` : '';
+        return { success: true, message: `云端恢复成功${countMsg}` };
       } else {
         return { success: false, message: '导入完成但未检测到文件' };
       }
     } catch (e: any) {
       return { success: false, message: `恢复失败: ${e.message || e}` };
+    }
+  }
+
+  /**
+   * 将远端 ZIP 直接下载到本地指定路径
+   */
+  async downloadToLocal(
+    config: SyncConfig,
+    remoteFilename: string,
+    localDestPath: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const client = this.createClient(config);
+      await client.downloadFile(remoteFilename, localDestPath);
+      return { success: true, message: `已成功保存到: ${localDestPath}` };
+    } catch (e: any) {
+      return { success: false, message: `下载失败: ${e.message || e}` };
     }
   }
 
