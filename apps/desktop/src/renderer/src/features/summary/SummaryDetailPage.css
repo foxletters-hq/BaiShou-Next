@@ -1,0 +1,173 @@
+/* 总结详情页样式 — 使用语义化 CSS 变量 */
+
+.summary-detail-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: transparent;
+  overflow-y: auto;
+}
+
+.summary-detail-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.summary-detail-container::-webkit-scrollbar-thumb {
+  background-color: var(--border-muted);
+  border-radius: var(--radius-xs);
+}
+
+/* 顶部导航 */
+.summary-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 32px;
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-overlay);
+  -webkit-backdrop-filter: var(--blur-overlay);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.summary-detail-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+
+.summary-detail-back:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-high);
+}
+
+.summary-detail-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.summary-detail-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: var(--bg-surface-high);
+  transition: all 0.2s;
+}
+
+.summary-detail-action-btn:hover {
+  background: var(--bg-surface-highest);
+  color: var(--text-primary);
+}
+
+.summary-detail-action-btn.danger:hover {
+  background: var(--color-error);
+  color: var(--text-on-primary);
+}
+
+/* 元信息区域 */
+.summary-detail-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.summary-detail-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.summary-detail-type-badge.type-weekly {
+  background: var(--color-accent-green);
+  color: var(--text-on-primary);
+}
+
+.summary-detail-type-badge.type-monthly {
+  background: var(--color-accent-blue);
+  color: var(--text-on-primary);
+}
+
+.summary-detail-type-badge.type-quarterly {
+  background: var(--color-warning);
+  color: var(--text-on-primary);
+}
+
+.summary-detail-type-badge.type-yearly {
+  background: var(--color-accent-purple);
+  color: var(--text-on-primary);
+}
+
+.summary-detail-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.summary-detail-generated {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin-left: auto;
+}
+
+/* 内容区域 */
+.summary-detail-content {
+  flex: 1;
+  padding: 24px 32px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* 加载状态 */
+.summary-detail-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.summary-detail-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-muted);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: summary-spin 0.8s linear infinite;
+}
+
+@keyframes summary-spin {
+  to { transform: rotate(360deg); }
+}
