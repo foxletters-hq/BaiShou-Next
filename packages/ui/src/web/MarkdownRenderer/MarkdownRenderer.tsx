@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -30,6 +31,7 @@ function remarkBrToBreak() {
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false }) => {
+  const { t } = useTranslation();
   return (
     <div className={`${styles.markdownContainer} ${isStreaming ? styles.streaming : ''}`}>
       <ReactMarkdown
@@ -48,7 +50,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
               <pre className={styles.codeWrapper}>
                 <div className={styles.codeHeader}>
                   <span>{match[1]}</span>
-                  <button onClick={() => navigator.clipboard.writeText(String(children))}>复制</button>
+                  <button onClick={() => navigator.clipboard.writeText(String(children))}>{t('markdown.copy', '复制')}</button>
                 </div>
                 <div className={styles.codeBlock}>
                   <code className={className} {...props}>{children}</code>

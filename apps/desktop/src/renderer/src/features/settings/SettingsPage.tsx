@@ -213,8 +213,8 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
   }, [loadProfile]);
 
   return (
-    <div className="settings-pane" style={{ paddingBottom: 40 }}>
-       
+    <div className="settings-pane" style={{ paddingBottom: 0 }}>
+
        {/* 账户设置 */}
        <div className="glass-panel-card">
          <ProfileSettingsCard 
@@ -542,13 +542,13 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
                try {
                  const detectedDim = await (window as any).api?.rag?.detectDimension();
                  await fetchRagInfo();
-                 if (detectedDim > 0) {
-                    toast.showSuccess(`检测完成，该模型向量维度为：${detectedDim}`);
+                  if (detectedDim > 0) {
+                     toast.showSuccess(t('settings.rag_detect_success', '检测完成，该模型向量维度为：') + detectedDim);
                  } else {
                     await alert(t('ai_config.error_no_model', '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'), t('common.error', '错误'));
                  }
-               } catch (e: any) {
-                 await alert(`检测发生错误：${e.message}`, t('common.error', '错误'));
+                } catch (e: any) {
+                  await alert(t('settings.rag_detect_error', '检测发生错误：') + e.message, t('common.error', '错误'));
                } finally { setIsProcessing(false); }
              }}
              onClearDimension={async () => {
@@ -808,13 +808,15 @@ const SummarySettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   // If settings are not loaded yet, wait.
   if (settings.isLoading || !settings.summaryConfig || !settings.globalModels) return <div />;
 
+  const currentInstructions = settings.summaryConfig.instructions || {};
+  
   const combinedConfig = {
     monthlySummarySource: settings.globalModels.monthlySummarySource || 'weeklies',
-    templates: settings.summaryConfig.instructions || {
-        weekly: settings.summaryConfig.instructions?.weekly || DEFAULT_SUMMARY_TEMPLATES.weekly,
-        monthly: settings.summaryConfig.instructions?.monthly || DEFAULT_SUMMARY_TEMPLATES.monthly,
-        quarterly: settings.summaryConfig.instructions?.quarterly || DEFAULT_SUMMARY_TEMPLATES.quarterly,
-        yearly: settings.summaryConfig.instructions?.yearly || DEFAULT_SUMMARY_TEMPLATES.yearly
+    templates: {
+        weekly: currentInstructions.weekly || DEFAULT_SUMMARY_TEMPLATES.weekly,
+        monthly: currentInstructions.monthly || DEFAULT_SUMMARY_TEMPLATES.monthly,
+        quarterly: currentInstructions.quarterly || DEFAULT_SUMMARY_TEMPLATES.quarterly,
+        yearly: currentInstructions.yearly || DEFAULT_SUMMARY_TEMPLATES.yearly
     }
   };
 
@@ -872,6 +874,7 @@ const DataSyncPane: React.FC<{ settings: any }> = ({ settings }) => {
          onSyncNow={async (config: any) => (window as any).api?.cloud?.syncNow(config)}
          onListRecords={async (config: any) => (window as any).api?.cloud?.listRecords(config)}
          onRestore={async (config: any, filename: string) => (window as any).api?.cloud?.restore(config, filename)}
+         onDownloadBackup={async (config: any, filename: string) => (window as any).api?.cloud?.downloadRecord(config, filename)}
          onDeleteRecord={async (config: any, filename: string) => (window as any).api?.cloud?.deleteRecord(config, filename)}
          onBatchDelete={async (config: any, filenames: string[]) => (window as any).api?.cloud?.batchDelete(config, filenames)}
          onRename={async (config: any, oldName: string, newName: string) => (window as any).api?.cloud?.rename(config, oldName, newName)}

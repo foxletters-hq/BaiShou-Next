@@ -3,7 +3,8 @@ import styles from './LanSyncCard.module.css';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
-import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend } from 'react-icons/md';
+import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend, MdQrCode } from 'react-icons/md';
+import { QRCodeSVG } from 'qrcode.react';
 
 export interface DiscoveredDevice {
   nickname: string;
@@ -50,10 +51,15 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [localConnection, setLocalConnection] = useState<{ ip: string; port: number } | null>(null);
+  const [showQrCode, setShowQrCode] = useState(false);
 
   const startDualMode = async () => {
     setIsActive(true);
-    await onStartBroadcasting();
+    const connInfo = await onStartBroadcasting();
+    if (connInfo) {
+      setLocalConnection(connInfo);
+    }
     await onStartDiscovery(
       (dev) => setDevices(prev => {
         const idx = prev.findIndex(d => d.rawServiceId === dev.rawServiceId);
@@ -104,14 +110,14 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
         );
         if (confirmText === 'CONFIRM') {
           onImportZip(zipPath).then(() => {
-            toast.showSuccess('导入成功，应用即将重载');
+            toast.showSuccess(t('lan.import_success', '导入成功，应用即将重载'));
             setTimeout(() => window.location.reload(), 1500);
           }).catch((e) => {
             console.error(e);
-            toast.showError('重载导入失败');
+            toast.showError(t('lan.import_failed', '重载导入失败'));
           });
         } else {
-          toast.show('已取消接收与挂载');
+          toast.show(t('lan.receive_cancelled', '已取消接收与挂载'));
         }
       });
       return unsub;
@@ -125,9 +131,9 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     const success = await onSendFile(device.ip, device.port, (p) => setProgress(p));
     setSendingTo(null);
     if (success) {
-      toast.showSuccess(`已成功发送至 ${device.nickname}`);
+      toast.showSuccess(t('lan.send_success', '已成功发送至 {{name}}', { name: device.nickname }));
     } else {
-      toast.showError(`发送至 ${device.nickname} 失败，对端离线或超时。`);
+      toast.showError(t('lan.send_failed', '发送至 {{name}} 失败，对端离线或超时。', { name: device.nickname }));
     }
   };
 
@@ -156,10 +162,45 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
            </span>
         </div>
 
-        {isActive && devices.length === 0 && (
+        {isActive && devices.length === 0 && !showQrCode && (
           <div className={styles.scanHintWrapper}>
              <div className={styles.scanTitle}>{t('lan_transfer.scanning_nearby', '正在扫描附近设备...')}</div>
              <div className={styles.scanSubtitle}>{t('lan_transfer.scan_hint', '请确保两台设备处于相同的 Wi-Fi 网络下')}</div>
+             {localConnection && (
+               <button
+                 className={styles.qrToggleBtn}
+                 onClick={() => setShowQrCode(true)}
+                 title={t('lan_transfer.show_qr', '显示二维码')}
+               >
+                 <MdQrCode size={20} />
+                 {t('lan_transfer.scan_qr', '扫码连接')}
+               </button>
+             )}
+          </div>
+        )}
+
+        {showQrCode && localConnection && (
+          <div className={styles.qrOverlay} onClick={() => setShowQrCode(false)}>
+            <div className={styles.qrCard} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.qrTitle}>{t('lan_transfer.scan_to_connect', '扫码连接')}</div>
+              <div className={styles.qrCodeWrapper}>
+                <QRCodeSVG
+                  value={`baishou://${localConnection.ip}:${localConnection.port}`}
+                  size={200}
+                  level="M"
+                  includeMargin={true}
+                />
+              </div>
+              <div className={styles.qrInfo}>
+                <span className={styles.qrIp}>{localConnection.ip}:{localConnection.port}</span>
+              </div>
+              <div className={styles.qrHint}>
+                {t('lan_transfer.qr_hint', '使用白守移动端扫描此二维码即可连接')}
+              </div>
+              <button className={styles.qrCloseBtn} onClick={() => setShowQrCode(false)}>
+                {t('common.close', '关闭')}
+              </button>
+            </div>
           </div>
         )}
 

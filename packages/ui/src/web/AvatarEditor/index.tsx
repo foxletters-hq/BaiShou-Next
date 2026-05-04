@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import 'emoji-picker-element';
 import type Picker from 'emoji-picker-element/picker';
 import type { EmojiClickEvent, NativeEmoji } from 'emoji-picker-element/shared';
@@ -14,43 +15,8 @@ export interface AvatarEditorProps {
   children: React.ReactNode;
 }
 
-// Inline i18n to ensure NO English annotations appear whatsoever
-const ZH_CN_I18N = {
-  categoriesLabel: '类别',
-  emojiUnsupportedMessage: '你的浏览器不支持彩色表情符号',
-  favoritesLabel: '收藏',
-  loadingMessage: '加载中…',
-  networkErrorMessage: '无法加载表情符号',
-  regionLabel: '表情符号选择器',
-  searchDescription: '有搜索结果时，按键盘选择。',
-  searchLabel: '搜索',
-  searchResultsLabel: '搜索结果',
-  skinToneDescription: '展开时选择肤色。',
-  skinToneLabel: '选择肤色（当前肤色：{skinTone}）',
-  skinTonesLabel: '肤色',
-  skinTones: [
-    '默认',
-    '浅色',
-    '中浅色',
-    '中等',
-    '中深色',
-    '深色'
-  ],
-  categories: {
-    custom: '自定义',
-    'smileys-emotion': '表情与情感',
-    'people-body': '人物与身体',
-    'animals-nature': '动物与自然',
-    'food-drink': '食物与饮料',
-    'travel-places': '旅行与地点',
-    activities: '活动',
-    objects: '物品',
-    symbols: '符号',
-    flags: '旗帜'
-  }
-};
-
 export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }) => {
+  const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<Picker>(null);
@@ -79,9 +45,41 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
       // Provide local offline emoji data to prevent CDN timeouts/blocks (e.g. jsdelivr in China)
       picker.dataSource = emojiDataUrl;
 
-      // Inject our internal Chinese definitions 
-      // (This overrides any English annotation completely)
-      picker.i18n = ZH_CN_I18N;
+      // Inject i18n translations using t() function
+      picker.i18n = {
+        categoriesLabel: t('avatarEditor.categoriesLabel', '类别'),
+        emojiUnsupportedMessage: t('avatarEditor.emojiUnsupportedMessage', '你的浏览器不支持彩色表情符号'),
+        favoritesLabel: t('avatarEditor.favoritesLabel', '收藏'),
+        loadingMessage: t('avatarEditor.loadingMessage', '加载中…'),
+        networkErrorMessage: t('avatarEditor.networkErrorMessage', '无法加载表情符号'),
+        regionLabel: t('avatarEditor.regionLabel', '表情符号选择器'),
+        searchDescription: t('avatarEditor.searchDescription', '有搜索结果时，按键盘选择。'),
+        searchLabel: t('avatarEditor.searchLabel', '搜索'),
+        searchResultsLabel: t('avatarEditor.searchResultsLabel', '搜索结果'),
+        skinToneDescription: t('avatarEditor.skinToneDescription', '展开时选择肤色。'),
+        skinToneLabel: t('avatarEditor.skinToneLabel', '选择肤色（当前肤色：{skinTone}）'),
+        skinTonesLabel: t('avatarEditor.skinTonesLabel', '肤色'),
+        skinTones: [
+          t('avatarEditor.skinTones.default', '默认'),
+          t('avatarEditor.skinTones.light', '浅色'),
+          t('avatarEditor.skinTones.mediumLight', '中浅色'),
+          t('avatarEditor.skinTones.medium', '中等'),
+          t('avatarEditor.skinTones.mediumDark', '中深色'),
+          t('avatarEditor.skinTones.dark', '深色')
+        ],
+        categories: {
+          custom: t('avatarEditor.categories.custom', '自定义'),
+          'smileys-emotion': t('avatarEditor.categories.smileysEmotion', '表情与情感'),
+          'people-body': t('avatarEditor.categories.peopleBody', '人物与身体'),
+          'animals-nature': t('avatarEditor.categories.animalsNature', '动物与自然'),
+          'food-drink': t('avatarEditor.categories.foodDrink', '食物与饮料'),
+          'travel-places': t('avatarEditor.categories.travelPlaces', '旅行与地点'),
+          activities: t('avatarEditor.categories.activities', '活动'),
+          objects: t('avatarEditor.categories.objects', '物品'),
+          symbols: t('avatarEditor.categories.symbols', '符号'),
+          flags: t('avatarEditor.categories.flags', '旗帜')
+        }
+      };
 
       // Force hide the search bar and skin tone picker through Shadow DOM
       // since emoji-picker-element does not natively expose these as ::part
@@ -118,7 +116,7 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
       picker.addEventListener('emoji-click', handleEmojiClick);
       return () => picker.removeEventListener('emoji-click', handleEmojiClick);
     }
-  }, [onChange, showPicker]);
+  }, [onChange, showPicker, t]);
 
   const triggerImageInput = () => {
     const input = document.createElement('input');
@@ -152,11 +150,11 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
       {showPicker && (
         <div className={styles.popover} onClick={(e) => e.stopPropagation()}>
            <div className={styles.popoverHeader}>
-              <span className={styles.popoverTitle}>个性化图标</span>
-              <button 
-                 className={styles.uploadBtnIcon} 
-                 onClick={triggerImageInput} 
-                 title="从本地上传图片作为头像"
+               <span className={styles.popoverTitle}>{t('avatarEditor.personalizeIcon', '个性化图标')}</span>
+               <button 
+                  className={styles.uploadBtnIcon} 
+                  onClick={triggerImageInput} 
+                  title={t('avatarEditor.uploadImageAsAvatar', '从本地上传图片作为头像')}
               >
                  <ImagePlus size={16} />
               </button>

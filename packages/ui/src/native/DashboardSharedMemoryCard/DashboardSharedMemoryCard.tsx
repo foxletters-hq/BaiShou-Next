@@ -24,7 +24,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
     <View style={styles.card}>
       <View style={styles.header}>
          <Text style={styles.headerIcon}>🌸</Text>
-         <Text style={styles.headerTitle}>{t('summary.shared_memory') || '共同回忆'}</Text>
+         <Text style={styles.headerTitle}>{t('summary.shared_memory', '共同回忆')}</Text>
       </View>
       
       <Text style={styles.desc}>

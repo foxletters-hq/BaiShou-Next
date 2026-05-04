@@ -84,10 +84,10 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       <View style={styles.actionsDivider} />
       <View style={styles.actionsBox}>
          <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
-           <Text style={styles.editText}>✏️ {t('common.edit') || '编辑'}</Text>
+           <Text style={styles.editText}>✏️ {t('common.edit', '编辑')}</Text>
          </TouchableOpacity>
          <TouchableOpacity onPress={onDelete} style={styles.actionBtn}>
-           <Text style={styles.deleteText}>🗑️ {t('common.delete') || '删除'}</Text>
+           <Text style={styles.deleteText}>🗑️ {t('common.delete', '删除')}</Text>
          </TouchableOpacity>
       </View>
     </TouchableOpacity>

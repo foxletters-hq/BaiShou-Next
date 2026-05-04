@@ -33,6 +33,8 @@ export interface AssistantPickerSheetProps {
   onClose: () => void;
   onCreateNew?: () => void;
   onRefreshAssistants?: () => void; // 用于主动通知外部重新拉取数据
+  pinnedIds?: Set<string>;
+  onTogglePin?: (id: string, isPinned: boolean) => void;
 }
 
 export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
@@ -42,7 +44,9 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
   onSelect,
   onClose,
   onCreateNew,
-  onRefreshAssistants
+  onRefreshAssistants,
+  pinnedIds,
+  onTogglePin
 }) => {
   const { t } = useTranslation();
   const { prompt } = useDialog();
@@ -137,7 +141,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
 
   const handleEditName = async () => {
      if (!activeAssistant) return;
-     const newName = await prompt("请输入新的伙伴名称：", activeAssistant.name, "修改伙伴名称", false);
+     const newName = await prompt(t('agent.assistant.new_name_prompt', '请输入新的伙伴名称：'), activeAssistant.name, t('agent.assistant.edit_name_title', '修改伙伴名称'), false);
      if (newName && newName.trim()) {
         updateAssistantAPI(activeAssistant.id, { name: newName.trim() });
      }
@@ -152,7 +156,6 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
          {/* ─── 左侧机能筛选屏 ─── */}
          <div className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
-               <Star size={24} className={styles.headerIcon} />
                <span className={styles.headerTitle}>{t('assistant.select_title', '选择伙伴')}</span>
             </div>
 
@@ -161,8 +164,9 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                  <div className={styles.emptyText}>{t('assistant.no_assistant', '无伙伴')}</div>
                ) : (
                  filteredAssistants.map(ast => {
-  const isSelected = activeAssistant?.id === ast.id;
+                   const isSelected = activeAssistant?.id === ast.id;
                    const isCurrent = ast.id === currentAssistantId;
+                   const isPinned = pinnedIds?.has(ast.id) || false;
 
                    return (
                      <div 
@@ -180,17 +184,33 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                           </div>
                           <div className={styles.itemDesc}>{ast.description}</div>
                        </div>
-                       {assistants.length > 1 && (
+                       
+                       <div className={styles.actionsWrapper}>
+                          { /* Pin Button */ }
                           <div 
-                            className={styles.deleteBtnWrapper}
+                            className={`${styles.actionBtn} ${isPinned ? styles.pinnedBtn : ''}`}
                             onClick={(e) => {
                                e.stopPropagation();
-                               setDeleteTargetId(ast.id);
+                               if (onTogglePin) onTogglePin(ast.id, !isPinned);
                             }}
+                            title={isPinned ? t('agent.assistant.unpin', '取消置顶') : t('agent.assistant.pin_to_sidebar', '置顶并显示在侧边栏')}
                           >
-                             <Trash2 size={14} />
+                             <svg width="14" height="14" viewBox="0 0 24 24" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(45deg)' }}><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
                           </div>
-                       )}
+                          
+                          { /* Delete Button */ }
+                          {assistants.length > 1 && (
+                             <div 
+                               className={`${styles.actionBtn} ${styles.dangerBtn}`}
+                               onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteTargetId(ast.id);
+                               }}
+                             >
+                                <Trash2 size={14} />
+                             </div>
+                          )}
+                       </div>
                      </div>
                    );
                  })
@@ -237,7 +257,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                         </div>
                      </AvatarEditor>
                      <div className={styles.detailTitles}>
-                        <h2 onClick={handleEditName} title="点击修改名称" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                         <h2 onClick={handleEditName} title={t('assistant.clickToRename', '点击修改名称')} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                            {activeAssistant.name} <Edit2 size={16} color="var(--text-secondary)" />
                         </h2>
                         <p>{activeAssistant.description}</p>
@@ -315,7 +335,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                            {/* Context Window */}
                            <div style={{ padding: 14, border: '1px solid rgba(var(--color-outline-variant-rgb, 200,200,200), 0.2)', borderRadius: 12, marginBottom: 20, background: 'var(--bg-surface-highlight, rgba(248, 250, 252, 0.2))' }}>
                               <div style={{ display: 'flex', alignItems: 'center', marginBottom: editingContextWindow >= 0 ? 12 : 0 }}>
-                                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>窗口大小</span>
+                                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('agent.assistant.window_size', '窗口大小')}</span>
                                  <div style={{ flex: 1 }}></div>
                                  {editingContextWindow >= 0 && (
                                    <span style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--color-primary)', marginRight: 4 }}>
@@ -354,7 +374,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                            </div>
                            <div style={{ padding: 14, border: '1px solid rgba(var(--color-outline-variant-rgb, 200,200,200), 0.2)', borderRadius: 12, background: 'var(--bg-surface-highlight, rgba(248, 250, 252, 0.2))' }}>
                               <div style={{ display: 'flex', alignItems: 'center', marginBottom: editingCompressEnabled ? 12 : 0 }}>
-                                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>状态</span>
+                                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('agent.assistant.status', '状态')}</span>
                                  <div style={{ flex: 1 }}></div>
                                  {editingCompressEnabled && (
                                    <span style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--color-primary)', marginRight: 8 }}>
@@ -480,7 +500,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                 {t('agent.assistant.delete_confirm', '是否确认删除该伙伴？')}
               </h3>
               <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                此操作将永久删除该伙伴的所有配置，该操作不可恢复。
+                {t('agent.assistant.delete_confirm_desc', '此操作将永久删除该伙伴的所有配置，该操作不可恢复。')}
               </p>
             </div>
             <div style={{ 
@@ -511,7 +531,6 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                       if (onRefreshAssistants) onRefreshAssistants();
                       const isCurrent = deleteTargetId === currentAssistantId;
                       const isSelected = deleteTargetId === selectedId;
-                      if (isCurrent && onClose) onClose();
                       if (isSelected && assistants.length > 0) {
                          setSelectedId(assistants.find(a => a.id !== deleteTargetId)?.id || null);
                       }

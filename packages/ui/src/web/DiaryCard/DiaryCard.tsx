@@ -30,7 +30,16 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   const day = createdAt.getDate().toString().padStart(2, '0');
   const month = createdAt.getMonth() + 1;
   const year = createdAt.getFullYear();
-  const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][createdAt.getDay()];
+  const WEEKDAYS = [
+    t('diary.weekday.sunday', '周日'),
+    t('diary.weekday.monday', '周一'),
+    t('diary.weekday.tuesday', '周二'),
+    t('diary.weekday.wednesday', '周三'),
+    t('diary.weekday.thursday', '周四'),
+    t('diary.weekday.friday', '周五'),
+    t('diary.weekday.saturday', '周六'),
+  ];
+  const weekday = WEEKDAYS[createdAt.getDay()];
 
   // Tags Color Hash Logic
   const getTagColor = (tag: string) => {
@@ -59,7 +68,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           <div className="diary-card-v2-date-meta">
             <span className="diary-card-v2-weekday">{weekday}</span>
             <div className="diary-card-v2-badge">
-              {year} · {month}月
+              {year} · {month}{t('diary.month_suffix', '月')}
             </div>
           </div>
         </div>

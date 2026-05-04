@@ -61,7 +61,7 @@ const DAYS = [t('common.sun', '日'), t('common.mon', '一'), t('common.tue', '�
                          <div 
                            key={colIndex} 
                            className={`${styles.cell} ${getColorLevel(cell.count)}`}
-                           title={`${cell.date.toISOString().split('T')[0]} : ${cell.count} 次`}
+                            title={`${cell.date.toISOString().split('T')[0]} : ${cell.count} ${t('activity.times', '次')}`}
                          />
                       ))}
                    </div>

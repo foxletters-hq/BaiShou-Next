@@ -7,7 +7,7 @@ import {
   Cloud, Globe, Folder, Database, History, RefreshCw, Trash2,
   CheckSquare, Settings, Archive, CloudUpload, ArrowLeft, Save, 
   Home, Package, DownloadCloud, Edit3, Loader2,
-  Component, Map, Key, Eye, EyeOff, LayoutTemplate
+  Component, Map, Key, Eye, EyeOff, LayoutTemplate, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -38,6 +38,7 @@ export interface CloudSyncPanelProps {
   onSyncNow: (config: SyncConfig) => Promise<{ success: boolean; message: string }>;
   onListRecords: (config: SyncConfig) => Promise<SyncRecord[]>;
   onRestore: (config: SyncConfig, filename: string) => Promise<{ success: boolean; message: string }>;
+  onDownloadBackup?: (config: SyncConfig, filename: string) => Promise<{ success: boolean; message: string }>;
   onDeleteRecord: (config: SyncConfig, filename: string) => Promise<boolean>;
   onBatchDelete: (config: SyncConfig, filenames: string[]) => Promise<number>;
   onRename: (config: SyncConfig, oldName: string, newName: string) => Promise<boolean>;
@@ -64,6 +65,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   onSyncNow,
   onListRecords,
   onRestore,
+  onDownloadBackup,
   onDeleteRecord,
   onBatchDelete,
   onRename,
@@ -86,7 +88,17 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   // Keep config in sync if savedConfig is loaded asynchronously or updated externally
   useEffect(() => {
     if (savedConfig) {
-      setConfig((prev) => ({ ...DEFAULT_CONFIG, ...savedConfig }));
+      const next = { ...DEFAULT_CONFIG, ...savedConfig };
+      setConfig(next);
+      if (next.target !== 'local') {
+        setIsLoading(true);
+        onListRecords(next)
+          .then(r => setRecords(r))
+          .catch(e => toast.showError(t('cloud.fetch_backup_list_failed', '获取备份列表失败: ') + (e.message || e)))
+          .finally(() => { setIsLoading(false); setManageMode(false); setSelected(new Set()); });
+      } else {
+        setRecords([]);
+      }
     }
   }, [savedConfig]);
 
@@ -97,7 +109,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       const r = await onListRecords(config);
       setRecords(r);
     } catch (e: any) {
-      toast.showError('获取备份列表失败: ' + (e.message || e));
+      toast.showError(t('cloud.fetch_backup_list_failed', '获取备份列表失败: ') + (e.message || e));
     } finally {
       setIsLoading(false);
       setManageMode(false);
@@ -112,12 +124,12 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   };
 
   useEffect(() => {
-    fetchRecords();
+    if (!savedConfig) fetchRecords();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSync = async () => {
-    if (config.target === 'local') { toast.show('当前同步目标为本地，请先配置云端'); return; }
+    if (config.target === 'local') { toast.show(t('cloud.sync_target_local_hint', '当前同步目标为本地，请先配置云端')); return; }
     setIsSyncing(true);
     try {
       const res = await onSyncNow(config);
@@ -145,15 +157,29 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     }
   };
 
+  const handleDownload = async (filename: string) => {
+    if (!onDownloadBackup) return;
+    setIsSyncing(true);
+    try {
+      const res = await onDownloadBackup(config, filename);
+      if (res.success) toast.showSuccess(res.message); 
+      else toast.showError(res.message);
+    } catch (e: any) {
+      toast.showError(t('cloud.download_failed', '下载失败: ') + (e.message || e));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleDelete = async (filename: string) => {
     const confirmed = await dialog.confirm(t('sync.delete_confirm', `真的要删除云端备份 "${filename}" 吗？`));
     if (!confirmed) return;
     try {
       await onDeleteRecord(config, filename);
       await fetchRecords();
-      toast.showSuccess('删除成功');
+      toast.showSuccess(t('cloud.delete_success', '删除成功'));
     } catch (e: any) {
-      toast.showError('删除失败: ' + e.message);
+      toast.showError(t('cloud.delete_failed', '删除失败: ') + e.message);
     }
   };
 
@@ -164,21 +190,21 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     try {
       await onBatchDelete(config, Array.from(selected));
       await fetchRecords();
-      toast.showSuccess('批量删除成功');
+      toast.showSuccess(t('cloud.batch_delete_success', '批量删除成功'));
     } catch (e: any) {
-      toast.showError('批量删除失败: ' + e.message);
+      toast.showError(t('cloud.batch_delete_failed', '批量删除失败: ') + e.message);
     }
   };
 
   const handleRename = async (oldName: string) => {
-    const newName = await dialog.prompt('重命名', oldName);
+    const newName = await dialog.prompt(t('cloud.rename', '重命名'), oldName);
     if (!newName || newName === oldName) return;
     try {
       await onRename(config, oldName, newName);
       await fetchRecords();
-      toast.showSuccess('重命名成功');
+      toast.showSuccess(t('cloud.rename_success', '重命名成功'));
     } catch (e: any) {
-      toast.showError('重命名失败: ' + e.message);
+      toast.showError(t('cloud.rename_failed', '重命名失败: ') + e.message);
     }
   };
 
@@ -225,7 +251,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           </div>
           
           <div className={styles.configContent}>
-            <div className={styles.targetSectionTitle}>选择同步目标</div>
+            <div className={styles.targetSectionTitle}>{t('data_sync.select_target_title', '选择同步目标')}</div>
             <div className={styles.targetCardsLayout}>
               <div 
                 className={`${styles.targetCardBig} ${config.target === 'local' ? styles.targetCardSelected : ''}`}
@@ -262,8 +288,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
             <div className={styles.configSection}>
               <div className={styles.configSectionHeader}>
                 <div className={styles.configSectionTitle}>
-                  {config.target === 'local' ? '本地存储配置' : 
-                   config.target === 's3' ? 'S3 存储配置' : 'WebDAV 存储配置'}
+                  {config.target === 'local' ? t('data_sync.s3_config_title', '本地存储配置').replace('S3', t('data_sync.local_storage', '本地存储')) : 
+                   config.target === 's3' ? t('data_sync.s3_config_title', 'S3 存储配置') : t('data_sync.webdav_config_title', 'WebDAV 存储配置')}
                 </div>
               </div>
               <div className={styles.formDivider} />
@@ -273,35 +299,35 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                   <div style={{ marginBottom: 12, color: 'var(--color-on-surface-variant)' }}>
                      <Home size={64} strokeWidth={1} style={{ opacity: 0.5 }} />
                   </div>
-                  <div>当前模式下产生的数据仅会存放于本地应用目录中，无需输入远程凭据。</div>
+                  <div>{t('data_sync.local_no_config', '当前模式下产生的数据仅会存放于本地应用目录中，无需输入远程凭据。')}</div>
                 </div>
               )}
 
               {config.target === 'webdav' && (
                 <div className={styles.configGrid}>
                   <div className={styles.formField}>
-                    <label>WebDAV URL 地址</label>
+                    <label>{t('data_sync.webdav_url_label', 'WebDAV URL 地址')}</label>
                     <div className={styles.inputPill}>
                       <Globe size={18} className={styles.pillIcon} />
                       <input value={config.webdavUrl} onChange={(e) => updateField('webdavUrl', e.target.value)} />
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>Base Path 子路径</label>
+                    <label>{t('data_sync.webdav_path_label', 'Base Path 子路径')}</label>
                     <div className={styles.inputPill}>
                       <Folder size={18} className={styles.pillIcon} />
                       <input value={config.webdavPath} onChange={(e) => updateField('webdavPath', e.target.value)} />
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>Username 用户名</label>
+                    <label>{t('data_sync.webdav_user_label', 'Username 用户名')}</label>
                     <div className={styles.inputPill}>
                       <Component size={18} className={styles.pillIcon} />
                       <input value={config.webdavUsername} onChange={(e) => updateField('webdavUsername', e.target.value)} />
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>Password 密码</label>
+                    <label>{t('data_sync.webdav_password_label', 'Password 密码')}</label>
                     <div className={styles.inputPill}>
                       <Key size={18} className={styles.pillIcon} />
                       <input type={showPassword ? "text" : "password"} value={config.webdavPassword} onChange={(e) => updateField('webdavPassword', e.target.value)} />
@@ -316,35 +342,35 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
               {config.target === 's3' && (
                 <div className={styles.configGrid}>
                   <div className={styles.formField}>
-                    <label>Endpoint 服务地址</label>
+                    <label>{t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}</label>
                     <div className={styles.inputPill}>
                       <Component size={18} className={styles.pillIcon} />
                       <input value={config.s3Endpoint} onChange={(e) => updateField('s3Endpoint', e.target.value)} />
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>Region 区域名</label>
+                    <label>{t('data_sync.s3_region_label', 'Region 区域名')}</label>
                     <div className={styles.inputPill}>
                       <Map size={18} className={styles.pillIcon} />
                       <input value={config.s3Region} onChange={(e) => updateField('s3Region', e.target.value)} />
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>Bucket 存储桶</label>
+                    <label>{t('data_sync.s3_bucket_label', 'Bucket 存储桶')}</label>
                     <div className={styles.inputPill}>
                       <Database size={18} className={styles.pillIcon} />
                       <input value={config.s3Bucket} onChange={(e) => updateField('s3Bucket', e.target.value)} />
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>Path 子路径</label>
+                    <label>{t('data_sync.s3_path_label', 'Path 子路径')}</label>
                     <div className={styles.inputPill}>
                       <Folder size={18} className={styles.pillIcon} />
                       <input value={config.s3Path} onChange={(e) => updateField('s3Path', e.target.value)} />
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>Access Key (AK)</label>
+                    <label>{t('data_sync.s3_ak_label', 'Access Key (AK)')}</label>
                     <div className={styles.inputPill}>
                       <Key size={18} className={styles.pillIcon} />
                       <input type={showPassword ? "text" : "password"} value={config.s3AccessKey} onChange={(e) => updateField('s3AccessKey', e.target.value)} />
@@ -354,7 +380,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>Secret Key (SK)</label>
+                    <label>{t('data_sync.s3_sk_label', 'Secret Key (SK)')}</label>
                     <div className={styles.inputPill}>
                       <Key size={18} className={styles.pillIcon} />
                       <input type={showPassword ? "text" : "password"} value={config.s3SecretKey} onChange={(e) => updateField('s3SecretKey', e.target.value)} />
@@ -441,7 +467,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
             </>
           ) : (
              <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setManageMode(true)} disabled={records.length === 0 || isLoading}>
-               <CheckSquare size={16} /> 批量管理
+               <CheckSquare size={16} /> {t('data_sync.batch_manage', '批量管理')}
              </button>
           )}
 
@@ -466,9 +492,15 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       </div>
 
       {isLoading ? (
-        <div className={styles.loadingState}>加载中...</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', gap: '16px' }}>
+          <Loader2 size={32} style={{ animation: 'spin 1.5s linear infinite', color: 'var(--color-primary, #0ea5e9)' }} />
+          <div style={{ color: 'var(--color-on-surface-variant)', fontSize: 14 }}>{t('data_sync.loading_records', '正在连线获取云端记录...')}</div>
+        </div>
       ) : records.length === 0 ? (
-        <div className={styles.emptyState}>{t('data_sync.no_records_hint', '暂无同步记录')}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', gap: '8px', color: 'var(--color-on-surface-variant)' }}>
+          <Package size={48} strokeWidth={1} style={{ opacity: 0.5, marginBottom: 8 }} />
+          <div>{t('data_sync.no_records_hint', '暂无云端同步记录')}</div>
+        </div>
       ) : (
         <div className={styles.recordList}>
           {records.map((r) => (
@@ -481,7 +513,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                     setSelected(next);
                   }} />
               )}
-              <div className={styles.recordIcon}><Archive size={24} strokeWidth={1.5} /></div>
+              <div className={styles.recordIconWrapper} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(14, 165, 233, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary, #0ea5e9)', flexShrink: 0 }}>
+                <FileText size={22} strokeWidth={2} />
+              </div>
               <div className={styles.recordInfo}>
                 <div className={styles.recordName}>{r.filename}</div>
                 <div className={styles.recordMeta}>
@@ -490,9 +524,10 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
               </div>
               {!manageMode && (
                 <div className={styles.recordActions}>
-                  <button className={`${styles.iconBtn} ${styles.iconBtnRestore}`} onClick={() => handleRestore(r.filename)} title="恢复此备份"><DownloadCloud size={16} /></button>
-                  <button className={styles.iconBtn} onClick={() => handleRename(r.filename)} title="重命名"><Edit3 size={16} /></button>
-                  <button className={`${styles.iconBtn} ${styles.iconBtnDelete}`} onClick={() => handleDelete(r.filename)} title="删除"><Trash2 size={16} /></button>
+                  {onDownloadBackup && <button className={`${styles.iconBtn}`} onClick={() => handleDownload(r.filename)} title={t('cloud.download_to_local', '下载到本地')}><DownloadCloud size={16} /></button>}
+                  <button className={`${styles.iconBtn} ${styles.iconBtnRestore}`} onClick={() => handleRestore(r.filename)} title={t('cloud.restore_to_local', '覆盖并恢复到本机')}><Package size={16} /></button>
+                  <button className={styles.iconBtn} onClick={() => handleRename(r.filename)} title={t('cloud.rename', '重命名')}><Edit3 size={16} /></button>
+                  <button className={`${styles.iconBtn} ${styles.iconBtnDelete}`} onClick={() => handleDelete(r.filename)} title={t('cloud.delete', '删除')}><Trash2 size={16} /></button>
                 </div>
               )}
             </div>
@@ -505,10 +540,10 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           <div className={styles.countModal} onClick={e => e.stopPropagation()}>
             <div className={styles.countModalHeader}>
               <Archive size={20} color="var(--color-primary, #0ea5e9)" />
-              <div style={{fontWeight: 'bold'}}>设置最大备份数</div>
+              <div style={{fontWeight: 'bold'}}>{t('data_sync.max_backup_title', '设置最大备份数')}</div>
             </div>
             <div className={styles.countModalBody}>
-              <div style={{fontSize: 13, color: 'var(--color-on-surface-variant)', marginBottom: 16}}>超出的旧备份将在同步后自动清理。</div>
+              <div style={{fontSize: 13, color: 'var(--color-on-surface-variant)', marginBottom: 16}}>{t('data_sync.max_backup_desc', '超出的旧备份将在同步后自动清理。')}</div>
               <div className={styles.sliderRow}>
                 <input 
                   type="range" 
@@ -531,10 +566,10 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                   setShowCountModal(false);
                 }}
               >
-                不限制上限
+                {t('data_sync.no_limit', '不限制数量')}
               </button>
               <div style={{display: 'flex', gap: 8}}>
-                <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowCountModal(false)}>取消</button>
+                <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowCountModal(false)}>{t('common.cancel', '取消')}</button>
                 <button 
                   className={`${styles.actionBtn} ${styles.btnFilled}`} 
                   onClick={() => {
@@ -543,7 +578,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                     setShowCountModal(false);
                   }}
                 >
-                  确定
+                  {t('common.confirm', '确定')}
                 </button>
               </div>
             </div>

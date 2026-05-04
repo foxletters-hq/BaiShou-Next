@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import styles from './DiaryCard.module.css';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 
@@ -16,14 +17,23 @@ interface DiaryCardProps {
   onDelete?: (id: string) => void;
 }
 
-const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-
 export const DiaryCard: React.FC<DiaryCardProps> = ({ diary, onClick, onEdit, onDelete }) => {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
+
+  const WEEKDAYS = [
+    t('diary.weekday.sunday', '周日'),
+    t('diary.weekday.monday', '周一'),
+    t('diary.weekday.tuesday', '周二'),
+    t('diary.weekday.wednesday', '周三'),
+    t('diary.weekday.thursday', '周四'),
+    t('diary.weekday.friday', '周五'),
+    t('diary.weekday.saturday', '周六'),
+  ];
 
   const day = diary.date.getDate().toString().padStart(2, '0');
   const weekday = WEEKDAYS[diary.date.getDay()];
-  const yearMonth = `${diary.date.getFullYear()} · ${diary.date.getMonth() + 1}月`;
+  const yearMonth = `${diary.date.getFullYear()} · ${diary.date.getMonth() + 1}${t('diary.month_suffix', '月')}`;
 
   // Deterministic tag color generation based on string
   const getTagColorClass = (tag: string) => {
@@ -76,13 +86,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ diary, onClick, onEdit, on
                   className={styles.actionBtn} 
                   onClick={(e) => { e.stopPropagation(); onEdit?.(diary.id); }}
               >
-                  ✏️ 编辑
+                  ✏️ {t('diary.edit', '编辑')}
               </button>
               <button 
                   className={`${styles.actionBtn} ${styles.deleteBtn}`} 
                   onClick={(e) => { e.stopPropagation(); onDelete?.(diary.id); }}
               >
-                  🗑️ 删除
+                  🗑️ {t('diary.delete', '删除')}
               </button>
           </div>
        </div>

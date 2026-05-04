@@ -91,7 +91,7 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
               {session.avatar && (
                 <div className={styles.avatarBox}>
                    {typeof session.avatar === 'string' && session.avatar.startsWith('http') ? (
-                     <img src={session.avatar} alt="伙伴" className={styles.avatarImg} />
+                     <img src={session.avatar} alt={t('session.partner', '伙伴')} className={styles.avatarImg} />
                    ) : (
                      session.avatar
                    )}

@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
 import { HomeScreen } from './features/home/HomeScreen';
 import { AgentScreen } from './features/agent/AgentScreen';
@@ -13,26 +13,29 @@ import { DiaryPage } from './features/diary/DiaryPage';
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { SummaryPage } from './features/summary/SummaryPage';
+import { SummaryDetailPage } from './features/summary/SummaryDetailPage';
 import { LanTransferPage } from './features/settings/LanTransferPage';
 import { CloudSyncPage } from './features/settings/CloudSyncPage';
 import { useToast, DialogProvider, ToastProvider } from '@baishou/ui';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@baishou/store';
 import { i18n } from '@baishou/shared';
 import { TitleBar } from './components/TitleBar';
 
 const GlobalErrorHandler = () => {
   const toast = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const handleRejection = (e: PromiseRejectionEvent) => {
       e.preventDefault();
-      toast.showError('操作异常：' + (e.reason?.message || e.reason || '未知网络或系统错误'));
+      toast.showError(t('app.error.operation', '操作异常：') + (e.reason?.message || e.reason || t('app.error.unknown_network', '未知网络或系统错误')));
     };
     
     const handleError = (e: ErrorEvent) => {
       e.preventDefault();
-      toast.showError('系统警告：' + (e.message || '程序发生未知错误'));
+      toast.showError(t('app.error.system_warning', '系统警告：') + (e.message || t('app.error.unknown_program', '程序发生未知错误')));
     };
 
     window.addEventListener('unhandledrejection', handleRejection);
@@ -48,6 +51,60 @@ const GlobalErrorHandler = () => {
 };
 
 import { ErrorBoundary } from './ErrorBoundary';
+
+const AppRoutes = () => {
+  const location = useLocation();
+  const [backgroundLocation, setBackgroundLocation] = useState(() => {
+    if (location.pathname.startsWith('/settings')) {
+      return { ...location, pathname: '/diary', state: null, key: 'default' };
+    }
+    return location;
+  });
+  const isSettings = location.pathname.startsWith('/settings');
+
+  useEffect(() => {
+    if (!location.pathname.startsWith('/settings')) {
+      setBackgroundLocation(location);
+    }
+  }, [location]);
+
+  return (
+    <>
+      <Routes location={isSettings ? backgroundLocation : location}>
+        <Route path="/welcome" element={<OnboardingScreen />} />
+        
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<HomeScreen />} />
+          
+          {/* Main Business Logic Sub-Routes */}
+          <Route path="/diary" element={<DiaryPage />} />
+          <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
+          <Route path="/summary" element={<SummaryPage />} />
+          <Route path="/summary/:id" element={<SummaryDetailPage />} />
+          
+          {/* Tools Routing */}
+          <Route path="/lan-transfer" element={<LanTransferPage />} />
+          <Route path="/data-sync" element={<CloudSyncPage />} />
+
+          {/* AI / Agent Role Routing - Wrapped in AgentLayout */}
+          <Route element={<AgentLayout />}>
+            <Route path="/chat/:sessionId?" element={<AgentScreen />} />
+          </Route>
+          <Route path="/sessions" element={<SessionManagementScreen />} />
+          <Route path="/assistants" element={<AssistantManagementScreen />} />
+          <Route path="/assistants/:id" element={<AssistantEditScreen />} />
+        </Route>
+      </Routes>
+
+      {/* Settings Rendered as an Overlay to avoid unmounting MainLayout */}
+      {isSettings && (
+        <Routes>
+          <Route path="/settings/*" element={<SettingsPage />} />
+        </Routes>
+      )}
+    </>
+  );
+};
 
 export function App() {
   const locale = useSettingsStore(s => s.locale);
@@ -109,32 +166,7 @@ export function App() {
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
           <TitleBar />
           <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
-            <Routes>
-          <Route path="/welcome" element={<OnboardingScreen />} />
-          <Route path="/settings/*" element={<SettingsPage />} />
-          
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<HomeScreen />} />
-            
-            {/* Main Business Logic Sub-Routes */}
-            <Route path="/diary" element={<DiaryPage />} />
-            <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
-            <Route path="/summary" element={<SummaryPage />} />
-            
-            {/* Tools Routing */}
-            <Route path="/lan-transfer" element={<LanTransferPage />} />
-            <Route path="/data-sync" element={<CloudSyncPage />} />
-
-            {/* AI / Agent Role Routing - Wrapped in AgentLayout */}
-            <Route element={<AgentLayout />}>
-              <Route path="/agent" element={<AgentScreen />} />
-              <Route path="/c/:sessionId" element={<AgentScreen />} />
-            </Route>
-            <Route path="/sessions" element={<SessionManagementScreen />} />
-            <Route path="/assistants" element={<AssistantManagementScreen />} />
-            <Route path="/assistants/:id" element={<AssistantEditScreen />} />
-          </Route>
-        </Routes>
+            <AppRoutes />
           </div>
         </div>
         </ErrorBoundary>

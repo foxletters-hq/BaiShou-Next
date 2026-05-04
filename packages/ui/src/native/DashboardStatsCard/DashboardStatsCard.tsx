@@ -39,23 +39,23 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
       <View style={styles.header}>
         <Text style={styles.headerIcon}>📊</Text>
         <Text style={styles.headerTitle}>
-          {t('common.app_title') || '白守'} · {t('summary.stats_panel') || '统计面板'}
+          {t('common.app_title', '白守')} · {t('summary.stats_panel', '统计面板')}
         </Text>
       </View>
 
       <View style={styles.grid}>
         <View style={styles.row}>
-          <View style={styles.cell}>{renderStatTile('📘', totalDiaryCount, t('summary.stats_daily') || '日记', '#4CAF50')}</View>
+          <View style={styles.cell}>{renderStatTile('📘', totalDiaryCount, t('summary.stats_daily', '日记'), '#4CAF50')}</View>
           <View style={styles.spacer} />
-          <View style={styles.cell}>{renderStatTile('📅', totalWeeklyCount, t('summary.stats_weekly') || '周统', '#3F51B5')}</View>
+          <View style={styles.cell}>{renderStatTile('📅', totalWeeklyCount, t('summary.stats_weekly', '周统'), '#3F51B5')}</View>
         </View>
         <View style={styles.row}>
-          <View style={styles.cell}>{renderStatTile('🗂️', totalMonthlyCount, t('summary.stats_monthly') || '月统', '#2196F3')}</View>
+          <View style={styles.cell}>{renderStatTile('🗂️', totalMonthlyCount, t('summary.stats_monthly', '月统'), '#2196F3')}</View>
           <View style={styles.spacer} />
-          <View style={styles.cell}>{renderStatTile('📆', totalQuarterlyCount, t('summary.stats_quarterly') || '季统', '#FFB300')}</View>
+          <View style={styles.cell}>{renderStatTile('📆', totalQuarterlyCount, t('summary.stats_quarterly', '季统'), '#FFB300')}</View>
         </View>
         <View style={styles.row}>
-          <View style={styles.cell}>{renderStatTile('🗓️', totalYearlyCount, t('summary.stats_yearly') || '年统', '#FF9800')}</View>
+          <View style={styles.cell}>{renderStatTile('🗓️', totalYearlyCount, t('summary.stats_yearly', '年统'), '#FF9800')}</View>
         </View>
       </View>
     </View>

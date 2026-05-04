@@ -72,7 +72,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({
              <img className={styles.avatarImg} src={profile.avatarPath} alt="avatar" />
            ) : (
              <div className={styles.avatarFallback}>
-               {(profile.nickname || '白').charAt(0).toUpperCase()}
+                {(profile.nickname || t('profile.defaultChar', '白')).charAt(0).toUpperCase()}
              </div>
            )}
            <div className={styles.avatarHover}>

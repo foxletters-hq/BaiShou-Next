@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SessionListItem } from '@baishou/ui';
 import type { SessionData } from '@baishou/ui';
 import { MdAutoAwesome, MdUnfoldMore, MdAdd, MdSettings, MdChecklist, MdMenu } from 'react-icons/md';
@@ -51,7 +52,7 @@ const AssistantAvatar: React.FC<{ assistant: AgentAssistant; size: number }> = (
       width: size,
       height: size,
       borderRadius: '50%',
-      backgroundColor: 'var(--color-primary-container, #e0f2fe)',
+      backgroundColor: 'transparent',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -85,6 +86,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
   onLoadMore,
 }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const scrollerRef = React.useRef<HTMLDivElement>(null);
@@ -116,10 +118,10 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
         <div className={styles.brandIconBox}>
           <MdAutoAwesome className={styles.brandIcon} />
         </div>
-        <div className={styles.brandText}>伙伴</div>
+        <div className={styles.brandText}>{t('agent.partner_label', '伙伴')}</div>
         {/* 折叠按钮 — 仅桌面端显示 */}
         {onCollapse && (
-          <button className={styles.collapseBtn} onClick={onCollapse} title="折叠侧边栏">
+          <button className={styles.collapseBtn} onClick={onCollapse} title={t('agent.sidebar.collapse', '折叠侧边栏')}>
             <MdMenu size={20} />
           </button>
         )}
@@ -167,7 +169,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
         <div className={styles.pinnedRow}>
           {pinnedAssistants.length === 0 && (
              <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', flex: 1 }}>
-               这里可以置顶伙伴
+               {t('agent.sidebar.pin_hint', '这里可以置顶伙伴')}
              </div>
           )}
           {pinnedAssistants.map(assistant => {
@@ -195,7 +197,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
         <div className={styles.newChatWrapper}>
           <button className={styles.newChatBtn} onClick={onNewSession}>
             <MdAdd size={18} />
-            <span>新对话</span>
+            <span>{t('agent.sessions.new_chat', '新对话')}</span>
           </button>
         </div>
 
@@ -203,7 +205,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
         <div className={styles.menuItemRow} onClick={() => navigate('/settings')}>
           <div className={styles.menuItemRowInner}>
             <MdSettings size={20} className={styles.menuItemRowIcon} />
-            <span>系统设置</span>
+            <span>{t('settings.title', '系统设置')}</span>
           </div>
         </div>
 
@@ -212,9 +214,9 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
 
         {/* ─── 对话历史区标题 — labelSmall + letterSpacing:0.5 ─── */}
         <div className={styles.historyHeader}>
-          <span>最近对话</span>
+          <span>{t('agent.sidebar.recent_chats', '最近对话')}</span>
           {sessions.length > 0 && (
-            <button className={styles.multiSelectToggle} onClick={toggleMultiSelect} title="多选">
+            <button className={styles.multiSelectToggle} onClick={toggleMultiSelect} title={t('common.multi_select', '多选')}>
               <MdChecklist
                 size={16}
                 color={isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)'}
@@ -228,7 +230,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
           <input
             className={styles.searchInput}
             type="text"
-            placeholder="搜索近期聊天..."
+            placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
             value={searchQuery}
             onChange={e => onSearchQueryChanged(e.target.value)}
           />
@@ -240,9 +242,9 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
         {/* ─── 对话列表 ─── */}
         <div className={styles.sessionList}>
           {isLoading ? (
-            <div className={styles.emptyHint}>加载中...</div>
+            <div className={styles.emptyHint}>{t('common.loading', '加载中...')}</div>
           ) : sessions.length === 0 ? (
-            <div className={styles.emptyHint}>暂无近期对话，快点开始一个吧~</div>
+            <div className={styles.emptyHint}>{t('agent.sidebar.no_recent_chats', '暂无近期对话，快点开始一个吧~')}</div>
           ) : (
             <>
               {sessions
@@ -285,7 +287,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
                       cursor: 'pointer', opacity: 0.8 
                     }}
                   >
-                    加载更多对话
+                    {t('agent.sidebar.load_more', '加载更多对话')}
                   </button>
                 </div>
               )}
@@ -309,7 +311,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
                 else setSelectedIds(new Set(sessions.map(s => s.id)));
               }}
             >
-              {selectedIds.size === sessions.length ? '取消全选' : '全选'}
+              {selectedIds.size === sessions.length ? t('agent.chat.cancel_select_all', '取消全选') : t('agent.chat.select_all', '全选')}
             </button>
             <div style={{ flex: 1 }} />
             <button
@@ -317,7 +319,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
               disabled={selectedIds.size === 0}
               onClick={handleBatchDelete}
             >
-              删除 ({selectedIds.size})
+              {t('common.delete', '删除')} ({selectedIds.size})
             </button>
           </div>
         )}

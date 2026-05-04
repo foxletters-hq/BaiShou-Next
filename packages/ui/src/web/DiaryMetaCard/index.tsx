@@ -1,10 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DiaryMeta } from '@baishou/shared';
 // @ts-ignore
 import styles from './DiaryMetaCard.module.css';
 
-const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 const TAG_STYLES = [styles.tagBlue, styles.tagGreen, styles.tagOrange, styles.tagPurple];
 
 function getTagStyle(tag: string): string {
@@ -26,6 +25,33 @@ interface DiaryMetaCardProps {
 }
 
 export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, onClick }) => {
+  const { t } = useTranslation();
+
+  const WEEKDAY_NAMES = [
+    t('diary.weekday.sunday', '周日'),
+    t('diary.weekday.monday', '周一'),
+    t('diary.weekday.tuesday', '周二'),
+    t('diary.weekday.wednesday', '周三'),
+    t('diary.weekday.thursday', '周四'),
+    t('diary.weekday.friday', '周五'),
+    t('diary.weekday.saturday', '周六'),
+  ];
+
+  const MONTH_NAMES = [
+    t('diary.month.january', '一月'),
+    t('diary.month.february', '二月'),
+    t('diary.month.march', '三月'),
+    t('diary.month.april', '四月'),
+    t('diary.month.may', '五月'),
+    t('diary.month.june', '六月'),
+    t('diary.month.july', '七月'),
+    t('diary.month.august', '八月'),
+    t('diary.month.september', '九月'),
+    t('diary.month.october', '十月'),
+    t('diary.month.november', '十一月'),
+    t('diary.month.december', '十二月'),
+  ];
+
   const d = meta.date instanceof Date ? meta.date : new Date(meta.date);
   const day = String(d.getDate()).padStart(2, '0');
   const weekday = WEEKDAY_NAMES[d.getDay()];
@@ -46,11 +72,23 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
             </div>
           </div>
         </div>
-        <span className={styles.menuIcon}>☰</span>
+        <div className={styles.headerRight}>
+          {meta.isFavorite && <span className={styles.favStar}>★</span>}
+          <span className={styles.menuIcon}>☰</span>
+        </div>
       </div>
 
       {/* Time */}
       <div className={styles.time}>{time}</div>
+
+      {/* 元数据：天气、心情、位置 */}
+      {(meta.weather || meta.mood || meta.location) && (
+        <div className={styles.metaRow}>
+          {meta.weather && <span className={styles.metaBadge}>🌤️ {meta.weather}</span>}
+          {meta.mood && <span className={styles.metaBadge}>{meta.mood}</span>}
+          {meta.location && <span className={styles.metaBadge}>📍 {meta.location}</span>}
+        </div>
+      )}
 
       {/* Content Preview */}
       <div className={styles.preview}>
@@ -78,7 +116,7 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
           }}
           aria-label="delete"
         >
-          删除
+          {t('common.delete', '删除')}
         </button>
       )}
     </div>

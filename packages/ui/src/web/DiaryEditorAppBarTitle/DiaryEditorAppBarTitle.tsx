@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { smoothScrollToCenter } from '../../utils/scroll';
 import { getPickerYearRange } from '../../utils/date';
 import './DiaryEditorAppBarTitle.css';
 
-const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
 
 interface DiaryEditorAppBarTitleProps {
   isSummaryMode: boolean;
@@ -17,6 +17,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   selectedDate,
   onDateChanged
 }) => {
+  const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(selectedDate.getFullYear());
   const [pickerMonth, setPickerMonth] = useState(selectedDate.getMonth() + 1);
@@ -25,10 +26,13 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   const isInitialOpen = useRef(true);
 
   // 格式化标题
+  const WEEKDAY_NAMES = Object.values(t('common.weekdays', { returnObjects: true }) as Record<string, string>);
+  const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
+
   const day = selectedDate.getDate();
   const weekday = WEEKDAY_NAMES[selectedDate.getDay()];
   const month = MONTH_NAMES[selectedDate.getMonth()];
-  const formattedDate = `${selectedDate.getFullYear()}年${month}${day}日 ${weekday}`;
+  const formattedDate = t('diary.date_format_editor_title', '{{year}}年{{month}}{{day}}日 {{weekday}}', { year: selectedDate.getFullYear(), month, day, weekday });
 
   // 当日期变化时同步pickerState
   useEffect(() => {
@@ -75,7 +79,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
     };
   }, [showPicker, pickerYear, pickerMonth, pickerDay]);
 
-  // 确认选择
+  // {t('common.confirm', '确认')}选择
   const handleConfirm = () => {
     const daysInMonth = new Date(pickerYear, pickerMonth, 0).getDate();
     const safeDay = Math.min(pickerDay, daysInMonth);
@@ -97,7 +101,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   if (isSummaryMode) {
     return (
       <div className="diary-editor-app-bar-title">
-        <span className="title-text">编辑总结</span>
+        <span className="title-text">{t('diary.edit_summary', '编辑总结')}</span>
       </div>
     );
   }
@@ -114,11 +118,11 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
           {/* Header */}
           <div className="dp-header">
             <button className="dp-header-btn dp-cancel-btn" onClick={() => setShowPicker(false)}>
-              取消
+              {t('common.cancel', '取消')}
             </button>
-            <span className="dp-header-title">选择日期</span>
+            <span className="dp-header-title">{t('common.select_time', '选择日期')}</span>
             <button className="dp-header-btn dp-confirm-btn" onClick={handleConfirm}>
-              确认
+              {t('common.confirm', '确认')}
             </button>
           </div>
           <div className="dp-divider" />
@@ -127,7 +131,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
           <div className="dp-columns">
             {/* Year */}
             <div className="dp-column">
-              <div className="dp-col-label">年</div>
+              <div className="dp-col-label">{t("common.year_unit_label", "年")}</div>
               <div className="dp-col-scroll">
                 {years.map(y => (
                   <div
@@ -135,7 +139,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
                     className={`dp-col-item ${y === pickerYear ? 'selected' : ''}`}
                     onClick={() => setPickerYear(y)}
                   >
-                    {y}年
+                    {y}
                   </div>
                 ))}
               </div>
@@ -143,7 +147,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
 
             {/* Month */}
             <div className="dp-column">
-              <div className="dp-col-label">月</div>
+              <div className="dp-col-label">{t("common.month_unit_label", "月")}</div>
               <div className="dp-col-scroll">
                 {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
                   <div
@@ -151,7 +155,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
                     className={`dp-col-item ${m === pickerMonth ? 'selected' : ''}`}
                     onClick={() => setPickerMonth(m)}
                   >
-                    {m}月
+                    {MONTH_NAMES[m - 1]}
                   </div>
                 ))}
               </div>
@@ -159,7 +163,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
 
             {/* Day */}
             <div className="dp-column">
-              <div className="dp-col-label">日</div>
+              <div className="dp-col-label">{t("common.day_unit_label", "日")}</div>
               <div className="dp-col-scroll">
                 {days.map(d => (
                   <div
@@ -167,7 +171,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
                     className={`dp-col-item ${d === pickerDay ? 'selected' : ''}`}
                     onClick={() => setPickerDay(d)}
                   >
-                    {d}日
+                    {d}
                   </div>
                 ))}
               </div>
@@ -185,9 +189,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
                 setPickerMonth(now.getMonth() + 1);
                 setPickerDay(now.getDate());
               }}
-            >
-              今天
-            </button>
+            >{t('common.today', '今天')}</button>
           </div>
         </div>
       )}
