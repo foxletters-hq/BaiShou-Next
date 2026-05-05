@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { logger } from '@baishou/shared';
 import { ChevronLeft, Trash2, Smile, Plus, ChevronRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { AvatarEditor } from '../AvatarEditor';
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup';
@@ -80,20 +81,25 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   const handleSave = () => {
     if (!name.trim()) return;
     setSaving(true);
-    onSave({
-      id: assistant?.id,
-      name: name.trim(),
-      emoji,
-      description: description.trim(),
-      systemPrompt: systemPrompt.trim(),
-      contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
-      providerId: providerId ?? undefined,
-      modelId: modelId ?? undefined,
-      compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressThreshold),
-      compressKeepTurns: Math.round(compressKeepTurns),
-      avatarPath: avatarRemoved ? '' : avatarPath,
-    });
-    setTimeout(() => setSaving(false), 500); 
+    try {
+      onSave({
+        id: assistant?.id ?? crypto.randomUUID(),
+        name: name.trim(),
+        emoji,
+        description: description.trim(),
+        systemPrompt: systemPrompt.trim(),
+        contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
+        providerId: providerId ?? undefined,
+        modelId: modelId ?? undefined,
+        compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressThreshold),
+        compressKeepTurns: Math.round(compressKeepTurns),
+        avatarPath: avatarRemoved ? '' : avatarPath,
+      });
+    } catch(e) {
+      logger.error('Failed to save assistant:', e);
+    } finally {
+      setTimeout(() => setSaving(false), 500);
+    }
   };
 
   const formatTokens = (tokens: number) => {

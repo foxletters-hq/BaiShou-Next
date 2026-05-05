@@ -76,6 +76,11 @@ export class AssistantManagerService {
       for (const f of allFiles) {
           const data = await this.fileService.readAssistant(f.id);
           if (data) {
+             // JSON.parse turns Date into ISO string, needs to transform to Date object
+             // Otherwise Drizzle SQLiteTimestamp.mapToDriverValue will raise TypeError: value.getTime is not a function
+             if (data.createdAt != null) data.createdAt = new Date(data.createdAt);
+             if (data.updatedAt != null) data.updatedAt = new Date(data.updatedAt);
+
              const existing = await this.repo.findById(f.id);
              if (existing) {
                 // Ignore parsing type mismatch due to quick schema update, we pass data via standard flow
