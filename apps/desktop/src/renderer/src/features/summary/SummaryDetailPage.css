@@ -171,3 +171,35 @@
 @keyframes summary-spin {
   to { transform: rotate(360deg); }
 }
+
+/* 编辑文本框 */
+.summary-edit-textarea {
+  width: 100%;
+  min-height: 400px;
+  padding: 16px;
+  background: var(--bg-surface-lowest);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.7;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.summary-edit-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light, rgba(91, 168, 245, 0.2));
+}
+
+.summary-edit-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* 禁用状态的按钮 */
+.summary-detail-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MarkdownRenderer, useToast } from '@baishou/ui';
-import { ArrowLeft, Calendar, Tag, Trash2, Copy, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, Tag, Trash2, Copy, Clock, Edit3, Save, X } from 'lucide-react';
 import './SummaryDetailPage.css';
 
 interface SummaryDetail {
@@ -38,6 +38,9 @@ export const SummaryDetailPage: React.FC = () => {
   const toast = useToast();
   const [summary, setSummary] = useState<SummaryDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -72,6 +75,40 @@ export const SummaryDetailPage: React.FC = () => {
     }
   };
 
+  const handleEdit = () => {
+    if (!summary) return;
+    setEditContent(summary.content);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditContent('');
+  };
+
+  const handleSave = async () => {
+    if (!summary || !summary.id) return;
+    setIsSaving(true);
+    try {
+      await window.electron.ipcRenderer.invoke(
+        'summary:update',
+        summary.id,
+        summary.type,
+        new Date(summary.startDate),
+        new Date(summary.endDate),
+        { content: editContent }
+      );
+      setSummary({ ...summary, content: editContent });
+      setIsEditing(false);
+      toast.showSuccess(t('common.save_success', '保存成功'));
+    } catch (e) {
+      console.error('[SummaryDetail] save error:', e);
+      toast.showError(t('common.save_failed', '保存失败'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!summary) return;
     try {
@@ -98,10 +135,24 @@ export const SummaryDetailPage: React.FC = () => {
 
   const formatGeneratedAt = (d?: string) => {
     if (!d) return '';
-    return new Date(d).toLocaleString(undefined, {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
+    try {
+      const date = new Date(d);
+      // 检查日期是否有效
+      if (isNaN(date.getTime())) {
+        return '';
+      }
+      // 检查年份是否在合理范围内
+      const year = date.getFullYear();
+      if (year < 2000 || year > 2100) {
+        return '';
+      }
+      return date.toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch {
+      return '';
+    }
   };
 
   if (loading) {
@@ -128,12 +179,37 @@ export const SummaryDetailPage: React.FC = () => {
           <span>{t('common.back', '返回')}</span>
         </button>
         <div className="summary-detail-actions">
-          <button className="summary-detail-action-btn" onClick={handleCopy} title={t('common.copy', '复制')}>
-            <Copy size={16} />
-          </button>
-          <button className="summary-detail-action-btn danger" onClick={handleDelete} title={t('common.delete', '删除')}>
-            <Trash2 size={16} />
-          </button>
+          {isEditing ? (
+            <>
+              <button 
+                className="summary-detail-action-btn" 
+                onClick={handleSave} 
+                disabled={isSaving}
+                title={t('common.save', '保存')}
+              >
+                <Save size={16} />
+              </button>
+              <button 
+                className="summary-detail-action-btn" 
+                onClick={handleCancelEdit}
+                title={t('common.cancel', '取消')}
+              >
+                <X size={16} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="summary-detail-action-btn" onClick={handleEdit} title={t('common.edit', '编辑')}>
+                <Edit3 size={16} />
+              </button>
+              <button className="summary-detail-action-btn" onClick={handleCopy} title={t('common.copy', '复制')}>
+                <Copy size={16} />
+              </button>
+              <button className="summary-detail-action-btn danger" onClick={handleDelete} title={t('common.delete', '删除')}>
+                <Trash2 size={16} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -155,7 +231,16 @@ export const SummaryDetailPage: React.FC = () => {
       </div>
 
       <div className="summary-detail-content">
-        <MarkdownRenderer content={summary.content} />
+        {isEditing ? (
+          <textarea
+            className="summary-edit-textarea"
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            placeholder={t('summary.content_placeholder', '输入总结内容...')}
+          />
+        ) : (
+          <MarkdownRenderer content={summary.content} />
+        )}
       </div>
     </div>
   );

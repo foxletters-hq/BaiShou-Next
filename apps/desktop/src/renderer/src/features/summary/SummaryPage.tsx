@@ -4,7 +4,8 @@ import {
   GalleryPanel,
   DashboardHeroBanner, DashboardStatsCard, DashboardSharedMemoryCard,
   ActivityHeatmap,
-  useToast
+  useToast,
+  useDialog
 } from '@baishou/ui';
 import type { ActivityData } from '@baishou/ui';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,6 +62,7 @@ export const SummaryPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { language } = i18n;
   const toast = useToast();
+  const dialog = useDialog();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
   const [lookbackMonths, setLookbackMonths] = useState(1);
@@ -69,10 +71,16 @@ export const SummaryPage: React.FC = () => {
   const { summaries, stats, missingSummaries, setMissingSummaries, queueGeneration, generationStates, refreshData } = useSummaryData();
   const [activityData, setActivityData] = useState<ActivityData[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
 
   const prevStatesRef = useRef<typeof generationStates>({});
+
+  /** 计算周数 */
+  const getWeekNumber = (date: Date) => {
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const diff = date.getTime() - firstDayOfYear.getTime();
+    return Math.ceil(diff / (7 * 24 * 60 * 60 * 1000));
+  };
 
   /** 首次加载：获取所有年份数据构建年份下拉 */
   useEffect(() => {
@@ -201,10 +209,8 @@ export const SummaryPage: React.FC = () => {
               <ActivityHeatmap 
                 data={activityData} 
                 year={selectedYear}
-                month={selectedMonth}
                 availableYears={availableYears}
                 onYearChange={setSelectedYear}
-                onMonthChange={setSelectedMonth}
               />
             </div>
 
@@ -326,7 +332,20 @@ export const SummaryPage: React.FC = () => {
                 if (!summary) return;
                 
                 // 确认删除
-                if (window.confirm(t('summary.delete_confirm', '确定要删除这个总结吗？'))) {
+                const title = summary.type === 'weekly' 
+                  ? t('summary.card_week_title', '第 $week 周').replace('$week', String(getWeekNumber(new Date(summary.startDate))))
+                  : summary.type === 'monthly'
+                  ? t('summary.card_month_title', '$month月').replace('$month', String(new Date(summary.startDate).getMonth() + 1))
+                  : summary.type === 'quarterly'
+                  ? t('summary.missing_label_quarterly', '$year年Q$q')
+                      .replace('$year', String(new Date(summary.startDate).getFullYear()))
+                      .replace('$q', String(Math.ceil((new Date(summary.startDate).getMonth() + 1) / 3)))
+                  : t('summary.card_year_suffix', '$year年').replace('$year', String(new Date(summary.startDate).getFullYear()));
+                
+                const confirmed = await dialog.confirm(
+                  t('summary.delete_confirm', '确定要删除「$title」的总结吗？此操作不可撤销。').replace('$title', title)
+                );
+                if (confirmed) {
                   try {
                     await window.electron.ipcRenderer.invoke(
                       'summary:delete',
