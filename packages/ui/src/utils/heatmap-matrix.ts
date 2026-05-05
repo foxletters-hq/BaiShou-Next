@@ -8,14 +8,19 @@ export interface GridCell {
   count: number;
 }
 
-export function generateHeatmapMatrix(data: ActivityData[], year: number): GridCell[][] {
+export function generateHeatmapMatrix(data: ActivityData[], year: number, month?: number): GridCell[][] {
   const datesMap = new Map<string, number>();
   data.forEach(d => datesMap.set(d.date, d.count));
 
   const matrix: GridCell[][] = Array.from({ length: 7 }, (): GridCell[] => []);
   
-  const startDate = new Date(year, 0, 1);
-  const endDate = new Date(year, 11, 31);
+  const startDate = month !== undefined 
+    ? new Date(year, month - 1, 1)
+    : new Date(year, 0, 1);
+    
+  const endDate = month !== undefined
+    ? new Date(year, month, 0)
+    : new Date(year, 11, 31);
   
   const currentDate = new Date(startDate);
   // Rewind to Sunday

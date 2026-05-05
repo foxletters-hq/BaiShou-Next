@@ -49,4 +49,31 @@ describe('heatmap-matrix', () => {
     expect(lastSaturday.date.getMonth()).toBe(0); // January
     expect(lastSaturday.date.getDate()).toBe(4);
   });
+
+  it('should filter by month when month parameter is provided', () => {
+    const data: ActivityData[] = [
+      { date: '2024-01-15', count: 5 },
+      { date: '2024-02-15', count: 10 },
+      { date: '2024-01-20', count: 3 }
+    ];
+    
+    const matrix = generateHeatmapMatrix(data, 2024, 1); // January only
+    
+    // Jan 15 should have count 5 (Monday)
+    const jan15 = matrix[1].find(cell => 
+      cell.date.getFullYear() === 2024 &&
+      cell.date.getMonth() === 0 &&
+      cell.date.getDate() === 15
+    );
+    expect(jan15).toBeDefined();
+    expect(jan15?.count).toBe(5);
+    
+    // Feb 15 should not be in the matrix (filtered out)
+    const feb15 = matrix.flat().find(cell => 
+      cell.date.getFullYear() === 2024 &&
+      cell.date.getMonth() === 1 &&
+      cell.date.getDate() === 15
+    );
+    expect(feb15).toBeUndefined();
+  });
 });
