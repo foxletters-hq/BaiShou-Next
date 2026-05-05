@@ -104,27 +104,51 @@ export class StreamAccumulator {
         break;
       }
       
+      case 'finish-step': {
+        // 步骤级别的 usage 数据，累加到总 usage
+        if (p.usage) {
+          const stepInput = p.usage.inputTokens || p.usage.promptTokens || 0;
+          const stepOutput = p.usage.outputTokens || p.usage.completionTokens || 0;
+          this._inputTokens += stepInput;
+          this._outputTokens += stepOutput;
+          logger.info(`[StreamAccumulator] Step finish chunk usage parsed: input=${stepInput}, output=${stepOutput}`);
+        }
+        break;
+      }
+      
       case 'finish': {
         if (p.usage) {
            this._inputTokens = p.usage.promptTokens || p.usage.inputTokens || 0;
            this._outputTokens = p.usage.completionTokens || p.usage.outputTokens || 0;
-           logger.info('[StreamAccumulator] Finish chunk usage parsed:', this._inputTokens, this._outputTokens);
+           logger.info(`[StreamAccumulator] Finish chunk usage parsed: input=${this._inputTokens}, output=${this._outputTokens}`);
         } else if (p.totalUsage) {
            this._inputTokens = p.totalUsage.promptTokens || p.totalUsage.inputTokens || 0;
            this._outputTokens = p.totalUsage.completionTokens || p.totalUsage.outputTokens || 0;
-           logger.info('[StreamAccumulator] Finish chunk totalUsage parsed:', this._inputTokens, this._outputTokens);
+           logger.info(`[StreamAccumulator] Finish chunk totalUsage parsed: input=${this._inputTokens}, output=${this._outputTokens}`);
         } else {
            logger.info('[StreamAccumulator] Finish chunk received but NO usage data found:', JSON.stringify(p));
         }
         break;
       }
       
-      default:
-        // if some unknown chunk has usage, log it
+      default: {
+        // 防御性兜底：某些 AI SDK 版本或 provider 返回的 finish-step 可能因类型差异
+        // 导致 switch 未匹配到 case 'finish-step'，这里做二次检查
+        const partType = String(p.type);
+        if (partType === 'finish-step' && p.usage) {
+          const stepInput = p.usage.inputTokens || p.usage.promptTokens || 0;
+          const stepOutput = p.usage.outputTokens || p.usage.completionTokens || 0;
+          this._inputTokens += stepInput;
+          this._outputTokens += stepOutput;
+          logger.info(`[StreamAccumulator] Step finish (fallback) usage parsed: input=${stepInput}, output=${stepOutput}`);
+          break;
+        }
+        // 记录未知 chunk 的 usage 元数据
         if ((part as any).usage || (part as any).usageMetadata || (part as any).providerMetadata) {
             logger.info('[StreamAccumulator] Unknown chunk with potential usage metadata:', JSON.stringify(part));
         }
         break;
+      }
     }
   }
 }

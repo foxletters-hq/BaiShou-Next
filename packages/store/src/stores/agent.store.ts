@@ -15,6 +15,7 @@ export interface AgentState {
   messages: AgentMessage[];
   isLoading: boolean;
   toolCalls: Record<string, any>;
+  searchMode: boolean;
 }
 
 export interface AgentActions {
@@ -26,12 +27,15 @@ export interface AgentActions {
   initIpcListeners: () => void;
   sendMessage: (sessionId: string, text: string) => void;
   loadMessages: (sessionId: string) => Promise<void>;
+  setSearchMode: (enabled: boolean) => void;
+  toggleSearchMode: () => void;
 }
 
 export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore', (set, get: any) => ({
   messages: [],
   isLoading: false,
   toolCalls: {},
+  searchMode: false,
 
   addMessage: (message) => 
     set((state: AgentState) => ({ messages: [...state.messages, message] })),
@@ -54,6 +58,10 @@ export const useAgentStore = createStore<AgentState & AgentActions>('AgentStore'
     })),
 
   clearSession: () => set({ messages: [], toolCalls: {}, isLoading: false }),
+
+  setSearchMode: (enabled: boolean) => set({ searchMode: enabled }),
+
+  toggleSearchMode: () => set((state: AgentState) => ({ searchMode: !state.searchMode })),
 
   loadMessages: async (sessionId: string) => {
     if (typeof window !== 'undefined' && (window as any).api) {

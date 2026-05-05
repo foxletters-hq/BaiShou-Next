@@ -18,7 +18,7 @@ import {
   toast
 } from '@baishou/ui';
 import type { InputBarRef } from '@baishou/ui';
-import { useSettingsStore, useAssistantStore, usePromptShortcutStore, useUserProfileStore } from '@baishou/store';
+import { useSettingsStore, useAssistantStore, usePromptShortcutStore, useUserProfileStore, useAgentStore } from '@baishou/store';
 import type { RecallItem } from '@baishou/ui';
 import styles from './AgentScreen.module.css';
 import { useAgentStream } from './hooks/useAgentStream';
@@ -51,6 +51,9 @@ export const AgentScreen: React.FC = () => {
 
   const [messages, setMessages] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(false);
+  const searchMode = useAgentStore(s => s.searchMode);
+  const setSearchMode = useAgentStore(s => s.setSearchMode);
+  const toggleSearchMode = useAgentStore(s => s.toggleSearchMode);
   const currentSessionIdRef = useRef<string | null>(null);
   const streamSessionIdRef = useRef<string | null>(null);
   const optimisticSessionIdRef = useRef<string | null>(null);
@@ -249,17 +252,28 @@ export const AgentScreen: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 加载真正的持久化聊天记录
-  const refreshMessages = async () => {
-    if (!sessionId) return;
-    try {
-      const currentCount = Math.max(20, messages.length);
-      const msgs = await window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, currentCount, 0);
-      if (msgs && msgs.length > 0) {
-        setMessages(msgs);
-        setHasMore(msgs.length === currentCount);
+  // retryCount > 1 时启用重试机制（用于流式结束后的首次同步，解决 DB 落盘时序问题）
+  const refreshMessages = async (retryCount = 1): Promise<boolean> => {
+    if (!sessionId) return false;
+    for (let attempt = 0; attempt < retryCount; attempt++) {
+      try {
+        const currentCount = Math.max(20, messages.length);
+        const msgs = await window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, currentCount, 0);
+        if (msgs && msgs.length > 0) {
+          setMessages(msgs);
+          setHasMore(msgs.length === currentCount);
+          return true;
+        }
+      } catch(e) {
+        console.warn('[AgentScreen] refreshMessages attempt', attempt + 1, 'failed:', e);
       }
-      // 流式刚结束时后端可能还没落盘完，不要清空消息列表
-    } catch(e) {}
+      // 非最后一次尝试时等待递增延迟
+      if (attempt < retryCount - 1) {
+        await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
+      }
+    }
+    // 流式刚结束时后端可能还没落盘完，不要清空消息列表
+    return false;
   };
 
   useEffect(() => {
@@ -305,9 +319,13 @@ export const AgentScreen: React.FC = () => {
           reasoning: streamingReasoning,
         });
       }
-      // 后台静默同步真库，完成后再替换 pending
-      refreshMessages().then(() => {
-        setPendingAssistantMsg(null);
+      // 后台同步真库，带重试机制解决 DB 落盘时序问题
+      // 模型只生成工具调用不产生文本时 streamingText 为空，pending 不会设置，
+      // 此时更需要重试确保 DB 消息被正确加载
+      refreshMessages(3).then((success) => {
+        if (success) {
+          setPendingAssistantMsg(null);
+        }
       });
     }
   }, [sessionId, isStreaming]); // 改变房间或输出结束时强制同步真库
@@ -379,6 +397,7 @@ export const AgentScreen: React.FC = () => {
 
   const handleSend = async (text: string, attachments?: any[], searchMode?: boolean) => {
     let targetSessionId = sessionId;
+    setSearchMode(searchMode ?? false);
 
     if (!targetSessionId) {
       if (typeof window !== 'undefined' && window.electron) {
@@ -626,14 +645,14 @@ export const AgentScreen: React.FC = () => {
                   }}
                 onRegenerate={() => {
                    if (typeof window !== 'undefined' && window.electron) {
-                      window.electron.ipcRenderer.invoke('agent:regenerate', sessionId, msg.id).then(refreshMessages);
+                      window.electron.ipcRenderer.invoke('agent:regenerate', sessionId, msg.id, searchMode).then(refreshMessages);
                    }
                 }}
                 onEdit={() => {}}
                 onSaveEdit={async (newContent: string) => {
                    if (!sessionId || !newContent.trim()) return;
                    if (typeof window !== 'undefined' && window.electron) {
-                      await window.electron.ipcRenderer.invoke('agent:edit-message', sessionId, msg.id, newContent, currentProviderId, currentModelId);
+                      await window.electron.ipcRenderer.invoke('agent:edit-message', sessionId, msg.id, newContent, currentProviderId, currentModelId, undefined, searchMode);
                       await refreshMessages();
                    }
                 }}
@@ -645,7 +664,7 @@ export const AgentScreen: React.FC = () => {
                      setMessages(prev => prev.slice(0, msgIndex + 1));
                    }
                    if (typeof window !== 'undefined' && window.electron) {
-                      await window.electron.ipcRenderer.invoke('agent:edit-message', sessionId, msg.id, newContent, currentProviderId, currentModelId);
+                      await window.electron.ipcRenderer.invoke('agent:edit-message', sessionId, msg.id, newContent, currentProviderId, currentModelId, undefined, searchMode);
                    }
                 }}
                 onResend={() => {
@@ -657,7 +676,7 @@ export const AgentScreen: React.FC = () => {
                       }
                       // 调用后端重发（会更新 isStreaming 状态并流式返回）
                       streamSessionIdRef.current = sessionId;
-                      resendChat(sessionId, msg.id);
+                      resendChat(sessionId, msg.id, searchMode);
                    }
                 }}
                 onDelete={async () => {
@@ -767,6 +786,8 @@ export const AgentScreen: React.FC = () => {
            onManageShortcuts={() => setShowShortcutManager(true)}
            onRecall={() => setShowRecallSheet(true)}
            onOpenTools={() => setShowToolManager(true)}
+           searchMode={searchMode}
+           onToggleSearchMode={toggleSearchMode}
          />
       </div>
     </div>

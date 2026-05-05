@@ -28,7 +28,7 @@ export enum ChunkType {
   /** 流被用户中止 */
   ABORT = 'abort',
 
-  /** 单步完成 (maxSteps 下每一步结束时触发) */
+  /** 单步完成 (stopWhen/stepCountIs 下每一步结束时触发) */
   STEP_FINISH = 'step-finish',
 
   /** 整个流完成 */

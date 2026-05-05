@@ -13,6 +13,7 @@
 import type { StreamTextResult } from 'ai';
 import { ChunkType, type StreamChunk, type StreamMetrics } from './stream-chunk.types';
 import { StreamAccumulator } from './stream-accumulator';
+import { logger } from '@baishou/shared';
 
 export interface StreamChunkAdapterCallbacks {
   onChunk?: (chunk: StreamChunk) => void;
@@ -72,12 +73,20 @@ export class StreamChunkAdapter {
           this.callbacks.onChunk?.(chunk);
         }
       }
-    } catch (e) {
-      fatalError = e;
-      this.callbacks.onChunk?.({
-        type: ChunkType.ERROR,
-        error: e,
-      });
+    } catch (e: any) {
+      // AI_NoOutputGeneratedError 在 agent tool-call 场景中是正常的
+      // 模型只返回工具调用而没有文本时会触发此错误，不应阻止后续计费和持久化
+      const isNoOutputError = e?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true;
+      
+      if (isNoOutputError) {
+        logger.info('[StreamChunkAdapter] AI_NoOutputGeneratedError detected (normal for tool-call only responses), treating as non-fatal');
+      } else {
+        fatalError = e;
+        this.callbacks.onChunk?.({
+          type: ChunkType.ERROR,
+          error: e,
+        });
+      }
     } finally {
       reader.releaseLock();
     }

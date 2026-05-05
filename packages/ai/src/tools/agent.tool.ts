@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tool } from 'ai';
 
 /**
  * 嵌入服务接口——工具不关心具体实现（DIP）
@@ -180,10 +181,9 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
    * 将面向对象的 AgentTool 转化为 Vercel AI SDK 的 CoreTool 格式
    */
   toVercelTool(context: ToolContext): any {
-    // tool() 只是透传函数，直接返回对象即可
-    return {
+    return tool({
       description: this.description,
-      parameters: this.parameters,
+      inputSchema: this.parameters,
       execute: async (args: z.infer<TArgs>) => {
         try {
           console.log(`[AgentTool] Executing tool "${this.name}" with args:`, JSON.stringify(args).slice(0, 200));
@@ -195,6 +195,6 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
           return `工具执行失败 (${this.name}): ${e?.message || String(e)}`;
         }
       },
-    };
+    });
   }
 }

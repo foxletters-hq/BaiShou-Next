@@ -1,4 +1,4 @@
-import { streamText, wrapLanguageModel, extractReasoningMiddleware, smoothStream } from 'ai';
+import { streamText, wrapLanguageModel, extractReasoningMiddleware, smoothStream, stepCountIs } from 'ai';
 import type { LanguageModelV3Middleware } from '@ai-sdk/provider';
 import { IAIProvider } from '../providers/provider.interface';
 import { ToolRegistry } from '../tools/tool-registry';
@@ -205,7 +205,7 @@ export class AgentSessionService {
         messages: coreMessages,
         system: builtSystemPrompt,
         tools: enabledTools,
-        maxSteps: 5,
+        stopWhen: stepCountIs(10),
         abortSignal,
         experimental_transform: smoothStream(),
       } as any);

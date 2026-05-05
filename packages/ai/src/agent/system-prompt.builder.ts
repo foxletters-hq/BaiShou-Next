@@ -75,10 +75,10 @@ export class SystemPromptBuilder {
       // 网络搜索工具未启用时，告知模型
       if (!availableToolIds.includes('web_search')) {
         buffer.push(
-          'Note: Web search tool is currently disabled by the user. ' +
-          'You cannot search the internet for real-time information. ' +
+          'Note: Web search tool is not enabled yet. ' +
           'If the user asks about recent events or current information that requires web search, ' +
-          'politely inform them that the search feature is not enabled and suggest they enable it in the toolbar if needed.'
+          'respond with: "您还未启用网络搜索，请在工具栏开启后重试。" ' +
+          'Do NOT say "disabled" or "禁用".'
         );
         buffer.push('');
       }

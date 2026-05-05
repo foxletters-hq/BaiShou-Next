@@ -1,6 +1,6 @@
 import { AgentSessionRepository, AgentMessageRepository } from '@baishou/database';
 import { AIProviderRegistry, ToolRegistry } from '@baishou/ai';
-import { streamText, CoreMessage } from 'ai';
+import { streamText, CoreMessage, stepCountIs } from 'ai';
 import { SessionNotFoundError } from '../errors/agent.errors';
 
 export interface AgentChatInput {
@@ -20,7 +20,7 @@ export class AgentService {
 
   /**
    * 发起一次流式对话请求。
-   * 1:1 复刻旧版白守循环，但是借助 Vercel AI SDK 的 maxSteps 和 tool 特性自动化。
+   * 1:1 复刻旧版白守循环，但是借助 Vercel AI SDK 的 stopWhen/stepCountIs 和 tool 特性自动化。
    */
   async streamChat(input: AgentChatInput) {
     const session = await this.sessionRepo.findById(input.sessionId);
@@ -63,7 +63,7 @@ export class AgentService {
       system: session.systemPrompt ?? undefined,
       messages,
       tools: Object.keys(vercelTools).length > 0 ? vercelTools : undefined,
-      maxSteps: input.maxSteps ?? 30, // 自动代理工具的递归调用次数限制
+      stopWhen: stepCountIs(input.maxSteps ?? 30), // 自动代理工具的递归调用次数限制
       onFinish: async (event) => {
         // [完成] 当所有步骤（包含工具调用）完成后，同步回写 DB
 
