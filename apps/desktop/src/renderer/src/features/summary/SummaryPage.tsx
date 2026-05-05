@@ -68,23 +68,47 @@ export const SummaryPage: React.FC = () => {
   const [concurrencyLimit, setConcurrencyLimit] = useState(3);
   const { summaries, stats, missingSummaries, setMissingSummaries, queueGeneration, generationStates, refreshData } = useSummaryData();
   const [activityData, setActivityData] = useState<ActivityData[]>([]);
-  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined);
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
 
   const prevStatesRef = useRef<typeof generationStates>({});
 
+  /** 首次加载：获取所有年份数据构建年份下拉 */
   useEffect(() => {
-    const fetchActivityData = async () => {
-      if (typeof window !== 'undefined' && window.electron) {
-        try {
-          const data = await window.electron.ipcRenderer.invoke('diary:activityData', currentYear);
-          setActivityData(data || []);
-        } catch (e) {
-          console.warn('[SummaryPage] fetch activity data failed:', e);
+    const initActivityData = async () => {
+      if (typeof window === 'undefined' || !window.electron) return;
+      try {
+        const allData = await window.electron.ipcRenderer.invoke('diary:activityData', null);
+        const yearSet = new Set<number>();
+        if (allData && allData.length > 0) {
+          allData.forEach((d: ActivityData) => {
+            const y = parseInt(d.date.substring(0, 4), 10);
+            if (!isNaN(y)) yearSet.add(y);
+          });
         }
+        const years = Array.from(yearSet).sort((a, b) => b - a);
+        if (years.length === 0) years.push(new Date().getFullYear());
+        setAvailableYears(years);
+        if (!years.includes(selectedYear)) setSelectedYear(years[0]!);
+        setActivityData(
+          (allData || []).filter((d: ActivityData) => d.date.startsWith(`${selectedYear}-`))
+        );
+      } catch (e) {
+        console.warn('[SummaryPage] init activity data failed:', e);
       }
     };
-    fetchActivityData();
-  }, [currentYear]);
+    initActivityData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** 切换年份时按年份过滤数据 */
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electron) return;
+    window.electron.ipcRenderer.invoke('diary:activityData', selectedYear)
+      .then((data: ActivityData[]) => setActivityData(data || []))
+      .catch((e: any) => console.warn('[SummaryPage] fetch year failed:', e));
+  }, [selectedYear]);
 
   useEffect(() => {
     Object.keys(generationStates).forEach(uKey => {
@@ -140,7 +164,7 @@ export const SummaryPage: React.FC = () => {
   };
 
   return (
-    <div className="summary-page-container">
+    <div className={`summary-page-container ${activeTab === 'gallery' ? 'gallery-mode' : ''}`}>
       {/* 顶部标签栏 Chrome Style */}
       <div className="sp-header">
         <div className="sp-tabs">
@@ -173,11 +197,16 @@ export const SummaryPage: React.FC = () => {
               <DashboardStatsCard {...stats} />
             </div>
 
-            {activityData.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <ActivityHeatmap data={activityData} year={currentYear} />
-              </div>
-            )}
+            <div style={{ marginTop: 8, minWidth: 0 }}>
+              <ActivityHeatmap 
+                data={activityData} 
+                year={selectedYear}
+                month={selectedMonth}
+                availableYears={availableYears}
+                onYearChange={setSelectedYear}
+                onMonthChange={setSelectedMonth}
+              />
+            </div>
 
             {/* AI 缺失自动检测区域 */}
             <motion.div 
@@ -278,12 +307,43 @@ export const SummaryPage: React.FC = () => {
 
           </div>
         ) : (
-          <GalleryPanel
-            summaries={summaries}
-            onOpen={(id) => navigate(`/summary/${id}`)}
-            onEdit={(id) => toast.showSuccess(t('common.edit', '编辑') + ' (ID: ' + id + ')')}
-            onDelete={(id) => toast.showSuccess(t('common.delete', '删除') + ' (ID: ' + id + ')')}
-          />
+          <div className="sp-gallery-view">
+            <GalleryPanel
+              summaries={summaries}
+              onOpen={(id) => {
+                // 点击侧边栏只选中项目显示预览，不进入编辑
+                // GalleryPanel 内部会处理选中状态
+              }}
+              onEdit={(id) => {
+                // 只有点击编辑按钮才跳转到详情页
+                const summary = summaries.find(s => String(s.id) === id);
+                if (summary) {
+                  navigate(`/summary/${id}`);
+                }
+              }}
+              onDelete={async (id) => {
+                const summary = summaries.find(s => String(s.id) === id);
+                if (!summary) return;
+                
+                // 确认删除
+                if (window.confirm(t('summary.delete_confirm', '确定要删除这个总结吗？'))) {
+                  try {
+                    await window.electron.ipcRenderer.invoke(
+                      'summary:delete',
+                      summary.type,
+                      new Date(summary.startDate),
+                      new Date(summary.endDate)
+                    );
+                    toast.showSuccess(t('common.delete_success', '已删除'));
+                    refreshData();
+                  } catch (e) {
+                    console.error('[SummaryPage] delete error:', e);
+                    toast.showError(t('common.delete_failed', '删除失败'));
+                  }
+                }
+              }}
+            />
+          </div>
         )}
       </div>
     </div>
