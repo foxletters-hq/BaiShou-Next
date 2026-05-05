@@ -132,3 +132,4 @@ scratch_*
 *.cert
 *.p12
 *.keystore
+opencode.json
