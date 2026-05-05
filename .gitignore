@@ -8,6 +8,7 @@ node_modules/
 .pnpm-store/
 .yarn/
 .npm/
+package-lock.json
 
 # ─── 构建产物 ──────────────────────────────────────────────
 dist/
@@ -114,6 +115,7 @@ _agents/
 _agent/
 .gemini/
 .claude/
+AGENTS.md
 
 # ─── 临时文件 ──────────────────────────────────────────────
 tmp/
