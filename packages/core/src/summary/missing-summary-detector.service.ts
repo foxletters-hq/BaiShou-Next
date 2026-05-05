@@ -30,9 +30,9 @@ export class MissingSummaryDetector {
     }
 
     const weekly = this.getMissingWeekly(diaries, summaryMap[SummaryType.weekly] ?? [], locale);
-    const monthly = this.getMissingMonthly(summaryMap[SummaryType.weekly] ?? [], summaryMap[SummaryType.monthly] ?? [], locale);
-    const quarterly = this.getMissingQuarterly(summaryMap[SummaryType.monthly] ?? [], summaryMap[SummaryType.quarterly] ?? [], locale);
-    const yearly = this.getMissingYearly(summaryMap[SummaryType.quarterly] ?? [], summaryMap[SummaryType.yearly] ?? [], locale);
+    const monthly = this.getMissingMonthly(diaries, summaryMap[SummaryType.weekly] ?? [], summaryMap[SummaryType.monthly] ?? [], locale);
+    const quarterly = this.getMissingQuarterly(diaries, summaryMap[SummaryType.monthly] ?? [], summaryMap[SummaryType.quarterly] ?? [], locale);
+    const yearly = this.getMissingYearly(diaries, summaryMap[SummaryType.quarterly] ?? [], summaryMap[SummaryType.yearly] ?? [], locale);
 
     const result = [...weekly, ...monthly, ...quarterly, ...yearly];
     result.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
@@ -83,8 +83,7 @@ export class MissingSummaryDetector {
     return missing;
   }
 
-  private getMissingMonthly(weeklies: Summary[], monthlies: Summary[], locale: string): MissingSummary[] {
-    if (weeklies.length === 0) return [];
+  private getMissingMonthly(diaries: Diary[], weeklies: Summary[], monthlies: Summary[], locale: string): MissingSummary[] {
     const missing: MissingSummary[] = [];
     const now = new Date();
 
@@ -92,6 +91,11 @@ export class MissingSummaryDetector {
     for (const w of weeklies) {
       monthsSet.add(`${w.startDate.getFullYear()}-${w.startDate.getMonth()}`);
     }
+    for (const d of diaries) {
+      monthsSet.add(`${d.date.getFullYear()}-${d.date.getMonth()}`);
+    }
+
+    if (monthsSet.size === 0) return [];
 
     for (const key of monthsSet) {
       const [yearStr, monthStr] = key.split('-');
@@ -117,8 +121,7 @@ export class MissingSummaryDetector {
     return missing;
   }
 
-  private getMissingQuarterly(monthlies: Summary[], quarterlies: Summary[], locale: string): MissingSummary[] {
-    if (monthlies.length === 0) return [];
+  private getMissingQuarterly(diaries: Diary[], monthlies: Summary[], quarterlies: Summary[], locale: string): MissingSummary[] {
     const missing: MissingSummary[] = [];
     const now = new Date();
 
@@ -127,6 +130,12 @@ export class MissingSummaryDetector {
       const q = Math.ceil((m.startDate.getMonth() + 1) / 3);
       quartersSet.add(`${m.startDate.getFullYear()}-${q}`);
     }
+    for (const d of diaries) {
+      const q = Math.ceil((d.date.getMonth() + 1) / 3);
+      quartersSet.add(`${d.date.getFullYear()}-${q}`);
+    }
+
+    if (quartersSet.size === 0) return [];
 
     for (const qKey of quartersSet) {
       const [yearStr, qStr] = qKey.split('-');
@@ -157,8 +166,7 @@ export class MissingSummaryDetector {
     return missing;
   }
 
-  private getMissingYearly(quarterlies: Summary[], yearlies: Summary[], locale: string): MissingSummary[] {
-    if (quarterlies.length === 0) return [];
+  private getMissingYearly(diaries: Diary[], quarterlies: Summary[], yearlies: Summary[], locale: string): MissingSummary[] {
     const missing: MissingSummary[] = [];
     const now = new Date();
 
@@ -166,6 +174,11 @@ export class MissingSummaryDetector {
     for (const q of quarterlies) {
       yearsSet.add(q.startDate.getFullYear());
     }
+    for (const d of diaries) {
+      yearsSet.add(d.date.getFullYear());
+    }
+
+    if (yearsSet.size === 0) return [];
 
     for (const year of yearsSet) {
       const yStart = new Date(year, 0, 1);
