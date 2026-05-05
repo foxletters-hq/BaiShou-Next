@@ -16,7 +16,7 @@ import { SummaryPage } from './features/summary/SummaryPage';
 import { SummaryDetailPage } from './features/summary/SummaryDetailPage';
 import { LanTransferPage } from './features/settings/LanTransferPage';
 import { CloudSyncPage } from './features/settings/CloudSyncPage';
-import { useToast, DialogProvider, ToastProvider } from '@baishou/ui';
+import { useToast, useDialog, DialogProvider, ToastProvider } from '@baishou/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@baishou/store';
@@ -54,6 +54,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 
 const AppRoutes = () => {
   const location = useLocation();
+  const dialog = useDialog();
   const [backgroundLocation, setBackgroundLocation] = useState(() => {
     if (location.pathname.startsWith('/settings')) {
       return { ...location, pathname: '/diary', state: null, key: 'default' };
@@ -61,6 +62,11 @@ const AppRoutes = () => {
     return location;
   });
   const isSettings = location.pathname.startsWith('/settings');
+
+  // 路由变化时关闭所有弹窗
+  useEffect(() => {
+    dialog.closeAll();
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!location.pathname.startsWith('/settings')) {
