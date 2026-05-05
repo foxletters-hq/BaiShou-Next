@@ -21,6 +21,8 @@ export interface InputBarProps {
   onTriggerShortcut?: () => void;
   onManageShortcuts?: () => void;
   onOpenTools?: () => void;
+  searchMode?: boolean;
+  onToggleSearchMode?: () => void;
 }
 
 export interface InputBarRef {
@@ -37,7 +39,9 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   onRecall,
   onTriggerShortcut,
   onManageShortcuts,
-  onOpenTools
+  onOpenTools,
+  searchMode = false,
+  onToggleSearchMode
 }, ref) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
@@ -48,7 +52,6 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
     }
     return false;
   });
-  const [searchMode, setSearchMode] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toast = useToast();
 
@@ -158,7 +161,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
     setText(val);
   };
 
-  const toggleSearchMode = () => setSearchMode(prev => !prev);
+  const toggleSearchMode = () => onToggleSearchMode?.();
 
   const QuickActionChip = ({ icon, label, onClick, isActive = false }: { icon: React.ReactNode, label: string, onClick?: () => void, isActive?: boolean }) => (
     <button 

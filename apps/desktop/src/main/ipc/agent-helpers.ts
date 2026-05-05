@@ -123,7 +123,7 @@ export async function getActiveProvider(requestedProviderId?: string) {
 /**
  * 构建 Agent 流式调用所需的通用配置
  */
-export async function buildStreamConfig(requestedProviderId?: string, requestedModelId?: string) {
+export async function buildStreamConfig(requestedProviderId?: string, requestedModelId?: string, searchMode?: boolean) {
   const provider = await getActiveProvider(requestedProviderId);
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
 
@@ -171,7 +171,7 @@ export async function buildStreamConfig(requestedProviderId?: string, requestedM
     hasEmbeddingModel,
     disabledToolIds: toolManagementConfig?.disabledToolIds || [],
     recentCount: behaviorConfig?.agentContextWindowSize ?? 30,
-    web_search_enabled: false,
+    web_search_enabled: searchMode ?? false,
     web_search_engine: webSearchConfig?.webSearchEngine || 'duckduckgo',
     web_search_max_results: webSearchConfig?.webSearchMaxResults || 5,
     web_search_rag_enabled: webSearchConfig?.webSearchRagEnabled ?? true,

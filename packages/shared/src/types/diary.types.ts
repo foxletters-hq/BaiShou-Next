@@ -1,5 +1,23 @@
 import { z } from 'zod';
 
+/** 天气值到 emoji 的映射表 */
+export const WEATHER_EMOJI: Record<string, string> = {
+  '晴': '☀️',
+  '多云': '⛅',
+  '阴': '☁️',
+  '小雨': '🌦️',
+  '大雨': '🌧️',
+  '雪': '❄️',
+  '雾': '🌫️',
+  '风': '💨',
+};
+
+/** 根据天气值获取对应 emoji，无匹配时返回默认 🌤️ */
+export function getWeatherEmoji(weather?: string): string {
+  if (!weather) return '';
+  return WEATHER_EMOJI[weather] || '🌤️';
+}
+
 export const DiarySchema = z.object({
   id: z.number().int().positive().optional(),
   date: z.date(),

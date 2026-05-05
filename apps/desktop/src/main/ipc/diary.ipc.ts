@@ -99,10 +99,10 @@ export function registerDiaryIPC() {
     return await getDiaryManager().count();
   });
 
-  ipcMain.handle('diary:activityData', async (_, year: number) => {
+  ipcMain.handle('diary:activityData', async (_, year?: number | null) => {
     const shadowDb = shadowConnectionManager.getDb();
     const shadowRepo = new ShadowIndexRepository(shadowDb);
-    return await shadowRepo.getActivityData(year);
+    return await shadowRepo.getActivityData(year ?? undefined);
   });
 
   ipcMain.handle('diary:export', async (_, format: 'txt' | 'json' | 'md', dateRange?: { start: string; end: string }, dialogTitle?: string) => {

@@ -369,16 +369,15 @@ export class ShadowIndexRepository {
    * 获取指定年份的日记活跃度数据（每天的日记数量）
    * 用于活跃热力图展示
    */
-  async getActivityData(year: number): Promise<{ date: string; count: number }[]> {
+  async getActivityData(year?: number): Promise<{ date: string; count: number }[]> {
     try {
-      const rows = await this.database.all(
-        sql`
-          SELECT date, 1 as count
-          FROM journals_index
-          WHERE date >= ${`${year}-01-01`} AND date <= ${`${year}-12-31`}
-          ORDER BY date ASC
-        `
-      ) as any[];
+      const rows = year != null
+        ? await this.database.all(
+            sql`SELECT date, 1 as count FROM journals_index WHERE date >= ${`${year}-01-01`} AND date <= ${`${year}-12-31`} ORDER BY date ASC`
+          ) as { date: string; count: number }[]
+        : await this.database.all(
+            sql`SELECT date, 1 as count FROM journals_index ORDER BY date ASC`
+          ) as { date: string; count: number }[];
       return rows.map(row => ({ date: row.date, count: Number(row.count) || 1 }));
     } catch (e: any) {
       console.warn('[ShadowIndex] getActivityData error:', e.message);

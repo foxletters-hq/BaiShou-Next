@@ -3,7 +3,7 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px 12px;
-  background-color: var(--bg-surface-highlight);
+  background-color: var(--bg-surface);
   border-radius: 8px;
   min-height: 48px;
   align-items: center;

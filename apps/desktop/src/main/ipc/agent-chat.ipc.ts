@@ -100,22 +100,17 @@ export function registerChatIPC() {
         }
       }
 
-      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(args.providerId, args.modelId);
+      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(args.providerId, args.modelId, args.searchMode);
       
       globalAbortController = new AbortController();
       
-      const chatUserConfig = {
-        ...userConfig,
-        web_search_enabled: args.searchMode ?? false,
-      };
-
       await agentService.streamChat({
         sessionId: args.sessionId,
         userText: args.text,
         provider: provider,
         modelId: args.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
         systemModels,
-        userConfig: chatUserConfig,
+        userConfig: userConfig,
         attachments: finalAttachments,
         toolRegistry: toolRegistry,
         sessionRepo: realSessionRepo as any,
@@ -152,7 +147,7 @@ export function registerChatIPC() {
     }
   });
   
-  ipcMain.handle('agent:regenerate', async (event, sessionId: string, messageId?: string) => {
+  ipcMain.handle('agent:regenerate', async (event, sessionId: string, messageId?: string, searchMode?: boolean) => {
     const { realSessionRepo, realSnapshotRepo } = getAgentManagers();
     
     let targetMessage;
@@ -183,7 +178,7 @@ export function registerChatIPC() {
 
     await realSessionRepo.deleteMessagesAfter(sessionId, userMessage.orderIndex);
     
-    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig();
+    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(undefined, undefined, searchMode);
     globalAbortController = new AbortController();
 
     try {
@@ -228,7 +223,7 @@ export function registerChatIPC() {
     return true;
   });
 
-  ipcMain.handle('agent:edit-message', async (event, sessionId: string, messageId: string, newText: string, requestedProviderId?: string, requestedModelId?: string, attachments?: any[]) => {
+  ipcMain.handle('agent:edit-message', async (event, sessionId: string, messageId: string, newText: string, requestedProviderId?: string, requestedModelId?: string, attachments?: any[], searchMode?: boolean) => {
     const { realSessionRepo, realSnapshotRepo } = getAgentManagers();
     
     // [Intercept and Copy Attachments]
@@ -287,7 +282,7 @@ export function registerChatIPC() {
 
     await realSessionRepo.deleteMessagesAfter(sessionId, targetMsg.orderIndex);
     
-    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(requestedProviderId, requestedModelId);
+    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(requestedProviderId, requestedModelId, searchMode);
     globalAbortController = new AbortController();
 
     try {
@@ -324,7 +319,7 @@ export function registerChatIPC() {
   });
 
   // 重发消息：保留用户消息，删除之后的所有助手回复，然后重新发送
-  ipcMain.handle('agent:resend', async (event, sessionId: string, messageId: string) => {
+  ipcMain.handle('agent:resend', async (event, sessionId: string, messageId: string, searchMode?: boolean) => {
     const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers();
 
     logger.info(`[Agent:resend] 开始重发消息: sessionId=${sessionId}, messageId=${messageId}`);
@@ -368,7 +363,7 @@ export function registerChatIPC() {
 
     // 4. 重新发送消息（带完整上下文）
     try {
-      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig();
+      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(undefined, undefined, searchMode);
       globalAbortController = new AbortController();
 
       await agentService.streamChat({

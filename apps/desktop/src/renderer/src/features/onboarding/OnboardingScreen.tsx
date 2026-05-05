@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, Layers, FolderOpen, ShieldCheck, ChevronRight, ChevronLeft, ArrowRight, Cpu, Import } from 'lucide-react';
-import icon from '../../../../../resources/icon_old.png?asset';
+import icon from '../../../../../resources/icon.png?asset';
 import { CompressionChart } from './CompressionChart';
 import styles from './OnboardingScreen.module.css';
 
