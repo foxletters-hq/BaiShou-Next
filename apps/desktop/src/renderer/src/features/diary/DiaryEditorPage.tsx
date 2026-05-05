@@ -30,8 +30,6 @@ export const DiaryEditorPage: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(() => parseInitialDate());
   const [weather, setWeather] = useState('');
-  const [mood, setMood] = useState('');
-  const [location, setLocation] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [diaryId, setDiaryId] = useState<number | null>(null);
@@ -60,8 +58,6 @@ export const DiaryEditorPage: React.FC = () => {
             setDiaryId(diary.id || null);
             setTags(diary.tags || []);
             setWeather(diary.weather || '');
-            setMood(diary.mood || '');
-            setLocation(diary.location || '');
             setIsFavorite(diary.isFavorite || false);
 
             if (isAppendMode) {
@@ -103,8 +99,6 @@ export const DiaryEditorPage: React.FC = () => {
           title: newContent.replace(/^#{1,6}\s*/gm, '').split('\n')[0].substring(0, 50),
           tags: tagsRef.current,
           weather,
-          mood,
-          location,
           isFavorite
         };
 
@@ -140,7 +134,7 @@ export const DiaryEditorPage: React.FC = () => {
       console.error('Save failed:', e);
       throw e;
     }
-  }, [selectedDate, weather, mood, location, isFavorite, diaryId]);
+  }, [selectedDate, weather, isFavorite, diaryId]);
 
   const handleContentChange = (newContent: string) => {
     setContent(newContent);
@@ -191,15 +185,11 @@ export const DiaryEditorPage: React.FC = () => {
         tags={tags}
         selectedDate={selectedDate}
         weather={weather}
-        mood={mood}
-        location={location}
         isFavorite={isFavorite}
         onContentChange={handleContentChange}
         onTagsChange={(newTags) => { setTags(newTags); setIsDirty(true); }}
         onDateChange={(newDate) => { setSelectedDate(newDate); setIsDirty(true); }}
         onWeatherChange={(v) => { setWeather(v); setIsDirty(true); }}
-        onMoodChange={(v) => { setMood(v); setIsDirty(true); }}
-        onLocationChange={(v) => { setLocation(v); setIsDirty(true); }}
         onFavoriteChange={(v) => { setIsFavorite(v); setIsDirty(true); }}
         onSave={handleSave}
         onCancel={handleBack}

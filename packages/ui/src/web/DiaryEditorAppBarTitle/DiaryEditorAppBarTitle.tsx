@@ -31,8 +31,8 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
 
   const day = selectedDate.getDate();
   const weekday = WEEKDAY_NAMES[selectedDate.getDay()];
-  const month = MONTH_NAMES[selectedDate.getMonth()];
-  const formattedDate = t('diary.date_format_editor_title', '{{year}}年{{month}}{{day}}日 {{weekday}}', { year: selectedDate.getFullYear(), month, day, weekday });
+  const month = selectedDate.getMonth() + 1;
+  const formattedDate = t('diary.date_format_editor_title', '{{year}}年{{month}}月{{day}}日 {{weekday}}', { year: selectedDate.getFullYear(), month, day, weekday });
 
   // 当日期变化时同步pickerState
   useEffect(() => {
@@ -155,7 +155,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
                     className={`dp-col-item ${m === pickerMonth ? 'selected' : ''}`}
                     onClick={() => setPickerMonth(m)}
                   >
-                    {MONTH_NAMES[m - 1]}
+                    {m}
                   </div>
                 ))}
               </div>

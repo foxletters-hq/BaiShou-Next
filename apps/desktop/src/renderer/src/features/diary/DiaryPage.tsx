@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Edit3, CalendarCheck, Download } from 'lucide-react';
+import { Search, Plus, Edit3, CalendarCheck, Filter, X, Heart, Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind, Thermometer } from 'lucide-react';
 import { useDiaryData } from './hooks/useDiaryData';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { DiaryCard } from './DiaryCard';
 import type { DiaryEntry } from './DiaryCard';
 import { YearMonthPicker, useToast } from '@baishou/ui';
@@ -19,9 +19,31 @@ export const DiaryPage: React.FC = () => {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
+  // 筛选状态
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterWeather, setFilterWeather] = useState<string | null>(null);
+  const [filterFavorite, setFilterFavorite] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭筛选面板
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    };
+
+    if (isFilterOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isFilterOpen]);
+
   const { entries, loadEntries } = useDiaryData();
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
   const toast = useToast();
 
   /** 执行删除操作 */
@@ -35,27 +57,6 @@ export const DiaryPage: React.FC = () => {
     } catch (e) {
       console.error('Delete failed', e);
       toast.showError(t('diary.delete_failed', '删除失败'));
-    }
-  };
-
-  /** 导出日记为 Markdown */
-  const handleExport = async () => {
-    if (isExporting) return;
-    setIsExporting(true);
-    try {
-      const result = await window.electron.ipcRenderer.invoke(
-        'diary:export', 'md', undefined, t('diary.export_markdown', 'Export Markdown')
-      ) as { success: boolean; error?: string } | undefined;
-      if (result?.success) {
-        toast.showSuccess(t('diary.export_success', '导出成功'));
-      } else if (result?.error !== 'Cancelled') {
-        toast.showError(t('diary.export_failed', '导出失败'));
-      }
-    } catch (e) {
-      console.error('Export failed', e);
-      toast.showError(t('diary.export_failed', '导出失败'));
-    } finally {
-      setIsExporting(false);
     }
   };
 
@@ -142,6 +143,16 @@ export const DiaryPage: React.FC = () => {
       );
     }
 
+    // 天气筛选
+    if (filterWeather) {
+      filtered = filtered.filter(e => e.weather === filterWeather);
+    }
+
+    // 收藏筛选
+    if (filterFavorite) {
+      filtered = filtered.filter(e => e.isFavorite);
+    }
+
     // 按日期降序排序
     filtered.sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -155,6 +166,45 @@ export const DiaryPage: React.FC = () => {
     const d = String(date.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   };
+
+  /** 获取天气图标 */
+  const getWeatherIcon = (weather: string) => {
+    switch (weather) {
+      case 'sunny': return <Sun size={16} />;
+      case 'cloudy': return <Cloud size={16} />;
+      case 'overcast': return <Cloud size={16} />;
+      case 'light_rain': return <CloudRain size={16} />;
+      case 'heavy_rain': return <CloudRain size={16} />;
+      case 'snow': return <CloudSnow size={16} />;
+      case 'fog': return <Cloud size={16} />;
+      case 'windy': return <Wind size={16} />;
+      default: return <Thermometer size={16} />;
+    }
+  };
+
+  /** 获取天气名称 */
+  const getWeatherName = (weather: string) => {
+    const weatherMap: Record<string, string> = {
+      'sunny': t('diary.weather.sunny', '晴'),
+      'cloudy': t('diary.weather.cloudy', '多云'),
+      'overcast': t('diary.weather.overcast', '阴'),
+      'light_rain': t('diary.weather.light_rain', '小雨'),
+      'heavy_rain': t('diary.weather.heavy_rain', '大雨'),
+      'snow': t('diary.weather.snow', '雪'),
+      'fog': t('diary.weather.fog', '雾'),
+      'windy': t('diary.weather.windy', '风'),
+    };
+    return weatherMap[weather] || weather;
+  };
+
+  /** 清除所有筛选 */
+  const clearFilters = () => {
+    setFilterWeather(null);
+    setFilterFavorite(false);
+  };
+
+  /** 是否有激活的筛选 */
+  const hasActiveFilters = filterWeather || filterFavorite;
 
   return (
     <motion.div
@@ -173,6 +223,68 @@ export const DiaryPage: React.FC = () => {
               onChange={setSelectedMonth}
               titlePlaceholder={t('diary.all_diaries', '全部日记')}
             />
+          </div>
+
+          {/* 筛选按钮 */}
+          <div className="diary-filter-wrapper" ref={filterRef}>
+            <button
+              className={`diary-filter-btn ${hasActiveFilters ? 'active' : ''}`}
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+            >
+              <Filter size={16} />
+              {hasActiveFilters && <span className="diary-filter-badge" />}
+            </button>
+
+            {/* 筛选面板 */}
+            <AnimatePresence>
+              {isFilterOpen && (
+                <motion.div
+                  className="diary-filter-panel"
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div className="diary-filter-header">
+                    <span className="diary-filter-title">{t('diary.filter', '筛选')}</span>
+                    {hasActiveFilters && (
+                      <button className="diary-filter-clear" onClick={clearFilters}>
+                        <X size={14} />
+                        {t('diary.clear_filter', '清除')}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 收藏筛选 */}
+                  <div className="diary-filter-section">
+                    <button
+                      className={`diary-filter-option ${filterFavorite ? 'active' : ''}`}
+                      onClick={() => setFilterFavorite(!filterFavorite)}
+                    >
+                      <Heart size={16} fill={filterFavorite ? 'currentColor' : 'none'} />
+                      <span>{t('diary.filter_favorite', '收藏')}</span>
+                    </button>
+                  </div>
+
+                  {/* 天气筛选 */}
+                  <div className="diary-filter-section">
+                    <div className="diary-filter-section-label">{t('diary.filter_weather', '天气')}</div>
+                    <div className="diary-filter-weather-grid">
+                      {['sunny', 'cloudy', 'overcast', 'light_rain', 'heavy_rain', 'snow', 'fog', 'windy'].map(weather => (
+                        <button
+                          key={weather}
+                          className={`diary-filter-weather-btn ${filterWeather === weather ? 'active' : ''}`}
+                          onClick={() => setFilterWeather(filterWeather === weather ? null : weather)}
+                          title={getWeatherName(weather)}
+                        >
+                          {getWeatherIcon(weather)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -201,14 +313,6 @@ export const DiaryPage: React.FC = () => {
             {t('settings.write_diary_button', '写日记')}
           </button>
 
-          <button
-            className="diary-export-btn"
-            onClick={handleExport}
-            disabled={isExporting}
-            title={t('diary.export_markdown', '导出 Markdown')}
-          >
-            <Download size={18} />
-          </button>
         </div>
       </div>
 

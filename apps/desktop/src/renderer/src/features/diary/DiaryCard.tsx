@@ -1,6 +1,7 @@
 import React from 'react';
 import { Edit3, Trash2 } from 'lucide-react';
 import { MarkdownRenderer } from '@baishou/ui';
+import { getWeatherEmoji } from '@baishou/shared';
 
 /** 星期几名称 */
 const WEEKDAY_NAMES_KEYS = ['diary.weekday.sun', 'diary.weekday.mon', 'diary.weekday.tue', 'diary.weekday.wed', 'diary.weekday.thu', 'diary.weekday.fri', 'diary.weekday.sat'];
@@ -67,7 +68,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, on
       {/* 元数据：天气、心情、位置 */}
       {(entry.weather || entry.mood || entry.location) && (
         <div className="diary-card-meta-row">
-          {entry.weather && <span className="diary-card-meta-badge">🌤️ {entry.weather}</span>}
+          {entry.weather && <span className="diary-card-meta-badge">{getWeatherEmoji(entry.weather)} {entry.weather}</span>}
           {entry.mood && <span className="diary-card-meta-badge">{entry.mood}</span>}
           {entry.location && <span className="diary-card-meta-badge">📍 {entry.location}</span>}
         </div>

@@ -383,8 +383,8 @@
   border-radius: 6px;
   font-size: 11px;
   font-weight: 500;
-  background: var(--bg-surface-normal);
-  color: var(--text-secondary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 /* 悬浮操作按钮 */
@@ -549,4 +549,162 @@
 @keyframes scaleUp {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+/* ── 筛选功能 ── */
+.diary-filter-wrapper {
+  position: relative;
+}
+
+.diary-filter-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: all 0.2s;
+  position: relative;
+}
+
+.diary-filter-btn:hover {
+  background-color: var(--bg-surface-high);
+}
+
+.diary-filter-btn.active {
+  color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.diary-filter-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  border: 2px solid var(--bg-glass-surface);
+}
+
+.diary-filter-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.diary-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.diary-filter-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.diary-filter-clear {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  transition: all 0.2s;
+}
+
+.diary-filter-clear:hover {
+  color: var(--color-error);
+  background-color: var(--color-error-light);
+}
+
+.diary-filter-section {
+  padding: 12px 16px;
+}
+
+.diary-filter-section + .diary-filter-section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.diary-filter-section-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+.diary-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.diary-filter-option:hover {
+  background-color: var(--bg-surface-high);
+}
+
+.diary-filter-option.active {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.diary-filter-weather-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.diary-filter-weather-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.diary-filter-weather-btn:hover {
+  background-color: var(--bg-surface-high);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.diary-filter-weather-btn.active {
+  background-color: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }

@@ -82,7 +82,8 @@
   display: flex;
   flex-direction: column;
   padding: 16px 24px 32px 24px;
-  overflow: hidden; /* Fixes height bleed */
+  overflow: hidden;
+  background: var(--bg-surface-low);
 }
 
 .de-tags-section {
@@ -94,51 +95,14 @@
 .de-meta-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 16px;
   flex-shrink: 0;
 }
 
-.de-meta-select {
-  appearance: none;
-  background: var(--bg-surface-lowest);
-  border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  min-width: 80px;
-}
-
-.de-meta-select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
-.de-meta-input {
-  background: var(--bg-surface-lowest);
-  border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 13px;
-  color: var(--text-primary);
-  flex: 1;
-  min-width: 0;
-}
-
-.de-meta-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.de-meta-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
 .de-meta-fav-btn {
-  background: transparent;
-  border: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   width: 36px;
   height: 36px;
@@ -148,27 +112,30 @@
   font-size: 18px;
   cursor: pointer;
   color: var(--text-tertiary);
-  transition: color 0.2s, border-color 0.2s;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
   flex-shrink: 0;
 }
 
 .de-meta-fav-btn:hover {
   border-color: var(--color-primary);
+  background: var(--color-primary-light, rgba(99, 102, 241, 0.08));
 }
 
 .de-meta-fav-btn.active {
   color: var(--color-warning);
   border-color: var(--color-warning);
+  background: var(--color-warning-light, rgba(245, 158, 11, 0.08));
 }
 
 .de-content-section {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0; /* Ensures flex container doesn't force intrinsic height */
-  border: 1px solid rgba(0, 0, 0, 0.08); /* Optional subtle border for MDEditor */
+  min-height: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  overflow: hidden; /* Important for bounding UIW Editor */
+  overflow: hidden;
 }
 
 /* UIW MDEditor Custom Overrides to fit seamlessly into BaiShou Theme */
@@ -183,7 +150,7 @@
 }
 
 .w-md-editor-toolbar {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
   background-color: var(--bg-surface-lowest) !important;
 }
 

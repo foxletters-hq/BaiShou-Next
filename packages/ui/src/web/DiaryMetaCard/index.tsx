@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DiaryMeta } from '@baishou/shared';
+import { getWeatherEmoji } from '@baishou/shared';
 // @ts-ignore
 import styles from './DiaryMetaCard.module.css';
 
@@ -84,7 +85,7 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
       {/* 元数据：天气、心情、位置 */}
       {(meta.weather || meta.mood || meta.location) && (
         <div className={styles.metaRow}>
-          {meta.weather && <span className={styles.metaBadge}>🌤️ {meta.weather}</span>}
+          {meta.weather && <span className={styles.metaBadge}>{getWeatherEmoji(meta.weather)} {meta.weather}</span>}
           {meta.mood && <span className={styles.metaBadge}>{meta.mood}</span>}
           {meta.location && <span className={styles.metaBadge}>📍 {meta.location}</span>}
         </div>
