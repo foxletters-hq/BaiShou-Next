@@ -699,7 +699,7 @@
     "exit_confirmation_hint": "保存されていない変更があります。移動するとこれらの変更は失われます。",
     "exit_without_saving_confirm": "保存せずに終了",
     "editor_tag_placeholder": "タグを入力し、Enterで保存",
-    "date_format_editor_title": "{{year}}年{{month}}{{day}}日 {{weekday}}",
+    "date_format_editor_title": "{{year}}年{{month}}月{{day}}日 {{weekday}}",
     "edit_summary": "まとめを編集",
     "editor_leave_confirm": "保存されていない内容があります。終了すると、変更は失われます。破棄して終了しますか？",
     "delete_success": "日記を削除しました",
@@ -985,6 +985,7 @@
       "memory_delete": "記憶削除",
       "current_time": "現在時刻",
       "web_search": "ウェブ検索",
+      "web_search_not_enabled": "ウェブ検索が有効ではありません。ツールバーで有効にしてください。",
       "param_max_results": "最大結果数",
       "param_max_results_desc": "AI検索時の最大結果数",
       "param_search_engine": "検索エンジン",
@@ -1340,10 +1341,12 @@
   "[": "](url)",
   "![": "](image_url)",
   "activity": {
-    "yearly_records": "年度交互记录",
-    "interactions": "次交互",
-    "idle": "空闲",
-    "frequent": "高频"
+    "yearly_records": "年間日記記録",
+    "monthly_records": "月間日記記録",
+    "interactions": "件の日記",
+    "select_year": "年を選択",
+    "select_month": "月を選択",
+    "all_months": "全月"
   },
   "assistant": {
     "matrix_title": "AI 助手控制台 (Assistant Matrix)",

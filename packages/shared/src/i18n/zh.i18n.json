@@ -740,7 +740,7 @@
     "exit_confirmation_hint": "当前内容有未保存的修改，离开将丢失这些更改哦。",
     "exit_without_saving_confirm": "不保存并离开",
     "editor_tag_placeholder": "输入标签，按回车保存",
-    "date_format_editor_title": "{{year}}年{{month}}{{day}}日 {{weekday}}",
+    "date_format_editor_title": "{{year}}年{{month}}月{{day}}日 {{weekday}}",
     "edit_summary": "编辑总结",
     "editor_leave_confirm": "当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？",
     "delete_success": "日记已删除",
@@ -908,7 +908,11 @@
     "stats_year": "年报",
     "reset_template_success": "已恢复默认模板",
     "batch_generate_queued": "已将 {{count}} 项任务加入后台构建队列，您可以离开页面",
-    "all_missing_in_progress": "所有检测到的遗失项均已在处理中"
+    "all_missing_in_progress": "所有检测到的遗失项均已在处理中",
+    "filter": "筛选",
+    "clear_filter": "清除",
+    "filter_favorite": "收藏",
+    "filter_weather": "天气"
   },
   "ai": {
     "error_response_format": "响应格式错误: $e",
@@ -1026,6 +1030,7 @@
       "memory_delete": "记忆删除",
       "current_time": "当前时间",
       "web_search": "网络搜索",
+      "web_search_not_enabled": "您还未启用网络搜索，请在工具栏开启后重试。",
       "param_max_results": "搜索结果上限",
       "param_max_results_desc": "AI 每次搜索时返回的最大结果数量",
       "param_search_engine": "搜索引擎",
@@ -1387,10 +1392,12 @@
   "[": "](url)",
   "![": "](image_url)",
   "activity": {
-    "yearly_records": "年度交互记录",
-    "interactions": "次交互",
-    "idle": "空闲",
-    "frequent": "高频"
+    "yearly_records": "年度日记记录",
+    "monthly_records": "月度日记记录",
+    "interactions": "篇日记",
+    "select_year": "选择年份",
+    "select_month": "选择月份",
+    "all_months": "全部月份"
   },
   "assistant": {
     "matrix_title": "AI 助手控制台 (Assistant Matrix)",
@@ -1442,6 +1449,7 @@
     "new_name": "空间名称",
     "create_failed": "创建失败",
     "delete_name_mismatch": "名称不匹配，删除已取消。",
+    "delete_confirm_input": "请输入工作区名称 \"{{name}}\" 以确认删除：",
     "title": "工作空间",
     "current": "当前空间: {{name}}",
     "last_accessed": "上次访问: {{time}}",

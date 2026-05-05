@@ -995,6 +995,7 @@
       "memory_delete": "Memory Delete",
       "current_time": "Current Time",
       "web_search": "Web Search",
+      "web_search_not_enabled": "Web search not enabled. Please enable it in the toolbar.",
       "param_max_results": "Max Results",
       "param_max_results_desc": "Maximum number of results returned per AI search",
       "param_search_engine": "Search Engine",
@@ -1356,10 +1357,12 @@
   "[": "](url)",
   "![": "](image_url)",
   "activity": {
-    "yearly_records": "年度交互记录",
-    "interactions": "次交互",
-    "idle": "空闲",
-    "frequent": "高频"
+    "yearly_records": "Yearly Diary Records",
+    "monthly_records": "Monthly Diary Records",
+    "interactions": "diaries",
+    "select_year": "Select Year",
+    "select_month": "Select Month",
+    "all_months": "All Months"
   },
   "assistant": {
     "matrix_title": "AI 助手控制台 (Assistant Matrix)",

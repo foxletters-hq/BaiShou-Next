@@ -731,7 +731,7 @@
     "exit_confirmation_hint": "目前內容有未儲存的修改，離開將遺失這些更改喔。",
     "exit_without_saving_confirm": "不儲存並離開",
     "editor_tag_placeholder": "輸入標籤，按Enter儲存",
-    "date_format_editor_title": "{{year}}年{{month}}{{day}}日 {{weekday}}",
+    "date_format_editor_title": "{{year}}年{{month}}月{{day}}日 {{weekday}}",
     "edit_summary": "编辑总结",
     "editor_leave_confirm": "当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？",
     "delete_success": "日记已删除",
@@ -1017,6 +1017,7 @@
       "memory_delete": "記憶刪除",
       "current_time": "目前時間",
       "web_search": "網路搜尋",
+      "web_search_not_enabled": "尚未啟用網路搜尋，請在工具列開啟後重試。",
       "param_max_results": "搜尋結果上限",
       "param_max_results_desc": "AI 每次搜尋時返回的最大結果數量",
       "param_search_engine": "搜尋引擎",
@@ -1372,10 +1373,12 @@
   "[": "](url)",
   "![": "](image_url)",
   "activity": {
-    "yearly_records": "年度交互记录",
-    "interactions": "次交互",
-    "idle": "空闲",
-    "frequent": "高频"
+    "yearly_records": "年度日記記錄",
+    "monthly_records": "月度日記記錄",
+    "interactions": "篇日記",
+    "select_year": "選擇年份",
+    "select_month": "選擇月份",
+    "all_months": "全部月份"
   },
   "assistant": {
     "matrix_title": "AI 助手控制台 (Assistant Matrix)",
