@@ -124,7 +124,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
       toast.showError(t('settings.identity_min_one', "至少保留一张身份卡！"));
       return;
     }
-    const confirmed = await dialog.confirm(t('settings.delete_identity_card', '确定删除身份卡 [{{pid}}] 吗？', { pid }));
+    const confirmed = await dialog.confirm(t('settings.delete_identity_card', '确定删除身份卡: $personaId').replace('$personaId', pid));
     if (confirmed) {
       const nextPersonas = { ...allPersonas };
       delete nextPersonas[pid];
@@ -137,7 +137,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
 
   // 5. 删 Fact
   const handleDeleteFact = async (k: string) => {
-    const confirmed = await dialog.confirm(t('settings.delete_identity_confirm', '确认删除属性 {{k}}？', { k }));
+    const confirmed = await dialog.confirm(t('settings.delete_identity_confirm', '确认删除「$key」？').replace('$key', k));
     if (confirmed) {
       const nextFacts = { ...currentFacts };
       delete nextFacts[k];

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../Modal/Modal';
 import { Button } from '../Button/Button';
@@ -9,6 +9,7 @@ export interface DialogContextState {
   confirm: (message: ReactNode, title?: string) => Promise<boolean>;
   prompt: (message: ReactNode, defaultValue?: string, title?: string, isMultiline?: boolean) => Promise<string | null>;
   alert: (message: ReactNode, title?: string) => Promise<void>;
+  closeAll: () => void;
 }
 
 const DialogContext = createContext<DialogContextState | null>(null);
@@ -42,6 +43,22 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
   }, []);
 
+  const closeAll = useCallback(() => {
+    setState((prev) => {
+      if (prev.resolve) prev.resolve(prev.type === 'prompt' ? null : false);
+      return { ...prev, isOpen: false };
+    });
+  }, []);
+
+  // 组件卸载时关闭弹窗
+  useEffect(() => {
+    return () => {
+      if (state.isOpen && state.resolve) {
+        state.resolve(state.type === 'prompt' ? null : false);
+      }
+    };
+  }, [state.isOpen, state.resolve, state.type]);
+
   const alert = useCallback((message: ReactNode, title?: string): Promise<void> => {
     return new Promise((resolve) => {
       setState({ isOpen: true, type: 'alert', message, title, resolve });
@@ -62,7 +79,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   return (
-    <DialogContext.Provider value={{ alert, confirm, prompt }}>
+    <DialogContext.Provider value={{ alert, confirm, prompt, closeAll }}>
       {children}
       {state.isOpen && (
         <Modal isOpen={state.isOpen} onClose={() => closeDialog(state.type === 'prompt' ? null : false)} title={state.title}>

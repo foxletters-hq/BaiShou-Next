@@ -1,7 +1,7 @@
 .gallery-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
   height: 100%;
   min-height: 0;
 }
@@ -10,12 +10,13 @@
 .gallery-tabs-container {
   display: flex;
   gap: 8px;
-  background: var(--bg-surface-lowest, #F8FAFC);
+  background: var(--bg-surface-lowest, rgba(248, 250, 252, 0.5));
   padding: 6px;
-  border-radius: 12px;
+  border-radius: 12px 12px 0 0;
   width: fit-content;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   border: 1px solid var(--border-subtle, rgba(200, 200, 200, 0.3));
+  border-bottom: none;
 }
 
 .gallery-tab-btn {
@@ -49,7 +50,7 @@
   min-height: 0;
   gap: 0;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: 0 12px 12px 12px;
   overflow: hidden;
   background: var(--bg-surface);
 }

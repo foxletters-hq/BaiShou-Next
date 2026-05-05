@@ -69,7 +69,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   const handleDelete = async () => {
     if (selectedIds.size === 0) return;
     
-    let confirmMsg = t('settings.attachment_delete_selected_confirm', '确定要删除选中的 {{count}} 个附件文件夹吗？此操作不可撤销。', { count: selectedIds.size });
+    let confirmMsg = t('settings.attachment_delete_selected_confirm', '确定要删除选中的 $count 个附件文件夹吗？此操作不可撤销。');
     if (confirmMsg.includes('$count')) {
       confirmMsg = confirmMsg.replace('$count', selectedIds.size.toString());
     }
@@ -86,7 +86,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
       
       await onDeleteSelected(Array.from(selectedIds));
       
-      let successStr = t('settings.attachment_clear_completed', '清理完成，共释放 $size 空间', { size: formatSize(freedMB) });
+      let successStr = t('settings.attachment_clear_completed', '清理完成，共释放 $size 空间');
       if (successStr.includes('$size')) {
         successStr = successStr.replace('$size', formatSize(freedMB));
       }
@@ -100,7 +100,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   };
 
   const deleteBtnLabel = (() => {
-    let raw = t('settings.attachment_delete_selected', '删除已选 ({{count}})', { count: selectedIds.size });
+    let raw = t('settings.attachment_delete_selected', '删除已选 ($count)');
     if (raw.includes('$count')) raw = raw.replace('$count', selectedIds.size.toString());
     return raw;
   })();

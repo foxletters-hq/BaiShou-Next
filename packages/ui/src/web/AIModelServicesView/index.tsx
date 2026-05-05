@@ -556,11 +556,9 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                    <div className={styles.modelListTitleBox}>
                       <MdViewList size={20} className={styles.modelListTitleIcon} />
                       <span className={styles.modelListTitle}>
-                         {t('settings.model_list_count', '模型列表 ({{enabled}} / {{total}})')
+                         {t('settings.model_list_count', '模型列表 ($enabled / $total)')
                             .replace('$enabled', String(activeConfig.enabledModels?.length || 0))
-                            .replace('$total', String(activeConfig.models?.length || 0))
-                            .replace('{{enabled}}', String(activeConfig.enabledModels?.length || 0))
-                            .replace('{{total}}', String(activeConfig.models?.length || 0))}
+                            .replace('$total', String(activeConfig.models?.length || 0))}
                       </span>
                    </div>
                    <button className={styles.fetchBtnLine} onClick={handleFetchModels} disabled={isFetchingModels}>

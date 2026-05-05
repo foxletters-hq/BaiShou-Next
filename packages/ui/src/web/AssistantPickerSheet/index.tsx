@@ -413,7 +413,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                                       </span>
                                       <div style={{ flex: 1 }}></div>
                                       <span style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                                        {t('agent.assistant.compress_keep_turns_unit', '{{count}} 轮', { count: editingCompressKeepTurns }).replace('$count', String(editingCompressKeepTurns))}
+                                        {t('agent.assistant.compress_keep_turns_unit', '$count 轮').replace('$count', String(editingCompressKeepTurns))}
                                       </span>
                                    </div>
                                    <input
