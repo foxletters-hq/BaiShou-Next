@@ -10,7 +10,7 @@ import {
 import type { ActivityData } from '@baishou/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Layers, Sparkles, CheckCircle2, Gauge, Calendar, RefreshCw, XCircle } from 'lucide-react';
+import { LayoutDashboard, Layers, Sparkles, CheckCircle2, Gauge, Calendar, RefreshCw, XCircle, Clock } from 'lucide-react';
 import { useSummaryData } from './hooks/useSummaryData';
 import './SummaryPage.css';
 
@@ -67,8 +67,13 @@ export const SummaryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel');
   const [lookbackMonths, setLookbackMonths] = useState(1);
   const [isBatchGenerating, setIsBatchGenerating] = useState(false);
-  const [concurrencyLimit, setConcurrencyLimit] = useState(3);
-  const { summaries, stats, missingSummaries, setMissingSummaries, queueGeneration, stopGeneration, generationStates, refreshData } = useSummaryData();
+  const [concurrencyLimit, setConcurrencyLimitState] = useState(3);
+
+  const handleConcurrencyChange = (n: number) => {
+    setConcurrencyLimitState(n);
+    setConcurrency(n);
+  };
+  const { summaries, stats, missingSummaries, setMissingSummaries, queueGeneration, stopGeneration, setConcurrency, generationStates, refreshData } = useSummaryData();
   const [activityData, setActivityData] = useState<ActivityData[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
@@ -161,7 +166,7 @@ export const SummaryPage: React.FC = () => {
     });
 
     if (pendingTasks.length > 0) {
-       await queueGeneration(pendingTasks);
+       await queueGeneration(pendingTasks, concurrencyLimit);
         toast.showSuccess(t('summary.batch_queued', '已将 $count 项任务加入后台构建队列，您可以离开页面。').replace('$count', pendingTasks.length.toString()));
     } else {
         toast.showSuccess(t('summary.all_processing', '所有检测到的遗失项均已在处理中。'));
@@ -259,30 +264,31 @@ export const SummaryPage: React.FC = () => {
                         {genCompleted}/{genTotal}
                         {genError > 0 && <span className="sp-progress-error"> ({genError} 失败)</span>}
                      </div>
-                     <div className="sp-progress-actions">
-                        {isGenerating && (
+                      <div className="sp-progress-actions">
+                         {isGenerating && (
+                            <button
+                               className="sp-stop-btn"
+                               onClick={handleStopGeneration}
+                            >
+                               <XCircle size={14} />
+                               {t('summary.stop', '停止')}
+                            </button>
+                         )}
+                         {!isGenerating && (
                            <button
-                              className="sp-stop-btn"
-                              onClick={handleStopGeneration}
+                              className="sp-batch-generate-btn"
+                              onClick={handleBatchGenerate}
+                              disabled={isBatchGenerating}
                            >
-                              <XCircle size={14} />
-                              {t('summary.stop', '停止')}
+                              <Sparkles size={14} />
+                              {isBatchGenerating ? t('summary.generating', '生成中...') : t('summary.generate_all', '全部生成')}
                            </button>
-                        )}
-                        <button
-                           className="sp-batch-generate-btn"
-                           onClick={handleBatchGenerate}
-                            disabled={isBatchGenerating}
-                        >
-                           <Sparkles size={14} />
-                           {isBatchGenerating ? t('summary.generating', '生成中...') : t('summary.generate_all', '全部生成')}
-                        </button>
-                        <ConcurrencyDropdown value={concurrencyLimit} onChange={setConcurrencyLimit} disabled={isBatchGenerating} t={t} />
-                     </div>
-                  </div>
-               )}
-
-               {genTotal === 0 && missingSummaries.length > 0 && !isBatchGenerating && (
+                         )}
+                         <ConcurrencyDropdown value={concurrencyLimit} onChange={handleConcurrencyChange} disabled={isGenerating} t={t} />
+                      </div>
+                   </div>
+                )}
+                   {genTotal === 0 && missingSummaries.length > 0 && !isBatchGenerating && (
                   <div className="sp-progress-actions" style={{ marginBottom: 12 }}>
                      <button
                         className="sp-batch-generate-btn"
@@ -292,7 +298,7 @@ export const SummaryPage: React.FC = () => {
                         <Sparkles size={14} />
                         {t('summary.generate_all', '全部生成')}
                      </button>
-                     <ConcurrencyDropdown value={concurrencyLimit} onChange={setConcurrencyLimit} disabled={isBatchGenerating} t={t} />
+                      <ConcurrencyDropdown value={concurrencyLimit} onChange={handleConcurrencyChange} disabled={isBatchGenerating} t={t} />
                   </div>
                )}
                
@@ -303,64 +309,71 @@ export const SummaryPage: React.FC = () => {
                      </div>
                   )}
                   <AnimatePresence>
-                     {missingSummaries.map((mp: { type: string; startDate: string; endDate: string; label?: string; dateRangeStr?: string }) => {
-                        const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`;
-                        const isGen = !!generationStates[uKey] && generationStates[uKey].status !== 'error';
-                        const progress = generationStates[uKey]?.progress || 0;
+                      {missingSummaries.map((mp: { type: string; startDate: string; endDate: string; label?: string; dateRangeStr?: string }) => {
+                         const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`;
+                         const taskState = generationStates[uKey];
+                         const isRunning = taskState?.status === 'running';
+                         const isPending = taskState?.status === 'pending';
+                         const isCompleted = taskState?.status === 'completed';
+                         const progress = taskState?.progress || 0;
 
-                        return (
-                          <motion.div
-                             key={uKey}
-                             variants={itemVariants}
-                             exit="exit"
-                             style={{ display: 'flex' }}
-                          >
-                             <div className="sp-missing-card">
-                                {/* 图标区域 */}
-                                <div className="sp-missing-card-icon">
-                                   <Calendar size={20} />
-                                </div>
+                         return (
+                           <motion.div
+                              key={uKey}
+                              variants={itemVariants}
+                              exit="exit"
+                              style={{ display: 'flex' }}
+                           >
+                              <div className="sp-missing-card">
+                                 {/* 图标区域 */}
+                                 <div className="sp-missing-card-icon">
+                                    <Calendar size={20} />
+                                 </div>
 
-                                <div className="sp-missing-card-body">
-                                   <div className="sp-missing-card-title">
-                                      {mp.label || mp.dateRangeStr}
-                                   </div>
-                                   <div className="sp-missing-card-meta">
-                                      <span className="sp-missing-card-date">
-                                         {mp.startDate && new Date(mp.startDate).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
-                                         {' - '}
-                                         {mp.endDate && new Date(mp.endDate).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
-                                      </span>
-                                      <span className="sp-missing-card-badge">
-                                         {t('summary.suggestion_generate', '建议生成')}
-                                      </span>
-                                   </div>
-                                </div>
+                                 <div className="sp-missing-card-body">
+                                    <div className="sp-missing-card-title">
+                                       {mp.label || mp.dateRangeStr}
+                                    </div>
+                                    <div className="sp-missing-card-meta">
+                                       <span className="sp-missing-card-date">
+                                          {mp.startDate && new Date(mp.startDate).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
+                                          {' - '}
+                                          {mp.endDate && new Date(mp.endDate).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
+                                       </span>
+                                       <span className="sp-missing-card-badge">
+                                          {t('summary.suggestion_generate', '建议生成')}
+                                       </span>
+                                    </div>
+                                 </div>
 
-                                {/* 按钮区域 */}
-                                <div>
-                                  {isGen && progress < 100 ? (
-                                     <div className="sp-missing-card-action processing">
-                                       <style>{`@keyframes baishouSpin { 100% { transform: rotate(360deg); } }`}</style>
-                                       <RefreshCw size={20} className="concurrency-trigger-icon" style={{ animation: 'baishouSpin 1.5s linear infinite' }} />
-                                     </div>
-                                  ) : isGen && progress >= 100 ? (
-                                     <div className="sp-missing-card-action processing">
-                                       <CheckCircle2 size={22} color="var(--color-success)" />
-                                     </div>
-                                  ) : (
-                                     <div
-                                       className="sp-missing-card-action"
-                                       onClick={() => queueGeneration([mp])}
-                                     >
-                                       <Sparkles size={18} />
-                                     </div>
-                                  )}
-                                </div>
-                             </div>
-                          </motion.div>
-                        );
-                     })}
+                                 {/* 按钮区域 */}
+                                 <div>
+                                   {isRunning && progress < 100 ? (
+                                      <div className="sp-missing-card-action processing">
+                                        <style>{`@keyframes baishouSpin { 100% { transform: rotate(360deg); } }`}</style>
+                                        <RefreshCw size={20} className="concurrency-trigger-icon" style={{ animation: 'baishouSpin 1.5s linear infinite' }} />
+                                      </div>
+                                   ) : isPending ? (
+                                      <div className="sp-missing-card-action processing">
+                                        <Clock size={20} color="var(--text-tertiary)" />
+                                      </div>
+                                   ) : isCompleted || (taskState && progress >= 100) ? (
+                                      <div className="sp-missing-card-action processing">
+                                        <CheckCircle2 size={22} color="var(--color-success)" />
+                                      </div>
+                                   ) : (
+                                      <div
+                                        className="sp-missing-card-action"
+                                        onClick={() => queueGeneration([mp], concurrencyLimit)}
+                                      >
+                                        <Sparkles size={18} />
+                                      </div>
+                                   )}
+                                 </div>
+                              </div>
+                           </motion.div>
+                         );
+                      })}
                   </AnimatePresence>
                </div>
             </motion.div>

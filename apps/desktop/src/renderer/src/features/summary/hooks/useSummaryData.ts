@@ -86,9 +86,15 @@ export function useSummaryData() {
     return undefined;
   }, [fetchData]);
 
-  const queueGeneration = async (items: any[]) => {
+  const queueGeneration = async (items: any[], concurrency?: number) => {
     if (typeof window !== 'undefined' && window.electron) {
-      return window.electron.ipcRenderer.invoke('summary:queue-generation', items);
+      return window.electron.ipcRenderer.invoke('summary:queue-generation', items, concurrency);
+    }
+  };
+
+  const setConcurrency = async (limit: number) => {
+    if (typeof window !== 'undefined' && window.electron) {
+      return window.electron.ipcRenderer.invoke('summary:set-concurrency', limit);
     }
   };
 
@@ -98,11 +104,5 @@ export function useSummaryData() {
     }
   };
 
-  const generateSummary = async (type: string, dateRange: any) => {
-    if (typeof window !== 'undefined' && window.electron) {
-      return window.electron.ipcRenderer.invoke('summary:generate', { type, dateRange });
-    }
-  };
-
-  return { summaries, stats, missingSummaries, setMissingSummaries, generateSummary, queueGeneration, stopGeneration, generationStates, refreshData: fetchData };
+  return { summaries, stats, missingSummaries, setMissingSummaries, queueGeneration, stopGeneration, setConcurrency, generationStates, refreshData: fetchData };
 }

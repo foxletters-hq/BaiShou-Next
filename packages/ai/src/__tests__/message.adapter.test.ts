@@ -94,7 +94,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolResults).toHaveLength(1);
       expect(toolResults[0].toolCallId).toBe('call_00_test123');
       expect(toolResults[0].toolName).toBe('web_search');
-      expect(toolResults[0].result).toBe('搜索结果内容');
+      expect(toolResults[0].output).toEqual({ type: 'text', value: '搜索结果内容' });
     });
 
     it('should generate tool-result with fallback error when tool part has no result', () => {
@@ -109,7 +109,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       const toolMsg = result[2];
       const toolResults = (toolMsg?.content as any[]).filter((p: any) => p.type === 'tool-result');
       expect(toolResults).toHaveLength(1);
-      expect(toolResults[0].result).toBe('[工具执行失败: web_search]');
+      expect(toolResults[0].output).toEqual({ type: 'text', value: '[工具执行失败: web_search]' });
     });
 
     it('should handle multiple tool parts in one assistant message', () => {
@@ -134,8 +134,8 @@ describe('MessageAdapter.toVercelMessages', () => {
       const toolMsg = result[2];
       const toolResults = (toolMsg.content as any[]).filter((p: any) => p.type === 'tool-result');
       expect(toolResults).toHaveLength(2);
-      expect(toolResults[0].result).toBe('结果1');
-      expect(toolResults[1].result).toBe('结果2');
+      expect(toolResults[0].output).toEqual({ type: 'text', value: '结果1' });
+      expect(toolResults[1].output).toEqual({ type: 'text', value: '结果2' });
     });
 
     it('should NOT generate a tool message when assistant has no tool parts', () => {
@@ -232,6 +232,7 @@ describe('MessageAdapter.toVercelMessages', () => {
           id: 'msg-tool-1',
           sessionId: 'sess-1',
           role: 'tool' as const,
+          isSummary: false,
           orderIndex: 1,
           createdAt: new Date(),
           parts: [
@@ -258,7 +259,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(result[1]?.role).toBe('tool');
       const toolResults = (result[1].content as any[]).filter((p: any) => p.type === 'tool-result');
       expect(toolResults).toHaveLength(1);
-      expect(toolResults[0].result).toBe('已有结果');
+      expect(toolResults[0].output).toEqual({ type: 'text', value: '已有结果' });
     });
 
     it('should skip assistant messages with no parts', () => {

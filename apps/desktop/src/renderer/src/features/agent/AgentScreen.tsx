@@ -446,6 +446,7 @@ export const AgentScreen: React.FC = () => {
               reasoning={stream.reasoning}
               isReasoning={Boolean(stream.reasoning && !stream.text)}
               activeToolName={stream.activeTool?.name}
+              completedTools={stream.completedTools}
               aiProfile={{ name: currentAssistant?.name || 'AI', avatarPath: currentAssistant?.avatarPath, emoji: currentAssistant?.emoji }}
             />
           )}

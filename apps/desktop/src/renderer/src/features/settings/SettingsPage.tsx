@@ -900,7 +900,6 @@ const AttachmentManagementPane: React.FC = () => {
 
   return (
     <div className="settings-pane settings-pane-full">
-      <div className="attachment-management-wrapper">
          <AttachmentManagementView 
              attachments={attachments}
              onDeleteSelected={async (ids) => {
@@ -908,7 +907,6 @@ const AttachmentManagementPane: React.FC = () => {
                await fetchData();
              }}
          />
-      </div>
     </div>
   );
 };

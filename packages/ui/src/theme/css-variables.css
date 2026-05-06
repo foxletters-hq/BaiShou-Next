@@ -112,11 +112,11 @@
   --bg-glass-surface: rgba(38, 38, 41, 0.75);
 
   /* Borders / Dividers (Dark) */
-  --border-subtle: rgba(255, 255, 255, 0.05); /* very faint */
-  --border-muted: rgba(255, 255, 255, 0.09);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-subtle: rgba(255, 255, 255, 0.08); /* increased visibility for dividers */
+  --border-muted: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.20);
 
-  --color-outline-variant: var(--border-subtle);
+  --color-outline-variant: rgba(255, 255, 255, 0.10);
   --color-outline-variant-rgb: 255, 255, 255;
 
   /* Text & Inks (Dark) */

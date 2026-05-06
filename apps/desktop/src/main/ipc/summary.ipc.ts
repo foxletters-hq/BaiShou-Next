@@ -56,10 +56,21 @@ export function getSummaryManager() {
   return summaryManager;
 }
 
-export function registerSummaryIPC() {
+let _cachedManager: SummaryManagerService | null = null;
+
+function ensureManager(): SummaryManagerService {
+  if (!_cachedManager) {
+    _cachedManager = getSummaryManager();
+  }
+  return _cachedManager;
+}
+
+let _queueInitialized = false;
+
+function ensureQueueReady(): void {
+  if (_queueInitialized) return;
   const queueService = SummaryQueueService.getInstance();
-  queueService.setDependencies(getSummaryManager(), async () => {
-    // Dynamic factory for Generator Service to ensure db connections are fresh
+  queueService.setDependencies(ensureManager(), async () => {
     const db = connectionManager.getDb();
     const shadowDb = shadowConnectionManager.getDb();
     
@@ -112,26 +123,30 @@ export function registerSummaryIPC() {
     
     return new SummaryGeneratorService(diaryRepoAdapter, summaryRepo, aiClient);
   });
+  _queueInitialized = true;
+}
+
+export function registerSummaryIPC() {
   ipcMain.handle('summary:save', async (_, input: CreateSummaryInput) => {
-    return await getSummaryManager().save(input);
+    return await ensureManager().save(input);
   });
   
   ipcMain.handle('summary:update', async (_, id: number, type: SummaryType, startDate: Date, endDate: Date, update: UpdateSummaryInput) => {
-    return await getSummaryManager().update(id, type, new Date(startDate), new Date(endDate), update);
+    return await ensureManager().update(id, type, new Date(startDate), new Date(endDate), update);
   });
   
   ipcMain.handle('summary:delete', async (_, type: SummaryType, startDate: Date, endDate: Date) => {
-    return await getSummaryManager().delete(type, new Date(startDate), new Date(endDate));
+    return await ensureManager().delete(type, new Date(startDate), new Date(endDate));
   });
   
   ipcMain.handle('summary:readDetail', async (_, type: SummaryType, startDate: Date, endDate: Date) => {
-    return await getSummaryManager().readDetail(type, new Date(startDate), new Date(endDate));
+    return await ensureManager().readDetail(type, new Date(startDate), new Date(endDate));
   });
   
   ipcMain.handle('summary:list', async (_, options?: { start?: Date }) => {
     try {
        const parsedOptions = options?.start ? { start: new Date(options.start) } : undefined;
-       return await getSummaryManager().list(parsedOptions);
+       return await ensureManager().list(parsedOptions);
     } catch (e) {
        logger.warn('[SummaryIPC] list error (likely table missing):', e);
        return [];
@@ -150,7 +165,7 @@ export function registerSummaryIPC() {
         logger.error('Failed to get shadow_index count', e);
       }
 
-      const summaries = await getSummaryManager().list();
+      const summaries = await ensureManager().list();
       return {
         totalDiaryCount,
         weeklyCount: summaries.filter((s:any) => s.type === 'weekly').length,
@@ -234,18 +249,28 @@ export function registerSummaryIPC() {
     }
   });
 
-  ipcMain.handle('summary:queue-generation', async (_, items: any[]) => {
+  ipcMain.handle('summary:queue-generation', async (_, items: any[], concurrency?: number) => {
+    ensureQueueReady();
     const queueService = SummaryQueueService.getInstance();
-    queueService.enqueue(items);
+    queueService.enqueue(items, concurrency);
+    return true;
+  });
+
+  ipcMain.handle('summary:set-concurrency', async (_, limit: number) => {
+    ensureQueueReady();
+    const queueService = SummaryQueueService.getInstance();
+    queueService.setConcurrencyLimit(limit);
     return true;
   });
 
   ipcMain.handle('summary:get-queue-state', async () => {
+    ensureQueueReady();
     const queueService = SummaryQueueService.getInstance();
     return queueService.getQueueState();
   });
 
   ipcMain.handle('summary:stop-generation', async () => {
+    ensureQueueReady();
     const queueService = SummaryQueueService.getInstance();
     queueService.stop();
     return true;

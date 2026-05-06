@@ -1,5 +1,5 @@
 import { AgentMessage, AgentPart } from '@baishou/shared';
-import { CoreMessage, ToolResultPart } from 'ai';
+import { ModelMessage, ToolResultPart } from 'ai';
 
 export interface MessageWithParts extends AgentMessage {
   parts: AgentPart[];
@@ -7,11 +7,11 @@ export interface MessageWithParts extends AgentMessage {
 
 export class MessageAdapter {
   /**
-   * 将白守数据库结构的 Message 列表转换为 Vercel AI SDK (CoreMessage[]) 所能理解的格式。
+   * 将白守数据库结构的 Message 列表转换为 Vercel AI SDK (ModelMessage[]) 所能理解的格式。
    * 它将正确还原 Assistant 发出的工具调用（ToolCall）以及对应的结果回填（ToolResult）。
    */
-  static toVercelMessages(dbMessages: MessageWithParts[]): CoreMessage[] {
-    const vercelMessages: CoreMessage[] = [];
+  static toVercelMessages(dbMessages: MessageWithParts[]): ModelMessage[] {
+    const vercelMessages: ModelMessage[] = [];
 
     for (const msg of dbMessages) {
       if (!msg.parts || msg.parts.length === 0) continue;
@@ -101,7 +101,7 @@ export class MessageAdapter {
                 type: 'tool-result',
                 toolCallId: data.callId,
                 toolName: data.name,
-                result: data.result ?? `[工具执行失败: ${data.name}]`,
+                output: { type: 'text', value: data.result ?? `[工具执行失败: ${data.name}]` },
               });
             }
           }
@@ -136,7 +136,7 @@ export class MessageAdapter {
                 type: 'tool-result',
                 toolCallId: data.callId,
                 toolName: data.name,
-                result: data.result,
+                output: { type: 'text', value: data.result },
               });
             }
           } else if (p.type === 'text') {
@@ -147,7 +147,7 @@ export class MessageAdapter {
                  type: 'tool-result',
                  toolCallId: data.toolCallId,
                  toolName: data.toolName,
-                 result: data.text,
+                 output: { type: 'text', value: data.text },
                });
             }
           }

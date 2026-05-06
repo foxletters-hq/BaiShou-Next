@@ -14,7 +14,8 @@ export interface QueueItem {
 export class SummaryQueueService {
   private static instance: SummaryQueueService;
   private queue: QueueItem[] = [];
-  private isProcessing = false;
+  private activeCount = 0;
+  private concurrencyLimit = 1;
   private abortController: AbortController | null = null;
 
   // Dependencies injected later after everything boot up
@@ -35,6 +36,12 @@ export class SummaryQueueService {
     this.generatorFactory = generatorFactory;
   }
 
+  setConcurrencyLimit(limit: number) {
+    this.concurrencyLimit = Math.max(1, Math.min(5, limit));
+    // 并发数提升后，立即尝试调度更多任务
+    this.scheduleNext();
+  }
+
   getQueueState() {
     return this.queue;
   }
@@ -45,6 +52,7 @@ export class SummaryQueueService {
    */
   stop() {
     this.abortController?.abort();
+    this.abortController = null;
 
     for (const item of this.queue) {
       if (item.status === 'running' || item.status === 'pending') {
@@ -53,19 +61,20 @@ export class SummaryQueueService {
       }
     }
 
-    // 移除所有已取消的错误项，只保留已完成的
     this.queue = this.queue.filter(q => q.status !== 'error');
-
-    this.isProcessing = false;
-    this.abortController = null;
+    this.activeCount = 0;
     this.broadcastState();
   }
 
   get isRunning(): boolean {
-    return this.isProcessing;
+    return this.activeCount > 0;
   }
 
-  enqueue(items: MissingSummary[]) {
+  enqueue(items: MissingSummary[], concurrency?: number) {
+    if (concurrency !== undefined) {
+      this.concurrencyLimit = Math.max(1, Math.min(5, concurrency));
+    }
+
     let added = 0;
     for (const item of items) {
       const uKey = `${item.type}_${new Date(item.startDate).getTime()}`;
@@ -82,8 +91,11 @@ export class SummaryQueueService {
     }
     
     if (added > 0) {
+      if (!this.abortController) {
+        this.abortController = new AbortController();
+      }
       this.broadcastState();
-      this.processQueue();
+      this.scheduleNext();
     }
   }
 
@@ -93,92 +105,97 @@ export class SummaryQueueService {
     });
   }
 
-  private async processQueue() {
-    if (this.isProcessing) return;
-    this.isProcessing = true;
-    this.abortController = new AbortController();
-    const signal = this.abortController.signal;
+  /** 尝试启动下一个待处理任务，受并发数限制 */
+  private scheduleNext() {
+    while (this.activeCount < this.concurrencyLimit) {
+      const next = this.queue.find(q => q.status === 'pending');
+      if (!next) break;
+
+      next.status = 'running';
+      next.progress = 5;
+      this.activeCount++;
+      this.broadcastState();
+      this.processTask(next);
+    }
+  }
+
+  /** 处理单个任务（与其他任务并发运行） */
+  private async processTask(task: QueueItem) {
+    const signal = this.abortController?.signal;
 
     try {
-      while (true) {
-        if (signal.aborted) break;
+      const generator = await this.generatorFactory();
+      const stream = generator.generate(task.target);
 
-        const nextIdx = this.queue.findIndex(q => q.status === 'pending');
-        if (nextIdx === -1) break;
+      let finalContent = '';
 
-        const currentTask = this.queue[nextIdx];
-        currentTask.status = 'running';
-        currentTask.progress = 5;
+      for await (const chunk of stream) {
+        if (signal?.aborted) {
+          task.status = 'error';
+          task.error = '用户取消了生成';
+          this.broadcastState();
+          break;
+        }
+        if (chunk.includes('STATUS:reading_data')) {
+          task.phaseIdx = 1;
+          task.progress = 25;
+        } else if (chunk.includes('STATUS:thinking_via_')) {
+          task.phaseIdx = 2;
+          task.progress = 50;
+        } else if (chunk.includes('STATUS:generation_failed_error')) {
+          const cleanMsg = chunk.replace('STATUS:generation_failed_error:', '').trim();
+          throw new Error(cleanMsg);
+        } else if (!chunk.startsWith('STATUS:')) {
+          task.phaseIdx = 3;
+          task.progress = 85;
+          finalContent += chunk;
+        }
+        this.broadcastState();
+      }
+
+      if (task.status === 'error') return;
+
+      if (finalContent.trim().length > 0) {
+        task.progress = 95;
         this.broadcastState();
 
-        try {
-          // 1. Resolve Dynamic Generator
-          const generator = await this.generatorFactory();
-          const stream = generator.generate(currentTask.target);
+        await this.summaryManager.save({
+          type: task.target.type,
+          startDate: task.target.startDate,
+          endDate: task.target.endDate,
+          content: finalContent
+        });
 
-          let finalContent = '';
-          
-          for await (const chunk of stream) {
-            if (signal.aborted) {
-              currentTask.status = 'error';
-              currentTask.error = '用户取消了生成';
-              this.broadcastState();
-              break;
-            }
-            if (chunk.includes('STATUS:reading_data')) {
-               currentTask.phaseIdx = 1;
-               currentTask.progress = 25;
-            } else if (chunk.includes('STATUS:thinking_via_')) {
-               currentTask.phaseIdx = 2;
-               currentTask.progress = 50;
-            } else if (chunk.includes('STATUS:generation_failed_error')) {
-               const cleanMsg = chunk.replace('STATUS:generation_failed_error:', '').trim();
-               throw new Error(cleanMsg);
-            } else if (!chunk.startsWith('STATUS:')) {
-               currentTask.phaseIdx = 3;
-               currentTask.progress = 85;
-               finalContent += chunk;
-            }
+        task.status = 'completed';
+        task.progress = 100;
+        task.phaseIdx = 4;
+        this.broadcastState();
+      } else {
+        throw new Error('Generated content was empty.');
+      }
+    } catch (e: any) {
+      console.error('[SummaryQueueService] Task Failed:', e);
+      task.status = 'error';
+      task.error = e.message || String(e);
+      this.broadcastState();
+    } finally {
+      this.activeCount--;
+
+      if (!signal?.aborted) {
+        this.scheduleNext();
+      }
+
+      if (this.activeCount === 0) {
+        this.abortController = null;
+
+        setTimeout(() => {
+          const hasFinished = this.queue.some(q => q.status === 'completed' || q.status === 'error');
+          if (hasFinished) {
+            this.queue = this.queue.filter(q => q.status === 'pending' || q.status === 'running');
             this.broadcastState();
           }
-
-          if (finalContent.trim().length > 0) {
-             currentTask.progress = 95;
-             this.broadcastState();
-             
-             // Save it via standard manager
-             await this.summaryManager.save({
-                type: currentTask.target.type,
-                startDate: currentTask.target.startDate,
-                endDate: currentTask.target.endDate,
-                content: finalContent
-             });
-
-             currentTask.status = 'completed';
-             currentTask.progress = 100;
-             currentTask.phaseIdx = 4;
-             this.broadcastState();
-          } else {
-             throw new Error('Generated content was empty.');
-          }
-        } catch (e: any) {
-          console.error('[SummaryQueueService] Task Failed:', e);
-          currentTask.status = 'error';
-          currentTask.error = e.message || String(e);
-          this.broadcastState();
-        }
+        }, 3000);
       }
-    } finally {
-      this.isProcessing = false;
-      
-      // Clear out completed items after 3 seconds so UI can naturally dismiss them
-      setTimeout(() => {
-         const hasCompleted = this.queue.some(q => q.status === 'completed' || q.status === 'error');
-         if (hasCompleted) {
-             this.queue = this.queue.filter(q => q.status === 'pending' || q.status === 'running');
-             this.broadcastState();
-         }
-      }, 3000);
     }
   }
 }
