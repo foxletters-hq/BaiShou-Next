@@ -10,7 +10,7 @@
  * 原始实现：lib/agent/middleware/gemini_thought_signature.dart (39 行)
  */
 
-import type { CoreMessage } from 'ai';
+import type { ModelMessage } from 'ai';
 import type { MessageMiddleware } from './message-middleware';
 
 const SKIP_VALIDATOR = 'skip_thought_signature_validator';
@@ -18,7 +18,7 @@ const SKIP_VALIDATOR = 'skip_thought_signature_validator';
 export class GeminiThoughtSignatureMiddleware implements MessageMiddleware {
   readonly name = 'gemini-thought-signature-skip';
 
-  process(messages: CoreMessage[]): CoreMessage[] {
+  process(messages: ModelMessage[]): ModelMessage[] {
     for (const message of messages) {
       if (message.role !== 'assistant') continue;
 

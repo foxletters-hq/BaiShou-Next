@@ -3,7 +3,7 @@ import { MiddlewareChain } from '../middleware/message-middleware';
 import type { MessageMiddleware } from '../middleware/message-middleware';
 import { GeminiThoughtSignatureMiddleware } from '../middleware/gemini-thought-signature';
 import { buildMiddlewareChain } from '../middleware/middleware-factory';
-import type { CoreMessage } from 'ai';
+import type { ModelMessage } from 'ai';
 
 describe('Middleware Pipeline', () => {
   describe('MiddlewareChain', () => {
@@ -12,18 +12,18 @@ describe('Middleware Pipeline', () => {
       const appendA: MessageMiddleware = {
         name: 'test-a',
         process: (msgs) =>
-          msgs.map((m) => ({ ...m, content: `${String(m.content)}-a` }) as CoreMessage),
+          msgs.map((m) => ({ ...m, content: `${String(m.content)}-a` }) as ModelMessage),
       };
 
       const appendB: MessageMiddleware = {
         name: 'test-b',
         process: (msgs) =>
-          msgs.map((m) => ({ ...m, content: `${String(m.content)}-b` }) as CoreMessage),
+          msgs.map((m) => ({ ...m, content: `${String(m.content)}-b` }) as ModelMessage),
       };
 
       const chain = new MiddlewareChain([appendA, appendB]);
 
-      const input: CoreMessage[] = [
+      const input: ModelMessage[] = [
         { role: 'user', content: 'hello' },
       ];
       const result = chain.apply(input);
@@ -49,7 +49,7 @@ describe('Middleware Pipeline', () => {
 
     it('should not modify user messages', () => {
       const mw = new GeminiThoughtSignatureMiddleware();
-      const messages: CoreMessage[] = [
+      const messages: ModelMessage[] = [
         { role: 'user', content: 'hello' },
       ];
 

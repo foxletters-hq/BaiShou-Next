@@ -325,8 +325,22 @@ export const DiaryPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 内容区 */}
-      {filteredEntries.length === 0 ? (
+        {/* 筛选遮罩层 */}
+        <AnimatePresence>
+          {isFilterOpen && (
+            <motion.div
+              className="diary-filter-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setIsFilterOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* 内容区 */}
+        {filteredEntries.length === 0 ? (
         <div className="diary-empty-state">
           <Edit3 size={56} className="diary-empty-icon" />
           <div className="diary-empty-text">

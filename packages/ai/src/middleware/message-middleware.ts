@@ -7,7 +7,7 @@
  * 原始实现：lib/agent/middleware/message_middleware.dart (33 行)
  */
 
-import type { CoreMessage } from 'ai';
+import type { ModelMessage } from 'ai';
 
 /**
  * 消息中间件接口
@@ -22,7 +22,7 @@ export interface MessageMiddleware {
    * @param messages Vercel AI SDK 格式的消息列表
    * @returns 处理后的消息列表
    */
-  process(messages: CoreMessage[]): CoreMessage[];
+  process(messages: ModelMessage[]): ModelMessage[];
 }
 
 /**
@@ -36,7 +36,7 @@ export class MiddlewareChain {
   }
 
   /** 依次执行所有中间件 */
-  apply(messages: CoreMessage[]): CoreMessage[] {
+  apply(messages: ModelMessage[]): ModelMessage[] {
     let result = messages;
     for (const mw of this.middlewares) {
       result = mw.process(result);

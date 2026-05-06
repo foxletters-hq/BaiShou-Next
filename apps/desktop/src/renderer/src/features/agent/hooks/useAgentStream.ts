@@ -1,10 +1,17 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 
+export interface ToolExecution {
+  name: string;
+  startTime: number;
+  durationMs: number;
+}
+
 export interface UseAgentStreamResult {
   text: string;
   reasoning: string;
   isStreaming: boolean;
   activeTool: { name: string; args: any } | null;
+  completedTools: ToolExecution[];
   error: string | null;
   startChat: (sessionId: string, text: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean) => Promise<void>;
   editChat: (sessionId: string, messageId: string, text: string, providerId?: string, modelId?: string, attachments?: any[]) => Promise<void>;
@@ -17,11 +24,13 @@ export function useAgentStream(): UseAgentStreamResult {
   const [reasoning, setReasoning] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTool, setActiveTool] = useState<{ name: string; args: any } | null>(null);
+  const [completedTools, setCompletedTools] = useState<ToolExecution[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Buffer updates to avoid too many React re-renders on fast streams
   const textRef = useRef('');
   const reasoningRef = useRef('');
+  const activeToolStartRef = useRef<number>(0);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electron || !window.electron.ipcRenderer) return () => {};
@@ -37,11 +46,13 @@ export function useAgentStream(): UseAgentStreamResult {
     });
 
     const cleanupToolStart = window.electron.ipcRenderer.on('agent:tool-start', (_, { name, args }) => {
+      activeToolStartRef.current = Date.now();
       setActiveTool({ name, args });
     });
 
-    const cleanupToolResult = window.electron.ipcRenderer.on('agent:tool-result', () => {
-      // 工具完成一次执行可做日志流，但这里最简单的实现就是闪烁或取消状态
+    const cleanupToolResult = window.electron.ipcRenderer.on('agent:tool-result', (_, { name }) => {
+      const durationMs = Date.now() - activeToolStartRef.current;
+      setCompletedTools(prev => [...prev, { name, startTime: activeToolStartRef.current, durationMs }]);
       setActiveTool(null);
     });
 
@@ -66,6 +77,7 @@ export function useAgentStream(): UseAgentStreamResult {
     setIsStreaming(true);
     setError(null);
     setActiveTool(null);
+    setCompletedTools([]);
     textRef.current = '';
     reasoningRef.current = '';
     setText('');
@@ -78,6 +90,7 @@ export function useAgentStream(): UseAgentStreamResult {
     setIsStreaming(true);
     setError(null);
     setActiveTool(null);
+    setCompletedTools([]);
     textRef.current = '';
     reasoningRef.current = '';
     setText('');
@@ -90,6 +103,7 @@ export function useAgentStream(): UseAgentStreamResult {
     setIsStreaming(true);
     setError(null);
     setActiveTool(null);
+    setCompletedTools([]);
     textRef.current = '';
     reasoningRef.current = '';
     setText('');
@@ -106,6 +120,7 @@ export function useAgentStream(): UseAgentStreamResult {
     setError(null);
     setIsStreaming(false);
     setActiveTool(null);
+    setCompletedTools([]);
   }, []);
 
   return {
@@ -113,6 +128,7 @@ export function useAgentStream(): UseAgentStreamResult {
     reasoning,
     isStreaming,
     activeTool,
+    completedTools,
     error,
     startChat,
     editChat,

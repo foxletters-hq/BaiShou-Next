@@ -8,7 +8,7 @@ import styles from './ThinkingBlock.module.css';
  * DeepSeek 等模型的推理输出有时会在中日韩字符之间插入空格，
  * 这是模型基于 token 分词的自然产物，但在渲染时需要清理掉。
  */
-function normalizeCJKSpacing(text: string): string {
+export function normalizeCJKSpacing(text: string): string {
   const cjk = '\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff';
   const punct = '\u3000-\u303f\uff00-\uffef';
 

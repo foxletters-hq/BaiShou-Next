@@ -98,20 +98,15 @@
 }
 
 .chipsScrollArea {
-  height: 40px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   margin-bottom: 16px;
-}
-
-.chipsScrollArea::-webkit-scrollbar {
-  display: none;
 }
 
 .chipsContainer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  height: 100%;
+  gap: 8px;
 }
 
 .inputChip {
@@ -120,7 +115,6 @@
   align-items: center;
   gap: 4px;
   padding: 0 12px;
-  margin-right: 8px;
   border: 1px solid rgba(208, 208, 208, 0.5);
   border-radius: 8px;
   background-color: transparent;

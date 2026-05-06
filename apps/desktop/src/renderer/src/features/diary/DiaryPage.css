@@ -591,6 +591,16 @@
   border: 2px solid var(--bg-glass-surface);
 }
 
+.diary-filter-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-overlay);
+  z-index: 99;
+}
+
 .diary-filter-panel {
   position: absolute;
   top: 100%;

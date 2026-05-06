@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import React from 'react';
+import React, { useMemo } from 'react';
 import styles from './StreamingBubble.module.css';
 import { MarkdownRenderer } from '../MarkdownRenderer';
-import { ThinkingBlock } from '../ThinkingBlock';
+import { ThinkingBlock, normalizeCJKSpacing } from '../ThinkingBlock';
 import { motion } from 'framer-motion';
 
 export interface ToolExecution {
@@ -38,6 +38,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   const aiName = aiProfile.name || t('agent.chat.ai_label');
   const hasReasoning = reasoning.length > 0;
   const hasText = text.length > 0;
+  const normalizedText = useMemo(() => normalizeCJKSpacing(text), [text]);
 
   const Avatar = () => (
      <div className={styles.avatarWrap}>
@@ -92,8 +93,8 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
                    />
                  )}
 
-                 {/* 正文内容 */}
-                 {hasText && <MarkdownRenderer content={text} isStreaming={true} />}
+                  {/* 正文内容 */}
+                  {hasText && <MarkdownRenderer content={normalizedText} isStreaming={true} />}
                </div>
              ) : (
                <div className={styles.dotsWrap}>

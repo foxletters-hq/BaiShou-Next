@@ -1,9 +1,9 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import styles from './ChatBubble.module.css';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import { MessageActionBar } from '../MessageActionBar';
 import { ToolResultGroup } from '../ToolResultGroupCard';
-import { ThinkingBlock } from '../ThinkingBlock';
+import { ThinkingBlock, normalizeCJKSpacing } from '../ThinkingBlock';
 import { MockChatMessage, MockChatAttachment } from '@baishou/shared/src/mock/agent.mock';
 
 import { useTranslation } from 'react-i18next';
@@ -220,9 +220,14 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     );
   };
 
-  const renderAiBubble = () => {
-    const aiName = aiProfile.name || t('agent.chat.ai_label');
-    return (
+   const normalizedContent = useMemo(
+     () => (message.content ? normalizeCJKSpacing(message.content) : ''),
+     [message.content]
+   );
+
+   const renderAiBubble = () => {
+     const aiName = aiProfile.name || t('agent.chat.ai_label');
+     return (
       <div className={`${styles.bubbleRow} ${styles.aiRow}`}>
          <div className={styles.avatarWrap}>
            {aiProfile.avatarPath ? (
@@ -266,8 +271,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                     />
                   )}
 
-                  {/* 正文内容 */}
-                  {message.content && <MarkdownRenderer content={message.content} />}
+                   {/* 正文内容 */}
+                   {normalizedContent && <MarkdownRenderer content={normalizedContent} />}
                </div>
 
                  <div className={styles.aiFooterRow}>
