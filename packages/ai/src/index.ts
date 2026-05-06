@@ -27,6 +27,7 @@ export * from './tools/url-read.tool';
 // Middleware
 export * from './middleware/message-middleware';
 export * from './middleware/gemini-thought-signature';
+export * from './middleware/deepseek-reasoning';
 export * from './middleware/middleware-factory';
 
 // Agent Handlers

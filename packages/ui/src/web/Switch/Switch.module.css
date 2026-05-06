@@ -14,11 +14,11 @@
 .track {
   width: 52px;
   height: 32px;
-  background-color: var(--bg-surface-normal);
+  background-color: var(--bg-surface-high);
   border-radius: var(--radius-full);
   position: relative;
   transition: background-color var(--duration-fast) ease;
-  border: 2px solid transparent;
+  border: 2px solid var(--border-muted);
 }
 
 .thumb {
@@ -38,6 +38,7 @@
 
 .input:checked + .track {
   background-color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .input:checked + .track .thumb {

@@ -46,12 +46,12 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
         key: 'web_search_engine',
         label: 'Search Engine',
         type: 'enum',
-        defaultValue: 'duckduckgo',
+        defaultValue: 'local-bing',
         enumOptions: [
-          { label: 'DuckDuckGo (Free / No Key Required)', value: 'duckduckgo' },
-          { label: 'Tavily (Requires API Key)', value: 'tavily' },
           { label: 'Bing (Local Browser)', value: 'local-bing' },
-          { label: 'Google (Local Browser)', value: 'local-google' }
+          { label: 'Google (Local Browser)', value: 'local-google' },
+          { label: 'DuckDuckGo (Free / No Key Required)', value: 'duckduckgo' },
+          { label: 'Tavily (Requires API Key)', value: 'tavily' }
         ]
       },
       {

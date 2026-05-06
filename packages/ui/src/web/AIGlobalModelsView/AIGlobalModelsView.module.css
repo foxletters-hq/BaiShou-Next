@@ -6,28 +6,21 @@
   padding: 32px 40px;
   overflow-y: auto;
   box-sizing: border-box;
+  background: var(--bg-app);
 }
 
 .headerTitle {
   font-size: 24px;
   font-weight: 700;
   margin: 0;
-  color: var(--color-on-surface, #1e1e1e);
-}
-
-[data-theme="dark"] .headerTitle {
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .headerSubtitle {
   font-size: 14px;
-  color: var(--color-on-surface-variant, #666666);
+  color: var(--text-secondary);
   margin-top: 8px;
   margin-bottom: 32px;
-}
-
-[data-theme="dark"] .headerSubtitle {
-  color: #a0a0a0;
 }
 
 .grid {
@@ -37,37 +30,27 @@
 }
 
 .routingCard {
-  background: var(--color-surface, rgba(255, 255, 255, 0.4));
-  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
   padding: 24px;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-[data-theme="dark"] .routingCard {
-  background: rgba(30, 30, 30, 0.6);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
 .routingCard:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
-}
-
-[data-theme="dark"] .routingCard:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: var(--border-muted);
 }
 
 .dangerCard {
-  border-color: rgba(244, 67, 54, 0.3) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
 }
 .dangerCard:hover {
-  border-color: rgba(244, 67, 54, 0.6) !important;
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1) !important;
 }
 
 .routeHeader {
@@ -81,75 +64,51 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: rgba(91, 168, 245, 0.15);
-  color: #5BA8F5;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .dangerIcon {
-  background: rgba(244, 67, 54, 0.1);
-  color: #f44336;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-error);
 }
 
 .routeName {
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-on-surface, #1a1a1a);
-}
-
-[data-theme="dark"] .routeName {
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .dangerName {
-  color: #d32f2f;
-}
-
-[data-theme="dark"] .dangerName {
-  color: #ff5252;
+  color: var(--color-error);
 }
 
 .routeDesc {
   font-size: 13px;
-  color: var(--color-on-surface-variant, #707070);
+  color: var(--text-secondary);
   line-height: 1.5;
   margin-top: auto;
 }
 
-[data-theme="dark"] .routeDesc {
-  color: #909090;
-}
-
-/* Custom Selector Button */
 .selectorBtn {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   padding: 14px 16px;
-  background: var(--color-surface, rgba(255, 255, 255, 0.6));
-  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.1));
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
   border-radius: 12px;
   cursor: pointer;
   margin-bottom: 16px;
   transition: all 0.2s;
 }
 
-[data-theme="dark"] .selectorBtn {
-  background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
 .selectorBtn:hover {
-  background: var(--color-surface-hover, rgba(0, 0, 0, 0.02));
-  border-color: rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="dark"] .selectorBtn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--border-strong);
 }
 
 .placeholderText {
@@ -167,26 +126,17 @@
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  background: #f0f0f0;
+  background: var(--bg-app);
   color: var(--text-secondary);
   padding: 2px 8px;
   border-radius: 4px;
   letter-spacing: 0.5px;
 }
 
-[data-theme="dark"] .selectedProviderBadge {
-  background: #333;
-  color: #ccc;
-}
-
 .selectedModelName {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-on-surface, #111);
-}
-
-[data-theme="dark"] .selectedModelName {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .dropdownIcon {

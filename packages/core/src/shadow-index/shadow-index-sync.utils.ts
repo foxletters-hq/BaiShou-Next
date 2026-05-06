@@ -2,6 +2,16 @@ import { parseDateStr } from '@baishou/shared';
 import { ParsedJournal } from './shadow-index-sync.types';
 
 /**
+ * 安全地将字符串解析为 Date 对象
+ * 解析失败时返回 fallback，避免 Invalid Date 导致 toISOString() 崩溃
+ */
+function safeParseDateTime(value: string | undefined, fallback: Date): Date {
+  if (!value) return fallback;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? fallback : d;
+}
+
+/**
  * 解析 Markdown 文件内容（含 Frontmatter）
  * 
  * 支持标准的 `---` 分隔的 YAML Frontmatter 格式：
@@ -59,8 +69,8 @@ export function parseJournalMarkdown(raw: string, fallbackDate: Date): ParsedJou
     date: parsedDate,
     content,
     tags,
-    createdAt: meta['created_at'] ? new Date(meta['created_at']) : (meta['createdAt'] ? new Date(meta['createdAt']) : (meta['date'] ? parsedDate : now)),
-    updatedAt: meta['updated_at'] ? new Date(meta['updated_at']) : (meta['updatedAt'] ? new Date(meta['updatedAt']) : now),
+    createdAt: safeParseDateTime(meta['created_at'] || meta['createdAt'], meta['date'] ? parsedDate : now),
+    updatedAt: safeParseDateTime(meta['updated_at'] || meta['updatedAt'], now),
     weather: meta['weather'] || undefined,
     mood: meta['mood'] || undefined,
     location: meta['location'] || undefined,

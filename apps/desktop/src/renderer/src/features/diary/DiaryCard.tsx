@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit3, Trash2 } from 'lucide-react';
+import { Edit3, Trash2, Heart } from 'lucide-react';
 import { MarkdownRenderer } from '@baishou/ui';
 import { getWeatherEmoji } from '@baishou/shared';
 
@@ -62,7 +62,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, on
             </div>
           </div>
         </div>
-        {entry.isFavorite && <span className="diary-card-fav-star">★</span>}
+        {entry.isFavorite && <Heart size={18} className="diary-card-fav-star" fill="currentColor" />}
       </div>
 
       {/* 元数据：天气、心情、位置 */}

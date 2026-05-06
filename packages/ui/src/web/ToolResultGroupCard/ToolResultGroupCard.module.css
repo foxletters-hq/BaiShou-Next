@@ -1,5 +1,5 @@
 .groupContainer {
-  margin: 12px 0;
+  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -10,12 +10,26 @@
 }
 
 .groupCard {
-  background-color: var(--bg-surface-low);
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  border-radius: 16px;
+  background-color: var(--bg-surface);
+  border: 2px solid var(--border-subtle);
+  border-radius: 12px;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease;
+}
+
+/* Smooth expand/collapse via CSS grid trick */
+.contentWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.open .contentWrap {
+  grid-template-rows: 1fr;
+}
+
+.contentInner {
+  overflow: hidden;
 }
 
 .headerRow {
@@ -23,25 +37,23 @@
   align-items: center;
   padding: 10px 14px;
   cursor: pointer;
-  background-color: transparent;
+  background-color: var(--bg-surface-normal);
   transition: background-color 0.2s ease;
   user-select: none;
 }
 
 .headerRow:hover {
-  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.1);
+  background-color: var(--bg-surface-normal);
 }
 
 .iconBox {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
-  color: var(--color-primary);
-  margin-right: 12px;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  margin-right: 8px;
 }
 
 .titleArea {
@@ -53,14 +65,14 @@
 
 .titleText {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .countBadge {
   font-size: 11px;
   font-weight: 700;
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
   color: var(--color-primary);
   padding: 2px 6px;
   border-radius: 10px;
@@ -102,7 +114,7 @@
 }
 
 .itemHeader:hover {
-  background-color: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.5);
+  background-color: transparent;
 }
 
 .itemStatusWrap {
@@ -125,21 +137,22 @@
 }
 
 /* Base Body Area with smooth transition */
-.itemBodyCollapsible {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s cubic-bezier(0.25, 1, 0.5, 1), padding 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
-  opacity: 0;
+.itemContentWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
 }
 
-.itemBodyExpanded {
-  max-height: 1200px; /* An arbitrarily large max-height for trick */
-  opacity: 1;
-  padding-bottom: 12px;
+.itemOpen .itemContentWrap {
+  grid-template-rows: 1fr;
+}
+
+.itemContentInner {
+  overflow: hidden;
 }
 
 .contentWrapper {
-  margin: 0 14px 0 14px;
+  margin: 0 14px 12px 14px;
   background-color: var(--bg-surface-low);
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   border-radius: 8px;

@@ -21,7 +21,7 @@ export const DiaryPage: React.FC = () => {
 
   // 筛选状态
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filterWeather, setFilterWeather] = useState<string | null>(null);
+  const [filterWeathers, setFilterWeathers] = useState<string[]>([]);
   const [filterFavorite, setFilterFavorite] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -143,9 +143,9 @@ export const DiaryPage: React.FC = () => {
       );
     }
 
-    // 天气筛选
-    if (filterWeather) {
-      filtered = filtered.filter(e => e.weather === filterWeather);
+    // 天气筛选（多选）
+    if (filterWeathers.length > 0) {
+      filtered = filtered.filter(e => e.weather && filterWeathers.includes(e.weather));
     }
 
     // 收藏筛选
@@ -199,12 +199,12 @@ export const DiaryPage: React.FC = () => {
 
   /** 清除所有筛选 */
   const clearFilters = () => {
-    setFilterWeather(null);
+    setFilterWeathers([]);
     setFilterFavorite(false);
   };
 
   /** 是否有激活的筛选 */
-  const hasActiveFilters = filterWeather || filterFavorite;
+  const hasActiveFilters = filterWeathers.length > 0 || filterFavorite;
 
   return (
     <motion.div
@@ -244,11 +244,13 @@ export const DiaryPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
                   <div className="diary-filter-header">
                     <span className="diary-filter-title">{t('diary.filter', '筛选')}</span>
                     {hasActiveFilters && (
-                      <button className="diary-filter-clear" onClick={clearFilters}>
+                      <button className="diary-filter-clear" onClick={(e) => { e.stopPropagation(); clearFilters(); }}>
                         <X size={14} />
                         {t('diary.clear_filter', '清除')}
                       </button>
@@ -259,7 +261,7 @@ export const DiaryPage: React.FC = () => {
                   <div className="diary-filter-section">
                     <button
                       className={`diary-filter-option ${filterFavorite ? 'active' : ''}`}
-                      onClick={() => setFilterFavorite(!filterFavorite)}
+                      onClick={(e) => { e.stopPropagation(); setFilterFavorite(!filterFavorite); }}
                     >
                       <Heart size={16} fill={filterFavorite ? 'currentColor' : 'none'} />
                       <span>{t('diary.filter_favorite', '收藏')}</span>
@@ -273,8 +275,15 @@ export const DiaryPage: React.FC = () => {
                       {['sunny', 'cloudy', 'overcast', 'light_rain', 'heavy_rain', 'snow', 'fog', 'windy'].map(weather => (
                         <button
                           key={weather}
-                          className={`diary-filter-weather-btn ${filterWeather === weather ? 'active' : ''}`}
-                          onClick={() => setFilterWeather(filterWeather === weather ? null : weather)}
+                          className={`diary-filter-weather-btn ${filterWeathers.includes(weather) ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFilterWeathers(prev =>
+                              prev.includes(weather)
+                                ? prev.filter(w => w !== weather)
+                                : [...prev, weather]
+                            );
+                          }}
                           title={getWeatherName(weather)}
                         >
                           {getWeatherIcon(weather)}

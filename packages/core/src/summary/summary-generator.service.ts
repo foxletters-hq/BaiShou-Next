@@ -107,23 +107,12 @@ export class SummaryGeneratorService {
       s.type === SummaryType.weekly && s.startDate.getTime() >= start.getTime() && s.endDate.getTime() <= end.getTime()
     );
 
-    if (weeklies.length) {
-      return weeklies.map(w => {
-        const startStr = w.startDate.toISOString().split('T')[0] ?? '';
-        const endStr = w.endDate.toISOString().split('T')[0] ?? '';
-        const content = w.content || '（无内容）';
-        return `#### ${startStr} 至 ${endStr} (周记)\n${content}`;
-      }).join('\n\n');
-    }
-
-    // 回退：使用日记原文
-    const diaries = await this.diaryRepo.findByDateRange(start, end);
-    if (!diaries.length) return '';
-    return diaries.map(d => {
-      const dateStr = d.date.toISOString().split('T')[0] ?? '';
-      const content = d.content || '（无内容）';
-      const tags = d.tags || '无标签';
-      return `#### ${dateStr}\n${content}\n标签: ${tags}`;
+    if (!weeklies.length) return '';
+    return weeklies.map(w => {
+      const startStr = w.startDate.toISOString().split('T')[0] ?? '';
+      const endStr = w.endDate.toISOString().split('T')[0] ?? '';
+      const content = w.content || '（无内容）';
+      return `#### ${startStr} 至 ${endStr} (周记)\n${content}`;
     }).join('\n\n');
   }
 
@@ -133,21 +122,11 @@ export class SummaryGeneratorService {
       s.type === SummaryType.monthly && s.startDate.getTime() >= start.getTime() && s.endDate.getTime() <= end.getTime()
     );
 
-    if (monthlies.length) {
-      return monthlies.map(m => {
-        const dateStr = m.startDate.toISOString().split('T')[0] ?? '';
-        const content = m.content || '（无内容）';
-        return `#### ${dateStr} (月报)\n${content}`;
-      }).join('\n\n');
-    }
-
-    // 回退：使用日记原文
-    const diaries = await this.diaryRepo.findByDateRange(start, end);
-    if (!diaries.length) return '';
-    return diaries.map(d => {
-      const dateStr = d.date.toISOString().split('T')[0] ?? '';
-      const content = d.content || '（无内容）';
-      return `#### ${dateStr}\n${content}`;
+    if (!monthlies.length) return '';
+    return monthlies.map(m => {
+      const dateStr = m.startDate.toISOString().split('T')[0] ?? '';
+      const content = m.content || '（无内容）';
+      return `#### ${dateStr} (月报)\n${content}`;
     }).join('\n\n');
   }
 
@@ -157,20 +136,10 @@ export class SummaryGeneratorService {
       s.type === SummaryType.quarterly && s.startDate.getTime() >= start.getTime() && s.endDate.getTime() <= end.getTime()
     );
 
-    if (quarterlies.length) {
-      return quarterlies.map(q => {
-        const content = q.content || '（无内容）';
-        return `#### (季度总结)\n${content}`;
-      }).join('\n\n');
-    }
-
-    // 回退：使用日记原文
-    const diaries = await this.diaryRepo.findByDateRange(start, end);
-    if (!diaries.length) return '';
-    return diaries.map(d => {
-      const dateStr = d.date.toISOString().split('T')[0] ?? '';
-      const content = d.content || '（无内容）';
-      return `#### ${dateStr}\n${content}`;
+    if (!quarterlies.length) return '';
+    return quarterlies.map(q => {
+      const content = q.content || '（无内容）';
+      return `#### (季度总结)\n${content}`;
     }).join('\n\n');
   }
 

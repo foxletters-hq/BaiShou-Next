@@ -2,37 +2,10 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ModelSwitcherPopup.module.css';
 import { useTranslation } from 'react-i18next';
-
-import openaiIcon from '../../assets/ai_provider_icon/openai.png';
-import geminiIcon from '../../assets/ai_provider_icon/gemini-color.png';
-import claudeIcon from '../../assets/ai_provider_icon/claude-color.png';
-import deepseekIcon from '../../assets/ai_provider_icon/deepseek-color.png';
-import kimiIcon from '../../assets/ai_provider_icon/moonshot.png';
-import ollamaIcon from '../../assets/ai_provider_icon/ollama.png';
-import dashscopeIcon from '../../assets/ai_provider_icon/dashscope.png';
-import siliconflowIcon from '../../assets/ai_provider_icon/silicon.png';
-import openrouterIcon from '../../assets/ai_provider_icon/openrouter.png';
-import doubaoIcon from '../../assets/ai_provider_icon/doubao.png';
-import grokIcon from '../../assets/ai_provider_icon/grok.png';
-import mistralIcon from '../../assets/ai_provider_icon/mistral.png';
-import lmstudioIcon from '../../assets/ai_provider_icon/lmstudio.png';
+import { getProviderIcon } from '../../utils/provider-icons';
+import { useTheme } from '../../hooks';
 import { MdCloud, MdCheck, MdSearch } from 'react-icons/md';
 
-const ICON_MAP: Record<string, string> = {
-  openai: openaiIcon,
-  gemini: geminiIcon,
-  anthropic: claudeIcon,
-  deepseek: deepseekIcon,
-  kimi: kimiIcon,
-  ollama: ollamaIcon,
-  siliconflow: siliconflowIcon,
-  openrouter: openrouterIcon,
-  dashscope: dashscopeIcon,
-  doubao: doubaoIcon,
-  grok: grokIcon,
-  mistral: mistralIcon,
-  lmstudio: lmstudioIcon,
-};
 export interface AiProviderModel {
   id: string;
   name: string;
@@ -57,6 +30,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
   onClose
 }) => {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter providers and models
@@ -70,7 +44,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
   }).filter(p => p.matchedModels.length > 0);
 
   const ProviderIcon = ({ id, type }: { id: string, type: string }) => {
-    const iconSrc = ICON_MAP[id] || ICON_MAP[type];
+    const iconSrc = getProviderIcon(id, isDark) || getProviderIcon(type, isDark);
     if (iconSrc) {
       return <img src={iconSrc} alt={id || type} className={styles.providerIconImage} style={{ width: 18, height: 18, objectFit: 'contain' }} />;
     }

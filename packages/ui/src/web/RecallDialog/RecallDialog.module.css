@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.5));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   z-index: 2000;
@@ -12,7 +12,7 @@
 }
 
 .dialog {
-  background: rgba(var(--bg-surface-lowest-rgb), 0.95);
+  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.95);
   border-radius: 20px;
   width: 85vw;
   max-width: 800px;
@@ -245,7 +245,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(var(--bg-surface-lowest-rgb), 0.95);
+  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.95);
 }
 
 .selectionCount {

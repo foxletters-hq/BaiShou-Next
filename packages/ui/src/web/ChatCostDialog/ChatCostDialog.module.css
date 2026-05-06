@@ -20,7 +20,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 320px;
+  width: 400px;
   background-color: var(--bg-surface, #FFFFFF);
   border-radius: 28px;
   z-index: 201;
@@ -36,26 +36,28 @@
 }
 
 .title {
-  padding: 24px 24px 16px 24px;
+  padding: 24px 28px 16px 28px;
   margin: 0;
-  font-size: 24px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--text-primary, #1A1A1A);
-  line-height: 32px;
+  line-height: 28px;
 }
 
 .content {
-  padding: 0 24px;
+  padding: 0 28px;
   display: flex;
   flex-direction: column;
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary, #1A1A1A);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
   line-height: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .spacer8 {
@@ -70,7 +72,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2px 0;
+  padding: 6px 0;
 }
 
 .costLabel {
@@ -81,25 +83,26 @@
 
 .costValue {
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--text-primary, #1A1A1A);
   line-height: 20px;
+  font-variant-numeric: tabular-nums;
 }
 
 .divider {
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  margin: 24px 0;
+  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  margin: 16px 0;
 }
 
 .disclaimer {
   margin: 0;
   font-size: 12px;
-  color: var(--text-secondary, #64748B);
-  line-height: 16px;
+  color: var(--text-tertiary, #94A3B8);
+  line-height: 18px;
 }
 
 .actions {
-  padding: 16px 24px 24px 24px;
+  padding: 16px 28px 24px 28px;
   display: flex;
   justify-content: flex-end;
 }
@@ -120,4 +123,25 @@
 
 .textButton:hover {
   background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+}
+
+.refreshButton {
+  background: transparent;
+  border: 1px solid var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5BA8F5);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+}
+
+.refreshButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

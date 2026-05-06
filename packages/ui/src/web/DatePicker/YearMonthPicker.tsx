@@ -55,7 +55,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
 
   const months = [1,2,3,4,5,6,7,8,9,10,11,12];
   const currentPhysicalYear = new Date().getFullYear();
-  const yearsBlock = getPickerYearRange(true);
+  const yearsBlock = getPickerYearRange(false);
 
   // Make sure to scroll to the active year when opening
   const yearListRef = useRef<HTMLDivElement>(null);

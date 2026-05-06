@@ -44,66 +44,6 @@ describe('MissingSummaryDetector', () => {
     vi.useRealTimers();
   });
 
-  it('should detect missing monthly summary when diaries exist in month but no weeklies', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-03-31T12:00:00Z'));
-
-    const diaries = [
-      makeDiary('2026-03-03T12:00:00Z'),
-      makeDiary('2026-03-10T12:00:00Z'),
-      makeDiary('2026-03-24T12:00:00Z'),
-    ];
-
-    const detector = new MissingSummaryDetector({} as any, {} as any);
-    const missing = (detector as any).detectMissing(diaries, [], 'zh');
-
-    const monthlies = missing.filter((m: any) => m.type === SummaryType.monthly);
-    expect(monthlies.length).toBe(1);
-    expect(monthlies[0].label).toBe('2026年3月');
-
-    vi.useRealTimers();
-  });
-
-  it('should detect missing quarterly summary when diaries exist in quarter but no monthlies', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-06-30T12:00:00Z'));
-
-    const diaries = [
-      makeDiary('2026-01-15T12:00:00Z'),
-      makeDiary('2026-02-20T12:00:00Z'),
-      makeDiary('2026-03-10T12:00:00Z'),
-    ];
-
-    const detector = new MissingSummaryDetector({} as any, {} as any);
-    const missing = (detector as any).detectMissing(diaries, [], 'zh');
-
-    const quarterlies = missing.filter((m: any) => m.type === SummaryType.quarterly);
-    expect(quarterlies.length).toBe(1);
-    expect(quarterlies[0].label).toBe('2026年Q1');
-
-    vi.useRealTimers();
-  });
-
-  it('should detect missing yearly summary when diaries exist in year but no quarterlies', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-12-31T12:00:00Z'));
-
-    const diaries = [
-      makeDiary('2026-01-15T12:00:00Z'),
-      makeDiary('2026-04-10T12:00:00Z'),
-      makeDiary('2026-07-20T12:00:00Z'),
-    ];
-
-    const detector = new MissingSummaryDetector({} as any, {} as any);
-    const missing = (detector as any).detectMissing(diaries, [], 'zh');
-
-    const yearlies = missing.filter((m: any) => m.type === SummaryType.yearly);
-    expect(yearlies.length).toBe(1);
-    expect(yearlies[0].label).toBe('2026年度');
-
-    vi.useRealTimers();
-  });
-
   it('should detect missing monthly summary if weekly summary exists but monthly does not', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-26T12:00:00Z'));
@@ -119,45 +59,73 @@ describe('MissingSummaryDetector', () => {
     vi.useRealTimers();
   });
 
-  it('should not suggest monthly for a month that has no diaries and no weeklies', async () => {
+  it('should only suggest one weekly for a single diary (no empty weeks)', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-31T12:00:00Z'));
 
-    const diaries = [
-      makeDiary('2026-01-15T12:00:00Z'),
-    ];
-
+    // 只有一篇日记，应只检测到一个缺失的周记
+    const fakeDiary = makeDiary('2026-03-24T12:00:00Z');
     const detector = new MissingSummaryDetector({} as any, {} as any);
-    const missing = (detector as any).detectMissing(diaries, [], 'zh');
+    const missing = (detector as any).detectMissing([fakeDiary], [], 'zh');
 
-    const monthlies = missing.filter((m: any) => m.type === SummaryType.monthly);
-    expect(monthlies).toHaveLength(1);
-    expect(monthlies[0].label).toBe('2026年1月');
+    const weeklies = missing.filter((m: any) => m.type === SummaryType.weekly);
+    expect(weeklies).toHaveLength(1);
 
     vi.useRealTimers();
   });
 
-  it('should return all tiers at once when diaries span a full year with no summaries', async () => {
+  it('should detect exact number of weeklies matching diary weeks, skipping empty weeks', async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-12-31T12:00:00Z'));
+    vi.setSystemTime(new Date('2026-03-31T12:00:00Z'));
 
+    // 第10周 (3.2-3.8): 有日记
+    // 第11周 (3.9-3.15): 空 —— 不应被建议
+    // 第12周 (3.16-3.22): 有日记
+    // 第13周 (3.23-3.29): 有日记
+    // 第14周 (3.30-4.5): 空 —— 不应被建议
     const diaries = [
-      makeDiary('2026-01-15T12:00:00Z'),
-      makeDiary('2026-02-20T12:00:00Z'),
-      makeDiary('2026-03-10T12:00:00Z'),
-      makeDiary('2026-06-01T12:00:00Z'),
-      makeDiary('2026-09-15T12:00:00Z'),
-      makeDiary('2026-12-20T12:00:00Z'),
+      makeDiary('2026-03-03T12:00:00Z'),  // 第10周
+      makeDiary('2026-03-17T12:00:00Z'),  // 第12周
+      makeDiary('2026-03-24T12:00:00Z'),  // 第13周
     ];
 
     const detector = new MissingSummaryDetector({} as any, {} as any);
     const missing = (detector as any).detectMissing(diaries, [], 'zh');
 
-    const types = missing.map((m: any) => m.type);
-    expect(types).toContain(SummaryType.weekly);
-    expect(types).toContain(SummaryType.monthly);
-    expect(types).toContain(SummaryType.quarterly);
-    expect(types).toContain(SummaryType.yearly);
+    const weeklies = missing.filter((m: any) => m.type === SummaryType.weekly);
+    // 3 个周有日记 + 0 个周空 → 应只有 3 个建议
+    expect(weeklies.length).toBe(3);
+
+    // 验证建议的周每次都包含对应日记的日期
+    for (const w of weeklies) {
+      const hasDiaryInWeek = diaries.some(
+        (d: any) => d.date.getTime() >= w.startDate.getTime() && d.date.getTime() <= w.endDate.getTime()
+      );
+      expect(hasDiaryInWeek).toBe(true);
+    }
+
+    vi.useRealTimers();
+  });
+
+  it('should not suggest monthly when no weeklies exist (cascade)', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-15T12:00:00Z'));
+
+    const diaries = [
+      makeDiary('2026-03-03T12:00:00Z'),
+      makeDiary('2026-03-10T12:00:00Z'),
+      makeDiary('2026-03-24T12:00:00Z'),
+    ];
+
+    const detector = new MissingSummaryDetector({} as any, {} as any);
+    // 级联：有日记但无已有周记 → 只建议周记，不建议月报
+    const missing = (detector as any).detectMissing(diaries, [], 'zh');
+
+    const weeklies = missing.filter((m: any) => m.type === SummaryType.weekly);
+    const monthlies = missing.filter((m: any) => m.type === SummaryType.monthly);
+
+    expect(weeklies.length).toBeGreaterThan(0);
+    expect(monthlies).toHaveLength(0);
 
     vi.useRealTimers();
   });

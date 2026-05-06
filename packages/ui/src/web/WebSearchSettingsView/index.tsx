@@ -46,46 +46,6 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
            <h3 className={styles.cardTitle}>{t('agent.tools.param_search_engine', '搜索引擎')}</h3>
         </div>
         <div className={styles.cardBody}>
-           <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'duckduckgo' ? styles.radioSelected : ''}`}>
-             <input 
-               type="radio" 
-               name="engine" 
-               value="duckduckgo" 
-               className={styles.radioInput}
-               checked={searchConfig.webSearchEngine === 'duckduckgo'}
-               onChange={(e) => handleChange('webSearchEngine', e.target.value)}
-             />
-             <div className={styles.radioCustomContainer}>
-                <div className={styles.radioCustomRing}>
-                   {searchConfig.webSearchEngine === 'duckduckgo' && <div className={styles.radioCustomDot} />}
-                </div>
-             </div>
-             <div className={styles.radioContent}>
-               <span className={styles.radioTitle}>{t('settings.web_search_engine_duckduckgo', 'DuckDuckGo')}</span>
-               <span className={styles.radioSubtitle}>{t('settings.web_search_engine_duckduckgo_desc', '免费通用型查询（推荐）')}</span>
-             </div>
-           </label>
-           
-           <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'tavily' ? styles.radioSelected : ''}`}>
-             <input 
-               type="radio" 
-               name="engine" 
-               value="tavily" 
-               className={styles.radioInput}
-               checked={searchConfig.webSearchEngine === 'tavily'}
-               onChange={(e) => handleChange('webSearchEngine', e.target.value)}
-             />
-             <div className={styles.radioCustomContainer}>
-                <div className={styles.radioCustomRing}>
-                   {searchConfig.webSearchEngine === 'tavily' && <div className={styles.radioCustomDot} />}
-                </div>
-             </div>
-             <div className={styles.radioContent}>
-               <span className={styles.radioTitle}>{t('settings.web_search_engine_tavily', 'Tavily API')}</span>
-               <span className={styles.radioSubtitle}>{t('settings.web_search_engine_tavily_desc', '高速智能搜索引擎（需配置密钥）')}</span>
-             </div>
-           </label>
-           
            <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'local-bing' ? styles.radioSelected : ''}`}>
              <input 
                type="radio" 
@@ -105,7 +65,7 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
                <span className={styles.radioSubtitle}>{t('settings.web_search_engine_local_bing_desc', '使用本地浏览器搜索 Bing，无需 API 密钥')}</span>
              </div>
            </label>
-           
+
            <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'local-google' ? styles.radioSelected : ''}`}>
              <input 
                type="radio" 
@@ -125,10 +85,48 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
                <span className={styles.radioSubtitle}>{t('settings.web_search_engine_local_google_desc', '使用本地浏览器搜索 Google，无需 API 密钥')}</span>
              </div>
            </label>
+
+           <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'duckduckgo' ? styles.radioSelected : ''}`}>
+             <input 
+               type="radio" 
+               name="engine" 
+               value="duckduckgo" 
+               className={styles.radioInput}
+               checked={searchConfig.webSearchEngine === 'duckduckgo'}
+               onChange={(e) => handleChange('webSearchEngine', e.target.value)}
+             />
+             <div className={styles.radioCustomContainer}>
+                <div className={styles.radioCustomRing}>
+                   {searchConfig.webSearchEngine === 'duckduckgo' && <div className={styles.radioCustomDot} />}
+                </div>
+             </div>
+             <div className={styles.radioContent}>
+               <span className={styles.radioTitle}>{t('settings.web_search_engine_duckduckgo', 'DuckDuckGo')}</span>
+               <span className={styles.radioSubtitle}>{t('settings.web_search_engine_duckduckgo_desc', '免费通用型查询')}</span>
+             </div>
+           </label>
            
-           <div style={{ height: 12 }} />
-        </div>
-      </div>
+            <label className={`${styles.radioListTile} ${searchConfig.webSearchEngine === 'tavily' ? styles.radioSelected : ''}`}>
+              <input 
+                type="radio" 
+                name="engine" 
+                value="tavily" 
+                className={styles.radioInput}
+                checked={searchConfig.webSearchEngine === 'tavily'}
+                onChange={(e) => handleChange('webSearchEngine', e.target.value)}
+              />
+              <div className={styles.radioCustomContainer}>
+                 <div className={styles.radioCustomRing}>
+                    {searchConfig.webSearchEngine === 'tavily' && <div className={styles.radioCustomDot} />}
+                 </div>
+              </div>
+              <div className={styles.radioContent}>
+                <span className={styles.radioTitle}>{t('settings.web_search_engine_tavily', 'Tavily API')}</span>
+                <span className={styles.radioSubtitle}>{t('settings.web_search_engine_tavily_desc', '高速智能搜索引擎（需配置密钥）')}</span>
+              </div>
+            </label>
+                 </div>
+              </div>
 
       {/* API Config Panel */}
       {searchConfig.webSearchEngine === 'tavily' && (

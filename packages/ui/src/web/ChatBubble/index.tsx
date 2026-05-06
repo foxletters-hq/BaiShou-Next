@@ -3,6 +3,7 @@ import styles from './ChatBubble.module.css';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import { MessageActionBar } from '../MessageActionBar';
 import { ToolResultGroup } from '../ToolResultGroupCard';
+import { ThinkingBlock } from '../ThinkingBlock';
 import { MockChatMessage, MockChatAttachment } from '@baishou/shared/src/mock/agent.mock';
 
 import { useTranslation } from 'react-i18next';
@@ -241,51 +242,52 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                </span>
             </div>
 
-            {isEditing ? (
-              <div className={styles.aiBubbleCard}>
-                {renderEditor()}
-              </div>
-            ) : (
-              <>
-                <div className={styles.aiBubbleCard}>
-                   {renderAttachments(false)}
-                   {message.isReasoning ? (
-                     <details className={styles.reasoningDetails}>
-                       <summary className={styles.reasoningSummary}>
-                          <span className={styles.reasoningIcon}>🤔</span>
-                          {t('agent.chat.reasoning', '思考过程')}
-                       </summary>
-                       {message.content && <MarkdownRenderer content={message.content} />}
-                     </details>
-                   ) : (
-                     message.content && <MarkdownRenderer content={message.content} />
-                   )}
+             {isEditing ? (
+               <div className={styles.aiBubbleCard}>
+                 {renderEditor()}
+               </div>
+             ) : (
+               <>
+               <div className={styles.aiBubbleCard}>
+                  {renderAttachments(false)}
+                  
+                  {/* 工具调用 */}
+                  {message.toolInvocations && message.toolInvocations.length > 0 && (
+                    <ToolResultGroup invocations={message.toolInvocations} />
+                  )}
 
-                   {message.toolInvocations && message.toolInvocations.length > 0 && (
-                     <div style={{ width: '100%' }}>
-                       <ToolResultGroup invocations={message.toolInvocations} />
-                     </div>
-                   )}
-                </div>
+                  {/* Reasoning 块 */}
+                  {message.reasoning && (
+                    <ThinkingBlock
+                      content={message.reasoning}
+                      isThinking={false}
+                      defaultOpen={false}
+                      autoCollapse={false}
+                    />
+                  )}
 
-                <div className={styles.aiFooterRow}>
-                   <MessageActionBar
-                     isAI={true}
-                     onCopy={handleCopy}
-                     onRetry={onRegenerate}
-                     onEdit={handleStartEdit}
-                     onDelete={onDelete}
-                   />
-                   <div className={styles.footerRight}>
-                     {message.contextMessages && message.contextMessages.length > 0 && (
-                        <button className={styles.contextBtn} onClick={() => onShowContext && onShowContext(message)} title={t('chat.viewContextTree', '查看对话上下文树')}>
-                          🌿
-                       </button>
-                     )}
-                   </div>
-                </div>
-              </>
-            )}
+                  {/* 正文内容 */}
+                  {message.content && <MarkdownRenderer content={message.content} />}
+               </div>
+
+                 <div className={styles.aiFooterRow}>
+                    <MessageActionBar
+                      isAI={true}
+                      onCopy={handleCopy}
+                      onRetry={onRegenerate}
+                      onEdit={handleStartEdit}
+                      onDelete={onDelete}
+                    />
+                    <div className={styles.footerRight}>
+                      {message.contextMessages && message.contextMessages.length > 0 && (
+                         <button className={styles.contextBtn} onClick={() => onShowContext && onShowContext(message)} title={t('chat.viewContextTree', '查看对话上下文树')}>
+                           🌿
+                        </button>
+                      )}
+                    </div>
+                 </div>
+               </>
+             )}
          </div>
       </div>
     );

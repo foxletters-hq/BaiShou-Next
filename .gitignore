@@ -128,6 +128,7 @@ temp/
 *.db
 *.sqlite
 scratch_*
+code-review-worktree/
 
 # ─── Secret / Key ─────────────────────────────────────────
 *.pem

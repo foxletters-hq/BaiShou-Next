@@ -125,14 +125,6 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
         </div>
       </div>
 
-      {/* 提示信息 */}
-      <div className={styles.infoBox}>
-         <div className={styles.infoIcon}>💡</div>
-         <p className={styles.infoDesc}>
-           {t('settings.summary_instructions_desc', '您可以自由定制输出格式（例如要求 AI 以特殊的傲娇语气或是严格的商务周报格式进行汇报）。变量会被自动替换。如果不确信，可以随时恢复默认。')}
-         </p>
-      </div>
-
     </div>
   );
 };

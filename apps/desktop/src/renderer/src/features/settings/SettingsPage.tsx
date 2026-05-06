@@ -381,14 +381,15 @@ const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
                  id: id, name: updates.name || id, type: 'custom', isSystem: false, sortOrder: 999
                };
                
-               const newConfig = { ...existing };
-               if (updates.name !== undefined) newConfig.name = updates.name;
-               if (updates.isSystem !== undefined) newConfig.isSystem = updates.isSystem;
-               if (updates.enabled !== undefined) newConfig.isEnabled = updates.enabled;
-               if (updates.apiKey !== undefined) newConfig.apiKey = updates.apiKey;
-               if (updates.apiBaseUrl !== undefined) newConfig.baseUrl = updates.apiBaseUrl;
-               if (updates.models !== undefined) newConfig.models = updates.models;
-               if (updates.enabledModels !== undefined) newConfig.enabledModels = updates.enabledModels;
+                const newConfig = { ...existing };
+                if (updates.name !== undefined) newConfig.name = updates.name;
+                if (updates.isSystem !== undefined) newConfig.isSystem = updates.isSystem;
+                if (updates.enabled !== undefined) newConfig.isEnabled = updates.enabled;
+                if (updates.apiKey !== undefined) newConfig.apiKey = updates.apiKey;
+                if (updates.apiBaseUrl !== undefined) newConfig.baseUrl = updates.apiBaseUrl;
+                if (updates.models !== undefined) newConfig.models = updates.models;
+                if (updates.enabledModels !== undefined) newConfig.enabledModels = updates.enabledModels;
+                if (updates.sortOrder !== undefined) newConfig.sortOrder = updates.sortOrder;
 
                settings.updateProvider(newConfig);
              }}
@@ -867,7 +868,7 @@ const LanTransferPane: React.FC = () => {
 
 const DataSyncPane: React.FC<{ settings: any }> = ({ settings }) => {
   return (
-    <div>
+    <div className="settings-pane settings-pane-full">
        <CloudSyncPanel
          savedConfig={settings.cloudSyncConfig}
          onSaveConfig={settings.setCloudSyncConfig}
@@ -898,8 +899,8 @@ const AttachmentManagementPane: React.FC = () => {
   }, []);
 
   return (
-    <div>
-      <div className="attachment-management-wrapper" style={{ marginTop: 16 }}>
+    <div className="settings-pane settings-pane-full">
+      <div className="attachment-management-wrapper">
          <AttachmentManagementView 
              attachments={attachments}
              onDeleteSelected={async (ids) => {

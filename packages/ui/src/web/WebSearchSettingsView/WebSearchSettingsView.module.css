@@ -4,6 +4,8 @@
   gap: 16px;
   padding: 24px 32px;
   padding-bottom: 32px;
+  background: var(--bg-app);
+  min-height: 100%;
 }
 
 /* Flutter Card with Elevation 0 + Border */
@@ -60,7 +62,7 @@
 
 
 .radioListTile:hover {
-  background-color: rgba(128, 128, 128, 0.05);
+  background-color: var(--bg-surface-high);
   transform: translateY(-1px);
 }
 
@@ -86,7 +88,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 2px solid rgba(128, 128, 128, 0.5);
+  border: 2px solid var(--border-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -190,7 +192,7 @@
 }
 
 .iconIconButton:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--bg-surface-high);
 }
 
 
@@ -253,7 +255,7 @@
   width: 100%;
   height: 6px;
   border-radius: 3px;
-  background: rgba(128, 128, 128, 0.2);
+  background: var(--bg-surface-normal);
   outline: none;
   cursor: pointer;
   margin: 0 16px 0 0;
@@ -261,7 +263,7 @@
 }
 
 .sliderInput:hover {
-  background: rgba(128, 128, 128, 0.3);
+  background: var(--bg-surface-highest);
 }
 
 .sliderInput::-webkit-slider-thumb {
@@ -288,7 +290,7 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--color-primary);
-  background: rgba(0, 86, 210, 0.1);
+  background: var(--color-primary-light);
   padding: 4px 8px;
   border-radius: 6px;
 }

@@ -85,12 +85,6 @@ describe('SummaryPromptTemplates', () => {
 });
 
 describe('SummaryGeneratorService', () => {
-  const makeDiary = (dateStr: string, content = '日记内容') => ({
-    date: new Date(dateStr),
-    content,
-    tags: '标签A',
-  });
-
   it('should generate weekly summary via AsyncGenerator', async () => {
     const { SummaryGeneratorService } = await import('../summary/summary-generator.service');
 
@@ -130,6 +124,7 @@ describe('SummaryGeneratorService', () => {
       outputs.push(chunk);
     }
 
+    // 应该至少有 STATUS: 消息和最终内容
     expect(outputs.some(o => o.startsWith('STATUS:'))).toBe(true);
     expect(outputs.some(o => o.includes('AI 生成的总结内容'))).toBe(true);
     expect(mockAiClient.generateContent).toHaveBeenCalled();
@@ -163,6 +158,7 @@ describe('SummaryGeneratorService', () => {
     }
 
     expect(outputs).toContain('STATUS:no_data_error');
+    // LLM 不应被调用
     expect(mockAiClient.generateContent).not.toHaveBeenCalled();
   });
 
@@ -196,157 +192,5 @@ describe('SummaryGeneratorService', () => {
     }
 
     expect(outputs.some(s => s.includes('claude-4'))).toBe(true);
-  });
-
-  it('should use diaries as fallback for monthly context when no weeklies exist', async () => {
-    const { SummaryGeneratorService } = await import('../summary/summary-generator.service');
-
-    const diaryInRange = makeDiary('2026-03-15', '三月的日记');
-    const mockDiaryRepo = {
-      findByDateRange: vi.fn(async () => [diaryInRange]),
-    };
-    const mockSummaryRepo = {
-      getSummaries: vi.fn(async () => []),
-    };
-    const mockAiClient = {
-      generateContent: vi.fn(async () => '月报AI总结'),
-    };
-
-    const service = new SummaryGeneratorService(
-      mockDiaryRepo as any,
-      mockSummaryRepo as any,
-      mockAiClient as any,
-    );
-
-    const target = {
-      type: SummaryType.monthly,
-      startDate: new Date('2026-03-01'),
-      endDate: new Date('2026-03-31'),
-      label: '2026年3月',
-    };
-
-    const outputs: string[] = [];
-    for await (const chunk of service.generate(target)) {
-      outputs.push(chunk);
-    }
-
-    expect(outputs.some(o => o.includes('月报AI总结'))).toBe(true);
-    expect(mockDiaryRepo.findByDateRange).toHaveBeenCalled();
-    expect(mockAiClient.generateContent).toHaveBeenCalled();
-  });
-
-  it('should use diaries as fallback for quarterly context when no monthlies exist', async () => {
-    const { SummaryGeneratorService } = await import('../summary/summary-generator.service');
-
-    const diariesInRange = [
-      makeDiary('2026-01-10', '一月日记'),
-      makeDiary('2026-02-15', '二月日记'),
-    ];
-    const mockDiaryRepo = {
-      findByDateRange: vi.fn(async () => diariesInRange),
-    };
-    const mockSummaryRepo = {
-      getSummaries: vi.fn(async () => []),
-    };
-    const mockAiClient = {
-      generateContent: vi.fn(async () => '季报AI总结'),
-    };
-
-    const service = new SummaryGeneratorService(
-      mockDiaryRepo as any,
-      mockSummaryRepo as any,
-      mockAiClient as any,
-    );
-
-    const target = {
-      type: SummaryType.quarterly,
-      startDate: new Date('2026-01-01'),
-      endDate: new Date('2026-03-31'),
-      label: '2026年Q1',
-    };
-
-    const outputs: string[] = [];
-    for await (const chunk of service.generate(target)) {
-      outputs.push(chunk);
-    }
-
-    expect(outputs.some(o => o.includes('季报AI总结'))).toBe(true);
-    expect(mockDiaryRepo.findByDateRange).toHaveBeenCalled();
-    expect(mockAiClient.generateContent).toHaveBeenCalled();
-  });
-
-  it('should use diaries as fallback for yearly context when no quarterlies exist', async () => {
-    const { SummaryGeneratorService } = await import('../summary/summary-generator.service');
-
-    const diariesInRange = [
-      makeDiary('2026-03-01', '三月日记'),
-      makeDiary('2026-07-15', '七月日记'),
-    ];
-    const mockDiaryRepo = {
-      findByDateRange: vi.fn(async () => diariesInRange),
-    };
-    const mockSummaryRepo = {
-      getSummaries: vi.fn(async () => []),
-    };
-    const mockAiClient = {
-      generateContent: vi.fn(async () => '年报AI总结'),
-    };
-
-    const service = new SummaryGeneratorService(
-      mockDiaryRepo as any,
-      mockSummaryRepo as any,
-      mockAiClient as any,
-    );
-
-    const target = {
-      type: SummaryType.yearly,
-      startDate: new Date('2026-01-01'),
-      endDate: new Date('2026-12-31'),
-      label: '2026年度',
-    };
-
-    const outputs: string[] = [];
-    for await (const chunk of service.generate(target)) {
-      outputs.push(chunk);
-    }
-
-    expect(outputs.some(o => o.includes('年报AI总结'))).toBe(true);
-    expect(mockDiaryRepo.findByDateRange).toHaveBeenCalled();
-    expect(mockAiClient.generateContent).toHaveBeenCalled();
-  });
-
-  it('should yield no_data when both summaries and diaries are empty for monthly', async () => {
-    const { SummaryGeneratorService } = await import('../summary/summary-generator.service');
-
-    const mockDiaryRepo = {
-      findByDateRange: vi.fn(async () => []),
-    };
-    const mockSummaryRepo = {
-      getSummaries: vi.fn(async () => []),
-    };
-    const mockAiClient = {
-      generateContent: vi.fn(async () => ''),
-    };
-
-    const service = new SummaryGeneratorService(
-      mockDiaryRepo as any,
-      mockSummaryRepo as any,
-      mockAiClient as any,
-    );
-
-    const target = {
-      type: SummaryType.monthly,
-      startDate: new Date('2026-03-01'),
-      endDate: new Date('2026-03-31'),
-      label: '2026年3月',
-    };
-
-    const outputs: string[] = [];
-    for await (const chunk of service.generate(target)) {
-      outputs.push(chunk);
-    }
-
-    expect(outputs).toContain('STATUS:no_data_error');
-    expect(mockAiClient.generateContent).not.toHaveBeenCalled();
   });
 });

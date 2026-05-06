@@ -2,7 +2,8 @@
   display: flex;
   flex-direction: column;
   padding: 32px;
-  background: transparent;
+  background: var(--bg-app);
+  min-height: 100%;
 }
 
 @media (max-width: 500px) {
@@ -16,6 +17,10 @@
   display: flex;
   gap: 16px;
   width: 100%;
+  background: var(--bg-surface);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--border-subtle);
 }
 
 @media (max-width: 500px) {
@@ -477,9 +482,9 @@
 .recordList {
   display: flex;
   flex-direction: column;
-  background: transparent;
+  background: var(--bg-surface);
   border-radius: 12px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
   overflow-y: auto;
   overflow-x: hidden;
   max-height: 400px;

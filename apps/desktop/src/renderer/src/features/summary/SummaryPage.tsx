@@ -10,7 +10,7 @@ import {
 import type { ActivityData } from '@baishou/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Layers, Sparkles, CheckCircle2, Gauge, Calendar, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Layers, Sparkles, CheckCircle2, Gauge, Calendar, RefreshCw, XCircle } from 'lucide-react';
 import { useSummaryData } from './hooks/useSummaryData';
 import './SummaryPage.css';
 
@@ -68,12 +68,22 @@ export const SummaryPage: React.FC = () => {
   const [lookbackMonths, setLookbackMonths] = useState(1);
   const [isBatchGenerating, setIsBatchGenerating] = useState(false);
   const [concurrencyLimit, setConcurrencyLimit] = useState(3);
-  const { summaries, stats, missingSummaries, setMissingSummaries, queueGeneration, generationStates, refreshData } = useSummaryData();
+  const { summaries, stats, missingSummaries, setMissingSummaries, queueGeneration, stopGeneration, generationStates, refreshData } = useSummaryData();
   const [activityData, setActivityData] = useState<ActivityData[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
 
   const prevStatesRef = useRef<typeof generationStates>({});
+
+  // 计算批量生成进度
+  const genStatesArr = Object.values(generationStates);
+  const genTotal = genStatesArr.length;
+  const genCompleted = genStatesArr.filter(s => s.status === 'completed').length;
+  const genError = genStatesArr.filter(s => s.status === 'error').length;
+  const genProgress = genTotal > 0
+    ? Math.round(genStatesArr.reduce((sum, s) => sum + (s.progress || 0), 0) / genTotal)
+    : 0;
+  const isGenerating = genStatesArr.some(s => s.status === 'pending' || s.status === 'running');
 
   /** 计算周数 */
   const getWeekNumber = (date: Date) => {
@@ -95,10 +105,10 @@ export const SummaryPage: React.FC = () => {
             if (!isNaN(y)) yearSet.add(y);
           });
         }
-        const years = Array.from(yearSet).sort((a, b) => b - a);
+        const years = Array.from(yearSet).sort((a, b) => a - b);
         if (years.length === 0) years.push(new Date().getFullYear());
         setAvailableYears(years);
-        if (!years.includes(selectedYear)) setSelectedYear(years[0]!);
+        if (!years.includes(selectedYear)) setSelectedYear(years[years.length - 1]!);
         setActivityData(
           (allData || []).filter((d: ActivityData) => d.date.startsWith(`${selectedYear}-`))
         );
@@ -160,6 +170,11 @@ export const SummaryPage: React.FC = () => {
     setTimeout(() => setIsBatchGenerating(false), 800);
   };
 
+  const handleStopGeneration = async () => {
+    await stopGeneration();
+    toast.showSuccess(t('summary.generation_stopped', '已停止生成'));
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -216,7 +231,7 @@ export const SummaryPage: React.FC = () => {
 
             {/* AI 缺失自动检测区域 */}
             <motion.div 
-              style={{ marginTop: 24 }}
+              style={{ marginTop: 24, paddingBottom: 24 }}
               variants={containerVariants}
               initial="hidden" animate="show"
             >
@@ -225,20 +240,59 @@ export const SummaryPage: React.FC = () => {
                      <Sparkles size={18} color="var(--color-warning)" />
                      <span>{t('summary.ai_suggestions', 'AI 建议补全')}</span>
                      
+                     <div className="sp-missing-count">
+                        {t('common.count_items', '$count个').replace('$count', missingSummaries.length.toString())}
+                     </div>
+                  </div>
+               )}
+
+               {/* 进度条 */}
+               {genTotal > 0 && (
+                  <div className="sp-progress-bar-wrap">
+                     <div className="sp-progress-bar">
+                        <div
+                           className="sp-progress-bar-fill"
+                           style={{ width: `${genProgress}%` }}
+                        />
+                     </div>
+                     <div className="sp-progress-text">
+                        {genCompleted}/{genTotal}
+                        {genError > 0 && <span className="sp-progress-error"> ({genError} 失败)</span>}
+                     </div>
+                     <div className="sp-progress-actions">
+                        {isGenerating && (
+                           <button
+                              className="sp-stop-btn"
+                              onClick={handleStopGeneration}
+                           >
+                              <XCircle size={14} />
+                              {t('summary.stop', '停止')}
+                           </button>
+                        )}
+                        <button
+                           className="sp-batch-generate-btn"
+                           onClick={handleBatchGenerate}
+                            disabled={isBatchGenerating}
+                        >
+                           <Sparkles size={14} />
+                           {isBatchGenerating ? t('summary.generating', '生成中...') : t('summary.generate_all', '全部生成')}
+                        </button>
+                        <ConcurrencyDropdown value={concurrencyLimit} onChange={setConcurrencyLimit} disabled={isBatchGenerating} t={t} />
+                     </div>
+                  </div>
+               )}
+
+               {genTotal === 0 && missingSummaries.length > 0 && !isBatchGenerating && (
+                  <div className="sp-progress-actions" style={{ marginBottom: 12 }}>
                      <button
                         className="sp-batch-generate-btn"
                         onClick={handleBatchGenerate}
                         disabled={isBatchGenerating}
                      >
                         <Sparkles size={14} />
-                        {isBatchGenerating ? t('summary.generating', '生成中...') : t('summary.generate_all', '全部生成')}
+                        {t('summary.generate_all', '全部生成')}
                      </button>
-                     
                      <ConcurrencyDropdown value={concurrencyLimit} onChange={setConcurrencyLimit} disabled={isBatchGenerating} t={t} />
-
-                     <div className="sp-missing-count">
-                        {t('common.count_items', '$count个').replace('$count', missingSummaries.length.toString())}
-                     </div>
                   </div>
                )}
                
@@ -317,15 +371,12 @@ export const SummaryPage: React.FC = () => {
             <GalleryPanel
               summaries={summaries}
               onOpen={(id) => {
-                // 点击侧边栏只选中项目显示预览，不进入编辑
-                // GalleryPanel 内部会处理选中状态
+                // 点击列表项直接进入编辑页面
+                navigate(`/summary/${id}`);
               }}
               onEdit={(id) => {
-                // 只有点击编辑按钮才跳转到详情页
-                const summary = summaries.find(s => String(s.id) === id);
-                if (summary) {
-                  navigate(`/summary/${id}`);
-                }
+                // 点击编辑按钮跳转到详情页
+                navigate(`/summary/${id}`);
               }}
               onDelete={async (id) => {
                 const summary = summaries.find(s => String(s.id) === id);

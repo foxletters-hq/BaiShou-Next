@@ -326,3 +326,66 @@
   background: transparent;
   cursor: default;
 }
+
+/* 进度条 */
+.sp-progress-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.sp-progress-bar {
+  flex: 1;
+  min-width: 120px;
+  height: 6px;
+  background: var(--bg-surface-normal);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.sp-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent-purple));
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease;
+}
+
+.sp-progress-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.sp-progress-error {
+  color: var(--color-error);
+  font-weight: 500;
+}
+
+.sp-progress-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 停止按钮 */
+.sp-stop-btn {
+  padding: 4px 12px;
+  background: var(--color-error-light, rgba(220, 38, 38, 0.1));
+  color: var(--color-error, #dc2626);
+  border: 1px solid var(--color-error, #dc2626);
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.15s ease;
+}
+
+.sp-stop-btn:hover {
+  opacity: 0.8;
+}

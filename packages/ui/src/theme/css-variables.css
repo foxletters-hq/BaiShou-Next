@@ -15,6 +15,8 @@
   --bg-surface-highest: #E8EAED; /* Modals, Popovers */
   --bg-surface-high: #F0F2F5;    /* Hover states for surface items */
   --bg-surface-normal: #EAECEF;  /* Secondary containers (e.g. gray panels) */
+  --bg-surface-lowest: #F8FAFC;   /* Lightest surface, near-white */
+  --bg-surface-lowest-rgb: 248, 250, 252;
   --bg-surface-low: #F8F9FA;     /* Tertiary background */
   
   /* Glassmorphism Overlays (Light) */
@@ -101,6 +103,8 @@
   --bg-surface-highest: #38383D; /* Modals, Popovers */
   --bg-surface-high: #323236;    /* Hover states for surface items */
   --bg-surface-normal: #1E1E22;  /* Secondary containers (e.g. gray panels, sidebars) */
+  --bg-surface-lowest: #151518;   /* Darkest surface, near-black */
+  --bg-surface-lowest-rgb: 21, 21, 24;
   --bg-surface-low: #151518;     /* Tertiary background */
 
   /* Glassmorphism Overlays (Dark) */

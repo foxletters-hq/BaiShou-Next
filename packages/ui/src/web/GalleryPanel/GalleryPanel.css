@@ -229,15 +229,20 @@
 .gallery-detail-content h1,
 .gallery-detail-content h2,
 .gallery-detail-content h3,
-.gallery-detail-content h4 {
+.gallery-detail-content h4,
+.gallery-detail-content h5,
+.gallery-detail-content h6 {
   margin-top: 1.5em;
   margin-bottom: 0.5em;
   font-weight: 600;
 }
 
-.gallery-detail-content h1 { font-size: 1.5em; }
-.gallery-detail-content h2 { font-size: 1.3em; }
-.gallery-detail-content h3 { font-size: 1.1em; }
+.gallery-detail-content h1 { font-size: 1.6em; }
+.gallery-detail-content h2 { font-size: 1.4em; }
+.gallery-detail-content h3 { font-size: 1.2em; }
+.gallery-detail-content h4 { font-size: 1.1em; }
+.gallery-detail-content h5 { font-size: 1em; }
+.gallery-detail-content h6 { font-size: 0.95em; }
 
 .gallery-detail-content p {
   margin-bottom: 1em;

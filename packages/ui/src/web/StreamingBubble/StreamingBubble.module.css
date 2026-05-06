@@ -60,39 +60,37 @@
   padding: 12px;
 }
 
-/* Tool Execution Group */
+/* Tool Execution Group - 类似 ThinkingBlock 样式 */
 .toolGroupCard {
-  margin-bottom: 8px;
-  padding: 12px;
-  background-color: var(--bg-surface-high);
-  border-radius: 16px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--border-subtle);
+  background: var(--bg-surface);
 }
 
 .toolHeader {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  padding: 10px 14px;
+  background: var(--bg-surface-normal);
 }
 
 .toolIcon {
-  width: 28px;
-  height: 28px;
-  background-color: var(--color-primary-light);
-  border-radius: 7px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  color: var(--color-primary);
   margin-right: 8px;
 }
 
 .toolTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-right: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
 }
 
 .toolCountBadge {
@@ -107,6 +105,7 @@
 .toolList {
   display: flex;
   flex-direction: column;
+  padding: 8px 14px;
   gap: 6px;
 }
 
@@ -272,4 +271,19 @@
   background-color: rgba(0, 0, 0, 0.05);
   color: var(--text-primary);
   border-color: rgba(var(--color-outline-rgb), 0.6);
+}
+
+/* Thinking hint when only reasoning is active */
+.thinkingHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.thinkingDot {
+  color: var(--color-primary);
+  animation: pulseOpacity 1s ease-in-out infinite;
 }
