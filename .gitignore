@@ -115,6 +115,7 @@ _agents/
 _agent/
 .gemini/
 .claude/
+opencode.json
 AGENTS.md
 
 # ─── 临时文件 ──────────────────────────────────────────────
@@ -134,4 +135,4 @@ scratch_*
 *.cert
 *.p12
 *.keystore
-opencode.json
+
