@@ -15,7 +15,8 @@ export class SummaryQueueService {
   private static instance: SummaryQueueService;
   private queue: QueueItem[] = [];
   private isProcessing = false;
-  
+  private abortController: AbortController | null = null;
+
   // Dependencies injected later after everything boot up
   private summaryManager!: SummaryManagerService;
   private generatorFactory!: () => Promise<SummaryGeneratorService>;
@@ -36,6 +37,32 @@ export class SummaryQueueService {
 
   getQueueState() {
     return this.queue;
+  }
+
+  /**
+   * 停止所有正在处理和等待中的任务。
+   * 已完成的不会被影响。
+   */
+  stop() {
+    this.abortController?.abort();
+
+    for (const item of this.queue) {
+      if (item.status === 'running' || item.status === 'pending') {
+        item.status = 'error';
+        item.error = '用户取消了生成';
+      }
+    }
+
+    // 移除所有已取消的错误项，只保留已完成的
+    this.queue = this.queue.filter(q => q.status !== 'error');
+
+    this.isProcessing = false;
+    this.abortController = null;
+    this.broadcastState();
+  }
+
+  get isRunning(): boolean {
+    return this.isProcessing;
   }
 
   enqueue(items: MissingSummary[]) {
@@ -69,9 +96,13 @@ export class SummaryQueueService {
   private async processQueue() {
     if (this.isProcessing) return;
     this.isProcessing = true;
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
 
     try {
       while (true) {
+        if (signal.aborted) break;
+
         const nextIdx = this.queue.findIndex(q => q.status === 'pending');
         if (nextIdx === -1) break;
 
@@ -88,6 +119,12 @@ export class SummaryQueueService {
           let finalContent = '';
           
           for await (const chunk of stream) {
+            if (signal.aborted) {
+              currentTask.status = 'error';
+              currentTask.error = '用户取消了生成';
+              this.broadcastState();
+              break;
+            }
             if (chunk.includes('STATUS:reading_data')) {
                currentTask.phaseIdx = 1;
                currentTask.progress = 25;

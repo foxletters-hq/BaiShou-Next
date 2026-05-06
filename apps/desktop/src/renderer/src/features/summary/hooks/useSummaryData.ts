@@ -92,11 +92,17 @@ export function useSummaryData() {
     }
   };
 
+  const stopGeneration = async () => {
+    if (typeof window !== 'undefined' && window.electron) {
+      return window.electron.ipcRenderer.invoke('summary:stop-generation');
+    }
+  };
+
   const generateSummary = async (type: string, dateRange: any) => {
     if (typeof window !== 'undefined' && window.electron) {
       return window.electron.ipcRenderer.invoke('summary:generate', { type, dateRange });
     }
   };
 
-  return { summaries, stats, missingSummaries, setMissingSummaries, generateSummary, queueGeneration, generationStates, refreshData: fetchData };
+  return { summaries, stats, missingSummaries, setMissingSummaries, generateSummary, queueGeneration, stopGeneration, generationStates, refreshData: fetchData };
 }

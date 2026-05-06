@@ -51,7 +51,7 @@ export class ModelPrice {
 export class ModelPricingService {
   private static instance: ModelPricingService;
   private prices: Map<string, ModelPrice> = new Map();
-  private lastFetchTime?: Date;
+  private _lastFetchTime?: Date;
   private readonly CACHE_DURATION_MS = 60 * 60 * 1000; // 1小时缓存失效
 
   private constructor() {}
@@ -61,6 +61,20 @@ export class ModelPricingService {
       ModelPricingService.instance = new ModelPricingService();
     }
     return ModelPricingService.instance;
+  }
+
+  /**
+   * 获取上次拉取价格表的时间
+   */
+  public get lastFetchTime(): Date | undefined {
+    return this._lastFetchTime;
+  }
+
+  /**
+   * 强制刷新价格表（忽略缓存）
+   */
+  public async forceRefresh(): Promise<void> {
+    await this.fetchPrices();
   }
 
   /**
@@ -102,8 +116,8 @@ export class ModelPricingService {
   private async ensureLoaded() {
     if (
       this.prices.size > 0 &&
-      this.lastFetchTime &&
-      (new Date().getTime() - this.lastFetchTime.getTime() < this.CACHE_DURATION_MS)
+      this._lastFetchTime &&
+      (new Date().getTime() - this._lastFetchTime.getTime() < this.CACHE_DURATION_MS)
     ) {
       return;
     }
@@ -164,7 +178,7 @@ export class ModelPricingService {
         }
       }
 
-      this.lastFetchTime = new Date();
+      this._lastFetchTime = new Date();
     } catch (e) {
       logger.warn('[ModelPricingService] prices fetch failed:', e);
       // 网络打不开没关系，失败的话大不了不扣钱，决不能让 Agent 崩溃停止回答

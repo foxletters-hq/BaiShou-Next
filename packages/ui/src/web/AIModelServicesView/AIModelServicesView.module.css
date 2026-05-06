@@ -4,7 +4,7 @@
   width: 100%;
   height: 100%;
   min-height: 550px;
-  background: var(--bg-surface);
+  background: var(--bg-app);
   color: var(--text-primary);
 }
 
@@ -14,7 +14,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid transparent;
+  border-right: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
 
@@ -51,17 +51,18 @@
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
+  background: var(--bg-surface);
 }
 
 .listItem:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-surface-high);
 }
 
 
 
 .listItemSelected {
-  background: rgba(91, 168, 245, 0.15) !important;
-  border-color: rgba(91, 168, 245, 0.3) !important;
+  background: var(--color-primary-light) !important;
+  border-color: var(--color-primary) !important;
 }
 
 .listIconBox {
@@ -109,8 +110,8 @@
 }
 
 .customBadge {
-  background: rgba(255, 152, 0, 0.1);
-  color: #ea580c;
+  background: rgba(249, 115, 22, 0.1);
+  color: var(--color-warning);
   font-size: 9px;
   font-weight: 600;
   padding: 2px 6px;
@@ -118,20 +119,23 @@
 }
 
 .statusBadge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
+  letter-spacing: 0.5px;
 }
 
 .statusOn {
-  background: rgba(74, 222, 128, 0.15);
+  background: rgba(74, 222, 128, 0.2);
   color: var(--color-success);
+  border: 1px solid rgba(74, 222, 128, 0.4);
 }
 
 .statusOff {
-  background: rgba(249, 115, 22, 0.1);
-  color: var(--color-warning);
+  background: var(--bg-surface-high);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-muted);
 }
 
 .listFooter {
@@ -147,7 +151,7 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  border: 1px dashed var(--color-outline-variant);
+  border: 2px solid var(--border-strong);
   background: transparent;
   color: var(--text-primary);
   border-radius: 8px;
@@ -159,7 +163,7 @@
 
 
 .addButton:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-surface-high);
 }
 
 
@@ -169,7 +173,7 @@
 .rightPane {
   flex: 1;
   position: relative;
-  background: var(--bg-surface);
+  background: var(--bg-app);
   overflow: hidden;
 }
 
@@ -276,7 +280,7 @@
 
 .apiIconBox {
   padding: 8px;
-  background: rgba(91, 168, 245, 0.15); /* primaryContainer equivalent */
+  background: var(--color-primary-light);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -372,7 +376,7 @@
   padding: 16px;
   border-radius: 12px;
   background: var(--color-primary);
-  color: var(--color-on-primary);
+  color: var(--text-on-primary);
   font-size: 15px;
   font-weight: 600;
   border: none;
@@ -432,13 +436,13 @@
   transition: background 0.2s;
 }
 .fetchBtnLine:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-surface-high);
 }
 
 
 .modelsCard {
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -488,8 +492,8 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  background: transparent;
-  border: 1px solid var(--color-outline-variant);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   color: var(--text-primary);
   font-size: 14px;
@@ -524,7 +528,7 @@
   padding: 12px 24px;
   border-radius: 8px;
   background: var(--color-primary);
-  color: var(--color-on-primary);
+  color: var(--text-on-primary);
   font-size: 14px;
   font-weight: 600;
   border: none;
@@ -580,7 +584,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 .loadingSpinnerSmall {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(0,0,0,0.3);
+  border: 2px solid var(--border-muted);
   border-top-color: var(--text-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -649,7 +653,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 .closeBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
@@ -730,14 +734,14 @@ input:checked + .slider:before { transform: translateX(20px); }
   transition: background 0.2s;
 }
 .addModalCancel:hover {
-  background: rgba(91, 168, 245, 0.1);
+  background: var(--color-primary-light);
 }
 
 .addModalConfirm {
   padding: 10px 24px;
   border-radius: 20px;
   background: var(--color-primary);
-  color: var(--color-on-primary);
+  color: var(--text-on-primary);
   border: none;
   font-size: 14px;
   font-weight: 500;
@@ -815,7 +819,7 @@ input:checked + .slider:before { transform: translateX(20px); }
   transition: all 0.15s ease;
 }
 .customSelectMenuItem:hover {
-  background: rgba(91, 168, 245, 0.1);
+  background: var(--color-primary-light);
   color: var(--color-primary);
 }
 

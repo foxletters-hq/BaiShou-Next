@@ -44,6 +44,9 @@ export const api = {
     
     getToolManagementConfig: () => ipcRenderer.invoke('settings:get-tool-management-config'),
     setToolManagementConfig: (config: any) => ipcRenderer.invoke('settings:set-tool-management-config', config),
+
+    getSearchModeEnabled: () => ipcRenderer.invoke('settings:get-search-mode-enabled'),
+    setSearchModeEnabled: (enabled: boolean) => ipcRenderer.invoke('settings:set-search-mode-enabled', enabled),
     
     getMcpServerConfig: () => ipcRenderer.invoke('settings:get-mcp-server-config'),
     setMcpServerConfig: (config: any) => ipcRenderer.invoke('settings:set-mcp-server-config', config),

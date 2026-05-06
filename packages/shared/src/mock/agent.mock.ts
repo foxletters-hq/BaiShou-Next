@@ -20,6 +20,7 @@ export type MockChatMessage = {
   sessionId: string;
   role: 'system' | 'user' | 'assistant' | 'tool';
   content?: string;
+  reasoning?: string;
   timestamp: Date;
   toolName?: string;
   toolCallId?: string;

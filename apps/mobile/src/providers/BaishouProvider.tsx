@@ -18,6 +18,7 @@ import {
   SummaryFileService,
   SummarySyncService,
   ShadowIndexSyncService,
+  VaultService,
 } from '@baishou/core';
 
 import {
@@ -37,6 +38,8 @@ import {
 } from '@baishou/ai';
 
 import { MobileStoragePathService } from '../services/path.service';
+import { MobileArchiveService } from '../services/archive.service';
+import { MobileLanSyncService } from '../services/lan-sync.service';
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
 interface BaishouContextValue {
@@ -47,8 +50,10 @@ interface BaishouContextValue {
     diaryService: DiaryService;
     settingsManager: SettingsManagerService;
     summaryManager: SummaryManagerService;
+    archiveService: MobileArchiveService;
+    lanSyncService: MobileLanSyncService;
   } | null;
-  startAgentChat?: (sessionId: string, userText: string, callbacks: StreamChatCallbacks) => Promise<void>;
+  startAgentChat?: (sessionId: string, userText: string, callbacks: StreamChatCallbacks, overrides?: { providerId?: string; modelId?: string }) => Promise<void>;
 }
 
 const BaishouContext = createContext<BaishouContextValue>({ dbReady: false, services: null });
@@ -99,7 +104,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const fileSyncService = new FileSyncServiceImpl(pathService);
         const vaultIndexService = new VaultIndexServiceImpl();
-        const shadowIndexSyncService = new ShadowIndexSyncService(shadowRepo, pathService, null as any); // vault.service needed? mobile skeleton
+        const vaultService = new VaultService(pathService);
+        await vaultService.initRegistry();
+        const shadowIndexSyncService = new ShadowIndexSyncService(shadowRepo, pathService, vaultService);
         const diaryService = new DiaryService(shadowRepo, fileSyncService, shadowIndexSyncService, vaultIndexService);
 
         const settingsFileService = new SettingsFileService(pathService);
@@ -111,28 +118,33 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const agentService = new AgentSessionService(); // Phase 3
 
+        // 创建归档服务和局域网同步服务
+        const archiveService = new MobileArchiveService(pathService, vaultService);
+        const lanSyncService = new MobileLanSyncService(archiveService);
+
         const toolRegistry = new ToolRegistry();
         const registry = AIProviderRegistry.getInstance();
         registry.initializeDefaultProviders();
 
-        const startAgentChat = async (sessionId: string, userText: string, callbacks: StreamChatCallbacks) => {
+        const startAgentChat = async (sessionId: string, userText: string, callbacks: StreamChatCallbacks, overrides?: { providerId?: string; modelId?: string }) => {
           try {
             const providers = await settingsManager.get<any[]>('ai_providers') || [];
             const globalModels = await settingsManager.get<any>('global_models');
             
-            const providerId = globalModels?.globalDialogueProviderId;
+            // 支持助手级模型覆盖，优先使用 overrides
+            const providerId = overrides?.providerId || globalModels?.globalDialogueProviderId;
             const config = providers.find((p: any) => p.id === providerId) || providers.find((p: any) => p.isEnabled);
             
             if (!config) throw new Error('No active provider configured');
             
             // 使用刚引入的单例模式，避免移动端长时间存活导致的过期缓存问题
-            const provider = registry.getOrUpdateProvider(config)!;
+            const provider = registry.getOrUpdateProvider(config);
             
             await agentService.streamChat({
                sessionId,
                userText,
                provider,
-               modelId: globalModels?.globalDialogueModelId || config.defaultDialogueModel || config.models[0],
+               modelId: overrides?.modelId || globalModels?.globalDialogueModelId || config.defaultDialogueModel || config.models[0],
                toolRegistry,
                sessionRepo,
                snapshotRepo
@@ -144,7 +156,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         };
 
         console.log('Mobile DB and DI Container Ready!');
-        
+
         if (isMounted) {
           setValue({ 
             dbReady: true, 
@@ -153,7 +165,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                sessionManager,
                diaryService,
                settingsManager,
-               summaryManager
+               summaryManager,
+               archiveService,
+               lanSyncService
             },
             startAgentChat
           });

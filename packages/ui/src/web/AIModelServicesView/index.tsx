@@ -22,19 +22,8 @@ import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
 
-import openaiIcon from '../../assets/ai_provider_icon/openai.png';
-import geminiIcon from '../../assets/ai_provider_icon/gemini-color.png';
-import claudeIcon from '../../assets/ai_provider_icon/claude-color.png';
-import deepseekIcon from '../../assets/ai_provider_icon/deepseek-color.png';
-import kimiIcon from '../../assets/ai_provider_icon/moonshot.png';
-import ollamaIcon from '../../assets/ai_provider_icon/ollama.png';
-import dashscopeIcon from '../../assets/ai_provider_icon/dashscope.png';
-import siliconflowIcon from '../../assets/ai_provider_icon/silicon.png';
-import openrouterIcon from '../../assets/ai_provider_icon/openrouter.png';
-import doubaoIcon from '../../assets/ai_provider_icon/doubao.png';
-import grokIcon from '../../assets/ai_provider_icon/grok.png';
-import mistralIcon from '../../assets/ai_provider_icon/mistral.png';
-import lmstudioIcon from '../../assets/ai_provider_icon/lmstudio.png';
+import { getProviderIcon } from '../../utils/provider-icons';
+import { useTheme } from '../../hooks';
 
 import { 
   MdCloud, 
@@ -42,12 +31,10 @@ import {
   MdVisibilityOff, 
   MdAdd, 
   MdDeleteOutline,
-  MdSave,
   MdApi,
   MdRestore,
   MdLink,
   MdVpnKey,
-  MdWifi,
   MdViewList,
   MdSync,
   MdArrowDropDown,
@@ -81,19 +68,19 @@ export interface AIModelServicesViewProps {
 
 // 核心自带类型的回退配置
 const BASE_KNOWN_PROVIDERS_CONFIG = [
-  { id: 'openai', name: 'OpenAI', iconUrl: openaiIcon, defaultBase: 'https://api.openai.com/v1', isSystem: true },
-  { id: 'gemini', name: 'Google Gemini', iconUrl: geminiIcon, defaultBase: 'https://generativelanguage.googleapis.com/v1beta', isSystem: true },
-  { id: 'anthropic', name: 'Anthropic Claude', iconUrl: claudeIcon, defaultBase: 'https://api.anthropic.com', isSystem: true },
-  { id: 'deepseek', name: 'DeepSeek', iconUrl: deepseekIcon, defaultBase: 'https://api.deepseek.com', isSystem: true },
-  { id: 'kimi', name: 'Kimi (Moonshot)', iconUrl: kimiIcon, defaultBase: 'https://api.moonshot.cn/v1', isSystem: true },
-  { id: 'ollama', name: 'Ollama', iconUrl: ollamaIcon, defaultBase: 'http://localhost:11434/v1', isSystem: true },
-  { id: 'siliconflow', name: '硅基流动 (SiliconFlow)', iconUrl: siliconflowIcon, defaultBase: 'https://api.siliconflow.cn/v1', isSystem: true },
-  { id: 'openrouter', name: 'OpenRouter', iconUrl: openrouterIcon, defaultBase: 'https://openrouter.ai/api/v1', isSystem: true },
-  { id: 'dashscope', name: '通义千问 (百炼)', iconUrl: dashscopeIcon, defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1', isSystem: true },
-  { id: 'doubao', name: '豆包 (火山引擎)', iconUrl: doubaoIcon, defaultBase: 'https://ark.cn-beijing.volces.com/api/v3', isSystem: true },
-  { id: 'grok', name: 'Grok (xAI)', iconUrl: grokIcon, defaultBase: 'https://api.x.ai/v1', isSystem: true },
-  { id: 'mistral', name: 'Mistral', iconUrl: mistralIcon, defaultBase: 'https://api.mistral.ai/v1', isSystem: true },
-  { id: 'lmstudio', name: 'LM Studio', iconUrl: lmstudioIcon, defaultBase: 'http://localhost:1234/v1', isSystem: true },
+  { id: 'openai', name: 'OpenAI', defaultBase: 'https://api.openai.com/v1', isSystem: true },
+  { id: 'gemini', name: 'Google Gemini', defaultBase: 'https://generativelanguage.googleapis.com/v1beta', isSystem: true },
+  { id: 'anthropic', name: 'Anthropic Claude', defaultBase: 'https://api.anthropic.com', isSystem: true },
+  { id: 'deepseek', name: 'DeepSeek', defaultBase: 'https://api.deepseek.com', isSystem: true },
+  { id: 'kimi', name: 'Kimi (Moonshot)', defaultBase: 'https://api.moonshot.cn/v1', isSystem: true },
+  { id: 'ollama', name: 'Ollama', defaultBase: 'http://localhost:11434/v1', isSystem: true },
+  { id: 'siliconflow', name: '硅基流动 (SiliconFlow)', defaultBase: 'https://api.siliconflow.cn/v1', isSystem: true },
+  { id: 'openrouter', name: 'OpenRouter', defaultBase: 'https://openrouter.ai/api/v1', isSystem: true },
+  { id: 'dashscope', name: '通义千问 (百炼)', defaultBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1', isSystem: true },
+  { id: 'doubao', name: '豆包 (火山引擎)', defaultBase: 'https://ark.cn-beijing.volces.com/api/v3', isSystem: true },
+  { id: 'grok', name: 'Grok (xAI)', defaultBase: 'https://api.x.ai/v1', isSystem: true },
+  { id: 'mistral', name: 'Mistral', defaultBase: 'https://api.mistral.ai/v1', isSystem: true },
+  { id: 'lmstudio', name: 'LM Studio', defaultBase: 'http://localhost:1234/v1', isSystem: true },
 ];
 
 const PROVIDER_NAME_I18N_MAP: Record<string, string> = {
@@ -118,10 +105,12 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
   const { t } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
+  const { isDark } = useTheme();
 
   const BASE_KNOWN_PROVIDERS = BASE_KNOWN_PROVIDERS_CONFIG.map(p => ({
     ...p,
     name: PROVIDER_NAME_I18N_MAP[p.id] ? t(PROVIDER_NAME_I18N_MAP[p.id], p.name) : p.name,
+    iconUrl: getProviderIcon(p.id, isDark),
   }));
 
   const getCombinedProviders = Object.keys(providers).filter(id => !BASE_KNOWN_PROVIDERS.find(b => b.id === id));
@@ -131,7 +120,7 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
     ...getCombinedProviders.map(id => ({
       id,
       name: providers[id]?.name || id.toUpperCase(),
-      iconUrl: undefined as string | undefined,
+      iconUrl: getProviderIcon(id, isDark),
       defaultBase: providers[id]?.apiBaseUrl || '',
       isSystem: false,
       sortOrder: providers[id]?.sortOrder ?? 999
@@ -141,7 +130,12 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
   const sortedProvidersList = [...allProvidersList].map(p => ({
     ...p,
     sortOrder: providers[p.id]?.sortOrder ?? (p as any).sortOrder ?? 999,
-  })).sort((a, b) => a.sortOrder - b.sortOrder);
+    enabled: providers[p.id]?.enabled ?? false,
+  })).sort((a, b) => {
+    // 已启用的排在前面，未启用的排在后面
+    if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+    return a.sortOrder - b.sortOrder;
+  });
 
   const firstProviderId = sortedProvidersList[0]?.id;
   const [selectedProviderId, setSelectedProviderId] = useState<string>(firstProviderId || '');
@@ -369,7 +363,17 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
   };
 
   const handleToggleEnable = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdateProvider(selectedProviderId, { enabled: e.target.checked });
+    const isEnabled = e.target.checked;
+    if (isEnabled) {
+      // 启用时，将排序设为已启用列表末尾（最大 sortOrder + 1）
+      const enabledOrders = localProvidersList
+        .filter(p => providers[p.id]?.enabled)
+        .map(p => providers[p.id]?.sortOrder ?? 999);
+      const nextOrder = enabledOrders.length > 0 ? Math.max(...enabledOrders) + 1 : 0;
+      onUpdateProvider(selectedProviderId, { enabled: true, sortOrder: nextOrder });
+    } else {
+      onUpdateProvider(selectedProviderId, { enabled: false });
+    }
   };
 
   const handleModelToggle = (mdl: string, isChecked: boolean) => {
@@ -541,10 +545,8 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                 </div>
 
                 <button className={styles.testBtnBlock} onClick={handleTestConnection} disabled={isTesting}>
-                   {isTesting ? (
+                   {isTesting && (
                       <span className={styles.loadingSpinner}></span>
-                   ) : (
-                      <MdWifi size={18} />
                    )}
                    <span>{isTesting ? t('settings.testing_connection', '正在测试连接...') : t('settings.test_connection', '测试连接')}</span>
                 </button>
@@ -610,10 +612,9 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
         {/* Floating Bottom Bar for Saving */}
         <div className={styles.bottomBarArea}>
            <div className={styles.bottomBarContainer}>
-              <button className={styles.saveBtn} onClick={handleSaveCurrentProviderConfig}>
-                 <MdSave size={18} />
-                 <span>{t('ai_config.save_changes_button', '保存修改')}</span>
-              </button>
+               <button className={styles.saveBtn} onClick={handleSaveCurrentProviderConfig}>
+                  <span>{t('ai_config.save_changes_button', '保存修改')}</span>
+               </button>
            </div>
         </div>
       </div>

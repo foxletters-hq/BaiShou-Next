@@ -3,6 +3,8 @@
   flex-direction: column;
   gap: 16px;
   padding: 16px 24px 32px 24px;
+  background: var(--bg-app);
+  min-height: 100%;
 }
 
 /* === 1. Header === */
@@ -23,7 +25,7 @@
 
 .titleIcon {
   font-size: 22px;
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
 }
 
 .title {
@@ -34,15 +36,13 @@
   letter-spacing: 0.5px;
 }
 
-
-
 .headerClearAllBtn {
   display: flex;
   align-items: center;
   gap: 4px;
   background: transparent;
   border: none;
-  color: #ef4444;
+  color: var(--color-error);
   font-size: 14px;
   cursor: pointer;
   padding: 6px 10px;
@@ -60,7 +60,7 @@
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 13px;
-  color: #ef4444;
+  color: var(--color-error);
   display: flex;
   align-items: center;
 }
@@ -109,43 +109,39 @@
 }
 
 .chipBlue {
-  background: rgba(91, 168, 245, 0.1);
-  color: #5ba8f5;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
   border-color: rgba(91, 168, 245, 0.2);
 }
 
 .chipGreen {
   background: rgba(74, 222, 128, 0.1);
-  color: #22c55e;
+  color: var(--color-success);
   border-color: rgba(74, 222, 128, 0.2);
 }
 
 .chipGrey {
-  background: rgba(148, 163, 184, 0.1);
+  background: var(--bg-surface-high);
   color: var(--text-secondary);
-  border-color: rgba(148, 163, 184, 0.2);
+  border-color: var(--border-muted);
 }
 
 .chipGreenLight {
   background: rgba(74, 222, 128, 0.05);
-  color: #22c55e;
-  border-color: #22c55e;
+  color: var(--color-success);
+  border-color: var(--color-success);
 }
-
-
 
 /* === 3. Config Block === */
 .configBlock {
   background: var(--bg-surface);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-
-
 
 .configBlockHeader {
   display: flex;
@@ -158,8 +154,6 @@
   font-weight: 600;
   color: var(--text-primary);
 }
-
-
 
 .paramSliders {
   display: flex;
@@ -184,7 +178,7 @@
   width: 40px;
   font-size: 14px;
   font-weight: 700;
-  color: #5ba8f5;
+  color: var(--color-primary);
   text-align: right;
   flex-shrink: 0;
 }
@@ -194,7 +188,7 @@
   appearance: none;
   -webkit-appearance: none;
   height: 4px;
-  background: rgba(148, 163, 184, 0.2);
+  background: var(--bg-surface-normal);
   border-radius: 2px;
   outline: none;
 }
@@ -204,7 +198,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #5ba8f5;
+  background: var(--color-primary);
   cursor: pointer;
   transition: transform 0.1s;
 }
@@ -239,7 +233,7 @@
 
 .btnRedOutlined {
   background: rgba(239, 68, 68, 0.05);
-  color: #ef4444;
+  color: var(--color-error);
   border-color: rgba(239, 68, 68, 0.3);
 }
 .btnRedOutlined:hover:not(:disabled) {
@@ -247,8 +241,8 @@
 }
 
 .btnBlueFlat {
-  background: rgba(91, 168, 245, 0.15);
-  color: #5ba8f5;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
   border-color: transparent;
 }
 .btnBlueFlat:hover:not(:disabled) {
@@ -257,7 +251,7 @@
 
 .btnGreenOutlined {
   background: rgba(34, 197, 94, 0.05);
-  color: #22c55e;
+  color: var(--color-success);
   border-color: rgba(34, 197, 94, 0.3);
 }
 .btnGreenOutlined:hover:not(:disabled) {
@@ -265,38 +259,35 @@
 }
 
 .btnGreyOutlined {
-  background: rgba(148, 163, 184, 0.05);
+  background: var(--bg-surface-high);
   color: var(--text-secondary);
-  border-color: rgba(148, 163, 184, 0.3);
+  border-color: var(--border-muted);
 }
 .btnGreyOutlined:hover:not(:disabled) {
-  background: rgba(148, 163, 184, 0.1);
+  background: var(--bg-surface-normal);
 }
-
 
 /* === 5. Search Bar === */
 .searchBoxOuter {
   display: flex;
   align-items: center;
-  background-color: transparent;
+  background-color: var(--bg-surface);
   border-radius: 12px;
   padding: 6px 12px;
   margin-top: 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-muted);
   transition: border-color 0.2s;
 }
 
 .searchBoxOuter:focus-within {
-  border-color: var(--color-primary, #0056D2);
+  border-color: var(--color-primary);
   border-width: 2px;
   padding: 5px 11px;
 }
 
-
-
 .searchIconOuter {
   font-size: 16px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   margin-right: 12px;
 }
 
@@ -310,16 +301,15 @@
   padding: 8px 0;
 }
 
-
 .clearSearchOuter {
   cursor: pointer;
-  color: var(--text-primary);
+  color: var(--text-tertiary);
   margin-left: 12px;
   font-size: 18px;
   font-weight: bold;
 }
 .clearSearchOuter:hover {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 /* === 6. List === */
@@ -350,7 +340,7 @@
 }
 .emptyDescSub {
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   max-width: 400px;
   text-align: center;
 }
@@ -363,7 +353,7 @@
 
 .memoryEntryCard {
   background: var(--bg-surface);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -372,12 +362,9 @@
   transition: box-shadow 0.2s;
 }
 
-
-
 .memoryEntryCard:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
-
 
 .memoryEntryIconBlock {
   display: flex;
@@ -387,7 +374,7 @@
 }
 
 .memoryEntryBraces {
-  color: #5ba8f5;
+  color: var(--color-primary);
   font-family: 'Fira Code', monospace;
   font-size: 18px;
   font-weight: 700;
@@ -413,13 +400,12 @@
   text-overflow: ellipsis;
 }
 
-
 .memoryEntryFooter {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .memoryEntryActionsBlock {
@@ -430,7 +416,7 @@
 .memoryMoreBtn {
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: 20px;
   cursor: pointer;
   padding: 4px 8px;
@@ -440,51 +426,50 @@
   justify-content: center;
 }
 .memoryMoreBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
-
 
 /* Switch UI */
 .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(148, 163, 184, 0.3); transition: .3s; border-radius: 24px; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-surface-normal); transition: .3s; border-radius: 24px; }
 .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: var(--bg-surface); transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-input:checked + .slider { background-color: #5ba8f5; }
+input:checked + .slider { background-color: var(--color-primary); }
 input:checked + .slider:before { transform: translateX(20px); }
 
 /* Alerts */
 .migrationAlert {
-  background: rgba(91, 168, 245, 0.1);
+  background: var(--color-primary-light);
   border: 1px solid rgba(91, 168, 245, 0.3);
   border-radius: 12px;
   padding: 16px;
 }
 .migrationRow { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;}
-.migTitle { font-size: 14px; font-weight: 600; color: #5ba8f5; }
+.migTitle { font-size: 14px; font-weight: 600; color: var(--color-primary); }
 .spinner {
   width: 16px; height: 16px; border: 2px solid rgba(91, 168, 245, 0.3);
-  border-top-color: #5ba8f5; border-radius: 50%;
+  border-top-color: var(--color-primary); border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .migDesc { font-size: 13px; color: var(--text-primary); margin: 0 0 12px 0;}
 .progressBar {
-  height: 6px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden;
+  height: 6px; background: var(--bg-surface-normal); border-radius: 3px; overflow: hidden;
 }
-.progressFill { height: 100%; background: #5ba8f5; transition: width 0.3s; }
+.progressFill { height: 100%; background: var(--color-primary); transition: width 0.3s; }
 
 .dangerAlert {
   background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3); 
-  border-radius: 12px; 
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
   padding: 16px;
 }
 .dangerRow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px;}
-.dangerTitle { font-size: 14px; font-weight: 700; color: #ef4444; }
+.dangerTitle { font-size: 14px; font-weight: 700; color: var(--color-error); }
 .dangerDesc { font-size: 13px; color: var(--text-primary); margin: 0 0 12px 0; line-height: 1.5; }
 .dangerBtn {
-  background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 6px;
+  background: var(--color-error); color: var(--text-on-primary); border: none; padding: 8px 16px; border-radius: 6px;
   cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;
 }
-.dangerBtn:hover { background: #dc2626; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
+.dangerBtn:hover { opacity: 0.9; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }

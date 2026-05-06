@@ -29,8 +29,12 @@ export function buildMiddlewareChain(providerType: ProviderType): MiddlewareChai
       // 未来: AnthropicCacheMiddleware, ...
       break;
 
-    case 'openai':
     case 'deepseek':
+      // DeepSeek reasoning 中间件已通过 Vercel AI SDK 的 LanguageModelV3Middleware 实现
+      // 参见 ./deepseek-reasoning.ts
+      break;
+
+    case 'openai':
     case 'custom':
     default:
       // OpenAI 标准协议族 (OpenAI, DeepSeek, Kimi, GLM 等)

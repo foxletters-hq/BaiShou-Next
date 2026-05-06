@@ -16,28 +16,31 @@ export const ToolResultGroup: React.FC<ToolResultGroupProps> = ({ invocations })
 
   return (
     <div className={styles.groupContainer}>
-       <div className={styles.groupCard}>
-          <div 
-            className={styles.headerRow} 
-            onClick={() => setExpanded(!expanded)}
-          >
-             <div className={styles.titleArea}>
-                <span className={styles.titleText}>
-                   {t('agent.tools.tool_call_results', { count: invocations.length })}
-                </span>
-                <span className={styles.countBadge}>{invocations.length}</span>
-             </div>
+       <div className={`${styles.groupCard} ${expanded ? styles.open : ''}`}>
+           <div 
+             className={styles.headerRow} 
+             onClick={() => setExpanded(!expanded)}
+           >
+              <div className={styles.iconBox}>🎧</div>
+              <div className={styles.titleArea}>
+                 <span className={styles.titleText}>
+                    {t('agent.tools.tool_call_results', { count: invocations.length })}
+                 </span>
+                 <span className={styles.countBadge}>{invocations.length}</span>
+              </div>
              
              <div className={`${styles.expandBtn} ${expanded ? styles.expandBtnRotated : ''}`}>
                 <ChevronDown size={14} />
              </div>
           </div>
           
-          {expanded && (
-             <div className={styles.childrenArea}>
-                {invocations.map((inv, index) => <ToolResultItem key={inv.toolCallId || index} invocation={inv} />)}
-             </div>
-          )}
+          <div className={styles.contentWrap}>
+            <div className={styles.contentInner}>
+              <div className={styles.childrenArea}>
+                 {invocations.map((inv, index) => <ToolResultItem key={inv.toolCallId || index} invocation={inv} />)}
+              </div>
+            </div>
+          </div>
        </div>
     </div>
   );
@@ -114,7 +117,7 @@ const ToolResultItem: React.FC<{ invocation: MockToolInvocation }> = ({ invocati
   };
 
   return (
-    <div className={`${styles.itemCard} ${isError ? styles.itemError : ''}`}>
+    <div className={`${styles.itemCard} ${isError ? styles.itemError : ''} ${expanded ? styles.itemOpen : ''}`}>
        <div 
          className={styles.itemHeader} 
          onClick={() => setExpanded(!expanded)}
@@ -125,13 +128,15 @@ const ToolResultItem: React.FC<{ invocation: MockToolInvocation }> = ({ invocati
           <span className={styles.itemName}>{toolName}</span>
        </div>
        
-       <div className={`${styles.itemBodyCollapsible} ${expanded ? styles.itemBodyExpanded : ''}`}>
-          <div className={styles.contentWrapper}>
-             {parsedJson && !isError ? (
-               renderStructuredData(parsedJson)
-             ) : (
-               <pre className={`${styles.resultTextLog} ${isError ? styles.errorText : ''}`}>{rawContent}</pre>
-             )}
+       <div className={styles.itemContentWrap}>
+          <div className={styles.itemContentInner}>
+            <div className={styles.contentWrapper}>
+               {parsedJson && !isError ? (
+                 renderStructuredData(parsedJson)
+               ) : (
+                 <pre className={`${styles.resultTextLog} ${isError ? styles.errorText : ''}`}>{rawContent}</pre>
+               )}
+            </div>
           </div>
        </div>
     </div>

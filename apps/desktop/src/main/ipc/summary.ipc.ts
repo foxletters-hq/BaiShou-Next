@@ -16,7 +16,7 @@ import {
 import { generateText } from 'ai';
 import { settingsManager } from './settings.ipc';
 import { getActiveProvider } from './agent-helpers';
-import { GlobalModelsConfig, logger } from '@baishou/shared';
+import { GlobalModelsConfig, logger, parseDateStr } from '@baishou/shared';
 import { SummaryQueueService } from '../services/summary-queue.service';
 
 import { pathService } from './vault.ipc';
@@ -70,17 +70,20 @@ export function registerSummaryIPC() {
       async findByDateRange(start: Date, end: Date) {
           const records = await shadowRepo.listAll();
           return records.filter((r: any) => {
-             const d = new Date(r.date).getTime();
+             const d = parseDateStr(r.date).getTime();
              return d >= start.getTime() && d <= end.getTime();
-          }).map((r: any) => ({
-             id: r.id.toString(),
-             title: r.title,
-             date: new Date(r.date),
-             content: r.content,
-             tags: r.tags || '',
-             createdAt: r.createdAt ? new Date(r.createdAt) : new Date(r.date),
-             updatedAt: r.updatedAt ? new Date(r.updatedAt) : new Date(r.date)
-          }));
+          }).map((r: any) => {
+             const diaryDate = parseDateStr(r.date);
+             return {
+               id: r.id.toString(),
+               title: r.title,
+               date: diaryDate,
+               content: r.rawContent ?? r.content ?? '',
+               tags: r.tags || '',
+               createdAt: r.createdAt ? new Date(r.createdAt) : diaryDate,
+               updatedAt: r.updatedAt ? new Date(r.updatedAt) : diaryDate
+             };
+          });
       }
     } as any;
     
@@ -200,15 +203,19 @@ export function registerSummaryIPC() {
             if (records.length > 0) {
                logger.info('[DEBUG-IPC] Sample record date field:', records[0].date, typeof records[0].date);
             }
-            return records.map((r: any) => ({
-              id: r.id.toString(),
-              title: r.title,
-              date: new Date(r.date),
-              content: r.content,
-              createdAt: r.createdAt ? new Date(r.createdAt) : new Date(r.date),
-              updatedAt: r.updatedAt ? new Date(r.updatedAt) : new Date(r.date),
-              path: r.path || ''
-            }));
+            return records.map((r: any) => {
+              const diaryDate = parseDateStr(r.date);
+              return {
+                id: r.id.toString(),
+                title: r.title,
+                date: diaryDate,
+                content: r.rawContent ?? r.content ?? '',
+                tags: r.tags || '',
+                createdAt: r.createdAt ? new Date(r.createdAt) : diaryDate,
+                updatedAt: r.updatedAt ? new Date(r.updatedAt) : diaryDate,
+                path: r.filePath || r.path || ''
+              };
+            });
         }
       } as any;
 
@@ -236,5 +243,11 @@ export function registerSummaryIPC() {
   ipcMain.handle('summary:get-queue-state', async () => {
     const queueService = SummaryQueueService.getInstance();
     return queueService.getQueueState();
+  });
+
+  ipcMain.handle('summary:stop-generation', async () => {
+    const queueService = SummaryQueueService.getInstance();
+    queueService.stop();
+    return true;
   });
 }

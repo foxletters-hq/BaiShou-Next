@@ -1,5 +1,5 @@
 import { AgentMessage, AgentPart } from '@baishou/shared';
-import { CoreMessage, ToolResultPart, ToolCallPart, TextPart } from 'ai';
+import { CoreMessage, ToolResultPart } from 'ai';
 
 export interface MessageWithParts extends AgentMessage {
   parts: AgentPart[];
@@ -70,23 +70,38 @@ export class MessageAdapter {
         });
       } 
       else if (msg.role === 'assistant') {
-        const contentParts: (TextPart | ToolCallPart)[] = [];
+        const contentParts: any[] = [];
+        // 收集已完成的工具调用结果，后续生成独立的 role: 'tool' 消息
+        const toolResultParts: ToolResultPart[] = [];
 
         for (const p of msg.parts) {
           if (p.type === 'text') {
             const data = p.data as any;
             if (data.text) {
-              contentParts.push({ type: 'text', text: data.text });
+              if (data.isReasoning) {
+                // 深度求索 API 要求将推理内容作为 reasoning 类型回传
+                contentParts.push({ type: 'reasoning', text: data.text });
+              } else {
+                contentParts.push({ type: 'text', text: data.text });
+              }
             }
           } else if (p.type === 'tool') {
             const data = p.data as any;
-            // 还原 ToolCallPart
             if (data.callId && data.name) {
               contentParts.push({
                 type: 'tool-call',
                 toolCallId: data.callId,
                 toolName: data.name,
                 args: typeof data.arguments === 'string' ? JSON.parse(data.arguments) : (data.arguments || {}),
+              });
+
+              // Vercel AI SDK 要求每个 tool-call 必须有对应的 tool-result
+              // 在 role: 'tool' 消息中。已完成的工具提取结果，失败的提供错误信息。
+              toolResultParts.push({
+                type: 'tool-result',
+                toolCallId: data.callId,
+                toolName: data.name,
+                result: data.result ?? `[工具执行失败: ${data.name}]`,
               });
             }
           }
@@ -97,6 +112,15 @@ export class MessageAdapter {
             role: 'assistant',
             content: contentParts,
           });
+
+          // 为已完成的工具调用生成独立的 tool 消息（紧跟在助理消息之后）
+          // 这确保了 Vercel AI SDK 的 tool-call ↔ tool-result 校验通过
+          if (toolResultParts.length > 0) {
+            vercelMessages.push({
+              role: 'tool',
+              content: toolResultParts,
+            });
+          }
         }
       } 
       else if (msg.role === 'tool') {

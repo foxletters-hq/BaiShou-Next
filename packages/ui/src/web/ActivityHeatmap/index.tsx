@@ -23,6 +23,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   const [scrollRatio, setScrollRatio] = useState(0);
   const [thumbRatio, setThumbRatio] = useState(1);
   const [isOverflow, setIsOverflow] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(false);
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartScrollLeft = useRef(0);
@@ -49,14 +50,14 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   };
 
   const allYears = useMemo(() => {
-    if (availableYears && availableYears.length > 0) return availableYears;
+    if (availableYears && availableYears.length > 0) return [...availableYears].sort((a, b) => a - b);
     if (data.length > 0) {
       const yearSet = new Set<number>();
       data.forEach(d => {
         const y = parseInt(d.date.substring(0, 4), 10);
         if (!isNaN(y)) yearSet.add(y);
       });
-      return Array.from(yearSet).sort((a, b) => b - a);
+      return Array.from(yearSet).sort((a, b) => a - b);
     }
     const now = new Date().getFullYear();
     return [now];
@@ -184,8 +185,9 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
     el.scrollTo({ left: (el.scrollWidth - el.clientWidth) * ratio, behavior: 'smooth' });
   };
 
-  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onYearChange?.(parseInt(e.target.value, 10));
+  const handleYearChange = (selectedYear: number) => {
+    onYearChange?.(selectedYear);
+    setShowYearPicker(false);
   };
 
   const totalCount = data.reduce((a, b) => a + b.count, 0);
@@ -196,12 +198,32 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
       <div className={styles.header}>
         <h3>{year} {t('activity.yearly_records', '年度日记记录')}</h3>
         <div className={styles.selectors}>
-          <select className={styles.select} value={year} onChange={handleYearChange}>
-            {allYears.map(y => <option key={y} value={y}>{y}年</option>)}
-          </select>
+          <button className={styles.yearBtn} onClick={() => setShowYearPicker(true)}>
+            {year}年 ▾
+          </button>
           <span className={styles.totalBadge}>{totalCount} {t('activity.interactions', '篇日记')}</span>
         </div>
       </div>
+
+      {showYearPicker && (
+        <div className={styles.yearOverlay} onClick={() => setShowYearPicker(false)}>
+          <div className={styles.yearModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.yearModalTitle}>{t('activity.select_year', '选择年份')}</div>
+            <div className={styles.yearGrid}>
+              {allYears.map(y => (
+                <button
+                  key={y}
+                  className={styles.yearOption}
+                  data-active={y === year}
+                  onClick={() => handleYearChange(y)}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={styles.heatmapScroll} ref={scrollRef}>
         <div className={styles.heatmapContent} style={{ '--num-cols': numCols } as React.CSSProperties}>

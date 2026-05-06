@@ -62,6 +62,8 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     }
     await onStartDiscovery(
       (dev) => setDevices(prev => {
+        // 过滤掉自己（IP 和端口都相同则为本机）
+        if (connInfo && dev.ip === connInfo.ip && dev.port === connInfo.port) return prev;
         const idx = prev.findIndex(d => d.rawServiceId === dev.rawServiceId);
         if (idx !== -1) return prev;
         return [...prev, dev];
@@ -141,13 +143,21 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     <div className={styles.container}>
       <div className={styles.appBar}>
          <div style={{ flex: 1 }} />
+         {localConnection && (
+           <button
+             className={styles.qrFixedBtn}
+             onClick={() => setShowQrCode(!showQrCode)}
+             title={t('lan_transfer.show_qr', '扫码连接')}
+           >
+             <MdQrCode size={20} />
+           </button>
+         )}
          <button className={styles.refreshBtn} onClick={restartDualMode} title={t('common.refresh', '刷新')}>
             <MdRefresh size={20} />
          </button>
       </div>
 
       <div className={styles.radarZone}>
-        {isActive && <div className={styles.radarSweep}></div>}
         {isActive && (
           <div className={styles.radarRings}>
             <div className={`${styles.ring} ${styles.ring1}`}></div>
@@ -162,20 +172,10 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
            </span>
         </div>
 
-        {isActive && devices.length === 0 && !showQrCode && (
+        {isActive && devices.length === 0 && (
           <div className={styles.scanHintWrapper}>
              <div className={styles.scanTitle}>{t('lan_transfer.scanning_nearby', '正在扫描附近设备...')}</div>
              <div className={styles.scanSubtitle}>{t('lan_transfer.scan_hint', '请确保两台设备处于相同的 Wi-Fi 网络下')}</div>
-             {localConnection && (
-               <button
-                 className={styles.qrToggleBtn}
-                 onClick={() => setShowQrCode(true)}
-                 title={t('lan_transfer.show_qr', '显示二维码')}
-               >
-                 <MdQrCode size={20} />
-                 {t('lan_transfer.scan_qr', '扫码连接')}
-               </button>
-             )}
           </div>
         )}
 

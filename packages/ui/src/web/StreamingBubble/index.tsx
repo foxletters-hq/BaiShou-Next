@@ -2,10 +2,8 @@ import { useTranslation } from 'react-i18next';
 import React from 'react';
 import styles from './StreamingBubble.module.css';
 import { MarkdownRenderer } from '../MarkdownRenderer';
+import { ThinkingBlock } from '../ThinkingBlock';
 import { motion } from 'framer-motion';
-
-// TODO: [Agent1-Dependency] i18n
-
 
 export interface ToolExecution {
   name: string;
@@ -14,6 +12,7 @@ export interface ToolExecution {
 
 export interface StreamingBubbleProps {
   text: string;
+  reasoning?: string;
   isReasoning?: boolean;
   activeToolName?: string | null;
   completedTools?: ToolExecution[];
@@ -25,6 +24,7 @@ export interface StreamingBubbleProps {
 
 export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   text,
+  reasoning = '',
   isReasoning = false,
   activeToolName = null,
   completedTools = [],
@@ -36,6 +36,8 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   const { t } = useTranslation();
   const hasTools = completedTools.length > 0 || !!activeToolName;
   const aiName = aiProfile.name || t('agent.chat.ai_label');
+  const hasReasoning = reasoning.length > 0;
+  const hasText = text.length > 0;
 
   const Avatar = () => (
      <div className={styles.avatarWrap}>
@@ -60,13 +62,6 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
       <div className={styles.messageCol}>
          <div className={styles.nameLabel}>{aiName}</div>
          
-         {hasTools && (
-           <ToolExecutionGroup 
-              completedTools={completedTools} 
-              activeToolName={activeToolName} 
-           />
-         )}
-         
          {error ? (
            <div className={styles.errorBox}>
               <span className={styles.errorText}>⚠ {error}</span>
@@ -78,20 +73,29 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
            </div>
          ) : (
            <>
-             {isReasoning && text.length === 0 ? (
-               <motion.div 
-                 className={styles.shimmerBox}
-                 initial={{ opacity: 0 }}
-                 animate={{ opacity: 1 }}
-                 exit={{ opacity: 0 }}
-               >
-                 🤔 {t('agent.chat.reasoning', '思考中...')}
-               </motion.div>
-             ) : text.length > 0 ? (
+             {hasText || hasReasoning || hasTools ? (
                <div className={styles.bubbleCard}>
-                  <MarkdownRenderer content={text} isStreaming={true} />
+                 {/* 工具调用 */}
+                 {hasTools && (
+                   <ToolExecutionGroup 
+                      completedTools={completedTools} 
+                      activeToolName={activeToolName} 
+                   />
+                 )}
+
+                 {/* Reasoning 块 */}
+                 {hasReasoning && (
+                   <ThinkingBlock
+                     content={reasoning}
+                     isThinking={isReasoning && !hasText}
+                     autoCollapse={true}
+                   />
+                 )}
+
+                 {/* 正文内容 */}
+                 {hasText && <MarkdownRenderer content={text} isStreaming={true} />}
                </div>
-             ) : !hasTools && (
+             ) : (
                <div className={styles.dotsWrap}>
                   <BouncingDotsIndicator />
                </div>
@@ -121,7 +125,7 @@ const ToolExecutionGroup: React.FC<{
   return (
     <div className={styles.toolGroupCard}>
        <div className={styles.toolHeader}>
-          <div className={styles.toolIcon}>🔧</div>
+          <div className={styles.toolIcon}>🎧</div>
           <span className={styles.toolTitle}>{t('agent.tools.tool_call')}</span>
           <div className={styles.toolCountBadge}>
              {completedTools.length}/{totalTools}
@@ -154,10 +158,6 @@ const ToolExecutionGroup: React.FC<{
 };
 
 const BouncingDotsIndicator: React.FC = () => {
-
-
-
-
   return (
     <div className={styles.bouncingDots}>
       <div className={styles.dot}></div>

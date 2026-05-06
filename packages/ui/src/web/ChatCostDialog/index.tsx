@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import styles from './ChatCostDialog.module.css';
 import { useTranslation } from 'react-i18next';
 
@@ -15,10 +15,19 @@ export interface ChatCostDialogProps {
   details: CostDetails;
   onClose: () => void;
   isOpen: boolean;
+  pricingLastUpdated?: Date | null;
+  onRefreshPricing?: () => Promise<void>;
 }
 
-export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ details, onClose, isOpen }) => {
+export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ 
+  details, 
+  onClose, 
+  isOpen, 
+  pricingLastUpdated,
+  onRefreshPricing 
+}) => {
   const { t } = useTranslation();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Close on Escape 
   useEffect(() => {
@@ -28,6 +37,31 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ details, onClose
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!onRefreshPricing || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await onRefreshPricing();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [onRefreshPricing, isRefreshing]);
+
+  const formatLastUpdated = useCallback((date: Date | null | undefined): string => {
+    if (!date) return t('agent.chat.pricing_unknown', '未知');
+    
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffMinutes < 1) return t('agent.chat.pricing_just_now', '刚刚');
+    if (diffMinutes < 60) return t('agent.chat.pricing_minutes_ago', `${diffMinutes} 分钟前`, { count: diffMinutes });
+    if (diffHours < 24) return t('agent.chat.pricing_hours_ago', `${diffHours} 小时前`, { count: diffHours });
+    
+    return date.toLocaleString();
+  }, [t]);
 
   if (!isOpen) return null;
 
@@ -45,11 +79,11 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ details, onClose
                 <span className={styles.costValue}>{details.estimatedCost}</span>
              </div>
              <div className={styles.costRow}>
-                <span className={styles.costLabel}>{t('agent.chat.cost_cumulative_input', '累计 Input')}</span>
+                <span className={styles.costLabel}>{t('agent.chat.cost_cumulative_input', '累计输入')}</span>
                 <span className={styles.costValue}>{details.promptTokens} {t('agent.chat.tokens_unit', 'tokens')}</span>
              </div>
              <div className={styles.costRow}>
-                <span className={styles.costLabel}>{t('agent.chat.cost_cumulative_output', '累计 Output')}</span>
+                <span className={styles.costLabel}>{t('agent.chat.cost_cumulative_output', '累计输出')}</span>
                 <span className={styles.costValue}>{details.completionTokens} {t('agent.chat.tokens_unit', 'tokens')}</span>
              </div>
              
@@ -65,6 +99,32 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ details, onClose
                     : t('agent.chat.cost_no_data', '暂无数据')}
                 </span>
              </div>
+
+             <div className={styles.divider} />
+             
+             <h3 className={styles.sectionTitle}>{t('agent.chat.pricing_table_title', '价格表信息')}</h3>
+             <div className={styles.spacer8} />
+             <div className={styles.costRow}>
+                <span className={styles.costLabel}>{t('agent.chat.pricing_last_updated', '最后更新')}</span>
+                <span className={styles.costValue}>{formatLastUpdated(pricingLastUpdated)}</span>
+             </div>
+             {onRefreshPricing && (
+               <div className={styles.spacer8} />
+             )}
+             {onRefreshPricing && (
+               <div className={styles.costRow}>
+                 <span className={styles.costLabel}></span>
+                 <button 
+                   className={styles.refreshButton} 
+                   onClick={handleRefresh}
+                   disabled={isRefreshing}
+                 >
+                   {isRefreshing 
+                     ? t('agent.chat.pricing_refreshing', '刷新中...') 
+                     : t('agent.chat.pricing_refresh', '刷新价格表')}
+                 </button>
+               </div>
+             )}
              
              <div className={styles.spacer16} />
              

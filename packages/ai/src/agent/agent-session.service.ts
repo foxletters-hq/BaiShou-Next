@@ -1,6 +1,7 @@
 import { streamText, wrapLanguageModel, extractReasoningMiddleware, smoothStream, stepCountIs } from 'ai';
 import type { LanguageModelV3Middleware } from '@ai-sdk/provider';
 import { IAIProvider } from '../providers/provider.interface';
+import { createDeepSeekReasoningMiddleware } from '../middleware/deepseek-reasoning';
 import { ToolRegistry } from '../tools/tool-registry';
 import { SessionRepository } from '@baishou/database';
 import { MessageAdapter } from './message.adapter';
@@ -200,6 +201,9 @@ export class AgentSessionService {
       });
 
       // 4. 调用 Vercel streamText
+      // 使用 Intl.Segmenter 做 CJK 友好的词级流式分割，替代默认的 /\S+\s+/m
+      // 默认的 word 模式对中文按空格切分，会导致大量碎片化的流式输出
+      const cjkSegmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' });
       const streamResult = await streamText({
         model,
         messages: coreMessages,
@@ -207,7 +211,7 @@ export class AgentSessionService {
         tools: enabledTools,
         stopWhen: stepCountIs(10),
         abortSignal,
-        experimental_transform: smoothStream(),
+        experimental_transform: smoothStream({ chunking: cjkSegmenter }),
       } as any);
 
       // 5. 使用统一的 StreamChunkAdapter 消费流
@@ -263,15 +267,34 @@ export class AgentSessionService {
     const middlewares: LanguageModelV3Middleware[] = [];
     const providerType = provider.config?.type || '';
 
-    // 1. 推理提取中间件 — 适用于 DeepSeek-R1、QwQ 等在文本中嵌入 <think> 标签的模型
+    // eslint-disable-next-line no-console
+    console.log('[AgentSessionService] buildMiddlewares called, providerType=%s', providerType);
+
+    // 1. DeepSeek reasoning 内容处理中间件 — 将历史消息中的 reasoning parts 转换为 <think> 标签
+    //    解决 DeepSeek API 要求回传 reasoning_content 的问题
+    if (providerType === 'deepseek') {
+      try {
+        middlewares.push(createDeepSeekReasoningMiddleware());
+        // eslint-disable-next-line no-console
+        console.log('[AgentSessionService] DeepSeek reasoning middleware added');
+      } catch (e) {
+        logger.warn('[AgentSessionService] createDeepSeekReasoningMiddleware not available:', e);
+      }
+    }
+
+    // 2. 推理提取中间件 — 适用于 DeepSeek-R1、QwQ 等在文本中嵌入 <think> 标签的模型
     if (providerType === 'deepseek' || providerType === 'openai') {
       try {
         middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as any);
+        // eslint-disable-next-line no-console
+        console.log('[AgentSessionService] extractReasoningMiddleware added');
       } catch (e) {
         logger.warn('[AgentSessionService] extractReasoningMiddleware not available:', e);
       }
     }
 
+    // eslint-disable-next-line no-console
+    console.log('[AgentSessionService] Total middlewares: %d', middlewares.length);
     return middlewares;
   }
 

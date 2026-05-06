@@ -5,6 +5,11 @@
   width: 100%;
   color: var(--text-primary);
   padding: 32px;
+  background: var(--bg-app);
+  min-height: 100%;
+  box-sizing: border-box;
+  flex: 1;
+  align-items: stretch;
 }
 @media (max-width: 500px) {
   .container {

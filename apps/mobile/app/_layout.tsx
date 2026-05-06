@@ -4,12 +4,11 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
 import { BaishouProvider } from '@/src/providers/BaishouProvider';
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
@@ -18,9 +17,9 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const { t } = useTranslation();
 
   useEffect(() => {
-    // Hide the splash screen once the root layout has mounted
     SplashScreen.hideAsync();
   }, []);
 
@@ -29,7 +28,30 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          <Stack.Screen name="diary-editor" options={{
+            presentation: 'modal',
+            title: t('diary.editor_title', '编辑记忆'),
+            headerShown: false
+          }} />
+          <Stack.Screen name="sessions" options={{
+            title: t('agent.sessions.title', '会话管理')
+          }} />
+          <Stack.Screen name="assistants" options={{
+            title: t('agent.assistants.title', '伙伴管理')
+          }} />
+          <Stack.Screen name="assistant-edit" options={{
+            title: t('agent.assistant_edit.title', '编辑助手')
+          }} />
+          <Stack.Screen name="lan-transfer" options={{
+            title: t('lan.title', '局域网传输')
+          }} />
+          <Stack.Screen name="data-sync" options={{
+            title: t('sync.title', '数据同步')
+          }} />
+          <Stack.Screen name="modal" options={{
+            presentation: 'modal',
+            title: 'Modal'
+          }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

@@ -1,5 +1,5 @@
 import { net } from 'electron'
-import { SessionRepository, AssistantRepository, MessageRepository, connectionManager, shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
+import { SessionRepository, AssistantRepository, MessageRepository, connectionManager, shadowConnectionManager, ShadowIndexRepository, UserProfileRepository } from '@baishou/database'
 import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
 import {
   SessionFileService,
@@ -127,6 +127,33 @@ export async function buildStreamConfig(requestedProviderId?: string, requestedM
   const provider = await getActiveProvider(requestedProviderId);
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
 
+  // 获取用户身份卡信息
+  let userCard: string | undefined;
+  try {
+    const db = connectionManager.getDb();
+    const profileRepo = new UserProfileRepository(db);
+    const profile = await profileRepo.getProfile();
+    
+    if (profile && profile.activePersonaId && profile.personas[profile.activePersonaId]) {
+      const activePersona = profile.personas[profile.activePersonaId];
+      const facts = activePersona.facts;
+      
+      // 将身份卡的 facts 转换为可读的字符串格式
+      if (facts && Object.keys(facts).length > 0) {
+        const factsList = Object.entries(facts)
+          .filter(([_, value]) => value && value.trim().length > 0)
+          .map(([key, value]) => `- ${key}: ${value}`)
+          .join('\n');
+        
+        if (factsList) {
+          userCard = `[User Identity Card / Persona: ${activePersona.id}]\n${factsList}`;
+        }
+      }
+    }
+  } catch (e: any) {
+    logger.warn('[buildStreamConfig] Failed to load user profile:', e.message || e);
+  }
+
   const namingProviderId = globalModels?.globalNamingProviderId || provider.config.id;
   let namingModelId = globalModels?.globalNamingModelId || requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat';
   let namingProvider = provider;
@@ -176,6 +203,7 @@ export async function buildStreamConfig(requestedProviderId?: string, requestedM
     web_search_max_results: webSearchConfig?.webSearchMaxResults || 5,
     web_search_rag_enabled: webSearchConfig?.webSearchRagEnabled ?? true,
     tavily_api_key: webSearchConfig?.tavilyApiKey || '',
+    userCard,
   };
 
   return {

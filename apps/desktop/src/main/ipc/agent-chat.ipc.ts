@@ -6,6 +6,7 @@ import { pathService } from './vault.ipc'
 import { getAgentManagers, agentService, toolRegistry, createDiarySearcher, createWebSearchResultFetcher, getActiveProvider, buildStreamConfig } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
 import { GlobalModelsConfig } from '@baishou/shared'
+import { ModelPricingService } from '@baishou/ai/src/pricing/model-pricing.service'
 
 let globalAbortController: AbortController | null = null;
 
@@ -21,9 +22,17 @@ export function registerChatIPC() {
     for (const msg of rows) {
       const parts = await realMessageRepo.getPartsByMessageId(msg.id);
       
-      const contentText = parts
-        .filter(p => p.type === 'text')
+      // 分离 reasoning 和普通 text
+      const textParts = parts.filter(p => p.type === 'text');
+      const reasoningParts = textParts.filter(p => p.data?.isReasoning);
+      const normalTextParts = textParts.filter(p => !p.data?.isReasoning);
+      
+      const contentText = normalTextParts
         .map(p => p.data?.text || p.data || '')
+        .join('\n');
+      
+      const reasoningText = reasoningParts
+        .map(p => p.data?.text || '')
         .join('\n');
         
       const toolInvocations = parts
@@ -39,6 +48,7 @@ export function registerChatIPC() {
       mapped.push({
         ...msg,
         content: contentText,
+        reasoning: reasoningText || undefined,
         toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
         parts
       });
@@ -446,6 +456,25 @@ export function registerChatIPC() {
     } catch (err) {
       logger.error('File Picker Error:', err)
       return []
+    }
+  })
+
+  // ==========================================
+  // API: Pricing
+  // ==========================================
+  ipcMain.handle('pricing:get-last-updated', async () => {
+    const pricingService = ModelPricingService.getInstance();
+    return pricingService.lastFetchTime?.toISOString() || null;
+  })
+
+  ipcMain.handle('pricing:refresh', async () => {
+    try {
+      const pricingService = ModelPricingService.getInstance();
+      await pricingService.forceRefresh();
+      return { success: true, lastUpdated: pricingService.lastFetchTime?.toISOString() || null };
+    } catch (e: any) {
+      logger.error('Failed to refresh pricing:', e);
+      return { success: false, error: e.message };
     }
   })
 }

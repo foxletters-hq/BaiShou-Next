@@ -162,6 +162,15 @@ export function registerSettingsIPC() {
     return true;
   });
 
+  ipcMain.handle('settings:get-search-mode-enabled', async () => {
+    return await settingsManager.get<boolean>('search_mode_enabled') || false;
+  });
+
+  ipcMain.handle('settings:set-search-mode-enabled', async (_, enabled: boolean) => {
+    await settingsManager.set('search_mode_enabled', enabled);
+    return true;
+  });
+
   ipcMain.handle('settings:get-mcp-server-config', async () => {
     return await settingsManager.get<any>('mcp_server_config') || null;
   });
