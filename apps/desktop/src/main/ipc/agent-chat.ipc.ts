@@ -10,6 +10,23 @@ import { ModelPricingService } from '@baishou/ai/src/pricing/model-pricing.servi
 
 let globalAbortController: AbortController | null = null;
 
+// 获取会话的助手上下文轮数配置
+async function getAssistantContextWindow(sessionId: string): Promise<number | undefined> {
+  try {
+    const { realSessionRepo, realAssistantRepo } = getAgentManagers();
+    const session = await realSessionRepo.getSessionById(sessionId);
+    if (session?.assistantId) {
+      const assistant = await realAssistantRepo.findById(session.assistantId);
+      if (assistant?.contextWindow !== undefined) {
+        return assistant.contextWindow;
+      }
+    }
+  } catch (e) {
+    logger.warn('Failed to load assistant context window:', e);
+  }
+  return undefined;
+}
+
 export function registerChatIPC() {
   // ==========================================
   // API: Chat (Stream)
@@ -64,7 +81,7 @@ export function registerChatIPC() {
 
   ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string; providerId?: string; modelId?: string; attachments?: any[]; searchMode?: boolean }) => {
     try {
-      const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers();
+      const { realSessionRepo, realSnapshotRepo, sessionManager, realAssistantRepo } = getAgentManagers();
       
       // [Intercept and Copy Attachments]
       let finalAttachments = args.attachments;
@@ -110,7 +127,21 @@ export function registerChatIPC() {
         }
       }
 
-      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(args.providerId, args.modelId, args.searchMode);
+      // 获取会话的助手配置
+      let assistantContextWindow: number | undefined;
+      try {
+        const session = await realSessionRepo.getSessionById(args.sessionId);
+        if (session?.assistantId) {
+          const assistant = await realAssistantRepo.findById(session.assistantId);
+          if (assistant?.contextWindow !== undefined) {
+            assistantContextWindow = assistant.contextWindow;
+          }
+        }
+      } catch (e) {
+        logger.warn('Failed to load assistant context window:', e);
+      }
+
+      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(args.providerId, args.modelId, args.searchMode, assistantContextWindow);
       
       globalAbortController = new AbortController();
       
@@ -188,7 +219,8 @@ export function registerChatIPC() {
 
     await realSessionRepo.deleteMessagesAfter(sessionId, userMessage.orderIndex);
     
-    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(undefined, undefined, searchMode);
+    const assistantContextWindow = await getAssistantContextWindow(sessionId);
+    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(undefined, undefined, searchMode, assistantContextWindow);
     globalAbortController = new AbortController();
 
     try {
@@ -292,7 +324,8 @@ export function registerChatIPC() {
 
     await realSessionRepo.deleteMessagesAfter(sessionId, targetMsg.orderIndex);
     
-    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(requestedProviderId, requestedModelId, searchMode);
+    const assistantContextWindow = await getAssistantContextWindow(sessionId);
+    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(requestedProviderId, requestedModelId, searchMode, assistantContextWindow);
     globalAbortController = new AbortController();
 
     try {
@@ -373,7 +406,8 @@ export function registerChatIPC() {
 
     // 4. 重新发送消息（带完整上下文）
     try {
-      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(undefined, undefined, searchMode);
+      const assistantContextWindow = await getAssistantContextWindow(sessionId);
+      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(undefined, undefined, searchMode, assistantContextWindow);
       globalAbortController = new AbortController();
 
       await agentService.streamChat({
@@ -419,6 +453,59 @@ export function registerChatIPC() {
       return false;
     } finally {
       globalAbortController = null;
+    }
+  });
+
+  // ==========================================
+  // API: TTS (Text-to-Speech)
+  // ==========================================
+  ipcMain.handle('agent:tts-synthesize', async (_event, text: string, providerId?: string, modelId?: string) => {
+    try {
+      const providers = await settingsManager.get<any[]>('ai_providers') || [];
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
+
+      const ttsProviderId = providerId || globalModels?.globalTtsProviderId;
+      const ttsModelId = modelId || globalModels?.globalTtsModelId;
+
+      if (!ttsProviderId || !ttsModelId) {
+        return { success: false, error: 'TTS model not configured. Please set a TTS model in Settings > Global Models.' };
+      }
+
+      const providerConfig = providers.find((p: any) => p.id === ttsProviderId);
+      if (!providerConfig) {
+        return { success: false, error: `TTS provider "${ttsProviderId}" not found.` };
+      }
+
+      const apiKey = providerConfig.apiKey;
+      const baseUrl = (providerConfig.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
+      const ttsEndpoint = `${baseUrl}/audio/speech`;
+
+      const response = await fetch(ttsEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: ttsModelId,
+          input: text,
+          voice: 'alloy',
+          response_format: 'mp3',
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        logger.error(`[TTS] API error ${response.status}: ${errText}`);
+        return { success: false, error: `TTS API error: ${response.status} ${response.statusText}` };
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      return { success: true, audioBase64: base64, format: 'mp3' };
+    } catch (error: any) {
+      logger.error('[TTS] Synthesize error:', error);
+      return { success: false, error: error.message || 'TTS synthesis failed' };
     }
   });
 

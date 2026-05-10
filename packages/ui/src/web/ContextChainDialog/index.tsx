@@ -8,11 +8,23 @@ export interface ContextChainDialogProps {
   onClose: () => void;
   message: MockChatMessage;
   contextMessages: MockChatMessage[];
+  compressedContent?: string;
+  originalContent?: string;
+  systemPrompt?: string;
 }
 
-export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({ isOpen, onClose, message, contextMessages }) => {
+export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({ 
+  isOpen, 
+  onClose, 
+  message, 
+  contextMessages,
+  compressedContent,
+  originalContent,
+  systemPrompt
+}) => {
   const { t } = useTranslation();
   const [selectedMsgIndex, setSelectedMsgIndex] = React.useState<number | null>(null);
+  const [activeTab, setActiveTab] = React.useState<'context' | 'compressed' | 'original' | 'prompt'>('context');
 
   if (!isOpen) return null;
 
@@ -39,6 +51,13 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({ isOpen, 
       default: return styles.roleDefault;
     }
   };
+
+  const tabs = [
+    { key: 'context', label: t('agent.chat.tab_context', '上下文') },
+    ...(compressedContent ? [{ key: 'compressed', label: t('agent.chat.tab_compressed', '压缩内容') }] : []),
+    ...(originalContent ? [{ key: 'original', label: t('agent.chat.tab_original', '原文') }] : []),
+    ...(systemPrompt ? [{ key: 'prompt', label: t('agent.chat.tab_prompt', '提示词') }] : []),
+  ];
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -71,20 +90,54 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({ isOpen, 
           </div>
         )}
 
+        {tabs.length > 1 && (
+          <div className={styles.tabsContainer}>
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                className={`${styles.tabButton} ${activeTab === tab.key ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab(tab.key as any)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className={styles.divider} />
 
-        <div className={styles.listContainer}>
-          {contextMessages.map((msg, idx) => (
-            <div key={idx} className={styles.messageItem} onClick={() => setSelectedMsgIndex(idx)}>
-              <span className={styles.msgIndex}>{idx + 1}</span>
-              <span className={`${styles.msgRole} ${getRoleColorClass(msg.role)}`}>{getRoleLabel(msg.role)}</span>
-              <div className={styles.msgPreview}>
-                {msg.content || (msg.toolInvocations ? '→ Toolbar interaction' : t('agent.chat.empty_content', '[空文本]'))}
+        {activeTab === 'context' && (
+          <div className={styles.listContainer}>
+            {contextMessages.map((msg, idx) => (
+              <div key={idx} className={styles.messageItem} onClick={() => setSelectedMsgIndex(idx)}>
+                <span className={styles.msgIndex}>{idx + 1}</span>
+                <span className={`${styles.msgRole} ${getRoleColorClass(msg.role)}`}>{getRoleLabel(msg.role)}</span>
+                <div className={styles.msgPreview}>
+                  {msg.content || (msg.toolInvocations ? '→ Toolbar interaction' : t('agent.chat.empty_content', '[空文本]'))}
+                </div>
+                <span className={styles.chevron}>›</span>
               </div>
-              <span className={styles.chevron}>›</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'compressed' && compressedContent && (
+          <div className={styles.contentArea}>
+            <pre className={styles.contentPre}>{compressedContent}</pre>
+          </div>
+        )}
+
+        {activeTab === 'original' && originalContent && (
+          <div className={styles.contentArea}>
+            <pre className={styles.contentPre}>{originalContent}</pre>
+          </div>
+        )}
+
+        {activeTab === 'prompt' && systemPrompt && (
+          <div className={styles.contentArea}>
+            <pre className={styles.contentPre}>{systemPrompt}</pre>
+          </div>
+        )}
       </div>
 
       {selectedMsgIndex !== null && (

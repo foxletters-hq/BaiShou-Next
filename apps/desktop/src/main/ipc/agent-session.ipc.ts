@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import * as crypto from 'crypto'
 import { getAgentManagers } from './agent-helpers'
 import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
@@ -105,6 +106,85 @@ export function registerSessionIPC() {
     const { sessionManager } = getAgentManagers();
     const all = await sessionManager.findAllSessions();
     return all.filter(s => s.assistantId === assistantId);
+  });
+
+  // 对话分支：从指定消息位置复制一个新会话
+  ipcMain.handle('agent:branch-session', async (_, { sessionId, messageId, title }: { sessionId: string; messageId: string; title?: string }) => {
+    const { realSessionRepo, sessionManager, assistantManager, realMessageRepo } = getAgentManagers();
+    
+    // 1. 获取原会话信息
+    const originalSession = await realSessionRepo.getSessionById(sessionId);
+    if (!originalSession) {
+      throw new Error('原会话不存在');
+    }
+
+    // 2. 获取原会话的所有消息
+    const allMessages = await realSessionRepo.getMessagesBySession(sessionId, 9999);
+    // getMessagesBySession 返回的是倒序再 reverse，所以是从旧到新
+    
+    // 3. 找到目标消息的位置
+    const targetIndex = allMessages.findIndex((m: any) => m.id === messageId);
+    if (targetIndex === -1) {
+      throw new Error('目标消息不存在');
+    }
+    
+    // 4. 截取到目标消息（包含目标消息）
+    const messagesToCopy = allMessages.slice(0, targetIndex + 1);
+    
+    // 5. 创建新会话
+    let vaultName = 'default';
+    try {
+      const activeVaultPath = await pathService.getActiveVaultPath();
+      if (activeVaultPath) {
+        vaultName = activeVaultPath.split(/[/\\]/).pop() || 'default';
+      }
+    } catch(e) {}
+
+    const newSessionId = `branch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const branchTitle = title || `${originalSession.title || '对话'} (分支)`;
+    
+    await sessionManager.upsertSession({
+      id: newSessionId,
+      vaultName,
+      providerId: originalSession.providerId,
+      modelId: originalSession.modelId,
+      assistantId: originalSession.assistantId || undefined,
+      title: branchTitle,
+    } as any);
+
+    // 6. 复制消息到新会话
+    for (let i = 0; i < messagesToCopy.length; i++) {
+      const msg = messagesToCopy[i];
+      const newMsgId = crypto.randomUUID();
+      
+      // 获取原始消息的 parts
+      const originalParts = await realMessageRepo.getPartsByMessageId(msg.id);
+      
+      // 插入消息
+      await realSessionRepo.insertMessageWithParts(
+        {
+          id: newMsgId,
+          sessionId: newSessionId,
+          role: msg.role,
+          orderIndex: i + 1,
+          inputTokens: msg.inputTokens,
+          outputTokens: msg.outputTokens,
+          costMicros: msg.costMicros,
+          providerId: msg.providerId,
+          modelId: msg.modelId,
+        },
+        originalParts.map((p: any) => ({
+          id: crypto.randomUUID(),
+          messageId: newMsgId,
+          sessionId: newSessionId,
+          type: p.type,
+          data: p.data,
+        }))
+      );
+    }
+
+    logger.info(`[Branch] Created branch session ${newSessionId} from ${sessionId}, copied ${messagesToCopy.length} messages`);
+    return newSessionId;
   });
 
   // Provider Discovery API

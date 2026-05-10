@@ -16,7 +16,7 @@ export interface ChatCostDialogProps {
   onClose: () => void;
   isOpen: boolean;
   pricingLastUpdated?: Date | null;
-  onRefreshPricing?: () => Promise<void>;
+  onRefreshPricing?: () => Promise<{ success: boolean; error?: string }>;
 }
 
 export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ 
@@ -28,6 +28,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   // Close on Escape 
   useEffect(() => {
@@ -41,12 +42,18 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
   const handleRefresh = useCallback(async () => {
     if (!onRefreshPricing || isRefreshing) return;
     setIsRefreshing(true);
+    setRefreshError(null);
     try {
-      await onRefreshPricing();
+      const result = await onRefreshPricing();
+      if (!result.success && result.error) {
+        setRefreshError(result.error);
+      }
+    } catch (e: any) {
+      setRefreshError(e?.message || t('agent.chat.pricing_refresh_failed', '刷新失败'));
     } finally {
       setIsRefreshing(false);
     }
-  }, [onRefreshPricing, isRefreshing]);
+  }, [onRefreshPricing, isRefreshing, t]);
 
   const formatLastUpdated = useCallback((date: Date | null | undefined): string => {
     if (!date) return t('agent.chat.pricing_unknown', '未知');
@@ -123,6 +130,11 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                      ? t('agent.chat.pricing_refreshing', '刷新中...') 
                      : t('agent.chat.pricing_refresh', '刷新价格表')}
                  </button>
+               </div>
+             )}
+             {refreshError && (
+               <div className={styles.errorMessage}>
+                 {refreshError}
                </div>
              )}
              

@@ -40,7 +40,7 @@ export function getAgentManagers() {
   const realMessageRepo = new MessageRepository(db);
   const realSnapshotRepo = new SnapshotRepository(db);
 
-  return { sessionManager, assistantManager, realMessageRepo, realSessionRepo, realSnapshotRepo };
+  return { sessionManager, assistantManager, realMessageRepo, realSessionRepo, realSnapshotRepo, realAssistantRepo };
 }
 
 /** 创建日记 FTS5 搜索适配器，注入到 ToolContext 供 diary_search 工具使用 */
@@ -122,8 +122,9 @@ export async function getActiveProvider(requestedProviderId?: string) {
 
 /**
  * 构建 Agent 流式调用所需的通用配置
+ * @param assistantContextWindow 助手的上下文轮数配置，优先于全局配置
  */
-export async function buildStreamConfig(requestedProviderId?: string, requestedModelId?: string, searchMode?: boolean) {
+export async function buildStreamConfig(requestedProviderId?: string, requestedModelId?: string, searchMode?: boolean, assistantContextWindow?: number) {
   const provider = await getActiveProvider(requestedProviderId);
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
 
@@ -197,7 +198,9 @@ export async function buildStreamConfig(requestedProviderId?: string, requestedM
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
     disabledToolIds: toolManagementConfig?.disabledToolIds || [],
-    recentCount: behaviorConfig?.agentContextWindowSize ?? 30,
+    recentCount: assistantContextWindow !== undefined 
+      ? (assistantContextWindow < 0 ? 0 : assistantContextWindow) 
+      : (behaviorConfig?.agentContextWindowSize ?? 30),
     web_search_enabled: searchMode ?? false,
     web_search_engine: webSearchConfig?.webSearchEngine || 'duckduckgo',
     web_search_max_results: webSearchConfig?.webSearchMaxResults || 5,

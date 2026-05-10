@@ -98,9 +98,70 @@ export const AgentScreen: React.FC = () => {
   const [showRecallSheet, setShowRecallSheet] = useState(false);
   const [showShortcutManager, setShowShortcutManager] = useState(false);
   const [showToolManager, setShowToolManager] = useState(false);
-  const [contextDialogState, setContextDialogState] = useState<{ isOpen: boolean, message?: any, contextMessages?: any[] }>({ isOpen: false });
+  const [contextDialogState, setContextDialogState] = useState<{ 
+    isOpen: boolean; 
+    message?: any; 
+    contextMessages?: any[];
+    compressedContent?: string;
+    originalContent?: string;
+    systemPrompt?: string;
+  }>({ isOpen: false });
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
   const inputBarRef = useRef<InputBarRef>(null);
+
+  // ── TTS 状态 ──
+  const [ttsMode, setTtsMode] = useState<'off' | 'always' | 'manual'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('baishou_tts_mode') as any) || 'off';
+    }
+    return 'off';
+  });
+  const [ttsPlayingMsgId, setTtsPlayingMsgId] = useState<string | null>(null);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const toggleTtsMode = useCallback(() => {
+    setTtsMode(prev => {
+      const next = prev === 'off' ? 'always' : prev === 'always' ? 'manual' : 'off';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('baishou_tts_mode', next);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleTtsReadAloud = useCallback(async (content: string, messageId?: string) => {
+    if (!content.trim()) return;
+    try {
+      const api = (window as any).api;
+      if (!api?.tts?.synthesize) {
+        toast.showError(t('agent.chat.tts_no_api', 'TTS 功能不可用'));
+        return;
+      }
+      const result = await api.tts.synthesize(content);
+      if (result.success && result.audioBase64) {
+        if (ttsAudioRef.current) {
+          ttsAudioRef.current.pause();
+          ttsAudioRef.current = null;
+        }
+        const audio = new Audio(`data:audio/${result.format || 'mp3'};base64,${result.audioBase64}`);
+        ttsAudioRef.current = audio;
+        if (messageId) setTtsPlayingMsgId(messageId);
+        audio.onended = () => {
+          setTtsPlayingMsgId(null);
+          ttsAudioRef.current = null;
+        };
+        audio.onerror = () => {
+          setTtsPlayingMsgId(null);
+          ttsAudioRef.current = null;
+        };
+        await audio.play();
+      } else {
+        toast.showError(result.error || t('agent.chat.tts_failed', '语音合成失败'));
+      }
+    } catch (e: any) {
+      toast.showError(e.message || t('agent.chat.tts_failed', '语音合成失败'));
+    }
+  }, [t, toast]);
 
   // ── 获取价格表更新时间 ──
   const fetchPricingLastUpdated = useCallback(async () => {
@@ -124,10 +185,13 @@ export const AgentScreen: React.FC = () => {
         if (result.success && result.lastUpdated) {
           setPricingLastUpdated(new Date(result.lastUpdated));
         }
+        return result;
       } catch (e) {
         console.error('Failed to refresh pricing:', e);
+        return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
       }
     }
+    return { success: false, error: 'No electron context' };
   }, []);
 
   // ── 初始化加载价格表时间 ──
@@ -167,12 +231,33 @@ export const AgentScreen: React.FC = () => {
 
   // ── 流结束时刷新侧边栏 ──
   const prevIsStreamingRef = useRef(stream.isStreaming);
+  const ttsModeRef = useRef(ttsMode);
+  const chatMessagesRef = useRef(chat.messages);
+  ttsModeRef.current = ttsMode;
+  chatMessagesRef.current = chat.messages;
   useEffect(() => {
     if (prevIsStreamingRef.current === true && stream.isStreaming === false) {
       if (loadSessions) loadSessions(true);
+      // TTS auto-play when mode is 'always' and stream just finished
+      if (ttsModeRef.current === 'always' && chatMessagesRef.current.length > 0) {
+        const lastMsg = chatMessagesRef.current[chatMessagesRef.current.length - 1];
+        if (lastMsg.role === 'assistant' && lastMsg.content) {
+          handleTtsReadAloud(lastMsg.content, lastMsg.id);
+        }
+      }
     }
     prevIsStreamingRef.current = stream.isStreaming;
-  }, [stream.isStreaming, sessionId, loadSessions]);
+  }, [stream.isStreaming, sessionId, loadSessions, handleTtsReadAloud]);
+
+  // ── TTS cleanup on unmount ──
+  useEffect(() => {
+    return () => {
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+        ttsAudioRef.current = null;
+      }
+    };
+  }, []);
 
   // ── 发送消息 ──
   const handleSend = async (text: string, attachments?: any[], searchMode?: boolean) => {
@@ -254,7 +339,7 @@ export const AgentScreen: React.FC = () => {
               .then((sessionsList: any[]) => {
                 if (sessionsList && sessionsList.length > 0) {
                   const sorted = sessionsList.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-                  navigate(`/chat/${sorted[0].id}`);
+                  navigate(`/chat/${sorted[0].id}?assistantId=${ast.id}`);
                 } else {
                   navigate(`/chat?assistantId=${ast.id}`);
                 }
@@ -358,6 +443,10 @@ export const AgentScreen: React.FC = () => {
           {/* 历史消息 */}
           {[...chat.messages].map((msg, index, arr) => {
             let decodedContext: any[] | undefined;
+            let compressedContent: string | undefined;
+            let originalContent: string | undefined;
+            let systemPrompt: string | undefined;
+            
             if (msg.role === 'assistant' && index > 0) {
               const prevMsg = arr[index - 1];
               if (prevMsg.role === 'user' && prevMsg.parts) {
@@ -368,6 +457,20 @@ export const AgentScreen: React.FC = () => {
                     content: `${s.title ? '[' + s.title + '] ' : ''}${s.content}`,
                     timestamp: msg.createdAt || new Date(),
                   }));
+                }
+                
+                // 获取压缩内容
+                const compPart = prevMsg.parts.find((p: any) => p.type === 'compaction');
+                if (compPart && compPart.data?.summary) {
+                  compressedContent = compPart.data.summary;
+                }
+              }
+              
+              // 获取系统提示词（从会话的第一条消息或助手配置）
+              if (index === 1 || (index === 2 && arr[0]?.role === 'system')) {
+                const sysMsg = arr.find((m: any) => m.role === 'system');
+                if (sysMsg?.content) {
+                  systemPrompt = sysMsg.content;
                 }
               }
             }
@@ -393,8 +496,17 @@ export const AgentScreen: React.FC = () => {
                 userProfile={{ nickname: userProfile?.nickname || 'User', avatarPath: userProfile?.avatarPath }}
                 aiProfile={{ name: currentAssistant?.name || 'AI', avatarPath: currentAssistant?.avatarPath, emoji: currentAssistant?.emoji }}
                 onShowContext={(m) => {
-                  setContextDialogState({ isOpen: true, message: m, contextMessages: m.contextMessages || [] });
+                  setContextDialogState({ 
+                    isOpen: true, 
+                    message: m, 
+                    contextMessages: m.contextMessages || [],
+                    compressedContent,
+                    originalContent: m.content,
+                    systemPrompt
+                  });
                 }}
+                onReadAloud={msg.role === 'assistant' ? (content) => handleTtsReadAloud(content, msg.id) : undefined}
+                isTtsPlaying={ttsPlayingMsgId === msg.id}
                 onRegenerate={() => {
                   if (typeof window !== 'undefined' && window.electron) {
                     window.electron.ipcRenderer.invoke('agent:regenerate', sessionId, msg.id, searchMode).then(() => chat.refreshMessages());
@@ -435,6 +547,25 @@ export const AgentScreen: React.FC = () => {
                     window.electron.ipcRenderer.invoke('agent:delete-message', sessionId, msg.id).then(() => chat.refreshMessages());
                   }
                 }}
+                onBranch={msg.role === 'assistant' ? async () => {
+                  if (typeof window !== 'undefined' && window.electron) {
+                    try {
+                      const title = `${currentAssistant?.name || '对话'} (${t('agent.chat.branch', '分支')})`;
+                      const newSessionId = await window.electron.ipcRenderer.invoke('agent:branch-session', {
+                        sessionId,
+                        messageId: msg.id,
+                        title
+                      });
+                      if (newSessionId) {
+                        toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'));
+                        // 导航到新会话
+                        navigate(`/agent/session/${newSessionId}`);
+                      }
+                    } catch (e: any) {
+                      toast.showError(e?.message || t('agent.chat.branch_failed', '分支创建失败'));
+                    }
+                  }
+                } : undefined}
               />
             );
           })}
@@ -522,6 +653,9 @@ export const AgentScreen: React.FC = () => {
           onClose={() => setContextDialogState(prev => ({ ...prev, isOpen: false }))}
           message={contextDialogState.message}
           contextMessages={contextDialogState.contextMessages || []}
+          compressedContent={contextDialogState.compressedContent}
+          originalContent={contextDialogState.originalContent}
+          systemPrompt={contextDialogState.systemPrompt}
         />
       )}
 
@@ -540,6 +674,8 @@ export const AgentScreen: React.FC = () => {
           onOpenTools={() => setShowToolManager(true)}
           searchMode={searchMode}
           onToggleSearchMode={toggleSearchMode}
+          ttsMode={ttsMode}
+          onToggleTtsMode={toggleTtsMode}
         />
       </div>
     </div>
