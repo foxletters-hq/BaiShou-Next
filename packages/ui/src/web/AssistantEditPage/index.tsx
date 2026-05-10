@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { logger } from '@baishou/shared';
-import { ChevronLeft, Trash2, Smile, Plus, ChevronRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Trash2, Smile, Plus, ChevronRight, Loader2, CheckCircle2, Info } from 'lucide-react';
+import { MdCloud } from 'react-icons/md';
 import { AvatarEditor } from '../AvatarEditor';
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup';
 import { Switch } from '../Switch/Switch';
+import { getProviderIcon } from '../../utils/provider-icons';
+import { useTheme } from '../../hooks';
 import styles from './AssistantEditPage.module.css';
 
 export interface AssistantFormData {
@@ -46,6 +49,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   providers = [],
 }) => {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const isEditing = assistant !== null;
 
   const [name, setName] = useState(assistant?.name ?? '');
@@ -69,6 +73,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
   const [providerPickerOpen, setProviderPickerOpen] = useState(false);
   const [pickerProviders, setPickerProviders] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCompressTooltip, setShowCompressTooltip] = useState(false);
+  const [showKeepTurnsTooltip, setShowKeepTurnsTooltip] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).electron) {
@@ -226,7 +232,15 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
             </button>
           ) : (
             <div className={styles.modelCard} onClick={() => setProviderPickerOpen(true)}>
-              <div className={styles.modelIcon}>✨</div>
+              <div className={styles.modelIcon}>
+                {(() => {
+                  const iconSrc = providerId ? getProviderIcon(providerId, isDark) : undefined;
+                  if (iconSrc) {
+                    return <img src={iconSrc} alt={providerId} style={{ width: 24, height: 24, objectFit: 'contain' }} />;
+                  }
+                  return <MdCloud size={24} color="var(--text-tertiary, #999)" />;
+                })()}
+              </div>
               <div className={styles.modelInfo}>
                 <span className={styles.modelSup}>{providerId}</span>
                 <span className={styles.modelSub}>{modelId}</span>
@@ -235,7 +249,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
             </div>
           )}
           <div className={styles.descText} style={{marginTop: 4}}>
-            {t('agent.assistant.bind_model_desc', '如果不绑定，则使用全局默认模型')}
+            {t('agent.assistant.bind_model_desc', '绑定后，和伙伴创建对话时，会默认优先使用选择的模型')}
           </div>
 
           <div className={styles.spacer24} />
@@ -283,6 +297,23 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               checked={!isCompressDisabled} 
               onChange={(e) => setCompressThreshold(e.target.checked ? 60000 : 0)} 
             />
+            <div style={{width: 8, position: 'relative'}}>
+              <button 
+                className={styles.infoButton}
+                onMouseEnter={() => setShowCompressTooltip(true)}
+                onMouseLeave={() => setShowCompressTooltip(false)}
+                onClick={() => setShowCompressTooltip(!showCompressTooltip)}
+              >
+                <Info size={14} />
+              </button>
+              {showCompressTooltip && (
+                <div className={styles.infoTooltip}>
+                  <p className={styles.infoTooltipText}>
+                    {t('agent.assistant.compress_tooltip', '当对话上下文超过设定的 Token 阈值时，系统会自动压缩早期对话内容，保留最近的对话轮数。')}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
           <div className={styles.descText}>
             {isCompressDisabled 
@@ -307,9 +338,23 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                 <label className={styles.fieldLabel} style={{marginBottom: 0}}>{t('agent.assistant.compress_keep_turns_label', '压缩后保留轮数')}</label>
                 <div style={{flex: 1}} />
                 <span className={styles.valueText}>{Math.round(compressKeepTurns)} {t('common.turns', '轮')}</span>
-              </div>
-              <div className={styles.descText}>
-                {t('agent.assistant.compress_keep_turns_desc', '触发压缩时尾部强行保留几轮原文对话')}
+                <div style={{width: 8, position: 'relative'}}>
+                  <button 
+                    className={styles.infoButton}
+                    onMouseEnter={() => setShowKeepTurnsTooltip(true)}
+                    onMouseLeave={() => setShowKeepTurnsTooltip(false)}
+                    onClick={() => setShowKeepTurnsTooltip(!showKeepTurnsTooltip)}
+                  >
+                    <Info size={14} />
+                  </button>
+                  {showKeepTurnsTooltip && (
+                    <div className={styles.infoTooltip}>
+                      <p className={styles.infoTooltipText}>
+                        {t('agent.assistant.compress_keep_turns_tooltip', '触发压缩时，会保留最近设定轮数的原文对话，确保上下文连贯性。')}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className={styles.sliderContainer}>
                 <input 

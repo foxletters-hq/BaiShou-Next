@@ -174,8 +174,8 @@
   opacity: 0.8;
 }
 .pinnedAvatarWrapper.selected {
-  padding: 2px;
-  border: 2px solid var(--color-primary);
+  filter: brightness(1.2);
+  box-shadow: 0 0 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
 }
 .managePinnedBtn {
   width: 40px;

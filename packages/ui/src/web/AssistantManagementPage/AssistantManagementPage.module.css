@@ -429,6 +429,23 @@
   cursor: pointer;
   transition: all 0.2s;
 }
+.createBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.2);
+}
+
 .createBtn:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(91, 168, 245, 0.4);

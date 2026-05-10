@@ -10,7 +10,7 @@ import geminiMonoIcon from '../assets/ai_provider_icon/gemini.svg';
 import anthropicIcon from '../assets/ai_provider_icon/anthropic.svg';
 import deepseekColorIcon from '../assets/ai_provider_icon/deepseek-color.svg';
 import deepseekMonoIcon from '../assets/ai_provider_icon/deepseek.svg';
-import kimiColorIcon from '../assets/ai_provider_icon/kimi-color.svg';
+import kimiColorIcon from '../assets/ai_provider_icon/kimi.svg';
 import kimiMonoIcon from '../assets/ai_provider_icon/kimi.svg';
 import ollamaIcon from '../assets/ai_provider_icon/ollama.svg';
 import dashscopeColorIcon from '../assets/ai_provider_icon/dashscope-color.svg';

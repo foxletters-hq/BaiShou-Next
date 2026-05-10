@@ -6,6 +6,7 @@ import type { EmojiClickEvent, NativeEmoji } from 'emoji-picker-element/shared';
 import { ImagePlus } from 'lucide-react';
 import emojiDataUrl from 'emoji-picker-element-data/en/cldr/data.json?url';
 import { useTheme } from '../../hooks';
+import { AvatarCropModal } from '../AvatarCropModal';
 import styles from './AvatarEditor.module.css';
 
 export interface AvatarEditorProps {
@@ -18,6 +19,8 @@ export interface AvatarEditorProps {
 export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }) => {
   const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<Picker>(null);
   const { isDark } = useTheme();
@@ -128,7 +131,8 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
         const reader = new FileReader();
         reader.onload = (ev) => {
           if (typeof ev.target?.result === 'string') {
-            onChange('image', ev.target.result);
+            setTempImageSrc(ev.target.result);
+            setShowCropModal(true);
           }
         };
         reader.readAsDataURL(file);
@@ -138,43 +142,64 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
     setShowPicker(false);
   };
 
+  const cancelCrop = () => {
+    setShowCropModal(false);
+    setTempImageSrc(null);
+  };
+
+  const finishCrop = (croppedUrl: string) => {
+    onChange('image', croppedUrl);
+    setShowCropModal(false);
+    setTempImageSrc(null);
+  };
+
   return (
-    <div className={styles.editorContainer} ref={containerRef}>
-      <div 
-        onClick={(e) => { e.preventDefault(); setShowPicker(!showPicker); }}
-        className={styles.triggerWrapper}
-      >
-        {children}
+    <>
+      <div className={styles.editorContainer} ref={containerRef}>
+        <div 
+          onClick={(e) => { e.preventDefault(); setShowPicker(!showPicker); }}
+          className={styles.triggerWrapper}
+        >
+          {children}
+        </div>
+
+        {showPicker && (
+          <div className={styles.popover} onClick={(e) => e.stopPropagation()}>
+             <div className={styles.popoverHeader}>
+                 <span className={styles.popoverTitle}>{t('avatarEditor.personalizeIcon', '个性化图标')}</span>
+                 <button 
+                    className={styles.uploadBtnIcon} 
+                    onClick={triggerImageInput} 
+                    title={t('avatarEditor.uploadImageAsAvatar', '从本地上传图片作为头像')}
+                >
+                   <ImagePlus size={16} />
+                </button>
+             </div>
+             <div className={styles.pickerWrapper}>
+               {/* @ts-ignore Since it's a web component */}
+               <emoji-picker 
+                 ref={pickerRef} 
+                 class={isDark ? "dark" : "light"} 
+                 style={{ 
+                   width: '100%', 
+                   height: '300px', 
+                   border: 'none', 
+                   background: 'transparent',
+                   '--indicator-color': 'var(--color-primary)'
+                 }} 
+               />
+             </div>
+          </div>
+        )}
       </div>
 
-      {showPicker && (
-        <div className={styles.popover} onClick={(e) => e.stopPropagation()}>
-           <div className={styles.popoverHeader}>
-               <span className={styles.popoverTitle}>{t('avatarEditor.personalizeIcon', '个性化图标')}</span>
-               <button 
-                  className={styles.uploadBtnIcon} 
-                  onClick={triggerImageInput} 
-                  title={t('avatarEditor.uploadImageAsAvatar', '从本地上传图片作为头像')}
-              >
-                 <ImagePlus size={16} />
-              </button>
-           </div>
-           <div className={styles.pickerWrapper}>
-             {/* @ts-ignore Since it's a web component */}
-             <emoji-picker 
-               ref={pickerRef} 
-               class={isDark ? "dark" : "light"} 
-               style={{ 
-                 width: '100%', 
-                 height: '300px', 
-                 border: 'none', 
-                 background: 'transparent',
-                 '--indicator-color': 'var(--color-primary)'
-               }} 
-             />
-           </div>
-        </div>
+      {showCropModal && tempImageSrc && (
+        <AvatarCropModal 
+          imageSrc={tempImageSrc}
+          onCanceled={cancelCrop}
+          onCropped={finishCrop}
+        />
       )}
-    </div>
+    </>
   );
 };

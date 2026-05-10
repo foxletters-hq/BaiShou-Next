@@ -185,7 +185,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
                   }
                 }}
               >
-                <AssistantAvatar assistant={assistant} size={isSelected ? 36 : 40} />
+                <AssistantAvatar assistant={assistant} size={40} />
               </div>
             );
           })}

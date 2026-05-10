@@ -211,7 +211,7 @@ export const AgentLayout: React.FC = () => {
           if (sessionsList && sessionsList.length > 0) {
              const sorted = sessionsList.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
              const targetId = sorted[0].id;
-             navigate(`/chat/${targetId}`);
+             navigate(`/chat/${targetId}?assistantId=${assistant.id}`);
              return;
           }
         } catch (e) {

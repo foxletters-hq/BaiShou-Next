@@ -371,6 +371,61 @@
   color: var(--text-secondary);
 }
 
+/* Info Button with Tooltip */
+.infoButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.infoButton:hover {
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  color: var(--text-primary);
+}
+
+.infoTooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  animation: tooltipFadeIn 0.2s ease-out;
+}
+
+.infoTooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 12px;
+  border: 6px solid transparent;
+  border-top-color: var(--bg-surface);
+}
+
+.infoTooltipText {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* M3 Switch replica */
 .switch {
   position: relative;

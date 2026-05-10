@@ -29,6 +29,9 @@ export function useAssistantResolver(params: UseAssistantResolverParams): UseAss
     activeAssistantId = searchParams.get('assistantId') || undefined;
   } else if (currentSession) {
     activeAssistantId = (currentSession as any).assistantId;
+  } else {
+    // Fallback: if session not found in loaded list, check URL assistantId
+    activeAssistantId = searchParams.get('assistantId') || undefined;
   }
 
   const currentAssistant = useMemo(() => {
