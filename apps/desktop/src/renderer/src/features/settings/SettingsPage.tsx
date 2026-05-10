@@ -501,6 +501,7 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const [ragEntries, setRagEntries] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeRagState, setActiveRagState] = useState<any>({ isRunning: false, type: 'idle', progress: 0, total: 0, statusText: '' });
+  const [hasMismatchModel, setHasMismatchModel] = useState(false);
   const { confirm, prompt, alert } = useDialog();
   const toast = useToast();
 
@@ -510,6 +511,11 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
       if (s) setRagStats(s);
       const e = await (window as any).api?.rag?.queryEntries({ limit: 50 });
       if (e) setRagEntries(e);
+      // Check for pending migration or model mismatch
+      try {
+        const pending = await (window as any).api?.rag?.hasPendingMigration?.();
+        setHasMismatchModel(!!pending);
+      } catch { /* ignore */ }
     } catch (err) {}
   };
 
@@ -533,7 +539,7 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
              config={settings.ragConfig}
              stats={ragStats}
              ragState={activeRagState.isRunning ? activeRagState : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }}
-             hasMismatchModel={false}
+             hasMismatchModel={hasMismatchModel}
              embeddingModelId={settings.globalModels?.globalEmbeddingModelId}
              entries={ragEntries}
              onChange={(config) => settings.setRagConfig(config)}
@@ -568,16 +574,18 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
                  await fetchRagInfo();
                } finally { setIsProcessing(false); }
              }}
-             onAddManualMemory={async () => {
-               const text = await prompt('', '', t('settings.rag_add_manual', '添加手动记忆片段'), true);
-               if (!text || text.trim().length === 0) return;
-               setIsProcessing(true);
-               try {
-                 await (window as any).api?.rag?.addManualMemory?.(text);
-                 toast.showSuccess(t('common.success', '操作成功'));
-                 await fetchRagInfo();
-               } finally { setIsProcessing(false); }
-             }}
+              onAddManualMemory={async () => {
+                const text = await prompt('', '', t('settings.rag_add_manual', '添加手动记忆片段'), true);
+                if (!text || text.trim().length === 0) return;
+                setIsProcessing(true);
+                try {
+                  await (window as any).api?.rag?.addManualMemory?.(text);
+                  toast.showSuccess(t('settings.rag_add_manual_success', '记忆片段已添加'));
+                  await fetchRagInfo();
+                } catch (e: any) {
+                  toast.showError(t('settings.rag_add_manual_failed', '添加失败: ') + (e?.message || t('common.error', '错误')));
+                } finally { setIsProcessing(false); }
+              }}
              onTriggerMigration={async () => {
                if (!await confirm(t('settings.rag_trigger_migration', '执行向量库迁移') + '?', t('common.warning', '警告'))) return;
                setIsProcessing(true);
@@ -587,21 +595,27 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
                } finally { setIsProcessing(false); }
              }}
              onClearAll={async () => {
-               if (!await confirm(t('settings.rag_clear_all', '清空所有向量数据') + '?', t('common.dangerous_action', '危险操作'))) return;
+               if (!await confirm(t('settings.rag_clear_all', '清空现有记忆') + '?', t('common.dangerous_action', '危险操作'))) return;
                setIsProcessing(true);
                try {
                  await (window as any).api?.rag?.clearAll();
                  await fetchRagInfo();
                } finally { setIsProcessing(false); }
              }}
-             onSearch={async (q) => {
-               setIsProcessing(true);
-               try {
-                 const e = await (window as any).api?.rag?.queryEntries({ keyword: q, limit: 50 });
-                 if (e) setRagEntries(e);
-               } catch (err) {}
-               finally { setIsProcessing(false); }
-             }}
+              onSearch={async (q, mode) => {
+                setIsProcessing(true);
+                try {
+                  const params: any = { limit: 50 };
+                  if (mode === 'text') {
+                    params.keyword = q;
+                  } else {
+                    params.semanticQuery = q;
+                  }
+                  const e = await (window as any).api?.rag?.queryEntries(params);
+                  if (e) setRagEntries(e);
+                } catch (err) {}
+                finally { setIsProcessing(false); }
+              }}
              onDeleteEntry={async (id) => {
                if (!await confirm(t('common.delete', '删除') + '?', t('common.warning', '警告'))) return;
                setIsProcessing(true);
