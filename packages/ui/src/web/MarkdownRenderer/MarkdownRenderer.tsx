@@ -12,6 +12,7 @@ import styles from './MarkdownRenderer.module.css';
 export interface MarkdownRendererProps {
   content: string;
   isStreaming?: boolean;
+  basePath?: string;
 }
 
 function remarkBrToBreak() {
@@ -30,8 +31,16 @@ function remarkBrToBreak() {
   };
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false, basePath }) => {
   const { t } = useTranslation();
+
+  const resolveAttachment = (src?: string) => {
+    if (src && basePath && src.startsWith('attachment/')) {
+      return `${basePath}/${src.replace('attachment/', '')}`;
+    }
+    return src;
+  };
+
   return (
     <div className={`${styles.markdownContainer} ${isStreaming ? styles.streaming : ''}`}>
       <ReactMarkdown
@@ -44,6 +53,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
           p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
           em: ({ node, ...props }) => <em className={styles.italicAnnotation} {...props} />,
           a: ({ node, ...props }) => <a className={styles.link} target="_blank" rel="noopener noreferrer" {...props} />,
+          img: ({ node, ...props }) => <img {...props} src={resolveAttachment(props.src)} style={{ maxWidth: '100%', borderRadius: '8px' }} />,
+          video: ({ node, ...props }) => <video {...props} src={resolveAttachment(props.src)} style={{ maxWidth: '100%', borderRadius: '8px' }} controls />,
+          audio: ({ node, ...props }) => <audio {...props} src={resolveAttachment(props.src)} style={{ width: '100%' }} controls />,
           code({ node, className, children, inline, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
             return !inline && match ? (

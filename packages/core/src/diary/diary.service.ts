@@ -190,6 +190,7 @@ export class DiaryService {
          mood: s.mood || undefined,
          location: s.location || undefined,
          isFavorite: s.isFavorite || false,
+         hasMedia: s.hasMedia || false,
       };
     });
   }

@@ -142,4 +142,30 @@ export class DesktopStoragePathService implements IStoragePathService {
     await fs.mkdir(dir, { recursive: true });
     return dir;
   }
+
+  /**
+   * 获取日记附件目录
+   * 路径结构: Vault/Journals/{year}/{month}/attachment/
+   * @param date 日期对象，用于确定年月
+   */
+  public async getDiaryAttachmentDirectory(date: Date): Promise<string> {
+    const journalsDir = await this.getJournalsBaseDirectory();
+    const year = String(date.getFullYear());
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const dir = path.join(journalsDir, year, month, 'attachment');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+  /**
+   * 获取日记附件目录（根据年月字符串）
+   * @param yearMonth 格式: "2026-05"
+   */
+  public async getDiaryAttachmentDirectoryByYearMonth(yearMonth: string): Promise<string> {
+    const journalsDir = await this.getJournalsBaseDirectory();
+    const [year, month] = yearMonth.split('-');
+    const dir = path.join(journalsDir, year!, month!, 'attachment');
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  }
 }

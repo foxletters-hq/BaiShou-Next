@@ -53,4 +53,17 @@ export interface IStoragePathService {
    * 返回专门用于存放全局用户与伙伴头像的统一子目录
    */
   getAvatarsDirectory(): Promise<string>;
+
+  /**
+   * 获取日记附件目录
+   * 路径结构: Vault/Journals/{year}/{month}/attachment/
+   * @param date 日期对象，用于确定年月
+   */
+  getDiaryAttachmentDirectory(date: Date): Promise<string>;
+
+  /**
+   * 获取日记附件目录（根据年月字符串）
+   * @param yearMonth 格式: "2026-05"
+   */
+  getDiaryAttachmentDirectoryByYearMonth(yearMonth: string): Promise<string>;
 }

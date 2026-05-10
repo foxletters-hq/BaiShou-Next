@@ -49,6 +49,7 @@ export interface DiaryMeta {
   mood?: string;
   location?: string;
   isFavorite?: boolean;
+  hasMedia?: boolean;
 }
 
 export interface TimelineNode {

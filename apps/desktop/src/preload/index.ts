@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
@@ -20,6 +20,11 @@ export const api = {
   // Phase 10 Extracted System Access
   pickFiles: () => ipcRenderer.invoke('system:pick-files'),
   getProviders: () => ipcRenderer.invoke('agent:get-providers'),
+
+  // TTS
+  tts: {
+    synthesize: (text: string, providerId?: string, modelId?: string) => ipcRenderer.invoke('agent:tts-synthesize', text, providerId, modelId),
+  },
 
   // Settings
   settings: {
@@ -124,7 +129,15 @@ export const api = {
       const handler = (_: any, event: any) => callback(event);
       ipcRenderer.on('diary:sync-event', handler);
       return () => ipcRenderer.off('diary:sync-event', handler);
-    }
+    },
+    // 日记附件相关API
+    uploadAttachments: (args: { date: string; attachments: Array<{ filePath?: string; fileName?: string; data?: string; mimeType?: string }> }) => 
+      ipcRenderer.invoke('diary:upload-attachments', args),
+    listAttachments: (dateStr: string) => ipcRenderer.invoke('diary:list-attachments', dateStr),
+    deleteAttachment: (filePath: string) => ipcRenderer.invoke('diary:delete-attachment', filePath),
+    openAttachmentFolder: (filePath: string) => ipcRenderer.invoke('diary:open-attachment-folder', filePath),
+    copyAttachment: (filePath: string) => ipcRenderer.invoke('diary:copy-attachment', filePath),
+    getAttachmentDir: (dateStr: string) => ipcRenderer.invoke('diary:get-attachment-dir', dateStr),
   },
 
   // Summary System (Phase 13)
@@ -151,6 +164,7 @@ export const api = {
     queryEntries: (params: any) => ipcRenderer.invoke('rag:query-entries', params),
     deleteEntry: (id: string) => ipcRenderer.invoke('rag:delete-entry', id),
     editEntry: (params: { embeddingId: string, newText: string }) => ipcRenderer.invoke('rag:edit-entry', params),
+    hasPendingMigration: () => ipcRenderer.invoke('rag:has-pending-migration'),
     onRagProgress: (callback: (state: any) => void) => {
       const handler = (_: any, state: any) => callback(state);
       ipcRenderer.on('agent:rag-progress', handler);
@@ -218,6 +232,12 @@ export const api = {
     minimize: () => ipcRenderer.send('window:minimize'),
     toggleMaximize: () => ipcRenderer.send('window:toggleMaximize'),
     close: () => ipcRenderer.send('window:close')
+  },
+
+  // Zoom
+  zoom: {
+    setFactor: (factor: number) => webFrame.setZoomFactor(factor),
+    getFactor: () => webFrame.getZoomFactor()
   }
 }
 
