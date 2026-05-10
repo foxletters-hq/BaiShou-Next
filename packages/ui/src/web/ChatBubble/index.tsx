@@ -18,9 +18,12 @@ export interface ChatBubbleProps {
   onResend?: () => void;
   onCopy?: () => void;
   onDelete?: () => void;
+  onBranch?: () => void;
   onSaveEdit?: (newContent: string) => void;
   onResendEdit?: (newContent: string) => void;
   onShowContext?: (msg: MockChatMessage) => void;
+  onReadAloud?: (content: string) => void;
+  isTtsPlaying?: boolean;
 }
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
@@ -32,9 +35,12 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onResend,
   onCopy,
   onDelete,
+  onBranch,
   onSaveEdit,
   onResendEdit,
-  onShowContext
+  onShowContext,
+  onReadAloud,
+  isTtsPlaying = false
 }) => {
   const { t } = useTranslation();
   const toast = useToast();
@@ -275,14 +281,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                    {normalizedContent && <MarkdownRenderer content={normalizedContent} />}
                </div>
 
-                 <div className={styles.aiFooterRow}>
-                    <MessageActionBar
-                      isAI={true}
-                      onCopy={handleCopy}
-                      onRetry={onRegenerate}
-                      onEdit={handleStartEdit}
-                      onDelete={onDelete}
-                    />
+                  <div className={styles.aiFooterRow}>
+                      <MessageActionBar
+                        isAI={true}
+                        onCopy={handleCopy}
+                        onRetry={onRegenerate}
+                        onEdit={handleStartEdit}
+                        onDelete={onDelete}
+                        onBranch={onBranch}
+                        onReadAloud={onReadAloud ? () => onReadAloud(message.content || '') : undefined}
+                        isTtsPlaying={isTtsPlaying}
+                      />
                     <div className={styles.footerRight}>
                       {message.contextMessages && message.contextMessages.length > 0 && (
                          <button className={styles.contextBtn} onClick={() => onShowContext && onShowContext(message)} title={t('chat.viewContextTree', '查看对话上下文树')}>
