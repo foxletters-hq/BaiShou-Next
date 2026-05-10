@@ -107,21 +107,7 @@ async function completeFullBootstrap() {
     // 1. 初始化 Vault 系统 (此时 path.service 已经可以读到正确的 rootPath)
     await initVaultSystem();
     
-    // 2. 注册业务级 IPC
-    registerAgentIPC();
-    registerVaultIPC();
-    registerArchiveIPC();
-    registerLanIPC();
-    registerCloudSyncIPC();
-    registerDiaryIPC();
-    registerProfileIPC();
-    registerSummaryIPC();
-    registerStorageIPC();
-    registerAttachmentIPC();
-    registerDiaryAttachmentIPC();
-    registerRagIPC();
-    registerDeveloperIPC();
-    registerSearchIPC();
+    // 2. 业务级 IPC 已在 app.whenReady 中提前注册，此处无需重复
 
     // 3. 这里的逻辑在引导完成后或者已有配置时执行
     if (mainWindow) {
@@ -250,6 +236,22 @@ app.whenReady().then(async () => {
 
   // 2. 注册设置 IPC (基础设置可能在引导中也需要)
   registerSettingsIPC();
+
+  // 2.5 提前注册所有业务级 IPC，防止渲染进程在窗口创建后立刻调用时 handler 尚未注册
+  registerAgentIPC();
+  registerVaultIPC();
+  registerArchiveIPC();
+  registerLanIPC();
+  registerCloudSyncIPC();
+  registerDiaryIPC();
+  registerProfileIPC();
+  registerSummaryIPC();
+  registerStorageIPC();
+  registerAttachmentIPC();
+  registerDiaryAttachmentIPC();
+  registerRagIPC();
+  registerDeveloperIPC();
+  registerSearchIPC();
 
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
   createWindow(needsOnboarding);
