@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styles from './MessageActionBar.module.css';
-import { Copy, RefreshCcw, Edit3, Trash2, Volume2, Check } from 'lucide-react';
+import { Copy, RefreshCcw, Edit3, Trash2, Volume2, Check, GitBranch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export interface MessageActionBarProps {
@@ -9,7 +9,9 @@ export interface MessageActionBarProps {
   onEdit?: () => void;
   onReadAloud?: () => void;
   onDelete?: () => void;
+  onBranch?: () => void;
   isAI?: boolean;
+  isTtsPlaying?: boolean;
 }
 
 export const MessageActionBar: React.FC<MessageActionBarProps> = ({
@@ -18,7 +20,9 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
   onEdit,
   onReadAloud,
   onDelete,
-  isAI = true
+  onBranch,
+  isAI = true,
+  isTtsPlaying = false
 }) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -39,15 +43,15 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
           {copied ? <Check size={14} className={styles.copiedIcon} /> : <Copy size={14} />}
        </button>
        
-       {isAI && onReadAloud && (
-         <button 
-           className={styles.iconBtn} 
-           onClick={onReadAloud} 
-           title={t('agent.chat.readAloud', '语音朗读')}
-         >
-            <Volume2 size={14} />
-         </button>
-       )}
+        {isAI && onReadAloud && (
+          <button 
+            className={`${styles.iconBtn} ${isTtsPlaying ? styles.ttsPlaying : ''}`}
+            onClick={onReadAloud} 
+            title={t('agent.chat.readAloud', '语音朗读')}
+          >
+             <Volume2 size={14} />
+          </button>
+        )}
 
        {onEdit && (
          <button 
@@ -66,6 +70,16 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
            title={t('agent.chat.retry', '重新发送/生成')}
          >
             <RefreshCcw size={14} />
+         </button>
+       )}
+
+       {isAI && onBranch && (
+         <button 
+           className={styles.iconBtn} 
+           onClick={onBranch} 
+           title={t('agent.chat.branch', '从此处创建分支')}
+         >
+            <GitBranch size={14} />
          </button>
        )}
 

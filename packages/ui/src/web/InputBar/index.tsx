@@ -7,7 +7,8 @@ import { useToast } from '../Toast/useToast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Paperclip, Zap, Wrench, Globe, BookOpen, 
-  FileText, Folder, X, ArrowUp, LayoutGrid, Menu, Square 
+  FileText, Folder, X, ArrowUp, LayoutGrid, Menu, Square,
+  Volume2, VolumeX
 } from 'lucide-react';
 import { MdSend, MdStop, MdApps } from 'react-icons/md';
 
@@ -23,6 +24,8 @@ export interface InputBarProps {
   onOpenTools?: () => void;
   searchMode?: boolean;
   onToggleSearchMode?: () => void;
+  ttsMode?: 'off' | 'always' | 'manual';
+  onToggleTtsMode?: () => void;
 }
 
 export interface InputBarRef {
@@ -41,7 +44,9 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   onManageShortcuts,
   onOpenTools,
   searchMode = false,
-  onToggleSearchMode
+  onToggleSearchMode,
+  ttsMode = 'off',
+  onToggleTtsMode
 }, ref) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
@@ -231,9 +236,17 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
                     isActive={searchMode} 
                     onClick={toggleSearchMode} 
                   />
-                  {onRecall && (
-                    <QuickActionChip icon={<BookOpen size={14} />} label={t('settings.recall_memories')} onClick={onRecall} />
-                  )}
+                   {onRecall && (
+                     <QuickActionChip icon={<BookOpen size={14} />} label={t('settings.recall_memories')} onClick={onRecall} />
+                   )}
+                   {onToggleTtsMode && (
+                     <QuickActionChip 
+                       icon={ttsMode === 'off' ? <VolumeX size={14} /> : <Volume2 size={14} />} 
+                       label={ttsMode === 'off' ? t('agent.chat.tts_off', '语音关闭') : ttsMode === 'always' ? t('agent.chat.tts_always', '始终朗读') : t('agent.chat.tts_manual', '手动朗读')} 
+                       isActive={ttsMode !== 'off'} 
+                       onClick={onToggleTtsMode} 
+                     />
+                   )}
                </div>
             </motion.div>
           )}
