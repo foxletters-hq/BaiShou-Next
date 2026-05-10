@@ -125,6 +125,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           globalSummaryModelId: '',
           globalEmbeddingProviderId: '',
           globalEmbeddingModelId: '',
+          globalTtsProviderId: '',
+          globalTtsModelId: '',
           monthlySummarySource: 'weeklies'
         };
 

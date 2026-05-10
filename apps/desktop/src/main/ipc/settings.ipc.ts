@@ -87,6 +87,11 @@ export function registerSettingsIPC() {
         globalModels.globalEmbeddingModelId = '';
         changed = true;
     }
+    if (!isValid(globalModels.globalTtsProviderId, globalModels.globalTtsModelId)) {
+        globalModels.globalTtsProviderId = '';
+        globalModels.globalTtsModelId = '';
+        changed = true;
+    }
 
     if (changed) {
         await settingsManager.set('global_models', globalModels);

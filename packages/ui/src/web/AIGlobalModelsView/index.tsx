@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useDialog } from '../Dialog';
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup';
 import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared';
-import { isEmbeddingModel } from '@baishou/shared';
-import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub } from 'react-icons/md';
+import { isEmbeddingModel, isTtsModel } from '@baishou/shared';
+import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdVolumeUp } from 'react-icons/md';
 
 export interface AIProviderConfigInfo {
   providerId: string;
@@ -33,17 +33,20 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   const dialog = useDialog();
 
   // State to manage which model selector is currently open
-  const [activeSelector, setActiveSelector] = useState<'dialogue' | 'naming' | 'summary' | 'embedding' | null>(null);
+  const [activeSelector, setActiveSelector] = useState<'dialogue' | 'naming' | 'summary' | 'embedding' | 'tts' | null>(null);
 
   // Filter provider arrays for the popup
-  const getProvidersArray = (forEmbedding: boolean) => {
+  const getProvidersArray = (forEmbedding: boolean, forTts: boolean = false) => {
     return Object.values(availableProviders)
       .filter(p => p.enabled && p.enabledModels && p.enabledModels.length > 0)
       .map(p => {
-        // Filter the models inside depending on whether they are embedding models or not
+        // Filter the models inside depending on whether they are embedding models, tts models, or other
         const validModels = (p.enabledModels || []).filter(m => {
           const isEmbed = isEmbeddingModel(m);
-          return forEmbedding ? isEmbed : !isEmbed;
+          const isTts = isTtsModel(m);
+          if (forEmbedding) return isEmbed;
+          if (forTts) return isTts;
+          return !isEmbed && !isTts;
         });
 
         return {
@@ -59,6 +62,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
 
   const nonEmbeddingProviders = getProvidersArray(false);
   const embeddingProviders = getProvidersArray(true);
+  const ttsProviders = getProvidersArray(false, true);
 
   const handleSelectModel = async (providerId: string, modelId: string) => {
     if (!activeSelector) return;
@@ -100,6 +104,9 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     } else if (activeSelector === 'summary') {
       newConfig.globalSummaryProviderId = providerId;
       newConfig.globalSummaryModelId = modelId;
+    } else if (activeSelector === 'tts') {
+      newConfig.globalTtsProviderId = providerId;
+      newConfig.globalTtsModelId = modelId;
     }
 
     onChange(newConfig);
@@ -107,7 +114,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   };
 
   const renderSection = (
-    key: 'dialogue' | 'naming' | 'summary' | 'embedding',
+    key: 'dialogue' | 'naming' | 'summary' | 'embedding' | 'tts',
     title: string,
     desc: string,
     icon: React.ReactNode,
@@ -188,24 +195,38 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           t('ai_config.embedding_model_desc', '为你的本地文件建立向量空间映射的核心引擎。替换模型可能导致之前的所有知识库瘫痪并需要重新挂载索引运算！'), 
           <MdHub size={22} />, 
           config.globalEmbeddingProviderId, 
-          config.globalEmbeddingModelId,
-          true
+          config.globalEmbeddingModelId
+        )}
+
+        {renderSection(
+          'tts', 
+          t('ai_config.tts_model_title', 'TTS 语音合成'), 
+          t('ai_config.tts_model_desc', '用于将文本转换为语音的模型，支持朗读消息和语音播放功能。'), 
+          <MdVolumeUp size={22} />, 
+          config.globalTtsProviderId || '', 
+          config.globalTtsModelId || ''
         )}
       </div>
 
       {activeSelector && (
         <ModelSwitcherPopup
-          providers={activeSelector === 'embedding' ? embeddingProviders : nonEmbeddingProviders}
+          providers={
+            activeSelector === 'embedding' ? embeddingProviders :
+            activeSelector === 'tts' ? ttsProviders :
+            nonEmbeddingProviders
+          }
           currentProviderId={
             activeSelector === 'dialogue' ? config.globalDialogueProviderId :
             activeSelector === 'naming' ? config.globalNamingProviderId :
             activeSelector === 'summary' ? config.globalSummaryProviderId :
+            activeSelector === 'tts' ? (config.globalTtsProviderId || '') :
             config.globalEmbeddingProviderId
           }
           currentModelId={
             activeSelector === 'dialogue' ? config.globalDialogueModelId :
             activeSelector === 'naming' ? config.globalNamingModelId :
             activeSelector === 'summary' ? config.globalSummaryModelId :
+            activeSelector === 'tts' ? (config.globalTtsModelId || '') :
             config.globalEmbeddingModelId
           }
           onSelect={handleSelectModel}

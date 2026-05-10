@@ -46,7 +46,8 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     // Elegant internationalization and data mapping
     let cmd = shortcut.command;
     if (!cmd) {
-       cmd = shortcut.id.startsWith('default-') ? shortcut.id.replace('default-', '') : shortcut.id;
+       // Use name or tag instead of id for display
+       cmd = shortcut.name || shortcut.tag || (shortcut.id.startsWith('default-') ? shortcut.id.replace('default-', '') : 'unnamed');
     }
 
     if (shortcut.id === 'default-translate') {

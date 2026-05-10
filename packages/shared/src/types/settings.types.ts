@@ -34,6 +34,8 @@ export interface GlobalModelsConfig {
   globalSummaryModelId: string;
   globalEmbeddingProviderId: string;
   globalEmbeddingModelId: string;
+  globalTtsProviderId: string;
+  globalTtsModelId: string;
   monthlySummarySource: 'weeklies' | 'diaries'; // 月度总结数据源：'weeklies' (仅周记) 或 'diaries' (全量日记)
 }
 

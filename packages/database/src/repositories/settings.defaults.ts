@@ -35,6 +35,8 @@ export const DEFAULT_GLOBAL_MODELS: GlobalModelsConfig = {
   globalSummaryModelId: 'off',
   globalEmbeddingProviderId: '',
   globalEmbeddingModelId: '',
+  globalTtsProviderId: '',
+  globalTtsModelId: '',
   monthlySummarySource: 'weeklies'
 };
 

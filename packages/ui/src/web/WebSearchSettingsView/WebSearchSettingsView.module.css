@@ -6,6 +6,7 @@
   padding-bottom: 32px;
   background: var(--bg-app);
   min-height: 100%;
+  overflow: visible;
 }
 
 /* Flutter Card with Elevation 0 + Border */
@@ -15,7 +16,7 @@
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 

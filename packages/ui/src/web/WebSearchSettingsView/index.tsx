@@ -132,7 +132,7 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
       {searchConfig.webSearchEngine === 'tavily' && (
         <div className={styles.cardSection}>
           <div className={styles.apiConfigBody}>
-             <h3 className={styles.cardTitle}>{t('agent.tools.param_tavily_api_key', 'Tavily API 密钥')}</h3>
+             <h3 className={styles.cardTitle}>{t('agent.tools.param_tavily_api_key', 'Tavily API Key')}</h3>
              <span className={styles.cardDesc}>{t('agent.tools.param_tavily_api_key_desc', '请前往 tvly 官网申请您的私人密钥')}</span>
              
              <div className={styles.textFieldWrapper}>

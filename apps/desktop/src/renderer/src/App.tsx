@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@baishou/store';
 import { i18n } from '@baishou/shared';
 import { TitleBar } from './components/TitleBar';
+import { useZoom } from './hooks/useZoom';
 
 const GlobalErrorHandler = () => {
   const toast = useToast();
@@ -113,6 +114,7 @@ const AppRoutes = () => {
 };
 
 export function App() {
+  useZoom();
   const locale = useSettingsStore(s => s.locale);
 
   const themeColor = useSettingsStore(s => s.themeColor);
