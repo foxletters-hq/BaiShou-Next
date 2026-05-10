@@ -384,8 +384,8 @@ export const SummaryPage: React.FC = () => {
             <GalleryPanel
               summaries={summaries}
               onOpen={(id) => {
-                // 点击列表项直接进入编辑页面
-                navigate(`/summary/${id}`);
+                // 点击列表项只切换视图，不进入编辑
+                // GalleryPanel 内部会处理选中状态
               }}
               onEdit={(id) => {
                 // 点击编辑按钮跳转到详情页

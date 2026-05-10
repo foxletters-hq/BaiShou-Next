@@ -37,6 +37,12 @@
   padding: 20px;
 }
 
+.divider {
+  height: 1px;
+  background-color: var(--color-outline-variant);
+  margin: 20px 0;
+}
+
 .cardTitleLine {
   display: flex;
   align-items: center;

@@ -55,16 +55,17 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
   };
 
   const tabs = [
-    { id: 'weekly' as const, icon: '📅', label: t('summary.tab_weekly', '周结') },
-    { id: 'monthly' as const, icon: '🗓️', label: t('summary.tab_monthly', '月结') },
-    { id: 'quarterly' as const, icon: '📊', label: t('summary.tab_quarterly', '季结') },
-    { id: 'yearly' as const, icon: '📆', label: t('summary.tab_yearly', '年结') }
+    { id: 'weekly' as const, icon: '🌱', label: t('summary.tab_weekly', '周结') },
+    { id: 'monthly' as const, icon: '☘️', label: t('summary.tab_monthly', '月结') },
+    { id: 'quarterly' as const, icon: '🪴', label: t('summary.tab_quarterly', '季结') },
+    { id: 'yearly' as const, icon: '🌳', label: t('summary.tab_yearly', '年结') }
   ];
 
   return (
     <div className={styles.container}>
-      {/* 数据源选择 */}
+      {/* 合并后的卡片区域 */}
       <div className={styles.cardSection}>
+        {/* 数据源选择 */}
         <div className={styles.cardTitleLine}>
           <span>📥 {t('settings.monthly_summary_data_source', '月结数据收拢源')}</span>
         </div>
@@ -84,10 +85,10 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
             <span>📄</span> {t('settings.read_all_diaries', '直读所有日记条目 (精度高)')}
           </button>
         </div>
-      </div>
 
-      {/* AI 提示词模板 */}
-      <div className={styles.cardSection}>
+        <div className={styles.divider} />
+
+        {/* AI 提示词模板 */}
         <div className={styles.cardTitleLine}>
           <span>📝 {t('settings.summary_ai_prompt_title', 'AI 总结指令模板与格式规范 (Prompting)')}</span>
         </div>
