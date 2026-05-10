@@ -6,6 +6,7 @@ import styles from './Sidebar.module.css';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useUserProfileStore } from '@baishou/store';
+import appIcon from '@baishou/shared/assets/images/icon.png';
 
 
 
@@ -62,14 +63,10 @@ export const Sidebar: React.FC = () => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
     >
-      <div className={styles.brandRow}>
-         <div className={styles.logoBox}>
-           <img src="assets/icon/icon.png" alt="Logo" className={styles.brandLogo} onError={(e) => {
-  (e.target as HTMLImageElement).style.display = 'none';
-               (e.target as HTMLImageElement).nextElementSibling!.classList.remove(styles.hidden);
-           }}/>
-           <div className={`${styles.logoFallback} styles.hidden`}>✨</div>
-         </div>
+       <div className={styles.brandRow}>
+          <div className={styles.logoBox}>
+            <img src={appIcon} alt="Logo" className={styles.brandLogo} />
+          </div>
          <div className={styles.brandText}>
             <div className={styles.brandName}>{t('common.app_title', 'BaiShou AI')}</div>
             <div className={styles.brandSlogan}>{t('settings.tagline_short', '下一代本地优先 AI 记忆终端')}</div>

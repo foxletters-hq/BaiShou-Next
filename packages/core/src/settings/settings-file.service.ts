@@ -23,7 +23,25 @@ export class SettingsFileService {
 
     const writeOp = (async () => {
       await fs.writeFile(tmpPath, JSON.stringify(settingsMap, null, 2), 'utf8');
-      await fs.rename(tmpPath, fullPath);
+      try {
+        await fs.rename(tmpPath, fullPath);
+      } catch (renameErr: any) {
+        // Windows 上，如果目标文件已存在，rename 会失败（EXDEV/EPERM）
+        // 回退方案：先删除目标文件，再重命名
+        if (renameErr.code === 'EXDEV' || renameErr.code === 'EPERM' || renameErr.code === 'EEXIST') {
+          try {
+            await fs.unlink(fullPath);
+          } catch (unlinkErr: any) {
+            // 如果文件不存在，忽略错误
+            if (unlinkErr.code !== 'ENOENT') {
+              throw unlinkErr;
+            }
+          }
+          await fs.rename(tmpPath, fullPath);
+        } else {
+          throw renameErr;
+        }
+      }
     })();
 
     this.writeLock = this.writeLock.then(() => writeOp, () => writeOp);

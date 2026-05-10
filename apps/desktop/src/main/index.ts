@@ -14,6 +14,7 @@ import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
 import { registerStorageIPC } from './ipc/storage.ipc'
 import { registerAttachmentIPC } from './ipc/attachment.ipc'
+import { registerDiaryAttachmentIPC } from './ipc/diary-attachment.ipc'
 import { registerRagIPC } from './ipc/rag.ipc'
 import { registerOnboardingIPC } from './ipc/onboarding.ipc'
 import { registerDeveloperIPC } from './ipc/developer.ipc'
@@ -34,7 +35,7 @@ function createWindow(needsOnboarding: boolean): void {
     width: needsOnboarding ? 860 : 1000,
     height: needsOnboarding ? 580 : 680,
     minWidth: 860,
-    minHeight: 500,
+    minHeight: 520,
     show: false,
     frame: false,
     autoHideMenuBar: true,
@@ -117,6 +118,7 @@ async function completeFullBootstrap() {
     registerSummaryIPC();
     registerStorageIPC();
     registerAttachmentIPC();
+    registerDiaryAttachmentIPC();
     registerRagIPC();
     registerDeveloperIPC();
     registerSearchIPC();

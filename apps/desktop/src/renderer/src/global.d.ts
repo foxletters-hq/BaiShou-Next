@@ -44,11 +44,17 @@ interface SummaryAPI {
   list(options?: unknown): Promise<unknown>;
 }
 
+interface ZoomAPI {
+  setFactor(factor: number): void;
+  getFactor(): number;
+}
+
 interface AppAPI {
   onboarding: OnboardingAPI;
   window: WindowAPI;
   diary: DiaryAPI;
   summary: SummaryAPI;
+  zoom: ZoomAPI;
   [key: string]: unknown;
 }
 

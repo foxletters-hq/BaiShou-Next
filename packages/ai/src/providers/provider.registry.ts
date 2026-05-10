@@ -27,7 +27,7 @@ export class AIProviderRegistry {
   }
 
   /**
-   * 加载默认的内置 13 种生态提供商字典配置
+   * 加载默认的内置生态提供商字典配置
    */
   public initializeDefaultProviders(): void {
     const builtinIds = Object.values(ProviderType);

@@ -87,6 +87,18 @@ const resources = {
       web_search_mode_tool: '深度搜索',
       recall_memories: '记忆唤醒'
     },
+    aiProviders: {
+      siliconflow: '硅基流动',
+      dashscope: '通义千问 (百炼)',
+      doubao: '豆包 (火山引擎)',
+      zhipu: '智谱 AI',
+      stepfun: '阶跃星辰',
+      hunyuan: '腾讯混元',
+      minimax: 'MiniMax',
+      vertexai: 'Google Vertex AI',
+      vercel: 'Vercel AI Gateway',
+      xiaomimimo: '小米 MiMo',
+    },
     common: {
       copied: '已复制到剪贴板'
     }

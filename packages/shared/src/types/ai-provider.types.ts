@@ -12,6 +12,13 @@ export enum ProviderType {
   Grok = 'grok',
   Mistral = 'mistral',
   LMStudio = 'lmstudio',
+  Zhipu = 'zhipu',
+  StepFun = 'stepfun',
+  Hunyuan = 'hunyuan',
+  MiniMax = 'minimax',
+  VertexAI = 'vertexai',
+  Vercel = 'vercel',
+  XiaomiMiMo = 'xiaomimimo',
   Custom = 'custom',
 }
 
