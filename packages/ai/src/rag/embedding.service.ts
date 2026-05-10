@@ -209,6 +209,7 @@ export class EmbeddingService {
 
     } catch(e) {
       logger.error('embedText failed', { error: e });
+      throw e;
     }
   }
   
@@ -448,6 +449,7 @@ export class EmbeddingService {
           await new Promise(r => setTimeout(r, delayMs));
         } else {
           logger.error(`${label} failed completely:`, { error });
+          throw error;
         }
       }
     }

@@ -5,6 +5,7 @@
   padding: 16px 24px 32px 24px;
   background: var(--bg-app);
   min-height: 100%;
+  flex: 1;
 }
 
 /* === 1. Header === */
@@ -312,6 +313,28 @@
   color: var(--color-error);
 }
 
+.searchModeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.searchModeToggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 /* === 6. List === */
 .entriesListContainer {
   display: flex;
@@ -473,3 +496,66 @@ input:checked + .slider:before { transform: translateX(20px); }
   cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;
 }
 .dangerBtn:hover { opacity: 0.9; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
+
+/* === Pagination === */
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  margin-top: 4px;
+}
+
+.paginationInfo {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pageSizeSelect {
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.pageBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pageBtn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pageCurrent {
+  min-width: 48px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}

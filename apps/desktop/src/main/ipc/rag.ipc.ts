@@ -247,4 +247,9 @@ export function registerRagIPC() {
       throw e;
     }
   });
+
+  ipcMain.handle('rag:has-pending-migration', async () => {
+    await config.load();
+    return await embeddingService.hasPendingMigration();
+  });
 }

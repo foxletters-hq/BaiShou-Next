@@ -42,6 +42,7 @@ interface RagMemoryViewProps {
   hasMismatchModel: boolean;
   embeddingModelId?: string;
   entries: RagEntry[];
+  totalCount?: number;
   
   onChange: (config: RagConfig) => void;
   onClearDimension?: () => Promise<void>;
@@ -49,32 +50,56 @@ interface RagMemoryViewProps {
   onAddManualMemory?: () => Promise<void>;
   onTriggerMigration?: () => Promise<void>;
   onClearAll?: () => Promise<void>;
-  onSearch?: (query: string) => void;
+  onSearch?: (query: string, mode: 'semantic' | 'text') => void;
   onDeleteEntry?: (id: string) => Promise<void>;
   onEditEntry?: (entry: RagEntry) => Promise<void>;
   onNavigateToConfig?: () => void;
   onDetectDimension?: () => Promise<void>;
+  onPageChange?: (page: number, pageSize: number) => void;
 }
 
 export const RagMemoryView: React.FC<RagMemoryViewProps> = ({ 
-  config, stats, ragState, hasMismatchModel, embeddingModelId, entries,
+  config, stats, ragState, hasMismatchModel, embeddingModelId, entries, totalCount,
   onChange, onClearDimension, onBatchEmbed, onAddManualMemory, 
   onTriggerMigration, onClearAll, onSearch, onDeleteEntry, onEditEntry,
-  onNavigateToConfig, onDetectDimension
+  onNavigateToConfig, onDetectDimension, onPageChange
 }) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setSearchQuery(v);
-    if (onSearch) onSearch(v);
+    setCurrentPage(1);
+    if (onSearch) onSearch(v, searchMode);
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    if (onSearch) onSearch('');
+    setCurrentPage(1);
+    if (onSearch) onSearch('', searchMode);
+  };
+
+  const toggleSearchMode = () => {
+    const newMode = searchMode === 'semantic' ? 'text' : 'semantic';
+    setSearchMode(newMode);
+    setCurrentPage(1);
+    if (onSearch) onSearch(searchQuery, newMode);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    if (onPageChange) onPageChange(page, pageSize);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    if (onPageChange) onPageChange(1, newSize);
   };
 
   const formatDate = (ms: number) => {
@@ -85,6 +110,11 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   const isBusy = ragState.isRunning;
   const isMigrating = ragState.isRunning && ragState.type === 'migration';
   const isBatchEmbedding = ragState.isRunning && ragState.type === 'batchEmbed';
+
+  // 分页计算
+  const effectiveTotal = totalCount ?? entries.length;
+  const showPagination = effectiveTotal > 10;
+  const totalPages = Math.ceil(effectiveTotal / pageSize);
 
   return (
     <div className={styles.container}>
@@ -102,7 +132,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         {stats.totalCount > 0 && (
           <button className={styles.headerClearAllBtn} onClick={onClearAll}>
             <MdDeleteSweep size={18} />
-            <span>{t('settings.rag_clear_all', '清空')}</span>
+            <span>{t('settings.rag_clear_all', '清空现有记忆')}</span>
           </button>
         )}
       </div>
@@ -110,7 +140,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
       {!config.ragEnabled && (
          <div className={styles.disabledAlert}>
            <MdWarning size={16} style={{marginRight: 8}} />
-           {t('settings.rag_disabled_alert', '语义搜索已被禁用。AI 在对话时将无法隐式搜索并参考您的本地知识库内容。')}
+            {t('settings.rag_disabled_alert', 'RAG记忆功能已经关闭了喵~')}
          </div>
       )}
 
@@ -214,9 +244,6 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
 
       {/* 4. Action Buttons */}
       <div className={styles.actionButtonsRow}>
-        <button className={`${styles.actionBtn} ${styles.btnRedOutlined}`} onClick={onClearDimension} disabled={isBusy}>
-           <MdLayersClear size={16} /> {t('settings.rag_clear_dimension', '清空当前维度')}
-        </button>
         <button className={`${styles.actionBtn} ${styles.btnBlueFlat}`} onClick={onBatchEmbed} disabled={isBusy}>
            <MdAutoStories size={16} /> {isBatchEmbedding ? `${t('common.processing', '处理中')} ${ragState.progress}/${ragState.total}` : t('settings.rag_batch_embed', '全量嵌入日记')}
         </button>
@@ -233,11 +260,18 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         <div className={styles.searchIconOuter}><MdSearch size={20} /></div>
         <input 
           type="text" 
-          placeholder={t('common.search_hint', '搜索记忆内容...')} 
+          placeholder={searchMode === 'semantic' ? t('settings.rag_search_semantic_hint', '语义搜索记忆内容...') : t('settings.rag_search_text_hint', '文本搜索记忆内容...')} 
           className={styles.searchOuterInput}
           value={searchQuery}
           onChange={handleSearch}
         />
+        <button
+          className={styles.searchModeToggle}
+          onClick={toggleSearchMode}
+          title={searchMode === 'semantic' ? t('settings.rag_search_semantic', '语义搜索') : t('settings.rag_search_text', '文本搜索')}
+        >
+          {searchMode === 'semantic' ? '🧠' : 'Aa'}
+        </button>
         {searchQuery && (
           <div className={styles.clearSearchOuter} onClick={handleClearSearch}><MdClose size={18} /></div>
         )}
@@ -289,6 +323,54 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
                   </div>
               </div>
             ))}
+          </div>
+        )}
+        {showPagination && (
+          <div className={styles.paginationRow}>
+            <div className={styles.paginationInfo}>
+              {t('settings.rag_pagination_info', '共 $total 条')
+                .replace('$total', String(effectiveTotal))}
+            </div>
+            <div className={styles.paginationControls}>
+              <select
+                className={styles.pageSizeSelect}
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              >
+                {[10, 20, 30, 50, 100].map(size => (
+                  <option key={size} value={size}>{size} {t('settings.rag_per_page', '条/页')}</option>
+                ))}
+              </select>
+              <button
+                className={styles.pageBtn}
+                disabled={currentPage <= 1}
+                onClick={() => handlePageChange(1)}
+              >
+                &laquo;
+              </button>
+              <button
+                className={styles.pageBtn}
+                disabled={currentPage <= 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                &lsaquo;
+              </button>
+              <span className={styles.pageCurrent}>{currentPage} / {totalPages}</span>
+              <button
+                className={styles.pageBtn}
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                &rsaquo;
+              </button>
+              <button
+                className={styles.pageBtn}
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange(totalPages)}
+              >
+                &raquo;
+              </button>
+            </div>
           </div>
         )}
       </div>
