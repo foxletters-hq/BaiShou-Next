@@ -33,6 +33,7 @@ export const DiaryEditorPage: React.FC = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [diaryId, setDiaryId] = useState<number | null>(null);
+  const [mediaPaths, setMediaPaths] = useState<string[]>([]);
 
   const tagsRef = useRef<string[]>(tags);
   useEffect(() => {
@@ -59,6 +60,7 @@ export const DiaryEditorPage: React.FC = () => {
             setTags(diary.tags || []);
             setWeather(diary.weather || '');
             setIsFavorite(diary.isFavorite || false);
+            setMediaPaths(diary.mediaPaths || []);
 
             if (isAppendMode) {
               const existing = (diary.content || '').trimEnd();
@@ -99,7 +101,8 @@ export const DiaryEditorPage: React.FC = () => {
           title: newContent.replace(/^#{1,6}\s*/gm, '').split('\n')[0].substring(0, 50),
           tags: tagsRef.current,
           weather,
-          isFavorite
+          isFavorite,
+          mediaPaths
         };
 
         if (diaryId) {
@@ -186,11 +189,13 @@ export const DiaryEditorPage: React.FC = () => {
         selectedDate={selectedDate}
         weather={weather}
         isFavorite={isFavorite}
+        mediaPaths={mediaPaths}
         onContentChange={handleContentChange}
         onTagsChange={(newTags) => { setTags(newTags); setIsDirty(true); }}
         onDateChange={(newDate) => { setSelectedDate(newDate); setIsDirty(true); }}
         onWeatherChange={(v) => { setWeather(v); setIsDirty(true); }}
         onFavoriteChange={(v) => { setIsFavorite(v); setIsDirty(true); }}
+        onMediaPathsChange={(v) => { setMediaPaths(v); setIsDirty(true); }}
         onSave={handleSave}
         onCancel={handleBack}
       />

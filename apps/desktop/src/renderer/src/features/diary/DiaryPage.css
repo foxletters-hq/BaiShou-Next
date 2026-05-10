@@ -597,7 +597,6 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--bg-overlay);
   z-index: 99;
 }
 
@@ -716,5 +715,72 @@
 .diary-filter-weather-btn.active {
   background-color: var(--color-primary-light);
   border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ── 分页组件 ── */
+.diary-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.diary-pagination-info {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.diary-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.diary-page-size-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-family);
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.diary-page-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.diary-page-btn:hover:not(:disabled) {
+  background-color: var(--bg-surface-high);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.diary-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.diary-page-current {
+  min-width: 32px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--color-primary);
 }

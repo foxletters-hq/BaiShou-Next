@@ -13,38 +13,69 @@ export const DiaryPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return sessionStorage.getItem('diary_searchQuery') || '';
+  });
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(() => {
+    const saved = sessionStorage.getItem('diary_selectedMonth');
+    if (saved) {
+      try {
+        const d = new Date(saved);
+        if (!isNaN(d.getTime())) return d;
+      } catch { /* ignore */ }
+    }
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
   // 筛选状态
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filterWeathers, setFilterWeathers] = useState<string[]>([]);
-  const [filterFavorite, setFilterFavorite] = useState(false);
+  const [filterWeathers, setFilterWeathers] = useState<string[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('diary_filterWeathers');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [filterFavorite, setFilterFavorite] = useState(() => {
+    return sessionStorage.getItem('diary_filterFavorite') === 'true';
+  });
   const filterRef = useRef<HTMLDivElement>(null);
 
-  // 点击外部关闭筛选面板
+  // 保存筛选状态到 sessionStorage
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-        setIsFilterOpen(false);
-      }
-    };
+    sessionStorage.setItem('diary_searchQuery', searchQuery);
+  }, [searchQuery]);
+  useEffect(() => {
+    sessionStorage.setItem('diary_selectedMonth', selectedMonth ? selectedMonth.toISOString() : '');
+  }, [selectedMonth]);
+  useEffect(() => {
+    sessionStorage.setItem('diary_filterWeathers', JSON.stringify(filterWeathers));
+  }, [filterWeathers]);
+  useEffect(() => {
+    sessionStorage.setItem('diary_filterFavorite', String(filterFavorite));
+  }, [filterFavorite]);
 
-    if (isFilterOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isFilterOpen]);
 
   const { entries, loadEntries } = useDiaryData();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const toast = useToast();
+  const [attachmentBasePath, setAttachmentBasePath] = useState<string>('');
+
+  // 获取当前月份的附件目录路径
+  useEffect(() => {
+    if (!selectedMonth) return;
+    const dateStr = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
+    (window as any).api?.diary?.getAttachmentDir?.(dateStr)?.then((res: any) => {
+      if (res?.success && res.path) {
+        setAttachmentBasePath(res.path);
+      }
+    }).catch(() => {});
+  }, [selectedMonth]);
+
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   /** 执行删除操作 */
   const performDelete = async () => {
@@ -123,6 +154,7 @@ export const DiaryPage: React.FC = () => {
         mood: e.mood,
         location: e.location,
         isFavorite: e.isFavorite,
+        hasMedia: e.hasMedia || false,
       } as DiaryEntry;
     });
 
@@ -157,7 +189,19 @@ export const DiaryPage: React.FC = () => {
     filtered.sort((a, b) => b.date.getTime() - a.date.getTime());
 
     return filtered;
-  }, [entries, selectedMonth, searchQuery]);
+  }, [entries, selectedMonth, searchQuery, filterWeathers, filterFavorite]);
+
+  // 筛选条件变化时重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite]);
+
+  // 分页计算
+  const showPagination = filteredEntries.length > 50;
+  const totalPages = Math.ceil(filteredEntries.length / pageSize);
+  const paginatedEntries = showPagination
+    ? filteredEntries.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : filteredEntries;
 
   /** 格式化日期字符串为 YYYY-MM-DD */
   const formatDateStr = (date: Date): string => {
@@ -235,6 +279,20 @@ export const DiaryPage: React.FC = () => {
               {hasActiveFilters && <span className="diary-filter-badge" />}
             </button>
 
+            {/* 筛选遮罩层（在 wrapper 内，panel 外，阻止事件穿透） */}
+            <AnimatePresence>
+              {isFilterOpen && (
+                <motion.div
+                  className="diary-filter-overlay"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={() => setIsFilterOpen(false)}
+                />
+              )}
+            </AnimatePresence>
+
             {/* 筛选面板 */}
             <AnimatePresence>
               {isFilterOpen && (
@@ -245,7 +303,6 @@ export const DiaryPage: React.FC = () => {
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
                   onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
                 >
                   <div className="diary-filter-header">
                     <span className="diary-filter-title">{t('diary.filter', '筛选')}</span>
@@ -325,20 +382,6 @@ export const DiaryPage: React.FC = () => {
         </div>
       </div>
 
-        {/* 筛选遮罩层 */}
-        <AnimatePresence>
-          {isFilterOpen && (
-            <motion.div
-              className="diary-filter-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={() => setIsFilterOpen(false)}
-            />
-          )}
-        </AnimatePresence>
-
         {/* 内容区 */}
         {filteredEntries.length === 0 ? (
         <div className="diary-empty-state">
@@ -358,7 +401,7 @@ export const DiaryPage: React.FC = () => {
       ) : (
         <div className="diary-grid">
           <div className="diary-grid-inner">
-            {filteredEntries.map((entry) => (
+            {paginatedEntries.map((entry) => (
               <motion.div layout="position" key={entry.id} style={{ height: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}>
                 <DiaryCard
                   entry={entry}
@@ -366,10 +409,61 @@ export const DiaryPage: React.FC = () => {
                   onEdit={() => navigate(`/diary/${formatDateStr(entry.date)}`)}
                   onDelete={() => setDeletingId(entry.id)}
                   t={t}
+                  basePath={attachmentBasePath}
                 />
               </motion.div>
             ))}
           </div>
+          {showPagination && (
+            <div className="diary-pagination">
+              <div className="diary-pagination-info">
+                {t('diary.pagination_info', '共 $total 条，第 $page / $pages 页')
+                  .replace('$total', String(filteredEntries.length))
+                  .replace('$page', String(currentPage))
+                  .replace('$pages', String(totalPages))}
+              </div>
+              <div className="diary-pagination-controls">
+                <select
+                  className="diary-page-size-select"
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                >
+                  {[50, 80, 100, 200].map(size => (
+                    <option key={size} value={size}>{size} {t('diary.per_page', '条/页')}</option>
+                  ))}
+                </select>
+                <button
+                  className="diary-page-btn"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage(1)}
+                >
+                  &laquo;
+                </button>
+                <button
+                  className="diary-page-btn"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                >
+                  &lsaquo;
+                </button>
+                <span className="diary-page-current">{currentPage}</span>
+                <button
+                  className="diary-page-btn"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                >
+                  &rsaquo;
+                </button>
+                <button
+                  className="diary-page-btn"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                >
+                  &raquo;
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

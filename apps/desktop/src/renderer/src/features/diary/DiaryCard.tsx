@@ -31,6 +31,7 @@ export interface DiaryEntry {
   mood?: string;
   location?: string;
   isFavorite?: boolean;
+  hasMedia?: boolean;
 }
 
 /** DiaryCard 组件属性 */
@@ -40,10 +41,11 @@ interface DiaryCardProps {
   onEdit: () => void;
   onDelete: () => void;
   t: (key: string, fallback?: string) => string;
+  basePath?: string;
 }
 
 /** 日记卡片组件 */
-export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete, t }) => {
+export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete, t, basePath }) => {
   const day = String(entry.date.getDate()).padStart(2, '0');
   const weekday = t(WEEKDAY_NAMES_KEYS[entry.date.getDay()], WEEKDAY_NAMES_DEFAULT[entry.date.getDay()]);
   const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`;
@@ -77,8 +79,16 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, on
       {/* 内容预览 */}
       <div className="diary-card-content">
         <div className="diary-card-content-text">
-          <MarkdownRenderer content={entry.preview} />
+          <MarkdownRenderer content={entry.preview} basePath={basePath} />
         </div>
+        
+        {/* 媒体指示器 */}
+        {entry.hasMedia && (
+          <div className="diary-card-media-indicator">
+            <span className="diary-card-media-icon">📎</span>
+            <span className="diary-card-media-text">包含附件</span>
+          </div>
+        )}
       </div>
 
       {/* 标签 */}
