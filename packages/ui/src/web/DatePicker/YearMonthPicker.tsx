@@ -61,24 +61,28 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
   const yearListRef = useRef<HTMLDivElement>(null);
   const isInitialOpen = useRef(true);
 
+  // 标记动画完成状态
+  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
+
+  // 当弹窗关闭时重置动画状态
   useEffect(() => {
     if (!isOpen) {
       isInitialOpen.current = true;
-      return;
+      setIsAnimationComplete(false);
     }
+  }, [isOpen]);
 
-    if (isOpen && yearListRef.current) {
-      // 延迟一帧确保 DOM 和样式渲染完毕
-      setTimeout(() => {
-        const activeEl = yearListRef.current?.querySelector('[data-active="true"]') as HTMLElement;
-        if (activeEl && yearListRef.current) {
-          const duration = isInitialOpen.current ? 0 : 600;
-          smoothScrollToCenter(yearListRef.current, activeEl, duration);
-          isInitialOpen.current = false;
-        }
-      }, 50);
+  // 动画完成后执行滚动
+  useEffect(() => {
+    if (!isAnimationComplete || !isOpen || !yearListRef.current) return;
+
+    const activeEl = yearListRef.current.querySelector('[data-active="true"]') as HTMLElement;
+    if (activeEl && yearListRef.current) {
+      const duration = isInitialOpen.current ? 0 : 600;
+      smoothScrollToCenter(yearListRef.current, activeEl, duration);
+      isInitialOpen.current = false;
     }
-  }, [isOpen, viewYear]);
+  }, [isAnimationComplete, isOpen, viewYear]);
 
   const handleSelectMonth = (m: number) => {
     onChange(new Date(viewYear, m - 1, 1));
@@ -127,6 +131,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15 } }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                onAnimationComplete={() => setIsAnimationComplete(true)}
               >
             <div className={styles.twoPaneContainer}>
               {/* Left Pane: Years */}
