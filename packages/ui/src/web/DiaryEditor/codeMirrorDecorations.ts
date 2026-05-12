@@ -4,15 +4,15 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import type { SyntaxNodeRef } from '@lezer/common';
 import { StateEffect } from '@codemirror/state';
-import { parseImageMarkdown, clampWidth, IMAGE_SIZE_CONFIG } from './image-utils';
+import { parseImageMarkdown, clampWidth, IMAGE_SIZE_CONFIG, buildImageMarkdown } from './image-utils';
 
 export const forceImageRefresh = StateEffect.define();
 
-let updateImageWidthCallback: ((from: number, to: number, newWidth: number) => void) | null = null;
+let updateImageMarkdownCallback: ((from: number, to: number, newMarkdown: string) => void) | null = null;
 let moveToImageCallback: ((from: number, to: number) => void) | null = null;
 
-export function setUpdateImageWidthCallback(callback: (from: number, to: number, newWidth: number) => void) {
-  updateImageWidthCallback = callback;
+export function setUpdateImageMarkdownCallback(callback: (from: number, to: number, newMarkdown: string) => void) {
+  updateImageMarkdownCallback = callback;
 }
 
 export function setMoveToImageCallback(callback: (from: number, to: number) => void) {
@@ -20,8 +20,9 @@ export function setMoveToImageCallback(callback: (from: number, to: number) => v
 }
 
 class ImageWidget extends WidgetType {
-  private container: HTMLElement | null = null;
-  private resizeHandle: HTMLElement | null = null;
+  private elm: HTMLElement | null = null;
+  private wrapper: HTMLElement | null = null;
+  private handle: HTMLElement | null = null;
   private linkInput: HTMLInputElement | null = null;
 
   constructor(
@@ -40,12 +41,12 @@ class ImageWidget extends WidgetType {
   }
 
   toDOM(): HTMLElement {
-    this.container = document.createElement('div');
-    this.container.className = 'cm-image-container';
+    this.elm = document.createElement('div');
+    this.elm.className = 'cm-image-container';
 
-    // 链接文本行（显示在图片上方）
-    const linkBar = document.createElement('div');
-    linkBar.className = 'cm-image-link-bar';
+    // 链接文本行
+    const bar = document.createElement('div');
+    bar.className = 'cm-image-link-bar';
 
     this.linkInput = document.createElement('input');
     this.linkInput.type = 'text';
@@ -53,29 +54,27 @@ class ImageWidget extends WidgetType {
     this.linkInput.value = this.markdownText || '';
     this.linkInput.spellcheck = false;
 
-    // 编辑链接文本 → 更新文档
+    // 阻止冒泡，防止干扰编辑器
+    this.linkInput.addEventListener('mousedown', (e) => e.stopPropagation());
+    this.linkInput.addEventListener('click', (e) => e.stopPropagation());
+    this.linkInput.addEventListener('keydown', (e) => e.stopPropagation());
+
+    // 输入时实时同步到文档
     this.linkInput.addEventListener('input', () => {
-      this.syncToDoc();
+      const newText = this.linkInput!.value;
+      if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageMarkdownCallback) {
+        updateImageMarkdownCallback(this.imageFrom, this.imageTo, newText);
+      }
     });
 
-    // 失焦时同步
-    this.linkInput.addEventListener('blur', () => {
-      this.syncToDoc();
-    });
+    bar.appendChild(this.linkInput);
+    this.elm.appendChild(bar);
 
-    // 阻止编辑链接时触发图片点击
-    this.linkInput.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-
-    linkBar.appendChild(this.linkInput);
-    this.container.appendChild(linkBar);
-
-    // 图片
-    const wrapper = document.createElement('div');
-    wrapper.className = 'cm-image-wrapper';
-    if (this.width) {
-      wrapper.style.width = `${this.width}px`;
+    // 图片包裹
+    this.wrapper = document.createElement('div');
+    this.wrapper.className = 'cm-image-wrapper';
+    if (this.width && this.width > 0) {
+      this.wrapper.style.width = `${this.width}px`;
     }
 
     const img = document.createElement('img');
@@ -83,15 +82,16 @@ class ImageWidget extends WidgetType {
     img.alt = this.alt;
     img.className = 'cm-image-resizable';
     img.draggable = false;
-    wrapper.appendChild(img);
+    this.wrapper.appendChild(img);
 
-    this.resizeHandle = document.createElement('div');
-    this.resizeHandle.className = 'cm-image-resize-handle';
-    wrapper.appendChild(this.resizeHandle);
+    // 缩放手柄
+    this.handle = document.createElement('div');
+    this.handle.className = 'cm-image-resize-handle';
+    this.wrapper.appendChild(this.handle);
 
-    this.container.appendChild(wrapper);
+    this.elm.appendChild(this.wrapper);
 
-    // 点击图片 → 光标跳转到 markdown 文本
+    // 图片点击 → 光标跳转
     img.addEventListener('click', (e) => {
       e.stopPropagation();
       if (this.imageFrom !== undefined && this.imageTo !== undefined && moveToImageCallback) {
@@ -100,57 +100,56 @@ class ImageWidget extends WidgetType {
     });
 
     // 拖拽缩放
-    let startX = 0;
-    let startWidth = 0;
+    this.setupResize(img);
 
-    this.resizeHandle.addEventListener('mousedown', (e) => {
+    return this.elm;
+  }
+
+  private setupResize(img: HTMLElement) {
+    if (!this.wrapper || !this.handle) return;
+
+    let startX = 0;
+    let startW = 0;
+
+    this.handle.addEventListener('mousedown', (e) => {
       e.preventDefault();
       e.stopPropagation();
       startX = e.clientX;
-      startWidth = wrapper.offsetWidth;
+      startW = this.wrapper!.offsetWidth;
 
-      const onMouseMove = (e: MouseEvent) => {
-        const delta = e.clientX - startX;
-        const newWidth = clampWidth(startWidth + delta);
-        wrapper.style.width = `${newWidth}px`;
+      const move = (e: MouseEvent) => {
+        this.wrapper!.style.width = `${clampWidth(startW + e.clientX - startX)}px`;
       };
 
-      const onMouseUp = () => {
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-        const newWidth = wrapper.offsetWidth;
-        if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageWidthCallback) {
-          updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth);
-        }
+      const up = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        this.commitWidth();
       };
 
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
     });
 
-    // 滚轮缩放
-    wrapper.addEventListener('wheel', (e) => {
-      if (e.ctrlKey || e.metaKey) {
+    // Alt + 滚轮缩放
+    this.wrapper.addEventListener('wheel', (e) => {
+      if (e.altKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -IMAGE_SIZE_CONFIG.step : IMAGE_SIZE_CONFIG.step;
-        const currentWidth = wrapper.offsetWidth;
-        const newWidth = clampWidth(currentWidth + delta);
-        wrapper.style.width = `${newWidth}px`;
-        if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageWidthCallback) {
-          updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth);
-        }
+        this.wrapper!.style.width = `${clampWidth(this.wrapper!.offsetWidth + delta)}px`;
+        this.commitWidth();
       }
     });
-
-    return this.container;
   }
 
-  private syncToDoc() {
-    if (!this.linkInput || this.imageFrom === undefined || this.imageTo === undefined) return;
-    const newText = this.linkInput.value;
-    const parsed = parseImageMarkdown(newText, 0);
-    if (parsed && updateImageWidthCallback) {
-      updateImageWidthCallback(this.imageFrom, this.imageTo, parsed.width || 0);
+  private commitWidth() {
+    if (!this.wrapper || this.imageFrom === undefined || this.imageTo === undefined) return;
+    const w = this.wrapper.offsetWidth;
+
+    // 直接构建新 markdown 并提交
+    const newText = buildImageMarkdown(this.alt, this.src, w);
+    if (updateImageMarkdownCallback) {
+      updateImageMarkdownCallback(this.imageFrom, this.imageTo, newText);
     }
   }
 
@@ -195,6 +194,11 @@ const livePreviewHighlight = HighlightStyle.define([
 
 export function livePreviewSyntaxHighlighting() {
   return syntaxHighlighting(livePreviewHighlight);
+}
+
+// 检查文本是否为图片语法（含 | 数字）
+function isImageMarkdown(text: string): RegExpMatchArray | null {
+  return text.match(/^!\[([^\]]*)\]\(([^)]+?)(?:\s*\|\s*(\d+))?\)$/);
 }
 
 function buildMarkerHidingDecorations(
@@ -291,7 +295,7 @@ function buildMarkerHidingDecorations(
         return;
       }
 
-      // 图片渲染：始终显示 widget（链接文本 + 图片）
+      // 图片渲染
       if (name === 'Image') {
         const text = doc.sliceString(node.from, node.to);
         const parsed = parseImageMarkdown(text, node.from);
@@ -308,21 +312,20 @@ function buildMarkerHidingDecorations(
         return;
       }
 
-      // 链接：可能被解析为 Link 的扩展图片语法（含 | 数字）
+      // 链接 → 可能是扩展图片语法（含 | 数字）
       if (name === 'Link') {
         const text = doc.sliceString(node.from, node.to);
-        const imageWithWidthMatch = text.match(/^!\[([^\]]*)\]\(([^)]+?)(?:\s*\|\s*(\d+))?\)$/);
-        if (imageWithWidthMatch) {
-          const alt = imageWithWidthMatch[1] ?? '';
-          const rawSrc = imageWithWidthMatch[2] ?? '';
-          const widthStr = imageWithWidthMatch[3];
-          const width = widthStr ? parseInt(widthStr, 10) : undefined;
+        const m = isImageMarkdown(text);
+        if (m) {
+          const alt = m[1] ?? '';
+          const rawSrc = (m[2] ?? '').trim();
+          const w = m[3] ? parseInt(m[3], 10) : undefined;
           const src = resolveUrl ? resolveUrl(rawSrc) : rawSrc;
           marks.push({
             from: node.from,
             to: node.to,
             value: Decoration.replace({
-              widget: new ImageWidget(src, alt, width, node.from, node.to, text),
+              widget: new ImageWidget(src, alt, w, node.from, node.to, text),
             }),
           });
           return;
@@ -340,6 +343,26 @@ function buildMarkerHidingDecorations(
           marks.push(linkMark.range(openFrom + 1, closeFrom));
         }
         return;
+      }
+
+      // 其他非活动行元素：也检查是否可能是图片语法
+      if (!onActiveLine) {
+        const text = doc.sliceString(node.from, node.to);
+        const m = isImageMarkdown(text);
+        if (m) {
+          const alt = m[1] ?? '';
+          const rawSrc = (m[2] ?? '').trim();
+          const w = m[3] ? parseInt(m[3], 10) : undefined;
+          const src = resolveUrl ? resolveUrl(rawSrc) : rawSrc;
+          marks.push({
+            from: node.from,
+            to: node.to,
+            value: Decoration.replace({
+              widget: new ImageWidget(src, alt, w, node.from, node.to, text),
+            }),
+          });
+          return;
+        }
       }
 
       if (onActiveLine) return;

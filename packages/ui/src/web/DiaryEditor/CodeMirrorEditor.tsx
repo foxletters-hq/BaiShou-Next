@@ -19,10 +19,9 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { searchKeymap } from '@codemirror/search';
 import { ImagePreview } from './ImagePreview';
-import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageWidthCallback, setMoveToImageCallback } from './codeMirrorDecorations';
+import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageMarkdownCallback, setMoveToImageCallback } from './codeMirrorDecorations';
 import { editorTheme } from './codeMirrorTheme';
 import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin';
-import { parseImageMarkdown, buildImageMarkdown } from './image-utils';
 
 export interface CodeMirrorEditorHandle {
   insertAtCursor: (text: string) => void;
@@ -144,16 +143,9 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       const container = containerRef.current;
       if (!container) return;
 
-      // 先设置回调（viewRef 在下面创建）
-      setUpdateImageWidthCallback((from: number, to: number, newWidth: number) => {
+      setUpdateImageMarkdownCallback((from: number, to: number, newMarkdown: string) => {
         const view = viewRef.current;
         if (!view) return;
-
-        const text = view.state.sliceDoc(from, to);
-        const parsed = parseImageMarkdown(text, from);
-        if (!parsed) return;
-
-        const newMarkdown = buildImageMarkdown(parsed.alt, parsed.src, newWidth);
         view.dispatch({
           changes: { from, to, insert: newMarkdown },
         });
