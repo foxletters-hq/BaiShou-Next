@@ -19,7 +19,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { searchKeymap } from '@codemirror/search';
 import { ImagePreview } from './ImagePreview';
-import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageWidthCallback } from './codeMirrorDecorations';
+import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageWidthCallback, setMoveToImageCallback } from './codeMirrorDecorations';
 import { editorTheme } from './codeMirrorTheme';
 import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin';
 import { parseImageMarkdown, buildImageMarkdown } from './image-utils';
@@ -102,14 +102,24 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       onDropFilesRef.current = onDropFiles;
     }, [onDropFiles]);
 
+    const basePathRef = useRef(basePath);
+    useEffect(() => { basePathRef.current = basePath; }, [basePath]);
+
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view || !basePath) return;
+      view.dispatch({ effects: forceImageRefresh.of(null) });
+    }, [basePath]);
+
     const resolveUrl = useCallback(
       (fileName: string): string => {
-        if (!basePath) return fileName;
-        const normalizedBase = basePath.replace(/\\/g, '/');
+        const currentBasePath = basePathRef.current;
+        if (!currentBasePath) return fileName;
+        const normalizedBase = currentBasePath.replace(/\\/g, '/');
         const normalizedName = fileName.replace('attachment/', '');
         return `local:///${normalizedBase}/${normalizedName}`;
       },
-      [basePath],
+      [],
     );
 
     useImperativeHandle(
@@ -143,6 +153,16 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
         view.dispatch({
           changes: { from, to, insert: newMarkdown },
         });
+      });
+
+      // 点击图片 → 光标跳转到 markdown 文本位置
+      setMoveToImageCallback((from: number, to: number) => {
+        const view = viewRef.current;
+        if (!view) return;
+        view.dispatch({
+          selection: { anchor: to },
+        });
+        view.focus();
       });
     }, []);
 
