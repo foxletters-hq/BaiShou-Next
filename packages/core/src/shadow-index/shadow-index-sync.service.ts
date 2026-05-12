@@ -7,7 +7,7 @@ import {
   ShadowIndexRepository,
   UpsertShadowIndexPayload,
 } from '@baishou/database';
-import { formatLocalDate, DiaryMeta, logger } from '@baishou/shared';
+import { parseDateStr, DiaryMeta, logger } from '@baishou/shared';
 
 import { IStoragePathService } from '../vault/storage-path.types';
 import { IVaultService } from '../vault/vault.types';
@@ -87,8 +87,8 @@ export class ShadowIndexSyncService {
   /**
    * 触发单条日记的强同步
    */
-  async syncJournal(date: Date, skipRag = false): Promise<JournalSyncResult> {
-    const results = await this.syncJournalsBatch([date], skipRag);
+  async syncJournal(dateStr: string, skipRag = false): Promise<JournalSyncResult> {
+    const results = await this.syncJournalsBatch([dateStr], skipRag);
     return results[0] || { meta: null, isChanged: false };
   }
 
@@ -96,32 +96,31 @@ export class ShadowIndexSyncService {
    * 批量触发日记的并行同步 (内存并行 Hash计算/文件读取 + DB 批量事务)
    * 专治极端压测或拖拽多文件并发引起的 SQLite 拥堵与损坏
    */
-  async syncJournalsBatch(dates: Date[], skipRag = false): Promise<JournalSyncResult[]> {
-    if (this._isSyncDisabled || dates.length === 0) {
-      return dates.map(() => ({ meta: null, isChanged: false }));
+  async syncJournalsBatch(dateStrs: string[], skipRag = false): Promise<JournalSyncResult[]> {
+    if (this._isSyncDisabled || dateStrs.length === 0) {
+      return dateStrs.map(() => ({ meta: null, isChanged: false }));
     }
 
     const journalBase = await this.pathService.getJournalsBaseDirectory();
     const results: JournalSyncResult[] = [];
     const CHUNK_SIZE = 50; // 内存并发阈值
 
-    for (let i = 0; i < dates.length; i += CHUNK_SIZE) {
-      const chunk = dates.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < dateStrs.length; i += CHUNK_SIZE) {
+      const chunk = dateStrs.slice(i, i + CHUNK_SIZE);
       const payloads: UpsertShadowIndexPayload[] = [];
       const parsedDiaries: ParsedJournal[] = [];
       const events: JournalSyncEvent[] = [];
       const idsToDelete: {id: number, dateStr: string}[] = [];
 
-      await Promise.all(chunk.map(async (date) => {
-        const filePath = this._getJournalFilePath(journalBase, date);
-        const dayStr = this._formatDayStr(date);
-        const dateKey = formatLocalDate(date);
+      await Promise.all(chunk.map(async (dateStr) => {
+        const filePath = this._getJournalFilePath(journalBase, dateStr);
+        const dateKey = dateStr;
 
         // ── 1. 孤立检测 ──
         if (!fs.existsSync(filePath)) {
-          const existingRows = await this.shadowRepo.findByDatePrefix(dayStr);
+          const existingRows = await this.shadowRepo.findByDatePrefix(dateStr);
           for (const row of existingRows) {
-            idsToDelete.push({ id: row.id, dateStr: dayStr });
+            idsToDelete.push({ id: row.id, dateStr });
           }
           results.push({ meta: null, isChanged: true });
           events.push({ filePath: path.relative(path.dirname(journalBase), filePath), result: { meta: null, isChanged: true } });
@@ -139,7 +138,7 @@ export class ShadowIndexSyncService {
 
         // ── 3. 解析落盘 ──
         const rawContent = await fsp.readFile(filePath, 'utf8');
-        const diary = parseJournalMarkdown(rawContent, date);
+        const diary = parseJournalMarkdown(rawContent, dateStr);
         if (!diary) {
           results.push({ meta: null, isChanged: false });
           return;
@@ -150,7 +149,7 @@ export class ShadowIndexSyncService {
         payloads.push({
           id: diary.id || undefined,
           filePath: relFilePath,
-          date: formatLocalDate(diary.date),
+          date: diary.date,
           createdAt: diary.createdAt.toISOString(),
           updatedAt: diary.updatedAt.toISOString(),
           contentHash: currentHash,
@@ -193,7 +192,7 @@ export class ShadowIndexSyncService {
           
           const meta: DiaryMeta = {
             id,
-            date: d.date,
+            date: parseDateStr(d.date),
             preview: d.content.length > 120 ? d.content.substring(0, 120) : d.content,
             tags: d.tags,
             updatedAt: d.updatedAt,
@@ -253,14 +252,14 @@ export class ShadowIndexSyncService {
 
       // 1. 收集所有符合 yyyy-MM-dd.md 格式的物理文件日期
       const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/;
-      const targetDates: Date[] = [];
+      const targetDates: string[] = [];
 
       if (fs.existsSync(journalsDir)) {
         await this._walkDir(journalsDir, (filePath) => {
           const fileName = path.basename(filePath);
           const match = dateFileRegex.exec(fileName);
           if (match && match[1]) {
-             targetDates.push(new Date(match[1] + 'T00:00:00.000Z'));
+             targetDates.push(match[1]);
           }
         });
       }
@@ -280,8 +279,8 @@ export class ShadowIndexSyncService {
         if (!dateStr) continue;
 
         // 实时检查物理文件是否存在（而非依赖启动时的快照）
-        const recordDate = new Date(dateStr + 'T00:00:00.000Z');
-        const filePath = this._getJournalFilePath(journalBase, recordDate);
+        const [year, month] = dateStr.split('-');
+        const filePath = path.join(journalBase, year!, month!, `${dateStr}.md`);
 
         if (!fs.existsSync(filePath)) {
           // 物理文件确实不存在，安全执行影子清理
@@ -329,9 +328,7 @@ export class ShadowIndexSyncService {
    * 获取特定日期的日记文件物理路径
    * 遵循 yyyy/MM/yyyy-MM-dd.md 存储规约
    */
-  private _getJournalFilePath(journalBase: string, date: Date): string {
-    // 使用本地时区（对齐原版 Flutter DateFormat）
-    const dateStr = formatLocalDate(date);
+  private _getJournalFilePath(journalBase: string, dateStr: string): string {
     const [year, month] = dateStr.split('-');
     return path.join(journalBase, year!, month!, `${dateStr}.md`);
   }
@@ -340,8 +337,8 @@ export class ShadowIndexSyncService {
    * 格式化日期为 YYYY-MM-DD 字符串（本地时区）
    * 用于文件前缀查询与日志输出
    */
-  private _formatDayStr(date: Date): string {
-    return formatLocalDate(date);
+  private _formatDayStr(dateStr: string): string {
+    return dateStr;
   }
 
   /**

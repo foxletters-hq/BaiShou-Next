@@ -6,8 +6,8 @@ import { LocalSearchProvider, type SearchItem } from './local-search-provider'
  * 使用隐藏的 BrowserWindow 加载 Google 搜索页面并解析结果
  */
 export class LocalGoogleProvider extends LocalSearchProvider {
-  constructor() {
-    super('local-google', 'https://www.google.com/search?q=%s')
+  constructor(fetchSearchPageFn?: (url: string) => Promise<string>) {
+    super('local-google', 'https://www.google.com/search?q=%s', fetchSearchPageFn)
   }
 
   /**

@@ -30,7 +30,7 @@ export interface IEmbeddingCallback {
     diaryId: number;
     content: string;
     tags: string[];
-    date: Date;
+    date: string;
     updatedAt: Date;
   }): Promise<void>;
 
@@ -42,7 +42,7 @@ export interface IEmbeddingCallback {
  */
 export interface ParsedJournal {
   id: number;
-  date: Date;
+  date: string;
   content: string;
   tags: string[];
   createdAt: Date;

@@ -26,7 +26,7 @@ function safeParseDateTime(value: string | undefined, fallback: Date): Date {
  * 日记正文内容...
  * ```
  */
-export function parseJournalMarkdown(raw: string, fallbackDate: Date): ParsedJournal | null {
+export function parseJournalMarkdown(raw: string, fallbackDate: string): ParsedJournal | null {
   const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
   const match = raw.match(frontmatterRegex);
 
@@ -51,9 +51,9 @@ export function parseJournalMarkdown(raw: string, fallbackDate: Date): ParsedJou
     tags = tagStr.split(',').map(s => s.trim()).filter(Boolean);
   }
 
-  // 解析日期：使用本地时区（禁止 new Date('YYYY-MM-DD') 会被解析为 UTC）
+  // 日期直接使用 YYYY-MM-DD 字符串
   const dateStr = meta['date'];
-  const parsedDate = dateStr ? parseDateStr(dateStr) : fallbackDate;
+  const parsedDate = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : fallbackDate;
 
   // 解析媒体路径
   let mediaPaths: string[] = [];
@@ -69,7 +69,7 @@ export function parseJournalMarkdown(raw: string, fallbackDate: Date): ParsedJou
     date: parsedDate,
     content,
     tags,
-    createdAt: safeParseDateTime(meta['created_at'] || meta['createdAt'], meta['date'] ? parsedDate : now),
+    createdAt: safeParseDateTime(meta['created_at'] || meta['createdAt'], meta['date'] ? parseDateStr(parsedDate) : now),
     updatedAt: safeParseDateTime(meta['updated_at'] || meta['updatedAt'], now),
     weather: meta['weather'] || undefined,
     mood: meta['mood'] || undefined,

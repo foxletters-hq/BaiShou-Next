@@ -43,7 +43,7 @@ export class DiaryService {
     await this.fileSync.writeJournal(finalDiary);
 
     // 4. 同步到 SQLite 影子索引中重建缓存并下发向量任务
-    const syncResult = await this.shadowSync.syncJournal(input.date);
+    const syncResult = await this.shadowSync.syncJournal(formatLocalDate(input.date));
     if (!syncResult.meta) {
         throw new Error("写入文件后却无法建立影子索引");
     }
@@ -67,8 +67,8 @@ export class DiaryService {
     }
     
     const sdStr = String(existingShadow.date);
-    // DB date 存 YYYY-MM-DD，用 parseDateStr 解析为本地时区 Date
-    const existingDate = parseDateStr(sdStr.split('T')[0]!);
+    const existingDateStr = sdStr.split('T')[0]!;
+    const existingDate = parseDateStr(existingDateStr);
 
     // 尝试拉出物理正本文件
     const existingDiary = await this.fileSync.readJournal(existingDate);
@@ -83,9 +83,9 @@ export class DiaryService {
       : undefined;
 
     // 比对日期字符串（对齐原版 oldDateStr != fmt.format(date)）
-    const existingDateStr = formatLocalDate(existingDate);
-    const inputDateStr = inputDate ? formatLocalDate(inputDate) : existingDateStr;
-    const isDateJumped = inputDateStr !== existingDateStr;
+    const oldDateStr = formatLocalDate(existingDate);
+    const inputDateStr = inputDate ? formatLocalDate(inputDate) : oldDateStr;
+    const isDateJumped = inputDateStr !== oldDateStr;
 
     // 检查日期跳转时的覆盖合并
     let conflictId: number | undefined;
@@ -114,11 +114,11 @@ export class DiaryService {
     const targetDate = inputDate ? inputDate : existingDate;
     
     if (inputDate && isDateJumped) {
-       await this.shadowSync.syncJournal(existingDate); // 这会触发删除旧索引的孤立清理
+       await this.shadowSync.syncJournal(existingDateStr); // 这会触发删除旧索引的孤立清理
        this.vaultIndex.remove(id); // 安全清理防鬼影
     }
     
-    const syncResult = await this.shadowSync.syncJournal(targetDate);
+    const syncResult = await this.shadowSync.syncJournal(formatLocalDate(targetDate));
 
     if (syncResult.meta) {
       this.vaultIndex.upsert(syncResult.meta);
@@ -135,11 +135,12 @@ export class DiaryService {
   async delete(id: number): Promise<void> {
     const existingShadow = await this.shadowRepo.findById(id);
     if (existingShadow) {
-      const existingDate = parseDateStr(String(existingShadow.date).split('T')[0]!);
+      const existingDateStr = String(existingShadow.date).split('T')[0]!;
+      const existingDate = parseDateStr(existingDateStr);
       await this.fileSync.deleteJournalFile(existingDate);
       
       // 触发脏检测将会使其判定为孤立索引并级联删除向量、重置一切缓存
-      await this.shadowSync.syncJournal(existingDate);
+      await this.shadowSync.syncJournal(existingDateStr);
       
       this.vaultIndex.remove(id);
     }
@@ -148,10 +149,11 @@ export class DiaryService {
   async findById(id: number): Promise<Diary | null> {
     const shadow = await this.shadowRepo.findById(id);
     if (!shadow) return null;
-    const date = parseDateStr(String(shadow.date).split('T')[0]!);
+    const dateStr = String(shadow.date).split('T')[0]!;
+    const date = parseDateStr(dateStr);
     
     // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
-    this.shadowSync.syncJournal(date).catch(e => console.warn('Lazy sync failed', e));
+    this.shadowSync.syncJournal(dateStr).catch(e => console.warn('Lazy sync failed', e));
     
     return this.fileSync.readJournal(date);
   }
@@ -167,7 +169,7 @@ export class DiaryService {
     }
     
     // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
-    this.shadowSync.syncJournal(date).catch(e => console.warn('Lazy sync failed', e));
+    this.shadowSync.syncJournal(formatLocalDate(date)).catch(e => console.warn('Lazy sync failed', e));
 
     return diary;
   }

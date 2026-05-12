@@ -29,6 +29,7 @@ export class SystemPromptBuilder {
 
     // 用户的偏好属性或者个人小卡片
     if (userProfileBlock && userProfileBlock.trim().length > 0) {
+      buffer.push('[Important: The following identity card describes the USER (human), NOT you (the AI assistant). Use this information to personalize your responses, but NEVER claim these facts as your own identity.]');
       buffer.push(userProfileBlock);
       buffer.push('');
     }

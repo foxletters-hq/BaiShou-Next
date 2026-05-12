@@ -5,6 +5,11 @@ export interface IStoragePathService {
   getGlobalRegistryDirectory(): Promise<string>;
 
   /**
+   * 获取当前活跃 Vault 的物理路径
+   */
+  getActiveVaultPath(): Promise<string | null>;
+
+  /**
    * 获取某个特定 Vault 的根物理目录
    */
   getVaultDirectory(vaultName: string): Promise<string>;

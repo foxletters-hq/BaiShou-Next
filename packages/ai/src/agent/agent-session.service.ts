@@ -150,6 +150,20 @@ export class AgentSessionService {
       const hsRepo = new SqliteHybridSearchRepository(rawClient);
       const msgRepo = new MessageRepository(drizzleDb);
 
+      // 初始化向量表（如果 embedding 模型已配置）
+      if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
+        try {
+          const { embed } = await import('ai');
+          const embModel = systemModels.embeddingProvider.getEmbeddingModel(systemModels.embeddingModelId);
+          const { embedding: testEmb } = await embed({ model: embModel, value: 'hi' });
+          if (testEmb.length > 0) {
+            await hsRepo.initVectorTables(testEmb.length, false);
+          }
+        } catch (e) {
+          console.warn('[AgentSession] 向量表初始化跳过（embedding 模型不可用）:', e);
+        }
+      }
+
       const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo);
       let embAdapter = undefined;
       if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
@@ -179,7 +193,8 @@ export class AgentSessionService {
          summaryReader: dbAdapter,
          deduplicationService: dedupService,
          diarySearcher: options.diarySearcher,
-         webSearchResultFetcher: webSearchResultFetcher
+         webSearchResultFetcher: webSearchResultFetcher,
+         fetchSearchPage: options.fetchSearchPage
       });
 
       // --- 灵魂注入 (如果有 Assistant 绑定) ---

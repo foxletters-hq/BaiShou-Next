@@ -5,7 +5,7 @@ import { VaultIndexService } from '../vault-index.service';
 import { ShadowIndexSyncService } from '../../shadow-index/shadow-index-sync.service';
 import { ShadowIndexRepository } from '@baishou/database';
 import { DiaryNotFoundError, DiaryDateConflictError } from '../diary.types';
-import { Diary } from '@baishou/shared';
+import { Diary, parseDateStr } from '@baishou/shared';
 
 describe('DiaryService - Single Source of Truth architecture', () => {
   let mockShadowRepo: import('vitest').Mocked<ShadowIndexRepository>;
@@ -86,7 +86,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
     // 确保写入物理文件在前
     expect(mockFileSync.writeJournal).toHaveBeenCalledWith(input);
     // 确保触发同步在后
-    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith(inputDate);
+    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-31');
     // 确保把同步的结果推给内存库
     expect(mockVaultIndex.upsert).toHaveBeenCalledWith(mockSyncResult.meta);
 
@@ -145,7 +145,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
     expect(mockFileSync.writeJournal).toHaveBeenCalledWith(expect.objectContaining({
       content: 'New'
     }));
-    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith(existingDate);
+    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-30');
     expect(mockVaultIndex.upsert).toHaveBeenCalled();
   });
 
@@ -175,8 +175,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
     await service.update(99, { date: newDate, content: 'New' });
 
     expect(mockFileSync.deleteJournalFile).toHaveBeenCalledWith(oldDate);
-    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith(oldDate); // 删旧
-    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith(newDate); // 更新新
+    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-30'); // 删旧
+    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-31'); // 更新新
   });
 
   it('delete() should delete file and clear index', async () => {
@@ -187,10 +187,10 @@ describe('DiaryService - Single Source of Truth architecture', () => {
 
     await service.delete(1);
 
-    const d = new Date(existingDateIso);
+    const d = parseDateStr('2026-03-25');
     expect(mockFileSync.deleteJournalFile).toHaveBeenCalledWith(d);
     // 影子同步由于文件没了会执行级联清理
-    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith(d);
+    expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-25');
     expect(mockVaultIndex.remove).toHaveBeenCalledWith(1);
   });
 });

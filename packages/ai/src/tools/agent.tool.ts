@@ -112,6 +112,8 @@ export interface ToolContext {
   userConfig?: Record<string, unknown>;
   /** 允许外部注入基于宿主系统（如 Electron / Web）的真正搜索页面执行器，如果没有则降级走 Native Fetch */
   webSearchResultFetcher?: (url: string) => Promise<string>;
+  /** 允许外部注入搜索页面获取函数（用于本地搜索引擎），如果没有则降级走 IPC */
+  fetchSearchPage?: (url: string) => Promise<string>;
 }
 
 /**

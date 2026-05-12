@@ -47,19 +47,21 @@ export class WebSearchService {
     totalMaxResults?: number;
     apiKey?: string;
     webSearchResultFetcher?: (url: string) => Promise<string>;
+    fetchSearchPage?: (url: string) => Promise<string>;
   }): Promise<SearchResult[]> {
     const { 
       queries, engine, 
       maxResultsPerQuery = 5, totalMaxResults = 10, apiKey,
-      webSearchResultFetcher
+      webSearchResultFetcher,
+      fetchSearchPage
     } = params;
 
     if (queries.length === 0) return [];
     if (queries.length === 1) {
-      return this.search(queries[0]!, engine, totalMaxResults, apiKey, webSearchResultFetcher);
+      return this.search(queries[0]!, engine, totalMaxResults, apiKey, webSearchResultFetcher, fetchSearchPage);
     }
 
-    const promises = queries.map(q => this.search(q, engine, maxResultsPerQuery, apiKey, webSearchResultFetcher));
+    const promises = queries.map(q => this.search(q, engine, maxResultsPerQuery, apiKey, webSearchResultFetcher, fetchSearchPage));
     const allResultsRaw = await Promise.allSettled(promises);
     
     const seen = new Set<string>();
@@ -85,7 +87,8 @@ export class WebSearchService {
     engine: SearchEngineType, 
     maxResults: number = this.defaultMaxResults,
     apiKey?: string,
-    webSearchResultFetcher?: (url: string) => Promise<string>
+    webSearchResultFetcher?: (url: string) => Promise<string>,
+    fetchSearchPage?: (url: string) => Promise<string>
   ): Promise<SearchResult[]> {
     if (engine === 'duckduckgo') {
       return this.searchDuckDuckGo(query, maxResults);
@@ -94,7 +97,7 @@ export class WebSearchService {
       return this.searchLocalBing(query, maxResults, webSearchResultFetcher);
     }
     if (engine === 'local-google') {
-      return this.searchLocalGoogle(query, maxResults, webSearchResultFetcher);
+      return this.searchLocalGoogle(query, maxResults, webSearchResultFetcher, fetchSearchPage);
     }
     return this.searchTavily(query, maxResults, apiKey);
   }
@@ -252,10 +255,11 @@ export class WebSearchService {
   private static async searchLocalGoogle(
     query: string, 
     maxResults: number,
-    webSearchResultFetcher?: (url: string) => Promise<string>
+    webSearchResultFetcher?: (url: string) => Promise<string>,
+    fetchSearchPage?: (url: string) => Promise<string>
   ): Promise<SearchResult[]> {
     try {
-      const provider = new LocalGoogleProvider();
+      const provider = new LocalGoogleProvider(fetchSearchPage);
       const response = await provider.search(query, maxResults, webSearchResultFetcher);
       
       return response.results.map(r => ({

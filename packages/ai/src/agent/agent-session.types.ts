@@ -34,6 +34,7 @@ export interface StreamChatOptions {
   };
   diarySearcher?: import('../tools/agent.tool').ToolDiarySearcher;
   webSearchResultFetcher?: (url: string) => Promise<string>;
+  fetchSearchPage?: (url: string) => Promise<string>;
   abortSignal?: AbortSignal;
   skipUserMessageRecording?: boolean;
 }

@@ -23,10 +23,12 @@ export interface LocalSearchResponse {
 export abstract class LocalSearchProvider {
   protected providerId: string
   protected searchUrl: string
+  private fetchSearchPageFn?: (url: string) => Promise<string>
 
-  constructor(providerId: string, searchUrl: string) {
+  constructor(providerId: string, searchUrl: string, fetchSearchPageFn?: (url: string) => Promise<string>) {
     this.providerId = providerId
     this.searchUrl = searchUrl
+    this.fetchSearchPageFn = fetchSearchPageFn
   }
 
   /**
@@ -100,7 +102,12 @@ export abstract class LocalSearchProvider {
    * 获取搜索页面 HTML
    */
   protected async fetchSearchPage(url: string): Promise<string> {
-    // 通过 IPC 调用主进程的 SearchService
+    // 优先使用注入的函数（主进程场景）
+    if (this.fetchSearchPageFn) {
+      return this.fetchSearchPageFn(url)
+    }
+
+    // 通过 IPC 调用主进程的 SearchService（渲染进程场景）
     if (typeof window !== 'undefined' && window.electron) {
       const uid = `search-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       try {

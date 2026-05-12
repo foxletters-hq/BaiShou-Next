@@ -102,7 +102,8 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
               maxResultsPerQuery: maxResults, 
               totalMaxResults: maxResults + 5,
               apiKey: tavilyKey,
-              webSearchResultFetcher: context.webSearchResultFetcher
+              webSearchResultFetcher: context.webSearchResultFetcher,
+              fetchSearchPage: context.fetchSearchPage
            });
        } catch (primaryErr) {
            console.warn(`[WebSearchTool] Primary engine ${actualEngine} failed, trying fallback. Error:`, primaryErr);
@@ -116,7 +117,8 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
               maxResultsPerQuery: maxResults, 
               totalMaxResults: maxResults,
               apiKey: tavilyKey,
-              webSearchResultFetcher: context.webSearchResultFetcher
+              webSearchResultFetcher: context.webSearchResultFetcher,
+              fetchSearchPage: context.fetchSearchPage
            });
        }
 

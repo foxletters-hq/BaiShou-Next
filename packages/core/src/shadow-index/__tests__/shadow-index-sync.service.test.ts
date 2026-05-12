@@ -127,11 +127,11 @@ describe('ShadowIndexSyncService', () => {
   it('应当为新的日记文件创建影子索引', async () => {
     await writeJournal('2026-03-31', '今天是美好的一天', ['生活', '测试']);
 
-    const result = await service.syncJournal(new Date('2026-03-31T00:00:00.000Z'));
+    const result = await service.syncJournal('2026-03-31');
 
     expect(result.isChanged).toBe(true);
     expect(result.meta).not.toBeNull();
-    expect(result.meta!.date).toEqual(new Date('2026-03-31T00:00:00.000Z'));
+    expect(result.meta!.date).toEqual(new Date(2026, 2, 31));
     expect(result.meta!.tags).toEqual(['生活', '测试']);
     expect(result.meta!.preview).toContain('今天是美好的一天');
     expect(mockRepo._getRecordCount()).toBe(1);
@@ -141,21 +141,21 @@ describe('ShadowIndexSyncService', () => {
   it('连续两次同步同一文件时第二次应无变化', async () => {
     await writeJournal('2026-03-30', '内容不变');
 
-    const r1 = await service.syncJournal(new Date('2026-03-30T00:00:00.000Z'));
+    const r1 = await service.syncJournal('2026-03-30');
     expect(r1.isChanged).toBe(true);
 
-    const r2 = await service.syncJournal(new Date('2026-03-30T00:00:00.000Z'));
+    const r2 = await service.syncJournal('2026-03-30');
     expect(r2.isChanged).toBe(false);
   });
 
   // ── 3. Hash 脏检测：内容变更时触发更新 ──
   it('文件内容变更后应触发重新同步', async () => {
     await writeJournal('2026-03-29', '原始内容');
-    await service.syncJournal(new Date('2026-03-29T00:00:00.000Z'));
+    await service.syncJournal('2026-03-29');
 
     // 修改文件内容
     await writeJournal('2026-03-29', '修改后的内容');
-    const r2 = await service.syncJournal(new Date('2026-03-29T00:00:00.000Z'));
+    const r2 = await service.syncJournal('2026-03-29');
     expect(r2.isChanged).toBe(true);
     expect(r2.meta!.preview).toContain('修改后的内容');
   });
@@ -163,14 +163,14 @@ describe('ShadowIndexSyncService', () => {
   // ── 4. 物理文件删除后的孤立索引清理 ──
   it('物理文件被删除后应清理孤立索引', async () => {
     await writeJournal('2026-03-28', '即将消失的日记');
-    await service.syncJournal(new Date('2026-03-28T00:00:00.000Z'));
+    await service.syncJournal('2026-03-28');
     expect(mockRepo._getRecordCount()).toBe(1);
 
     // 删除物理文件
     const [year, month] = ['2026', '03'];
     await fsp.unlink(path.join(journalsDir, year, month, '2026-03-28.md'));
 
-    const result = await service.syncJournal(new Date('2026-03-28T00:00:00.000Z'));
+    const result = await service.syncJournal('2026-03-28');
     expect(result.isChanged).toBe(true);
     expect(result.meta).toBeNull(); // 删除操作没有元数据返回
     expect(mockRepo._getRecordCount()).toBe(0);
@@ -181,7 +181,7 @@ describe('ShadowIndexSyncService', () => {
 
   // ── 5. 不存在的文件且无索引 → 无变化 ──
   it('目标文件和索引都不存在时应返回无变化', async () => {
-    const result = await service.syncJournal(new Date('2099-01-01T00:00:00.000Z'));
+    const result = await service.syncJournal('2099-01-01');
     expect(result.isChanged).toBe(false);
   });
 
@@ -219,7 +219,7 @@ describe('ShadowIndexSyncService', () => {
 
     service.setSyncEnabled(false);
 
-    const result = await service.syncJournal(new Date('2026-05-01T00:00:00.000Z'));
+    const result = await service.syncJournal('2026-05-01');
     expect(result.isChanged).toBe(false);
 
     await service.fullScanVault();
@@ -230,7 +230,7 @@ describe('ShadowIndexSyncService', () => {
   it('同步时应异步触发 RAG 嵌入回调', async () => {
     await writeJournal('2026-06-01', '触发 RAG 的日记', ['AI']);
 
-    await service.syncJournal(new Date('2026-06-01T00:00:00.000Z'));
+    await service.syncJournal('2026-06-01');
 
     // 给异步回调一点时间完成
     await new Promise(r => setTimeout(r, 100));
@@ -262,7 +262,7 @@ describe('ShadowIndexSyncService', () => {
     service.onSyncEvent((event) => events.push(event));
 
     await writeJournal('2026-08-01', '事件测试');
-    await service.syncJournal(new Date('2026-08-01T00:00:00.000Z'));
+    await service.syncJournal('2026-08-01');
 
     expect(events.length).toBe(1);
     expect(events[0].result.isChanged).toBe(true);
@@ -279,7 +279,7 @@ describe('ShadowIndexSyncService', () => {
       'utf8'
     );
 
-    const result = await service.syncJournal(new Date('2026-09-15T00:00:00.000Z'));
+    const result = await service.syncJournal('2026-09-15');
     expect(result.isChanged).toBe(true);
     expect(result.meta!.preview).toContain('这是没有 Frontmatter 的纯文本日记');
   });

@@ -348,15 +348,15 @@ describe('Agent 9: 文件附件系统验证', () => {
 
   it('任务18-4: 编辑器渲染附件引用', () => {
     const tsx = readFile(
-      'packages/ui/src/web/DiaryEditor/MilkdownEditor.tsx'
+      'packages/ui/src/web/DiaryEditor/CodeMirrorEditor.tsx'
     );
     expect(tsx).toContain('processAttachments');
     expect(tsx).toContain('attachment/');
   });
 
-  it('任务18-3: ImagePreview 组件已集成到 MilkdownEditor', () => {
+  it('任务18-3: ImagePreview 组件已集成到 CodeMirrorEditor', () => {
     const editor = readFile(
-      'packages/ui/src/web/DiaryEditor/MilkdownEditor.tsx'
+      'packages/ui/src/web/DiaryEditor/CodeMirrorEditor.tsx'
     );
     // 导入存在
     expect(editor).toContain("import { ImagePreview }");

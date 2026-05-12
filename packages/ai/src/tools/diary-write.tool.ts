@@ -48,6 +48,8 @@ export class DiaryWriteTool extends AgentTool<typeof diaryWriteParams> {
       await mkdir(dirPath, { recursive: true });
       await writeFile(filePath, args.content, 'utf-8');
 
+      console.log(`[DiaryWriteTool] ✅ 写入完成: ${filePath}`);
+
       if (context.vectorStore?.indexFile) {
         try {
           await context.vectorStore.indexFile(filePath);

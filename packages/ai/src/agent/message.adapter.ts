@@ -88,11 +88,27 @@ export class MessageAdapter {
           } else if (p.type === 'tool') {
             const data = p.data as any;
             if (data.callId && data.name) {
+              // 解析工具参数，确保始终是有效的 JSON 对象
+              let parsedArgs: Record<string, unknown> = {};
+              if (data.arguments) {
+                try {
+                  parsedArgs = typeof data.arguments === 'string' 
+                    ? JSON.parse(data.arguments) 
+                    : (data.arguments || {});
+                } catch {
+                  parsedArgs = {};
+                }
+              }
+              
+              // 符合 Vercel AI SDK ToolCallPart 标准接口
+              // @see node_modules/@ai-sdk/provider-utils/dist/index.d.ts:656
+              // input 是标准字段，args 是向后兼容字段
               contentParts.push({
                 type: 'tool-call',
                 toolCallId: data.callId,
                 toolName: data.name,
-                args: typeof data.arguments === 'string' ? JSON.parse(data.arguments) : (data.arguments || {}),
+                args: parsedArgs,
+                input: parsedArgs,
               });
 
               // Vercel AI SDK 要求每个 tool-call 必须有对应的 tool-result
