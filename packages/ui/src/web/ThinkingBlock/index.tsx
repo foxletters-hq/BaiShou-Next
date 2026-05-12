@@ -112,7 +112,6 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     if (!content) return [];
     const normalized = normalizeCJKSpacing(content);
     const allLines = normalized.split('\n');
-    // 思考中时去掉最后一行（可能正在输入，不完整）
     const lines = isThinking ? allLines.slice(0, -1) : allLines;
     return lines.filter((line) => line.trim() !== '');
   }, [content, isThinking]);
@@ -135,7 +134,8 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
 
   return (
     <div
-      className={`${styles.container} ${isThinking ? styles.isThinking : ''} ${isOpen ? styles.open : ''}`}
+      className={`${styles.container} ${isOpen ? styles.open : ''}`}
+      style={showCollapsedPreview ? { height: previewContainerHeight } : undefined}
     >
       {/* Header */}
       <div className={styles.header} onClick={handleToggle}>
@@ -154,7 +154,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
 
         <div className={styles.headerCenter}>
           <span
-            className={`${styles.statusText} ${!showCollapsedPreview || messages.length === 0 ? styles.statusOnly : ''}`}
+            className={`${styles.statusText} ${showCollapsedPreview && messages.length > 0 ? styles.statusOverlay : ''}`}
           >
             {statusText}
           </span>
@@ -165,8 +165,8 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
                 <motion.div
                   className={styles.previewScroll}
                   style={{ height: messages.length * LINE_HEIGHT }}
-                  initial={false}
-                  animate={{ y: -messages.length * LINE_HEIGHT }}
+                  initial={{ y: -2 }}
+                  animate={{ y: -(messages.length * LINE_HEIGHT + 2) }}
                   transition={{ duration: 0.15, ease: 'linear' }}
                 >
                   {messages.map((msg, index) => {

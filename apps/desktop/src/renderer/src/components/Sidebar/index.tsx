@@ -109,7 +109,10 @@ export const Sidebar: React.FC = () => {
                         >
                           <div
                             className={`${styles.navItem} ${isSelected ? styles.selected : ''}`}
-                            onClick={() => navigate(item.path)}
+                            onClick={() => {
+                              sessionStorage.setItem('desktop_last_nav', location.pathname);
+                              navigate(item.path);
+                            }}
                           >
                             <div {...provided.dragHandleProps} className={styles.dragHandle}>
                               <MdDragIndicator />

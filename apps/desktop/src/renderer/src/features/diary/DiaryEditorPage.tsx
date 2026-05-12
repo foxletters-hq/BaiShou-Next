@@ -151,7 +151,12 @@ export const DiaryEditorPage: React.FC = () => {
     if (isDirty) {
       setShowExitConfirm(true);
     } else {
-      navigate(-1);
+      const lastNav = sessionStorage.getItem('desktop_last_nav');
+      if (lastNav && lastNav !== '/diary') {
+        navigate(lastNav, { replace: true });
+      } else {
+        navigate('/diary');
+      }
     }
   };
 
@@ -162,7 +167,12 @@ export const DiaryEditorPage: React.FC = () => {
     setTimeout(async () => {
       try {
         await autoSave(content);
-        navigate(-1);
+        const lastNav = sessionStorage.getItem('desktop_last_nav');
+        if (lastNav && lastNav !== '/diary') {
+          navigate(lastNav, { replace: true });
+        } else {
+          navigate('/diary');
+        }
       } catch (e: any) {
         toast.showError(e?.message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'));
       } finally {
@@ -212,7 +222,7 @@ export const DiaryEditorPage: React.FC = () => {
               <button className="dd-btn-cancel" onClick={() => setShowExitConfirm(false)}>
                 {t('common.cancel', '我再写写')}
               </button>
-              <button className="dd-btn-confirm" onClick={() => navigate(-1)} style={{ background: '#ef4444', color: 'white' }}>
+              <button className="dd-btn-confirm" onClick={() => { const lastNav = sessionStorage.getItem('desktop_last_nav'); if (lastNav && lastNav !== '/diary') navigate(lastNav, { replace: true }); else navigate('/diary'); }} style={{ background: '#ef4444', color: 'white' }}>
                 {t('common.leave', '强行离开')}
               </button>
             </div>
