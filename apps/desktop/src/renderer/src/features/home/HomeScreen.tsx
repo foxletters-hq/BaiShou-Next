@@ -12,7 +12,6 @@ export const HomeScreen: React.FC = () => {
     if (saved) {
       try {
         const order = JSON.parse(saved);
-        // 只处理主路由，不处理 settings 子路由
         if (order[0] === 'summary') defaultRoute = '/summary';
         else if (order[0] === 'lan') defaultRoute = '/lan-transfer';
         else if (order[0] === 'sync') defaultRoute = '/data-sync';
