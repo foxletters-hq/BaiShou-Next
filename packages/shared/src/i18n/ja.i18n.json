@@ -1129,7 +1129,10 @@
       "tts_not_configured": "TTSモデルが設定されていません。設定でTTSモデルを設定してください",
       "tts_provider_not_found": "TTSプロバイダーが見つかりません",
       "tts_api_error": "TTS APIリクエストが失敗しました",
-      "tts_failed": "音声合成に失敗しました"
+      "tts_failed": "音声合成に失敗しました",
+      "thinking_time": "思考中 {{time}}",
+      "thought_time": "思考時間 {{time}}",
+      "thought_process": "思考プロセス"
     },
     "sessions": {
       "history": "対話履歴",

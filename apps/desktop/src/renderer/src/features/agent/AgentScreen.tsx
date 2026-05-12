@@ -112,16 +112,16 @@ export const AgentScreen: React.FC = () => {
   // ── TTS 状态 ──
   const [ttsMode, setTtsMode] = useState<'off' | 'always' | 'manual'>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('baishou_tts_mode') as any) || 'off';
+      return (localStorage.getItem('baishou_tts_mode') as any) || 'manual';
     }
-    return 'off';
+    return 'manual';
   });
   const [ttsPlayingMsgId, setTtsPlayingMsgId] = useState<string | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const toggleTtsMode = useCallback(() => {
     setTtsMode(prev => {
-      const next = prev === 'off' ? 'always' : prev === 'always' ? 'manual' : 'off';
+      const next = prev === 'manual' ? 'always' : 'manual';
       if (typeof window !== 'undefined') {
         localStorage.setItem('baishou_tts_mode', next);
       }

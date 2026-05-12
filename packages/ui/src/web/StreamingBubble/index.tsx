@@ -74,29 +74,39 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
            </div>
          ) : (
            <>
-              {hasText || hasReasoning || hasTools ? (
+              {hasText || hasTools ? (
                 <div className={styles.bubbleCard}>
-                  {/* Reasoning 块 */}
-                  {hasReasoning && (
-                    <ThinkingBlock
-                      content={reasoning}
-                      isThinking={isReasoning && !hasText}
-                      defaultOpen={true}
-                      autoCollapse={false}
-                    />
-                  )}
+                   {/* 工具调用 */}
+                   {hasTools && (
+                     <ToolExecutionGroup 
+                        completedTools={completedTools} 
+                        activeToolName={activeToolName} 
+                     />
+                   )}
 
-                  {/* 工具调用 */}
-                  {hasTools && (
-                    <ToolExecutionGroup 
-                       completedTools={completedTools} 
-                       activeToolName={activeToolName} 
-                    />
-                  )}
+                   {/* 思考过程 - 放在消息气泡内部 */}
+                   {hasReasoning && (
+                     <ThinkingBlock
+                       content={reasoning}
+                       isThinking={isReasoning && !hasText}
+                       defaultOpen={false}
+                       autoCollapse={true}
+                     />
+                   )}
 
                    {/* 正文内容 */}
                    {hasText && <MarkdownRenderer content={normalizedText} isStreaming={true} />}
                 </div>
+             ) : hasReasoning ? (
+               // 仅推理阶段：显示在气泡卡内
+               <div className={styles.bubbleCard}>
+                 <ThinkingBlock
+                   content={reasoning}
+                   isThinking={true}
+                   defaultOpen={false}
+                   autoCollapse={true}
+                 />
+               </div>
              ) : (
                <div className={styles.dotsWrap}>
                   <BouncingDotsIndicator />

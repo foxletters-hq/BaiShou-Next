@@ -7,6 +7,7 @@ export type { AiProviderModel } from './types/ai-provider.types';
 export * from './types/user-profile.types';
 export * from './types/prompt-shortcut.types';
 export * from './types/sync.ipc';
+export * from './types/version-control.types';
 
 export { default as i18n } from './i18n/i18n';
 export * from './i18n/i18n.types';

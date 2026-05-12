@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '../Toast/useToast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Paperclip, Zap, Wrench, Globe, BookOpen, 
+  Paperclip, Zap, Globe, BookOpen, 
   FileText, Folder, X, ArrowUp, LayoutGrid, Menu, Square,
-  Volume2, VolumeX
+  Volume2
 } from 'lucide-react';
 import { MdSend, MdStop, MdApps } from 'react-icons/md';
 
@@ -45,7 +45,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
   onOpenTools,
   searchMode = false,
   onToggleSearchMode,
-  ttsMode = 'off',
+  ttsMode = 'manual',
   onToggleTtsMode
 }, ref) => {
   const { t } = useTranslation();
@@ -144,10 +144,6 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
     e.target.value = '';
   };
 
-  const handleOpenToolManager = () => {
-    toast.showSuccess(t('agent.tools.tool_call') + ' Manager Triggered');
-  };
-
   const handlePromptShortcut = () => {
     if (onManageShortcuts) {
       onManageShortcuts();
@@ -194,9 +190,9 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
           <div className={styles.attachmentList}>
              {attachments.map(att => (
                 <div key={att.id} className={styles.attachmentChip}>
-                   {att.isImage ? (
-                     <img src={att.filePath} className={styles.attPreviewImg} alt={att.fileName}/>
-                   ) : (
+                    {att.isImage ? (
+                      <img src={att.filePath?.startsWith('blob:') || att.filePath?.startsWith('local://') || att.filePath?.startsWith('data:') ? att.filePath : `local:///${(att.filePath || '').replace(/\\/g, '/')}`} className={styles.attPreviewImg} alt={att.fileName}/>
+                    ) : (
                      <div className={styles.attFileBox}>
                        <span className={styles.attFileIcon}>{att.isPdf ? <FileText size={18} /> : <Folder size={18} />}</span>
                        <div className={styles.attFileMeta}>
@@ -229,7 +225,6 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
                <div className={styles.toolbarScroll}>
                   <QuickActionChip icon={<Paperclip size={14} />} label={t('input.upload_attachment', '上传附件')} onClick={handlePickFiles} />
                   <QuickActionChip icon={<Zap size={14} />} label={t('input.shortcut_command', '快捷指令')} onClick={handlePromptShortcut} />
-                  <QuickActionChip icon={<Wrench size={14} />} label={t('agent.tools.tool_call')} onClick={onOpenTools || handleOpenToolManager} />
                   <QuickActionChip 
                     icon={searchMode ? <Globe size={14} /> : <span style={{opacity: 0.5}}><Globe size={14} /></span>} 
                     label={searchMode ? t('settings.web_search_mode_tool') : t('settings.web_search_mode_off')} 
@@ -241,9 +236,9 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
                    )}
                    {onToggleTtsMode && (
                      <QuickActionChip 
-                       icon={ttsMode === 'off' ? <VolumeX size={14} /> : <Volume2 size={14} />} 
-                       label={ttsMode === 'off' ? t('agent.chat.tts_off', '语音关闭') : ttsMode === 'always' ? t('agent.chat.tts_always', '始终朗读') : t('agent.chat.tts_manual', '手动朗读')} 
-                       isActive={ttsMode !== 'off'} 
+                       icon={<Volume2 size={14} />}
+                       label={ttsMode === 'always' ? t('agent.chat.tts_always', '始终播放') : t('agent.chat.tts_manual', '手动朗读')}
+                       isActive={true}
                        onClick={onToggleTtsMode} 
                      />
                    )}

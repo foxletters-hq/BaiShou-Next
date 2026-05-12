@@ -1,4 +1,5 @@
 import { EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
+import { forceImageRefresh } from './codeMirrorDecorations';
 
 export function attachmentUrlPlugin(resolveUrl: (fileName: string) => string) {
   return ViewPlugin.fromClass(
@@ -7,12 +8,38 @@ export function attachmentUrlPlugin(resolveUrl: (fileName: string) => string) {
         setTimeout(() => processAttachments(view, resolveUrl), 50);
       }
       update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged) {
+        const needsRefresh = update.transactions.some(
+          (t) => t.effects.some((e) => e.is(forceImageRefresh)),
+        );
+        if (update.docChanged || update.viewportChanged || needsRefresh) {
+          if (needsRefresh) {
+            resetProcessedFlags(update.view);
+          }
           setTimeout(() => processAttachments(update.view, resolveUrl), 50);
         }
       }
     },
   );
+}
+
+function resetProcessedFlags(view: EditorView) {
+  const dom = view.dom;
+  dom.querySelectorAll('[data-processed="true"]').forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    delete htmlEl.dataset.processed;
+    if (htmlEl instanceof HTMLImageElement && htmlEl.dataset.originalSrc) {
+      htmlEl.src = htmlEl.dataset.originalSrc;
+    }
+    if (htmlEl instanceof HTMLVideoElement && htmlEl.dataset.originalSrc) {
+      htmlEl.src = htmlEl.dataset.originalSrc;
+    }
+    if (htmlEl instanceof HTMLAudioElement && htmlEl.dataset.originalSrc) {
+      htmlEl.src = htmlEl.dataset.originalSrc;
+    }
+    if (htmlEl instanceof HTMLAnchorElement && htmlEl.dataset.originalHref) {
+      htmlEl.href = htmlEl.dataset.originalHref;
+    }
+  });
 }
 
 function processAttachments(
@@ -39,6 +66,7 @@ function processAttachments(
   dom.querySelectorAll('video[src^="attachment/"]').forEach((el) => {
     const video = el as HTMLVideoElement;
     if (video.dataset.processed) return;
+    video.dataset.originalSrc = video.getAttribute('src')!;
     video.dataset.processed = 'true';
     video.src = resolveUrl(video.getAttribute('src')!);
     Object.assign(video.style, { maxWidth: '100%', borderRadius: '8px' });
@@ -47,6 +75,7 @@ function processAttachments(
   dom.querySelectorAll('audio[src^="attachment/"]').forEach((el) => {
     const audio = el as HTMLAudioElement;
     if (audio.dataset.processed) return;
+    audio.dataset.originalSrc = audio.getAttribute('src')!;
     audio.dataset.processed = 'true';
     audio.src = resolveUrl(audio.getAttribute('src')!);
     (audio as HTMLElement).style.width = '100%';

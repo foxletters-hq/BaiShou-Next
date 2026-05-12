@@ -1161,7 +1161,10 @@
       "tts_not_configured": "TTS 模型未配置，請在設置中配置 TTS 模型",
       "tts_provider_not_found": "TTS 提供商未找到",
       "tts_api_error": "TTS API 請求失敗",
-      "tts_failed": "語音合成失敗"
+      "tts_failed": "語音合成失敗",
+      "thinking_time": "思考中 {{time}}",
+      "thought_time": "思考耗時 {{time}}",
+      "thought_process": "思考過程"
     },
     "sessions": {
       "history": "對話歷史",

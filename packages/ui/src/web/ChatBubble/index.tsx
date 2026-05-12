@@ -140,9 +140,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
       <div className={`${styles.attachmentsWrap} ${isUserBubble ? styles.alignEnd : styles.alignStart}`}>
         {message.attachments.map((att: MockChatAttachment) => (
           <div key={att.id} className={styles.attachmentItem}>
-             {att.isImage ? (
-               <img src={att.filePath || 'placeholder.png'} className={styles.attImage} alt={att.fileName}/>
-             ) : (
+              {att.isImage ? (
+                <img src={att.filePath?.startsWith('blob:') || att.filePath?.startsWith('local://') || att.filePath?.startsWith('data:') ? att.filePath : `local:///${(att.filePath || '').replace(/\\/g, '/')}`} className={styles.attImage} alt={att.fileName}/>
+              ) : (
                <div className={styles.attDocument}>
                  <span className={styles.attDocIcon}>{att.isPdf ? '📄' : '📁'}</span>
                  <span className={styles.attDocName}>{att.fileName}</span>
@@ -261,13 +261,13 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 <>
                 <div className={styles.aiBubbleCard}>
                    {renderAttachments(false)}
-                   
-                   {/* Reasoning 块 */}
+
+                   {/* 思考过程 - 放在消息气泡内部 */}
                    {message.reasoning && (
                      <ThinkingBlock
                        content={message.reasoning}
                        isThinking={false}
-                       defaultOpen={true}
+                       defaultOpen={false}
                        autoCollapse={false}
                      />
                    )}

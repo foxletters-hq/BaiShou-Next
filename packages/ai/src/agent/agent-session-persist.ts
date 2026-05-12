@@ -87,7 +87,8 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
     inputTokens: accumulator.usage.inputTokens, 
     outputTokens: accumulator.usage.outputTokens 
   };
-  
+  let costMicros = 0;
+
   if (!streamError) {
     try {
       const u = await streamResult.usage;
@@ -121,7 +122,7 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
     }
 
     // 累加计算 tokens 及账单微美分成本
-    const costMicros = await ModelPricingService.getInstance().calculateCostMicros(provider.config.id, modelId, finalUsage);
+    costMicros = await ModelPricingService.getInstance().calculateCostMicros(provider.config.id, modelId, finalUsage);
     
     logger.info('\n================== 计费日志 ==================');
     logger.info(`模型: ${modelId} (${provider.config.id})`);
@@ -131,35 +132,39 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
       logger.info(`提示: 计算费用为 0。可能模型是免费的，或未能从 models.dev 拉取到该模型价格。`);
     }
     logger.info('==============================================\n');
+  } else {
+    logger.warn('[AgentSessionService] 流式过程发生错误，使用 Accumulator 中的有限数据落盘。错误:', streamError);
+  }
 
-    // 开始事务存放!
-    if (partsToInsert.length > 0) {
-      await sessionRepo.insertMessageWithParts(
-        {
-          id: assistantMsgId,
-          sessionId,
-          role: 'assistant',
-          orderIndex: userOrderIndex + 1,
-          inputTokens: finalUsage.inputTokens,
-          outputTokens: finalUsage.outputTokens,
-          costMicros: costMicros,
-          providerId: provider.config.id,
-          modelId: modelId,
-        },
-        partsToInsert
-      );
-    }
-
-    await sessionRepo.updateTokenUsage(
-      sessionId,
-      finalUsage.inputTokens,
-      finalUsage.outputTokens,
-      costMicros
+  // 开始事务存放! — 即使流式出错，也将已累积的回复内容落盘，防止消息丢失
+  if (partsToInsert.length > 0) {
+    await sessionRepo.insertMessageWithParts(
+      {
+        id: assistantMsgId,
+        sessionId,
+        role: 'assistant',
+        orderIndex: userOrderIndex + 1,
+        inputTokens: finalUsage.inputTokens,
+        outputTokens: finalUsage.outputTokens,
+        costMicros: costMicros,
+        providerId: provider.config.id,
+        modelId: modelId,
+      },
+      partsToInsert
     );
+  }
 
-    // ==========================================
-    // 触发闲置后台服务 (不阻塞用户收到结束的回调)
-    // ==========================================
+  await sessionRepo.updateTokenUsage(
+    sessionId,
+    finalUsage.inputTokens,
+    finalUsage.outputTokens,
+    costMicros
+  );
+
+  // ==========================================
+  // 触发闲置后台服务 (仅在无流错误时执行)
+  // ==========================================
+  if (!streamError) {
     const { TitleGeneratorService } = await import('./title-generator.service');
     const { ContextCompressorService } = await import('./context-compressor.service');
     

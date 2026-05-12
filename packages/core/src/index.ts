@@ -51,6 +51,15 @@ export * from './network/lan-sync.interface';
 // 云同步系统
 export * from './network/cloud-sync.interface';
 
+// 版本控制系统
+export * from './sync/git-sync.interface';
+export * from './sync/git-sync.service';
+export * from './sync/incremental-sync.interface';
+export * from './sync/incremental-sync.service';
+export * from './sync/version-manager.interface';
+export * from './sync/version-manager.service';
+export * from './sync/sync.errors';
+
 // 影子索引系统
 export * from './shadow-index/shadow-index-sync.service';
 

@@ -62,11 +62,33 @@ export function registerChatIPC() {
            result: p.data?.result
         }));
 
+      // 提取附件 parts 为前端 ChatBubble 所需的 attachments 字段
+      const attachmentParts = parts.filter((p: any) => p.type === 'attachment');
+      const attachments = attachmentParts.map((p: any) => {
+        const att = p.data || {};
+        const fileName = att.name || att.fileName || 'Attachment';
+        const isImage = att.type === 'image' || att.isImage === true;
+        const isPdf = att.mimeType === 'application/pdf' || String(fileName).endsWith('.pdf');
+        const rawPath = att.url || att.filePath || '';
+        // file:// 被 webSecurity 阻止，转为 local:// 协议（Electron main 已注册）
+        const filePath = rawPath.startsWith('file://')
+          ? rawPath.replace(/^file:/i, 'local:')
+          : rawPath;
+        return {
+          id: p.id,
+          fileName,
+          filePath,
+          isImage,
+          isPdf,
+        };
+      });
+
       mapped.push({
         ...msg,
         content: contentText,
         reasoning: reasoningText || undefined,
         toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
         parts
       });
     }

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import remarkCjkFriendly from 'remark-cjk-friendly';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import 'highlight.js/styles/github-dark.css';
@@ -13,6 +14,8 @@ export interface MarkdownRendererProps {
   content: string;
   isStreaming?: boolean;
   basePath?: string;
+  /** 纯文本模式：跳过 remarkCjkFriendly，避免在 CJK/ASCII 之间插入空格 */
+  plainText?: boolean;
 }
 
 function remarkBrToBreak() {
@@ -31,7 +34,7 @@ function remarkBrToBreak() {
   };
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false, basePath }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false, basePath, plainText = false }) => {
   const { t } = useTranslation();
 
   const resolveAttachment = (src?: string) => {
@@ -43,10 +46,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
     return src;
   };
 
+  const remarkPlugins = [
+    remarkBrToBreak,
+    remarkGfm,
+    remarkMath,
+    ...(plainText ? [] : [remarkCjkFriendly]),
+  ];
+
   return (
     <div className={`${styles.markdownContainer} ${isStreaming ? styles.streaming : ''}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkBrToBreak, remarkGfm, remarkMath]}
+        remarkPlugins={remarkPlugins}
         rehypePlugins={[rehypeHighlight, rehypeKatex]}
         components={{
           ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
