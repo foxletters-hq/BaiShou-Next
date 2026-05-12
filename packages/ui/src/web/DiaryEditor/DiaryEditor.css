@@ -179,24 +179,20 @@
   margin: 8px 0;
 }
 
-/* 图片缩放组件样式 */
+/* 图片缩放组件 */
 .cm-image-container {
   display: block;
   margin: 8px 0;
 }
 
-.cm-image-link-row {
+.cm-image-text-row {
   font-family: 'Fira Code', 'Courier New', monospace;
   font-size: 11px;
   color: var(--text-tertiary);
-  padding: 2px 0;
-  white-space: pre;
-  overflow: hidden;
-  min-height: 16px;
-  outline: none;
-  border: none;
-  background: transparent;
+  padding: 2px 0 4px;
+  white-space: pre-wrap;
   word-break: break-all;
+  user-select: text;
 }
 
 .cm-image-wrapper {

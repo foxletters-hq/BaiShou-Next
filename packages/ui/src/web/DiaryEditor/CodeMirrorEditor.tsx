@@ -19,7 +19,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { searchKeymap } from '@codemirror/search';
 import { ImagePreview } from './ImagePreview';
-import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageWidthCallback, setMoveToImageCallback } from './codeMirrorDecorations';
+import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageTitleCallback, setMoveToImageCallback } from './codeMirrorDecorations';
 import { editorTheme } from './codeMirrorTheme';
 import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin';
 
@@ -143,22 +143,22 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       const container = containerRef.current;
       if (!container) return;
 
-      // 缩放更新：目前只存内存，不修改文档文本
-      setUpdateImageWidthCallback((from: number, to: number, newWidth: number) => {
-        // 宽度已通过 imageWidths Map 存储在 decorations 中
-        // 这里可以触发刷新，但当前通过 view.dispatch 重新渲染即可
+      setUpdateImageTitleCallback((from: number, to: number, newTitle: string) => {
         const view = viewRef.current;
         if (!view) return;
-        // 触发 decorations 刷新
-        view.dispatch({ effects: forceImageRefresh.of(null) });
+        const text = view.state.sliceDoc(from, to);
+        const m = text.match(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/);
+        if (!m) return;
+        const alt = m[1] ?? '';
+        const src = m[2] ?? '';
+        const newText = `![${alt}](${src} "${newTitle}")`;
+        view.dispatch({ changes: { from, to, insert: newText } });
       });
 
       setMoveToImageCallback((from: number, to: number) => {
         const view = viewRef.current;
         if (!view) return;
-        view.dispatch({
-          selection: { anchor: to },
-        });
+        view.dispatch({ selection: { anchor: to } });
         view.focus();
       });
 

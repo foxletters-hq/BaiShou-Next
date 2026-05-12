@@ -8,54 +8,82 @@ import { clampWidth, IMAGE_SIZE_CONFIG } from './image-utils';
 
 export const forceImageRefresh = StateEffect.define();
 
-// 图片宽度存储器：key = position, value = width in px
-const imageWidths = new Map<number, number>();
-
-// 回调
-let updateImageWidthCallback: ((from: number, to: number, newWidth: number) => void) | null = null;
+let updateImageTitleCallback: ((from: number, to: number, newTitle: string) => void) | null = null;
 let moveToImageCallback: ((from: number, to: number) => void) | null = null;
 
-export function setUpdateImageWidthCallback(cb: (from: number, to: number, width: number) => void) {
-  updateImageWidthCallback = cb;
+export function setUpdateImageTitleCallback(cb: (from: number, to: number, title: string) => void) {
+  updateImageTitleCallback = cb;
 }
-
 export function setMoveToImageCallback(cb: (from: number, to: number) => void) {
   moveToImageCallback = cb;
 }
 
-// ── Image Widget（仅图片，不含文本）────────────────────────────
+// ── 解析：alt、src、title（宽度存在 title 中） ────────────────
+
+function parseImage(text: string): { alt: string; src: string; title: string } | null {
+  const m = text.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)$/);
+  if (!m) return null;
+  return { alt: m[1] ?? '', src: m[2] ?? '', title: m[3] ?? '' };
+}
+
+function buildImage(alt: string, src: string, width?: number): string {
+  if (width && width > 0) return `![${alt}](${src} "${width}")`;
+  return `![${alt}](${src})`;
+}
+
+// ── Image Widget ───────────────────────────────────────────────
 
 class ImageWidget extends WidgetType {
+  private wrap: HTMLElement | null = null;
+
   constructor(
     private src: string,
+    private rawSrc: string,
+    private alt: string,
     private width?: number,
     private pos?: number,
     private posEnd?: number,
+    private showText: boolean = false,
+    private fullText?: string,
   ) { super(); }
 
   eq(other: ImageWidget) {
-    return this.src === other.src && this.width === other.width;
+    return this.src === other.src && this.width === other.width && this.showText === other.showText;
   }
 
-  toDOM() {
-    const wrap = document.createElement('div');
-    wrap.className = 'cm-image-wrapper';
+  toDOM(): HTMLElement {
+    const root = document.createElement('div');
+    root.className = 'cm-image-container';
+
+    // 链接文本行（图片上方，点击后显示）
+    if (this.showText && this.fullText) {
+      const textRow = document.createElement('div');
+      textRow.className = 'cm-image-text-row';
+      textRow.textContent = this.fullText;
+      root.appendChild(textRow);
+    }
+
+    // 图片
+    this.wrap = document.createElement('div');
+    this.wrap.className = 'cm-image-wrapper';
     if (this.width && this.width > 0) {
-      imageWidths.set(this.pos ?? 0, this.width);
-      wrap.style.width = `${this.width}px`;
+      this.wrap.style.width = `${this.width}px`;
     }
 
     const img = document.createElement('img');
     img.src = this.src;
+    img.alt = this.alt;
     img.className = 'cm-image-resizable';
     img.draggable = false;
-    wrap.appendChild(img);
+    this.wrap.appendChild(img);
 
     const handle = document.createElement('div');
     handle.className = 'cm-image-resize-handle';
-    wrap.appendChild(handle);
+    this.wrap.appendChild(handle);
 
-    // 点击 → 跳转光标
+    root.appendChild(this.wrap);
+
+    // 点击图片 → 光标跳转
     img.addEventListener('click', (e) => {
       e.stopPropagation();
       if (this.pos !== undefined && this.posEnd !== undefined && moveToImageCallback) {
@@ -63,40 +91,40 @@ class ImageWidget extends WidgetType {
       }
     });
 
-    this.setupResize(wrap, handle);
-    return wrap;
+    this.setupResize(handle);
+    return root;
   }
 
-  private setupResize(wrap: HTMLElement, handle: HTMLElement) {
+  private setupResize(handle: HTMLElement) {
     let sx = 0, sw = 0;
     handle.addEventListener('mousedown', (e) => {
       e.preventDefault(); e.stopPropagation();
-      sx = e.clientX; sw = wrap.offsetWidth;
+      if (!this.wrap) return;
+      sx = e.clientX; sw = this.wrap.offsetWidth;
       const mv = (e: MouseEvent) => {
-        wrap.style.width = `${clampWidth(sw + e.clientX - sx)}px`;
+        this.wrap!.style.width = `${clampWidth(sw + e.clientX - sx)}px`;
       };
       const up = () => {
         document.removeEventListener('mousemove', mv);
         document.removeEventListener('mouseup', up);
-        const w = wrap.offsetWidth;
-        imageWidths.set(this.pos ?? 0, w);
-        if (this.pos !== undefined && updateImageWidthCallback) {
-          updateImageWidthCallback(this.pos, this.pos, w);
+        const w = this.wrap!.offsetWidth;
+        if (this.pos !== undefined && updateImageTitleCallback) {
+          updateImageTitleCallback(this.pos, this.pos, `${w}`);
         }
       };
       document.addEventListener('mousemove', mv);
       document.addEventListener('mouseup', up);
     });
 
-    wrap.addEventListener('wheel', (e) => {
+    if (!this.wrap) return;
+    this.wrap.addEventListener('wheel', (e) => {
       if (e.altKey) {
         e.preventDefault();
         const d = e.deltaY > 0 ? -IMAGE_SIZE_CONFIG.step : IMAGE_SIZE_CONFIG.step;
-        wrap.style.width = `${clampWidth(wrap.offsetWidth + d)}px`;
-        const w = wrap.offsetWidth;
-        imageWidths.set(this.pos ?? 0, w);
-        if (this.pos !== undefined && updateImageWidthCallback) {
-          updateImageWidthCallback(this.pos, this.pos, w);
+        this.wrap!.style.width = `${clampWidth(this.wrap!.offsetWidth + d)}px`;
+        const w = this.wrap!.offsetWidth;
+        if (this.pos !== undefined && updateImageTitleCallback) {
+          updateImageTitleCallback(this.pos, this.pos, `${w}`);
         }
       }
     });
@@ -105,28 +133,19 @@ class ImageWidget extends WidgetType {
   ignoreEvent() { return false; }
 }
 
-// ── 工具函数 ────────────────────────────────────────────────────
+// ── 工具 ───────────────────────────────────────────────────────
 
 function getCursorPositions(view: EditorView): number[] {
   return view.state.selection.ranges.map(r => r.head);
 }
-
 function isCursorInRange(from: number, to: number, cursors: number[]): boolean {
   return cursors.some(c => c >= from && c <= to);
 }
-
 function isCursorOnLine(lineFrom: number, lineTo: number, cursors: number[]): boolean {
   return cursors.some(c => c >= lineFrom && c <= lineTo);
 }
 
-function parseImageText(text: string): { alt: string; src: string } | null {
-  const m = text.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-  if (!m) return null;
-  return { alt: m[1] ?? '', src: (m[2] ?? '').trim() };
-}
-
 const hideMark = Decoration.replace({});
-
 const headingStyles: Record<number, Decoration> = {
   1: Decoration.mark({ class: 'cm-rendered-h1' }),
   2: Decoration.mark({ class: 'cm-rendered-h2' }),
@@ -135,7 +154,6 @@ const headingStyles: Record<number, Decoration> = {
   5: Decoration.mark({ class: 'cm-rendered-h5' }),
   6: Decoration.mark({ class: 'cm-rendered-h6' }),
 };
-
 const codeBlockMark = Decoration.mark({ class: 'cm-rendered-codeBlock' });
 const codeMarkStyle = Decoration.mark({ class: 'cm-rendered-codeMark' });
 const linkMark = Decoration.mark({ class: 'cm-rendered-link' });
@@ -151,12 +169,9 @@ export function livePreviewSyntaxHighlighting() {
   return syntaxHighlighting(livePreviewHighlight);
 }
 
-// ── 构建 decorations ───────────────────────────────────────────
+// ── Decorations ───────────────────────────────────────────────
 
-function buildMarkerHidingDecorations(
-  view: EditorView,
-  resolveUrl?: (url: string) => string,
-): DecorationSet {
+function buildDecorations(view: EditorView, resolveUrl?: (s: string) => string): DecorationSet {
   const cursors = getCursorPositions(view);
   const marks: { from: number; to: number; value: Decoration }[] = [];
   const tree = syntaxTree(view.state);
@@ -168,128 +183,77 @@ function buildMarkerHidingDecorations(
       const onActiveLine = isCursorOnLine(line.from, line.to, cursors);
       const name = node.type.name;
 
-      if (name === 'FencedCode') {
-        marks.push(codeBlockMark.range(node.from, node.to));
-        return false;
-      }
+      // ── 标准节点处理 ──
+      if (name === 'FencedCode') { marks.push(codeBlockMark.range(node.from, node.to)); return false; }
+      if (name === 'CodeMark') { if (node.node.parent?.type.name === 'FencedCode') marks.push(codeMarkStyle.range(node.from, node.to)); else if (!onActiveLine) marks.push(hideMark.range(node.from, node.to)); return; }
+      if (name.startsWith('ATXHeading')) { const t = doc.sliceString(node.from, node.to); const m = t.match(/^(#{1,6})\s?/); if (m) { const pe = node.from + m[0].length; const ci = isCursorInRange(node.from, pe, cursors); if (!onActiveLine || !ci) marks.push(hideMark.range(node.from, pe)); marks.push(headingStyles[m[1]!.length]!.range(ci ? node.from : pe, node.to)); } return; }
+      if (name === 'StrongEmphasis') { const t = doc.sliceString(node.from, node.to); const ol = t.startsWith('**') || t.startsWith('__') ? 2 : 1; const cl = t.endsWith('**') || t.endsWith('__') ? 2 : 1; if (!isCursorInRange(node.from, node.from + ol, cursors)) marks.push(hideMark.range(node.from, node.from + ol)); if (!isCursorInRange(node.to - cl, node.to, cursors)) marks.push(hideMark.range(node.to - cl, node.to)); return; }
+      if (name === 'Emphasis') { const t = doc.sliceString(node.from, node.to); if (t.length < 3) return; if (!isCursorInRange(node.from, node.from + 1, cursors)) marks.push(hideMark.range(node.from, node.from + 1)); if (!isCursorInRange(node.to - 1, node.to, cursors)) marks.push(hideMark.range(node.to - 1, node.to)); return; }
+      if (name === 'Strikethrough') { if (!isCursorInRange(node.from, node.from + 2, cursors)) marks.push(hideMark.range(node.from, node.from + 2)); if (!isCursorInRange(node.to - 2, node.to, cursors)) marks.push(hideMark.range(node.to - 2, node.to)); return; }
+      if (name === 'InlineCode') { const t = doc.sliceString(node.from, node.to); const tl = t.startsWith('``') ? 2 : 1; if (!isCursorInRange(node.from, node.from + tl, cursors)) marks.push(hideMark.range(node.from, node.from + tl)); if (!isCursorInRange(node.to - tl, node.to, cursors)) marks.push(hideMark.range(node.to - tl, node.to)); return; }
 
-      if (name === 'CodeMark') {
-        const parent = node.node.parent;
-        if (parent?.type.name === 'FencedCode') {
-          marks.push(codeMarkStyle.range(node.from, node.to));
-          return;
-        }
-        if (!onActiveLine) marks.push(hideMark.range(node.from, node.to));
-        return;
-      }
-
-      if (name.startsWith('ATXHeading')) {
-        const text = doc.sliceString(node.from, node.to);
-        const m = text.match(/^(#{1,6})\s?/);
-        if (m) {
-          const prefixEnd = node.from + m[0].length;
-          const cim = isCursorInRange(node.from, prefixEnd, cursors);
-          if (!onActiveLine || !cim) marks.push(hideMark.range(node.from, prefixEnd));
-          marks.push(headingStyles[m[1]!.length]!.range(cim ? node.from : prefixEnd, node.to));
-        }
-        return;
-      }
-
-      if (name === 'StrongEmphasis') {
-        const text = doc.sliceString(node.from, node.to);
-        const ol = text.startsWith('**') || text.startsWith('__') ? 2 : 1;
-        const cl = text.endsWith('**') || text.endsWith('__') ? 2 : 1;
-        if (!isCursorInRange(node.from, node.from + ol, cursors)) marks.push(hideMark.range(node.from, node.from + ol));
-        if (!isCursorInRange(node.to - cl, node.to, cursors)) marks.push(hideMark.range(node.to - cl, node.to));
-        return;
-      }
-
-      if (name === 'Emphasis') {
-        const text = doc.sliceString(node.from, node.to);
-        if (text.length < 3) return;
-        if (!isCursorInRange(node.from, node.from + 1, cursors)) marks.push(hideMark.range(node.from, node.from + 1));
-        if (!isCursorInRange(node.to - 1, node.to, cursors)) marks.push(hideMark.range(node.to - 1, node.to));
-        return;
-      }
-
-      if (name === 'Strikethrough') {
-        if (!isCursorInRange(node.from, node.from + 2, cursors)) marks.push(hideMark.range(node.from, node.from + 2));
-        if (!isCursorInRange(node.to - 2, node.to, cursors)) marks.push(hideMark.range(node.to - 2, node.to));
-        return;
-      }
-
-      if (name === 'InlineCode') {
-        const text = doc.sliceString(node.from, node.to);
-        const tl = text.startsWith('``') ? 2 : 1;
-        if (!isCursorInRange(node.from, node.from + tl, cursors)) marks.push(hideMark.range(node.from, node.from + tl));
-        if (!isCursorInRange(node.to - tl, node.to, cursors)) marks.push(hideMark.range(node.to - tl, node.to));
-        return;
-      }
-
-      // ── 图片处理 ──
+      // ── 图片 ──
       if (name === 'Image') {
         const text = doc.sliceString(node.from, node.to);
-        const parsed = parseImageText(text);
+        // 确保不跨行（避免 replace 换行报错）
+        if (text.includes('\n')) return;
+
+        const parsed = parseImage(text);
         if (!parsed) return;
 
         const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
+        const width = parsed.title ? parseInt(parsed.title, 10) || undefined : undefined;
 
         if (onActiveLine) {
-          // 光标在图片行：隐藏 ![]() 标记，保留文本供编辑
+          // 光标在位：隐藏 ![]() 标记 + 显示图片（带文本行）
           const bo = text.indexOf('![');
           const bc = text.indexOf('](');
+          const tq = text.indexOf(' "');
           const cp = text.lastIndexOf(')');
           if (bo !== -1) marks.push(hideMark.range(node.from + bo, node.from + bo + 2));
-          if (bc !== -1) marks.push(hideMark.range(node.from + bc, node.from + bc + 2));
-          if (cp !== -1) marks.push(hideMark.range(node.from + cp, node.from + cp + 1));
-          // 同时显示图片
-          const w = imageWidths.get(node.from);
+          if (bc !== -1) {
+            const end = tq !== -1 ? tq : cp;
+            marks.push(hideMark.range(node.from + bc, node.from + end));
+          }
+          if (tq !== -1 && cp !== -1) marks.push(hideMark.range(node.from + tq, node.from + cp));
+          if (tq === -1 && cp !== -1 && bc !== -1) marks.push(hideMark.range(node.from + cp, node.from + cp + 1));
+
           marks.push({
             from: node.from,
             to: node.from,
             value: Decoration.widget({
-              widget: new ImageWidget(src, w, node.from, node.to),
+              widget: new ImageWidget(src, parsed.src, parsed.alt, width, node.from, node.to, true, text),
               side: -1,
             }),
           });
         } else {
-          // 光标不在图片行：只显示图片
-          const w = imageWidths.get(node.from);
+          // 光标不在位：只显示图片
           marks.push({
             from: node.from,
             to: node.to,
             value: Decoration.replace({
-              widget: new ImageWidget(src, w, node.from, node.to),
+              widget: new ImageWidget(src, parsed.src, parsed.alt, width, node.from, node.to),
             }),
           });
         }
         return;
       }
 
-      // Link → 可能是含 | 数字的图片语法（清理遗留兼容）
+      // Link 节点（可能包含图片语法）
       if (name === 'Link') {
         const text = doc.sliceString(node.from, node.to);
-        // 如果文本以 ![ 开头，尝试作为图片渲染
-        if (text.startsWith('![')) {
-          const parsed = parseImageText(text);
+        if (text.startsWith('![') && !text.includes('\n')) {
+          const parsed = parseImage(text);
           if (parsed) {
             const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
-            marks.push({
-              from: node.from,
-              to: node.to,
-              value: Decoration.replace({
-                widget: new ImageWidget(src, undefined, node.from, node.to),
-              }),
-            });
+            const width = parsed.title ? parseInt(parsed.title, 10) || undefined : undefined;
+            marks.push({ from: node.from, to: node.to, value: Decoration.replace({ widget: new ImageWidget(src, parsed.src, parsed.alt, width, node.from, node.to) }) });
             return;
           }
         }
-
-        const bo = text.indexOf('[');
-        const bc = text.indexOf('](');
+        const bo = text.indexOf('['), bc = text.indexOf('](');
         if (bo !== -1 && bc !== -1) {
-          const of = node.from + bo;
-          const cf = node.from + bc;
+          const of = node.from + bo, cf = node.from + bc;
           if (!isCursorInRange(of, of + 1, cursors)) marks.push(hideMark.range(of, of + 1));
           if (!isCursorInRange(cf, node.to, cursors)) marks.push(hideMark.range(cf, node.to));
           marks.push(linkMark.range(of + 1, cf));
@@ -298,7 +262,6 @@ function buildMarkerHidingDecorations(
       }
 
       if (onActiveLine) return;
-
       if (name === 'QuoteMark') { marks.push(hideMark.range(node.from, node.to)); return; }
       if (name === 'ListMark') { marks.push(hideMark.range(node.from, node.to)); return; }
       if (name === 'TaskMarker') { marks.push(hideMark.range(node.from, node.to)); return; }
@@ -308,17 +271,15 @@ function buildMarkerHidingDecorations(
   return Decoration.set(marks, true);
 }
 
-export function livePreviewPlugin(resolveUrl?: (url: string) => string) {
+export function livePreviewPlugin(resolveUrl?: (s: string) => string) {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
-      constructor(view: EditorView) {
-        this.decorations = buildMarkerHidingDecorations(view, resolveUrl);
-      }
+      constructor(view: EditorView) { this.decorations = buildDecorations(view, resolveUrl); }
       update(update: ViewUpdate) {
         if (update.docChanged || update.selectionSet ||
             update.transactions.some(t => t.effects.some(e => e.is(forceImageRefresh)))) {
-          this.decorations = buildMarkerHidingDecorations(update.view, resolveUrl);
+          this.decorations = buildDecorations(update.view, resolveUrl);
         }
       }
     },
