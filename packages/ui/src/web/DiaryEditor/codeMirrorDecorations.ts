@@ -256,6 +256,25 @@ function buildMarkerHidingDecorations(
       if (name === 'Image') {
         const text = doc.sliceString(node.from, node.to);
         const parsed = parseImageMarkdown(text, node.from);
+
+        // 光标在图片行时，显示原始 markdown 文本（隐藏 ![]() 标记）
+        if (onActiveLine) {
+          const bracketOpen = text.indexOf('![');
+          const bracketClose = text.indexOf('](');
+          if (bracketOpen !== -1) {
+            marks.push(hideMark.range(node.from + bracketOpen, node.from + bracketOpen + 2));
+          }
+          if (bracketClose !== -1) {
+            marks.push(hideMark.range(node.from + bracketClose, node.from + bracketClose + 2));
+          }
+          const closeParen = text.lastIndexOf(')');
+          if (closeParen !== -1) {
+            marks.push(hideMark.range(node.from + closeParen, node.from + closeParen + 1));
+          }
+          return;
+        }
+
+        // 非活动行，渲染图片 widget
         if (parsed) {
           const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
           marks.push({
@@ -274,6 +293,11 @@ function buildMarkerHidingDecorations(
         const text = doc.sliceString(node.from, node.to);
         const imageWithWidthMatch = text.match(/^!\[([^\]]*)\]\(([^)]+?)(?:\s*\|\s*(\d+))?\)$/);
         if (imageWithWidthMatch) {
+          // 光标在图片行时，显示原始文本
+          if (onActiveLine) {
+            return;
+          }
+
           const alt = imageWithWidthMatch[1] ?? '';
           const rawSrc = imageWithWidthMatch[2] ?? '';
           const widthStr = imageWithWidthMatch[3];
