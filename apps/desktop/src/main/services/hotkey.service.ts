@@ -98,6 +98,7 @@ export class HotkeyService {
       const isVisible = win.isVisible();
       const isFocused = win.isFocused();
 
+      // 当窗口绝对处于前台活跃状态时才隐藏
       if (isVisible && !isMinimized && isFocused) {
         win.hide();
       } else {
@@ -105,6 +106,7 @@ export class HotkeyService {
           win.restore();
         }
         
+        // 增强窗口前置逻辑 (macOS/Windows)
         if (process.platform !== 'linux') {
           win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
         }
