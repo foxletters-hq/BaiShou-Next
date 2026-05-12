@@ -22,6 +22,7 @@ export function setMoveToImageCallback(callback: (from: number, to: number) => v
 class ImageWidget extends WidgetType {
   private container: HTMLElement | null = null;
   private resizeHandle: HTMLElement | null = null;
+  private linkInput: HTMLInputElement | null = null;
 
   constructor(
     private src: string,
@@ -29,19 +30,52 @@ class ImageWidget extends WidgetType {
     private width?: number,
     private imageFrom?: number,
     private imageTo?: number,
+    private markdownText?: string,
   ) {
     super();
   }
 
   eq(other: ImageWidget): boolean {
-    return this.src === other.src && this.alt === other.alt && this.width === other.width;
+    return this.src === other.src && this.alt === other.alt && this.width === other.width && this.markdownText === other.markdownText;
   }
 
   toDOM(): HTMLElement {
     this.container = document.createElement('div');
     this.container.className = 'cm-image-container';
+
+    // 链接文本行（显示在图片上方）
+    const linkBar = document.createElement('div');
+    linkBar.className = 'cm-image-link-bar';
+
+    this.linkInput = document.createElement('input');
+    this.linkInput.type = 'text';
+    this.linkInput.className = 'cm-image-link-input';
+    this.linkInput.value = this.markdownText || '';
+    this.linkInput.spellcheck = false;
+
+    // 编辑链接文本 → 更新文档
+    this.linkInput.addEventListener('input', () => {
+      this.syncToDoc();
+    });
+
+    // 失焦时同步
+    this.linkInput.addEventListener('blur', () => {
+      this.syncToDoc();
+    });
+
+    // 阻止编辑链接时触发图片点击
+    this.linkInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    linkBar.appendChild(this.linkInput);
+    this.container.appendChild(linkBar);
+
+    // 图片
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cm-image-wrapper';
     if (this.width) {
-      this.container.style.width = `${this.width}px`;
+      wrapper.style.width = `${this.width}px`;
     }
 
     const img = document.createElement('img');
@@ -49,21 +83,15 @@ class ImageWidget extends WidgetType {
     img.alt = this.alt;
     img.className = 'cm-image-resizable';
     img.draggable = false;
-    this.container.appendChild(img);
+    wrapper.appendChild(img);
 
     this.resizeHandle = document.createElement('div');
     this.resizeHandle.className = 'cm-image-resize-handle';
-    this.container.appendChild(this.resizeHandle);
+    wrapper.appendChild(this.resizeHandle);
 
-    this.bindEvents(img);
+    this.container.appendChild(wrapper);
 
-    return this.container;
-  }
-
-  private bindEvents(img: HTMLElement) {
-    if (!this.container || !this.resizeHandle) return;
-
-    // 点击图片 → 光标跳转到编辑器中的 markdown 文本
+    // 点击图片 → 光标跳转到 markdown 文本
     img.addEventListener('click', (e) => {
       e.stopPropagation();
       if (this.imageFrom !== undefined && this.imageTo !== undefined && moveToImageCallback) {
@@ -79,18 +107,18 @@ class ImageWidget extends WidgetType {
       e.preventDefault();
       e.stopPropagation();
       startX = e.clientX;
-      startWidth = this.container!.offsetWidth;
+      startWidth = wrapper.offsetWidth;
 
       const onMouseMove = (e: MouseEvent) => {
         const delta = e.clientX - startX;
         const newWidth = clampWidth(startWidth + delta);
-        this.container!.style.width = `${newWidth}px`;
+        wrapper.style.width = `${newWidth}px`;
       };
 
       const onMouseUp = () => {
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
-        const newWidth = this.container!.offsetWidth;
+        const newWidth = wrapper.offsetWidth;
         if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageWidthCallback) {
           updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth);
         }
@@ -101,18 +129,29 @@ class ImageWidget extends WidgetType {
     });
 
     // 滚轮缩放
-    this.container.addEventListener('wheel', (e) => {
+    wrapper.addEventListener('wheel', (e) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -IMAGE_SIZE_CONFIG.step : IMAGE_SIZE_CONFIG.step;
-        const currentWidth = this.container!.offsetWidth;
+        const currentWidth = wrapper.offsetWidth;
         const newWidth = clampWidth(currentWidth + delta);
-        this.container!.style.width = `${newWidth}px`;
+        wrapper.style.width = `${newWidth}px`;
         if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageWidthCallback) {
           updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth);
         }
       }
     });
+
+    return this.container;
+  }
+
+  private syncToDoc() {
+    if (!this.linkInput || this.imageFrom === undefined || this.imageTo === undefined) return;
+    const newText = this.linkInput.value;
+    const parsed = parseImageMarkdown(newText, 0);
+    if (parsed && updateImageWidthCallback) {
+      updateImageWidthCallback(this.imageFrom, this.imageTo, parsed.width || 0);
+    }
   }
 
   ignoreEvent(): boolean {
@@ -252,36 +291,17 @@ function buildMarkerHidingDecorations(
         return;
       }
 
-      // 图片渲染
+      // 图片渲染：始终显示 widget（链接文本 + 图片）
       if (name === 'Image') {
         const text = doc.sliceString(node.from, node.to);
         const parsed = parseImageMarkdown(text, node.from);
-
-        // 光标在图片行时，显示原始 markdown 文本（隐藏 ![]() 标记）
-        if (onActiveLine) {
-          const bracketOpen = text.indexOf('![');
-          const bracketClose = text.indexOf('](');
-          if (bracketOpen !== -1) {
-            marks.push(hideMark.range(node.from + bracketOpen, node.from + bracketOpen + 2));
-          }
-          if (bracketClose !== -1) {
-            marks.push(hideMark.range(node.from + bracketClose, node.from + bracketClose + 2));
-          }
-          const closeParen = text.lastIndexOf(')');
-          if (closeParen !== -1) {
-            marks.push(hideMark.range(node.from + closeParen, node.from + closeParen + 1));
-          }
-          return;
-        }
-
-        // 非活动行，渲染图片 widget
         if (parsed) {
           const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
           marks.push({
             from: node.from,
             to: node.to,
             value: Decoration.replace({
-              widget: new ImageWidget(src, parsed.alt, parsed.width, node.from, node.to),
+              widget: new ImageWidget(src, parsed.alt, parsed.width, node.from, node.to, text),
             }),
           });
         }
@@ -293,11 +313,6 @@ function buildMarkerHidingDecorations(
         const text = doc.sliceString(node.from, node.to);
         const imageWithWidthMatch = text.match(/^!\[([^\]]*)\]\(([^)]+?)(?:\s*\|\s*(\d+))?\)$/);
         if (imageWithWidthMatch) {
-          // 光标在图片行时，显示原始文本
-          if (onActiveLine) {
-            return;
-          }
-
           const alt = imageWithWidthMatch[1] ?? '';
           const rawSrc = imageWithWidthMatch[2] ?? '';
           const widthStr = imageWithWidthMatch[3];
@@ -307,7 +322,7 @@ function buildMarkerHidingDecorations(
             from: node.from,
             to: node.to,
             value: Decoration.replace({
-              widget: new ImageWidget(src, alt, width, node.from, node.to),
+              widget: new ImageWidget(src, alt, width, node.from, node.to, text),
             }),
           });
           return;
