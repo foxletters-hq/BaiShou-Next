@@ -4,164 +4,125 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import type { SyntaxNodeRef } from '@lezer/common';
 import { StateEffect } from '@codemirror/state';
-import { parseImageMarkdown, clampWidth, IMAGE_SIZE_CONFIG, buildImageMarkdown } from './image-utils';
+import { clampWidth, IMAGE_SIZE_CONFIG } from './image-utils';
 
 export const forceImageRefresh = StateEffect.define();
 
-let updateImageMarkdownCallback: ((from: number, to: number, newMarkdown: string) => void) | null = null;
+// 图片宽度存储器：key = position, value = width in px
+const imageWidths = new Map<number, number>();
+
+// 回调
+let updateImageWidthCallback: ((from: number, to: number, newWidth: number) => void) | null = null;
 let moveToImageCallback: ((from: number, to: number) => void) | null = null;
 
-export function setUpdateImageMarkdownCallback(callback: (from: number, to: number, newMarkdown: string) => void) {
-  updateImageMarkdownCallback = callback;
+export function setUpdateImageWidthCallback(cb: (from: number, to: number, width: number) => void) {
+  updateImageWidthCallback = cb;
 }
 
-export function setMoveToImageCallback(callback: (from: number, to: number) => void) {
-  moveToImageCallback = callback;
+export function setMoveToImageCallback(cb: (from: number, to: number) => void) {
+  moveToImageCallback = cb;
 }
+
+// ── Image Widget（仅图片，不含文本）────────────────────────────
 
 class ImageWidget extends WidgetType {
-  private elm: HTMLElement | null = null;
-  private wrapper: HTMLElement | null = null;
-  private handle: HTMLElement | null = null;
-  private linkRow: HTMLElement | null = null;
-
   constructor(
-    private resolvedSrc: string,
-    private rawSrc: string,
-    private alt: string,
+    private src: string,
     private width?: number,
-    private imageFrom?: number,
-    private imageTo?: number,
-    private markdownText?: string,
-    private showLinkRow: boolean = false,
-  ) {
-    super();
+    private pos?: number,
+    private posEnd?: number,
+  ) { super(); }
+
+  eq(other: ImageWidget) {
+    return this.src === other.src && this.width === other.width;
   }
 
-  eq(other: ImageWidget): boolean {
-    return this.resolvedSrc === other.resolvedSrc
-      && this.rawSrc === other.rawSrc
-      && this.alt === other.alt
-      && this.width === other.width
-      && this.showLinkRow === other.showLinkRow
-      && this.markdownText === other.markdownText;
-  }
-
-  toDOM(): HTMLElement {
-    this.elm = document.createElement('div');
-    this.elm.className = 'cm-image-container';
-
-    // 链接文本行：光标在位时显示
-    this.linkRow = document.createElement('div');
-    this.linkRow.className = 'cm-image-link-row';
-    this.linkRow.contentEditable = 'true';
-    this.linkRow.spellcheck = false;
-    this.linkRow.textContent = this.markdownText || '';
-    if (!this.showLinkRow) {
-      this.linkRow.style.display = 'none';
-    }
-
-    this.linkRow.addEventListener('mousedown', (e) => e.stopPropagation());
-    this.linkRow.addEventListener('click', (e) => e.stopPropagation());
-    this.linkRow.addEventListener('keydown', (e) => e.stopPropagation());
-
-    // 实时同步
-    this.linkRow.addEventListener('input', () => {
-      if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageMarkdownCallback) {
-        updateImageMarkdownCallback(this.imageFrom, this.imageTo, this.linkRow!.textContent || '');
-      }
-    });
-
-    this.elm.appendChild(this.linkRow);
-
-    // 图片
-    this.wrapper = document.createElement('div');
-    this.wrapper.className = 'cm-image-wrapper';
+  toDOM() {
+    const wrap = document.createElement('div');
+    wrap.className = 'cm-image-wrapper';
     if (this.width && this.width > 0) {
-      this.wrapper.style.width = `${this.width}px`;
+      imageWidths.set(this.pos ?? 0, this.width);
+      wrap.style.width = `${this.width}px`;
     }
 
     const img = document.createElement('img');
-    img.src = this.resolvedSrc;
-    img.alt = this.alt;
+    img.src = this.src;
     img.className = 'cm-image-resizable';
     img.draggable = false;
-    this.wrapper.appendChild(img);
+    wrap.appendChild(img);
 
-    this.handle = document.createElement('div');
-    this.handle.className = 'cm-image-resize-handle';
-    this.wrapper.appendChild(this.handle);
+    const handle = document.createElement('div');
+    handle.className = 'cm-image-resize-handle';
+    wrap.appendChild(handle);
 
-    this.elm.appendChild(this.wrapper);
-
-    // 图片点击 → 光标跳转到该行
+    // 点击 → 跳转光标
     img.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (this.imageFrom !== undefined && this.imageTo !== undefined && moveToImageCallback) {
-        moveToImageCallback(this.imageFrom, this.imageTo);
+      if (this.pos !== undefined && this.posEnd !== undefined && moveToImageCallback) {
+        moveToImageCallback(this.pos, this.posEnd);
       }
     });
 
-    this.setupResize();
-
-    return this.elm;
+    this.setupResize(wrap, handle);
+    return wrap;
   }
 
-  private setupResize() {
-    if (!this.wrapper || !this.handle) return;
-
+  private setupResize(wrap: HTMLElement, handle: HTMLElement) {
     let sx = 0, sw = 0;
-    this.handle.addEventListener('mousedown', (e) => {
+    handle.addEventListener('mousedown', (e) => {
       e.preventDefault(); e.stopPropagation();
-      sx = e.clientX; sw = this.wrapper!.offsetWidth;
+      sx = e.clientX; sw = wrap.offsetWidth;
       const mv = (e: MouseEvent) => {
-        this.wrapper!.style.width = `${clampWidth(sw + e.clientX - sx)}px`;
+        wrap.style.width = `${clampWidth(sw + e.clientX - sx)}px`;
       };
       const up = () => {
         document.removeEventListener('mousemove', mv);
         document.removeEventListener('mouseup', up);
-        this.commitWidth();
+        const w = wrap.offsetWidth;
+        imageWidths.set(this.pos ?? 0, w);
+        if (this.pos !== undefined && updateImageWidthCallback) {
+          updateImageWidthCallback(this.pos, this.pos, w);
+        }
       };
       document.addEventListener('mousemove', mv);
       document.addEventListener('mouseup', up);
     });
 
-    // Alt + 滚轮缩放
-    this.wrapper.addEventListener('wheel', (e) => {
+    wrap.addEventListener('wheel', (e) => {
       if (e.altKey) {
         e.preventDefault();
         const d = e.deltaY > 0 ? -IMAGE_SIZE_CONFIG.step : IMAGE_SIZE_CONFIG.step;
-        this.wrapper!.style.width = `${clampWidth(this.wrapper!.offsetWidth + d)}px`;
-        this.commitWidth();
+        wrap.style.width = `${clampWidth(wrap.offsetWidth + d)}px`;
+        const w = wrap.offsetWidth;
+        imageWidths.set(this.pos ?? 0, w);
+        if (this.pos !== undefined && updateImageWidthCallback) {
+          updateImageWidthCallback(this.pos, this.pos, w);
+        }
       }
     });
   }
 
-  private commitWidth() {
-    if (!this.wrapper || this.imageFrom === undefined || this.imageTo === undefined) return;
-    const w = this.wrapper.offsetWidth;
-    // 使用原始 src 构建 markdown
-    const newText = buildImageMarkdown(this.alt, this.rawSrc, w);
-    if (updateImageMarkdownCallback) {
-      updateImageMarkdownCallback(this.imageFrom, this.imageTo, newText);
-    }
-  }
-
-  ignoreEvent(): boolean {
-    return false;
-  }
+  ignoreEvent() { return false; }
 }
 
+// ── 工具函数 ────────────────────────────────────────────────────
+
 function getCursorPositions(view: EditorView): number[] {
-  return view.state.selection.ranges.map((r) => r.head);
+  return view.state.selection.ranges.map(r => r.head);
 }
 
 function isCursorInRange(from: number, to: number, cursors: number[]): boolean {
-  return cursors.some((c) => c >= from && c <= to);
+  return cursors.some(c => c >= from && c <= to);
 }
 
 function isCursorOnLine(lineFrom: number, lineTo: number, cursors: number[]): boolean {
-  return cursors.some((c) => c >= lineFrom && c <= lineTo);
+  return cursors.some(c => c >= lineFrom && c <= lineTo);
+}
+
+function parseImageText(text: string): { alt: string; src: string } | null {
+  const m = text.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+  if (!m) return null;
+  return { alt: m[1] ?? '', src: (m[2] ?? '').trim() };
 }
 
 const hideMark = Decoration.replace({});
@@ -190,31 +151,7 @@ export function livePreviewSyntaxHighlighting() {
   return syntaxHighlighting(livePreviewHighlight);
 }
 
-function isImageMarkdown(text: string): RegExpMatchArray | null {
-  return text.match(/^!\[([^\]]*)\]\(([^)]+?)(?:\s*\|\s*(\d+))?\)$/);
-}
-
-function tryBuildImageWidget(
-  text: string,
-  nodeFrom: number,
-  nodeTo: number,
-  onActiveLine: boolean,
-  resolveUrl?: (url: string) => string,
-): { from: number; to: number; value: Decoration } | null {
-  const m = isImageMarkdown(text);
-  if (!m) return null;
-  const alt = m[1] ?? '';
-  const rawSrc = (m[2] ?? '').trim();
-  const w = m[3] ? parseInt(m[3], 10) : undefined;
-  const resolvedSrc = resolveUrl ? resolveUrl(rawSrc) : rawSrc;
-  return {
-    from: nodeFrom,
-    to: nodeTo,
-    value: Decoration.replace({
-      widget: new ImageWidget(resolvedSrc, rawSrc, alt, w, nodeFrom, nodeTo, text, onActiveLine),
-    }),
-  };
-}
+// ── 构建 decorations ───────────────────────────────────────────
 
 function buildMarkerHidingDecorations(
   view: EditorView,
@@ -238,7 +175,7 @@ function buildMarkerHidingDecorations(
 
       if (name === 'CodeMark') {
         const parent = node.node.parent;
-        if (parent && parent.type.name === 'FencedCode') {
+        if (parent?.type.name === 'FencedCode') {
           marks.push(codeMarkStyle.range(node.from, node.to));
           return;
         }
@@ -248,85 +185,116 @@ function buildMarkerHidingDecorations(
 
       if (name.startsWith('ATXHeading')) {
         const text = doc.sliceString(node.from, node.to);
-        const match = text.match(/^(#{1,6})\s?/);
-        if (match) {
-          const prefixEnd = node.from + match[0].length;
-          const cursorInMarker = isCursorInRange(node.from, prefixEnd, cursors);
-          if (!onActiveLine || !cursorInMarker) {
-            marks.push(hideMark.range(node.from, prefixEnd));
-          }
-          const level = match[1]!.length;
-          marks.push(headingStyles[level]!.range(cursorInMarker ? node.from : prefixEnd, node.to));
+        const m = text.match(/^(#{1,6})\s?/);
+        if (m) {
+          const prefixEnd = node.from + m[0].length;
+          const cim = isCursorInRange(node.from, prefixEnd, cursors);
+          if (!onActiveLine || !cim) marks.push(hideMark.range(node.from, prefixEnd));
+          marks.push(headingStyles[m[1]!.length]!.range(cim ? node.from : prefixEnd, node.to));
         }
         return;
       }
 
       if (name === 'StrongEmphasis') {
         const text = doc.sliceString(node.from, node.to);
-        const openLen = text.startsWith('**') || text.startsWith('__') ? 2 : 1;
-        const closeLen = text.endsWith('**') || text.endsWith('__') ? 2 : 1;
-        const f = node.from, t = node.to;
-        if (!isCursorInRange(f, f + openLen, cursors)) marks.push(hideMark.range(f, f + openLen));
-        if (!isCursorInRange(t - closeLen, t, cursors)) marks.push(hideMark.range(t - closeLen, t));
+        const ol = text.startsWith('**') || text.startsWith('__') ? 2 : 1;
+        const cl = text.endsWith('**') || text.endsWith('__') ? 2 : 1;
+        if (!isCursorInRange(node.from, node.from + ol, cursors)) marks.push(hideMark.range(node.from, node.from + ol));
+        if (!isCursorInRange(node.to - cl, node.to, cursors)) marks.push(hideMark.range(node.to - cl, node.to));
         return;
       }
 
       if (name === 'Emphasis') {
         const text = doc.sliceString(node.from, node.to);
         if (text.length < 3) return;
-        const f = node.from, t = node.to;
-        if (!isCursorInRange(f, f + 1, cursors)) marks.push(hideMark.range(f, f + 1));
-        if (!isCursorInRange(t - 1, t, cursors)) marks.push(hideMark.range(t - 1, t));
+        if (!isCursorInRange(node.from, node.from + 1, cursors)) marks.push(hideMark.range(node.from, node.from + 1));
+        if (!isCursorInRange(node.to - 1, node.to, cursors)) marks.push(hideMark.range(node.to - 1, node.to));
         return;
       }
 
       if (name === 'Strikethrough') {
-        const f = node.from, t = node.to;
-        if (!isCursorInRange(f, f + 2, cursors)) marks.push(hideMark.range(f, f + 2));
-        if (!isCursorInRange(t - 2, t, cursors)) marks.push(hideMark.range(t - 2, t));
+        if (!isCursorInRange(node.from, node.from + 2, cursors)) marks.push(hideMark.range(node.from, node.from + 2));
+        if (!isCursorInRange(node.to - 2, node.to, cursors)) marks.push(hideMark.range(node.to - 2, node.to));
         return;
       }
 
       if (name === 'InlineCode') {
         const text = doc.sliceString(node.from, node.to);
-        const tickLen = text.startsWith('``') ? 2 : 1;
-        const f = node.from, t = node.to;
-        if (!isCursorInRange(f, f + tickLen, cursors)) marks.push(hideMark.range(f, f + tickLen));
-        if (!isCursorInRange(t - tickLen, t, cursors)) marks.push(hideMark.range(t - tickLen, t));
+        const tl = text.startsWith('``') ? 2 : 1;
+        if (!isCursorInRange(node.from, node.from + tl, cursors)) marks.push(hideMark.range(node.from, node.from + tl));
+        if (!isCursorInRange(node.to - tl, node.to, cursors)) marks.push(hideMark.range(node.to - tl, node.to));
         return;
       }
 
-      // Image 节点
+      // ── 图片处理 ──
       if (name === 'Image') {
         const text = doc.sliceString(node.from, node.to);
-        const item = tryBuildImageWidget(text, node.from, node.to, onActiveLine, resolveUrl);
-        if (item) marks.push(item);
-        return;
-      }
+        const parsed = parseImageText(text);
+        if (!parsed) return;
 
-      // Link 节点 → 可能是扩展图片语法
-      if (name === 'Link') {
-        const text = doc.sliceString(node.from, node.to);
-        const item = tryBuildImageWidget(text, node.from, node.to, onActiveLine, resolveUrl);
-        if (item) { marks.push(item); return; }
+        const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
 
-        const bracketOpen = text.indexOf('[');
-        const bracketClose = text.indexOf('](');
-        if (bracketOpen !== -1 && bracketClose !== -1) {
-          const openFrom = node.from + bracketOpen;
-          const closeFrom = node.from + bracketClose;
-          if (!isCursorInRange(openFrom, openFrom + 1, cursors)) marks.push(hideMark.range(openFrom, openFrom + 1));
-          if (!isCursorInRange(closeFrom, node.to, cursors)) marks.push(hideMark.range(closeFrom, node.to));
-          marks.push(linkMark.range(openFrom + 1, closeFrom));
+        if (onActiveLine) {
+          // 光标在图片行：隐藏 ![]() 标记，保留文本供编辑
+          const bo = text.indexOf('![');
+          const bc = text.indexOf('](');
+          const cp = text.lastIndexOf(')');
+          if (bo !== -1) marks.push(hideMark.range(node.from + bo, node.from + bo + 2));
+          if (bc !== -1) marks.push(hideMark.range(node.from + bc, node.from + bc + 2));
+          if (cp !== -1) marks.push(hideMark.range(node.from + cp, node.from + cp + 1));
+          // 同时显示图片
+          const w = imageWidths.get(node.from);
+          marks.push({
+            from: node.from,
+            to: node.from,
+            value: Decoration.widget({
+              widget: new ImageWidget(src, w, node.from, node.to),
+              side: -1,
+            }),
+          });
+        } else {
+          // 光标不在图片行：只显示图片
+          const w = imageWidths.get(node.from);
+          marks.push({
+            from: node.from,
+            to: node.to,
+            value: Decoration.replace({
+              widget: new ImageWidget(src, w, node.from, node.to),
+            }),
+          });
         }
         return;
       }
 
-      // 其他节点：兜底检测图片语法
-      if (!onActiveLine) {
+      // Link → 可能是含 | 数字的图片语法（清理遗留兼容）
+      if (name === 'Link') {
         const text = doc.sliceString(node.from, node.to);
-        const item = tryBuildImageWidget(text, node.from, node.to, onActiveLine, resolveUrl);
-        if (item) { marks.push(item); return; }
+        // 如果文本以 ![ 开头，尝试作为图片渲染
+        if (text.startsWith('![')) {
+          const parsed = parseImageText(text);
+          if (parsed) {
+            const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
+            marks.push({
+              from: node.from,
+              to: node.to,
+              value: Decoration.replace({
+                widget: new ImageWidget(src, undefined, node.from, node.to),
+              }),
+            });
+            return;
+          }
+        }
+
+        const bo = text.indexOf('[');
+        const bc = text.indexOf('](');
+        if (bo !== -1 && bc !== -1) {
+          const of = node.from + bo;
+          const cf = node.from + bc;
+          if (!isCursorInRange(of, of + 1, cursors)) marks.push(hideMark.range(of, of + 1));
+          if (!isCursorInRange(cf, node.to, cursors)) marks.push(hideMark.range(cf, node.to));
+          marks.push(linkMark.range(of + 1, cf));
+        }
+        return;
       }
 
       if (onActiveLine) return;
@@ -354,6 +322,6 @@ export function livePreviewPlugin(resolveUrl?: (url: string) => string) {
         }
       }
     },
-    { decorations: (v) => v.decorations },
+    { decorations: v => v.decorations },
   );
 }

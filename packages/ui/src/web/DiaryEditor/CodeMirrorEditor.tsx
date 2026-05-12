@@ -19,7 +19,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { searchKeymap } from '@codemirror/search';
 import { ImagePreview } from './ImagePreview';
-import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageMarkdownCallback, setMoveToImageCallback } from './codeMirrorDecorations';
+import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageWidthCallback, setMoveToImageCallback } from './codeMirrorDecorations';
 import { editorTheme } from './codeMirrorTheme';
 import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin';
 
@@ -143,12 +143,14 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       const container = containerRef.current;
       if (!container) return;
 
-      setUpdateImageMarkdownCallback((from: number, to: number, newMarkdown: string) => {
+      // 缩放更新：目前只存内存，不修改文档文本
+      setUpdateImageWidthCallback((from: number, to: number, newWidth: number) => {
+        // 宽度已通过 imageWidths Map 存储在 decorations 中
+        // 这里可以触发刷新，但当前通过 view.dispatch 重新渲染即可
         const view = viewRef.current;
         if (!view) return;
-        view.dispatch({
-          changes: { from, to, insert: newMarkdown },
-        });
+        // 触发 decorations 刷新
+        view.dispatch({ effects: forceImageRefresh.of(null) });
       });
 
       setMoveToImageCallback((from: number, to: number) => {
