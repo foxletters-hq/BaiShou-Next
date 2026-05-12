@@ -46,9 +46,10 @@ class ImageWidget extends WidgetType {
       this.container.style.width = `${this.width}px`;
     }
 
-    // 创建链接栏 - 始终显示在图片上方
+    // 创建链接栏 - 默认隐藏，点击时显示
     this.linkBar = document.createElement('div');
     this.linkBar.className = 'cm-image-link-bar';
+    this.linkBar.style.display = 'none';
 
     this.linkInput = document.createElement('input');
     this.linkInput.type = 'text';
@@ -96,9 +97,12 @@ class ImageWidget extends WidgetType {
     this.resizeHandle.className = 'cm-image-resize-handle';
     this.container.appendChild(this.resizeHandle);
 
-    // 如果是活动行，添加激活状态
+    // 如果是活动行，显示链接栏
     if (this.showLinkBar) {
+      this.linkBar.style.display = 'block';
       this.container.classList.add('cm-image-active');
+      // 自动聚焦输入框
+      setTimeout(() => this.linkInput?.focus(), 0);
     }
 
     // 绑定事件
