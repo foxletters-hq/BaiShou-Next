@@ -110,7 +110,10 @@ export const Sidebar: React.FC = () => {
                           <div
                             className={`${styles.navItem} ${isSelected ? styles.selected : ''}`}
                             onClick={() => {
-                              sessionStorage.setItem('desktop_last_nav', location.pathname);
+                              console.log('[Sidebar] 记录 last_nav:', location.pathname, '→', item.path);
+                              if (!location.pathname.startsWith(item.path)) {
+                                sessionStorage.setItem('desktop_last_nav', location.pathname);
+                              }
                               navigate(item.path);
                             }}
                           >
