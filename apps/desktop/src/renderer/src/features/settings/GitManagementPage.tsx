@@ -68,6 +68,7 @@ export const GitManagementPage: React.FC = () => {
         onGetConflicts={async () => api?.getConflicts() ?? []}
         onResolveConflict={async (filePath, resolution) => api?.resolveConflict(filePath, resolution) ?? { success: false }}
         onRollbackFile={async (filePath, hash) => api?.rollbackFile(filePath, hash) ?? { success: false }}
+        onRollbackAll={async (hash) => api?.rollbackAll(hash) ?? { success: false }}
         onToast={(msg, type) => {
           if (type === 'error') toast.showError(msg);
           else if (type === 'success') toast.showSuccess(msg);

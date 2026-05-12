@@ -362,11 +362,47 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async rollbackFile(filePath: string, commitHash: string): Promise<void> {
     try {
       const git = await this.ensureGit();
-      logger.info(`[GitSync] 回滚文件: ${filePath} -> ${commitHash}`);
-      await git.checkout([commitHash, '--', filePath]);
-      logger.info(`[GitSync] 回滚成功: ${filePath}`);
+      const vaultPath = await this.getVaultPath();
+      const fullPath = path.join(vaultPath, filePath);
+      logger.info(`[GitSync] 回滚文件: ${filePath} <- ${commitHash}~1`);
+
+      // 回滚到变更前版本 (commitHash~1 = 该 commit 的上一个版本)
+      try {
+        await git.raw(['restore', '--source', `${commitHash}~1`, '--', filePath]);
+        logger.info(`[GitSync] 回滚成功(已恢复): ${filePath}`);
+        return;
+      } catch {
+        // ~1 不存在: 文件在此 commit 首次添加，应删除
+        logger.info(`[GitSync] ${filePath} 在旧版本不存在，执行删除`);
+        try {
+          if (fs.existsSync(fullPath)) {
+            await fs.promises.unlink(fullPath);
+            logger.info(`[GitSync] 回滚成功(已删除): ${filePath}`);
+            return;
+          }
+        } catch (unlinkErr) {
+          logger.error(`[GitSync] 删除文件失败: ${unlinkErr}`);
+        }
+      }
+
+      throw new Error(`无法回滚 ${filePath}: 文件在此版本前后均不存在`);
     } catch (error) {
       logger.error(`[GitSync] 回滚失败 ${filePath}: ${error}`);
+      throw new GitRollbackError(error instanceof Error ? error : undefined);
+    }
+  }
+
+  /**
+   * 回滚整个仓库到指定 commit 的状态（仅更新工作区，不动 HEAD）
+   */
+  async rollbackAll(commitHash: string): Promise<void> {
+    try {
+      const git = await this.ensureGit();
+      logger.info(`[GitSync] 回滚仓库: ${commitHash}`);
+      await git.raw(['checkout', commitHash, '--', '.']);
+      logger.info(`[GitSync] 仓库回滚成功: ${commitHash}`);
+    } catch (error) {
+      logger.error(`[GitSync] 仓库回滚失败: ${error}`);
       throw new GitRollbackError(error instanceof Error ? error : undefined);
     }
   }

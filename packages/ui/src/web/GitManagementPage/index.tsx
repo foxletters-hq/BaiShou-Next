@@ -37,6 +37,7 @@ export interface GitManagementPageProps {
   onResolveConflict: (filePath: string, resolution: 'ours' | 'theirs') => Promise<{ success: boolean }>;
   // 回滚
   onRollbackFile: (filePath: string, commitHash: string) => Promise<{ success: boolean }>;
+  onRollbackAll: (commitHash: string) => Promise<{ success: boolean }>;
 }
 
 export const GitManagementPage: React.FC<GitManagementPageProps> = ({
@@ -57,6 +58,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   onGetConflicts,
   onResolveConflict,
   onRollbackFile,
+  onRollbackAll,
 }) => {
   const { t } = useTranslation();
 
@@ -242,6 +244,14 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
     );
   }, [selectedCommit, onRollbackFile, onToast, t]);
 
+  const handleRollbackAll = useCallback(async (commitHash: string) => {
+    const result = await onRollbackAll(commitHash);
+    onToast(
+      result.success ? t('version_control.rollback_success', '回滚成功') : t('version_control.git_rollback_failed', '回滚失败'),
+      result.success ? 'success' : 'error'
+    );
+  }, [onRollbackAll, onToast, t]);
+
   return (
     <div className="git-management-page">
       {/* 标签栏 */}
@@ -409,6 +419,13 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                             {new Date(entry.commit.date).toLocaleString()}
                           </span>
                           <span className="gmp-tl-hash">{entry.commit.hash}</span>
+                          <button
+                            className="gmp-btn-small"
+                            onClick={(e) => { e.stopPropagation(); handleRollbackAll(entry.commit.hash); }}
+                            disabled={entry.isCurrent}
+                          >
+                            {t('version_control.rollback', '回滚')}
+                          </button>
                           {entry.isCurrent && (
                             <span className="gmp-current-badge">{t('version_control.current_version', '当前版本')}</span>
                           )}

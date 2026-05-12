@@ -105,6 +105,14 @@ export interface IGitSyncService {
    */
   rollbackFile(filePath: string, commitHash: string): Promise<void>;
 
+  /**
+   * 回滚整个仓库到指定 commit 的状态
+   * 仅更新工作区文件，不移动 HEAD
+   * @param commitHash - 目标 commit hash
+   * @throws {GitRollbackError} 回滚失败
+   */
+  rollbackAll(commitHash: string): Promise<void>;
+
   // ── 远程同步 ───────────────────────────────────────────────
 
   /**

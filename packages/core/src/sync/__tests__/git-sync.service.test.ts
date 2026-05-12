@@ -28,6 +28,7 @@ describe('GitSyncService', () => {
       getCommitChanges: vi.fn(),
       getFileDiff: vi.fn(),
       rollbackFile: vi.fn(),
+      rollbackAll: vi.fn(),
       push: vi.fn(),
       pull: vi.fn(),
       hasConflicts: vi.fn(),

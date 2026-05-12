@@ -72,6 +72,7 @@ interface GitAPI {
   getCommitChanges(commitHash: string): Promise<unknown[]>;
   getFileDiff(filePath: string, commitHash?: string): Promise<unknown>;
   rollbackFile(filePath: string, commitHash: string): Promise<{ success: boolean }>;
+  rollbackAll(commitHash: string): Promise<{ success: boolean }>;
   push(): Promise<{ success: boolean; message?: string }>;
   pull(): Promise<{ success: boolean; message?: string; conflicts?: string[] }>;
   hasConflicts(): Promise<boolean>;

@@ -79,8 +79,18 @@ export function registerGitSyncIPC() {
       await getGitService().rollbackFile(filePath, commitHash);
       return { success: true };
     } catch (e: any) {
-      logger.error(`[GitIPC] 回滚失败: ${e?.message}`);
+      logger.error(`[GitIPC] 回滚文件失败: ${e?.message}`);
       return { success: false, message: e?.message || 'Rollback failed' };
+    }
+  });
+
+  ipcMain.handle('git:rollbackAll', async (_, commitHash: string) => {
+    try {
+      await getGitService().rollbackAll(commitHash);
+      return { success: true };
+    } catch (e: any) {
+      logger.error(`[GitIPC] 回滚仓库失败: ${e?.message}`);
+      return { success: false, message: e?.message || 'Rollback all failed' };
     }
   });
 

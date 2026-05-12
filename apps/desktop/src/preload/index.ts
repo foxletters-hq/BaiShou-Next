@@ -218,6 +218,7 @@ export const api = {
     getCommitChanges: (commitHash: string) => ipcRenderer.invoke('git:getCommitChanges', commitHash),
     getFileDiff: (filePath: string, commitHash?: string) => ipcRenderer.invoke('git:getFileDiff', filePath, commitHash),
     rollbackFile: (filePath: string, commitHash: string) => ipcRenderer.invoke('git:rollbackFile', filePath, commitHash),
+    rollbackAll: (commitHash: string) => ipcRenderer.invoke('git:rollbackAll', commitHash),
     push: () => ipcRenderer.invoke('git:push'),
     pull: () => ipcRenderer.invoke('git:pull'),
     hasConflicts: () => ipcRenderer.invoke('git:hasConflicts'),
