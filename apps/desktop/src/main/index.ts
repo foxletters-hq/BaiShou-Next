@@ -70,6 +70,27 @@ function createWindow(needsOnboarding: boolean): void {
     }
   });
 
+  // ── 缩放快捷键：Ctrl+= 放大，Ctrl+- 缩小，Ctrl+0 重置 ──
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (!input.control && !input.meta) return;
+    if (input.type !== 'keyDown') return;
+
+    const win = BrowserWindow.fromWebContents(mainWindow!.webContents);
+    if (!win) return;
+
+    if (input.key === '=' || input.key === '+') {
+      const current = mainWindow!.webContents.getZoomLevel();
+      mainWindow!.webContents.setZoomLevel(Math.min(current + 0.5, 5));
+    } else if (input.key === '-') {
+      const current = mainWindow!.webContents.getZoomLevel();
+      mainWindow!.webContents.setZoomLevel(Math.max(current - 0.5, -3));
+    } else if (input.key === '0') {
+      mainWindow!.webContents.setZoomLevel(0);
+    } else {
+      return;
+    }
+  });
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }

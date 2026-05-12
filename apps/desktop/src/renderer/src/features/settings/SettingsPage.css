@@ -46,6 +46,7 @@
   flex: 1;
   overflow: hidden;
   position: relative;
+  min-height: 0;
 }
 
 /* Sidebar for Tabs */
@@ -164,7 +165,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-surface);
+  background-color: var(--bg-app);
+  min-height: 0;
 }
 
 .settings-content-scroll {
@@ -173,6 +175,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-app);
 }
 
 .settings-content-scroll::-webkit-scrollbar {
@@ -211,6 +214,7 @@
   min-height: 100%;
   margin: 0;
   padding-bottom: 0;
+  background-color: var(--bg-app);
 }
 
 /* Glass panel equivalent to Flutter cards (Card with elevation 0 or 1) */

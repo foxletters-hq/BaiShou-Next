@@ -165,6 +165,7 @@ export const api = {
     deleteEntry: (id: string) => ipcRenderer.invoke('rag:delete-entry', id),
     editEntry: (params: { embeddingId: string, newText: string }) => ipcRenderer.invoke('rag:edit-entry', params),
     hasPendingMigration: () => ipcRenderer.invoke('rag:has-pending-migration'),
+    hasModelMismatch: () => ipcRenderer.invoke('rag:has-model-mismatch'),
     onRagProgress: (callback: (state: any) => void) => {
       const handler = (_: any, state: any) => callback(state);
       ipcRenderer.on('agent:rag-progress', handler);

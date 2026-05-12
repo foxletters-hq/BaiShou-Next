@@ -12,6 +12,7 @@ import {
 import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import { AIProviderConfig, GlobalModelsConfig, logger } from '@baishou/shared'
+import { searchService } from '../services/search.service'
 
 // @ts-ignore
 import { AgentSessionService } from '@baishou/ai/src/agent/agent-session.service'
@@ -100,6 +101,21 @@ export function createWebSearchResultFetcher() {
     } catch (e) {
       logger.error(`Failed to fetch URL: ${url}`, e);
       return `Failed to read URL: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  };
+}
+
+/**
+ * 创建搜索页面获取函数，使用 SearchService 的 BrowserWindow 获取搜索结果页面
+ */
+export function createFetchSearchPage() {
+  return async (url: string): Promise<string> => {
+    const uid = `search-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    try {
+      const html = await searchService.openUrlInSearchWindow(uid, url);
+      return html;
+    } finally {
+      await searchService.closeSearchWindow(uid);
     }
   };
 }

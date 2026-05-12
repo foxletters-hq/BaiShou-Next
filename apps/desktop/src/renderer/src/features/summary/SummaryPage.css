@@ -100,15 +100,31 @@
 .sp-dashboard-layout {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 0;
+}
+
+/* 纵向堆叠时：上方卡片底部去圆角，下方卡片顶部去圆角，合并为一个视觉整体 */
+.sp-dashboard-layout > *:first-child {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.sp-dashboard-layout > *:last-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 @media (min-width: 860px) {
   .sp-dashboard-layout {
     flex-direction: row;
+    gap: 24px;
   }
   .sp-dashboard-layout > * {
     flex: 1;
+    border-bottom-left-radius: var(--radius-lg, 12px);
+    border-bottom-right-radius: var(--radius-lg, 12px);
+    border-top-left-radius: var(--radius-lg, 12px);
+    border-top-right-radius: var(--radius-lg, 12px);
   }
 }
 
@@ -257,7 +273,7 @@
 .sp-missing-card-icon {
   width: 44px;
   height: 44px;
-  background: var(--color-warning);
+  background: var(--color-primary-light);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;

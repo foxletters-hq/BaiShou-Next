@@ -94,6 +94,14 @@ export class DesktopStoragePathService implements IStoragePathService {
     return this.getVaultDirectory(await this.getActiveVaultName());
   }
 
+  public async getActiveVaultPath(): Promise<string | null> {
+    try {
+      return await this.getActiveVaultDirectory();
+    } catch {
+      return null;
+    }
+  }
+
   public async getSnapshotsDirectory(): Promise<string> {
     const root = await this.getRootDirectory();
     const dir = path.join(root, '.snapshots');

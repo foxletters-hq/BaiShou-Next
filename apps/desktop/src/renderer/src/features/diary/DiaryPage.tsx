@@ -6,7 +6,7 @@ import { useDiaryData } from './hooks/useDiaryData';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DiaryCard } from './DiaryCard';
 import type { DiaryEntry } from './DiaryCard';
-import { YearMonthPicker, useToast } from '@baishou/ui';
+import { YearMonthPicker, PageSizeSelector, Pagination, useToast } from '@baishou/ui';
 import './DiaryPage.css';
 
 export const DiaryPage: React.FC = () => {
@@ -18,6 +18,7 @@ export const DiaryPage: React.FC = () => {
   });
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(() => {
     const saved = sessionStorage.getItem('diary_selectedMonth');
+    if (saved === 'all') return null;
     if (saved) {
       try {
         const d = new Date(saved);
@@ -46,7 +47,7 @@ export const DiaryPage: React.FC = () => {
     sessionStorage.setItem('diary_searchQuery', searchQuery);
   }, [searchQuery]);
   useEffect(() => {
-    sessionStorage.setItem('diary_selectedMonth', selectedMonth ? selectedMonth.toISOString() : '');
+    sessionStorage.setItem('diary_selectedMonth', selectedMonth ? selectedMonth.toISOString() : 'all');
   }, [selectedMonth]);
   useEffect(() => {
     sessionStorage.setItem('diary_filterWeathers', JSON.stringify(filterWeathers));
@@ -73,9 +74,23 @@ export const DiaryPage: React.FC = () => {
     }).catch(() => {});
   }, [selectedMonth]);
 
-  // 分页状态
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  // 分页状态（持久化到 sessionStorage）
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = sessionStorage.getItem('diary_currentPage');
+    return saved ? Math.max(1, Number(saved)) : 1;
+  });
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = sessionStorage.getItem('diary_pageSize');
+    return saved ? Number(saved) : 50;
+  });
+
+  // 保存分页状态到 sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('diary_currentPage', String(currentPage));
+  }, [currentPage]);
+  useEffect(() => {
+    sessionStorage.setItem('diary_pageSize', String(pageSize));
+  }, [pageSize]);
 
   /** 执行删除操作 */
   const performDelete = async () => {
@@ -198,10 +213,18 @@ export const DiaryPage: React.FC = () => {
 
   // 分页计算
   const showPagination = filteredEntries.length > 50;
-  const totalPages = Math.ceil(filteredEntries.length / pageSize);
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedEntries = showPagination
-    ? filteredEntries.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    ? filteredEntries.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize)
     : filteredEntries;
+
+  // 页码越界时自动修正
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   /** 格式化日期字符串为 YYYY-MM-DD */
   const formatDateStr = (date: Date): string => {
@@ -400,6 +423,35 @@ export const DiaryPage: React.FC = () => {
         </div>
       ) : (
         <div className="diary-grid">
+          {/* 顶部分页控制栏 */}
+          {showPagination && (
+            <div className="diary-pagination-top">
+              <div className="diary-pagination-info">
+                {t('diary.pagination_info', '共 $total 条，第 $page / $pages 页')
+                  .replace('$total', String(filteredEntries.length))
+                  .replace('$page', String(safeCurrentPage))
+                  .replace('$pages', String(totalPages))}
+              </div>
+              <div className="diary-pagination-controls">
+                <PageSizeSelector
+                  value={pageSize}
+                  options={[50, 80, 100, 200]}
+                  onChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                  label={t('diary.per_page', '条/页')}
+                />
+                <Pagination
+                  current={safeCurrentPage}
+                  total={totalPages}
+                  onChange={setCurrentPage}
+                  siblingCount={1}
+                  showFirstLast={true}
+                  showJumper={true}
+                  jumperPlaceholder={t('diary.jump_to_page', '跳转')}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="diary-grid-inner">
             {paginatedEntries.map((entry) => (
               <motion.div layout="position" key={entry.id} style={{ height: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}>
@@ -414,53 +466,32 @@ export const DiaryPage: React.FC = () => {
               </motion.div>
             ))}
           </div>
+
+          {/* 底部分页控制栏 */}
           {showPagination && (
             <div className="diary-pagination">
               <div className="diary-pagination-info">
                 {t('diary.pagination_info', '共 $total 条，第 $page / $pages 页')
                   .replace('$total', String(filteredEntries.length))
-                  .replace('$page', String(currentPage))
+                  .replace('$page', String(safeCurrentPage))
                   .replace('$pages', String(totalPages))}
               </div>
               <div className="diary-pagination-controls">
-                <select
-                  className="diary-page-size-select"
+                <PageSizeSelector
                   value={pageSize}
-                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                >
-                  {[50, 80, 100, 200].map(size => (
-                    <option key={size} value={size}>{size} {t('diary.per_page', '条/页')}</option>
-                  ))}
-                </select>
-                <button
-                  className="diary-page-btn"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage(1)}
-                >
-                  &laquo;
-                </button>
-                <button
-                  className="diary-page-btn"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage(p => p - 1)}
-                >
-                  &lsaquo;
-                </button>
-                <span className="diary-page-current">{currentPage}</span>
-                <button
-                  className="diary-page-btn"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                >
-                  &rsaquo;
-                </button>
-                <button
-                  className="diary-page-btn"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage(totalPages)}
-                >
-                  &raquo;
-                </button>
+                  options={[50, 80, 100, 200]}
+                  onChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                  label={t('diary.per_page', '条/页')}
+                />
+                <Pagination
+                  current={safeCurrentPage}
+                  total={totalPages}
+                  onChange={setCurrentPage}
+                  siblingCount={1}
+                  showFirstLast={true}
+                  showJumper={true}
+                  jumperPlaceholder={t('diary.jump_to_page', '跳转')}
+                />
               </div>
             </div>
           )}

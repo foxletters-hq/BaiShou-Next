@@ -84,7 +84,20 @@ export const AgentLayout: React.FC = () => {
            systemPrompt: t('agent.default_assistant_prompt', '你是一个友善且有创意的AI助手。'),
            isDefault: true,
            contextWindow: 20
-        }).then(() => fetchAssistants()).catch(console.error);
+        }).then(() => fetchAssistants()).then(() => {
+          const finalStore = useAssistantStore.getState();
+          const ast = finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0];
+          if (ast) {
+            resolvedAssistantIdRef.current = String(ast.id);
+            loadSessions(true, String(ast.id));
+          }
+        }).catch(console.error);
+      } else {
+        const ast = store.assistants.find((a: any) => a.isDefault) || store.assistants[0];
+        if (ast) {
+          resolvedAssistantIdRef.current = String(ast.id);
+          loadSessions(true, String(ast.id));
+        }
       }
     });
     loadConfig();

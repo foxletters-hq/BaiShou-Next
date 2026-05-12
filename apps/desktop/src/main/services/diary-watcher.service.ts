@@ -2,7 +2,7 @@ import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getShadowSync } from '../ipc/diary.ipc';
-import { parseDateStr, logger } from '@baishou/shared';
+import { logger } from '@baishou/shared';
 import * as chokidar from 'chokidar';
 
 /**
@@ -46,6 +46,7 @@ export class DiaryWatcherService {
       // 只要是 .md 文件的 增、改、删 就触发同步
       if (!fullPath.endsWith('.md')) return;
       if (eventName === 'add' || eventName === 'change' || eventName === 'unlink') {
+        logger.info(`[DiaryWatcher] 📄 检测到文件变动: ${eventName} → ${fullPath}`);
         this.scheduleSync(fullPath);
       }
     });
@@ -89,7 +90,7 @@ export class DiaryWatcherService {
         this.pendingPaths.clear();
 
         // 批量提取有效日期
-        const datesToProcess: Date[] = [];
+        const dateStrs: string[] = [];
         const validPaths: string[] = [];
         const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/;
 
@@ -97,15 +98,17 @@ export class DiaryWatcherService {
           const fileName = path.basename(changedPath);
           const match = dateFileRegex.exec(fileName);
           if (match && match[1]) {
-            datesToProcess.push(parseDateStr(match[1]));
+            dateStrs.push(match[1]);
             validPaths.push(changedPath);
           }
         }
 
-        if (datesToProcess.length > 0) {
+        if (dateStrs.length > 0) {
+          logger.info(`[DiaryWatcher] 🔍 提取到 ${dateStrs.length} 个日期: [${dateStrs.join(', ')}]`);
           try {
              const shadowSync = getShadowSync();
-             const results = await shadowSync.syncJournalsBatch(datesToProcess);
+             const results = await shadowSync.syncJournalsBatch(dateStrs);
+             logger.info(`[DiaryWatcher] ✅ syncJournalsBatch 返回 ${results.length} 条结果`, JSON.stringify(results.map(r => ({ isChanged: r.isChanged, hasMeta: !!r.meta }))));
 
              const wins = BrowserWindow.getAllWindows();
              wins.forEach(w => {
@@ -113,7 +116,7 @@ export class DiaryWatcherService {
                for (let i = 0; i < results.length; i++) {
                  w.webContents.send('diary:sync-event', {
                    path: validPaths[i],
-                   date: datesToProcess[i]!.toISOString().split('T')[0],
+                   date: dateStrs[i]!,
                    result: results[i],
                    forced: true,
                  });

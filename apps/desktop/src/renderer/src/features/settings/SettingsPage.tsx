@@ -499,22 +499,31 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const { t } = useTranslation();
   const [ragStats, setRagStats] = useState<any>({ totalCount: 0, currentDimension: 0, totalSizeText: '0 KB' });
   const [ragEntries, setRagEntries] = useState<any[]>([]);
+  const [ragTotalCount, setRagTotalCount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeRagState, setActiveRagState] = useState<any>({ isRunning: false, type: 'idle', progress: 0, total: 0, statusText: '' });
   const [hasMismatchModel, setHasMismatchModel] = useState(false);
   const { confirm, prompt, alert } = useDialog();
   const toast = useToast();
 
-  const fetchRagInfo = async () => {
+  const fetchRagInfo = async (page?: number, pageSize?: number) => {
     try {
       const s = await (window as any).api?.rag?.getStats();
       if (s) setRagStats(s);
-      const e = await (window as any).api?.rag?.queryEntries({ limit: 50 });
+      
+      const limit = pageSize || 10;
+      const offset = ((page || 1) - 1) * limit;
+      const e = await (window as any).api?.rag?.queryEntries({ limit, offset });
       if (e) setRagEntries(e);
+      
+      // 使用 stats 中的 totalCount
+      if (s) setRagTotalCount(s.totalCount || 0);
+      
       // Check for pending migration or model mismatch
       try {
         const pending = await (window as any).api?.rag?.hasPendingMigration?.();
-        setHasMismatchModel(!!pending);
+        const mismatch = await (window as any).api?.rag?.hasModelMismatch?.();
+        setHasMismatchModel(!!pending || !!mismatch);
       } catch { /* ignore */ }
     } catch (err) {}
   };
@@ -542,8 +551,10 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
              hasMismatchModel={hasMismatchModel}
              embeddingModelId={settings.globalModels?.globalEmbeddingModelId}
              entries={ragEntries}
+             totalCount={ragTotalCount}
              onChange={(config) => settings.setRagConfig(config)}
              onNavigateToConfig={() => navigate('/settings/ai-models')}
+             onPageChange={(page, size) => fetchRagInfo(page, size)}
              onDetectDimension={async () => {
                setIsProcessing(true);
                try {
@@ -624,18 +635,87 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
                  await fetchRagInfo();
                } finally { setIsProcessing(false); }
              }}
-             onEditEntry={async (entry) => {
-               const newText = await prompt(t('settings.rag_edit_prompt', '请修改下方的记忆片段内容：'), entry.text, t('settings.rag_edit_manual', '编辑记忆内容'), true);
-               if (!newText || newText === entry.text) return;
-               setIsProcessing(true);
-               try {
-                 await (window as any).api?.rag?.editEntry({ embeddingId: entry.embeddingId, newText: newText });
-                 await fetchRagInfo();
-               } catch (e: any) {
-                 await alert(e.message, t('common.error', '错误'));
-               } finally { setIsProcessing(false); }
-             }}
-         />
+              onEditEntry={async (entry) => {
+                const newText = await prompt(t('settings.rag_edit_prompt', '请修改下方的记忆片段内容：'), entry.text, t('settings.rag_edit_manual', '编辑记忆内容'), true);
+                if (!newText || newText === entry.text) return;
+                setIsProcessing(true);
+                try {
+                  await (window as any).api?.rag?.editEntry({ embeddingId: entry.embeddingId, newText: newText });
+                  await fetchRagInfo();
+                } catch (e: any) {
+                  await alert(e.message, t('common.error', '错误'));
+                } finally { setIsProcessing(false); }
+              }}
+              onExportEmbeddings={async () => {
+                setIsProcessing(true);
+                try {
+                  const data = await (window as any).api?.rag?.exportEmbeddings();
+                  if (data && data.entries && data.entries.length > 0) {
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `rag-export-${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    toast.showSuccess(t('settings.rag_export_success', '导出成功') + ` (${data.count} ${t('settings.rag_entries', '条')})`);
+                  } else {
+                    toast.showWarning(t('settings.rag_export_empty', '没有可导出的数据'));
+                  }
+                } catch (e: any) {
+                  await alert(t('settings.rag_export_error', '导出失败: ') + e.message, t('common.error', '错误'));
+                } finally { setIsProcessing(false); }
+              }}
+              onManageBackups={async () => {
+                setIsProcessing(true);
+                try {
+                  const backups = await (window as any).api?.rag?.listSafetyBackups();
+                  if (!backups || backups.length === 0) {
+                    await alert(t('settings.rag_no_backups', '暂无备份'), t('common.info', '提示'));
+                    return;
+                  }
+                  
+                  const backupList = backups.map((b: any, i: number) => 
+                    `${i + 1}. ${b.name} (${b.count} ${t('settings.rag_entries', '条')})`
+                  ).join('\n');
+                  
+                  const choice = await prompt(
+                    t('settings.rag_backup_list', '可用备份列表：') + '\n\n' + backupList + '\n\n' + 
+                    t('settings.rag_backup_actions', '输入序号恢复备份，或输入 "delete:序号" 删除备份：'),
+                    '',
+                    t('settings.rag_manage_backups', '备份管理'),
+                    true
+                  );
+                  
+                  if (!choice) return;
+                  
+                  if (choice.startsWith('delete:')) {
+                    const idx = parseInt(choice.replace('delete:', '')) - 1;
+                    if (idx >= 0 && idx < backups.length) {
+                      if (!await confirm(t('settings.rag_confirm_delete_backup', '确认删除此备份?'), t('common.warning', '警告'))) return;
+                      await (window as any).api?.rag?.deleteBackup(backups[idx].name);
+                      toast.showSuccess(t('settings.rag_backup_deleted', '备份已删除'));
+                    }
+                  } else {
+                    const idx = parseInt(choice) - 1;
+                    if (idx >= 0 && idx < backups.length) {
+                      if (!await confirm(
+                        t('settings.rag_confirm_restore', '恢复将清空当前记忆并从备份导入，是否继续?'),
+                        t('common.warning', '警告')
+                      )) return;
+                      setIsProcessing(true);
+                      const count = await (window as any).api?.rag?.restoreFromBackup(backups[idx].name);
+                      toast.showSuccess(t('settings.rag_restore_success', '恢复成功') + ` (${count} ${t('settings.rag_entries', '条')})`);
+                      await fetchRagInfo();
+                    }
+                  }
+                } catch (e: any) {
+                  await alert(t('settings.rag_backup_error', '操作失败: ') + e.message, t('common.error', '错误'));
+                } finally { setIsProcessing(false); }
+              }}
+          />
     </div>
   );
 };

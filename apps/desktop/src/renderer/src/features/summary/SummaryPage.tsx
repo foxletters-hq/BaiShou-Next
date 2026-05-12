@@ -10,7 +10,7 @@ import {
 import type { ActivityData } from '@baishou/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Layers, Sparkles, CheckCircle2, Gauge, Calendar, RefreshCw, XCircle, Clock } from 'lucide-react';
+import { LayoutDashboard, Layers, Sparkles, CheckCircle2, Gauge, RefreshCw, XCircle, Clock } from 'lucide-react';
 import { useSummaryData } from './hooks/useSummaryData';
 import './SummaryPage.css';
 
@@ -327,7 +327,9 @@ export const SummaryPage: React.FC = () => {
                               <div className="sp-missing-card">
                                  {/* 图标区域 */}
                                  <div className="sp-missing-card-icon">
-                                    <Calendar size={20} />
+                                    <span style={{ fontSize: 20 }}>
+                                      {mp.type === 'weekly' ? '🌱' : mp.type === 'monthly' ? '☘️' : mp.type === 'quarterly' ? '🪴' : '🌳'}
+                                    </span>
                                  </div>
 
                                  <div className="sp-missing-card-body">

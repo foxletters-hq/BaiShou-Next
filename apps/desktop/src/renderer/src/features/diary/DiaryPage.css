@@ -718,7 +718,17 @@
   color: var(--color-primary);
 }
 
-/* ── 分页组件 ── */
+/* ── 顶部分页栏 ── */
+.diary-pagination-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ── 底部分页组件 ── */
 .diary-pagination {
   display: flex;
   align-items: center;
@@ -737,18 +747,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.diary-page-size-select {
-  padding: 4px 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xs);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-family: var(--font-family);
-  cursor: pointer;
-  margin-right: 8px;
 }
 
 .diary-page-btn {

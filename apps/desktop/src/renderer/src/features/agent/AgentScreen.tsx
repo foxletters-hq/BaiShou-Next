@@ -156,7 +156,18 @@ export const AgentScreen: React.FC = () => {
         };
         await audio.play();
       } else {
-        toast.showError(result.error || t('agent.chat.tts_failed', '语音合成失败'));
+        // 根据错误代码进行 i18n 翻译
+        const errorCodeMap: Record<string, string> = {
+          'tts_not_configured': t('agent.chat.tts_not_configured', 'TTS 模型未配置，请在设置中配置 TTS 模型'),
+          'tts_provider_not_found': t('agent.chat.tts_provider_not_found', 'TTS 提供商未找到'),
+          'tts_api_error': t('agent.chat.tts_api_error', 'TTS API 请求失败'),
+          'tts_synthesis_failed': t('agent.chat.tts_failed', '语音合成失败'),
+        };
+        const errorCode = result.errorCode;
+        const errorMsg = errorCode 
+          ? (errorCodeMap[errorCode] || t('agent.chat.tts_failed', '语音合成失败'))
+          : (result.error || t('agent.chat.tts_failed', '语音合成失败'));
+        toast.showError(errorMsg);
       }
     } catch (e: any) {
       toast.showError(e.message || t('agent.chat.tts_failed', '语音合成失败'));
@@ -184,15 +195,20 @@ export const AgentScreen: React.FC = () => {
         const result = await window.electron.ipcRenderer.invoke('pricing:refresh');
         if (result.success && result.lastUpdated) {
           setPricingLastUpdated(new Date(result.lastUpdated));
+          toast.showSuccess(t('agent.chat.pricing_refreshed', '价格表已更新'));
+        } else if (!result.success) {
+          toast.showError(result.error || t('agent.chat.pricing_refresh_failed', '价格表刷新失败'));
         }
         return result;
       } catch (e) {
+        const errMsg = e instanceof Error ? e.message : t('agent.chat.pricing_refresh_failed', '价格表刷新失败');
         console.error('Failed to refresh pricing:', e);
-        return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+        toast.showError(errMsg);
+        return { success: false, error: errMsg };
       }
     }
     return { success: false, error: 'No electron context' };
-  }, []);
+  }, [t, toast]);
 
   // ── 初始化加载价格表时间 ──
   useEffect(() => {
@@ -391,8 +407,8 @@ export const AgentScreen: React.FC = () => {
         <ModelSwitcherPopup 
           onClose={() => setShowModelSwitcher(false)}
           providers={providers.map(p => ({
-            id: p.providerId,
-            name: p.name || p.providerId,
+            id: p.id,
+            name: p.name || p.id,
             type: p.type || 'custom',
             models: p.models || [],
             enabledModels: p.enabledModels || [],
@@ -509,7 +525,7 @@ export const AgentScreen: React.FC = () => {
                 isTtsPlaying={ttsPlayingMsgId === msg.id}
                 onRegenerate={() => {
                   if (typeof window !== 'undefined' && window.electron) {
-                    window.electron.ipcRenderer.invoke('agent:regenerate', sessionId, msg.id, searchMode).then(() => chat.refreshMessages());
+                    window.electron.ipcRenderer.invoke('agent:regenerate', sessionId, msg.id, searchMode, model.currentProviderId, model.currentModelId).then(() => chat.refreshMessages());
                   }
                 }}
                 onEdit={() => {}}
@@ -537,7 +553,7 @@ export const AgentScreen: React.FC = () => {
                       chat.setMessages(prev => prev.slice(0, msgIndex + 1));
                     }
                     chat.setStreamSessionId(sessionId);
-                    stream.resendChat(sessionId, msg.id, searchMode);
+                    stream.resendChat(sessionId, msg.id, searchMode, model.currentProviderId, model.currentModelId);
                   }
                 }}
                 onDelete={async () => {
@@ -559,7 +575,7 @@ export const AgentScreen: React.FC = () => {
                       if (newSessionId) {
                         toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'));
                         // 导航到新会话
-                        navigate(`/agent/session/${newSessionId}`);
+                        navigate(`/chat/${newSessionId}`);
                       }
                     } catch (e: any) {
                       toast.showError(e?.message || t('agent.chat.branch_failed', '分支创建失败'));

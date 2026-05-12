@@ -87,21 +87,21 @@ export function registerRagIPC() {
   ipcMain.handle('rag:trigger-batch-embed', async (event) => {
     await config.load();
     try {
-      // Only read diaries efficiently without full content if possible, but we need text to embed
+      // 只嵌入日记内容
       const diaries = await getDiaryManager().listAll({ limit: 10000 });
-      let progress = 0;
       const total = diaries?.length || 0;
+      let progress = 0;
       
       for (const meta of diaries) {
         progress++;
         event.sender.send('agent:rag-progress', {
-          isRunning: true, type: 'batchEmbed', progress, total, statusText: `处理日记: ${new Date(meta.date).toLocaleDateString()}`
+          isRunning: true, type: 'batchEmbed', progress, total, 
+          statusText: `处理日记: ${new Date(meta.date).toLocaleDateString()}`
         });
 
         const diary = await getDiaryManager().findById(meta.id);
         if (!diary || !diary.id || !diary.content || !diary.content.trim()) continue;
 
-        // Perform embedding
         await embeddingService.reEmbedText({
           text: diary.content,
           sourceType: 'diary',
@@ -111,52 +111,7 @@ export function registerRagIPC() {
         });
       }
 
-      // ── 阶段 2: 聊天消息嵌入 ──
-      const db = getAppDb();
-      const messageRows = await db
-        .select({
-          messageId: agentMessagesTable.id,
-          sessionId: agentMessagesTable.sessionId,
-          role: agentMessagesTable.role,
-          createdAt: agentMessagesTable.createdAt,
-          partData: agentPartsTable.data,
-        })
-        .from(agentMessagesTable)
-        .innerJoin(
-          agentPartsTable,
-          and(
-            eq(agentPartsTable.messageId, agentMessagesTable.id),
-            eq(agentPartsTable.type, 'text')
-          )
-        )
-        .where(eq(agentMessagesTable.isSummary, false))
-        .orderBy(desc(agentMessagesTable.createdAt))
-        .limit(5000);
-
-      const msgTotal = messageRows.length;
-      let msgProgress = 0;
-
-      for (const row of messageRows) {
-        msgProgress++;
-        event.sender.send('agent:rag-progress', {
-          isRunning: true, type: 'batchEmbed',
-          progress: progress + msgProgress,
-          total: total + msgTotal,
-          statusText: `处理消息: ${row.role} (${msgProgress}/${msgTotal})`
-        });
-
-        const partData = row.partData as any;
-        const text = partData?.text;
-        if (!text || !text.trim()) continue;
-
-        await embeddingService.reEmbedMessage({
-          messageId: row.messageId,
-          sessionId: row.sessionId,
-          content: text,
-        });
-      }
-
-      event.sender.send('agent:rag-progress', { isRunning: false, progress: total + msgTotal, total: total + msgTotal, type: 'idle' });
+      event.sender.send('agent:rag-progress', { isRunning: false, progress: total, total, type: 'idle' });
       return true;
     } catch (e: any) {
       console.error('Batch Embed failed:', e);
@@ -179,7 +134,7 @@ export function registerRagIPC() {
     return true;
   });
 
-  ipcMain.handle('rag:query-entries', async (_, params: { keyword: string, limit: number }) => {
+  ipcMain.handle('rag:query-entries', async (_, params: { keyword?: string, limit?: number, offset?: number }) => {
     const db = getAppDb();
     const query = db.select().from(memoryEmbeddingsTable);
     
@@ -187,7 +142,10 @@ export function registerRagIPC() {
       query.where(like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`));
     }
     
-    const results = await query.orderBy(desc(memoryEmbeddingsTable.createdAt)).limit(params.limit || 50);
+    const results = await query
+      .orderBy(desc(memoryEmbeddingsTable.createdAt))
+      .limit(params.limit || 10)
+      .offset(params.offset || 0);
     
     return results.map(r => ({
       embeddingId: r.embeddingId,
@@ -251,5 +209,10 @@ export function registerRagIPC() {
   ipcMain.handle('rag:has-pending-migration', async () => {
     await config.load();
     return await embeddingService.hasPendingMigration();
+  });
+
+  ipcMain.handle('rag:has-model-mismatch', async () => {
+    await config.load();
+    return await embeddingService.hasHeterogeneousEmbeddings();
   });
 }

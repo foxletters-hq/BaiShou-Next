@@ -27,9 +27,12 @@ export function registerSessionIPC() {
     try {
         const activeVaultPath = await pathService.getActiveVaultPath();
         if (activeVaultPath) {
-           vaultName = activeVaultPath.split(/[/\\]/).pop() || 'default';
+           vaultName = activeVaultPath;
         }
-    } catch(e) {}
+        logger.info(`[SessionIPC] create-session vaultName=${vaultName}`);
+    } catch(e) {
+        logger.warn('[SessionIPC] getActiveVaultPath failed, using default:', e);
+    }
 
     let providerId = 'default';
     let modelId = 'default';
@@ -136,7 +139,7 @@ export function registerSessionIPC() {
     try {
       const activeVaultPath = await pathService.getActiveVaultPath();
       if (activeVaultPath) {
-        vaultName = activeVaultPath.split(/[/\\]/).pop() || 'default';
+        vaultName = activeVaultPath;
       }
     } catch(e) {}
 

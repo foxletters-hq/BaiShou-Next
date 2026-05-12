@@ -3,7 +3,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { logger } from '@baishou/shared'
 import { pathService } from './vault.ipc'
-import { getAgentManagers, agentService, toolRegistry, createDiarySearcher, createWebSearchResultFetcher, getActiveProvider, buildStreamConfig } from './agent-helpers'
+import { getAgentManagers, agentService, toolRegistry, createDiarySearcher, createWebSearchResultFetcher, createFetchSearchPage, getActiveProvider, buildStreamConfig } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
 import { GlobalModelsConfig } from '@baishou/shared'
 import { ModelPricingService } from '@baishou/ai/src/pricing/model-pricing.service'
@@ -158,6 +158,7 @@ export function registerChatIPC() {
         snapshotRepo: realSnapshotRepo as any,
         diarySearcher: createDiarySearcher(),
         webSearchResultFetcher: createWebSearchResultFetcher(),
+        fetchSearchPage: createFetchSearchPage(),
         systemPrompt: "You are BaiShou-Next, a genius local assistant. Follow the tools when applicable.",
         abortSignal: globalAbortController.signal
       }, {
@@ -188,7 +189,7 @@ export function registerChatIPC() {
     }
   });
   
-  ipcMain.handle('agent:regenerate', async (event, sessionId: string, messageId?: string, searchMode?: boolean) => {
+  ipcMain.handle('agent:regenerate', async (event, sessionId: string, messageId?: string, searchMode?: boolean, requestedProviderId?: string, requestedModelId?: string) => {
     const { realSessionRepo, realSnapshotRepo } = getAgentManagers();
     
     let targetMessage;
@@ -220,7 +221,7 @@ export function registerChatIPC() {
     await realSessionRepo.deleteMessagesAfter(sessionId, userMessage.orderIndex);
     
     const assistantContextWindow = await getAssistantContextWindow(sessionId);
-    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(undefined, undefined, searchMode, assistantContextWindow);
+    const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(requestedProviderId, requestedModelId, searchMode, assistantContextWindow);
     globalAbortController = new AbortController();
 
     try {
@@ -228,7 +229,7 @@ export function registerChatIPC() {
           sessionId,
           userText: (userMessage.parts && userMessage.parts.length > 0) ? userMessage.parts.filter((p:any) => p.type === 'text').map((p:any) => p.data?.text || p.data).join('\n') : '',
           provider,
-          modelId: globalModels?.globalDialogueModelId || 'deepseek-chat',
+          modelId: requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
           systemModels,
           userConfig,
           skipUserMessageRecording: true,
@@ -236,6 +237,8 @@ export function registerChatIPC() {
           sessionRepo: realSessionRepo as any,
           snapshotRepo: realSnapshotRepo as any,
           diarySearcher: createDiarySearcher(),
+          webSearchResultFetcher: createWebSearchResultFetcher(),
+          fetchSearchPage: createFetchSearchPage(),
           abortSignal: globalAbortController.signal
         }, {
           onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
@@ -342,6 +345,8 @@ export function registerChatIPC() {
           sessionRepo: realSessionRepo as any,
           snapshotRepo: realSnapshotRepo as any,
           diarySearcher: createDiarySearcher(),
+          webSearchResultFetcher: createWebSearchResultFetcher(),
+          fetchSearchPage: createFetchSearchPage(),
           abortSignal: globalAbortController.signal
         }, {
           onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
@@ -362,7 +367,7 @@ export function registerChatIPC() {
   });
 
   // 重发消息：保留用户消息，删除之后的所有助手回复，然后重新发送
-  ipcMain.handle('agent:resend', async (event, sessionId: string, messageId: string, searchMode?: boolean) => {
+  ipcMain.handle('agent:resend', async (event, sessionId: string, messageId: string, searchMode?: boolean, requestedProviderId?: string, requestedModelId?: string) => {
     const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers();
 
     logger.info(`[Agent:resend] 开始重发消息: sessionId=${sessionId}, messageId=${messageId}`);
@@ -407,14 +412,14 @@ export function registerChatIPC() {
     // 4. 重新发送消息（带完整上下文）
     try {
       const assistantContextWindow = await getAssistantContextWindow(sessionId);
-      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(undefined, undefined, searchMode, assistantContextWindow);
+      const { provider, globalModels, systemModels, userConfig } = await buildStreamConfig(requestedProviderId, requestedModelId, searchMode, assistantContextWindow);
       globalAbortController = new AbortController();
 
       await agentService.streamChat({
         sessionId,
         userText,
         provider,
-        modelId: globalModels?.globalDialogueModelId || 'deepseek-chat',
+        modelId: requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
         systemModels,
         userConfig,
         skipUserMessageRecording: true,
@@ -422,6 +427,8 @@ export function registerChatIPC() {
         sessionRepo: realSessionRepo as any,
         snapshotRepo: realSnapshotRepo as any,
         diarySearcher: createDiarySearcher(),
+        webSearchResultFetcher: createWebSearchResultFetcher(),
+        fetchSearchPage: createFetchSearchPage(),
         abortSignal: globalAbortController.signal
       }, {
         onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
@@ -468,12 +475,12 @@ export function registerChatIPC() {
       const ttsModelId = modelId || globalModels?.globalTtsModelId;
 
       if (!ttsProviderId || !ttsModelId) {
-        return { success: false, error: 'TTS model not configured. Please set a TTS model in Settings > Global Models.' };
+        return { success: false, errorCode: 'tts_not_configured' };
       }
 
       const providerConfig = providers.find((p: any) => p.id === ttsProviderId);
       if (!providerConfig) {
-        return { success: false, error: `TTS provider "${ttsProviderId}" not found.` };
+        return { success: false, errorCode: 'tts_provider_not_found' };
       }
 
       const apiKey = providerConfig.apiKey;
@@ -497,7 +504,7 @@ export function registerChatIPC() {
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
         logger.error(`[TTS] API error ${response.status}: ${errText}`);
-        return { success: false, error: `TTS API error: ${response.status} ${response.statusText}` };
+        return { success: false, errorCode: 'tts_api_error', statusCode: response.status };
       }
 
       const arrayBuffer = await response.arrayBuffer();
@@ -505,7 +512,7 @@ export function registerChatIPC() {
       return { success: true, audioBase64: base64, format: 'mp3' };
     } catch (error: any) {
       logger.error('[TTS] Synthesize error:', error);
-      return { success: false, error: error.message || 'TTS synthesis failed' };
+      return { success: false, errorCode: 'tts_synthesis_failed', error: error.message };
     }
   });
 
