@@ -2,7 +2,7 @@ import { AppDatabase } from '../types';
 import { agentSessionsTable } from '../schema/agent-sessions';
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages';
 import { agentPartsTable as partsTbl } from '../schema/agent-parts';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, or, isNull } from 'drizzle-orm';
 
 export interface InsertSessionInput {
   id: string;
@@ -153,7 +153,10 @@ export class SessionRepository {
   async findAllSessions(limit: number = 20, offset: number = 0, assistantId?: string) {
     let q = this.db.select().from(agentSessionsTable);
     if (assistantId) {
-       q = q.where(eq(agentSessionsTable.assistantId, assistantId)) as any;
+       q = q.where(or(
+         eq(agentSessionsTable.assistantId, assistantId),
+         isNull(agentSessionsTable.assistantId)
+       )) as any;
     }
     return await q.orderBy(
         desc(agentSessionsTable.isPinned),

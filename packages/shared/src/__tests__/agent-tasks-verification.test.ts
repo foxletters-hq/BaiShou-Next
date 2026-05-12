@@ -181,11 +181,11 @@ describe('Agent 6: 伙伴聊天功能验证', () => {
 });
 
 describe('Agent 9: 文件附件系统验证', () => {
-  it('任务18: ImagePreview 组件已集成到 MilkdownEditor', () => {
+  it('任务18: ImagePreview 组件已集成到 CodeMirrorEditor', () => {
     const fs = require('fs');
     const editorPath = resolve(
       __dirname,
-      '../../../ui/src/web/DiaryEditor/MilkdownEditor.tsx'
+      '../../../ui/src/web/DiaryEditor/CodeMirrorEditor.tsx'
     );
     const content = fs.readFileSync(editorPath, 'utf-8');
 
