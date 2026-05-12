@@ -46,14 +46,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
     return src;
   };
 
-  // 解析图片 src 中的宽度语法：src|475 或 src "475"
+  // 解析图片 src 中的宽度语法：src|475 或 src "475"（兼容 URL 编码）
   const parseImgWidth = (rawSrc?: string): { src: string; width?: number } => {
     if (!rawSrc) return { src: '' };
-    // src|475
-    let m = rawSrc.match(/^(.+?)\s*\|\s*(\d+)$/);
+    // 先尝试解码 URL 编码，再匹配
+    const decoded = rawSrc.replace(/%7C/gi, '|');
+    let m = decoded.match(/^(.+?)\s*\|\s*(\d+)$/);
     if (m) return { src: (m[1] ?? '').trim(), width: parseInt(m[2]!, 10) };
-    // src "475"
-    m = rawSrc.match(/^(.+?)\s+"(\d+)"$/);
+    // src "475" 语法
+    m = decoded.match(/^(.+?)\s+"(\d+)"$/);
     if (m) return { src: (m[1] ?? '').trim(), width: parseInt(m[2]!, 10) };
     return { src: rawSrc };
   };
