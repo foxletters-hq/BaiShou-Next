@@ -49,6 +49,17 @@ interface ZoomAPI {
   getFactor(): number;
 }
 
+interface UpdaterAPI {
+  check(): Promise<{ hasUpdate: boolean; currentVersion: string; updateInfo: any }>;
+  download(): Promise<{ success: boolean }>;
+  install(): void;
+  getVersion(): Promise<string>;
+  setAutoCheck(enabled: boolean): Promise<{ success: boolean }>;
+  getAutoCheck(): Promise<boolean>;
+  onStatusChange(callback: (state: any) => void): () => void;
+  onDownloadProgress(callback: (progress: number) => void): () => void;
+}
+
 interface AppAPI {
   onboarding: OnboardingAPI;
   window: WindowAPI;
@@ -57,6 +68,7 @@ interface AppAPI {
   zoom: ZoomAPI;
   git: GitAPI;
   incrementalSync: IncrementalSyncAPI;
+  updater: UpdaterAPI;
   [key: string]: unknown;
 }
 

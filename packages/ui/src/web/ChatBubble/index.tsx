@@ -259,19 +259,19 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                </div>
               ) : (
                 <>
+                {/* Reasoning 块 - 移到 aiBubbleCard 外部 */}
+                {message.reasoning && (
+                  <ThinkingBlock
+                    content={message.reasoning}
+                    isThinking={false}
+                    defaultOpen={true}
+                    autoCollapse={false}
+                  />
+                )}
+
                 <div className={styles.aiBubbleCard}>
                    {renderAttachments(false)}
-
-                   {/* 思考过程 - 放在消息气泡内部 */}
-                   {message.reasoning && (
-                     <ThinkingBlock
-                       content={message.reasoning}
-                       isThinking={false}
-                       defaultOpen={false}
-                       autoCollapse={false}
-                     />
-                   )}
-
+                   
                    {/* 工具调用 */}
                    {message.toolInvocations && message.toolInvocations.length > 0 && (
                      <ToolResultGroup invocations={message.toolInvocations} />

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PageSizeSelector, Pagination } from '@baishou/ui';
 import './GitManagementPage.css';
 import type {
   GitSyncConfig,
@@ -22,11 +21,9 @@ export interface GitManagementPageProps {
   onTestRemote: () => Promise<boolean>;
   // 提交
   onAutoCommit: () => Promise<{ success: boolean; data: GitCommit | null }>;
-  onCommit: (message: string) => Promise<GitCommit | null>;
-  // 提示
-  onToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onCommit: (message: string) => Promise<GitCommit>;
   // 历史
-  onGetHistory: (filePath?: string, limit?: number, offset?: number) => Promise<VersionHistoryEntry[]>;
+  onGetHistory: (filePath?: string, limit?: number) => Promise<VersionHistoryEntry[]>;
   onGetCommitChanges: (commitHash: string) => Promise<FileChange[]>;
   onGetFileDiff: (filePath: string, commitHash?: string) => Promise<FileDiff>;
   // 同步
@@ -37,7 +34,6 @@ export interface GitManagementPageProps {
   onResolveConflict: (filePath: string, resolution: 'ours' | 'theirs') => Promise<{ success: boolean }>;
   // 回滚
   onRollbackFile: (filePath: string, commitHash: string) => Promise<{ success: boolean }>;
-  onRollbackAll: (commitHash: string) => Promise<{ success: boolean }>;
 }
 
 export const GitManagementPage: React.FC<GitManagementPageProps> = ({
@@ -48,7 +44,6 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   onTestRemote,
   onAutoCommit,
   onCommit,
-  onToast,
   onGetHistory,
   onGetCommitChanges,
   onGetFileDiff,
@@ -58,7 +53,6 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   onGetConflicts,
   onResolveConflict,
   onRollbackFile,
-  onRollbackAll,
 }) => {
   const { t } = useTranslation();
 
@@ -66,191 +60,122 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   const [remoteUrl, setRemoteUrl] = useState(config.remote?.url || '');
   const [remoteBranch, setRemoteBranch] = useState(config.remote?.branch || 'main');
   const [autoCommit, setAutoCommit] = useState(config.autoCommit);
+  const [commitTemplate, setCommitTemplate] = useState(config.commitMessageTemplate);
+  const [showPassword, setShowPassword] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [statusText, setStatusText] = useState('');
 
   const [history, setHistory] = useState<VersionHistoryEntry[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
   const [commitChanges, setCommitChanges] = useState<FileChange[]>([]);
   const [selectedFileDiff, setSelectedFileDiff] = useState<FileDiff | null>(null);
   const [conflicts, setConflicts] = useState<string[]>([]);
-  const [expandedCommit, setExpandedCommit] = useState<string | null>(null);
-  const [expandedFile, setExpandedFile] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [totalCount, setTotalCount] = useState(0);
-  const [commitMessage, setCommitMessage] = useState('');
+  const [commitMessage, setCommitMessage] = useState('更新日记数据');
 
   useEffect(() => {
     setRemoteUrl(config.remote?.url || '');
     setRemoteBranch(config.remote?.branch || 'main');
     setAutoCommit(config.autoCommit);
+    setCommitTemplate(config.commitMessageTemplate);
   }, [config]);
 
   const handleInit = useCallback(async () => {
+    setStatus('loading');
     const result = await onInit();
-    if (result.success) {
-      onToast(t('version_control.git_init_success', 'Git 仓库初始化成功'), 'success');
-    } else {
-      onToast(result.message || t('version_control.git_init_failed', '初始化失败'), 'error');
-    }
-  }, [onInit, onToast, t]);
+    setStatus(result.success ? 'success' : 'error');
+    setStatusText(result.success ? t('version_control.git_init_success', 'Git 仓库初始化成功') : (result.message || t('version_control.git_init_failed', '初始化失败')));
+  }, [onInit, t]);
 
   const handleSaveConfig = useCallback(async () => {
+    setStatus('loading');
     try {
       onSaveConfig({
         autoCommit,
+        commitMessageTemplate: commitTemplate,
         remote: remoteUrl ? { url: remoteUrl, branch: remoteBranch } : undefined,
       });
-      onToast(t('common.save_success', '保存成功'), 'success');
+      setStatus('success');
+      setStatusText(t('common.save_success', '保存成功'));
     } catch (e: any) {
-      onToast(e?.message || t('common.error', '保存失败'), 'error');
+      setStatus('error');
+      setStatusText(e?.message || t('common.error', '保存失败'));
     }
-  }, [autoCommit, remoteUrl, remoteBranch, onSaveConfig, onToast, t]);
+  }, [autoCommit, commitTemplate, remoteUrl, remoteBranch, onSaveConfig, t]);
 
   const handleTestRemote = useCallback(async () => {
+    setStatus('loading');
     const ok = await onTestRemote();
-    onToast(
-      ok ? t('version_control.connection_success', '连接成功') : t('version_control.connection_failed', '连接失败'),
-      ok ? 'success' : 'error'
-    );
-  }, [onTestRemote, onToast, t]);
+    setStatus(ok ? 'success' : 'error');
+    setStatusText(ok ? t('version_control.connection_success', '连接成功') : t('version_control.connection_failed', '连接失败'));
+  }, [onTestRemote, t]);
 
   const handlePush = useCallback(async () => {
+    setStatus('loading');
     const result = await onPush();
-    onToast(
-      result.success ? t('version_control.push_success', '推送成功') : (result.message || t('version_control.git_push_failed', '推送失败')),
-      result.success ? 'success' : 'error'
-    );
-  }, [onPush, onToast, t]);
+    setStatus(result.success ? 'success' : 'error');
+    setStatusText(result.success ? t('version_control.push_success', '推送成功') : (result.message || t('version_control.git_push_failed', '推送失败')));
+  }, [onPush, t]);
 
   const handleManualCommit = useCallback(async () => {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    const msg = commitMessage.trim() || timestamp;
+    if (!commitMessage.trim()) return;
+    setStatus('loading');
     try {
-      const result = await onCommit(msg);
-      if (!result) {
-        onToast(t('version_control.no_changes', '没有待提交的变更'), 'info');
-        return;
-      }
-      onToast(
-        t('version_control.commit_success_count', '提交成功: {{count}} 个文件已提交', { count: result.files.length }),
-        'success'
-      );
+      await onCommit(commitMessage.trim());
+      setStatus('success');
+      setStatusText(t('version_control.commit_success', '提交成功'));
       setCommitMessage('');
-      setCommitChanges([]);
-      setSelectedFileDiff(null);
     } catch (e: any) {
-      const errorMsg = e?.message || '';
-      if (errorMsg.includes('No changes')) {
-        onToast(t('version_control.no_changes', '没有待提交的变更'), 'info');
-      } else {
-        onToast(errorMsg || t('version_control.git_commit_failed', '提交失败'), 'error');
-      }
+      setStatus('error');
+      setStatusText(e?.message || t('version_control.git_commit_failed', '提交失败'));
     }
-  }, [commitMessage, onCommit, onToast, t]);
-
-  const handleCommitAndPush = useCallback(async () => {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    const msg = commitMessage.trim() || timestamp;
-    try {
-      const result = await onCommit(msg);
-      if (!result) {
-        onToast(t('version_control.no_changes', '没有待提交的变更'), 'info');
-        return;
-      }
-      onToast(
-        t('version_control.commit_success_count', '提交成功: {{count}} 个文件已提交，正在推送...', { count: result.files.length }),
-        'success'
-      );
-      setCommitMessage('');
-      setSelectedCommit(null);
-      setCommitChanges([]);
-      setSelectedFileDiff(null);
-      // 提交成功后推送
-      const pushResult = await onPush();
-      onToast(
-        pushResult.success ? t('version_control.push_success', '推送成功') : (pushResult.message || t('version_control.git_push_failed', '推送失败')),
-        pushResult.success ? 'success' : 'error'
-      );
-    } catch (e: any) {
-      onToast(e?.message || t('version_control.git_commit_failed', '提交失败'), 'error');
-    }
-  }, [commitMessage, onCommit, onPush, onToast, t]);
+  }, [commitMessage, onCommit, t]);
 
   const handlePull = useCallback(async () => {
+    setStatus('loading');
     const result = await onPull();
     if (result.success) {
-      onToast(t('version_control.pull_success', '拉取成功'), 'success');
+      setStatus('success');
+      setStatusText(t('version_control.pull_success', '拉取成功'));
     } else {
-      onToast(result.message || t('version_control.git_pull_failed', '拉取失败'), 'error');
+      setStatus('error');
+      setStatusText(result.message || t('version_control.git_pull_failed', '拉取失败'));
       if (result.conflicts) {
         setConflicts(result.conflicts);
       }
     }
-  }, [onPull, onToast, t]);
+  }, [onPull, t]);
 
   const handleLoadHistory = useCallback(async () => {
+    setStatus('loading');
     try {
-      const offset = (page - 1) * pageSize;
-      const entries = await onGetHistory(undefined, pageSize, offset);
-      setTotalCount(entries.length === pageSize ? page * pageSize + 1 : (page - 1) * pageSize + entries.length);
+      const entries = await onGetHistory(undefined, 50);
       setHistory(entries);
+      setStatus('idle');
     } catch {
-      onToast(t('version_control.load_history_failed', '加载历史失败'), 'error');
+      setStatus('error');
+      setStatusText(t('version_control.load_history_failed', '加载历史失败'));
     }
-  }, [onGetHistory, page, pageSize, onToast, t]);
-
-  // 翻页时重新加载
-  useEffect(() => {
-    if (tab === 'history') {
-      handleLoadHistory();
-    }
-  }, [page, pageSize]);
+  }, [onGetHistory, t]);
 
   const handleSelectCommit = useCallback(async (hash: string) => {
-    if (expandedCommit === hash) {
-      setExpandedCommit(null);
-      setCommitChanges([]);
-      setSelectedFileDiff(null);
-      return;
-    }
-    setExpandedCommit(hash);
     setSelectedCommit(hash);
     const changes = await onGetCommitChanges(hash);
     setCommitChanges(changes);
     setSelectedFileDiff(null);
-  }, [expandedCommit, onGetCommitChanges]);
+  }, [onGetCommitChanges]);
 
   const handleViewDiff = useCallback(async (filePath: string) => {
-    if (expandedFile === filePath) {
-      setExpandedFile(null);
-      setSelectedFileDiff(null);
-      return;
-    }
-    setExpandedFile(filePath);
     const diff = await onGetFileDiff(filePath, selectedCommit || undefined);
     setSelectedFileDiff(diff);
-  }, [onGetFileDiff, selectedCommit, expandedFile]);
+  }, [onGetFileDiff, selectedCommit]);
 
   const handleRollback = useCallback(async (filePath: string) => {
     if (!selectedCommit) return;
+    setStatus('loading');
     const result = await onRollbackFile(filePath, selectedCommit);
-    onToast(
-      result.success ? t('version_control.rollback_success', '回滚成功') : t('version_control.git_rollback_failed', '回滚失败'),
-      result.success ? 'success' : 'error'
-    );
-  }, [selectedCommit, onRollbackFile, onToast, t]);
-
-  const handleRollbackAll = useCallback(async (commitHash: string) => {
-    const result = await onRollbackAll(commitHash);
-    onToast(
-      result.success ? t('version_control.rollback_success', '回滚成功') : t('version_control.git_rollback_failed', '回滚失败'),
-      result.success ? 'success' : 'error'
-    );
-  }, [onRollbackAll, onToast, t]);
+    setStatus(result.success ? 'success' : 'error');
+    setStatusText(result.success ? t('version_control.rollback_success', '回滚成功') : t('version_control.git_rollback_failed', '回滚失败'));
+  }, [selectedCommit, onRollbackFile, t]);
 
   return (
     <div className="git-management-page">
@@ -300,20 +225,17 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
             {/* 手动提交 */}
             {isInitialized && (
               <div className="gmp-section">
-                <div className="gmp-label">{t('version_control.manual_commit', '提交变更')}</div>
+                <div className="gmp-label">{t('version_control.manual_commit', '手动提交')}</div>
                 <div className="gmp-commit-row">
                   <input
                     className="gmp-input"
                     type="text"
                     value={commitMessage}
                     onChange={(e) => setCommitMessage(e.target.value)}
-                    placeholder={t('version_control.commit_placeholder', '未填写将使用时间戳')}
+                    placeholder={t('version_control.commit_message_placeholder', '输入提交消息...')}
                   />
                   <button className="gmp-btn gmp-btn-primary" onClick={handleManualCommit}>
-                    {t('version_control.commit_local', '本地提交')}
-                  </button>
-                  <button className="gmp-btn gmp-btn-primary" onClick={handleCommitAndPush}>
-                    {t('version_control.commit_push', '提交并推送')}
+                    {t('version_control.commit_btn', '提交')}
                   </button>
                 </div>
               </div>
@@ -353,20 +275,30 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
             </div>
 
             {/* 自动提交 */}
+
             <div className="gmp-section">
               <div className="gmp-section-header">
                 <span className="gmp-label">{t('version_control.auto_commit', '同步前自动提交')}</span>
                 <button
                   className={`gmp-switch ${autoCommit ? 'gmp-switch-on' : ''}`}
-                  onClick={() => {
-                    const next = !autoCommit;
-                    setAutoCommit(next);
-                    onSaveConfig({ autoCommit: next });
-                  }}
+                  onClick={() => setAutoCommit(!autoCommit)}
                 >
                   <span className="gmp-switch-thumb" />
                 </button>
               </div>
+              <div className="gmp-label" style={{ marginTop: 12 }}>
+                {t('version_control.commit_message_template', '提交消息模板')}
+              </div>
+              <input
+                className="gmp-input"
+                type="text"
+                value={commitTemplate}
+                onChange={(e) => setCommitTemplate(e.target.value)}
+                placeholder={t('version_control.commit_message_hint', '支持 {date} 占位符')}
+              />
+              <button className="gmp-btn" style={{ marginTop: 12 }} onClick={handleSaveConfig}>
+                {t('common.save', '保存配置')}
+              </button>
             </div>
 
             {/* 冲突处理 */}
@@ -398,115 +330,100 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
             {history.length === 0 ? (
               <div className="gmp-empty">{t('version_control.no_history', '暂无版本历史')}</div>
             ) : (
-              <div className="gmp-timeline">
-                {history.map((entry) => (
-                  <div key={entry.commit.hash} className="gmp-tl-commit">
-                    {/* 时间线节点和连接线 */}
-                    <div className="gmp-tl-gutter">
-                      <div className={`gmp-tl-dot ${entry.isCurrent ? 'gmp-tl-dot-current' : ''}`} />
-                      <div className="gmp-tl-line" />
+              <div className="gmp-history-layout">
+                <div className="gmp-history-list">
+                  {history.map((entry) => (
+                    <div
+                      key={entry.commit.hash}
+                      className={`gmp-history-item ${selectedCommit === entry.commit.hash ? 'gmp-history-item-active' : ''}`}
+                      onClick={() => handleSelectCommit(entry.commit.hash)}
+                    >
+                      <div className="gmp-history-message">{entry.commit.message}</div>
+                      <div className="gmp-history-meta">
+                        <span className="gmp-history-meta-text">
+                          {new Date(entry.commit.date).toLocaleString()}
+                        </span>
+                        <span className="gmp-history-meta-text">
+                          {entry.commit.files.length} {t('version_control.changes', '变更')}
+                        </span>
+                        {entry.isCurrent && (
+                          <span className="gmp-current-badge">{t('version_control.current_version', '当前版本')}</span>
+                        )}
+                      </div>
                     </div>
-
-                    {/* 提交内容 */}
-                    <div className="gmp-tl-body">
-                      <div
-                        className={`gmp-tl-header ${expandedCommit === entry.commit.hash ? 'gmp-tl-header-expanded' : ''}`}
-                        onClick={() => handleSelectCommit(entry.commit.hash)}
-                      >
-                        <span className="gmp-tl-message">{entry.commit.message}</span>
-                        <span className="gmp-tl-meta">
-                          <span className="gmp-tl-date">
-                            {new Date(entry.commit.date).toLocaleString()}
+                  ))}
+                </div>
+                <div className="gmp-history-detail">
+                  {selectedCommit && commitChanges.length > 0 && (
+                    <>
+                      <div className="gmp-label" style={{ marginBottom: 12 }}>
+                        {t('version_control.changes', '变更文件')}
+                      </div>
+                      {commitChanges.map((change) => (
+                        <div
+                          key={change.path}
+                          className={`gmp-change-item ${selectedFileDiff?.path === change.path ? 'gmp-change-item-active' : ''}`}
+                          onClick={() => handleViewDiff(change.path)}
+                        >
+                          <span className={`gmp-change-status gmp-change-${change.status}`}>
+                            {change.status === 'added' ? t('version_control.files_added', '新增') :
+                             change.status === 'deleted' ? t('version_control.files_deleted', '删除') :
+                             t('version_control.files_modified', '修改')}
                           </span>
-                          <span className="gmp-tl-hash">{entry.commit.hash}</span>
+                          <span className="gmp-change-path">{change.path}</span>
+                          <span className="gmp-change-stats">+{change.additions} -{change.deletions}</span>
                           <button
                             className="gmp-btn-small"
-                            onClick={(e) => { e.stopPropagation(); handleRollbackAll(entry.commit.hash); }}
-                            disabled={entry.isCurrent}
+                            onClick={(e) => { e.stopPropagation(); handleRollback(change.path); }}
                           >
                             {t('version_control.rollback', '回滚')}
                           </button>
-                          {entry.isCurrent && (
-                            <span className="gmp-current-badge">{t('version_control.current_version', '当前版本')}</span>
-                          )}
-                        </span>
-                      </div>
+                        </div>
+                      ))}
 
-                      {/* 展开的文件变更列表 */}
-                      {expandedCommit === entry.commit.hash && (
-                        <div className="gmp-tl-changes">
-                          {commitChanges.map((change) => (
-                            <div key={change.path} className="gmp-tl-file">
-                              <div
-                                className="gmp-tl-file-header"
-                                onClick={() => handleViewDiff(change.path)}
-                              >
-                                <span className={`gmp-tl-file-icon gmp-tl-file-${change.status}`}>
-                                  {change.status === 'added' ? 'A' : change.status === 'deleted' ? 'D' : 'M'}
-                                </span>
-                                <span className="gmp-tl-file-path">{change.path}</span>
-                                <span className="gmp-tl-file-stats">+{change.additions} -{change.deletions}</span>
-                                <button
-                                  className="gmp-btn-small"
-                                  onClick={(e) => { e.stopPropagation(); handleRollback(change.path); }}
-                                >
-                                  {t('version_control.rollback', '回滚')}
-                                </button>
-                              </div>
-
-                              {/* 内联 diff */}
-                              {expandedFile === change.path && selectedFileDiff && (
-                                <div className="gmp-diff-viewer">
-                                  <pre className="gmp-diff-content">
-                                    {selectedFileDiff.hunks.length === 0 ? (
-                                      <div className="gmp-diff-normal" style={{ opacity: 0.5 }}>无差异</div>
-                                    ) : (
-                                      selectedFileDiff.hunks.map((hunk, i) => (
-                                        <div key={i} className="gmp-diff-hunk">
-                                          <div className="gmp-diff-hunk-header">
-                                            @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
-                                          </div>
-                                          {hunk.content.split('\n').map((line, j) => (
-                                            <div key={j} className={
-                                              line.startsWith('+') ? 'gmp-diff-add' :
-                                              line.startsWith('-') ? 'gmp-diff-remove' :
-                                              'gmp-diff-normal'
-                                            }>{line}</div>
-                                          ))}
-                                        </div>
-                                      ))
-                                    )}
-                                  </pre>
+                      {selectedFileDiff && (
+                        <div className="gmp-diff-viewer">
+                          <div className="gmp-label">{selectedFileDiff.path}</div>
+                          <pre className="gmp-diff-content">
+                            {selectedFileDiff.hunks.map((hunk, i) => (
+                              <div key={i} className="gmp-diff-hunk">
+                                <div className="gmp-diff-hunk-header">
+                                  @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
                                 </div>
-                              )}
-                            </div>
-                          ))}
+                                {hunk.content.split('\n').map((line, j) => (
+                                  <div key={j} className={
+                                    line.startsWith('+') ? 'gmp-diff-add' :
+                                    line.startsWith('-') ? 'gmp-diff-remove' :
+                                    'gmp-diff-normal'
+                                  }>{line}</div>
+                                ))}
+                              </div>
+                            ))}
+                          </pre>
                         </div>
                       )}
-                    </div>
-                  </div>
-                ))}
+                    </>
+                  )}
+                  {!selectedCommit && (
+                    <div className="gmp-empty">{t('version_control.select_commit_hint', '选择左侧的一个版本查看详情')}</div>
+                  )}
+                </div>
               </div>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {/* 分页器 */}
-            {history.length > 0 && (
-              <div className="gmp-pagination-row">
-                <PageSizeSelector
-                  value={pageSize}
-                  options={[10, 20, 50, 100]}
-                  onChange={(size) => { setPageSize(size); setPage(1); }}
-                />
-                <Pagination
-                  current={page}
-                  total={Math.max(1, Math.ceil(totalCount / pageSize))}
-                  onChange={setPage}
-                  showFirstLast
-                  showJumper
-                  jumperPlaceholder={t('version_control.jump_page', '跳页')}
-                />
-              </div>
-            )}
+      {/* 状态 Toast */}
+      <AnimatePresence>
+        {status !== 'idle' && (
+          <motion.div
+            className={`gmp-toast gmp-toast-${status}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+          >
+            {statusText}
           </motion.div>
         )}
       </AnimatePresence>
