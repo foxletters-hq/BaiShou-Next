@@ -1,0 +1,427 @@
+.git-management-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.gmp-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 24px;
+}
+
+.gmp-tab {
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.gmp-tab:hover {
+  color: var(--text-primary);
+}
+
+.gmp-tab-active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.gmp-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.gmp-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.gmp-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gmp-label {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.gmp-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.gmp-input:focus {
+  border-color: var(--border-strong);
+}
+
+.gmp-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  border: none;
+  background: var(--bg-surface-normal);
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+}
+
+.gmp-switch-on {
+  background: var(--color-primary);
+}
+
+.gmp-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-surface-highest);
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.gmp-switch-on .gmp-switch-thumb {
+  transform: translateX(20px);
+}
+
+.gmp-btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gmp-commit-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gmp-commit-row .gmp-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.gmp-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: opacity 0.2s;
+}
+
+.gmp-btn:hover {
+  opacity: 0.85;
+}
+
+.gmp-btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.gmp-btn-small {
+  padding: 4px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  transition: opacity 0.2s;
+}
+
+.gmp-btn-small:hover {
+  opacity: 0.85;
+}
+
+.gmp-conflict {
+  border-color: #f59e0b;
+}
+
+.gmp-conflict-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gmp-conflict-row:last-child {
+  border-bottom: none;
+}
+
+.gmp-conflict-file {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.gmp-empty {
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: 48px 0;
+  font-size: 14px;
+}
+
+/* 时间线布局 */
+.gmp-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.gmp-tl-commit {
+  display: flex;
+  gap: 0;
+  position: relative;
+}
+
+.gmp-tl-commit:last-child .gmp-tl-line {
+  display: none;
+}
+
+.gmp-tl-gutter {
+  width: 32px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 14px;
+}
+
+.gmp-tl-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  border: 2px solid var(--bg-surface);
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.gmp-tl-dot-current {
+  background: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 59, 130, 246), 0.25);
+}
+
+.gmp-tl-line {
+  width: 2px;
+  flex: 1;
+  background: var(--border-subtle);
+  min-height: 8px;
+}
+
+.gmp-tl-body {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+}
+
+.gmp-tl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 12px;
+}
+
+.gmp-tl-header:hover {
+  background: var(--bg-surface-normal);
+}
+
+.gmp-tl-header-expanded {
+  background: var(--bg-surface-normal);
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: transparent;
+}
+
+.gmp-tl-message {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gmp-tl-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.gmp-tl-date {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.gmp-tl-hash {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-tertiary);
+  background: var(--bg-surface-normal);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.gmp-current-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.gmp-tl-changes {
+  border: 1px solid var(--border-subtle);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+}
+
+.gmp-tl-file {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gmp-tl-file:last-child {
+  border-bottom: none;
+}
+
+.gmp-tl-file-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 12px;
+}
+
+.gmp-tl-file-header:hover {
+  background: var(--bg-surface-normal);
+}
+
+.gmp-tl-file-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-family: monospace;
+  color: #fff;
+}
+
+.gmp-tl-file-added {
+  background: #22c55e;
+}
+
+.gmp-tl-file-modified {
+  background: #3b82f6;
+}
+
+.gmp-tl-file-deleted {
+  background: #ef4444;
+}
+
+.gmp-tl-file-path {
+  flex: 1;
+  color: var(--text-secondary);
+  font-family: monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gmp-tl-file-stats {
+  color: var(--text-tertiary);
+  font-family: monospace;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.gmp-diff-viewer {
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface-normal);
+  max-height: 280px;
+  overflow: auto;
+}
+
+.gmp-diff-content {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-family: monospace;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+}
+
+.gmp-diff-hunk {
+  margin-bottom: 2px;
+}
+
+.gmp-diff-hunk-header {
+  color: #3b82f6;
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+
+.gmp-diff-add {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.gmp-diff-remove {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.gmp-diff-normal {
+  color: var(--text-secondary);
+}
+
+.gmp-pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 8px;
+}

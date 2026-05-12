@@ -204,7 +204,40 @@ export const api = {
     }
   },
 
-  // Cloud Sync (Phase C)
+  // Git Version Control
+  git: {
+    init: () => ipcRenderer.invoke('git:init'),
+    isInitialized: () => ipcRenderer.invoke('git:isInitialized'),
+    getConfig: () => ipcRenderer.invoke('git:getConfig'),
+    updateConfig: (config: any) => ipcRenderer.invoke('git:updateConfig', config),
+    testRemote: () => ipcRenderer.invoke('git:testRemote'),
+    autoCommit: () => ipcRenderer.invoke('git:autoCommit'),
+    commitAll: (message: string) => ipcRenderer.invoke('git:commitAll', message),
+    commit: (files: string[], message: string) => ipcRenderer.invoke('git:commit', files, message),
+    getHistory: (filePath?: string, limit?: number, offset?: number) => ipcRenderer.invoke('git:getHistory', filePath, limit, offset),
+    getCommitChanges: (commitHash: string) => ipcRenderer.invoke('git:getCommitChanges', commitHash),
+    getFileDiff: (filePath: string, commitHash?: string) => ipcRenderer.invoke('git:getFileDiff', filePath, commitHash),
+    rollbackFile: (filePath: string, commitHash: string) => ipcRenderer.invoke('git:rollbackFile', filePath, commitHash),
+    push: () => ipcRenderer.invoke('git:push'),
+    pull: () => ipcRenderer.invoke('git:pull'),
+    hasConflicts: () => ipcRenderer.invoke('git:hasConflicts'),
+    getConflicts: () => ipcRenderer.invoke('git:getConflicts'),
+    resolveConflict: (filePath: string, resolution: 'ours' | 'theirs') => ipcRenderer.invoke('git:resolveConflict', filePath, resolution),
+  },
+
+  // Incremental Sync (S3)
+  incrementalSync: {
+    getConfig: () => ipcRenderer.invoke('incrementalSync:getConfig'),
+    updateConfig: (config: any) => ipcRenderer.invoke('incrementalSync:updateConfig', config),
+    testConnection: () => ipcRenderer.invoke('incrementalSync:testConnection'),
+    sync: () => ipcRenderer.invoke('incrementalSync:sync'),
+    uploadOnly: () => ipcRenderer.invoke('incrementalSync:uploadOnly'),
+    downloadOnly: () => ipcRenderer.invoke('incrementalSync:downloadOnly'),
+    getLocalManifest: () => ipcRenderer.invoke('incrementalSync:getLocalManifest'),
+    getRemoteManifest: () => ipcRenderer.invoke('incrementalSync:getRemoteManifest'),
+    refreshLocalManifest: () => ipcRenderer.invoke('incrementalSync:refreshLocalManifest'),
+    getLastSyncConflicts: () => ipcRenderer.invoke('incrementalSync:getLastSyncConflicts'),
+  },
   cloud: {
     syncNow: (config: any) => ipcRenderer.invoke('cloud:syncNow', config),
     listRecords: (config: any) => ipcRenderer.invoke('cloud:listRecords', config),

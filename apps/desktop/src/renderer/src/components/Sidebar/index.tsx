@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiFind } from 'react-icons/md';
+import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiFind, MdHistory } from 'react-icons/md';
 import styles from './Sidebar.module.css';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -19,21 +19,35 @@ export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [navOrder, setNavOrder] = useState(() => {
-  const saved = localStorage.getItem('desktop_sidebar_nav_order');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return ['diary', 'summary', 'lan', 'sync'];
-  });
+   const [navOrder, setNavOrder] = useState(() => {
+   const saved = localStorage.getItem('desktop_sidebar_nav_order');
+     if (saved) {
+       try {
+         const parsed = JSON.parse(saved) as string[];
+         // 迁移：自动补全新增的导航项
+         const defaults = ['diary', 'summary', 'lan', 'sync', 'git'];
+         let changed = false;
+         for (const item of defaults) {
+           if (!parsed.includes(item)) {
+             parsed.push(item);
+             changed = true;
+           }
+         }
+         if (changed) {
+           localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
+         }
+         return parsed;
+       } catch (e) {}
+     }
+      return ['diary', 'summary', 'lan', 'sync', 'git'];
+   });
 
   const allItems = {
      'diary': { icon: <MdTimeline />, label: t('diary.title', '日记'), path: '/diary' },
      'summary': { icon: <MdAutoStories />, label: t('summary.dashboard_title', '全域仪表盘'), path: '/summary' },
-     'lan': { icon: <MdWifiFind />, label: t('settings.lan_transfer', '局域网快传'), path: '/lan-transfer' },
-     'sync': { icon: <MdSync />, label: t('common.data_sync', '数据同步'), path: '/data-sync' }
+      'lan': { icon: <MdWifiFind />, label: t('settings.lan_transfer', '局域网快传'), path: '/lan-transfer' },
+      'sync': { icon: <MdSync />, label: t('common.data_sync', '数据同步'), path: '/data-sync' },
+      'git': { icon: <MdHistory />, label: t('version_control.title', '版本控制'), path: '/git' }
   };
 
   useEffect(() => {

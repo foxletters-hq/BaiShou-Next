@@ -54,6 +54,14 @@ export interface IGitSyncService {
   autoCommit(): Promise<GitCommit | null>;
 
   /**
+   * 提交所有变更（手动提交）
+   * @param message - 提交消息
+   * @returns 创建的 commit
+   * @throws {GitCommitError} 提交失败
+   */
+  commitAll(message: string): Promise<GitCommit | null>;
+
+  /**
    * 提交指定文件的变更
    * @param files - 要提交的文件路径列表
    * @param message - 提交消息
@@ -67,10 +75,11 @@ export interface IGitSyncService {
   /**
    * 获取指定文件的版本历史
    * @param filePath - 文件相对路径（可选，不传则获取全局历史）
-   * @param limit - 返回数量限制，默认 50
+   * @param limit - 返回数量限制，默认 20
+   * @param offset - 偏移量，默认 0
    * @returns 版本历史列表（按时间倒序）
    */
-  getHistory(filePath?: string, limit?: number): Promise<VersionHistoryEntry[]>;
+  getHistory(filePath?: string, limit?: number, offset?: number): Promise<VersionHistoryEntry[]>;
 
   /**
    * 获取指定 commit 的文件变更列表

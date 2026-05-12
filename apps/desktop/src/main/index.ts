@@ -9,6 +9,8 @@ import { initVaultSystem, registerVaultIPC } from './ipc/vault.ipc'
 import { registerArchiveIPC } from './ipc/archive.ipc'
 import { registerLanIPC } from './ipc/lan.ipc'
 import { registerCloudSyncIPC } from './ipc/cloud-sync.ipc'
+import { registerGitSyncIPC } from './ipc/git-sync.ipc'
+import { registerIncrementalSyncIPC } from './ipc/incremental-sync.ipc'
 import { registerDiaryIPC } from './ipc/diary.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerSummaryIPC } from './ipc/summary.ipc'
@@ -264,6 +266,8 @@ app.whenReady().then(async () => {
   registerArchiveIPC();
   registerLanIPC();
   registerCloudSyncIPC();
+  registerGitSyncIPC();
+  registerIncrementalSyncIPC();
   registerDiaryIPC();
   registerProfileIPC();
   registerSummaryIPC();

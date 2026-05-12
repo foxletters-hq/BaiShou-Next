@@ -55,7 +55,41 @@ interface AppAPI {
   diary: DiaryAPI;
   summary: SummaryAPI;
   zoom: ZoomAPI;
+  git: GitAPI;
+  incrementalSync: IncrementalSyncAPI;
   [key: string]: unknown;
+}
+
+interface GitAPI {
+  init(): Promise<{ success: boolean; message?: string }>;
+  isInitialized(): Promise<boolean>;
+  getConfig(): Promise<unknown>;
+  updateConfig(config: unknown): Promise<{ success: boolean }>;
+  testRemote(): Promise<boolean>;
+  autoCommit(): Promise<{ success: boolean; data: unknown }>;
+  commit(files: string[], message: string): Promise<unknown>;
+  getHistory(filePath?: string, limit?: number): Promise<unknown[]>;
+  getCommitChanges(commitHash: string): Promise<unknown[]>;
+  getFileDiff(filePath: string, commitHash?: string): Promise<unknown>;
+  rollbackFile(filePath: string, commitHash: string): Promise<{ success: boolean }>;
+  push(): Promise<{ success: boolean; message?: string }>;
+  pull(): Promise<{ success: boolean; message?: string; conflicts?: string[] }>;
+  hasConflicts(): Promise<boolean>;
+  getConflicts(): Promise<string[]>;
+  resolveConflict(filePath: string, resolution: 'ours' | 'theirs'): Promise<{ success: boolean }>;
+}
+
+interface IncrementalSyncAPI {
+  getConfig(): Promise<unknown>;
+  updateConfig(config: unknown): Promise<{ success: boolean }>;
+  testConnection(): Promise<boolean>;
+  sync(): Promise<unknown>;
+  uploadOnly(): Promise<unknown>;
+  downloadOnly(): Promise<unknown>;
+  getLocalManifest(): Promise<unknown>;
+  getRemoteManifest(): Promise<unknown>;
+  refreshLocalManifest(): Promise<unknown>;
+  getLastSyncConflicts(): Promise<string[]>;
 }
 
 declare interface Window {

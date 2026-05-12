@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import simpleGit, { SimpleGit, StatusResult } from 'simple-git';
+import { logger } from '@baishou/shared';
 import type {
   GitCommit,
   GitSyncConfig,
@@ -130,11 +131,15 @@ export class GitSyncServiceImpl implements IGitSyncService {
 
   async init(): Promise<void> {
     try {
+      const vaultPath = await this.getVaultPath();
+      logger.info(`[GitSync] 正在初始化 Git 仓库: ${vaultPath}`);
       const git = await this.ensureGit();
       await git.init();
       await this.ensureGitignore();
       await this.loadConfig();
+      logger.info(`[GitSync] Git 仓库初始化成功: ${vaultPath}`);
     } catch (error) {
+      logger.error(`[GitSync] Git 仓库初始化失败: ${error}`);
       throw new GitInitError(error instanceof Error ? error : undefined);
     }
   }
@@ -169,6 +174,34 @@ export class GitSyncServiceImpl implements IGitSyncService {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async commitAll(message: string): Promise<GitCommit | null> {
+    const git = await this.ensureGit();
+    logger.info(`[GitSync] 手动提交: ${message}`);
+
+    const status = await git.status();
+    if (status.isClean()) {
+      logger.info('[GitSync] 无变更，跳过提交');
+      return null;
+    }
+
+    try {
+      logger.info(`[GitSync] 暂存 ${status.files.length} 个文件`);
+      await git.add('.');
+      const result = await git.commit(message);
+      logger.info(`[GitSync] 提交成功: ${result.commit}`);
+
+      return {
+        hash: result.commit,
+        message,
+        date: new Date(),
+        files: status.files.map((f) => f.path),
+      };
+    } catch (error) {
+      logger.error(`[GitSync] 提交失败: ${error}`);
+      throw new GitCommitError(error instanceof Error ? error : undefined);
     }
   }
 
@@ -209,44 +242,77 @@ export class GitSyncServiceImpl implements IGitSyncService {
     }
   }
 
-  async getHistory(filePath?: string, limit = 50): Promise<VersionHistoryEntry[]> {
+  async getHistory(filePath?: string, limit = 20, offset = 0): Promise<VersionHistoryEntry[]> {
     const git = await this.ensureGit();
 
-    const options = ['--oneline', '--max-count', String(limit)];
+    const options = ['--max-count', String(limit)];
+    if (offset > 0) {
+      options.push('--skip', String(offset));
+    }
     if (filePath) {
       options.push('--', filePath);
     }
 
-    const log = await git.log(options);
-
-    const entries: VersionHistoryEntry[] = [];
-    for (const commit of log.all) {
-      const changes = await this.getCommitChanges(commit.hash);
-      entries.push({
-        commit: {
-          hash: commit.hash.substring(0, 7),
-          message: commit.message,
-          date: new Date(commit.date),
-          files: changes.map((c) => c.path),
-        },
-        changes,
-        isCurrent: entries.length === 0,
-      });
+    try {
+      const log = await git.log(options);
+      const entries: VersionHistoryEntry[] = [];
+      for (const commit of log.all) {
+        try {
+          const changes = await this.getCommitChanges(commit.hash);
+          entries.push({
+            commit: {
+              hash: commit.hash.substring(0, 7),
+              message: commit.message,
+              date: new Date(commit.date),
+              files: changes.map((c) => c.path),
+            },
+            changes,
+            isCurrent: offset === 0 && entries.length === 0,
+          });
+        } catch {
+          entries.push({
+            commit: {
+              hash: commit.hash.substring(0, 7),
+              message: commit.message,
+              date: new Date(commit.date),
+              files: [],
+            },
+            changes: [],
+            isCurrent: offset === 0 && entries.length === 0,
+          });
+        }
+      }
+      return entries;
+    } catch {
+      return [];
     }
-
-    return entries;
   }
 
   async getCommitChanges(commitHash: string): Promise<FileChange[]> {
     const git = await this.ensureGit();
-    const diff = await git.diffSummary([`${commitHash}~1`, commitHash]);
+    try {
+      const diff = await git.diffSummary([`${commitHash}~1`, commitHash]);
 
-    return diff.files.map((file) => ({
-      path: file.file,
-      status: this.mapStatusToType((file as { status?: string }).status ?? 'M'),
-      additions: 'insertions' in file ? file.insertions : 0,
-      deletions: 'deletions' in file ? file.deletions : 0,
-    }));
+      return diff.files.map((file) => ({
+        path: file.file,
+        status: this.mapStatusToType((file as { status?: string }).status ?? 'M'),
+        additions: 'insertions' in file ? file.insertions : 0,
+        deletions: 'deletions' in file ? file.deletions : 0,
+      }));
+    } catch {
+      // 首次提交无父节点时，尝试不带 ~1
+      try {
+        const diff = await git.diffSummary([commitHash]);
+        return diff.files.map((file) => ({
+          path: file.file,
+          status: 'added' as FileChange['status'],
+          additions: 'insertions' in file ? file.insertions : 0,
+          deletions: 'deletions' in file ? file.deletions : 0,
+        }));
+      } catch {
+        return [];
+      }
+    }
   }
 
   async getFileDiff(filePath: string, commitHash?: string): Promise<FileDiff> {
@@ -256,12 +322,12 @@ export class GitSyncServiceImpl implements IGitSyncService {
       ? [`${commitHash}~1`, commitHash, '--', filePath]
       : ['HEAD~1', 'HEAD', '--', filePath];
 
-    const diff = await git.diff(args);
-
-    // 简单解析 diff 输出
-    const hunks = this.parseDiffHunks(diff);
-
-    return { path: filePath, hunks };
+    try {
+      const diff = await git.diff(args);
+      return { path: filePath, hunks: this.parseDiffHunks(diff) };
+    } catch {
+      return { path: filePath, hunks: [] };
+    }
   }
 
   private parseDiffHunks(diff: string): FileDiff['hunks'] {
@@ -296,8 +362,11 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async rollbackFile(filePath: string, commitHash: string): Promise<void> {
     try {
       const git = await this.ensureGit();
+      logger.info(`[GitSync] 回滚文件: ${filePath} -> ${commitHash}`);
       await git.checkout([commitHash, '--', filePath]);
+      logger.info(`[GitSync] 回滚成功: ${filePath}`);
     } catch (error) {
+      logger.error(`[GitSync] 回滚失败 ${filePath}: ${error}`);
       throw new GitRollbackError(error instanceof Error ? error : undefined);
     }
   }
@@ -310,8 +379,11 @@ export class GitSyncServiceImpl implements IGitSyncService {
     try {
       const git = await this.ensureGit();
       const branch = this.config.remote.branch || 'main';
+      logger.info(`[GitSync] 推送至远程: origin/${branch}`);
       await git.push('origin', branch);
+      logger.info('[GitSync] 推送成功');
     } catch (error) {
+      logger.error(`[GitSync] 推送失败: ${error}`);
       throw new GitPushError(error instanceof Error ? error : undefined);
     }
   }
@@ -324,9 +396,11 @@ export class GitSyncServiceImpl implements IGitSyncService {
     try {
       const git = await this.ensureGit();
       const branch = this.config.remote.branch || 'main';
+      logger.info(`[GitSync] 从远程拉取: origin/${branch}`);
       await git.pull('origin', branch);
+      logger.info('[GitSync] 拉取成功');
     } catch (error) {
-      // 检查是否是冲突
+      logger.error(`[GitSync] 拉取失败: ${error}`);
       const conflicts = await this.getConflicts();
       if (conflicts.length > 0) {
         throw new GitPullError(conflicts, error instanceof Error ? error : undefined);

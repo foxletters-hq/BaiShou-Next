@@ -47,6 +47,8 @@ export * from './web/WorkspaceSettingsCard/index';
 export * from './web/DataManagementCard/index';
 export * from './web/LanSyncCard/index';
 export * from './web/CloudSyncPanel/index';
+export * from './web/GitManagementPage/index';
+export * from './web/VersionHistorySidebar/index';
 export * from './web/StorageSettingsCard/index';
 export * from './web/AttachmentManagementView/index';
 

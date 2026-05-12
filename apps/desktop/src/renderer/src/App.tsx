@@ -16,6 +16,7 @@ import { SummaryPage } from './features/summary/SummaryPage';
 import { SummaryDetailPage } from './features/summary/SummaryDetailPage';
 import { LanTransferPage } from './features/settings/LanTransferPage';
 import { CloudSyncPage } from './features/settings/CloudSyncPage';
+import { GitManagementPage } from './features/settings/GitManagementPage';
 import { useToast, useDialog, DialogProvider, ToastProvider } from '@baishou/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,6 +93,7 @@ const AppRoutes = () => {
           {/* Tools Routing */}
           <Route path="/lan-transfer" element={<LanTransferPage />} />
           <Route path="/data-sync" element={<CloudSyncPage />} />
+          <Route path="/git" element={<GitManagementPage />} />
 
           {/* AI / Agent Role Routing - Wrapped in AgentLayout */}
           <Route element={<AgentLayout />}>
