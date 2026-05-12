@@ -156,3 +156,29 @@
   background-color: #E81123 !important;
   color: var(--text-on-primary) !important;
 }
+
+/* Onboarding mode: transparent overlay titlebar */
+.titleBarOnboarding {
+  background-color: transparent !important;
+  border-bottom: none !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.titleBarOnboarding .winBtn {
+  color: var(--text-primary);
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.titleBarOnboarding .winBtn:hover {
+  opacity: 1;
+}
+
+.titleBarOnboarding .winCloseBtn:hover {
+  background-color: #E81123 !important;
+  color: var(--text-on-primary) !important;
+  opacity: 1;
+}
