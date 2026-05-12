@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styles from './SummarySettingsView.module.css';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../Toast/useToast';
-import { MilkdownEditorWrapper } from '../DiaryEditor/MilkdownEditor';
+import { CodeMirrorEditor } from '../DiaryEditor/CodeMirrorEditor';
 import '../DiaryEditor/DiaryEditor.css';
 
 export interface SummaryInstructionsConfig {
@@ -108,7 +108,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
 
         <div className={styles.textAreaWrapper}>
           <div className={styles.milkdownContainer}>
-            <MilkdownEditorWrapper 
+            <CodeMirrorEditor 
               key={`${activeTab}-${resetKey}`}
               content={localText}
               onChange={(val) => setLocalText(val || '')}

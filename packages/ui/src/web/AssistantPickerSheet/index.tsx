@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, Plus, X, Star, Database, Command, CheckSquare, Cpu, Trash2, History, Minimize2, Edit2 } from 'lucide-react';
 import { MarkdownRenderer } from '../MarkdownRenderer';
-import { MilkdownEditorWrapper } from '../DiaryEditor/MilkdownEditor';
+import { CodeMirrorEditor } from '../DiaryEditor/CodeMirrorEditor';
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup';
 import { useDialog } from '../Dialog';
 import { AvatarEditor } from '../AvatarEditor';
@@ -295,7 +295,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                                  }
                               }}
                            >
-                              <MilkdownEditorWrapper
+                               <CodeMirrorEditor
                                  content={editingPrompt}
                                  onChange={(val: string) => setEditingPrompt(val || '')}
                                  placeholder={t('agent.assistant.prompt_hint', '定义伙伴的角色、行为和回复风格...')}

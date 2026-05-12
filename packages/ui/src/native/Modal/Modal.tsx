@@ -18,7 +18,7 @@ export const Modal: React.FC<NativeModalProps> = ({ title, onClose, children, tr
             <View style={{ 
               width: '90%', 
               backgroundColor: colors.bgSurface, 
-              borderRadius: tokens.radius.lg, 
+              borderRadius: tokens.radius.xl, 
               padding: tokens.spacing.lg,
               elevation: 5,
               shadowColor: 'var(--text-primary)',

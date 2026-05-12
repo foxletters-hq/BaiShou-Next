@@ -36,7 +36,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
 
   const resolveAttachment = (src?: string) => {
     if (src && basePath && src.startsWith('attachment/')) {
-      return `${basePath}/${src.replace('attachment/', '')}`;
+      const normalizedBase = basePath.replace(/\\/g, '/');
+      const normalizedName = src.replace('attachment/', '');
+      return `local:///${normalizedBase}/${normalizedName}`;
     }
     return src;
   };

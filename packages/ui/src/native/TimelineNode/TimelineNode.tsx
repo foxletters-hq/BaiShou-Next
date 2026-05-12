@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useNativeTheme } from '../../native/theme';
 
 interface TimelineNodeProps {
   children: React.ReactNode;
@@ -8,11 +9,13 @@ interface TimelineNodeProps {
 }
 
 export const TimelineNode: React.FC<TimelineNodeProps> = ({ children, isLast, isFirst }) => {
+  const { colors } = useNativeTheme();
+
   return (
     <View style={styles.container}>
       <View style={styles.track}>
-        {!isLast && <View style={styles.line} />}
-        <View style={styles.indicator} />
+        {!isLast && <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />}
+        <View style={[styles.indicator, { backgroundColor: colors.primary, borderColor: colors.textOnPrimary, shadowColor: colors.primary }]} />
       </View>
       <View style={styles.content}>
         {children}
@@ -35,7 +38,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 20,
     width: 2,
-    backgroundColor: 'rgba(148, 163, 184, 0.2)', // var(--bg-surface-highlight) mockup
   },
   indicator: {
     position: 'absolute',
@@ -44,10 +46,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#5BA8F5', // var(--color-primary) mockup
     borderWidth: 2,
-    borderColor: '#FFFFFF',
-    shadowColor: '#5BA8F5',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

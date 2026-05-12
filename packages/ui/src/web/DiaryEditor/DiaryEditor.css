@@ -138,108 +138,18 @@
   overflow: hidden;
 }
 
-/* UIW MDEditor Custom Overrides to fit seamlessly into BaiShou Theme */
-.wmde-markdown-var {
-  --color-canvas-default: transparent !important;
-  --color-border-default: transparent !important;
-}
-
-.w-md-editor {
-  border-radius: 8px !important;
-  box-shadow: none !important;
-}
-
-.w-md-editor-toolbar {
-  border-bottom: 1px solid var(--border-subtle) !important;
-  background-color: var(--bg-surface-lowest) !important;
-}
-
-/* Milkdown Custom Overrides */
-.milkdown-wrapper {
+/* CodeMirror Editor Wrapper */
+.codemirror-editor-wrapper {
   cursor: text;
 }
 
-.milkdown-wrapper .milkdown {
-  min-height: 100%;
+.codemirror-editor-wrapper .cm-editor {
+  height: 100%;
 }
 
-.milkdown-wrapper .ProseMirror {
-  min-height: 100%;
-  padding-bottom: 20vh; /* Extra padding so the click area runs down to the bottom */
-  color: var(--text-primary) !important;
-  font-size: 15px;
-  line-height: 1.7;
-}
-
-/* Ensure text block elements are forced to be properly dark */
-.milkdown-wrapper .ProseMirror p,
-.milkdown-wrapper .ProseMirror h1,
-.milkdown-wrapper .ProseMirror h2,
-.milkdown-wrapper .ProseMirror h3,
-.milkdown-wrapper .ProseMirror h4,
-.milkdown-wrapper .ProseMirror h5,
-.milkdown-wrapper .ProseMirror h6,
-.milkdown-wrapper .ProseMirror li,
-.milkdown-wrapper .ProseMirror blockquote {
-  color: var(--text-primary) !important;
-}
-
-[data-theme="dark"] .milkdown-wrapper .ProseMirror p,
-[data-theme="dark"] .milkdown-wrapper .ProseMirror h1,
-[data-theme="dark"] .milkdown-wrapper .ProseMirror h2,
-[data-theme="dark"] .milkdown-wrapper .ProseMirror h3,
-[data-theme="dark"] .milkdown-wrapper .ProseMirror h4,
-[data-theme="dark"] .milkdown-wrapper .ProseMirror h5,
-[data-theme="dark"] .milkdown-wrapper .ProseMirror h6,
-[data-theme="dark"] .milkdown-wrapper .ProseMirror li,
-[data-theme="dark"] .milkdown-wrapper .ProseMirror blockquote {
-  color: var(--text-on-primary) !important;
-}
-
-.milkdown-wrapper .ProseMirror pre {
-  background: rgba(148, 163, 184, 0.1);
-  padding: 16px;
-  border-radius: 8px;
-  font-family: 'Fira Code', 'Courier New', monospace;
-  font-size: 13px;
-  overflow-x: auto;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  margin: 16px 0;
-}
-
-[data-theme="dark"] .milkdown-wrapper .ProseMirror pre {
-  background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-}
-
-.milkdown-wrapper .ProseMirror code {
-  font-family: 'Fira Code', 'Courier New', monospace;
-  background: rgba(148, 163, 184, 0.15);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.9em;
-}
-
-[data-theme="dark"] .milkdown-wrapper .ProseMirror code {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-}
-
-.milkdown-wrapper .ProseMirror pre code {
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  color: inherit;
-}
-
-.milkdown-wrapper .ProseMirror,
-.milkdown-wrapper .ProseMirror:focus,
-.milkdown-wrapper .milkdown,
-.milkdown-wrapper .milkdown:focus,
-.milkdown-wrapper .ProseMirror:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
+/* 选中文字后，文中相同片段的高亮底色（与选区颜色一致） */
+.codemirror-editor-wrapper .cm-selectionMatch {
+  background-color: rgba(148, 163, 184, 0.2);
 }
 
 /* 附件区域 */

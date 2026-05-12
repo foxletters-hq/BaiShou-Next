@@ -4,6 +4,7 @@ import { View, TextInput, StyleSheet, TouchableOpacity, Text, ScrollView, Keyboa
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar';
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle';
 import { useNativeTheme } from '../theme';
+import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer';
 // import { TagInput } from '../TagInput';
 
 interface DiaryEditorProps {
@@ -154,7 +155,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           />
         ) : (
           <View style={styles.previewArea}>
-             <Text style={{ color: colors.textPrimary }}>{content}</Text>
+             <MarkdownRenderer content={content} />
           </View>
         )}
       </ScrollView>

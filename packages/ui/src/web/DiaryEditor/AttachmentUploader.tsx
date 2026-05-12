@@ -15,6 +15,19 @@ export interface DiaryAttachmentItem {
   previewUrl?: string;
 }
 
+export function getInsertMarkdown(attachment: DiaryAttachmentItem): string {
+  if (attachment.isImage) {
+    return `![${attachment.fileName}](attachment/${attachment.fileName})`;
+  }
+  if (attachment.isVideo) {
+    return `<video src="attachment/${attachment.fileName}" controls></video>`;
+  }
+  if (attachment.isAudio) {
+    return `<audio src="attachment/${attachment.fileName}" controls></audio>`;
+  }
+  return `[📎 ${attachment.fileName}](attachment/${attachment.fileName})`;
+}
+
 interface AttachmentUploaderProps {
   date: Date;
   attachments: DiaryAttachmentItem[];

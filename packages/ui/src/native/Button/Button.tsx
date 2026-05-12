@@ -56,7 +56,7 @@ export const Button: React.FC<NativeButtonProps> = ({
   return (
     <Pressable style={({ pressed }) => getContainerStyle(pressed)} disabled={disabled || isLoading} {...props}>
       {isLoading ? <ActivityIndicator color={textColor} size="small" /> : null}
-      <Text style={{ color: textColor, fontSize: 14, fontWeight: '500' }}>
+      <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>
         {children}
       </Text>
     </Pressable>

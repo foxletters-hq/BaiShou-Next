@@ -13,10 +13,16 @@ export function normalizeCJKSpacing(text: string): string {
   const punct = '\u3000-\u303f\uff00-\uffef';
 
   return text
+    // CJK/CJK标点 之间去空格
     .replace(new RegExp(`([${cjk}${punct}])\\s+([${cjk}${punct}])`, 'g'), '$1$2')
+    // CJK 与数字之间去空格
     .replace(new RegExp(`([${cjk}])\\s+(\\d)`, 'g'), '$1$2')
     .replace(new RegExp(`(\\d)\\s+([${cjk}])`, 'g'), '$1$2')
-    .replace(/(\d)\s+(\d)/g, '$1$2');
+    // 数字之间去空格
+    .replace(/(\d)\s+(\d)/g, '$1$2')
+    // CJK 与 ASCII 字母之间去空格（处理 "我是 An son" -> "我是Anson"）
+    .replace(new RegExp(`([${cjk}])\\s+([a-zA-Z])`, 'g'), '$1$2')
+    .replace(new RegExp(`([a-zA-Z])\\s+([${cjk}${punct}])`, 'g'), '$1$2');
 }
 
 export interface ThinkingBlockProps {

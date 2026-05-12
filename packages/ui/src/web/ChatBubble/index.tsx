@@ -257,29 +257,29 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                <div className={styles.aiBubbleCard}>
                  {renderEditor()}
                </div>
-             ) : (
-               <>
-               <div className={styles.aiBubbleCard}>
-                  {renderAttachments(false)}
-                  
-                  {/* 工具调用 */}
-                  {message.toolInvocations && message.toolInvocations.length > 0 && (
-                    <ToolResultGroup invocations={message.toolInvocations} />
-                  )}
+              ) : (
+                <>
+                <div className={styles.aiBubbleCard}>
+                   {renderAttachments(false)}
+                   
+                   {/* Reasoning 块 */}
+                   {message.reasoning && (
+                     <ThinkingBlock
+                       content={message.reasoning}
+                       isThinking={false}
+                       defaultOpen={true}
+                       autoCollapse={false}
+                     />
+                   )}
 
-                  {/* Reasoning 块 */}
-                  {message.reasoning && (
-                    <ThinkingBlock
-                      content={message.reasoning}
-                      isThinking={false}
-                      defaultOpen={false}
-                      autoCollapse={false}
-                    />
-                  )}
+                   {/* 工具调用 */}
+                   {message.toolInvocations && message.toolInvocations.length > 0 && (
+                     <ToolResultGroup invocations={message.toolInvocations} />
+                   )}
 
                    {/* 正文内容 */}
                    {normalizedContent && <MarkdownRenderer content={normalizedContent} />}
-               </div>
+                </div>
 
                   <div className={styles.aiFooterRow}>
                       <MessageActionBar

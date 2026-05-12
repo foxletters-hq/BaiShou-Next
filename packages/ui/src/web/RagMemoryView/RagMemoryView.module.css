@@ -5,7 +5,8 @@
   padding: 16px 24px 32px 24px;
   background: var(--bg-app);
   min-height: 100%;
-  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* === 1. Header === */
@@ -317,7 +318,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
+  padding: 4px 12px;
   height: 28px;
   border: 1px solid var(--border-muted);
   border-radius: 6px;
@@ -329,6 +330,7 @@
   margin-left: 8px;
   transition: all 0.2s;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .searchModeToggle:hover {
   border-color: var(--color-primary);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNativeTheme } from '../../native/theme';
 
 interface TokenBadgeProps {
   tokenCount: number;
@@ -12,10 +13,12 @@ export const TokenBadge: React.FC<TokenBadgeProps> = ({
   costEstimate,
   onTap
 }) => {
+  const { colors } = useNativeTheme();
+
   return (
-    <TouchableOpacity onPress={onTap} style={styles.container} activeOpacity={0.7}>
-       <View style={styles.dot} />
-       <Text style={styles.text}>
+    <TouchableOpacity onPress={onTap} style={[styles.container, { backgroundColor: colors.bgSurfaceHigh }]} activeOpacity={0.7}>
+       <View style={[styles.dot, { backgroundColor: colors.accentGreen }]} />
+       <Text style={[styles.text, { color: colors.textSecondary }]}>
          {tokenCount} tokens (~${costEstimate.toFixed(3)})
        </Text>
     </TouchableOpacity>
@@ -26,7 +29,6 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(224, 224, 224, 0.5)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -35,12 +37,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#4CAF50',
     marginRight: 6,
   },
   text: {
     fontSize: 12,
-    color: 'var(--text-secondary)',
     fontWeight: '500',
   }
 });

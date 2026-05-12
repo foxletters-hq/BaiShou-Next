@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useNativeTheme } from '../../native/theme';
 
 interface DashboardStatsCardProps {
   totalDiaryCount: number;
@@ -21,6 +22,7 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
   totalYearlyCount,
 }) => {
   const { t } = useTranslation();
+  const { colors } = useNativeTheme();
 
 
   const renderStatTile = (icon: string, count: number, label: string, color: string) => (
@@ -29,33 +31,33 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
       <Text style={styles.icon}>{icon}</Text>
       <View style={styles.info}>
         <Text style={[styles.count, { color }]}>{count}</Text>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
       </View>
     </View>
   );
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]}>
       <View style={styles.header}>
         <Text style={styles.headerIcon}>📊</Text>
-        <Text style={styles.headerTitle}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           {t('common.app_title', '白守')} · {t('summary.stats_panel', '统计面板')}
         </Text>
       </View>
 
       <View style={styles.grid}>
         <View style={styles.row}>
-          <View style={styles.cell}>{renderStatTile('📘', totalDiaryCount, t('summary.stats_daily', '日记'), '#4CAF50')}</View>
+          <View style={styles.cell}>{renderStatTile('📘', totalDiaryCount, t('summary.stats_daily', '日记'), colors.accentGreen)}</View>
           <View style={styles.spacer} />
-          <View style={styles.cell}>{renderStatTile('📅', totalWeeklyCount, t('summary.stats_weekly', '周统'), '#3F51B5')}</View>
+          <View style={styles.cell}>{renderStatTile('📅', totalWeeklyCount, t('summary.stats_weekly', '周统'), colors.accentBlue)}</View>
         </View>
         <View style={styles.row}>
-          <View style={styles.cell}>{renderStatTile('🗂️', totalMonthlyCount, t('summary.stats_monthly', '月统'), '#2196F3')}</View>
+          <View style={styles.cell}>{renderStatTile('🗂️', totalMonthlyCount, t('summary.stats_monthly', '月统'), colors.primary)}</View>
           <View style={styles.spacer} />
-          <View style={styles.cell}>{renderStatTile('📆', totalQuarterlyCount, t('summary.stats_quarterly', '季统'), '#FFB300')}</View>
+          <View style={styles.cell}>{renderStatTile('📆', totalQuarterlyCount, t('summary.stats_quarterly', '季统'), colors.warning)}</View>
         </View>
         <View style={styles.row}>
-          <View style={styles.cell}>{renderStatTile('🗓️', totalYearlyCount, t('summary.stats_yearly', '年统'), '#FF9800')}</View>
+          <View style={styles.cell}>{renderStatTile('🗓️', totalYearlyCount, t('summary.stats_yearly', '年统'), colors.accentPurple)}</View>
         </View>
       </View>
     </View>
@@ -64,10 +66,8 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'var(--bg-surface)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.5)',
     padding: 20,
   },
   header: {
@@ -82,7 +82,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: 'var(--text-primary)',
   },
   grid: {
     flexDirection: 'column',
@@ -118,6 +117,5 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    color: 'var(--text-secondary)',
   }
 });

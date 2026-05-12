@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { useNativeTheme } from '../../native/theme';
 
 interface DiaryCardProps {
   id: string;
@@ -24,13 +25,14 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   onDelete
 }) => {
   const { t } = useTranslation();
+  const { colors } = useNativeTheme();
   const day = createdAt.getDate().toString().padStart(2, '0');
   const month = createdAt.getMonth() + 1;
   const year = createdAt.getFullYear();
   const weekday = [t('common.sunday', '周日'), t('common.monday', '周一'), t('common.tuesday', '周二'), t('common.wednesday', '周三'), t('common.thursday', '周四'), t('common.friday', '周五'), t('common.saturday', '周六')][createdAt.getDay()];
 
   const getTagColor = (tag: string) => {
-  const colors = [
+  const tagColors = [
       { bg: 'rgba(33, 150, 243, 0.1)', fg: '#1976D2' },
       { bg: 'rgba(76, 175, 80, 0.1)', fg: '#388E3C' },
       { bg: 'rgba(255, 152, 0, 0.1)', fg: '#F57C00' },
@@ -38,22 +40,22 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
     ];
     let sum = 0;
     for (let i = 0; i < tag.length; i++) sum += tag.charCodeAt(i);
-    return colors[sum % colors.length]!;
+    return tagColors[sum % tagColors.length]!;
   };
 
   return (
     <TouchableOpacity 
-      style={styles.card} 
+      style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]} 
       onPress={onClick}
       activeOpacity={0.9}
     >
       <View style={styles.header}>
         <View style={styles.dateGroup}>
-          <Text style={styles.day}>{day}</Text>
+          <Text style={[styles.day, { color: colors.textPrimary }]}>{day}</Text>
           <View style={styles.dateMeta}>
-            <Text style={styles.weekday}>{weekday}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{year} · {month}{t('common.month_unit', '月')}</Text>
+            <Text style={[styles.weekday, { color: colors.textSecondary }]}>{weekday}</Text>
+            <View style={[styles.badge, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+              <Text style={[styles.badgeText, { color: colors.primary }]}>{year} · {month}{t('common.month_unit', '月')}</Text>
             </View>
           </View>
         </View>
@@ -61,7 +63,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       </View>
 
       <View style={styles.contentContainer}>
-        <Text style={styles.snippet} numberOfLines={5}>{contentSnippet}</Text>
+        <Text style={[styles.snippet, { color: colors.textPrimary }]} numberOfLines={5}>{contentSnippet}</Text>
         {/* RN LinearGradient mask typically requires react-native-linear-gradient, mock with simple overlap or fade */}
       </View>
 
@@ -81,13 +83,13 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       )}
 
       {/* On Mobile we always show the action buttons according to the original code "Builder isMobile" logic */}
-      <View style={styles.actionsDivider} />
+      <View style={[styles.actionsDivider, { backgroundColor: colors.borderMuted }]} />
       <View style={styles.actionsBox}>
          <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
-           <Text style={styles.editText}>✏️ {t('common.edit', '编辑')}</Text>
+           <Text style={[styles.editText, { color: colors.textSecondary }]}>✏️ {t('common.edit', '编辑')}</Text>
          </TouchableOpacity>
          <TouchableOpacity onPress={onDelete} style={styles.actionBtn}>
-           <Text style={styles.deleteText}>🗑️ {t('common.delete', '删除')}</Text>
+           <Text style={[styles.deleteText, { color: colors.error }]}>🗑️ {t('common.delete', '删除')}</Text>
          </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -96,13 +98,11 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'var(--bg-surface)', // var(--bg-surface)
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.2)', // var(--divider-color)
     ...Platform.select({
-      ios: { shadowColor: 'var(--text-primary)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 16 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 16 },
       android: { elevation: 4 },
       web: { boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }
     }),
@@ -110,28 +110,26 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   dateGroup: { flexDirection: 'row', alignItems: 'center' },
-  day: { fontSize: 32, fontWeight: '800', color: 'var(--text-primary)', lineHeight: 32 },
+  day: { fontSize: 32, fontWeight: '800', lineHeight: 32 },
   dateMeta: { marginLeft: 12, justifyContent: 'center' },
-  weekday: { fontSize: 13, fontWeight: '600', color: 'var(--text-secondary)', letterSpacing: 0.5 },
+  weekday: { fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
   badge: { 
     marginTop: 4, 
     paddingHorizontal: 6, 
     paddingVertical: 2, 
-    backgroundColor: 'rgba(91, 168, 245, 0.1)', 
     borderRadius: 4, 
-    borderWidth: 0.5, 
-    borderColor: 'rgba(91, 168, 245, 0.2)' 
+    borderWidth: 0.5
   },
-  badgeText: { fontSize: 10, fontWeight: '900', color: '#5BA8F5', letterSpacing: 0.5 },
+  badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
   icon: { fontSize: 20, opacity: 0.3 },
   contentContainer: { height: 120, overflow: 'hidden' },
-  snippet: { fontSize: 15, lineHeight: 24, color: 'var(--text-primary)', opacity: 0.9 },
+  snippet: { fontSize: 15, lineHeight: 24, opacity: 0.9 },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 20, gap: 8 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   tagText: { fontSize: 12, fontWeight: '600' },
-  actionsDivider: { height: 1, backgroundColor: 'rgba(148, 163, 184, 0.3)', marginTop: 20, marginBottom: 12 },
+  actionsDivider: { height: 1, marginTop: 20, marginBottom: 12 },
   actionsBox: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', padding: 8 },
-  editText: { fontSize: 13, fontWeight: '600', color: 'var(--text-secondary)' },
-  deleteText: { fontSize: 13, fontWeight: '600', color: '#EF4444' }
+  editText: { fontSize: 13, fontWeight: '600' },
+  deleteText: { fontSize: 13, fontWeight: '600' }
 });

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Slider from '@react-native-community/slider';
+import { useNativeTheme } from '../../native/theme';
 
 interface DashboardSharedMemoryCardProps {
   lookbackMonths: number;
@@ -18,21 +19,22 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   onCopyContext
 }) => {
   const { t } = useTranslation();
+  const { colors } = useNativeTheme();
 
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]}>
       <View style={styles.header}>
          <Text style={styles.headerIcon}>🌸</Text>
-         <Text style={styles.headerTitle}>{t('summary.shared_memory', '共同回忆')}</Text>
+         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('summary.shared_memory', '共同回忆')}</Text>
       </View>
       
-      <Text style={styles.desc}>
+      <Text style={[styles.desc, { color: colors.textSecondary }]}>
         {t('dashboard.shared_memory_desc', '调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。')}
       </Text>
 
       <View style={styles.controls}>
-        <Text style={styles.label}>{t('dashboard.lookback_months', '回溯 {{count}} 个月', { count: lookbackMonths })}</Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>{t('dashboard.lookback_months', '回溯 {{count}} 个月', { count: lookbackMonths })}</Text>
         <Slider
           style={styles.slider}
           minimumValue={1}
@@ -40,14 +42,14 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
           step={1}
           value={lookbackMonths}
           onValueChange={onMonthsChanged}
-          minimumTrackTintColor="#FF9A9E"
-          maximumTrackTintColor="#00000022"
-          thumbTintColor="#FF9A9E"
+          minimumTrackTintColor={colors.accentPink}
+          maximumTrackTintColor={colors.borderMuted}
+          thumbTintColor={colors.accentPink}
         />
       </View>
 
-      <TouchableOpacity activeOpacity={0.7} style={styles.btn} onPress={onCopyContext}>
-        <Text style={styles.btnText}>✨ {t('dashboard.copy_to_ai', 'Copy 给 AI')}</Text>
+      <TouchableOpacity activeOpacity={0.7} style={[styles.btn, { backgroundColor: colors.accentPink }]} onPress={onCopyContext}>
+        <Text style={[styles.btnText, { color: colors.textOnPrimary }]}>✨ {t('dashboard.copy_to_ai', 'Copy 给 AI')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -56,10 +58,8 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
 const styles = StyleSheet.create({
   card: {
     padding: 20,
-    backgroundColor: 'var(--bg-surface)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.5)',
   },
   header: {
     flexDirection: 'row',
@@ -73,11 +73,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: 'bold',
     fontSize: 14,
-    color: 'var(--text-primary)',
   },
   desc: {
     fontSize: 12,
-    color: 'var(--text-secondary)',
     lineHeight: 18,
     marginBottom: 20,
   },
@@ -89,25 +87,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '500',
-    color: 'var(--text-primary)',
   },
   slider: {
     width: '100%',
     height: 40,
   },
   btn: {
-    backgroundColor: '#FF9A9E',
     borderRadius: 20,
     paddingVertical: 12,
     alignItems: 'center',
-    shadowColor: '#FF9A9E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 4,
   },
   btnText: {
-    color: '#fff',
     fontWeight: 'bold',
     fontSize: 14,
   }

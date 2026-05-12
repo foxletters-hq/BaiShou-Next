@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { useNativeTheme } from '../../native/theme';
 
 interface SummaryCardProps {
   id: string;
@@ -24,25 +25,26 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onDelete
 }) => {
   const { t } = useTranslation();
+  const { colors } = useNativeTheme();
 
 
   return (
     <TouchableOpacity 
-      style={styles.card} 
+      style={[styles.card, { backgroundColor: colors.bgSurface }]} 
       onPress={onClick} 
       activeOpacity={0.8}
     >
       <View style={styles.header}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{t(`summary.type.${type}`)}</Text>
+        <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
+          <Text style={[styles.badgeText, { color: colors.primary }]}>{t(`summary.type.${type}`)}</Text>
         </View>
-        <Text style={styles.date}>{dateRange}</Text>
+        <Text style={[styles.date, { color: colors.textSecondary }]}>{dateRange}</Text>
       </View>
       
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
       
       <View style={styles.contentContainer}>
-        <Text style={styles.snippet} numberOfLines={7}>{summaryText}</Text>
+        <Text style={[styles.snippet, { color: colors.textPrimary }]} numberOfLines={7}>{summaryText}</Text>
       </View>
 
       {onDelete && (
@@ -58,29 +60,27 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'var(--bg-surface)', // var(--bg-surface)
     borderRadius: 16,
     padding: 20,
     marginHorizontal: 20,
     marginVertical: 8,
     ...Platform.select({
-      ios: { shadowColor: 'var(--text-primary)', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
       android: { elevation: 2 },
       web: { boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }
     }),
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   badge: {
-    backgroundColor: 'rgba(91, 168, 245, 0.1)', // primary.withOpacity(0.1)
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  badgeText: { fontSize: 12, fontWeight: 'bold', color: '#5BA8F5' },
-  date: { fontSize: 12, color: 'var(--text-secondary)', opacity: 0.6 },
-  title: { fontSize: 18, fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: 8 },
+  badgeText: { fontSize: 12, fontWeight: 'bold' },
+  date: { fontSize: 12, opacity: 0.6 },
+  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
   contentContainer: { height: 150, overflow: 'hidden' },
-  snippet: { fontSize: 14, lineHeight: 21, color: 'var(--text-primary)', opacity: 0.8 },
+  snippet: { fontSize: 14, lineHeight: 21, opacity: 0.8 },
   actionsBox: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
   actionBtn: { padding: 4 },
   deleteIcon: { fontSize: 16, opacity: 0.5 }

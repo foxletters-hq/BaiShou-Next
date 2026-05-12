@@ -6,6 +6,7 @@ import {
   MdSync, MdSearch, MdClose, MdMoreVert, MdWarning
 } from 'react-icons/md';
 import { Switch } from '../Switch/Switch';
+import { Pagination } from '../Pagination/index';
 import styles from './RagMemoryView.module.css';
 
 export interface RagConfig {
@@ -111,7 +112,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   const isMigrating = ragState.isRunning && ragState.type === 'migration';
   const isBatchEmbedding = ragState.isRunning && ragState.type === 'batchEmbed';
 
-  // 分页计算
+  // 分页计算（服务端分页，entries 已经是当前页数据）
   const effectiveTotal = totalCount ?? entries.length;
   const showPagination = effectiveTotal > 10;
   const totalPages = Math.ceil(effectiveTotal / pageSize);
@@ -268,9 +269,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         <button
           className={styles.searchModeToggle}
           onClick={toggleSearchMode}
-          title={searchMode === 'semantic' ? t('settings.rag_search_semantic', '语义搜索') : t('settings.rag_search_text', '文本搜索')}
         >
-          {searchMode === 'semantic' ? '🧠' : 'Aa'}
+          {searchMode === 'semantic' ? t('settings.rag_search_text', '文本搜索') : t('settings.rag_search_semantic', '语义搜索')}
         </button>
         {searchQuery && (
           <div className={styles.clearSearchOuter} onClick={handleClearSearch}><MdClose size={18} /></div>
@@ -341,35 +341,15 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
                   <option key={size} value={size}>{size} {t('settings.rag_per_page', '条/页')}</option>
                 ))}
               </select>
-              <button
-                className={styles.pageBtn}
-                disabled={currentPage <= 1}
-                onClick={() => handlePageChange(1)}
-              >
-                &laquo;
-              </button>
-              <button
-                className={styles.pageBtn}
-                disabled={currentPage <= 1}
-                onClick={() => handlePageChange(currentPage - 1)}
-              >
-                &lsaquo;
-              </button>
-              <span className={styles.pageCurrent}>{currentPage} / {totalPages}</span>
-              <button
-                className={styles.pageBtn}
-                disabled={currentPage >= totalPages}
-                onClick={() => handlePageChange(currentPage + 1)}
-              >
-                &rsaquo;
-              </button>
-              <button
-                className={styles.pageBtn}
-                disabled={currentPage >= totalPages}
-                onClick={() => handlePageChange(totalPages)}
-              >
-                &raquo;
-              </button>
+              <Pagination
+                current={currentPage}
+                total={totalPages}
+                onChange={handlePageChange}
+                siblingCount={1}
+                showFirstLast={true}
+                showJumper={true}
+                jumperPlaceholder={t('settings.rag_jump_to_page', '跳转')}
+              />
             </div>
           </div>
         )}

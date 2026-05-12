@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useNativeTheme } from '../../native/theme';
 
 
 interface DiaryEditorAppBarTitleProps {
@@ -15,6 +16,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   onDateChanged
 }) => {
   const { t } = useTranslation();
+  const { colors } = useNativeTheme();
   const month = selectedDate.getMonth() + 1;
   const day = selectedDate.getDate();
   const days = [t('common.sunday', '周日'), t('common.monday', '周一'), t('common.tuesday', '周二'), t('common.wednesday', '周三'), t('common.thursday', '周四'), t('common.friday', '周五'), t('common.saturday', '周六')];
@@ -35,8 +37,8 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
       }}
     >
       <View style={styles.titleContent}>
-        <Text style={styles.titleText}>{isSummaryMode ? t('diary.edit_summary', '编辑总结') : formattedDate}</Text>
-        {!isSummaryMode && <Text style={styles.titleIcon}>▼</Text>}
+        <Text style={[styles.titleText, { color: colors.textPrimary }]}>{isSummaryMode ? t('diary.edit_summary', '编辑总结') : formattedDate}</Text>
+        {!isSummaryMode && <Text style={[styles.titleIcon, { color: colors.textSecondary }]}>▼</Text>}
       </View>
     </TouchableOpacity>
   );
@@ -58,10 +60,8 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'var(--text-primary)',
   },
   titleIcon: {
     fontSize: 10,
-    color: 'var(--text-secondary)',
   }
 });

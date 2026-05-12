@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Terminal, Zap } from 'lucide-react';
 import styles from './PromptShortcutSheet.module.css';
 import { useTranslation } from 'react-i18next';
@@ -30,15 +30,29 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 }) => {
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  // 分页计算
+  const totalPages = Math.max(1, Math.ceil(shortcuts.length / pageSize));
+  const paginatedShortcuts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return shortcuts.slice(start, start + pageSize);
+  }, [shortcuts, currentPage, pageSize]);
+
+  // 切换页码时重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [shortcuts.length]);
 
   useEffect(() => {
     if (isOpen && listRef.current) {
-      const selectedEl = listRef.current.children[selectedIndex] as HTMLElement;
+      const selectedEl = listRef.current.querySelector(`.${styles.itemSelected}`) as HTMLElement;
       if (selectedEl) {
         selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
     }
-  }, [selectedIndex, isOpen]);
+  }, [selectedIndex, isOpen, currentPage]);
 
   if (!isOpen) return null;
 
@@ -80,18 +94,22 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     };
   };
 
+  const showPagination = shortcuts.length > 5;
+  const startIdx = (currentPage - 1) * pageSize;
+
   return (
     <div className={styles.overlay}>
        <div className={styles.header}>
           <Zap size={14} /> {t('shortcut.title', '快捷控制指令 (Shortcut)')}
        </div>
        <div className={styles.listArea} ref={listRef}>
-          {(shortcuts || []).map((rawShortcut, index) => {
+          {paginatedShortcuts.map((rawShortcut, i) => {
+             const globalIndex = startIdx + i;
              const shortcut = getLocalizedShortcut(rawShortcut);
              return (
                <div 
                  key={shortcut.id}
-                 className={`${styles.item} ${index === selectedIndex ? styles.itemSelected : ''}`}
+                 className={`${styles.item} ${globalIndex === selectedIndex ? styles.itemSelected : ''}`}
                  onClick={() => onSelect(rawShortcut)}
                >
                   <div className={styles.itemIcon}>
@@ -113,6 +131,34 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
             </div>
           )}
        </div>
+       {showPagination && (
+         <div className={styles.paginationBar}>
+           <select
+             className={styles.pageSizeSelect}
+             value={pageSize}
+             onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+           >
+             {[5, 10, 15, 20, 25, 30].map(size => (
+               <option key={size} value={size}>{size}</option>
+             ))}
+           </select>
+           <button
+             className={styles.pageBtn}
+             disabled={currentPage <= 1}
+             onClick={() => setCurrentPage(p => p - 1)}
+           >
+             &lsaquo;
+           </button>
+           <span className={styles.pageCurrent}>{currentPage}/{totalPages}</span>
+           <button
+             className={styles.pageBtn}
+             disabled={currentPage >= totalPages}
+             onClick={() => setCurrentPage(p => p + 1)}
+           >
+             &rsaquo;
+           </button>
+         </div>
+       )}
     </div>
   );
 };

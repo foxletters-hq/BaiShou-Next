@@ -1,0 +1,123 @@
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family-main, sans-serif);
+}
+
+.pageBtn {
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.pageBtn:hover:not(:disabled):not(.pageBtnActive) {
+  background: var(--bg-surface-high, rgba(91, 168, 245, 0.08));
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.pageBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pageBtnActive {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: #fff !important;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.3);
+  cursor: default;
+}
+
+.ellipsis {
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  letter-spacing: 2px;
+  user-select: none;
+}
+
+.jumper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.jumperInput {
+  width: 48px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.jumperInput::placeholder {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.jumperInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.15);
+}
+
+.jumperInput:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.jumperSuffix {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .pageBtn {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .pageBtn:hover:not(:disabled):not(.pageBtnActive) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .pageBtnActive {
+  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.2);
+}
+
+[data-theme="dark"] .jumperInput {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .jumperInput:focus {
+  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+}

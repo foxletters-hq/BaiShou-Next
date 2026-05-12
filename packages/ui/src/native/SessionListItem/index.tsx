@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
-
+import { useNativeTheme } from '../../native/theme';
 
 interface SessionData {
   id: string;
@@ -21,23 +21,28 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
   onTap
 }) => {
   const { t } = useTranslation();
+  const { colors } = useNativeTheme();
 
   return (
     <TouchableOpacity 
       onPress={onTap} 
-      style={[styles.container, isSelected && styles.containerSelected]}
+      style={[
+        styles.container, 
+        { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle },
+        isSelected && { backgroundColor: colors.primaryLight }
+      ]}
       activeOpacity={0.7}
     >
        <View style={styles.content}>
          {session.isPinned && <Text style={styles.pinIcon}>📌</Text>}
          <Text 
-           style={[styles.title, isSelected && styles.titleSelected]}
+           style={[styles.title, { color: colors.textPrimary }, isSelected && { color: colors.primary, fontWeight: '600' }]}
            numberOfLines={1}
          >
            {session.title || t('chat.new_session', '新对话')}
          </Text>
        </View>
-       <Text style={styles.moreIcon}>⋮</Text>
+       <Text style={[styles.moreIcon, { color: colors.textTertiary }]}>⋮</Text>
     </TouchableOpacity>
   );
 };
@@ -49,11 +54,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EEE',
-    backgroundColor: 'var(--bg-surface)',
-  },
-  containerSelected: {
-    backgroundColor: 'rgba(91, 168, 245, 0.1)',
   },
   content: {
     flex: 1,
@@ -67,15 +67,9 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: 16,
-    color: 'var(--text-primary)',
-  },
-  titleSelected: {
-    color: '#5BA8F5',
-    fontWeight: '600',
   },
   moreIcon: {
     fontSize: 18,
-    color: 'var(--text-tertiary)',
     paddingHorizontal: 8,
   }
 });

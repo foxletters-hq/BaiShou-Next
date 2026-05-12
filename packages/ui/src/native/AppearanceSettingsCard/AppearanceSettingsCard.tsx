@@ -5,6 +5,7 @@ import {
   Platform, UIManager, LayoutAnimation, Modal 
 } from 'react-native';
 import Slider from '@react-native-community/slider';
+import { useNativeTheme } from '../../native/theme';
 
 if (
   Platform.OS === 'android' &&
@@ -41,6 +42,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   onThemeModeChange, onSeedColorChange, onLanguageChange
 }) => {
   const { t } = useTranslation();
+  const { colors } = useNativeTheme();
   const [expanded, setExpanded] = useState(false);
   
   const [showColorModal, setShowColorModal] = useState(false);
@@ -68,7 +70,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]}>
       <TouchableOpacity 
         style={styles.header}
         onPress={toggleExpand}
@@ -76,75 +78,81 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       >
         <Text style={styles.icon}>🎨</Text>
         <View style={styles.headerBody}>
-          <Text style={styles.title}>{t('settings.appearance', '外观与多语言')}</Text>
-          <Text style={styles.subtitle}>{themeMode} · {language}</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{t('settings.appearance', '外观与多语言')}</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{themeMode} · {language}</Text>
         </View>
-        <Text style={[styles.arrow, { transform: [{ rotate: expanded ? '180deg' : '0deg' }] }]}>▼</Text>
+        <Text style={[styles.arrow, { color: colors.textSecondary, transform: [{ rotate: expanded ? '180deg' : '0deg' }] }]}>▼</Text>
       </TouchableOpacity>
 
       {expanded && (
         <View style={styles.content}>
-          <Text style={styles.label}>{t('settings.theme_mode', '主题模式')}</Text>
-          <View style={styles.segmentedControl}>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>{t('settings.theme_mode', '主题模式')}</Text>
+          <View style={[styles.segmentedControl, { borderColor: colors.borderMuted }]}>
             {(['system', 'light', 'dark'] as const).map((mode, index) => (
               <TouchableOpacity
                 key={mode}
                 activeOpacity={0.6}
                 style={[
                   styles.segmentBtn,
-                  themeMode === mode && styles.segmentBtnActive,
+                  { borderRightColor: colors.borderMuted },
+                  themeMode === mode && { backgroundColor: colors.primaryLight },
                   index === 2 && { borderRightWidth: 0 }
                 ]}
                 onPress={() => onThemeModeChange(mode)}
               >
-                <Text style={[styles.segmentText, themeMode === mode && styles.segmentTextActive]}>
+                <Text style={[styles.segmentText, { color: colors.textPrimary }, themeMode === mode && { fontWeight: 'bold' }]}>
                   {mode === 'system' ? t('settings.theme_system', '跟随系统') : mode === 'light' ? t('settings.theme_light', '浅色') : t('settings.theme_dark', '深色')}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={[styles.label, { marginTop: 16 }]}>{t('settings.theme_color', '种子主题色')}</Text>
+          <Text style={[styles.label, { color: colors.textPrimary, marginTop: 16 }]}>{t('settings.theme_color', '种子主题色')}</Text>
           <View style={styles.colorWrap}>
             <TouchableOpacity 
               activeOpacity={0.8}
               style={[
                 styles.colorOption, 
                 { backgroundColor: '#9AD4EA' },
-                seedColor === '#9AD4EA' && styles.colorOptionActive
+                seedColor === '#9AD4EA' && { borderWidth: 2, borderColor: colors.primary }
               ]}
               onPress={() => onSeedColorChange('#9AD4EA')}
             >
-              {seedColor === '#9AD4EA' && <Text style={styles.checkIcon}>✓</Text>}
+              {seedColor === '#9AD4EA' && <Text style={[styles.checkIcon, { color: colors.textOnPrimary }]}>✓</Text>}
             </TouchableOpacity>
             <TouchableOpacity 
               activeOpacity={0.8}
               style={[
                 styles.customColorBtn,
-                seedColor !== '#9AD4EA' && { borderColor: '#5BA8F5', borderWidth: 2 }
+                { backgroundColor: colors.bgSurfaceHigh, borderColor: colors.borderMuted },
+                seedColor !== '#9AD4EA' && { borderColor: colors.primary, borderWidth: 2 }
               ]}
               onPress={openColorPicker}
             >
               {seedColor !== '#9AD4EA' ? (
                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: seedColor }} />
               ) : (
-                <Text style={styles.addIcon}>+</Text>
+                <Text style={[styles.addIcon, { color: colors.textSecondary }]}>+</Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
-          <Text style={styles.label}>{t('settings.language', '显示语言')}</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>{t('settings.language', '显示语言')}</Text>
           <View style={styles.langWrap}>
             {(['system', 'zh', 'zh-TW', 'en', 'ja'] as const).map(lang => (
               <TouchableOpacity
                 key={lang}
                 activeOpacity={0.6}
-                style={[styles.langChip, language === lang && styles.langChipActive]}
+                style={[
+                  styles.langChip, 
+                  { borderColor: colors.borderMuted },
+                  language === lang && { backgroundColor: colors.primaryLight, borderColor: colors.primary }
+                ]}
                 onPress={() => onLanguageChange(lang)}
               >
-                <Text style={[styles.langText, language === lang && styles.langTextActive]}>{lang}</Text>
+                <Text style={[styles.langText, { color: colors.textPrimary }, language === lang && { fontWeight: 'bold' }]}>{lang}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -153,14 +161,14 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
       {/* 完整一比一复刻自定义 HSL Modal 弹窗逻辑隔离，本身保留纯 UI 特性 */}
       <Modal visible={showColorModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>{t('settings.custom_color', '自定义颜色')}</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.bgOverlay }]}>
+          <View style={[styles.modalBox, { backgroundColor: colors.bgSurface }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('settings.custom_color', '自定义颜色')}</Text>
             
             <View style={[styles.colorPreview, { backgroundColor: previewColor, shadowColor: previewColor }]} />
             
             <View style={styles.sliderRow}>
-              <Text style={styles.sliderLabel}>{t('settings.theme_hue', '色相')}</Text>
+              <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>{t('settings.theme_hue', '色相')}</Text>
               <Slider
                 style={{ flex: 1, height: 40 }}
                 minimumValue={0}
@@ -172,7 +180,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               />
             </View>
             <View style={styles.sliderRow}>
-              <Text style={styles.sliderLabel}>{t('settings.theme_saturation', '饱和')}</Text>
+              <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>{t('settings.theme_saturation', '饱和')}</Text>
               <Slider
                 style={{ flex: 1, height: 40 }}
                 minimumValue={0}
@@ -184,7 +192,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               />
             </View>
             <View style={styles.sliderRow}>
-              <Text style={styles.sliderLabel}>{t('settings.theme_lightness', '明度')}</Text>
+              <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>{t('settings.theme_lightness', '明度')}</Text>
               <Slider
                 style={{ flex: 1, height: 40 }}
                 minimumValue={20}
@@ -198,10 +206,10 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => setShowColorModal(false)} style={styles.modalBtn}>
-                <Text style={styles.modalBtnTextGray}>{t('common.cancel', '取消')}</Text>
+                <Text style={[styles.modalBtnTextGray, { color: colors.textSecondary }]}>{t('common.cancel', '取消')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={saveColor} style={[styles.modalBtn, { backgroundColor: '#5BA8F5' }]}>
-                <Text style={styles.modalBtnTextWhite}>{t('common.save', '保存')}</Text>
+              <TouchableOpacity onPress={saveColor} style={[styles.modalBtn, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.modalBtnTextWhite, { color: colors.textOnPrimary }]}>{t('common.save', '保存')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -214,9 +222,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 // ... 原有的 styles.create
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'var(--bg-surface)',
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.5)',
     borderRadius: 16,
     marginBottom: 16,
     marginHorizontal: 16,
@@ -229,15 +235,14 @@ const styles = StyleSheet.create({
   },
   icon: { fontSize: 24, marginRight: 16 },
   headerBody: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '500', color: 'var(--text-primary)' },
-  subtitle: { fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 },
-  arrow: { fontSize: 12, color: 'var(--text-secondary)' },
+  title: { fontSize: 16, fontWeight: '500' },
+  subtitle: { fontSize: 14, marginTop: 4 },
+  arrow: { fontSize: 12 },
   content: { paddingHorizontal: 16, paddingBottom: 16 },
-  label: { fontSize: 14, fontWeight: '500', color: 'var(--text-primary)', marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
   segmentedControl: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.3)',
     borderRadius: 20,
     overflow: 'hidden',
   },
@@ -246,42 +251,36 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
     borderRightWidth: 1,
-    borderRightColor: 'rgba(148, 163, 184, 0.3)',
   },
-  segmentBtnActive: { backgroundColor: 'rgba(91, 168, 245, 0.2)' },
-  segmentText: { fontSize: 14, color: 'var(--text-primary)' },
-  segmentTextActive: { fontWeight: 'bold' },
+  segmentText: { fontSize: 14 },
   colorWrap: { flexDirection: 'row', gap: 12 },
   colorOption: {
     width: 40, height: 40, borderRadius: 20,
     justifyContent: 'center', alignItems: 'center',
   },
-  colorOptionActive: { borderWidth: 2, borderColor: '#5BA8F5' },
-  checkIcon: { color: 'white', fontSize: 20 },
+  checkIcon: { fontSize: 20 },
   customColorBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#F2F2F2', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.3)',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1,
   },
-  addIcon: { fontSize: 20, color: 'var(--text-secondary)' },
-  divider: { height: 1, backgroundColor: 'rgba(148, 163, 184, 0.2)', marginVertical: 16 },
+  addIcon: { fontSize: 20 },
+  divider: { height: 1, marginVertical: 16 },
   langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   langChip: {
     paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.3)',
+    borderRadius: 20, borderWidth: 1,
   },
-  langChipActive: { backgroundColor: 'rgba(91, 168, 245, 0.2)', borderColor: '#5BA8F5' },
-  langText: { fontSize: 14, color: 'var(--text-primary)' },
-  langTextActive: { fontWeight: 'bold' },
+  langText: { fontSize: 14 },
   
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center'
+    flex: 1, justifyContent: 'center', alignItems: 'center'
   },
   modalBox: {
-    width: '85%', backgroundColor: 'var(--bg-surface)', borderRadius: 24, padding: 24, alignItems: 'center'
+    width: '85%', borderRadius: 24, padding: 24, alignItems: 'center'
   },
   modalTitle: {
-    fontSize: 18, fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: 20
+    fontSize: 18, fontWeight: 'bold', marginBottom: 20
   },
   colorPreview: {
     width: 60, height: 60, borderRadius: 30, marginBottom: 20,
@@ -291,7 +290,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 12
   },
   sliderLabel: {
-    width: 40, fontSize: 14, color: 'var(--text-secondary)', fontWeight: 'bold'
+    width: 40, fontSize: 14, fontWeight: 'bold'
   },
   modalActions: {
     flexDirection: 'row', justifyContent: 'flex-end', width: '100%', marginTop: 24, gap: 12
@@ -299,6 +298,6 @@ const styles = StyleSheet.create({
   modalBtn: {
     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, justifyContent: 'center', alignItems: 'center'
   },
-  modalBtnTextGray: { color: 'var(--text-secondary)', fontWeight: 'bold' },
-  modalBtnTextWhite: { color: '#FFF', fontWeight: 'bold' },
+  modalBtnTextGray: { fontWeight: 'bold' },
+  modalBtnTextWhite: { fontWeight: 'bold' },
 });

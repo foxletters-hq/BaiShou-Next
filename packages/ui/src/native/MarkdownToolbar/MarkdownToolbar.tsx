@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
+import { useNativeTheme } from '../../native/theme';
 
 interface MarkdownToolbarProps {
   isPreview: boolean;
@@ -14,48 +15,50 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
   onHideKeyboard,
   onInsertText
 }) => {
+  const { colors } = useNativeTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bgSurface, borderTopColor: colors.borderSubtle, shadowColor: colors.textPrimary }]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
         <View style={styles.toolRow}>
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('**', '**')}>
-            <Text style={[styles.btnText, { fontWeight: 'bold' }]}>B</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary, fontWeight: 'bold' }]}>B</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('*', '*')}>
-            <Text style={[styles.btnText, { fontStyle: 'italic' }]}>I</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary, fontStyle: 'italic' }]}>I</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('## ')}>
-            <Text style={styles.btnText}>H</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary }]}>H</Text>
           </TouchableOpacity>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.borderMuted }]} />
 
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('- ')}>
-            <Text style={styles.btnText}>≡</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary }]}>≡</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('- [ ] ')}>
-            <Text style={styles.btnText}>☑</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary }]}>☑</Text>
           </TouchableOpacity>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.borderMuted }]} />
 
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('[', '](url)')}>
-            <Text style={styles.btnText}>🔗</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary }]}>🔗</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('![', '](image_url)')}>
-            <Text style={styles.btnText}>🖼️</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary }]}>🖼️</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      <View style={styles.actions}>
+      <View style={[styles.actions, { borderLeftColor: colors.borderSubtle }]}>
         <TouchableOpacity style={styles.actionBtn} onPress={onTogglePreview}>
-          <Text style={[styles.actionBtnText, isPreview && styles.actionBtnTextActive]}>
+          <Text style={[styles.actionBtnText, { color: colors.textSecondary }, isPreview && { color: colors.primary }]}>
             {isPreview ? '✎' : '👁️'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionBtn} onPress={onHideKeyboard}>
-          <Text style={styles.actionBtnText}>⌨️↓</Text>
+          <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>⌨️↓</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -66,12 +69,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'var(--bg-surface)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(148, 163, 184, 0.2)',
     paddingVertical: 8,
     paddingHorizontal: 8,
-    shadowColor: 'var(--text-primary)',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -94,19 +94,16 @@ const styles = StyleSheet.create({
   },
   btnText: {
     fontSize: 16,
-    color: 'var(--text-secondary)',
   },
   divider: {
     width: 1,
     height: 20,
-    backgroundColor: 'rgba(148, 163, 184, 0.3)',
     marginHorizontal: 4,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(148, 163, 184, 0.2)',
     paddingLeft: 8,
     gap: 4,
   },
@@ -119,9 +116,5 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     fontSize: 18,
-    color: 'var(--text-secondary)',
-  },
-  actionBtnTextActive: {
-    color: '#5BA8F5',
   }
 });

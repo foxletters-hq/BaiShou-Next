@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState, useCallback } from 'react';
-import { MilkdownEditorWrapper } from './MilkdownEditor';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { CodeMirrorEditor, CodeMirrorEditorHandle } from './CodeMirrorEditor';
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle';
 import { TagInput } from '../TagInput';
 import { WeatherPicker } from './WeatherPicker';
-import { AttachmentUploader, DiaryAttachmentItem } from './AttachmentUploader';
+import { DiaryAttachmentItem, getInsertMarkdown } from './AttachmentUploader';
 import './DiaryEditor.css';
 
 interface DiaryEditorProps {
@@ -27,7 +27,14 @@ interface DiaryEditorProps {
   onCancel?: () => void;
 }
 
-
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+}
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
@@ -50,12 +57,37 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 }) => {
   const { t } = useTranslation();
   const [attachments, setAttachments] = useState<DiaryAttachmentItem[]>([]);
+  const [attachmentBasePath, setAttachmentBasePath] = useState('');
+  const editorRef = useRef<CodeMirrorEditorHandle>(null);
+  const mediaPathsRef = useRef(mediaPaths);
 
-  // 从mediaPaths初始化附件列表
-  React.useEffect(() => {
+  useEffect(() => {
+    mediaPathsRef.current = mediaPaths;
+  }, [mediaPaths]);
+
+  useEffect(() => {
+    const fetchAttachmentDir = async () => {
+      try {
+        if (typeof window !== 'undefined' && (window as any).api?.diary) {
+          const dateStr = [
+            selectedDate.getFullYear(),
+            String(selectedDate.getMonth() + 1).padStart(2, '0'),
+            String(selectedDate.getDate()).padStart(2, '0'),
+          ].join('-');
+          const result = await (window as any).api.diary.getAttachmentDir(dateStr);
+          if (result?.success && result.path) {
+            setAttachmentBasePath(result.path);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to get attachment dir:', err);
+      }
+    };
+    fetchAttachmentDir();
+  }, [selectedDate]);
+
+  useEffect(() => {
     if (mediaPaths.length > 0) {
-      // 这里需要从mediaPaths恢复附件信息
-      // 简化处理：只显示文件名
       const initialAttachments: DiaryAttachmentItem[] = mediaPaths.map((path, index) => ({
         id: `existing-${index}`,
         fileName: path.split('/').pop() || path,
@@ -69,40 +101,54 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     }
   }, [mediaPaths]);
 
-  const handleAttachmentsChange = useCallback((newAttachments: DiaryAttachmentItem[]) => {
-    setAttachments(newAttachments);
-    // 更新mediaPaths
-    const newMediaPaths = newAttachments.map(a => a.relativePath);
-    onMediaPathsChange?.(newMediaPaths);
-  }, [onMediaPathsChange]);
+  const handlePasteFiles = useCallback(async (files: File[]): Promise<string[]> => {
+    const dateStr = [
+      selectedDate.getFullYear(),
+      String(selectedDate.getMonth() + 1).padStart(2, '0'),
+      String(selectedDate.getDate()).padStart(2, '0'),
+    ].join('-');
 
-  const handleInsertAttachment = useCallback((attachment: DiaryAttachmentItem) => {
-    // 在编辑器中插入附件引用
-    let insertText = '';
-    if (attachment.isImage) {
-      insertText = `![${attachment.fileName}](attachment/${attachment.fileName})`;
-    } else if (attachment.isVideo) {
-      insertText = `<video src="attachment/${attachment.fileName}" controls></video>`;
-    } else if (attachment.isAudio) {
-      insertText = `<audio src="attachment/${attachment.fileName}" controls></audio>`;
-    } else {
-      insertText = `[📎 ${attachment.fileName}](attachment/${attachment.fileName})`;
-    }
+    const attachmentInputs = await Promise.all(
+      Array.from(files).map(async (file) => {
+        const base64 = await fileToBase64(file);
+        return {
+          fileName: file.name,
+          data: base64,
+          mimeType: file.type,
+        };
+      }),
+    );
 
-    // 追加到当前内容
-    const newContent = content + '\n' + insertText;
-    onContentChange(newContent);
-  }, [content, onContentChange]);
+    const results = await (window as any).api.diary.uploadAttachments({
+      date: dateStr,
+      attachments: attachmentInputs,
+    });
 
-  // 计算附件基础路径
-  const getAttachmentBasePath = useCallback(() => {
-    const year = selectedDate.getFullYear();
-    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-    // 这里需要从路径服务获取实际路径，简化处理
-    return `attachment`;
-  }, [selectedDate]);
+    const markdowns: string[] = [];
+    const newAttachments: DiaryAttachmentItem[] = [];
 
-  /** 天气选项列表 */
+    results
+      .filter((r: any) => r.success)
+      .forEach((r: any) => {
+        const att: DiaryAttachmentItem = {
+          id: Math.random().toString(36).substring(7),
+          fileName: r.fileName,
+          filePath: r.filePath,
+          relativePath: r.relativePath,
+          isImage: /\.(png|jpe?g|gif|webp|bmp)$/i.test(r.fileName),
+          isVideo: /\.(mp4|webm|ogg|mov)$/i.test(r.fileName),
+          isAudio: /\.(mp3|wav|ogg|aac)$/i.test(r.fileName),
+        };
+        newAttachments.push(att);
+        markdowns.push(getInsertMarkdown(att));
+      });
+
+    setAttachments((prev) => [...prev, ...newAttachments]);
+    onMediaPathsChange?.([...mediaPathsRef.current, ...newAttachments.map((a) => a.relativePath)]);
+
+    return markdowns;
+  }, [selectedDate, onMediaPathsChange]);
+
   const WEATHER_OPTIONS = [
     { value: '', label: t('diary.weather.default', '天气') },
     { value: '晴', label: `☀️ ${t('diary.weather.sunny', '晴')}` },
@@ -115,7 +161,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     { value: '风', label: `💨 ${t('diary.weather.wind', '风')}` },
   ];
 
-  /** 心情选项列表 */
   const MOOD_OPTIONS = [
     { value: '', label: t('diary.mood.default', '心情') },
     { value: 'Happy', label: `😊 ${t('diary.mood.happy', '开心')}` },
@@ -136,10 +181,10 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
         <div className="de-app-bar-center">
-          <DiaryEditorAppBarTitle 
-            isSummaryMode={isSummaryMode} 
-            selectedDate={selectedDate} 
-            onDateChanged={onDateChange} 
+          <DiaryEditorAppBarTitle
+            isSummaryMode={isSummaryMode}
+            selectedDate={selectedDate}
+            onDateChanged={onDateChange}
           />
         </div>
         <div className="de-app-bar-actions">
@@ -157,7 +202,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             </div>
           )}
 
-          {/* 元数据栏：天气、收藏 */}
           {!isSummaryMode && (
             <div className="de-meta-bar">
               <WeatherPicker
@@ -179,24 +223,18 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           )}
 
           <div className="de-content-section" data-color-mode="light">
-            <MilkdownEditorWrapper
+            <CodeMirrorEditor
+              ref={editorRef}
               content={content}
-              onChange={(val) => { console.log('Milkdown onChange:', val); onContentChange(val || ''); }}
+              onChange={(val) => onContentChange(val || '')}
               placeholder={t('diary.editor_hint', '记录下这一刻...')}
-              basePath={getAttachmentBasePath()}
+              basePath={attachmentBasePath}
+              onPasteFiles={handlePasteFiles}
+              onDropFiles={handlePasteFiles}
             />
           </div>
 
-          {!isSummaryMode && (
-            <div className="de-attachment-section">
-              <AttachmentUploader
-                date={selectedDate}
-                attachments={attachments}
-                onAttachmentsChange={handleAttachmentsChange}
-                onInsertAttachment={handleInsertAttachment}
-              />
-            </div>
-          )}
+
         </div>
       </div>
     </div>

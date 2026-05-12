@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNativeTheme } from '../../native/theme';
 
 interface MissingSummaryCardProps {
   type: 'week' | 'month' | 'quarter' | 'year';
@@ -17,28 +18,29 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
   onGenerate 
 }) => {
   const { t } = useTranslation();
+  const { colors } = useNativeTheme();
 
 
   return (
-    <View style={styles.card}>
-      <View style={styles.iconBox}>
+    <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]}>
+      <View style={[styles.iconBox, { backgroundColor: colors.warning + '20' }]}>
         <Text style={styles.calendarIcon}>📅</Text>
       </View>
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={1}>{t(`summary.missing_title_${type}`)}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>{t(`summary.missing_title_${type}`)}</Text>
         <View style={styles.meta}>
-          <Text style={styles.date}>{dateRange}</Text>
-          <View style={styles.suggestionBadge}>
-            <Text style={styles.suggestionText}>{t('summary.suggestion_generate', '建议生成')}</Text>
+          <Text style={[styles.date, { color: colors.textSecondary }]}>{dateRange}</Text>
+          <View style={[styles.suggestionBadge, { backgroundColor: colors.warning + '20' }]}>
+            <Text style={[styles.suggestionText, { color: colors.warning }]}>{t('summary.suggestion_generate', '建议生成')}</Text>
           </View>
         </View>
       </View>
       <TouchableOpacity 
-        style={styles.btn} 
+        style={[styles.btn, { backgroundColor: colors.accentPurple + '20' }]} 
         onPress={onGenerate}
         activeOpacity={0.8}
       >
-        <Text style={styles.btnIcon}>✨</Text>
+        <Text style={[styles.btnIcon, { color: colors.accentPurple }]}>✨</Text>
       </TouchableOpacity>
     </View>
   );
@@ -46,11 +48,9 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'var(--bg-surface)', // surface
     borderRadius: 16,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.5)',
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
@@ -58,7 +58,6 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 44,
     height: 44,
-    backgroundColor: '#FFF4E5',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -66,7 +65,6 @@ const styles = StyleSheet.create({
   },
   calendarIcon: {
     fontSize: 20,
-    color: '#F28B50',
   },
   content: {
     flex: 1,
@@ -75,7 +73,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: 'var(--text-primary)',
     marginBottom: 4,
   },
   meta: {
@@ -84,11 +81,9 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 12,
-    color: 'var(--text-secondary)',
     marginRight: 8,
   },
   suggestionBadge: {
-    backgroundColor: '#FFF4E5',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
@@ -96,12 +91,10 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#F28B50',
   },
   btn: {
     width: 40,
     height: 40,
-    backgroundColor: '#F2EFFF',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -109,6 +102,5 @@ const styles = StyleSheet.create({
   },
   btnIcon: {
     fontSize: 16,
-    color: '#6C5CE7',
   }
 });

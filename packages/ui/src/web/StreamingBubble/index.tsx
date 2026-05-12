@@ -74,28 +74,29 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
            </div>
          ) : (
            <>
-             {hasText || hasReasoning || hasTools ? (
-               <div className={styles.bubbleCard}>
-                 {/* 工具调用 */}
-                 {hasTools && (
-                   <ToolExecutionGroup 
-                      completedTools={completedTools} 
-                      activeToolName={activeToolName} 
-                   />
-                 )}
+              {hasText || hasReasoning || hasTools ? (
+                <div className={styles.bubbleCard}>
+                  {/* Reasoning 块 */}
+                  {hasReasoning && (
+                    <ThinkingBlock
+                      content={reasoning}
+                      isThinking={isReasoning && !hasText}
+                      defaultOpen={true}
+                      autoCollapse={false}
+                    />
+                  )}
 
-                 {/* Reasoning 块 */}
-                 {hasReasoning && (
-                   <ThinkingBlock
-                     content={reasoning}
-                     isThinking={isReasoning && !hasText}
-                     autoCollapse={true}
-                   />
-                 )}
+                  {/* 工具调用 */}
+                  {hasTools && (
+                    <ToolExecutionGroup 
+                       completedTools={completedTools} 
+                       activeToolName={activeToolName} 
+                    />
+                  )}
 
-                  {/* 正文内容 */}
-                  {hasText && <MarkdownRenderer content={normalizedText} isStreaming={true} />}
-               </div>
+                   {/* 正文内容 */}
+                   {hasText && <MarkdownRenderer content={normalizedText} isStreaming={true} />}
+                </div>
              ) : (
                <div className={styles.dotsWrap}>
                   <BouncingDotsIndicator />

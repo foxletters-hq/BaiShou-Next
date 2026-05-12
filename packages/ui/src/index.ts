@@ -19,6 +19,8 @@ export * from './web/DiaryMetaCard/index';
 export * from './web/TimelineNode/index';
 export * from './web/TagInput/index';
 export * from './web/DatePicker/index';
+export * from './web/PageSizeSelector/index';
+export * from './web/Pagination/index';
 export * from './web/DiaryEditor/index';
 export * from './web/MarkdownRenderer/index';
 
