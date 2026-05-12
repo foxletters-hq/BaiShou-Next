@@ -76,7 +76,7 @@ export const TitleBar: React.FC = () => {
                   if (saved) {
                      const parsed = JSON.parse(saved);
                      if (Array.isArray(parsed) && parsed.length > 0) {
-                        const paths: Record<string, string> = { diary: '/diary', summary: '/summary', lan: '/settings/lan-transfer', sync: '/settings/data-sync' };
+                        const paths: Record<string, string> = { diary: '/diary', summary: '/summary', lan: '/lan-transfer', sync: '/data-sync' };
                         if (paths[parsed[0]]) {
                            navigate(paths[parsed[0]]);
                            return;
