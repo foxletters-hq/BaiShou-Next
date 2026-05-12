@@ -19,9 +19,10 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { searchKeymap } from '@codemirror/search';
 import { ImagePreview } from './ImagePreview';
-import { livePreviewPlugin, livePreviewSyntaxHighlighting } from './codeMirrorDecorations';
+import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageWidthCallback } from './codeMirrorDecorations';
 import { editorTheme } from './codeMirrorTheme';
 import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin';
+import { parseImageMarkdown, buildImageMarkdown } from './image-utils';
 
 export interface CodeMirrorEditorHandle {
   insertAtCursor: (text: string) => void;
@@ -128,6 +129,23 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       [],
     );
 
+    // 设置图片宽度更新回调
+    useEffect(() => {
+      setUpdateImageWidthCallback((from: number, to: number, newWidth: number) => {
+        const view = viewRef.current;
+        if (!view) return;
+
+        const text = view.state.sliceDoc(from, to);
+        const parsed = parseImageMarkdown(text, from);
+        if (!parsed) return;
+
+        const newMarkdown = buildImageMarkdown(parsed.alt, parsed.src, newWidth);
+        view.dispatch({
+          changes: { from, to, insert: newMarkdown },
+        });
+      });
+    }, []);
+
     useEffect(() => {
       const container = containerRef.current;
       if (!container) return;
@@ -153,6 +171,10 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
         EditorView.domEventHandlers({
           click: (event, view) => {
             const target = event.target as HTMLElement;
+            // 如果点击的是图片容器内的元素，不处理预览
+            if (target.closest('.cm-image-container')) {
+              return false;
+            }
             if (target.tagName === 'IMG') {
               const src = (target as HTMLImageElement).src;
               if (src && !src.startsWith('attachment/')) {

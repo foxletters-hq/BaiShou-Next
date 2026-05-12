@@ -1,9 +1,150 @@
-import { EditorView, Decoration, DecorationSet, ViewPlugin, ViewUpdate } from '@codemirror/view';
+import { EditorView, Decoration, DecorationSet, ViewPlugin, ViewUpdate, WidgetType } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import type { SyntaxNodeRef } from '@lezer/common';
 import type { Extension } from '@codemirror/state';
+import { StateEffect } from '@codemirror/state';
+import { parseImageMarkdown, clampWidth, IMAGE_SIZE_CONFIG } from './image-utils';
+
+export const forceImageRefresh = StateEffect.define();
+
+// 全局回调函数，用于更新文档中的图片宽度
+let updateImageWidthCallback: ((from: number, to: number, newWidth: number) => void) | null = null;
+
+export function setUpdateImageWidthCallback(callback: (from: number, to: number, newWidth: number) => void) {
+  updateImageWidthCallback = callback;
+}
+
+class ImageWidget extends WidgetType {
+  private container: HTMLElement | null = null;
+  private resizeHandle: HTMLElement | null = null;
+  private linkBar: HTMLElement | null = null;
+  private linkInput: HTMLInputElement | null = null;
+
+  constructor(
+    private src: string,
+    private alt: string,
+    private width?: number,
+    private imageFrom?: number,
+    private imageTo?: number,
+  ) {
+    super();
+  }
+
+  eq(other: ImageWidget): boolean {
+    return this.src === other.src && this.alt === other.alt && this.width === other.width;
+  }
+
+  toDOM(): HTMLElement {
+    // 创建容器
+    this.container = document.createElement('div');
+    this.container.className = 'cm-image-container';
+    if (this.width) {
+      this.container.style.width = `${this.width}px`;
+    }
+
+    // 创建链接栏（默认隐藏）
+    this.linkBar = document.createElement('div');
+    this.linkBar.className = 'cm-image-link-bar';
+    this.linkBar.style.display = 'none';
+
+    this.linkInput = document.createElement('input');
+    this.linkInput.type = 'text';
+    this.linkInput.className = 'cm-image-link-input';
+    this.linkInput.value = this.src;
+    this.linkInput.readOnly = true;
+
+    this.linkBar.appendChild(this.linkInput);
+    this.container.appendChild(this.linkBar);
+
+    // 创建图片
+    const img = document.createElement('img');
+    img.src = this.src;
+    img.alt = this.alt;
+    img.className = 'cm-image-resizable';
+    img.draggable = false;
+    this.container.appendChild(img);
+
+    // 创建缩放手柄
+    this.resizeHandle = document.createElement('div');
+    this.resizeHandle.className = 'cm-image-resize-handle';
+    this.container.appendChild(this.resizeHandle);
+
+    // 绑定事件
+    this.bindEvents(img);
+
+    return this.container;
+  }
+
+  private bindEvents(img: HTMLElement) {
+    if (!this.container || !this.resizeHandle || !this.linkBar) return;
+
+    // 点击图片显示链接栏
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.linkBar!.style.display = 'block';
+      this.container!.classList.add('cm-image-active');
+    });
+
+    // 点击其他区域隐藏链接栏
+    document.addEventListener('click', (e) => {
+      if (!this.container!.contains(e.target as Node)) {
+        this.linkBar!.style.display = 'none';
+        this.container!.classList.remove('cm-image-active');
+      }
+    });
+
+    // 拖拽缩放
+    let startX = 0;
+    let startWidth = 0;
+
+    this.resizeHandle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      startX = e.clientX;
+      startWidth = this.container!.offsetWidth;
+
+      const onMouseMove = (e: MouseEvent) => {
+        const delta = e.clientX - startX;
+        const newWidth = clampWidth(startWidth + delta);
+        this.container!.style.width = `${newWidth}px`;
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        // 触发文档更新
+        const newWidth = this.container!.offsetWidth;
+        if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageWidthCallback) {
+          updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth);
+        }
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // 滚轮缩放
+    this.container.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -IMAGE_SIZE_CONFIG.step : IMAGE_SIZE_CONFIG.step;
+        const currentWidth = this.container!.offsetWidth;
+        const newWidth = clampWidth(currentWidth + delta);
+        this.container!.style.width = `${newWidth}px`;
+        // 触发文档更新
+        if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageWidthCallback) {
+          updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth);
+        }
+      }
+    });
+  }
+
+  ignoreEvent(): boolean {
+    return false;
+  }
+}
 
 function getCursorPositions(view: EditorView): number[] {
   return view.state.selection.ranges.map((r) => r.head);
@@ -166,17 +307,31 @@ function buildMarkerHidingDecorations(view: EditorView): DecorationSet {
         return;
       }
 
-      // 图片：隐藏 ![ 和 ](url)
+      // 图片：活动行显示可编辑的 markdown 文本，非活动行渲染图片预览
       if (name === 'Image') {
-        if (onActiveLine) return;
         const text = doc.sliceString(node.from, node.to);
-        const bracketOpen = text.indexOf('![');
-        const bracketClose = text.indexOf('](');
-        if (bracketOpen !== -1) {
-          marks.push(hideMark.range(node.from + bracketOpen, node.from + bracketOpen + 2));
+        const parsed = parseImageMarkdown(text, node.from);
+
+        if (onActiveLine) {
+          const bracketOpen = text.indexOf('![');
+          const bracketClose = text.indexOf('](');
+          if (bracketOpen !== -1) {
+            marks.push(hideMark.range(node.from + bracketOpen, node.from + bracketOpen + 2));
+          }
+          if (bracketClose !== -1) {
+            marks.push(hideMark.range(node.from + bracketClose, node.to));
+          }
+          return;
         }
-        if (bracketClose !== -1) {
-          marks.push(hideMark.range(node.from + bracketClose, node.to));
+
+        if (parsed) {
+          marks.push({
+            from: node.from,
+            to: node.to,
+            value: Decoration.replace({
+              widget: new ImageWidget(parsed.src, parsed.alt, parsed.width, node.from, node.to),
+            }),
+          });
         }
         return;
       }
@@ -211,7 +366,8 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
       this.decorations = buildMarkerHidingDecorations(view);
     }
     update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet) {
+      if (update.docChanged || update.selectionSet ||
+          update.transactions.some(t => t.effects.some(e => e.is(forceImageRefresh)))) {
         this.decorations = buildMarkerHidingDecorations(update.view);
       }
     }
