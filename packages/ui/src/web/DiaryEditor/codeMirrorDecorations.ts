@@ -29,12 +29,13 @@ class ImageWidget extends WidgetType {
     private imageFrom?: number,
     private imageTo?: number,
     private showLinkBar: boolean = false,
+    private markdownText?: string,
   ) {
     super();
   }
 
   eq(other: ImageWidget): boolean {
-    return this.src === other.src && this.alt === other.alt && this.width === other.width && this.showLinkBar === other.showLinkBar;
+    return this.src === other.src && this.alt === other.alt && this.width === other.width && this.showLinkBar === other.showLinkBar && this.markdownText === other.markdownText;
   }
 
   toDOM(): HTMLElement {
@@ -53,7 +54,7 @@ class ImageWidget extends WidgetType {
     this.linkInput = document.createElement('input');
     this.linkInput.type = 'text';
     this.linkInput.className = 'cm-image-link-input';
-    this.linkInput.value = this.src;
+    this.linkInput.value = this.markdownText || this.src;
     this.linkInput.readOnly = true;
 
     this.linkBar.appendChild(this.linkInput);
@@ -299,23 +300,6 @@ function buildMarkerHidingDecorations(
         return;
       }
 
-      // 链接：隐藏 [ 和 ](url)
-      if (name === 'Link') {
-        const text = doc.sliceString(node.from, node.to);
-        const bracketOpen = text.indexOf('[');
-        const bracketClose = text.indexOf('](');
-        if (bracketOpen !== -1 && bracketClose !== -1) {
-          const openFrom = node.from + bracketOpen;
-          const closeFrom = node.from + bracketClose;
-          const cursorInOpen = isCursorInRange(openFrom, openFrom + 1, cursors);
-          const cursorInClose = isCursorInRange(closeFrom, node.to, cursors);
-          if (!cursorInOpen) marks.push(hideMark.range(openFrom, openFrom + 1));
-          if (!cursorInClose) marks.push(hideMark.range(closeFrom, node.to));
-          marks.push(linkMark.range(openFrom + 1, closeFrom));
-        }
-        return;
-      }
-
       // 图片：始终渲染图片 widget，活动行时显示链接栏
       if (name === 'Image') {
         const text = doc.sliceString(node.from, node.to);
@@ -327,9 +311,46 @@ function buildMarkerHidingDecorations(
             from: node.from,
             to: node.to,
             value: Decoration.replace({
-              widget: new ImageWidget(src, parsed.alt, parsed.width, node.from, node.to, onActiveLine),
+              widget: new ImageWidget(src, parsed.alt, parsed.width, node.from, node.to, onActiveLine, text),
             }),
           });
+        }
+        return;
+      }
+
+      // 链接：检查是否是包含 | 数字 的图片语法
+      if (name === 'Link') {
+        const text = doc.sliceString(node.from, node.to);
+        // 检查是否是包含 | 数字 的图片语法
+        const imageWithWidthMatch = text.match(/^!\[([^\]]*)\]\(([^)]+?)(?:\s*\|\s*(\d+))?\)$/);
+        if (imageWithWidthMatch) {
+          const alt = imageWithWidthMatch[1] ?? '';
+          const rawSrc = imageWithWidthMatch[2] ?? '';
+          const widthStr = imageWithWidthMatch[3];
+          const width = widthStr ? parseInt(widthStr, 10) : undefined;
+          const src = resolveUrl ? resolveUrl(rawSrc) : rawSrc;
+          
+          marks.push({
+            from: node.from,
+            to: node.to,
+            value: Decoration.replace({
+              widget: new ImageWidget(src, alt, width, node.from, node.to, onActiveLine, text),
+            }),
+          });
+          return;
+        }
+        
+        // 原有的链接处理逻辑
+        const bracketOpen = text.indexOf('[');
+        const bracketClose = text.indexOf('](');
+        if (bracketOpen !== -1 && bracketClose !== -1) {
+          const openFrom = node.from + bracketOpen;
+          const closeFrom = node.from + bracketClose;
+          const cursorInOpen = isCursorInRange(openFrom, openFrom + 1, cursors);
+          const cursorInClose = isCursorInRange(closeFrom, node.to, cursors);
+          if (!cursorInOpen) marks.push(hideMark.range(openFrom, openFrom + 1));
+          if (!cursorInClose) marks.push(hideMark.range(closeFrom, node.to));
+          marks.push(linkMark.range(openFrom + 1, closeFrom));
         }
         return;
       }
