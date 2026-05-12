@@ -28,12 +28,13 @@ class ImageWidget extends WidgetType {
     private width?: number,
     private imageFrom?: number,
     private imageTo?: number,
+    private showLinkBar: boolean = false,
   ) {
     super();
   }
 
   eq(other: ImageWidget): boolean {
-    return this.src === other.src && this.alt === other.alt && this.width === other.width;
+    return this.src === other.src && this.alt === other.alt && this.width === other.width && this.showLinkBar === other.showLinkBar;
   }
 
   toDOM(): HTMLElement {
@@ -44,10 +45,10 @@ class ImageWidget extends WidgetType {
       this.container.style.width = `${this.width}px`;
     }
 
-    // 创建链接栏（默认隐藏）
+    // 创建链接栏
     this.linkBar = document.createElement('div');
     this.linkBar.className = 'cm-image-link-bar';
-    this.linkBar.style.display = 'none';
+    this.linkBar.style.display = this.showLinkBar ? 'block' : 'none';
 
     this.linkInput = document.createElement('input');
     this.linkInput.type = 'text';
@@ -70,6 +71,11 @@ class ImageWidget extends WidgetType {
     this.resizeHandle = document.createElement('div');
     this.resizeHandle.className = 'cm-image-resize-handle';
     this.container.appendChild(this.resizeHandle);
+
+    // 如果是活动行，添加激活状态
+    if (this.showLinkBar) {
+      this.container.classList.add('cm-image-active');
+    }
 
     // 绑定事件
     this.bindEvents(img);
@@ -310,22 +316,10 @@ function buildMarkerHidingDecorations(
         return;
       }
 
-      // 图片：活动行显示可编辑的 markdown 文本，非活动行渲染图片预览
+      // 图片：始终渲染图片 widget，活动行时显示链接栏
       if (name === 'Image') {
         const text = doc.sliceString(node.from, node.to);
         const parsed = parseImageMarkdown(text, node.from);
-
-        if (onActiveLine) {
-          const bracketOpen = text.indexOf('![');
-          const bracketClose = text.indexOf('](');
-          if (bracketOpen !== -1) {
-            marks.push(hideMark.range(node.from + bracketOpen, node.from + bracketOpen + 2));
-          }
-          if (bracketClose !== -1) {
-            marks.push(hideMark.range(node.from + bracketClose, node.to));
-          }
-          return;
-        }
 
         if (parsed) {
           const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
@@ -333,7 +327,7 @@ function buildMarkerHidingDecorations(
             from: node.from,
             to: node.to,
             value: Decoration.replace({
-              widget: new ImageWidget(src, parsed.alt, parsed.width, node.from, node.to),
+              widget: new ImageWidget(src, parsed.alt, parsed.width, node.from, node.to, onActiveLine),
             }),
           });
         }
