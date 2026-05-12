@@ -40,6 +40,7 @@ import {
 import { MobileStoragePathService } from '../services/path.service';
 import { MobileArchiveService } from '../services/archive.service';
 import { MobileLanSyncService } from '../services/lan-sync.service';
+import { MobileCloudSyncService } from '../services/cloud-sync.service';
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
 interface BaishouContextValue {
@@ -52,6 +53,7 @@ interface BaishouContextValue {
     summaryManager: SummaryManagerService;
     archiveService: MobileArchiveService;
     lanSyncService: MobileLanSyncService;
+    cloudSyncService: MobileCloudSyncService;
   } | null;
   startAgentChat?: (sessionId: string, userText: string, callbacks: StreamChatCallbacks, overrides?: { providerId?: string; modelId?: string }) => Promise<void>;
 }
@@ -121,6 +123,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         // 创建归档服务和局域网同步服务
         const archiveService = new MobileArchiveService(pathService, vaultService);
         const lanSyncService = new MobileLanSyncService(archiveService);
+        const cloudSyncService = new MobileCloudSyncService(archiveService);
 
         const toolRegistry = new ToolRegistry();
         const registry = AIProviderRegistry.getInstance();
@@ -167,7 +170,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                settingsManager,
                summaryManager,
                archiveService,
-               lanSyncService
+               lanSyncService,
+               cloudSyncService
             },
             startAgentChat
           });

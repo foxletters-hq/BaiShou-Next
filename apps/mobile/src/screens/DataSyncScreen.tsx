@@ -5,6 +5,7 @@ import { useNativeTheme } from '@baishou/ui/src/native/theme';
 import { useBaishou } from '../providers/BaishouProvider';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { SyncConfig } from '@baishou/core';
 
 interface SyncTarget {
   id: string;
@@ -34,6 +35,7 @@ export const DataSyncScreen: React.FC = () => {
   });
 
   const archiveService = services?.archiveService;
+  const cloudSyncService = services?.cloudSyncService;
 
   const loadSyncTargets = useCallback(async () => {
     if (!dbReady || !services) return;
@@ -51,7 +53,7 @@ export const DataSyncScreen: React.FC = () => {
 
   const handleAddTarget = async () => {
     if (!newTarget.name.trim() || !newTarget.url.trim()) {
-      Alert.alert(t('common.error', '错误'), t('sync.name_url_required', '名称和URL不能为空'));
+      Alert.alert(t('common.error', '错误'), t('data_sync.name_url_required', '名称和URL不能为空'));
       return;
     }
 
@@ -71,17 +73,17 @@ export const DataSyncScreen: React.FC = () => {
       setSyncTargets(newTargets);
       setShowAddForm(false);
       setNewTarget({ type: 'webdav', name: '', url: '', username: '', password: '' });
-      Alert.alert(t('common.success', '成功'), t('sync.target_added', '同步目标已添加'));
+      Alert.alert(t('common.success', '成功'), t('data_sync.target_added', '同步目标已添加'));
     } catch (e) {
       console.error('添加同步目标失败', e);
-      Alert.alert(t('common.error', '错误'), t('sync.add_failed', '添加失败'));
+      Alert.alert(t('common.error', '错误'), t('data_sync.add_failed', '添加失败'));
     }
   };
 
   const handleDeleteTarget = async (targetId: string) => {
     Alert.alert(
       t('common.confirm', '确认删除'),
-      t('sync.delete_confirm', '确定要删除这个同步目标吗？'),
+      t('data_sync.delete_confirm', '确定要删除这个同步目标吗？'),
       [
         { text: t('common.cancel', '取消'), style: 'cancel' },
         { 
@@ -114,20 +116,65 @@ export const DataSyncScreen: React.FC = () => {
   };
 
   const handleSyncNow = async (targetId: string) => {
+    if (!cloudSyncService || !services) return;
+
+    const target = syncTargets.find(t => t.id === targetId);
+    if (!target) return;
+
     try {
+      // 更新状态为同步中
       const newTargets = syncTargets.map(item => 
         item.id === targetId ? { ...item, status: 'syncing' as const } : item
       );
       setSyncTargets(newTargets);
 
-      // 同步功能待实现，使用函数式更新避免闭包引用旧 state
+      // 构建同步配置
+      const syncConfig: SyncConfig = {
+        target: target.type,
+        maxBackupCount: 5,
+        webdavUrl: target.url,
+        webdavUsername: target.username || '',
+        webdavPassword: '', // 密码需要从设置中获取
+        webdavPath: '/',
+        s3Endpoint: target.url,
+        s3Region: '',
+        s3Bucket: '',
+        s3Path: '',
+        s3AccessKey: target.username || '',
+        s3SecretKey: '',
+      };
+
+      // 调用真实的同步服务
+      const result = await cloudSyncService.syncNow(syncConfig);
+
+      // 更新状态
+      setSyncTargets(prev => prev.map(item => 
+        item.id === targetId ? { 
+          ...item, 
+          status: result.success ? 'success' as const : 'error' as const, 
+          lastSync: new Date().toISOString() 
+        } : item
+      ));
+
+      // 显示结果提示
+      Alert.alert(
+        result.success ? t('common.success', '成功') : t('common.error', '错误'),
+        result.message
+      );
+
+      // 3秒后重置状态
       setTimeout(() => {
         setSyncTargets(prev => prev.map(item => 
-          item.id === targetId ? { ...item, status: 'idle' as const, lastSync: new Date().toISOString() } : item
+          item.id === targetId ? { ...item, status: 'idle' as const } : item
         ));
-      }, 2000);
+      }, 3000);
+
     } catch (e) {
       console.error('同步失败', e);
+      setSyncTargets(prev => prev.map(item => 
+        item.id === targetId ? { ...item, status: 'error' as const } : item
+      ));
+      Alert.alert(t('common.error', '错误'), t('data_sync.sync_failed', '同步失败'));
     }
   };
 
@@ -136,11 +183,11 @@ export const DataSyncScreen: React.FC = () => {
     try {
       const zipPath = await archiveService.exportToUserDevice();
       if (zipPath) {
-        Alert.alert(t('common.success', '成功'), t('sync.backup_success', '备份已保存'));
+        Alert.alert(t('common.success', '成功'), t('data_sync.backup_success', '备份已保存'));
       }
     } catch (e) {
       console.error('备份失败', e);
-      Alert.alert(t('common.error', '错误'), t('sync.backup_failed', '备份失败'));
+      Alert.alert(t('common.error', '错误'), t('data_sync.backup_failed', '备份失败'));
     }
   };
 
@@ -150,8 +197,8 @@ export const DataSyncScreen: React.FC = () => {
       const result = await DocumentPicker.getDocumentAsync({ type: 'application/zip' });
       if (!result.canceled && result.assets[0]) {
         Alert.alert(
-          t('sync.confirm_restore', '确认恢复'),
-          t('sync.restore_warning', '恢复将覆盖当前数据，是否继续？'),
+          t('data_sync.confirm_restore', '确认恢复'),
+          t('data_sync.restore_warning', '恢复将覆盖当前数据，是否继续？'),
           [
             { text: t('common.cancel', '取消'), style: 'cancel' },
             {
@@ -159,10 +206,10 @@ export const DataSyncScreen: React.FC = () => {
               onPress: async () => {
                 try {
                   await archiveService.importFromZip(result.assets[0].uri);
-                  Alert.alert(t('common.success', '成功'), t('sync.restore_success', '恢复成功'));
+                  Alert.alert(t('common.success', '成功'), t('data_sync.restore_success', '恢复成功'));
                 } catch (err) {
                   console.error('恢复失败', err);
-                  Alert.alert(t('common.error', '错误'), t('sync.restore_failed', '恢复失败'));
+                  Alert.alert(t('common.error', '错误'), t('data_sync.restore_failed', '恢复失败'));
                 }
               }
             }
@@ -171,7 +218,7 @@ export const DataSyncScreen: React.FC = () => {
       }
     } catch (e) {
       console.error('恢复失败', e);
-      Alert.alert(t('common.error', '错误'), t('sync.restore_failed', '恢复失败'));
+      Alert.alert(t('common.error', '错误'), t('data_sync.restore_failed', '恢复失败'));
     }
   };
 
@@ -186,10 +233,10 @@ export const DataSyncScreen: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'syncing': return t('sync.syncing', '同步中...');
+      case 'syncing': return t('data_sync.syncing', '同步中...');
       case 'success': return t('common.success', '成功');
       case 'error': return t('common.error', '错误');
-      default: return t('sync.idle', '空闲');
+      default: return t('data_sync.idle', '空闲');
     }
   };
 
@@ -203,7 +250,7 @@ export const DataSyncScreen: React.FC = () => {
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Text style={[styles.backText, { color: colors.primary }]}>← {t('common.back', '返回')}</Text>
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('sync.title', '数据同步')}</Text>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('data_sync.title', '数据同步')}</Text>
             <TouchableOpacity onPress={() => setShowAddForm(!showAddForm)}>
               <Text style={[styles.addButton, { color: colors.primary }]}>
                 {showAddForm ? t('common.cancel', '取消') : `+ ${t('common.add', '添加')}`}
@@ -214,7 +261,7 @@ export const DataSyncScreen: React.FC = () => {
           <ScrollView style={styles.content} indicatorStyle="white">
             {/* 快捷操作 */}
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('sync.quick_actions', '快捷操作')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('data_sync.quick_actions', '快捷操作')}</Text>
               
               <View style={styles.quickActions}>
                 <TouchableOpacity 
@@ -222,7 +269,7 @@ export const DataSyncScreen: React.FC = () => {
                   onPress={handleBackup}
                 >
                   <Text style={styles.quickActionIcon}>📤</Text>
-                  <Text style={[styles.quickActionText, { color: colors.primary }]}>{t('sync.backup', '备份数据')}</Text>
+                  <Text style={[styles.quickActionText, { color: colors.primary }]}>{t('data_sync.backup', '备份数据')}</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
@@ -230,7 +277,7 @@ export const DataSyncScreen: React.FC = () => {
                   onPress={handleRestore}
                 >
                   <Text style={styles.quickActionIcon}>📥</Text>
-                  <Text style={[styles.quickActionText, { color: colors.primary }]}>{t('sync.restore', '恢复数据')}</Text>
+                  <Text style={[styles.quickActionText, { color: colors.primary }]}>{t('data_sync.restore', '恢复数据')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -238,7 +285,7 @@ export const DataSyncScreen: React.FC = () => {
             {/* 添加同步目标表单 */}
             {showAddForm && (
               <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('sync.add_target', '添加同步目标')}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('data_sync.add_target', '添加同步目标')}</Text>
                 
                 <View style={styles.formGroup}>
                   <Text style={[styles.formLabel, { color: colors.textPrimary }]}>类型</Text>
@@ -275,7 +322,7 @@ export const DataSyncScreen: React.FC = () => {
                     }]}
                     value={newTarget.name}
                     onChangeText={(text) => setNewTarget({ ...newTarget, name: text })}
-                    placeholder={t('sync.target_name_placeholder', '同步目标名称')}
+                    placeholder={t('data_sync.target_name_placeholder', '同步目标名称')}
                     placeholderTextColor={colors.textSecondary}
                   />
                 </View>
@@ -308,7 +355,7 @@ export const DataSyncScreen: React.FC = () => {
                         }]}
                         value={newTarget.username}
                         onChangeText={(text) => setNewTarget({ ...newTarget, username: text })}
-                        placeholder={t('sync.username_placeholder', '用户名（可选）')}
+                        placeholder={t('data_sync.username_placeholder', '用户名（可选）')}
                         placeholderTextColor={colors.textSecondary}
                       />
                     </View>
@@ -323,7 +370,7 @@ export const DataSyncScreen: React.FC = () => {
                         }]}
                         value={newTarget.password}
                         onChangeText={(text) => setNewTarget({ ...newTarget, password: text })}
-                        placeholder={t('sync.password_placeholder', '密码（可选）')}
+                        placeholder={t('data_sync.password_placeholder', '密码（可选）')}
                         placeholderTextColor={colors.textSecondary}
                         secureTextEntry
                       />
@@ -342,13 +389,13 @@ export const DataSyncScreen: React.FC = () => {
 
             {/* 同步目标列表 */}
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('sync.targets', '同步目标')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('data_sync.targets', '同步目标')}</Text>
               
               {syncTargets.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>☁️</Text>
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('sync.no_targets', '暂无同步目标')}</Text>
-                  <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>{t('sync.add_hint', '点击右上角添加按钮配置同步目标')}</Text>
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('data_sync.no_targets', '暂无同步目标')}</Text>
+                  <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>{t('data_sync.add_hint', '点击右上角添加按钮配置同步目标')}</Text>
                 </View>
               ) : (
                 syncTargets.map(target => (
@@ -372,7 +419,7 @@ export const DataSyncScreen: React.FC = () => {
                       
                       {target.lastSync && (
                         <Text style={[styles.lastSync, { color: colors.textSecondary }]}>
-                          {t('sync.last_sync', '上次同步')}: {new Date(target.lastSync).toLocaleString()}
+                          {t('data_sync.last_sync', '上次同步')}: {new Date(target.lastSync).toLocaleString()}
                         </Text>
                       )}
                     </View>
@@ -389,7 +436,7 @@ export const DataSyncScreen: React.FC = () => {
                         onPress={() => handleSyncNow(target.id)}
                         disabled={!target.isEnabled || target.status === 'syncing'}
                       >
-                        <Text style={[styles.syncButtonText, { color: colors.primary }]}>{t('sync.sync_now', '同步')}</Text>
+                        <Text style={[styles.syncButtonText, { color: colors.primary }]}>{t('data_sync.sync_now', '同步')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.deleteButton}

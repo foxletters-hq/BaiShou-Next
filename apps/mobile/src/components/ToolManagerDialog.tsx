@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   dialogContent: {
     width: '80%',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
   },
   dialogTitle: {
