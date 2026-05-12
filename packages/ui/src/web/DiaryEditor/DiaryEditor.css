@@ -182,7 +182,7 @@
 /* 图片缩放组件样式 */
 .cm-image-container {
   position: relative;
-  display: inline-block;
+  display: block;
   max-width: 100%;
   margin: 8px 0;
   border-radius: 8px;
@@ -220,16 +220,12 @@
 }
 
 .cm-image-link-bar {
-  position: absolute;
-  top: -32px;
-  left: 0;
-  right: 0;
-  background: var(--bg-surface-highest);
+  width: 100%;
+  background: var(--bg-surface-normal);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: 6px 6px 0 0;
   padding: 4px 8px;
-  z-index: 10;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0;
 }
 
 .cm-image-link-input {
@@ -241,4 +237,9 @@
   font-size: 12px;
   font-family: 'Fira Code', 'Courier New', monospace;
   outline: none;
+}
+
+.cm-image-link-input:focus {
+  color: var(--text-primary);
+  background: var(--bg-surface);
 }

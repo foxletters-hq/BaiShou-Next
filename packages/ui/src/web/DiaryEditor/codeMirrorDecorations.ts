@@ -5,7 +5,7 @@ import { tags } from '@lezer/highlight';
 import type { SyntaxNodeRef } from '@lezer/common';
 import type { Extension } from '@codemirror/state';
 import { StateEffect } from '@codemirror/state';
-import { parseImageMarkdown, clampWidth, IMAGE_SIZE_CONFIG } from './image-utils';
+import { parseImageMarkdown, clampWidth, IMAGE_SIZE_CONFIG, buildImageMarkdown } from './image-utils';
 
 export const forceImageRefresh = StateEffect.define();
 
@@ -46,16 +46,39 @@ class ImageWidget extends WidgetType {
       this.container.style.width = `${this.width}px`;
     }
 
-    // 创建链接栏
+    // 创建链接栏 - 始终显示在图片上方
     this.linkBar = document.createElement('div');
     this.linkBar.className = 'cm-image-link-bar';
-    this.linkBar.style.display = this.showLinkBar ? 'block' : 'none';
 
     this.linkInput = document.createElement('input');
     this.linkInput.type = 'text';
     this.linkInput.className = 'cm-image-link-input';
     this.linkInput.value = this.markdownText || this.src;
-    this.linkInput.readOnly = true;
+    this.linkInput.readOnly = false;
+
+    // 监听编辑事件
+    this.linkInput.addEventListener('input', (e) => {
+      const target = e.target as HTMLInputElement;
+      if (updateImageWidthCallback && this.imageFrom !== undefined && this.imageTo !== undefined) {
+        // 解析新的 markdown 文本
+        const parsed = parseImageMarkdown(target.value, 0);
+        if (parsed) {
+          updateImageWidthCallback(this.imageFrom, this.imageTo, parsed.width || 0);
+        }
+      }
+    });
+
+    // 失焦时更新文档
+    this.linkInput.addEventListener('blur', (e) => {
+      const target = e.target as HTMLInputElement;
+      if (updateImageWidthCallback && this.imageFrom !== undefined && this.imageTo !== undefined) {
+        const parsed = parseImageMarkdown(target.value, 0);
+        if (parsed) {
+          const newMarkdown = buildImageMarkdown(parsed.alt, parsed.src, parsed.width);
+          updateImageWidthCallback(this.imageFrom, this.imageTo, parsed.width || 0);
+        }
+      }
+    });
 
     this.linkBar.appendChild(this.linkInput);
     this.container.appendChild(this.linkBar);
