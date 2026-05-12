@@ -160,7 +160,7 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
         markdown({ base: markdownLanguage }),
         cmPlaceholder(placeholder || ''),
-        livePreviewPlugin,
+        livePreviewPlugin(resolveUrl),
         livePreviewSyntaxHighlighting(),
         attachmentUrlPlugin(resolveUrl),
         EditorView.updateListener.of((update) => {

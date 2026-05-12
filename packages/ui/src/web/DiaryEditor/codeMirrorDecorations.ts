@@ -192,7 +192,10 @@ export function livePreviewSyntaxHighlighting() {
 
 // ── 标记隐藏插件 ──────────────────────────────────────────────
 
-function buildMarkerHidingDecorations(view: EditorView): DecorationSet {
+function buildMarkerHidingDecorations(
+  view: EditorView,
+  resolveUrl?: (url: string) => string,
+): DecorationSet {
   const cursors = getCursorPositions(view);
   const marks: { from: number; to: number; value: Decoration }[] = [];
   const tree = syntaxTree(view.state);
@@ -325,11 +328,12 @@ function buildMarkerHidingDecorations(view: EditorView): DecorationSet {
         }
 
         if (parsed) {
+          const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
           marks.push({
             from: node.from,
             to: node.to,
             value: Decoration.replace({
-              widget: new ImageWidget(parsed.src, parsed.alt, parsed.width, node.from, node.to),
+              widget: new ImageWidget(src, parsed.alt, parsed.width, node.from, node.to),
             }),
           });
         }
@@ -359,18 +363,20 @@ function buildMarkerHidingDecorations(view: EditorView): DecorationSet {
   return Decoration.set(marks, true);
 }
 
-export const livePreviewPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-    constructor(view: EditorView) {
-      this.decorations = buildMarkerHidingDecorations(view);
-    }
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet ||
-          update.transactions.some(t => t.effects.some(e => e.is(forceImageRefresh)))) {
-        this.decorations = buildMarkerHidingDecorations(update.view);
+export function livePreviewPlugin(resolveUrl?: (url: string) => string) {
+  return ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+      constructor(view: EditorView) {
+        this.decorations = buildMarkerHidingDecorations(view, resolveUrl);
       }
-    }
-  },
-  { decorations: (v) => v.decorations },
-);
+      update(update: ViewUpdate) {
+        if (update.docChanged || update.selectionSet ||
+            update.transactions.some(t => t.effects.some(e => e.is(forceImageRefresh)))) {
+          this.decorations = buildMarkerHidingDecorations(update.view, resolveUrl);
+        }
+      }
+    },
+    { decorations: (v) => v.decorations },
+  );
+}
