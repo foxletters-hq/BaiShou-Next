@@ -21,6 +21,7 @@ import { registerRagIPC } from './ipc/rag.ipc'
 import { registerOnboardingIPC } from './ipc/onboarding.ipc'
 import { registerDeveloperIPC } from './ipc/developer.ipc'
 import { registerSearchIPC } from './ipc/search.ipc'
+import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { installDatabaseSchema, SettingsRepository, connectionManager } from '@baishou/database'
 import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
@@ -277,6 +278,7 @@ app.whenReady().then(async () => {
   registerRagIPC();
   registerDeveloperIPC();
   registerSearchIPC();
+  registerUpdaterIPC();
 
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
   createWindow(needsOnboarding);

@@ -273,6 +273,26 @@ export const api = {
   zoom: {
     setFactor: (factor: number) => webFrame.setZoomFactor(factor),
     getFactor: () => webFrame.getZoomFactor()
+  },
+
+  // Updater
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+    download: () => ipcRenderer.invoke('updater:download'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    getVersion: () => ipcRenderer.invoke('updater:get-version'),
+    setAutoCheck: (enabled: boolean) => ipcRenderer.invoke('updater:set-auto-check', enabled),
+    getAutoCheck: () => ipcRenderer.invoke('updater:get-auto-check'),
+    onStatusChange: (callback: (state: any) => void) => {
+      const handler = (_: any, state: any) => callback(state)
+      ipcRenderer.on('updater:status-change', handler)
+      return () => ipcRenderer.off('updater:status-change', handler)
+    },
+    onDownloadProgress: (callback: (progress: number) => void) => {
+      const handler = (_: any, progress: number) => callback(progress)
+      ipcRenderer.on('updater:download-progress', handler)
+      return () => ipcRenderer.off('updater:download-progress', handler)
+    },
   }
 }
 
