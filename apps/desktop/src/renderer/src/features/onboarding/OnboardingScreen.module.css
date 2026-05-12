@@ -16,15 +16,15 @@
 /* Dynamic background orbs — flow naturally behind the transparent titlebar */
 .bgOrb1 {
   position: absolute;
-  top: -25%;
+  top: -10%;
   right: -10%;
   width: 55vw;
   height: 55vw;
   border-radius: 50%;
   background: radial-gradient(circle, var(--theme-color) 0%, transparent 70%);
-  filter: blur(60px);
+  filter: blur(40px);
   animation: float 15s infinite alternate ease-in-out;
-  opacity: 0.5;
+  opacity: 0.6;
   pointer-events: none;
 }
 
@@ -36,7 +36,7 @@
   height: 50vw;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.1) 0%, transparent 70%);
-  filter: blur(50px);
+  filter: blur(40px);
   animation: float 12s infinite alternate-reverse ease-in-out;
   opacity: 0.4;
   pointer-events: none;
