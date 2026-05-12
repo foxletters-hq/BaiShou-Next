@@ -19,7 +19,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { searchKeymap } from '@codemirror/search';
 import { ImagePreview } from './ImagePreview';
-import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageTitleCallback, setMoveToImageCallback } from './codeMirrorDecorations';
+import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateDocFromWidget, setFocusEditor } from './codeMirrorDecorations';
 import { editorTheme } from './codeMirrorTheme';
 import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin';
 
@@ -138,28 +138,19 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       [],
     );
 
-    // 设置图片相关回调
+    // 图片回调
     useEffect(() => {
       const container = containerRef.current;
       if (!container) return;
 
-      setUpdateImageTitleCallback((from: number, to: number, newTitle: string) => {
+      setUpdateDocFromWidget((from: number, to: number, text: string) => {
         const view = viewRef.current;
         if (!view) return;
-        const text = view.state.sliceDoc(from, to);
-        const m = text.match(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/);
-        if (!m) return;
-        const alt = m[1] ?? '';
-        const src = m[2] ?? '';
-        const newText = `![${alt}](${src} "${newTitle}")`;
-        view.dispatch({ changes: { from, to, insert: newText } });
+        view.dispatch({ changes: { from, to, insert: text } });
       });
 
-      setMoveToImageCallback((from: number, to: number) => {
-        const view = viewRef.current;
-        if (!view) return;
-        view.dispatch({ selection: { anchor: to } });
-        view.focus();
+      setFocusEditor(() => {
+        viewRef.current?.focus();
       });
 
       const extensions = [

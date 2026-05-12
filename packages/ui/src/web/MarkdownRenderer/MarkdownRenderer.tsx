@@ -46,6 +46,18 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
     return src;
   };
 
+  // 解析图片 src 中的宽度语法：src|475 或 src "475"
+  const parseImgWidth = (rawSrc?: string): { src: string; width?: number } => {
+    if (!rawSrc) return { src: '' };
+    // src|475
+    let m = rawSrc.match(/^(.+?)\s*\|\s*(\d+)$/);
+    if (m) return { src: (m[1] ?? '').trim(), width: parseInt(m[2]!, 10) };
+    // src "475"
+    m = rawSrc.match(/^(.+?)\s+"(\d+)"$/);
+    if (m) return { src: (m[1] ?? '').trim(), width: parseInt(m[2]!, 10) };
+    return { src: rawSrc };
+  };
+
   const remarkPlugins = [
     remarkBrToBreak,
     remarkGfm,
@@ -65,7 +77,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
           p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
           em: ({ node, ...props }) => <em className={styles.italicAnnotation} {...props} />,
           a: ({ node, ...props }) => <a className={styles.link} target="_blank" rel="noopener noreferrer" {...props} />,
-          img: ({ node, ...props }) => <img {...props} src={resolveAttachment(props.src)} style={{ maxWidth: '100%', borderRadius: '8px' }} />,
+          img: ({ node, ...props }) => {
+            const { src: cleanSrc, width } = parseImgWidth(props.src);
+            return <img {...props} src={resolveAttachment(cleanSrc)} style={{ maxWidth: '100%', width: width || undefined, borderRadius: '8px' }} />;
+          },
           video: ({ node, ...props }) => <video {...props} src={resolveAttachment(props.src)} style={{ maxWidth: '100%', borderRadius: '8px' }} controls />,
           audio: ({ node, ...props }) => <audio {...props} src={resolveAttachment(props.src)} style={{ width: '100%' }} controls />,
           code({ node, className, children, inline, ...props }: any) {
