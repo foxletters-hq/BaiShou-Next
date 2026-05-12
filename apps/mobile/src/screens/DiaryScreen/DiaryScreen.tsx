@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator, Alert, TextInput, FlatList } from 'react-native';
-import { DiaryCard, TimelineNode } from '@baishou/ui';
+import { DiaryCard, TimelineNode } from '@baishou/ui/native';
+import { YearMonthPicker } from '@baishou/ui/native/YearMonthPicker';
 import { useNativeTheme } from '@baishou/ui/src/native/theme';
 import { useBaishou } from '../../providers/BaishouProvider';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface DiaryEntry {
   id: number;
@@ -36,22 +38,96 @@ export const DiaryScreen: React.FC = () => {
   const [filterFavorite, setFilterFavorite] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'timeline' | 'grid'>('timeline');
+  const [isStateRestored, setIsStateRestored] = useState(false);
+  
+  // 分页状态
+  const PAGE_SIZE = 50;
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchDiaries = useCallback(async () => {
+  const fetchDiaries = useCallback(async (reset = true) => {
     if (!dbReady || !services) return;
     try {
-      const list = await services.diaryService.listAll({ limit: 100 });
-      setDiaries(list);
+      const currentOffset = reset ? 0 : offset;
+      const list = await services.diaryService.listAll({ 
+        limit: PAGE_SIZE, 
+        offset: currentOffset 
+      });
+      
+      if (reset) {
+        setDiaries(list);
+        setOffset(PAGE_SIZE);
+      } else {
+        setDiaries(prev => [...prev, ...list]);
+        setOffset(prev => prev + PAGE_SIZE);
+      }
+      setHasMore(list.length === PAGE_SIZE);
     } catch (e) {
       console.error('Failed to fetch diaries', e);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [dbReady, services]);
 
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore || !dbReady || !services) return;
+    setLoadingMore(true);
+    await fetchDiaries(false);
+  }, [hasMore, loadingMore, dbReady, services, fetchDiaries]);
+
   useEffect(() => {
-    fetchDiaries();
-  }, [fetchDiaries]);
+    setOffset(0);
+    setHasMore(true);
+    fetchDiaries(true);
+  }, [fetchDiaries, selectedMonth, searchQuery, filterWeather, filterFavorite]);
+
+  // 从 AsyncStorage 恢复筛选状态
+  useEffect(() => {
+    const restoreState = async () => {
+      try {
+        const [savedQuery, savedMonth, savedWeather, savedFavorite, savedViewMode] = await Promise.all([
+          AsyncStorage.getItem('diary_searchQuery'),
+          AsyncStorage.getItem('diary_selectedMonth'),
+          AsyncStorage.getItem('diary_filterWeather'),
+          AsyncStorage.getItem('diary_filterFavorite'),
+          AsyncStorage.getItem('diary_viewMode'),
+        ]);
+
+        if (savedQuery) {
+          setSearchQuery(savedQuery);
+        }
+
+        if (savedMonth) {
+          try {
+            const d = new Date(savedMonth);
+            if (!isNaN(d.getTime())) {
+              setSelectedMonth(d);
+            }
+          } catch { /* ignore */ }
+        }
+
+        if (savedWeather) {
+          setFilterWeather(savedWeather);
+        }
+
+        if (savedFavorite === 'true') {
+          setFilterFavorite(true);
+        }
+
+        if (savedViewMode === 'timeline' || savedViewMode === 'grid') {
+          setViewMode(savedViewMode);
+        }
+      } catch (e) {
+        console.error('Failed to restore diary filter state', e);
+      } finally {
+        setIsStateRestored(true);
+      }
+    };
+
+    restoreState();
+  }, []);
 
   // 处理过滤和排序
   const filteredEntries = useMemo(() => {
@@ -115,6 +191,42 @@ export const DiaryScreen: React.FC = () => {
 
     return filtered;
   }, [diaries, selectedMonth, searchQuery, filterWeather, filterFavorite]);
+
+  // 保存筛选状态到 AsyncStorage
+  useEffect(() => {
+    if (!isStateRestored) return;
+    AsyncStorage.setItem('diary_searchQuery', searchQuery).catch(e => 
+      console.error('Failed to save searchQuery', e)
+    );
+  }, [searchQuery, isStateRestored]);
+
+  useEffect(() => {
+    if (!isStateRestored) return;
+    AsyncStorage.setItem('diary_selectedMonth', selectedMonth ? selectedMonth.toISOString() : '').catch(e => 
+      console.error('Failed to save selectedMonth', e)
+    );
+  }, [selectedMonth, isStateRestored]);
+
+  useEffect(() => {
+    if (!isStateRestored) return;
+    AsyncStorage.setItem('diary_filterWeather', filterWeather || '').catch(e => 
+      console.error('Failed to save filterWeather', e)
+    );
+  }, [filterWeather, isStateRestored]);
+
+  useEffect(() => {
+    if (!isStateRestored) return;
+    AsyncStorage.setItem('diary_filterFavorite', String(filterFavorite)).catch(e => 
+      console.error('Failed to save filterFavorite', e)
+    );
+  }, [filterFavorite, isStateRestored]);
+
+  useEffect(() => {
+    if (!isStateRestored) return;
+    AsyncStorage.setItem('diary_viewMode', viewMode).catch(e => 
+      console.error('Failed to save viewMode', e)
+    );
+  }, [viewMode, isStateRestored]);
 
   // 格式化日期字符串为 YYYY-MM-DD
   const formatDateStr = (date: Date): string => {
@@ -340,30 +452,11 @@ export const DiaryScreen: React.FC = () => {
 
           {/* 月份选择器 */}
           <View style={[styles.monthSelector, { backgroundColor: colors.bgSurface }]}>
-            <TouchableOpacity
-              style={[styles.monthButton, { backgroundColor: colors.bgSurfaceHighest }]}
-              onPress={() => setSelectedMonth(null)}
-            >
-              <Text style={[styles.monthButtonText, { color: !selectedMonth ? colors.primary : colors.textSecondary }]}>{t('diary.all', '全部')}</Text>
-            </TouchableOpacity>
-            {Array.from({ length: 6 }, (_, i) => {
-              const date = new Date();
-              date.setMonth(date.getMonth() - i);
-              const isSelected = selectedMonth && 
-                selectedMonth.getFullYear() === date.getFullYear() && 
-                selectedMonth.getMonth() === date.getMonth();
-              return (
-                <TouchableOpacity
-                  key={i}
-                  style={[styles.monthButton, { backgroundColor: isSelected ? colors.primary + '20' : colors.bgSurfaceHighest }]}
-                  onPress={() => setSelectedMonth(new Date(date.getFullYear(), date.getMonth(), 1))}
-                >
-                  <Text style={[styles.monthButtonText, { color: isSelected ? colors.primary : colors.textSecondary }]}>
-                     {t('diary.month_format', { month: date.getMonth() + 1, defaultValue: `${date.getMonth() + 1}月` })}
-                   </Text>
-                </TouchableOpacity>
-              );
-            })}
+            <YearMonthPicker
+              selectedMonth={selectedMonth}
+              onChange={setSelectedMonth}
+              titlePlaceholder={t('diary.all', '全部')}
+            />
           </View>
 
           {/* 内容区 */}
@@ -395,8 +488,29 @@ export const DiaryScreen: React.FC = () => {
                 </View>
               )}
               
+              {hasMore && (
+                <TouchableOpacity 
+                  style={[styles.loadMoreButton, { backgroundColor: colors.bgSurfaceHighest }]}
+                  onPress={loadMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
+                      {t('diary.load_more', '加载更多')} ({diaries.length})
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              
               <View style={styles.footerMarker}>
-                 <Text style={[styles.footerMarkerText, { color: colors.textSecondary }]}>{t('diary.footer_marker', '=== 已触达此神经链路的底层 ===')}</Text>
+                 <Text style={[styles.footerMarkerText, { color: colors.textSecondary }]}>
+                   {hasMore 
+                     ? t('diary.loaded_count', { count: diaries.length, defaultValue: `已加载 ${diaries.length} 条` })
+                     : t('diary.footer_marker', '=== 已触达此神经链路的底层 ===')
+                   }
+                 </Text>
               </View>
             </ScrollView>
           )}
@@ -589,15 +703,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
-  monthButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  monthButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   contentContainer: {
     flex: 1,
   },
@@ -650,6 +755,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 2
   },
+  loadMoreButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 16,
+    marginHorizontal: 24,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   deleteModalOverlay: {
      position: 'absolute',
      top: 0,
@@ -661,7 +779,7 @@ const styles = StyleSheet.create({
    },
   deleteModal: {
     width: '80%',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
   },
   deleteModalTitle: {

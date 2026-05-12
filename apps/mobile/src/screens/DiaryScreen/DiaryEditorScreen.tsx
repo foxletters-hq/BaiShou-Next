@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { DiaryEditor } from '@baishou/ui';
 import { useBaishou } from '../../providers/BaishouProvider';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,6 +22,7 @@ export const DiaryEditorScreen: React.FC = () => {
   const [existingId, setExistingId] = useState<number | null>(null);
   const [originalContent, setOriginalContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     if (!dbReady || !services) return;
@@ -98,9 +99,45 @@ export const DiaryEditorScreen: React.FC = () => {
       } else {
         await services.diaryService.create(input);
       }
+      setIsDirty(false);
       router.back();
     } catch (e) {
       console.error('Failed to save diary:', e);
+    }
+  };
+
+  const handleContentChange = (text: string) => {
+    setContent(text);
+    setIsDirty(true);
+  };
+
+  const handleTagsChange = (newTags: string[]) => {
+    setTags(newTags);
+    setIsDirty(true);
+  };
+
+  const handleWeatherChange = (newWeather: string | null) => {
+    setWeather(newWeather);
+    setIsDirty(true);
+  };
+
+  const handleFavoriteChange = (newIsFavorite: boolean) => {
+    setIsFavorite(newIsFavorite);
+    setIsDirty(true);
+  };
+
+  const handleBack = () => {
+    if (isDirty) {
+      Alert.alert(
+        t('diary.editor_leave_confirm', '有未保存的修改'),
+        t('diary.editor_leave_message', '离开后修改将丢失，确定要离开吗？'),
+        [
+          { text: t('common.cancel', '取消'), style: 'cancel' },
+          { text: t('common.leave', '离开'), style: 'destructive', onPress: () => router.back() },
+        ]
+      );
+    } else {
+      router.back();
     }
   };
 
@@ -120,13 +157,13 @@ export const DiaryEditorScreen: React.FC = () => {
         selectedDate={selectedDate}
         weather={weather || ''}
         isFavorite={isFavorite}
-        onContentChange={setContent}
-        onTagsChange={setTags}
+        onContentChange={handleContentChange}
+        onTagsChange={handleTagsChange}
         onDateChange={setSelectedDate}
-        onWeatherChange={setWeather}
-        onFavoriteChange={setIsFavorite}
+        onWeatherChange={handleWeatherChange}
+        onFavoriteChange={handleFavoriteChange}
         onSave={handleSave}
-        onCancel={() => router.back()}
+        onCancel={handleBack}
       />
     </View>
   );

@@ -56,7 +56,7 @@ export const LanTransferScreen: React.FC = () => {
         }
       );
     } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('lan.scan_failed', '扫描失败'));
+      Alert.alert(t('common.error', '错误'), t('lan_transfer.scan_failed', '扫描失败'));
     } finally {
       setScanning(false);
     }
@@ -71,7 +71,7 @@ export const LanTransferScreen: React.FC = () => {
         setServerPort(String(result.port));
       }
     } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('lan.server_start_failed', '启动服务器失败'));
+      Alert.alert(t('common.error', '错误'), t('lan_transfer.server_start_failed', '启动服务器失败'));
     }
   }, [dbReady, lanSyncService, t]);
 
@@ -87,10 +87,10 @@ export const LanTransferScreen: React.FC = () => {
       const success = await lanSyncService.sendFile(device.ip, device.port);
       Alert.alert(
         success ? t('common.success', '成功') : t('common.error', '错误'),
-        success ? t('lan.send_success', '发送成功') : t('lan.send_failed', '发送失败')
+        success ? t('lan_transfer.send_success', '发送成功') : t('lan_transfer.send_failed', '发送失败')
       );
     } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('lan.send_failed', '发送失败'));
+      Alert.alert(t('common.error', '错误'), t('lan_transfer.send_failed', '发送失败'));
     }
   }, [lanSyncService, t]);
 
@@ -104,10 +104,10 @@ export const LanTransferScreen: React.FC = () => {
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Text style={[styles.backText, { color: colors.primary }]}>← {t('common.back', '返回')}</Text>
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('lan.title', '局域网传输')}</Text>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('lan_transfer.title', '局域网传输')}</Text>
             <TouchableOpacity onPress={startScan} disabled={scanning}>
               <Text style={[styles.scanButton, { color: scanning ? colors.textSecondary : colors.primary }]}>
-                {scanning ? t('lan.scanning', '扫描中...') : t('lan.scan_devices', '扫描设备')}
+                {scanning ? t('lan_transfer.scanning', '扫描中...') : t('lan_transfer.scan_devices', '扫描设备')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -115,22 +115,22 @@ export const LanTransferScreen: React.FC = () => {
           <ScrollView style={styles.content} indicatorStyle="white">
             {/* 服务器状态 */}
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('lan.server_status', '服务器状态')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('lan_transfer.server_status', '服务器状态')}</Text>
               
               <View style={styles.serverStatus}>
                 <View style={styles.statusRow}>
-                  <Text style={[styles.statusLabel, { color: colors.textPrimary }]}>{t('lan.status', '状态')}:</Text>
+                  <Text style={[styles.statusLabel, { color: colors.textPrimary }]}>{t('lan_transfer.status', '状态')}:</Text>
                   <View style={[
                     styles.statusIndicator, 
                     { backgroundColor: serverRunning ? colors.accentGreen : colors.error }
                   ]} />
                   <Text style={[styles.statusText, { color: colors.textPrimary }]}>
-                    {serverRunning ? t('lan.running', '运行中') : t('lan.stopped', '已停止')}
+                    {serverRunning ? t('lan_transfer.running', '运行中') : t('lan_transfer.stopped', '已停止')}
                   </Text>
                 </View>
 
                 <View style={styles.portRow}>
-                  <Text style={[styles.portLabel, { color: colors.textPrimary }]}>{t('lan.port', '端口')}:</Text>
+                  <Text style={[styles.portLabel, { color: colors.textPrimary }]}>{t('lan_transfer.port', '端口')}:</Text>
                   <TextInput
                     style={[styles.portInput, { 
                       backgroundColor: colors.bgSurfaceHighest,
@@ -154,7 +154,7 @@ export const LanTransferScreen: React.FC = () => {
                   onPress={serverRunning ? stopServer : startServer}
                 >
                   <Text style={[styles.serverButtonText, { color: '#FFF' }]}>
-                    {serverRunning ? t('lan.stop_server', '停止服务器') : t('lan.start_server', '启动服务器')}
+                    {serverRunning ? t('lan_transfer.stop_server', '停止服务器') : t('lan_transfer.start_server', '启动服务器')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -162,14 +162,14 @@ export const LanTransferScreen: React.FC = () => {
 
             {/* 设备列表 */}
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('lan.discovered_devices', '发现的设备')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('lan_transfer.discovered_devices', '发现的设备')}</Text>
               
               {devices.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>📡</Text>
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('lan.no_devices', '暂未发现设备')}</Text>
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('lan_transfer.no_devices', '暂未发现设备')}</Text>
                   <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
-                    {scanning ? t('lan.scanning_hint', '正在扫描局域网设备...') : t('lan.scan_hint', '点击右上角扫描按钮搜索设备')}
+                    {scanning ? t('lan_transfer.scanning_hint', '正在扫描局域网设备...') : t('lan_transfer.scan_hint', '点击右上角扫描按钮搜索设备')}
                   </Text>
                 </View>
               ) : (
@@ -194,7 +194,7 @@ export const LanTransferScreen: React.FC = () => {
                         onPress={() => sendToDevice(device)}
                         disabled={!device.isOnline}
                       >
-                        <Text style={[styles.actionText, { color: colors.primary }]}>{t('lan.send', '发送')}</Text>
+                        <Text style={[styles.actionText, { color: colors.primary }]}>{t('lan_transfer.send', '发送')}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -204,10 +204,10 @@ export const LanTransferScreen: React.FC = () => {
 
             {/* 传输记录 */}
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('lan.transfer_history', '传输记录')}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('lan_transfer.transfer_history', '传输记录')}</Text>
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>📋</Text>
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('lan.no_history', '暂无传输记录')}</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('lan_transfer.no_history', '暂无传输记录')}</Text>
               </View>
             </View>
           </ScrollView>

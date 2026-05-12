@@ -43,10 +43,14 @@ export default function RootLayout() {
             title: t('agent.assistant_edit.title', '编辑助手')
           }} />
           <Stack.Screen name="lan-transfer" options={{
-            title: t('lan.title', '局域网传输')
+            title: t('lan_transfer.title', '局域网传输')
           }} />
           <Stack.Screen name="data-sync" options={{
-            title: t('sync.title', '数据同步')
+            title: t('data_sync.title', '数据同步')
+          }} />
+          <Stack.Screen name="summary-detail" options={{
+            title: t('summary.detail_title', '总结详情'),
+            headerShown: false
           }} />
           <Stack.Screen name="modal" options={{
             presentation: 'modal',

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, SafeAreaView, StatusBar, ActivityIndicator, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { 
   SummaryCard, DashboardHeroBanner, 
   DashboardStatsCard, DashboardSharedMemoryCard 
@@ -7,7 +8,6 @@ import {
 import { useNativeTheme } from '@baishou/ui/src/native/theme';
 import { useBaishou } from '../../providers/BaishouProvider';
 import { useSummaryData } from '../../hooks/useSummaryData';
-import { SummaryDetailScreen } from './SummaryDetailScreen';
 import { useTranslation } from 'react-i18next';
 
 export const SummaryScreen: React.FC = () => {
@@ -15,6 +15,7 @@ export const SummaryScreen: React.FC = () => {
   const { width } = useWindowDimensions();
   const { colors, isDark } = useNativeTheme();
   const { services, dbReady } = useBaishou();
+  const router = useRouter();
   const { 
     summaries, 
     stats, 
@@ -30,7 +31,6 @@ export const SummaryScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isBatchGenerating, setIsBatchGenerating] = useState(false);
   const [concurrencyLimit, setConcurrencyLimit] = useState(3);
-  const [selectedSummaryId, setSelectedSummaryId] = useState<string | null>(null);
   const [showConcurrencyDropdown, setShowConcurrencyDropdown] = useState(false);
   const [activityData, setActivityData] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -158,16 +158,6 @@ export const SummaryScreen: React.FC = () => {
       ]
     );
   };
-
-  // 如果选中了总结，显示详情页面
-  if (selectedSummaryId) {
-    return (
-      <SummaryDetailScreen 
-        summaryId={selectedSummaryId} 
-        onBack={() => setSelectedSummaryId(null)} 
-      />
-    );
-  }
 
   return (
     <>
@@ -358,7 +348,7 @@ export const SummaryScreen: React.FC = () => {
                         dateRange={item.dateRange}
                         summaryText={item.summaryText}
                         type={item.type}
-                        onClick={() => setSelectedSummaryId(item.id)}
+                        onClick={() => router.push({ pathname: '/summary-detail', params: { id: item.id } })}
                         onDelete={() => handleDeleteSummary(item.id)}
                       />
                     </View>

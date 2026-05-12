@@ -1,7 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View, StyleSheet, FlatList, KeyboardAvoidingView,
-  Platform, SafeAreaView, StatusBar, TouchableOpacity, Text
+  Platform, SafeAreaView, StatusBar, TouchableOpacity, Text, Alert
 } from 'react-native';
 import { ChatBubble, InputBar, TokenBadge } from '@baishou/ui/native';
 import { useNativeTheme } from '@baishou/ui/src/native/theme';
@@ -16,10 +16,13 @@ import { ShortcutManager } from '../components/ShortcutManager';
 import { TokenUsageDialog } from '../components/TokenUsageDialog';
 import { RecallDialog } from '../components/RecallDialog';
 import { ToolManagerDialog } from '../components/ToolManagerDialog';
+import { ContextChainDialog } from '../components/ContextChainDialog';
 import { useAgentSession } from '../hooks/useAgentSession';
 import { useAgentStream } from '../hooks/useAgentStream';
 import { useAgentModel } from '../hooks/useAgentModel';
 import { useAgentUI } from '../hooks/useAgentUI';
+import { useTTS } from '../hooks/useTTS';
+import { useBranchSession } from '../hooks/useBranchSession';
 
 export const AgentScreen = () => {
   const { t } = useTranslation();
@@ -58,6 +61,88 @@ export const AgentScreen = () => {
     setShowRecallSheet, setShowToolManager,
     handleScroll, scrollToBottom, handleRecallSearch, handleInjectRecall,
   } = useAgentUI();
+
+  // 使用 TTS hook
+  const { ttsPlayingMsgId, handleTtsReadAloud, stopTTS } = useTTS();
+
+  // 使用分支会话 hook
+  const { branchSession } = useBranchSession();
+
+  // 上下文链对话框状态
+  const [contextDialogState, setContextDialogState] = useState<{
+    visible: boolean;
+    message: any;
+    contextMessages: any[];
+    compressedContent?: string;
+    originalContent?: string;
+    systemPrompt?: string;
+  }>({
+    visible: false,
+    message: {},
+    contextMessages: [],
+  });
+
+  // 处理分支创建
+  const handleBranch = useCallback(async (messageId: string) => {
+    if (!currentSessionId) return;
+    try {
+      const newSessionId = await branchSession(currentSessionId, messageId, currentAssistant?.name);
+      if (newSessionId) {
+        Alert.alert(t('agent.chat.branch_success', '分支创建成功'), t('agent.chat.branch_success_hint', '已创建新的分支会话'));
+        // 刷新会话列表或导航到新会话
+      }
+    } catch (e: any) {
+      Alert.alert(t('agent.chat.branch_failed', '分支创建失败'), e.message || t('common.unknown_error', '未知错误'));
+    }
+  }, [currentSessionId, branchSession, currentAssistant?.name, t]);
+
+  // 处理显示上下文链
+  const handleShowContext = useCallback((message: any) => {
+    // 解析上下文消息
+    let decodedContext: any[] = [];
+    let compressedContent: string | undefined;
+    let originalContent: string | undefined;
+    let systemPrompt: string | undefined;
+
+    // 查找前一条用户消息中的上下文快照
+    const msgIndex = messages.findIndex((m: any) => m.id === message.id);
+    if (msgIndex > 0) {
+      const prevMsg = messages[msgIndex - 1];
+      if (prevMsg.role === 'user' && prevMsg.parts) {
+        const ctxPart = prevMsg.parts.find((p: any) => p.type === 'context_snapshot');
+        if (ctxPart && ctxPart.data?.snapshots) {
+          decodedContext = ctxPart.data.snapshots.map((s: any) => ({
+            role: 'system',
+            content: `${s.title ? '[' + s.title + '] ' : ''}${s.content}`,
+            timestamp: message.createdAt || new Date(),
+          }));
+        }
+
+        // 获取压缩内容
+        const compPart = prevMsg.parts.find((p: any) => p.type === 'compaction');
+        if (compPart && compPart.data?.summary) {
+          compressedContent = compPart.data.summary;
+        }
+      }
+
+      // 获取系统提示词
+      if (msgIndex === 1 || (msgIndex === 2 && messages[0]?.role === 'system')) {
+        const sysMsg = messages.find((m: any) => m.role === 'system');
+        if (sysMsg?.content) {
+          systemPrompt = sysMsg.content;
+        }
+      }
+    }
+
+    setContextDialogState({
+      visible: true,
+      message,
+      contextMessages: decodedContext,
+      compressedContent,
+      originalContent: message.content,
+      systemPrompt,
+    });
+  }, [messages]);
 
   // 自动滚动到底部
   useEffect(() => {
@@ -117,16 +202,69 @@ export const AgentScreen = () => {
             contentContainerStyle={styles.listContent}
             data={messages}
             keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.bubble}>
-                <ChatBubble
-                  message={{ role: item.role as any, content: item.content, toolInvocations: item.toolInvocations, attachments: item.attachments, inputTokens: item.inputTokens, outputTokens: item.outputTokens, isReasoning: item.isReasoning, costMicros: item.costMicros }}
-                  onRegenerate={() => handleRegenerate(item.id)}
-                  onEdit={() => handleEditMessage(item.id, item.content)}
-                  onDelete={() => handleDeleteMessage(item.id)}
-                />
-              </View>
-            )}
+            renderItem={({ item }) => {
+              // 解析上下文消息
+              let decodedContext: any[] | undefined;
+              let compressedContent: string | undefined;
+              let originalContent: string | undefined;
+              let systemPrompt: string | undefined;
+
+              if (item.role === 'assistant') {
+                const msgIndex = messages.findIndex((m: any) => m.id === item.id);
+                if (msgIndex > 0) {
+                  const prevMsg = messages[msgIndex - 1];
+                  if (prevMsg.role === 'user' && prevMsg.parts) {
+                    const ctxPart = prevMsg.parts.find((p: any) => p.type === 'context_snapshot');
+                    if (ctxPart && ctxPart.data?.snapshots) {
+                      decodedContext = ctxPart.data.snapshots.map((s: any) => ({
+                        role: 'system',
+                        content: `${s.title ? '[' + s.title + '] ' : ''}${s.content}`,
+                        timestamp: item.createdAt || new Date(),
+                      }));
+                    }
+
+                    // 获取压缩内容
+                    const compPart = prevMsg.parts.find((p: any) => p.type === 'compaction');
+                    if (compPart && compPart.data?.summary) {
+                      compressedContent = compPart.data.summary;
+                    }
+                  }
+
+                  // 获取系统提示词
+                  if (msgIndex === 1 || (msgIndex === 2 && messages[0]?.role === 'system')) {
+                    const sysMsg = messages.find((m: any) => m.role === 'system');
+                    if (sysMsg?.content) {
+                      systemPrompt = sysMsg.content;
+                    }
+                  }
+                }
+              }
+
+              return (
+                <View style={styles.bubble}>
+                  <ChatBubble
+                    message={{
+                      role: item.role as any,
+                      content: item.content,
+                      toolInvocations: item.toolInvocations,
+                      attachments: item.attachments,
+                      inputTokens: item.inputTokens,
+                      outputTokens: item.outputTokens,
+                      isReasoning: item.isReasoning,
+                      costMicros: item.costMicros,
+                      contextMessages: decodedContext,
+                    }}
+                    onRegenerate={() => handleRegenerate(item.id)}
+                    onEdit={() => handleEditMessage(item.id, item.content)}
+                    onDelete={() => handleDeleteMessage(item.id)}
+                    onReadAloud={item.role === 'assistant' ? (content) => handleTtsReadAloud(content, item.id) : undefined}
+                    isTtsPlaying={ttsPlayingMsgId === item.id}
+                    onShowContext={item.role === 'assistant' ? handleShowContext : undefined}
+                    onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
+                  />
+                </View>
+              );
+            }}
             ListFooterComponent={isStreaming ? <StreamingBubble text={streamingText} aiProfile={{ name: currentAssistant?.name || 'AI', emoji: currentAssistant?.emoji }} /> : null}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -201,6 +339,17 @@ export const AgentScreen = () => {
 
       {/* 工具管理器 */}
       <ToolManagerDialog visible={showToolManager} onClose={() => setShowToolManager(false)} />
+
+      {/* 上下文链对话框 */}
+      <ContextChainDialog
+        visible={contextDialogState.visible}
+        onClose={() => setContextDialogState(prev => ({ ...prev, visible: false }))}
+        message={contextDialogState.message}
+        contextMessages={contextDialogState.contextMessages}
+        compressedContent={contextDialogState.compressedContent}
+        originalContent={contextDialogState.originalContent}
+        systemPrompt={contextDialogState.systemPrompt}
+      />
     </>
   );
 };
@@ -234,7 +383,7 @@ const styles = StyleSheet.create({
   actionBtnText: { fontSize: 15, fontWeight: '800' },
   inputWrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: Platform.OS === 'ios' ? 24 : 16 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
-  modal: { width: '90%', height: '80%', borderRadius: 20, overflow: 'hidden' },
+  modal: { width: '90%', height: '80%', borderRadius: 24, overflow: 'hidden' },
   closeBtn: { padding: 16, alignItems: 'center', borderTopWidth: 1 },
   closeBtnText: { fontSize: 16, fontWeight: '600' },
 });
