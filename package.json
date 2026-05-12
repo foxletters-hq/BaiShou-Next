@@ -30,7 +30,6 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.148",
-    "@milkdown/plugin-prism": "^7.20.0",
     "prism-themes": "^1.9.0"
   },
   "pnpm": {
