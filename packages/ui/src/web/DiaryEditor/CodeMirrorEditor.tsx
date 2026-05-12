@@ -139,8 +139,12 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       [],
     );
 
-    // 设置图片宽度更新回调
+    // 设置图片相关回调
     useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      // 先设置回调（viewRef 在下面创建）
       setUpdateImageWidthCallback((from: number, to: number, newWidth: number) => {
         const view = viewRef.current;
         if (!view) return;
@@ -155,7 +159,6 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
         });
       });
 
-      // 点击图片 → 光标跳转到 markdown 文本位置
       setMoveToImageCallback((from: number, to: number) => {
         const view = viewRef.current;
         if (!view) return;
@@ -164,11 +167,6 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
         });
         view.focus();
       });
-    }, []);
-
-    useEffect(() => {
-      const container = containerRef.current;
-      if (!container) return;
 
       const extensions = [
         EditorView.lineWrapping,
