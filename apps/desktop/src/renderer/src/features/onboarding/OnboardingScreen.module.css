@@ -16,7 +16,7 @@
 /* Dynamic background orbs — flow naturally behind the transparent titlebar */
 .bgOrb1 {
   position: absolute;
-  top: -30%;
+  top: -25%;
   right: -10%;
   width: 55vw;
   height: 55vw;
