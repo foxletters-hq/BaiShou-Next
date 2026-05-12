@@ -152,8 +152,9 @@ export const DiaryEditorPage: React.FC = () => {
       setShowExitConfirm(true);
     } else {
       const lastNav = sessionStorage.getItem('desktop_last_nav');
+      console.log('[DiaryEditor] 返回 last_nav:', lastNav);
       if (lastNav && lastNav !== '/diary') {
-        navigate(lastNav, { replace: true });
+        navigate(lastNav);
       } else {
         navigate('/diary');
       }
@@ -168,8 +169,9 @@ export const DiaryEditorPage: React.FC = () => {
       try {
         await autoSave(content);
         const lastNav = sessionStorage.getItem('desktop_last_nav');
+        console.log('[DiaryEditor] 保存后 last_nav:', lastNav);
         if (lastNav && lastNav !== '/diary') {
-          navigate(lastNav, { replace: true });
+          navigate(lastNav);
         } else {
           navigate('/diary');
         }
@@ -222,7 +224,7 @@ export const DiaryEditorPage: React.FC = () => {
               <button className="dd-btn-cancel" onClick={() => setShowExitConfirm(false)}>
                 {t('common.cancel', '我再写写')}
               </button>
-              <button className="dd-btn-confirm" onClick={() => { const lastNav = sessionStorage.getItem('desktop_last_nav'); if (lastNav && lastNav !== '/diary') navigate(lastNav, { replace: true }); else navigate('/diary'); }} style={{ background: '#ef4444', color: 'white' }}>
+              <button className="dd-btn-confirm" onClick={() => { const lastNav = sessionStorage.getItem('desktop_last_nav'); console.log('[DiaryEditor] 强行离开 last_nav:', lastNav); if (lastNav && lastNav !== '/diary') navigate(lastNav); else navigate('/diary'); }} style={{ background: '#ef4444', color: 'white' }}>
                 {t('common.leave', '强行离开')}
               </button>
             </div>

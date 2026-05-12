@@ -36,6 +36,7 @@
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
     "electron-context-menu": "^4.1.2",
+    "electron-updater": "^6.8.3",
     "express": "^5.2.1",
     "extract-zip": "^2.0.1",
     "lucide-react": "^1.7.0",
