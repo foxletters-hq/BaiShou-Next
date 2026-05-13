@@ -1,6 +1,6 @@
 .screen {
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9,33 +9,37 @@
   overflow: hidden;
   position: relative;
   transition: background 0.8s ease;
+  padding-top: 48px;
+  box-sizing: border-box;
 }
 
-/* Dynamic background orbs */
+/* Dynamic background orbs — flow naturally behind the transparent titlebar */
 .bgOrb1 {
   position: absolute;
-  top: -15%;
+  top: -10%;
   right: -10%;
-  width: 50vw;
-  height: 50vw;
+  width: 55vw;
+  height: 55vw;
   border-radius: 50%;
   background: radial-gradient(circle, var(--theme-color) 0%, transparent 70%);
   filter: blur(40px);
   animation: float 15s infinite alternate ease-in-out;
   opacity: 0.6;
+  pointer-events: none;
 }
 
 .bgOrb2 {
   position: absolute;
-  bottom: -20%;
-  left: -5%;
-  width: 45vw;
-  height: 45vw;
+  bottom: -25%;
+  left: -10%;
+  width: 50vw;
+  height: 50vw;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.1) 0%, transparent 70%);
   filter: blur(40px);
   animation: float 12s infinite alternate-reverse ease-in-out;
   opacity: 0.4;
+  pointer-events: none;
 }
 
 @keyframes float {
@@ -46,9 +50,9 @@
 .contentBox {
   width: 100%;
   max-width: 500px;
-  height: 85vh;
-  max-height: 600px;
-  min-height: 360px;
+  height: calc(85vh - 48px);
+  max-height: 580px;
+  min-height: 320px;
   display: flex;
   flex-direction: column;
   position: relative;

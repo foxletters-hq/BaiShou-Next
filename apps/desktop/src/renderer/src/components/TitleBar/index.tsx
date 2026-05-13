@@ -64,7 +64,7 @@ export const TitleBar: React.FC = () => {
   const isOnboarding = location.pathname.startsWith('/welcome');
 
   return (
-    <div className={styles.titleBar}>
+    <div className={`${styles.titleBar} ${isOnboarding ? styles.titleBarOnboarding : ''}`}>
       <div className={styles.dragRegion}>
         {!isOnboarding && (
           <div className={styles.tabsContainer}>
