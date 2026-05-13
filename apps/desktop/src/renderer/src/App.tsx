@@ -173,7 +173,7 @@ export function App() {
         <ToastProvider />
         <GlobalErrorHandler />
         <ErrorBoundary>
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden', position: 'relative' }}>
           <TitleBar />
           <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
             <AppRoutes />
