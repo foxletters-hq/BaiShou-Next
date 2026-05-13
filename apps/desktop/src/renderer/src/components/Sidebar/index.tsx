@@ -24,31 +24,43 @@ export const Sidebar: React.FC = () => {
      if (saved) {
        try {
          const parsed = JSON.parse(saved) as string[];
-         // 迁移：自动补全新增的导航项
+         // 版本号迁移：版本为 0 或不存在时，重新补全新项并置顶
+         const mv = parseInt(localStorage.getItem('desktop_sidebar_mv') || '0', 10);
          const defaults = ['diary', 'summary', 'lan', 'sync', 'git'];
-         let changed = false;
-         for (const item of defaults) {
-           if (!parsed.includes(item)) {
-             parsed.push(item);
-             changed = true;
+         if (mv < 1) {
+           for (const item of [...defaults].reverse()) {
+             const idx = parsed.indexOf(item);
+             if (idx !== -1) parsed.splice(idx, 1);
+             parsed.unshift(item);
            }
-         }
-         if (changed) {
+           localStorage.setItem('desktop_sidebar_mv', '1');
            localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
+         } else {
+           // 常规补全（置顶）
+           let changed = false;
+           for (const item of defaults) {
+             if (!parsed.includes(item)) {
+               parsed.unshift(item);
+               changed = true;
+             }
+           }
+           if (changed) {
+             localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
+           }
          }
          return parsed;
        } catch (e) {}
      }
-      return ['diary', 'summary', 'lan', 'sync', 'git'];
+      return ['git', 'diary', 'summary', 'lan', 'sync'];
    });
 
-  const allItems = {
-     'diary': { icon: <MdTimeline />, label: t('diary.title', '日记'), path: '/diary' },
-     'summary': { icon: <MdAutoStories />, label: t('summary.dashboard_title', '全域仪表盘'), path: '/summary' },
+   const allItems = {
+      'diary': { icon: <MdTimeline />, label: t('diary.title', '日记'), path: '/diary' },
+      'summary': { icon: <MdAutoStories />, label: t('summary.dashboard_title', '全域仪表盘'), path: '/summary' },
       'lan': { icon: <MdWifiFind />, label: t('settings.lan_transfer', '局域网快传'), path: '/lan-transfer' },
       'sync': { icon: <MdSync />, label: t('common.data_sync', '数据同步'), path: '/data-sync' },
       'git': { icon: <MdHistory />, label: t('version_control.title', '版本控制'), path: '/git' }
-  };
+   };
 
   useEffect(() => {
     localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder));
@@ -110,7 +122,6 @@ export const Sidebar: React.FC = () => {
                           <div
                             className={`${styles.navItem} ${isSelected ? styles.selected : ''}`}
                             onClick={() => {
-                              console.log('[Sidebar] 记录 last_nav:', location.pathname, '→', item.path);
                               if (!location.pathname.startsWith(item.path)) {
                                 sessionStorage.setItem('desktop_last_nav', location.pathname);
                               }
