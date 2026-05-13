@@ -151,12 +151,22 @@ export const DiaryEditorPage: React.FC = () => {
     if (isDirty) {
       setShowExitConfirm(true);
     } else {
-      const lastNav = sessionStorage.getItem('desktop_last_nav');
-      if (lastNav && lastNav !== '/diary') {
-        navigate(lastNav, { replace: true });
-      } else {
-        navigate('/diary');
-      }
+      goBackToSidebar();
+    }
+  };
+
+  const goBackToSidebar = () => {
+    const lastNav = sessionStorage.getItem('desktop_last_nav');
+    if (lastNav && lastNav !== '/diary') {
+      navigate(lastNav);
+    } else {
+      // 取侧边栏第一个导航项作为默认入口
+      const saved = localStorage.getItem('desktop_sidebar_nav_order');
+      const first = saved ? JSON.parse(saved)[0] : 'diary';
+      const paths: Record<string, string> = {
+        diary: '/diary', summary: '/summary', lan: '/lan-transfer', sync: '/data-sync', git: '/git',
+      };
+      navigate(paths[first] || '/diary');
     }
   };
 
@@ -167,12 +177,7 @@ export const DiaryEditorPage: React.FC = () => {
     setTimeout(async () => {
       try {
         await autoSave(content);
-        const lastNav = sessionStorage.getItem('desktop_last_nav');
-        if (lastNav && lastNav !== '/diary') {
-          navigate(lastNav, { replace: true });
-        } else {
-          navigate('/diary');
-        }
+        goBackToSidebar();
       } catch (e: any) {
         toast.showError(e?.message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'));
       } finally {
@@ -222,7 +227,7 @@ export const DiaryEditorPage: React.FC = () => {
               <button className="dd-btn-cancel" onClick={() => setShowExitConfirm(false)}>
                 {t('common.cancel', '我再写写')}
               </button>
-              <button className="dd-btn-confirm" onClick={() => { const lastNav = sessionStorage.getItem('desktop_last_nav'); if (lastNav && lastNav !== '/diary') navigate(lastNav, { replace: true }); else navigate('/diary'); }} style={{ background: '#ef4444', color: 'white' }}>
+              <button className="dd-btn-confirm" onClick={() => goBackToSidebar()} style={{ background: '#ef4444', color: 'white' }}>
                 {t('common.leave', '强行离开')}
               </button>
             </div>
