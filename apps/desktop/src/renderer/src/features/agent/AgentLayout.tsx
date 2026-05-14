@@ -81,7 +81,7 @@ export const AgentLayout: React.FC = () => {
            id: 'default',
            name: t('agent.default_assistant_name', '默认伙伴'),
            emoji: '🍵',
-           systemPrompt: t('agent.default_assistant_prompt', '你是一个友善且有创意的AI助手。'),
+           systemPrompt: '',
            isDefault: true,
            contextWindow: 20
         }).then(() => fetchAssistants()).then(() => {

@@ -113,31 +113,40 @@ export class AgentSessionService {
            },
            initialParts
          );
+      }
 
-         // 将用户消息添加到上下文窗口
-         if (attachments && attachments.length > 0) {
-            const contentParts: any[] = [{ type: 'text', text: userText }];
-            for (const att of attachments) {
-               if (att.type === 'image') {
-                  if (att.url) {
-                     contentParts.push({ type: 'image', image: new URL(att.url) });
-                  } else if (att.data) {
-                     const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`;
-                     const base64Data = att.data.startsWith('data:') ? att.data : (prefix + att.data);
-                     contentParts.push({ type: 'image', image: base64Data });
-                  }
-               } else if (att.type === 'file') {
-                  contentParts.push({
-                     type: 'file',
-                     mimeType: att.mimeType || 'application/octet-stream',
-                     data: att.url ? new URL(att.url) : (att.data || '')
-                  });
-               }
-            }
-            coreMessages.push({ role: 'user', content: contentParts });
-         } else {
-            coreMessages.push({ role: 'user', content: userText });
-         }
+      // 将用户消息追加到上下文窗口（无论 skipUserMessageRecording 与否）
+      // 当 skipUserMessageRecording=true 时，用户消息已由 IPC 层保存到 DB，
+      // ContextWindowBuilder.build() 会从 DB 加载。但如果窗口截断导致丢失，
+      // 此处兜底追加确保 AI 能看到用户输入。
+      const lastCoreMsg = coreMessages.length > 0 ? coreMessages[coreMessages.length - 1]! : null;
+      const userContentAlreadyInContext = lastCoreMsg && lastCoreMsg.role === 'user' && 
+        (typeof lastCoreMsg.content === 'string' ? lastCoreMsg.content === userText : true);
+      
+      if (!userContentAlreadyInContext) {
+        if (attachments && attachments.length > 0) {
+           const contentParts: any[] = [{ type: 'text', text: userText }];
+           for (const att of attachments) {
+              if (att.type === 'image') {
+                 if (att.url) {
+                    contentParts.push({ type: 'image', image: new URL(att.url) });
+                 } else if (att.data) {
+                    const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`;
+                    const base64Data = att.data.startsWith('data:') ? att.data : (prefix + att.data);
+                    contentParts.push({ type: 'image', image: base64Data });
+                 }
+              } else if (att.type === 'file') {
+                 contentParts.push({
+                    type: 'file',
+                    mimeType: att.mimeType || 'application/octet-stream',
+                    data: att.url ? new URL(att.url) : (att.data || '')
+                 });
+              }
+           }
+           coreMessages.push({ role: 'user', content: contentParts });
+        } else {
+           coreMessages.push({ role: 'user', content: userText });
+        }
       }
 
       // 3. 构建可用的 Tools 及其底层接续支持
@@ -150,19 +159,7 @@ export class AgentSessionService {
       const hsRepo = new SqliteHybridSearchRepository(rawClient);
       const msgRepo = new MessageRepository(drizzleDb);
 
-      // 初始化向量表（如果 embedding 模型已配置）
-      if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
-        try {
-          const { embed } = await import('ai');
-          const embModel = systemModels.embeddingProvider.getEmbeddingModel(systemModels.embeddingModelId);
-          const { embedding: testEmb } = await embed({ model: embModel, value: 'hi' });
-          if (testEmb.length > 0) {
-            await hsRepo.initVectorTables(testEmb.length, false);
-          }
-        } catch (e) {
-          console.warn('[AgentSession] 向量表初始化跳过（embedding 模型不可用）:', e);
-        }
-      }
+      // memory_embeddings 表由 Drizzle ORM 迁移统一管理，不再在此处建表
 
       const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo);
       let embAdapter = undefined;

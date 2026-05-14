@@ -524,8 +524,27 @@ export const AgentScreen: React.FC = () => {
                 onReadAloud={msg.role === 'assistant' ? (content) => handleTtsReadAloud(content, msg.id) : undefined}
                 isTtsPlaying={ttsPlayingMsgId === msg.id}
                 onRegenerate={() => {
-                  if (typeof window !== 'undefined' && window.electron) {
-                    window.electron.ipcRenderer.invoke('agent:regenerate', sessionId, msg.id, searchMode, model.currentProviderId, model.currentModelId).then(() => chat.refreshMessages());
+                  if (msg.role === 'assistant' && sessionId) {
+                    // 找到当前AI消息对应的上一条用户消息
+                    const msgIndex = chat.messages.findIndex(m => m.id === msg.id);
+                    if (msgIndex !== -1) {
+                      let userMsgId: string | null = null;
+                      for (let i = msgIndex - 1; i >= 0; i--) {
+                        if (chat.messages[i].role === 'user') {
+                          userMsgId = chat.messages[i].id;
+                          break;
+                        }
+                      }
+                      if (userMsgId) {
+                        // 截断消息列表到用户消息（包括用户消息）
+                        const userMsgIndex = chat.messages.findIndex(m => m.id === userMsgId);
+                        if (userMsgIndex !== -1) {
+                          chat.setMessages(prev => prev.slice(0, userMsgIndex + 1));
+                        }
+                        chat.setStreamSessionId(sessionId);
+                        stream.resendChat(sessionId, userMsgId, searchMode, model.currentProviderId, model.currentModelId);
+                      }
+                    }
                   }
                 }}
                 onEdit={() => {}}
@@ -574,6 +593,8 @@ export const AgentScreen: React.FC = () => {
                       });
                       if (newSessionId) {
                         toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'));
+                        // 刷新侧边栏会话列表
+                        if (loadSessions) loadSessions(true);
                         // 导航到新会话
                         navigate(`/chat/${newSessionId}`);
                       }
@@ -615,19 +636,9 @@ export const AgentScreen: React.FC = () => {
             />
           )}
 
-          {/* 空状态 */}
-          {chat.messages.length === 0 && !stream.isStreaming && (
-            <div style={{ flex: 1, padding: '24px 32px' }}>
-              {(() => {
-                const title = sessions.find((s: any) => s.id === sessionId)?.title || '';
-                if (!title || title === t('agent.sessions.newChat', '新对话') || title === t('agent.sessions.new_session', '新会话')) return null;
-                return (
-                  <h2 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: 'var(--text-primary)', opacity: 0.9 }}>
-                    {title}
-                  </h2>
-                );
-              })()}
-            </div>
+          {/* 空状态：仅在既无消息也无流式传输时显示空白区域 */}
+          {chat.messages.length === 0 && !stream.isStreaming && !chat.pendingAssistantMsg && (
+            <div style={{ flex: 1 }} />
           )}
         </div>
       </div>

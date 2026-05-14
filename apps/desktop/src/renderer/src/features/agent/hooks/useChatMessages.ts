@@ -52,13 +52,25 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   const streamSessionIdRef = useRef<string | null>(null);
 
   // ── 带重试的 DB 同步 ──
+  // 保护机制：DB 返回空或消息数少于当前已知消息数时，不覆盖（防止乐观消息丢失）
   const refreshMessages = useCallback(async (retryCount = 1): Promise<boolean> => {
     if (!sessionId) return false;
+    const currentMsgCount = messages.length;
     for (let attempt = 0; attempt < retryCount; attempt++) {
       try {
-        const currentCount = Math.max(20, messages.length);
+        const currentCount = Math.max(20, currentMsgCount);
         const msgs = await window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, currentCount, 0);
         if (msgs && msgs.length > 0) {
+          // 安全检查：DB 返回的消息数不应少于当前已知消息数（除非当前是首次加载）
+          // 这防止了流结束时用不完整的 DB 数据覆盖已有的乐观消息
+          if (currentMsgCount > 0 && msgs.length < currentMsgCount - 2) {
+            console.warn(`[useChatMessages] DB returned ${msgs.length} msgs but we have ${currentMsgCount}, skipping overwrite (attempt ${attempt + 1})`);
+            if (attempt < retryCount - 1) {
+              await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+              continue;
+            }
+            return false;
+          }
           setMessages(msgs);
           setHasMore(msgs.length === currentCount);
           return true;
@@ -67,7 +79,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
         console.warn('[useChatMessages] refreshMessages attempt', attempt + 1, 'failed:', e);
       }
       if (attempt < retryCount - 1) {
-        await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
+        await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
       }
     }
     return false;
@@ -88,20 +100,44 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
     if (isNewSession) {
       setPendingAssistantMsg(null);
-      window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, 20, 0).then(msgs => {
-        if (msgs && msgs.length > 0) {
-          setMessages(msgs);
-          setHasMore(msgs.length === 20);
-        } else {
+      // 带重试加载消息（解决分支会话等瞬时空结果问题）
+      const loadMessages = async () => {
+        const success = await new Promise<boolean>((resolve) => {
+          window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, 20, 0).then(msgs => {
+            if (msgs && msgs.length > 0) {
+              setMessages(msgs);
+              setHasMore(msgs.length === 20);
+              resolve(true);
+            } else {
+              resolve(false);
+            }
+          }).catch(() => resolve(false));
+        });
+        if (!success) {
+          // 首次失败，延迟重试（给 DB 写入留时间）
+          for (let retry = 1; retry <= 2; retry++) {
+            await new Promise(r => setTimeout(r, 200 * retry));
+            const retrySuccess = await new Promise<boolean>((resolve) => {
+              window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, 20, 0).then(msgs => {
+                if (msgs && msgs.length > 0) {
+                  setMessages(msgs);
+                  setHasMore(msgs.length === 20);
+                  resolve(true);
+                } else {
+                  resolve(false);
+                }
+              }).catch(() => resolve(false));
+            });
+            if (retrySuccess) return;
+          }
+          // 所有重试都失败，确认空状态
           if (optimisticSessionIdRef.current !== sessionId) {
             setMessages([]);
           }
           setHasMore(false);
         }
-      }).catch(() => {
-        setMessages([]);
-        setHasMore(false);
-      });
+      };
+      loadMessages();
     }
   }, [sessionId]);
 
@@ -118,12 +154,16 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
           reasoning: streamingReasoning || undefined,
         });
       }
-      // 带重试的 DB 同步
-      refreshMessages(3).then(success => {
+      // 带重试的 DB 同步，增加延迟确保 DB 写入完成
+      const syncFromDb = async () => {
+        // 等待一小段时间，确保主进程的 DB 事务和 flushSessionToDisk 完成
+        await new Promise(r => setTimeout(r, 200));
+        const success = await refreshMessages(5);
         if (success) {
           setPendingAssistantMsg(null);
         }
-      });
+      };
+      syncFromDb();
     }
     prevStreamingRef.current = isStreaming;
   }, [isStreaming, sessionId]);

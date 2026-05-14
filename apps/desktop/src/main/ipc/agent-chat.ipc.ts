@@ -149,6 +149,50 @@ export function registerChatIPC() {
         }
       }
 
+      // 立即保存用户消息到数据库（先落库，再处理）
+      try {
+        const history = await realSessionRepo.getMessagesBySession(args.sessionId, 1);
+        const lastOrder = history.length > 0 ? history[0].orderIndex : 0;
+        const userOrderIndex = lastOrder + 1;
+        const userMsgId = crypto.randomUUID();
+
+        const initialParts: any[] = [
+          {
+            id: crypto.randomUUID(),
+            messageId: userMsgId,
+            sessionId: args.sessionId,
+            type: 'text',
+            data: { text: args.text },
+          }
+        ];
+
+        if (finalAttachments && finalAttachments.length > 0) {
+          for (const att of finalAttachments) {
+            initialParts.push({
+              id: crypto.randomUUID(),
+              messageId: userMsgId,
+              sessionId: args.sessionId,
+              type: 'attachment',
+              data: att
+            });
+          }
+        }
+
+        await realSessionRepo.insertMessageWithParts(
+          {
+            id: userMsgId,
+            sessionId: args.sessionId,
+            role: 'user',
+            orderIndex: userOrderIndex,
+          },
+          initialParts
+        );
+        logger.info(`[Agent:chat] 用户消息已保存: ${userMsgId}`);
+      } catch (saveError) {
+        logger.error('[Agent:chat] 保存用户消息失败:', saveError);
+        throw saveError; // 保存失败则中止
+      }
+
       // 获取会话的助手配置
       let assistantContextWindow: number | undefined;
       try {
@@ -175,13 +219,14 @@ export function registerChatIPC() {
         systemModels,
         userConfig: userConfig,
         attachments: finalAttachments,
+        skipUserMessageRecording: true, // 用户消息已在上面保存
         toolRegistry: toolRegistry,
         sessionRepo: realSessionRepo as any,
         snapshotRepo: realSnapshotRepo as any,
         diarySearcher: createDiarySearcher(),
         webSearchResultFetcher: createWebSearchResultFetcher(),
         fetchSearchPage: createFetchSearchPage(),
-        systemPrompt: "You are BaiShou-Next, a genius local assistant. Follow the tools when applicable.",
+        // systemPrompt 由助手配置决定，此处不设置 fallback，让 SystemPromptBuilder 处理
         abortSignal: globalAbortController.signal
       }, {
         onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
@@ -212,7 +257,7 @@ export function registerChatIPC() {
   });
   
   ipcMain.handle('agent:regenerate', async (event, sessionId: string, messageId?: string, searchMode?: boolean, requestedProviderId?: string, requestedModelId?: string) => {
-    const { realSessionRepo, realSnapshotRepo } = getAgentManagers();
+    const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers();
     
     let targetMessage;
     if (messageId) {
@@ -269,6 +314,7 @@ export function registerChatIPC() {
           onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
           onFinish: () => event.sender.send('agent:stream-finish', { success: true })
         });
+        try { await sessionManager.flushSessionToDisk(sessionId); } catch (e) { logger.error('Agent regenerate persist error', e); }
         return true;
     } catch (e: any) {
         if (e.name === 'AbortError') {
@@ -291,7 +337,7 @@ export function registerChatIPC() {
   });
 
   ipcMain.handle('agent:edit-message', async (event, sessionId: string, messageId: string, newText: string, requestedProviderId?: string, requestedModelId?: string, attachments?: any[], searchMode?: boolean) => {
-    const { realSessionRepo, realSnapshotRepo } = getAgentManagers();
+    const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers();
     
     // [Intercept and Copy Attachments]
     let finalAttachments = attachments;
@@ -375,6 +421,7 @@ export function registerChatIPC() {
           onFinish: () => event.sender.send('agent:stream-finish', { success: true }),
           onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
         });
+        try { await sessionManager.flushSessionToDisk(sessionId); } catch (e) { logger.error('Agent edit-message persist error', e); }
         return true;
     } catch (e: any) {
         if (e.name === 'AbortError') {
