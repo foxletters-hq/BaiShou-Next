@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { MdOutlineInfo, MdOutlinePrivacyTip, MdOutlineBugReport, MdChevronRight, MdOpenInNew, MdCode, MdArrowBack } from 'react-icons/md';
+import { MdOutlineInfo, MdOutlinePrivacyTip, MdOutlineBugReport, MdChevronRight, MdOpenInNew, MdArrowBack } from 'react-icons/md';
 import '../shared/SettingsListTile.css';
 import './AboutSettingsCard.css';
 import { useToast } from '../Toast/useToast';
 import { DeveloperOptionsView } from '../DeveloperOptionsView';
+import { VersionManager } from '../VersionManager/index';
 
 export interface AboutSettingsCardProps {
   version: string;
@@ -147,10 +148,12 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
           <MdOpenInNew size={18} style={{ color: 'var(--color-on-surface-variant)' }} />
         </div>
 
-        <button className="about-github-btn" onClick={onOpenGithubHost}>
-          <MdCode size={20} />
-          {t('about.visit_github', '访问 GitHub 仓库')}
-        </button>
+        <div style={{ marginTop: 24 }}>
+          <VersionManager
+            version={version}
+            onOpenGithubHost={onOpenGithubHost}
+          />
+        </div>
       </div>
     </div>
   );

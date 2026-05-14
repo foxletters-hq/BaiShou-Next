@@ -619,7 +619,7 @@ export const SettingsScreen: React.FC = () => {
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.about', '关于')}</Text>
       
       <AboutSettingsCard
-        version="2.0.0-Next-Canary"
+        version="4.0.0"
         onOpenGithubHost={() => {
           // 打开GitHub仓库
           Alert.alert(t('common.hint', '提示'), t('settings.github_hint', 'GitHub链接已复制'));

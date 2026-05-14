@@ -12,6 +12,7 @@ import {
   MdInfoOutline
 } from 'react-icons/md'
 import { useUpdaterStore, UpdateStatus } from '@baishou/store'
+import '../shared/SettingsListTile.css'
 import './VersionManager.css'
 
 export interface VersionManagerProps {
@@ -225,10 +226,17 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
             <span className="version-label">{t('updater.current_version', '当前版本')}</span>
             <span className="version-number">v{version}</span>
           </div>
-          {currentVersion && currentVersion !== version && (
+          {currentVersion && currentVersion !== version ? (
             <div className="version-latest">
               <span className="version-label">{t('updater.latest_version', '最新版本')}</span>
               <span className="version-number">v{currentVersion}</span>
+            </div>
+          ) : (
+            <div className="version-latest">
+              <span className="version-label">{t('updater.latest_version', '最新版本')}</span>
+              <span className="version-number" style={{ color: 'var(--text-secondary)', fontFamily: 'inherit', fontWeight: 400 }}>
+                {t('updater.not_released', '暂未发布')}
+              </span>
             </div>
           )}
         </div>
@@ -284,13 +292,13 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
               </span>
             </div>
           </div>
-          <label className="version-toggle-switch">
+          <label className="settings-switch-label">
             <input
               type="checkbox"
               checked={autoCheck}
               onChange={(e) => setAutoCheck(e.target.checked)}
             />
-            <span className="version-toggle-slider" />
+            <span className="settings-switch-slider" />
           </label>
         </div>
       </div>
