@@ -13,22 +13,34 @@ export function normalizeCJKSpacing(text: string): string {
   const punct = '\u3000-\u303f\uff00-\uffef';
 
   return text
+    // CJK/CJK标点 之间去空格
     .replace(new RegExp(`([${cjk}${punct}])\\s+([${cjk}${punct}])`, 'g'), '$1$2')
+    // CJK 与数字之间去空格
     .replace(new RegExp(`([${cjk}])\\s+(\\d)`, 'g'), '$1$2')
     .replace(new RegExp(`(\\d)\\s+([${cjk}])`, 'g'), '$1$2')
+    // 数字之间去空格
     .replace(/(\d)\s+(\d)/g, '$1$2')
+    // CJK 与 ASCII 字母之间去空格
     .replace(new RegExp(`([${cjk}])\\s+([a-zA-Z])`, 'g'), '$1$2')
     .replace(new RegExp(`([a-zA-Z])\\s+([${cjk}${punct}])`, 'g'), '$1$2')
+    // 英文标点前去空格（, . ; : ! ? ） ] }）
     .replace(/\s+([,.;:!?)}\]])/g, '$1')
+    // 英文标点后加空格（仅当后面跟字母/数字时）
     .replace(/([,.;:!?)}\]])([A-Za-z0-9])/g, '$1 $2')
+    // 开括号前去空格
     .replace(/\s+([([\{])/g, '$1')
+    // 开括号后去空格
     .replace(/([([\{])\s+/g, '$1')
+    // 撇号周围去空格（'s, 're, 've 等）
     .replace(/\s+'/g, "'")
     .replace(/'\s+/g, "'")
+    // 连字符周围去空格
     .replace(/\s*-\s*/g, '-');
 }
 
+/** 预览区域每行高度 */
 const LINE_HEIGHT = 14;
+/** 预览区域最多显示行数 */
 const MAX_PREVIEW_LINES = 5;
 
 export interface ThinkingBlockProps {
@@ -36,7 +48,7 @@ export interface ThinkingBlockProps {
   content: string;
   /** 是否正在思考中 */
   isThinking?: boolean;
-  /** 思考耗时（毫秒），流式时为 0，完成后填入 */
+  /** 思思考耗时（毫秒），流式时为 0，完成后填入 */
   thinkingTimeMs?: number;
   /** 是否默认展开，默认 false（折叠） */
   defaultOpen?: boolean;
@@ -83,7 +95,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     };
   }, [isThinking, thinkingTimeMs]);
 
-  // 自动折叠逻辑：思考中时强制折叠
+  // 自动折叠逻辑
   useEffect(() => {
     if (autoCollapse && isThinking) {
       setIsOpen(false);
@@ -108,82 +120,47 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     return t('agent.chat.thought_process', '思考过程');
   }, [isThinking, displayTime, timeText, t]);
 
-  const messages = useMemo(() => {
+  // 获取预览行
+  const previewLines = useMemo(() => {
     if (!content) return [];
     const normalized = normalizeCJKSpacing(content);
     const allLines = normalized.split('\n');
+    // 思考中时去掉最后一行（可能正在输入，不完整）
     const lines = isThinking ? allLines.slice(0, -1) : allLines;
+    // 过滤空行
     return lines.filter((line) => line.trim() !== '');
   }, [content, isThinking]);
 
-  // 是否显示预览（折叠态 + 思考中）
-  const showCollapsedPreview = isThinking && !isOpen;
-
-  // 折叠态容器高度
-  const previewContainerHeight = useMemo(() => {
-    if (!showCollapsedPreview || messages.length < 1) return 38;
-    return Math.min(75, Math.max(messages.length + 1, 2) * LINE_HEIGHT + 25);
-  }, [showCollapsedPreview, messages.length]);
+  // 动态计算预览容器高度
+  const previewHeight = useMemo(() => {
+    if (previewLines.length < 1) return 38;
+    return Math.min(75, Math.max(previewLines.length + 1, 2) * LINE_HEIGHT + 25);
+  }, [previewLines.length]);
 
   // 规范化后的完整内容
   const normalizedContent = useMemo(() => normalizeCJKSpacing(content), [content]);
 
   if (!content) return null;
 
-  const handleToggle = () => setIsOpen((prev) => !prev);
+  const handleToggle = () => setIsOpen(prev => !prev);
+
+  // 判断是否显示预览（折叠态 + 思考中）
+  const showCollapsedPreview = isThinking && !isOpen;
 
   return (
     <div
-      className={`${styles.container} ${isOpen ? styles.open : ''}`}
-      style={showCollapsedPreview ? { height: previewContainerHeight } : undefined}
+      className={`${styles.container} ${isThinking ? styles.isThinking : ''} ${isOpen ? styles.open : ''}`}
     >
-      {/* Header */}
       <div className={styles.header} onClick={handleToggle}>
-        <div className={styles.headerLeft}>
-          <motion.span
-            className={styles.bulb}
-            animate={isThinking ? 'active' : 'idle'}
-            variants={{
-              active: { opacity: [1, 0.2, 1], transition: { duration: 1.2, ease: 'easeInOut', repeat: Infinity } },
-              idle: { opacity: 1, transition: { duration: 0.3 } },
-            }}
-          >
-            💡
-          </motion.span>
+        <div className={styles.headerIcon}>
+          <span className={styles.sparkle}>✨</span>
         </div>
 
-        <div className={styles.headerCenter}>
-          <span
-            className={`${styles.statusText} ${showCollapsedPreview && messages.length > 0 ? styles.statusOverlay : ''}`}
-          >
-            {statusText}
-          </span>
-
-          {showCollapsedPreview && messages.length > 0 && (
-            <div className={styles.previewWrap}>
-              <div className={styles.previewMask}>
-                <motion.div
-                  className={styles.previewScroll}
-                  style={{ height: messages.length * LINE_HEIGHT }}
-                  initial={{ y: -2 }}
-                  animate={{ y: -(messages.length * LINE_HEIGHT + 2) }}
-                  transition={{ duration: 0.15, ease: 'linear' }}
-                >
-                  {messages.map((msg, index) => {
-                    if (index < messages.length - MAX_PREVIEW_LINES) return null;
-                    return (
-                      <div key={index} className={styles.previewLine}>
-                        {msg}
-                      </div>
-                    );
-                  })}
-                </motion.div>
-              </div>
-            </div>
-          )}
+        <div className={styles.headerText}>
+          <span className={styles.statusText}>{statusText}</span>
         </div>
 
-        <div className={`${styles.headerRight} ${isOpen ? styles.arrowOpen : ''}`}>
+        <div className={`${styles.arrow} ${isOpen ? styles.arrowOpen : ''}`}>
           <svg
             width="14"
             height="14"
@@ -199,11 +176,37 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         </div>
       </div>
 
-      {/* 可展开内容区 */}
       <div className={styles.contentWrap}>
         <div className={styles.contentInner}>
           <div className={styles.content}>
-            <MarkdownRenderer content={normalizedContent} plainText />
+            {showCollapsedPreview ? (
+              // 折叠态：逐行动画滚动预览
+              <div
+                className={styles.previewContainer}
+                style={{ height: previewHeight }}
+              >
+                <div className={styles.previewContent}>
+                  <motion.div
+                    className={styles.previewMessages}
+                    style={{ height: previewLines.length * LINE_HEIGHT }}
+                    animate={{ y: -previewLines.length * LINE_HEIGHT - 2 }}
+                    transition={{ duration: 0.15, ease: 'linear' }}
+                  >
+                    {previewLines.map((line, index) => {
+                      if (index < previewLines.length - MAX_PREVIEW_LINES) return null;
+                      return (
+                        <div key={index} className={styles.previewLine}>
+                          {line}
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                </div>
+              </div>
+            ) : (
+              // 展开态/思考完成：纯文本渲染，跳过 remarkCjkFriendly 避免 CJK-ASCII 空格干扰
+              <MarkdownRenderer content={normalizedContent} plainText />
+            )}
           </div>
         </div>
       </div>

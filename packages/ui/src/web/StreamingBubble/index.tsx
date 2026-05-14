@@ -74,6 +74,16 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
            </div>
          ) : (
            <>
+              {/* Reasoning 块 - 移到 bubbleCard 外部 */}
+              {hasReasoning && (
+                <ThinkingBlock
+                  content={reasoning}
+                  isThinking={isReasoning && !hasText}
+                  defaultOpen={false}
+                  autoCollapse={true}
+                />
+              )}
+
               {hasText || hasTools ? (
                 <div className={styles.bubbleCard}>
                    {/* 工具调用 */}
@@ -84,34 +94,14 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
                      />
                    )}
 
-                   {/* 思考过程 - 放在消息气泡内部 */}
-                   {hasReasoning && (
-                     <ThinkingBlock
-                       content={reasoning}
-                       isThinking={isReasoning && !hasText}
-                       defaultOpen={false}
-                       autoCollapse={true}
-                     />
-                   )}
-
                    {/* 正文内容 */}
                    {hasText && <MarkdownRenderer content={normalizedText} isStreaming={true} />}
                 </div>
-             ) : hasReasoning ? (
-               // 仅推理阶段：显示在气泡卡内
-               <div className={styles.bubbleCard}>
-                 <ThinkingBlock
-                   content={reasoning}
-                   isThinking={true}
-                   defaultOpen={false}
-                   autoCollapse={true}
-                 />
-               </div>
-             ) : (
+             ) : !hasReasoning ? (
                <div className={styles.dotsWrap}>
                   <BouncingDotsIndicator />
                </div>
-             )}
+             ) : null}
              
              {onStop && (
                <div className={styles.stopBtnWrap}>

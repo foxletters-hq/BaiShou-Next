@@ -70,6 +70,9 @@
   --color-outline-variant: rgba(208, 208, 208, 0.5);
   --color-outline-variant-rgb: 208, 208, 208;
 
+  /* Surface Variants */
+  --color-surface-variant: #f1f5f9;
+
   /* Shadows (Light) */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04); 
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05); 
@@ -118,6 +121,9 @@
 
   --color-outline-variant: rgba(255, 255, 255, 0.10);
   --color-outline-variant-rgb: 255, 255, 255;
+
+  /* Surface Variants */
+  --color-surface-variant: rgba(255, 255, 255, 0.05);
 
   /* Text & Inks (Dark) */
   --text-primary: #F8FAFC;       /* Headlines, strong text */

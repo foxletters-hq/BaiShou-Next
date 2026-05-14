@@ -56,15 +56,24 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   const isUser = message.role === 'user';
 
-  // 自动聚焦并定位到末尾
+  // 自动调整 textarea 高度
+  const adjustTextareaHeight = useCallback(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = `${ta.scrollHeight}px`;
+    }
+  }, []);
+
+  // 自动聚焦、定位到末尾并调整高度
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       const ta = textareaRef.current;
       ta.focus();
       ta.setSelectionRange(ta.value.length, ta.value.length);
-      ta.scrollTop = ta.scrollHeight;
+      adjustTextareaHeight();
     }
-  }, [isEditing]);
+  }, [isEditing, adjustTextareaHeight]);
 
   const handleStartEdit = useCallback(() => {
     setEditedContent(message.content || '');
@@ -161,9 +170,15 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         ref={textareaRef}
         className={styles.editorTextarea}
         value={editedContent}
-        onChange={(e) => setEditedContent(e.target.value)}
+        onChange={(e) => {
+          setEditedContent(e.target.value);
+          // 自动调整高度
+          const ta = e.target;
+          ta.style.height = 'auto';
+          ta.style.height = `${ta.scrollHeight}px`;
+        }}
         onKeyDown={handleEditorKeyDown}
-        rows={3}
+        rows={1}
       />
       <div className={styles.editorActions}>
         <button className={`${styles.editorBtn} ${styles.editorBtnCancel}`} onClick={handleCancelEdit}>
@@ -195,10 +210,10 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
            </div>
 
            {isEditing ? (
-             <div className={styles.userBubbleCard} style={{ background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-               {renderEditor()}
-             </div>
-           ) : (
+              <div className={`${styles.userBubbleCard} ${styles.editingBubbleCard}`}>
+                {renderEditor()}
+              </div>
+            ) : (
              <>
                <div className={styles.userBubbleCard}>
                   {renderAttachments(true)}
@@ -254,24 +269,24 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </div>
 
              {isEditing ? (
-               <div className={styles.aiBubbleCard}>
-                 {renderEditor()}
-               </div>
-              ) : (
+                <div className={`${styles.aiBubbleCard} ${styles.editingBubbleCard}`}>
+                  {renderEditor()}
+                </div>
+               ) : (
                 <>
+                {/* Reasoning 块 - 移到 aiBubbleCard 外部 */}
+                {message.reasoning && (
+                  <ThinkingBlock
+                    content={message.reasoning}
+                    isThinking={false}
+                    defaultOpen={false}
+                    autoCollapse={false}
+                  />
+                )}
+
                 <div className={styles.aiBubbleCard}>
                    {renderAttachments(false)}
-
-                   {/* 思考过程 - 放在消息气泡内部 */}
-                   {message.reasoning && (
-                     <ThinkingBlock
-                       content={message.reasoning}
-                       isThinking={false}
-                       defaultOpen={false}
-                       autoCollapse={false}
-                     />
-                   )}
-
+                   
                    {/* 工具调用 */}
                    {message.toolInvocations && message.toolInvocations.length > 0 && (
                      <ToolResultGroup invocations={message.toolInvocations} />

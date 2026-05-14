@@ -1,129 +1,108 @@
 .container {
   width: 100%;
+  min-width: 100%;
   margin-bottom: 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
-  border: 0.5px solid var(--border-subtle);
+  border: 1.5px solid var(--border-subtle);
   background: var(--bg-surface);
-  transition: height 0.15s ease, border-radius 0.15s ease;
+  transition: all 0.2s ease;
   box-sizing: border-box;
-}
-
-.open {
-  border-radius: 10px 10px 0 0;
+  align-self: stretch;
 }
 
 .container:hover {
   border-color: var(--border-strong);
 }
 
-/* Header - 三栏 Flexbox 布局 */
+/* Header - Flexbox 三栏布局 */
 .header {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  padding: 10px 14px;
   cursor: pointer;
   user-select: none;
-  height: 100%;
+  background: var(--bg-surface-normal);
   transition: background 0.15s ease;
+  min-height: 42px;
 }
 
 .header:hover {
   background: var(--bg-surface-normal);
 }
 
-/* 左侧图标 */
-.headerLeft {
-  width: 50px;
+/* 左侧图标区域 - 固定宽度 */
+.headerIcon {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 100%;
   flex-shrink: 0;
-  padding-left: 5px;
 }
 
-.bulb {
+/* Sparkle animation */
+.sparkle {
   font-size: 18px;
-  line-height: 1;
+  transition: transform 0.2s ease;
 }
 
-/* 中间文本区域 */
-.headerCenter {
+.isThinking .sparkle {
+  animation: sparkle-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes sparkle-pulse {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  25% { transform: scale(1.15) rotate(8deg); opacity: 0.85; }
+  50% { transform: scale(0.95) rotate(-5deg); opacity: 1; }
+  75% { transform: scale(1.08) rotate(3deg); opacity: 0.9; }
+}
+
+/* 中间文本区域 - 弹性宽度 */
+.headerText {
   flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
-  position: relative;
+  padding: 0 8px;
 }
 
-/* 状态文本 - 默认正常流，有预览时绝对定位在上层 */
 .statusText {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 14px;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 14px 0;
 }
 
-/* 有预览时：绝对定位覆盖在上层，z-index 高于滚动内容 */
-.statusOverlay {
-  position: absolute;
-  inset: 0 0 auto 0;
-  padding: 10px 0;
-  z-index: 2;
-}
-
-/* 折叠态滚动预览区域 */
-.previewWrap {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  position: relative;
-}
-
-.previewMask {
-  width: 100%;
-  height: 100%;
-  mask: linear-gradient(
-    to bottom,
-    rgb(0 0 0 / 0%) 0%,
-    rgb(0 0 0 / 0%) 35%,
-    rgb(0 0 0 / 25%) 40%,
-    rgb(0 0 0 / 100%) 90%,
-    rgb(0 0 0 / 100%) 100%
-  );
-  position: relative;
-}
-
-.previewScroll {
-  width: 100%;
-  position: absolute;
-  top: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-/* 每行预览文本 */
-.previewLine {
-  width: 100%;
-  line-height: 14px;
+/* Inline preview text in header */
+.previewInline {
   font-size: 11px;
   color: var(--text-tertiary);
+  opacity: 0.8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 200px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
 }
 
-/* 右侧箭头 */
-.headerRight {
-  width: 40px;
+/* 右侧箭头区域 - 固定宽度 */
+.arrow {
   display: flex;
-  justify-content: center;
   align-items: center;
-  flex-shrink: 0;
+  justify-content: center;
+  width: 32px;
+  height: 100%;
   color: var(--text-tertiary);
-  transition: transform 0.15s ease;
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
 }
 
 .arrowOpen {
@@ -145,13 +124,13 @@
   overflow: hidden;
 }
 
-/* 展开后的内容区 */
+/* Content */
 .content {
-  padding: 16px;
+  padding: 12px 14px;
   font-size: 14px;
   line-height: 1.7;
   color: var(--text-secondary);
-  border-top: 0.5px solid var(--border-subtle);
+  border-top: 1px solid var(--border-subtle);
   word-break: break-word;
   overflow-wrap: break-word;
 }
@@ -164,23 +143,73 @@
   margin-bottom: 0;
 }
 
+/* Streaming preview */
+.previewContainer {
+  overflow: hidden;
+  position: relative;
+  transition: height 0.15s ease;
+}
+
+/* 使用 CSS mask 实现顶部渐隐效果 */
+.previewContent {
+  width: 100%;
+  height: 100%;
+  mask: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 35%,
+    rgba(0, 0, 0, 0.25) 40%,
+    rgba(0, 0, 0, 1) 90%,
+    rgba(0, 0, 0, 1) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.previewMessages {
+  width: 100%;
+  position: absolute;
+  top: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* 每行预览文本 - 单行截断 */
+.previewLine {
+  width: 100%;
+  line-height: 14px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cursor blink for streaming */
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--color-primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* Responsive */
 @media (max-width: 640px) {
-  .headerLeft {
-    width: 40px;
-    padding-left: 4px;
+  .header {
+    padding: 8px 12px;
   }
 
   .content {
-    padding: 12px;
+    padding: 8px 12px;
     font-size: 13px;
-  }
-
-  .statusText {
-    font-size: 12px;
-  }
-
-  .headerRight {
-    width: 32px;
   }
 }

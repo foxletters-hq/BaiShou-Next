@@ -102,6 +102,13 @@
   align-items: flex-end;
 }
 
+.editingBubbleCard {
+  background-color: var(--bg-surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  width: 100%;
+  min-width: 400px;
+}
+
 .textContentUser {
   color: var(--text-on-primary);
   font-size: 14px;
@@ -355,12 +362,13 @@
 .editorContainer {
   margin-top: 4px;
   width: 100%;
+  min-width: 100%;
 }
 
 .editorTextarea {
   width: 100%;
-  min-height: 60px;
-  max-height: 300px;
+  min-height: 80px;
+  max-height: 60vh;
   padding: 10px 12px;
   font-size: 14px;
   font-family: inherit;
@@ -369,10 +377,11 @@
   border-radius: 10px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  resize: vertical;
+  resize: none;
   outline: none;
   box-sizing: border-box;
   transition: border-color 0.2s;
+  overflow-y: auto;
 }
 
 .editorTextarea:focus {
