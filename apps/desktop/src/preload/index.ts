@@ -210,6 +210,7 @@ export const api = {
     isInitialized: () => ipcRenderer.invoke('git:isInitialized'),
     getStatus: () => ipcRenderer.invoke('git:getStatus'),
     unstageFile: (filePath: string) => ipcRenderer.invoke('git:unstageFile', filePath),
+    unstageAll: () => ipcRenderer.invoke('git:unstageAll'),
     discardFile: (filePath: string) => ipcRenderer.invoke('git:discardFile', filePath),
     discardAllChanges: () => ipcRenderer.invoke('git:discardAllChanges'),
     getConfig: () => ipcRenderer.invoke('git:getConfig'),

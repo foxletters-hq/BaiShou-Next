@@ -58,12 +58,17 @@ export interface IGitSyncService {
   unstageFile(filePath: string): Promise<void>;
 
   /**
+   * 取消暂存全部文件
+   */
+  unstageAll(): Promise<void>;
+
+  /**
    * 丢弃指定文件的工作区修改（恢复到暂存区状态或 HEAD）
    */
   discardFile(filePath: string): Promise<void>;
 
   /**
-   * 丢弃所有文件的工作区修改
+   * 丢弃所有工作区修改（含已跟踪文件变更和未跟踪文件）
    */
   discardAllChanges(): Promise<void>;
 

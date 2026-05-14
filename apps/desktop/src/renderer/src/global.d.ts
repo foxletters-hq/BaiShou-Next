@@ -77,6 +77,7 @@ interface GitAPI {
   isInitialized(): Promise<boolean>;
   getStatus(): Promise<import('@baishou/shared').GitStatus>;
   unstageFile(filePath: string): Promise<{ success: boolean }>;
+  unstageAll(): Promise<{ success: boolean }>;
   discardFile(filePath: string): Promise<{ success: boolean }>;
   discardAllChanges(): Promise<{ success: boolean }>;
   getConfig(): Promise<unknown>;

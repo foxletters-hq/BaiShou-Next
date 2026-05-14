@@ -1586,6 +1586,7 @@
     "version_history": "バージョン履歴",
     "rollback_confirm": "ロールバックしてもよろしいですか？",
     "unstage": "ステージ解除",
+    "unstage_all": "すべてステージ解除",
     "discard": "破棄",
     "discard_all": "すべて破棄"
   }

@@ -1618,6 +1618,7 @@
     "version_history": "版本歷史",
     "rollback_confirm": "確定回滾嗎？",
     "unstage": "取消暫存",
+    "unstage_all": "全部取消暫存",
     "discard": "撤銷",
     "discard_all": "全部撤銷"
   }

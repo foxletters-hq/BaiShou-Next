@@ -1680,6 +1680,7 @@
     "version_history": "版本历史",
     "rollback_confirm": "确定回滚吗？",
     "unstage": "取消暂存",
+    "unstage_all": "全部取消暂存",
     "discard": "撤销",
     "discard_all": "全部撤销"
   }

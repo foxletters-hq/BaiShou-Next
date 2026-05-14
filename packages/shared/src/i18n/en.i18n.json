@@ -1645,6 +1645,7 @@
     "version_history": "Version History",
     "rollback_confirm": "Are you sure you want to rollback?",
     "unstage": "Unstage",
+    "unstage_all": "Unstage All",
     "discard": "Discard",
     "discard_all": "Discard All"
   }

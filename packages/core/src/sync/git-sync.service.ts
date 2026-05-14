@@ -225,6 +225,12 @@ export class GitSyncServiceImpl implements IGitSyncService {
     await git.reset(['HEAD', '--', filePath]);
   }
 
+  async unstageAll(): Promise<void> {
+    const git = await this.ensureGit();
+    logger.info('[GitSync] 取消暂存全部文件');
+    await git.reset(['HEAD', '--', '.']);
+  }
+
   async discardFile(filePath: string): Promise<void> {
     const git = await this.ensureGit();
     logger.info(`[GitSync] 丢弃修改: ${filePath}`);
@@ -246,6 +252,8 @@ export class GitSyncServiceImpl implements IGitSyncService {
         throw err;
       }
     }
+
+    await this.cleanUntracked(git);
   }
 
   private async discardAllFileByFile(git: SimpleGit): Promise<void> {
@@ -263,6 +271,20 @@ export class GitSyncServiceImpl implements IGitSyncService {
     }
 
     logger.info(`[GitSync] 逐文件丢弃完成，跳过 ${failCount} 个锁定文件`);
+  }
+
+  private async cleanUntracked(git: SimpleGit): Promise<void> {
+    try {
+      await git.clean('f', ['-d']);
+      logger.info('[GitSync] 已清理未跟踪文件');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('unable to unlink') || msg.includes('Invalid argument')) {
+        logger.warn('[GitSync] 清理未跟踪文件时遇到锁定文件，已跳过');
+      } else {
+        logger.warn(`[GitSync] 清理未跟踪文件失败: ${msg}`);
+      }
+    }
   }
 
   async getConfig(): Promise<GitSyncConfig> {

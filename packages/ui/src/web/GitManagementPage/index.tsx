@@ -34,6 +34,7 @@ export interface GitManagementPageProps {
   onGetWorkingDiff: (filePath: string, staged: boolean) => Promise<FileDiff>;
   // 暂存操作
   onUnstageFile: (filePath: string) => Promise<void>;
+  onUnstageAll: () => Promise<void>;
   onDiscardFile: (filePath: string) => Promise<void>;
   onDiscardAllChanges: () => Promise<void>;
   // 同步
@@ -62,6 +63,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   onGetFileDiff,
   onGetWorkingDiff,
   onUnstageFile,
+  onUnstageAll,
   onDiscardFile,
   onDiscardAllChanges,
   onPush,
@@ -305,6 +307,11 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
     handleRefreshStatus();
   }, [onUnstageFile, handleRefreshStatus]);
 
+  const handleUnstageAll = useCallback(async () => {
+    await onUnstageAll();
+    handleRefreshStatus();
+  }, [onUnstageAll, handleRefreshStatus]);
+
   const handleDiscardFile = useCallback(async (filePath: string) => {
     await onDiscardFile(filePath);
     handleRefreshStatus();
@@ -503,6 +510,14 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                   </span>
                   {stagedCount > 0 && (
                     <span className="gmp-collapsible-badge">{stagedCount}</span>
+                  )}
+                  {stagedCount > 0 && (
+                    <button
+                      className="gmp-btn-tiny"
+                      onClick={(e) => { e.stopPropagation(); handleUnstageAll(); }}
+                    >
+                      {t('version_control.unstage_all', '全部取消暂存')}
+                    </button>
                   )}
                 </div>
                 {expandedSections.staged && (

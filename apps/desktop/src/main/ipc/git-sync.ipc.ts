@@ -39,6 +39,11 @@ export function registerGitSyncIPC() {
     return { success: true };
   });
 
+  ipcMain.handle('git:unstageAll', async () => {
+    await getGitService().unstageAll();
+    return { success: true };
+  });
+
   ipcMain.handle('git:discardFile', async (_, filePath: string) => {
     await getGitService().discardFile(filePath);
     return { success: true };

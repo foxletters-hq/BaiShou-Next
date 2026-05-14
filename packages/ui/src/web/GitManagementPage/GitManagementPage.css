@@ -142,7 +142,7 @@
 
 .gmp-btn-primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--text-on-primary);
   border-color: var(--color-primary);
 }
 
@@ -166,7 +166,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
   background: var(--bg-surface-normal);
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 11px;
   flex-shrink: 0;
@@ -179,7 +179,7 @@
 }
 
 .gmp-conflict {
-  border-color: #f59e0b;
+  border-color: var(--color-warning);
 }
 
 .gmp-conflict-row {
@@ -318,7 +318,7 @@
   padding: 2px 6px;
   border-radius: 4px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--text-on-primary);
 }
 
 .gmp-tl-changes {
@@ -361,19 +361,19 @@
   border-radius: 4px;
   flex-shrink: 0;
   font-family: monospace;
-  color: #fff;
+  color: var(--text-on-primary);
 }
 
 .gmp-tl-file-added {
-  background: #22c55e;
+  background: var(--color-accent-green);
 }
 
 .gmp-tl-file-modified {
-  background: #3b82f6;
+  background: var(--color-accent-blue);
 }
 
 .gmp-tl-file-deleted {
-  background: #ef4444;
+  background: var(--color-error);
 }
 
 .gmp-tl-file-path {
@@ -415,19 +415,19 @@
 }
 
 .gmp-diff-hunk-header {
-  color: #3b82f6;
+  color: var(--color-accent-blue);
   font-weight: 600;
   margin: 8px 0 4px;
 }
 
 .gmp-diff-add {
   background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
+  color: var(--color-accent-green);
 }
 
 .gmp-diff-remove {
   background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .gmp-diff-normal {
@@ -534,27 +534,27 @@
   border-radius: 4px;
   flex-shrink: 0;
   font-family: monospace;
-  color: #fff;
+  color: var(--text-on-primary);
 }
 
 .gmp-file-added {
-  background: #22c55e;
+  background: var(--color-accent-green);
 }
 
 .gmp-file-modified {
-  background: #3b82f6;
+  background: var(--color-accent-blue);
 }
 
 .gmp-file-deleted {
-  background: #ef4444;
+  background: var(--color-error);
 }
 
 .gmp-file-renamed {
-  background: #8b5cf6;
+  background: var(--color-accent-purple);
 }
 
 .gmp-file-untracked {
-  background: #a1a1aa;
+  background: var(--color-secondary);
 }
 
 .gmp-file-path {
