@@ -308,9 +308,13 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   }, [onUnstageFile, handleRefreshStatus]);
 
   const handleUnstageAll = useCallback(async () => {
-    await onUnstageAll();
-    handleRefreshStatus();
-  }, [onUnstageAll, handleRefreshStatus]);
+    try {
+      await onUnstageAll();
+      handleRefreshStatus();
+    } catch (e: any) {
+      onToast(e?.message || t('common.error', '操作失败'), 'error');
+    }
+  }, [onUnstageAll, handleRefreshStatus, onToast, t]);
 
   const handleDiscardFile = useCallback(async (filePath: string) => {
     await onDiscardFile(filePath);

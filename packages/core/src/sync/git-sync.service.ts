@@ -222,13 +222,13 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async unstageFile(filePath: string): Promise<void> {
     const git = await this.ensureGit();
     logger.info(`[GitSync] 取消暂存: ${filePath}`);
-    await git.reset(['HEAD', '--', filePath]);
+    await git.raw(['reset', 'HEAD', '--', filePath]);
   }
 
   async unstageAll(): Promise<void> {
     const git = await this.ensureGit();
     logger.info('[GitSync] 取消暂存全部文件');
-    await git.reset(['HEAD', '--', '.']);
+    await git.raw(['reset', 'HEAD', '--', '.']);
   }
 
   async discardFile(filePath: string): Promise<void> {
