@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createClient, Client } from '@libsql/client';
 import { SqliteHybridSearchRepository } from '../repositories/hybrid-search.repository';
 import * as fs from 'node:fs/promises';
@@ -18,7 +18,24 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
     db = createClient({ url: `file:${dbPath}` });
     repo = new SqliteHybridSearchRepository(db);
 
-    await repo.initVectorTables(3); // init with dimension 3
+    // 手动建表 — 对齐 Drizzle ORM 的 memory_embeddings 表结构
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS memory_embeddings (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        embedding_id    TEXT NOT NULL UNIQUE,
+        source_type     TEXT NOT NULL,
+        source_id       TEXT NOT NULL,
+        group_id        TEXT NOT NULL,
+        chunk_index     INTEGER NOT NULL,
+        chunk_text      TEXT NOT NULL,
+        metadata_json   TEXT NOT NULL DEFAULT '{}',
+        embedding       BLOB NOT NULL,
+        dimension       INTEGER NOT NULL,
+        model_id        TEXT NOT NULL,
+        created_at      INTEGER NOT NULL,
+        source_created_at INTEGER
+      )
+    `);
   });
 
   afterEach(async () => {
@@ -31,14 +48,12 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
   });
 
   describe('Initialization Pipeline', () => {
-    it('creates agent_embeddings table', async () => {
-      const res = await db.execute(`SELECT name FROM sqlite_master WHERE type='table' AND name='agent_embeddings'`);
+    it('uses memory_embeddings table', async () => {
+      const res = await db.execute(`SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'`);
       expect(res.rows.length).toBe(1);
     });
 
-    it('can dynamically probe for native native vector search support via vector_top_k', async () => {
-      // We probe whether vector extensions exist.
-      // Depending on the environment, it may or may not exist (pure JS or fully loaded native)
+    it('can dynamically probe for native vector search support', async () => {
       const isNative = repo.supportsNativeVectorSearch();
       expect(typeof isNative).toBe('boolean');
     });
@@ -46,8 +61,6 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
 
   describe('Fallback: JS Cosine Similarity Calculation', () => {
     it('should correctly fallback to JS pure cosine similarity calculation when native vector search is disabled or mocked out', async () => {
-        // Manually insert vectors via insertEmbedding, bypassing F32_BLOB raw manipulation to keep it abstract 
-        // We will insert embeddings
         await repo.insertEmbedding({
            id: 'f1', sourceType: 'c', sourceId: 's', groupId: 'fallback_group', chunkIndex: 0,
            chunkText: 'Match node', embedding: [0.9, 0.1, 0], modelId: 'm'
@@ -62,24 +75,22 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         const originalSupport = repo.supportsNativeVectorSearch;
         repo.supportsNativeVectorSearch = () => false;
 
-        // Note: queryNativeVector automatically handles the fallback
         const target = [1, 0, 0];
         const results = await repo.queryNativeVector(target, 2);
         
         expect(results.length).toBe(2);
-        expect(results[0].messageId).toBe('f1');
-        // JS cosine similarity fallback check
-        expect(results[0].score).toBeGreaterThan(0.85); // should be quite similar to target
-        expect(results[1].messageId).toBe('f2');
-        expect(results[1].score).toBe(0); // target [1,0,0] and nonMatch [0,1,0] are orthogonal
+        expect(results[0]!.messageId).toBe('f1');
+        expect(results[0]!.score).toBeGreaterThan(0.85);
+        expect(results[1]!.messageId).toBe('f2');
+        expect(results[1]!.score).toBe(0);
 
         // Restore
         repo.supportsNativeVectorSearch = originalSupport;
     });
     
     it('should properly process missing or corrupted embeddings gracefully during JS fallback', async () => {
-      // mock a bad row manually (it shouldn't throw error or crash the fallback loop)
-      await db.execute(`INSERT INTO agent_embeddings (id, source_type, source_id, group_id, chunk_index, chunk_text, embedding, model_id) VALUES ('bad1', 'c', 's', 'fallback_group', 0, 'corrupt', vector('[error'), 'm')`).catch(() => {});
+      // 插入一条原始 BLOB 无法被 hex(embedding) 解析的行（corrupted float 数据）
+      await db.execute(`INSERT INTO memory_embeddings (embedding_id, source_type, source_id, group_id, chunk_index, chunk_text, embedding, dimension, model_id, created_at) VALUES ('bad1', 'c', 's', 'fallback_group', 0, 'corrupt', X'FF', 3, 'm', 0)`).catch(() => {});
       
       const originalSupport = repo.supportsNativeVectorSearch;
       repo.supportsNativeVectorSearch = () => false;
@@ -91,7 +102,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
   });
 
   describe('Decoupled Search Support', () => {
-    it('fetchAllEmbeddingsForDecoupledSearch pulls out valid structured JSON data', async () => {
+    it('fetchAllEmbeddingsForDecoupledSearch pulls out valid structured data', async () => {
        await repo.insertEmbedding({
            id: 'mem1', sourceType: 'test', sourceId: 'src_test', groupId: 'sessionA', chunkIndex: 1,
            chunkText: 'Memory context hello', embedding: [0.1, 0.2, 0.3], modelId: 'modern-model'
@@ -99,9 +110,12 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
 
        const res = await repo.fetchAllEmbeddingsForDecoupledSearch('sessionA');
        expect(res).toHaveLength(1);
-       expect(res[0].messageId).toBe('mem1');
-       expect(res[0].chunkText).toBe('Memory context hello');
-       expect(res[0].embedding).toEqual([0.1, 0.2, 0.3]);
+       expect(res[0]!.messageId).toBe('mem1');
+       expect(res[0]!.chunkText).toBe('Memory context hello');
+       // Float32 精度损失，使用 toBeCloseTo 比较
+       expect(res[0]!.embedding[0]).toBeCloseTo(0.1, 2);
+       expect(res[0]!.embedding[1]).toBeCloseTo(0.2, 2);
+       expect(res[0]!.embedding[2]).toBeCloseTo(0.3, 2);
     });
   });
 
@@ -118,7 +132,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
 
        const res = await repo.queryFTS('fox', 5);
        expect(res).toHaveLength(1);
-       expect(res[0].messageId).toBe('fts1');
+       expect(res[0]!.messageId).toBe('fts1');
     });
   });
 });

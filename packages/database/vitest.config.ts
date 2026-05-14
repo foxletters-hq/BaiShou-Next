@@ -7,8 +7,6 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       'src/__tests__/schema.test.ts',
-      'src/__tests__/hybrid-search.repository.test.ts',
-      'src/__tests__/migration-interrupt.test.ts',
       'src/repositories/__tests__/assistant.repository.test.ts',
       'src/repositories/__tests__/prompt-shortcut.repository.test.ts',
       'src/repositories/__tests__/settings.repository.test.ts',

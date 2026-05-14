@@ -6,108 +6,112 @@ import { logger } from '@baishou/shared';
 /**
  * SQLite + libsql 混合搜索仓库
  *
- * 向量搜索策略（对标原版 sqlite-vector 设计）：
+ * 目标表：memory_embeddings（与 Drizzle ORM 管理的 memoryEmbeddingsTable 共用同一张物理表）
  *
- * **主路径（libsql 原生）**：
- *   - 列类型：`F32_BLOB(dimension)` — libsql 原生浮点向量 blob
- *   - 索引：`libsql_vector_idx(embedding, 'metric=cosine')` — ANN 索引
- *   - 查询：`vector_top_k('idx_name', vector(?), limit)` TABLE-VALUED FUNCTION
- *   - 性能：O(log N) ANN 查询，硬件加速
+ * 表结构对齐 packages/database/src/schema/vectors.ts：
+ *   id              INTEGER PK AUTOINCREMENT
+ *   embedding_id    TEXT UNIQUE NOT NULL
+ *   source_type     TEXT NOT NULL
+ *   source_id       TEXT NOT NULL
+ *   group_id        TEXT NOT NULL
+ *   chunk_index     INTEGER NOT NULL
+ *   chunk_text      TEXT NOT NULL
+ *   metadata_json   TEXT NOT NULL
+ *   embedding       BLOB NOT NULL（Float32Array 二进制）
+ *   dimension       INTEGER NOT NULL
+ *   model_id        TEXT NOT NULL
+ *   created_at      TIMESTAMP NOT NULL
+ *   source_created_at TIMESTAMP
  *
- * **降级路径（纯 JS 余弦距离）**：
- *   - 当 `vector_top_k` 或 `vector_distance_cos` 抛出异常时自动触发
- *   - 从 `agent_embeddings` 全表读取 embedding blob → JS Float32Array → 余弦距离排序
- *   - `supportsNativeVectorSearch()` 运行时首次探测，结果缓存
+ * 向量搜索策略：
+ * - libsql 原生 vector_top_k ANN 检索（若 F32_BLOB 列兼容则可用）
+ * - vec_distance_cosine 暴力余弦距离（通用可靠方案）
+ * - 纯 JS 余弦距离降级（无扩展时的兜底）
  */
 export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbeddingStorage {
-  private readonly BACKUP_TABLE = 'agent_embeddings_backup';
-  private readonly INDEX_NAME = 'idx_agent_embeddings_vec';
+  /** 表名与 Drizzle schema 对齐 */
+  private static readonly TABLE = 'memory_embeddings';
+  private static readonly BACKUP_TABLE = 'memory_embeddings_migration_backup';
+  private static readonly INDEX_NAME = 'idx_memory_embeddings_vec';
 
   /** 运行时探测结果缓存（null = 尚未探测） */
   private _nativeVectorSupported: boolean | null = null;
+  /** vec_distance_cosine 是否可用 */
+  private _vecDistanceCosineAvailable: boolean | null = null;
+  /** vector_top_k 是否可用 */
+  private _vectorTopKAvailable: boolean | null = null;
 
   constructor(private readonly db: Client) {}
 
   // ── IEmbeddingStorage 核心 ─────────────────────────────
 
+  /**
+   * 初始化向量索引（table 由 Drizzle 迁移管理，此处仅尝试建立 ANN 索引）
+   */
   public async initVectorIndex(dimension: number): Promise<void> {
     await this.initVectorTables(dimension, false);
   }
 
   /**
-   * 建立或重建 agent_embeddings 表（含 F32_BLOB + ANN 索引）
-   *
-   * F32_BLOB(dimension) 是 libsql 的原生向量存储类型，
-   * 等价于原版 Flutter 的 `sqlite_vector` 扩展对浮点 blob 的存储方式。
+   * 建立 ANN 索引（table 已由 Drizzle ORM 管理，不再 CREATE TABLE）
    */
-  public async initVectorTables(dimension: number, forceRebuild = false): Promise<void> {
-    if (forceRebuild) {
-      await this.db.execute(`DROP TABLE IF EXISTS agent_embeddings`);
-      this._nativeVectorSupported = null; // 重建后重新探测
-    }
-
-    await this.db.execute(`
-      CREATE TABLE IF NOT EXISTS agent_embeddings (
-        id              TEXT    PRIMARY KEY,
-        source_type     TEXT    NOT NULL,
-        source_id       TEXT    NOT NULL,
-        group_id        TEXT    NOT NULL,
-        chunk_index     INTEGER NOT NULL,
-        chunk_text      TEXT    NOT NULL,
-        metadata_json   TEXT    DEFAULT '{}',
-        embedding       F32_BLOB(${dimension}) NOT NULL,
-        model_id        TEXT    NOT NULL,
-        source_created_at INTEGER
-      )
-    `);
+  public async initVectorTables(dimension: number, _forceRebuild = false): Promise<void> {
+    // 表结构由 Drizzle ORM 的 memoryEmbeddingsTable 管理，此处不重复建表
 
     // libsql 原生 ANN 向量索引（metric=cosine）
     if (dimension > 0) {
       try {
         await this.db.execute(
-          `CREATE INDEX IF NOT EXISTS ${this.INDEX_NAME} ON agent_embeddings (libsql_vector_idx(embedding, 'metric=cosine'))`
+          `CREATE INDEX IF NOT EXISTS ${SqliteHybridSearchRepository.INDEX_NAME} ON ${SqliteHybridSearchRepository.TABLE} (libsql_vector_idx(embedding, 'metric=cosine'))`
         );
         logger.info(`[VectorSearch] ANN 索引已就绪（dim=${dimension}, metric=cosine）`);
       } catch (e: any) {
-        logger.warn('[VectorSearch] ANN 索引创建失败（将使用全表扫描降级）:', e.message);
+        logger.warn('[VectorSearch] ANN 索引创建失败（将使用降级搜索）:', e.message);
       }
     }
   }
 
   /**
    * 插入向量嵌入
-   * 使用 libsql 原生 `vector(?)` 函数将 JSON 数组字符串转换为 F32_BLOB 存储
+   * 使用 Buffer(Float32Array) 格式对齐 DesktopEmbeddingStorage 的序列化方式
    */
   public async insertEmbedding(params: {
     id: string; sourceType: string; sourceId: string; groupId: string;
     chunkIndex: number; chunkText: string; metadataJson?: string;
     embedding: number[]; modelId: string; sourceCreatedAt?: number;
   }): Promise<void> {
-    const vectorStr = `[${params.embedding.join(',')}]`;
+    const vectorBuffer = Buffer.from(new Float32Array(params.embedding).buffer);
     await this.db.execute({
       sql: `
-        INSERT OR REPLACE INTO agent_embeddings
-        (id, source_type, source_id, group_id, chunk_index, chunk_text,
-         metadata_json, embedding, model_id, source_created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, vector(?), ?, ?)
+        INSERT INTO ${SqliteHybridSearchRepository.TABLE}
+        (embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+         metadata_json, embedding, dimension, model_id, created_at, source_created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(embedding_id) DO UPDATE SET
+          chunk_text = excluded.chunk_text,
+          embedding = excluded.embedding,
+          dimension = excluded.dimension,
+          model_id = excluded.model_id,
+          metadata_json = excluded.metadata_json
       `,
       args: [
         params.id, params.sourceType, params.sourceId, params.groupId,
         params.chunkIndex, params.chunkText, params.metadataJson || '{}',
-        vectorStr, params.modelId, params.sourceCreatedAt || Date.now()
+        vectorBuffer, params.embedding.length, params.modelId,
+        Date.now(), params.sourceCreatedAt || Date.now()
       ]
     });
   }
 
   public async deleteEmbeddingsBySource(sourceType: string, sourceId: string): Promise<void> {
     await this.db.execute({
-      sql: `DELETE FROM agent_embeddings WHERE source_type = ? AND source_id = ?`,
+      sql: `DELETE FROM ${SqliteHybridSearchRepository.TABLE} WHERE source_type = ? AND source_id = ?`,
       args: [sourceType, sourceId]
     });
   }
 
   public async clearEmbeddings(): Promise<void> {
-    await this.db.execute(`DELETE FROM agent_embeddings`);
+    await this.db.execute(`DELETE FROM ${SqliteHybridSearchRepository.TABLE}`);
   }
 
   // ── IEmbeddingStorage 迁移核心 ──────────────────────────
@@ -115,56 +119,57 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
   public async hasPendingMigration(): Promise<boolean> {
     const checkTable = await this.db.execute({
       sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-      args: [this.BACKUP_TABLE]
+      args: [SqliteHybridSearchRepository.BACKUP_TABLE]
     });
     if (checkTable.rows.length === 0) return false;
 
     const countRow = await this.db.execute(
-      `SELECT count(*) as c FROM ${this.BACKUP_TABLE} WHERE is_migrated = 0`
+      `SELECT count(*) as c FROM ${SqliteHybridSearchRepository.BACKUP_TABLE} WHERE is_migrated = 0`
     );
     return Number(countRow.rows[0]?.c ?? 0) > 0;
   }
 
   public async countHeterogeneousEmbeddings(currentModelId: string): Promise<number> {
     const checkTable = await this.db.execute(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_embeddings'`
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='${SqliteHybridSearchRepository.TABLE}'`
     );
     if (checkTable.rows.length === 0) return 0;
 
     const countRow = await this.db.execute({
-      sql: `SELECT count(*) as c FROM agent_embeddings WHERE model_id != ?`,
+      sql: `SELECT count(*) as c FROM ${SqliteHybridSearchRepository.TABLE} WHERE model_id != ?`,
       args: [currentModelId]
     });
     return Number(countRow.rows[0]?.c ?? 0);
   }
 
   public async createMigrationBackup(): Promise<number> {
-    await this.db.execute(`DROP TABLE IF EXISTS ${this.BACKUP_TABLE}`);
+    await this.db.execute(`DROP TABLE IF EXISTS ${SqliteHybridSearchRepository.BACKUP_TABLE}`);
     await this.db.execute(`
-      CREATE TABLE ${this.BACKUP_TABLE} AS
-      SELECT id, source_type, source_id, group_id, chunk_index, chunk_text,
+      CREATE TABLE ${SqliteHybridSearchRepository.BACKUP_TABLE} AS
+      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
              metadata_json, source_created_at, 0 as is_migrated
-      FROM agent_embeddings
+      FROM ${SqliteHybridSearchRepository.TABLE}
     `);
     await this.db.execute(
-      `CREATE INDEX IF NOT EXISTS idx_backup_migrated ON ${this.BACKUP_TABLE}(is_migrated)`
+      `CREATE INDEX IF NOT EXISTS idx_mig_backup_migrated ON ${SqliteHybridSearchRepository.BACKUP_TABLE}(is_migrated)`
     );
-    const count = await this.db.execute(`SELECT count(*) as c FROM ${this.BACKUP_TABLE}`);
+    const count = await this.db.execute(`SELECT count(*) as c FROM ${SqliteHybridSearchRepository.BACKUP_TABLE}`);
     return Number(count.rows[0]?.c ?? 0);
   }
 
   public async dropMigrationBackup(): Promise<void> {
-    await this.db.execute(`DROP TABLE IF EXISTS ${this.BACKUP_TABLE}`);
+    await this.db.execute(`DROP TABLE IF EXISTS ${SqliteHybridSearchRepository.BACKUP_TABLE}`);
   }
 
   public async clearAndReinitEmbeddings(dimension: number): Promise<void> {
-    await this.initVectorTables(dimension, true);
+    await this.clearEmbeddings();
+    await this.initVectorTables(dimension, false);
   }
 
   public async getUnmigratedCount(): Promise<number> {
     try {
       const countRow = await this.db.execute(
-        `SELECT count(*) as c FROM ${this.BACKUP_TABLE} WHERE is_migrated = 0`
+        `SELECT count(*) as c FROM ${SqliteHybridSearchRepository.BACKUP_TABLE} WHERE is_migrated = 0`
       );
       return Number(countRow.rows[0]?.c ?? 0);
     } catch {
@@ -175,10 +180,10 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
   public async getUnmigratedBackupChunks(): Promise<any[]> {
     try {
       const res = await this.db.execute(`
-        SELECT id, source_type as sourceType, source_id as sourceId, group_id as groupId,
+        SELECT embedding_id, source_type as sourceType, source_id as sourceId, group_id as groupId,
                chunk_index as chunkIndex, chunk_text as chunkText, metadata_json as metadataJson,
                source_created_at as sourceCreatedAt
-        FROM ${this.BACKUP_TABLE}
+        FROM ${SqliteHybridSearchRepository.BACKUP_TABLE}
         WHERE is_migrated = 0
         LIMIT 50
       `);
@@ -190,7 +195,7 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
 
   public async markBackupChunkMigrated(embeddingId: string): Promise<void> {
     await this.db.execute({
-      sql: `UPDATE ${this.BACKUP_TABLE} SET is_migrated = 1 WHERE id = ?`,
+      sql: `UPDATE ${SqliteHybridSearchRepository.BACKUP_TABLE} SET is_migrated = 1 WHERE embedding_id = ?`,
       args: [embeddingId]
     });
   }
@@ -204,20 +209,19 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
   // ── IHybridSearchStorage API ────────────────────────────
 
   /**
-   * 运行时探测 libsql 原生向量搜索支持情况
+   * 运行时探测原生向量搜索支持情况
    * 结果缓存，首次调用后不再重复探测
    */
   public supportsNativeVectorSearch(): boolean {
-    // 同步返回缓存结果（探测在 queryNativeVector 中异步完成）
     return this._nativeVectorSupported !== false;
   }
 
   public async queryFTS(keyword: string, limit: number): Promise<ISearchResult[]> {
     const res = await this.db.execute({
       sql: `
-        SELECT id as messageId, group_id as sessionId, chunk_text as chunkText,
-               source_created_at as createdAt
-        FROM agent_embeddings
+        SELECT embedding_id, group_id AS sessionId, chunk_text AS chunkText,
+               source_created_at AS createdAt
+        FROM ${SqliteHybridSearchRepository.TABLE}
         WHERE chunk_text LIKE ?
         LIMIT ?
       `,
@@ -225,7 +229,7 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     });
 
     return Array.from(res.rows).map((r, i) => ({
-      messageId: r.messageId as string,
+      messageId: r.embedding_id as string,
       sessionId: r.sessionId as string,
       chunkText: r.chunkText as string,
       score: limit - i,
@@ -237,56 +241,67 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
   /**
    * 原生向量相似度搜索
    *
-   * **主路径**：使用 `vector_top_k(index_name, vector(query), k)` ANN 检索
-   *   - 利用 libsql 建立的 `libsql_vector_idx` ANN 索引，O(log N) 检索
-   *   - 等价于原版 `vector_full_scan` (sqlite-vec) 的作用
-   *
-   * **降级路径**：全表读取 + JS 余弦距离计算（与原版 Flutter Dart fallback 完全一致）
-   *   - 从 `agent_embeddings` 全表读取 `vector_extract(embedding)` JSON 数组
-   *   - 在 JS 中计算余弦距离并 Top-K 排序
+   * 主路径：vec_distance_cosine 暴力余弦距离（对齐 MemoryRepository 实现，兼容普通 BLOB 列）
+   * 备选路径：vector_top_k ANN 检索（需要 libsql 原生 F32_BLOB 列类型）
+   * 降级路径：全表读取 + JS 余弦距离计算
    */
   public async queryNativeVector(vector: number[], limit: number, threshold?: number): Promise<ISearchResult[]> {
+    const vectorBuffer = Buffer.from(new Float32Array(vector).buffer);
     const vectorStr = `[${vector.join(',')}]`;
 
-    // ── 主路径：libsql 原生 vector_top_k ──
-    if (this._nativeVectorSupported !== false) {
+    // ── 路径 1: vec_distance_cosine（首次失败后缓存跳过） ──
+    if (this._vecDistanceCosineAvailable !== false) {
       try {
-        const results = await this._queryWithVectorTopK(vectorStr, limit, threshold);
-        this._nativeVectorSupported = true;
+        const results = await this._queryWithVecDistanceCosine(vectorBuffer, limit, vector, threshold);
+        this._vecDistanceCosineAvailable = true;
         return results;
       } catch (e: any) {
-        console.warn('[VectorSearch] vector_top_k 不可用，切换至 JS 余弦降级:', e.message);
-        this._nativeVectorSupported = false;
+        this._vecDistanceCosineAvailable = false;
+        logger.warn('[VectorSearch] vec_distance_cosine 不可用，已缓存为降级路径:', (e as Error).message);
       }
     }
 
-    // ── 降级路径：JS 余弦距离计算 ──
+    // ── 路径 2: vector_top_k（首次失败后缓存跳过） ──
+    if (this._vectorTopKAvailable !== false) {
+      try {
+        const results = await this._queryWithVectorTopK(vectorStr, limit, threshold);
+        this._vectorTopKAvailable = true;
+        this._nativeVectorSupported = true;
+        return results;
+      } catch (e: any) {
+        this._vectorTopKAvailable = false;
+        this._nativeVectorSupported = false;
+        logger.warn('[VectorSearch] vector_top_k 不可用，已缓存为降级路径:', (e as Error).message);
+      }
+    }
+
+    // ── 路径 3: JS 余弦距离降级 ──
     return this._queryWithJSCosine(vectorStr, vector, limit, threshold);
   }
 
   /**
-   * libsql 原生 ANN 向量搜索（使用 vector_top_k table-valued function）
-   *
-   * SQL：
-   * ```sql
-   * SELECT ae.id, ae.group_id, ae.chunk_text, ae.source_created_at, vt.distance
-   * FROM vector_top_k('idx_agent_embeddings_vec', vector(?), ?) AS vt
-   * JOIN agent_embeddings ae ON ae.rowid = vt.id
-   * ```
+   * 使用 vec_distance_cosine 进行向量搜索（对齐 MemoryRepository.searchByVector）
    */
-  private async _queryWithVectorTopK(vectorStr: string, limit: number, threshold?: number): Promise<ISearchResult[]> {
+  private async _queryWithVecDistanceCosine(
+    vectorBuffer: Buffer,
+    limit: number,
+    _queryVector: number[],
+    threshold?: number
+  ): Promise<ISearchResult[]> {
     const res = await this.db.execute({
       sql: `
-        SELECT ae.id, ae.group_id AS sessionId, ae.chunk_text AS chunkText,
-               ae.source_created_at AS createdAt, vt.distance
-        FROM vector_top_k('${this.INDEX_NAME}', vector(?), ?) AS vt
-        JOIN agent_embeddings ae ON ae.rowid = vt.id
+        SELECT embedding_id, source_id, group_id AS sessionId, chunk_text AS chunkText,
+               source_created_at AS createdAt,
+               vec_distance_cosine(embedding, ?) AS distance
+        FROM ${SqliteHybridSearchRepository.TABLE}
+        ORDER BY vec_distance_cosine(embedding, ?) ASC
+        LIMIT ?
       `,
-      args: [vectorStr, limit]
+      args: [vectorBuffer, vectorBuffer, limit]
     });
 
     let results = Array.from(res.rows).map(r => ({
-      messageId: r.id as string,
+      messageId: r.embedding_id as string,
       sessionId: r.sessionId as string,
       chunkText: r.chunkText as string,
       score: 1.0 - (typeof r.distance === 'number' ? r.distance : 0.0),
@@ -301,7 +316,36 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
   }
 
   /**
-   * 纯 JS 余弦距离降级搜索（对标原版 Flutter Dart fallback）
+   * libsql 原生 ANN 向量搜索（使用 vector_top_k table-valued function）
+   */
+  private async _queryWithVectorTopK(vectorStr: string, limit: number, threshold?: number): Promise<ISearchResult[]> {
+    const res = await this.db.execute({
+      sql: `
+        SELECT ae.embedding_id, ae.group_id AS sessionId, ae.chunk_text AS chunkText,
+               ae.source_created_at AS createdAt, vt.distance
+        FROM vector_top_k('${SqliteHybridSearchRepository.INDEX_NAME}', vector(?), ?) AS vt
+        JOIN ${SqliteHybridSearchRepository.TABLE} ae ON ae.rowid = vt.id
+      `,
+      args: [vectorStr, limit]
+    });
+
+    let results = Array.from(res.rows).map(r => ({
+      messageId: r.embedding_id as string,
+      sessionId: r.sessionId as string,
+      chunkText: r.chunkText as string,
+      score: 1.0 - (typeof r.distance === 'number' ? r.distance : 0.0),
+      source: 'vector' as const,
+      createdAt: r.createdAt as number
+    }));
+
+    if (threshold !== undefined) {
+      results = results.filter(r => r.score >= threshold);
+    }
+    return results;
+  }
+
+  /**
+   * 纯 JS 余弦距离降级搜索
    * 读取全表 embedding blob → Float32Array → 余弦距离 → Top-K
    */
   private async _queryWithJSCosine(
@@ -311,12 +355,11 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     threshold?: number
   ): Promise<ISearchResult[]> {
     try {
-      // 使用 vector_extract() 将 F32_BLOB 转为 JSON 数组字符串（libsql 内置）
       const res = await this.db.execute(
-        `SELECT id, group_id AS sessionId, chunk_text AS chunkText,
+        `SELECT embedding_id, group_id AS sessionId, chunk_text AS chunkText,
                 source_created_at AS createdAt,
-                vector_extract(embedding) AS embeddingJson
-         FROM agent_embeddings`
+                hex(embedding) AS embeddingHex
+         FROM ${SqliteHybridSearchRepository.TABLE}`
       );
 
       const dimension = queryVector.length;
@@ -324,10 +367,15 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
 
       for (const r of res.rows) {
         try {
-          const embArr: number[] = JSON.parse((r.embeddingJson as string) ?? '[]');
-          if (!embArr || embArr.length !== dimension) continue;
+          const hexStr = r.embeddingHex as string;
+          if (!hexStr) continue;
 
-          // 余弦距离 = 1 - 余弦相似度
+          // 将 hex 字符串解析为 Float32Array
+          const buffer = Buffer.from(hexStr, 'hex');
+          if (buffer.length < dimension * 4) continue;
+
+          const embArr = new Float32Array(buffer.buffer, buffer.byteOffset, dimension);
+
           let dot = 0, normA = 0, normB = 0;
           for (let i = 0; i < dimension; i++) {
             dot += (queryVector[i] ?? 0) * (embArr[i] ?? 0);
@@ -339,7 +387,7 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
             : 1.0;
 
           scored.push({
-            messageId: r.id as string,
+            messageId: r.embedding_id as string,
             sessionId: r.sessionId as string,
             chunkText: r.chunkText as string,
             score: 1.0 - distance,
@@ -350,7 +398,6 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
         } catch { continue; }
       }
 
-      // 按距离升序（相似度降序）排序并取 Top-K
       scored.sort((a, b) => a._dist - b._dist);
       let results = scored.slice(0, limit).map(({ _dist: _, ...r }) => r);
 
@@ -359,7 +406,7 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
       }
       return results;
     } catch (e: any) {
-      console.error('[VectorSearch] JS 余弦降级也失败了:', e.message);
+      logger.error('[VectorSearch] JS 余弦降级也失败了:', e.message);
       return [];
     }
   }
@@ -367,10 +414,10 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
   public async fetchAllEmbeddingsForDecoupledSearch(sessionGroupId?: string): Promise<{
     messageId: string; sessionId: string; chunkText: string; embedding: number[]; createdAt?: number;
   }[]> {
-    let sql = `SELECT id, group_id AS sessionId, chunk_text AS chunkText,
-                      vector_extract(embedding) AS embeddingJson,
+    let sql = `SELECT embedding_id, group_id AS sessionId, chunk_text AS chunkText,
+                      hex(embedding) AS embeddingHex,
                       source_created_at AS createdAt
-               FROM agent_embeddings`;
+               FROM ${SqliteHybridSearchRepository.TABLE}`;
     const args: any[] = [];
     if (sessionGroupId) {
       sql += ` WHERE group_id = ?`;
@@ -380,9 +427,15 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     const res = await this.db.execute({ sql, args });
     return Array.from(res.rows).map(r => {
       let embeddingArr: number[] = [];
-      try { embeddingArr = JSON.parse(r.embeddingJson as string); } catch {}
+      try {
+        const hexStr = r.embeddingHex as string;
+        if (hexStr) {
+          const buffer = Buffer.from(hexStr, 'hex');
+          embeddingArr = Array.from(new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4));
+        }
+      } catch {}
       return {
-        messageId: r.id as string,
+        messageId: r.embedding_id as string,
         sessionId: r.sessionId as string,
         chunkText: r.chunkText as string,
         embedding: embeddingArr,

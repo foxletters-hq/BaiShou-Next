@@ -1,20 +1,45 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { createClient } from '@libsql/client';
 import { SqliteHybridSearchRepository } from '../repositories/hybrid-search.repository';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import * as os from 'node:os';
 
 describe('SqliteHybridSearchRepository - Migration and Interrupt Recovery', () => {
-    let db: Database.Database;
+    let db: ReturnType<typeof createClient>;
     let repo: SqliteHybridSearchRepository;
+    let tempDir: string;
+    let dbPath: string;
 
     beforeEach(async () => {
-        db = new Database(':memory:');
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baishou-mig-test-'));
+        dbPath = path.join(tempDir, 'mig_test.db');
+        db = createClient({ url: `file:${dbPath}` });
         repo = new SqliteHybridSearchRepository(db);
-        // 初始化一个老的 1536 维度的模型表空间
-        await repo.initVectorIndex(1536);
+
+        // memory_embeddings 表由 Drizzle 管理，测试中手动建表
+        await db.execute(`
+          CREATE TABLE IF NOT EXISTS memory_embeddings (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            embedding_id    TEXT NOT NULL UNIQUE,
+            source_type     TEXT NOT NULL,
+            source_id       TEXT NOT NULL,
+            group_id        TEXT NOT NULL,
+            chunk_index     INTEGER NOT NULL,
+            chunk_text      TEXT NOT NULL,
+            metadata_json   TEXT NOT NULL DEFAULT '{}',
+            embedding       BLOB NOT NULL,
+            dimension       INTEGER NOT NULL,
+            model_id        TEXT NOT NULL,
+            created_at      INTEGER NOT NULL,
+            source_created_at INTEGER
+          )
+        `);
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         db.close();
+        try { await fs.rm(tempDir, { recursive: true, force: true }); } catch {}
     });
 
     it('should correctly build backup table and track the pending chunks across dimension shift', async () => {
@@ -43,33 +68,35 @@ describe('SqliteHybridSearchRepository - Migration and Interrupt Recovery', () =
         await repo.clearAndReinitEmbeddings(768);
         
         // 验证主实体表已经被无情洗劫，完全配合重建维度准备拥抱新生
-        const verifyEmptyQuery = db.prepare('SELECT count(*) as c FROM agent_embeddings').get() as any;
-        expect(verifyEmptyQuery.c).toBe(0); 
+        const verifyEmpty = await db.execute(`SELECT count(*) as c FROM memory_embeddings`);
+        expect(Number(verifyEmpty.rows[0]?.c)).toBe(0);
 
         // 3. [触发打断重连机制：假如断网程序重启，依靠探针找回残留的缓冲件]
         expect(await repo.hasPendingMigration()).toBe(true); // 探针依然坚挺地知道还没完成！
         const unmigratedItems = await repo.getUnmigratedBackupChunks();
         expect(unmigratedItems.length).toBe(2); // 只取回两块准备拉大模型的
-        expect(unmigratedItems[0].chunkText).toBe('我昨天吃了一顿麦当劳。');
+        expect(unmigratedItems[0]!.chunkText).toBe('我昨天吃了一顿麦当劳。');
         // 注意：原先 1536 的庞大嵌入字段已经被脱水遗落，大大减少内存穿梭压力
-        expect(unmigratedItems[0].embedding).toBeUndefined(); 
+        expect(unmigratedItems[0]!.embedding).toBeUndefined();
 
         // 模拟调用大模型取得了 768 维度的结果，再导回！
         const fakeEmb768 = new Array(768).fill(0.999);
+        const chunk0Id = unmigratedItems[0]!.embedding_id as string;
         await repo.insertEmbedding({
-            id: unmigratedItems[0].id, sourceType: unmigratedItems[0].sourceType, sourceId: unmigratedItems[0].sourceId, 
-            groupId: unmigratedItems[0].groupId, chunkIndex: unmigratedItems[0].chunkIndex, chunkText: unmigratedItems[0].chunkText, 
+            id: chunk0Id, sourceType: unmigratedItems[0]!.sourceType as string, sourceId: unmigratedItems[0]!.sourceId as string,
+            groupId: unmigratedItems[0]!.groupId as string, chunkIndex: unmigratedItems[0]!.chunkIndex as number, chunkText: unmigratedItems[0]!.chunkText as string,
             embedding: fakeEmb768, modelId: 'new-model-768'
         });
         
-        // 我们把它标志为“已迁徙完成”
-        await repo.markBackupChunkMigrated(unmigratedItems[0].id);
+        // 我们把它标志为"已迁徙完成"
+        await repo.markBackupChunkMigrated(chunk0Id);
         
         // 断言还剩下多少没迁
         expect(await repo.getUnmigratedCount()).toBe(1);
 
         // 最后一块也迁完了
-        await repo.markBackupChunkMigrated(unmigratedItems[1].id);
+        const chunk1Id = unmigratedItems[1]!.embedding_id as string;
+        await repo.markBackupChunkMigrated(chunk1Id);
         expect(await repo.getUnmigratedCount()).toBe(0);
         expect(await repo.hasPendingMigration()).toBe(false); // 洗白完成，可以把备份表彻底爆破了
 
@@ -77,6 +104,6 @@ describe('SqliteHybridSearchRepository - Migration and Interrupt Recovery', () =
         await repo.dropMigrationBackup();
         expect(async () => await repo.hasPendingMigration()).not.toThrow();
 
-        // 到此，不仅主表完成了安全迁移，sqlite-vec 的高速虚拟表也在新维度下运作强健！即使底层不支持也能正常回退，一切行云流水无缺无漏。
+        // 到此，不仅主表完成了安全迁移，新维度下运作强健！即使底层不支持也能正常回退，一切行云流水无缺无漏。
     });
 });

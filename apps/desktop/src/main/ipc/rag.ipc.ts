@@ -87,31 +87,67 @@ export function registerRagIPC() {
   ipcMain.handle('rag:trigger-batch-embed', async (event) => {
     await config.load();
     try {
-      // 只嵌入日记内容
+      const db = getAppDb();
       const diaries = await getDiaryManager().listAll({ limit: 10000 });
-      const total = diaries?.length || 0;
+
+      // 查询 memory_embeddings 中已有的日记嵌入记录，构建 { sourceId → updatedAt } 映射
+      const existingRows = await db
+        .select({
+          sourceId: memoryEmbeddingsTable.sourceId,
+          metadataJson: memoryEmbeddingsTable.metadataJson,
+        })
+        .from(memoryEmbeddingsTable)
+        .where(eq(memoryEmbeddingsTable.sourceType, 'diary'));
+
+      const embeddedUpdatedAtMap = new Map<string, number>();
+      for (const row of existingRows) {
+        try {
+          const meta = JSON.parse(row.metadataJson);
+          if (meta.updated_at) {
+            embeddedUpdatedAtMap.set(row.sourceId, meta.updated_at);
+          }
+        } catch {}
+      }
+
+      // 过滤：仅嵌入从未嵌入过或自上次嵌入后被修改过的日记
+      const diariesToEmbed = diaries.filter((d) => {
+        const existingUpdatedAt = embeddedUpdatedAtMap.get(d.id.toString());
+        if (existingUpdatedAt === undefined) return true;
+        if (!d.updatedAt) return true;
+        return d.updatedAt.getTime() > existingUpdatedAt;
+      });
+
       let progress = 0;
-      
-      for (const meta of diaries) {
+
+      for (const meta of diariesToEmbed) {
         progress++;
         event.sender.send('agent:rag-progress', {
-          isRunning: true, type: 'batchEmbed', progress, total, 
+          isRunning: true, type: 'batchEmbed', progress, total: diariesToEmbed.length,
           statusText: `处理日记: ${new Date(meta.date).toLocaleDateString()}`
         });
 
         const diary = await getDiaryManager().findById(meta.id);
         if (!diary || !diary.id || !diary.content || !diary.content.trim()) continue;
 
+        // 构建 chunkPrefix：标签 + 日期上下文，与原版白守对齐
+        const d = meta.date;
+        const dateLabel = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const tagPrefix = meta.tags.length > 0
+          ? `[标签: ${meta.tags.join(', ')}] `
+          : '';
+
         await embeddingService.reEmbedText({
           text: diary.content,
           sourceType: 'diary',
           sourceId: diary.id.toString(),
-          groupId: 'diary',
+          groupId: 'diary_batch',
+          chunkPrefix: `${tagPrefix}[${dateLabel} 日记:]\n`,
+          metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
           sourceCreatedAt: diary.date.getTime()
         });
       }
 
-      event.sender.send('agent:rag-progress', { isRunning: false, progress: total, total, type: 'idle' });
+      event.sender.send('agent:rag-progress', { isRunning: false, progress: diariesToEmbed.length, total: diariesToEmbed.length, type: 'idle' });
       return true;
     } catch (e: any) {
       console.error('Batch Embed failed:', e);

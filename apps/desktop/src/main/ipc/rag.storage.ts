@@ -234,7 +234,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     await db.run(sql.raw(`DROP TABLE IF EXISTS ${BACKUP_TABLE}`));
     await db.run(sql.raw(`
       CREATE TABLE ${BACKUP_TABLE} AS
-      SELECT id, source_type, source_id, group_id, chunk_index, chunk_text,
+      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
              metadata_json, source_created_at, 0 as is_migrated
       FROM memory_embeddings
     `));
@@ -270,7 +270,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     try {
       const db = getAppDb();
       const rows = await db.all(sql.raw(`
-        SELECT id, source_type as sourceType, source_id as sourceId, group_id as groupId,
+        SELECT embedding_id, source_type as sourceType, source_id as sourceId, group_id as groupId,
                chunk_index as chunkIndex, chunk_text as chunkText, metadata_json as metadataJson,
                source_created_at as sourceCreatedAt
         FROM ${BACKUP_TABLE}
@@ -286,7 +286,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
   async markBackupChunkMigrated(embeddingId: string): Promise<void> {
     const db = getAppDb();
     await db.run(
-      sql`UPDATE ${sql.raw(BACKUP_TABLE)} SET is_migrated = 1 WHERE id = ${embeddingId}`
+      sql`UPDATE ${sql.raw(BACKUP_TABLE)} SET is_migrated = 1 WHERE embedding_id = ${embeddingId}`
     );
   }
 

@@ -100,7 +100,7 @@ export class MessageRepository implements AgentMessageRepository {
        role: agentMessagesTable.role,
        content: agentPartsTable.data,
        createdAt: agentMessagesTable.createdAt,
-       sessionTitle: sql<string>`(SELECT title FROM sessions WHERE id = ${agentMessagesTable.sessionId})`
+        sessionTitle: sql<string>`(SELECT title FROM agent_sessions WHERE id = ${agentMessagesTable.sessionId})`
     })
     .from(agentMessagesTable)
     .innerJoin(agentPartsTable, eq(agentMessagesTable.id, agentPartsTable.messageId))
