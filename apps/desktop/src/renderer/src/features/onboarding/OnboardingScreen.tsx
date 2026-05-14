@@ -208,7 +208,7 @@ export const OnboardingScreen: React.FC = () => {
                 {!isFinishing && <ArrowRight size={18} />}
               </button>
             ) : (
-              <button className={styles.btnNext} onClick={handleNext}>
+              <button className={styles.btnPrimary} onClick={handleNext}>
                 {t('common.next', '下一步')}
                 <ChevronRight size={18} />
               </button>
