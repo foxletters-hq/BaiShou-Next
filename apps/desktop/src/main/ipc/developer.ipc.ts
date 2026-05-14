@@ -8,6 +8,7 @@ import { shadowConnectionManager } from '@baishou/database';
 import { pathService } from './vault.ipc';
 import { diaryWatcher } from '../services/diary-watcher.service';
 import { summaryWatcher } from '../services/summary-watcher.service';
+import { sessionWatcher } from '../services/session-watcher.service';
 
 export function registerDeveloperIPC() {
   ipcMain.handle('developer:load-demo-data', async () => {
@@ -82,6 +83,11 @@ export function registerDeveloperIPC() {
       summaryWatcher.stop();
     } catch(e) {
       console.warn('Failed to stop Summary Watcher:', e);
+    }
+    try {
+      sessionWatcher.stop();
+    } catch(e) {
+      console.warn('Failed to stop Session Watcher:', e);
     }
 
     // 给操作系统句柄释放留出时间

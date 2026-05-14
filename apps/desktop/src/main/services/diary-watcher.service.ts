@@ -80,7 +80,11 @@ export class DiaryWatcherService {
   }
 
   private async processQueue() {
-    if (this.isProcessing) return;
+    if (this.isProcessing) {
+      // 已在处理中，不重复进入。scheduleSync 会把新路径加入 pendingPaths，
+      // 当前正在运行的 processQueue 的 while 循环会在下一轮迭代中处理它们。
+      return;
+    }
     this.isProcessing = true;
 
     try {
@@ -121,15 +125,29 @@ export class DiaryWatcherService {
                    forced: true,
                  });
                }
-             });
-          } catch (e) {
-             logger.error('[DiaryWatcher] ❌ 批量同步失败:', e);
-          }
+              });
+           } catch (e) {
+              logger.error('[DiaryWatcher] ❌ 批量同步失败:', e);
+           }
         }
       }
+
     } finally {
       this.isProcessing = false;
+      // 如果在处理期间有新事件到达，立即调度下一轮处理
+      if (this.pendingPaths.size > 0) {
+        this.scheduleRetry();
+      }
     }
+  }
+
+  private scheduleRetry() {
+    if (this.globalDebounceTimer) {
+      clearTimeout(this.globalDebounceTimer);
+    }
+    this.globalDebounceTimer = setTimeout(async () => {
+      await this.processQueue();
+    }, 200);
   }
 }
 

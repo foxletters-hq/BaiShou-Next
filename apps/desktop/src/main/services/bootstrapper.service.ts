@@ -14,8 +14,10 @@ import { logger } from '@baishou/shared';
 import { pathService, vaultService } from '../ipc/vault.ipc';
 import { getAgentManagers } from '../ipc/agent.ipc';
 import { settingsManager } from '../ipc/settings.ipc';
+import { getGitService } from '../ipc/git-sync.ipc';
 import { diaryWatcher } from './diary-watcher.service';
 import { summaryWatcher } from './summary-watcher.service';
+import { sessionWatcher } from './session-watcher.service';
 
 /**
  * 全局数据同步收割机 (Global Bootstrapper)
@@ -58,8 +60,21 @@ export class GlobalDataBootstrapper {
       const activeVault = vaultService.getActiveVault();
       logger.info(`[Bootstrapper] 正在尝试启动监听。activeVault:`, activeVault);
       if (activeVault) {
+        // 自动初始化 Git 仓库（如果尚未初始化）
+        try {
+          const gitService = getGitService();
+          const initialized = await gitService.isInitialized();
+          if (!initialized) {
+            await gitService.init();
+            logger.info('[Bootstrapper] Git 仓库已自动初始化');
+          }
+        } catch (e) {
+          logger.warn('[Bootstrapper] Git 自动初始化失败:', e as any);
+        }
+
         diaryWatcher.start(activeVault.path);
         summaryWatcher.start(activeVault.path);
+        sessionWatcher.start(activeVault.path);
       } else {
         logger.warn(`[Bootstrapper] ⚠️ 发现 activeVault 为空！`);
       }
