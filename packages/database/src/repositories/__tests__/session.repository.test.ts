@@ -17,6 +17,7 @@ describe('SessionRepository', () => {
   let mockSelect: any;
   let mockFrom: any;
   let mockOrderBy: any;
+  let mockOffset: any;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -40,7 +41,10 @@ describe('SessionRepository', () => {
       where: mockWhere
     });
 
-    mockOrderBy = vi.fn().mockResolvedValue([]);
+    mockOffset = vi.fn().mockResolvedValue([]);
+    mockOrderBy = vi.fn().mockReturnValue({
+      limit: vi.fn().mockReturnValue({ offset: mockOffset })
+    });
     const mockWhereLimit = vi.fn().mockResolvedValue([{ id: 'm2', orderIndex: 2, sessionId: 's1' }]);
     
     const mockWhereChain = vi.fn().mockReturnValue({
@@ -78,7 +82,7 @@ describe('SessionRepository', () => {
 
   describe('findAllSessions', () => {
     it('should return all sessions sorted by isPinned and updatedAt', async () => {
-      mockOrderBy.mockResolvedValueOnce([
+      mockOffset.mockResolvedValueOnce([
         { id: 's1', isPinned: true },
         { id: 's2', isPinned: false }
       ]);
