@@ -21,7 +21,6 @@ describe('GitSyncService', () => {
       getConfig: vi.fn(),
       updateConfig: vi.fn(),
       testRemoteConnection: vi.fn(),
-      autoCommit: vi.fn(),
       commit: vi.fn(),
       commitAll: vi.fn(),
       getHistory: vi.fn(),
@@ -73,7 +72,6 @@ describe('GitSyncService', () => {
     it('should return current git sync config', async () => {
       const config: GitSyncConfig = {
         enabled: true,
-        autoCommit: true,
         commitMessageTemplate: 'sync: {date}',
       };
       vi.mocked(service.getConfig).mockResolvedValue(config);
@@ -87,30 +85,8 @@ describe('GitSyncService', () => {
     it('should update config with partial values', async () => {
       vi.mocked(service.updateConfig).mockResolvedValue(undefined);
 
-      await expect(service.updateConfig({ autoCommit: false })).resolves.toBeUndefined();
-      expect(service.updateConfig).toHaveBeenCalledWith({ autoCommit: false });
-    });
-  });
-
-  describe('autoCommit', () => {
-    it('should return commit when there are changes', async () => {
-      const commit: GitCommit = {
-        hash: 'abc1234',
-        message: 'sync: 2026-05-13 10:00',
-        date: new Date(),
-        files: ['Journals/2026/05/2026-05-13.md'],
-      };
-      vi.mocked(service.autoCommit).mockResolvedValue(commit);
-
-      const result = await service.autoCommit();
-      expect(result).toEqual(commit);
-    });
-
-    it('should return null when there are no changes', async () => {
-      vi.mocked(service.autoCommit).mockResolvedValue(null);
-
-      const result = await service.autoCommit();
-      expect(result).toBeNull();
+      await expect(service.updateConfig({ enabled: true })).resolves.toBeUndefined();
+      expect(service.updateConfig).toHaveBeenCalledWith({ enabled: true });
     });
   });
 

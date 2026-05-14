@@ -2,8 +2,6 @@ import { ipcMain } from 'electron';
 import { logger } from '@baishou/shared';
 import { GitSyncServiceImpl } from '@baishou/core';
 import {
-  GitCommitError,
-  GitPushError,
   GitPullError,
   GitRemoteNotConfiguredError,
 } from '@baishou/core';
@@ -11,7 +9,7 @@ import { pathService } from './vault.ipc';
 
 let gitService: GitSyncServiceImpl | null = null;
 
-function getGitService(): GitSyncServiceImpl {
+export function getGitService(): GitSyncServiceImpl {
   if (!gitService) {
     gitService = new GitSyncServiceImpl(pathService);
   }
@@ -32,6 +30,25 @@ export function registerGitSyncIPC() {
     return getGitService().isInitialized();
   });
 
+  ipcMain.handle('git:getStatus', async () => {
+    return getGitService().getStatus();
+  });
+
+  ipcMain.handle('git:unstageFile', async (_, filePath: string) => {
+    await getGitService().unstageFile(filePath);
+    return { success: true };
+  });
+
+  ipcMain.handle('git:discardFile', async (_, filePath: string) => {
+    await getGitService().discardFile(filePath);
+    return { success: true };
+  });
+
+  ipcMain.handle('git:discardAllChanges', async () => {
+    await getGitService().discardAllChanges();
+    return { success: true };
+  });
+
   ipcMain.handle('git:getConfig', async () => {
     return getGitService().getConfig();
   });
@@ -43,15 +60,6 @@ export function registerGitSyncIPC() {
 
   ipcMain.handle('git:testRemote', async () => {
     return getGitService().testRemoteConnection();
-  });
-
-  ipcMain.handle('git:autoCommit', async () => {
-    try {
-      const result = await getGitService().autoCommit();
-      return { success: true, data: result };
-    } catch (e: any) {
-      throw new GitCommitError(e instanceof Error ? e : undefined);
-    }
   });
 
   ipcMain.handle('git:commitAll', async (_, message: string) => {
@@ -66,12 +74,20 @@ export function registerGitSyncIPC() {
     return getGitService().getHistory(filePath, limit, offset);
   });
 
+  ipcMain.handle('git:getRecentPulls', async (_, limit?: number) => {
+    return getGitService().getRecentPulls(limit);
+  });
+
   ipcMain.handle('git:getCommitChanges', async (_, commitHash: string) => {
     return getGitService().getCommitChanges(commitHash);
   });
 
   ipcMain.handle('git:getFileDiff', async (_, filePath: string, commitHash?: string) => {
     return getGitService().getFileDiff(filePath, commitHash);
+  });
+
+  ipcMain.handle('git:getWorkingDiff', async (_, filePath: string, staged: boolean) => {
+    return getGitService().getWorkingDiff(filePath, staged);
   });
 
   ipcMain.handle('git:rollbackFile', async (_, filePath: string, commitHash: string) => {
@@ -102,7 +118,8 @@ export function registerGitSyncIPC() {
       if (e instanceof GitRemoteNotConfiguredError) {
         return { success: false, message: '未配置远程仓库' };
       }
-      throw new GitPushError(e instanceof Error ? e : undefined);
+      logger.error(`[GitIPC] 推送失败:`, e as any);
+      return { success: false, message: e?.message || '推送失败' };
     }
   });
 
@@ -117,7 +134,8 @@ export function registerGitSyncIPC() {
       if (e instanceof GitPullError) {
         return { success: false, message: e.message, conflicts: e.conflicts || [] };
       }
-      throw e;
+      logger.error(`[GitIPC] 拉取失败:`, e as any);
+      return { success: false, message: e?.message || '拉取失败' };
     }
   });
 

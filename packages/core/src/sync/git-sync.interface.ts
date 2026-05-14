@@ -1,6 +1,7 @@
 import type {
   GitCommit,
   GitSyncConfig,
+  GitStatus,
   FileChange,
   FileDiff,
   VersionHistoryEntry,
@@ -44,14 +45,29 @@ export interface IGitSyncService {
    */
   testRemoteConnection(): Promise<boolean>;
 
-  // ── 提交操作 ───────────────────────────────────────────────
+  // ── 工作区状态 ─────────────────────────────────────────────
 
   /**
-   * 自动提交所有变更
-   * 使用配置中的 commitMessageTemplate 生成消息
-   * @returns 创建的 commit，无变更时返回 null
+   * 获取当前工作区状态（暂存区 + 工作区变更）
    */
-  autoCommit(): Promise<GitCommit | null>;
+  getStatus(): Promise<GitStatus>;
+
+  /**
+   * 取消暂存指定文件（从暂存区移回工作区）
+   */
+  unstageFile(filePath: string): Promise<void>;
+
+  /**
+   * 丢弃指定文件的工作区修改（恢复到暂存区状态或 HEAD）
+   */
+  discardFile(filePath: string): Promise<void>;
+
+  /**
+   * 丢弃所有文件的工作区修改
+   */
+  discardAllChanges(): Promise<void>;
+
+  // ── 提交操作 ───────────────────────────────────────────────
 
   /**
    * 提交所有变更（手动提交）
@@ -82,6 +98,12 @@ export interface IGitSyncService {
   getHistory(filePath?: string, limit?: number, offset?: number): Promise<VersionHistoryEntry[]>;
 
   /**
+   * 获取最近拉取的提交记录（来自远程分支）
+   * @param limit - 返回数量限制，默认 10
+   */
+  getRecentPulls(limit?: number): Promise<VersionHistoryEntry[]>;
+
+  /**
    * 获取指定 commit 的文件变更列表
    * @param commitHash - commit hash
    */
@@ -94,6 +116,13 @@ export interface IGitSyncService {
    * @returns diff 详情
    */
   getFileDiff(filePath: string, commitHash?: string): Promise<FileDiff>;
+
+  /**
+   * 获取工作区文件的 diff（暂存区 vs HEAD 或 工作区 vs 暂存区）
+   * @param filePath - 文件路径
+   * @param staged - true 表示暂存区 vs HEAD，false 表示工作区 vs 暂存区
+   */
+  getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff>;
 
   // ── 回滚操作 ───────────────────────────────────────────────
 

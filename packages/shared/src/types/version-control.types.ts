@@ -61,8 +61,6 @@ export interface GitRemoteConfig {
 export interface GitSyncConfig {
   /** 是否启用 Git 版本管理 */
   enabled: boolean;
-  /** 同步前是否自动 commit */
-  autoCommit: boolean;
   /** commit 消息模板，支持 {date} 占位符 */
   commitMessageTemplate: string;
   /** 远程仓库配置（可选） */
@@ -149,4 +147,30 @@ export interface VersionHistoryEntry {
   changes: FileChange[];
   /** 是否为当前版本 */
   isCurrent: boolean;
+}
+
+// ── Git 状态类型 ──────────────────────────────────────────────
+
+/** Git 工作区文件状态 */
+export interface GitStatusFile {
+  /** 文件相对路径 */
+  path: string;
+  /** 暂存区状态（空字符串表示未暂存） */
+  stagedStatus: FileChangeStatus | '';
+  /** 工作区状态（空字符串表示未修改） */
+  unstagedStatus: FileChangeStatus | '';
+}
+
+/** Git 工作区状态 */
+export interface GitStatus {
+  /** 已暂存的文件变更 */
+  staged: GitStatusFile[];
+  /** 未暂存的文件变更 */
+  unstaged: GitStatusFile[];
+  /** 未跟踪的文件 */
+  untracked: string[];
+  /** 冲突文件 */
+  conflicted: string[];
+  /** 是否有任何变更 */
+  hasChanges: boolean;
 }

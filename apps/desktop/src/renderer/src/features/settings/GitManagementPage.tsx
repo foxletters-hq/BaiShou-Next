@@ -8,7 +8,6 @@ export const GitManagementPage: React.FC = () => {
   const toast = useToast();
   const [config, setConfig] = useState<GitSyncConfig>({
     enabled: false,
-    autoCommit: true,
     commitMessageTemplate: 'sync: {date}',
   });
   const [isInitialized, setIsInitialized] = useState(false);
@@ -54,14 +53,22 @@ export const GitManagementPage: React.FC = () => {
         onInit={handleInit}
         isInitialized={isInitialized}
         onTestRemote={async () => api?.testRemote() ?? false}
-        onAutoCommit={async () => api?.autoCommit() ?? { success: false, data: null }}
         onCommit={async (message) => api?.commitAll(message)}
+        onGetStatus={async () => api?.getStatus() ?? { staged: [], unstaged: [], untracked: [], conflicted: [], hasChanges: false }}
         onGetHistory={async (filePath?, limit?, offset?) => {
           if (!api) return [];
           return api.getHistory(filePath, limit, offset) ?? [];
         }}
+        onGetRecentPulls={async (limit?) => {
+          if (!api) return [];
+          return api.getRecentPulls(limit) ?? [];
+        }}
         onGetCommitChanges={async (hash) => api?.getCommitChanges(hash) ?? []}
         onGetFileDiff={async (filePath, hash) => api?.getFileDiff(filePath, hash) ?? { path: filePath, hunks: [] }}
+        onGetWorkingDiff={async (filePath, staged) => api?.getWorkingDiff(filePath, staged) ?? { path: filePath, hunks: [] }}
+        onUnstageFile={async (filePath) => { await api?.unstageFile(filePath); }}
+        onDiscardFile={async (filePath) => { await api?.discardFile(filePath); }}
+        onDiscardAllChanges={async () => { await api?.discardAllChanges(); }}
         onPush={async () => api?.push() ?? { success: false, message: 'API not available' }}
         onPull={async () => api?.pull() ?? { success: false, message: 'API not available' }}
         onHasConflicts={async () => api?.hasConflicts() ?? false}

@@ -1,10 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import simpleGit, { SimpleGit, StatusResult } from 'simple-git';
+import simpleGit, { SimpleGit } from 'simple-git';
 import { logger } from '@baishou/shared';
 import type {
   GitCommit,
   GitSyncConfig,
+  GitStatus,
+  GitStatusFile,
   FileChange,
   FileDiff,
   VersionHistoryEntry,
@@ -22,7 +24,6 @@ import type { IStoragePathService } from '../vault/storage-path.types';
 
 const DEFAULT_CONFIG: GitSyncConfig = {
   enabled: false,
-  autoCommit: true,
   commitMessageTemplate: 'sync: {date}',
 };
 
@@ -30,6 +31,10 @@ const GITIGNORE_CONTENT = `# SQLite 数据库
 *.db
 *.db-journal
 *.db-wal
+*.db-shm
+
+# 应用数据目录（由 BaiShou 管理，不作为日记内容版本化）
+.baishou/
 
 # 版本备份（由 Git 本身管理历史）
 .versions/
@@ -57,10 +62,13 @@ export class GitSyncServiceImpl implements IGitSyncService {
     return vaultPath;
   }
 
+  private currentVaultPath: string | null = null;
+
   private async ensureGit(): Promise<SimpleGit> {
-    if (!this.git) {
-      const vaultPath = await this.getVaultPath();
+    const vaultPath = await this.getVaultPath();
+    if (!this.git || this.currentVaultPath !== vaultPath) {
       this.git = simpleGit(vaultPath);
+      this.currentVaultPath = vaultPath;
     }
     return this.git;
   }
@@ -100,20 +108,6 @@ export class GitSyncServiceImpl implements IGitSyncService {
     }
   }
 
-  private formatDate(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
-  }
-
-  private parseCommitMessage(template: string): string {
-    return template.replace('{date}', this.formatDate());
-  }
-
   private mapStatusToType(status: string): FileChange['status'] {
     switch (status) {
       case 'A':
@@ -137,6 +131,10 @@ export class GitSyncServiceImpl implements IGitSyncService {
       await git.init();
       await this.ensureGitignore();
       await this.loadConfig();
+
+      // 创建初始 commit，确保仓库有历史记录
+      await git.add('.gitignore');
+      await git.commit('初始化 Git 版本管理');
       logger.info(`[GitSync] Git 仓库初始化成功: ${vaultPath}`);
     } catch (error) {
       logger.error(`[GitSync] Git 仓库初始化失败: ${error}`);
@@ -153,14 +151,114 @@ export class GitSyncServiceImpl implements IGitSyncService {
     }
   }
 
+  async getStatus(): Promise<GitStatus> {
+    const git = await this.ensureGit();
+    const status = await git.status();
+
+    const staged: GitStatusFile[] = [];
+    const unstaged: GitStatusFile[] = [];
+
+    for (const file of status.files) {
+      const stagedStatus = this.mapWorkingStatus(file.index);
+      const unstagedStatus = this.mapWorkingStatus(file.working_dir);
+
+      // 已暂存的文件（index 不为空）
+      if (stagedStatus !== '') {
+        staged.push({
+          path: file.path,
+          stagedStatus,
+          unstagedStatus: '',
+        });
+      }
+
+      // 工作区有修改但未暂存的文件（working_dir 不为空）
+      if (unstagedStatus !== '') {
+        unstaged.push({
+          path: file.path,
+          stagedStatus: '',
+          unstagedStatus,
+        });
+      }
+    }
+
+    return {
+      staged,
+      unstaged,
+      untracked: status.created,
+      conflicted: status.conflicted,
+      hasChanges: !status.isClean(),
+    };
+  }
+
+  private mapWorkingStatus(status: string): FileChange['status'] | '' {
+    switch (status.trim()) {
+      case 'A':
+        return 'added';
+      case 'M':
+        return 'modified';
+      case 'D':
+        return 'deleted';
+      case 'R':
+        return 'renamed';
+      case '?':
+        return 'added';
+      default:
+        return '';
+    }
+  }
+
+  async unstageFile(filePath: string): Promise<void> {
+    const git = await this.ensureGit();
+    logger.info(`[GitSync] 取消暂存: ${filePath}`);
+    await git.reset(['HEAD', '--', filePath]);
+  }
+
+  async discardFile(filePath: string): Promise<void> {
+    const git = await this.ensureGit();
+    logger.info(`[GitSync] 丢弃修改: ${filePath}`);
+    await git.checkout(['--', filePath]);
+  }
+
+  async discardAllChanges(): Promise<void> {
+    const git = await this.ensureGit();
+    logger.info('[GitSync] 丢弃全部修改');
+    await git.checkout(['--', '.']);
+  }
+
   async getConfig(): Promise<GitSyncConfig> {
     await this.loadConfig();
     return { ...this.config };
   }
 
   async updateConfig(config: Partial<GitSyncConfig>): Promise<void> {
+    const oldRemoteUrl = this.config.remote?.url;
     this.config = { ...this.config, ...config };
     await this.saveConfig();
+
+    // 同步 git remote 配置
+    const newRemoteUrl = this.config.remote?.url;
+    if (oldRemoteUrl !== newRemoteUrl) {
+      try {
+        const git = await this.ensureGit();
+        const remotes = await git.getRemotes(true);
+        const hasOrigin = remotes.some(r => r.name === 'origin');
+
+        if (newRemoteUrl) {
+          if (hasOrigin) {
+            await git.remote(['set-url', 'origin', newRemoteUrl]);
+            logger.info(`[GitSync] 已更新远程仓库: ${newRemoteUrl}`);
+          } else {
+            await git.remote(['add', 'origin', newRemoteUrl]);
+            logger.info(`[GitSync] 已添加远程仓库: ${newRemoteUrl}`);
+          }
+        } else if (hasOrigin) {
+          await git.remote(['remove', 'origin']);
+          logger.info('[GitSync] 已移除远程仓库');
+        }
+      } catch (e) {
+        logger.warn(`[GitSync] 远程仓库配置同步失败:`, e as any);
+      }
+    }
   }
 
   async testRemoteConnection(): Promise<boolean> {
@@ -190,6 +288,9 @@ export class GitSyncServiceImpl implements IGitSyncService {
     try {
       logger.info(`[GitSync] 暂存 ${status.files.length} 个文件`);
       await git.add('.');
+
+      // add 之后取 status，此时暂存区包含新文件 + 变更文件
+      const stagedStatus = await git.status();
       const result = await git.commit(message);
       logger.info(`[GitSync] 提交成功: ${result.commit}`);
 
@@ -197,32 +298,12 @@ export class GitSyncServiceImpl implements IGitSyncService {
         hash: result.commit,
         message,
         date: new Date(),
-        files: status.files.map((f) => f.path),
+        files: stagedStatus.files.map((f) => f.path),
       };
     } catch (error) {
       logger.error(`[GitSync] 提交失败: ${error}`);
       throw new GitCommitError(error instanceof Error ? error : undefined);
     }
-  }
-
-  async autoCommit(): Promise<GitCommit | null> {
-    const git = await this.ensureGit();
-    const status: StatusResult = await git.status();
-
-    if (status.isClean()) {
-      return null;
-    }
-
-    const message = this.parseCommitMessage(this.config.commitMessageTemplate);
-    await git.add('.');
-    const result = await git.commit(message);
-
-    return {
-      hash: result.commit,
-      message,
-      date: new Date(),
-      files: status.files.map((f) => f.path),
-    };
   }
 
   async commit(files: string[], message: string): Promise<GitCommit> {
@@ -284,6 +365,31 @@ export class GitSyncServiceImpl implements IGitSyncService {
       }
       return entries;
     } catch {
+      // 仓库无 commit 时返回空
+      return [];
+    }
+  }
+
+  async getRecentPulls(limit = 10): Promise<VersionHistoryEntry[]> {
+    const git = await this.ensureGit();
+    try {
+      const branch = this.config.remote?.branch || 'main';
+      const log = await git.log([`origin/${branch}`, '--max-count', String(limit)]);
+      const entries: VersionHistoryEntry[] = [];
+      for (const commit of log.all) {
+        entries.push({
+          commit: {
+            hash: commit.hash.substring(0, 7),
+            message: commit.message,
+            date: new Date(commit.date),
+            files: [],
+          },
+          changes: [],
+          isCurrent: false,
+        });
+      }
+      return entries;
+    } catch {
       return [];
     }
   }
@@ -330,6 +436,20 @@ export class GitSyncServiceImpl implements IGitSyncService {
     }
   }
 
+  async getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff> {
+    const git = await this.ensureGit();
+    const args = staged
+      ? ['--cached', '--', filePath]
+      : ['--', filePath];
+
+    try {
+      const diff = await git.diff(args);
+      return { path: filePath, hunks: this.parseDiffHunks(diff) };
+    } catch {
+      return { path: filePath, hunks: [] };
+    }
+  }
+
   private parseDiffHunks(diff: string): FileDiff['hunks'] {
     const hunks: FileDiff['hunks'] = [];
     const hunkRegex = /^@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@(.*)$/gm;
@@ -367,10 +487,11 @@ export class GitSyncServiceImpl implements IGitSyncService {
       logger.info(`[GitSync] 回滚文件: ${filePath} <- ${commitHash}~1`);
 
       // 回滚到变更前版本 (commitHash~1 = 该 commit 的上一个版本)
+      let restored = false;
       try {
         await git.raw(['restore', '--source', `${commitHash}~1`, '--', filePath]);
         logger.info(`[GitSync] 回滚成功(已恢复): ${filePath}`);
-        return;
+        restored = true;
       } catch {
         // ~1 不存在: 文件在此 commit 首次添加，应删除
         logger.info(`[GitSync] ${filePath} 在旧版本不存在，执行删除`);
@@ -378,14 +499,21 @@ export class GitSyncServiceImpl implements IGitSyncService {
           if (fs.existsSync(fullPath)) {
             await fs.promises.unlink(fullPath);
             logger.info(`[GitSync] 回滚成功(已删除): ${filePath}`);
-            return;
+            restored = true;
           }
         } catch (unlinkErr) {
           logger.error(`[GitSync] 删除文件失败: ${unlinkErr}`);
         }
       }
 
-      throw new Error(`无法回滚 ${filePath}: 文件在此版本前后均不存在`);
+      if (!restored) {
+        throw new Error(`无法回滚 ${filePath}: 文件在此版本前后均不存在`);
+      }
+
+      // 创建回滚 commit 作为撤销点
+      await this.commitAll(`回滚文件: ${filePath} ← ${commitHash}`).catch(e => {
+        logger.warn(`[GitSync] 回滚自动提交失败:`, e as any);
+      });
     } catch (error) {
       logger.error(`[GitSync] 回滚失败 ${filePath}: ${error}`);
       throw new GitRollbackError(error instanceof Error ? error : undefined);
@@ -399,22 +527,74 @@ export class GitSyncServiceImpl implements IGitSyncService {
     try {
       const git = await this.ensureGit();
       logger.info(`[GitSync] 回滚仓库: ${commitHash}`);
-      await git.raw(['checkout', commitHash, '--', '.']);
-      logger.info(`[GitSync] 仓库回滚成功: ${commitHash}`);
+
+      // 先尝试整体 checkout
+      try {
+        await git.raw(['checkout', commitHash, '--', '.']);
+        logger.info(`[GitSync] 仓库回滚成功: ${commitHash}`);
+      } catch (checkoutErr: any) {
+        const msg = checkoutErr?.message || '';
+        // 如果是因为文件锁定，逐一回滚跳过锁定文件
+        if (msg.includes('unable to unlink') || msg.includes('Invalid argument')) {
+          logger.warn(`[GitSync] 整体回滚遇到锁定文件，改为逐文件回滚`);
+          await this.rollbackAllFileByFile(git, commitHash);
+        } else {
+          throw checkoutErr;
+        }
+      }
+
+      // 创建回滚 commit 作为撤销点
+      await this.commitAll(`回滚整仓库到: ${commitHash}`).catch(e => {
+        logger.warn(`[GitSync] 回滚自动提交失败:`, e as any);
+      });
     } catch (error) {
       logger.error(`[GitSync] 仓库回滚失败: ${error}`);
       throw new GitRollbackError(error instanceof Error ? error : undefined);
     }
   }
 
-  async push(): Promise<void> {
-    if (!this.config.remote?.url) {
-      throw new GitRemoteNotConfiguredError();
+  /**
+   * 逐文件回滚，跳过无法操作的锁定文件
+   */
+  private async rollbackAllFileByFile(git: SimpleGit, commitHash: string): Promise<void> {
+    const diff = await git.diffSummary([`${commitHash}~1`, commitHash]);
+    let failCount = 0;
+
+    for (const file of diff.files) {
+      try {
+        await git.raw(['checkout', commitHash, '--', file.file]);
+      } catch {
+        failCount++;
+        logger.warn(`[GitSync] 跳过无法回滚的文件: ${file.file}`);
+      }
     }
+
+    logger.info(`[GitSync] 逐文件回滚完成，跳过 ${failCount} 个锁定文件`);
+  }
+
+  private async ensureRemote(): Promise<void> {
+    const url = this.config.remote?.url;
+    if (!url) throw new GitRemoteNotConfiguredError();
+
+    const git = await this.ensureGit();
+    const remotes = await git.getRemotes(true);
+    const origin = remotes.find(r => r.name === 'origin');
+
+    if (!origin) {
+      await git.remote(['add', 'origin', url]);
+      logger.info(`[GitSync] 自动添加远程仓库: ${url}`);
+    } else if (origin.refs.fetch !== url && origin.refs.push !== url) {
+      await git.remote(['set-url', 'origin', url]);
+      logger.info(`[GitSync] 自动更新远程仓库: ${url}`);
+    }
+  }
+
+  async push(): Promise<void> {
+    await this.ensureRemote();
 
     try {
       const git = await this.ensureGit();
-      const branch = this.config.remote.branch || 'main';
+      const branch = this.config.remote!.branch || 'main';
       logger.info(`[GitSync] 推送至远程: origin/${branch}`);
       await git.push('origin', branch);
       logger.info('[GitSync] 推送成功');
@@ -425,18 +605,17 @@ export class GitSyncServiceImpl implements IGitSyncService {
   }
 
   async pull(): Promise<void> {
-    if (!this.config.remote?.url) {
-      throw new GitRemoteNotConfiguredError();
-    }
+    await this.ensureRemote();
 
     try {
       const git = await this.ensureGit();
-      const branch = this.config.remote.branch || 'main';
+      const branch = this.config.remote!.branch || 'main';
       logger.info(`[GitSync] 从远程拉取: origin/${branch}`);
       await git.pull('origin', branch);
       logger.info('[GitSync] 拉取成功');
     } catch (error) {
       logger.error(`[GitSync] 拉取失败: ${error}`);
+      // 检查是否是冲突
       const conflicts = await this.getConflicts();
       if (conflicts.length > 0) {
         throw new GitPullError(conflicts, error instanceof Error ? error : undefined);

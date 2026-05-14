@@ -57,7 +57,6 @@ export enum SyncIpcChannels {
   GIT_GET_CONFIG = 'git:getConfig',
   GIT_UPDATE_CONFIG = 'git:updateConfig',
   GIT_TEST_REMOTE = 'git:testRemote',
-  GIT_AUTO_COMMIT = 'git:autoCommit',
   GIT_COMMIT = 'git:commit',
   GIT_GET_HISTORY = 'git:getHistory',
   GIT_GET_COMMIT_CHANGES = 'git:getCommitChanges',

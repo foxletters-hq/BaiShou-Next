@@ -75,14 +75,19 @@ interface AppAPI {
 interface GitAPI {
   init(): Promise<{ success: boolean; message?: string }>;
   isInitialized(): Promise<boolean>;
+  getStatus(): Promise<import('@baishou/shared').GitStatus>;
+  unstageFile(filePath: string): Promise<{ success: boolean }>;
+  discardFile(filePath: string): Promise<{ success: boolean }>;
+  discardAllChanges(): Promise<{ success: boolean }>;
   getConfig(): Promise<unknown>;
   updateConfig(config: unknown): Promise<{ success: boolean }>;
   testRemote(): Promise<boolean>;
-  autoCommit(): Promise<{ success: boolean; data: unknown }>;
   commit(files: string[], message: string): Promise<unknown>;
   getHistory(filePath?: string, limit?: number): Promise<unknown[]>;
+  getRecentPulls(limit?: number): Promise<unknown[]>;
   getCommitChanges(commitHash: string): Promise<unknown[]>;
   getFileDiff(filePath: string, commitHash?: string): Promise<unknown>;
+  getWorkingDiff(filePath: string, staged: boolean): Promise<unknown>;
   rollbackFile(filePath: string, commitHash: string): Promise<{ success: boolean }>;
   rollbackAll(commitHash: string): Promise<{ success: boolean }>;
   push(): Promise<{ success: boolean; message?: string }>;
