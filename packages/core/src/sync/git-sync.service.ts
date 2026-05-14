@@ -106,6 +106,18 @@ export class GitSyncServiceImpl implements IGitSyncService {
     if (!fs.existsSync(gitignorePath)) {
       await fs.promises.writeFile(gitignorePath, GITIGNORE_CONTENT, 'utf8');
     }
+
+    await this.untrackBaishouDir();
+  }
+
+  private async untrackBaishouDir(): Promise<void> {
+    const git = await this.ensureGit();
+    try {
+      await git.raw(['rm', '--cached', '-r', '.baishou']);
+      logger.info('[GitSync] 已将 .baishou/ 从 Git 索引中移除');
+    } catch {
+      // .baishou/ 不存在或未被追踪，无需处理
+    }
   }
 
   private mapStatusToType(status: string): FileChange['status'] {
@@ -222,7 +234,35 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async discardAllChanges(): Promise<void> {
     const git = await this.ensureGit();
     logger.info('[GitSync] 丢弃全部修改');
-    await git.checkout(['--', '.']);
+
+    try {
+      await git.checkout(['--', '.']);
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('unable to unlink') || msg.includes('Invalid argument')) {
+        logger.warn('[GitSync] 整体丢弃遇到锁定文件，改为逐文件丢弃');
+        await this.discardAllFileByFile(git);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  private async discardAllFileByFile(git: SimpleGit): Promise<void> {
+    const modifiedFiles = await git.raw(['diff', '--name-only']);
+    const files = modifiedFiles.split('\n').filter(Boolean);
+    let failCount = 0;
+
+    for (const file of files) {
+      try {
+        await git.checkout(['--', file]);
+      } catch {
+        failCount++;
+        logger.warn(`[GitSync] 跳过无法丢弃的锁定文件: ${file}`);
+      }
+    }
+
+    logger.info(`[GitSync] 逐文件丢弃完成，跳过 ${failCount} 个锁定文件`);
   }
 
   async getConfig(): Promise<GitSyncConfig> {
