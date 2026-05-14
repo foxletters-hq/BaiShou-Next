@@ -33,6 +33,8 @@ export interface GitManagementPageProps {
   onGetFileDiff: (filePath: string, commitHash?: string) => Promise<FileDiff>;
   onGetWorkingDiff: (filePath: string, staged: boolean) => Promise<FileDiff>;
   // 暂存操作
+  onStageFile: (filePath: string) => Promise<void>;
+  onStageAll: () => Promise<void>;
   onUnstageFile: (filePath: string) => Promise<void>;
   onUnstageAll: () => Promise<void>;
   onDiscardFile: (filePath: string) => Promise<void>;
@@ -62,6 +64,8 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   onGetCommitChanges,
   onGetFileDiff,
   onGetWorkingDiff,
+  onStageFile,
+  onStageAll,
   onUnstageFile,
   onUnstageAll,
   onDiscardFile,
@@ -301,6 +305,16 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
     const diff = await onGetWorkingDiff(filePath, staged);
     setWorkingFileDiff(diff);
   }, [onGetWorkingDiff, expandedWorkingFile]);
+
+  const handleStageFile = useCallback(async (filePath: string) => {
+    await onStageFile(filePath);
+    handleRefreshStatus();
+  }, [onStageFile, handleRefreshStatus]);
+
+  const handleStageAll = useCallback(async () => {
+    await onStageAll();
+    handleRefreshStatus();
+  }, [onStageAll, handleRefreshStatus]);
 
   const handleUnstageFile = useCallback(async (filePath: string) => {
     await onUnstageFile(filePath);
@@ -599,6 +613,14 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                   {unstagedCount > 0 && (
                     <button
                       className="gmp-btn-tiny"
+                      onClick={(e) => { e.stopPropagation(); handleStageAll(); }}
+                    >
+                      {t('version_control.stage_all', '全部暂存')}
+                    </button>
+                  )}
+                  {unstagedCount > 0 && (
+                    <button
+                      className="gmp-btn-tiny"
                       onClick={(e) => { e.stopPropagation(); handleDiscardAll(); }}
                     >
                       {t('version_control.discard_all', '全部撤销')}
@@ -625,6 +647,12 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                               <span className="gmp-file-path">{file.path}</span>
                               <button
                                 className="gmp-btn-tiny"
+                                onClick={(e) => { e.stopPropagation(); handleStageFile(file.path); }}
+                              >
+                                {t('version_control.stage', '暂存')}
+                              </button>
+                              <button
+                                className="gmp-btn-tiny"
                                 onClick={(e) => { e.stopPropagation(); handleDiscardFile(file.path); }}
                               >
                                 {t('version_control.discard', '撤销')}
@@ -636,6 +664,12 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                           <div key={file} className="gmp-file-row">
                             <span className="gmp-file-badge gmp-file-untracked">U</span>
                             <span className="gmp-file-path">{file}</span>
+                            <button
+                              className="gmp-btn-tiny"
+                              onClick={(e) => { e.stopPropagation(); handleStageFile(file); }}
+                            >
+                              {t('version_control.stage', '暂存')}
+                            </button>
                           </div>
                         ))}
                       </>

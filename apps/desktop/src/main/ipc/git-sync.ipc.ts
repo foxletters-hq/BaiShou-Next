@@ -34,6 +34,16 @@ export function registerGitSyncIPC() {
     return getGitService().getStatus();
   });
 
+  ipcMain.handle('git:stageFile', async (_, filePath: string) => {
+    await getGitService().stageFile(filePath);
+    return { success: true };
+  });
+
+  ipcMain.handle('git:stageAll', async () => {
+    await getGitService().stageAll();
+    return { success: true };
+  });
+
   ipcMain.handle('git:unstageFile', async (_, filePath: string) => {
     await getGitService().unstageFile(filePath);
     return { success: true };

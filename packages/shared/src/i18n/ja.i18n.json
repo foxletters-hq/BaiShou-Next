@@ -1585,6 +1585,8 @@
     "load_history_failed": "履歴の読み込みに失敗しました",
     "version_history": "バージョン履歴",
     "rollback_confirm": "ロールバックしてもよろしいですか？",
+    "stage": "ステージ",
+    "stage_all": "すべてステージ",
     "unstage": "ステージ解除",
     "unstage_all": "すべてステージ解除",
     "discard": "破棄",

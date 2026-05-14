@@ -1679,6 +1679,8 @@
     "load_history_failed": "加载历史失败",
     "version_history": "版本历史",
     "rollback_confirm": "确定回滚吗？",
+    "stage": "暂存",
+    "stage_all": "全部暂存",
     "unstage": "取消暂存",
     "unstage_all": "全部取消暂存",
     "discard": "撤销",

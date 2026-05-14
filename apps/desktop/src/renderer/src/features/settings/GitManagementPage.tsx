@@ -66,6 +66,8 @@ export const GitManagementPage: React.FC = () => {
         onGetCommitChanges={async (hash) => api?.getCommitChanges(hash) ?? []}
         onGetFileDiff={async (filePath, hash) => api?.getFileDiff(filePath, hash) ?? { path: filePath, hunks: [] }}
         onGetWorkingDiff={async (filePath, staged) => api?.getWorkingDiff(filePath, staged) ?? { path: filePath, hunks: [] }}
+        onStageFile={async (filePath) => { await api?.stageFile(filePath); }}
+        onStageAll={async () => { await api?.stageAll(); }}
         onUnstageFile={async (filePath) => { await api?.unstageFile(filePath); }}
         onUnstageAll={async () => { await api?.unstageAll(); }}
         onDiscardFile={async (filePath) => { await api?.discardFile(filePath); }}

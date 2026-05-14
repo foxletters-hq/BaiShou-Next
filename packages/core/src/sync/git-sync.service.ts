@@ -219,6 +219,18 @@ export class GitSyncServiceImpl implements IGitSyncService {
     }
   }
 
+  async stageFile(filePath: string): Promise<void> {
+    const git = await this.ensureGit();
+    logger.info(`[GitSync] 暂存文件: ${filePath}`);
+    await git.add(filePath);
+  }
+
+  async stageAll(): Promise<void> {
+    const git = await this.ensureGit();
+    logger.info('[GitSync] 暂存全部文件');
+    await git.add('.');
+  }
+
   async unstageFile(filePath: string): Promise<void> {
     const git = await this.ensureGit();
     logger.info(`[GitSync] 取消暂存: ${filePath}`);

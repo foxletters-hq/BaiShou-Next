@@ -53,6 +53,16 @@ export interface IGitSyncService {
   getStatus(): Promise<GitStatus>;
 
   /**
+   * 暂存指定文件（git add）
+   */
+  stageFile(filePath: string): Promise<void>;
+
+  /**
+   * 暂存全部文件（git add .）
+   */
+  stageAll(): Promise<void>;
+
+  /**
    * 取消暂存指定文件（从暂存区移回工作区）
    */
   unstageFile(filePath: string): Promise<void>;
