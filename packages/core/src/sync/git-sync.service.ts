@@ -360,8 +360,14 @@ export class GitSyncServiceImpl implements IGitSyncService {
     }
 
     try {
-      logger.info(`[GitSync] 暂存 ${status.files.length} 个文件`);
-      await git.add('.');
+      // 如果已有暂存文件，直接提交暂存区内容；否则自动暂存全部变更
+      const hasStaged = status.files.some(f => f.index.trim() !== '');
+      if (hasStaged) {
+        logger.info('[GitSync] 提交已暂存文件');
+      } else {
+        logger.info(`[GitSync] 暂存 ${status.files.length} 个文件`);
+        await git.add('.');
+      }
 
       // add 之后取 status，此时暂存区包含新文件 + 变更文件
       const stagedStatus = await git.status();
