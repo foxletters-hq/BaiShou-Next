@@ -286,13 +286,22 @@ export const AgentScreen: React.FC = () => {
       chat.markOptimisticSession(targetSessionId);
     }
 
-    const optimisticId = chat.optimisticAdd(text, attachments);
     try {
+      // ① 同步落盘：先保存用户消息到 DB，拿回真实 UUID
+      const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments);
+      if ('error' in saveResult) {
+        toast.showError(t('agent.error.send_failed', '发送消息失败: {{msg}}', { msg: saveResult.error }));
+        return;
+      }
+
+      // ② 以真实 UUID 展示消息（此时已确认落盘，不再使用乐观 ID）
+      chat.addUserMessage(saveResult.userMessageId, text, saveResult.attachments);
+
+      // ③ 启动 AI 推理
       chat.setStreamSessionId(targetSessionId);
-      await stream.startChat(targetSessionId, text, model.currentProviderId, model.currentModelId, attachments, searchMode);
+      await stream.startChat(targetSessionId, text, model.currentProviderId, model.currentModelId, saveResult.attachments, searchMode);
     } catch (e: any) {
-      console.error('[AgentScreen] startChat failed:', e);
-      chat.optimisticRemove(optimisticId);
+      console.error('[AgentScreen] send failed:', e);
       toast.showError(t('agent.error.send_failed', '发送消息失败: {{msg}}', { msg: e?.message || '未知错误' }));
     }
   };
@@ -525,10 +534,10 @@ export const AgentScreen: React.FC = () => {
                 isTtsPlaying={ttsPlayingMsgId === msg.id}
                 onRegenerate={() => {
                   if (msg.role === 'assistant' && sessionId) {
-                    // 找到当前AI消息对应的上一条用户消息
                     const msgIndex = chat.messages.findIndex(m => m.id === msg.id);
+                    // 向前查找当前 AI 消息对应的上一条用户消息
+                    let userMsgId: string | null = null;
                     if (msgIndex !== -1) {
-                      let userMsgId: string | null = null;
                       for (let i = msgIndex - 1; i >= 0; i--) {
                         if (chat.messages[i].role === 'user') {
                           userMsgId = chat.messages[i].id;
@@ -536,14 +545,16 @@ export const AgentScreen: React.FC = () => {
                         }
                       }
                       if (userMsgId) {
-                        // 截断消息列表到用户消息（包括用户消息）
                         const userMsgIndex = chat.messages.findIndex(m => m.id === userMsgId);
                         if (userMsgIndex !== -1) {
                           chat.setMessages(prev => prev.slice(0, userMsgIndex + 1));
                         }
-                        chat.setStreamSessionId(sessionId);
-                        stream.resendChat(sessionId, userMsgId, searchMode, model.currentProviderId, model.currentModelId);
                       }
+                    }
+                    // 与 onResend 保持一致：setStreamSessionId 和 resendChat 始终在最外层触发
+                    if (userMsgId) {
+                      chat.setStreamSessionId(sessionId);
+                      stream.resendChat(sessionId, userMsgId, searchMode, model.currentProviderId, model.currentModelId);
                     }
                   }
                 }}
