@@ -179,11 +179,16 @@
   cursor: not-allowed;
 }
 
-/* ── 瀑布流卡片网格 ── */
+/* ── 瀑布流卡片网格 ── 液态玻璃背景 */
 .diary-grid {
   flex: 1;
   overflow-y: auto;
   padding: 24px 32px;
+  /* 为液态玻璃效果提供视觉背景 - 尊重用户设置的主题色 */
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(var(--color-primary-rgb, 91, 168, 245), 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(var(--color-primary-rgb, 91, 168, 245), 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(var(--color-primary-rgb, 91, 168, 245), 0.04) 0%, transparent 60%);
 }
 
 .diary-grid::-webkit-scrollbar {
@@ -213,22 +218,62 @@
   }
 }
 
-/* ── 日记卡片 ── */
+/* ── 日记卡片 ── 液态玻璃效果 */
 .diary-card {
-  background: var(--bg-surface);
+  /* Liquid Glass Effect - 增强版玻璃态 */
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-outline-variant);
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   padding: 24px;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-in-out);
-  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
 }
 
+/* 玻璃高光反射效果 */
+.diary-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
 .diary-card:hover {
-  background: var(--bg-surface-high);
-  box-shadow: var(--shadow-md);
+  /* Liquid Glass Effect - Hover 增强效果 - 使用主题色 */
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-primary-rgb, 91, 168, 245), 0.15) 0%,
+    rgba(var(--color-primary-rgb, 91, 168, 245), 0.08) 50%,
+    rgba(var(--color-primary-rgb, 91, 168, 245), 0.05) 100%
+  );
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.5);
+  box-shadow: 
+    0 8px 32px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
 }
 
 /* 卡片头部：日期行 */
