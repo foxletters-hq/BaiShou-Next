@@ -26,6 +26,7 @@ const SETTINGS_TABS: SettingsTab[] = [
   { id: 'lan-transfer', titleKey: 'settings.lan_transfer', defaultTitle: '局域网传输', icon: '📡' },
   { id: 'data-sync', titleKey: 'settings.data_sync', defaultTitle: '数据同步', icon: '🔄' },
   { id: 'attachments', titleKey: 'settings.attachments', defaultTitle: '附件管理', icon: '📎' },
+  { id: 'storage', titleKey: 'settings.storage', defaultTitle: '存储管理', icon: '💾' },
 ];
 
 export const SettingsScreen: React.FC = () => {
@@ -602,18 +603,11 @@ export const SettingsScreen: React.FC = () => {
         <Text style={[styles.settingValue, { color: colors.textSecondary }]}>{storageStats.mediaCacheStats || '0 MB'}</Text>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: colors.primary }]}
-        onPress={() => Alert.alert(t('common.hint', '提示'), t('settings.export_hint', '导出功能待实现'))}
+        onPress={() => router.push('/storage' as any)}
       >
-        <Text style={[styles.actionButtonText, { color: '#FFF' }]}>{t('settings.export_data', '导出数据')}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={[styles.actionButton, { backgroundColor: colors.bgSurfaceHighest }]}
-        onPress={() => Alert.alert(t('common.hint', '提示'), t('settings.import_hint', '导入功能待实现'))}
-      >
-        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>{t('settings.import_data', '导入数据')}</Text>
+        <Text style={[styles.actionButtonText, { color: '#FFF' }]}>{t('settings.storage', '存储管理')}</Text>
       </TouchableOpacity>
 
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.about', '关于')}</Text>

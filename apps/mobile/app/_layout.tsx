@@ -52,6 +52,9 @@ export default function RootLayout() {
             title: t('summary.detail_title', '总结详情'),
             headerShown: false
           }} />
+          <Stack.Screen name="storage" options={{
+            title: t('storage.title', '存储管理')
+          }} />
           <Stack.Screen name="modal" options={{
             presentation: 'modal',
             title: 'Modal'
