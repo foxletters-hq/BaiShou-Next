@@ -101,27 +101,28 @@ export function registerChatIPC() {
     return true;
   });
 
-  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string; providerId?: string; modelId?: string; attachments?: any[]; searchMode?: boolean }) => {
+  // 同步保存用户消息到 DB（先落盘确认，再返回 UUID 给前端展示）
+  ipcMain.handle('agent:save-user-message', async (_, args: { sessionId: string; text: string; attachments?: any[] }) => {
     try {
-      const { realSessionRepo, realSnapshotRepo, sessionManager, realAssistantRepo } = getAgentManagers();
-      
-      // [Intercept and Copy Attachments]
+      const { realSessionRepo } = getAgentManagers();
+
+      // 处理附件：复制到会话目录
       let finalAttachments = args.attachments;
       if (finalAttachments && finalAttachments.length > 0) {
         try {
           const attachBase = await pathService.getAttachmentsBaseDirectory();
           const safeSessionId = args.sessionId.replace(/[\\/]/g, '');
           const sessionAttachDir = path.join(attachBase, safeSessionId);
-          
+
           await fs.mkdir(sessionAttachDir, { recursive: true });
-          
+
           finalAttachments = await Promise.all(finalAttachments.map(async (att) => {
             if (att.filePath && att.fileName) {
                const ext = path.extname(att.filePath) || path.extname(att.fileName);
                const originalName = path.parse(att.fileName).name;
                const newFileName = `${originalName}_${Date.now()}${ext}`;
                const destPath = path.join(sessionAttachDir, newFileName);
-               
+
                try {
                  await fs.copyFile(att.filePath, destPath);
                  att.url = `file://${destPath.replace(/\\/g, '/')}`;
@@ -149,49 +150,50 @@ export function registerChatIPC() {
         }
       }
 
-      // 立即保存用户消息到数据库（先落库，再处理）
-      try {
-        const history = await realSessionRepo.getMessagesBySession(args.sessionId, 1);
-        const lastOrder = history.length > 0 ? history[0].orderIndex : 0;
-        const userOrderIndex = lastOrder + 1;
-        const userMsgId = crypto.randomUUID();
+      const history = await realSessionRepo.getMessagesBySession(args.sessionId, 1);
+      const lastOrder = history.length > 0 ? history[0].orderIndex : 0;
+      const userOrderIndex = lastOrder + 1;
+      const userMsgId = crypto.randomUUID();
 
-        const initialParts: any[] = [
-          {
+      const initialParts: any[] = [
+        {
+          id: crypto.randomUUID(),
+          messageId: userMsgId,
+          sessionId: args.sessionId,
+          type: 'text',
+          data: { text: args.text },
+        }
+      ];
+
+      if (finalAttachments && finalAttachments.length > 0) {
+        for (const att of finalAttachments) {
+          initialParts.push({
             id: crypto.randomUUID(),
             messageId: userMsgId,
             sessionId: args.sessionId,
-            type: 'text',
-            data: { text: args.text },
-          }
-        ];
-
-        if (finalAttachments && finalAttachments.length > 0) {
-          for (const att of finalAttachments) {
-            initialParts.push({
-              id: crypto.randomUUID(),
-              messageId: userMsgId,
-              sessionId: args.sessionId,
-              type: 'attachment',
-              data: att
-            });
-          }
+            type: 'attachment',
+            data: att
+          });
         }
-
-        await realSessionRepo.insertMessageWithParts(
-          {
-            id: userMsgId,
-            sessionId: args.sessionId,
-            role: 'user',
-            orderIndex: userOrderIndex,
-          },
-          initialParts
-        );
-        logger.info(`[Agent:chat] 用户消息已保存: ${userMsgId}`);
-      } catch (saveError) {
-        logger.error('[Agent:chat] 保存用户消息失败:', saveError);
-        throw saveError; // 保存失败则中止
       }
+
+      await realSessionRepo.insertMessageWithParts(
+        { id: userMsgId, sessionId: args.sessionId, role: 'user', orderIndex: userOrderIndex },
+        initialParts
+      );
+      logger.info(`[Agent:save-user-message] 用户消息已落盘: ${userMsgId}`);
+
+      // 返回 UUID + 已处理的附件（供后续 agent:chat 使用，避免重复处理 base64）
+      return { userMessageId: userMsgId, attachments: finalAttachments };
+    } catch (e: any) {
+      logger.error('[Agent:save-user-message] 保存失败:', e);
+      return { error: e.message || 'Save failed' };
+    }
+  });
+
+  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string; providerId?: string; modelId?: string; attachments?: any[]; searchMode?: boolean }) => {
+    try {
+      const { realSessionRepo, realSnapshotRepo, sessionManager, realAssistantRepo } = getAgentManagers();
 
       // 获取会话的助手配置
       let assistantContextWindow: number | undefined;
@@ -218,15 +220,14 @@ export function registerChatIPC() {
         modelId: args.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
         systemModels,
         userConfig: userConfig,
-        attachments: finalAttachments,
-        skipUserMessageRecording: true, // 用户消息已在上面保存
+        attachments: args.attachments,
+        skipUserMessageRecording: true, // 用户消息已由 agent:save-user-message 落盘
         toolRegistry: toolRegistry,
         sessionRepo: realSessionRepo as any,
         snapshotRepo: realSnapshotRepo as any,
         diarySearcher: createDiarySearcher(),
         webSearchResultFetcher: createWebSearchResultFetcher(),
         fetchSearchPage: createFetchSearchPage(),
-        // systemPrompt 由助手配置决定，此处不设置 fallback，让 SystemPromptBuilder 处理
         abortSignal: globalAbortController.signal
       }, {
         onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
@@ -242,7 +243,7 @@ export function registerChatIPC() {
       } catch (e) {
         logger.error('Agent IPC persistence SSOT Error', e);
       }
-      return true
+      return true;
     } catch (error: any) {
       if (error.name === 'AbortError') {
          event.sender.send('agent:stream-finish', { success: true });
@@ -250,7 +251,7 @@ export function registerChatIPC() {
       }
       logger.error('Agent IPC stream error:', error)
       event.sender.send('agent:stream-finish', { error: error.message || 'Stream Error' })
-      return false
+      return false;
     } finally {
       globalAbortController = null;
     }
