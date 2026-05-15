@@ -21,7 +21,7 @@ export interface UseChatMessagesResult {
   pendingAssistantMsg: PendingAssistantMsg | null;
   loadMore: () => Promise<void>;
   refreshMessages: (retryCount?: number) => Promise<boolean>;
-  optimisticAdd: (text: string, attachments?: any[]) => string;
+  addUserMessage: (id: string, text: string, attachments?: any[]) => void;
   optimisticRemove: (optimisticId: string) => void;
   markOptimisticSession: (id: string) => void;
   setStreamSessionId: (id: string | null) => void;
@@ -33,13 +33,12 @@ export interface UseChatMessagesResult {
  * 职责：
  * 1. 会话切换时加载历史消息
  * 2. 流式结束时同步 DB 消息（带重试）
- * 3. 乐观 UI 增删
+ * 3. 消息增删
  * 4. 分页加载
  * 5. 跟踪当前流所属会话（streamSessionIdRef）
  *
- * 修复：将会话切换和流结束拆成两个独立 useEffect，消除竞态条件。
- * 原因：旧实现在 isNewSession 分支中调用 resetStream() 导致 isStreaming 被过早
- * 重置为 false，使得真正的流结束事件无法触发消息重新加载。
+ * 架构：用户消息采用同步落盘策略——先 await IPC 保存到 DB 拿到真实 UUID，
+ * 再添加到 React state 展示，最后启动 AI 推理。消息在 UI 出现时已确认持久化。
  */
 export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesResult {
   const { sessionId, isStreaming, streamingText, streamingReasoning } = params;
@@ -61,9 +60,9 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
         const currentCount = Math.max(20, currentMsgCount);
         const msgs = await window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, currentCount, 0);
         if (msgs && msgs.length > 0) {
-          // 安全检查：DB 返回的消息数不应少于当前已知消息数（除非当前是首次加载）
-          // 这防止了流结束时用不完整的 DB 数据覆盖已有的乐观消息
-          if (currentMsgCount > 0 && msgs.length < currentMsgCount - 2) {
+          // 安全检查：DB 返回的消息数不应明显少于当前已知消息数
+          // 确保乐观消息的落盘已完成再覆盖，防止吞掉用户刚发送的消息
+          if (currentMsgCount > 0 && msgs.length < currentMsgCount - 1) {
             console.warn(`[useChatMessages] DB returned ${msgs.length} msgs but we have ${currentMsgCount}, skipping overwrite (attempt ${attempt + 1})`);
             if (attempt < retryCount - 1) {
               await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
@@ -184,17 +183,20 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     }
   }, [sessionId, messages.length]);
 
-  // ── 乐观 UI ──
-  const optimisticAdd = useCallback((text: string, attachments?: any[]): string => {
-    const optimisticId = Date.now().toString();
-    setMessages(prev => [...prev, {
-      id: optimisticId,
-      role: 'user',
-      content: text,
-      attachments,
-      createdAt: new Date(),
-    }]);
-    return optimisticId;
+  // ── 消息增删 ──
+  // 添加已落盘的用户消息到 state（使用 DB 返回的真实 UUID）
+  const addUserMessage = useCallback((id: string, text: string, attachments?: any[]) => {
+    setMessages(prev => {
+      // 防止重复：如果 DB 刷新已加载该消息，不重复添加
+      if (prev.some(msg => msg.id === id)) return prev;
+      return [...prev, {
+        id,
+        role: 'user',
+        content: text,
+        attachments,
+        createdAt: new Date(),
+      }];
+    });
   }, []);
 
   const optimisticRemove = useCallback((optimisticId: string) => {
@@ -218,7 +220,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     pendingAssistantMsg,
     loadMore,
     refreshMessages,
-    optimisticAdd,
+    addUserMessage,
     optimisticRemove,
     markOptimisticSession,
     setStreamSessionId,

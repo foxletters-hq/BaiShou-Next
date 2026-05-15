@@ -13,6 +13,7 @@ export interface UseAgentStreamResult {
   activeTool: { name: string; args: any } | null;
   completedTools: ToolExecution[];
   error: string | null;
+  saveUserMessage: (sessionId: string, text: string, attachments?: any[]) => Promise<{ userMessageId: string; attachments?: any[] } | { error: string }>;
   startChat: (sessionId: string, text: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean) => Promise<void>;
   editChat: (sessionId: string, messageId: string, text: string, providerId?: string, modelId?: string, attachments?: any[]) => Promise<void>;
   resendChat: (sessionId: string, messageId: string, searchMode?: boolean, providerId?: string, modelId?: string) => Promise<void>;
@@ -73,7 +74,13 @@ export function useAgentStream(): UseAgentStreamResult {
     };
   }, []);
 
-  const startChat = useCallback(async (sessionId: string, userText: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean) => {
+  // 同步落盘：先保存用户消息到 DB，拿到真实 UUID 后再展示
+  const saveUserMessage = useCallback(async (sessionId: string, userText: string, attachments?: any[]): Promise<{ userMessageId: string; attachments?: any[] } | { error: string }> => {
+    const result = await window.electron.ipcRenderer.invoke('agent:save-user-message', { sessionId, text: userText, attachments });
+    return result;
+  }, []);
+
+  const startChat = useCallback(async (sessionId: string, userText: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean): Promise<void> => {
     setIsStreaming(true);
     setError(null);
     setActiveTool(null);
@@ -130,6 +137,7 @@ export function useAgentStream(): UseAgentStreamResult {
     activeTool,
     completedTools,
     error,
+    saveUserMessage,
     startChat,
     editChat,
     resendChat,
