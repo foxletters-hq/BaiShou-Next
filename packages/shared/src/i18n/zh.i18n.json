@@ -1575,7 +1575,18 @@
     "desc": "仪表盘暂未施工完成，可切换前往日记页查看以往记录。"
   },
   "storage": {
-    "title": "物理硬盘隔离项"
+    "title": "物理硬盘隔离项",
+    "default_path": "应用沙盒",
+    "permission_not_available": "移动端暂不支持手动更换存储根目录，数据默认保存在应用沙盒内。",
+    "service_unavailable": "归档服务未就绪",
+    "restart_hint": "所有工作区数据和设备配置已还原，建议重启应用。",
+    "snapshot_created": "快照已创建",
+    "create_snapshot": "创建快照",
+    "create_snapshot_desc": "保存当前数据的一份本地快照备份",
+    "clear_cache_confirm": "确定要清理应用缓存吗？",
+    "cache_cleared": "缓存已清理",
+    "size_pending": "待统计",
+    "snapshot_load_failed": "无法加载快照列表"
   },
   "emoji": {
     "categories": "类别",

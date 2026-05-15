@@ -1540,7 +1540,18 @@
     "desc": "仪表盘暂未施工完成，可切换前往日记页查看以往记录。"
   },
   "storage": {
-    "title": "物理硬盘隔离项"
+    "title": "Storage Management",
+    "default_path": "App Sandbox",
+    "permission_not_available": "Changing storage root is not available on mobile. Data is stored in the app sandbox by default.",
+    "service_unavailable": "Archive service not ready",
+    "restart_hint": "All workspace data and device config restored. Please restart the app.",
+    "snapshot_created": "Snapshot created",
+    "create_snapshot": "Create Snapshot",
+    "create_snapshot_desc": "Save a local snapshot backup of the current data",
+    "clear_cache_confirm": "Are you sure you want to clear the app cache?",
+    "cache_cleared": "Cache cleared",
+    "size_pending": "Calculating...",
+    "snapshot_load_failed": "Failed to load snapshot list"
   },
   "emoji": {
     "categories": "Categories",
