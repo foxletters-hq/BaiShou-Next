@@ -55,28 +55,69 @@ interface BaishouContextValue {
     lanSyncService: MobileLanSyncService;
     cloudSyncService: MobileCloudSyncService;
   } | null;
-  startAgentChat?: (sessionId: string, userText: string, callbacks: StreamChatCallbacks, overrides?: { providerId?: string; modelId?: string }) => Promise<void>;
+  startAgentChat?: (
+    sessionId: string,
+    userText: string,
+    callbacks: StreamChatCallbacks,
+    overrides?: { providerId?: string; modelId?: string; searchMode?: boolean },
+  ) => Promise<void>;
 }
 
 const BaishouContext = createContext<BaishouContextValue>({ dbReady: false, services: null });
 
 export const useBaishou = () => useContext(BaishouContext);
 
+/** 使用 native fetch 获取网页内容并剥离 HTML */
+async function webFetchContent(url: string): Promise<string> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const html = await response.text();
+
+    let plainText = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '\n');
+    plainText = plainText.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '\n');
+    plainText = plainText.replace(/<[^>]+>/g, ' ');
+    plainText = plainText.replace(/\s+/g, ' ').trim();
+
+    const LIMIT = 15000;
+    if (plainText.length > LIMIT) {
+      plainText = plainText.substring(0, LIMIT) + '\n\n[Content truncated due to length limits...]';
+    }
+
+    return plainText || 'The webpage is empty or cannot be parsed textually.';
+  } catch (e: any) {
+    console.error(`Failed to fetch URL: ${url}`, e);
+    return `Failed to read URL: ${e.message || String(e)}`;
+  }
+}
+
+/** 搜索 DuckDuckGo 并获取搜索结果页面 */
+async function fetchDuckDuckGoSearch(query: string): Promise<string> {
+  const encoded = encodeURIComponent(query);
+  const url = `https://html.duckduckgo.com/html/?q=${encoded}`;
+  return webFetchContent(url);
+}
+
 export function BaishouProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<BaishouContextValue>({ dbReady: false, services: null });
 
   useEffect(() => {
     let isMounted = true;
-    
+
     async function init() {
       try {
         // 1. 初始化 SQLite 环境
         const expoDb = await SQLite.openDatabaseAsync('baishou_next_mobile.db');
-        
-        // 尝试加载 SQLite Vec 扩展 (不强求，失败降级)
+
         try {
-           // expoDb 可能不直接抛出 C 原生扩展，但保留这里作为未来 native 适配入口
-           // 不使用 node 版本的 sqliteVec.load(expoDb)，而是留给底层 Repository 根据 isVecLoaded = false 自动降级处理！
         } catch (e) {
            console.warn('Native sqlite-vec extension not detected on mobile. RAG will fallback to JS calculation.');
         }
@@ -118,7 +159,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const summarySyncService = new SummarySyncService(null as any, null as any, summaryRepo, summaryFileService);
         const summaryManager = new SummaryManagerService(summaryRepo, summaryFileService, summarySyncService);
 
-        const agentService = new AgentSessionService(); // Phase 3
+        const agentService = new AgentSessionService();
 
         // 创建归档服务和局域网同步服务
         const archiveService = new MobileArchiveService(pathService, vaultService);
@@ -129,28 +170,66 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const registry = AIProviderRegistry.getInstance();
         registry.initializeDefaultProviders();
 
-        const startAgentChat = async (sessionId: string, userText: string, callbacks: StreamChatCallbacks, overrides?: { providerId?: string; modelId?: string }) => {
+        // 日记全文搜索器（与桌面端 createDiarySearcher 对齐）
+        const diarySearcher = {
+          async searchFTS(query: string, limit?: number) {
+            const results = await shadowRepo.searchFTS(query, limit);
+            const allRecords = await shadowRepo.getAllRecords();
+            const idToDateMap = new Map(allRecords.map(r => [r.id, r.date]));
+            return results.map(r => ({
+              date: idToDateMap.get(r.rowid) || '',
+              contentSnippet: r.contentSnippet,
+              tags: r.tags,
+              rankScore: r.rankScore,
+            }));
+          },
+        };
+
+        const startAgentChat = async (
+          sessionId: string,
+          userText: string,
+          callbacks: StreamChatCallbacks,
+          overrides?: { providerId?: string; modelId?: string; searchMode?: boolean },
+        ) => {
           try {
             const providers = await settingsManager.get<any[]>('ai_providers') || [];
             const globalModels = await settingsManager.get<any>('global_models');
-            
-            // 支持助手级模型覆盖，优先使用 overrides
+
             const providerId = overrides?.providerId || globalModels?.globalDialogueProviderId;
             const config = providers.find((p: any) => p.id === providerId) || providers.find((p: any) => p.isEnabled);
-            
+
             if (!config) throw new Error('No active provider configured');
-            
-            // 使用刚引入的单例模式，避免移动端长时间存活导致的过期缓存问题
+
             const provider = registry.getOrUpdateProvider(config);
-            
+
+            // 读取搜索相关配置
+            const searchMode = overrides?.searchMode ?? false;
+            const webSearchConfig = await settingsManager.get<any>('web_search_config');
+            const ragConfig = await settingsManager.get<any>('rag_config');
+
+            const userConfig: Record<string, unknown> = {
+              web_search_enabled: searchMode,
+              web_search_engine: webSearchConfig?.webSearchEngine || 'duckduckgo',
+              web_search_max_results: webSearchConfig?.webSearchMaxResults || 5,
+              web_search_rag_enabled: webSearchConfig?.webSearchRagEnabled ?? true,
+              tavily_api_key: webSearchConfig?.webSearchApiKey || '',
+              ragEnabled: ragConfig?.ragEnabled ?? true,
+            };
+
+            const modelId = overrides?.modelId || globalModels?.globalDialogueModelId || config.defaultDialogueModel || config.models[0];
+
             await agentService.streamChat({
                sessionId,
                userText,
                provider,
-               modelId: overrides?.modelId || globalModels?.globalDialogueModelId || config.defaultDialogueModel || config.models[0],
+               modelId,
                toolRegistry,
                sessionRepo,
-               snapshotRepo
+               snapshotRepo,
+               userConfig,
+               diarySearcher,
+               webSearchResultFetcher: webFetchContent,
+               fetchSearchPage: fetchDuckDuckGoSearch,
             }, callbacks);
           } catch(e) {
             console.error('Mobile Agent Chat Failed:', e);
@@ -161,8 +240,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         console.log('Mobile DB and DI Container Ready!');
 
         if (isMounted) {
-          setValue({ 
-            dbReady: true, 
+          setValue({
+            dbReady: true,
             services: {
                agentService,
                sessionManager,
@@ -182,7 +261,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     }
 
     init();
-    
+
     return () => { isMounted = false; };
   }, []);
 

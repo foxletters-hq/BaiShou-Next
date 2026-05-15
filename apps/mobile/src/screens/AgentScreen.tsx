@@ -52,7 +52,7 @@ export const AgentScreen = () => {
     isStreaming, streamingText, tokenUsage,
     handleSend, handleStop, handleRegenerate,
     handleEditMessage, handleDeleteMessage,
-  } = useAgentStream(currentSessionId, currentProviderId, currentModelId, currentAssistant, setCurrentSessionId);
+  } = useAgentStream(currentSessionId, currentProviderId, currentModelId, currentAssistant, setCurrentSessionId, searchMode);
 
   // 使用 UI 状态 hook
   const {

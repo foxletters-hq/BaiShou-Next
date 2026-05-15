@@ -17,6 +17,7 @@ export function useAgentStream(
   currentModelId: string | null,
   currentAssistant: { id?: string; name?: string } | null,
   onSessionCreated?: (sessionId: string) => void,
+  searchMode?: boolean,
 ) {
   const { t } = useTranslation();
   const { addMessage, updateMessage, setLoading, clearSession, messages } = useAgentStore();
@@ -28,12 +29,18 @@ export function useAgentStream(
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({ inputTokens: 0, outputTokens: 0, totalCostMicros: 0 });
 
+  // 保存 searchMode 引用用于 regenerate / edit 场景
+  const searchModeRef = useRef(searchMode);
+  searchModeRef.current = searchMode;
+
   // 用于中止请求的 AbortController
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // 发送消息
-  const handleSend = useCallback(async (text: string, attachments?: any[]) => {
+  const handleSend = useCallback(async (text: string, attachments?: any[], sendSearchMode?: boolean) => {
     if (!text.trim()) return;
+
+    const effectiveSearchMode = sendSearchMode ?? searchModeRef.current ?? false;
 
     // 如果没有当前会话，创建新会话
     let sessionId = currentSessionId;
@@ -113,7 +120,7 @@ export function useAgentStream(
           }
           updateMessage(assistantMessageId, { content: currentText + '\n\n[ERR] ' + displayMsg });
         }
-      }, { providerId: currentProviderId || undefined, modelId: currentModelId || undefined });
+      }, { providerId: currentProviderId || undefined, modelId: currentModelId || undefined, searchMode: effectiveSearchMode });
     } catch (e: any) {
       setLoading(false);
       setIsStreaming(false);
