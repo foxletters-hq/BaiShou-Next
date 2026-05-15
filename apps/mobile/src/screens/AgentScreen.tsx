@@ -3,6 +3,7 @@ import {
   View, StyleSheet, FlatList, KeyboardAvoidingView,
   Platform, SafeAreaView, StatusBar, TouchableOpacity, Text, Alert
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatBubble, InputBar, TokenBadge } from '@baishou/ui/native';
 import { useNativeTheme } from '@baishou/ui/src/native/theme';
 import { useAgentStore } from '@baishou/store/src/stores/agent.store';
@@ -23,6 +24,7 @@ import { useAgentModel } from '../hooks/useAgentModel';
 import { useAgentUI } from '../hooks/useAgentUI';
 import { useTTS } from '../hooks/useTTS';
 import { useBranchSession } from '../hooks/useBranchSession';
+import { useStreamError } from '../hooks/useStreamError';
 
 export const AgentScreen = () => {
   const { t } = useTranslation();
@@ -67,6 +69,69 @@ export const AgentScreen = () => {
 
   // 使用分支会话 hook
   const { branchSession } = useBranchSession();
+
+  // 错误处理
+  useStreamError(null, isStreaming);
+
+  // TTS 模式切换 (off / manual / always)
+  const [ttsMode, setTtsMode] = useState<'off' | 'manual' | 'always'>(() => 'manual');
+  const ttsModeRef = useRef(ttsMode);
+  ttsModeRef.current = ttsMode;
+
+  const toggleTtsMode = useCallback(() => {
+    setTtsMode(prev => {
+      const nextMap: Record<string, 'off' | 'manual' | 'always'> = {
+        'off': 'manual',
+        'manual': 'always',
+        'always': 'off',
+      };
+      const next = nextMap[prev] || 'manual';
+      AsyncStorage.setItem('baishou_tts_mode', next).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  // 恢复 TTS 模式
+  useEffect(() => {
+    AsyncStorage.getItem('baishou_tts_mode').then((v) => {
+      if (v === 'off' || v === 'manual' || v === 'always') {
+        setTtsMode(v);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // 搜索模式持久化
+  const searchModeLoadedRef = useRef(false);
+  useEffect(() => {
+    AsyncStorage.getItem('baishou_search_mode').then((v) => {
+      if (v === 'true' && !searchMode) {
+        useAgentStore.getState().toggleSearchMode?.();
+      }
+      searchModeLoadedRef.current = true;
+    }).catch(() => { searchModeLoadedRef.current = true; });
+  }, []);
+
+  useEffect(() => {
+    if (!searchModeLoadedRef.current) return;
+    AsyncStorage.setItem('baishou_search_mode', String(searchMode)).catch(() => {});
+  }, [searchMode]);
+
+  // 流结束时自动 TTS
+  const chatMessagesRef = useRef<any[]>([]);
+  chatMessagesRef.current = messages;
+  const prevIsStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    if (prevIsStreamingRef.current && !isStreaming) {
+      if (ttsModeRef.current === 'always' && chatMessagesRef.current.length > 0) {
+        const lastMsg = chatMessagesRef.current[chatMessagesRef.current.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content) {
+          handleTtsReadAloud(lastMsg.content, lastMsg.id);
+        }
+      }
+    }
+    prevIsStreamingRef.current = isStreaming;
+  }, [isStreaming, handleTtsReadAloud]);
+
 
   // 上下文链对话框状态
   const [contextDialogState, setContextDialogState] = useState<{
@@ -300,6 +365,17 @@ export const AgentScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionBtn, { backgroundColor: searchMode ? colors.primary : colors.bgSurfaceHighest }]} onPress={toggleSearchMode}>
               <Text style={[styles.actionBtnText, { color: searchMode ? colors.textOnPrimary : colors.textSecondary }]}>🔍</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                { backgroundColor: ttsMode === 'always' ? colors.primary : ttsMode === 'manual' ? colors.bgSurfaceHighest : colors.bgSurfaceHighest }
+              ]}
+              onPress={toggleTtsMode}
+            >
+              <Text style={[styles.actionBtnText, { color: ttsMode !== 'off' ? (ttsMode === 'always' ? colors.textOnPrimary || '#FFF' : colors.textSecondary) : colors.textSecondary }]}>
+                {ttsMode === 'off' ? '🔇' : ttsMode === 'always' ? '🔊' : '🔉'}
+              </Text>
             </TouchableOpacity>
           </View>
 
