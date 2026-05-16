@@ -31,11 +31,15 @@ export class SessionSyncService {
     const allFiles = await this.fileService.listAllSessions();
     const allDbSessions = await this.sessionRepo.findAllSessions();
     
-    // 逆向覆写：将存在于 File 系统的数据全部更新倒入 SQLite 中（即使版本一样也无妨，或者将来做 modifiedTime 脏检）
+    // 逆向覆写：将存在于 File 系统的数据全部更新倒入 SQLite 中
     for (const f of allFiles) {
-       const sessionData = await this.fileService.readSession(f.id);
-       if (sessionData) {
-           await this.sessionRepo.upsertAggregate(sessionData);
+       try {
+         const sessionData = await this.fileService.readSession(f.id);
+         if (sessionData) {
+             await this.sessionRepo.upsertAggregate(sessionData);
+         }
+       } catch (e: any) {
+         console.warn(`[SessionSyncService] 同步会话 ${f.id} 失败，跳过（非致命）:`, e);
        }
     }
     
