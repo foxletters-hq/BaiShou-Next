@@ -2,6 +2,32 @@ import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
+
+// --- 全局 IPC 拦截器（仅用于开发调试） ---
+const originalInvoke = electronAPI.ipcRenderer.invoke;
+electronAPI.ipcRenderer.invoke = async (channel: string, ...args: any[]) => {
+  const startTime = performance.now();
+  console.groupCollapsed(`[IPC Request] ➔ ${channel}`);
+  console.log('Payload:', args);
+  console.groupEnd();
+  
+  try {
+    const result = await originalInvoke(channel, ...args);
+    const cost = Math.round(performance.now() - startTime);
+    console.groupCollapsed(`[IPC Response] ⬅ ${channel} (${cost}ms)`);
+    console.log('Result:', result);
+    console.groupEnd();
+    return result;
+  } catch (e) {
+    const cost = Math.round(performance.now() - startTime);
+    console.groupCollapsed(`%c[IPC Error] ❌ ${channel} (${cost}ms)`, 'color: red');
+    console.error(e);
+    console.groupEnd();
+    throw e;
+  }
+};
+// ----------------------------------------
+
 export const api = {
   agentChat: (params: { sessionId: string; text: string }) => ipcRenderer.invoke('agent:chat', params),
   saveUserMessage: (params: { sessionId: string; text: string; attachments?: any[] }) => ipcRenderer.invoke('agent:save-user-message', params),

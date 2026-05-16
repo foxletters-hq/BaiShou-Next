@@ -36,7 +36,7 @@ export interface StreamChatOptions {
   webSearchResultFetcher?: (url: string) => Promise<string>;
   fetchSearchPage?: (url: string) => Promise<string>;
   abortSignal?: AbortSignal;
-  skipUserMessageRecording?: boolean;
+  userMessageId?: string; // 明确指定回复针对的用户消息 ID
 }
 
 export interface StreamChatCallbacks {

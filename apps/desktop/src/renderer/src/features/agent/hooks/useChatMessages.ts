@@ -23,22 +23,12 @@ export interface UseChatMessagesResult {
   refreshMessages: (retryCount?: number) => Promise<boolean>;
   addUserMessage: (id: string, text: string, attachments?: any[]) => void;
   optimisticRemove: (optimisticId: string) => void;
-  markOptimisticSession: (id: string) => void;
   setStreamSessionId: (id: string | null) => void;
 }
 
 /**
- * 消息生命周期管理 Hook
- *
- * 职责：
- * 1. 会话切换时加载历史消息
- * 2. 流式结束时同步 DB 消息（带重试）
- * 3. 消息增删
- * 4. 分页加载
- * 5. 跟踪当前流所属会话（streamSessionIdRef）
- *
- * 架构：用户消息采用同步落盘策略——先 await IPC 保存到 DB 拿到真实 UUID，
- * 再添加到 React state 展示，最后启动 AI 推理。消息在 UI 出现时已确认持久化。
+ * 消息生命周期管理 Hook (去乐观化版本)
+ * 所有的状态更新均建立在数据库真实数据之上。
  */
 export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesResult {
   const { sessionId, isStreaming, streamingText, streamingReasoning } = params;
@@ -47,44 +37,42 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   const [hasMore, setHasMore] = useState(false);
   const [pendingAssistantMsg, setPendingAssistantMsg] = useState<PendingAssistantMsg | null>(null);
   const currentSessionIdRef = useRef<string | null>(null);
-  const optimisticSessionIdRef = useRef<string | null>(null);
   const streamSessionIdRef = useRef<string | null>(null);
+  
+  const messagesRef = useRef<any[]>(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
-  // ── 带重试的 DB 同步 ──
-  // 保护机制：DB 返回空或消息数少于当前已知消息数时，不覆盖（防止乐观消息丢失）
-  const refreshMessages = useCallback(async (retryCount = 1): Promise<boolean> => {
-    if (!sessionId) return false;
-    const currentMsgCount = messages.length;
+  // ── 核心：从数据库同步最新消息 ──
+  const refreshMessages = useCallback(async (retryCount = 1, overrideSessionId?: string): Promise<boolean> => {
+    const targetId = overrideSessionId || sessionId;
+    if (!targetId) return false;
+    
     for (let attempt = 0; attempt < retryCount; attempt++) {
       try {
-        const currentCount = Math.max(20, currentMsgCount);
-        const msgs = await window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, currentCount, 0);
-        if (msgs && msgs.length > 0) {
-          // 安全检查：DB 返回的消息数不应明显少于当前已知消息数
-          // 确保乐观消息的落盘已完成再覆盖，防止吞掉用户刚发送的消息
-          if (currentMsgCount > 0 && msgs.length < currentMsgCount - 1) {
-            console.warn(`[useChatMessages] DB returned ${msgs.length} msgs but we have ${currentMsgCount}, skipping overwrite (attempt ${attempt + 1})`);
-            if (attempt < retryCount - 1) {
-              await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
-              continue;
-            }
-            return false;
-          }
+        // 实打实去数据库查当前会话的所有（或最近）消息
+        // 我们根据当前 state 长度决定拉多少，确保 UI 能够衔接上
+        const currentMsgCount = messagesRef.current.length;
+        const fetchLimit = Math.max(50, currentMsgCount);
+        
+        const msgs = await window.electron.ipcRenderer.invoke('agent:get-messages', targetId, fetchLimit, 0);
+
+        if (msgs) {
+          // 直接使用数据库的最权威数据覆盖 state
           setMessages(msgs);
-          setHasMore(msgs.length === currentCount);
+          setHasMore(msgs.length === fetchLimit);
           return true;
         }
       } catch (e) {
         console.warn('[useChatMessages] refreshMessages attempt', attempt + 1, 'failed:', e);
       }
       if (attempt < retryCount - 1) {
-        await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+        await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
       }
     }
     return false;
-  }, [sessionId, messages.length]);
+  }, [sessionId]);
 
-  // ── Effect 1: 会话切换 → 加载消息（不碰流状态）──
+  // ── Effect 1: 会话切换 → 始终从数据库加载历史 ──
   useEffect(() => {
     if (!sessionId) {
       setMessages([]);
@@ -94,58 +82,31 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       return;
     }
 
-    const isNewSession = currentSessionIdRef.current !== sessionId;
-    currentSessionIdRef.current = sessionId;
-
-    if (isNewSession) {
-      setPendingAssistantMsg(null);
-      // 带重试加载消息（解决分支会话等瞬时空结果问题）
+    if (sessionId !== currentSessionIdRef.current) {
+      currentSessionIdRef.current = sessionId;
+      
+      // 不管是不是新会话，不管 ID 是什么格式，一律从数据库加载
       const loadMessages = async () => {
-        const success = await new Promise<boolean>((resolve) => {
-          window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, 20, 0).then(msgs => {
-            if (msgs && msgs.length > 0) {
-              setMessages(msgs);
-              setHasMore(msgs.length === 20);
-              resolve(true);
-            } else {
-              resolve(false);
-            }
-          }).catch(() => resolve(false));
-        });
-        if (!success) {
-          // 首次失败，延迟重试（给 DB 写入留时间）
-          for (let retry = 1; retry <= 2; retry++) {
-            await new Promise(r => setTimeout(r, 200 * retry));
-            const retrySuccess = await new Promise<boolean>((resolve) => {
-              window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, 20, 0).then(msgs => {
-                if (msgs && msgs.length > 0) {
-                  setMessages(msgs);
-                  setHasMore(msgs.length === 20);
-                  resolve(true);
-                } else {
-                  resolve(false);
-                }
-              }).catch(() => resolve(false));
-            });
-            if (retrySuccess) return;
+        try {
+          const msgs = await window.electron.ipcRenderer.invoke('agent:get-messages', sessionId, 50, 0);
+          if (msgs) {
+            setMessages(msgs);
+            setHasMore(msgs.length === 50);
           }
-          // 所有重试都失败，确认空状态
-          if (optimisticSessionIdRef.current !== sessionId) {
-            setMessages([]);
-          }
-          setHasMore(false);
+        } catch (e) {
+          console.error('[useChatMessages] DB fetch error:', e);
+          setMessages([]);
         }
       };
       loadMessages();
     }
   }, [sessionId]);
 
-  // ── Effect 2: 流结束 → 同步 DB 消息（独立于会话切换）──
+  // ── Effect 2: AI 回复结束 → 同步数据库 ──
   const prevStreamingRef = useRef(isStreaming);
   useEffect(() => {
-    // 仅在 isStreaming 从 true→false 的转换瞬间触发
     if (prevStreamingRef.current && !isStreaming && sessionId) {
-      // 构造 pending 过渡气泡（仅当流属于当前会话）
+      // 流结束瞬间，如果产生了内容，先放进 pending 气泡防止视觉闪烁
       if (streamSessionIdRef.current === sessionId && (streamingText || streamingReasoning)) {
         setPendingAssistantMsg({
           id: `pending-${Date.now()}`,
@@ -153,19 +114,22 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
           reasoning: streamingReasoning || undefined,
         });
       }
-      // 带重试的 DB 同步，增加延迟确保 DB 写入完成
-      const syncFromDb = async () => {
-        // 等待一小段时间，确保主进程的 DB 事务和 flushSessionToDisk 完成
-        await new Promise(r => setTimeout(r, 200));
-        const success = await refreshMessages(5);
+      
+      // 然后实打实地同步数据库消息
+      const sync = async () => {
+        await new Promise(r => setTimeout(r, 100)); // 给主进程落盘留出极小间隙
+        const success = await refreshMessages(5); // 增加重试次数确保拿到刚落盘的数据
         if (success) {
+          setPendingAssistantMsg(null); // 同步成功后，才撤掉 pending 气泡
+        } else {
+          // 如果多次重试都没拿到（可能 AI 没回复成功），也清除气泡
           setPendingAssistantMsg(null);
         }
       };
-      syncFromDb();
+      sync();
     }
     prevStreamingRef.current = isStreaming;
-  }, [isStreaming, sessionId]);
+  }, [isStreaming, sessionId, streamingText, streamingReasoning, refreshMessages]);
 
   // ── 分页加载 ──
   const loadMore = useCallback(async () => {
@@ -183,32 +147,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     }
   }, [sessionId, messages.length]);
 
-  // ── 消息增删 ──
-  // 添加已落盘的用户消息到 state（使用 DB 返回的真实 UUID）
-  const addUserMessage = useCallback((id: string, text: string, attachments?: any[]) => {
-    setMessages(prev => {
-      // 防止重复：如果 DB 刷新已加载该消息，不重复添加
-      if (prev.some(msg => msg.id === id)) return prev;
-      return [...prev, {
-        id,
-        role: 'user',
-        content: text,
-        attachments,
-        createdAt: new Date(),
-      }];
-    });
+  // ── 外部接口 ──
+  const optimisticRemove = useCallback((id: string) => {
+    setMessages(prev => prev.filter(m => m.id !== id));
   }, []);
 
-  const optimisticRemove = useCallback((optimisticId: string) => {
-    setMessages(prev => prev.filter(msg => msg.id !== optimisticId));
-  }, []);
-
-  // 标记乐观会话（创建新会话后调用，防止 DB 空结果覆盖乐观 UI）
-  const markOptimisticSession = useCallback((id: string) => {
-    optimisticSessionIdRef.current = id;
-  }, []);
-
-  // 设置当前流所属会话 ID
   const setStreamSessionId = useCallback((id: string | null) => {
     streamSessionIdRef.current = id;
   }, []);
@@ -220,9 +163,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     pendingAssistantMsg,
     loadMore,
     refreshMessages,
-    addUserMessage,
     optimisticRemove,
-    markOptimisticSession,
     setStreamSessionId,
   };
 }

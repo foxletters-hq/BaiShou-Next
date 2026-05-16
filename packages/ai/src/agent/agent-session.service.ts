@@ -65,60 +65,7 @@ export class AgentSessionService {
       );
       const coreMessages = MessageAdapter.toVercelMessages(dbHistory);
 
-      // 2.5. 立即保存用户消息到数据库（解决消息消失问题）
-      if (!options.skipUserMessageRecording) {
-         const history = await sessionRepo.getMessagesBySession(sessionId, 1);
-         const lastOrder = history.length > 0 ? history[0].orderIndex : 0;
-         const userOrderIndex = lastOrder + 1;
-         const userMsgId = crypto.randomUUID();
-
-         const initialParts: any[] = [
-             {
-               id: crypto.randomUUID(),
-               messageId: userMsgId,
-               sessionId,
-               type: 'text',
-               data: { text: userText },
-             }
-         ];
-
-         if (attachments && attachments.length > 0) {
-            for (const att of attachments) {
-               initialParts.push({
-                 id: crypto.randomUUID(),
-                 messageId: userMsgId,
-                 sessionId,
-                 type: 'attachment',
-                 data: att
-               });
-            }
-         }
-
-         if (contextSnapshots && contextSnapshots.length > 0) {
-            initialParts.push({
-               id: crypto.randomUUID(),
-               messageId: userMsgId,
-               sessionId,
-               type: 'context_snapshot',
-               data: { snapshots: contextSnapshots }
-            });
-         }
-
-         await sessionRepo.insertMessageWithParts(
-           {
-             id: userMsgId,
-             sessionId,
-             role: 'user',
-             orderIndex: userOrderIndex,
-           },
-           initialParts
-         );
-      }
-
-      // 将用户消息追加到上下文窗口（无论 skipUserMessageRecording 与否）
-      // 当 skipUserMessageRecording=true 时，用户消息已由 IPC 层保存到 DB，
-      // ContextWindowBuilder.build() 会从 DB 加载。但如果窗口截断导致丢失，
-      // 此处兜底追加确保 AI 能看到用户输入。
+      // 将当前用户消息追加到上下文窗口，供 AI 推理使用（不再落盘，仅在内存中追加）
       const lastCoreMsg = coreMessages.length > 0 ? coreMessages[coreMessages.length - 1]! : null;
       const userContentAlreadyInContext = lastCoreMsg && lastCoreMsg.role === 'user' && 
         (typeof lastCoreMsg.content === 'string' ? lastCoreMsg.content === userText : true);

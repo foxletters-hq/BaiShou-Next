@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 export interface UseSessionManagerParams {
@@ -8,33 +8,35 @@ export interface UseSessionManagerParams {
 }
 
 export interface UseSessionManagerResult {
-  createAndNavigate: (title: string) => Promise<string | null>;
+  createSession: (title: string) => Promise<string | null>;
 }
 
 /**
  * 会话管理 Hook
  *
- * 职责：创建新会话并导航到对应路由
+ * 职责：仅负责创建会话并返回 ID（不导航、不刷新侧边栏）。
+ * 导航、侧边栏刷新均由调用方（AgentScreen.handleSend）在消息落盘后统一控制，
+ * 确保 DB 已有完整数据，Effect 1 触发时不会出现空 DB 覆盖乐观 UI 的问题。
  */
 export function useSessionManager(params: UseSessionManagerParams): UseSessionManagerResult {
-  const { currentAssistantId, loadSessions } = params;
-  const navigate = useNavigate();
+  const { currentAssistantId } = params;
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
 
-  const createAndNavigate = useCallback(async (title: string): Promise<string | null> => {
+  const createSession = useCallback(async (title: string): Promise<string | null> => {
     if (typeof window === 'undefined' || !window.electron) return null;
     try {
       const astId = searchParams.get('assistantId') || currentAssistantId || 'default';
       const newTitle = title.trim().substring(0, 10) || t('agent.sessions.newChat', '新对话');
-      const newId = await window.electron.ipcRenderer.invoke('agent:create-session', {
+      
+      const newId = crypto.randomUUID(); // 前端生成纯 UUID
+      
+      await window.electron.ipcRenderer.invoke('agent:create-session', {
+        id: newId, // 把生成的 ID 传给主进程
         assistantId: astId,
         title: newTitle,
       });
-      if (newId) {
-        if (loadSessions) loadSessions(true);
-        navigate(`/chat/${newId}`, { replace: true });
-      }
+      
       return newId;
     } catch (e: any) {
       console.error('[useSessionManager] Create session failed:', e);
@@ -42,7 +44,7 @@ export function useSessionManager(params: UseSessionManagerParams): UseSessionMa
       alert(t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg: errMsg }));
       return null;
     }
-  }, [searchParams, currentAssistantId, loadSessions, navigate, t]);
+  }, [searchParams, currentAssistantId, t]);
 
-  return { createAndNavigate };
+  return { createSession };
 }

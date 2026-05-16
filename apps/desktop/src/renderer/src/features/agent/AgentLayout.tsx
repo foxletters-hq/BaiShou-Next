@@ -49,14 +49,27 @@ export const AgentLayout: React.FC = () => {
     }
   }, [sessionId]);
 
+  const lastLoadRequestId = useRef<number>(0);
+
   const loadSessions = async (resetOffset = false, overrideAssistantId?: string) => {
     try {
       if (typeof window !== 'undefined' && window.electron) {
+        const reqId = ++lastLoadRequestId.current;
         const offset = resetOffset ? 0 : sessions.length;
         const targetAst = overrideAssistantId || resolvedAssistantIdRef.current;
         if (!targetAst) return;
 
+        console.info(`[AgentLayout] Loading sessions: astId=${targetAst}, reset=${resetOffset}, offset=${offset}`);
         const data = await window.electron.ipcRenderer.invoke('agent:get-sessions', SESSION_LIMIT, offset, targetAst);
+        
+        // 竞态保护
+        if (reqId !== lastLoadRequestId.current) {
+          console.warn(`[AgentLayout] Dropping stale response (reqId: ${reqId})`);
+          return;
+        }
+
+        console.info(`[AgentLayout] Loaded ${data?.length || 0} sessions.`);
+
         if (data && data.length > 0) {
            setSessions(prev => resetOffset ? data : [...prev, ...data]);
            setHasMoreSessions(data.length === SESSION_LIMIT);
