@@ -17,13 +17,52 @@ import { logger } from '@baishou/shared';
  */
 let _appDb: AppDatabase | null = null;
 
-export function getAppDb(): AppDatabase {
-  if (!_appDb) {
-    const agentDbPath = join(app.getPath('userData'), 'baishou_agent.db');
-    logger.info('[DB] Agent DB 路径:', agentDbPath);
-    _appDb = initNodeDatabase(agentDbPath);
+let _appDbPath: string | null = null;
+
+export function getAppDb(customBasePath?: string): AppDatabase {
+  const agentDbPath = customBasePath
+    ? join(customBasePath, 'baishou_agent.db')
+    : join(app.getPath('userData'), 'baishou_agent.db');
+
+  // 如果已有实例且路径匹配，直接返回
+  if (_appDb && _appDbPath === agentDbPath) {
+    return _appDb;
   }
+  
+  // 如果传入了 customBasePath 且与当前实例路径不同（说明之前被错误初始化），重置
+  if (_appDb && customBasePath && _appDbPath !== agentDbPath) {
+    logger.warn(`[DB] 检测到 DB 路径变更: ${_appDbPath} → ${agentDbPath}，正在重置连接...`);
+    resetAppDb();
+  }
+  
+  // 未初始化时创建新实例
+  if (!_appDb) {
+    logger.info(`[DB] Agent DB 初始化，路径: ${agentDbPath}`);
+    _appDb = initNodeDatabase(agentDbPath);
+    _appDbPath = agentDbPath;
+  }
+  
   return _appDb;
+}
+
+/**
+ * 重置全局 Agent DB 实例
+ * 在 ZIP 恢复等场景下，磁盘上的 DB 文件已被替换，
+ * 必须关闭旧连接并创建新连接才能看到新文件数据
+ */
+export function resetAppDb(): void {
+  if (_appDb) {
+    try {
+      const client = (_appDb as any)?.session?.client;
+      if (client && typeof client.close === 'function') {
+        client.close();
+      }
+    } catch {
+      // 关闭旧连接失败不影响后续流程
+    }
+    _appDb = null;
+    _appDbPath = null;
+  }
 }
 
 // 保留向后兼容的 appDb 导出（某些地方直接导入它）

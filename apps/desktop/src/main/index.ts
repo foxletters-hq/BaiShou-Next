@@ -132,6 +132,7 @@ async function completeFullBootstrap() {
     await initVaultSystem();
     
     // 2. 业务级 IPC 已在 app.whenReady 中提前注册，此处无需重复
+    // (JSON → SQLite 的全量同步已由 initVaultSystem() 内的 GlobalDataBootstrapper 完成)
 
     // 3. 这里的逻辑在引导完成后或者已有配置时执行
     if (mainWindow) {
@@ -143,6 +144,7 @@ async function completeFullBootstrap() {
       // 通知渲染进程引导已就绪，可以跳转了
       mainWindow.webContents.send('onboarding:ready');
     }
+
     
     isBootstrapping = false;
   } catch (err) {
@@ -206,12 +208,6 @@ app.whenReady().then(async () => {
     win?.close()
   })
   
-  // 初始化全局 Agent DB Schema（一次性，不随 Vault 切换而重复）
-  // connectionManager 提供全局访问句柄，供所有 Agent 相关 IPC 使用
-  const appDb = getAppDb();
-  connectionManager.setDb(appDb);
-  await installDatabaseSchema(appDb);
-
   // 引导检查
   const settingsPath = join(app.getPath('userData'), 'baishou_settings.json');
   let needsOnboarding = true;
@@ -224,6 +220,13 @@ app.whenReady().then(async () => {
       needsOnboarding = false;
     }
   } catch {}
+
+  // ── 核心变更：在确定存储路径后，再初始化全局 Agent DB ──
+  // connectionManager 提供全局访问句柄，供所有 Agent 相关 IPC 使用
+  const appDb = getAppDb(customStorageRoot || undefined);
+  connectionManager.setDb(appDb);
+  await installDatabaseSchema(appDb);
+
 
   // ======================================
   // 5. 自动升级探测 (Legacy Migration Check)
