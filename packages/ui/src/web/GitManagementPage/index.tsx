@@ -112,7 +112,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
   const [commitMessage, setCommitMessage] = useState('');
-
+  const [operatingFiles, setOperatingFiles] = useState<Set<string>>(new Set());
   useEffect(() => {
     setRemoteUrl(config.remote?.url || '');
     setRemoteBranch(config.remote?.branch || 'main');
@@ -307,8 +307,21 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   }, [onGetWorkingDiff, expandedWorkingFile]);
 
   const handleStageFile = useCallback(async (filePath: string) => {
-    await onStageFile(filePath);
-    handleRefreshStatus();
+    setOperatingFiles(prev => {
+      const next = new Set(prev);
+      next.add(filePath);
+      return next;
+    });
+    try {
+      await onStageFile(filePath);
+      handleRefreshStatus();
+    } finally {
+      setOperatingFiles(prev => {
+        const next = new Set(prev);
+        next.delete(filePath);
+        return next;
+      });
+    }
   }, [onStageFile, handleRefreshStatus]);
 
   const handleStageAll = useCallback(async () => {
@@ -317,8 +330,21 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   }, [onStageAll, handleRefreshStatus]);
 
   const handleUnstageFile = useCallback(async (filePath: string) => {
-    await onUnstageFile(filePath);
-    handleRefreshStatus();
+    setOperatingFiles(prev => {
+      const next = new Set(prev);
+      next.add(filePath);
+      return next;
+    });
+    try {
+      await onUnstageFile(filePath);
+      handleRefreshStatus();
+    } finally {
+      setOperatingFiles(prev => {
+        const next = new Set(prev);
+        next.delete(filePath);
+        return next;
+      });
+    }
   }, [onUnstageFile, handleRefreshStatus]);
 
   const handleUnstageAll = useCallback(async () => {
@@ -331,8 +357,21 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   }, [onUnstageAll, handleRefreshStatus, onToast, t]);
 
   const handleDiscardFile = useCallback(async (filePath: string) => {
-    await onDiscardFile(filePath);
-    handleRefreshStatus();
+    setOperatingFiles(prev => {
+      const next = new Set(prev);
+      next.add(filePath);
+      return next;
+    });
+    try {
+      await onDiscardFile(filePath);
+      handleRefreshStatus();
+    } finally {
+      setOperatingFiles(prev => {
+        const next = new Set(prev);
+        next.delete(filePath);
+        return next;
+      });
+    }
   }, [onDiscardFile, handleRefreshStatus]);
 
   const handleDiscardAll = useCallback(async () => {
@@ -558,6 +597,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                             <button
                               className="gmp-btn-tiny"
                               onClick={(e) => { e.stopPropagation(); handleUnstageFile(file.path); }}
+                              disabled={operatingFiles.has(file.path)}
                             >
                               {t('version_control.unstage', '取消暂存')}
                             </button>
@@ -648,12 +688,14 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                               <button
                                 className="gmp-btn-tiny"
                                 onClick={(e) => { e.stopPropagation(); handleStageFile(file.path); }}
+                                disabled={operatingFiles.has(file.path)}
                               >
                                 {t('version_control.stage', '暂存')}
                               </button>
                               <button
                                 className="gmp-btn-tiny"
                                 onClick={(e) => { e.stopPropagation(); handleDiscardFile(file.path); }}
+                                disabled={operatingFiles.has(file.path)}
                               >
                                 {t('version_control.discard', '撤销')}
                               </button>
@@ -667,6 +709,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                             <button
                               className="gmp-btn-tiny"
                               onClick={(e) => { e.stopPropagation(); handleStageFile(file); }}
+                              disabled={operatingFiles.has(file)}
                             >
                               {t('version_control.stage', '暂存')}
                             </button>

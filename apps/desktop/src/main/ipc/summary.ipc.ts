@@ -65,6 +65,14 @@ function ensureManager(): SummaryManagerService {
   return _cachedManager;
 }
 
+/**
+ * 在 ZIP 恢复等场景下，DB 连接已被重建，必须使缓存的 Manager 失效
+ * 否则其持有的 Repository 仍引用旧的（已断开）DB 实例
+ */
+export function resetCachedManager(): void {
+  _cachedManager = null;
+}
+
 let _queueInitialized = false;
 
 function ensureQueueReady(): void {

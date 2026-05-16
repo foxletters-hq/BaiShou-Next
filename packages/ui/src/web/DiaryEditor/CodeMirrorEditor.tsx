@@ -13,7 +13,6 @@ import {
   placeholder as cmPlaceholder,
   drawSelection,
   highlightActiveLine,
-  lineNumbers,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -155,7 +154,6 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
 
       const extensions = [
         EditorView.lineWrapping,
-        lineNumbers(),
         highlightActiveLine(),
         drawSelection(),
         history(),
