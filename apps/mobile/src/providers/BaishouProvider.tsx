@@ -54,6 +54,8 @@ interface BaishouContextValue {
     archiveService: MobileArchiveService;
     lanSyncService: MobileLanSyncService;
     cloudSyncService: MobileCloudSyncService;
+    vaultService: VaultService;
+    pathService: MobileStoragePathService;
   } | null;
   startAgentChat?: (sessionId: string, userText: string, callbacks: StreamChatCallbacks, overrides?: { providerId?: string; modelId?: string }) => Promise<void>;
 }
@@ -171,7 +173,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                summaryManager,
                archiveService,
                lanSyncService,
-               cloudSyncService
+               cloudSyncService,
+               vaultService,
+               pathService
             },
             startAgentChat
           });
