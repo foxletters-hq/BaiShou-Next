@@ -36,6 +36,7 @@ export interface InsertPartInput {
 }
 
 export class SessionRepository {
+  private static writeMutex: Promise<void> = Promise.resolve();
   constructor(private readonly db: AppDatabase) {}
 
   /**
@@ -158,12 +159,24 @@ export class SessionRepository {
          isNull(agentSessionsTable.assistantId)
        )) as any;
     }
-    return await q.orderBy(
+    const finalQuery = q.orderBy(
         desc(agentSessionsTable.isPinned),
         desc(agentSessionsTable.updatedAt)
       )
       .limit(limit)
       .offset(offset);
+      
+    const results = await finalQuery;
+    console.log(`[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, astId=${assistantId}) => returned ${results.length} rows.`);
+    if (results.length === 0) {
+       // 如果查出来是空，顺便查一下表里总共有多少数据，看看是不是条件过滤导致的
+       const allDocs = await this.db.select().from(agentSessionsTable);
+       console.log(`[SessionRepo] WARNING: Returned 0, but total rows in DB: ${allDocs.length}`);
+       if (allDocs.length > 0) {
+           console.log(`[SessionRepo] The first row in DB has assistantId:`, allDocs[0].assistantId);
+       }
+    }
+    return results;
   }
 
   /**
@@ -320,66 +333,130 @@ export class SessionRepository {
   /**
    * 将同步来的物理 File (JSON Aggregate) 倒灌或者幂等替换到 DB 缓存。
    */
+  /**
+   * 将 JSON 中的时间戳（可能是秒级或毫秒级）统一转换为 Date 对象
+   */
+  private _toDate(ts: any): Date {
+    if (ts instanceof Date) return isNaN(ts.getTime()) ? new Date() : ts;
+    const n = Number(ts);
+    if (!isNaN(n)) {
+      // 秒级时间戳（10位）转毫秒；毫秒级（13位）直接用
+      return new Date(n < 1e12 ? n * 1000 : n);
+    }
+    // ISO 字符串
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+
+  /**
+   * 互斥包装层：确保即使并发调用 upsertAggregate，也严格排队执行。
+   * 彻底避免 libsql 多实例/多异步上下文抢占同一个句柄导致的 SQLITE_CORRUPT
+   */
   async upsertAggregate(aggregate: any): Promise<void> {
+     const unlock = await this._acquireMutex();
+     try {
+        await this._upsertAggregateInternal(aggregate);
+     } finally {
+        unlock();
+     }
+  }
+
+  private _acquireMutex(): Promise<() => void> {
+     let release: () => void;
+     const newMutex = new Promise<void>((resolve) => {
+        release = resolve;
+     });
+     const oldMutex = SessionRepository.writeMutex;
+     SessionRepository.writeMutex = oldMutex.then(() => newMutex);
+     return oldMutex.then(() => release);
+  }
+
+  private async _upsertAggregateInternal(aggregate: any): Promise<void> {
      const { session, messages } = aggregate;
-     
-     await this.db.transaction(async (tx) => {
-        // 更新会话自身
-        await tx.insert(agentSessionsTable).values({
-           ...session,
-           createdAt: new Date(session.createdAt),
-           updatedAt: new Date(session.updatedAt)
-        }).onConflictDoUpdate({
-           target: [agentSessionsTable.id],
-           set: {
-              title: session.title,
-              vaultName: session.vaultName,
-              assistantId: session.assistantId,
-              isPinned: session.isPinned,
-              systemPrompt: session.systemPrompt,
-              providerId: session.providerId,
-              modelId: session.modelId,
-              totalInputTokens: session.totalInputTokens,
-              totalOutputTokens: session.totalOutputTokens,
-              totalCostMicros: session.totalCostMicros,
-              updatedAt: new Date(session.updatedAt) // assure Date object
-           }
-        });
 
-        // 强压替换法：由于 Messages 和 Parts 会有很多微小的变动，直接清理该 Session 的子级再重新插入
-        await tx.delete(messagesTbl).where(eq(messagesTbl.sessionId, session.id));
-        await tx.delete(partsTbl).where(eq(partsTbl.sessionId, session.id));
+     // 获取原始 libsql client（db.$client 是 drizzle-orm/libsql 的公共属性）
+     // 使用 batch() 将单会话的所有写操作打包成一次原子提交，
+     // 彻底规避 libsql v0.17.x 累积 40+ 次 prepare/execute 后
+     // 内部 sqlite3_stmt 池溢出导致的伪 SQLITE_CORRUPT 问题。
+     const rawClient = (this.db as any).$client as {
+       batch: (statements: Array<{ sql: string; args?: any[] }>) => Promise<any[]>
+     };
 
-        if (messages && messages.length > 0) {
-           const msgsInsert = messages.map((m: any) => ({
-              id: m.id,
-              sessionId: m.sessionId,
-              role: m.role,
-              isSummary: m.isSummary ?? false,
-              orderIndex: m.orderIndex,
-              createdAt: new Date(m.createdAt),
-           }));
-           await tx.insert(messagesTbl).values(msgsInsert);
+     const toUnixSec = (ts: any): number => {
+        const d = this._toDate(ts);
+        return Math.floor(d.getTime() / 1000);
+     };
 
-           const allParts: any[] = [];
-           for (const m of messages) {
-               if (m.parts && m.parts.length > 0) {
-                   for (const p of m.parts) {
-                       allParts.push({
-                           id: p.id,
-                           messageId: p.messageId,
-                           sessionId: p.sessionId,
-                           type: p.type,
-                           data: p.data,
-                           createdAt: new Date(p.createdAt)
-                       });
-                   }
-               }
-           }
-           if (allParts.length > 0) {
-              await tx.insert(partsTbl).values(allParts);
+     const stmts: Array<{ sql: string; args?: any[] }> = [];
+
+     // 1. 删除旧 session（ON DELETE CASCADE 自动清理 messages 和 parts）
+     stmts.push({ sql: 'DELETE FROM agent_sessions WHERE id = ?', args: [session.id] });
+
+     // 2. 重新插入 session
+     stmts.push({
+        sql: `INSERT INTO agent_sessions
+              (id, title, vault_name, assistant_id, is_pinned, system_prompt,
+               provider_id, model_id, total_input_tokens, total_output_tokens,
+               total_cost_micros, created_at, updated_at)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        args: [
+           session.id,
+           session.title ?? null,
+           session.vaultName ?? null,
+           session.assistantId ?? null,
+           session.isPinned ? 1 : 0,
+           session.systemPrompt ?? null,
+           session.providerId ?? null,
+           session.modelId ?? null,
+           session.totalInputTokens ?? null,
+           session.totalOutputTokens ?? null,
+           session.totalCostMicros ?? null,
+           toUnixSec(session.createdAt),
+           toUnixSec(session.updatedAt),
+        ]
+     });
+
+     // 3. 插入 messages 和 parts
+     if (messages && messages.length > 0) {
+        for (const m of messages) {
+           stmts.push({
+              sql: `INSERT OR IGNORE INTO agent_messages
+                    (id, session_id, role, is_summary, order_index, created_at)
+                    VALUES (?,?,?,?,?,?)`,
+              args: [
+                 m.id,
+                 m.sessionId,
+                 m.role,
+                 m.isSummary ? 1 : 0,
+                 m.orderIndex,
+                 toUnixSec(m.createdAt),
+              ]
+           });
+
+           if (m.parts && m.parts.length > 0) {
+              for (const p of m.parts) {
+                 const dataStr = typeof p.data === 'string'
+                   ? p.data
+                   : JSON.stringify(p.data ?? null);
+                 stmts.push({
+                    sql: `INSERT OR IGNORE INTO agent_parts
+                          (id, message_id, session_id, type, data, created_at)
+                          VALUES (?,?,?,?,?,?)`,
+                    args: [
+                       p.id,
+                       p.messageId,
+                       p.sessionId,
+                       p.type,
+                       dataStr,
+                       toUnixSec(p.createdAt),
+                    ]
+                 });
+              }
            }
         }
-     });
+     }
+
+     // 一次性提交所有语句，单次 prepare/execute 往返
+     await rawClient.batch(stmts);
   }
 }
