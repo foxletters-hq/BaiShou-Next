@@ -17,7 +17,7 @@ function getSyncService(): IncrementalSyncServiceImpl {
   return syncService;
 }
 
-function createSyncService(config: S3SyncConfig): IncrementalSyncServiceImpl {
+async function createSyncService(config: S3SyncConfig): Promise<IncrementalSyncServiceImpl> {
   const client = new IncrementalS3Client(
     config.endpoint,
     config.region,
@@ -26,6 +26,11 @@ function createSyncService(config: S3SyncConfig): IncrementalSyncServiceImpl {
     config.secretKey,
     config.path,
   );
+
+  const vaultPath = await pathService.getActiveVaultPath();
+  if (vaultPath) {
+    client.setVaultPath(vaultPath);
+  }
 
   const deviceId = 'desktop-' + crypto.randomUUID().substring(0, 8);
   syncService = new IncrementalSyncServiceImpl(pathService, client, deviceId);
@@ -60,7 +65,7 @@ export function registerIncrementalSyncIPC() {
       secretKey: '',
       ...config,
     };
-    createSyncService(merged);
+    await createSyncService(merged);
     await syncService!.updateConfig(merged);
     return { success: true };
   });
@@ -70,7 +75,14 @@ export function registerIncrementalSyncIPC() {
   });
 
   ipcMain.handle('incrementalSync:sync', async () => {
-    return getSyncService().sync();
+    const result = await getSyncService().sync();
+    // 增量同步下载了新文件后，必须触发全生态重扫
+    // 确保 summaries 表等 DB 缓存与磁盘文件保持一致
+    if (result.downloaded.length > 0) {
+      const { globalBootstrapper } = await import('../services/bootstrapper.service');
+      await globalBootstrapper.fullyResyncAllEcosystems();
+    }
+    return result;
   });
 
   ipcMain.handle('incrementalSync:uploadOnly', async () => {
@@ -78,7 +90,12 @@ export function registerIncrementalSyncIPC() {
   });
 
   ipcMain.handle('incrementalSync:downloadOnly', async () => {
-    return getSyncService().downloadOnly();
+    const result = await getSyncService().downloadOnly();
+    if (result.downloaded.length > 0) {
+      const { globalBootstrapper } = await import('../services/bootstrapper.service');
+      await globalBootstrapper.fullyResyncAllEcosystems();
+    }
+    return result;
   });
 
   ipcMain.handle('incrementalSync:getLocalManifest', async () => {

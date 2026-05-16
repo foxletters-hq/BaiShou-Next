@@ -6,7 +6,7 @@ import archiver from 'archiver';
 import extract from 'extract-zip';
 
 import { IArchiveService, ImportResult, VaultService } from '@baishou/core';
-import { connectionManager, SettingsRepository, UserProfileRepository } from '@baishou/database';
+import { connectionManager, shadowConnectionManager, SettingsRepository, UserProfileRepository } from '@baishou/database';
 import { logger } from '@baishou/shared';
 import { getAppDb } from '../db';
 import { DesktopStoragePathService } from './path.service';
@@ -186,8 +186,10 @@ export class DesktopArchiveService implements IArchiveService {
     // 1. Cut off SQLite bindings to unlock file handles globally!
     await connectionManager.disconnect();
     try {
-      shadowConnectionManager.disconnect();
-    } catch(e) {}
+      await shadowConnectionManager.disconnect();
+    } catch(e) {
+      logger.warn('Failed to disconnect shadow DB:', e);
+    }
     
     // We extract everything to a temporary sandbox first to inspect format safely
     const tempExtractDir = path.join(app.getPath('temp'), `archive_extract_${Date.now()}`);
@@ -236,12 +238,20 @@ export class DesktopArchiveService implements IArchiveService {
       await fsp.mkdir(rootDir, { recursive: true });
 
       // Step 3: Move from temporary sandbox to Target Root
+      // 在 Windows 上，跨目录的 fs.rename() 可能因文件锁定或权限问题抛出 EPERM，
+      // 使用 copyFile + unlink 作为更可靠的迁移方式
       async function moveAll(src: string, dest: string) {
         const entries = await fsp.readdir(src, { withFileTypes: true });
         for (const entry of entries) {
            const srcFile = path.join(src, entry.name);
            const destFile = path.join(dest, entry.name);
-           await fsp.rename(srcFile, destFile);
+           if (entry.isDirectory()) {
+             await fsp.mkdir(destFile, { recursive: true });
+             await moveAll(srcFile, destFile);
+           } else {
+             await fsp.copyFile(srcFile, destFile);
+             await fsp.unlink(srcFile);
+           }
         }
       }
       await moveAll(tempExtractDir, rootDir);
@@ -310,6 +320,11 @@ export class DesktopArchiveService implements IArchiveService {
           const actualDbPath = path.join(app.getPath('userData'), 'baishou_agent.db');
           await fsp.copyFile(extractedDbPath, actualDbPath);
           await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {});
+
+          // 磁盘上的 DB 文件已替换，必须销毁旧连接并创建新连接
+          const { resetAppDb } = await import('../db');
+          resetAppDb();
+          connectionManager.setDb(getAppDb());
         }
       } catch (e) {
         logger.error('Failed to restore database from archive', e);
@@ -328,6 +343,15 @@ export class DesktopArchiveService implements IArchiveService {
       await connectShadowForActiveVault();
     } catch (e) {
       logger.error('Failed to reconnect Shadow DB after import:', e);
+    }
+
+    // 6.6 使 summary IPC 缓存的 Manager 失效
+    //    旧的 _cachedManager 持有的 Repository 引用了已断开的 DB 实例
+    try {
+      const { resetCachedManager } = await import('../ipc/summary.ipc');
+      resetCachedManager();
+    } catch (e) {
+      logger.error('Failed to reset summary cache after import:', e);
     }
     
     // 7. Global Ecosystem Wake-up! 

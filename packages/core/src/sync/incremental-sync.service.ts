@@ -174,7 +174,6 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
   private async downloadFile(relPath: string): Promise<void> {
     const vaultPath = await this.getVaultPath();
     const fullPath = path.join(vaultPath, relPath);
-    const remotePath = this.config.path + relPath;
 
     // 确保目录存在
     const dir = path.dirname(fullPath);
@@ -182,7 +181,9 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
       await fs.promises.mkdir(dir, { recursive: true });
     }
 
-    await this.cloudClient.downloadFile(remotePath, fullPath);
+    // relPath 是相对路径（如 Summaries/Weekly/2026-W18.md），
+    // 客户端自行拼接 basePath，此处不应再重复拼接 this.config.path
+    await this.cloudClient.downloadFile(relPath, fullPath);
   }
 
   private async backupFile(relPath: string): Promise<void> {
@@ -395,8 +396,9 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
   async getRemoteManifest(): Promise<SyncManifest> {
     try {
       const files = await this.cloudClient.listFiles();
+      // listFiles() 返回的相对路径已经去除了 basePath 前缀
       const manifestFile = files.find(
-        (f) => f.filename === this.config.path + MANIFEST_FILENAME
+        (f) => f.filename === MANIFEST_FILENAME || f.filename.endsWith('/' + MANIFEST_FILENAME)
       );
 
       if (!manifestFile) {

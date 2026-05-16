@@ -11,6 +11,7 @@ export class IncrementalS3Client implements ICloudSyncClient {
   private client: Minio.Client;
   private bucket: string;
   private basePath: string;
+  private vaultPath: string | null = null;
 
   constructor(
     endpoint: string,
@@ -38,15 +39,21 @@ export class IncrementalS3Client implements ICloudSyncClient {
     this.basePath = p;
   }
 
+  setVaultPath(vaultPath: string): void {
+    this.vaultPath = vaultPath;
+  }
+
   async uploadFile(localFilePath: string): Promise<void> {
-    // 使用文件名作为 object key（保留相对路径的 basename）
-    const filename = path.basename(localFilePath);
-    const objectName = this.basePath + filename;
+    // 从本地绝对路径计算出相对于 vault 根目录的路径，保留完整目录结构
+    const relativePath = this.vaultPath
+      ? path.relative(this.vaultPath, localFilePath).replace(/\\/g, '/')
+      : path.basename(localFilePath);
+    const objectName = this.basePath + relativePath;
     await this.client.fPutObject(this.bucket, objectName, localFilePath);
   }
 
   async downloadFile(remoteFilename: string, localDestPath: string): Promise<void> {
-    // remoteFilename 已经是完整的远端路径
+    // remoteFilename 是相对于 basePath 的远端路径（不含 basePath 前缀）
     const objectName = this.basePath + remoteFilename;
     // 确保目标目录存在
     const { mkdirSync, existsSync } = require('fs');
