@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+import { useNativeTheme } from '@baishou/ui/native';
 
 interface CompressionChartProps {
   delay?: number;

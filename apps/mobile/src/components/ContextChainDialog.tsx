@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+import { useNativeTheme } from '@baishou/ui/native';
 
 export interface ContextMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
