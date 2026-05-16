@@ -177,7 +177,13 @@ export function registerChatIPC() {
         }
       }
 
-      await realSessionRepo.insertMessageWithParts(
+      const managers = getAgentManagers();
+      const existingSession = await managers.realSessionRepo.getSessionById(args.sessionId);
+      if (!existingSession) {
+         throw new Error(`[CRITICAL BUG] 试图保存消息时，在数据库中找不到 sessionId=${args.sessionId}！这说明刚才的 create-session 虽然没有报错，但根本没有写入数据库！`);
+      }
+      
+      await managers.sessionManager.insertMessageWithParts(
         { id: userMsgId, sessionId: args.sessionId, role: 'user', orderIndex: userOrderIndex },
         initialParts
       );
@@ -187,11 +193,15 @@ export function registerChatIPC() {
       return { userMessageId: userMsgId, attachments: finalAttachments };
     } catch (e: any) {
       logger.error('[Agent:save-user-message] 保存失败:', e);
+      console.error('------- SAVE MSG ERROR DETAILS -------');
+      console.error(e);
+      if (e.cause) console.error('CAUSE:', e.cause);
+      console.error('--------------------------------------');
       return { error: e.message || 'Save failed' };
     }
   });
 
-  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string; providerId?: string; modelId?: string; attachments?: any[]; searchMode?: boolean }) => {
+  ipcMain.handle('agent:chat', async (event, args: { sessionId: string; text: string; providerId?: string; modelId?: string; attachments?: any[]; searchMode?: boolean; userMsgId?: string }) => {
     try {
       const { realSessionRepo, realSnapshotRepo, sessionManager, realAssistantRepo } = getAgentManagers();
 
@@ -216,12 +226,12 @@ export function registerChatIPC() {
       await agentService.streamChat({
         sessionId: args.sessionId,
         userText: args.text,
+        userMessageId: args.userMsgId,
         provider: provider,
         modelId: args.modelId || globalModels?.globalDialogueModelId || 'deepseek-chat',
         systemModels,
         userConfig: userConfig,
         attachments: args.attachments,
-        skipUserMessageRecording: true, // 用户消息已由 agent:save-user-message 落盘
         toolRegistry: toolRegistry,
         sessionRepo: realSessionRepo as any,
         snapshotRepo: realSnapshotRepo as any,

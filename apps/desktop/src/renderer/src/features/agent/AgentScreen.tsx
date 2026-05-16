@@ -36,7 +36,7 @@ export const AgentScreen: React.FC = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const dialog = useDialog();
-  const { sessions, loadSessions } = useOutletContext<{ sessions: any[], loadSessions?: (reset: boolean) => void }>() || { sessions: [] };
+  const { sessions, loadSessions } = useOutletContext<{ sessions: any[], loadSessions?: (reset: boolean, assistantId?: string) => void }>() || { sessions: [] };
 
   // ── 1. 流式通道 ──
   const stream = useAgentStream();
@@ -45,7 +45,7 @@ export const AgentScreen: React.FC = () => {
   const { currentAssistant } = useAssistantResolver({ sessionId, sessions });
 
   // ── 3. 会话管理 ──
-  const { createAndNavigate } = useSessionManager({
+  const { createSession } = useSessionManager({
     currentAssistantId: currentAssistant?.id,
     loadSessions,
   });
@@ -253,7 +253,7 @@ export const AgentScreen: React.FC = () => {
   chatMessagesRef.current = chat.messages;
   useEffect(() => {
     if (prevIsStreamingRef.current === true && stream.isStreaming === false) {
-      if (loadSessions) loadSessions(true);
+      if (loadSessions) loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
       // TTS auto-play when mode is 'always' and stream just finished
       if (ttsModeRef.current === 'always' && chatMessagesRef.current.length > 0) {
         const lastMsg = chatMessagesRef.current[chatMessagesRef.current.length - 1];
@@ -280,26 +280,34 @@ export const AgentScreen: React.FC = () => {
     let targetSessionId = sessionId;
     setSearchMode(searchMode ?? false);
 
-    if (!targetSessionId) {
-      targetSessionId = await createAndNavigate(text);
-      if (!targetSessionId) return;
-      chat.markOptimisticSession(targetSessionId);
-    }
-
     try {
+      if (!targetSessionId) {
+        targetSessionId = await createSession(text) ?? undefined;
+        if (!targetSessionId) {
+          throw new Error(t('agent.error.create_session_failed', '创建会话失败'));
+        }
+      }
+
       // ① 同步落盘：先保存用户消息到 DB，拿回真实 UUID
       const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments);
       if ('error' in saveResult) {
-        toast.showError(t('agent.error.send_failed', '发送消息失败: {{msg}}', { msg: saveResult.error }));
-        return;
+        throw new Error(saveResult.error);
       }
 
-      // ② 以真实 UUID 展示消息（此时已确认落盘，不再使用乐观 ID）
-      chat.addUserMessage(saveResult.userMessageId, text, saveResult.attachments);
+      // ② 实打实：不再手动插消息到 State，而是直接让 Hook 去数据库重新拉取
+      // 传入 targetSessionId 是为了兼容“新会话创建”阶段 URL 尚未变更的情况
+      await chat.refreshMessages(1, targetSessionId);
 
-      // ③ 启动 AI 推理
+      // ③ 侧边栏刷新与会话跳转
+      // 如果是刚创建的新会话，在这里触发侧边栏更新并跳转 URL
+      if (!sessionId) {
+        if (loadSessions) await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
+        navigate(`/chat/${targetSessionId}`, { replace: true });
+      }
+
+      // ④ 启动 AI 推理
       chat.setStreamSessionId(targetSessionId);
-      await stream.startChat(targetSessionId, text, model.currentProviderId, model.currentModelId, saveResult.attachments, searchMode);
+      await stream.startChat(targetSessionId, text, model.currentProviderId, model.currentModelId, saveResult.attachments, searchMode, saveResult.userMessageId);
     } catch (e: any) {
       console.error('[AgentScreen] send failed:', e);
       toast.showError(t('agent.error.send_failed', '发送消息失败: {{msg}}', { msg: e?.message || '未知错误' }));
@@ -605,7 +613,7 @@ export const AgentScreen: React.FC = () => {
                       if (newSessionId) {
                         toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'));
                         // 刷新侧边栏会话列表
-                        if (loadSessions) loadSessions(true);
+                        if (loadSessions) loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
                         // 导航到新会话
                         navigate(`/chat/${newSessionId}`);
                       }

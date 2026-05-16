@@ -11,7 +11,10 @@ export function registerSessionIPC() {
   // ==========================================
   ipcMain.handle('agent:get-sessions', async (_, limit: number = 20, offset: number = 0, assistantId?: string) => {
     const { sessionManager } = getAgentManagers();
-    return await sessionManager.findAllSessions(limit, offset, assistantId);
+    logger.info(`[IPC] agent:get-sessions - astId=${assistantId}, limit=${limit}, offset=${offset}`);
+    const results = await sessionManager.findAllSessions(limit, offset, assistantId);
+    logger.info(`[IPC] agent:get-sessions - found ${results.length} sessions`);
+    return results;
   });
 
   ipcMain.handle('agent:get-session', async (_, sessionId: string) => {
@@ -19,24 +22,17 @@ export function registerSessionIPC() {
     return await realSessionRepo.getSessionById(sessionId);
   });
 
-  ipcMain.handle('agent:create-session', async (_, { assistantId, title }) => {
+  ipcMain.handle('agent:create-session', async (_, { id, assistantId, title }) => {
     const { sessionManager, assistantManager } = getAgentManagers();
     
-    // Fallbacks for required fields
     let vaultName = 'default';
     try {
         const activeVaultPath = await pathService.getActiveVaultPath();
-        if (activeVaultPath) {
-           vaultName = activeVaultPath;
-        }
-        logger.info(`[SessionIPC] create-session vaultName=${vaultName}`);
-    } catch(e) {
-        logger.warn('[SessionIPC] getActiveVaultPath failed, using default:', e);
-    }
+        if (activeVaultPath) vaultName = activeVaultPath;
+    } catch(e) {}
 
     let providerId = 'default';
     let modelId = 'default';
-
     if (assistantId) {
        const assistant = await assistantManager.findById(assistantId);
        if (assistant) {
@@ -44,14 +40,14 @@ export function registerSessionIPC() {
           modelId = assistant.modelId || 'default';
        }
     }
-
     if (providerId === 'default' || modelId === 'default') {
        const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
        if (providerId === 'default') providerId = globalModels?.globalDialogueProviderId || 'default';
        if (modelId === 'default') modelId = globalModels?.globalDialogueModelId || 'default';
     }
-
-    const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    
+    const newId = id || crypto.randomUUID(); 
+    logger.info(`[IPC] agent:create-session - using id=${newId}, assistantId=${assistantId}`);
     await sessionManager.upsertSession({
       id: newId,
       vaultName,
@@ -60,6 +56,7 @@ export function registerSessionIPC() {
       assistantId: assistantId || undefined,
       title: title || '新对话',
     } as any);
+    logger.info(`[IPC] agent:create-session - session persisted and flushed.`);
     return newId;
   });
 
