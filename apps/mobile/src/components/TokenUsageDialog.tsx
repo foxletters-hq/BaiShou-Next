@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+import { useNativeTheme } from '@baishou/ui/native';
 
 // Token 统计对话框属性
 interface TokenUsageDialogProps {

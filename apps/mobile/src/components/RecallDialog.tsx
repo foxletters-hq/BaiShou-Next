@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+import { useNativeTheme } from '@baishou/ui/native';
 
 // 记忆召回项接口
 interface RecallItem {

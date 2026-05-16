@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Alert, TextInput } from 'react-native';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
-import { MarkdownRenderer } from '@baishou/ui/src/native/MarkdownRenderer';
+import { useNativeTheme, MarkdownRenderer } from '@baishou/ui/native';
 import { useBaishou } from '../../providers/BaishouProvider';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';

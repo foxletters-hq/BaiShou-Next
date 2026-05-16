@@ -30,4 +30,22 @@ config.serializer.getPolyfills = (ctx) => {
   return [path.resolve(projectRoot, 'polyfill.js'), ...polyfills];
 };
 
+// 5. Redirect Node.js built-in modules to mock stubs for React Native compatibility
+const nodeBuiltinPrefixes = ['fs/', 'fs', 'path/', 'path', 'crypto', 'os', 'url', 'stream', 'buffer', 'child_process', 'util', 'http', 'https', 'net', 'tls', 'dns', 'dgram', 'cluster', 'events', 'readline', 'repl', 'string_decoder', 'tty', 'v8', 'vm', 'zlib'];
+const mockPath = path.resolve(projectRoot, 'mocks/node-modules.js');
+
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName.startsWith('node:') || nodeBuiltinPrefixes.some(p => moduleName === p || moduleName.startsWith(p + '/'))) {
+    return {
+      filePath: mockPath,
+      type: 'sourceFile',
+    };
+  }
+  // Fallback to default resolver - Expo 55 Metro API
+  if (context.resolveRequest) {
+    return context.resolveRequest(context, moduleName, platform);
+  }
+  return null;
+};
+
 module.exports = config;

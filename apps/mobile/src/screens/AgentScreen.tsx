@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatBubble, InputBar, TokenBadge } from '@baishou/ui/native';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
-import { useAgentStore } from '@baishou/store/src/stores/agent.store';
+import { useNativeTheme } from '@baishou/ui/native';
+import { useAgentStore } from '@baishou/store/stores/agent.store.ts';
 import { useTranslation } from 'react-i18next';
 
 import { SessionList } from '../components/SessionList';

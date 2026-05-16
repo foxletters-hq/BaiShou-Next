@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+import { useNativeTheme } from '@baishou/ui/native';
 import { CompressionChart } from '../components/CompressionChart';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

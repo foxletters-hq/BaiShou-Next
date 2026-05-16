@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useAgentStore } from '@baishou/store/src/stores/agent.store';
+import { useAgentStore } from '@baishou/store/stores/agent.store.ts';
 import { useBaishou } from '../providers/BaishouProvider';
 
 // Token 统计接口

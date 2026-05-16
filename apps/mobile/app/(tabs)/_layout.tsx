@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+import { useNativeTheme } from '@baishou/ui/native';
 
 export default function TabLayout() {
   const { t } = useTranslation();

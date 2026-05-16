@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { DiaryEditor } from '@baishou/ui';
-import { useBaishou } from '../../providers/BaishouProvider';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+import { DiaryEditor, useNativeTheme } from '@baishou/ui/native';
 import { format } from 'date-fns';
 
 export const DiaryEditorScreen: React.FC = () => {

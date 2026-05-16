@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator, Alert, TextInput, FlatList } from 'react-native';
-import { DiaryCard, TimelineNode } from '@baishou/ui/native';
-import { YearMonthPicker } from '@baishou/ui/native/YearMonthPicker';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+import { DiaryCard, TimelineNode, YearMonthPicker } from '@baishou/ui/native';
+import { useNativeTheme } from '@baishou/ui/native';
 import { useBaishou } from '../../providers/BaishouProvider';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';

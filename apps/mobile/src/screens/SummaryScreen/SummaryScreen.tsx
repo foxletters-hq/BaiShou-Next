@@ -3,9 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensio
 import { useRouter } from 'expo-router';
 import { 
   SummaryCard, DashboardHeroBanner, 
-  DashboardStatsCard, DashboardSharedMemoryCard 
-} from '@baishou/ui';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
+  DashboardStatsCard, DashboardSharedMemoryCard, useNativeTheme
+} from '@baishou/ui/native';
 import { useBaishou } from '../../providers/BaishouProvider';
 import { useSummaryData } from '../../hooks/useSummaryData';
 import { useTranslation } from 'react-i18next';
