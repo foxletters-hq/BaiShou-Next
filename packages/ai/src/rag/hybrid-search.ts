@@ -34,7 +34,7 @@ export class HybridSearchUtils {
 
     // 处理 FTS 的 RRF 分数注入
     for (let i = 0; i < ftsResults.length; i++) {
-        const r = ftsResults[i];
+        const r = ftsResults[i]!;
         const key = makeKey(r);
         const rrfScore = ftsWeight / (i + this.RRF_K);
         if (!scoreMap.has(key)) {
@@ -45,7 +45,7 @@ export class HybridSearchUtils {
 
     // 处理 Vector 的原始分数融合
     for (let i = 0; i < vectorResults.length; i++) {
-        const r = vectorResults[i];
+        const r = vectorResults[i]!;
         const key = makeKey(r);
         if (!scoreMap.has(key)) {
             scoreMap.set(key, { result: r, ftsScore: 0, vectorScore: 0, rawVectorScore: 0 });
@@ -129,8 +129,8 @@ export class HybridSearchUtils {
     let dot = 0, normA = 0, normB = 0;
     const len = a.length;
     for (let i = 0; i < len; i++) {
-        const valA = a[i];
-        const valB = b[i];
+        const valA = a[i]!;
+        const valB = b[i]!;
         dot += valA * valB;
         normA += valA * valA;
         normB += valB * valB;

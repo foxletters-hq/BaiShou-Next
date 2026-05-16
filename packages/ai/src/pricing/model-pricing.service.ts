@@ -130,7 +130,7 @@ export class ModelPricingService {
       const id = setTimeout(() => controller.abort(), 10000);
 
       // 自动使用支持系统级别的 fetch (如 Electron net.fetch 注入) 或回落 NodeJS fetch
-      const fetcher = (global as any).customNetFetch || fetch;
+      const fetcher = (globalThis as any).customNetFetch || fetch;
 
       const response = await fetcher('https://models.dev/api.json', { signal: controller.signal });
       clearTimeout(id);
@@ -179,7 +179,7 @@ export class ModelPricingService {
       }
 
       this._lastFetchTime = new Date();
-    } catch (e) {
+    } catch (e: any) {
       logger.warn('[ModelPricingService] prices fetch failed:', e);
       // 网络打不开没关系，失败的话大不了不扣钱，决不能让 Agent 崩溃停止回答
     }

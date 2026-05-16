@@ -1,4 +1,4 @@
-import { LanguageModelV1 } from 'ai';
+import { LanguageModel } from 'ai';
 
 export interface AIProviderConfig {
   apiKey: string;
@@ -8,7 +8,7 @@ export interface AIProviderConfig {
 
 export interface IAIProvider {
   /** 初始化并返回底层模型实例（Vercel AI SDK LanguageModel） */
-  getModel(modelId: string): LanguageModelV1;
+  getModel(modelId: string): LanguageModel;
   
   /** 是否支持某个具体模型 */
   supportsModel(modelId: string): boolean;

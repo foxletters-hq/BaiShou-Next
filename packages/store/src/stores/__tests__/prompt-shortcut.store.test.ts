@@ -4,7 +4,7 @@ import { PromptShortcut } from '@baishou/shared';
 
 describe('usePromptShortcutStore', () => {
   beforeEach(() => {
-    (global as any).window = {
+    (globalThis as any).window = {
       api: {
         shortcuts: {
           getShortcuts: vi.fn(),
@@ -29,11 +29,11 @@ describe('usePromptShortcutStore', () => {
     const mockList: PromptShortcut[] = [
       { id: '1', icon: 'a', name: 'A', content: 'A' }
     ];
-    (global as any).window.api.shortcuts.getShortcuts.mockResolvedValue(mockList);
+    (globalThis as any).window.api.shortcuts.getShortcuts.mockResolvedValue(mockList);
 
     await usePromptShortcutStore.getState().loadShortcuts();
     
-    expect(usePromptShortcutStore.getState().shortcuts[0].name).toBe('A');
+    expect(usePromptShortcutStore.getState().shortcuts[0]!.name).toBe('A');
   });
 
   it('should support add, update, and remove actions and sync to IPC', async () => {
@@ -41,11 +41,11 @@ describe('usePromptShortcutStore', () => {
     
     await usePromptShortcutStore.getState().addShortcut(mockItem);
     expect(usePromptShortcutStore.getState().shortcuts.length).toBe(1);
-    expect((global as any).window.api.shortcuts.saveShortcuts).toHaveBeenCalled();
+    expect((globalThis as any).window.api.shortcuts.saveShortcuts).toHaveBeenCalled();
 
     const updatedItem = { ...mockItem, name: 'X-Updated' };
     await usePromptShortcutStore.getState().updateShortcut(updatedItem);
-    expect(usePromptShortcutStore.getState().shortcuts[0].name).toBe('X-Updated');
+    expect(usePromptShortcutStore.getState().shortcuts[0]!.name).toBe('X-Updated');
 
     await usePromptShortcutStore.getState().removeShortcut('x');
     expect(usePromptShortcutStore.getState().shortcuts.length).toBe(0);
@@ -65,9 +65,9 @@ describe('usePromptShortcutStore', () => {
     const list = usePromptShortcutStore.getState().shortcuts;
     
     // newList.splice(oldIndex) 即拿走 1; newList.splice(newIndex-1) 放入 1 -> 输出应为 2, 3, 1
-    expect(list[0].id).toBe('2');
-    expect(list[1].id).toBe('3');
-    expect(list[2].id).toBe('1');
-    expect((global as any).window.api.shortcuts.saveShortcuts).toHaveBeenCalledWith(list);
+    expect(list[0]!.id).toBe('2');
+    expect(list[1]!.id).toBe('3');
+    expect(list[2]!.id).toBe('1');
+    expect((globalThis as any).window.api.shortcuts.saveShortcuts).toHaveBeenCalledWith(list);
   });
 });

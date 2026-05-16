@@ -80,8 +80,8 @@ export class MigrationService {
               await this._ensureCompressionSnapshotsCompatibility();
             }
           }
-        } catch (e) {
-          logger.warn('[MigrationService] 旧库检测失败，将使用全新迁移流程:', e);
+      } catch (e: any) {
+        logger.warn('[MigrationService] 旧库检测失败，将使用全新迁移流程:', e);
         }
       }
 
@@ -125,7 +125,7 @@ export class MigrationService {
       }
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！');
-    } catch (error) {
+    } catch (error: any) {
       logger.error('[MigrationService] 迁移执行过程中发生致命错误:', error);
       throw error;
     }
@@ -175,7 +175,7 @@ export class MigrationService {
         `SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`
       );
       return table.rows.length > 0;
-    } catch (error) {
+    } catch (error: any) {
       logger.warn('[MigrationService] 检查迁移表存在性时出错。', error);
       return false;
     }
@@ -192,7 +192,7 @@ export class MigrationService {
     try {
       const journalContent = fs.readFileSync(journalPath, 'utf-8');
       return JSON.parse(journalContent) as MigrationJournal;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('[MigrationService] 读取 _journal.json 失败:', error);
       throw error;
     }
@@ -201,7 +201,7 @@ export class MigrationService {
   private async getAppliedMigrations(): Promise<{ version: number }[]> {
     try {
       return await this.db.select({ version: migrationsTable.version }).from(migrationsTable);
-    } catch (error) {
+    } catch (error: any) {
       logger.error('[MigrationService] 读取已执行迁移记录失败！', error);
       throw error;
     }
@@ -221,8 +221,8 @@ export class MigrationService {
       const sqlContent = fs.readFileSync(sqlFilePath, 'utf-8');
       const statements = sqlContent
         .split('--> statement-breakpoint')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
 
       for (const statement of statements) {
         try {
@@ -251,7 +251,7 @@ export class MigrationService {
       });
 
       logger.info(`[MigrationService] <- 迁移 ${migration.tag} 成功，耗时 ${Date.now() - startTime}ms`);
-    } catch (error) {
+    } catch (error: any) {
       logger.error(`[MigrationService] x- 迁移失败: ${migration.tag}`, error);
       throw error;
     }

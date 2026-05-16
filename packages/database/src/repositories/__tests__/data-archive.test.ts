@@ -1,6 +1,5 @@
 import { expect, test, describe, beforeAll, afterAll } from 'vitest';
 import { DatabaseConnectionManager } from '../../connection.manager';
-import { SettingsRepository } from '../settings.repository';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as fsp from 'fs/promises';
@@ -19,7 +18,7 @@ describe('Database Storage Export / Import Simulator', () => {
     dbPath = path.join(tempDir, 'test_agent.db');
 
     connectionManager = new DatabaseConnectionManager();
-    const db = await connectionManager.connect(dbPath);
+    await connectionManager.connect(dbPath);
     
     // Minimal schema init since installDatabaseSchema might be elsewhere
     // Wait, Drizzle might not auto-create tables without using push/migrate unless DDL is explicitly run
@@ -38,7 +37,7 @@ describe('Database Storage Export / Import Simulator', () => {
   });
 
   test('It should persist db states, allow copying (export), and reload (import) properly', async () => {
-    const db = connectionManager.getDb();
+    connectionManager.getDb();
     
     // Let's create a raw table manually just to ensure the file receives bytes
     await (connectionManager as any)._sqliteDb.execute(`

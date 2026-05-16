@@ -402,16 +402,10 @@ export class GitSyncServiceImpl implements IGitSyncService {
 
   private async _commitAll(message: string): Promise<GitCommit | null> {
     const git = await this.ensureGit();
-    logger.info(`[GitSync] 手动提交: ${message}`);
-
-    const status = await git.status();
-    if (status.isClean()) {
-      logger.info('[GitSync] 无变更，跳过提交');
-      return null;
-    }
 
     try {
       // 如果已有暂存文件，直接提交暂存区内容；否则自动暂存全部变更
+      const status = await git.status();
       const hasStaged = status.files.some(f => f.index.trim() !== '');
       if (hasStaged) {
         logger.info('[GitSync] 提交已暂存文件');
@@ -423,7 +417,6 @@ export class GitSyncServiceImpl implements IGitSyncService {
       // add 之后取 status，此时暂存区包含新文件 + 变更文件
       const stagedStatus = await git.status();
       const result = await git.commit(message);
-      logger.info(`[GitSync] 提交成功: ${result.commit}`);
 
       return {
         hash: result.commit,
@@ -432,7 +425,6 @@ export class GitSyncServiceImpl implements IGitSyncService {
         files: stagedStatus.files.map((f) => f.path),
       };
     } catch (error) {
-      logger.error(`[GitSync] 提交失败: ${error}`);
       throw new GitCommitError(error instanceof Error ? error : undefined);
     }
   }
@@ -456,13 +448,10 @@ export class GitSyncServiceImpl implements IGitSyncService {
     });
   }
 
-  async getHistory(filePath?: string, limit = 20, offset = 0): Promise<VersionHistoryEntry[]> {
+  async getHistory(filePath?: string, limit = 50): Promise<VersionHistoryEntry[]> {
     const git = await this.ensureGit();
 
-    const options = ['--max-count', String(limit)];
-    if (offset > 0) {
-      options.push('--skip', String(offset));
-    }
+    const options = ['--oneline', '--max-count', String(limit)];
     if (filePath) {
       options.push('--', filePath);
     }
@@ -471,30 +460,17 @@ export class GitSyncServiceImpl implements IGitSyncService {
       const log = await git.log(options);
       const entries: VersionHistoryEntry[] = [];
       for (const commit of log.all) {
-        try {
-          const changes = await this.getCommitChanges(commit.hash);
-          entries.push({
-            commit: {
-              hash: commit.hash.substring(0, 7),
-              message: commit.message,
-              date: new Date(commit.date),
-              files: changes.map((c) => c.path),
-            },
-            changes,
-            isCurrent: offset === 0 && entries.length === 0,
-          });
-        } catch {
-          entries.push({
-            commit: {
-              hash: commit.hash.substring(0, 7),
-              message: commit.message,
-              date: new Date(commit.date),
-              files: [],
-            },
-            changes: [],
-            isCurrent: offset === 0 && entries.length === 0,
-          });
-        }
+        const changes = await this.getCommitChanges(commit.hash);
+        entries.push({
+          commit: {
+            hash: commit.hash.substring(0, 7),
+            message: commit.message,
+            date: new Date(commit.date),
+            files: changes.map((c) => c.path),
+          },
+          changes,
+          isCurrent: entries.length === 0,
+        });
       }
       return entries;
     } catch {

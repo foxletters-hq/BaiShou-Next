@@ -13,7 +13,7 @@ describe('useUserProfileStore', () => {
   };
 
   beforeEach(() => {
-    (global as any).window = {
+    (globalThis as any).window = {
       api: {
         profile: {
           getProfile: vi.fn(),
@@ -35,7 +35,7 @@ describe('useUserProfileStore', () => {
   });
 
   it('should load profile via IPC', async () => {
-    (global as any).window.api.profile.getProfile.mockResolvedValue(mockBaseProfile);
+    (globalThis as any).window.api.profile.getProfile.mockResolvedValue(mockBaseProfile);
     
     await useUserProfileStore.getState().loadProfile();
     expect(useUserProfileStore.getState().profile?.nickname).toBe('TestUser');
@@ -49,11 +49,11 @@ describe('useUserProfileStore', () => {
     it('should update nickname', async () => {
       await useUserProfileStore.getState().updateNickname('NewName');
       expect(useUserProfileStore.getState().profile?.nickname).toBe('NewName');
-      expect((global as any).window.api.profile.saveProfile).toHaveBeenCalled();
+      expect((globalThis as any).window.api.profile.saveProfile).toHaveBeenCalled();
     });
 
     it('should call pickAndSaveAvatar and wait for path', async () => {
-      (global as any).window.api.profile.pickAndSaveAvatar.mockResolvedValue('/new/img.png');
+      (globalThis as any).window.api.profile.pickAndSaveAvatar.mockResolvedValue('/new/img.png');
       await useUserProfileStore.getState().pickAndSaveAvatar();
       expect(useUserProfileStore.getState().profile?.avatarPath).toBe('/new/img.png');
     });
@@ -86,7 +86,7 @@ describe('useUserProfileStore', () => {
     it('should rename persona successfully', async () => {
       await useUserProfileStore.getState().renamePersona('P1', 'P-Renamed');
       const profile = useUserProfileStore.getState().profile!;
-      expect(profile.personas['P-Renamed'].facts).toEqual({ 'Role': 'Dev' });
+      expect(profile.personas['P-Renamed']!.facts).toEqual({ 'Role': 'Dev' });
       expect(profile.personas['P1']).toBeUndefined();
       expect(profile.activePersonaId).toBe('P-Renamed'); // auto sync
     });
@@ -94,7 +94,7 @@ describe('useUserProfileStore', () => {
     it('should duplicate persona successfully', async () => {
       await useUserProfileStore.getState().duplicatePersona('P1', 'P2-Copy');
       const profile = useUserProfileStore.getState().profile!;
-      expect(profile.personas['P2-Copy'].facts).toEqual({ 'Role': 'Dev' });
+      expect(profile.personas['P2-Copy']!.facts).toEqual({ 'Role': 'Dev' });
       expect(profile.activePersonaId).toBe('P2-Copy');
     });
   });
@@ -106,17 +106,17 @@ describe('useUserProfileStore', () => {
 
     it('should add fact', async () => {
       await useUserProfileStore.getState().addFact('Age', '18');
-      expect(useUserProfileStore.getState().profile!.personas['P1'].facts['Age']).toBe('18');
+      expect(useUserProfileStore.getState().profile!.personas['P1']!.facts['Age']!).toBe('18');
     });
 
     it('should remove fact', async () => {
       await useUserProfileStore.getState().removeFact('Role');
-      expect(useUserProfileStore.getState().profile!.personas['P1'].facts['Role']).toBeUndefined();
+      expect(useUserProfileStore.getState().profile!.personas['P1']!.facts['Role']!).toBeUndefined();
     });
 
     it('should update all facts', async () => {
       await useUserProfileStore.getState().updateAllFacts({ 'New': 'Fact' });
-      expect(useUserProfileStore.getState().profile!.personas['P1'].facts).toEqual({ 'New': 'Fact' });
+      expect(useUserProfileStore.getState().profile!.personas['P1']!.facts).toEqual({ 'New': 'Fact' });
     });
   });
 });

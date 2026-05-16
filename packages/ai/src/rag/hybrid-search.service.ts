@@ -9,7 +9,7 @@ export class HybridSearchService {
 
   constructor(
     private readonly storage: IHybridSearchStorage,
-    private readonly config: IEmbeddingConfig
+    private readonly _config: IEmbeddingConfig
   ) {}
 
   /**

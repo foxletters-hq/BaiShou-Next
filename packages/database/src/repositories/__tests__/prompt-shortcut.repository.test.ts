@@ -37,7 +37,7 @@ describe('PromptShortcutRepository', () => {
 
     const retrieved = await repo.getShortcuts();
     expect(retrieved.length).toBe(1);
-    expect(retrieved[0].name).toBe('测试');
+    expect(retrieved[0]!.name).toBe('测试');
   });
 
   it('should overwrite existing array on save', async () => {
@@ -50,6 +50,6 @@ describe('PromptShortcutRepository', () => {
 
     const retrieved = await repo.getShortcuts();
     expect(retrieved.length).toBe(1);
-    expect(retrieved[0].id).toBe('b');
+    expect(retrieved[0]!.id).toBe('b');
   });
 });

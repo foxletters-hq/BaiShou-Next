@@ -47,8 +47,8 @@ describe('ShadowIndexRepository', () => {
 
       const records = await repo.getAllRecords();
       expect(records).toHaveLength(1);
-      expect(records[0].filePath).toBe(dto.filePath);
-      expect(records[0].date).toBe(dateIso); 
+      expect(records[0]!.filePath).toBe(dto.filePath);
+      expect(records[0]!.date).toBe(dateIso); 
     });
 
     it('findByDate identifies standard daily note', async () => {
@@ -85,7 +85,7 @@ describe('ShadowIndexRepository', () => {
       expect(results).toHaveLength(1);
       
       // FTS snippet contains <b> tags out of the box because of snippet(..., '<b>', '</b>')
-      expect(results[0].contentSnippet).toContain('<b>Beta</b>');
+      expect(results[0]!.contentSnippet).toContain('<b>Beta</b>');
     });
 
     it('searchFTS gracefully returns empty arrays for garbage queries', async () => {

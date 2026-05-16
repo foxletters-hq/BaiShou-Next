@@ -4,9 +4,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { SettingsRepository } from '../settings.repository';
 import { systemSettingsTable } from '../../schema/system-settings';
 import { 
-  DEFAULT_AI_PROVIDERS, DEFAULT_GLOBAL_MODELS, DEFAULT_AGENT_BEHAVIOR, 
-  DEFAULT_RAG_CONFIG, DEFAULT_WEB_SEARCH_CONFIG, DEFAULT_SUMMARY_CONFIG, 
-  DEFAULT_TOOL_MANAGEMENT_CONFIG, DEFAULT_MCP_SERVER_CONFIG
+  DEFAULT_AI_PROVIDERS, DEFAULT_AGENT_BEHAVIOR, 
+  DEFAULT_RAG_CONFIG, DEFAULT_WEB_SEARCH_CONFIG
 } from '../settings.defaults';
 
 describe('SettingsRepository', () => {
@@ -47,9 +46,9 @@ describe('SettingsRepository', () => {
     
     expect(retrieved).not.toBeNull();
     expect(retrieved?.length).toBe(2);
-    expect(retrieved?.[0].id).toBe('openai');
-    expect(retrieved?.[0].apiKey).toBe('sk-123');
-    expect(retrieved?.[0].isEnabled).toBe(true);
+    expect(retrieved![0]!.id).toBe('openai');
+    expect(retrieved![0]!.apiKey).toBe('sk-123');
+    expect(retrieved![0]!.isEnabled).toBe(true);
   });
 
   it('should upsert existing key instead of throwing duplication error', async () => {

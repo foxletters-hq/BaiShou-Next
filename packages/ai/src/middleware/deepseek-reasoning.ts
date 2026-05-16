@@ -20,6 +20,7 @@ import type { LanguageModelV3Middleware } from '@ai-sdk/provider';
  */
 export function createDeepSeekReasoningMiddleware(): LanguageModelV3Middleware {
   return {
+    specificationVersion: 'v3' as const,
     transformParams: async ({ params, type }) => {
       // eslint-disable-next-line no-console
       console.log('[DeepSeekReasoning] transformParams called, type=%s', type);

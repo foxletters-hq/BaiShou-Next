@@ -79,8 +79,8 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
                 <ThinkingBlock
                   content={reasoning}
                   isThinking={isReasoning && !hasText}
-                  defaultOpen={false}
-                  autoCollapse={true}
+                  defaultOpen={true}
+                  autoCollapse={false}
                 />
               )}
 

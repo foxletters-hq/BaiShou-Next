@@ -1,5 +1,4 @@
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import * as schema from './schema/summaries'; // and combine
 // WE MUST explicitly export to avoid connection.manager triggering better-sqlite3
 export * from './schema/summaries';
 export * from './schema/agent-sessions';
@@ -35,7 +34,7 @@ export function initExpoDatabase(expoDb: ExpoSqliteDatabase): { drizzleDb: AppDa
   // 注入 drizzle 适配器
   // For Expo, we don't pass the schema object because Drizzle handles queries generically,
   // but if needed we can combain schemas.
-  const drizzleDb = drizzle(expoDb) as unknown as AppDatabase;
+  const drizzleDb = drizzle(expoDb as any) as unknown as AppDatabase;
   const driver = new ExpoSqliteDriver(expoDb);
 
   return { drizzleDb, driver };

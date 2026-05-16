@@ -102,7 +102,7 @@ export const useUserProfileStore = createStore<UserProfileState & UserProfileAct
     
     let newActiveId = profile.activePersonaId;
     if (newActiveId === personaId) {
-      newActiveId = Object.keys(newPersonas)[0];
+      newActiveId = Object.keys(newPersonas)[0]!;
     }
     
     const newProfile = { ...profile, personas: newPersonas, activePersonaId: newActiveId };

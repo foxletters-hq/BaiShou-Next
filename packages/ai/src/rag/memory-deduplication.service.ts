@@ -61,7 +61,7 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
   }): Promise<DeduplicationResult> {
     try {
       return await this._doCheckAndMerge(options);
-    } catch (e) {
+    } catch (e: any) {
       // 失败时 fallback 到直接存储，不丢失记忆
       logger.warn('[MemoryDedup] 去重流程异常，降级为直接存储:', e);
       return { action: 'stored', removedIds: [], highestSimilarity: 0 };
@@ -214,7 +214,7 @@ ${newMemoryContent}
       if (!['merge', 'new', 'skip'].includes(parsed.action)) return null;
 
       return parsed;
-    } catch (e) {
+    } catch (e: any) {
       logger.warn('[MemoryDedup] LLM 合并判断失败:', e);
       return null;
     }

@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 16px;
   padding: 16px;
-  background-color: var(--color-surface-variant, #f1f5f9);
+  background-color: var(--bg-surface-normal);
   border-radius: 12px;
 }
 
@@ -39,6 +39,7 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
+  font-family: monospace;
 }
 
 .version-hero-image {

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 
 import { DatabaseConnectionManager } from '../connection.manager';
-import { DatabaseConnectionError, DatabaseNotConnectedError } from '../connection.manager.types';
+import { DatabaseNotConnectedError } from '../connection.manager.types';
 
 describe('DatabaseConnectionManager', () => {
   let manager: DatabaseConnectionManager;

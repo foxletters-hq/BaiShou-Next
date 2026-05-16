@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 
 import { ShadowIndexConnectionManager } from '../shadow-index.connection.manager';
-import { DatabaseNotConnectedError } from '../connection.manager.types';
+
 import { sql } from 'drizzle-orm';
 import { existsSync } from 'node:fs';
 
@@ -42,7 +42,7 @@ describe('ShadowIndexConnectionManager', () => {
     
     // Check WAL mode was initialized correctly by running a PRAGMA fetch
     const db = manager.getDb();
-    const result = await db.run(sql`PRAGMA journal_mode`);
+    await db.run(sql`PRAGMA journal_mode`);
     // NOTE: drizzle sqlite run() return type depends on the driver. In libsql, rows are accessible.
     // For this basic test, we just ensure it didn't throw during creation
     expect(db).toBeDefined();

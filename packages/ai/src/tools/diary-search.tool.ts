@@ -10,7 +10,9 @@
 import { z } from 'zod';
 import { AgentTool } from './agent.tool';
 import type { ToolContext } from './agent.tool';
+// @ts-expect-error - Node built-in, available at runtime
 import { readdir, readFile } from 'node:fs/promises';
+// @ts-expect-error - Node built-in, available at runtime
 import { join } from 'node:path';
 
 const diarySearchParams = z.object({

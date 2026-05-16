@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import { summariesTable } from '../schema/summaries';
-import { agentSessionsTable } from '../schema/agent-sessions';
+
 
 describe('Database Schema', () => {
   let db: ReturnType<typeof drizzle>;

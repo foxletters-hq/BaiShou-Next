@@ -123,7 +123,7 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
           enc.free();
           logger.info(`[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略!`);
         }
-      } catch (e) {
+      } catch (e: any) {
         logger.warn('Fallback tiktoken estimation failed', e);
       }
     }

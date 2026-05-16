@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSettingsStore } from '../settings.store';
+import { ProviderType } from '@baishou/shared';
 import type { 
   AIProviderConfig, 
   RagConfig 
@@ -8,7 +9,7 @@ import type {
 describe('useSettingsStore', () => {
   beforeEach(() => {
     // Mock IPC
-    (global as any).window = {
+    (globalThis as any).window = {
       api: {
         settings: {
           getProviders: vi.fn(),
@@ -57,37 +58,37 @@ describe('useSettingsStore', () => {
 
   it('should load all domain configs correctly via IPC', async () => {
     const mockProviders: AIProviderConfig[] = [
-      { id: 'openai', name: 'OpenAI', isEnabled: true, apiKey: 'mock-key', baseUrl: '', models: [], enabledModels: [], defaultDialogueModel: '', defaultNamingModel: '', isSystem: false, sortOrder: 0 }
+      { id: 'openai', name: 'OpenAI', type: ProviderType.OpenAI, isEnabled: true, apiKey: 'mock-key', baseUrl: '', models: [], enabledModels: [], defaultDialogueModel: '', defaultNamingModel: '', isSystem: false, sortOrder: 0 }
     ];
     const mockRag: RagConfig = { ragEnabled: true, ragTopK: 15, ragSimilarityThreshold: 0.5 };
     
-    (global as any).window.api.settings.getProviders.mockResolvedValue(mockProviders);
-    (global as any).window.api.settings.getRagConfig.mockResolvedValue(mockRag);
+    (globalThis as any).window.api.settings.getProviders.mockResolvedValue(mockProviders);
+    (globalThis as any).window.api.settings.getRagConfig.mockResolvedValue(mockRag);
 
     await useSettingsStore.getState().loadConfig();
 
     const state = useSettingsStore.getState();
     expect(state.providers.length).toBe(1);
-    expect(state.providers[0].apiKey).toBe('mock-key');
+    expect(state.providers[0]!.apiKey).toBe('mock-key');
     expect(state.ragConfig?.ragTopK).toBe(15);
   });
 
   it('should update provider and sync to IPC', async () => {
     useSettingsStore.setState({
       providers: [
-        { id: 'gemini', name: 'Gemini', isEnabled: true, apiKey: 'old-key', baseUrl: '', models: [], enabledModels: [], defaultDialogueModel: '', defaultNamingModel: '', isSystem: false, sortOrder: 0 }
+        { id: 'gemini', name: 'Gemini', type: ProviderType.Gemini, isEnabled: true, apiKey: 'old-key', baseUrl: '', models: [], enabledModels: [], defaultDialogueModel: '', defaultNamingModel: '', isSystem: false, sortOrder: 0 }
       ]
     });
 
     const updatedProvider: AIProviderConfig = { 
-      id: 'gemini', name: 'Gemini', isEnabled: true, apiKey: 'new-key', baseUrl: '', models: [], enabledModels: [], defaultDialogueModel: '', defaultNamingModel: '', isSystem: false, sortOrder: 0 
+      id: 'gemini', name: 'Gemini', type: ProviderType.Gemini, isEnabled: true, apiKey: 'new-key', baseUrl: '', models: [], enabledModels: [], defaultDialogueModel: '', defaultNamingModel: '', isSystem: false, sortOrder: 0 
     };
 
     await useSettingsStore.getState().updateProvider(updatedProvider);
 
     const state = useSettingsStore.getState();
-    expect(state.providers[0].apiKey).toBe('new-key');
-    expect((global as any).window.api.settings.setProviders).toHaveBeenCalledWith(state.providers);
+    expect(state.providers[0]!.apiKey).toBe('new-key');
+    expect((globalThis as any).window.api.settings.setProviders).toHaveBeenCalledWith(state.providers);
   });
 
   it('should call corresponding IPC set method when updating a domain config', async () => {
@@ -97,19 +98,19 @@ describe('useSettingsStore', () => {
     
     const state = useSettingsStore.getState();
     expect(state.ragConfig?.ragEnabled).toBe(false);
-    expect((global as any).window.api.settings.setRagConfig).toHaveBeenCalledWith(newRag);
+    expect((globalThis as any).window.api.settings.setRagConfig).toHaveBeenCalledWith(newRag);
   });
 
   it('should toggle provider enable flag safely', async () => {
     useSettingsStore.setState({
       providers: [
-        { id: 'anthropic', name: 'Anthropic', isEnabled: true, apiKey: '', baseUrl: '', models: [], enabledModels: [], defaultDialogueModel: '', defaultNamingModel: '', isSystem: false, sortOrder: 0 }
+        { id: 'anthropic', name: 'Anthropic', type: ProviderType.Anthropic, isEnabled: true, apiKey: '', baseUrl: '', models: [], enabledModels: [], defaultDialogueModel: '', defaultNamingModel: '', isSystem: false, sortOrder: 0 }
       ]
     });
 
     await useSettingsStore.getState().toggleProvider('anthropic', false);
 
     const state = useSettingsStore.getState();
-    expect(state.providers[0].isEnabled).toBe(false);
+    expect(state.providers[0]!.isEnabled).toBe(false);
   });
 });

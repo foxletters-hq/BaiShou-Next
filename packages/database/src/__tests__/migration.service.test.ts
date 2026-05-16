@@ -17,7 +17,7 @@ describe('MigrationService', () => {
     dbPath = path.join(tempDir, 'agent.db');
     
     dbManager = new DatabaseConnectionManager();
-    const dbClient = await dbManager.connect(dbPath);
+    await dbManager.connect(dbPath);
     
     service = new MigrationService(
       dbManager.getDb(), 
@@ -41,7 +41,7 @@ describe('MigrationService', () => {
   describe('Global Operations', () => {
     it('runMigrations should call sub-pipelines successfully', async () => {
       // Spy on the sub method
-      const customSpy = vi.spyOn(service as any, '_ensureCompressionSnapshotsCompatibility').mockResolvedValue(undefined);
+      vi.spyOn(service as any, '_ensureCompressionSnapshotsCompatibility').mockResolvedValue(undefined);
       
       // We will mock readMigrationJournal to return empty to avoid throwing
       vi.spyOn(service as any, 'readMigrationJournal').mockResolvedValue({ version: '7', dialect: 'sqlite', entries: [] });

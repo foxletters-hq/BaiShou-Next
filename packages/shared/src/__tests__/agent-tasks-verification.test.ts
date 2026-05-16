@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { resolve, join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const I18N_DIR = resolve(__dirname, '../i18n');
 const loadI18n = (lang: string) =>
@@ -74,14 +78,11 @@ describe('Agent 2: 伙伴管理 UI 验证', () => {
   });
 
   it('任务5: 代码中不存在"长按选择图片"文本', () => {
-    const fs = require('fs');
-    const path = require('path');
-
     const searchDir = resolve(__dirname, '../../../ui/src/web');
     const files = getAllTsTsxFiles(searchDir);
 
     for (const file of files) {
-      const content = fs.readFileSync(file, 'utf-8');
+      const content = readFileSync(file, 'utf-8');
       expect(content).not.toContain('长按选择图片');
     }
   });
@@ -102,12 +103,11 @@ describe('Agent 4: 设置 UI 验证', () => {
   });
 
   it('任务33: 快捷指令分页选项包含 5/10/15/20/25/30', () => {
-    const fs = require('fs');
     const shortcutManagerPath = resolve(
       __dirname,
       '../../../ui/src/web/PromptShortcutSheet/ShortcutManagerDialog.tsx'
     );
-    const content = fs.readFileSync(shortcutManagerPath, 'utf-8');
+    const content = readFileSync(shortcutManagerPath, 'utf-8');
 
     expect(content).toContain('[5, 10, 15, 20, 25, 30]');
   });
@@ -115,12 +115,11 @@ describe('Agent 4: 设置 UI 验证', () => {
 
 describe('Agent 5: TTS 功能验证', () => {
   it('任务27: ChatBubble 接受 isTtsPlaying prop 并传递给 MessageActionBar', () => {
-    const fs = require('fs');
     const chatBubblePath = resolve(
       __dirname,
       '../../../ui/src/web/ChatBubble/index.tsx'
     );
-    const content = fs.readFileSync(chatBubblePath, 'utf-8');
+    const content = readFileSync(chatBubblePath, 'utf-8');
 
     // 确认 prop 声明存在
     expect(content).toContain('isTtsPlaying?: boolean');
@@ -135,18 +134,17 @@ describe('Agent 5: TTS 功能验证', () => {
       __dirname,
       '../../../ui/src/web/MessageActionBar/index.tsx'
     );
-    const actionBarContent = fs.readFileSync(actionBarPath, 'utf-8');
+    const actionBarContent = readFileSync(actionBarPath, 'utf-8');
     expect(actionBarContent).toContain('isTtsPlaying');
     expect(actionBarContent).toContain('ttsPlaying');
   });
 
   it('任务27: AgentScreen auto-play 使用 ref 避免 stale closure', () => {
-    const fs = require('fs');
     const agentScreenPath = resolve(
       __dirname,
       '../../../../apps/desktop/src/renderer/src/features/agent/AgentScreen.tsx'
     );
-    const content = fs.readFileSync(agentScreenPath, 'utf-8');
+    const content = readFileSync(agentScreenPath, 'utf-8');
 
     // 确认使用了 ref 来跟踪 ttsMode（避免 stale closure）
     expect(content).toContain('ttsModeRef');
@@ -159,12 +157,11 @@ describe('Agent 5: TTS 功能验证', () => {
 
 describe('Agent 6: 伙伴聊天功能验证', () => {
   it('任务22: handleRefreshPricing 正确返回 result 对象', () => {
-    const fs = require('fs');
     const agentScreenPath = resolve(
       __dirname,
       '../../../../apps/desktop/src/renderer/src/features/agent/AgentScreen.tsx'
     );
-    const content = fs.readFileSync(agentScreenPath, 'utf-8');
+    const content = readFileSync(agentScreenPath, 'utf-8');
 
     // 找到 handleRefreshPricing 函数
     const fnMatch = content.match(
@@ -182,12 +179,11 @@ describe('Agent 6: 伙伴聊天功能验证', () => {
 
 describe('Agent 9: 文件附件系统验证', () => {
   it('任务18: ImagePreview 组件已集成到 CodeMirrorEditor', () => {
-    const fs = require('fs');
     const editorPath = resolve(
       __dirname,
       '../../../ui/src/web/DiaryEditor/CodeMirrorEditor.tsx'
     );
-    const content = fs.readFileSync(editorPath, 'utf-8');
+    const content = readFileSync(editorPath, 'utf-8');
 
     // 确认导入存在
     expect(content).toContain("import { ImagePreview }");
@@ -198,12 +194,11 @@ describe('Agent 9: 文件附件系统验证', () => {
   });
 
   it('任务18: MarkdownRenderer 支持附件路径渲染', () => {
-    const fs = require('fs');
     const rendererPath = resolve(
       __dirname,
       '../../../ui/src/web/MarkdownRenderer/MarkdownRenderer.tsx'
     );
-    const content = fs.readFileSync(rendererPath, 'utf-8');
+    const content = readFileSync(rendererPath, 'utf-8');
 
     // 确认有 basePath prop
     expect(content).toContain('basePath');
@@ -216,14 +211,12 @@ describe('Agent 9: 文件附件系统验证', () => {
 
 // Helper: recursively get all .ts/.tsx files
 function getAllTsTsxFiles(dir: string): string[] {
-  const fs = require('fs');
-  const path = require('path');
   const results: string[] = [];
 
   function walk(d: string) {
-    const entries = fs.readdirSync(d, { withFileTypes: true });
+    const entries = readdirSync(d, { withFileTypes: true });
     for (const entry of entries) {
-      const fullPath = path.join(d, entry.name);
+      const fullPath = join(d, entry.name);
       if (entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== '__tests__') {
         walk(fullPath);
       } else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {

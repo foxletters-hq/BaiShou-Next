@@ -10,7 +10,9 @@
 import { z } from 'zod';
 import { AgentTool } from './agent.tool';
 import type { ToolContext } from './agent.tool';
+// @ts-expect-error - Node built-in, available at runtime
 import { readdir, readFile } from 'node:fs/promises';
+// @ts-expect-error - Node built-in, available at runtime
 import { join } from 'node:path';
 
 const diaryListParams = z.object({
@@ -91,8 +93,8 @@ export class DiaryListTool extends AgentTool<typeof diaryListParams> {
               const content = await readFile(join(monthDir, file), 'utf-8');
               const firstLine = content
                 .split('\n')
-                .map((l) => l.trim())
-                .find((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('---'));
+                .map((l: string) => l.trim())
+                .find((l: string) => l.length > 0 && !l.startsWith('#') && !l.startsWith('---'));
               const preview = firstLine
                 ? firstLine.slice(0, 80) + (firstLine.length > 80 ? '...' : '')
                 : '(empty)';

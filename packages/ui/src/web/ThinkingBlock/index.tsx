@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import styles from './ThinkingBlock.module.css';
 
@@ -134,7 +133,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   // 动态计算预览容器高度
   const previewHeight = useMemo(() => {
     if (previewLines.length < 1) return 38;
-    return Math.min(75, Math.max(previewLines.length + 1, 2) * LINE_HEIGHT + 25);
+    return Math.min(120, Math.max(previewLines.length + 1, 2) * LINE_HEIGHT + 20);
   }, [previewLines.length]);
 
   // 规范化后的完整内容
@@ -180,27 +179,20 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         <div className={styles.contentInner}>
           <div className={styles.content}>
             {showCollapsedPreview ? (
-              // 折叠态：逐行动画滚动预览
+              // 折叠态：显示预览行
               <div
                 className={styles.previewContainer}
                 style={{ height: previewHeight }}
               >
-                <div className={styles.previewContent}>
-                  <motion.div
-                    className={styles.previewMessages}
-                    style={{ height: previewLines.length * LINE_HEIGHT }}
-                    animate={{ y: -previewLines.length * LINE_HEIGHT - 2 }}
-                    transition={{ duration: 0.15, ease: 'linear' }}
-                  >
-                    {previewLines.map((line, index) => {
-                      if (index < previewLines.length - MAX_PREVIEW_LINES) return null;
-                      return (
-                        <div key={index} className={styles.previewLine}>
-                          {line}
-                        </div>
-                      );
-                    })}
-                  </motion.div>
+                <div className={styles.previewScroll}>
+                  {previewLines.map((line, index) => {
+                    if (index < previewLines.length - MAX_PREVIEW_LINES) return null;
+                    return (
+                      <div key={index} className={styles.previewLine}>
+                        {line}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (

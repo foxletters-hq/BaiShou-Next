@@ -45,7 +45,7 @@ describe('UserProfileRepository', () => {
     const retrieved = await repo.getProfile();
     expect(retrieved.nickname).toBe('测试用户');
     expect(retrieved.activePersonaId).toBe('黑客');
-    expect(retrieved.personas['黑客'].facts['职业']).toBe('赛博黑客');
+    expect(retrieved.personas['黑客']!.facts['职业']).toBe('赛博黑客');
   });
 
   it('should gracefully handle bad json', async () => {

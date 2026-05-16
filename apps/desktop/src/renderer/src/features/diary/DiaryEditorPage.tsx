@@ -156,8 +156,18 @@ export const DiaryEditorPage: React.FC = () => {
   };
 
   const goBackToSidebar = () => {
-    // 保存后统一回到日记列表页，不使用 sessionStorage 中可能过时的上次侧边栏路径
-    navigate('/diary');
+    const lastNav = sessionStorage.getItem('desktop_last_nav');
+    if (lastNav && lastNav !== '/diary') {
+      navigate(lastNav);
+    } else {
+      // 取侧边栏第一个导航项作为默认入口
+      const saved = localStorage.getItem('desktop_sidebar_nav_order');
+      const first = saved ? JSON.parse(saved)[0] : 'diary';
+      const paths: Record<string, string> = {
+        diary: '/diary', summary: '/summary', lan: '/lan-transfer', sync: '/data-sync', git: '/git',
+      };
+      navigate(paths[first] || '/diary');
+    }
   };
 
   const handleSave = async () => {

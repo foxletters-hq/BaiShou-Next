@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { AgentTool } from './agent.tool';
 import type { ToolContext } from './agent.tool';
+// @ts-expect-error - Node built-in, available at runtime
 import { readFile, writeFile, access } from 'node:fs/promises';
+// @ts-expect-error - Node built-in, available at runtime
 import { join } from 'node:path';
 
 const diaryEditParams = z.object({
@@ -74,19 +76,19 @@ export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
         const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
         if (fmMatch) {
           const fmBlock = fmMatch[1]!;
-          const tagsLine = fmBlock.split('\n').find(l => l.trim().startsWith('tags:'));
+          const tagsLine = fmBlock.split('\n').find((l: string) => l.trim().startsWith('tags:'));
           if (tagsLine) {
             const existingTagStr = tagsLine.substring(tagsLine.indexOf(':') + 1).trim();
             const clean = existingTagStr.replace(/^\[/, '').replace(/\]$/, '');
-            const existingTags = clean.split(',').map(s => s.trim()).filter(Boolean);
-            const newTags = args.tags.split(',').map(s => s.trim()).filter(Boolean);
+            const existingTags = clean.split(',').map((s: string) => s.trim()).filter(Boolean);
+            const newTags = args.tags.split(',').map((s: string) => s.trim()).filter(Boolean);
             const merged = Array.from(new Set([...existingTags, ...newTags]));
             // Replace tags line in frontmatter
             const newFm = fmBlock.replace(tagsLine, `tags: [${merged.join(', ')}]`);
             finalContent = finalContent.replace(fmBlock, newFm);
           } else {
             // Add tags line to frontmatter
-            const newTags = args.tags.split(',').map(s => s.trim()).filter(Boolean);
+            const newTags = args.tags.split(',').map((s: string) => s.trim()).filter(Boolean);
             const insertBefore = fmBlock.lastIndexOf('\n');
             const newFm = fmBlock.substring(0, insertBefore) + `\ntags: [${newTags.join(', ')}]` + fmBlock.substring(insertBefore);
             finalContent = finalContent.replace(fmBlock, newFm);

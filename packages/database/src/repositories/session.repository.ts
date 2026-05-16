@@ -181,7 +181,7 @@ export class SessionRepository {
        const allDocs = await this.db.select().from(agentSessionsTable);
        console.log(`[SessionRepo] WARNING: Returned 0, but total rows in DB: ${allDocs.length}`);
        if (allDocs.length > 0) {
-           console.log(`[SessionRepo] The first row in DB has assistantId:`, allDocs[0].assistantId);
+            console.log(`[SessionRepo] The first row in DB has assistantId:`, allDocs[0]!.assistantId);
        }
     }
     return results;
@@ -214,7 +214,7 @@ export class SessionRepository {
   /**
    * 根据 ID 删除单条消息
    */
-  async deleteMessage(sessionId: string, messageId: string): Promise<void> {
+  async deleteMessage(_sessionId: string, messageId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId));
       await tx.delete(messagesTbl).where(eq(messagesTbl.id, messageId));
@@ -230,7 +230,7 @@ export class SessionRepository {
     if (!msg.length) return;
     
     await this.db.transaction(async (tx) => {
-      const toDelete = await tx.select().from(messagesTbl).where(and(eq(messagesTbl.sessionId, sessionId), gte(messagesTbl.orderIndex, msg[0].orderIndex)));
+      const toDelete = await tx.select().from(messagesTbl).where(and(eq(messagesTbl.sessionId, sessionId), gte(messagesTbl.orderIndex, msg[0]!.orderIndex)));
       const ids = toDelete.map(m => m.id);
       if (ids.length > 0) {
           await tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids));
@@ -271,14 +271,14 @@ export class SessionRepository {
     if (rows.length > 0) {
        await this.db.update(partsTbl)
          .set({ data: { text: newText } })
-         .where(eq(partsTbl.id, rows[0].id));
+         .where(eq(partsTbl.id, rows[0]!.id));
     } else {
        const parent = await this.db.select().from(messagesTbl).where(eq(messagesTbl.id, messageId)).limit(1);
        if (parent.length > 0) {
           await this.db.insert(partsTbl).values({
              id: generateUUID(),
              messageId,
-             sessionId: parent[0].sessionId,
+             sessionId: parent[0]!.sessionId,
              type: 'text',
              data: { text: newText },
              createdAt: new Date()
