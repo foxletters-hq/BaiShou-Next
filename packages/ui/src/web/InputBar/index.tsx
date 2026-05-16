@@ -241,9 +241,9 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
                    )}
                    {onToggleTtsMode && (
                      <QuickActionChip 
-                       icon={ttsMode === 'off' ? <VolumeX size={14} /> : <Volume2 size={14} />} 
-                       label={ttsMode === 'off' ? t('agent.chat.tts_off', '语音关闭') : ttsMode === 'always' ? t('agent.chat.tts_always', '始终朗读') : t('agent.chat.tts_manual', '手动朗读')} 
-                       isActive={ttsMode !== 'off'} 
+                       icon={<Volume2 size={14} />}
+                       label={ttsMode === 'always' ? t('agent.chat.tts_always', '始终播放') : t('agent.chat.tts_manual', '手动朗读')}
+                       isActive={ttsMode === 'always'}
                        onClick={onToggleTtsMode} 
                      />
                    )}

@@ -98,6 +98,7 @@ export const AgentScreen: React.FC = () => {
   const [showRecallSheet, setShowRecallSheet] = useState(false);
   const [showShortcutManager, setShowShortcutManager] = useState(false);
   const [showToolManager, setShowToolManager] = useState(false);
+  const [recallLookbackMonths, setRecallLookbackMonths] = useState(1);
   const [contextDialogState, setContextDialogState] = useState<{ 
     isOpen: boolean; 
     message?: any; 
@@ -394,6 +395,21 @@ export const AgentScreen: React.FC = () => {
         items={recall.recallItems}
         isSearching={recall.isSearchingRecall}
         onSearch={recall.handleRecallSearch}
+        searchMode={recall.recallSearchMode}
+        onToggleSearchMode={recall.toggleRecallSearchMode}
+        lookbackMonths={recallLookbackMonths}
+        onMonthsChanged={setRecallLookbackMonths}
+        onCopyContext={async () => {
+          try {
+            const contextText = await (window as any).api?.rag?.buildSharedContext?.(recallLookbackMonths);
+            if (contextText) {
+              await navigator.clipboard.writeText(contextText);
+              toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'));
+            }
+          } catch {
+            toast.showError(t('common.copy_failed', '复制失败'));
+          }
+        }}
         onInject={(items) => {
           setShowRecallSheet(false);
           if (items.length > 0) {

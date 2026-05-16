@@ -5,7 +5,9 @@ import type { RecallItem } from '@baishou/ui';
 export interface UseRecallSearchResult {
   recallItems: RecallItem[];
   isSearchingRecall: boolean;
-  handleRecallSearch: (query: string, tab: 'diary' | 'memory') => Promise<void>;
+  handleRecallSearch: (query: string, tab: 'diary' | 'memory', mode?: 'semantic' | 'text') => Promise<void>;
+  recallSearchMode: 'semantic' | 'text';
+  toggleRecallSearchMode: () => void;
 }
 
 /**
@@ -17,8 +19,13 @@ export function useRecallSearch(): UseRecallSearchResult {
   const { t } = useTranslation();
   const [recallItems, setRecallItems] = useState<RecallItem[]>([]);
   const [isSearchingRecall, setIsSearchingRecall] = useState(false);
+  const [recallSearchMode, setRecallSearchMode] = useState<'semantic' | 'text'>('semantic');
 
-  const handleRecallSearch = useCallback(async (query: string, tab: 'diary' | 'memory') => {
+  const toggleRecallSearchMode = useCallback(() => {
+    setRecallSearchMode(prev => prev === 'semantic' ? 'text' : 'semantic');
+  }, []);
+
+  const handleRecallSearch = useCallback(async (query: string, tab: 'diary' | 'memory', mode?: 'semantic' | 'text') => {
     setIsSearchingRecall(true);
     try {
       if (tab === 'diary') {
@@ -35,7 +42,12 @@ export function useRecallSearch(): UseRecallSearchResult {
           setRecallItems([]);
         }
       } else {
-        const dbEntries = await (window as any).api?.rag?.queryEntries({ keyword: query, limit: 30 });
+        const searchMode = mode || recallSearchMode;
+        const dbEntries = await (window as any).api?.rag?.queryEntries({ 
+          keyword: query, 
+          limit: 30,
+          mode: searchMode
+        });
         if (dbEntries) {
           setRecallItems(dbEntries.map((r: any) => ({
             id: r.embeddingId,
@@ -54,7 +66,7 @@ export function useRecallSearch(): UseRecallSearchResult {
     } finally {
       setIsSearchingRecall(false);
     }
-  }, [t]);
+  }, [t, recallSearchMode]);
 
-  return { recallItems, isSearchingRecall, handleRecallSearch };
+  return { recallItems, isSearchingRecall, handleRecallSearch, recallSearchMode, toggleRecallSearchMode };
 }

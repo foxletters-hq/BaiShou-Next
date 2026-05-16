@@ -67,12 +67,11 @@
   transform: rotate(90deg);
 }
 
-/* ToolBar: Tabs + Search */
+/* ToolBar: Tabs */
 .toolbar {
   padding: 16px 24px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -126,6 +125,82 @@
   font-size: 13px;
   color: var(--text-primary);
   margin-left: 8px;
+}
+
+/* RAG-style search bar for vector recall tab */
+.ragSearchBar {
+  padding: 0 24px 12px;
+}
+
+.ragSearchInner {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1.5px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border-radius: 12px;
+  padding: 10px 14px;
+  gap: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ragSearchInner:focus-within {
+  border-color: rgba(var(--color-primary-rgb), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.ragSearchIcon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ragSearchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.ragSearchToggle {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+  border-radius: 8px;
+  background: rgba(var(--color-primary-rgb), 0.06);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.ragSearchToggle:hover {
+  background: rgba(var(--color-primary-rgb), 0.12);
+}
+
+.ragSearchClear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.ragSearchClear:hover {
+  color: var(--text-primary);
+}
+
+/* Shared memory card wrapper in diary archive tab */
+.sharedMemoryWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* List Content */
