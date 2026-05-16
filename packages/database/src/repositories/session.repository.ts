@@ -4,6 +4,14 @@ import { agentMessagesTable as messagesTbl } from '../schema/agent-messages';
 import { agentPartsTable as partsTbl } from '../schema/agent-parts';
 import { eq, desc, or, isNull } from 'drizzle-orm';
 
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export interface InsertSessionInput {
   id: string;
   title?: string;
@@ -254,9 +262,8 @@ export class SessionRepository {
     } else {
        const parent = await this.db.select().from(messagesTbl).where(eq(messagesTbl.id, messageId)).limit(1);
        if (parent.length > 0) {
-          const crypto = require('crypto');
           await this.db.insert(partsTbl).values({
-             id: crypto.randomUUID(),
+             id: generateUUID(),
              messageId,
              sessionId: parent[0].sessionId,
              type: 'text',

@@ -52,3 +52,6 @@ export * from './StorageSettingsCard';
 
 // Markdown渲染组件
 export * from './MarkdownRenderer';
+
+// Hooks
+export { useNativeTheme } from './theme';
