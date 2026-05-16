@@ -13,9 +13,8 @@ import { MigrationService } from '../migration.service';
 export function initNodeDatabase(dbPath: string): AppDatabase {
   const sqlite = createClient({ url: `file:${dbPath}` });
   
-  // Enforce foreign key constraints
-  sqlite.execute('PRAGMA journal_mode = WAL');
-  sqlite.execute('PRAGMA foreign_keys = ON');
+  // 注意：此处不再执行异步的 sqlite.execute PRAGMA，
+  // 所有的 PRAGMA 配置已移至异步的 installDatabaseSchema 确保严格时序
 
   // Any automatic migrations can be added here if needed, 
   // currently we return the drizzle instance.
@@ -32,6 +31,13 @@ export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
     console.warn('[DB] No valid LibSQL client found to execute migrations!');
     return;
   }
+
+  // PRAGMA 必须在所有读写之前 await 执行（不能放在同步构造器里），
+  // 这是防止初始化竞态条件的关键。WAL 模式在单写场景下性能最佳，
+  // 原 SQLITE_CORRUPT 的根因是 DB 被初始化到错误路径，与 WAL 无关。
+  await client.execute('PRAGMA journal_mode = WAL');
+  await client.execute('PRAGMA synchronous = NORMAL');
+  await client.execute('PRAGMA foreign_keys = ON');
 
   // Derive the migrations directory depending on dev or prod
   const isDev = process.env.NODE_ENV !== 'production' && !process.env.VITE_APP_BUILD;
