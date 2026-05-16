@@ -1,15 +1,11 @@
-import { AgentMessage, AgentPart } from '@baishou/shared';
 import { SessionRepository } from '@baishou/database';
+import { MessageWithParts } from './message.adapter';
 // @ts-ignore
 import { SnapshotRepository, Snapshot } from '@baishou/database/src/repositories/snapshot.repository';
 
 export interface ContextWindowConfig {
   /** 提取最近的对话轮数，包含 user、assistant 等，0 表示尽量不截断（除了走 Snapshot 之外） */
   recentCount: number;
-}
-
-export interface MessageWithParts extends AgentMessage {
-  parts: AgentPart[];
 }
 
 export class ContextWindowBuilder {
@@ -76,7 +72,7 @@ export class ContextWindowBuilder {
     let rounds = 0;
 
     for (let i = effectiveMessages.length - 1; i >= 0; i--) {
-      const msg = effectiveMessages[i];
+      const msg = effectiveMessages[i]!;
       const nextMsgInTimeline = i < effectiveMessages.length - 1 ? effectiveMessages[i + 1] : null;
       const isUser = msg.role === 'user';
 
@@ -104,7 +100,7 @@ export class ContextWindowBuilder {
     while (
        startIndex > 0 && startIndex < effectiveMessages.length &&
        // 如果头是 tool result 必须要带上属于它的 assistant call (它的上一条或者上面若干条)
-       effectiveMessages[startIndex].role === 'tool'
+        effectiveMessages[startIndex]!.role === 'tool'
     ) {
        startIndex--;
     }
@@ -114,7 +110,7 @@ export class ContextWindowBuilder {
     startIndex = Math.max(0, startIndex);
 
     if (snapshot && startIndex > 0) {
-      return [effectiveMessages[0], ...effectiveMessages.slice(startIndex)];
+      return [effectiveMessages[0]!, ...effectiveMessages.slice(startIndex)];
     }
 
     return effectiveMessages.slice(startIndex);

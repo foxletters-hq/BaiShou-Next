@@ -1,6 +1,5 @@
 import { IHybridSearchStorage, ISearchQueryOptions, ISearchResult } from './hybrid-search.types';
 import { HybridSearchUtils } from './hybrid-search';
-import { IEmbeddingConfig } from './embedding.types';
 
 /**
  * 高级 RAG 桥接搜寻服务，支持用户意图触发的同时利用传统关键字分词匹配和向量相量匹配。
@@ -8,8 +7,7 @@ import { IEmbeddingConfig } from './embedding.types';
 export class HybridSearchService {
 
   constructor(
-    private readonly storage: IHybridSearchStorage,
-    private readonly _config: IEmbeddingConfig
+    private readonly storage: IHybridSearchStorage
   ) {}
 
   /**

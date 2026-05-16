@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, X, BookHeart, BrainCircuit, Check, ArrowUpCircle, History, Loader2 } from 'lucide-react';
 import styles from './RecallDialog.module.css';
+import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard/DashboardSharedMemoryCard';
 
 export interface RecallItem {
   id: string;
@@ -14,10 +15,15 @@ export interface RecallItem {
 export interface RecallDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  items: RecallItem[]; // 检索结果池
+  items: RecallItem[];
   isSearching?: boolean;
-  onSearch: (query: string, tab: 'diary' | 'memory') => void;
+  onSearch: (query: string, tab: 'diary' | 'memory', mode?: 'semantic' | 'text') => void;
   onInject: (selectedItems: RecallItem[]) => void;
+  searchMode?: 'semantic' | 'text';
+  onToggleSearchMode?: () => void;
+  lookbackMonths?: number;
+  onMonthsChanged?: (val: number) => void;
+  onCopyContext?: () => void;
 }
 
 export const RecallDialog: React.FC<RecallDialogProps> = ({
@@ -26,22 +32,34 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
   items,
   isSearching,
   onInject,
-  onSearch
+  onSearch,
+  searchMode = 'semantic',
+  onToggleSearchMode,
+  lookbackMonths = 1,
+  onMonthsChanged,
+  onCopyContext
 }) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'diary' | 'memory'>('diary');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Debounce 触发外部搜索
+  // 向量回忆 tab 的搜索：带 debounce，传递 searchMode
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || activeTab !== 'memory') return undefined;
     const timeoutId = setTimeout(() => {
-      onSearch(searchQuery, activeTab);
+      onSearch(searchQuery, 'memory', searchMode);
     }, 400);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, activeTab, isOpen]);
+  }, [searchQuery, searchMode, activeTab, isOpen]);
+
+  // 日记档案 tab 切换时触发一次搜索
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'diary') return undefined;
+    onSearch('', 'diary');
+    return undefined;
+  }, [activeTab, isOpen]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -55,7 +73,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
   const handleInject = () => {
     const selected = items.filter(i => selectedIds.has(i.id));
     onInject(selected);
-    setSelectedIds(new Set()); // 清空
+    setSelectedIds(new Set());
     onClose();
   };
 
@@ -64,7 +82,6 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
   return (
     <>
       <div className={styles.overlay} onClick={onClose}>
-         {/* 模态弹窗 */}
         <div className={styles.dialog} onClick={e => e.stopPropagation()}>
            
            <div className={styles.header}>
@@ -81,37 +98,97 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
               <div className={styles.tabs}>
                  <div 
                    className={`${styles.tab} ${activeTab === 'diary' ? styles.tabActive : ''}`}
-                   onClick={() => { setActiveTab('diary'); setSelectedIds(new Set()); }}
+                   onClick={() => { setActiveTab('diary'); setSelectedIds(new Set()); setSearchQuery(''); }}
                  >
                     {t('recall.tab_diary', '日记档案')}
                  </div>
                  <div 
                    className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
-                   onClick={() => { setActiveTab('memory'); setSelectedIds(new Set()); }}
+                   onClick={() => { setActiveTab('memory'); setSelectedIds(new Set()); setSearchQuery(''); }}
                  >
-                    {t('recall.tab_memory', '向量知识')}
+                    {t('recall.tab_memory', '向量回忆')}
                  </div>
-              </div>
-              <div className={styles.searchBox}>
-                 <Search size={16} color="var(--text-secondary)" />
-                 <input 
-                   placeholder={t('recall.search_hint', '检索关键字或记忆片段...')} 
-                   className={styles.searchInput}
-                   value={searchQuery}
-                   onChange={e => setSearchQuery(e.target.value)}
-                 />
               </div>
            </div>
 
+           {/* 向量回忆 tab：RAG 风格搜索框 */}
+           {activeTab === 'memory' && (
+             <div className={styles.ragSearchBar}>
+               <div className={styles.ragSearchInner}>
+                 <Search size={18} className={styles.ragSearchIcon} />
+                 <input
+                   type="text"
+                   placeholder={searchMode === 'semantic' ? t('recall.search_semantic_hint', '语义搜索记忆内容...') : t('recall.search_text_hint', '关键词搜索记忆内容...')}
+                   className={styles.ragSearchInput}
+                   value={searchQuery}
+                   onChange={e => setSearchQuery(e.target.value)}
+                 />
+                 <button className={styles.ragSearchToggle} onClick={onToggleSearchMode}>
+                   {searchMode === 'semantic' ? t('recall.search_text', '文本搜索') : t('recall.search_semantic', '语义搜索')}
+                 </button>
+                 {searchQuery && (
+                   <div className={styles.ragSearchClear} onClick={() => setSearchQuery('')}>
+                     <X size={16} />
+                   </div>
+                 )}
+               </div>
+             </div>
+           )}
+
            <div className={styles.listArea}>
-              {isSearching ? (
+             {/* 日记档案 tab：复用共同回忆统计框 */}
+             {activeTab === 'diary' ? (
+               <div className={styles.sharedMemoryWrap}>
+                 {onCopyContext && onMonthsChanged && (
+                   <DashboardSharedMemoryCard
+                     lookbackMonths={lookbackMonths}
+                     onMonthsChanged={onMonthsChanged}
+                     onCopyContext={onCopyContext}
+                   />
+                 )}
+                 {/* 日记档案搜索结果 */}
+                 {isSearching ? (
+                   <div className={styles.emptyState}>
+                     <Loader2 className={styles.spinner} size={24} />
+                     {t('common.loading', '加载中...')}
+                   </div>
+                 ) : items.length > 0 ? (
+                   items.map(item => {
+                     const isSelected = selectedIds.has(item.id);
+                     return (
+                       <div 
+                         key={item.id} 
+                         className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}
+                         onClick={() => toggleSelect(item.id)}
+                       >
+                          <div className={styles.checkboxWrap}>
+                             {isSelected && <Check size={14} strokeWidth={4} />}
+                          </div>
+                          <div className={styles.cardInfo}>
+                             <div className={styles.cardHeader}>
+                                <span className={styles.cardTitle}>
+                                   <BookHeart size={16} className={styles.diaryIcon} />
+                                   {item.title}
+                                </span>
+                                <span className={styles.cardDate}>{item.date}</span>
+                             </div>
+                             <div className={styles.cardSnippet}>{item.snippet}</div>
+                          </div>
+                       </div>
+                     );
+                   })
+                 ) : null}
+               </div>
+             ) : (
+               /* 向量回忆 tab：搜索结果 */
+               isSearching ? (
                  <div className={styles.emptyState}>
                     <Loader2 className={styles.spinner} size={24} />
                     {t('common.loading', '加载中...')}
                  </div>
-              ) : items.length === 0 ? (
+               ) : items.length === 0 ? (
                  <div className={styles.emptyState}>{t('recall.no_results', '未在库中匹配到任何历史记忆碎片。')}</div>
-              ) : (
+               ) : (
                  items.map(item => {
                     const isSelected = selectedIds.has(item.id);
                     return (
@@ -126,7 +203,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                          <div className={styles.cardInfo}>
                             <div className={styles.cardHeader}>
                                <span className={styles.cardTitle}>
-                                  {item.type === 'diary' ? <BookHeart size={16} className={styles.diaryIcon} /> : <BrainCircuit size={16} className={styles.memoryIcon} />}
+                                  <BrainCircuit size={16} className={styles.memoryIcon} />
                                   {item.title}
                                </span>
                                <span className={styles.cardDate}>{item.date}</span>
@@ -136,7 +213,8 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                       </div>
                     )
                  })
-              )}
+               )
+             )}
            </div>
 
            <div className={styles.footer}>

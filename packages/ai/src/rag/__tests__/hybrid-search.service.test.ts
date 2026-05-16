@@ -33,7 +33,7 @@ describe('HybridSearchService RRF Engine', () => {
       fetchAllEmbeddingsForDecoupledSearch: vi.fn().mockResolvedValue([]),
     };
 
-    const service = new HybridSearchService(mockStorage, createMockConfig());
+    const service = new HybridSearchService(mockStorage);
 
     const results = await service.search({
       queryText: '山',
@@ -79,7 +79,7 @@ describe('HybridSearchService RRF Engine', () => {
       fetchAllEmbeddingsForDecoupledSearch: vi.fn().mockResolvedValue([]),
     };
 
-    const service = new HybridSearchService(mockStorage, createMockConfig());
+    const service = new HybridSearchService(mockStorage);
 
     const results = await service.search({
       queryText: '',
@@ -109,7 +109,7 @@ describe('HybridSearchService RRF Engine', () => {
       ]),
     };
 
-    const service = new HybridSearchService(mockStorage, createMockConfig());
+    const service = new HybridSearchService(mockStorage);
 
     const results = await service.search({
       queryText: '',
