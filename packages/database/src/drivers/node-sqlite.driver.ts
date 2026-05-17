@@ -52,7 +52,7 @@ export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
     }
   } else {
     // In production, app.asar.unpacked/resources handles it
-    migrationDir = path.join(process.resourcesPath || process.cwd(), 'database', 'drizzle');
+    migrationDir = path.join((process as any).resourcesPath || process.cwd(), 'database', 'drizzle');
   }
 
   const migrationService = new MigrationService(db, client, migrationDir);
