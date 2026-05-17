@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnthropicAdaptedProvider } from '../anthropic.provider';
 
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 describe('AnthropicAdaptedProvider', () => {
   let provider: AnthropicAdaptedProvider;

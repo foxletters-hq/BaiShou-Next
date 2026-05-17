@@ -99,7 +99,7 @@ describe('MemoryStoreTool', () => {
     const result = await tool.execute({ content: 'Test fallback' }, context);
     
     expect(mockEmbedService.embedText).toHaveBeenCalled();
-    const callArgs = mockEmbedService.embedText.mock.calls[0][0];
+    const callArgs = mockEmbedService.embedText.mock.calls[0]![0];
     expect(callArgs.text).toBe('Test fallback');
     expect(callArgs.sourceType).toBe('chat');
     

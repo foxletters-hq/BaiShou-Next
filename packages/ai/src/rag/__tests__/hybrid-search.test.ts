@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { ISearchResult } from '../hybrid-search.types';
 import { HybridSearchUtils } from '../hybrid-search';
 
@@ -35,10 +35,10 @@ describe('HybridSearchUtils (Pure Math)', () => {
 
       const res = HybridSearchUtils.vectorSearchMemoryFallback(query, db, 2, 0.1);
       expect(res.length).toBe(2);
-      expect(res[0].messageId).toBe('1');
-      expect(res[0].score).toBe(1.0);
-      expect(res[1].messageId).toBe('2');
-      expect(res[1].score).toBeGreaterThan(0.5); // cosine ~0.707
+      expect(res[0]!.messageId).toBe('1');
+      expect(res[0]!.score).toBe(1.0);
+      expect(res[1]!.messageId).toBe('2');
+      expect(res[1]!.score).toBeGreaterThan(0.5); // cosine ~0.707
     });
 
     it('should cut off results under threshold', () => {
@@ -49,7 +49,7 @@ describe('HybridSearchUtils (Pure Math)', () => {
        ];
        const res = HybridSearchUtils.vectorSearchMemoryFallback(query, db, 10, 0.5);
        expect(res.length).toBe(1);
-       expect(res[0].messageId).toBe('1');
+       expect(res[0]!.messageId).toBe('1');
     });
   });
 
@@ -72,7 +72,7 @@ describe('HybridSearchUtils (Pure Math)', () => {
        expect(b1Result.source).toBe('hybrid'); // 双模混合来源
        // 虽然有 RRF 奖励，纯向量侧保留的最底物仍使用 Vector分数，但 B1 作为混合项
        // 我们将根据合并后的分值验证是否排在第一
-       expect(merged[0].messageId).toBe('B1'); // 取决于公式推演，通常它会因拥有完整的两路重叠成为优胜者
+        expect(merged[0]!.messageId).toBe('B1'); // 取决于公式推演，通常它会因拥有完整的两路重叠成为优胜者
     });
   });
 });

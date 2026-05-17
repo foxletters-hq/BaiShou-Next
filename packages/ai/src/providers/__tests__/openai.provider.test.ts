@@ -55,7 +55,7 @@ describe('OpenAIAdaptedProvider', () => {
     const model = provider.getLanguageModel();
     expect(model).toBeDefined();
     // 验证 chat 方法以正确的模型 ID 被调用
-    const mockProvider = vi.mocked(openaiSdk.createOpenAI).mock.results[0].value;
+    const mockProvider = vi.mocked(openaiSdk.createOpenAI).mock.results[0]!.value;
     expect(mockProvider.chat).toHaveBeenCalledWith('gpt-4o');
   });
 });

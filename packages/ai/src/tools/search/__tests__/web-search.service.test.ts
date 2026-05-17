@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { WebSearchService } from '../web-search.service'
 
 describe('WebSearchService', () => {
@@ -21,9 +21,9 @@ describe('WebSearchService', () => {
       const results = WebSearchService.parseDuckDuckGoResults(html, 5)
       
       expect(results).toHaveLength(2)
-      expect(results[0].title).toBe('Example Title')
-      expect(results[0].url).toBe('https://example.com')
-      expect(results[0].snippet).toBe('Example snippet content')
+      expect(results[0]!.title).toBe('Example Title')
+      expect(results[0]!.url).toBe('https://example.com')
+      expect(results[0]!.snippet).toBe('Example snippet content')
     })
 
     it('should respect maxResults limit', () => {

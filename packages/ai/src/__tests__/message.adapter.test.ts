@@ -77,7 +77,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(result[0]?.role).toBe('user');
 
       // 助理消息应包含 tool-call
-      const assistantMsg = result[1];
+      const assistantMsg = result[1]!;
       expect(assistantMsg?.role).toBe('assistant');
       expect(assistantMsg?.content).toBeInstanceOf(Array);
       const contentArr = assistantMsg.content as any[];
@@ -87,7 +87,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolCalls[0].toolName).toBe('web_search');
 
       // tool 消息应包含 tool-result
-      const toolMsg = result[2];
+      const toolMsg = result[2]!;
       expect(toolMsg?.role).toBe('tool');
       expect(toolMsg?.content).toBeInstanceOf(Array);
       const toolResults = (toolMsg.content as any[]).filter((p: any) => p.type === 'tool-result');
@@ -106,7 +106,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       const result = MessageAdapter.toVercelMessages(dbMessages);
 
       expect(result).toHaveLength(3);
-      const toolMsg = result[2];
+      const toolMsg = result[2]!;
       const toolResults = (toolMsg?.content as any[]).filter((p: any) => p.type === 'tool-result');
       expect(toolResults).toHaveLength(1);
       expect(toolResults[0].output).toEqual({ type: 'text', value: '[工具执行失败: web_search]' });
@@ -126,12 +126,12 @@ describe('MessageAdapter.toVercelMessages', () => {
 
       expect(result).toHaveLength(3);
 
-      const assistantMsg = result[1];
+      const assistantMsg = result[1]!;
       const contentArr = assistantMsg.content as any[];
       const toolCalls = contentArr.filter((p: any) => p.type === 'tool-call');
       expect(toolCalls).toHaveLength(2);
 
-      const toolMsg = result[2];
+      const toolMsg = result[2]!;
       const toolResults = (toolMsg.content as any[]).filter((p: any) => p.type === 'tool-result');
       expect(toolResults).toHaveLength(2);
       expect(toolResults[0].output).toEqual({ type: 'text', value: '结果1' });
@@ -165,14 +165,14 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(result).toHaveLength(6);
       expect(result[0]?.role).toBe('user');
       expect(result[1]?.role).toBe('assistant');
-      expect((result[1].content as any[]).filter((p: any) => p.type === 'tool-call')[0].toolCallId).toBe('call_a');
+      expect((result[1]!.content as any[]).filter((p: any) => p.type === 'tool-call')[0]!.toolCallId).toBe('call_a');
       expect(result[2]?.role).toBe('tool');
-      expect((result[2].content as any[])[0].toolCallId).toBe('call_a');
+      expect((result[2]!.content as any[])[0]!.toolCallId).toBe('call_a');
       expect(result[3]?.role).toBe('user');
       expect(result[4]?.role).toBe('assistant');
-      expect((result[4].content as any[]).filter((p: any) => p.type === 'tool-call')[0].toolCallId).toBe('call_b');
+      expect((result[4]!.content as any[]).filter((p: any) => p.type === 'tool-call')[0]!.toolCallId).toBe('call_b');
       expect(result[5]?.role).toBe('tool');
-      expect((result[5].content as any[])[0].toolCallId).toBe('call_b');
+      expect((result[5]!.content as any[])[0]!.toolCallId).toBe('call_b');
     });
 
     it('should correctly parse stringified arguments', () => {
@@ -184,7 +184,7 @@ describe('MessageAdapter.toVercelMessages', () => {
 
       const result = MessageAdapter.toVercelMessages(dbMessages);
 
-      const assistantMsg = result[1];
+      const assistantMsg = result[1]!;
       const toolCall = (assistantMsg.content as any[]).find((p: any) => p.type === 'tool-call');
       expect(toolCall.args).toEqual(args);
     });
@@ -197,7 +197,7 @@ describe('MessageAdapter.toVercelMessages', () => {
 
       const result = MessageAdapter.toVercelMessages(dbMessages);
 
-      const assistantMsg = result[1];
+      const assistantMsg = result[1]!;
       const toolCall = (assistantMsg.content as any[]).find((p: any) => p.type === 'tool-call');
       expect(toolCall.args).toEqual({});
     });
@@ -214,14 +214,14 @@ describe('MessageAdapter.toVercelMessages', () => {
 
       const result = MessageAdapter.toVercelMessages(dbMessages);
 
-      const assistantMsg = result[1];
+      const assistantMsg = result[1]!;
       const contentArr = assistantMsg.content as any[];
       expect(contentArr).toHaveLength(3);
       expect(contentArr[0].type).toBe('reasoning');
       expect(contentArr[1].type).toBe('text');
       expect(contentArr[2].type).toBe('tool-call');
 
-      const toolMsg = result[2];
+      const toolMsg = result[2]!;
       expect(toolMsg?.role).toBe('tool');
     });
 
@@ -257,7 +257,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(result).toHaveLength(2);
       expect(result[0]?.role).toBe('user');
       expect(result[1]?.role).toBe('tool');
-      const toolResults = (result[1].content as any[]).filter((p: any) => p.type === 'tool-result');
+      const toolResults = (result[1]!.content as any[]).filter((p: any) => p.type === 'tool-result');
       expect(toolResults).toHaveLength(1);
       expect(toolResults[0].output).toEqual({ type: 'text', value: '已有结果' });
     });
@@ -296,7 +296,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       const result = MessageAdapter.toVercelMessages(dbMessages);
 
       expect(result).toHaveLength(2);
-      const assistantMsg = result[1];
+      const assistantMsg = result[1]!;
       const contentArr = assistantMsg.content as any[];
       const toolCalls = contentArr.filter((p: any) => p.type === 'tool-call');
       expect(toolCalls).toHaveLength(0);
@@ -321,10 +321,10 @@ describe('MessageAdapter.toVercelMessages', () => {
 
       const result = MessageAdapter.toVercelMessages(dbMessages);
 
-      const assistantContent = result[1].content as any[];
+      const assistantContent = result[1]!.content as any[];
       const toolCallCount = assistantContent.filter((p: any) => p.type === 'tool-call').length;
 
-      const toolContent = result[2].content as any[];
+      const toolContent = result[2]!.content as any[];
       const toolResultCount = toolContent.filter((p: any) => p.type === 'tool-result').length;
 
       expect(toolCallCount).toBe(toolResultCount);
