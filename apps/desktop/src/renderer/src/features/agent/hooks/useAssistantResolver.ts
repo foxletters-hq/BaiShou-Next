@@ -24,23 +24,32 @@ export function useAssistantResolver(params: UseAssistantResolverParams): UseAss
 
   const currentSession = sessions.find((s: any) => s.id === sessionId);
 
+  const sanitizeAssistantId = (raw: unknown): string | undefined => {
+    if (typeof raw === 'string' && raw.length > 0) return raw;
+    if (raw !== null && raw !== undefined) return String(raw);
+    return undefined;
+  };
+
   let activeAssistantId: string | undefined;
   if (!sessionId) {
-    activeAssistantId = searchParams.get('assistantId') || undefined;
+    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId'));
   } else if (currentSession) {
-    activeAssistantId = (currentSession as any).assistantId;
+    activeAssistantId = sanitizeAssistantId((currentSession as any).assistantId);
   } else {
     // Fallback: if session not found in loaded list, check URL assistantId
-    activeAssistantId = searchParams.get('assistantId') || undefined;
+    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId'));
   }
 
   const currentAssistant = useMemo(() => {
+    let assistant: any;
     if (activeAssistantId) {
-      return assistants.find(a => String(a.id) === String(activeAssistantId))
+      assistant = assistants.find(a => String(a.id) === String(activeAssistantId))
         || assistants.find(a => a.isDefault)
         || { id: 'default', name: 'BaiShou (Core)', emoji: '✨' };
+    } else {
+      assistant = assistants.find(a => a.isDefault) || { id: 'default', name: 'BaiShou (Core)', emoji: '✨' };
     }
-    return assistants.find(a => a.isDefault) || { id: 'default', name: 'BaiShou (Core)', emoji: '✨' };
+    return { ...assistant, id: String(assistant.id) };
   }, [activeAssistantId, assistants]);
 
   return { currentAssistant, activeAssistantId };
