@@ -11,12 +11,6 @@ importers:
       '@ai-sdk/react':
         specifier: ^3.0.148
         version: 3.0.148(react@19.2.4)(zod@4.3.6)
-      g:
-        specifier: ^2.0.1
-        version: 2.0.1
-      opencode-ai:
-        specifier: ^1.14.50
-        version: 1.14.50
       prism-themes:
         specifier: ^1.9.0
         version: 1.9.0
@@ -259,6 +253,9 @@ importers:
       expo-image:
         specifier: ~55.0.8
         version: 55.0.8(expo@55.0.14)(react-native-web@0.21.2(encoding@0.1.13)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
+      expo-image-picker:
+        specifier: ^55.0.20
+        version: 55.0.20(expo@55.0.14)
       expo-intent-launcher:
         specifier: ~55.0.12
         version: 55.0.12(expo@55.0.14)
@@ -4829,6 +4826,16 @@ packages:
     peerDependencies:
       expo: '*'
 
+  expo-image-loader@55.0.0:
+    resolution: {integrity: sha512-NOjp56wDrfuA5aiNAybBIjqIn1IxKeGJ8CECWZncQ/GzjZfyTYAHTCyeApYkdKkMBLHINzI4BbTGSlbCa0fXXQ==}
+    peerDependencies:
+      expo: '*'
+
+  expo-image-picker@55.0.20:
+    resolution: {integrity: sha512-lfWt/0rPWdKz8AdDEGmGHZIJSNlVc720Dlx5bfou10FU16ZV5wAbTU63nm2jkXd8hbXke4a/2Ha1dzxCVA+LQQ==}
+    peerDependencies:
+      expo: '*'
+
   expo-image@55.0.8:
     resolution: {integrity: sha512-fNdvdYVcGn3g1x6o5AXHKzk4xX8U6rg2W9vFdE1pQO80kWCNReh003ypqSrGy4dD+zA8FtZjrNF3oMDGnPpIGQ==}
     peerDependencies:
@@ -5206,9 +5213,6 @@ packages:
 
   functions-have-names@1.2.3:
     resolution: {integrity: sha512-xckBUXyTIqT97tq2x2AMb+g163b5JFysYk0x4qxNFwbfQkmNZoiRHb6sPzI9/QV33WeuvVYBUIiD4NzNIyqaRQ==}
-
-  g@2.0.1:
-    resolution: {integrity: sha512-Fi6Ng5fZ/ANLQ15H11hCe+09sgUoNvDEBevVgx3KoYOhsH5iLNPn54hx0jPZ+3oSWr+xajnp2Qau9VmPsc7hTA==}
 
   generator-function@2.0.1:
     resolution: {integrity: sha512-SFdFmIJi+ybC0vjlHN0ZGVGHc3lgE0DxPAT0djjVg+kjOnSqclqmj0KQ7ykTOLP6YxoqOvuAODGdcHJn+43q3g==}
@@ -6642,70 +6646,6 @@ packages:
   open@8.4.2:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
-
-  opencode-ai@1.14.50:
-    resolution: {integrity: sha512-svdBifZeS9LY+VjGMJ/4sX0QGfUmoS/WksTw65bxSv6wc7hbMnbXK9OCX0LqakPzHdXxw80SPoSYo4us2pY9Tg==}
-    hasBin: true
-
-  opencode-darwin-arm64@1.14.50:
-    resolution: {integrity: sha512-JCu+lZjhaAz8TDRxxajenPtgGD55fwTavzgq/PoeyfFiNPo7L0ctdXu2Yjpr2LaEvOqcUrPP5/iXJhDfzut0dQ==}
-    cpu: [arm64]
-    os: [darwin]
-
-  opencode-darwin-x64-baseline@1.14.50:
-    resolution: {integrity: sha512-iwQbmWwkH8PHjsQ9iwgCtgNisjuKZhAB1g8P2MYhWa5y6DBAc4vL2RRpndVL70suVpeEqO01fZWBqtACPqMqlg==}
-    cpu: [x64]
-    os: [darwin]
-
-  opencode-darwin-x64@1.14.50:
-    resolution: {integrity: sha512-YOzCdyK+VCgXGuAefRd9A6MDHth30A4Fyh5m9/An+aEQ5gtOSE3sk1qrpX6O2p1eJcnimy9U8HsnAfXIgYbhEA==}
-    cpu: [x64]
-    os: [darwin]
-
-  opencode-linux-arm64-musl@1.14.50:
-    resolution: {integrity: sha512-ggjM3Rgsf+Gq73LrrlNdwhUhcLXIyFl+iJZjo0dcfhGpkfQ5HbDPzDQw2AMVBm1VEZkyKSDYpgfsaHKp7vFo1w==}
-    cpu: [arm64]
-    os: [linux]
-
-  opencode-linux-arm64@1.14.50:
-    resolution: {integrity: sha512-oF1+X6btlmQpcWMaeLmM99LnRGXOv/w1/NvdwvVlvH0UnT46BizWmVUV88/TvewoUdnZeuB+QMV/S+M0pjR9tQ==}
-    cpu: [arm64]
-    os: [linux]
-
-  opencode-linux-x64-baseline-musl@1.14.50:
-    resolution: {integrity: sha512-M4vjToh3G4++bGw6OpgwKj+fOguZ15DUZ0sur9aiftlS5CUrZIQyUzU07LADZCa7zWLkLs4qqxYl6r9U8D0CNw==}
-    cpu: [x64]
-    os: [linux]
-
-  opencode-linux-x64-baseline@1.14.50:
-    resolution: {integrity: sha512-PRM4BcRrb08SU29lNLe87Sy5ndT92AmT7dtL2ADgd5lmMBCQXUuJPg2jggyIeWC/DKSTuPpZZKebU8rrzPDWSw==}
-    cpu: [x64]
-    os: [linux]
-
-  opencode-linux-x64-musl@1.14.50:
-    resolution: {integrity: sha512-duBwcnuDVCk9B+tK4YI5YOP5iSi+9O2xwBIeRmk5pgZNQMFT74TJ68POmG0lQDpCmHWPa35YyJPB4Ttg3eF1Kw==}
-    cpu: [x64]
-    os: [linux]
-
-  opencode-linux-x64@1.14.50:
-    resolution: {integrity: sha512-S7fqQ0uXXGPJkzhr1MQEgdRYVQZehGWWIdlnX3aMfp23hLar79ChUbsibkPUo1eVo34uLrZ82ev/WazhseLGTg==}
-    cpu: [x64]
-    os: [linux]
-
-  opencode-windows-arm64@1.14.50:
-    resolution: {integrity: sha512-NpwWWfKIJRrWXflk7pgE5RqK7k33Ilup+fDbaSmVJHrgDli9hlVW5Tlw45eHX1TALj6ClDjt9kY2vFqFzXokpg==}
-    cpu: [arm64]
-    os: [win32]
-
-  opencode-windows-x64-baseline@1.14.50:
-    resolution: {integrity: sha512-ouXzv+oKyFZzPAy4lQQROuQPE8VtGFpp6NZZfNY1oVUUe/T+sOreti96RM9R+IalSoxrifJbxuKrAajHoDU4jQ==}
-    cpu: [x64]
-    os: [win32]
-
-  opencode-windows-x64@1.14.50:
-    resolution: {integrity: sha512-EgV/t5vLP6rzonMnAhNeCgXqOEHQPZY19w4LhKhNxVdHM8YFD1WOVOzMVDIm6Jw3HzwxI60dPnt4zfGIdqOY7w==}
-    cpu: [x64]
-    os: [win32]
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -11453,7 +11393,9 @@ snapshots:
       metro-runtime: 0.83.5
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
     optional: true
 
   '@react-native/normalize-colors@0.74.89': {}
@@ -14068,6 +14010,15 @@ snapshots:
     dependencies:
       expo: 55.0.14(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.12)(react-dom@19.2.0(react@19.2.0))(react-native-worklets@0.7.2(@babel/core@7.29.0)(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
 
+  expo-image-loader@55.0.0(expo@55.0.14):
+    dependencies:
+      expo: 55.0.14(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.12)(react-dom@19.2.0(react@19.2.0))(react-native-worklets@0.7.2(@babel/core@7.29.0)(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
+
+  expo-image-picker@55.0.20(expo@55.0.14):
+    dependencies:
+      expo: 55.0.14(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.12)(react-dom@19.2.0(react@19.2.0))(react-native-worklets@0.7.2(@babel/core@7.29.0)(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
+      expo-image-loader: 55.0.0(expo@55.0.14)
+
   expo-image@55.0.8(expo@55.0.14)(react-native-web@0.21.2(encoding@0.1.13)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0):
     dependencies:
       expo: 55.0.14(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.12)(react-dom@19.2.0(react@19.2.0))(react-native-worklets@0.7.2(@babel/core@7.29.0)(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
@@ -14696,8 +14647,6 @@ snapshots:
       is-callable: 1.2.7
 
   functions-have-names@1.2.3: {}
-
-  g@2.0.1: {}
 
   generator-function@2.0.1: {}
 
@@ -16547,57 +16496,6 @@ snapshots:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
-
-  opencode-ai@1.14.50:
-    optionalDependencies:
-      opencode-darwin-arm64: 1.14.50
-      opencode-darwin-x64: 1.14.50
-      opencode-darwin-x64-baseline: 1.14.50
-      opencode-linux-arm64: 1.14.50
-      opencode-linux-arm64-musl: 1.14.50
-      opencode-linux-x64: 1.14.50
-      opencode-linux-x64-baseline: 1.14.50
-      opencode-linux-x64-baseline-musl: 1.14.50
-      opencode-linux-x64-musl: 1.14.50
-      opencode-windows-arm64: 1.14.50
-      opencode-windows-x64: 1.14.50
-      opencode-windows-x64-baseline: 1.14.50
-
-  opencode-darwin-arm64@1.14.50:
-    optional: true
-
-  opencode-darwin-x64-baseline@1.14.50:
-    optional: true
-
-  opencode-darwin-x64@1.14.50:
-    optional: true
-
-  opencode-linux-arm64-musl@1.14.50:
-    optional: true
-
-  opencode-linux-arm64@1.14.50:
-    optional: true
-
-  opencode-linux-x64-baseline-musl@1.14.50:
-    optional: true
-
-  opencode-linux-x64-baseline@1.14.50:
-    optional: true
-
-  opencode-linux-x64-musl@1.14.50:
-    optional: true
-
-  opencode-linux-x64@1.14.50:
-    optional: true
-
-  opencode-windows-arm64@1.14.50:
-    optional: true
-
-  opencode-windows-x64-baseline@1.14.50:
-    optional: true
-
-  opencode-windows-x64@1.14.50:
-    optional: true
 
   optionator@0.9.4:
     dependencies:

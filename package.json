@@ -8,6 +8,7 @@
     "dev:mobile": "turbo run dev --filter=@baishou/mobile",
     "build:desktop": "turbo run build --filter=@baishou/desktop",
     "build:mobile": "turbo run build --filter=@baishou/mobile",
+    "android:mobile": "pnpm --filter @baishou/mobile run android",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run lint",
