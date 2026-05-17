@@ -3,27 +3,6 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { app } from 'electron'; 
 import { SettingsRepository, UserProfileRepository } from '@baishou/database';
-import { DEFAULT_PROFILE } from '@baishou/database';
-import type {  
-  AIProviderConfig, 
-  GlobalModelsConfig, 
-  AgentBehaviorConfig, 
-  RagConfig, 
-  WebSearchConfig, 
-  SummaryConfig, 
-  ToolManagementConfig, 
-  McpServerConfig 
-} from '@baishou/shared';
-import { 
-  DEFAULT_AI_PROVIDERS, 
-  DEFAULT_GLOBAL_MODELS, 
-  DEFAULT_AGENT_BEHAVIOR, 
-  DEFAULT_RAG_CONFIG, 
-  DEFAULT_WEB_SEARCH_CONFIG, 
-  DEFAULT_SUMMARY_CONFIG, 
-  DEFAULT_TOOL_MANAGEMENT_CONFIG, 
-  DEFAULT_MCP_SERVER_CONFIG 
-} from '@baishou/database';
 
 /**
  * 原版配置的大规模兼容恢复服务

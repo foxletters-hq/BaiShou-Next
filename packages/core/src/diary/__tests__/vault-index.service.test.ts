@@ -27,9 +27,9 @@ describe('VaultIndexService', () => {
 
     const items = service.getAll();
     expect(items).toHaveLength(3);
-    expect(items[0].id).toBe(3);
-    expect(items[1].id).toBe(2);
-    expect(items[2].id).toBe(1);
+    expect(items[0]!.id).toBe(3);
+    expect(items[1]!.id).toBe(2);
+    expect(items[2]!.id).toBe(1);
   });
 
   it('should update existing item instead of creating duplication', () => {
@@ -40,7 +40,7 @@ describe('VaultIndexService', () => {
 
     const items = service.getAll();
     expect(items).toHaveLength(1);
-    expect(items[0].preview).toBe('Updated Preview');
+    expect(items[0]!.preview).toBe('Updated Preview');
   });
 
   it('should remove item by id', () => {
@@ -50,7 +50,7 @@ describe('VaultIndexService', () => {
     service.remove(1);
     const items = service.getAll();
     expect(items).toHaveLength(1);
-    expect(items[0].id).toBe(2);
+    expect(items[0]!.id).toBe(2);
   });
 
   it('should clear all items', () => {

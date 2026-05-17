@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
-import { existsSync, createReadStream } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import extract from 'extract-zip';
 import os from 'node:os';
-import { DevicePreferences, SummaryType } from '@baishou/shared';
+import { DevicePreferences } from '@baishou/shared';
 // 注意这里我们只建立降级写入需要的 Repository，真正的复杂 ORM 会由外部注入
 
 export interface ILegacyDatabaseAdapter {
@@ -109,12 +109,12 @@ export class LegacyArchiveImportService {
     for (const diary of diariesJson) {
       const dateObj = diary.date ? new Date(diary.date) : new Date();
       // yyyy-MM-dd
-      const dayKey = dateObj.toISOString().split('T')[0];
+      const dayKey = dateObj.toISOString().split('T')[0]!;
       if (!grouped.has(dayKey)) grouped.set(dayKey, []);
       grouped.get(dayKey)!.push(diary);
     }
 
-    for (const [dayKey, list] of grouped.entries()) {
+    for (const [_dayKey, list] of grouped.entries()) {
       list.sort((a, b) => (a.created_at ? new Date(a.created_at).getTime() : Date.now()) - (b.created_at ? new Date(b.created_at).getTime() : Date.now()));
 
       let buffer = '';
@@ -125,7 +125,7 @@ export class LegacyArchiveImportService {
         const d = list[i];
         if (schemaVersion < 1) {
           const dt = d.created_at ? new Date(d.created_at) : new Date();
-          const t = dt.toISOString().split('T')[1].substring(0, 8);
+          const t = dt!.toISOString().split('T')[1]!.substring(0, 8);
           buffer += `##### ${t}\n\n`;
         }
         buffer += (d.content || '').trim() + '\n';

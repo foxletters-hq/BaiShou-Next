@@ -91,7 +91,7 @@ describe('Agent 2: 伙伴管理 UI 验证', () => {
   });
 
   it('任务24: 新会话通过 URL 参数传递 assistantId', () => {
-    const tsx = readFile(
+    readFile(
       'apps/desktop/src/renderer/src/features/agent/AgentScreen.tsx'
     );
     // 确认 assistantId 通过 URL params 传递

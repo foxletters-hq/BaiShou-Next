@@ -36,9 +36,9 @@ describe('SettingsFileService', () => {
     mockWriteFile.mockResolvedValue(undefined);
     mockRename.mockResolvedValue(undefined);
 
-    const mockPathProvider: IStoragePathService = {
+    const mockPathProvider = {
       getVaultSystemDirectory: vi.fn().mockResolvedValue(sysDir),
-    };
+    } as unknown as IStoragePathService;
 
     service = new SettingsFileService(mockPathProvider);
   });

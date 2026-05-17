@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { createReadStream, createWriteStream, existsSync, readdirSync, statSync } from 'node:fs';
+import { createWriteStream, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import archiver from 'archiver';
 import extract from 'extract-zip';

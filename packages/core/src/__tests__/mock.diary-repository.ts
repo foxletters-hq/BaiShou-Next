@@ -58,4 +58,35 @@ export class MockDiaryRepository implements DiaryRepository {
   async getSyncUpdatesSince(date: Date): Promise<Diary[]> {
     return this.diaries.filter(d => d.updatedAt && d.updatedAt >= date);
   }
+
+  async batchCreate(diaries: CreateDiaryInput[]): Promise<Diary[]> {
+    const created = diaries.map(input => ({
+      isFavorite: false,
+      mediaPaths: [],
+      ...input,
+      id: this.nextId++,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    } as Diary));
+    this.diaries.push(...created);
+    return created;
+  }
+
+  async deleteAll(): Promise<void> {
+    this.diaries = [];
+  }
+
+  async count(): Promise<number> {
+    return this.diaries.length;
+  }
+
+  async getOldestDiaryDate(): Promise<Date | null> {
+    if (this.diaries.length === 0) return null;
+    return this.diaries.reduce((oldest, d) => d.date < oldest ? d.date : oldest, this.diaries[0]!.date);
+  }
+
+  async getDiariesAfter(cursor: import('@baishou/database').CursorOptions): Promise<Diary[]> {
+    return this.diaries.filter(d => d.date > cursor.dateCursor || (d.date.getTime() === cursor.dateCursor.getTime() && d.id! > cursor.idCursor))
+      .slice(0, cursor.limit);
+  }
 }

@@ -79,8 +79,8 @@ describe('ICloudSyncClient 接口契约', () => {
 
     const records = await mock.listFiles();
     expect(records).toHaveLength(2);
-    expect(records[0].filename).toBe('backup_2026-03-31.zip');
-    expect(records[0].sizeInBytes).toBe(50 * 1024 * 1024);
+    expect(records[0]!.filename).toBe('backup_2026-03-31.zip');
+    expect(records[0]!.sizeInBytes).toBe(50 * 1024 * 1024);
   });
 });
 
@@ -204,8 +204,8 @@ describe('超限自动清理逻辑 (模拟)', () => {
 
     expect(toDelete).toHaveLength(5);
     // 最旧的应该被删除
-    expect(toDelete[0].filename).toBe('backup_20.zip');
-    expect(toDelete[4].filename).toBe('backup_24.zip');
+    expect(toDelete[0]!.filename).toBe('backup_20.zip');
+    expect(toDelete[4]!.filename).toBe('backup_24.zip');
   });
 
   it('当记录数不超过 maxCount 时不应删除任何东西', () => {

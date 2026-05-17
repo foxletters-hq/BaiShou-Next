@@ -59,7 +59,7 @@ export class ContextBuilderService {
 
     let cutoffDate: Date | null = null;
     if (visibleWeeks.length > 0) {
-      cutoffDate = visibleWeeks[0].endDate;
+      cutoffDate = visibleWeeks[0]!.endDate;
       for (const w of visibleWeeks) {
         if (w.endDate.getTime() > cutoffDate.getTime()) {
           cutoffDate = w.endDate;

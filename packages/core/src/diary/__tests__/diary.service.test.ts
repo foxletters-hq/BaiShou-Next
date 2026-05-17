@@ -4,7 +4,7 @@ import { FileSyncService } from '../file-sync.service';
 import { VaultIndexService } from '../vault-index.service';
 import { ShadowIndexSyncService } from '../../shadow-index/shadow-index-sync.service';
 import { ShadowIndexRepository } from '@baishou/database';
-import { DiaryNotFoundError, DiaryDateConflictError } from '../diary.types';
+import { DiaryDateConflictError } from '../diary.types';
 import { Diary, parseDateStr } from '@baishou/shared';
 
 describe('DiaryService - Single Source of Truth architecture', () => {
@@ -112,7 +112,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
 
     mockShadowRepo.findById.mockResolvedValue({
       id: 99,
-      date: existingDateIso.split('T')[0],
+      date: existingDateIso.split('T')[0]!,
       filePath: '2026/03/2026-03-30.md',
       contentHash: 'hash',
       createdAt: '',
@@ -156,7 +156,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
 
     mockShadowRepo.findById.mockResolvedValue({
       id: 99,
-      date: oldDateIso.split('T')[0],
+      date: oldDateIso.split('T')[0]!,
       filePath: '',
       contentHash: '',
       createdAt: '',
@@ -182,7 +182,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
   it('delete() should delete file and clear index', async () => {
     const existingDateIso = '2026-03-25T00:00:00.000Z';
     mockShadowRepo.findById.mockResolvedValue({
-       id: 1, date: existingDateIso.split('T')[0], filePath: '', contentHash: '', createdAt: '', updatedAt: '', isFavorite: false, hasMedia: false, weather: null, mood: null, location: null, locationDetail: null
+       id: 1, date: existingDateIso.split('T')[0]!, filePath: '', contentHash: '', createdAt: '', updatedAt: '', isFavorite: false, hasMedia: false, weather: null, mood: null, location: null, locationDetail: null
     });
 
     await service.delete(1);

@@ -14,6 +14,8 @@ import { IVaultService } from '../vault/vault.types';
 import { JournalSyncResult, JournalSyncEvent, IEmbeddingCallback, ParsedJournal } from './shadow-index-sync.types';
 import { parseJournalMarkdown } from './shadow-index-sync.utils';
 
+export type { IEmbeddingCallback };
+
 // ── 影子索引同步服务 ──────────────────────
 
 /**

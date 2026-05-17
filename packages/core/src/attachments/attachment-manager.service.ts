@@ -39,11 +39,11 @@ export class AttachmentManagerService implements IAttachmentManager {
       if (absoluteSourcePath.startsWith('data:image/')) {
         const matches = absoluteSourcePath.match(/^data:image\/([^;]+);base64,(.+)$/);
         if (matches && matches.length === 3) {
-          const extension = matches[1] === 'jpeg' ? '.jpg' : `.${matches[1].replace(/[^a-zA-Z0-9]/g, '')}`;
+          const extension = matches[1] === 'jpeg' ? '.jpg' : `.${matches[1]!.replace(/[^a-zA-Z0-9]/g, '')}`;
           const newFileName = `${prefix}_${Date.now()}${extension}`;
           const newPath = path.join(avatarsDir, newFileName);
           
-          await fs.writeFile(newPath, Buffer.from(matches[2], 'base64'));
+          await fs.writeFile(newPath, Buffer.from(matches[2]!, 'base64'));
           return `avatars/${newFileName}`;
         }
       }

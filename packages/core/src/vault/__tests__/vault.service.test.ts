@@ -20,11 +20,7 @@ describe('VaultService Integration', () => {
       getVaultSystemDirectory: vi.fn().mockImplementation(async (name: string) => path.join(tempDir, name, '.baishou'))
     };
 
-    const mockDbManager = {
-      connect: vi.fn().mockResolvedValue(undefined)
-    };
-
-    service = new VaultService(mockPathService as any, mockDbManager as any);
+    service = new VaultService(mockPathService as any);
   });
 
   afterEach(async () => {
@@ -49,7 +45,7 @@ describe('VaultService Integration', () => {
     
     // 它应当已经被修正为基于当前系统 tempDir 下的路径 (自动根据 OS 判断路径拼接)
     const expected = path.join(tempDir, 'Personal');
-    expect(vaults[0].path).toBe(expected);
+    expect(vaults[0]!.path).toBe(expected);
 
     // 文件上也应该被静默修正了
     const fixedContent = await fs.readFile(registryPath, 'utf8');

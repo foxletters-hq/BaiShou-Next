@@ -24,7 +24,14 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
       delete: vi.fn(),
     } as any;
 
-    manager = new AssistantManagerService(mockRepo, mockFileService);
+    const mockAttachmentManager = {
+      importAvatar: vi.fn().mockResolvedValue('avatars/test.jpg'),
+      resolveAvatarPath: vi.fn().mockResolvedValue('/abs/path/test.jpg'),
+      listOrphans: vi.fn().mockResolvedValue([]),
+      deleteBatch: vi.fn().mockResolvedValue(undefined),
+    } as any;
+
+    manager = new AssistantManagerService(mockRepo, mockFileService, mockAttachmentManager);
   });
 
   const dummyAssistant = { id: 'ast-1', name: 'My Assistant' };
@@ -57,7 +64,7 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
   it('fullResyncFromDisks() synchronizes JSON artifacts back into SQLite', async () => {
     mockFileService.listAllAssistants.mockResolvedValue([{ id: 'ast-1', fullPath: '' }]);
     mockFileService.readAssistant.mockResolvedValue(dummyAssistant);
-    mockRepo.findById.mockResolvedValue(null);
+    mockRepo.findById.mockResolvedValue(null as any);
     mockRepo.findAll.mockResolvedValue([]);
 
     await manager.fullResyncFromDisks();

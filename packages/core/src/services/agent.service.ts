@@ -1,6 +1,6 @@
 import { AgentSessionRepository, AgentMessageRepository } from '@baishou/database';
 import { AIProviderRegistry, ToolRegistry } from '@baishou/ai';
-import { streamText, CoreMessage, stepCountIs } from 'ai';
+import { streamText, ModelMessage, stepCountIs } from 'ai';
 import { SessionNotFoundError } from '../errors/agent.errors';
 
 export interface AgentChatInput {
@@ -33,7 +33,7 @@ export class AgentService {
 
     // 1. 获取最近对话历史 (假定仓库支持)
     const history = await this.messageRepo.findBySessionId(input.sessionId, 20);
-    const messages: CoreMessage[] = history.map(msg => ({
+    const messages: ModelMessage[] = history.map(msg => ({
       role: msg.role as any,
       content: (msg as any).data || '' // 对于 tool_calls 和 tool_results 等后续需拓展类型适配
     }));
@@ -87,14 +87,14 @@ export class AgentService {
           const costUsd = await modelPricingService.calculateCost(
              session.providerId,
              session.modelId, 
-             event.usage.promptTokens, 
-             event.usage.completionTokens
+             event.usage.inputTokens!, 
+             event.usage.outputTokens!
           );
 
           await this.sessionRepo.updateTokenUsage(
             input.sessionId, 
-            event.usage.promptTokens, 
-            event.usage.completionTokens,
+            event.usage.inputTokens!, 
+            event.usage.outputTokens!,
             costUsd !== null ? usdToMicros(costUsd) : 0
           );
         }

@@ -33,7 +33,7 @@ describe('GitSyncService', () => {
       hasConflicts: vi.fn(),
       getConflicts: vi.fn(),
       resolveConflict: vi.fn(),
-    } satisfies IGitSyncService;
+    } as unknown as IGitSyncService;
   });
 
   describe('init', () => {

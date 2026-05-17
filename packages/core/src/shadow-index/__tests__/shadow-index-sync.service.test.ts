@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -78,7 +77,7 @@ describe('ShadowIndexSyncService', () => {
       getSnapshotsDirectory: async () => path.join(tmpDir, 'snapshots'),
       getJournalsBaseDirectory: async () => journalsDir,
       getSummariesBaseDirectory: async () => path.join(tmpDir, 'TestVault', 'Summaries'),
-    };
+    } as unknown as IStoragePathService;
 
     const vault: VaultInfo = {
       name: 'TestVault',

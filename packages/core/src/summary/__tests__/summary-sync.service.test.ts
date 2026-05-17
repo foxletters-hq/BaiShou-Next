@@ -52,7 +52,7 @@ describe('SummarySyncService', () => {
     expect(callbacks.onProgress).toHaveBeenCalledWith(fakeMissing[0], 'thinking_via_test-model');
     // 验证写文件调用
     expect(mockFileService.writeSummary).toHaveBeenCalled();
-    const writeArgs = mockFileService.writeSummary.mock.calls[0];
+    const writeArgs = mockFileService.writeSummary.mock.calls[0]!;
     expect(writeArgs[2]).toBe('Here is your monthly summary!');
 
     expect(callbacks.onCompleted).toHaveBeenCalled();

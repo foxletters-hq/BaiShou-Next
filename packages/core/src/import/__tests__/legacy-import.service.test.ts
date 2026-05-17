@@ -9,8 +9,8 @@ vi.mock('electron', () => ({
 vi.mock('@baishou/database');
 
 describe('LegacyImportService', () => {
-  let settingsRepo: vi.Mocked<SettingsRepository>;
-  let profileRepo: vi.Mocked<UserProfileRepository>;
+  let settingsRepo: import('vitest').Mocked<SettingsRepository>;
+  let profileRepo: import('vitest').Mocked<UserProfileRepository>;
   let service: LegacyImportService;
 
   beforeEach(() => {
@@ -48,9 +48,9 @@ describe('LegacyImportService', () => {
     await service.restoreConfig(config);
     
     expect(profileRepo.saveProfile).toHaveBeenCalled();
-    const savedProfile = profileRepo.saveProfile.mock.calls[0][0];
+    const savedProfile = profileRepo.saveProfile.mock.calls[0]![0];
     expect(savedProfile.nickname).toBe('导入的名字');
-    expect(savedProfile.personas['默认身份卡'].facts['喜好']).toBe('测试跑通');
+    expect(savedProfile.personas!['默认身份卡']!.facts['喜好']).toBe('测试跑通');
   });
 
   it('should restore legacy AI Provider API Keys', async () => {
@@ -65,9 +65,9 @@ describe('LegacyImportService', () => {
     };
 
     await service.restoreConfig(config);
-    const setList = settingsRepo.setAIProviderConfigs.mock.calls[0][0];
-    expect(setList[0].apiKey).toBe('sk-legacy-test');
-    expect(setList[0].defaultDialogueModel).toBe('gpt-4');
+    const setList = settingsRepo.setAIProviderConfigs.mock.calls[0]![0];
+    expect(setList[0]!.apiKey).toBe('sk-legacy-test');
+    expect(setList[0]!.defaultDialogueModel).toBe('gpt-4');
   });
 
   it('should map various primitive values cleanly', async () => {
@@ -79,9 +79,9 @@ describe('LegacyImportService', () => {
     };
     
     await service.restoreConfig(config);
-    expect(settingsRepo.setRagConfig.mock.calls[0][0].ragEnabled).toBe(false);
-    expect(settingsRepo.setRagConfig.mock.calls[0][0].ragTopK).toBe(80);
-    expect(settingsRepo.setWebSearchConfig.mock.calls[0][0].webSearchEngine).toBe('bing');
-    expect(settingsRepo.setMcpServerConfig.mock.calls[0][0].mcpEnabled).toBe(true);
+    expect(settingsRepo.setRagConfig.mock.calls[0]![0].ragEnabled).toBe(false);
+    expect(settingsRepo.setRagConfig.mock.calls[0]![0].ragTopK).toBe(80);
+    expect(settingsRepo.setWebSearchConfig.mock.calls[0]![0].webSearchEngine).toBe('bing');
+    expect(settingsRepo.setMcpServerConfig.mock.calls[0]![0].mcpEnabled).toBe(true);
   });
 });
