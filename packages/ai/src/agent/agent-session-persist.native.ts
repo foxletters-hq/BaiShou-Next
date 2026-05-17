@@ -116,7 +116,7 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
     if (finalUsage.inputTokens === 0 && finalUsage.outputTokens === 0) {
       try {
         if (accumulator.text.length > 0) {
-          const { get_encoding } = require('tiktoken');
+          const { get_encoding } = await import('tiktoken');
           const enc = get_encoding('cl100k_base');
           finalUsage.inputTokens = enc.encode(rawUserText).length;
           finalUsage.outputTokens = enc.encode(accumulator.text + accumulator.reasoning).length;

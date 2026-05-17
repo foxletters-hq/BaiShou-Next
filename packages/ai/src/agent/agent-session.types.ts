@@ -37,6 +37,7 @@ export interface StreamChatOptions {
   fetchSearchPage?: (url: string) => Promise<string>;
   abortSignal?: AbortSignal;
   userMessageId?: string; // 明确指定回复针对的用户消息 ID
+  skipUserMessageRecording?: boolean; // 如果是编辑/重发消息，跳过用户消息记录
 }
 
 export interface StreamChatCallbacks {

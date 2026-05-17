@@ -26,8 +26,8 @@ export class LocalBingProvider extends LocalSearchProvider {
       let match
 
       while ((match = itemRegex.exec(html)) !== null) {
-        const url = match[1]
-        const title = match[2].replace(/<[^>]+>/g, '').trim()
+        const url = match[1]!
+        const title = match[2]!.replace(/<[^>]+>/g, '').trim()
 
         if (url && title && (url.startsWith('http') || url.startsWith('https'))) {
           results.push({
@@ -42,8 +42,8 @@ export class LocalBingProvider extends LocalSearchProvider {
         // 备用：匹配所有 h2 标签中的链接
         const fallbackRegex = /<h2[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h2>/gi
         while ((match = fallbackRegex.exec(html)) !== null) {
-          const url = match[1]
-          const title = match[2].replace(/<[^>]+>/g, '').trim()
+          const url = match[1]!
+          const title = match[2]!.replace(/<[^>]+>/g, '').trim()
 
           if (url && title && (url.startsWith('http') || url.startsWith('https'))) {
             results.push({
@@ -53,7 +53,7 @@ export class LocalBingProvider extends LocalSearchProvider {
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('[LocalBingProvider] Failed to parse Bing search HTML:', error)
     }
 
@@ -84,7 +84,7 @@ export class LocalBingProvider extends LocalSearchProvider {
       }
 
       return bingUrl
-    } catch (error) {
+    } catch (error: any) {
       logger.warn('[LocalBingProvider] Failed to decode Bing URL:', error)
       return bingUrl
     }

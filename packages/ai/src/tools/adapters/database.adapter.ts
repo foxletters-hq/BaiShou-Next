@@ -59,7 +59,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
        role: r.role,
        snippet: r.content,
        sessionTitle: r.sessionTitle || '未命名对话',
-       date: new Date(r.createdAt).toISOString().split('T')[0]
+       date: (new Date(r.createdAt).toISOString().split('T')[0])!
     }));
   }
 
@@ -75,7 +75,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
         .from(summariesTable)
         .where(
             and(
-               eq(summariesTable.type, type),
+               eq(summariesTable.type as any, type as any),
                eq(summariesTable.startDate, targetDate)
             )
         )
@@ -97,7 +97,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
 
     const rows = await db.select({ start: summariesTable.startDate, end: summariesTable.endDate })
        .from(summariesTable)
-       .where(eq(summariesTable.type, type))
+       .where(eq(summariesTable.type as any, type as any))
        .orderBy(desc(summariesTable.startDate))
        .limit(limit);
 

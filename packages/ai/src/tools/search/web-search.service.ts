@@ -143,7 +143,7 @@ export class WebSearchService {
       const rawUrl = urlMatch?.[1] || '';
 
       const titleMatch = />([\s\S]*?)<\/a>/.exec(aTag);
-      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+      const title = titleMatch ? titleMatch[1]!.replace(/<[^>]+>/g, '').trim() : '';
 
       // 解析结果 Snippet
       const snippetStart = block.indexOf('class="result__snippet"');
@@ -153,7 +153,7 @@ export class WebSearchService {
         if (snippetEnd !== -1) {
           const snipTag = block.substring(snippetStart, snippetEnd + 4);
           const sMatch = />([\s\S]*?)<\/a>/.exec(snipTag);
-          snippetRaw = sMatch ? sMatch[1] : '';
+          snippetRaw = sMatch ? sMatch[1]! : '';
         }
       }
       

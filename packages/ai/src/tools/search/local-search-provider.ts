@@ -76,7 +76,7 @@ export abstract class LocalSearchProvider {
               content: this.truncateContent(content, 3000)
             })
           }
-        } catch (e) {
+        } catch (e: any) {
           logger.warn(`[LocalSearchProvider] Failed to fetch content for ${item.url}:`, e)
         }
       }
@@ -85,7 +85,7 @@ export abstract class LocalSearchProvider {
         query,
         results
       }
-    } catch (e) {
+    } catch (e: any) {
       logger.error(`[LocalSearchProvider] Search failed:`, e)
       throw e
     }
@@ -108,13 +108,13 @@ export abstract class LocalSearchProvider {
     }
 
     // 通过 IPC 调用主进程的 SearchService（渲染进程场景）
-    if (typeof window !== 'undefined' && window.electron) {
+    if (typeof window !== 'undefined' && (window as any).electron) {
       const uid = `search-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       try {
-        const html = await window.electron.ipcRenderer.invoke('search:open-url', uid, url)
+        const html = await (window as any).electron.ipcRenderer.invoke('search:open-url', uid, url)
         return html
       } finally {
-        await window.electron.ipcRenderer.invoke('search:close-window', uid)
+        await (window as any).electron.ipcRenderer.invoke('search:close-window', uid)
       }
     }
     throw new Error('Electron IPC not available')
@@ -125,8 +125,8 @@ export abstract class LocalSearchProvider {
    */
   protected async fetchPageContent(url: string): Promise<string> {
     // 通过 IPC 调用主进程的 webSearchResultFetcher
-    if (typeof window !== 'undefined' && window.electron) {
-      return await window.electron.ipcRenderer.invoke('search:fetch-content', url)
+    if (typeof window !== 'undefined' && (window as any).electron) {
+      return await (window as any).electron.ipcRenderer.invoke('search:fetch-content', url)
     }
     throw new Error('Electron IPC not available')
   }

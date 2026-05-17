@@ -23,8 +23,8 @@ export class LocalGoogleProvider extends LocalSearchProvider {
       let match
 
       while ((match = itemRegex.exec(html)) !== null) {
-        const url = match[1]
-        const title = match[2].replace(/<[^>]+>/g, '').trim()
+        const url = match[1]!
+        const title = match[2]!.replace(/<[^>]+>/g, '').trim()
 
         if (url && title && (url.startsWith('http') || url.startsWith('https'))) {
           results.push({
@@ -39,8 +39,8 @@ export class LocalGoogleProvider extends LocalSearchProvider {
         // 备用：匹配所有 h3 标签中的链接
         const fallbackRegex = /<a[^>]*href="([^"]*)"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/gi
         while ((match = fallbackRegex.exec(html)) !== null) {
-          const url = match[1]
-          const title = match[2].replace(/<[^>]+>/g, '').trim()
+          const url = match[1]!
+          const title = match[2]!.replace(/<[^>]+>/g, '').trim()
 
           if (url && title && (url.startsWith('http') || url.startsWith('https'))) {
             results.push({
@@ -55,8 +55,8 @@ export class LocalGoogleProvider extends LocalSearchProvider {
       if (results.length === 0) {
         const lastResortRegex = /<a[^>]*href="(https?:\/\/[^"]*)"[^>]*>[^<]*<h3[^>]*>([^<]*)<\/h3>/gi
         while ((match = lastResortRegex.exec(html)) !== null) {
-          const url = match[1]
-          const title = match[2].trim()
+          const url = match[1]!
+          const title = match[2]!.trim()
 
           if (url && title) {
             results.push({
@@ -66,7 +66,7 @@ export class LocalGoogleProvider extends LocalSearchProvider {
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('[LocalGoogleProvider] Failed to parse Google search HTML:', error)
     }
 

@@ -118,7 +118,7 @@ export class SearchRagService {
          const cev = chunkEmbeddings[i];
          if (!cev) continue;
          const score = cosineSimilarity(queryEmbedding, cev);
-         scoredChunks.push({ score, text: chunks[i] });
+          scoredChunks.push({ score, text: chunks[i]! });
       }
 
       // 4. 倒排取最相关的前 K 个拼接到最大可配额度

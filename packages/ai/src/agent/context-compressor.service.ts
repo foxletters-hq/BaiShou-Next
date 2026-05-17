@@ -27,12 +27,12 @@ export class ContextCompressorService {
 
       const latestSnapshot = await snapshotRepo.getLatestSnapshot(sessionId);
       
-      const startOrderIndex = latestSnapshot ? latestSnapshot.coveredUpToMessageId : -1;
+      const startOrderIndex = latestSnapshot ? Number(latestSnapshot.coveredUpToMessageId) : -1;
       
       // 我们提取从上次压缩点一直到现在的消息集合（不包括最后刚说的两句，留一些尾巴作为当前环境）
       const safeBufferMessages = allMessages.slice(0, allMessages.length - 2); 
       
-      const uncompressedChunk = safeBufferMessages.filter(m => m.orderIndex > startOrderIndex);
+      const uncompressedChunk = safeBufferMessages.filter(m => Number(m.orderIndex) > startOrderIndex);
       
       if (uncompressedChunk.length < 10) return; // 新轮次积累不满 10 句话，省算力，下次再说！
 
@@ -57,7 +57,7 @@ export class ContextCompressorService {
          summaryText: text,
          coveredUpToMessageId: String(coveredLastMsg.orderIndex),
          messageCount: latestSnapshot ? latestSnapshot.messageCount + uncompressedChunk.length : uncompressedChunk.length,
-         tokenCount: latestSnapshot ? latestSnapshot.tokenCount + (usage.completionTokens ?? 0) : (usage.completionTokens ?? 0)
+          tokenCount: latestSnapshot ? latestSnapshot.tokenCount + ((usage as any).completionTokens ?? 0) : ((usage as any).completionTokens ?? 0)
       });
       
       // ============================================

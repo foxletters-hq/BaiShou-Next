@@ -1,4 +1,3 @@
-import * as crypto from 'node:crypto';
 import { StreamTextResult } from 'ai';
 import { SessionRepository } from '@baishou/database';
 import { logger } from '@baishou/shared';
@@ -7,6 +6,14 @@ import { ModelPricingService } from '../pricing/model-pricing.service';
 import { StreamAccumulator } from './stream-accumulator';
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository';
+
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export interface PersistResultParams {
   sessionId: string;
@@ -39,13 +46,13 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
   }
 
   // ======== 构建 assistant 消息 Parts ========
-  const assistantMsgId = crypto.randomUUID();
+  const assistantMsgId = generateUUID();
   const partsToInsert: any[] = [];
 
   // 推送文本 Part
   if (accumulator.text) {
     partsToInsert.push({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       messageId: assistantMsgId,
       sessionId,
       type: 'text',
@@ -56,7 +63,7 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
   // 推送推理 Part (如果有)
   if (accumulator.reasoning) {
     partsToInsert.push({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       messageId: assistantMsgId,
       sessionId,
       type: 'text',
@@ -68,7 +75,7 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
   for (const tc of accumulator.toolCalls) {
     const resultObj = accumulator.toolResults.find(tr => tr.callId === tc.callId);
     partsToInsert.push({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       messageId: assistantMsgId,
       sessionId,
       type: 'tool',
@@ -109,14 +116,14 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
     if (finalUsage.inputTokens === 0 && finalUsage.outputTokens === 0) {
       try {
         if (accumulator.text.length > 0) {
-          const { get_encoding } = require('tiktoken');
+          const { get_encoding } = await import('tiktoken');
           const enc = get_encoding('cl100k_base');
           finalUsage.inputTokens = enc.encode(rawUserText).length;
           finalUsage.outputTokens = enc.encode(accumulator.text + accumulator.reasoning).length;
           enc.free();
           logger.info(`[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略!`);
         }
-      } catch (e) {
+      } catch (e: any) {
         logger.warn('Fallback tiktoken estimation failed', e);
       }
     }

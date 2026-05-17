@@ -2,8 +2,6 @@ import { streamText, wrapLanguageModel, extractReasoningMiddleware, smoothStream
 import type { LanguageModelV3Middleware } from '@ai-sdk/provider';
 import { IAIProvider } from '../providers/provider.interface';
 import { createDeepSeekReasoningMiddleware } from '../middleware/deepseek-reasoning';
-import { ToolRegistry } from '../tools/tool-registry';
-import { SessionRepository } from '@baishou/database';
 import { MessageAdapter } from './message.adapter';
 import { StreamAccumulator } from './stream-accumulator';
 import { StreamChunkAdapter } from './stream-chunk.adapter';
@@ -41,7 +39,6 @@ export class AgentSessionService {
       systemModels,
       userConfig,
       attachments,
-      contextSnapshots,
       webSearchResultFetcher,
       abortSignal
     } = options;
@@ -109,7 +106,7 @@ export class AgentSessionService {
       // memory_embeddings 表由 Drizzle ORM 迁移统一管理，不再在此处建表
 
       const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo);
-      let embAdapter = undefined;
+      let embAdapter: any = undefined;
       if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
          embAdapter = new EmbeddingAdapter(systemModels.embeddingProvider, systemModels.embeddingModelId, hsRepo);
       } else if (provider && modelId && userConfig?.['hasEmbeddingModel']) {
@@ -117,7 +114,7 @@ export class AgentSessionService {
       }
 
       // 构建记忆去重服务
-      let dedupService = undefined;
+      let dedupService: any = undefined;
       if (embAdapter && systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
          const { MemoryDeduplicationServiceImpl } = await import('../rag/memory-deduplication.service');
          dedupService = new MemoryDeduplicationServiceImpl(
@@ -199,7 +196,7 @@ export class AgentSessionService {
         snapshotRepo,
         provider,
         modelId,
-        skipUserMessageRecording: options.skipUserMessageRecording,
+        skipUserMessageRecording: (options as any).skipUserMessageRecording,
         streamError,
       });
 
@@ -236,7 +233,7 @@ export class AgentSessionService {
         middlewares.push(createDeepSeekReasoningMiddleware());
         // eslint-disable-next-line no-console
         console.log('[AgentSessionService] DeepSeek reasoning middleware added');
-      } catch (e) {
+      } catch (e: any) {
         logger.warn('[AgentSessionService] createDeepSeekReasoningMiddleware not available:', e);
       }
     }
@@ -247,7 +244,7 @@ export class AgentSessionService {
         middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as any);
         // eslint-disable-next-line no-console
         console.log('[AgentSessionService] extractReasoningMiddleware added');
-      } catch (e) {
+      } catch (e: any) {
         logger.warn('[AgentSessionService] extractReasoningMiddleware not available:', e);
       }
     }
