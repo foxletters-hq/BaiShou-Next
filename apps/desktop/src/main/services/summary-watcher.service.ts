@@ -1,7 +1,7 @@
 import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { SummaryType, formatLocalDate, logger } from '@baishou/shared';
+import { SummaryType, logger } from '@baishou/shared';
 import * as chokidar from 'chokidar';
 import { SummarySyncService } from '@baishou/core';
 import { SummaryFileService } from '@baishou/core';
@@ -34,7 +34,7 @@ export class SummaryWatcherService {
     if (!fs.existsSync(this.summariesPath)) {
       try {
         fs.mkdirSync(this.summariesPath, { recursive: true });
-      } catch (e) {
+      } catch (e: any) {
         logger.error(`[SummaryWatcher] 无法创建 Summaries 目录:`, e);
       }
     }
@@ -51,7 +51,7 @@ export class SummaryWatcherService {
       ignoreInitial: true,
       disableGlobbing: true,
       depth: 1, // 只需要一层子目录
-    });
+    } as any);
 
     this.watcher.on('all', (eventName, fullPath) => {
       if (!fullPath.endsWith('.md')) return;
@@ -122,7 +122,7 @@ export class SummaryWatcherService {
 
           try {
             await this.summarySync.syncSummaryFile(parsed.type, parsed.startDate, parsed.endDate);
-          } catch (e) {
+          } catch (e: any) {
             logger.error(`[SummaryWatcher] 同步失败: ${changedPath}`, e);
           }
         }

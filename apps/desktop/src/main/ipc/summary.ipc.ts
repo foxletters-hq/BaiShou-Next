@@ -120,11 +120,11 @@ function ensureQueueReady(): void {
          const finalModelId = globalModels?.globalSummaryModelId || modelId || 'deepseek-chat';
          const model = finalProvider.getLanguageModel(finalModelId);
          
-         const { text } = await generateText({
-            model,
-            prompt,
-            maxSteps: 1
-         });
+          const { text } = await generateText({
+             model,
+             prompt,
+             maxSteps: 1
+          } as any);
          return text;
       }
     };
@@ -155,10 +155,10 @@ export function registerSummaryIPC() {
     try {
        const parsedOptions = options?.start ? { start: new Date(options.start) } : undefined;
        return await ensureManager().list(parsedOptions);
-    } catch (e) {
-       logger.warn('[SummaryIPC] list error (likely table missing):', e);
-       return [];
-    }
+     } catch (e: any) {
+        logger.warn('[SummaryIPC] list error (likely table missing):', e);
+        return [];
+     }
   });
 
   ipcMain.handle('summary:stats', async () => {
@@ -168,10 +168,10 @@ export function registerSummaryIPC() {
         const client = shadowConnectionManager.getClient();
         const result = await client.execute('SELECT COUNT(*) as c FROM journals_index');
         totalDiaryCount = (result.rows[0]?.c as number) || 0;
-      } catch(e) {
-        // shadow_index table might not be initialized yet
-        logger.error('Failed to get shadow_index count', e);
-      }
+       } catch(e: any) {
+         // shadow_index table might not be initialized yet
+         logger.error('Failed to get shadow_index count', e);
+       }
 
       const summaries = await ensureManager().list();
       return {
@@ -181,9 +181,9 @@ export function registerSummaryIPC() {
         quarterlyCount: summaries.filter((s:any) => s.type === 'quarterly').length,
         yearlyCount: summaries.filter((s:any) => s.type === 'yearly').length
       };
-    } catch (err) {
-      logger.error('Failed to calculate summary stats:', err);
-      return {
+     } catch (err: any) {
+       logger.error('Failed to calculate summary stats:', err);
+       return {
         totalDiaryCount: 0,
         weeklyCount: 0,
         monthlyCount: 0,
@@ -224,7 +224,7 @@ export function registerSummaryIPC() {
             const records = await shadowRepo.listAll();
             logger.info('[DEBUG-IPC] shadowRepo.listAll count:', records.length);
             if (records.length > 0) {
-               logger.info('[DEBUG-IPC] Sample record date field:', records[0].date, typeof records[0].date);
+               logger.info('[DEBUG-IPC] Sample record date field:', { date: records[0].date, type: typeof records[0].date });
             }
             return records.map((r: any) => {
               const diaryDate = parseDateStr(r.date);

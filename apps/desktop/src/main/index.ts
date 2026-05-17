@@ -1,6 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
 import { join } from 'path'
-import { pathToFileURL, fileURLToPath } from 'url'
+import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerAgentIPC } from './ipc/agent.ipc'
@@ -147,7 +147,7 @@ async function completeFullBootstrap() {
 
     
     isBootstrapping = false;
-  } catch (err) {
+  } catch (err: any) {
     logger.error('Failed to complete bootstrap:', err);
     isBootstrapping = false;
   }
@@ -251,7 +251,7 @@ app.whenReady().then(async () => {
         
         logger.info('[Bootstrapper] Local Auto-Migration Completed! Skipped Onboarding.');
       }
-    } catch (e) {
+    } catch (e: any) {
       logger.error('[Bootstrapper] Local Auto-Migration Failed. Falling back to Onboarding:', e);
     }
   }

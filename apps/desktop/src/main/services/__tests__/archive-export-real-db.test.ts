@@ -2,10 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fsp from 'fs/promises';
 import * as fs from 'fs';
 import * as path from 'path';
-import archiver from 'archiver';
 import extract from 'extract-zip';
 import { initNodeDatabase } from '@baishou/database';
-import { systemSettingsTable, agentAssistantsTable, agentSessionsTable, agentMessagesTable, summariesTable } from '@baishou/database';
 
 const mockTempDir = path.join(__dirname, '.temp-full-archive-test');
 const mockUserData = path.join(mockTempDir, 'userData');

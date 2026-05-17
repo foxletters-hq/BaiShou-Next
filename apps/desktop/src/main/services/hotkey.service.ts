@@ -29,13 +29,13 @@ export class HotkeyService {
       } else {
         logger.info('[HotkeyService] ⏸️ Global shortcut is DISABLED in settings. Skipping registration.');
       }
-    } catch (e) {
+    } catch (e: any) {
       logger.error('[HotkeyService] ❌ Failed to start HotkeyService:', e);
     }
   }
 
   update(config: HotkeyConfig): void {
-    logger.info('[HotkeyService] ✏️ Hotkey configuration updated:', config);
+    logger.info('[HotkeyService] ✏️ Hotkey configuration updated:', { config });
     this.unregisterAll();
     this.isEnabled = config.hotkeyEnabled;
     if (this.isEnabled) {
@@ -53,7 +53,7 @@ export class HotkeyService {
 
   private register(config: HotkeyConfig): void {
     if (!config.hotkeyKey || !config.hotkeyModifier) {
-      logger.info('[HotkeyService] ⚠️ Invalid shortcut configuration. Skipping registration.', config);
+      logger.info('[HotkeyService] ⚠️ Invalid shortcut configuration. Skipping registration.', { config });
       return;
     }
 
@@ -77,7 +77,7 @@ export class HotkeyService {
       } else {
         logger.info(`[HotkeyService] ✅ Successfully registered global shortcut: ${accelerator}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       logger.error(`[HotkeyService] 💀 Exception thrown while registering global shortcut ${accelerator}:`, e);
     }
   }
@@ -126,7 +126,7 @@ export class HotkeyService {
           win.setAlwaysOnTop(false);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       logger.error('[HotkeyService] Toggle window failed', e);
     }
   }

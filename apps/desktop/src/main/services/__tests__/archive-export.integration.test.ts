@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fsp from 'fs/promises';
 import * as fs from 'fs';
 import * as path from 'path';
-import archiver from 'archiver';
 import extract from 'extract-zip';
 
 const mockTempDir = path.join(__dirname, '.temp-archive-test');
@@ -116,12 +115,12 @@ describe('DesktopArchiveService Integration Test', () => {
 
     // Verify settings were exported
     const settingsPath = path.join(extractDir, 'config', 'device_preferences.json');
-    expect(fs.existsSync(settingsPath)).toBe(true, "Config JSON is missing!");
+    expect(fs.existsSync(settingsPath)).toBe(true);
     const settingsJson = JSON.parse(await fsp.readFile(settingsPath, 'utf8'));
     expect(settingsJson.ai_providers[0].id).toBe('test-provider');
 
     // Verify database is packaged
     const packagedDb = path.join(extractDir, 'database', 'baishou_agent.db');
-    expect(fs.existsSync(packagedDb)).toBe(true, "Main Agent SQLite Database was not packed!");
+    expect(fs.existsSync(packagedDb)).toBe(true);
   });
 });

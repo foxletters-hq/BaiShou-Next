@@ -130,11 +130,11 @@ export function registerDiaryIPC() {
       const filtered = dateRange
         ? diaries.filter(d => {
             const date = d.date;
-            return date >= dateRange.start && date <= dateRange.end;
+            return date >= new Date(dateRange.start) && date <= new Date(dateRange.end);
           })
         : diaries;
 
-      const fullDiaries = [];
+      const fullDiaries: any[] = [];
       for (const meta of filtered) {
         const full = await manager.findById(meta.id);
         if (full) fullDiaries.push(full);

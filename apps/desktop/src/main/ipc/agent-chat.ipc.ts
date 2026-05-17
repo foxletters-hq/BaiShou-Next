@@ -3,7 +3,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { logger } from '@baishou/shared'
 import { pathService } from './vault.ipc'
-import { getAgentManagers, agentService, toolRegistry, createDiarySearcher, createWebSearchResultFetcher, createFetchSearchPage, getActiveProvider, buildStreamConfig } from './agent-helpers'
+import { getAgentManagers, agentService, toolRegistry, createDiarySearcher, createWebSearchResultFetcher, createFetchSearchPage, buildStreamConfig } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
 import { GlobalModelsConfig } from '@baishou/shared'
 import { ModelPricingService } from '@baishou/ai/src/pricing/model-pricing.service'
@@ -21,7 +21,7 @@ async function getAssistantContextWindow(sessionId: string): Promise<number | un
         return assistant.contextWindow;
       }
     }
-  } catch (e) {
+  } catch (e: any) {
     logger.warn('Failed to load assistant context window:', e);
   }
   return undefined;
@@ -35,7 +35,7 @@ export function registerChatIPC() {
     const { realMessageRepo } = getAgentManagers();
     const rows = await realMessageRepo.findBySessionId(sessionId, limit, offset);
     
-    const mapped = [];
+    const mapped: any[] = [];
     for (const msg of rows) {
       const parts = await realMessageRepo.getPartsByMessageId(msg.id);
       
@@ -90,7 +90,7 @@ export function registerChatIPC() {
         toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
         attachments: attachments.length > 0 ? attachments : undefined,
         parts
-      });
+      } as any);
     }
     return mapped;
   });
@@ -127,10 +127,10 @@ export function registerChatIPC() {
                  await fs.copyFile(att.filePath, destPath);
                  att.url = `file://${destPath.replace(/\\/g, '/')}`;
                  att.filePath = destPath;
-               } catch (copyErr) {
-                 logger.error('Failed to copy attachment:', att.filePath, copyErr);
-                 att.url = `file://${att.filePath.replace(/\\/g, '/')}`;
-               }
+                } catch (copyErr) {
+                  logger.error('Failed to copy attachment:', { path: att.filePath, error: copyErr });
+                  att.url = `file://${att.filePath.replace(/\\/g, '/')}`;
+                }
             } else if (att.data && !att.url) {
                const ext = '.png';
                const newFileName = `pasted_${Date.now()}${ext}`;
@@ -139,13 +139,13 @@ export function registerChatIPC() {
                  const buffer = Buffer.from(att.data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
                  await fs.writeFile(destPath, buffer);
                  att.url = `file://${destPath.replace(/\\/g, '/')}`;
-               } catch (e) {
-                 logger.error('Failed to copy base64 attachment', e);
-               }
+                } catch (e: any) {
+                  logger.error('Failed to copy base64 attachment', e);
+                }
             }
             return att;
           }));
-        } catch (e) {
+        } catch (e: any) {
           logger.error('Attachments processing failed:', e);
         }
       }
@@ -215,7 +215,7 @@ export function registerChatIPC() {
             assistantContextWindow = assistant.contextWindow;
           }
         }
-      } catch (e) {
+      } catch (e: any) {
         logger.warn('Failed to load assistant context window:', e);
       }
 
@@ -250,7 +250,7 @@ export function registerChatIPC() {
 
       try {
          await sessionManager.flushSessionToDisk(args.sessionId);
-      } catch (e) {
+      } catch (e: any) {
         logger.error('Agent IPC persistence SSOT Error', e);
       }
       return true;
@@ -325,7 +325,7 @@ export function registerChatIPC() {
           onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
           onFinish: () => event.sender.send('agent:stream-finish', { success: true })
         });
-        try { await sessionManager.flushSessionToDisk(sessionId); } catch (e) { logger.error('Agent regenerate persist error', e); }
+        try { await sessionManager.flushSessionToDisk(sessionId); } catch (e: any) { logger.error('Agent regenerate persist error', e); }
         return true;
     } catch (e: any) {
         if (e.name === 'AbortError') {
@@ -371,11 +371,11 @@ export function registerChatIPC() {
                await fs.copyFile(att.filePath, destPath);
                att.url = `file://${destPath.replace(/\\/g, '/')}`;
                att.filePath = destPath;
-             } catch (copyErr) {
-               logger.error('Failed to copy attachment:', att.filePath, copyErr);
-               att.url = `file://${att.filePath.replace(/\\/g, '/')}`;
-             }
-          } else if (att.data && !att.url) {
+              } catch (copyErr) {
+                logger.error('Failed to copy attachment:', { path: att.filePath, error: copyErr });
+                att.url = `file://${att.filePath.replace(/\\/g, '/')}`;
+              }
+           } else if (att.data && !att.url) {
              const ext = '.png';
              const newFileName = `pasted_${Date.now()}${ext}`;
              const destPath = path.join(sessionAttachDir, newFileName);
@@ -383,15 +383,15 @@ export function registerChatIPC() {
                const buffer = Buffer.from(att.data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
                await fs.writeFile(destPath, buffer);
                att.url = `file://${destPath.replace(/\\/g, '/')}`;
-             } catch (e) {
-               logger.error('Failed to copy base64 attachment', e);
-             }
-          }
-          return att;
-        }));
-      } catch (e) {
-        logger.error('Attachments processing failed:', e);
-      }
+              } catch (e: any) {
+                logger.error('Failed to copy base64 attachment', e);
+              }
+           }
+           return att;
+         }));
+       } catch (e: any) {
+         logger.error('Attachments processing failed:', e);
+       }
     }
 
     const targetMsg = await realSessionRepo.getMessageById(messageId);
@@ -432,7 +432,7 @@ export function registerChatIPC() {
           onFinish: () => event.sender.send('agent:stream-finish', { success: true }),
           onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
         });
-        try { await sessionManager.flushSessionToDisk(sessionId); } catch (e) { logger.error('Agent edit-message persist error', e); }
+        try { await sessionManager.flushSessionToDisk(sessionId); } catch (e: any) { logger.error('Agent edit-message persist error', e); }
         return true;
     } catch (e: any) {
         if (e.name === 'AbortError') {
@@ -521,7 +521,7 @@ export function registerChatIPC() {
 
       try {
         await sessionManager.flushSessionToDisk(sessionId);
-      } catch (e) {
+      } catch (e: any) {
         logger.error('Agent IPC persistence SSOT Error', e);
       }
 
@@ -627,7 +627,7 @@ export function registerChatIPC() {
           isPdf,
         }
       })
-    } catch (err) {
+    } catch (err: any) {
       logger.error('File Picker Error:', err)
       return []
     }

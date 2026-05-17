@@ -85,8 +85,8 @@ export function registerGitSyncIPC() {
     return getGitService().commit(files, message);
   });
 
-  ipcMain.handle('git:getHistory', async (_, filePath?: string, limit?: number, offset?: number) => {
-    return getGitService().getHistory(filePath, limit, offset);
+  ipcMain.handle('git:getHistory', async (_, filePath?: string, limit?: number, _offset?: number) => {
+    return getGitService().getHistory(filePath, limit);
   });
 
   ipcMain.handle('git:getRecentPulls', async (_, limit?: number) => {

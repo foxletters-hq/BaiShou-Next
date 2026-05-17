@@ -74,7 +74,7 @@ export class DesktopArchiveService implements IArchiveService {
                 archive.file(fullPath, { name: curRelative });
               }
             }
-          } catch (e) {
+          } catch (e: any) {
             logger.error(`Failed to pack dir ${dirPath}`, e);
           }
         }
@@ -121,9 +121,9 @@ export class DesktopArchiveService implements IArchiveService {
               if (dbInstance?.session?.client) {
                 await dbInstance.session.client.execute('PRAGMA wal_checkpoint(TRUNCATE)');
               }
-            } catch (e) {
-              logger.error('Failed to checkpoint WAL:', e);
-            }
+             } catch (e: any) {
+               logger.error('Failed to checkpoint WAL:', e);
+             }
             // Force checkpoint or just copy. We skip WAL/SHM as they may cause locking or bloat.
             archive.file(sqliteDbPath, { name: 'database/baishou_agent.db' });
         }
@@ -187,8 +187,8 @@ export class DesktopArchiveService implements IArchiveService {
     await connectionManager.disconnect();
     try {
       await shadowConnectionManager.disconnect();
-    } catch(e) {
-      logger.warn('Failed to disconnect shadow DB:', e);
+    } catch(e: any) {
+       logger.warn('Failed to disconnect shadow DB:', e);
     }
     
     // We extract everything to a temporary sandbox first to inspect format safely
@@ -231,7 +231,7 @@ export class DesktopArchiveService implements IArchiveService {
       if (fs.existsSync(rootDir)) {
         try {
           await fsp.rm(rootDir, { recursive: true, force: true });
-        } catch (e) {
+        } catch (e: any) {
           logger.error('Fatal file lock error while wiping root', e);
         }
       }
@@ -275,7 +275,7 @@ export class DesktopArchiveService implements IArchiveService {
             await fsp.writeFile(registryFile, JSON.stringify(vaults, null, 2), 'utf8');
           }
         }
-      } catch (e) {
+      } catch (e: any) {
         logger.error('Failed to remap vault paths', e);
       }
 
@@ -308,7 +308,7 @@ export class DesktopArchiveService implements IArchiveService {
         }
         
         await fsp.rm(path.join(rootDir, 'config'), { recursive: true, force: true }).catch(() => {});
-      } catch (e) {
+      } catch (e: any) {
         logger.error('Failed to restore device preferences', e);
       }
 
@@ -326,7 +326,7 @@ export class DesktopArchiveService implements IArchiveService {
           resetAppDb();
           connectionManager.setDb(getAppDb());
         }
-      } catch (e) {
+      } catch (e: any) {
         logger.error('Failed to restore database from archive', e);
       }
     }
@@ -341,7 +341,7 @@ export class DesktopArchiveService implements IArchiveService {
     try {
       const { connectShadowForActiveVault } = await import('../ipc/vault.ipc');
       await connectShadowForActiveVault();
-    } catch (e) {
+    } catch (e: any) {
       logger.error('Failed to reconnect Shadow DB after import:', e);
     }
 
@@ -350,7 +350,7 @@ export class DesktopArchiveService implements IArchiveService {
     try {
       const { resetCachedManager } = await import('../ipc/summary.ipc');
       resetCachedManager();
-    } catch (e) {
+    } catch (e: any) {
       logger.error('Failed to reset summary cache after import:', e);
     }
     
@@ -417,7 +417,7 @@ export class DesktopArchiveService implements IArchiveService {
               await fsp.unlink(filePath);
               logger.info(`[ArchiveService] Cleaned shadow_index file: ${filePath}`);
             }
-          } catch (e) {
+          } catch (e: any) {
             logger.error(`[ArchiveService] Failed to clean shadow_index file: ${filePath}`, e);
           }
         }
@@ -433,12 +433,12 @@ export class DesktopArchiveService implements IArchiveService {
               await fsp.unlink(filePath);
               logger.info(`[ArchiveService] Cleaned root shadow_index file: ${filePath}`);
             }
-          } catch (e) {
+          } catch (e: any) {
             logger.error(`[ArchiveService] Failed to clean root shadow_index file: ${filePath}`, e);
           }
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       logger.error('[ArchiveService] Failed to clean shadow index files:', e);
     }
   }

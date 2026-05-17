@@ -22,7 +22,11 @@ export function registerSessionIPC() {
     return await realSessionRepo.getSessionById(sessionId);
   });
 
-  ipcMain.handle('agent:create-session', async (_, { id, assistantId, title }) => {
+  ipcMain.handle('agent:create-session', async (_, { id, assistantId: rawAssistantId, title }) => {
+    const safeAssistantId = typeof rawAssistantId === 'string'
+      ? rawAssistantId
+      : (rawAssistantId !== null && rawAssistantId !== undefined ? String(rawAssistantId) : undefined);
+    
     const { sessionManager, assistantManager } = getAgentManagers();
     
     let vaultName = 'default';
@@ -33,8 +37,8 @@ export function registerSessionIPC() {
 
     let providerId = 'default';
     let modelId = 'default';
-    if (assistantId) {
-       const assistant = await assistantManager.findById(assistantId);
+    if (safeAssistantId) {
+       const assistant = await assistantManager.findById(safeAssistantId);
        if (assistant) {
           providerId = assistant.providerId || 'default';
           modelId = assistant.modelId || 'default';
@@ -47,13 +51,13 @@ export function registerSessionIPC() {
     }
     
     const newId = id || crypto.randomUUID(); 
-    logger.info(`[IPC] agent:create-session - using id=${newId}, assistantId=${assistantId}`);
+    logger.info(`[IPC] agent:create-session - using id=${newId}, assistantId=${safeAssistantId}`);
     await sessionManager.upsertSession({
       id: newId,
       vaultName,
       providerId,
       modelId,
-      assistantId: assistantId || undefined,
+      assistantId: safeAssistantId || undefined,
       title: title || '新对话',
     } as any);
     logger.info(`[IPC] agent:create-session - session persisted and flushed.`);
@@ -110,7 +114,7 @@ export function registerSessionIPC() {
 
   // 对话分支：从指定消息位置复制一个新会话
   ipcMain.handle('agent:branch-session', async (_, { sessionId, messageId, title }: { sessionId: string; messageId: string; title?: string }) => {
-    const { realSessionRepo, sessionManager, assistantManager, realMessageRepo } = getAgentManagers();
+    const { realSessionRepo, sessionManager, realMessageRepo } = getAgentManagers();
     
     // 1. 获取原会话信息
     const originalSession = await realSessionRepo.getSessionById(sessionId);
@@ -167,11 +171,11 @@ export function registerSessionIPC() {
           sessionId: newSessionId,
           role: msg.role,
           orderIndex: i + 1,
-          inputTokens: msg.inputTokens,
-          outputTokens: msg.outputTokens,
-          costMicros: msg.costMicros,
-          providerId: msg.providerId,
-          modelId: msg.modelId,
+          inputTokens: msg.inputTokens ?? undefined,
+          outputTokens: msg.outputTokens ?? undefined,
+          costMicros: msg.costMicros ?? undefined,
+          providerId: msg.providerId ?? undefined,
+          modelId: msg.modelId ?? undefined,
         },
         originalParts.map((p: any) => ({
           id: crypto.randomUUID(),

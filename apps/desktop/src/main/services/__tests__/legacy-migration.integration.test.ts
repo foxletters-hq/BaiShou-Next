@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as fsp from 'fs/promises';
 import * as fs from 'fs';
 import * as path from 'path';
 import { initNodeDatabase } from '@baishou/database';
-import { systemSettingsTable, agentSessionsTable, agentMessagesTable, agentAssistantsTable, diariesTable } from '@baishou/database';
+import { systemSettingsTable, agentSessionsTable, agentMessagesTable } from '@baishou/database';
 import { eq } from 'drizzle-orm';
 import { LegacyMigrationService } from '../legacy-migration.service';
 import { installDatabaseSchema } from '@baishou/database';
@@ -16,7 +16,7 @@ let realDbInstance: any;
 
 vi.mock('electron', () => ({
   app: {
-    getPath: vi.fn((name) => currentMockUserData)
+    getPath: vi.fn(() => currentMockUserData)
   }
 }));
 
