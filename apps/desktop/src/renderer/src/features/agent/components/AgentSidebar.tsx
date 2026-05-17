@@ -26,7 +26,7 @@ export interface AgentSidebarProps {
   onSearchQueryChanged: (q: string) => void;
   onLoadMore?: () => void;
   onSessionSelected: (id: string) => void;
-  onNewSession: () => void;
+  onNewSession: (assistantId?: string) => void;
   onAssistantSwitched: (assistant: AgentAssistant) => void;
   onPinSession?: (id: string) => void;
   onDeleteSession?: (id: string) => void;
@@ -195,7 +195,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
 
         {/* ─── 新对话按钮 — 原版 FilledButton padding:vertical:14 ─── */}
         <div className={styles.newChatWrapper}>
-          <button className={styles.newChatBtn} onClick={onNewSession}>
+          <button className={styles.newChatBtn} onClick={() => onNewSession(currentAssistant?.id)}>
             <MdAdd size={18} />
             <span>{t('agent.sessions.new_chat', '新对话')}</span>
           </button>

@@ -146,7 +146,7 @@ export const AgentLayout: React.FC = () => {
   }
   
   if (!activeAssistantId && sessionId) {
-    activeAssistantId = resolvedAssistantIdRef.current;
+    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId')) || resolvedAssistantIdRef.current;
   }
 
   const currentAssistant = activeAssistantId
@@ -175,12 +175,19 @@ export const AgentLayout: React.FC = () => {
   }, [mappedAssistant?.id]);
 
   const handleNewChat = async (targetAssistantId?: string) => {
-    const astId = String(targetAssistantId || currentAssistant?.id || 'default');
+    const urlAstId = sanitizeAssistantId(searchParams.get('assistantId'));
+    let astId = targetAssistantId || urlAstId || currentAssistant?.id;
+    if (!astId) {
+      const store = useAssistantStore.getState();
+      const defaultAst = store.assistants.find(a => a.isDefault) || store.assistants[0];
+      astId = defaultAst?.id || 'default';
+    }
     navigate(`/chat?assistantId=${astId}`);
   };
 
   const handleSelect = (id: string) => {
-    navigate(`/chat/${id}`);
+    const astId = currentAssistant?.id;
+    navigate(astId ? `/chat/${id}?assistantId=${astId}` : `/chat/${id}`);
   };
 
   const handlePin = async (id: string) => {
@@ -202,7 +209,10 @@ export const AgentLayout: React.FC = () => {
       if (typeof window !== 'undefined' && window.electron) {
         await window.electron.ipcRenderer.invoke('agent:delete-sessions', [id]);
         loadSessions(true);
-        if (sessionId === id) navigate('/chat');
+        if (sessionId === id) {
+          const astId = currentAssistant?.id;
+          navigate(astId ? `/chat?assistantId=${astId}` : '/chat');
+        }
       }
     } catch (e) {}
   };
@@ -214,7 +224,10 @@ export const AgentLayout: React.FC = () => {
       if (typeof window !== 'undefined' && window.electron) {
         await window.electron.ipcRenderer.invoke('agent:delete-sessions', ids);
         loadSessions(true);
-        if (sessionId && ids.includes(sessionId)) navigate('/chat');
+        if (sessionId && ids.includes(sessionId)) {
+          const astId = currentAssistant?.id;
+          navigate(astId ? `/chat?assistantId=${astId}` : '/chat');
+        }
       }
     } catch (e) {}
   };

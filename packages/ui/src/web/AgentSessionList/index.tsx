@@ -92,7 +92,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
       <div className={styles.header}>
         <button className={styles.newChatBtn} onClick={onNewChat} type="button">
            <Plus size={18} strokeWidth={2.5} />
-           {t('agent.sessions.newChat', '发 起 超 链')}
+           {t('agent.sessions.newChat', '新会话')}
         </button>
 
         <div className={styles.searchBox}>

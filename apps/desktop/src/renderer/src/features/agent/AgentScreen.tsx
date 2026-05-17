@@ -302,8 +302,9 @@ export const AgentScreen: React.FC = () => {
       // ③ 侧边栏刷新与会话跳转
       // 如果是刚创建的新会话，在这里触发侧边栏更新并跳转 URL
       if (!sessionId) {
-      if (loadSessions) await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : 'default');
-        navigate(`/chat/${targetSessionId}`, { replace: true });
+        if (loadSessions) await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
+        const astId = currentAssistant?.id ? String(currentAssistant.id) : '';
+        navigate(`/chat/${targetSessionId}${astId ? `?assistantId=${astId}` : ''}`, { replace: true });
       }
 
       // ④ 启动 AI 推理
@@ -629,9 +630,10 @@ export const AgentScreen: React.FC = () => {
                       if (newSessionId) {
                         toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'));
                         // 刷新侧边栏会话列表
-      if (loadSessions) loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : 'default');
+      if (loadSessions) loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
                         // 导航到新会话
-                        navigate(`/chat/${newSessionId}`);
+                        const astId = currentAssistant?.id ? String(currentAssistant.id) : '';
+                        navigate(`/chat/${newSessionId}${astId ? `?assistantId=${astId}` : ''}`);
                       }
                     } catch (e: any) {
                       toast.showError(e?.message || t('agent.chat.branch_failed', '分支创建失败'));
