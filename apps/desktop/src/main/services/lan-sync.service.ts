@@ -45,7 +45,7 @@ export class DesktopLanSyncService implements ILanSyncService {
     const expressApp = express();
 
     // Endpoints
-    expressApp.get('/info', (req, res) => {
+    expressApp.get('/info', (_req, res) => {
       // Return same schema as mobile and original expectation
       res.json({ nickname: os.userInfo().username || 'Desktop User' });
     });
@@ -173,7 +173,7 @@ export class DesktopLanSyncService implements ILanSyncService {
   }
 
   public async sendFile(ip: string, port: number, onProgress?: (percent: number) => void): Promise<boolean> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve) => {
       try {
         const zipFile = await this.archiveService.exportToTempFile();
         if (!zipFile) {

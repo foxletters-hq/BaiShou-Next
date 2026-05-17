@@ -32,16 +32,16 @@ export function registerDeveloperIPC() {
       const existing = await diaryManager.findByDate(entryDate);
       if (existing) {
         // 追加模式
-        await diaryManager.update(existing.id, {
+        await diaryManager.update(existing.id!, {
           content: existing.content + '\n\n---\n\n' + demo.content,
-          tags: Array.from(new Set([...(existing.tags || []), ...(demo.tags || [])])),
+          tags: Array.from(new Set([...(existing.tags || []), ...(demo.tags || [])])).join(','),
           mood: demo.mood || existing.mood,
         });
       } else {
         await diaryManager.create({
           date: entryDate,
           content: demo.content,
-          tags: demo.tags || [],
+          tags: (demo.tags || []).join(','),
           mood: demo.mood,
         });
       }

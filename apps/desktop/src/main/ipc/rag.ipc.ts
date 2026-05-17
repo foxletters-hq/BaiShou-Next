@@ -5,8 +5,8 @@ import { settingsManager } from './settings.ipc';
 import { DesktopEmbeddingStorage } from './rag.storage';
 import { getDiaryManager } from './diary.ipc';
 import { getAppDb } from '../db';
-import { memoryEmbeddingsTable, agentMessagesTable, agentPartsTable } from '@baishou/database';
-import { eq, sql, desc, like, and } from 'drizzle-orm';
+import { memoryEmbeddingsTable } from '@baishou/database';
+import { eq, sql, desc, like } from 'drizzle-orm';
 import { AIProviderConfig } from '@baishou/shared';
 
 

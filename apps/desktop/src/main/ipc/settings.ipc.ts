@@ -7,7 +7,7 @@ import { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared';
 
 let _settingsManager: SettingsManagerService | null = null;
 export const settingsManager = new Proxy({} as SettingsManagerService, {
-  get(target, prop) {
+  get(_target, prop) {
     if (!_settingsManager) {
       const settingsRepo = new SettingsRepository(getAppDb());
       const settingsFileService = new SettingsFileService(pathService);

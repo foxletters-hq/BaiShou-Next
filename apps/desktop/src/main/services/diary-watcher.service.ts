@@ -30,7 +30,7 @@ export class DiaryWatcherService {
       try {
         fs.mkdirSync(this.journalsPath, { recursive: true });
         logger.info(`[DiaryWatcher] 📁 Journals 目录已创建`);
-      } catch (e) {
+      } catch (e: any) {
         logger.error(`[DiaryWatcher] ❌ 无法创建 Journals 目录:`, e);
       }
     }
@@ -40,7 +40,7 @@ export class DiaryWatcherService {
       ignored: /(^|[\/\\])\../, // 忽略隐藏文件
       ignoreInitial: true, // 初始加载时不触发 add 事件
       disableGlobbing: true, // 因为直接传绝对路径，关掉 glob 解析提升一点性能和健壮性
-    });
+    } as any);
 
     this.watcher.on('all', (eventName, fullPath) => {
       // 只要是 .md 文件的 增、改、删 就触发同步
@@ -126,7 +126,7 @@ export class DiaryWatcherService {
                  });
                }
               });
-           } catch (e) {
+           } catch (e: any) {
               logger.error('[DiaryWatcher] ❌ 批量同步失败:', e);
            }
         }

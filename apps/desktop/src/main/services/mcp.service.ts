@@ -47,7 +47,7 @@ export class McpService {
    * 建立 Express 路由
    */
   private setupRoutes() {
-    this.app.get('/mcp', (req, res) => {
+    this.app.get('/mcp', (_req, res) => {
       res.json({
         name: 'BaiShou MCP Server',
         version: '1.0.0',
@@ -96,7 +96,7 @@ export class McpService {
 
     // --- 标准 MCP SSE 协议实现 ---
 
-    this.app.get('/sse', async (req, res) => {
+    this.app.get('/sse', async (_req, res) => {
       const sessionId = Date.now().toString();
       
       const transport = new SSEServerTransport(`/message?sessionId=${sessionId}`, res);
@@ -173,7 +173,7 @@ export class McpService {
           resolve();
         });
       } catch (e) {
-        logger.error(`[McpService] Failed to start on port ${port}`, e);
+        logger.error(`[McpService] Failed to start on port ${port}`, e as any);
         reject(e);
       }
     });
@@ -182,7 +182,7 @@ export class McpService {
   async stop(): Promise<void> {
     if (!this.isRunning || !this.httpServer) return;
 
-    for (const [id, session] of this.connections.entries()) {
+    for (const [_id, session] of this.connections.entries()) {
       try { await session.server.close(); } catch (e) {}
     }
     this.connections.clear();

@@ -33,7 +33,7 @@ export class LegacyMigrationService {
         await legacyImporter.restoreConfig(prefs);
         logger.info('[LegacyMigration] Restored device_preferences.json via LegacyImportService (full field mapping)');
       }
-    } catch (e) {
+    } catch (e: any) {
       logger.error('[LegacyMigration] Failed to migrate device preferences:', e);
     }
 
@@ -72,7 +72,7 @@ export class LegacyMigrationService {
                profile.avatarPath = relPath;
                await profileRepo.saveProfile(profile);
                logger.info(`[LegacyMigration] User avatar restored and profile updated: ${relPath}`);
-             } catch (avatarErr) {
+             } catch (avatarErr: any) {
                logger.error('[LegacyMigration] Failed to update avatar in profile:', avatarErr);
              }
            }
@@ -174,7 +174,7 @@ export class LegacyMigrationService {
            }
         }
         logger.info('[LegacyMigration] Assistant avatars rectified securely in the database.');
-      } catch(e) { logger.warn('[LegacyMigration] Avatar rectify failed', e); }
+      } catch(e: any) { logger.warn('[LegacyMigration] Avatar rectify failed', e); }
 
       for (let i = 0; i < baishouDbs.length; i++) {
         const legacyDb = baishouDbs[i].replace(/\\/g, '/');
@@ -195,7 +195,7 @@ export class LegacyMigrationService {
       // Restore the snapshot
       await fsp.copyFile(backupDbPath, unifiedDbPath).catch(() => {});
       await fsp.unlink(backupDbPath).catch(() => {});
-      logger.error('[LegacyMigration] Fatal error during database merging, successfully rolled back whole database!', e);
+      logger.error('[LegacyMigration] Fatal error during database merging, successfully rolled back whole database!', e as any);
       throw e;
     }
 

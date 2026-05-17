@@ -1,4 +1,4 @@
-import { app, dialog } from 'electron';
+import { dialog } from 'electron';
 import { AttachmentManagerService } from '@baishou/core';
 import { DesktopStoragePathService } from './path.service';
 

@@ -58,7 +58,7 @@ export class GlobalDataBootstrapper {
 
     try {
       const activeVault = vaultService.getActiveVault();
-      logger.info(`[Bootstrapper] 正在尝试启动监听。activeVault:`, activeVault);
+      logger.info(`[Bootstrapper] 正在尝试启动监听。activeVault:`, { activeVault });
       if (activeVault) {
         // 自动初始化 Git 仓库（如果尚未初始化）
         try {
@@ -105,7 +105,7 @@ export class GlobalDataBootstrapper {
 
       logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---');
     } catch (e) {
-      logger.error('--- ❌ GLOBAL BOOTSTRAPPER FAILED. SEVERE SYNCHRONIZATION ERROR ---', e);
+      logger.error('--- ❌ GLOBAL BOOTSTRAPPER FAILED. SEVERE SYNCHRONIZATION ERROR ---', e as any);
     }
   }
 }

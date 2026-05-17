@@ -1,5 +1,4 @@
 import { ipcMain } from 'electron';
-import { SyncIpcChannels } from '@baishou/shared';
 import { SyncConfig } from '@baishou/core';
 import { DesktopCloudSyncService } from '../services/cloud-sync.service';
 import { archiveService } from './archive.ipc';
@@ -23,7 +22,7 @@ export function registerCloudSyncIPC() {
   });
 
   // 下载备份包至本地
-  ipcMain.handle('cloud:downloadRecord', async (event, config: SyncConfig, remoteFilename: string) => {
+  ipcMain.handle('cloud:downloadRecord', async (_event, config: SyncConfig, remoteFilename: string) => {
     const { dialog } = require('electron');
     const { canceled, filePath } = await dialog.showSaveDialog({
       title: '下载云端备份包',
