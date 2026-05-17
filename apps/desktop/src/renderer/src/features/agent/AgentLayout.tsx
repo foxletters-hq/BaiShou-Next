@@ -56,7 +56,8 @@ export const AgentLayout: React.FC = () => {
       if (typeof window !== 'undefined' && window.electron) {
         const reqId = ++lastLoadRequestId.current;
         const offset = resetOffset ? 0 : sessions.length;
-        const targetAst = overrideAssistantId || resolvedAssistantIdRef.current;
+        const sanitizedOverride = sanitizeAssistantId(overrideAssistantId);
+        const targetAst = sanitizedOverride || resolvedAssistantIdRef.current;
         if (!targetAst) return;
 
         console.info(`[AgentLayout] Loading sessions: astId=${targetAst}, reset=${resetOffset}, offset=${offset}`);
@@ -128,14 +129,20 @@ export const AgentLayout: React.FC = () => {
       avatarPath: (a as any).avatarPath
     }));
 
+  const sanitizeAssistantId = (raw: unknown): string | undefined => {
+    if (typeof raw === 'string' && raw.length > 0) return raw;
+    if (typeof raw === 'number') return String(raw);
+    return undefined;
+  };
+
   const currentSession = sessions.find(s => s.id === sessionId);
   let activeAssistantId: string | undefined = undefined;
   if (!sessionId) {
-    activeAssistantId = searchParams.get('assistantId') || undefined;
+    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId'));
   } else if (currentSession) {
-    activeAssistantId = (currentSession as any).assistantId;
+    activeAssistantId = sanitizeAssistantId((currentSession as any).assistantId);
   } else if (standaloneSessionDoc?.id === sessionId) {
-    activeAssistantId = standaloneSessionDoc.assistantId;
+    activeAssistantId = sanitizeAssistantId(standaloneSessionDoc.assistantId);
   }
   
   if (!activeAssistantId && sessionId) {
@@ -168,7 +175,8 @@ export const AgentLayout: React.FC = () => {
   }, [mappedAssistant?.id]);
 
   const handleNewChat = async (targetAssistantId?: string) => {
-    navigate(`/chat?assistantId=${targetAssistantId || currentAssistant?.id || 'default'}`);
+    const astId = String(targetAssistantId || currentAssistant?.id || 'default');
+    navigate(`/chat?assistantId=${astId}`);
   };
 
   const handleSelect = (id: string) => {

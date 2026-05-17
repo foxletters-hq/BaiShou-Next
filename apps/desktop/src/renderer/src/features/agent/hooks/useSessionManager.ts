@@ -26,7 +26,8 @@ export function useSessionManager(params: UseSessionManagerParams): UseSessionMa
   const createSession = useCallback(async (title: string): Promise<string | null> => {
     if (typeof window === 'undefined' || !window.electron) return null;
     try {
-      const astId = searchParams.get('assistantId') || currentAssistantId || 'default';
+      const rawAstId = searchParams.get('assistantId') || currentAssistantId || 'default';
+      const astId = typeof rawAstId === 'string' ? rawAstId : String(rawAstId);
       const newTitle = title.trim().substring(0, 10) || t('agent.sessions.newChat', '新对话');
       
       const newId = crypto.randomUUID(); // 前端生成纯 UUID

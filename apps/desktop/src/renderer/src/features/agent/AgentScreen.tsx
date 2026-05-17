@@ -46,7 +46,7 @@ export const AgentScreen: React.FC = () => {
 
   // ── 3. 会话管理 ──
   const { createSession } = useSessionManager({
-    currentAssistantId: currentAssistant?.id,
+    currentAssistantId: currentAssistant?.id ? String(currentAssistant.id) : undefined,
     loadSessions,
   });
 
@@ -302,7 +302,7 @@ export const AgentScreen: React.FC = () => {
       // ③ 侧边栏刷新与会话跳转
       // 如果是刚创建的新会话，在这里触发侧边栏更新并跳转 URL
       if (!sessionId) {
-        if (loadSessions) await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
+      if (loadSessions) await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : 'default');
         navigate(`/chat/${targetSessionId}`, { replace: true });
       }
 
@@ -629,7 +629,7 @@ export const AgentScreen: React.FC = () => {
                       if (newSessionId) {
                         toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'));
                         // 刷新侧边栏会话列表
-                        if (loadSessions) loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
+      if (loadSessions) loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : 'default');
                         // 导航到新会话
                         navigate(`/chat/${newSessionId}`);
                       }
