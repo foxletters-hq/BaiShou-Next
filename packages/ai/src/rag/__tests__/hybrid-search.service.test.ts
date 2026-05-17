@@ -1,18 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { HybridSearchService } from '../hybrid-search.service';
 import { IHybridSearchStorage, ISearchResult } from '../hybrid-search.types';
-import { IEmbeddingConfig } from '../embedding.types';
 
 describe('HybridSearchService RRF Engine', () => {
-  function createMockConfig(): IEmbeddingConfig {
-    return {
-      getGlobalEmbeddingModelId: () => 'mock-model',
-      getGlobalEmbeddingProviderId: () => 'mock-provider',
-      getGlobalEmbeddingDimension: () => 384,
-      setGlobalEmbeddingDimension: vi.fn(),
-    };
-  }
-
   it('should correctly fuse and re-rank results using Reciprocal Rank Fusion formula', async () => {
     const mockStorage: IHybridSearchStorage = {
       supportsNativeVectorSearch: () => true,

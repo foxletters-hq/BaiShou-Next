@@ -7,6 +7,7 @@ const mockConfig: IEmbeddingConfig = {
   getGlobalEmbeddingProviderId: vi.fn().mockReturnValue('mock-provider'),
   getGlobalEmbeddingDimension: vi.fn().mockReturnValue(0),
   setGlobalEmbeddingDimension: vi.fn(),
+  getProviderInstance: vi.fn().mockResolvedValue({}),
 };
 
 const mockStorage: IEmbeddingStorage = {
