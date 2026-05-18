@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './TitleBar.module.css';
 import { MdAutoStories, MdAutoAwesome, MdMinimize, MdCropSquare, MdClose, MdFolderShared, MdArrowDropDown, MdSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
+import { IncrementalSyncPanel } from '@baishou/ui';
+import type { SyncProgress, SyncHistoryEntry } from '@baishou/ui';
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation();
@@ -14,6 +16,7 @@ export const TitleBar: React.FC = () => {
   const [activeVault, setActiveVault] = useState<any>(null);
   const [showVaultMenu, setShowVaultMenu] = useState(false);
   const vaultMenuRef = useRef<HTMLDivElement>(null);
+  const [s3Configured, setS3Configured] = useState(false);
 
   useEffect(() => {
     let timeoutId: any;
@@ -44,6 +47,22 @@ export const TitleBar: React.FC = () => {
     if (showVaultMenu) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showVaultMenu]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (window as any).api?.incrementalSync?.getConfig?.().then((cfg: any) => {
+      if (!cancelled) setS3Configured(!!cfg?.enabled);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleOrchestratedSync = async (): Promise<SyncProgress> => {
+    return (window as any).api?.incrementalSync?.orchestratedSync();
+  };
+
+  const handleGetHistory = async (limit?: number): Promise<SyncHistoryEntry[]> => {
+    return (window as any).api?.incrementalSync?.getSyncHistory(limit) ?? [];
+  };
 
   const handleSwitchVault = async (vaultName: string) => {
     try {
@@ -136,6 +155,16 @@ export const TitleBar: React.FC = () => {
             </div>
           )}
         </div>
+
+        {s3Configured && (
+          <div style={{ marginLeft: '8px' }}>
+            <IncrementalSyncPanel
+              onSync={handleOrchestratedSync}
+              onGetHistory={handleGetHistory}
+              isConfigured={s3Configured}
+            />
+          </div>
+        )}
 
         <div className={styles.divider}></div>
         </>
