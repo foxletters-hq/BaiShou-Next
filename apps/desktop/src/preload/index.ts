@@ -273,6 +273,12 @@ export const api = {
     getRemoteManifest: () => ipcRenderer.invoke('incrementalSync:getRemoteManifest'),
     refreshLocalManifest: () => ipcRenderer.invoke('incrementalSync:refreshLocalManifest'),
     getLastSyncConflicts: () => ipcRenderer.invoke('incrementalSync:getLastSyncConflicts'),
+    // 编排器一键同步 API
+    orchestratedSync: () => ipcRenderer.invoke('incrementalSync:orchestratedSync'),
+    orchestratedUploadOnly: () => ipcRenderer.invoke('incrementalSync:orchestratedUploadOnly'),
+    orchestratedDownloadOnly: () => ipcRenderer.invoke('incrementalSync:orchestratedDownloadOnly'),
+    getSyncHistory: (limit?: number) => ipcRenderer.invoke('incrementalSync:getSyncHistory', limit),
+    getLastSyncSummary: () => ipcRenderer.invoke('incrementalSync:getLastSyncSummary'),
   },
   cloud: {
     syncNow: (config: any) => ipcRenderer.invoke('cloud:syncNow', config),
