@@ -59,6 +59,12 @@ export * from './sync/incremental-sync.service';
 export * from './sync/version-manager.interface';
 export * from './sync/version-manager.service';
 export * from './sync/sync.errors';
+export * from './sync/sync-orchestrator.interface';
+export * from './sync/sync-orchestrator';
+export * from './sync/operation-log.interface';
+export * from './sync/operation-log.service';
+export * from './sync/three-way-merge';
+export * from './sync/three-way-sync.service';
 
 // 影子索引系统
 export * from './shadow-index/shadow-index-sync.service';
