@@ -12,14 +12,11 @@ import { getAppDb } from '../db';
 import { DesktopStoragePathService } from './path.service';
 
 export class DesktopArchiveService implements IArchiveService {
-  private settingsRepo: SettingsRepository;
 
   constructor(
     private pathService: DesktopStoragePathService,
     private vaultService: VaultService
-  ) {
-    this.settingsRepo = new SettingsRepository(getAppDb());
-  }
+  ) {}
 
   public async exportToTempFile(): Promise<string | null> {
     const tempDir = app.getPath('temp');
@@ -95,6 +92,7 @@ export class DesktopArchiveService implements IArchiveService {
 
         // Collect Settings Data from global settings Repo created by Agent A
         // 导出全部 settings key，确保备份恢复时不丢失任何配置
+        const settingsRepo = new SettingsRepository(getAppDb());
         const allSettingsKeys = [
           'ai_providers', 'global_models', 'feature_settings',
           'agent_behavior', 'rag_config', 'web_search_config',
@@ -104,7 +102,7 @@ export class DesktopArchiveService implements IArchiveService {
         ];
         const devicePreferences: Record<string, any> = {};
         for (const key of allSettingsKeys) {
-          devicePreferences[key] = await this.settingsRepo.get(key);
+          devicePreferences[key] = await settingsRepo.get(key);
         }
         // 同时导出 user_profile_data
         const profileRepo = new UserProfileRepository(getAppDb());
@@ -320,7 +318,8 @@ export class DesktopArchiveService implements IArchiveService {
           const raw = await fsp.readFile(configPath, 'utf8');
           const prefs = JSON.parse(raw);
 
-          // 此时数据库连接已恢复，我们可以安全地写入 settings
+          // 此时数据库连接已恢复，我们可以安全地使用最新连接的 settingsRepo 写入 settings
+          const settingsRepo = new SettingsRepository(getAppDb());
           const allSettingsKeys = [
             'ai_providers', 'global_models', 'feature_settings',
             'agent_behavior', 'rag_config', 'web_search_config',
@@ -330,7 +329,7 @@ export class DesktopArchiveService implements IArchiveService {
           ];
           for (const key of allSettingsKeys) {
             if (prefs[key] !== undefined && prefs[key] !== null) {
-              await this.settingsRepo.set(key, prefs[key]);
+              await settingsRepo.set(key, prefs[key]);
             }
           }
 
