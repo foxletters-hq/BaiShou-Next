@@ -20,38 +20,38 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   
    const [navOrder, setNavOrder] = useState(() => {
-   const saved = localStorage.getItem('desktop_sidebar_nav_order');
-     if (saved) {
-       try {
-         const parsed = JSON.parse(saved) as string[];
-         // 版本号迁移：版本为 0 或不存在时，重新补全新项并置顶
-         const mv = parseInt(localStorage.getItem('desktop_sidebar_mv') || '0', 10);
-         const defaults = ['diary', 'summary', 'lan', 'sync', 'git'];
-         if (mv < 1) {
-           for (const item of [...defaults].reverse()) {
-             const idx = parsed.indexOf(item);
-             if (idx !== -1) parsed.splice(idx, 1);
-             parsed.unshift(item);
-           }
-           localStorage.setItem('desktop_sidebar_mv', '1');
-           localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
-         } else {
-           // 常规补全（置顶）
-           let changed = false;
-           for (const item of defaults) {
-             if (!parsed.includes(item)) {
-               parsed.unshift(item);
-               changed = true;
-             }
-           }
-           if (changed) {
-             localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
-           }
-         }
-         return parsed;
-       } catch (e) {}
-     }
-      return ['git', 'diary', 'summary', 'lan', 'sync'];
+    const saved = localStorage.getItem('desktop_sidebar_nav_order');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as string[];
+          // 版本号迁移：版本为 0 或不存在时，重新补全新项并置顶
+          const mv = parseInt(localStorage.getItem('desktop_sidebar_mv') || '0', 10);
+          const defaults = ['diary', 'summary', 'lan', 'sync', 'incr-sync', 'git'];
+          if (mv < 2) {
+            for (const item of [...defaults].reverse()) {
+              const idx = parsed.indexOf(item);
+              if (idx !== -1) parsed.splice(idx, 1);
+              parsed.unshift(item);
+            }
+            localStorage.setItem('desktop_sidebar_mv', '2');
+            localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
+          } else {
+            // 常规补全（置顶）
+            let changed = false;
+            for (const item of defaults) {
+              if (!parsed.includes(item)) {
+                parsed.unshift(item);
+                changed = true;
+              }
+            }
+            if (changed) {
+              localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
+            }
+          }
+          return parsed;
+        } catch (e) {}
+      }
+       return ['git', 'diary', 'summary', 'lan', 'sync', 'incr-sync'];
    });
 
    const allItems = {
