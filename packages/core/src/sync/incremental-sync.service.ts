@@ -104,7 +104,7 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
     return files;
   }
 
-  private async buildLocalManifest(): Promise<SyncManifest> {
+  private async _buildLocalManifest(): Promise<SyncManifest> {
     const vaultPath = await this.getVaultPath();
     const files = await this.scanLocalFiles();
     const manifest: SyncManifest = {
@@ -233,12 +233,15 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
       downloaded: [],
       conflicted: [],
       skipped: [],
+      deletedRemote: [],
+      deletedLocal: [],
       duration: 0,
+      sessionId: '',
     };
 
     try {
       // 1. 获取本地和远端 manifest
-      const localManifest = await this.buildLocalManifest();
+      const localManifest = await this._buildLocalManifest();
       const remoteManifest = await this.getRemoteManifest();
 
       // 2. 比较差异
@@ -310,11 +313,14 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
       downloaded: [],
       conflicted: [],
       skipped: [],
+      deletedRemote: [],
+      deletedLocal: [],
       duration: 0,
+      sessionId: '',
     };
 
     try {
-      const localManifest = await this.buildLocalManifest();
+      const localManifest = await this._buildLocalManifest();
       const remoteManifest = await this.getRemoteManifest();
 
       for (const [relPath, localEntry] of Object.entries(localManifest.files)) {
@@ -353,11 +359,14 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
       downloaded: [],
       conflicted: [],
       skipped: [],
+      deletedRemote: [],
+      deletedLocal: [],
       duration: 0,
+      sessionId: '',
     };
 
     try {
-      const localManifest = await this.buildLocalManifest();
+      const localManifest = await this._buildLocalManifest();
       const remoteManifest = await this.getRemoteManifest();
 
       for (const [relPath, remoteEntry] of Object.entries(remoteManifest.files)) {
@@ -390,7 +399,7 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
     if (saved) {
       return saved;
     }
-    return this.buildLocalManifest();
+    return this._buildLocalManifest();
   }
 
   async getRemoteManifest(): Promise<SyncManifest> {
@@ -430,12 +439,37 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
   }
 
   async refreshLocalManifest(): Promise<SyncManifest> {
-    const manifest = await this.buildLocalManifest();
+    const manifest = await this._buildLocalManifest();
     await this.saveLocalManifest(manifest);
     return manifest;
   }
 
   getLastSyncConflicts(): Promise<string[]> {
     return Promise.resolve(this.lastConflicts);
+  }
+
+  async getRemoteSnapshot(): Promise<SyncManifest> {
+    const vaultPath = await this.getVaultPath();
+    const snapshotPath = path.join(vaultPath, '.baishou', 'last-remote-manifest.json');
+
+    if (fs.existsSync(snapshotPath)) {
+      try {
+        const raw = await fs.promises.readFile(snapshotPath, 'utf8');
+        return JSON.parse(raw) as SyncManifest;
+      } catch {
+        // 损坏则返回空 manifest
+      }
+    }
+
+    return {
+      version: 2,
+      updatedAt: 0,
+      deviceId: '',
+      files: {},
+    };
+  }
+
+  async buildLocalManifest(): Promise<SyncManifest> {
+    return this._buildLocalManifest();
   }
 }
