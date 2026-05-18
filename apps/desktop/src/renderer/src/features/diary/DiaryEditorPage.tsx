@@ -160,13 +160,7 @@ export const DiaryEditorPage: React.FC = () => {
     if (lastNav && lastNav !== '/diary') {
       navigate(lastNav);
     } else {
-      // 取侧边栏第一个导航项作为默认入口
-      const saved = localStorage.getItem('desktop_sidebar_nav_order');
-      const first = saved ? JSON.parse(saved)[0] : 'diary';
-      const paths: Record<string, string> = {
-        diary: '/diary', summary: '/summary', lan: '/lan-transfer', sync: '/data-sync', git: '/git',
-      };
-      navigate(paths[first] || '/diary');
+      navigate('/diary');
     }
   };
 

@@ -26,7 +26,6 @@ import {
   AboutSettingsCard,
   AssistantMatrixCard,
   SummarySettingsView,
-  VersionManager,
   useDialog,
   useToast
 } from '@baishou/ui';
@@ -338,15 +337,6 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
             snapshots={[]}
           />
           <div className="settings-item-divider" />
-
-          {/* 版本管理 */}
-          <div className="glass-panel-card">
-            <VersionManager 
-              version="2.0.0-Next-Canary"
-              heroImageSrc={baishouHeroImg}
-              onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou-Next/issues')}
-            />
-          </div>
 
           <AboutSettingsCard 
               version="v2.0.0-Next-Canary"

@@ -6,6 +6,7 @@ import { DiaryListTool } from '../tools/diary-list.tool';
 import { DiaryEditTool } from '../tools/diary-edit.tool';
 import { DiaryDeleteTool } from '../tools/diary-delete.tool';
 import { DiarySearchTool } from '../tools/diary-search.tool';
+import { DiaryWriteTool } from '../tools/diary-write.tool';
 import { MemoryStoreTool } from '../tools/memory-store.tool';
 import { MemoryDeleteTool } from '../tools/memory-delete.tool';
 import { VectorSearchTool } from '../tools/vector-search.tool';
@@ -15,11 +16,11 @@ import { WebSearchTool } from '../tools/web-search.tool';
 import { UrlReadTool } from '../tools/url-read.tool';
 
 describe('ToolRegistry — Full Tool Suite', () => {
-  it('should auto-register all 13 built-in tools on construction', () => {
+  it('should auto-register all 14 built-in tools on construction', () => {
     const registry = new ToolRegistry();
     const allTools = registry.getAllRaw();
 
-    expect(allTools).toHaveLength(13);
+    expect(allTools).toHaveLength(14);
 
     // 检验每个预期工具都被注册了
     const toolNames = allTools.map(t => t.name);
@@ -27,6 +28,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(toolNames).toContain('diary_read');
     expect(toolNames).toContain('diary_edit');
     expect(toolNames).toContain('diary_delete');
+    expect(toolNames).toContain('diary_write');
     expect(toolNames).toContain('diary_list');
     expect(toolNames).toContain('diary_search');
     expect(toolNames).toContain('memory_store');
@@ -46,12 +48,12 @@ describe('ToolRegistry — Full Tool Suite', () => {
       vaultName: '/tmp',
     });
 
-    // 所有 13 个工具都应该被启用（无禁用列表）
-    expect(Object.keys(vercelTools)).toHaveLength(13);
+    // 14 个工具，其中 3 个因缺少条件隐式跳过（web_search/vector_search/memory_store）
+    expect(Object.keys(vercelTools)).toHaveLength(11);
     expect(vercelTools['current_time']).toBeDefined();
     expect(vercelTools['diary_read']).toBeDefined();
-    expect(vercelTools['memory_store']).toBeDefined();
-    expect(vercelTools['vector_search']).toBeDefined();
+    expect(vercelTools['diary_write']).toBeDefined();
+    expect(vercelTools['summary_read']).toBeDefined();
   });
 
   it('should respect disabledToolIds in userConfig', () => {
@@ -68,7 +70,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(vercelTools['web_search']).toBeUndefined();
     expect(vercelTools['url_read']).toBeUndefined();
     expect(vercelTools['current_time']).toBeDefined();
-    expect(Object.keys(vercelTools)).toHaveLength(11);
+    expect(Object.keys(vercelTools)).toHaveLength(10);
   });
 
   it('should disable RAG tools when ragEnabled is false', () => {
@@ -105,6 +107,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
       new DiaryEditTool(),
       new DiaryDeleteTool(),
       new DiarySearchTool(),
+      new DiaryWriteTool(),
       new MemoryStoreTool(),
       new MemoryDeleteTool(),
       new VectorSearchTool(),
