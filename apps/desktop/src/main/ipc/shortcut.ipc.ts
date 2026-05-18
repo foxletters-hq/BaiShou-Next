@@ -3,18 +3,19 @@ import { PromptShortcut } from '@baishou/shared';
 import { PromptShortcutRepository } from '@baishou/database';
 import { getAppDb } from '../db';
 export function registerShortcutIPC() {
-  const repo = new PromptShortcutRepository(getAppDb());
-
   ipcMain.handle('shortcuts:get-all', async () => {
+    const repo = new PromptShortcutRepository(getAppDb());
     return await repo.getShortcuts();
   });
   
   ipcMain.handle('shortcuts:save-all', async (_, list: PromptShortcut[]) => {
+    const repo = new PromptShortcutRepository(getAppDb());
     await repo.saveShortcuts(list);
     return true; 
   });
   
   ipcMain.handle('shortcuts:add', async (_, sc: Omit<PromptShortcut, 'id'>) => {
+    const repo = new PromptShortcutRepository(getAppDb());
     const list = await repo.getShortcuts();
     const newSc = { ...sc, id: Math.random().toString(36).substring(7) };
     list.push(newSc);
@@ -23,6 +24,7 @@ export function registerShortcutIPC() {
   });
   
   ipcMain.handle('shortcuts:update', async (_, id: string, payload: Partial<PromptShortcut>) => {
+    const repo = new PromptShortcutRepository(getAppDb());
     const list = await repo.getShortcuts();
     const index = list.findIndex(s => s.id === id);
     if (index >= 0) {
@@ -32,6 +34,7 @@ export function registerShortcutIPC() {
   });
   
   ipcMain.handle('shortcuts:delete', async (_, id: string) => {
+    const repo = new PromptShortcutRepository(getAppDb());
     const list = await repo.getShortcuts();
     const filterList = list.filter(s => s.id !== id);
     await repo.saveShortcuts(filterList);

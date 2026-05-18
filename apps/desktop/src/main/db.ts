@@ -45,6 +45,19 @@ export function getAppDb(customBasePath?: string): AppDatabase {
   return _appDb;
 }
 
+type ResetCallback = () => void;
+const _resetCallbacks: Set<ResetCallback> = new Set();
+
+/**
+ * 注册数据库重置回调，用于解耦清理缓存的 Repository 和 Service
+ */
+export function onAppDbReset(callback: ResetCallback): () => void {
+  _resetCallbacks.add(callback);
+  return () => {
+    _resetCallbacks.delete(callback);
+  };
+}
+
 /**
  * 重置全局 Agent DB 实例
  * 在 ZIP 恢复等场景下，磁盘上的 DB 文件已被替换，
@@ -62,6 +75,15 @@ export function resetAppDb(): void {
     }
     _appDb = null;
     _appDbPath = null;
+
+    // 触发所有已注册的重置回调，清除缓存的 Repo/Service
+    for (const callback of _resetCallbacks) {
+      try {
+        callback();
+      } catch (err) {
+        logger.error('[DB] 执行数据库重置回调失败:', err);
+      }
+    }
   }
 }
 

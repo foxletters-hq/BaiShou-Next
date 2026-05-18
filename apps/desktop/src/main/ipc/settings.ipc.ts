@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import { SettingsRepository } from '@baishou/database';
 import { SettingsFileService, SettingsManagerService } from '@baishou/core';
-import { getAppDb } from '../db';
+import { getAppDb, onAppDbReset } from '../db';
 import { pathService } from './vault.ipc';
 import { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared';
 
@@ -17,6 +17,11 @@ export const settingsManager = new Proxy({} as SettingsManagerService, {
     // Bind functions to the actual instance to avoid 'this' context loss
     return typeof value === 'function' ? value.bind(_settingsManager) : value;
   }
+});
+
+// 当全局数据库重置时，清空缓存的 settingsManager 实例，确保重新从最新 DB 连接实例化
+onAppDbReset(() => {
+  _settingsManager = null;
 });
 
 import type { HotkeyService } from '../services/hotkey.service';
