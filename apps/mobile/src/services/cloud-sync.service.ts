@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import { ICloudSyncClient, SyncConfig, SyncRecord, IArchiveService } from '@baishou/core';
+import { signS3Request } from '@baishou/shared';
 
 /**
  * 基于 fetch API 的 WebDAV 客户端（React Native 兼容）
@@ -199,21 +200,14 @@ class MobileS3Client implements ICloudSyncClient {
   }
 
   private async signRequest(method: string, url: string, body?: ArrayBuffer): Promise<Record<string, string>> {
-    // 简化的签名实现（生产环境建议使用完整的 AWS Signature V4）
-    const date = new Date().toISOString().replace(/[:\-]|\.\d{3}/g, '');
-    const dateStamp = date.substring(0, 8);
-    
-    const headers: Record<string, string> = {
-      'x-amz-date': date,
-      'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
-      'Host': new URL(url).host,
-    };
-
-    // 简化签名：对于公共读写的 bucket 或使用预签名 URL
-    // 在实际生产中，应该实现完整的 AWS Signature V4
-    headers['Authorization'] = `AWS ${this.accessKey}:${this.secretKey}`;
-
-    return headers;
+    return signS3Request(
+      method,
+      url,
+      this.region,
+      this.accessKey,
+      this.secretKey,
+      body ?? null,
+    );
   }
 
   async uploadFile(localFilePath: string): Promise<void> {
