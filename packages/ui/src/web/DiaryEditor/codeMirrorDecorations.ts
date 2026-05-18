@@ -207,8 +207,59 @@ function buildMarkerHidingDecorations(
   const tree = syntaxTree(view.state);
   const doc = view.state.doc;
 
+  // 1. 先用正则全局查找所有图片（包含带/不带宽度的自定义/标准语法），添加图片 Widget 装饰器
+  const docText = doc.toString();
+  const globalRegex = /!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)/g;
+  const imageRanges: { from: number; to: number }[] = [];
+  let match;
+  while ((match = globalRegex.exec(docText)) !== null) {
+    const matchStart = match.index;
+    const matchEnd = matchStart + match[0].length;
+    
+    // 检查是否在代码块中
+    const pos = matchStart;
+    const nodeAtPos = tree.resolveInner(pos, 1);
+    let insideCode = false;
+    let curr: typeof nodeAtPos | null = nodeAtPos;
+    while (curr) {
+      if (curr.name === 'FencedCode' || curr.name === 'CodeBlock' || curr.name === 'InlineCode') {
+        insideCode = true;
+        break;
+      }
+      curr = curr.parent;
+    }
+    if (insideCode) continue;
+
+    const line = doc.lineAt(matchStart);
+    const onActiveLine = isCursorOnLine(line.from, line.to, cursors);
+
+    const alt = match[1] ?? '';
+    const srcRaw = match[2] ?? '';
+    const widthStr = match[3];
+    const width = widthStr ? parseInt(widthStr, 10) : undefined;
+    const validWidth = width && !isNaN(width) && width > 0 ? width : undefined;
+
+    const src = resolveUrl ? resolveUrl(srcRaw) : srcRaw;
+    
+    imageRanges.push({ from: matchStart, to: matchEnd });
+    marks.push({
+      from: matchStart,
+      to: matchEnd,
+      value: Decoration.replace({
+        widget: new ImageWidget(src, alt, validWidth, matchStart, matchEnd, onActiveLine),
+      }),
+    });
+  }
+
+  // 2. 迭代语法树添加其他 Markdown 渲染样式，跳过已被正则图片占用的范围
   tree.iterate({
     enter(node: SyntaxNodeRef) {
+      // 检查当前节点是否完全在某个图片范围内，如果是则跳过，以正则解析结果为准
+      const insideImage = imageRanges.some(r => node.from >= r.from && node.to <= r.to);
+      if (insideImage) {
+        return false;
+      }
+
       const line = doc.lineAt(node.from);
       const onActiveLine = isCursorOnLine(line.from, line.to, cursors);
       const name = node.type.name;
@@ -312,24 +363,6 @@ function buildMarkerHidingDecorations(
           if (!cursorInOpen) marks.push(hideMark.range(openFrom, openFrom + 1));
           if (!cursorInClose) marks.push(hideMark.range(closeFrom, node.to));
           marks.push(linkMark.range(openFrom + 1, closeFrom));
-        }
-        return;
-      }
-
-      // 图片：始终渲染图片 widget，活动行时显示链接栏
-      if (name === 'Image') {
-        const text = doc.sliceString(node.from, node.to);
-        const parsed = parseImageMarkdown(text, node.from);
-
-        if (parsed) {
-          const src = resolveUrl ? resolveUrl(parsed.src) : parsed.src;
-          marks.push({
-            from: node.from,
-            to: node.to,
-            value: Decoration.replace({
-              widget: new ImageWidget(src, parsed.alt, parsed.width, node.from, node.to, onActiveLine),
-            }),
-          });
         }
         return;
       }
