@@ -177,6 +177,7 @@ export const api = {
     readDetail: (type: string, startDate: string, endDate: string) => 
       ipcRenderer.invoke('summary:readDetail', type, startDate, endDate),
     list: (options?: any) => ipcRenderer.invoke('summary:list', options),
+    buildSharedContext: (lookbackMonths: number, locale?: string) => ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale),
   },
 
   // RAG System
@@ -197,7 +198,8 @@ export const api = {
       const handler = (_: any, state: any) => callback(state);
       ipcRenderer.on('agent:rag-progress', handler);
       return () => ipcRenderer.off('agent:rag-progress', handler);
-    }
+    },
+    buildSharedContext: (lookbackMonths: number, locale?: string) => ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale),
   },
 
   // LAN Sync (Phase B)

@@ -32,7 +32,7 @@ import { useAssistantResolver } from './hooks/useAssistantResolver';
 import { useTranslation } from 'react-i18next';
 
 export const AgentScreen: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const dialog = useDialog();
@@ -419,13 +419,14 @@ export const AgentScreen: React.FC = () => {
         onMonthsChanged={setRecallLookbackMonths}
         onCopyContext={async () => {
           try {
-            const contextText = await (window as any).api?.rag?.buildSharedContext?.(recallLookbackMonths);
+            const contextText = await (window as any).api?.rag?.buildSharedContext?.(recallLookbackMonths, i18n.language);
             if (contextText) {
               await navigator.clipboard.writeText(contextText);
               toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'));
             }
-          } catch {
-            toast.showError(t('common.copy_failed', '复制失败'));
+          } catch (e: any) {
+            console.error('[AgentScreen] Copy failed:', e);
+            toast.showError(`${t('common.copy_failed', '复制失败')}: ${e?.message || String(e)}`);
           }
         }}
         onInject={(items) => {

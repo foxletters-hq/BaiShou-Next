@@ -147,10 +147,22 @@ export const SummaryPage: React.FC = () => {
 
   const handleCopyContext = async () => {
     try {
-      await navigator.clipboard.writeText('');
-      toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'));
-    } catch {
-      toast.showError(t('common.copy_failed', '复制失败'));
+      const api = (window as any).api;
+      if (!api?.summary?.buildSharedContext) {
+        toast.showError(t('common.copy_failed', '复制失败'));
+        return;
+      }
+      
+      const contextText = await api.summary.buildSharedContext(lookbackMonths, i18n.language);
+      if (contextText) {
+        await navigator.clipboard.writeText(contextText);
+        toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'));
+      } else {
+        toast.showError(t('summary.no_data_to_copy', '当前回溯范围内无已生成的总结回忆'));
+      }
+    } catch (e: any) {
+      console.error('[SummaryPage] Copy failed:', e);
+      toast.showError(`${t('common.copy_failed', '复制失败')}: ${e?.message || String(e)}`);
     }
   };
 
