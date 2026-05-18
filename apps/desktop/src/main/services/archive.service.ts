@@ -224,6 +224,16 @@ export class DesktopArchiveService implements IArchiveService {
       // shadow_index 只是 Markdown 文件的缓存索引，会在 bootstrapper 中自动重建
       await this.cleanShadowIndexFiles(rootDir);
       
+      // 旧版恢复完毕后，立刻重新建立并激活数据库连接（因为先前被切断了）
+      try {
+        const { resetAppDb } = await import('../db');
+        resetAppDb();
+        connectionManager.setDb(getAppDb());
+        logger.info('[ArchiveService] Legacy Database connection successfully reconnected.');
+      } catch (dbErr: any) {
+        logger.error('[ArchiveService] Failed to reconnect database for Legacy:', dbErr);
+      }
+      
     } else {
       logger.info('ArchiveService: Detected Next Architecture. Restoring Standard Data...');
       
@@ -279,14 +289,38 @@ export class DesktopArchiveService implements IArchiveService {
         logger.error('Failed to remap vault paths', e);
       }
 
-      // 5. Restore Global configurations from config/
+      // 5. Restore Database if it exists in the archive!
+      try {
+        const extractedDbPath = path.join(rootDir, 'database', 'baishou_agent.db');
+        if (fs.existsSync(extractedDbPath)) {
+          // Warning: connectionManager is disconnected. We can safely overwrite the SQLite db.
+          const actualDbPath = path.join(app.getPath('userData'), 'baishou_agent.db');
+          await fsp.copyFile(extractedDbPath, actualDbPath);
+          await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {});
+        }
+      } catch (e: any) {
+        logger.error('Failed to restore database from archive', e);
+      }
+
+      // 【关键修复点】：立刻重新建立并激活新数据库连接！
+      // 只有完成了这一步，后续的 settingsRepo 写入以及全量同步系统才能正常访问数据库！
+      try {
+        const { resetAppDb } = await import('../db');
+        resetAppDb();
+        connectionManager.setDb(getAppDb());
+        logger.info('[ArchiveService] Next Database connection successfully reconnected.');
+      } catch (dbErr: any) {
+        logger.error('[ArchiveService] Failed to reconnect database for Next:', dbErr);
+      }
+
+      // 6. Restore Global configurations from config/
       try {
         const configPath = path.join(rootDir, 'config', 'device_preferences.json');
         if (fs.existsSync(configPath)) {
           const raw = await fsp.readFile(configPath, 'utf8');
           const prefs = JSON.parse(raw);
 
-          // 恢复全部 settings key
+          // 此时数据库连接已恢复，我们可以安全地写入 settings
           const allSettingsKeys = [
             'ai_providers', 'global_models', 'feature_settings',
             'agent_behavior', 'rag_config', 'web_search_config',
@@ -310,24 +344,6 @@ export class DesktopArchiveService implements IArchiveService {
         await fsp.rm(path.join(rootDir, 'config'), { recursive: true, force: true }).catch(() => {});
       } catch (e: any) {
         logger.error('Failed to restore device preferences', e);
-      }
-
-      // 5.5 Restore Database if it exists in the archive!
-      try {
-        const extractedDbPath = path.join(rootDir, 'database', 'baishou_agent.db');
-        if (fs.existsSync(extractedDbPath)) {
-          // Warning: connectionManager is disconnected. We can safely overwrite the SQLite db.
-          const actualDbPath = path.join(app.getPath('userData'), 'baishou_agent.db');
-          await fsp.copyFile(extractedDbPath, actualDbPath);
-          await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {});
-
-          // 磁盘上的 DB 文件已替换，必须销毁旧连接并创建新连接
-          const { resetAppDb } = await import('../db');
-          resetAppDb();
-          connectionManager.setDb(getAppDb());
-        }
-      } catch (e: any) {
-        logger.error('Failed to restore database from archive', e);
       }
     }
     
