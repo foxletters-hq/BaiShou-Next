@@ -77,14 +77,25 @@ async function createSyncService(config: S3SyncConfig): Promise<IncrementalSyncS
 export function registerIncrementalSyncIPC() {
   ipcMain.handle('incrementalSync:getConfig', async () => {
     if (!syncService) {
+      // 尝试从文件加载已有配置并自动初始化服务
+      const vaultPath = await pathService.getActiveVaultPath();
+      if (vaultPath) {
+        const fs = await import('fs');
+        const configPath = path.join(vaultPath, '.baishou-s3.json');
+        if (fs.existsSync(configPath)) {
+          try {
+            const raw = await fs.promises.readFile(configPath, 'utf8');
+            const saved = JSON.parse(raw) as Partial<S3SyncConfig>;
+            if (saved.enabled && saved.endpoint && saved.accessKey && saved.secretKey) {
+              await createSyncService(saved as S3SyncConfig);
+              return syncService!.getConfig();
+            }
+          } catch {}
+        }
+      }
       return {
-        enabled: false,
-        endpoint: '',
-        region: '',
-        bucket: '',
-        path: 'baishou/',
-        accessKey: '',
-        secretKey: '',
+        enabled: false, endpoint: '', region: '', bucket: '',
+        path: 'baishou/', accessKey: '', secretKey: '',
       };
     }
     return syncService.getConfig();

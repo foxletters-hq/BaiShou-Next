@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiFind, MdHistory } from 'react-icons/md';
+import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiFind, MdHistory, MdCloudUpload } from 'react-icons/md';
 import styles from './Sidebar.module.css';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -59,6 +59,7 @@ export const Sidebar: React.FC = () => {
       'summary': { icon: <MdAutoStories />, label: t('summary.dashboard_title', '全域仪表盘'), path: '/summary' },
       'lan': { icon: <MdWifiFind />, label: t('settings.lan_transfer', '局域网快传'), path: '/lan-transfer' },
       'sync': { icon: <MdSync />, label: t('common.data_sync', '数据同步'), path: '/data-sync' },
+      'incr-sync': { icon: <MdCloudUpload />, label: t('common.incremental_sync', '增量同步'), path: '/incremental-sync' },
       'git': { icon: <MdHistory />, label: t('version_control.title', '版本控制'), path: '/git' }
    };
 
