@@ -50,6 +50,12 @@ export enum SyncIpcChannels {
   INCREMENTAL_SYNC_GET_REMOTE_MANIFEST = 'incrementalSync:getRemoteManifest',
   INCREMENTAL_SYNC_REFRESH_MANIFEST = 'incrementalSync:refreshLocalManifest',
   INCREMENTAL_SYNC_GET_CONFLICTS = 'incrementalSync:getLastSyncConflicts',
+  // 同步编排器 (一键同步 API)
+  INCREMENTAL_SYNC_ORCHESTRATED_SYNC = 'incrementalSync:orchestratedSync',
+  INCREMENTAL_SYNC_ORCHESTRATED_UPLOAD_ONLY = 'incrementalSync:orchestratedUploadOnly',
+  INCREMENTAL_SYNC_ORCHESTRATED_DOWNLOAD_ONLY = 'incrementalSync:orchestratedDownloadOnly',
+  INCREMENTAL_SYNC_GET_SYNC_HISTORY = 'incrementalSync:getSyncHistory',
+  INCREMENTAL_SYNC_GET_LAST_SUMMARY = 'incrementalSync:getLastSyncSummary',
   
   // Git 版本控制
   GIT_INIT = 'git:init',

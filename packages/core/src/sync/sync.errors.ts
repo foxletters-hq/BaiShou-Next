@@ -132,3 +132,21 @@ export class VersionNotFoundError extends Error {
     this.name = 'VersionNotFoundError';
   }
 }
+
+// ── 操作日志错误 ─────────────────────────────────────────────
+
+/** 同步日志读写错误 */
+export class SyncLogError extends Error {
+  constructor(public readonly cause?: Error) {
+    super('Failed to read/write sync operation log');
+    this.name = 'SyncLogError';
+  }
+}
+
+/** 同步正在进行中（并发保护） */
+export class SyncInProgressError extends Error {
+  constructor() {
+    super('A sync operation is already in progress');
+    this.name = 'SyncInProgressError';
+  }
+}
