@@ -1,0 +1,326 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.syncButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.syncButton:hover:not(.disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--color-primary);
+}
+
+.syncButton:active:not(.disabled) {
+  background: var(--bg-surface-normal);
+}
+
+.syncButton.syncing {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.syncButton.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.syncIcon {
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.syncLabel {
+  font-weight: 500;
+}
+
+.lastSync {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.lastSync:hover {
+  color: var(--text-secondary);
+}
+
+.checkIcon {
+  color: var(--color-accent-green);
+}
+
+.historyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-muted);
+  border-radius: 50%;
+  background: var(--bg-surface);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.historyBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ── Overlay ─────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* ── Dialog ──────────────────────────────────────────────── */
+
+.dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 20px 24px;
+  width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.dialogHeader h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.closeBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+/* ── Result Grid ─────────────────────────────────────────── */
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-surface-low);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.resultItem svg {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.resultLabel {
+  flex: 1;
+}
+
+.resultValue {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.warningItem .resultValue {
+  color: var(--color-warning);
+}
+
+/* ── Result Footer ───────────────────────────────────────── */
+
+.resultFooter {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+/* ── Error Toast ─────────────────────────────────────────── */
+
+.errorToast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--color-error);
+  border-radius: 8px;
+  color: var(--color-error);
+  font-size: 13px;
+  z-index: 1100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.errorToast svg {
+  flex-shrink: 0;
+}
+
+.errorClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.errorClose:hover {
+  color: var(--text-primary);
+}
+
+/* ── History Panel ───────────────────────────────────────── */
+
+.historyPanel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+  padding: 20px 24px;
+  z-index: 1000;
+  overflow-y: auto;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.06);
+}
+
+.historyPanel .dialogHeader {
+  margin-bottom: 20px;
+}
+
+.emptyHistory {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  text-align: center;
+  padding: 32px 0;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.historyItem {
+  padding: 10px 12px;
+  background: var(--bg-surface-low);
+  border-radius: 6px;
+}
+
+.historyItemHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.successIcon {
+  color: var(--color-accent-green);
+}
+
+.errorIcon {
+  color: var(--color-error);
+}
+
+.historyTime {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.historyDuration {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.historySummary {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.historyError {
+  font-size: 11px;
+  color: var(--color-error);
+  margin-top: 2px;
+}
+
+.warnText {
+  color: var(--color-warning);
+}

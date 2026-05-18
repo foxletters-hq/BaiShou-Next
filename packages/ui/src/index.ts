@@ -102,3 +102,4 @@ export * from './web/PromptShortcutSheet/index';
 export * from './web/RecallDialog/index';
 export * from './web/ModelSwitcherPopup';
 export * from './web/AvatarEditor';
+export * from './web/IncrementalSyncPanel/index';
