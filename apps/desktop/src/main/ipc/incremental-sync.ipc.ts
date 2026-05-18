@@ -9,6 +9,7 @@ import {
 } from '@baishou/core';
 import type { S3SyncConfig } from '@baishou/shared';
 import { IncrementalS3Client } from '../services/incremental-s3.client';
+import { IncrementalWebDavClient } from '../services/incremental-webdav.client';
 import { pathService } from './vault.ipc';
 import { getGitService } from './git-sync.ipc';
 
@@ -31,45 +32,56 @@ function getOrchestrator(): SyncOrchestrator {
 }
 
 async function createSyncService(config: S3SyncConfig): Promise<IncrementalSyncServiceImpl> {
-  const client = new IncrementalS3Client(
-    config.endpoint,
-    config.region,
-    config.bucket,
-    config.accessKey,
-    config.secretKey,
-    config.path,
-  );
-
   const vaultPath = await pathService.getActiveVaultPath();
   const deviceId = 'desktop-' + crypto.randomUUID().substring(0, 8);
 
-  if (vaultPath) {
-    client.setVaultPath(vaultPath);
-
-    // 旧版服务（两向对比，保持向后兼容）
+  if (!vaultPath) {
+    // 无活跃仓库时创建默认 S3 客户端
+    const client = new IncrementalS3Client(
+      config.endpoint, config.region, config.bucket,
+      config.accessKey, config.secretKey, config.path,
+    );
     syncService = new IncrementalSyncServiceImpl(pathService, client, deviceId);
+    return syncService;
+  }
 
-    // 新版服务（三向合并 + 删除传播）
-    threeWayService = new ThreeWaySyncService(pathService, client, deviceId);
+  let client: IncrementalS3Client | IncrementalWebDavClient;
 
-    // 操作日志
-    const logDir = path.join(vaultPath, '.baishou', 'sync-log');
-    const logService = new OperationLogService(logDir);
-
-    // Git 服务
-    const gitService = getGitService();
-    const gitInit = await gitService.isInitialized();
-
-    // 编排器（使用新版三向合并服务 + git 预提交 + 操作日志）
-    orchestrator = new SyncOrchestrator(
-      threeWayService,
-      logService,
-      gitInit ? gitService : undefined,
-      deviceId,
+  if (config.target === 'webdav' && config.webdavUrl) {
+    client = new IncrementalWebDavClient(
+      config.webdavUrl,
+      config.accessKey,
+      config.secretKey,
+      config.path,
     );
   } else {
-    syncService = new IncrementalSyncServiceImpl(pathService, client, deviceId);
+    client = new IncrementalS3Client(
+      config.endpoint, config.region, config.bucket,
+      config.accessKey, config.secretKey, config.path,
+    );
   }
+
+  client.setVaultPath(vaultPath);
+
+  // 旧版服务
+  syncService = new IncrementalSyncServiceImpl(pathService, client, deviceId);
+
+  // 新版服务
+  threeWayService = new ThreeWaySyncService(pathService, client, deviceId);
+
+  // 操作日志
+  const logDir = path.join(vaultPath, '.baishou', 'sync-log');
+  const logService = new OperationLogService(logDir);
+
+  // Git 服务
+  const gitService = getGitService();
+  const gitInit = await gitService.isInitialized();
+
+  // 编排器
+  orchestrator = new SyncOrchestrator(
+    threeWayService, logService,
+    gitInit ? gitService : undefined, deviceId,
+  );
 
   return syncService;
 }

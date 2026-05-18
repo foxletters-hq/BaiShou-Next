@@ -71,8 +71,10 @@ export interface GitSyncConfig {
 
 /** S3 增量同步配置 */
 export interface S3SyncConfig {
-  /** 是否启用 S3 同步 */
+  /** 是否启用同步 */
   enabled: boolean;
+  /** 目标类型：s3 或 webdav */
+  target?: 's3' | 'webdav';
   /** S3 端点 */
   endpoint: string;
   /** S3 区域 */
@@ -81,10 +83,12 @@ export interface S3SyncConfig {
   bucket: string;
   /** 桶内路径前缀 */
   path: string;
-  /** 访问密钥 ID */
+  /** 访问密钥 ID / WebDAV 用户名 */
   accessKey: string;
-  /** 秘密访问密钥 */
+  /** 秘密访问密钥 / WebDAV 密码 */
   secretKey: string;
+  /** WebDAV URL（仅 target=webdav 时使用） */
+  webdavUrl?: string;
 }
 
 /** 文件清单条目 */
