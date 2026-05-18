@@ -286,7 +286,6 @@ export function registerSummaryIPC() {
 
   ipcMain.handle('summary:buildSharedContext', async (_, lookbackMonths: number, locale?: string) => {
     try {
-      const db = connectionManager.getDb();
       const shadowDb = shadowConnectionManager.getDb();
       if (!shadowDb) return '';
 
@@ -516,7 +515,7 @@ export function registerSummaryIPC() {
 
       return `${header}\n${formattedParts.join('\n\n---\n\n')}`;
     } catch (e) {
-      logger.error('[SummaryIPC] buildSharedContext error:', e);
+      logger.error('[SummaryIPC] buildSharedContext error:', e as any);
       return '';
     }
   });

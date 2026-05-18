@@ -259,27 +259,27 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                </div>
               ) : (
                 <>
-                {/* Reasoning 块 - 移到 aiBubbleCard 外部 */}
-                {message.reasoning && (
-                  <ThinkingBlock
-                    content={message.reasoning}
-                    isThinking={false}
-                    defaultOpen={true}
-                    autoCollapse={false}
-                  />
-                )}
+                  <div className={styles.aiBubbleCard}>
+                     {renderAttachments(false)}
 
-                <div className={styles.aiBubbleCard}>
-                   {renderAttachments(false)}
-                   
-                   {/* 工具调用 */}
-                   {message.toolInvocations && message.toolInvocations.length > 0 && (
-                     <ToolResultGroup invocations={message.toolInvocations} />
-                   )}
+                     {/* Reasoning 块 - 移到 aiBubbleCard 内部且默认折叠 */}
+                     {message.reasoning && (
+                       <ThinkingBlock
+                         content={message.reasoning}
+                         isThinking={false}
+                         defaultOpen={false}
+                         autoCollapse={true}
+                       />
+                     )}
+                     
+                     {/* 工具调用 */}
+                     {message.toolInvocations && message.toolInvocations.length > 0 && (
+                       <ToolResultGroup invocations={message.toolInvocations} />
+                     )}
 
-                   {/* 正文内容 */}
-                   {normalizedContent && <MarkdownRenderer content={normalizedContent} />}
-                </div>
+                     {/* 正文内容 */}
+                     {normalizedContent && <MarkdownRenderer content={normalizedContent} />}
+                  </div>
 
                   <div className={styles.aiFooterRow}>
                       <MessageActionBar
@@ -289,7 +289,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                         onEdit={handleStartEdit}
                         onDelete={onDelete}
                         onBranch={onBranch}
-                        onReadAloud={onReadAloud ? () => onReadAloud(message.content || '') : undefined}
+                        onReadAloud={onReadAloud ? (() => onReadAloud(message.content || '')) : undefined}
                         isTtsPlaying={isTtsPlaying}
                       />
                     <div className={styles.footerRight}>

@@ -73,35 +73,35 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
               )}
            </div>
          ) : (
-           <>
-              {/* Reasoning 块 - 移到 bubbleCard 外部 */}
-              {hasReasoning && (
-                <ThinkingBlock
-                  content={reasoning}
-                  isThinking={isReasoning && !hasText}
-                  defaultOpen={true}
-                  autoCollapse={false}
-                />
-              )}
+               <>
+               {hasText || hasTools || hasReasoning ? (
+                 <div className={styles.bubbleCard}>
+                    {/* Reasoning 块 - 移到 bubbleCard 内部 */}
+                    {hasReasoning && (
+                      <ThinkingBlock
+                        content={reasoning}
+                        isThinking={isReasoning && !hasText}
+                        defaultOpen={true}
+                        autoCollapse={false}
+                      />
+                    )}
 
-              {hasText || hasTools ? (
-                <div className={styles.bubbleCard}>
-                   {/* 工具调用 */}
-                   {hasTools && (
-                     <ToolExecutionGroup 
-                        completedTools={completedTools} 
-                        activeToolName={activeToolName} 
-                     />
-                   )}
+                    {/* 工具调用 */}
+                    {hasTools && (
+                      <ToolExecutionGroup 
+                         completedTools={completedTools} 
+                         activeToolName={activeToolName} 
+                      />
+                    )}
 
-                   {/* 正文内容 */}
-                   {hasText && <MarkdownRenderer content={normalizedText} isStreaming={true} />}
+                    {/* 正文内容 */}
+                    {hasText && <MarkdownRenderer content={normalizedText} isStreaming={true} />}
+                 </div>
+              ) : (
+                <div className={styles.dotsWrap}>
+                   <BouncingDotsIndicator />
                 </div>
-             ) : !hasReasoning ? (
-               <div className={styles.dotsWrap}>
-                  <BouncingDotsIndicator />
-               </div>
-             ) : null}
+              )}
              
              {onStop && (
                <div className={styles.stopBtnWrap}>
