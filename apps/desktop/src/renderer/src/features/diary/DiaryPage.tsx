@@ -126,8 +126,10 @@ export const DiaryPage: React.FC = () => {
     const d = String(today.getDate()).padStart(2, '0');
     const dateStr = `${y}-${m}-${d}`;
     if (todayEntry) {
+      sessionStorage.setItem('desktop_last_nav', '/diary');
       navigate(`/diary/${dateStr}?append=1`);
     } else {
+      sessionStorage.setItem('desktop_last_nav', '/diary');
       navigate(`/diary/${dateStr}`);
     }
   };
@@ -139,7 +141,13 @@ export const DiaryPage: React.FC = () => {
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
     const dateStr = `${y}-${m}-${d}`;
+    sessionStorage.setItem('desktop_last_nav', '/diary');
     navigate(`/diary/new?date=${dateStr}`);
+  };
+
+  const goToEditor = (dateStr: string) => {
+    sessionStorage.setItem('desktop_last_nav', '/diary');
+    navigate(`/diary/${dateStr}`);
   };
 
   /** 处理过滤和排序 */
@@ -457,8 +465,8 @@ export const DiaryPage: React.FC = () => {
               <motion.div layout="position" key={entry.id} style={{ height: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}>
                 <DiaryCard
                   entry={entry}
-                  onClick={() => navigate(`/diary/${formatDateStr(entry.date)}`)}
-                  onEdit={() => navigate(`/diary/${formatDateStr(entry.date)}`)}
+                  onClick={() => goToEditor(formatDateStr(entry.date))}
+                  onEdit={() => goToEditor(formatDateStr(entry.date))}
                   onDelete={() => setDeletingId(entry.id)}
                   t={t}
                   basePath={attachmentBasePath}
