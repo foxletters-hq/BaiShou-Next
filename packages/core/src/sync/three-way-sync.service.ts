@@ -16,7 +16,7 @@ import {
   S3SyncError,
 } from './sync.errors';
 
-const MANIFEST_FILENAME_V2_V2 = 'manifest-v2.json';
+const MANIFEST_FILENAME_V2 = 'manifest-v2.json';
 const REMOTE_SNAPSHOT_FILENAME = 'last-remote-manifest.json';
 const DEFAULT_CONFIG: S3SyncConfig = {
   enabled: false,

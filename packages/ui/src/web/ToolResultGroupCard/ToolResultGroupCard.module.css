@@ -11,9 +11,10 @@
 
 .groupCard {
   background-color: var(--bg-surface);
-  border: 2px solid var(--border-subtle);
+  border: 1.5px solid var(--border-subtle);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: none !important;
   transition: border-color 0.2s ease;
 }
 

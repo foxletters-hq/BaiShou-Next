@@ -65,6 +65,8 @@ export class WebDavSyncClient implements ICloudSyncClient {
 
       for (const item of items) {
         if (item.type === 'directory') continue;
+        // 关键防护：仅过滤以 BaiShou_ 开头且以 .zip 结尾的数据包，绝对不能误伤用户目录下的其他个人文件
+        if (!/^BaiShou_.*\.zip$/i.test(item.basename)) continue;
         records.push({
           filename: item.basename,
           lastModified: new Date(item.lastmod),

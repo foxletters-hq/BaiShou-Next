@@ -81,7 +81,7 @@ export function resetAppDb(): void {
       try {
         callback();
       } catch (err) {
-        logger.error('[DB] 执行数据库重置回调失败:', err);
+        logger.error('[DB] 执行数据库重置回调失败:', err as any);
       }
     }
   }

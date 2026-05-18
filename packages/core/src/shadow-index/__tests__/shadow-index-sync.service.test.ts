@@ -26,6 +26,14 @@ class MockShadowIndexRepository {
     return id;
   }
 
+  async batchUpsert(payloads: any[]) {
+    const ids = [];
+    for (const p of payloads) {
+      ids.push(await this.upsert(p));
+    }
+    return ids;
+  }
+
   async deleteById(id: number) {
     this.records = this.records.filter(r => r.id !== id);
   }
