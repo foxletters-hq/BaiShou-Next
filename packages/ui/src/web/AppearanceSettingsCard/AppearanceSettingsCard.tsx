@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './AppearanceSettingsCard.css';
 import { useTranslation } from 'react-i18next';
 import { MdOutlinePalette, MdDevices, MdWbSunny, MdDarkMode } from 'react-icons/md';
@@ -27,8 +27,12 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
+  const [localColor, setLocalColor] = useState(seedColor);
 
-  // Determine if the current color is a custom one
+  useEffect(() => {
+    setLocalColor(seedColor);
+  }, [seedColor]);
+
   const isCustomColor = !PRESET_COLORS.includes(seedColor.toUpperCase()) && !PRESET_COLORS.includes(seedColor);
 
   const LANGS = [
@@ -110,9 +114,12 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
                 <div className="color-native-wrapper">
                   <input 
                     type="color" 
-                    value={seedColor}
-                    onChange={(e) => onSeedColorChange(e.target.value)}
-                    onBlur={() => setShowPicker(false)}
+                    value={localColor}
+                    onChange={(e) => setLocalColor(e.target.value)}
+                    onBlur={() => {
+                      onSeedColorChange(localColor);
+                      setShowPicker(false);
+                    }}
                   />
                 </div>
               )}
