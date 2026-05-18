@@ -97,30 +97,103 @@ export interface ManifestEntry {
   lastModified: number;
 }
 
-/** 文件清单 */
+/**
+ * 文件清单 V2
+ * 纯状态快照：只记录当前存在的文件，不记录历史。
+ * 文件删除后条目直接移除，体积随文件数线性增长，不随时间膨胀。
+ */
 export interface SyncManifest {
-  /** 清单版本号 */
+  /** 清单版本号 = 2 */
   version: number;
   /** 最后更新时间戳（毫秒） */
   updatedAt: number;
   /** 最后更新的设备 ID */
   deviceId: string;
-  /** 文件清单（key 为相对路径） */
+  /** 文件清单（key 为 vault 内相对路径） */
   files: Record<string, ManifestEntry>;
 }
 
-/** 增量同步结果 */
+/** 同步操作类型 */
+export type SyncOperationType =
+  | 'upload'
+  | 'download'
+  | 'delete-remote'
+  | 'delete-local'
+  | 'conflict-resolved';
+
+/** 单条操作记录 */
+export interface SyncOperationEntry {
+  /** 操作 ID (UUID v4) */
+  id: string;
+  /** 操作类型 */
+  type: SyncOperationType;
+  /** 文件相对路径（相对于 vault 根） */
+  filePath: string;
+  /** 操作前 hash（用于追溯） */
+  hashBefore: string | null;
+  /** 操作后 hash */
+  hashAfter: string | null;
+  /** 文件大小（字节） */
+  size: number;
+  /** 操作时间 (ISO 8601) */
+  timestamp: string;
+  /** 冲突时被备份的版本路径 */
+  backupPath?: string;
+}
+
+/** 同步方向 */
+export type SyncDirection = 'full-sync' | 'upload-only' | 'download-only';
+
+/** 同步摘要 */
+export interface SyncSummary {
+  uploaded: number;
+  downloaded: number;
+  deletedRemote: number;
+  deletedLocal: number;
+  conflicts: number;
+  skipped: number;
+}
+
+/** 一次同步会话的记录 */
+export interface SyncSessionLog {
+  /** 会话 ID */
+  sessionId: string;
+  /** 设备 ID */
+  deviceId: string;
+  /** 同步方向 */
+  direction: SyncDirection;
+  /** 开始时间 (ISO 8601) */
+  startedAt: string;
+  /** 结束时间 (ISO 8601) */
+  completedAt: string;
+  /** 是否成功 */
+  success: boolean;
+  /** 操作条目列表 */
+  operations: SyncOperationEntry[];
+  /** 文件计数摘要 */
+  summary: SyncSummary;
+  /** 错误信息（仅在失败时有值） */
+  error?: string;
+}
+
+/** 增量同步结果 V2 */
 export interface IncrementalSyncResult {
   /** 上传的文件列表 */
   uploaded: string[];
   /** 下载的文件列表 */
   downloaded: string[];
-  /** 冲突的文件列表（Last-Write-Wins 已自动处理） */
+  /** 冲突的文件列表（mtime 决策已自动处理） */
   conflicted: string[];
   /** 跳过的文件列表（无变更） */
   skipped: string[];
+  /** 删除的远程文件列表 */
+  deletedRemote: string[];
+  /** 删除的本地文件列表 */
+  deletedLocal: string[];
   /** 同步耗时（毫秒） */
   duration: number;
+  /** 本次同步会话 ID */
+  sessionId: string;
 }
 
 // ── 版本管理类型 ─────────────────────────────────────────────

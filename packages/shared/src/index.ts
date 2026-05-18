@@ -20,3 +20,4 @@ export { logger } from './utils/logger';
 export * from './mock/agent.mock';
 
 export * from './utils/embedding.utils';
+export { signS3Request } from './utils/aws-v4-sign';
