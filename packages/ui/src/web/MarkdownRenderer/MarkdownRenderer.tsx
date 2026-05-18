@@ -34,8 +34,17 @@ function remarkBrToBreak() {
   };
 }
 
+// 预处理内容中的图片宽度语法，将 ![alt](src | width) 转换为 ![alt](src?width=width) 以确保 ReactMarkdown 能正确解析为 img 节点
+const preprocessContent = (text: string): string => {
+  return text.replace(/!\[([^\]]*)\]\(([^ |)]+)\s*\|\s*(\d+)\)/g, '![$1]($2?width=$3)');
+};
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false, basePath, plainText = false }) => {
   const { t } = useTranslation();
+
+  const processedContent = React.useMemo(() => {
+    return preprocessContent(content);
+  }, [content]);
 
   const resolveAttachment = (src?: string) => {
     if (src && basePath && src.startsWith('attachment/')) {
@@ -46,10 +55,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
     return src;
   };
 
-  // 解析图片 src 中的宽度语法：src|475 或 src "475"（兼容 URL 编码）
+  // 解析图片 src 中的宽度语法：src|475 或 src "475" 或 src?width=475
   const parseImgWidth = (rawSrc?: string): { src: string; width?: number } => {
     if (!rawSrc) return { src: '' };
-    // 先尝试解码 URL 编码，再匹配
+    // 先匹配 query param width=...
+    const urlMatch = rawSrc.match(/^(.+?)\?(?:.+&)?width=(\d+)(?:&.*)?$/);
+    if (urlMatch) {
+      return { src: urlMatch[1]!, width: parseInt(urlMatch[2]!, 10) };
+    }
+    // 解码 URL 编码，再匹配
     const decoded = rawSrc.replace(/%7C/gi, '|');
     let m = decoded.match(/^(.+?)\s*\|\s*(\d+)$/);
     if (m) return { src: (m[1] ?? '').trim(), width: parseInt(m[2]!, 10) };
@@ -106,7 +120,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
         blockquote: ({ node, ...props }) => <blockquote className={styles.blockquote} {...props} />,
         }}
       >
-        {content + (isStreaming ? ' ▍' : '')}
+        {processedContent + (isStreaming ? ' ▍' : '')}
       </ReactMarkdown>
     </div>
   );
