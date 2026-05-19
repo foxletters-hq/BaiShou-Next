@@ -14,15 +14,15 @@
 .dialog {
   background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.95);
   border-radius: 20px;
-  width: 85vw;
-  max-width: 800px;
-  height: 85vh;
-  max-height: 860px;
-  min-height: 500px;
+  width: 75vw;
+  max-width: 680px;
+  height: 75vh;
+  max-height: 640px;
+  min-height: 480px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15), 0 1px 0 rgba(255, 255, 255, 0.4) inset;
   display: flex;
   flex-direction: column;
-  animation: slideUpCenter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  animation: slideUpCenter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 }
 
@@ -342,29 +342,31 @@
 .injectBtn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 32px;
-  background: linear-gradient(135deg, var(--color-primary), rgba(var(--color-tertiary-rgb), 1));
-  color: var(--text-on-primary);
+  gap: 6px;
+  padding: 8px 18px;
+  background: var(--color-primary, #5ba8f5);
+  color: #ffffff !important;
   border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.3);
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.2);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .injectBtn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(91, 168, 245, 0.4);
+  background: var(--color-primary-active, #3b82f6);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.3);
 }
 
 .injectBtn:disabled {
-  background: rgba(var(--color-outline-variant-rgb), 0.6);
+  background: rgba(var(--color-outline-variant-rgb, 226, 232, 240), 0.5);
+  color: var(--text-secondary, #94a3b8) !important;
   box-shadow: none;
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 @keyframes fadeIn {
@@ -372,6 +374,123 @@
   to { opacity: 1; }
 }
 @keyframes slideUpCenter {
-  from { opacity: 0; transform: translateY(40px) scale(0.98); }
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.similarityBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.similarityHigh {
+  background: rgba(34, 197, 94, 0.12);
+  color: rgb(34, 197, 94);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.similarityMed {
+  background: rgba(59, 130, 246, 0.12);
+  color: rgb(59, 130, 246);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.similarityLow {
+  background: rgba(100, 116, 139, 0.12);
+  color: rgb(100, 116, 139);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+/* 右上部ヘッダーの整列 */
+.cardHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* 相似度标签 */
+.similarityTag {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+/* 日记卡片特有样式 */
+.diaryCard {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.diaryCard:hover {
+  border-color: rgba(var(--color-secondary-rgb), 0.5);
+  background: rgba(var(--color-secondary-rgb), 0.02);
+}
+
+/* 复制按钮 */
+.copyBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0.6;
+}
+
+.copyBtn:hover {
+  background: rgba(var(--color-outline-variant-rgb), 0.3);
+  color: var(--color-primary);
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.copyBtn:active {
+  transform: scale(0.95);
+}
+
+/* Segmented Control */
+.segmentedControl {
+  display: flex;
+  background: rgba(var(--color-outline-variant-rgb, 226, 232, 240), 0.2);
+  padding: 2px;
+  border-radius: 8px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.segmentBtn {
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.segmentBtn:hover {
+  color: var(--text-primary);
+}
+
+.segmentBtnActive {
+  background: var(--bg-surface);
+  color: var(--color-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }

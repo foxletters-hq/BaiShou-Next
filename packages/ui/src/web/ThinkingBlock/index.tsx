@@ -13,28 +13,26 @@ export function normalizeCJKSpacing(text: string): string {
 
   return text
     // CJK/CJK标点 之间去空格
-    .replace(new RegExp(`([${cjk}${punct}])\\s+([${cjk}${punct}])`, 'g'), '$1$2')
+    .replace(new RegExp(`([${cjk}${punct}])[ \\t]+([${cjk}${punct}])`, 'g'), '$1$2')
     // CJK 与数字之间去空格
-    .replace(new RegExp(`([${cjk}])\\s+(\\d)`, 'g'), '$1$2')
-    .replace(new RegExp(`(\\d)\\s+([${cjk}])`, 'g'), '$1$2')
+    .replace(new RegExp(`([${cjk}])[ \\t]+(\\d)`, 'g'), '$1$2')
+    .replace(new RegExp(`(\\d)[ \\t]+([${cjk}])`, 'g'), '$1$2')
     // 数字之间去空格
-    .replace(/(\d)\s+(\d)/g, '$1$2')
+    .replace(/(\d)[ \\t]+(\d)/g, '$1$2')
     // CJK 与 ASCII 字母之间去空格
-    .replace(new RegExp(`([${cjk}])\\s+([a-zA-Z])`, 'g'), '$1$2')
-    .replace(new RegExp(`([a-zA-Z])\\s+([${cjk}${punct}])`, 'g'), '$1$2')
+    .replace(new RegExp(`([${cjk}])[ \\t]+([a-zA-Z])`, 'g'), '$1$2')
+    .replace(new RegExp(`([a-zA-Z])[ \\t]+([${cjk}${punct}])`, 'g'), '$1$2')
     // 英文标点前去空格（, . ; : ! ? ） ] }）
-    .replace(/\s+([,.;:!?)}\]])/g, '$1')
+    .replace(/[ \\t]+([,.;:!?)}\]])/g, '$1')
     // 英文标点后加空格（仅当后面跟字母/数字时）
     .replace(/([,.;:!?)}\]])([A-Za-z0-9])/g, '$1 $2')
     // 开括号前去空格
-    .replace(/\s+([([\{])/g, '$1')
+    .replace(/[ \\t]+([([\{])/g, '$1')
     // 开括号后去空格
-    .replace(/([([\{])\s+/g, '$1')
+    .replace(/([([\{])[ \\t]+/g, '$1')
     // 撇号周围去空格（'s, 're, 've 等）
-    .replace(/\s+'/g, "'")
-    .replace(/'\s+/g, "'")
-    // 连字符周围去空格
-    .replace(/\s*-\s*/g, '-');
+    .replace(/[ \t]+'/g, "'")
+    .replace(/'[ \t]+/g, "'");
 }
 
 /** 预览区域每行高度 */
@@ -196,8 +194,8 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
                 </div>
               </div>
             ) : (
-              // 展开态/思考完成：纯文本渲染，跳过 remarkCjkFriendly 避免 CJK-ASCII 空格干扰
-              <MarkdownRenderer content={normalizedContent} plainText />
+              // 展开态/思考完成：支持完整 Markdown 渲染，保证排版美观且支持代码、公式与列表
+              <MarkdownRenderer content={content} />
             )}
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import React, { useMemo } from 'react';
 import styles from './StreamingBubble.module.css';
 import { MarkdownRenderer } from '../MarkdownRenderer';
-import { ThinkingBlock, normalizeCJKSpacing } from '../ThinkingBlock';
+import { ThinkingBlock } from '../ThinkingBlock';
 import { motion } from 'framer-motion';
 
 export interface ToolExecution {
@@ -36,9 +36,40 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   const { t } = useTranslation();
   const hasTools = completedTools.length > 0 || !!activeToolName;
   const aiName = aiProfile.name || t('agent.chat.ai_label');
-  const hasReasoning = reasoning.length > 0;
-  const hasText = text.length > 0;
-  const normalizedText = useMemo(() => normalizeCJKSpacing(text), [text]);
+
+  // 零副作用过滤提取 <think> 标签，彻底避免 AI 回复夹带人机/思考杂质
+  const { cleanText, cleanReasoning } = useMemo(() => {
+    let cleanText = text;
+    let cleanReasoning = reasoning;
+
+    // 1. 匹配并提取完整的 <think>...</think>
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+    let match;
+    while ((match = thinkRegex.exec(text)) !== null) {
+      if (match[1]) {
+        cleanReasoning += (cleanReasoning ? '\n' : '') + match[1].trim();
+      }
+    }
+    cleanText = cleanText.replace(thinkRegex, '');
+
+    // 2. 匹配未闭合的 <think> （如流式输出中）
+    if (cleanText.includes('<think>')) {
+      const parts = cleanText.split('<think>');
+      cleanText = parts[0] || '';
+      const unclosed = parts.slice(1).join('<think>');
+      if (unclosed) {
+        cleanReasoning += (cleanReasoning ? '\n' : '') + unclosed.trim();
+      }
+    }
+
+    return {
+      cleanText: cleanText.trim(),
+      cleanReasoning: cleanReasoning.trim()
+    };
+  }, [text, reasoning]);
+
+  const hasReasoning = cleanReasoning.length > 0;
+  const hasText = cleanText.length > 0;
 
   const Avatar = () => (
      <div className={styles.avatarWrap}>
@@ -79,7 +110,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
                     {/* Reasoning 块 - 移到 bubbleCard 内部 */}
                     {hasReasoning && (
                       <ThinkingBlock
-                        content={reasoning}
+                        content={cleanReasoning}
                         isThinking={isReasoning && !hasText}
                         defaultOpen={true}
                         autoCollapse={false}
@@ -95,7 +126,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
                     )}
 
                     {/* 正文内容 */}
-                    {hasText && <MarkdownRenderer content={normalizedText} isStreaming={true} />}
+                    {hasText && <MarkdownRenderer content={cleanText} isStreaming={true} />}
                  </div>
               ) : (
                 <div className={styles.dotsWrap}>
@@ -136,23 +167,20 @@ const ToolExecutionGroup: React.FC<{
        
        <div className={styles.toolList}>
           {completedTools.map((tool, idx) => {
-  const durationText = tool.durationMs < 1000 
+             const durationText = tool.durationMs < 1000 
                 ? `${tool.durationMs}ms` 
                 : `${(tool.durationMs / 1000).toFixed(1)}s`;
              return (
               <div key={idx} className={styles.toolItem}>
                  <span className={styles.checkIcon}>✅</span>
-                 <span className={styles.toolItemName}>{tool.name}</span>
+                 <span className={styles.toolItemName}>{t(`agent.tools.${tool.name}`, tool.name)}</span>
                  <span className={styles.toolItemDuration}>{durationText}</span>
               </div>
             );
           })}
           
           {activeToolName && (
-             <div className={`${styles.toolItem} ${styles.pulsing}`}>
-                <div className={styles.spinner}></div>
-                <span className={styles.activeToolName}>{activeToolName} ...</span>
-             </div>
+             <ActiveToolItem name={activeToolName} />
           )}
        </div>
     </div>
@@ -165,6 +193,28 @@ const BouncingDotsIndicator: React.FC = () => {
       <div className={styles.dot}></div>
       <div className={styles.dot}></div>
       <div className={styles.dot}></div>
+    </div>
+  );
+};
+
+const ActiveToolItem: React.FC<{ name: string }> = ({ name }) => {
+  const [dots, setDots] = React.useState('.');
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setDots((prev) => {
+        if (prev === '...') return '.';
+        if (prev === '..') return '...';
+        return '..';
+      });
+    }, 600);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className={`${styles.toolItem} ${styles.pulsing}`}>
+       <div className={styles.spinner}></div>
+       <span className={styles.activeToolName}>{name} {dots}</span>
     </div>
   );
 };

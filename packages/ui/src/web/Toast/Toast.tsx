@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styles from './Toast.module.css';
-import { useToastState, ToastMessage } from './useToast';
+import { useToastState, ToastMessage, toast as toastApi } from './useToast';
 
 const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
   const [isExiting, setIsExiting] = useState(false);
@@ -14,6 +14,16 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
     }
     return undefined;
   }, [toast.duration]);
+
+  useEffect(() => {
+    if (isExiting) {
+      const timer = setTimeout(() => {
+        toastApi.dismiss(toast.id);
+      }, 200); // Wait for exit animation to complete
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [isExiting, toast.id]);
 
   const defaultIcon = (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

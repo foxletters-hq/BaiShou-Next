@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
-import remarkCjkFriendly from 'remark-cjk-friendly';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import 'highlight.js/styles/github-dark.css';
@@ -77,7 +76,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isS
     remarkBrToBreak,
     remarkGfm,
     remarkMath,
-    ...(plainText ? [] : [remarkCjkFriendly]),
   ];
 
   return (

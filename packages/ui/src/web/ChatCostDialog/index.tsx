@@ -17,6 +17,7 @@ export interface ChatCostDialogProps {
   isOpen: boolean;
   pricingLastUpdated?: Date | null;
   onRefreshPricing?: () => Promise<{ success: boolean; error?: string }>;
+  pricingSourceUrl?: string;
 }
 
 export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({ 
@@ -24,7 +25,8 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
   onClose, 
   isOpen, 
   pricingLastUpdated,
-  onRefreshPricing 
+  onRefreshPricing,
+  pricingSourceUrl
 }) => {
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -58,19 +60,20 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
   const formatLastUpdated = useCallback((date: Date | null | undefined): string => {
     if (!date) return t('agent.chat.pricing_unknown', '未知');
     
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const yyyy = date.getFullYear();
+    const MM = pad(date.getMonth() + 1);
+    const dd = pad(date.getDate());
+    const HH = pad(date.getHours());
+    const mm = pad(date.getMinutes());
+    const ss = pad(date.getSeconds());
     
-    if (diffMinutes < 1) return t('agent.chat.pricing_just_now', '刚刚');
-    if (diffMinutes < 60) return t('agent.chat.pricing_minutes_ago', `${diffMinutes} 分钟前`, { count: diffMinutes });
-    if (diffHours < 24) return t('agent.chat.pricing_hours_ago', `${diffHours} 小时前`, { count: diffHours });
-    
-    return date.toLocaleString();
+    return `${yyyy}-${MM}-${dd} ${HH}:${mm}:${ss}`;
   }, [t]);
 
   if (!isOpen) return null;
+
+  const sourceUrl = pricingSourceUrl || 'https://models.dev';
 
   return (
     <>
@@ -115,8 +118,26 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                 <span className={styles.costLabel}>{t('agent.chat.pricing_last_updated', '最后更新')}</span>
                 <span className={styles.costValue}>{formatLastUpdated(pricingLastUpdated)}</span>
              </div>
+             <div className={styles.costRow}>
+                <span className={styles.costLabel}>{t('agent.chat.pricing_source', '价格数据源')}</span>
+                <span className={styles.costValue}>
+                   <div className={styles.tooltipContainer}>
+                      <a 
+                        href={sourceUrl}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.sourceLink}
+                      >
+                         models.dev
+                      </a>
+                      <span className={styles.tooltipText}>
+                         {t('agent.chat.pricing_source_tooltip', '点击在外部浏览器中查看原始 API 价格数据')}
+                      </span>
+                   </div>
+                </span>
+             </div>
              {onRefreshPricing && (
-               <div className={styles.spacer8} />
+                <div className={styles.spacer8} />
              )}
              {onRefreshPricing && (
                <div className={styles.costRow}>

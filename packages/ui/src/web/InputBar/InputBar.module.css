@@ -11,7 +11,7 @@
 
 .constrainedBox {
   width: 100%;
-  max-width: 780px;
+  max-width: 1000px;
   display: flex;
   flex-direction: column;
 }
@@ -293,4 +293,31 @@
   height: 12px;
   background-color: var(--text-primary);
   border-radius: 2px;
+}
+
+.visionWarningBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 6px 12px;
+  border-radius: 12px;
+  margin-right: 12px;
+  max-height: 64px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  white-space: normal;
+  max-width: 280px;
+}
+
+.warningIcon {
+  font-size: 14px;
+}
+
+.warningText {
+  font-size: 11px;
+  color: #D97706;
+  font-weight: 500;
+  line-height: 1.3;
 }

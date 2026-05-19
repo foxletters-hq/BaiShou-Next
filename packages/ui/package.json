@@ -64,7 +64,6 @@
     "react-native-markdown-display": "^7.0.0-alpha.2",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
-    "remark-cjk-friendly": "^2.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0"
   }

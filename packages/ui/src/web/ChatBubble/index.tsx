@@ -3,7 +3,7 @@ import styles from './ChatBubble.module.css';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import { MessageActionBar } from '../MessageActionBar';
 import { ToolResultGroup } from '../ToolResultGroupCard';
-import { ThinkingBlock, normalizeCJKSpacing } from '../ThinkingBlock';
+import { ThinkingBlock } from '../ThinkingBlock';
 import { MockChatMessage, MockChatAttachment } from '@baishou/shared/src/mock/agent.mock';
 
 import { useTranslation } from 'react-i18next';
@@ -226,13 +226,40 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     );
   };
 
-   const normalizedContent = useMemo(
-     () => (message.content ? normalizeCJKSpacing(message.content) : ''),
-     [message.content]
-   );
-
-   const renderAiBubble = () => {
+    const renderAiBubble = () => {
      const aiName = aiProfile.name || t('agent.chat.ai_label');
+     
+     // 零副作用过滤提取 <think> 标签，彻底避免 AI 历史回复夹带人机/思考杂质
+     const { cleanContent, cleanReasoning } = useMemo(() => {
+       let cleanContent = message.content || '';
+       let cleanReasoning = message.reasoning || '';
+
+       // 1. 匹配并提取完整的 <think>...</think>
+       const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+       let match;
+       while ((match = thinkRegex.exec(message.content || '')) !== null) {
+         if (match[1]) {
+           cleanReasoning += (cleanReasoning ? '\n' : '') + match[1].trim();
+         }
+       }
+       cleanContent = cleanContent.replace(thinkRegex, '');
+
+       // 2. 匹配未闭合的 <think>
+       if (cleanContent.includes('<think>')) {
+         const parts = cleanContent.split('<think>');
+         cleanContent = parts[0] || '';
+         const unclosed = parts.slice(1).join('<think>');
+         if (unclosed) {
+           cleanReasoning += (cleanReasoning ? '\n' : '') + unclosed.trim();
+         }
+       }
+
+       return {
+         cleanContent: cleanContent.trim(),
+         cleanReasoning: cleanReasoning.trim()
+       };
+     }, [message.content, message.reasoning]);
+
      return (
       <div className={`${styles.bubbleRow} ${styles.aiRow}`}>
          <div className={styles.avatarWrap}>
@@ -244,42 +271,42 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                <div className={`${styles.avatarFallback} ${styles.aiAvatar}`}>✨</div>
             )}
          </div>
-
-         <div className={styles.messageCol}>
-            <div className={`${styles.nameTimeRow} ${styles.justifyStart}`}>
-               <span className={styles.nameLabel}>{aiName}</span>
-               <span className={styles.timeLabel} title={message.timestamp.toLocaleString()}>
-                 {formatTime(message.timestamp)}
-               </span>
-            </div>
-
-             {isEditing ? (
-               <div className={styles.aiBubbleCard}>
-                 {renderEditor()}
-               </div>
-              ) : (
-                <>
-                  <div className={styles.aiBubbleCard}>
-                     {renderAttachments(false)}
-
-                     {/* Reasoning 块 - 移到 aiBubbleCard 内部且默认折叠 */}
-                     {message.reasoning && (
-                       <ThinkingBlock
-                         content={message.reasoning}
-                         isThinking={false}
-                         defaultOpen={false}
-                         autoCollapse={true}
-                       />
-                     )}
-                     
-                     {/* 工具调用 */}
-                     {message.toolInvocations && message.toolInvocations.length > 0 && (
-                       <ToolResultGroup invocations={message.toolInvocations} />
-                     )}
-
-                     {/* 正文内容 */}
-                     {normalizedContent && <MarkdownRenderer content={normalizedContent} />}
-                  </div>
+ 
+          <div className={styles.messageCol}>
+             <div className={`${styles.nameTimeRow} ${styles.justifyStart}`}>
+                <span className={styles.nameLabel}>{aiName}</span>
+                <span className={styles.timeLabel} title={message.timestamp.toLocaleString()}>
+                  {formatTime(message.timestamp)}
+                </span>
+             </div>
+ 
+              {isEditing ? (
+                <div className={styles.aiBubbleCard}>
+                  {renderEditor()}
+                </div>
+               ) : (
+                 <>
+                   <div className={styles.aiBubbleCard}>
+                      {renderAttachments(false)}
+ 
+                      {/* Reasoning 块 - 移到 aiBubbleCard 内部且默认折叠 */}
+                      {cleanReasoning && (
+                        <ThinkingBlock
+                          content={cleanReasoning}
+                          isThinking={false}
+                          defaultOpen={false}
+                          autoCollapse={true}
+                        />
+                      )}
+                      
+                      {/* 工具调用 */}
+                      {message.toolInvocations && message.toolInvocations.length > 0 && (
+                        <ToolResultGroup invocations={message.toolInvocations} />
+                      )}
+ 
+                      {/* 正文内容 */}
+                      {cleanContent && <MarkdownRenderer content={cleanContent} />}
+                   </div>
 
                   <div className={styles.aiFooterRow}>
                       <MessageActionBar

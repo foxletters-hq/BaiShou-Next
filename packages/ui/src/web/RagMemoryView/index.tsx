@@ -34,6 +34,7 @@ export interface RagEntry {
   text: string;
   modelId: string;
   createdAt: number;
+  similarity?: number;
 }
 
 interface RagMemoryViewProps {
@@ -266,12 +267,22 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           value={searchQuery}
           onChange={handleSearch}
         />
-        <button
-          className={styles.searchModeToggle}
-          onClick={toggleSearchMode}
-        >
-          {searchMode === 'semantic' ? t('settings.rag_search_text', '文本搜索') : t('settings.rag_search_semantic', '语义搜索')}
-        </button>
+        <div className={styles.segmentedControl}>
+          <button 
+            type="button"
+            className={`${styles.segmentBtn} ${searchMode === 'semantic' ? styles.segmentBtnActive : ''}`}
+            onClick={() => searchMode !== 'semantic' && toggleSearchMode()}
+          >
+            {t('settings.rag_search_semantic_label', '语义搜索')}
+          </button>
+          <button 
+            type="button"
+            className={`${styles.segmentBtn} ${searchMode === 'text' ? styles.segmentBtnActive : ''}`}
+            onClick={() => searchMode !== 'text' && toggleSearchMode()}
+          >
+            {t('settings.rag_search_text_label', '文本搜索')}
+          </button>
+        </div>
         {searchQuery && (
           <div className={styles.clearSearchOuter} onClick={handleClearSearch}><MdClose size={18} /></div>
         )}
@@ -299,6 +310,14 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
                        <span>{e.modelId}</span>
                        <span>·</span>
                        <span>{formatDate(e.createdAt)}</span>
+                       {e.similarity !== undefined && (
+                         <>
+                           <span>·</span>
+                           <span className={styles.similarityTag}>
+                             {t('recall.similarity', '相似度')}: {Math.round(e.similarity * 100)}%
+                           </span>
+                         </>
+                       )}
                     </div>
                  </div>
                   <div className={styles.memoryEntryActionsBlock} style={{ position: 'relative' }}>

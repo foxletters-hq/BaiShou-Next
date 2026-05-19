@@ -209,3 +209,38 @@
     font-size: 13px;
   }
 }
+
+/* Custom Typography for Thinking Process Markdown elements */
+.content h1,
+.content h2,
+.content h3,
+.content h4,
+.content h5,
+.content h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-top: 14px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.content h1 { font-size: 1.15em; }
+.content h2 { font-size: 1.1em; }
+.content h3 { font-size: 1.05em; }
+.content h4, .content h5, .content h6 { font-size: 1em; }
+
+.content p {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+.content ul,
+.content ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.content li {
+  margin-bottom: 4px;
+  line-height: 1.6;
+}

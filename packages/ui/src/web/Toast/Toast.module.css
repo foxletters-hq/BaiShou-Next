@@ -30,6 +30,7 @@
 
 .exiting {
   animation: fadeOutToRight 0.2s cubic-bezier(0.8, 0, 0.8, 1) forwards;
+  pointer-events: none;
 }
 
 @keyframes slideInFromRight {

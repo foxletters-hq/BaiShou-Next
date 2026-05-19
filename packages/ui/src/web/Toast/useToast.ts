@@ -36,6 +36,10 @@ export const toast = {
   },
   showError: (message: ReactNode, options?: Partial<ToastMessage>) => {
     toast.show(message, { type: 'error', duration: 5000, iconColor: '#DC2626', ...options });
+  },
+  dismiss: (id: string) => {
+    toasts = toasts.filter((t) => t.id !== id);
+    listeners.forEach((l) => l([...toasts]));
   }
 };
 

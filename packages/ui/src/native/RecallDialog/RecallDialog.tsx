@@ -9,6 +9,7 @@ export interface RecallItem {
   title: string;
   snippet: string;
   date: string;
+  similarity?: number;
 }
 
 export interface NativeRecallDialogProps {
@@ -105,7 +106,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 fontWeight: '600',
                 color: colors.textPrimary,
               }}>
-                {t('recall.title', '上下文补充与唤醒')}
+                {t('recall.title', '唤醒回忆')}
               </Text>
             </View>
             <Pressable onPress={onClose}>
@@ -154,7 +155,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 color: activeTab === 'memory' ? colors.onPrimary : colors.textSecondary,
                 fontWeight: activeTab === 'memory' ? '600' : '400',
               }}>
-                {t('recall.tab_memory', '向量知识')}
+                {t('recall.tab_memory', '向量记忆')}
               </Text>
             </Pressable>
           </View>
@@ -249,6 +250,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                           flexDirection: 'row',
                           alignItems: 'center',
                           gap: tokens.spacing.xs,
+                          flex: 1,
                         }}>
                           <Text style={{ fontSize: 14 }}>
                             {item.type === 'diary' ? '📖' : '🧠'}
@@ -257,13 +259,45 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                             fontSize: 14,
                             fontWeight: '600',
                             color: colors.textPrimary,
-                          }}>
+                            flexShrink: 1,
+                          }} numberOfLines={1}>
                             {item.title}
                           </Text>
+                          {item.similarity !== undefined && (
+                            <View style={{
+                              backgroundColor: item.similarity >= 0.85 
+                                ? 'rgba(34, 197, 94, 0.1)' 
+                                : item.similarity >= 0.7 
+                                  ? 'rgba(59, 130, 246, 0.1)' 
+                                  : 'rgba(100, 116, 139, 0.1)',
+                              paddingHorizontal: 6,
+                              paddingVertical: 1,
+                              borderRadius: 8,
+                              borderWidth: 0.5,
+                              borderColor: item.similarity >= 0.85 
+                                ? 'rgba(34, 197, 94, 0.3)' 
+                                : item.similarity >= 0.7 
+                                  ? 'rgba(59, 130, 246, 0.3)' 
+                                  : 'rgba(100, 116, 139, 0.3)',
+                            }}>
+                              <Text style={{
+                                fontSize: 10,
+                                fontWeight: '700',
+                                color: item.similarity >= 0.85 
+                                  ? 'rgb(34, 197, 94)' 
+                                  : item.similarity >= 0.7 
+                                    ? 'rgb(59, 130, 246)' 
+                                    : 'rgb(100, 116, 139)',
+                              }}>
+                                {t('recall.match_score', '匹配度 {{score}}%', { score: (item.similarity * 100).toFixed(1) })}
+                              </Text>
+                            </View>
+                          )}
                         </View>
                         <Text style={{
                           fontSize: 12,
                           color: colors.textSecondary,
+                          marginLeft: tokens.spacing.xs,
                         }}>
                           {item.date}
                         </Text>

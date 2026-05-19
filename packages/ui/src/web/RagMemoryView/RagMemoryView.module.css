@@ -275,16 +275,15 @@
   align-items: center;
   background-color: var(--bg-surface);
   border-radius: 12px;
-  padding: 6px 12px;
+  padding: 8px 12px;
   margin-top: 8px;
   border: 1px solid var(--border-muted);
-  transition: border-color 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .searchBoxOuter:focus-within {
   border-color: var(--color-primary);
-  border-width: 2px;
-  padding: 5px 11px;
+  box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.1);
 }
 
 .searchIconOuter {
@@ -300,7 +299,7 @@
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
 .clearSearchOuter {
@@ -314,27 +313,38 @@
   color: var(--color-error);
 }
 
-.searchModeToggle {
+/* Segmented Control */
+.segmentedControl {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  background: rgba(var(--color-outline-variant-rgb, 226, 232, 240), 0.2);
+  padding: 2px;
+  border-radius: 8px;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.segmentBtn {
   padding: 4px 12px;
-  height: 28px;
-  border: 1px solid var(--border-muted);
-  border-radius: 6px;
-  background: var(--bg-surface-high);
-  color: var(--text-primary);
-  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  margin-left: 8px;
-  transition: all 0.2s;
-  flex-shrink: 0;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
-.searchModeToggle:hover {
-  border-color: var(--color-primary);
+
+.segmentBtn:hover {
+  color: var(--text-primary);
+}
+
+.segmentBtnActive {
+  background: var(--bg-surface);
   color: var(--color-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 /* === 6. List === */
@@ -504,60 +514,94 @@ input:checked + .slider:before { transform: translateX(20px); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
-  margin-top: 4px;
+  padding: 14px 20px;
+  margin-top: 16px;
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 
 .paginationInfo {
   font-size: 13px;
+  font-weight: 500;
   color: var(--text-secondary);
 }
 
 .paginationControls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
 }
 
 .pageSizeSelect {
-  padding: 4px 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--border-subtle, #e2e8f0);
+  border-radius: 8px;
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #0f172a);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  margin-right: 8px;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.pageSizeSelect:hover {
+  border-color: var(--color-primary, #5ba8f5);
+  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.15);
+}
+
+.pageSizeSelect:focus {
+  border-color: var(--color-primary, #5ba8f5);
+  box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.1);
 }
 
 .pageBtn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
+  border: 1.5px solid var(--border-subtle, #e2e8f0);
+  border-radius: 8px;
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #0f172a);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 .pageBtn:hover:not(:disabled) {
-  background: var(--bg-surface-high);
+  background: rgba(var(--color-primary-rgb), 0.04);
   border-color: var(--color-primary);
   color: var(--color-primary);
+  transform: translateY(-0.5px);
 }
+
 .pageBtn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
+  background: rgba(0, 0, 0, 0.02);
+  border-color: var(--border-muted, #f1f5f9);
 }
 
 .pageCurrent {
-  min-width: 48px;
+  min-width: 40px;
   text-align: center;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-primary);
+}
+
+/* 相似度标签 */
+.similarityTag {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }

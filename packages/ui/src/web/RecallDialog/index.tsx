@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, X, BookHeart, BrainCircuit, Check, ArrowUpCircle, History, Loader2 } from 'lucide-react';
+import { Search, X, BookHeart, Check, ArrowUpCircle, BookOpen, Loader2, Copy, BrainCircuit } from 'lucide-react';
 import styles from './RecallDialog.module.css';
 import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard/DashboardSharedMemoryCard';
+import { toast } from '../Toast/useToast';
 
 export interface RecallItem {
   id: string;
@@ -10,6 +11,7 @@ export interface RecallItem {
   title: string;
   snippet: string;
   date: string;
+  similarity?: number;
 }
 
 export interface RecallDialogProps {
@@ -86,8 +88,8 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
            
            <div className={styles.header}>
               <span className={styles.headerTitle}>
-                 <History size={22} className={styles.headerIcon} />
-                 {t('recall.title', '上下文补充与唤醒')}
+                 <BookOpen size={20} className={styles.headerIcon} />
+                 {t('recall.title_new', '唤醒回忆')}
               </span>
               <button className={styles.closeBtn} onClick={onClose}>
                  <X size={16} strokeWidth={3} />
@@ -106,7 +108,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                    className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
                    onClick={() => { setActiveTab('memory'); setSelectedIds(new Set()); setSearchQuery(''); }}
                  >
-                    {t('recall.tab_memory', '向量回忆')}
+                    {t('recall.tab_memory', '向量记忆')}
                  </div>
               </div>
            </div>
@@ -123,9 +125,22 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                    value={searchQuery}
                    onChange={e => setSearchQuery(e.target.value)}
                  />
-                 <button className={styles.ragSearchToggle} onClick={onToggleSearchMode}>
-                   {searchMode === 'semantic' ? t('recall.search_text', '文本搜索') : t('recall.search_semantic', '语义搜索')}
-                 </button>
+                 <div className={styles.segmentedControl}>
+                   <button 
+                     type="button"
+                     className={`${styles.segmentBtn} ${searchMode === 'semantic' ? styles.segmentBtnActive : ''}`}
+                     onClick={() => searchMode !== 'semantic' && onToggleSearchMode?.()}
+                   >
+                     {t('recall.search_semantic', '语义搜索')}
+                   </button>
+                   <button 
+                     type="button"
+                     className={`${styles.segmentBtn} ${searchMode === 'text' ? styles.segmentBtnActive : ''}`}
+                     onClick={() => searchMode !== 'text' && onToggleSearchMode?.()}
+                   >
+                     {t('recall.search_text', '文本搜索')}
+                   </button>
+                 </div>
                  {searchQuery && (
                    <div className={styles.ragSearchClear} onClick={() => setSearchQuery('')}>
                      <X size={16} />
@@ -154,23 +169,39 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                    </div>
                  ) : items.length > 0 ? (
                    items.map(item => {
-                     const isSelected = selectedIds.has(item.id);
                      return (
                        <div 
                          key={item.id} 
-                         className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}
-                         onClick={() => toggleSelect(item.id)}
+                         className={`${styles.card} ${styles.diaryCard}`}
+                         onClick={async () => {
+                           try {
+                             await navigator.clipboard.writeText(item.snippet);
+                             toast.showSuccess(t('recall.copy_success', '已复制记忆到剪贴板！'));
+                           } catch (err) {
+                             toast.showError(t('common.copy_failed', '复制失败'));
+                           }
+                         }}
                        >
-                          <div className={styles.checkboxWrap}>
-                             {isSelected && <Check size={14} strokeWidth={4} />}
-                          </div>
                           <div className={styles.cardInfo}>
                              <div className={styles.cardHeader}>
                                 <span className={styles.cardTitle}>
                                    <BookHeart size={16} className={styles.diaryIcon} />
                                    {item.title}
                                 </span>
-                                <span className={styles.cardDate}>{item.date}</span>
+                                <div className={styles.cardHeaderRight}>
+                                   <span className={styles.cardDate}>{item.date}</span>
+                                   <button 
+                                     className={styles.copyBtn}
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       navigator.clipboard.writeText(item.snippet);
+                                       toast.showSuccess(t('recall.copy_success', '已复制记忆到剪贴板！'));
+                                     }}
+                                     title={t('common.copy', '复制')}
+                                   >
+                                     <Copy size={14} />
+                                   </button>
+                                </div>
                              </div>
                              <div className={styles.cardSnippet}>{item.snippet}</div>
                           </div>
@@ -206,7 +237,20 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                                   <BrainCircuit size={16} className={styles.memoryIcon} />
                                   {item.title}
                                </span>
-                               <span className={styles.cardDate}>{item.date}</span>
+                               <div className={styles.cardHeaderRight}>
+                                  {searchMode === 'semantic' && item.similarity !== undefined && (
+                                    <span className={`${styles.similarityBadge} ${
+                                      item.similarity >= 0.85 
+                                        ? styles.similarityHigh 
+                                        : item.similarity >= 0.7 
+                                          ? styles.similarityMed 
+                                          : styles.similarityLow
+                                    }`}>
+                                      {t('recall.match_score', '匹配度 {{score}}%', { score: (item.similarity * 100).toFixed(1) })}
+                                    </span>
+                                  )}
+                                  <span className={styles.cardDate}>{item.date}</span>
+                               </div>
                             </div>
                             <div className={styles.cardSnippet}>{item.snippet}</div>
                          </div>
@@ -217,19 +261,21 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
              )}
            </div>
 
-           <div className={styles.footer}>
-              <div className={styles.selectionCount}>
-                 {t('recall.selected', '已选择')} <span className={styles.countBadge}>{selectedIds.size}</span>
-              </div>
-              <button 
-                className={styles.injectBtn} 
-                disabled={selectedIds.size === 0}
-                onClick={handleInject}
-              >
-                 <ArrowUpCircle size={18} />
-                 {t('recall.inject', '提取至当前上下文对话')}
-              </button>
-           </div>
+           {activeTab === 'memory' && (
+             <div className={styles.footer}>
+                <div className={styles.selectionCount}>
+                   {t('recall.selected', '已选择')} <span className={styles.countBadge}>{selectedIds.size}</span>
+                </div>
+                <button 
+                  className={styles.injectBtn} 
+                  disabled={selectedIds.size === 0}
+                  onClick={handleInject}
+                >
+                   <ArrowUpCircle size={16} />
+                   {t('recall.inject', '提取至当前上下文对话')}
+                </button>
+             </div>
+           )}
         </div>
       </div>
     </>
