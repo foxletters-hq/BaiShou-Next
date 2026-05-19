@@ -167,7 +167,11 @@ app.whenReady().then(async () => {
   // Register local protocol for secure local asset rendering
   protocol.handle('local', async (request) => {
     try {
-      const targetUrl = request.url.replace(/^local:/i, 'file:');
+      let targetUrl = request.url.replace(/^local:/i, 'file:');
+      // Ensure absolute file URL starts with file:/// on Windows/Unix
+      if (targetUrl.startsWith('file://') && !targetUrl.startsWith('file:///')) {
+        targetUrl = 'file:///' + targetUrl.slice(7);
+      }
       const physicalPath = fileURLToPath(targetUrl);
       const { existsSync } = require('node:fs');
       if (!existsSync(physicalPath)) {

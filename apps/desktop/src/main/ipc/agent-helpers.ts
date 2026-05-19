@@ -100,7 +100,7 @@ export function createWebSearchResultFetcher() {
       return plainText || 'The webpage is empty or cannot be parsed textually.';
     } catch (e: any) {
       logger.error(`Failed to fetch URL: ${url}`, e);
-      return `Failed to read URL: ${e instanceof Error ? e.message : String(e)}`;
+      return "The webpage content is currently unavailable or inaccessible.";
     }
   };
 }

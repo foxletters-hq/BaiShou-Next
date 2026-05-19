@@ -5,7 +5,7 @@ import { settingsManager } from './settings.ipc';
 import { DesktopEmbeddingStorage } from './rag.storage';
 import { getDiaryManager } from './diary.ipc';
 import { getAppDb } from '../db';
-import { memoryEmbeddingsTable } from '@baishou/database';
+import { memoryEmbeddingsTable, SqliteHybridSearchRepository } from '@baishou/database';
 import { eq, sql, desc, like } from 'drizzle-orm';
 import { AIProviderConfig } from '@baishou/shared';
 
@@ -170,8 +170,61 @@ export function registerRagIPC() {
     return true;
   });
 
-  ipcMain.handle('rag:query-entries', async (_, params: { keyword?: string, limit?: number, offset?: number }) => {
+  ipcMain.handle('rag:query-entries', async (_, params: { keyword?: string, limit?: number, offset?: number, mode?: 'semantic' | 'text' }) => {
     const db = getAppDb();
+    
+    // ── 语义检索分支（Semantic Search Mode） ──
+    if (params.mode === 'semantic' && params.keyword && params.keyword.trim() !== '') {
+      try {
+        if (embeddingService.isConfigured) {
+          const queryVector = await embeddingService.embedQuery(params.keyword);
+          if (queryVector) {
+            const rawClient = (db as any).session?.client || (db as any).$client;
+            if (rawClient) {
+              // 多态完美伪装：为 better-sqlite3 包装 execute，无缝适配 SqliteHybridSearchRepository
+              const mockClient = typeof rawClient.execute === 'function' ? rawClient : {
+                execute: async (statement: string | { sql: string; args?: any[] }, args?: any[]) => {
+                  let sqlStr = '';
+                  let sqlArgs: any[] = [];
+                  if (typeof statement === 'string') {
+                    sqlStr = statement;
+                    sqlArgs = args || [];
+                  } else {
+                    sqlStr = statement.sql;
+                    sqlArgs = statement.args || [];
+                  }
+                  
+                  const stmt = rawClient.prepare(sqlStr);
+                  if (sqlStr.trim().toUpperCase().startsWith('SELECT') || sqlStr.trim().toUpperCase().startsWith('PRAGMA')) {
+                    const rows = stmt.all(...sqlArgs);
+                    return { rows };
+                  } else {
+                    const res = stmt.run(...sqlArgs);
+                    return { rows: [], ...res };
+                  }
+                }
+              };
+
+              const hybridRepo = new SqliteHybridSearchRepository(mockClient as any);
+              const limit = params.limit || 30;
+              const vectorResults = await hybridRepo.queryNativeVector(queryVector, limit);
+              
+              return vectorResults.map(r => ({
+                embeddingId: r.messageId, // ISearchResult では messageId に embeddingId が入っている
+                text: r.chunkText,
+                modelId: config.getGlobalEmbeddingModelId() || 'unknown',
+                createdAt: r.createdAt || Date.now(),
+                similarity: r.score // コサイン類似度が score に入っている
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[rag.ipc] Semantic search failed, falling back to text search:', err);
+      }
+    }
+    
+    // ── 传统文本检索分支（Keyword/Text Search Mode, or fallback） ──
     const query = db.select().from(memoryEmbeddingsTable);
     
     if (params.keyword && params.keyword.trim() !== '') {

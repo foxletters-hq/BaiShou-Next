@@ -270,35 +270,28 @@ export const AgentLayout: React.FC = () => {
 
   return (
     <div className={styles.layoutContainer}>
-      {!isSidebarCollapsed ? (
-        <AgentSidebar
-          currentAssistant={mappedAssistant}
-          sessions={sessions}
-          hasMore={hasMoreSessions}
-          scrollKey={sidebarScrollKey}
-          onLoadMore={() => loadSessions(false)}
-          selectedSessionId={sessionId}
-          searchQuery={searchQuery}
-          pinnedAssistants={pinnedAssistants}
-          onSearchQueryChanged={setSearchQuery}
-          onSessionSelected={handleSelect}
-          onNewSession={handleNewChat}
-          onAssistantSwitched={handleAssistantSwitched}
-          onPinSession={handlePin}
-          onDeleteSession={handleDelete}
-          onRenameSession={handleRename}
-          onBatchDelete={handleBatchDelete}
-          onCollapse={() => setIsSidebarCollapsed(true)}
-          onShowPicker={() => setIsPickerOpen(true)}
-        />
-      ) : (
-        /* 折叠态：显示一个紧凑的图标栏，点击展开 */
-        <div className={styles.collapsedRail} onClick={() => setIsSidebarCollapsed(false)} title={t('agent.sidebar.expand', '展开侧边栏')}>
-          <div className={styles.collapsedIcon}>
-            <MdAutoAwesome size={22} color="#fff" />
-          </div>
-        </div>
-      )}
+      <AgentSidebar
+        currentAssistant={mappedAssistant}
+        sessions={sessions}
+        hasMore={hasMoreSessions}
+        scrollKey={sidebarScrollKey}
+        onLoadMore={() => loadSessions(false)}
+        selectedSessionId={sessionId}
+        searchQuery={searchQuery}
+        pinnedAssistants={pinnedAssistants}
+        onSearchQueryChanged={setSearchQuery}
+        onSessionSelected={handleSelect}
+        onNewSession={handleNewChat}
+        onAssistantSwitched={handleAssistantSwitched}
+        onPinSession={handlePin}
+        onDeleteSession={handleDelete}
+        onRenameSession={handleRename}
+        onBatchDelete={handleBatchDelete}
+        isCollapsed={isSidebarCollapsed}
+        onCollapse={() => setIsSidebarCollapsed(true)}
+        onExpand={() => setIsSidebarCollapsed(false)}
+        onShowPicker={() => setIsPickerOpen(true)}
+      />
       
       <div className={styles.chatArea}>
         <Outlet context={{ sessions, loadSessions }} />

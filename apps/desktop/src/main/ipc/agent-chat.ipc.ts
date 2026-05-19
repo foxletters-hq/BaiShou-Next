@@ -125,11 +125,11 @@ export function registerChatIPC() {
 
                try {
                  await fs.copyFile(att.filePath, destPath);
-                 att.url = `file://${destPath.replace(/\\/g, '/')}`;
+                 att.url = `file:///${destPath.replace(/\\/g, '/')}`;
                  att.filePath = destPath;
                 } catch (copyErr) {
                   logger.error('Failed to copy attachment:', { path: att.filePath, error: copyErr });
-                  att.url = `file://${att.filePath.replace(/\\/g, '/')}`;
+                  att.url = `file:///${att.filePath.replace(/\\/g, '/')}`;
                 }
             } else if (att.data && !att.url) {
                const ext = '.png';
@@ -138,7 +138,7 @@ export function registerChatIPC() {
                try {
                  const buffer = Buffer.from(att.data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
                  await fs.writeFile(destPath, buffer);
-                 att.url = `file://${destPath.replace(/\\/g, '/')}`;
+                 att.url = `file:///${destPath.replace(/\\/g, '/')}`;
                 } catch (e: any) {
                   logger.error('Failed to copy base64 attachment', e);
                 }
@@ -240,12 +240,18 @@ export function registerChatIPC() {
         fetchSearchPage: createFetchSearchPage(),
         abortSignal: globalAbortController.signal
       }, {
-        onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
-        onReasoningDelta: (chunk) => event.sender.send('agent:reasoning-chunk', chunk),
-        onToolCallStart: (name, argsObj) => event.sender.send('agent:tool-start', { name, args: argsObj }),
-        onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { name, result }),
-        onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
-        onFinish: () => event.sender.send('agent:stream-finish', { success: true })
+        onTextDelta: (chunk) => {
+          logger.info(`[IPC Stream] Text Delta: ${JSON.stringify(chunk)}`);
+          event.sender.send('agent:stream-chunk', { sessionId: args.sessionId, chunk });
+        },
+        onReasoningDelta: (chunk) => {
+          logger.info(`[IPC Stream] Reasoning Delta: ${JSON.stringify(chunk)}`);
+          event.sender.send('agent:reasoning-chunk', { sessionId: args.sessionId, chunk });
+        },
+        onToolCallStart: (name, argsObj) => event.sender.send('agent:tool-start', { sessionId: args.sessionId, name, args: argsObj }),
+        onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { sessionId: args.sessionId, name, result }),
+        onError: (err) => event.sender.send('agent:stream-finish', { sessionId: args.sessionId, error: err.message }),
+        onFinish: () => event.sender.send('agent:stream-finish', { sessionId: args.sessionId, success: true })
       });
 
       try {
@@ -319,11 +325,12 @@ export function registerChatIPC() {
           fetchSearchPage: createFetchSearchPage(),
           abortSignal: globalAbortController.signal
         }, {
-          onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
-          onToolCallStart: (name, args) => event.sender.send('agent:tool-start', { name, args }),
-          onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { name, result }),
-          onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
-          onFinish: () => event.sender.send('agent:stream-finish', { success: true })
+          onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', { sessionId, chunk }),
+          onReasoningDelta: (chunk) => event.sender.send('agent:reasoning-chunk', { sessionId, chunk }),
+          onToolCallStart: (name, args) => event.sender.send('agent:tool-start', { sessionId, name, args }),
+          onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { sessionId, name, result }),
+          onError: (err) => event.sender.send('agent:stream-finish', { sessionId, error: err.message }),
+          onFinish: () => event.sender.send('agent:stream-finish', { sessionId, success: true })
         });
         try { await sessionManager.flushSessionToDisk(sessionId); } catch (e: any) { logger.error('Agent regenerate persist error', e); }
         return true;
@@ -428,9 +435,12 @@ export function registerChatIPC() {
           fetchSearchPage: createFetchSearchPage(),
           abortSignal: globalAbortController.signal
         }, {
-          onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
-          onFinish: () => event.sender.send('agent:stream-finish', { success: true }),
-          onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
+          onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', { sessionId, chunk }),
+          onReasoningDelta: (chunk) => event.sender.send('agent:reasoning-chunk', { sessionId, chunk }),
+          onToolCallStart: (name, args) => event.sender.send('agent:tool-start', { sessionId, name, args }),
+          onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { sessionId, name, result }),
+          onFinish: () => event.sender.send('agent:stream-finish', { sessionId, success: true }),
+          onError: (err) => event.sender.send('agent:stream-finish', { sessionId, error: err.message }),
         });
         try { await sessionManager.flushSessionToDisk(sessionId); } catch (e: any) { logger.error('Agent edit-message persist error', e); }
         return true;
@@ -511,12 +521,12 @@ export function registerChatIPC() {
         fetchSearchPage: createFetchSearchPage(),
         abortSignal: globalAbortController.signal
       }, {
-        onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', chunk),
-        onReasoningDelta: (chunk) => event.sender.send('agent:reasoning-chunk', chunk),
-        onToolCallStart: (name, args) => event.sender.send('agent:tool-start', { name, args }),
-        onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { name, result }),
-        onError: (err) => event.sender.send('agent:stream-finish', { error: err.message }),
-        onFinish: () => event.sender.send('agent:stream-finish', { success: true })
+        onTextDelta: (chunk) => event.sender.send('agent:stream-chunk', { sessionId, chunk }),
+        onReasoningDelta: (chunk) => event.sender.send('agent:reasoning-chunk', { sessionId, chunk }),
+        onToolCallStart: (name, args) => event.sender.send('agent:tool-start', { sessionId, name, args }),
+        onToolCallResult: (name, result) => event.sender.send('agent:tool-result', { sessionId, name, result }),
+        onError: (err) => event.sender.send('agent:stream-finish', { sessionId, error: err.message }),
+        onFinish: () => event.sender.send('agent:stream-finish', { sessionId, success: true })
       });
 
       try {

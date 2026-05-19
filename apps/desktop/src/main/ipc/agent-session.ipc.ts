@@ -187,6 +187,8 @@ export function registerSessionIPC() {
       );
     }
 
+    await sessionManager.flushSessionToDisk(newSessionId);
+
     logger.info(`[Branch] Created branch session ${newSessionId} from ${sessionId}, copied ${messagesToCopy.length} messages`);
     return newSessionId;
   });

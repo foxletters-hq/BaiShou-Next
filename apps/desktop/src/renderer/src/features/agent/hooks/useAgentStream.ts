@@ -14,55 +14,135 @@ export interface UseAgentStreamResult {
   completedTools: ToolExecution[];
   error: string | null;
   saveUserMessage: (sessionId: string, text: string, attachments?: any[]) => Promise<{ userMessageId: string; attachments?: any[] } | { error: string }>;
-  startChat: (sessionId: string, text: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean) => Promise<void>;
-  editChat: (sessionId: string, messageId: string, text: string, providerId?: string, modelId?: string, attachments?: any[]) => Promise<void>;
+  startChat: (sessionId: string, text: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean, userMsgId?: string) => Promise<void>;
+  editChat: (sessionId: string, messageId: string, text: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean) => Promise<void>;
   resendChat: (sessionId: string, messageId: string, searchMode?: boolean, providerId?: string, modelId?: string) => Promise<void>;
   reset: () => void;
 }
 
-export function useAgentStream(): UseAgentStreamResult {
-  const [text, setText] = useState('');
-  const [reasoning, setReasoning] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [activeTool, setActiveTool] = useState<{ name: string; args: any } | null>(null);
-  const [completedTools, setCompletedTools] = useState<ToolExecution[]>([]);
-  const [error, setError] = useState<string | null>(null);
+interface SessionStreamState {
+  text: string;
+  reasoning: string;
+  isStreaming: boolean;
+  activeTool: { name: string; args: any } | null;
+  completedTools: ToolExecution[];
+  error: string | null;
+  activeToolStartTime?: number;
+}
 
-  // Buffer updates to avoid too many React re-renders on fast streams
-  const textRef = useRef('');
-  const reasoningRef = useRef('');
-  const activeToolStartRef = useRef<number>(0);
+// ── 全局多会话流状态存储 ──
+const sessionStates: Record<string, SessionStreamState> = {};
+const sessionListeners: Record<string, Set<() => void>> = {};
 
+function getOrCreateSessionState(sessionId: string): SessionStreamState {
+  if (!sessionStates[sessionId]) {
+    sessionStates[sessionId] = {
+      text: '',
+      reasoning: '',
+      isStreaming: false,
+      activeTool: null,
+      completedTools: [],
+      error: null
+    };
+  }
+  return sessionStates[sessionId];
+}
+
+function updateSessionState(sessionId: string, updater: (state: SessionStreamState) => void) {
+  const state = getOrCreateSessionState(sessionId);
+  updater(state);
+  if (sessionListeners[sessionId]) {
+    sessionListeners[sessionId].forEach(listener => listener());
+  }
+}
+
+export function useAgentStream(currentSessionId?: string): UseAgentStreamResult {
+  const [version, setVersion] = useState(0);
+  const sessionIdRef = useRef(currentSessionId);
+
+  useEffect(() => {
+    sessionIdRef.current = currentSessionId;
+  }, [currentSessionId]);
+
+  // 订阅当前活动会话的更新，并在其变化时强制 React 重新渲染
+  useEffect(() => {
+    if (!currentSessionId) return;
+
+    if (!sessionListeners[currentSessionId]) {
+      sessionListeners[currentSessionId] = new Set();
+    }
+
+    const forceUpdate = () => setVersion(v => v + 1);
+    sessionListeners[currentSessionId].add(forceUpdate);
+
+    return () => {
+      if (sessionListeners[currentSessionId]) {
+        sessionListeners[currentSessionId].delete(forceUpdate);
+      }
+    };
+  }, [currentSessionId]);
+
+  // 全局唯一的一组 IPC 监听器：负责分发所有来自后端的流数据到对应 sessionStates
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electron || !window.electron.ipcRenderer) return () => {};
 
-    const cleanupChunk = window.electron.ipcRenderer.on('agent:stream-chunk', (_, chunk: string) => {
-      textRef.current += chunk;
-      setText(textRef.current);
+    const cleanupChunk = window.electron.ipcRenderer.on('agent:stream-chunk', (_, payload: any) => {
+      const sId = typeof payload === 'object' ? payload?.sessionId : null;
+      const chunk = typeof payload === 'object' ? payload?.chunk : payload;
+      if (!sId) return;
+
+      updateSessionState(sId, (state) => {
+        state.text += chunk;
+      });
     });
 
-    const cleanupReasoning = window.electron.ipcRenderer.on('agent:reasoning-chunk', (_, chunk: string) => {
-      reasoningRef.current += chunk;
-      setReasoning(reasoningRef.current);
+    const cleanupReasoning = window.electron.ipcRenderer.on('agent:reasoning-chunk', (_, payload: any) => {
+      const sId = typeof payload === 'object' ? payload?.sessionId : null;
+      const chunk = typeof payload === 'object' ? payload?.chunk : payload;
+      if (!sId) return;
+
+      console.log('[Renderer Stream] Reasoning Chunk:', JSON.stringify(chunk));
+      updateSessionState(sId, (state) => {
+        state.reasoning += chunk;
+      });
     });
 
-    const cleanupToolStart = window.electron.ipcRenderer.on('agent:tool-start', (_, { name, args }) => {
-      activeToolStartRef.current = Date.now();
-      setActiveTool({ name, args });
+    const cleanupToolStart = window.electron.ipcRenderer.on('agent:tool-start', (_, payload: any) => {
+      const sId = typeof payload === 'object' ? payload?.sessionId : null;
+      if (!sId) return;
+      const name = typeof payload === 'object' ? payload?.name : payload?.name;
+      const args = typeof payload === 'object' ? payload?.args : payload?.args;
+
+      updateSessionState(sId, (state) => {
+        state.activeToolStartTime = Date.now();
+        state.activeTool = { name, args };
+      });
     });
 
-    const cleanupToolResult = window.electron.ipcRenderer.on('agent:tool-result', (_, { name }) => {
-      const durationMs = Date.now() - activeToolStartRef.current;
-      setCompletedTools(prev => [...prev, { name, startTime: activeToolStartRef.current, durationMs }]);
-      setActiveTool(null);
+    const cleanupToolResult = window.electron.ipcRenderer.on('agent:tool-result', (_, payload: any) => {
+      const sId = typeof payload === 'object' ? payload?.sessionId : null;
+      if (!sId) return;
+      const name = typeof payload === 'object' ? payload?.name : payload?.name;
+
+      updateSessionState(sId, (state) => {
+        const start = state.activeToolStartTime || Date.now();
+        const durationMs = Date.now() - start;
+        state.completedTools.push({ name, startTime: start, durationMs });
+        state.activeTool = null;
+      });
     });
 
-    const cleanupFinish = window.electron.ipcRenderer.on('agent:stream-finish', (_, payload) => {
-      setIsStreaming(false);
-      if (payload?.error) {
-         setError(payload.error);
-      }
-      setActiveTool(null);
+    const cleanupFinish = window.electron.ipcRenderer.on('agent:stream-finish', (_, payload: any) => {
+      const sId = typeof payload === 'object' ? payload?.sessionId : null;
+      if (!sId) return;
+
+      updateSessionState(sId, (state) => {
+        state.isStreaming = false;
+        if (payload?.error) {
+          state.error = payload.error;
+        }
+        state.activeTool = null;
+      });
     });
 
     return () => {
@@ -74,69 +154,77 @@ export function useAgentStream(): UseAgentStreamResult {
     };
   }, []);
 
-  // 同步落盘：先保存用户消息到 DB，拿到真实 UUID 后再展示
   const saveUserMessage = useCallback(async (sessionId: string, userText: string, attachments?: any[]): Promise<{ userMessageId: string; attachments?: any[] } | { error: string }> => {
     const result = await window.electron.ipcRenderer.invoke('agent:save-user-message', { sessionId, text: userText, attachments });
     return result;
   }, []);
 
   const startChat = useCallback(async (sessionId: string, userText: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean, userMsgId?: string): Promise<void> => {
-    setIsStreaming(true);
-    setError(null);
-    setActiveTool(null);
-    setCompletedTools([]);
-    textRef.current = '';
-    reasoningRef.current = '';
-    setText('');
-    setReasoning('');
+    updateSessionState(sessionId, (state) => {
+      state.isStreaming = true;
+      state.error = null;
+      state.activeTool = null;
+      state.completedTools = [];
+      state.text = '';
+      state.reasoning = '';
+      state.activeToolStartTime = undefined;
+    });
 
     await window.electron.ipcRenderer.invoke('agent:chat', { sessionId, text: userText, providerId, modelId, attachments, searchMode, userMsgId });
   }, []);
 
   const editChat = useCallback(async (sessionId: string, messageId: string, userText: string, providerId?: string, modelId?: string, attachments?: any[], searchMode?: boolean) => {
-    setIsStreaming(true);
-    setError(null);
-    setActiveTool(null);
-    setCompletedTools([]);
-    textRef.current = '';
-    reasoningRef.current = '';
-    setText('');
-    setReasoning('');
+    updateSessionState(sessionId, (state) => {
+      state.isStreaming = true;
+      state.error = null;
+      state.activeTool = null;
+      state.completedTools = [];
+      state.text = '';
+      state.reasoning = '';
+      state.activeToolStartTime = undefined;
+    });
 
     await window.electron.ipcRenderer.invoke('agent:edit-message', sessionId, messageId, userText, providerId, modelId, attachments, searchMode);
   }, []);
 
   const resendChat = useCallback(async (sessionId: string, messageId: string, searchMode?: boolean, providerId?: string, modelId?: string) => {
-    setIsStreaming(true);
-    setError(null);
-    setActiveTool(null);
-    setCompletedTools([]);
-    textRef.current = '';
-    reasoningRef.current = '';
-    setText('');
-    setReasoning('');
+    updateSessionState(sessionId, (state) => {
+      state.isStreaming = true;
+      state.error = null;
+      state.activeTool = null;
+      state.completedTools = [];
+      state.text = '';
+      state.reasoning = '';
+      state.activeToolStartTime = undefined;
+    });
 
     await window.electron.ipcRenderer.invoke('agent:resend', sessionId, messageId, searchMode, providerId, modelId);
   }, []);
 
   const reset = useCallback(() => {
-    textRef.current = '';
-    reasoningRef.current = '';
-    setText('');
-    setReasoning('');
-    setError(null);
-    setIsStreaming(false);
-    setActiveTool(null);
-    setCompletedTools([]);
-  }, []);
+    if (!currentSessionId) return;
+    updateSessionState(currentSessionId, (state) => {
+      state.text = '';
+      state.reasoning = '';
+      state.error = null;
+      state.isStreaming = false;
+      state.activeTool = null;
+      state.completedTools = [];
+      state.activeToolStartTime = undefined;
+    });
+  }, [currentSessionId]);
+
+  const activeState = currentSessionId
+    ? getOrCreateSessionState(currentSessionId)
+    : { text: '', reasoning: '', isStreaming: false, activeTool: null, completedTools: [], error: null };
 
   return {
-    text,
-    reasoning,
-    isStreaming,
-    activeTool,
-    completedTools,
-    error,
+    text: activeState.text,
+    reasoning: activeState.reasoning,
+    isStreaming: activeState.isStreaming,
+    activeTool: activeState.activeTool,
+    completedTools: activeState.completedTools,
+    error: activeState.error,
     saveUserMessage,
     startChat,
     editChat,

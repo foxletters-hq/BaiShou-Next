@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { 
   ChatBubble, 
@@ -39,7 +39,7 @@ export const AgentScreen: React.FC = () => {
   const { sessions, loadSessions } = useOutletContext<{ sessions: any[], loadSessions?: (reset: boolean, assistantId?: string) => void }>() || { sessions: [] };
 
   // ── 1. 流式通道 ──
-  const stream = useAgentStream();
+  const stream = useAgentStream(sessionId);
 
   // ── 2. 助手解析 ──
   const { currentAssistant } = useAssistantResolver({ sessionId, sessions });
@@ -322,6 +322,22 @@ export const AgentScreen: React.FC = () => {
       window.electron.ipcRenderer.invoke('agent:stop-stream').catch(console.error);
     }
   };
+
+  // ── 解析当前正在运行的工具名称（汉化及搜索引擎展示） ──
+  const activeToolDisplayName = useMemo(() => {
+    if (!stream.activeTool) return null;
+    if (stream.activeTool.name === 'web_search') {
+      const engine = settings.webSearchConfig?.webSearchEngine || 'duckduckgo';
+      const engineNames: Record<string, string> = {
+        'local-google': t('settings.web_search_engine_local_google', 'Google 本地搜索'),
+        'local-bing': t('settings.web_search_engine_local_bing', 'Bing 本地搜索'),
+        'duckduckgo': t('settings.web_search_engine_duckduckgo', 'DuckDuckGo'),
+        'tavily': t('settings.web_search_engine_tavily', 'Tavily API')
+      };
+      return `${t('agent.tools.web_search', '网络搜索')} (${engineNames[engine] || engine})`;
+    }
+    return t(`agent.tools.${stream.activeTool.name}`, stream.activeTool.name);
+  }, [stream.activeTool, settings.webSearchConfig, t]);
 
   return (
     <div className={styles.screen}>
@@ -622,7 +638,9 @@ export const AgentScreen: React.FC = () => {
                 onBranch={msg.role === 'assistant' ? async () => {
                   if (typeof window !== 'undefined' && window.electron) {
                     try {
-                      const title = `${currentAssistant?.name || '对话'} (${t('agent.chat.branch', '分支')})`;
+                      const currentSession = sessions.find(s => s.id === sessionId);
+                      const originalTitle = currentSession?.title || currentAssistant?.name || '对话';
+                      const title = `${originalTitle} (${t('agent.chat.branch', '分支')})`;
                       const newSessionId = await window.electron.ipcRenderer.invoke('agent:branch-session', {
                         sessionId,
                         messageId: msg.id,
@@ -631,7 +649,9 @@ export const AgentScreen: React.FC = () => {
                       if (newSessionId) {
                         toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'));
                         // 刷新侧边栏会话列表
-      if (loadSessions) loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
+                        if (loadSessions) {
+                          await loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
+                        }
                         // 导航到新会话
                         const astId = currentAssistant?.id ? String(currentAssistant.id) : '';
                         navigate(`/chat/${newSessionId}${astId ? `?assistantId=${astId}` : ''}`);
@@ -651,7 +671,7 @@ export const AgentScreen: React.FC = () => {
               text={stream.text}
               reasoning={stream.reasoning}
               isReasoning={Boolean(stream.reasoning && !stream.text)}
-              activeToolName={stream.activeTool?.name}
+              activeToolName={activeToolDisplayName}
               completedTools={stream.completedTools}
               aiProfile={{ name: currentAssistant?.name || 'AI', avatarPath: currentAssistant?.avatarPath, emoji: currentAssistant?.emoji }}
             />
@@ -741,6 +761,7 @@ export const AgentScreen: React.FC = () => {
           onToggleSearchMode={toggleSearchMode}
           ttsMode={ttsMode}
           onToggleTtsMode={toggleTtsMode}
+          modelId={model.currentModelId}
         />
       </div>
     </div>
