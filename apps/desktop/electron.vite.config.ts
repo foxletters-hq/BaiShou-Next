@@ -24,7 +24,7 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
-        external: ['electron', '@libsql/client']
+        external: ['electron', '@libsql/client', 'better-sqlite3']
       }
     }
   },

@@ -1,4 +1,3 @@
-/* ─── 侧边栏容器 — width:280, 右1px分割线, 全高 flex column ─── */
 .sidebar {
   width: 280px;
   height: 100%;
@@ -8,22 +7,63 @@
   border-right: 1px solid var(--border-subtle);
   flex-shrink: 0;
   overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed {
+  width: 60px;
+}
+
+.sidebar.collapsed .brandRow {
+  padding: 24px 24px 12px 24px;
+  width: 100%;
+  position: relative;
+}
+
+.brandInfo {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed .brandInfo {
+  opacity: 0;
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.sidebarContent {
+  width: 280px;
+  height: calc(100% - 76px);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed .sidebarContent {
+  opacity: 0;
+  filter: blur(8px);
+  pointer-events: none;
 }
 
 /* ─── 品牌顶部区 — padding: fromLTRB(20,20,20,12) ─── */
 .brandRow {
   display: flex;
   align-items: center;
-  padding: 20px 20px 12px 20px;
+  padding: 24px 24px 12px 24px;
   flex-shrink: 0;
+  white-space: nowrap;
+  position: relative;
 }
 
-/* 40x40 圆角12 蓝色方块 */
+/* 40x40 圆角8 蓝色方块 */
 .brandIconBox {
   width: 40px;
   height: 40px;
   background-color: var(--color-primary);
-  border-radius: 12px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -36,14 +76,15 @@
 }
 
 .brandText {
-  margin-left: 12px;
+  margin-left: 16px;
   font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
   flex: 1;
+  white-space: nowrap;
 }
 
-.collapseBtn {
+.toggleBtn {
   background: none;
   border: none;
   padding: 4px;
@@ -53,14 +94,23 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  transition: background-color 0.2s;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
+  position: absolute;
+  right: 24px;
+  top: 30px;
+  width: 28px;
+  height: 28px;
+  z-index: 10;
 }
 
-.collapseBtn:hover {
+.toggleBtn:hover {
   background-color: rgba(148, 163, 184, 0.1);
 }
 
-/* ─── 可滚动主体 ─── */
+.sidebar.collapsed .toggleBtn {
+  right: 16px;
+}
+
 .scroller {
   flex: 1;
   display: flex;

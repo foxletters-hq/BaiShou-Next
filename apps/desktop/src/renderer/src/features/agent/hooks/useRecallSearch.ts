@@ -52,9 +52,10 @@ export function useRecallSearch(): UseRecallSearchResult {
           setRecallItems(dbEntries.map((r: any) => ({
             id: r.embeddingId,
             type: 'memory',
-            title: t('agent.trace_title', '调用追踪 [{{modelId}}]', { modelId: r.modelId || t('common.system', '系统') }),
+            title: `[${r.modelId || t('common.system', '系统')}]`,
             snippet: r.text,
             date: new Date(r.createdAt || Date.now()).toISOString().split('T')[0],
+            similarity: r.similarity,
           })));
         } else {
           setRecallItems([]);

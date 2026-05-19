@@ -616,11 +616,9 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
               onSearch={async (q, mode) => {
                 setIsProcessing(true);
                 try {
-                  const params: any = { limit: 50 };
-                  if (mode === 'text') {
+                  const params: any = { limit: 50, mode };
+                  if (q && q.trim() !== '') {
                     params.keyword = q;
-                  } else {
-                    params.semanticQuery = q;
                   }
                   const e = await (window as any).api?.rag?.queryEntries(params);
                   if (e) setRagEntries(e);

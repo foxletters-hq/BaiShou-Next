@@ -21,7 +21,10 @@ export function useTokenUsage(sessionId: string | undefined, isStreaming: boolea
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({ inputTokens: 0, outputTokens: 0, totalCostMicros: 0 });
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      setTokenUsage({ inputTokens: 0, outputTokens: 0, totalCostMicros: 0 });
+      return;
+    }
     if (typeof window !== 'undefined' && window.electron) {
       window.electron.ipcRenderer.invoke('agent:get-token-usage', sessionId)
         .then(res => { if (res) setTokenUsage(res); })
