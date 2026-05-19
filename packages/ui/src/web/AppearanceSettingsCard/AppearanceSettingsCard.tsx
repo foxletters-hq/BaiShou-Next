@@ -127,7 +127,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
           </div>
           
           <div className="appearance-row divider-row">
-            <div className="settings-divider" />
+            <div className="settings-list-divider indent" />
           </div>
 
           <div className="appearance-row" style={{ marginTop: '8px' }}>

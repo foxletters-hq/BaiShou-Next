@@ -90,7 +90,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
           <MdChevronRight size={22} className="settings-list-tile-trailing" />
         </button>
 
-        <div className="settings-list-divider" />
+        <div className="settings-list-divider indent" />
 
         {/* 导入数据 */}
         <button className="settings-list-tile" onClick={handleImport} disabled={isExporting || isImporting || !onPickFile}>
@@ -104,7 +104,7 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
           <MdChevronRight size={22} className="settings-list-tile-trailing" />
         </button>
 
-        <div className="settings-list-divider" />
+        <div className="settings-list-divider indent" />
 
         {/* 恢复快照 */}
         <SettingsExpansionTile

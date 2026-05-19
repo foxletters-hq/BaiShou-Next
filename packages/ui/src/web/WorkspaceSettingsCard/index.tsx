@@ -100,7 +100,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
           );
         })}
 
-        <div className="settings-list-divider" />
+        <div className="settings-list-divider indent" />
 
         {/* 创建新空间 */}
         <button className="settings-list-tile" onClick={handleCreate}>
