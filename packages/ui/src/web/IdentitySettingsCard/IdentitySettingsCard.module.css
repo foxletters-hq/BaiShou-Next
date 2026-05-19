@@ -1,7 +1,7 @@
 .flutterCardContainer {
   display: flex;
   flex-direction: column;
-  padding: 0 0 16px 0; /* Changed padding: Removed top padding so the header goes edge-to-edge */
+  padding: 0;
 }
 
 .headerRow {
@@ -87,6 +87,7 @@
   transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.3s ease;
   opacity: 0;
+  overflow: hidden;
 }
 
 .collapseWrapper.collapseOpen {
@@ -95,6 +96,7 @@
 }
 
 .collapseInner {
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -198,7 +200,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 16px;
+  padding: 0 16px 16px 16px;
 }
 
 .factsHeader {

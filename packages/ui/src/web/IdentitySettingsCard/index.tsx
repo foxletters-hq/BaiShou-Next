@@ -160,7 +160,15 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({ prof
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            {collapsed ? <MdExpandMore size={20} style={{ color: 'var(--text-tertiary)' }} /> : <MdExpandLess size={20} style={{ color: 'var(--text-tertiary)' }} />}
+            <MdExpandMore 
+              size={24} 
+              style={{ 
+                color: 'var(--color-on-surface-variant)', 
+                transition: 'transform 0.25s', 
+                transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+                flexShrink: 0 
+              }} 
+            />
           </div>
         </div>
       </div>

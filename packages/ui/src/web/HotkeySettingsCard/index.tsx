@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdOutlineKeyboard, MdOutlineEdit } from 'react-icons/md';
+import { MdOutlineKeyboard, MdOutlineEdit, MdExpandMore } from 'react-icons/md';
 import '../shared/SettingsListTile.css';
 
 export interface HotkeyConfig {
@@ -19,6 +19,8 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
   const [isRecording, setIsRecording] = useState(false);
   const [localModifier, setLocalModifier] = useState(config.hotkeyModifier);
   const [localKey, setLocalKey] = useState(config.hotkeyKey);
+  
+  const [collapsed, setCollapsed] = useState(true);
 
   const CONFLICT_LIST = [
     'CommandOrControl+C', 'CommandOrControl+V', 'CommandOrControl+X',
@@ -109,7 +111,15 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
 
   return (
     <div>
-      <div className="settings-list-tile settings-list-tile-noclick">
+      <div 
+        className="settings-list-tile" 
+        onClick={() => {
+          if (config.hotkeyEnabled) {
+            setCollapsed(!collapsed);
+          }
+        }}
+        style={{ cursor: config.hotkeyEnabled ? 'pointer' : 'default' }}
+      >
         <div className="settings-list-tile-leading">
           <MdOutlineKeyboard size={24} />
         </div>
@@ -121,18 +131,39 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
               : t('hotkey.enable_global_desc_disabled', '未开启全局呼出快捷键')}
           </span>
         </div>
+        
         <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
           <input 
             type="checkbox" 
             checked={config.hotkeyEnabled}
-            onChange={(e) => onChange({ ...config, hotkeyEnabled: e.target.checked })}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              onChange({ ...config, hotkeyEnabled: checked });
+              if (checked) {
+                setCollapsed(false); // Auto expand when turned ON
+              }
+            }}
           />
           <span className="settings-switch-slider" />
         </label>
+
+        {config.hotkeyEnabled && (
+          <MdExpandMore 
+            size={24} 
+            style={{ 
+              color: 'var(--color-on-surface-variant)', 
+              transition: 'transform 0.25s', 
+              transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+              marginLeft: 12,
+              flexShrink: 0 
+            }} 
+          />
+        )}
       </div>
 
-      {config.hotkeyEnabled && (
-        <>
+      {/* 录入快捷组合键 — 用 CSS grid 动画实现平滑展开/收起 */}
+      <div className={`settings-expansion-grid-wrapper ${config.hotkeyEnabled && !collapsed ? 'expanded' : ''}`}>
+        <div className="settings-expansion-grid-item">
           <div className="settings-list-divider indent" />
           <div className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }} />
@@ -162,8 +193,8 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
               {isRecording ? t('hotkey.listening', '正在监听...') : displayString}
             </button>
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };

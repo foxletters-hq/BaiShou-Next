@@ -36,10 +36,15 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
               : t('settings.mcp_desc', '将数据以 MCP 协议提供给外部 IDE 或智能应用')}
           </span>
         </div>
-        {collapsed 
-          ? <MdExpandMore size={20} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} /> 
-          : <MdExpandLess size={20} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-        }
+        <MdExpandMore 
+          size={24} 
+          style={{ 
+            color: 'var(--color-on-surface-variant)', 
+            transition: 'transform 0.25s', 
+            transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+            flexShrink: 0 
+          }} 
+        />
       </div>
 
       {/* 可折叠内容区域 */}

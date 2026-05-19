@@ -234,7 +234,7 @@
 .settings-item-divider {
   height: 1px;
   background-color: var(--color-outline-variant);
-  margin: 0 16px;
+  margin: 0;
 }
 
 /* Match dark mode nicely */
