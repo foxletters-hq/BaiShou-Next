@@ -41,6 +41,7 @@ import { MobileStoragePathService } from '../services/path.service';
 import { MobileArchiveService } from '../services/archive.service';
 import { MobileLanSyncService } from '../services/lan-sync.service';
 import { MobileCloudSyncService } from '../services/cloud-sync.service';
+import { logger } from '@baishou/shared';
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
 interface BaishouContextValue {
@@ -96,7 +97,7 @@ async function webFetchContent(url: string): Promise<string> {
 
     return plainText || 'The webpage is empty or cannot be parsed textually.';
   } catch (e: any) {
-    console.error(`Failed to fetch URL: ${url}`, e);
+    logger.error(`Failed to fetch URL: ${url}`, e);
     return `Failed to read URL: ${e.message || String(e)}`;
   }
 }
@@ -121,7 +122,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         try {
         } catch (e) {
-           console.warn('Native sqlite-vec extension not detected on mobile. RAG will fallback to JS calculation.');
+           logger.warn('Native sqlite-vec extension not detected on mobile. RAG will fallback to JS calculation.');
         }
 
         // 2. 注入 Drizzle 层
@@ -234,12 +235,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                fetchSearchPage: fetchDuckDuckGoSearch,
             }, callbacks);
           } catch(e) {
-            console.error('Mobile Agent Chat Failed:', e);
+            logger.error('Mobile Agent Chat Failed:', e);
             throw e;
           }
         };
 
-        console.log('Mobile DB and DI Container Ready!');
+        logger.info('Mobile DB and DI Container Ready!');
 
         if (isMounted) {
           setValue({
@@ -260,7 +261,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (e) {
-        console.error('Failed to init Baishou DB:', e);
+        logger.error('Failed to init Baishou DB:', e);
       }
     }
 
