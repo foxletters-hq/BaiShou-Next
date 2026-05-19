@@ -54,7 +54,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
     }, 400);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, searchMode, activeTab, isOpen]);
+  }, [searchQuery, searchMode, activeTab, isOpen, onSearch]);
 
   // 日记档案 tab 切换时触发一次搜索
   useEffect(() => {
@@ -83,7 +83,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
 
   return (
     <>
-      <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.overlay}>
         <div className={styles.dialog} onClick={e => e.stopPropagation()}>
            
            <div className={styles.header}>
@@ -185,7 +185,6 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                           <div className={styles.cardInfo}>
                              <div className={styles.cardHeader}>
                                 <span className={styles.cardTitle}>
-                                   <BookHeart size={16} className={styles.diaryIcon} />
                                    {item.title}
                                 </span>
                                 <div className={styles.cardHeaderRight}>
@@ -234,7 +233,6 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                          <div className={styles.cardInfo}>
                             <div className={styles.cardHeader}>
                                <span className={styles.cardTitle}>
-                                  <BrainCircuit size={16} className={styles.memoryIcon} />
                                   {item.title}
                                </span>
                                <div className={styles.cardHeaderRight}>
