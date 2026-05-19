@@ -381,13 +381,8 @@ export class SessionRepository {
   private async _upsertAggregateInternal(aggregate: any): Promise<void> {
      const { session, messages } = aggregate;
 
-     // 获取原始 libsql client（db.$client 是 drizzle-orm/libsql 的公共属性）
-     // 使用 batch() 将单会话的所有写操作打包成一次原子提交，
-     // 彻底规避 libsql v0.17.x 累积 40+ 次 prepare/execute 后
-     // 内部 sqlite3_stmt 池溢出导致的伪 SQLITE_CORRUPT 问题。
-     const rawClient = (this.db as any).$client as {
-       batch: (statements: Array<{ sql: string; args?: any[] }>) => Promise<any[]>
-     };
+     // 获取原始 client 以便进行多态 batch 事务提交
+     const rawClient = (this.db as any).$client;
 
      const toUnixSec = (ts: any): number => {
         const d = this._toDate(ts);
@@ -463,7 +458,18 @@ export class SessionRepository {
         }
      }
 
-     // 一次性提交所有语句，单次 prepare/execute 往返
-     await rawClient.batch(stmts);
+     // 4. 一次性多态批量提交所有语句，单次 prepare/execute 往返
+     if (rawClient && typeof rawClient.batch === 'function') {
+        // LibSQL 驱动路径
+        await rawClient.batch(stmts);
+     } else if (rawClient) {
+        // Better-SQLite3 / 标准 Node-SQLite 驱动路径：使用同步高性能事务
+        const runTx = rawClient.transaction((statements: typeof stmts) => {
+           for (const stmt of statements) {
+              rawClient.prepare(stmt.sql).run(...(stmt.args || []));
+           }
+        });
+        runTx(stmts);
+     }
   }
 }

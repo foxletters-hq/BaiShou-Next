@@ -1084,6 +1084,8 @@
       "round_cost": "今回",
       "pricing_table_title": "価格表情報",
       "pricing_last_updated": "最終更新",
+      "pricing_source": "価格データソース",
+      "pricing_source_tooltip": "クリックして外部ブラウザで元のAPI価格データを表示します",
       "pricing_refresh": "価格表を更新",
       "pricing_refreshing": "更新中...",
       "pricing_refresh_failed": "価格表の更新に失敗しました",
@@ -1328,7 +1330,8 @@
       "timeout": "リクエストがタイムアウトしました。もう一度お試しください。",
       "quota": "プロバイダーからアカウントのクォータまたは残高不足が報告されました。",
       "unknown": "エラーが発生しました：{{msg}}",
-      "create_session": "システムエラーによりセッションの作成に失敗しました: {{msg}}"
+      "create_session": "システムエラーによりセッションの作成に失敗しました: {{msg}}",
+      "vision_not_supported": "現在のモデルは画像認識/ビジョンマルチモーダル機能をサポートしていません。別のモデルに切り替えてもう一度お試しください。"
     },
     "generation_failed": "返信の生成に失敗しました",
     "trace_title": "トレース [{{modelId}}]",
@@ -1353,7 +1356,9 @@
   },
   "input": {
     "upload_attachment": "添付ファイルをアップロード",
-    "shortcut_command": "ショートカットコマンド"
+    "shortcut_command": "ショートカットコマンド",
+    "vision_not_supported_warn": "現在のモデルは画像認識をサポートしていません。最良の結果を得るには、マルチモーダルモデル（例：gpt-4o、gemini-1.5）に切り替えることをお勧めします。",
+    "model_no_vision_hint": "現在のモデルは画像をサポートしていない可能性があります。マルチモーダルモデルへの切り替えをお勧めします"
   },
   "shortcut": {
     "label_name": "ショートカットラベル名",

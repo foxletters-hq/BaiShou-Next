@@ -1135,6 +1135,8 @@
       "round_cost": "Round",
       "pricing_table_title": "Pricing Table Info",
       "pricing_last_updated": "Last Updated",
+      "pricing_source": "Pricing Data Source",
+      "pricing_source_tooltip": "Click to view raw API pricing data in external browser",
       "pricing_refresh": "Refresh Pricing",
       "pricing_refreshing": "Refreshing...",
       "pricing_refresh_failed": "Failed to refresh pricing",
@@ -1385,7 +1387,8 @@
       "timeout": "Request timed out. Please try again.",
       "quota": "Insufficient account quota or balance reported by the provider.",
       "unknown": "An error occurred: {{msg}}",
-      "create_session": "Failed to create session due to system error: {{msg}}"
+      "create_session": "Failed to create session due to system error: {{msg}}",
+      "vision_not_supported": "The current model does not support image recognition/vision capabilities. Please switch model and try again."
     },
     "generation_failed": "Reply generation failed",
     "trace_title": "Trace [{{modelId}}]",
@@ -1410,7 +1413,9 @@
   },
   "input": {
     "upload_attachment": "Upload Attachment",
-    "shortcut_command": "Shortcut Command"
+    "shortcut_command": "Shortcut Command",
+    "vision_not_supported_warn": "The current model does not support image recognition. We recommend switching to a multimodal model (e.g. gpt-4o, gemini-1.5) for the best results.",
+    "model_no_vision_hint": "Current model does not support images. Please switch to a multimodal model"
   },
   "shortcut": {
     "label_name": "Shortcut Label Name",

@@ -1,5 +1,6 @@
-import { createClient, type Client } from '@libsql/client';
-import { drizzle } from 'drizzle-orm/libsql';
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import * as sqliteVec from 'sqlite-vec';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AppDatabase } from '../types';
@@ -11,33 +12,38 @@ import { MigrationService } from '../migration.service';
  * @returns 实例化的 Drizzle AppDatabase
  */
 export function initNodeDatabase(dbPath: string): AppDatabase {
-  const sqlite = createClient({ url: `file:${dbPath}` });
+  const sqlite = new Database(dbPath);
   
-  // 注意：此处不再执行异步的 sqlite.execute PRAGMA，
-  // 所有的 PRAGMA 配置已移至异步的 installDatabaseSchema 确保严格时序
+  // 1. 一键载入 C++ 原生向量数据库引擎支持！
+  try {
+    sqliteVec.load(sqlite);
+    console.log("[VectorSearch] Native sqlite-vec extension loaded successfully on desktop database!");
+  } catch (e: any) {
+    console.error("[VectorSearch] Failed to load native sqlite-vec extension:", e.message);
+  }
 
-  // Any automatic migrations can be added here if needed, 
-  // currently we return the drizzle instance.
+  // 2. 将 WAL 模式与 Pragma 在最稳固的数据库打开时序中同步设置
+  try {
+    sqlite.pragma('journal_mode = WAL');
+    sqlite.pragma('synchronous = NORMAL');
+    sqlite.pragma('foreign_keys = ON');
+  } catch (e: any) {
+    console.warn('[DB] Failed to apply database pragmas synchronously:', e.message);
+  }
   
+  // 3. 用 drizzle ORM 包装 better-sqlite3 实例
   const db = drizzle(sqlite) as unknown as AppDatabase;
   return db;
 }
 
 export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
   const internalDb = db as any;
-  const client: Client = internalDb.session?.client;
+  const client = internalDb.session?.client;
   
   if (!client) {
-    console.warn('[DB] No valid LibSQL client found to execute migrations!');
+    console.warn('[DB] No valid Better-SQLite3 client found to execute migrations!');
     return;
   }
-
-  // PRAGMA 必须在所有读写之前 await 执行（不能放在同步构造器里），
-  // 这是防止初始化竞态条件的关键。WAL 模式在单写场景下性能最佳，
-  // 原 SQLITE_CORRUPT 的根因是 DB 被初始化到错误路径，与 WAL 无关。
-  await client.execute('PRAGMA journal_mode = WAL');
-  await client.execute('PRAGMA synchronous = NORMAL');
-  await client.execute('PRAGMA foreign_keys = ON');
 
   // Derive the migrations directory depending on dev or prod
   const isDev = process.env.NODE_ENV !== 'production' && !process.env.VITE_APP_BUILD;
@@ -58,4 +64,3 @@ export async function installDatabaseSchema(db: AppDatabase): Promise<void> {
   const migrationService = new MigrationService(db, client, migrationDir);
   await migrationService.runMigrations();
 }
-

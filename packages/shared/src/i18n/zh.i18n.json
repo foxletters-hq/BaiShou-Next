@@ -1170,6 +1170,8 @@
       "round_cost": "本轮",
       "pricing_table_title": "价格表信息",
       "pricing_last_updated": "最后更新",
+      "pricing_source": "价格数据源",
+      "pricing_source_tooltip": "点击在外部浏览器中查看原始 API 价格数据",
       "pricing_refresh": "刷新价格表",
       "pricing_refreshing": "刷新中...",
       "pricing_refresh_failed": "刷新价格表失败",
@@ -1405,9 +1407,9 @@
       "edit_nickname_prompt": "请输入新的昵称："
     },
     "recall": {
-      "title": "上下文补充与唤醒",
+      "title": "唤醒回忆",
       "tab_diary": "日记档案",
-      "tab_memory": "向量知识",
+      "tab_memory": "向量记忆",
       "search_hint": "检索关键字",
       "no_results": "未在库中匹配到任何历史记忆碎片。",
       "selected": "已选择",
@@ -1420,7 +1422,8 @@
       "timeout": "请求响应超时，请重试。",
       "quota": "模型服务商提示账号额度不足。",
       "unknown": "出错了：{{msg}}",
-      "create_session": "由于系统原因创建会话失败: {{msg}}"
+      "create_session": "由于系统原因创建会话失败: {{msg}}",
+      "vision_not_supported": "当前选中的模型不支持图片识别/视觉多模态能力，请更换模型后再试。"
     },
     "generation_failed": "回复生成失败",
     "trace_title": "调用追踪 [{{modelId}}]",
@@ -1445,7 +1448,9 @@
   },
   "input": {
     "upload_attachment": "上传附件",
-    "shortcut_command": "快捷指令"
+    "shortcut_command": "快捷指令",
+    "vision_not_supported_warn": "当前选中的模型不支持图片识别，建议更换为支持多模态的模型（如 gpt-4o, gemini-1.5）以获得最佳效果。",
+    "model_no_vision_hint": "当前模型可能不支持图片，建议切换至支持多模态的模型"
   },
   "shortcut": {
     "label_name": "指令标识名 (展示标签)",
@@ -1533,9 +1538,9 @@
     "avatar_fallback": "白"
   },
   "recall": {
-    "title": "上下文补充与唤醒",
+    "title": "唤醒回忆",
     "tab_diary": "日记档案",
-    "tab_memory": "向量知识",
+    "tab_memory": "向量记忆",
     "search_hint": "检索关键字或记忆片段...",
     "no_results": "未在库中匹配到任何历史记忆碎片。",
     "selected": "已选择",

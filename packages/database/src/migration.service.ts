@@ -1,4 +1,3 @@
-import { Client } from '@libsql/client';
 import { AppDatabase } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -22,23 +21,50 @@ export interface MigrationJournal {
  *
  * 仅负责 Agent 数据库（baishou_agent.db）的 schema 迁移。
  * 影子索引（shadow_index.db）的建表由 ShadowIndexConnectionManager 独立管理。
- *
- * 设计说明：
- * - 读取 resources/database/drizzle/_journal.json 确定迁移版本列表
- * - 对每个未执行的迁移，读取对应 .sql 文件并执行
- * - 执行记录写入 __drizzle_migrations 表（供后续版本比对）
- * - 支持旧版 DB 探测（Legacy Backfill）：如果发现没有迁移记录表但有 agent_sessions，
- *   则视为旧库并直接标记为已执行首个迁移
  */
 export class MigrationService {
   private db: AppDatabase;
-  private client: Client;
+  private client: any; // 兼容 LibSQL.Client 和 Better-SQLite3.Database
   private migrationDir: string;
 
-  constructor(db: AppDatabase, client: Client, migrationDir: string) {
+  constructor(db: AppDatabase, client: any, migrationDir: string) {
     this.db = db;
     this.client = client;
     this.migrationDir = migrationDir;
+  }
+
+  /**
+   * 统一的多态原始 SQL 执行助手
+   */
+  private async _executeSql(statement: string, args: any[] = []): Promise<any> {
+    if (this.client && typeof this.client.execute === 'function') {
+      // LibSQL 驱动路径
+      return await this.client.execute({ sql: statement, args });
+    } else if (this.client) {
+      // Better-SQLite3 驱动路径
+      if (args.length > 0) {
+        const stmt = this.client.prepare(statement);
+        const info = stmt.run(...args);
+        // 为了兼容 LibSQL 返回的 rows，构造返回结构
+        return {
+          rows: [],
+          rowsAffected: info.changes,
+          lastInsertRowid: info.lastInsertRowid
+        };
+      } else {
+        // pragma 或者 alter 语句
+        const isSelect = statement.trim().toUpperCase().startsWith('SELECT') || 
+                        statement.trim().toUpperCase().startsWith('PRAGMA TABLE_INFO');
+        if (isSelect) {
+          const rows = this.client.prepare(statement).all();
+          return { rows };
+        } else {
+          this.client.exec(statement);
+          return { rows: [] };
+        }
+      }
+    }
+    throw new Error('[MigrationService] No database client was available to execute query.');
   }
 
   public async runMigrations(): Promise<void> {
@@ -51,12 +77,12 @@ export class MigrationService {
         logger.info('[MigrationService] 未发现迁移跟踪表，判断是否为旧库...');
         try {
           // 检测旧版 DB：如果有 agent_sessions 表但没有迁移跟踪，视为旧库
-          const legacyCheck = await this.client.execute(
+          const legacyCheck = await this._executeSql(
             `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_sessions'`
           );
           if (legacyCheck.rows.length > 0) {
             logger.info('[MigrationService] 检测到旧版 Agent DB，回填迁移记录表...');
-            await this.client.execute(`
+            await this._executeSql(`
               CREATE TABLE IF NOT EXISTS __drizzle_migrations (
                 version INTEGER PRIMARY KEY NOT NULL,
                 tag TEXT NOT NULL,
@@ -69,19 +95,18 @@ export class MigrationService {
             const journal = await this.readMigrationJournal();
             const firstMigration = journal.entries[0];
             if (firstMigration) {
-              await this.client.execute({
-                sql: `INSERT OR IGNORE INTO __drizzle_migrations (version, tag, executed_at) VALUES (?, ?, ?)`,
-                args: [firstMigration.idx, firstMigration.tag, Date.now()]
-              });
+              await this._executeSql(
+                `INSERT OR IGNORE INTO __drizzle_migrations (version, tag, executed_at) VALUES (?, ?, ?)`,
+                [firstMigration.idx, firstMigration.tag, Date.now()]
+              );
 
               // 确保旧库中的 compression_snapshots 有正确的字段类型
-              // （旧库中 session_id 是 INTEGER，需要通过重建表迁移）
               logger.info('[MigrationService] 检查旧库 compression_snapshots 字段兼容性...');
               await this._ensureCompressionSnapshotsCompatibility();
             }
           }
-      } catch (e: any) {
-        logger.warn('[MigrationService] 旧库检测失败，将使用全新迁移流程:', e);
+        } catch (e: any) {
+          logger.warn('[MigrationService] 旧库检测失败，将使用全新迁移流程:', e);
         }
       }
 
@@ -107,11 +132,9 @@ export class MigrationService {
         }
       }
 
-      // Agent 消息 FTS 虚拟表（仅服务于 Agent 聊天记录全文搜索）
-      // 注意：影子索引 FTS (journals_fts) 由 ShadowIndexConnectionManager 独立管理
       logger.info('[MigrationService] 确保 Agent 消息 FTS5 虚拟表存在...');
       try {
-        await this.client.execute(`
+        await this._executeSql(`
           CREATE VIRTUAL TABLE IF NOT EXISTS agent_messages_fts USING fts5(
             part_id UNINDEXED,
             message_id UNINDEXED,
@@ -133,17 +156,16 @@ export class MigrationService {
 
   /**
    * 确保 compression_snapshots 的 session_id / covered_up_to_message_id 是 TEXT 类型。
-   * 旧库中这两列是 INTEGER，需要重建表迁移。
    */
   private async _ensureCompressionSnapshotsCompatibility(): Promise<void> {
     try {
-      const tableInfo = await this.client.execute(`PRAGMA table_info(compression_snapshots)`);
+      const tableInfo = await this._executeSql(`PRAGMA table_info(compression_snapshots)`);
       const cols = tableInfo.rows;
       const sessionIdCol = cols.find((c: any) => c.name === 'session_id');
       if (sessionIdCol && (sessionIdCol.type as string).toUpperCase() === 'INTEGER') {
         logger.info('[MigrationService] 重建 compression_snapshots（INTEGER→TEXT）...');
-        await this.client.execute(`ALTER TABLE compression_snapshots RENAME TO _comp_snap_old`);
-        await this.client.execute(`
+        await this._executeSql(`ALTER TABLE compression_snapshots RENAME TO _comp_snap_old`);
+        await this._executeSql(`
           CREATE TABLE compression_snapshots (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             session_id TEXT NOT NULL,
@@ -154,14 +176,14 @@ export class MigrationService {
             created_at INTEGER NOT NULL
           )
         `);
-        await this.client.execute(`
+        await this._executeSql(`
           INSERT INTO compression_snapshots
             (id, session_id, summary_text, covered_up_to_message_id, message_count, created_at)
           SELECT id, CAST(session_id AS TEXT), summary_text,
                  CAST(covered_up_to_message_id AS TEXT), message_count, created_at
           FROM _comp_snap_old
         `);
-        await this.client.execute(`DROP TABLE _comp_snap_old`);
+        await this._executeSql(`DROP TABLE _comp_snap_old`);
         logger.info('[MigrationService] compression_snapshots 重建完成。');
       }
     } catch (e: any) {
@@ -171,7 +193,7 @@ export class MigrationService {
 
   private async migrationsTableExists(): Promise<boolean> {
     try {
-      const table = await this.client.execute(
+      const table = await this._executeSql(
         `SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`
       );
       return table.rows.length > 0;
@@ -226,7 +248,7 @@ export class MigrationService {
 
       for (const statement of statements) {
         try {
-          await this.client.execute(statement);
+          await this._executeSql(statement);
         } catch (err) {
           logger.error(`[MigrationService] 语句执行失败:\n---\n${statement}\n---`);
           throw err;
@@ -235,7 +257,7 @@ export class MigrationService {
 
       // 确保迁移跟踪表存在并记录
       if (!(await this.migrationsTableExists())) {
-        await this.client.execute(`
+        await this._executeSql(`
           CREATE TABLE IF NOT EXISTS __drizzle_migrations (
             version INTEGER PRIMARY KEY NOT NULL,
             tag TEXT NOT NULL,

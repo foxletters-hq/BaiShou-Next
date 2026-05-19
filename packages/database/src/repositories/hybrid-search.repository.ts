@@ -257,7 +257,7 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
         return results;
       } catch (e: any) {
         this._vecDistanceCosineAvailable = false;
-        logger.warn('[VectorSearch] vec_distance_cosine 不可用，已缓存为降级路径:', (e as Error).message);
+        logger.warn('[VectorSearch] vec_distance_cosine not available, falling back to high-fidelity JS Cosine:', e.message);
       }
     }
 
@@ -271,7 +271,7 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
       } catch (e: any) {
         this._vectorTopKAvailable = false;
         this._nativeVectorSupported = false;
-        logger.warn('[VectorSearch] vector_top_k 不可用，已缓存为降级路径:', (e as Error).message);
+        logger.warn('[VectorSearch] vector_top_k not available, falling back to high-fidelity JS Cosine:', e.message);
       }
     }
 

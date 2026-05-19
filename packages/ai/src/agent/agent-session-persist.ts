@@ -62,6 +62,7 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
 
   // 推送推理 Part (如果有)
   if (accumulator.reasoning) {
+    logger.info(`[Persist Result] Reasoning Accumulator: ${JSON.stringify(accumulator.reasoning)}`);
     partsToInsert.push({
       id: generateUUID(),
       messageId: assistantMsgId,

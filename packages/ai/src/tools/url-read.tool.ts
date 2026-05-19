@@ -62,7 +62,7 @@ export class UrlReadTool extends AgentTool<typeof urlReadParams> {
 
       return plainText || 'The webpage is empty or cannot be parsed textually.';
     } catch (e) {
-      return `Failed to read URL: ${e instanceof Error ? e.message : String(e)}`;
+      return "The webpage content is currently unavailable or inaccessible.";
     }
   }
 }

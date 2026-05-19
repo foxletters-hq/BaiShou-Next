@@ -65,6 +65,38 @@ function createDeepSeekFetchInterceptor(baseURL?: string) {
     const encoder = new TextEncoder();
     let buffer = '';
 
+    // 维持流的 think 状态，只在首尾插入 think 标签，避免每个微小片段都被重复包裹导致频繁开关 think 状态而引入换行符
+    let hasStartedThink = false;
+
+    const transformSSELine = (line: string): string => {
+      if (!line.startsWith('data: ') || line === 'data: [DONE]') {
+        return line;
+      }
+      try {
+        const data = JSON.parse(line.slice(6));
+        const delta = data?.choices?.[0]?.delta;
+        if (delta) {
+          if (delta.reasoning_content) {
+            if (!hasStartedThink) {
+              hasStartedThink = true;
+              delta.content = `<think>${delta.reasoning_content}`;
+            } else {
+              delta.content = delta.reasoning_content;
+            }
+            delete delta.reasoning_content;
+            return `data: ${JSON.stringify(data)}`;
+          } else if (hasStartedThink) {
+            hasStartedThink = false;
+            delta.content = `</think>${delta.content || ''}`;
+            return `data: ${JSON.stringify(data)}`;
+          }
+        }
+      } catch {
+        // 非 JSON 行，原样返回
+      }
+      return line;
+    };
+
     const transformedStream = new ReadableStream({
       async pull(controller) {
         const { done, value } = await originalReader.read();
@@ -79,7 +111,7 @@ function createDeepSeekFetchInterceptor(baseURL?: string) {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        // 最后一行可能不完整，保留在 buffer 中
+        // 最后稳健起见保留尾行
         buffer = lines.pop() || '';
 
         for (const line of lines) {
@@ -89,32 +121,27 @@ function createDeepSeekFetchInterceptor(baseURL?: string) {
       },
     });
 
+    const sanitizedHeaders = new Headers();
+    response.headers.forEach((val, key) => {
+      let safeVal = '';
+      for (let i = 0; i < val.length; i++) {
+        safeVal += val.charCodeAt(i) <= 255 ? val[i] : '?';
+      }
+      sanitizedHeaders.set(key, safeVal);
+    });
+
+    let safeStatusText = '';
+    const statusText = response.statusText || '';
+    for (let i = 0; i < statusText.length; i++) {
+      safeStatusText += statusText.charCodeAt(i) <= 255 ? statusText[i] : '?';
+    }
+
     return new Response(transformedStream, {
       status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
+      statusText: safeStatusText,
+      headers: sanitizedHeaders,
     });
   };
-}
-
-/**
- * 转换单行 SSE 数据：将 delta.reasoning_content 注入到 delta.content 中。
- */
-function transformSSELine(line: string): string {
-  if (!line.startsWith('data: ') || line === 'data: [DONE]') {
-    return line;
-  }
-  try {
-    const data = JSON.parse(line.slice(6));
-    const delta = data?.choices?.[0]?.delta;
-    if (delta?.reasoning_content) {
-      delta.content = `<think>${delta.reasoning_content}</think>`;
-      return `data: ${JSON.stringify(data)}`;
-    }
-  } catch {
-    // 非 JSON 行，原样返回
-  }
-  return line;
 }
 
 /**

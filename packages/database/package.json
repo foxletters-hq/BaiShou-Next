@@ -12,7 +12,9 @@
   "dependencies": {
     "@baishou/shared": "workspace:^",
     "@libsql/client": "0.17.2",
-    "drizzle-orm": "^0.45.2"
+    "better-sqlite3": "^12.10.0",
+    "drizzle-orm": "^0.45.2",
+    "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

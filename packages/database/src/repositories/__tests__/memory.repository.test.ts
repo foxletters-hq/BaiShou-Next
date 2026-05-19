@@ -4,7 +4,6 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 
 import { MemoryRepository } from '../memory.repository';
 // require('sqlite-vec');
-// @ts-expect-error - sqlite-vec 缺少类型定义
 import * as sqliteVec from "sqlite-vec";
 
 let sqliteDb: Database.Database;
