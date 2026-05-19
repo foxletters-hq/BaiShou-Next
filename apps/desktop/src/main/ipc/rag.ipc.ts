@@ -171,6 +171,7 @@ export function registerRagIPC() {
   });
 
   ipcMain.handle('rag:query-entries', async (_, params: { keyword?: string, limit?: number, offset?: number, mode?: 'semantic' | 'text' }) => {
+    await config.load();
     const db = getAppDb();
     
     // ── 语义检索分支（Semantic Search Mode） ──
