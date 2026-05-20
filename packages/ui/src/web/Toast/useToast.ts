@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 
-export type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export interface ToastMessage {
   id: string;
@@ -36,6 +36,9 @@ export const toast = {
   },
   showError: (message: ReactNode, options?: Partial<ToastMessage>) => {
     toast.show(message, { type: 'error', duration: 5000, iconColor: '#DC2626', ...options });
+  },
+  showWarning: (message: ReactNode, options?: Partial<ToastMessage>) => {
+    toast.show(message, { type: 'warning', duration: 4000, iconColor: '#D97706', ...options });
   },
   dismiss: (id: string) => {
     toasts = toasts.filter((t) => t.id !== id);

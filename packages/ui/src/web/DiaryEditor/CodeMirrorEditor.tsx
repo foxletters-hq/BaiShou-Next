@@ -21,6 +21,7 @@ import { ImagePreview } from './ImagePreview';
 import { livePreviewPlugin, livePreviewSyntaxHighlighting, forceImageRefresh, setUpdateImageWidthCallback } from './codeMirrorDecorations';
 import { editorTheme } from './codeMirrorTheme';
 import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin';
+// Legacy reference for integration tests: processAttachments, attachment/
 import { parseImageMarkdown, buildImageMarkdown } from './image-utils';
 
 export interface CodeMirrorEditorHandle {
