@@ -223,6 +223,7 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
   }
 
   async sync(): Promise<IncrementalSyncResult> {
+    await this.loadConfig();
     if (!this.config.enabled) {
       throw new S3NotConfiguredError();
     }
@@ -303,6 +304,7 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
   }
 
   async uploadOnly(): Promise<IncrementalSyncResult> {
+    await this.loadConfig();
     if (!this.config.enabled) {
       throw new S3NotConfiguredError();
     }
@@ -349,6 +351,7 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
   }
 
   async downloadOnly(): Promise<IncrementalSyncResult> {
+    await this.loadConfig();
     if (!this.config.enabled) {
       throw new S3NotConfiguredError();
     }

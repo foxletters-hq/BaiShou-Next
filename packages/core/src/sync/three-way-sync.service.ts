@@ -130,6 +130,7 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
   // ── 同步操作 ───────────────────────────────────────────────
 
   async sync(): Promise<IncrementalSyncResult> {
+    await this.loadConfig();
     if (!this.config.enabled) throw new S3NotConfiguredError();
 
     const startTime = Date.now();
@@ -205,6 +206,7 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
   }
 
   async uploadOnly(): Promise<IncrementalSyncResult> {
+    await this.loadConfig();
     if (!this.config.enabled) throw new S3NotConfiguredError();
 
     const startTime = Date.now();
@@ -239,6 +241,7 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
   }
 
   async downloadOnly(): Promise<IncrementalSyncResult> {
+    await this.loadConfig();
     if (!this.config.enabled) throw new S3NotConfiguredError();
 
     const startTime = Date.now();
