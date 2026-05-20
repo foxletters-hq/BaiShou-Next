@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiFind, MdHistory, MdCloudUpload } from 'react-icons/md';
@@ -16,7 +16,6 @@ export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
   const { profile, loadProfile } = useUserProfileStore();
   const toast = useToast();
-  const hasShownAvatarWarning = useRef(false);
 
   // Default nav items
   const navigate = useNavigate();
@@ -75,8 +74,8 @@ export const Sidebar: React.FC = () => {
   }, [loadProfile]);
 
   useEffect(() => {
-    if (profile?.avatarFileMissing && !hasShownAvatarWarning.current) {
-      hasShownAvatarWarning.current = true;
+    if (profile?.avatarFileMissing && !localStorage.getItem('avatar_missing_warned')) {
+      localStorage.setItem('avatar_missing_warned', '1');
       toast.showWarning(t('profile.avatar_file_missing', '检测到头像文件不存在，已恢复为默认头像'));
     }
   }, [profile, toast, t]);

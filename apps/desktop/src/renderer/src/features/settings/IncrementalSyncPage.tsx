@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, TestTube, RefreshCw, Settings, Cloud, FileText, Eye, EyeOff, Globe } from 'lucide-react';
+import type { SyncProgressEvent } from '@baishou/shared';
 
 type SyncTarget = 's3' | 'webdav';
 
@@ -16,8 +17,16 @@ export const IncrementalSyncPage: React.FC = () => {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'syncing' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [syncResult, setSyncResult] = useState<any>(null);
+  const [progress, setProgress] = useState<SyncProgressEvent | null>(null);
 
   useEffect(() => { loadConfig(); }, []);
+
+  useEffect(() => {
+    const unsub = (window as any).api?.incrementalSync?.onSyncProgress((event: SyncProgressEvent) => {
+      setProgress(event);
+    });
+    return unsub;
+  }, []);
 
   const loadConfig = async () => {
     try {
@@ -74,14 +83,17 @@ export const IncrementalSyncPage: React.FC = () => {
     setStatus('syncing');
     setMessage('正在同步...');
     setSyncResult(null);
+    setProgress(null);
     try {
       const result = await (window as any).api?.incrementalSync?.orchestratedSync();
       setSyncResult(result);
+      setProgress(null);
       setMessage('同步完成');
       setStatus('success');
     } catch (e: any) {
       setMessage(`同步失败: ${e?.message || '未知错误'}`);
       setStatus('error');
+      setProgress(null);
     }
   };
 
@@ -219,6 +231,24 @@ export const IncrementalSyncPage: React.FC = () => {
             style={status === 'syncing' ? { animation: 'spin 1s linear infinite' } : undefined} />
           {status === 'syncing' ? '同步中...' : '立即同步'}
         </button>
+
+        {status === 'syncing' && progress && progress.total > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ height: 3, background: 'var(--bg-surface-low)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
+              <div style={{
+                height: '100%',
+                background: 'var(--color-primary)',
+                borderRadius: 2,
+                transition: 'width 0.3s ease',
+                width: `${Math.round((progress.current / progress.total) * 100)}%`,
+              }} />
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+              {progress.current}/{progress.total}
+              {progress.statusText && ` · ${progress.statusText}`}
+            </div>
+          </div>
+        )}
 
         {syncResult && (
           <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
