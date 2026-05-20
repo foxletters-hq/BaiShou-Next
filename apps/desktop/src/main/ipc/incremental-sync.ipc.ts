@@ -100,6 +100,7 @@ export function registerIncrementalSyncIPC() {
             const saved = JSON.parse(raw) as Partial<S3SyncConfig>;
             if (saved.enabled && saved.endpoint && saved.accessKey && saved.secretKey) {
               await createSyncService(saved as S3SyncConfig);
+              if (threeWayService) await threeWayService.getConfig();
               return syncService!.getConfig();
             }
           } catch {}
@@ -126,6 +127,9 @@ export function registerIncrementalSyncIPC() {
     };
     await createSyncService(merged);
     await syncService!.updateConfig(merged);
+    if (threeWayService) {
+      await threeWayService.updateConfig(merged);
+    }
     return { success: true };
   });
 

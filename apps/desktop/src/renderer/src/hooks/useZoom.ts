@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const STORAGE_KEY = 'baishou-zoom-factor';
 const MIN_ZOOM = 0.5;
@@ -16,7 +16,13 @@ function getSavedZoom(): number {
   return 1;
 }
 
+function isApiReady(): boolean {
+  return !!(window as any)?.api?.zoom?.setFactor;
+}
+
 function applyZoom(factor: number) {
+  if (!isApiReady()) return;
+
   const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(factor * 100) / 100));
   (window as any).api.zoom.setFactor(clamped);
   try {
@@ -25,8 +31,23 @@ function applyZoom(factor: number) {
 }
 
 export function useZoom() {
+  const initializedRef = useRef(false);
+
   useEffect(() => {
-    applyZoom(getSavedZoom());
+    let retryTimer: ReturnType<typeof setInterval>;
+
+    const tryInit = () => {
+      if (isApiReady()) {
+        applyZoom(getSavedZoom());
+        initializedRef.current = true;
+        clearInterval(retryTimer);
+      }
+    };
+
+    tryInit();
+    if (!initializedRef.current) {
+      retryTimer = setInterval(tryInit, 100);
+    }
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (!e.ctrlKey && !e.metaKey) return;
@@ -54,6 +75,7 @@ export function useZoom() {
     window.addEventListener('wheel', onWheel, { passive: false });
 
     return () => {
+      clearInterval(retryTimer);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('wheel', onWheel);
     };
