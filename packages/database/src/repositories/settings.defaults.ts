@@ -37,6 +37,11 @@ export const DEFAULT_GLOBAL_MODELS: GlobalModelsConfig = {
   globalEmbeddingModelId: '',
   globalTtsProviderId: '',
   globalTtsModelId: '',
+  globalTtsSettings: {
+    voice: 'alloy',
+    speed: 1.0,
+    responseFormat: 'mp3'
+  },
   monthlySummarySource: 'weeklies'
 };
 

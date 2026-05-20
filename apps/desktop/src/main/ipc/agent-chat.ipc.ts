@@ -575,21 +575,54 @@ export function registerChatIPC() {
 
       const apiKey = providerConfig.apiKey;
       const baseUrl = (providerConfig.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
-      const ttsEndpoint = `${baseUrl}/audio/speech`;
+      const ttsSettings = globalModels?.globalTtsSettings;
 
-      const response = await fetch(ttsEndpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: ttsModelId,
-          input: text,
-          voice: 'alloy',
-          response_format: 'mp3',
-        }),
-      });
+      const isMimoTts = ttsModelId.toLowerCase().includes('mimo-v2.5-tts');
+      let response: Response;
+
+      if (isMimoTts) {
+        const ttsEndpoint = `${baseUrl}/chat/completions`;
+        response = await fetch(ttsEndpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: ttsModelId,
+            messages: [
+              {
+                role: 'user',
+                content: 'Natural, clear and professional speech style.'
+              },
+              {
+                role: 'assistant',
+                content: text
+              }
+            ],
+            audio: {
+              format: ttsSettings?.responseFormat || 'wav',
+              voice: ttsSettings?.voice || '冰糖'
+            }
+          }),
+        });
+      } else {
+        const ttsEndpoint = `${baseUrl}/audio/speech`;
+        response = await fetch(ttsEndpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: ttsModelId,
+            input: text,
+            voice: ttsSettings?.voice || 'alloy',
+            speed: ttsSettings?.speed || 1.0,
+            response_format: ttsSettings?.responseFormat || 'mp3',
+          }),
+        });
+      }
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
@@ -597,9 +630,24 @@ export function registerChatIPC() {
         return { success: false, errorCode: 'tts_api_error', statusCode: response.status };
       }
 
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      return { success: true, audioBase64: base64, format: 'mp3' };
+      let base64 = '';
+      let returnFormat = ttsSettings?.responseFormat || 'mp3';
+
+      if (isMimoTts) {
+        const resJson = await response.json();
+        const base64Audio = resJson.choices?.[0]?.message?.audio?.data;
+        if (!base64Audio) {
+          logger.error(`[TTS] MiMo TTS failed: No audio data in chat completions response`, resJson);
+          return { success: false, errorCode: 'tts_invalid_response_data' };
+        }
+        base64 = base64Audio;
+        returnFormat = ttsSettings?.responseFormat || 'wav';
+      } else {
+        const arrayBuffer = await response.arrayBuffer();
+        base64 = Buffer.from(arrayBuffer).toString('base64');
+      }
+
+      return { success: true, audioBase64: base64, format: returnFormat };
     } catch (error: any) {
       logger.error('[TTS] Synthesize error:', error);
       return { success: false, errorCode: 'tts_synthesis_failed', error: error.message };

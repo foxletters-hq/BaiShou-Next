@@ -1388,7 +1388,15 @@
     "switch_model": "計算モデルの切り替え",
     "click_to_assign": "点击分配默认处理模型",
     "routing_desc": "允许为您日常面对的不同维度的复杂任务，挂载不同的专长模型。",
-    "goto_settings": "配置供应商"
+    "goto_settings": "配置供应商",
+    "tts": {
+      "advanced_title": "音声合成 (TTS) 高度な設定",
+      "voice_label": "発話者ロール (Voice ID)",
+      "voice_placeholder": "例: alloy, echo, Mia, 冰糖 など",
+      "voice_hint": "現在設定されている TTS モデルがサポートする具体的な発話者/音色 ID を入力してください。例: OpenAI のデフォルトは alloy、Xiaomi TTS の場合は 冰糖 や Mia など。",
+      "speed_label": "話速比 (Speed)",
+      "format_label": "出力フォーマット (Format)"
+    }
   },
   "dashboard": {
     "greeting": "又见面了，今天过得怎样？",

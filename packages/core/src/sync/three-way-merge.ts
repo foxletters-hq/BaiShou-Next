@@ -79,14 +79,24 @@ function decide(
     return mkDecision('skip', filePath, ancestor, local, remote, ancestor);
   }
 
-  // 本地✓ 远程✓ 祖先✗ → 双端都是新增 → 比较 mtime
+  // 本地✓ 远程✓ 祖先✗ → 双端都是新增 → 优先保护本地数据
+  // 当祖先为空时（首次同步或快照丢失），不应以 mtime 决定覆盖
+  // 而是以本地数据为准，避免云端文件时间戳更新导致本地被覆盖
   if (local && remote && !ancestor) {
     if (local.hash === remote.hash) {
       return mkDecision('skip', filePath, local, local, remote, ancestor);
     }
-    const winner = local.lastModified >= remote.lastModified ? 'upload' : 'download';
-    const entry = winner === 'upload' ? local : remote;
-    return mkDecision(winner, filePath, entry, local, remote, ancestor);
+    // 数据不同时，优先保留本地版本，标记为冲突而非自动覆盖
+    return {
+      filePath,
+      type: 'conflict-resolved',
+      direction: 'upload',
+      hash: local.hash,
+      size: local.size,
+      localEntry: local,
+      remoteEntry: remote,
+      ancestorEntry: ancestor,
+    };
   }
 
   // 本地✓ 远程✓ 祖先✓ → 三方都有

@@ -59,22 +59,55 @@ export function useTTS() {
 
       const apiKey = providerConfig.apiKey;
       const baseUrl = (providerConfig.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
-      const ttsEndpoint = `${baseUrl}/audio/speech`;
+      const ttsSettings = globalModels?.globalTtsSettings;
+
+      const isMimoTts = ttsModelId.toLowerCase().includes('mimo-v2.5-tts');
+      let response: Response;
 
       // 调用 TTS API
-      const response = await fetch(ttsEndpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: ttsModelId,
-          input: content,
-          voice: 'alloy',
-          response_format: 'mp3',
-        }),
-      });
+      if (isMimoTts) {
+        const ttsEndpoint = `${baseUrl}/chat/completions`;
+        response = await fetch(ttsEndpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: ttsModelId,
+            messages: [
+              {
+                role: 'user',
+                content: 'Natural, clear and professional speech style.'
+              },
+              {
+                role: 'assistant',
+                content: content
+              }
+            ],
+            audio: {
+              format: ttsSettings?.responseFormat || 'wav',
+              voice: ttsSettings?.voice || '冰糖'
+            }
+          }),
+        });
+      } else {
+        const ttsEndpoint = `${baseUrl}/audio/speech`;
+        response = await fetch(ttsEndpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: ttsModelId,
+            input: content,
+            voice: ttsSettings?.voice || 'alloy',
+            speed: ttsSettings?.speed || 1.0,
+            response_format: ttsSettings?.responseFormat || 'mp3',
+          }),
+        });
+      }
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
@@ -83,19 +116,32 @@ export function useTTS() {
         return;
       }
 
-      // 获取音频数据并转为 base64
-      const arrayBuffer = await response.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
+      let base64 = '';
+      if (isMimoTts) {
+        const resJson = await response.json();
+        const base64Audio = resJson.choices?.[0]?.message?.audio?.data;
+        if (!base64Audio) {
+          console.error(`[TTS] MiMo TTS failed: No audio data in chat completions response`, resJson);
+          Alert.alert(t('agent.tts_failed', '语音合成失败'), 'Invalid audio data returned');
+          return;
+        }
+        base64 = base64Audio;
+      } else {
+        // 获取音频 data 并转为 base64
+        const arrayBuffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        base64 = btoa(binary);
       }
-      const base64 = btoa(binary);
 
       // 播放音频
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const audioFormat = isMimoTts ? (ttsSettings?.responseFormat || 'wav') : 'mp3';
       const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/mp3;base64,${base64}` },
+        { uri: `data:audio/${audioFormat};base64,${base64}` },
         { shouldPlay: true }
       );
 

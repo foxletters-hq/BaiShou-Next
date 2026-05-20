@@ -223,8 +223,11 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
     return () => clearTimeout(t);
   }, [activeConfig.enabledModels, selectedProviderId]);
 
+  const [prevSelectedProviderId, setPrevSelectedProviderId] = useState<string>(selectedProviderId);
+
   useEffect(() => {
-    if (selectedProviderId) {
+    if (selectedProviderId !== prevSelectedProviderId) {
+      setPrevSelectedProviderId(selectedProviderId);
       populateControllers(selectedProviderId);
     }
   }, [selectedProviderId, providers]);
@@ -282,11 +285,11 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
     const available = activeConfig.enabledModels?.length ? activeConfig.enabledModels : activeConfig.models;
     console.log('[TestConnection] available models:', available);
     if (!available || available.length === 0) {
-      toast.showError(t('ai_config.no_models_fetch_first', '没有可用的模型，请先获取模型列表或确保有默认模型'));
-      // 仍然允许用户手动输入
+      toast.showWarning(t('ai_config.no_models_fetch_first', '没有可用的模型，请先获取模型列表'));
+      return;
     }
     
-    setTestModelOptions(available || []);
+    setTestModelOptions(available);
     setTestModelId(activeConfig.defaultDialogueModel || available?.[0] || '');
     console.log('[TestConnection] opening modal with default:', activeConfig.defaultDialogueModel || available?.[0] || '');
     setIsTestModalOpen(true);

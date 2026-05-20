@@ -1645,5 +1645,15 @@
     "unknown_error": "未知网络或系统错误",
     "system_warning": "系统警告",
     "unknown_program_error": "程序发生未知错误"
+  },
+  "models": {
+    "tts": {
+      "advanced_title": "语音合成 (TTS) 高级设置",
+      "voice_label": "发音人角色 (Voice ID)",
+      "voice_placeholder": "例如 alloy, echo, Mia, 冰糖 等",
+      "voice_hint": "请输入您当前 TTS 模型所支持的具体发音人/音色 ID。例如 OpenAI 默认可用 alloy，小米 TTS 可填写 冰糖、Mia 等。",
+      "speed_label": "语速比例 (Speed)",
+      "format_label": "返回格式 (Format)"
+    }
   }
 }

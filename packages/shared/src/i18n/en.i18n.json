@@ -1610,5 +1610,15 @@
     "unknown_error": "Unknown network or system error",
     "system_warning": "System Warning",
     "unknown_program_error": "An unknown program error occurred"
+  },
+  "models": {
+    "tts": {
+      "advanced_title": "Text-to-Speech (TTS) Advanced Settings",
+      "voice_label": "Voice ID",
+      "voice_placeholder": "e.g. alloy, echo, Mia, 冰糖",
+      "voice_hint": "Enter the specific voice / speaker ID supported by your current TTS model. E.g. alloy for OpenAI, 冰糖 or Mia for Xiaomi MiMo TTS.",
+      "speed_label": "Speed",
+      "format_label": "Response Format"
+    }
   }
 }

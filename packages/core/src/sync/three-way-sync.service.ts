@@ -294,20 +294,10 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
           });
           await this.downloadFile(d.filePath);
           result.downloaded.push(d.filePath);
-        } else if (d.type === 'delete-local') {
-          onProgress?.({
-            phase: 'syncing',
-            current: i + 1,
-            total,
-            fileName: d.filePath,
-            action: 'delete',
-            statusText: `删除本地: ${d.filePath}`,
-          });
-          await this.deleteLocalFile(d.filePath);
-          result.deletedLocal.push(d.filePath);
         } else if (d.type === 'skip') {
           result.skipped.push(d.filePath);
         }
+        // downloadOnly 模式下不执行 delete-local，保护本地数据
       }
 
       const finalLocal = await this.buildLocalManifest();

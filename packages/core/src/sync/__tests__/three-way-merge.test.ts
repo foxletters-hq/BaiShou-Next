@@ -134,6 +134,34 @@ describe('threeWayMerge', () => {
     expect(decision?.direction).toBe('download');
   });
 
+  it('should prefer local data when both local and remote are new with different content (empty ancestor)', () => {
+    const localEntry = makeEntry({ hash: 'local-hash', lastModified: 1000 });
+    const remoteEntry = makeEntry({ hash: 'remote-hash', lastModified: 2000 });
+    const local = makeManifest({ [filePath]: localEntry });
+    const remote = makeManifest({ [filePath]: remoteEntry });
+    const ancestor = makeManifest({});
+
+    const decisions = threeWayMerge(local, remote, ancestor);
+    const decision = decisions.find((d) => d.filePath === filePath);
+
+    // 当祖先为空且数据不同时，应优先保护本地数据而非按 mtime 覆盖
+    expect(decision?.type).toBe('conflict-resolved');
+    expect(decision?.direction).toBe('upload');
+    expect(decision?.hash).toBe('local-hash');
+  });
+
+  it('should skip when both local and remote have same content (empty ancestor)', () => {
+    const entry = makeEntry({ hash: 'same-hash' });
+    const local = makeManifest({ [filePath]: entry });
+    const remote = makeManifest({ [filePath]: entry });
+    const ancestor = makeManifest({});
+
+    const decisions = threeWayMerge(local, remote, ancestor);
+    const decision = decisions.find((d) => d.filePath === filePath);
+
+    expect(decision?.type).toBe('skip');
+  });
+
   it('should return download when both local and remote are new but remote mtime is newer', () => {
     const localEntry = makeEntry({ hash: 'bbb', lastModified: 1000 });
     const remoteEntry = makeEntry({ hash: 'ccc', lastModified: 2000 });
@@ -145,6 +173,32 @@ describe('threeWayMerge', () => {
     const decision = decisions.find((d) => d.filePath === filePath);
 
     expect(decision?.type).toBe('download');
+  });
+
+  it('should handle first-sync scenario: local has files, remote empty, ancestor empty', () => {
+    const entry = makeEntry({ hash: 'local-only' });
+    const local = makeManifest({ [filePath]: entry });
+    const remote = makeManifest({});
+    const ancestor = makeManifest({});
+
+    const decisions = threeWayMerge(local, remote, ancestor);
+    const decision = decisions.find((d) => d.filePath === filePath);
+
+    expect(decision?.type).toBe('upload');
+  });
+
+  it('should handle post-upload scenario: local and remote both have file, ancestor empty', () => {
+    const localEntry = makeEntry({ hash: 'same-hash', lastModified: 1000 });
+    const remoteEntry = makeEntry({ hash: 'same-hash', lastModified: 2000 });
+    const local = makeManifest({ [filePath]: localEntry });
+    const remote = makeManifest({ [filePath]: remoteEntry });
+    const ancestor = makeManifest({});
+
+    const decisions = threeWayMerge(local, remote, ancestor);
+    const decision = decisions.find((d) => d.filePath === filePath);
+
+    // 即使远程 mtime 更新，只要内容相同就应跳过
+    expect(decision?.type).toBe('skip');
   });
 
   it('should skip when neither local nor remote nor ancestor has the file', () => {

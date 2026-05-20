@@ -5,7 +5,8 @@ import { useDialog } from '../Dialog';
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup';
 import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared';
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared';
-import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdVolumeUp } from 'react-icons/md';
+import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdVolumeUp, MdSettings } from 'react-icons/md';
+import { TTSAdvancedSettingsDialog } from './TTSAdvancedSettingsDialog';
 
 export interface AIProviderConfigInfo {
   providerId: string;
@@ -34,6 +35,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
 
   // State to manage which model selector is currently open
   const [activeSelector, setActiveSelector] = useState<'dialogue' | 'naming' | 'summary' | 'embedding' | 'tts' | null>(null);
+  const [isTtsSettingsOpen, setIsTtsSettingsOpen] = useState(false);
 
   // Filter provider arrays for the popup
   const getProvidersArray = (forEmbedding: boolean, forTts: boolean = false) => {
@@ -130,6 +132,18 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         <div className={styles.routeHeader}>
           <div className={`${styles.routeIcon} ${isDanger ? styles.dangerIcon : ''}`}>{icon}</div>
           <span className={`${styles.routeName} ${isDanger ? styles.dangerName : ''}`}>{title}</span>
+          {key === 'tts' && isModelSet && (
+            <button
+              className={styles.settingsGearBtn}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsTtsSettingsOpen(true);
+              }}
+              title={t('models.tts.advanced_tooltip', '高级设置')}
+            >
+              <MdSettings size={18} />
+            </button>
+          )}
         </div>
         
         <div 
@@ -231,6 +245,20 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           }
           onSelect={handleSelectModel}
           onClose={() => setActiveSelector(null)}
+        />
+      )}
+
+      {isTtsSettingsOpen && (
+        <TTSAdvancedSettingsDialog
+          isOpen={isTtsSettingsOpen}
+          onClose={() => setIsTtsSettingsOpen(false)}
+          settings={config.globalTtsSettings}
+          onSave={(ttsSettings) => {
+            onChange({
+              ...config,
+              globalTtsSettings: ttsSettings,
+            });
+          }}
         />
       )}
     </div>

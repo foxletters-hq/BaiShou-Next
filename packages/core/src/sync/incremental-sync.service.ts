@@ -291,6 +291,9 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
       const manifestPath = await this.getLocalManifestPath();
       await this.cloudClient.uploadFile(manifestPath);
 
+      // 5. 保存远程快照（作为下次三向合并的祖先）
+      await this.saveRemoteSnapshot(localManifest);
+
       this.lastConflicts = result.conflicted;
       result.duration = Date.now() - startTime;
 
@@ -340,6 +343,9 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
       const manifestPath = await this.getLocalManifestPath();
       await this.cloudClient.uploadFile(manifestPath);
 
+      // 保存远程快照（作为下次三向合并的祖先）
+      await this.saveRemoteSnapshot(localManifest);
+
       result.duration = Date.now() - startTime;
       return result;
     } catch (error) {
@@ -387,6 +393,9 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
       }
 
       await this.saveLocalManifest(localManifest);
+      // 保存远程快照（作为下次三向合并的祖先）
+      await this.saveRemoteSnapshot(localManifest);
+
       result.duration = Date.now() - startTime;
       return result;
     } catch (error) {
@@ -470,6 +479,18 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
       deviceId: '',
       files: {},
     };
+  }
+
+  private async saveRemoteSnapshot(manifest: SyncManifest): Promise<void> {
+    const vaultPath = await this.getVaultPath();
+    const snapshotPath = path.join(vaultPath, '.baishou', 'last-remote-manifest.json');
+    const dir = path.dirname(snapshotPath);
+
+    if (!fs.existsSync(dir)) {
+      await fs.promises.mkdir(dir, { recursive: true });
+    }
+
+    await fs.promises.writeFile(snapshotPath, JSON.stringify(manifest, null, 2), 'utf8');
   }
 
   async buildLocalManifest(): Promise<SyncManifest> {

@@ -1420,7 +1420,15 @@
     "switch_model": "切換計算模型",
     "click_to_assign": "点击分配默认处理模型",
     "routing_desc": "允许为您日常面对的不同维度的复杂任务，挂载不同的专长模型。",
-    "goto_settings": "配置供应商"
+    "goto_settings": "配置供应商",
+    "tts": {
+      "advanced_title": "語音合成 (TTS) 進階設定",
+      "voice_label": "發音人角色 (Voice ID)",
+      "voice_placeholder": "例如 alloy, echo, Mia, 冰糖 等",
+      "voice_hint": "請輸入您目前 TTS 模型所支援的具體發音人/音色 ID。例如 OpenAI 預設可用 alloy，小米 TTS 可填寫 冰糖、Mia 等。",
+      "speed_label": "語速比例 (Speed)",
+      "format_label": "返回格式 (Format)"
+    }
   },
   "dashboard": {
     "greeting": "又见面了，今天过得怎样？",

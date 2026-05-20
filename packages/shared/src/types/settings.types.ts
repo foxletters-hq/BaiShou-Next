@@ -22,6 +22,12 @@ export interface AIProviderConfig {
   webSearchMode?: string;     // 网络搜索模式（如：duckduckgo等，可能在原版为某些特定模型特有）
 }
 
+export interface TtsSettings {
+  voice: string;
+  speed: number;
+  responseFormat: string;
+}
+
 /**
  * 全局模型配置 (Global Models Config)
  */
@@ -36,6 +42,7 @@ export interface GlobalModelsConfig {
   globalEmbeddingModelId: string;
   globalTtsProviderId: string;
   globalTtsModelId: string;
+  globalTtsSettings?: TtsSettings;
   monthlySummarySource: 'weeklies' | 'diaries'; // 月度总结数据源：'weeklies' (仅周记) 或 'diaries' (全量日记)
 }
 

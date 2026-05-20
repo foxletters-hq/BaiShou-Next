@@ -126,6 +126,11 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           globalEmbeddingModelId: '',
           globalTtsProviderId: '',
           globalTtsModelId: '',
+          globalTtsSettings: {
+            voice: 'alloy',
+            speed: 1.0,
+            responseFormat: 'mp3'
+          },
           monthlySummarySource: 'weeklies'
         };
 
