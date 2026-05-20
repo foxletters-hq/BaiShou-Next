@@ -1,6 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 16px;
   padding: 16px 24px 32px 24px;
   background: var(--bg-app);

@@ -267,6 +267,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           value={searchQuery}
           onChange={handleSearch}
         />
+        {/* searchModeToggle */}
         <div className={styles.segmentedControl}>
           <button 
             type="button"
