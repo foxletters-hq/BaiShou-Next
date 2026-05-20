@@ -226,6 +226,27 @@ export interface VersionHistoryEntry {
   isCurrent: boolean;
 }
 
+// ── 同步进度类型 ──────────────────────────────────────────────
+
+/** 同步进度事件 */
+export interface SyncProgressEvent {
+  /** 当前阶段 */
+  phase: 'scanning' | 'comparing' | 'syncing' | 'finalizing';
+  /** 当前已处理文件数 */
+  current: number;
+  /** 总文件数 */
+  total: number;
+  /** 当前操作的文件相对路径 */
+  fileName?: string;
+  /** 操作类型 */
+  action?: 'upload' | 'download' | 'delete' | 'skip';
+  /** 状态描述文本 */
+  statusText?: string;
+}
+
+/** 同步进度回调 */
+export type SyncProgressCallback = (event: SyncProgressEvent) => void;
+
 // ── Git 状态类型 ──────────────────────────────────────────────
 
 /** Git 工作区文件状态 */
