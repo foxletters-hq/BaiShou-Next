@@ -78,40 +78,75 @@ export class SessionRepository {
    * 这将触发底层的 after_part_insert 使得 FTS5 引擎热更新
    */
   async insertMessageWithParts(message: InsertMessageInput, parts: InsertPartInput[]): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      // 1. 写入主 Message 行
-      await tx.insert(messagesTbl).values({
-        id: message.id,
-        sessionId: message.sessionId,
-        role: message.role,
-        isSummary: message.isSummary ?? false,
-        orderIndex: message.orderIndex,
-        inputTokens: message.inputTokens,
-        outputTokens: message.outputTokens,
-        costMicros: message.costMicros,
-        providerId: message.providerId,
-        modelId: message.modelId,
-        createdAt: new Date()
-      }).onConflictDoNothing();
+    const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
 
-      // 2. 级联写入 Parts 
-      // 这里的 .values({ data: p.data }) 会被 drizzle sqlite 自动转为 JSON 字符串，触发我们写的 json_extract trigger
-      if (parts.length > 0) {
-        await tx.insert(partsTbl).values(parts.map(p => ({
-          id: p.id,
-          messageId: p.messageId,
-          sessionId: p.sessionId,
-          type: p.type,
-          data: p.data,
+    if (isBetterSqlite) {
+      this.db.transaction((tx) => {
+        tx.insert(messagesTbl).values({
+          id: message.id,
+          sessionId: message.sessionId,
+          role: message.role,
+          isSummary: message.isSummary ?? false,
+          orderIndex: message.orderIndex,
+          inputTokens: message.inputTokens,
+          outputTokens: message.outputTokens,
+          costMicros: message.costMicros,
+          providerId: message.providerId,
+          modelId: message.modelId,
           createdAt: new Date()
-        })));
-      }
-      
-      // 3. 顺便更新 Session 的更新时间
-      await tx.update(agentSessionsTable)
-        .set({ updatedAt: new Date() })
-        .where(eq(agentSessionsTable.id, message.sessionId));
-    });
+        }).onConflictDoNothing().run();
+
+        if (parts.length > 0) {
+          tx.insert(partsTbl).values(parts.map(p => ({
+            id: p.id,
+            messageId: p.messageId,
+            sessionId: p.sessionId,
+            type: p.type,
+            data: p.data,
+            createdAt: new Date()
+          }))).run();
+        }
+
+        tx.update(agentSessionsTable)
+          .set({ updatedAt: new Date() })
+          .where(eq(agentSessionsTable.id, message.sessionId))
+          .run();
+      });
+    } else {
+      await this.db.transaction(async (tx) => {
+        // 1. 写入主 Message 行
+        await tx.insert(messagesTbl).values({
+          id: message.id,
+          sessionId: message.sessionId,
+          role: message.role,
+          isSummary: message.isSummary ?? false,
+          orderIndex: message.orderIndex,
+          inputTokens: message.inputTokens,
+          outputTokens: message.outputTokens,
+          costMicros: message.costMicros,
+          providerId: message.providerId,
+          modelId: message.modelId,
+          createdAt: new Date()
+        }).onConflictDoNothing();
+
+        // 2. 级联写入 Parts
+        if (parts.length > 0) {
+          await tx.insert(partsTbl).values(parts.map(p => ({
+            id: p.id,
+            messageId: p.messageId,
+            sessionId: p.sessionId,
+            type: p.type,
+            data: p.data,
+            createdAt: new Date()
+          })));
+        }
+
+        // 3. 更新 Session 的更新时间
+        await tx.update(agentSessionsTable)
+          .set({ updatedAt: new Date() })
+          .where(eq(agentSessionsTable.id, message.sessionId));
+      });
+    }
   }
 
   /**
@@ -201,24 +236,41 @@ export class SessionRepository {
    */
   async deleteSessions(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
-    
-    // In drizzle sqlite, we can use inArray
     const { inArray } = await import('drizzle-orm');
-    await this.db.transaction(async (tx) => {
-      await tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids));
-      await tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids));
-      await tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids));
-    });
+    const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
+
+    if (isBetterSqlite) {
+      this.db.transaction((tx) => {
+        tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids)).run();
+        tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids)).run();
+        tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids)).run();
+      });
+    } else {
+      await this.db.transaction(async (tx) => {
+        await tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids));
+        await tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids));
+        await tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids));
+      });
+    }
   }
 
   /**
    * 根据 ID 删除单条消息
    */
   async deleteMessage(_sessionId: string, messageId: string): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      await tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId));
-      await tx.delete(messagesTbl).where(eq(messagesTbl.id, messageId));
-    });
+    const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
+
+    if (isBetterSqlite) {
+      this.db.transaction((tx) => {
+        tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId)).run();
+        tx.delete(messagesTbl).where(eq(messagesTbl.id, messageId)).run();
+      });
+    } else {
+      await this.db.transaction(async (tx) => {
+        await tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId));
+        await tx.delete(messagesTbl).where(eq(messagesTbl.id, messageId));
+      });
+    }
   }
 
   /**
@@ -229,14 +281,22 @@ export class SessionRepository {
     const msg = await this.db.select().from(messagesTbl).where(eq(messagesTbl.id, messageId)).limit(1);
     if (!msg.length) return;
     
-    await this.db.transaction(async (tx) => {
-      const toDelete = await tx.select().from(messagesTbl).where(and(eq(messagesTbl.sessionId, sessionId), gte(messagesTbl.orderIndex, msg[0]!.orderIndex)));
-      const ids = toDelete.map(m => m.id);
-      if (ids.length > 0) {
+    const toDelete = await this.db.select().from(messagesTbl).where(and(eq(messagesTbl.sessionId, sessionId), gte(messagesTbl.orderIndex, msg[0]!.orderIndex)));
+    const ids = toDelete.map(m => m.id);
+    if (ids.length > 0) {
+      const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
+      if (isBetterSqlite) {
+        this.db.transaction((tx) => {
+          tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids)).run();
+          tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids)).run();
+        });
+      } else {
+        await this.db.transaction(async (tx) => {
           await tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids));
           await tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids));
+        });
       }
-    });
+    }
   }
 
   /**
@@ -252,14 +312,22 @@ export class SessionRepository {
    */
   async deleteMessagesAfter(sessionId: string, orderIndex: number): Promise<void> {
     const { and, gt, inArray } = await import('drizzle-orm');
-    await this.db.transaction(async (tx) => {
-      const toDelete = await tx.select().from(messagesTbl).where(and(eq(messagesTbl.sessionId, sessionId), gt(messagesTbl.orderIndex, orderIndex)));
-      const ids = toDelete.map(m => m.id);
-      if (ids.length > 0) {
+    const toDelete = await this.db.select().from(messagesTbl).where(and(eq(messagesTbl.sessionId, sessionId), gt(messagesTbl.orderIndex, orderIndex)));
+    const ids = toDelete.map(m => m.id);
+    if (ids.length > 0) {
+      const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
+      if (isBetterSqlite) {
+        this.db.transaction((tx) => {
+          tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids)).run();
+          tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids)).run();
+        });
+      } else {
+        await this.db.transaction(async (tx) => {
           await tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids));
           await tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids));
+        });
       }
-    });
+    }
   }
 
   /**

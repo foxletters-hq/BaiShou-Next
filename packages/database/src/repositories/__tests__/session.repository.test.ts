@@ -47,10 +47,16 @@ describe('SessionRepository', () => {
     });
     const mockWhereLimit = vi.fn().mockResolvedValue([{ id: 'm2', orderIndex: 2, sessionId: 's1' }]);
     
-    const mockWhereChain = vi.fn().mockReturnValue({
-       limit: mockWhereLimit,
-       orderBy: mockOrderBy
-    });
+    // where() 返回值需要支持 await（直接 await 返回数组）和链式调用（.limit/.orderBy）
+    const mockWhereResult = Object.assign(
+      Promise.resolve([{ id: 'm2', orderIndex: 2, sessionId: 's1' }]),
+      {
+        limit: mockWhereLimit,
+        orderBy: mockOrderBy
+      }
+    );
+    
+    const mockWhereChain = vi.fn().mockReturnValue(mockWhereResult);
 
     mockFrom = vi.fn().mockReturnValue({
       where: mockWhereChain,

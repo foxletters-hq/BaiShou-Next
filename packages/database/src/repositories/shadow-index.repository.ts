@@ -128,48 +128,94 @@ export class ShadowIndexRepository {
     if (payloads.length === 0) return [];
 
     const rowIds: number[] = [];
+    const isBetterSqlite = (this.database as any).session?.client?.prepare !== undefined;
 
-    await this.database.transaction(async (tx) => {
-      for (const payload of payloads) {
-        const { rawContent, tags, ...indexData } = payload;
-        
-        // 1. 主表写入
-        const result = await tx
-          .insert(shadowJournalIndexTable)
-          .values({ ...indexData, rawContent, tags })
-          .onConflictDoUpdate({
-            target: [shadowJournalIndexTable.filePath],
-            set: {
-              date: indexData.date,
-              createdAt: indexData.createdAt,
-              updatedAt: indexData.updatedAt,
-              contentHash: indexData.contentHash,
-              weather: indexData.weather ?? null,
-              mood: indexData.mood ?? null,
-              location: indexData.location ?? null,
-              locationDetail: indexData.locationDetail ?? null,
-              isFavorite: indexData.isFavorite,
-              hasMedia: indexData.hasMedia,
-              rawContent,
-              tags,
-            },
-          })
-          .returning({ id: shadowJournalIndexTable.id });
-
-        const rowId = result[0]?.id;
-        if (rowId != null) {
-          rowIds.push(rowId);
+    if (isBetterSqlite) {
+      this.database.transaction((tx) => {
+        for (const payload of payloads) {
+          const { rawContent, tags, ...indexData } = payload;
           
-          // 2. FTS 同步
-          try {
-            await tx.run(sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`);
-            await tx.run(sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${rawContent}, ${tags})`);
-          } catch (e: any) {
-            console.warn(`[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]:`, e.message);
+          // 1. 主表写入
+          const result = tx
+            .insert(shadowJournalIndexTable)
+            .values({ ...indexData, rawContent, tags })
+            .onConflictDoUpdate({
+              target: [shadowJournalIndexTable.filePath],
+              set: {
+                date: indexData.date,
+                createdAt: indexData.createdAt,
+                updatedAt: indexData.updatedAt,
+                contentHash: indexData.contentHash,
+                weather: indexData.weather ?? null,
+                mood: indexData.mood ?? null,
+                location: indexData.location ?? null,
+                locationDetail: indexData.locationDetail ?? null,
+                isFavorite: indexData.isFavorite,
+                hasMedia: indexData.hasMedia,
+                rawContent,
+                tags,
+              },
+            })
+            .returning({ id: shadowJournalIndexTable.id })
+            .all();
+
+          const rowId = result[0]?.id;
+          if (rowId != null) {
+            rowIds.push(rowId);
+            
+            // 2. FTS 同步
+            try {
+              tx.run(sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`);
+              tx.run(sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${rawContent}, ${tags})`);
+            } catch (e: any) {
+              console.warn(`[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]:`, e.message);
+            }
           }
         }
-      }
-    });
+      });
+    } else {
+      await this.database.transaction(async (tx) => {
+        for (const payload of payloads) {
+          const { rawContent, tags, ...indexData } = payload;
+          
+          // 1. 主表写入
+          const result = await tx
+            .insert(shadowJournalIndexTable)
+            .values({ ...indexData, rawContent, tags })
+            .onConflictDoUpdate({
+              target: [shadowJournalIndexTable.filePath],
+              set: {
+                date: indexData.date,
+                createdAt: indexData.createdAt,
+                updatedAt: indexData.updatedAt,
+                contentHash: indexData.contentHash,
+                weather: indexData.weather ?? null,
+                mood: indexData.mood ?? null,
+                location: indexData.location ?? null,
+                locationDetail: indexData.locationDetail ?? null,
+                isFavorite: indexData.isFavorite,
+                hasMedia: indexData.hasMedia,
+                rawContent,
+                tags,
+              },
+            })
+            .returning({ id: shadowJournalIndexTable.id });
+
+          const rowId = result[0]?.id;
+          if (rowId != null) {
+            rowIds.push(rowId);
+            
+            // 2. FTS 同步
+            try {
+              await tx.run(sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`);
+              await tx.run(sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${rawContent}, ${tags})`);
+            } catch (e: any) {
+              console.warn(`[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]:`, e.message);
+            }
+          }
+        }
+      });
+    }
 
     return rowIds;
   }
