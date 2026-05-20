@@ -162,6 +162,7 @@ export const TitleBar: React.FC = () => {
               onSync={handleOrchestratedSync}
               onGetHistory={handleGetHistory}
               isConfigured={s3Configured}
+              onSyncProgress={(cb) => (window as any).api?.incrementalSync?.onSyncProgress(cb)}
             />
           </div>
         )}
