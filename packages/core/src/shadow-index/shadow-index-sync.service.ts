@@ -121,11 +121,15 @@ export class ShadowIndexSyncService {
         // ── 1. 孤立检测 ──
         if (!fs.existsSync(filePath)) {
           const existingRows = await this.shadowRepo.findByDatePrefix(dateStr);
-          for (const row of existingRows) {
-            idsToDelete.push({ id: row.id, dateStr });
+          if (existingRows.length > 0) {
+            for (const row of existingRows) {
+              idsToDelete.push({ id: row.id, dateStr });
+            }
+            results.push({ meta: null, isChanged: true });
+            events.push({ filePath: path.relative(path.dirname(journalBase), filePath), result: { meta: null, isChanged: true } });
+          } else {
+            results.push({ meta: null, isChanged: false });
           }
-          results.push({ meta: null, isChanged: true });
-          events.push({ filePath: path.relative(path.dirname(journalBase), filePath), result: { meta: null, isChanged: true } });
           return;
         }
 

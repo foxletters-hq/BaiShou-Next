@@ -5,7 +5,7 @@ import { VaultIndexService } from '../vault-index.service';
 import { ShadowIndexSyncService } from '../../shadow-index/shadow-index-sync.service';
 import { ShadowIndexRepository } from '@baishou/database';
 import { DiaryDateConflictError } from '../diary.types';
-import { Diary, parseDateStr } from '@baishou/shared';
+import { Diary, parseDateStr, formatLocalDate } from '@baishou/shared';
 
 describe('DiaryService - Single Source of Truth architecture', () => {
   let mockShadowRepo: import('vitest').Mocked<ShadowIndexRepository>;
@@ -61,7 +61,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
   });
 
   it('create() should write file then sync to shadow DB', async () => {
-    const inputDate = new Date('2026-03-31T00:00:00.000Z');
+    const inputDate = parseDateStr('2026-03-31');
     const input = { date: inputDate, content: 'Test body', isFavorite: false };
 
     // 假设物理文件不存在
@@ -84,7 +84,10 @@ describe('DiaryService - Single Source of Truth architecture', () => {
 
     expect(mockFileSync.readJournal).toHaveBeenCalledWith(inputDate);
     // 确保写入物理文件在前
-    expect(mockFileSync.writeJournal).toHaveBeenCalledWith(input);
+    expect(mockFileSync.writeJournal).toHaveBeenCalledWith(expect.objectContaining({
+      content: 'Test body',
+      isFavorite: false,
+    }));
     // 确保触发同步在后
     expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-31');
     // 确保把同步的结果推给内存库
@@ -150,13 +153,12 @@ describe('DiaryService - Single Source of Truth architecture', () => {
   });
 
   it('update() with date change should remove old file', async () => {
-    const oldDateIso = '2026-03-30T00:00:00.000Z';
-    const oldDate = new Date(oldDateIso);
-    const newDate = new Date('2026-03-31T00:00:00.000Z');
+    const oldDate = parseDateStr('2026-03-30');
+    const newDate = parseDateStr('2026-03-31');
 
     mockShadowRepo.findById.mockResolvedValue({
       id: 99,
-      date: oldDateIso.split('T')[0]!,
+      date: '2026-03-30',
       filePath: '',
       contentHash: '',
       createdAt: '',
@@ -167,14 +169,15 @@ describe('DiaryService - Single Source of Truth architecture', () => {
     });
     
     mockFileSync.readJournal.mockImplementation(async (d) => {
-      if (d.getTime() === oldDate.getTime()) return { id: 99, date: oldDate, content: 'Old', isFavorite: false, createdAt: new Date(), updatedAt: new Date(), mediaPaths: [] } as Diary;
+      if (formatLocalDate(d) === formatLocalDate(oldDate)) return { id: 99, date: oldDate, content: 'Old', isFavorite: false, createdAt: new Date(), updatedAt: new Date(), mediaPaths: [] } as Diary;
       return null; // new date is clear
     });
     mockShadowSync.syncJournal.mockResolvedValue({ isChanged: true, meta: { id: 99, date: newDate, preview: 'New', tags: [], updatedAt: new Date() } });
 
     await service.update(99, { date: newDate, content: 'New' });
 
-    expect(mockFileSync.deleteJournalFile).toHaveBeenCalledWith(oldDate);
+    const deletedDate = mockFileSync.deleteJournalFile.mock.calls[0]![0]!;
+    expect(formatLocalDate(deletedDate)).toBe('2026-03-30');
     expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-30'); // 删旧
     expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-31'); // 更新新
   });

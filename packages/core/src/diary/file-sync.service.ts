@@ -141,7 +141,8 @@ export class FileSyncServiceImpl implements FileSyncService {
           break;
         case 'tags': {
           const clean = val.replace(/^\[/, '').replace(/\]$/, '');
-          diary.tags = clean.split(',').map((s) => s.trim()).filter(Boolean) as any;
+          const tagArr = clean.split(',').map((s) => s.trim()).filter(Boolean);
+          diary.tags = tagArr.join(',');
           break;
         }
         case 'weather':
