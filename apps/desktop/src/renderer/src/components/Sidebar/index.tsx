@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiFind, MdHistory, MdCloudUpload } from 'react-icons/md';
@@ -6,6 +6,7 @@ import styles from './Sidebar.module.css';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useUserProfileStore } from '@baishou/store';
+import { useToast } from '@baishou/ui';
 import appIcon from '@baishou/shared/assets/images/icon.png';
 
 
@@ -14,6 +15,8 @@ import appIcon from '@baishou/shared/assets/images/icon.png';
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
   const { profile, loadProfile } = useUserProfileStore();
+  const toast = useToast();
+  const hasShownAvatarWarning = useRef(false);
 
   // Default nav items
   const navigate = useNavigate();
@@ -70,6 +73,13 @@ export const Sidebar: React.FC = () => {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  useEffect(() => {
+    if (profile?.avatarFileMissing && !hasShownAvatarWarning.current) {
+      hasShownAvatarWarning.current = true;
+      toast.showWarning(t('profile.avatar_file_missing', '检测到头像文件不存在，已恢复为默认头像'));
+    }
+  }, [profile, toast, t]);
 
   const onDragEnd = (result: DropResult) => {
   if (!result.destination) return;

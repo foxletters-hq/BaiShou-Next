@@ -4,6 +4,7 @@
 export interface UserProfile {
   nickname: string;                   // 昵称
   avatarPath: string | null;          // 头像文件绝对或相对路径
+  avatarFileMissing?: boolean;        // 头像文件不存在标记（运行时检测，不持久化）
   activePersonaId: string;            // 当前激活的身份卡 ID
   personas: Record<string, Persona>;  // 所有身份卡字典（键为 personaId）
 }

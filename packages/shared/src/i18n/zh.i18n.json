@@ -1535,7 +1535,8 @@
     "edit_nickname": "修改昵称",
     "default_nickname": "白守用户",
     "no_nickname": "未设置昵称",
-    "avatar_fallback": "白"
+    "avatar_fallback": "白",
+    "avatar_file_missing": "检测到头像文件不存在，已恢复为默认头像"
   },
   "recall": {
     "title": "唤醒回忆",

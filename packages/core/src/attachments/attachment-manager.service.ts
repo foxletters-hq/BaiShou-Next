@@ -50,7 +50,8 @@ export class AttachmentManagerService implements IAttachmentManager {
 
       // Ignore invalid paths or network URIs during standard file import
       if (!existsSync(absoluteSourcePath)) {
-        return absoluteSourcePath;
+        console.warn(`[AttachmentManager] Source file not found: ${absoluteSourcePath}`);
+        return '';
       }
 
       const ext = path.extname(absoluteSourcePath).toLowerCase();
@@ -73,10 +74,20 @@ export class AttachmentManagerService implements IAttachmentManager {
         const avatarsDir = await this.pathProvider.getAvatarsDirectory();
         const filename = relativePath.split(/[/\\]/).pop() || relativePath;
         const absPath = path.join(avatarsDir, filename);
+        
+        // Verify file exists before returning URL
+        if (!existsSync(absPath)) {
+          console.warn(`[AttachmentManager] Avatar file not found: ${absPath}`);
+          throw new Error('AVATAR_FILE_NOT_FOUND');
+        }
+        
         // Map absolute path to our custom local file protocol to bypass Chrome webSecurity restrictions
         // We use pathToFileURL because it strictly covers Windows triple slash file:///C:/ escaping correctly.
         return pathToFileURL(absPath).toString().replace(/^file:/i, 'local:');
       } catch (e) {
+        if (e instanceof Error && e.message === 'AVATAR_FILE_NOT_FOUND') {
+          throw e;
+        }
         console.error('[AttachmentManager] Failed to resolve avatar path:', e);
       }
     }

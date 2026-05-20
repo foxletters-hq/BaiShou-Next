@@ -1443,7 +1443,8 @@
     "edit_nickname": "修改昵称",
     "default_nickname": "白守用户",
     "no_nickname": "未设置昵称",
-    "avatar_fallback": "白"
+    "avatar_fallback": "白",
+    "avatar_file_missing": "アバターファイルが見つかりません。デフォルトアバターに復元しました"
   },
   "recall": {
     "title": "上下文补充与唤醒",

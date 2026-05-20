@@ -50,7 +50,14 @@ export class ProfileService {
   async mapProfileOutput(profile: any) {
     if (!profile) return profile;
     if (profile.avatarPath && profile.avatarPath.startsWith('avatars/')) {
-      profile.avatarPath = await this.attachmentManager.resolveAvatarPath(profile.avatarPath);
+      try {
+        profile.avatarPath = await this.attachmentManager.resolveAvatarPath(profile.avatarPath);
+      } catch (e: any) {
+        if (e instanceof Error && e.message === 'AVATAR_FILE_NOT_FOUND') {
+          profile.avatarPath = null;
+          profile.avatarFileMissing = true;
+        }
+      }
     }
     return profile;
   }

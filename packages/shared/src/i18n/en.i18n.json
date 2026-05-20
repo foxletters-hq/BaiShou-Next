@@ -1500,7 +1500,8 @@
     "edit_nickname": "Edit Nickname",
     "default_nickname": "User",
     "no_nickname": "未设置昵称",
-    "avatar_fallback": "B"
+    "avatar_fallback": "B",
+    "avatar_file_missing": "Avatar file not found, restored to default avatar"
   },
   "recall": {
     "title": "上下文补充与唤醒",
