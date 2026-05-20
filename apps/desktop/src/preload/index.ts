@@ -281,6 +281,11 @@ export const api = {
     orchestratedDownloadOnly: () => ipcRenderer.invoke('incrementalSync:orchestratedDownloadOnly'),
     getSyncHistory: (limit?: number) => ipcRenderer.invoke('incrementalSync:getSyncHistory', limit),
     getLastSyncSummary: () => ipcRenderer.invoke('incrementalSync:getLastSyncSummary'),
+    onSyncProgress: (callback: (event: any) => void) => {
+      const handler = (_: any, event: any) => callback(event);
+      ipcRenderer.on('incrementalSync:progress', handler);
+      return () => ipcRenderer.off('incrementalSync:progress', handler);
+    },
   },
   cloud: {
     syncNow: (config: any) => ipcRenderer.invoke('cloud:syncNow', config),

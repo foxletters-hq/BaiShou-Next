@@ -177,8 +177,10 @@ export function registerIncrementalSyncIPC() {
 
   // ── 编排器一键同步 API ─────────────────────────────────────
 
-  ipcMain.handle('incrementalSync:orchestratedSync', async () => {
-    const result = await getOrchestrator().sync();
+  ipcMain.handle('incrementalSync:orchestratedSync', async (event) => {
+    const result = await getOrchestrator().sync((progress) => {
+      event.sender.send('incrementalSync:progress', progress);
+    });
     if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
       const { globalBootstrapper } = await import('../services/bootstrapper.service');
       await globalBootstrapper.fullyResyncAllEcosystems();
@@ -186,12 +188,16 @@ export function registerIncrementalSyncIPC() {
     return result;
   });
 
-  ipcMain.handle('incrementalSync:orchestratedUploadOnly', async () => {
-    return getOrchestrator().uploadOnly();
+  ipcMain.handle('incrementalSync:orchestratedUploadOnly', async (event) => {
+    return getOrchestrator().uploadOnly((progress) => {
+      event.sender.send('incrementalSync:progress', progress);
+    });
   });
 
-  ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async () => {
-    const result = await getOrchestrator().downloadOnly();
+  ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async (event) => {
+    const result = await getOrchestrator().downloadOnly((progress) => {
+      event.sender.send('incrementalSync:progress', progress);
+    });
     if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
       const { globalBootstrapper } = await import('../services/bootstrapper.service');
       await globalBootstrapper.fullyResyncAllEcosystems();
