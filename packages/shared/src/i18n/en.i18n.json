@@ -680,7 +680,16 @@
     "no_targets": "No sync targets",
     "add_hint": "Click the add button in the top right to configure sync targets",
     "last_sync": "Last Sync",
-    "sync_now": "Sync"
+    "sync_now": "Sync",
+    "incremental_sync": "Incremental Sync",
+    "incremental_sync_desc": "File-by-file incremental sync with deletion propagation. Suitable for daily cross-device sync.",
+    "sync_completed": "Sync Completed",
+    "sync_result_summary": "$count files changed in $duration",
+    "sync_result_uploaded": "$count uploaded",
+    "sync_result_downloaded": "$count downloaded",
+    "sync_result_deleted": "$count deleted",
+    "sync_result_skipped": "$count skipped",
+    "sync_result_conflicts": "$count conflicts"
   },
   "lan_transfer": {
     "status_idle": "Waiting...",

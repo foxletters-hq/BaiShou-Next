@@ -647,7 +647,16 @@
     "downloading": "ダウンロード中...",
     "download_success": "保存先: $path",
     "no_limit": "不限制数量",
-    "loading_records": "正在连线获取云端记录..."
+    "loading_records": "正在连线获取云端记录...",
+    "incremental_sync": "増分同期",
+    "incremental_sync_desc": "ファイルごとの増分同期。削除の伝播に対応。日常的なクロスデバイス同期に最適。",
+    "sync_completed": "同期完了",
+    "sync_result_summary": "$count ファイル変更、所要時間 $duration",
+    "sync_result_uploaded": "$count 件アップロード",
+    "sync_result_downloaded": "$count 件ダウンロード",
+    "sync_result_deleted": "$count 件削除",
+    "sync_result_skipped": "$count 件スキップ",
+    "sync_result_conflicts": "$count 件の競合"
   },
   "lan_transfer": {
     "status_idle": "待機中...",

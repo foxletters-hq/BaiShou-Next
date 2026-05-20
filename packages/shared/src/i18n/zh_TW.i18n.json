@@ -679,7 +679,16 @@
     "downloading": "正在下載...",
     "download_success": "已儲存至: $path",
     "no_limit": "不限制数量",
-    "loading_records": "正在连线获取云端记录..."
+    "loading_records": "正在连线获取云端记录...",
+    "incremental_sync": "增量同步",
+    "incremental_sync_desc": "逐檔案增量同步，支援刪除傳播。適合日常跨裝置同步。",
+    "sync_completed": "同步完成",
+    "sync_result_summary": "共 $count 個檔案變更，耗時 $duration",
+    "sync_result_uploaded": "上傳 $count 個",
+    "sync_result_downloaded": "下載 $count 個",
+    "sync_result_deleted": "刪除 $count 個",
+    "sync_result_skipped": "跳過 $count 個",
+    "sync_result_conflicts": "$count 個衝突"
   },
   "lan_transfer": {
     "status_idle": "等待發現...",
