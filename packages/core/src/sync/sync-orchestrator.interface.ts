@@ -1,4 +1,4 @@
-import type { IncrementalSyncResult, SyncSessionLog, S3SyncConfig } from '@baishou/shared';
+import type { IncrementalSyncResult, SyncSessionLog, S3SyncConfig, SyncProgressCallback } from '@baishou/shared';
 
 /**
  * 同步编排器接口
@@ -31,18 +31,21 @@ export interface ISyncOrchestrator {
    *   console.log('冲突已自动处理:', result.conflicted);
    * }
    * ```
+   * @param onProgress - 可选的进度回调，逐文件处理时触发
    */
-  sync(): Promise<IncrementalSyncResult>;
+  sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
 
   /**
    * 仅上传变更（不同步下载）
+   * @param onProgress - 可选的进度回调
    */
-  uploadOnly(): Promise<IncrementalSyncResult>;
+  uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
 
   /**
    * 仅下载变更（不同步上传）
+   * @param onProgress - 可选的进度回调
    */
-  downloadOnly(): Promise<IncrementalSyncResult>;
+  downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
 
   /**
    * 获取同步历史记录

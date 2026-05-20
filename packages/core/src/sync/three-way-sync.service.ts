@@ -5,6 +5,7 @@ import type {
   S3SyncConfig,
   SyncManifest,
   IncrementalSyncResult,
+  SyncProgressCallback,
 } from '@baishou/shared';
 import type { IIncrementalSyncService } from './incremental-sync.interface';
 import type { ICloudSyncClient } from '../network/cloud-sync.interface';
@@ -129,7 +130,7 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
 
   // ── 同步操作 ───────────────────────────────────────────────
 
-  async sync(): Promise<IncrementalSyncResult> {
+  async sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
     await this.loadConfig();
     if (!this.config.enabled) throw new S3NotConfiguredError();
 
@@ -151,8 +152,19 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
       const ancestorSnapshot = await this.getRemoteSnapshot();
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot);
+      const total = decisions.length;
 
-      for (const d of decisions) {
+      for (let i = 0; i < decisions.length; i++) {
+        const d = decisions[i]!;
+        onProgress?.({
+          phase: 'syncing',
+          current: i + 1,
+          total,
+          fileName: d.filePath,
+          action: d.type === 'skip' ? 'skip' : d.type === 'conflict-resolved' ? (d.direction === 'upload' ? 'upload' : 'download') : d.type as 'upload' | 'download' | 'delete',
+          statusText: `${d.type === 'upload' ? '上传' : d.type === 'download' ? '下载' : d.type === 'delete-remote' ? '删除远程' : d.type === 'delete-local' ? '删除本地' : d.type === 'conflict-resolved' ? '解决冲突' : '跳过'}: ${d.filePath}`,
+        });
+
         switch (d.type) {
           case 'upload':
             await this.uploadFile(d.filePath);
@@ -205,7 +217,7 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
     }
   }
 
-  async uploadOnly(): Promise<IncrementalSyncResult> {
+  async uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
     await this.loadConfig();
     if (!this.config.enabled) throw new S3NotConfiguredError();
 
@@ -218,10 +230,21 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
     try {
       const localManifest = await this.buildLocalManifest();
       const remoteManifest = await this.getRemoteManifest();
+      const entries = Object.entries(localManifest.files);
+      const total = entries.length;
 
-      for (const [relPath, localEntry] of Object.entries(localManifest.files)) {
+      for (let i = 0; i < entries.length; i++) {
+        const [relPath, localEntry] = entries[i]!;
         const remoteEntry = remoteManifest.files[relPath];
         if (!remoteEntry || remoteEntry.hash !== localEntry.hash) {
+          onProgress?.({
+            phase: 'syncing',
+            current: i + 1,
+            total,
+            fileName: relPath,
+            action: 'upload',
+            statusText: `上传: ${relPath}`,
+          });
           await this.uploadFile(relPath);
           result.uploaded.push(relPath);
         } else {
@@ -240,7 +263,7 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
     }
   }
 
-  async downloadOnly(): Promise<IncrementalSyncResult> {
+  async downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
     await this.loadConfig();
     if (!this.config.enabled) throw new S3NotConfiguredError();
 
@@ -256,12 +279,30 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
       const ancestorSnapshot = await this.getRemoteSnapshot();
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot);
+      const total = decisions.length;
 
-      for (const d of decisions) {
+      for (let i = 0; i < decisions.length; i++) {
+        const d = decisions[i]!;
         if (d.type === 'download' || (d.type === 'conflict-resolved' && d.direction === 'download')) {
+          onProgress?.({
+            phase: 'syncing',
+            current: i + 1,
+            total,
+            fileName: d.filePath,
+            action: 'download',
+            statusText: `下载: ${d.filePath}`,
+          });
           await this.downloadFile(d.filePath);
           result.downloaded.push(d.filePath);
         } else if (d.type === 'delete-local') {
+          onProgress?.({
+            phase: 'syncing',
+            current: i + 1,
+            total,
+            fileName: d.filePath,
+            action: 'delete',
+            statusText: `删除本地: ${d.filePath}`,
+          });
           await this.deleteLocalFile(d.filePath);
           result.deletedLocal.push(d.filePath);
         } else if (d.type === 'skip') {

@@ -1,4 +1,4 @@
-import type { IncrementalSyncResult, SyncSessionLog, S3SyncConfig, SyncSummary } from '@baishou/shared';
+import type { IncrementalSyncResult, SyncSessionLog, S3SyncConfig, SyncSummary, SyncProgressCallback } from '@baishou/shared';
 import type { ISyncOrchestrator } from './sync-orchestrator.interface';
 import type { IIncrementalSyncService } from './incremental-sync.interface';
 import type { IOperationLogService } from './operation-log.interface';
@@ -53,8 +53,9 @@ export class SyncOrchestrator implements ISyncOrchestrator {
   }
 
   private async doSync(
-    operation: () => Promise<IncrementalSyncResult>,
+    operation: (onProgress?: SyncProgressCallback) => Promise<IncrementalSyncResult>,
     direction: 'full-sync' | 'upload-only' | 'download-only',
+    onProgress?: SyncProgressCallback,
   ): Promise<IncrementalSyncResult> {
     this.acquireLock();
 
@@ -64,7 +65,7 @@ export class SyncOrchestrator implements ISyncOrchestrator {
     try {
       await this.tryGitCommit();
 
-      const result = await operation();
+      const result = await operation(onProgress);
       result.sessionId = sessionId;
 
       const completedAt = new Date().toISOString();
@@ -120,16 +121,16 @@ export class SyncOrchestrator implements ISyncOrchestrator {
     }
   }
 
-  async sync(): Promise<IncrementalSyncResult> {
-    return this.doSync(() => this.syncService.sync(), 'full-sync');
+  async sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
+    return this.doSync((p) => this.syncService.sync(p), 'full-sync', onProgress);
   }
 
-  async uploadOnly(): Promise<IncrementalSyncResult> {
-    return this.doSync(() => this.syncService.uploadOnly(), 'upload-only');
+  async uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
+    return this.doSync((p) => this.syncService.uploadOnly(p), 'upload-only', onProgress);
   }
 
-  async downloadOnly(): Promise<IncrementalSyncResult> {
-    return this.doSync(() => this.syncService.downloadOnly(), 'download-only');
+  async downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
+    return this.doSync((p) => this.syncService.downloadOnly(p), 'download-only', onProgress);
   }
 
   async getSyncHistory(limit?: number): Promise<SyncSessionLog[]> {
