@@ -110,17 +110,7 @@
   z-index: 1000;
 }
 
-/* ── Dialog ──────────────────────────────────────────────── */
-
-.dialog {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 20px 24px;
-  width: 320px;
-  max-width: 90vw;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-}
+/* ── Dialog Header ───────────────────────────────────────── */
 
 .dialogHeader {
   display: flex;
@@ -153,53 +143,6 @@
 .closeBtn:hover {
   background: var(--bg-surface-high);
   color: var(--text-primary);
-}
-
-/* ── Result Grid ─────────────────────────────────────────── */
-
-.resultGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.resultItem {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  background: var(--bg-surface-low);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.resultItem svg {
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-}
-
-.resultLabel {
-  flex: 1;
-}
-
-.resultValue {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.warningItem .resultValue {
-  color: var(--color-warning);
-}
-
-/* ── Result Footer ───────────────────────────────────────── */
-
-.resultFooter {
-  display: flex;
-  justify-content: space-between;
-  color: var(--text-tertiary);
-  font-size: 12px;
 }
 
 /* ── Error Toast ─────────────────────────────────────────── */
@@ -240,6 +183,36 @@
 
 .errorClose:hover {
   color: var(--text-primary);
+}
+
+/* ── Progress Bar ────────────────────────────────────────── */
+
+.progressBarContainer {
+  padding: 0;
+}
+
+.progressTrack {
+  height: 3px;
+  background: var(--bg-surface-low);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 /* ── History Panel ───────────────────────────────────────── */

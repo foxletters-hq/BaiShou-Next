@@ -1,6 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { RefreshCw, CheckCircle, AlertTriangle, Upload, Download, Trash2, X } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
+import type { SyncProgressEvent } from '@baishou/shared';
+import { useToast } from '../Toast/useToast';
 import styles from './IncrementalSyncPanel.module.css';
 
 export interface SyncProgress {
@@ -29,19 +32,21 @@ export interface IncrementalSyncPanelProps {
   onSync: () => Promise<SyncProgress>;
   onGetHistory: (limit?: number) => Promise<SyncHistoryEntry[]>;
   isConfigured: boolean;
+  onSyncProgress?: (callback: (event: SyncProgressEvent) => void) => (() => void);
 }
 
 export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
   onSync,
   onGetHistory,
   isConfigured,
+  onSyncProgress,
 }) => {
+  const { t } = useTranslation();
+  const toast = useToast();
   const [isSyncing, setIsSyncing] = useState(false);
-  const [lastResult, setLastResult] = useState<SyncProgress | null>(null);
-  const [showResult, setShowResult] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<SyncHistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [progress, setProgress] = useState<SyncProgressEvent | null>(null);
 
   useEffect(() => {
     if (isConfigured) {
@@ -49,23 +54,32 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
     }
   }, [isConfigured, onGetHistory]);
 
+  useEffect(() => {
+    if (!onSyncProgress) return undefined;
+    const unsub = onSyncProgress((event) => {
+      setProgress(event);
+    });
+    return unsub;
+  }, [onSyncProgress]);
+
   const handleSync = useCallback(async () => {
     if (isSyncing || !isConfigured) return;
     setIsSyncing(true);
-    setError(null);
+    setProgress(null);
 
     try {
-      const result = await onSync();
-      setLastResult(result);
-      setShowResult(true);
-      const updated = await onGetHistory(5).catch(() => []);
+      await onSync();
+      setProgress(null);
+      const updated = await onGetHistory(5).catch((): SyncHistoryEntry[] => []);
       setHistory(updated);
+      toast.showSuccess(t('data_sync.sync_completed', '同步成功'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : '同步失败');
+      toast.showError(t('data_sync.sync_failed', '同步失败'));
+      setProgress(null);
     } finally {
       setIsSyncing(false);
     }
-  }, [isSyncing, isConfigured, onSync, onGetHistory]);
+  }, [isSyncing, isConfigured, onSync, onGetHistory, t, toast]);
 
   const formatTime = (iso: string) => {
     try {
@@ -73,12 +87,12 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
       const now = new Date();
       const diffMs = now.getTime() - d.getTime();
       const diffMin = Math.floor(diffMs / 60000);
-      if (diffMin < 1) return '刚刚';
-      if (diffMin < 60) return `${diffMin} 分钟前`;
+      if (diffMin < 1) return t('common.just_now', '刚刚');
+      if (diffMin < 60) return t('common.minutes_ago', '$count 分钟前').replace('$count', diffMin.toString());
       const diffH = Math.floor(diffMin / 60);
-      if (diffH < 24) return `${diffH} 小时前`;
+      if (diffH < 24) return t('common.hours_ago', '$count 小时前').replace('$count', diffH.toString());
       const diffD = Math.floor(diffH / 24);
-      if (diffD < 7) return `${diffD} 天前`;
+      if (diffD < 7) return t('common.days_ago', '$count 天前').replace('$count', diffD.toString());
       return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     } catch {
       return '';
@@ -99,25 +113,24 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
           className={`${styles.syncButton} ${isSyncing ? styles.syncing : ''} ${!isConfigured ? styles.disabled : ''}`}
           onClick={handleSync}
           disabled={isSyncing || !isConfigured}
-          title={isConfigured ? '同步到 S3' : '请先配置 S3 同步'}
+          title={isConfigured ? t('data_sync.sync_now', '同步') : t('common.not_configured', '未配置')}
         >
           <RefreshCw
             size={16}
             className={`${styles.syncIcon} ${isSyncing ? styles.spinning : ''}`}
           />
           <span className={styles.syncLabel}>
-            {isSyncing ? '同步中...' : '同步'}
+            {isSyncing ? t('data_sync.syncing', '同步中...') : t('data_sync.sync_now', '同步')}
           </span>
         </button>
 
         {lastLog && lastLog.success && (
           <button
             className={styles.lastSync}
-            onClick={() => setShowResult(true)}
-            title="查看上次同步详情"
+            title={t('data_sync.last_sync', '上次同步')}
           >
             <CheckCircle size={12} className={styles.checkIcon} />
-            <span>上次同步: {formatTime(lastLog.completedAt)}</span>
+            <span>{formatTime(lastLog.completedAt)}</span>
           </button>
         )}
 
@@ -125,7 +138,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
           <button
             className={styles.historyBtn}
             onClick={() => setShowHistory(!showHistory)}
-            title="同步历史"
+            title={t('data_sync.sync_records', '同步历史')}
           >
             <span>{history.length}</span>
           </button>
@@ -133,11 +146,25 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
       </div>
 
       <AnimatePresence>
-        {showResult && lastResult && (
-          <SyncResultDialog
-            result={lastResult}
-            onClose={() => setShowResult(false)}
-          />
+        {isSyncing && progress && progress.total > 0 && (
+          <motion.div
+            className={styles.progressBarContainer}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className={styles.progressTrack}>
+              <div
+                className={styles.progressFill}
+                style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
+              />
+            </div>
+            <div className={styles.progressText}>
+              {progress.current}/{progress.total}
+              {progress.statusText && ` · ${progress.statusText}`}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -151,97 +178,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
           />
         )}
       </AnimatePresence>
-
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            className={styles.errorToast}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <AlertTriangle size={14} />
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className={styles.errorClose}>
-              <X size={12} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
-  );
-};
-
-interface SyncResultDialogProps {
-  result: SyncProgress;
-  onClose: () => void;
-}
-
-const SyncResultDialog: React.FC<SyncResultDialogProps> = ({ result, onClose }) => {
-  const { uploaded, downloaded, deletedRemote, deletedLocal, conflicts, skipped, duration } = result;
-  const total = uploaded + downloaded + deletedRemote + deletedLocal + conflicts + skipped;
-
-  return (
-    <motion.div
-      className={styles.overlay}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className={styles.dialog}
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.15 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={styles.dialogHeader}>
-          <h3>同步完成</h3>
-          <button onClick={onClose} className={styles.closeBtn}>
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className={styles.resultGrid}>
-          <div className={styles.resultItem}>
-            <Upload size={14} />
-            <span className={styles.resultLabel}>上传</span>
-            <span className={styles.resultValue}>{uploaded}</span>
-          </div>
-          <div className={styles.resultItem}>
-            <Download size={14} />
-            <span className={styles.resultLabel}>下载</span>
-            <span className={styles.resultValue}>{downloaded}</span>
-          </div>
-          <div className={styles.resultItem}>
-            <Trash2 size={14} />
-            <span className={styles.resultLabel}>删除</span>
-            <span className={styles.resultValue}>{deletedRemote + deletedLocal}</span>
-          </div>
-          {conflicts > 0 && (
-            <div className={`${styles.resultItem} ${styles.warningItem}`}>
-              <AlertTriangle size={14} />
-              <span className={styles.resultLabel}>冲突</span>
-              <span className={styles.resultValue}>{conflicts}</span>
-            </div>
-          )}
-          <div className={styles.resultItem}>
-            <CheckCircle size={14} />
-            <span className={styles.resultLabel}>跳过</span>
-            <span className={styles.resultValue}>{skipped}</span>
-          </div>
-        </div>
-
-        <div className={styles.resultFooter}>
-          <span>共处理 {total} 个文件</span>
-          <span>耗时 {(duration / 1000).toFixed(1)}s</span>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 };
 
@@ -258,6 +195,8 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
   formatTime,
   formatDuration,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       className={styles.overlay}
@@ -276,14 +215,14 @@ const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.dialogHeader}>
-          <h3>同步历史</h3>
+          <h3>{t('data_sync.sync_records', '同步历史')}</h3>
           <button onClick={onClose} className={styles.closeBtn}>
             <X size={16} />
           </button>
         </div>
 
         {history.length === 0 ? (
-          <div className={styles.emptyHistory}>暂无同步记录</div>
+          <div className={styles.emptyHistory}>{t('data_sync.no_records', '暂无同步记录')}</div>
         ) : (
           <div className={styles.historyList}>
             {history.map((entry) => (
