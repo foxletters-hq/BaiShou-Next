@@ -40,6 +40,13 @@ export interface IStoragePathService {
   getSummariesBaseDirectory(): Promise<string>;
 
   /**
+   * 返回旧版白守的 Archives 目录路径（用于兼容迁移）
+   * 路径结构: <root>/<VaultName>/Archives/
+   * 如果目录不存在则返回 null
+   */
+  getLegacyArchivesDirectory(): Promise<string | null>;
+
+  /**
    * 返回当前活动 Vault 下用于存放 AI Agent 长记忆 JSON 存储的位置
    */
   getSessionsBaseDirectory(): Promise<string>;

@@ -123,6 +123,17 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir;
   }
 
+  public async getLegacyArchivesDirectory(): Promise<string | null> {
+    const activeDir = await this.getActiveVaultDirectory();
+    const dir = path.join(activeDir, 'Archives');
+    try {
+      await fs.access(dir);
+      return dir;
+    } catch {
+      return null;
+    }
+  }
+
   public async getSessionsBaseDirectory(): Promise<string> {
     const activeDir = await this.getActiveVaultDirectory();
     const dir = path.join(activeDir, 'Sessions');

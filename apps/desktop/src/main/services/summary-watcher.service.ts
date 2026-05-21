@@ -11,13 +11,13 @@ import { pathService } from '../ipc/vault.ipc';
 /**
  * 总结文件变动监听服务
  *
- * 监听 Summaries/ 目录下所有 .md 文件的增删改，
+ * 监听 Summaries/ 和 Archives/（旧版兼容）目录下所有 .md 文件的增删改，
  * 自动触发 SummarySyncService 将文件变更同步到 DB 缓存表。
- * 与 DiaryWatcherService 同级对称设计。
  */
 export class SummaryWatcherService {
   private watcher: chokidar.FSWatcher | null = null;
   private summariesPath: string | null = null;
+  private archivesPath: string | null = null;
   private pendingPaths = new Set<string>();
   private isProcessing = false;
   private globalDebounceTimer: NodeJS.Timeout | null = null;
@@ -29,6 +29,7 @@ export class SummaryWatcherService {
   public start(vaultPath: string) {
     this.stop();
     this.summariesPath = path.join(vaultPath, 'Summaries');
+    this.archivesPath = path.join(vaultPath, 'Archives');
 
     // 确保 Summaries 目录存在
     if (!fs.existsSync(this.summariesPath)) {
@@ -45,12 +46,19 @@ export class SummaryWatcherService {
     this.summaryFileService = new SummaryFileService(pathService);
     this.summarySync = new SummarySyncService(null, null, summaryRepo, this.summaryFileService);
 
+    // 收集需要监听的目录（Summaries + 可选的 Archives）
+    const watchDirs: string[] = [this.summariesPath];
+    if (fs.existsSync(this.archivesPath)) {
+      watchDirs.push(this.archivesPath);
+      logger.info(`[SummaryWatcher] 同时监听旧版 Archives 目录: ${this.archivesPath}`);
+    }
+
     // 初始化 Chokidar 监听（递归监听子目录 Weekly/Monthly/...）
-    this.watcher = chokidar.watch(this.summariesPath, {
+    this.watcher = chokidar.watch(watchDirs, {
       ignored: /(^|[\/\\])\../,
       ignoreInitial: true,
       disableGlobbing: true,
-      depth: 1, // 只需要一层子目录
+      depth: 1,
     } as any);
 
     this.watcher.on('all', (eventName, fullPath) => {
@@ -60,7 +68,7 @@ export class SummaryWatcherService {
       }
     });
 
-    logger.info(`[SummaryWatcher] 监听已启动: ${this.summariesPath}`);
+    logger.info(`[SummaryWatcher] 监听已启动: ${watchDirs.join(', ')}`);
   }
 
   public stop() {
@@ -73,6 +81,7 @@ export class SummaryWatcherService {
     this.suppressedPaths.clear();
     this.isProcessing = false;
     this.summariesPath = null;
+    this.archivesPath = null;
     this.summarySync = null;
     this.summaryFileService = null;
     logger.info(`[SummaryWatcher] 监听已停止`);
@@ -104,7 +113,7 @@ export class SummaryWatcherService {
     }
     this.globalDebounceTimer = setTimeout(async () => {
       await this.processQueue();
-    }, 800); // 比日记更长的防抖，summary 文件写入可能更慢
+    }, 800);
   }
 
   private async processQueue() {
@@ -140,7 +149,7 @@ export class SummaryWatcherService {
 
   /**
    * 从文件绝对路径解析出 SummaryType 和日期范围
-   * 路径格式: <vault>/Summaries/<Type>/<filename>.md
+   * 路径格式: <vault>/Summaries/<Type>/<filename>.md 或 <vault>/Archives/<Type>/<filename>.md
    * 文件名格式:
    *   Weekly:  2026-W18.md
    *   Monthly: 2026-05.md
