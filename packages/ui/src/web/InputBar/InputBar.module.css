@@ -14,6 +14,7 @@
   max-width: 1000px;
   display: flex;
   flex-direction: column;
+  transition: max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .toolbarWrapper {
@@ -188,13 +189,26 @@
 
 /* Input Card */
 .inputCard {
+  position: relative; /* Ensure absolute positioning context is preserved */
   background-color: var(--bg-surface-normal); /* Add deeper surface */
-  border-radius: 26px; /* 胶囊圆角 */
+  border-radius: 22px; /* 胶囊圆角 */
   border: 1px solid var(--border-subtle);
-  padding: 6px;
+  padding: 10px 14px;
   display: flex;
-  align-items: flex-end;
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  flex-direction: column;
+  box-sizing: border-box;
+  transition: max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.inputCardAnimating {
+  transition: height 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+              padding 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+              background-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  min-height: 0 !important; /* Allow the container to animate below 180px, avoiding the jump-expansion */
+  position: relative; /* Ensure absolute positioning context is preserved during animation */
+  overflow: hidden; /* Prevent text overflow during collapse/expand transition */
 }
 
 .inputCard:focus-within {
@@ -203,10 +217,29 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--color-primary);
 }
 
+.topRow {
+  display: flex;
+  position: relative;
+  width: 100%;
+  align-items: flex-start;
+  flex: 1;
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+.bottomRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 8px;
+  flex-shrink: 0;
+  height: 36px;
+}
+
 .appMenuBtn {
   width: 36px;
   height: 36px;
-  margin-right: 6px;
   border-radius: 50%;
   background: transparent;
   border: none;
@@ -216,6 +249,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .appMenuBtn:hover {
@@ -227,6 +261,7 @@
   min-height: 36px;
   display: flex;
   align-items: center;
+  align-self: stretch;
 }
 
 .textarea {
@@ -242,6 +277,7 @@
   color: var(--text-primary);
   padding: 8px 6px;
   line-height: 1.5;
+  transition: padding-top 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), padding-right 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .textarea::placeholder {
@@ -251,7 +287,7 @@
 .sendBtnWrapper {
   width: 36px;
   height: 36px;
-  margin-left: 6px;
+  flex-shrink: 0;
 }
 
 .actionBtn {
@@ -321,3 +357,97 @@
   font-weight: 500;
   line-height: 1.3;
 }
+
+/* Expanded states and animations */
+.constrainedBoxExpanded {
+  max-width: 1200px;
+}
+
+.inputCardExpanded {
+  border-radius: 18px;
+  background-color: var(--bg-surface);
+  min-height: 180px;
+  height: 180px; /* Initial height when expanded */
+  padding: 10px 14px;
+}
+
+.inputCardExpanded .inputWrapper {
+  min-height: 0;
+  height: 100%;
+}
+
+.textareaExpanded {
+  height: 100%;
+  min-height: 0;
+  max-height: none !important;
+  resize: none; /* Parent container handles vertical resizing */
+  overflow-y: auto;
+  padding-top: 2px; /* Minimize top padding so typing cursor is close to top border */
+  padding-right: 48px; /* Leave space for top-right resize handle */
+}
+
+.expandToggleBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.expandToggleBtn:hover {
+  background-color: rgba(var(--text-secondary-rgb), 0.05);
+  color: var(--text-primary);
+}
+
+/* Custom Resize Handle in the Top-Right */
+.resizeHandle {
+  position: absolute;
+  top: 0px;
+  right: 44px; /* Placed to the left of the collapse button (which is 36px wide + 8px margin = 44px) */
+  width: 36px;
+  height: 36px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.resizeHandle:hover {
+  background-color: rgba(var(--text-secondary-rgb), 0.05);
+}
+
+.resizeHandleIcon {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resizeHandleIcon span {
+  display: block;
+  width: 12px;
+  height: 1.5px;
+  background-color: var(--text-tertiary);
+  border-radius: 1px;
+}
+
+/* 顶行和底行在展开态及动画态下的刚性物理隔离 */
+.inputCardExpanded .topRow,
+.inputCardAnimating .topRow {
+  height: calc(100% - 44px); /* 减去 bottomRow 高度 36px 和 margin-top 8px */
+  flex: none;
+  overflow: hidden; /* 动画及展开期间强行裁切溢出 */
+}
+
+/* bottomRow 不再使用绝对定位，始终保持常规文档流，以防状态切换瞬间宽度计算冲突导致溢出 */
+

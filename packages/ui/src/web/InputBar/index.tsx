@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Paperclip, Zap, Globe, BookOpen, 
   FileText, Folder, X, ArrowUp, LayoutGrid, Menu, Square,
-  Volume2
+  Volume2, Maximize2, Minimize2
 } from 'lucide-react';
 import { MdSend, MdStop, MdApps } from 'react-icons/md';
 
@@ -72,12 +72,144 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
     }
   }));
 
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  const isResizing = useRef(false);
+  const startY = useRef(0);
+  const startHeight = useRef(0);
+  const expandedHeightRef = useRef(180);
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing.current) return;
+    const deltaY = startY.current - e.clientY;
+    // 动态限制最大高度，至少为窗口高度减去顶栏和最小聊天区所需高度(180px)，且上限 600px，防止发送按钮被推到视口底部之外
+    const maxHeight = Math.max(180, window.innerHeight - 180);
+    const allowedMax = Math.min(600, maxHeight);
+    const newHeight = Math.max(140, Math.min(startHeight.current + deltaY, allowedMax));
+    const cardEl = textareaRef.current?.closest(`.${styles.inputCard}`) as HTMLElement;
+    if (cardEl) {
+      cardEl.style.height = `${newHeight}px`;
+      expandedHeightRef.current = newHeight;
+    }
+  };
+
+  const handleMouseUp = () => {
+    isResizing.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isResizing.current = true;
+    startY.current = e.clientY;
+    const cardEl = textareaRef.current?.closest(`.${styles.inputCard}`);
+    if (cardEl) {
+      startHeight.current = cardEl.getBoundingClientRect().height;
+    }
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    e.preventDefault();
+  };
+
   useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const toggleExpand = () => {
+    const cardEl = textareaRef.current?.closest(`.${styles.inputCard}`) as HTMLElement;
+    if (!cardEl) return;
+
+    const expanding = !isExpanded;
+    setIsAnimating(true);
+
+    if (expanding) {
+      const startHeight = cardEl.getBoundingClientRect().height;
+      cardEl.style.height = `${startHeight}px`;
+      
+      cardEl.offsetHeight; // force reflow
+
+      setIsExpanded(true);
+
+      // 延迟赋值，等待 React 渲染并挂载 transition 动画类，同时在变宽/变矮时对高度进行防溢出安全锁定
+      setTimeout(() => {
+        const maxHeight = Math.max(180, window.innerHeight - 180);
+        const allowedMax = Math.min(600, maxHeight);
+        const safeHeight = Math.max(140, Math.min(expandedHeightRef.current, allowedMax));
+        cardEl.style.height = `${safeHeight}px`;
+        expandedHeightRef.current = safeHeight;
+        if (textareaRef.current) {
+          textareaRef.current.style.height = '100%';
+        }
+      }, 30);
+      
+      setTimeout(() => {
+        setIsAnimating(false);
+      }, 700);
+    } else {
+      const currentHeight = cardEl.getBoundingClientRect().height;
+      expandedHeightRef.current = currentHeight;
+
+      setIsExpanded(false);
+
+      // 1. 临时移除展开状态的 Class，清空内联高度，以便浏览器按折叠状态计算高度
+      cardEl.classList.remove(styles.inputCardExpanded);
+      const parentEl = cardEl.parentElement;
+      if (parentEl) {
+        parentEl.classList.remove(styles.constrainedBoxExpanded);
+      }
+      if (textareaRef.current) {
+        textareaRef.current.classList.remove(styles.textareaExpanded);
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`;
+      }
+      cardEl.style.height = '';
+
+      // 2. 测量出折叠后自适应状态的真实目标高度
+      const targetHeight = cardEl.getBoundingClientRect().height;
+
+      // 3. 瞬间将状态和高度设回展开时，并强制回流，让 transition 知道起点
+      cardEl.classList.add(styles.inputCardExpanded);
+      if (parentEl) {
+        parentEl.classList.add(styles.constrainedBoxExpanded);
+      }
+      if (textareaRef.current) {
+        textareaRef.current.classList.add(styles.textareaExpanded);
+        textareaRef.current.style.height = '100%';
+      }
+      cardEl.style.height = `${currentHeight}px`;
+      cardEl.offsetHeight; // force reflow
+
+      // 4. 延迟赋值终点高度，此时 React 应该已经重新渲染并移除了 inputCardExpanded
+      setTimeout(() => {
+        cardEl.style.height = `${targetHeight}px`;
+      }, 30);
+
+      setTimeout(() => {
+        setIsAnimating(false);
+        if (cardEl) {
+          cardEl.style.height = '';
+        }
+      }, 700);
+
+    }
+  };
+
+  useEffect(() => {
+    if (isExpanded) {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '100%';
+      }
+      return;
+    }
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`; // approx 6 lines
     }
-  }, [text]);
+  }, [text, isExpanded]);
 
   const handleSend = () => {
     if ((!text.trim() && attachments.length === 0) || isLoading) return;
@@ -85,7 +217,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
     setText('');
     setAttachments([]);
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = isExpanded ? '100%' : 'auto';
     }
   };
 
@@ -184,7 +316,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
         onChange={handleNativeWebFileChange}
         style={{ display: 'none' }}
       />
-      <div className={styles.constrainedBox}>
+      <div className={`${styles.constrainedBox} ${isExpanded ? styles.constrainedBoxExpanded : ''}`}>
         {/* Attachments Preview */}
         {attachments.length > 0 && (
           <div className={styles.attachmentList}>
@@ -248,34 +380,60 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
         </AnimatePresence>
 
         {/* Input Card */}
-        <div className={styles.inputCard}>
-           <button 
-             className={styles.appMenuBtn} 
-             onClick={() => setShowToolbar(prev => {
-                const next = !prev;
-                if (typeof window !== 'undefined') {
-                   localStorage.setItem('baishou_toolbar_open', String(next));
-                }
-                return next;
-             })}
+        <div className={`${styles.inputCard} ${isExpanded ? styles.inputCardExpanded : ''} ${isAnimating ? styles.inputCardAnimating : ''}`}>
+          <div className={styles.topRow}>
+            <div className={styles.inputWrapper}>
+              <textarea
+                ref={textareaRef}
+                className={`${styles.textarea} ${isExpanded ? styles.textareaExpanded : ''}`}
+                placeholder={t('agent.chat.input_hint')}
+                value={text}
+                onChange={handleTextChange}
+                onKeyDown={handleKeyDown}
+                rows={1}
+              />
+            </div>
+
+            {isExpanded && (
+              <div 
+                className={styles.resizeHandle} 
+                onMouseDown={handleMouseDown}
+                title={t('input.drag_resize', '拖拽调整高度')}
+              >
+                <div className={styles.resizeHandleIcon}>
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
+
+            {/* Expand/Collapse Toggle Button */}
+            <button
+             className={styles.expandToggleBtn}
+             onClick={toggleExpand}
              type="button"
+             title={isExpanded ? t('input.collapse', '折叠输入框') : t('input.expand', '展开输入框')}
            >
-              {showToolbar ? <LayoutGrid size={20} /> : <Menu size={20} />}
+             {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
            </button>
+          </div>
 
-           <div className={styles.inputWrapper}>
-             <textarea
-               ref={textareaRef}
-               className={styles.textarea}
-               placeholder={t('agent.chat.input_hint')}
-               value={text}
-               onChange={handleTextChange}
-               onKeyDown={handleKeyDown}
-               rows={1}
-             />
-           </div>
+          <div className={styles.bottomRow}>
+            <button 
+              className={styles.appMenuBtn} 
+              onClick={() => setShowToolbar(prev => {
+                 const next = !prev;
+                 if (typeof window !== 'undefined') {
+                    localStorage.setItem('baishou_toolbar_open', String(next));
+                 }
+                 return next;
+              })}
+              type="button"
+            >
+               {showToolbar ? <LayoutGrid size={20} /> : <Menu size={20} />}
+            </button>
 
-           <div className={styles.sendBtnWrapper}>
+            <div className={styles.sendBtnWrapper}>
               {isLoading ? (
                 <motion.button 
                   className={`${styles.actionBtn} ${styles.stopBtn}`} 
@@ -296,7 +454,8 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(({
                    <MdSend size={18} />
                 </motion.button>
               )}
-           </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
