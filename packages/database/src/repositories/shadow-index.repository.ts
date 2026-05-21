@@ -66,6 +66,21 @@ export interface ShadowFTSResult {
  * 注意：此 Repository 操作的是 shadow_index.db 中的 `journals_index` 和 `journals_fts` 表，
  *       由 ShadowIndexConnectionManager connect() 后传入的 AppDatabase 实例来驱动。
  */
+function segmentChinese(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/([\u4e00-\u9fa5])/g, ' $1 ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanSegmentedSnippet(snippet: string | null | undefined): string {
+  if (!snippet) return '';
+  return snippet
+    .replace(/([\u4e00-\u9fa5])\s+(?![a-zA-Z0-9])/g, '$1')
+    .replace(/(?<![a-zA-Z0-9])\s+([\u4e00-\u9fa5])/g, '$1');
+}
+
 export class ShadowIndexRepository {
   constructor(private readonly database: AppDatabase) {}
 
@@ -111,7 +126,7 @@ export class ShadowIndexRepository {
         sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`
       );
       await this.database.run(
-        sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${rawContent}, ${tags})`
+        sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${segmentChinese(rawContent)}, ${segmentChinese(tags)})`
       );
     } catch (e: any) {
       console.warn('[ShadowIndex] FTS 同步失败 (非阻塞):', e.message);
@@ -131,7 +146,7 @@ export class ShadowIndexRepository {
     const isBetterSqlite = (this.database as any).session?.client?.prepare !== undefined;
 
     if (isBetterSqlite) {
-      this.database.transaction((tx) => {
+      await (this.database as any).transaction((tx: any) => {
         for (const payload of payloads) {
           const { rawContent, tags, ...indexData } = payload;
           
@@ -166,9 +181,9 @@ export class ShadowIndexRepository {
             // 2. FTS 同步
             try {
               tx.run(sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`);
-              tx.run(sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${rawContent}, ${tags})`);
+              tx.run(sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${segmentChinese(rawContent)}, ${segmentChinese(tags)})`);
             } catch (e: any) {
-              console.warn(`[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]:`, e.message);
+              console.warn(`[ShadowIndex] 批量 FTS 同同步失败 (非阻塞) [ID=${rowId}]:`, e.message);
             }
           }
         }
@@ -208,7 +223,7 @@ export class ShadowIndexRepository {
             // 2. FTS 同步
             try {
               await tx.run(sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`);
-              await tx.run(sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${rawContent}, ${tags})`);
+              await tx.run(sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${segmentChinese(rawContent)}, ${segmentChinese(tags)})`);
             } catch (e: any) {
               console.warn(`[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]:`, e.message);
             }
@@ -284,6 +299,8 @@ export class ShadowIndexRepository {
     if (!query || query.trim().length === 0) return [];
     const cleanedQuery = query.replace(/"/g, ' ').trim();
     if (!cleanedQuery) return [];
+    const segmentedQuery = segmentChinese(cleanedQuery);
+    if (!segmentedQuery) return [];
 
     try {
       const rawResults = await this.database.all(
@@ -294,7 +311,7 @@ export class ShadowIndexRepository {
             tags,
             rank as fts_rank
           FROM journals_fts 
-          WHERE journals_fts MATCH '"' || ${cleanedQuery} || '"'
+          WHERE journals_fts MATCH '"' || ${segmentedQuery} || '"'
           ORDER BY fts_rank ASC
           LIMIT ${limit}
         `
@@ -302,8 +319,8 @@ export class ShadowIndexRepository {
 
       return rawResults.map(row => ({
         rowid: row.rowid,
-        contentSnippet: row.content_snippet,
-        tags: row.tags,
+        contentSnippet: cleanSegmentedSnippet(row.content_snippet),
+        tags: cleanSegmentedSnippet(row.tags),
         rankScore: row.fts_rank,
       }));
     } catch (e: any) {
@@ -341,7 +358,7 @@ export class ShadowIndexRepository {
     const offset = Math.max(0, Math.floor(options?.offset ?? 0));
 
     let queryStr = sql`
-      SELECT i.*, f.content as rawContent, f.tags as rawTags
+      SELECT i.*, i.raw_content as rawContent, i.tags as rawTags
       FROM journals_index i
       LEFT JOIN journals_fts f ON i.id = f.rowid
       ORDER BY i.date ${direction}

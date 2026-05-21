@@ -95,6 +95,32 @@ describe('ShadowIndexRepository', () => {
       expect(res).toBeInstanceOf(Array);
       expect(res).toHaveLength(0);
     });
+
+    it('searchFTS handles Chinese token matching and snippet cleanup correctly', async () => {
+      await repo.upsert(generateDummyPayload('2026-01-10T00:00:00.000Z', '今天的天气真好，我爱写日记。'));
+      await repo.upsert(generateDummyPayload('2026-01-11T00:00:00.000Z', '明天要下雨。'));
+
+      // 1. 测试搜索“的”字
+      const resultsOf = await repo.searchFTS('的');
+      expect(resultsOf).toHaveLength(1);
+      expect(resultsOf[0]!.contentSnippet).toContain('今天<b>的</b>天气');
+
+      // 2. 测试搜索中文词组“天气”
+      const resultsWeather = await repo.searchFTS('天气');
+      expect(resultsWeather).toHaveLength(1);
+      expect(resultsWeather[0]!.contentSnippet).toContain('今天的<b>天气</b>真好'); // 空格被还原且支持高亮
+
+      // 3. 测试搜索中文词组“日记”
+      const resultsDiary = await repo.searchFTS('日记');
+      expect(resultsDiary).toHaveLength(1);
+      expect(resultsDiary[0]!.contentSnippet).toContain('我爱写<b>日记</b>');
+
+      // 4. 验证 listAllWithFTS 不会被分词的空格破坏
+      const list = await repo.listAllWithFTS();
+      const match = list.find(item => item.date === '2026-01-10T00:00:00.000Z');
+      expect(match).toBeDefined();
+      expect(match!.rawContent).toBe('今天的天气真好，我爱写日记。'); // 无多余空格
+    });
   });
 
   describe('Deletion', () => {

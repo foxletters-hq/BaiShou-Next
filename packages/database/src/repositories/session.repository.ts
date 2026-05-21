@@ -81,7 +81,7 @@ export class SessionRepository {
     const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
 
     if (isBetterSqlite) {
-      this.db.transaction((tx) => {
+      await (this.db as any).transaction((tx: any) => {
         tx.insert(messagesTbl).values({
           id: message.id,
           sessionId: message.sessionId,
@@ -240,7 +240,7 @@ export class SessionRepository {
     const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
 
     if (isBetterSqlite) {
-      this.db.transaction((tx) => {
+      await (this.db as any).transaction((tx: any) => {
         tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids)).run();
         tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids)).run();
         tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids)).run();
@@ -261,7 +261,7 @@ export class SessionRepository {
     const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
 
     if (isBetterSqlite) {
-      this.db.transaction((tx) => {
+      await (this.db as any).transaction((tx: any) => {
         tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId)).run();
         tx.delete(messagesTbl).where(eq(messagesTbl.id, messageId)).run();
       });
@@ -286,7 +286,7 @@ export class SessionRepository {
     if (ids.length > 0) {
       const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
       if (isBetterSqlite) {
-        this.db.transaction((tx) => {
+        await (this.db as any).transaction((tx: any) => {
           tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids)).run();
           tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids)).run();
         });
@@ -317,7 +317,7 @@ export class SessionRepository {
     if (ids.length > 0) {
       const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined;
       if (isBetterSqlite) {
-        this.db.transaction((tx) => {
+        await (this.db as any).transaction((tx: any) => {
           tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids)).run();
           tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids)).run();
         });
