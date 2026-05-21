@@ -84,9 +84,12 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
 
   // 全局唯一的一组 IPC 监听器：负责分发所有来自后端的流数据到对应 sessionStates
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.electron || !window.electron.ipcRenderer) return () => {};
+    if (typeof window === 'undefined' || !window.electron || !window.electron.ipcRenderer) return;
 
-    const cleanupChunk = window.electron.ipcRenderer.on('agent:stream-chunk', (_, payload: any) => {
+    if ((window as any).__baishou_stream_registered) return;
+    (window as any).__baishou_stream_registered = true;
+
+    window.electron.ipcRenderer.on('agent:stream-chunk', (_, payload: any) => {
       const sId = typeof payload === 'object' ? payload?.sessionId : null;
       const chunk = typeof payload === 'object' ? payload?.chunk : payload;
       if (!sId) return;
@@ -96,7 +99,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       });
     });
 
-    const cleanupReasoning = window.electron.ipcRenderer.on('agent:reasoning-chunk', (_, payload: any) => {
+    window.electron.ipcRenderer.on('agent:reasoning-chunk', (_, payload: any) => {
       const sId = typeof payload === 'object' ? payload?.sessionId : null;
       const chunk = typeof payload === 'object' ? payload?.chunk : payload;
       if (!sId) return;
@@ -107,7 +110,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       });
     });
 
-    const cleanupToolStart = window.electron.ipcRenderer.on('agent:tool-start', (_, payload: any) => {
+    window.electron.ipcRenderer.on('agent:tool-start', (_, payload: any) => {
       const sId = typeof payload === 'object' ? payload?.sessionId : null;
       if (!sId) return;
       const name = typeof payload === 'object' ? payload?.name : payload?.name;
@@ -119,7 +122,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       });
     });
 
-    const cleanupToolResult = window.electron.ipcRenderer.on('agent:tool-result', (_, payload: any) => {
+    window.electron.ipcRenderer.on('agent:tool-result', (_, payload: any) => {
       const sId = typeof payload === 'object' ? payload?.sessionId : null;
       if (!sId) return;
       const name = typeof payload === 'object' ? payload?.name : payload?.name;
@@ -132,7 +135,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       });
     });
 
-    const cleanupFinish = window.electron.ipcRenderer.on('agent:stream-finish', (_, payload: any) => {
+    window.electron.ipcRenderer.on('agent:stream-finish', (_, payload: any) => {
       const sId = typeof payload === 'object' ? payload?.sessionId : null;
       if (!sId) return;
 
@@ -144,14 +147,6 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.activeTool = null;
       });
     });
-
-    return () => {
-      cleanupChunk();
-      cleanupReasoning();
-      cleanupToolStart();
-      cleanupToolResult();
-      cleanupFinish();
-    };
   }, []);
 
   const saveUserMessage = useCallback(async (sessionId: string, userText: string, attachments?: any[]): Promise<{ userMessageId: string; attachments?: any[] } | { error: string }> => {

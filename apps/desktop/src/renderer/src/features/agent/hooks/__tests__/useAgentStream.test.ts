@@ -25,9 +25,10 @@ function setupWindowMock() {
 }
 
 function teardownWindowMock() {
-  const win = (globalThis as any).window;
+  const win = (globalThis as any).window || globalThis;
   if (win) {
     delete win.electron;
+    delete (win as any).__baishou_stream_registered;
   }
 }
 
@@ -53,7 +54,7 @@ describe('useAgentStream', () => {
         attachments: [{ fileName: 'pic.png', url: 'file:///tmp/pic.png' }],
       });
 
-      const { result } = renderHook(() => useAgentStream());
+      const { result } = renderHook(() => useAgentStream('s1'));
 
       let saveResult: any;
       await act(async () => {
@@ -72,7 +73,7 @@ describe('useAgentStream', () => {
     it('should return error object when save fails', async () => {
       mockRenderer.invoke.mockResolvedValue({ error: '磁盘写入失败' });
 
-      const { result } = renderHook(() => useAgentStream());
+      const { result } = renderHook(() => useAgentStream('s1'));
 
       let saveResult: any;
       await act(async () => {
@@ -85,7 +86,7 @@ describe('useAgentStream', () => {
     it('should not affect isStreaming', async () => {
       mockRenderer.invoke.mockResolvedValue({ userMessageId: 'uuid-456' });
 
-      const { result } = renderHook(() => useAgentStream());
+      const { result } = renderHook(() => useAgentStream('s1'));
 
       await act(async () => {
         await result.current.saveUserMessage('s1', '你好');
@@ -99,7 +100,7 @@ describe('useAgentStream', () => {
     it('should set isStreaming and invoke agent:chat', async () => {
       mockRenderer.invoke.mockResolvedValue(true);
 
-      const { result } = renderHook(() => useAgentStream());
+      const { result } = renderHook(() => useAgentStream('s1'));
 
       await act(async () => {
         await result.current.startChat('s1', '你好', 'p1', 'm1', [], false);
@@ -115,7 +116,7 @@ describe('useAgentStream', () => {
     it('should reset text and error before starting', async () => {
       mockRenderer.invoke.mockImplementation(() => new Promise(() => {}));
 
-      const { result } = renderHook(() => useAgentStream());
+      const { result } = renderHook(() => useAgentStream('s1'));
 
       await act(async () => {
         result.current.startChat('s1', '新消息');
@@ -128,13 +129,13 @@ describe('useAgentStream', () => {
     });
 
     it('should clear previously accumulated text on new chat', async () => {
-      const { result } = renderHook(() => useAgentStream());
+      const { result } = renderHook(() => useAgentStream('s1'));
 
       mockRenderer.invoke.mockResolvedValue(true);
       await act(async () => { result.current.startChat('s1', 'first'); });
 
-      act(() => { emit('agent:stream-chunk', 'Hello'); });
-      act(() => { emit('agent:stream-chunk', 'World'); });
+      act(() => { emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hello' }); });
+      act(() => { emit('agent:stream-chunk', { sessionId: 's1', chunk: 'World' }); });
       expect(result.current.text).toBe('HelloWorld');
 
       mockRenderer.invoke.mockResolvedValue(true);
@@ -145,41 +146,41 @@ describe('useAgentStream', () => {
 
   describe('stream events', () => {
     it('should set isStreaming false on stream-finish success', () => {
-      const { result } = renderHook(() => useAgentStream());
-      act(() => { emit('agent:stream-finish', { success: true }); });
+      const { result } = renderHook(() => useAgentStream('s1'));
+      act(() => { emit('agent:stream-finish', { sessionId: 's1', success: true }); });
       expect(result.current.isStreaming).toBe(false);
     });
 
     it('should set error on stream-finish with error payload', () => {
-      const { result } = renderHook(() => useAgentStream());
-      act(() => { emit('agent:stream-finish', { error: '超时错误' }); });
+      const { result } = renderHook(() => useAgentStream('s1'));
+      act(() => { emit('agent:stream-finish', { sessionId: 's1', error: '超时错误' }); });
       expect(result.current.isStreaming).toBe(false);
       expect(result.current.error).toBe('超时错误');
     });
 
     it('should accumulate text from stream-chunk events', () => {
-      const { result } = renderHook(() => useAgentStream());
-      act(() => { emit('agent:stream-chunk', 'Hello '); });
-      act(() => { emit('agent:stream-chunk', 'World'); });
+      const { result } = renderHook(() => useAgentStream('s1'));
+      act(() => { emit('agent:stream-chunk', { sessionId: 's1', chunk: 'Hello ' }); });
+      act(() => { emit('agent:stream-chunk', { sessionId: 's1', chunk: 'World' }); });
       expect(result.current.text).toBe('Hello World');
     });
 
     it('should accumulate reasoning from reasoning-chunk events', () => {
-      const { result } = renderHook(() => useAgentStream());
-      act(() => { emit('agent:reasoning-chunk', 'thinking...'); });
+      const { result } = renderHook(() => useAgentStream('s1'));
+      act(() => { emit('agent:reasoning-chunk', { sessionId: 's1', chunk: 'thinking...' }); });
       expect(result.current.reasoning).toBe('thinking...');
     });
 
     it('should handle tool-start event', () => {
-      const { result } = renderHook(() => useAgentStream());
-      act(() => { emit('agent:tool-start', { name: 'diary_search', args: { query: 'test' } }); });
+      const { result } = renderHook(() => useAgentStream('s1'));
+      act(() => { emit('agent:tool-start', { sessionId: 's1', name: 'diary_search', args: { query: 'test' } }); });
       expect(result.current.activeTool).toEqual({ name: 'diary_search', args: { query: 'test' } });
     });
 
     it('should handle tool-result event', () => {
-      const { result } = renderHook(() => useAgentStream());
-      act(() => { emit('agent:tool-start', { name: 'diary_search', args: {} }); });
-      act(() => { emit('agent:tool-result', { name: 'diary_search' }); });
+      const { result } = renderHook(() => useAgentStream('s1'));
+      act(() => { emit('agent:tool-start', { sessionId: 's1', name: 'diary_search', args: {} }); });
+      act(() => { emit('agent:tool-result', { sessionId: 's1', name: 'diary_search' }); });
       expect(result.current.activeTool).toBeNull();
       expect(result.current.completedTools.length).toBe(1);
       expect(result.current.completedTools[0].name).toBe('diary_search');
@@ -188,7 +189,7 @@ describe('useAgentStream', () => {
 
   describe('reset', () => {
     it('should clear all streaming state', () => {
-      const { result } = renderHook(() => useAgentStream());
+      const { result } = renderHook(() => useAgentStream('s1'));
       act(() => { result.current.reset(); });
       expect(result.current.text).toBe('');
       expect(result.current.reasoning).toBe('');
