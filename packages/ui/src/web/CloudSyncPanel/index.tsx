@@ -32,6 +32,7 @@ export interface SyncRecord {
   filename: string;
   lastModified: string;
   sizeInBytes: number;
+  managed: boolean;
 }
 
 export interface CloudSyncPanelProps {
@@ -517,7 +518,14 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 <FileText size={22} strokeWidth={2} />
               </div>
               <div className={styles.recordInfo}>
-                <div className={styles.recordName}>{r.filename}</div>
+                <div className={styles.recordName}>
+                  {r.filename}
+                  {!r.managed && (
+                    <span className={styles.unmanagedBadge} title={t('cloud.unmanaged_hint', '此文件不受自动清理管理')}>
+                      {t('cloud.unmanaged_label', '手动')}
+                    </span>
+                  )}
+                </div>
                 <div className={styles.recordMeta}>
                   {new Date(r.lastModified).toLocaleString()} · {(r.sizeInBytes / 1024 / 1024).toFixed(2)} MB
                 </div>

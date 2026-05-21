@@ -539,6 +539,19 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unmanagedBadge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-surface-normal);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
 }
 
 
