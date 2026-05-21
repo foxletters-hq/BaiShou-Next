@@ -288,6 +288,7 @@
     "storage_manager": "存储管理",
     "attachment_management": "附件管理",
     "attachment_management_desc": "管理所有对话附件，支持批量删除",
+    "tts_settings": "TTS 语音合成",
     "attachment_clear_orphans": "一键清理孤立附件",
     "attachment_clear_orphans_desc": "安全地为您释放已被删除的会话所残留的本地附件空间",
     "attachment_total_size": "总占用空间",

@@ -24,17 +24,14 @@ export function useTTS() {
   const handleTtsReadAloud = useCallback(async (content: string, messageId?: string) => {
     if (!content.trim()) return;
 
-    // 如果正在播放同一条消息，则停止
     if (ttsPlayingMsgId === messageId) {
       await stopTTS();
       return;
     }
 
-    // 停止之前的播放
     await stopTTS();
 
     try {
-      // 获取 TTS 配置
       if (!services) {
         Alert.alert(t('common.error', '错误'), t('agent.tts_service_not_ready', '服务未就绪'));
         return;
@@ -64,7 +61,6 @@ export function useTTS() {
       const isMimoTts = ttsModelId.toLowerCase().includes('mimo-v2.5-tts');
       let response: Response;
 
-      // 调用 TTS API
       if (isMimoTts) {
         const ttsEndpoint = `${baseUrl}/chat/completions`;
         response = await fetch(ttsEndpoint, {
@@ -76,19 +72,13 @@ export function useTTS() {
           body: JSON.stringify({
             model: ttsModelId,
             messages: [
-              {
-                role: 'user',
-                content: 'Natural, clear and professional speech style.'
-              },
-              {
-                role: 'assistant',
-                content: content
-              }
+              { role: 'user', content: 'Natural, clear and professional speech style.' },
+              { role: 'assistant', content: content },
             ],
             audio: {
               format: ttsSettings?.responseFormat || 'wav',
-              voice: ttsSettings?.voice || '冰糖'
-            }
+              voice: ttsSettings?.voice || '冰糖',
+            },
           }),
         });
       } else {
@@ -127,7 +117,6 @@ export function useTTS() {
         }
         base64 = base64Audio;
       } else {
-        // 获取音频 data 并转为 base64
         const arrayBuffer = await response.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         let binary = '';
@@ -137,7 +126,6 @@ export function useTTS() {
         base64 = btoa(binary);
       }
 
-      // 播放音频
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       const audioFormat = isMimoTts ? (ttsSettings?.responseFormat || 'wav') : 'mp3';
       const { sound } = await Audio.Sound.createAsync(

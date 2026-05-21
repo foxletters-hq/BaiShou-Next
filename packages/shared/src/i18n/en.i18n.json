@@ -285,6 +285,7 @@
     "storage_manager": "Storage Management",
     "attachment_management": "Attachment Management",
     "attachment_management_desc": "Manage all conversation attachments with batch delete",
+    "tts_settings": "TTS Voice",
     "attachment_clear_orphans": "Clear All Orphaned Attachments",
     "attachment_clear_orphans_desc": "Safely free up local storage space left by deleted sessions",
     "attachment_total_size": "Total Space Used",

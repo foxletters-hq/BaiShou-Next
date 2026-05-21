@@ -4,8 +4,6 @@ import * as path from 'path'
 import { logger } from '@baishou/shared'
 import { pathService } from './vault.ipc'
 import { getAgentManagers, agentService, toolRegistry, createDiarySearcher, createWebSearchResultFetcher, createFetchSearchPage, buildStreamConfig } from './agent-helpers'
-import { settingsManager } from './settings.ipc'
-import { GlobalModelsConfig } from '@baishou/shared'
 import { ModelPricingService } from '@baishou/ai/src/pricing/model-pricing.service'
 
 let globalAbortController: AbortController | null = null;
@@ -550,107 +548,6 @@ export function registerChatIPC() {
       return false;
     } finally {
       globalAbortController = null;
-    }
-  });
-
-  // ==========================================
-  // API: TTS (Text-to-Speech)
-  // ==========================================
-  ipcMain.handle('agent:tts-synthesize', async (_event, text: string, providerId?: string, modelId?: string) => {
-    try {
-      const providers = await settingsManager.get<any[]>('ai_providers') || [];
-      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models');
-
-      const ttsProviderId = providerId || globalModels?.globalTtsProviderId;
-      const ttsModelId = modelId || globalModels?.globalTtsModelId;
-
-      if (!ttsProviderId || !ttsModelId) {
-        return { success: false, errorCode: 'tts_not_configured' };
-      }
-
-      const providerConfig = providers.find((p: any) => p.id === ttsProviderId);
-      if (!providerConfig) {
-        return { success: false, errorCode: 'tts_provider_not_found' };
-      }
-
-      const apiKey = providerConfig.apiKey;
-      const baseUrl = (providerConfig.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
-      const ttsSettings = globalModels?.globalTtsSettings;
-
-      const isMimoTts = ttsModelId.toLowerCase().includes('mimo-v2.5-tts');
-      let response: Response;
-
-      if (isMimoTts) {
-        const ttsEndpoint = `${baseUrl}/chat/completions`;
-        response = await fetch(ttsEndpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: ttsModelId,
-            messages: [
-              {
-                role: 'user',
-                content: 'Natural, clear and professional speech style.'
-              },
-              {
-                role: 'assistant',
-                content: text
-              }
-            ],
-            audio: {
-              format: ttsSettings?.responseFormat || 'wav',
-              voice: ttsSettings?.voice || '冰糖'
-            }
-          }),
-        });
-      } else {
-        const ttsEndpoint = `${baseUrl}/audio/speech`;
-        response = await fetch(ttsEndpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: ttsModelId,
-            input: text,
-            voice: ttsSettings?.voice || 'alloy',
-            speed: ttsSettings?.speed || 1.0,
-            response_format: ttsSettings?.responseFormat || 'mp3',
-          }),
-        });
-      }
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        logger.error(`[TTS] API error ${response.status}: ${errText}`);
-        return { success: false, errorCode: 'tts_api_error', statusCode: response.status };
-      }
-
-      let base64 = '';
-      let returnFormat = ttsSettings?.responseFormat || 'mp3';
-
-      if (isMimoTts) {
-        const resJson = await response.json();
-        const base64Audio = resJson.choices?.[0]?.message?.audio?.data;
-        if (!base64Audio) {
-          logger.error(`[TTS] MiMo TTS failed: No audio data in chat completions response`, resJson);
-          return { success: false, errorCode: 'tts_invalid_response_data' };
-        }
-        base64 = base64Audio;
-        returnFormat = ttsSettings?.responseFormat || 'wav';
-      } else {
-        const arrayBuffer = await response.arrayBuffer();
-        base64 = Buffer.from(arrayBuffer).toString('base64');
-      }
-
-      return { success: true, audioBase64: base64, format: returnFormat };
-    } catch (error: any) {
-      logger.error('[TTS] Synthesize error:', error);
-      return { success: false, errorCode: 'tts_synthesis_failed', error: error.message };
     }
   });
 

@@ -285,6 +285,7 @@
     "storage_manager": "ストレージ管理",
     "attachment_management": "添付ファイル管理",
     "attachment_management_desc": "すべての会話の添付ファイルを管理し、一括削除が可能です",
+    "tts_settings": "TTS 音声合成",
     "attachment_clear_orphans": "孤立した添付ファイルを一括消去",
     "attachment_clear_orphans_desc": "削除されたセッションから残ったローカルの添付ファイルスペースを安全に解放します",
     "attachment_total_size": "総使用容量",

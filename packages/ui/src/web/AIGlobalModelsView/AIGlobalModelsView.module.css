@@ -143,22 +143,3 @@
   font-size: 10px;
   color: var(--text-tertiary);
 }
-
-.settingsGearBtn {
-  margin-left: auto;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.settingsGearBtn:hover {
-  background: var(--color-primary-light, rgba(91, 168, 245, 0.1));
-  color: var(--color-primary, #5ba8f5);
-}

@@ -1,6 +1,8 @@
 // ProviderType enum 从 ai-provider.types.ts 统一导出，此处不再重复定义
 import { ProviderType } from './ai-provider.types';
 export { ProviderType };
+import type { TtsSettings } from './tts.types';
+export type { TtsSettings };
 
 /**
  * AI 供应商配置模型
@@ -22,15 +24,6 @@ export interface AIProviderConfig {
   webSearchMode?: string;     // 网络搜索模式（如：duckduckgo等，可能在原版为某些特定模型特有）
 }
 
-export interface TtsSettings {
-  voice: string;
-  speed: number;
-  responseFormat: string;
-}
-
-/**
- * 全局模型配置 (Global Models Config)
- */
 export interface GlobalModelsConfig {
   globalDialogueProviderId: string;
   globalDialogueModelId: string;

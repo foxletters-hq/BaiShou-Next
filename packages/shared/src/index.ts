@@ -21,3 +21,6 @@ export * from './mock/agent.mock';
 
 export * from './utils/embedding.utils';
 export { signS3Request } from './utils/aws-v4-sign';
+
+export * from './tts';
+export type { TtsSettings } from './types/settings.types';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore, useUserProfileStore } from '@baishou/store';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MdOutlineSettings, MdOutlineCloudQueue, MdOutlineStarBorder, MdSchool, MdColorLens, MdTravelExplore, MdOutlineExtension, MdOutlineAutoAwesome, MdOutlineWifiProtectedSetup, MdSync, MdOutlineFolderDelete, MdArrowBack } from 'react-icons/md';
+import { MdOutlineSettings, MdOutlineCloudQueue, MdOutlineStarBorder, MdSchool, MdColorLens, MdTravelExplore, MdOutlineExtension, MdOutlineAutoAwesome, MdOutlineWifiProtectedSetup, MdSync, MdOutlineFolderDelete, MdArrowBack, MdVolumeUp } from 'react-icons/md';
 import './SettingsPage.css';
 import { useTranslation } from 'react-i18next';
 import baishouHeroImg from '../../assets/images/BaiShou-v0.0.1.jpeg';
@@ -26,6 +26,7 @@ import {
   AboutSettingsCard,
   AssistantMatrixCard,
   SummarySettingsView,
+  TTSProviderSettings,
   useDialog,
   useToast
 } from '@baishou/ui';
@@ -50,6 +51,7 @@ export const SettingsPage: React.FC = () => {
     { id: 5, label: t('agent.tools.web_search', '网络搜索'), icon: <MdTravelExplore /> },
     { id: 6, label: t('settings.agent_tools_title', '工具管理'), icon: <MdOutlineExtension /> },
     { id: 7, label: t('settings.summary_settings_title', '回忆生成设置'), icon: <MdOutlineAutoAwesome /> },
+    { id: 11, label: t('settings.tts_settings', 'TTS 语音合成'), icon: <MdVolumeUp /> },
     { type: 'divider' },
     { id: 8, label: t('settings.lan_transfer', '局域网传输'), icon: <MdOutlineWifiProtectedSetup /> },
     { id: 9, label: t('data_sync.title', '数据同步'), icon: <MdSync /> },
@@ -67,6 +69,7 @@ export const SettingsPage: React.FC = () => {
       case '/settings/web-search': setActiveTab(5); break;
       case '/settings/agent-tools': setActiveTab(6); break;
       case '/settings/summary': setActiveTab(7); break;
+      case '/settings/tts': setActiveTab(11); break;
       case '/settings/lan-transfer': setActiveTab(8); break;
       case '/settings/data-sync': setActiveTab(9); break;
       case '/settings/attachments': setActiveTab(10); break;
@@ -93,6 +96,7 @@ export const SettingsPage: React.FC = () => {
       case 5: navigate('/settings/web-search', { replace: true }); break;
       case 6: navigate('/settings/agent-tools', { replace: true }); break;
       case 7: navigate('/settings/summary', { replace: true }); break;
+      case 11: navigate('/settings/tts', { replace: true }); break;
       case 8: navigate('/settings/lan-transfer', { replace: true }); break;
       case 9: navigate('/settings/data-sync', { replace: true }); break;
       case 10: navigate('/settings/attachments', { replace: true }); break;
@@ -112,6 +116,7 @@ export const SettingsPage: React.FC = () => {
        case 5: return <WebSearchPane settings={settings} />;
        case 6: return <AgentToolsPane settings={settings} />;
        case 7: return <SummarySettingsPane settings={settings} />;
+       case 11: return <TTSSettingsPane />;
        case 8: return <LanTransferPane />;
        case 9: return <DataSyncPane settings={settings} />;
        case 10: return <AttachmentManagementPane />;
@@ -160,7 +165,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <div className="settings-content-area" style={{ position: 'relative' }}>
-         {activeTab === 8 || activeTab === 1 || activeTab === 2 ? (
+         {activeTab === 8 || activeTab === 1 || activeTab === 2 || activeTab === 11 ? (
              renderActiveView()
          ) : (
              <div className="settings-content-scroll" key={activeTab}>
@@ -992,13 +997,85 @@ const AttachmentManagementPane: React.FC = () => {
 
   return (
     <div className="settings-pane settings-pane-full">
-         <AttachmentManagementView 
-             attachments={attachments}
-             onDeleteSelected={async (ids) => {
-               await (window as any).api?.attachment?.deleteBatch(ids);
-               await fetchData();
-             }}
-         />
+          <AttachmentManagementView 
+              attachments={attachments}
+              onDeleteSelected={async (ids) => {
+                await (window as any).api?.attachment?.deleteBatch(ids);
+                await fetchData();
+              }}
+          />
+     </div>
+  );
+};
+
+const TTSSettingsPane: React.FC = () => {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const settings = useSettingsStore();
+
+  const handleSaveConfig = async (config: any) => {
+    const providers = Array.isArray(settings.providers) ? settings.providers : [];
+    const existingProvider = providers.find((p: any) => p.id === config.id);
+
+    let providerData;
+    if (existingProvider) {
+      providerData = {
+        ...existingProvider,
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        models: existingProvider.models || [config.modelId],
+        enabledModels: [config.modelId],
+        defaultDialogueModel: config.modelId,
+      };
+    } else {
+      providerData = {
+        id: config.id,
+        name: config.name,
+        type: 'custom',
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl,
+        models: [config.modelId],
+        enabledModels: [config.modelId],
+        defaultDialogueModel: config.modelId,
+        isEnabled: true,
+        isSystem: false,
+        sortOrder: providers.length,
+      };
+    }
+
+    await settings.updateProvider(providerData);
+
+    const globalModels = settings.globalModels || {};
+    await settings.setGlobalModels({
+      ...globalModels,
+      globalTtsProviderId: config.id,
+      globalTtsModelId: config.modelId,
+      globalTtsSettings: {
+        voice: config.voice,
+        speed: config.speed,
+        responseFormat: config.responseFormat,
+      },
+    });
+  };
+
+  const handleTestTts = async (config: any, text: string) => {
+    try {
+      const result = await (window as any).api?.tts?.synthesize(text, config.id, config.modelId);
+      if (result?.success) {
+        return { success: true, audioBase64: result.audioBase64, format: result.format };
+      }
+      return { success: false, error: result?.errorCode || 'unknown' };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  return (
+    <div className="settings-pane settings-pane-full">
+      <TTSProviderSettings
+        onSaveConfig={handleSaveConfig}
+        onTestTts={handleTestTts}
+      />
     </div>
   );
 };

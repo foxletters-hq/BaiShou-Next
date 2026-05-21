@@ -54,6 +54,7 @@ export * from './web/AttachmentManagementView/index';
 
 export * from './web/AIModelServicesView/index';
 export * from './web/AIGlobalModelsView/index';
+export * from './web/TTSProviderSettings/index';
 export * from './web/AgentBehaviorSettingsCard/index';
 export * from './web/IdentitySettingsCard/index';
 
