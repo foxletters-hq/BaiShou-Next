@@ -15,6 +15,10 @@ interface TtsProviderConfig {
   voice: string;
   speed: number;
   responseFormat: string;
+  refAudioPath?: string;
+  promptText?: string;
+  promptLang?: string;
+  textLang?: string;
 }
 
 interface TTSProviderSettingsProps {
@@ -33,6 +37,10 @@ interface ProviderLocalState {
   speed: number;
   responseFormat: string;
   availableModels: string[];
+  refAudioPath?: string;
+  promptText?: string;
+  promptLang?: string;
+  textLang?: string;
 }
 
 const getInitialConfigs = (): Record<string, ProviderLocalState> => {
@@ -63,6 +71,19 @@ const getInitialConfigs = (): Record<string, ProviderLocalState> => {
       speed: 1.0,
       responseFormat: 'mp3',
       availableModels: [],
+    },
+    'gpt-sovits': {
+      baseUrl: 'http://127.0.0.1:9880',
+      apiKey: '',
+      modelId: 'default',
+      voice: 'default',
+      speed: 1.0,
+      responseFormat: 'wav',
+      availableModels: [],
+      refAudioPath: '',
+      promptText: '',
+      promptLang: 'zh',
+      textLang: 'zh',
     }
   };
   try {
@@ -73,7 +94,8 @@ const getInitialConfigs = (): Record<string, ProviderLocalState> => {
       return {
         'openai-tts': { ...defaults['openai-tts'], ...parsed['openai-tts'] },
         'mimo-tts': { ...defaults['mimo-tts'], ...parsed['mimo-tts'] },
-        'clone-tts': { ...defaults['clone-tts'], ...parsed['clone-tts'] }
+        'clone-tts': { ...defaults['clone-tts'], ...parsed['clone-tts'] },
+        'gpt-sovits': { ...defaults['gpt-sovits'], ...parsed['gpt-sovits'] }
       };
     }
   } catch (e) {}
@@ -129,8 +151,8 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
       // 1. 从 providersList 恢复各个 provider 的已保存配置 (主要包含 baseUrl, apiKey, models)
       if (Array.isArray(providersList)) {
         providersList.forEach((prov: any) => {
-          if (prov.id === 'openai-tts' || prov.id === 'mimo-tts' || prov.id === 'clone-tts') {
-            const id = prov.id as 'openai-tts' | 'mimo-tts' | 'clone-tts';
+          if (prov.id === 'openai-tts' || prov.id === 'mimo-tts' || prov.id === 'clone-tts' || prov.id === 'gpt-sovits') {
+            const id = prov.id as 'openai-tts' | 'mimo-tts' | 'clone-tts' | 'gpt-sovits';
             newConfigs[id] = {
               ...newConfigs[id],
               baseUrl: prov.baseUrl !== undefined ? prov.baseUrl : newConfigs[id].baseUrl,
@@ -146,8 +168,8 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
       if (initialConfig && initialConfig.id) {
         const activeId = initialConfig.id;
         setProviderType(activeId);
-        if (activeId === 'openai-tts' || activeId === 'mimo-tts' || activeId === 'clone-tts') {
-          const id = activeId as 'openai-tts' | 'mimo-tts' | 'clone-tts';
+        if (activeId === 'openai-tts' || activeId === 'mimo-tts' || activeId === 'clone-tts' || activeId === 'gpt-sovits') {
+          const id = activeId as 'openai-tts' | 'mimo-tts' | 'clone-tts' | 'gpt-sovits';
           newConfigs[id] = {
             ...newConfigs[id],
             baseUrl: initialConfig.baseUrl !== undefined ? initialConfig.baseUrl : newConfigs[id].baseUrl,
@@ -156,6 +178,10 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
             voice: initialConfig.voice !== undefined ? initialConfig.voice : newConfigs[id].voice,
             speed: initialConfig.speed !== undefined ? initialConfig.speed : newConfigs[id].speed,
             responseFormat: initialConfig.responseFormat !== undefined ? initialConfig.responseFormat : newConfigs[id].responseFormat,
+            refAudioPath: (initialConfig as any).refAudioPath !== undefined ? (initialConfig as any).refAudioPath : newConfigs[id].refAudioPath,
+            promptText: (initialConfig as any).promptText !== undefined ? (initialConfig as any).promptText : newConfigs[id].promptText,
+            promptLang: (initialConfig as any).promptLang !== undefined ? (initialConfig as any).promptLang : newConfigs[id].promptLang,
+            textLang: (initialConfig as any).textLang !== undefined ? (initialConfig as any).textLang : newConfigs[id].textLang,
           };
         }
       }
@@ -199,6 +225,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
     { value: 'openai-tts', label: 'OpenAI 兼容 TTS' },
     { value: 'mimo-tts', label: '小米 MiMo TTS' },
     { value: 'clone-tts', label: 'CloneTTS 本地服务' },
+    { value: 'gpt-sovits', label: 'GPT-SoVITS 本地服务' },
   ];
 
   const formatOptions = [
@@ -223,7 +250,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
 
   const getModelOptions = useCallback(() => {
     const { modelId, availableModels } = configs[providerType];
-    const defaults = providerType === 'clone-tts' 
+    const defaults = providerType === 'clone-tts' || providerType === 'gpt-sovits'
       ? ['default'] 
       : (providerType === 'mimo-tts' ? ['mimo-v2.5-tts'] : ['tts-1', 'tts-1-hd']);
     const baseOptions = availableModels.length > 0 ? availableModels : defaults;
@@ -234,7 +261,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
 
   const handleSelectModel = useCallback((val: string) => {
     updateCurrentConfig(
-      providerType === 'clone-tts'
+      providerType === 'clone-tts' || providerType === 'gpt-sovits'
         ? { modelId: val, voice: val }
         : { modelId: val }
     );
@@ -242,8 +269,8 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
   }, [updateCurrentConfig, providerType]);
 
   const handleSave = useCallback(async () => {
-    const { apiKey, baseUrl, modelId, voice, speed, responseFormat } = configs[providerType];
-    if (!baseUrl.trim() && (providerType === 'openai-tts' || providerType === 'clone-tts')) {
+    const { apiKey, baseUrl, modelId, voice, speed, responseFormat, refAudioPath, promptText, promptLang, textLang } = configs[providerType];
+    if (!baseUrl.trim() && (providerType === 'openai-tts' || providerType === 'clone-tts' || providerType === 'gpt-sovits')) {
       toast.showError(t('tts.settings.base_url_required', '请填写 Base URL'));
       return;
     }
@@ -254,13 +281,17 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
         id: providerType,
         name: providerType === 'openai-tts' 
           ? 'OpenAI 兼容 TTS' 
-          : (providerType === 'clone-tts' ? 'CloneTTS 本地服务' : '小米 MiMo TTS'),
+          : (providerType === 'clone-tts' ? 'CloneTTS 本地服务' : (providerType === 'gpt-sovits' ? 'GPT-SoVITS 本地服务' : '小米 MiMo TTS')),
         baseUrl: baseUrl.replace(/\/$/, ''),
         apiKey: apiKey.trim(),
         modelId,
-        voice: voice.trim() || (providerType === 'mimo-tts' ? '冰糖' : (providerType === 'clone-tts' ? 'default' : 'alloy')),
+        voice: voice.trim() || (providerType === 'mimo-tts' ? '冰糖' : (providerType === 'clone-tts' || providerType === 'gpt-sovits' ? 'default' : 'alloy')),
         speed,
         responseFormat,
+        refAudioPath,
+        promptText,
+        promptLang,
+        textLang,
       });
       toast.showSuccess(t('tts.settings.save_success', 'TTS 配置已保存'));
     } catch (error: any) {
@@ -276,7 +307,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
       return;
     }
 
-    const { apiKey, baseUrl, modelId, voice, speed, responseFormat } = configs[providerType];
+    const { apiKey, baseUrl, modelId, voice, speed, responseFormat, refAudioPath, promptText, promptLang, textLang } = configs[providerType];
 
     setIsTesting(true);
     try {
@@ -284,13 +315,17 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
         id: providerType,
         name: providerType === 'openai-tts'
           ? 'OpenAI 兼容 TTS'
-          : (providerType === 'clone-tts' ? 'CloneTTS 本地服务' : '小米 MiMo TTS'),
+          : (providerType === 'clone-tts' ? 'CloneTTS 本地服务' : (providerType === 'gpt-sovits' ? 'GPT-SoVITS 本地服务' : '小米 MiMo TTS')),
         baseUrl: baseUrl.replace(/\/$/, ''),
         apiKey: apiKey.trim(),
         modelId,
-        voice: voice.trim() || (providerType === 'mimo-tts' ? '冰糖' : (providerType === 'clone-tts' ? 'default' : 'alloy')),
+        voice: voice.trim() || (providerType === 'mimo-tts' ? '冰糖' : (providerType === 'clone-tts' || providerType === 'gpt-sovits' ? 'default' : 'alloy')),
         speed,
         responseFormat,
+        refAudioPath,
+        promptText,
+        promptLang,
+        textLang,
       }, testText.trim());
 
       if (result?.success && result.audioBase64) {
@@ -308,7 +343,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
     }
   }, [providerType, configs, testText, onTestTts, t, toast]);
 
-  const showSpeedControl = providerType === 'openai-tts' || providerType === 'clone-tts';
+  const showSpeedControl = providerType === 'openai-tts' || providerType === 'clone-tts' || providerType === 'gpt-sovits';
 
   return (
     <div className={styles.container}>
@@ -338,16 +373,18 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
             placeholder={
               providerType === 'clone-tts'
                 ? 'http://127.0.0.1:8080'
-                : providerType === 'mimo-tts'
-                  ? t('tts.settings.mimo_base_url_placeholder', '留空使用默认服务，或填入自定义服务 URL')
-                  : 'https://api.openai.com/v1'
+                : providerType === 'gpt-sovits'
+                  ? 'http://127.0.0.1:9880'
+                  : providerType === 'mimo-tts'
+                    ? t('tts.settings.mimo_base_url_placeholder', '留空使用默认服务，或填入自定义服务 URL')
+                    : 'https://api.openai.com/v1'
             }
             value={currentConfig.baseUrl}
             onChange={(e) => updateCurrentConfig({ baseUrl: e.target.value })}
           />
         </div>
 
-        {providerType !== 'clone-tts' && (
+        {providerType !== 'clone-tts' && providerType !== 'gpt-sovits' && (
           <div className={styles.section}>
             <label className={styles.label}>{t('tts.settings.api_key_label', 'API Key')}</label>
             <div className={styles.passwordInputWrapper}>
@@ -380,7 +417,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
               <input
                 type="text"
                 placeholder={
-                  providerType === 'clone-tts'
+                  providerType === 'clone-tts' || providerType === 'gpt-sovits'
                     ? 'default'
                     : providerType === 'mimo-tts'
                       ? 'mimo-v2.5-tts'
@@ -478,7 +515,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
           <Input
             label={t('tts.settings.voice_label', '发音人 (Voice ID)')}
             placeholder={
-              providerType === 'clone-tts'
+              providerType === 'clone-tts' || providerType === 'gpt-sovits'
                 ? 'default'
                 : providerType === 'mimo-tts'
                   ? '冰糖'
@@ -491,6 +528,55 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
             {t('tts.settings.voice_hint', '请输入当前模型支持的具体发音人/音色 ID')}
           </span>
         </div>
+
+        {providerType === 'gpt-sovits' && (
+          <>
+            <div className={styles.section}>
+              <Input
+                label={t('tts.settings.ref_audio_path_label', '参考音频绝对路径 (refAudioPath)')}
+                placeholder={t('tts.settings.ref_audio_path_placeholder', '必填，例如：D:\\audio\\prompt.wav')}
+                value={currentConfig.refAudioPath || ''}
+                onChange={(e) => updateCurrentConfig({ refAudioPath: e.target.value })}
+              />
+            </div>
+            <div className={styles.section}>
+              <Input
+                label={t('tts.settings.prompt_text_label', '参考音频文本 (promptText)')}
+                placeholder={t('tts.settings.prompt_text_placeholder', '必填，参考音频内说话的文字内容')}
+                value={currentConfig.promptText || ''}
+                onChange={(e) => updateCurrentConfig({ promptText: e.target.value })}
+              />
+            </div>
+            <div className={styles.section}>
+              <label className={styles.label}>{t('tts.settings.prompt_lang_label', '参考音频语言 (promptLang)')}</label>
+              <Select
+                options={[
+                  { value: 'zh', label: '中文 (zh)' },
+                  { value: 'en', label: '英文 (en)' },
+                  { value: 'ja', label: '日文 (ja)' },
+                  { value: 'ko', label: '韩文 (ko)' },
+                  { value: 'yue', label: '粤语 (yue)' },
+                ]}
+                value={currentConfig.promptLang || 'zh'}
+                onChange={(e) => updateCurrentConfig({ promptLang: e.target.value })}
+              />
+            </div>
+            <div className={styles.section}>
+              <label className={styles.label}>{t('tts.settings.text_lang_label', '合成文本语言 (textLang)')}</label>
+              <Select
+                options={[
+                  { value: 'zh', label: '中文 (zh)' },
+                  { value: 'en', label: '英文 (en)' },
+                  { value: 'ja', label: '日文 (ja)' },
+                  { value: 'ko', label: '韩文 (ko)' },
+                  { value: 'yue', label: '粤语 (yue)' },
+                ]}
+                value={currentConfig.textLang || 'zh'}
+                onChange={(e) => updateCurrentConfig({ textLang: e.target.value })}
+              />
+            </div>
+          </>
+        )}
 
         {showSpeedControl && (
           <div className={styles.section}>

@@ -6,6 +6,7 @@ import {
   OpenAiTtsProvider,
   MimoTtsProvider,
   CloneTtsProvider,
+  GptSovitsProvider,
   TtsProviderRegistry,
   TtsProviderNotFoundError,
   TtsApiError,
@@ -17,6 +18,7 @@ const registry = new TtsProviderRegistry();
 registry.register(new OpenAiTtsProvider());
 registry.register(new MimoTtsProvider());
 registry.register(new CloneTtsProvider());
+registry.register(new GptSovitsProvider());
 
 export function registerTtsIPC() {
   ipcMain.handle('agent:tts-synthesize', async (_event, text: string, providerId?: string, modelId?: string) => {
@@ -55,6 +57,10 @@ export function registerTtsIPC() {
             voice: ttsSettings?.voice || '',
             speed: ttsSettings?.speed,
             responseFormat: ttsSettings?.responseFormat || '',
+            refAudioPath: ttsSettings?.refAudioPath,
+            promptText: ttsSettings?.promptText,
+            promptLang: ttsSettings?.promptLang,
+            textLang: ttsSettings?.textLang,
           },
         },
         {

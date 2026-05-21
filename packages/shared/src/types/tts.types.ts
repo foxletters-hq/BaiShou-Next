@@ -35,4 +35,8 @@ export interface TtsSettings {
   voice: string;
   speed: number;
   responseFormat: string;
+  refAudioPath?: string;
+  promptText?: string;
+  promptLang?: string;
+  textLang?: string;
 }
