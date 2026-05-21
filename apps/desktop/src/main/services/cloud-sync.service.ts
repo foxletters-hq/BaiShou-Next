@@ -167,13 +167,16 @@ export class DesktopCloudSyncService {
 
   /**
    * 超限自动清理（保留最近 maxCount 份，删除更早的）
-   * 完美还原老白守的 _autoCleanOldBackups 逻辑
+   * 仅针对系统自动管理的备份（managed=true，符合 BaiShou_*.zip 命名规范）
+   * 用户手动上传或重命名的文件不受自动清理影响
    */
   private async autoCleanOldBackups(client: ICloudSyncClient, maxCount: number): Promise<number> {
     const records = await client.listFiles();
-    if (records.length <= maxCount) return 0;
+    // 只筛选受管备份进行数量统计和清理
+    const managedRecords = records.filter(r => r.managed);
+    if (managedRecords.length <= maxCount) return 0;
 
-    const toDelete = records.slice(maxCount);
+    const toDelete = managedRecords.slice(maxCount);
     let deleted = 0;
     for (const record of toDelete) {
       try {

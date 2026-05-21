@@ -59,12 +59,14 @@ export class S3SyncClient implements ICloudSyncClient {
       stream.on('data', (obj) => {
         if (!obj.name || obj.name.endsWith('/')) return; // skip directory markers
         const filename = path.basename(obj.name);
-        // 关键防护：仅过滤以 BaiShou_ 开头且以 .zip 结尾的数据包，绝对不能误伤用户 Bucket 下的其他个人文件
-        if (!/^BaiShou_.*\.zip$/i.test(filename)) return;
+        // 仅列出 .zip 文件，不限制命名前缀
+        if (!/\.zip$/i.test(filename)) return;
+        const isManaged = /^BaiShou_.*\.zip$/i.test(filename);
         records.push({
           filename,
           lastModified: obj.lastModified || new Date(),
           sizeInBytes: obj.size || 0,
+          managed: isManaged,
         });
       });
 

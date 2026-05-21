@@ -109,11 +109,15 @@ class MobileWebDavClient implements ICloudSyncClient {
       const path = decodeURIComponent(files[i]);
       const filename = path.split('/').filter(Boolean).pop();
       if (!filename || path.endsWith('/')) continue;
+      // 仅列出 .zip 文件
+      if (!/\.zip$/i.test(filename)) continue;
+      const isManaged = /^BaiShou_.*\.zip$/i.test(filename);
 
       records.push({
         filename,
         lastModified: mods[i] ? new Date(mods[i]) : new Date(),
         sizeInBytes: sizes[i] ? parseInt(sizes[i], 10) : 0,
+        managed: isManaged,
       });
     }
 
@@ -293,11 +297,15 @@ class MobileS3Client implements ICloudSyncClient {
       
       const filename = key.split('/').pop();
       if (!filename) continue;
+      // 仅列出 .zip 文件
+      if (!/\.zip$/i.test(filename)) continue;
+      const isManaged = /^BaiShou_.*\.zip$/i.test(filename);
 
       records.push({
         filename,
         lastModified: mods[i] ? new Date(mods[i]) : new Date(),
         sizeInBytes: sizes[i] ? parseInt(sizes[i], 10) : 0,
+        managed: isManaged,
       });
     }
 
@@ -465,9 +473,11 @@ export class MobileCloudSyncService {
 
   private async autoCleanOldBackups(client: ICloudSyncClient, maxCount: number): Promise<number> {
     const records = await client.listFiles();
-    if (records.length <= maxCount) return 0;
+    // 只筛选受管备份进行数量统计和清理
+    const managedRecords = records.filter(r => r.managed);
+    if (managedRecords.length <= maxCount) return 0;
 
-    const toDelete = records.slice(maxCount);
+    const toDelete = managedRecords.slice(maxCount);
     let deleted = 0;
     for (const record of toDelete) {
       try {
