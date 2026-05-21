@@ -2,8 +2,7 @@ import * as path from 'path';
 import * as fsp from 'fs/promises';
 import { app } from 'electron';
 import { getAppDb } from '../db';
-import { type Client } from '@libsql/client';
-import { SettingsRepository, UserProfileRepository } from '@baishou/database';
+import { SettingsRepository, UserProfileRepository, executeRawSql } from '@baishou/database';
 import { LegacyImportService, AttachmentManagerService } from '@baishou/core';
 import { logger } from '@baishou/shared';
 import { DesktopStoragePathService } from './path.service';
@@ -16,7 +15,7 @@ export class LegacyMigrationService {
    */
   public async migrate(sourceDir: string, targetWorkspaceDir: string): Promise<void> {
     logger.info(`[LegacyMigration] Start migration from ${sourceDir} to ${targetWorkspaceDir}`);
-    const client = ((getAppDb() as any)?.session?.client as Client);
+    const client = (getAppDb() as any)?.session?.client;
     if (!client) throw new Error('Database client not initialized');
 
     // 1. Process Device Preferences (Settings)
@@ -111,28 +110,28 @@ export class LegacyMigrationService {
     }
 
     try {
-      async function mergeTable(txClient: Client, alias: string, tableName: string) {
-        // Find columns in main table
-        const mainRows = await txClient.execute(`PRAGMA main.table_info('${tableName}')`);
-        const mainCols = mainRows.rows.map(r => r.name);
+      async function mergeTable(txClient: any, alias: string, tableName: string) {
+        const mainRows = await executeRawSql(txClient, `PRAGMA main.table_info('${tableName}')`);
+        const mainCols = mainRows.rows.map((r: any) => r.name);
 
-        // Find columns in legacy table
         let legacyRows;
         try {
-          legacyRows = await txClient.execute(`PRAGMA ${alias}.table_info('${tableName}')`);
-        } catch { return; } // No such table
+          legacyRows = await executeRawSql(txClient, `PRAGMA ${alias}.table_info('${tableName}')`);
+        } catch { return; }
 
         if (!legacyRows || legacyRows.rows.length === 0) return;
-        const legacyCols = legacyRows.rows.map(r => r.name);
+        const legacyCols = legacyRows.rows.map((r: any) => r.name);
 
-        // Intersect
-        const intersectCols = mainCols.filter(c => legacyCols.includes(c));
+        const intersectCols = mainCols.filter((c: string) => legacyCols.includes(c));
         if (intersectCols.length === 0) return;
 
         const colsString = intersectCols.join(', ');
-        
+
         try {
-          await txClient.execute(`INSERT OR IGNORE INTO main.${tableName} (${colsString}) SELECT ${colsString} FROM ${alias}.${tableName}`);
+          await executeRawSql(
+            txClient,
+            `INSERT OR IGNORE INTO main.${tableName} (${colsString}) SELECT ${colsString} FROM ${alias}.${tableName}`,
+          );
         } catch (e: any) {
           logger.warn(`[LegacyMigration] SQL Table ${tableName} error: ${e.message}`);
         }
@@ -140,52 +139,57 @@ export class LegacyMigrationService {
 
       // 临时关闭外键约束：多个旧版 agent.sqlite 中可能存在交叉引用的数据，
       // 直接 INSERT OR IGNORE 会因为 FK 检查失败而丢失 messages 和 parts
-      await client.execute('PRAGMA foreign_keys=OFF');
+      await executeRawSql(client, 'PRAGMA foreign_keys=OFF');
 
       for (let i = 0; i < agentDbs.length; i++) {
         const legacyDb = agentDbs[i]!.replace(/\\/g, '/');
         const alias = `legacy_agent_${i}`;
-        await client.execute(`ATTACH DATABASE '${legacyDb}' AS ${alias}`);
-        
+        await executeRawSql(client, `ATTACH DATABASE '${legacyDb}' AS ${alias}`);
+
         const tablesToMerge = [
-          'agent_assistants', 'agent_sessions', 'agent_messages', 
-          'agent_parts', 'compression_snapshots', 'memory_embeddings'
+          'agent_assistants', 'agent_sessions', 'agent_messages',
+          'agent_parts', 'compression_snapshots', 'memory_embeddings',
         ];
         for (const table of tablesToMerge) {
           await mergeTable(client, alias, table);
         }
-        await client.execute(`DETACH DATABASE ${alias}`);
+        await executeRawSql(client, `DETACH DATABASE ${alias}`);
       }
 
-      await client.execute('PRAGMA foreign_keys=ON');
-      
-      // Rectify Assistant Avatars in the Unified Database
+      await executeRawSql(client, 'PRAGMA foreign_keys=ON');
+
       try {
-        const assistants = await client.execute('SELECT id, avatar_path FROM agent_assistants WHERE avatar_path IS NOT NULL AND avatar_path != \'\'');
+        const assistants = await executeRawSql(
+          client,
+          "SELECT id, avatar_path FROM agent_assistants WHERE avatar_path IS NOT NULL AND avatar_path != ''",
+        );
         for (const row of assistants.rows) {
-           const oldPath = row['avatar_path'] as string;
-           const filename = oldPath.split(/[/\\]/).pop();
-           if (filename && avatarMap[filename]) {
-              const newRelPath = avatarMap[filename];
-              await client.execute({
-                 sql: 'UPDATE agent_assistants SET avatar_path = ? WHERE id = ?',
-                 args: [newRelPath, row['id']]
-              });
-           }
+          const oldPath = row['avatar_path'] as string;
+          const filename = oldPath.split(/[/\\]/).pop();
+          if (filename && avatarMap[filename]) {
+            const newRelPath = avatarMap[filename];
+            await executeRawSql(
+              client,
+              'UPDATE agent_assistants SET avatar_path = ? WHERE id = ?',
+              [newRelPath, row['id']],
+            );
+          }
         }
         logger.info('[LegacyMigration] Assistant avatars rectified securely in the database.');
-      } catch(e: any) { logger.warn('[LegacyMigration] Avatar rectify failed', e); }
+      } catch (e: any) {
+        logger.warn('[LegacyMigration] Avatar rectify failed', e);
+      }
 
       for (let i = 0; i < baishouDbs.length; i++) {
-        const legacyDb = baishouDbs[i].replace(/\\/g, '/');
+        const legacyDb = baishouDbs[i]!.replace(/\\/g, '/');
         const alias = `legacy_baishou_${i}`;
-        await client.execute(`ATTACH DATABASE '${legacyDb}' AS ${alias}`);
-        
+        await executeRawSql(client, `ATTACH DATABASE '${legacyDb}' AS ${alias}`);
+
         const tablesToMerge = ['diaries', 'summaries'];
         for (const table of tablesToMerge) {
           await mergeTable(client, alias, table);
         }
-        await client.execute(`DETACH DATABASE ${alias}`);
+        await executeRawSql(client, `DETACH DATABASE ${alias}`);
       }
 
       // Restore success! Clean up snapshot.

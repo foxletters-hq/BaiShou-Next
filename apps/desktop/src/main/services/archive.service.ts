@@ -6,7 +6,7 @@ import archiver from 'archiver';
 import extract from 'extract-zip';
 
 import { IArchiveService, ImportResult, VaultService } from '@baishou/core';
-import { connectionManager, shadowConnectionManager, SettingsRepository, UserProfileRepository } from '@baishou/database';
+import { connectionManager, shadowConnectionManager, SettingsRepository, UserProfileRepository, executeRawSql } from '@baishou/database';
 import { logger } from '@baishou/shared';
 import { getAppDb } from '../db';
 import { DesktopStoragePathService } from './path.service';
@@ -117,7 +117,7 @@ export class DesktopArchiveService implements IArchiveService {
             try {
               const dbInstance: any = getAppDb();
               if (dbInstance?.session?.client) {
-                await dbInstance.session.client.execute('PRAGMA wal_checkpoint(TRUNCATE)');
+                await executeRawSql(dbInstance.session.client, 'PRAGMA wal_checkpoint(TRUNCATE)');
               }
              } catch (e: any) {
                logger.error('Failed to checkpoint WAL:', e);
