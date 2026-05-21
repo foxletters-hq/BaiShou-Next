@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, X, BookHeart, Check, ArrowUpCircle, BookOpen, Loader2, Copy, BrainCircuit } from 'lucide-react';
+import { Search, X, Check, ArrowUpCircle, BookOpen, Loader2, Copy } from 'lucide-react';
 import styles from './RecallDialog.module.css';
 import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard/DashboardSharedMemoryCard';
 import { toast } from '../Toast/useToast';
+import { Pagination } from '../Pagination/index';
 
 export interface RecallItem {
   id: string;
@@ -45,6 +46,13 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'diary' | 'memory'>('diary');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
+
+  // 当搜索条件、Tab 切换时，将当前页重置为 1
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab, searchMode]);
 
   // 向量回忆 tab 的搜索：带 debounce，传递 searchMode
   useEffect(() => {
@@ -219,7 +227,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                ) : items.length === 0 ? (
                  <div className={styles.emptyState}>{t('recall.no_results', '未在库中匹配到任何历史记忆碎片。')}</div>
                ) : (
-                 items.map(item => {
+                 items.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(item => {
                     const isSelected = selectedIds.has(item.id);
                     return (
                       <div 
@@ -258,6 +266,17 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                )
              )}
            </div>
+
+           {activeTab === 'memory' && items.length > pageSize && (
+             <div className={styles.paginationArea}>
+               <Pagination
+                 current={currentPage}
+                 total={Math.ceil(items.length / pageSize)}
+                 onChange={setCurrentPage}
+                 showJumper={false}
+               />
+             </div>
+           )}
 
            {activeTab === 'memory' && (
              <div className={styles.footer}>

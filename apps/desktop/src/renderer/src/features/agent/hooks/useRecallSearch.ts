@@ -15,6 +15,22 @@ export interface UseRecallSearchResult {
  *
  * 职责：搜索日记和 RAG 记忆，返回可注入的回忆条目
  */
+const ensureMillis = (ts: any) => {
+  if (!ts) return Date.now();
+  let num = typeof ts === 'number' ? ts : new Date(ts).getTime();
+  if (isNaN(num)) return Date.now();
+  
+  // 智能循环规整：确保时间戳落在 13 位毫秒级范围内（约 1e11 到 1e14）
+  // 1e11 毫秒是 1973 年，1e14 毫秒是 5138 年
+  while (num > 1e14) {
+    num = Math.floor(num / 1000);
+  }
+  while (num < 1e11 && num > 0) {
+    num = num * 1000;
+  }
+  return num;
+};
+
 export function useRecallSearch(): UseRecallSearchResult {
   const { t } = useTranslation();
   const [recallItems, setRecallItems] = useState<RecallItem[]>([]);
@@ -36,7 +52,10 @@ export function useRecallSearch(): UseRecallSearchResult {
             type: 'diary',
             title: d.title || t('common.untitled', '无标题'),
             snippet: d.snippet || d.content?.substring(0, 100) || '',
-            date: new Date(d.createdAt).toISOString().split('T')[0],
+            date: (() => {
+              const dt = new Date(ensureMillis(d.createdAt));
+              return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+            })(),
           })));
         } else {
           setRecallItems([]);
@@ -45,7 +64,7 @@ export function useRecallSearch(): UseRecallSearchResult {
         const searchMode = mode || recallSearchMode;
         const dbEntries = await (window as any).api?.rag?.queryEntries({ 
           keyword: query, 
-          limit: 30,
+          limit: 50, // 语义检索召回更多以备分页，50条
           mode: searchMode
         });
         if (dbEntries) {
@@ -54,7 +73,10 @@ export function useRecallSearch(): UseRecallSearchResult {
             type: 'memory',
             title: `[${r.modelId || t('common.system', '系统')}]`,
             snippet: r.text,
-            date: new Date(r.createdAt || Date.now()).toISOString().split('T')[0],
+            date: (() => {
+              const dt = new Date(ensureMillis(r.createdAt));
+              return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+            })(),
             similarity: r.similarity,
           })));
         } else {
