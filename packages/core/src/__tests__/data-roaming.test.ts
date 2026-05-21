@@ -65,8 +65,8 @@ describe('ICloudSyncClient 接口契约', () => {
 
   it('listFiles 应该返回 SyncRecord 数组', async () => {
     const mockRecords: SyncRecord[] = [
-      { filename: 'backup_2026-03-31.zip', lastModified: new Date(), sizeInBytes: 50 * 1024 * 1024 },
-      { filename: 'backup_2026-03-30.zip', lastModified: new Date(Date.now() - 86400000), sizeInBytes: 48 * 1024 * 1024 },
+      { filename: 'BaiShou_Backup_2026-03-31.zip', lastModified: new Date(), sizeInBytes: 50 * 1024 * 1024, managed: true },
+      { filename: 'v3.0.0测试用例.zip', lastModified: new Date(Date.now() - 86400000), sizeInBytes: 48 * 1024 * 1024, managed: false },
     ];
 
     const mock: ICloudSyncClient = {
@@ -79,8 +79,10 @@ describe('ICloudSyncClient 接口契约', () => {
 
     const records = await mock.listFiles();
     expect(records).toHaveLength(2);
-    expect(records[0]!.filename).toBe('backup_2026-03-31.zip');
+    expect(records[0]!.filename).toBe('BaiShou_Backup_2026-03-31.zip');
     expect(records[0]!.sizeInBytes).toBe(50 * 1024 * 1024);
+    expect(records[0]!.managed).toBe(true);
+    expect(records[1]!.managed).toBe(false);
   });
 });
 
@@ -192,9 +194,10 @@ describe('ILanSyncService 接口契约', () => {
 describe('超限自动清理逻辑 (模拟)', () => {
   it('当记录数超过 maxCount 时应删除最旧的部分', async () => {
     const records: SyncRecord[] = Array.from({ length: 25 }, (_, i) => ({
-      filename: `backup_${String(i).padStart(2, '0')}.zip`,
-      lastModified: new Date(Date.now() - i * 86400000), // 按天递减
+      filename: `BaiShou_Backup_${String(i).padStart(2, '0')}.zip`,
+      lastModified: new Date(Date.now() - i * 86400000),
       sizeInBytes: 1024 * 1024,
+      managed: true,
     }));
 
     // 模拟排序后取超限部分
@@ -204,15 +207,16 @@ describe('超限自动清理逻辑 (模拟)', () => {
 
     expect(toDelete).toHaveLength(5);
     // 最旧的应该被删除
-    expect(toDelete[0]!.filename).toBe('backup_20.zip');
-    expect(toDelete[4]!.filename).toBe('backup_24.zip');
+    expect(toDelete[0]!.filename).toBe('BaiShou_Backup_20.zip');
+    expect(toDelete[4]!.filename).toBe('BaiShou_Backup_24.zip');
   });
 
   it('当记录数不超过 maxCount 时不应删除任何东西', () => {
     const records: SyncRecord[] = Array.from({ length: 10 }, (_, i) => ({
-      filename: `backup_${i}.zip`,
+      filename: `BaiShou_Backup_${i}.zip`,
       lastModified: new Date(),
       sizeInBytes: 512,
+      managed: true,
     }));
 
     const maxCount = 20;

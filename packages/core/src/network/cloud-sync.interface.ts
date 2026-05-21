@@ -6,6 +6,8 @@ export interface SyncRecord {
   filename: string;
   lastModified: Date;
   sizeInBytes: number;
+  /** 是否为系统自动管理的备份（符合 BaiShou_*.zip 命名规范） */
+  managed: boolean;
 }
 
 export interface SyncConfig {

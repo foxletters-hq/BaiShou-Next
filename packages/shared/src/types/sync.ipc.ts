@@ -2,6 +2,7 @@ export interface CloudSyncRecord {
   filename: string;
   lastModified: Date | string;
   sizeInBytes: number;
+  managed: boolean;
 }
 
 export interface MdnsServiceInfo {
