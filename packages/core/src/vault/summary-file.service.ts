@@ -84,10 +84,26 @@ export class SummaryFileService {
   async listAllSummaries(): Promise<{ type: SummaryType, startDate: Date, endDate: Date, fullPath: string }[]> {
     const results: { type: SummaryType, startDate: Date, endDate: Date, fullPath: string }[] = [];
     const base = await this.pathProvider.getSummariesBaseDirectory();
+    const legacyBase = await this.pathProvider.getLegacyArchivesDirectory();
     
+    // 扫描新版 Summaries 目录
+    await this.scanSummaryDir(base, results);
+    
+    // 兼容扫描旧版 Archives 目录（如果存在）
+    if (legacyBase) {
+      await this.scanSummaryDir(legacyBase, results);
+    }
+    
+    return results;
+  }
+
+  private async scanSummaryDir(
+    baseDir: string,
+    results: { type: SummaryType, startDate: Date, endDate: Date, fullPath: string }[]
+  ): Promise<void> {
     for (const type of Object.values(SummaryType)) {
       const typeDirName = type.charAt(0).toUpperCase() + type.slice(1);
-      const typeDir = path.join(base, typeDirName);
+      const typeDir = path.join(baseDir, typeDirName);
       let files: string[] = [];
       try {
         files = await fs.readdir(typeDir);
@@ -99,16 +115,21 @@ export class SummaryFileService {
         if (!file.endsWith('.md')) continue;
         const dates = this.parseFileNameToDateRange(type as SummaryType, file);
         if (dates) {
-          results.push({
-            type: type as SummaryType,
-            startDate: dates.startDate,
-            endDate: dates.endDate,
-            fullPath: path.join(typeDir, file)
-          });
+          // 去重：同一 startDate 的文件只保留一次
+          const exists = results.some(
+            r => r.type === type && r.startDate.getTime() === dates.startDate.getTime()
+          );
+          if (!exists) {
+            results.push({
+              type: type as SummaryType,
+              startDate: dates.startDate,
+              endDate: dates.endDate,
+              fullPath: path.join(typeDir, file)
+            });
+          }
         }
       }
     }
-    return results;
   }
 
   parseFileNameToDateRange(type: SummaryType, fileName: string): { startDate: Date, endDate: Date } | null {
