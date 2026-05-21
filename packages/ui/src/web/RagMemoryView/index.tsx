@@ -45,6 +45,8 @@ interface RagMemoryViewProps {
   embeddingModelId?: string;
   entries: RagEntry[];
   totalCount?: number;
+  currentPage?: number;
+  pageSize?: number;
   
   onChange: (config: RagConfig) => void;
   onClearDimension?: () => Promise<void>;
@@ -62,7 +64,8 @@ interface RagMemoryViewProps {
 
 export const RagMemoryView: React.FC<RagMemoryViewProps> = ({ 
   config, stats, ragState, hasMismatchModel, embeddingModelId, entries, totalCount,
-  onChange, onClearDimension, onBatchEmbed, onAddManualMemory, 
+  currentPage: propCurrentPage, pageSize: propPageSize,
+  onChange, onBatchEmbed, onAddManualMemory, 
   onTriggerMigration, onClearAll, onSearch, onDeleteEntry, onEditEntry,
   onNavigateToConfig, onDetectDimension, onPageChange
 }) => {
@@ -70,42 +73,58 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [internalCurrentPage, setInternalCurrentPage] = useState(1);
+  const [internalPageSize, setInternalPageSize] = useState(10);
+
+  const currentPage = propCurrentPage !== undefined ? propCurrentPage : internalCurrentPage;
+  const pageSize = propPageSize !== undefined ? propPageSize : internalPageSize;
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setSearchQuery(v);
-    setCurrentPage(1);
+    setInternalCurrentPage(1);
     if (onSearch) onSearch(v, searchMode);
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    setCurrentPage(1);
+    setInternalCurrentPage(1);
     if (onSearch) onSearch('', searchMode);
   };
 
   const toggleSearchMode = () => {
     const newMode = searchMode === 'semantic' ? 'text' : 'semantic';
     setSearchMode(newMode);
-    setCurrentPage(1);
+    setInternalCurrentPage(1);
     if (onSearch) onSearch(searchQuery, newMode);
   };
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    setInternalCurrentPage(page);
     if (onPageChange) onPageChange(page, pageSize);
   };
 
   const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setCurrentPage(1);
+    setInternalPageSize(newSize);
+    setInternalCurrentPage(1);
     if (onPageChange) onPageChange(1, newSize);
   };
 
+  const ensureMillis = (ts: any) => {
+    if (!ts) return Date.now();
+    let num = typeof ts === 'number' ? ts : new Date(ts).getTime();
+    if (isNaN(num)) return Date.now();
+    while (num > 1e14) {
+      num = Math.floor(num / 1000);
+    }
+    while (num < 1e11 && num > 0) {
+      num = num * 1000;
+    }
+    return num;
+  };
+
   const formatDate = (ms: number) => {
-    const d = new Date(ms);
+    const d = new Date(ensureMillis(ms));
     return `${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 

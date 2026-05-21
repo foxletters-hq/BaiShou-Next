@@ -98,7 +98,11 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
         params.id, params.sourceType, params.sourceId, params.groupId,
         params.chunkIndex, params.chunkText, params.metadataJson || '{}',
         vectorBuffer, params.embedding.length, params.modelId,
-        Date.now(), params.sourceCreatedAt || Date.now()
+        Math.floor(Date.now() / 1000),
+        (() => {
+          const srcVal = params.sourceCreatedAt || Date.now();
+          return srcVal > 100000000000 ? Math.floor(srcVal / 1000) : srcVal;
+        })()
       ]
     });
   }

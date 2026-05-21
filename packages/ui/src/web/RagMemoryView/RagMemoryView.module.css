@@ -3,7 +3,7 @@
   flex-direction: column;
   flex: 1;
   gap: 16px;
-  padding: 16px 24px 32px 24px;
+  padding: 16px 24px 48px 24px;
   background: var(--bg-app);
   min-height: 100%;
   width: 100%;
@@ -354,6 +354,7 @@
   flex-direction: column;
   gap: 12px;
   margin-top: 8px;
+  padding-bottom: 64px;
 }
 
 .emptyStateContainer {

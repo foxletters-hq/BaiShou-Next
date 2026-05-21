@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSettingsStore, useUserProfileStore } from '@baishou/store';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MdOutlineSettings, MdOutlineCloudQueue, MdOutlineStarBorder, MdSchool, MdColorLens, MdTravelExplore, MdOutlineExtension, MdOutlineAutoAwesome, MdOutlineWifiProtectedSetup, MdSync, MdOutlineFolderDelete, MdArrowBack, MdVolumeUp } from 'react-icons/md';
@@ -511,30 +511,83 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const { confirm, prompt, alert } = useDialog();
   const toast = useToast();
 
-  const fetchRagInfo = async (page?: number, pageSize?: number) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize });
+  useEffect(() => {
+    stateRef.current = { searchQuery, searchMode, currentPage, pageSize };
+  }, [searchQuery, searchMode, currentPage, pageSize]);
+
+  const loadRagData = async (
+    q: string,
+    mode: 'semantic' | 'text',
+    page: number,
+    size: number
+  ) => {
     try {
       const s = await (window as any).api?.rag?.getStats();
       if (s) setRagStats(s);
+
+      const limit = size;
+      const offset = (page - 1) * limit;
+      const params: any = { limit, offset, mode, withTotal: true };
       
-      const limit = pageSize || 10;
-      const offset = ((page || 1) - 1) * limit;
-      const e = await (window as any).api?.rag?.queryEntries({ limit, offset });
-      if (e) setRagEntries(e);
-      
-      // 使用 stats 中的 totalCount
-      if (s) setRagTotalCount(s.totalCount || 0);
-      
-      // Check for pending migration or model mismatch
+      if (q && q.trim() !== '') {
+        params.keyword = q;
+        if (mode === 'semantic') {
+          params.limit = 50;
+          params.offset = 0;
+        }
+      }
+
+      const res = await (window as any).api?.rag?.queryEntries(params);
+      if (res) {
+        if (res.entries && typeof res.total === 'number') {
+          const total = res.total;
+          if (total > 0 && (page - 1) * size >= total) {
+            const maxPage = Math.max(1, Math.ceil(total / size));
+            setCurrentPage(maxPage);
+            loadRagData(q, mode, maxPage, size);
+            return;
+          }
+          if (q && q.trim() !== '' && mode === 'semantic') {
+            const allEntries = res.entries;
+            const semanticTotal = res.total;
+            const sliced = allEntries.slice((page - 1) * size, page * size);
+            setRagEntries(sliced);
+            setRagTotalCount(semanticTotal);
+          } else {
+            setRagEntries(res.entries);
+            setRagTotalCount(res.total);
+          }
+        } else {
+          // 历史兼容
+          setRagEntries(res);
+          setRagTotalCount(s ? s.totalCount || 0 : 0);
+        }
+      }
+
       try {
         const pending = await (window as any).api?.rag?.hasPendingMigration?.();
         const mismatch = await (window as any).api?.rag?.hasModelMismatch?.();
         setHasMismatchModel(!!pending || !!mismatch);
-      } catch { /* ignore */ }
-    } catch (err) {}
+      } catch {}
+    } catch (err) {
+      console.error('[SettingsPage] loadRagData failed:', err);
+    }
+  };
+
+  const fetchRagInfo = async (page?: number, size?: number) => {
+    const targetPage = page !== undefined ? page : stateRef.current.currentPage;
+    const targetSize = size !== undefined ? size : stateRef.current.pageSize;
+    await loadRagData(stateRef.current.searchQuery, stateRef.current.searchMode, targetPage, targetSize);
   };
 
   useEffect(() => {
-    fetchRagInfo();
+    loadRagData(searchQuery, searchMode, currentPage, pageSize);
     let cleanup: any;
     if ((window as any).api?.rag?.onRagProgress) {
       cleanup = (window as any).api.rag.onRagProgress((state: any) => {
@@ -557,9 +610,15 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
              embeddingModelId={settings.globalModels?.globalEmbeddingModelId}
              entries={ragEntries}
              totalCount={ragTotalCount}
+             currentPage={currentPage}
+             pageSize={pageSize}
              onChange={(config) => settings.setRagConfig(config)}
              onNavigateToConfig={() => navigate('/settings/ai-models')}
-             onPageChange={(page, size) => fetchRagInfo(page, size)}
+             onPageChange={(page, size) => {
+               setCurrentPage(page);
+               setPageSize(size);
+               loadRagData(searchQuery, searchMode, page, size);
+             }}
              onDetectDimension={async () => {
                setIsProcessing(true);
                try {
@@ -618,18 +677,12 @@ const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
                  await fetchRagInfo();
                } finally { setIsProcessing(false); }
              }}
-              onSearch={async (q, mode) => {
-                setIsProcessing(true);
-                try {
-                  const params: any = { limit: 50, mode };
-                  if (q && q.trim() !== '') {
-                    params.keyword = q;
-                  }
-                  const e = await (window as any).api?.rag?.queryEntries(params);
-                  if (e) setRagEntries(e);
-                } catch (err) {}
-                finally { setIsProcessing(false); }
-              }}
+             onSearch={(q, mode) => {
+               setSearchQuery(q);
+               setSearchMode(mode);
+               setCurrentPage(1);
+               loadRagData(q, mode, 1, pageSize);
+             }}
              onDeleteEntry={async (id) => {
                if (!await confirm(t('common.delete', '删除') + '?', t('common.warning', '警告'))) return;
                setIsProcessing(true);
@@ -1009,8 +1062,6 @@ const AttachmentManagementPane: React.FC = () => {
 };
 
 const TTSSettingsPane: React.FC = () => {
-  const { t } = useTranslation();
-  const toast = useToast();
   const settings = useSettingsStore();
 
   const handleSaveConfig = async (config: any) => {
@@ -1045,7 +1096,9 @@ const TTSSettingsPane: React.FC = () => {
 
     await settings.updateProvider(providerData);
 
-    const globalModels = settings.globalModels || {};
+    const globalModels = settings.globalModels;
+    if (!globalModels) return;
+
     await settings.setGlobalModels({
       ...globalModels,
       globalTtsProviderId: config.id,
@@ -1054,6 +1107,10 @@ const TTSSettingsPane: React.FC = () => {
         voice: config.voice,
         speed: config.speed,
         responseFormat: config.responseFormat,
+        refAudioPath: config.refAudioPath,
+        promptText: config.promptText,
+        promptLang: config.promptLang,
+        textLang: config.textLang,
       },
     });
   };
@@ -1075,15 +1132,19 @@ const TTSSettingsPane: React.FC = () => {
   const providers = settings.providers;
   const initialConfig = React.useMemo(() => {
     const savedProviderId = globalModels?.globalTtsProviderId || 'openai-tts';
-    const providerConfig = (Array.isArray(providers) ? providers : []).find((p: any) => p.id === savedProviderId) || {};
+    const providerConfig = ((Array.isArray(providers) ? providers : []).find((p: any) => p.id === savedProviderId) || {}) as any;
     return {
       id: savedProviderId,
-      baseUrl: providerConfig.baseUrl !== undefined ? providerConfig.baseUrl : (savedProviderId === 'mimo-tts' ? '' : 'https://api.openai.com/v1'),
+      baseUrl: providerConfig.baseUrl !== undefined ? providerConfig.baseUrl : (savedProviderId === 'gpt-sovits' ? 'http://127.0.0.1:9880' : (savedProviderId === 'mimo-tts' ? '' : 'https://api.openai.com/v1')),
       apiKey: providerConfig.apiKey || '',
-      modelId: globalModels?.globalTtsModelId || (savedProviderId === 'mimo-tts' ? 'mimo-v2.5-tts' : 'tts-1'),
-      voice: globalModels?.globalTtsSettings?.voice || (savedProviderId === 'mimo-tts' ? '冰糖' : 'alloy'),
+      modelId: globalModels?.globalTtsModelId || (savedProviderId === 'gpt-sovits' ? 'default' : (savedProviderId === 'mimo-tts' ? 'mimo-v2.5-tts' : 'tts-1')),
+      voice: globalModels?.globalTtsSettings?.voice || (savedProviderId === 'gpt-sovits' ? 'default' : (savedProviderId === 'mimo-tts' ? '冰糖' : 'alloy')),
       speed: globalModels?.globalTtsSettings?.speed !== undefined ? globalModels.globalTtsSettings.speed : 1.0,
-      responseFormat: globalModels?.globalTtsSettings?.responseFormat || (savedProviderId === 'mimo-tts' ? 'wav' : 'mp3')
+      responseFormat: globalModels?.globalTtsSettings?.responseFormat || (savedProviderId === 'mimo-tts' || savedProviderId === 'gpt-sovits' ? 'wav' : 'mp3'),
+      refAudioPath: globalModels?.globalTtsSettings?.refAudioPath || '',
+      promptText: globalModels?.globalTtsSettings?.promptText || '',
+      promptLang: globalModels?.globalTtsSettings?.promptLang || 'zh',
+      textLang: globalModels?.globalTtsSettings?.textLang || 'zh',
     };
   }, [globalModels, providers]);
 

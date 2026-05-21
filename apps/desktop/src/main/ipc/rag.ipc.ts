@@ -170,7 +170,7 @@ export function registerRagIPC() {
     return true;
   });
 
-  ipcMain.handle('rag:query-entries', async (_, params: { keyword?: string, limit?: number, offset?: number, mode?: 'semantic' | 'text' }) => {
+  ipcMain.handle('rag:query-entries', async (_, params: { keyword?: string, limit?: number, offset?: number, mode?: 'semantic' | 'text', withTotal?: boolean }) => {
     await config.load();
     const db = getAppDb();
     
@@ -210,13 +210,21 @@ export function registerRagIPC() {
               const limit = params.limit || 30;
               const vectorResults = await hybridRepo.queryNativeVector(queryVector, limit);
               
-              return vectorResults.map(r => ({
+              const entries = vectorResults.map(r => ({
                 embeddingId: r.messageId, // ISearchResult では messageId に embeddingId が入っている
                 text: r.chunkText,
                 modelId: config.getGlobalEmbeddingModelId() || 'unknown',
                 createdAt: r.createdAt || Date.now(),
                 similarity: r.score // コサイン類似度が score に入っている
               }));
+
+              if (params.withTotal) {
+                return {
+                  entries,
+                  total: entries.length
+                };
+              }
+              return entries;
             }
           }
         }
@@ -237,12 +245,32 @@ export function registerRagIPC() {
       .limit(params.limit || 10)
       .offset(params.offset || 0);
     
-    return results.map(r => ({
+    const entries = results.map(r => ({
       embeddingId: r.embeddingId,
       text: r.chunkText,
       modelId: r.modelId,
       createdAt: r.createdAt?.getTime() || 0
     }));
+
+    if (params.withTotal) {
+      let total = 0;
+      if (params.keyword && params.keyword.trim() !== '') {
+        const countRes = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(memoryEmbeddingsTable)
+          .where(like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`));
+        total = countRes[0]?.count || 0;
+      } else {
+        const countRes = await db.select({ count: sql<number>`count(*)` }).from(memoryEmbeddingsTable);
+        total = countRes[0]?.count || 0;
+      }
+      return {
+        entries,
+        total
+      };
+    }
+    
+    return entries;
   });
 
   ipcMain.handle('rag:delete-entry', async (_, embeddingId: string) => {
