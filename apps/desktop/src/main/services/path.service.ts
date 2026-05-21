@@ -118,7 +118,7 @@ export class DesktopStoragePathService implements IStoragePathService {
 
   public async getSummariesBaseDirectory(): Promise<string> {
     const activeDir = await this.getActiveVaultDirectory();
-    const dir = path.join(activeDir, 'Summaries');
+    const dir = path.join(activeDir, 'Archives');
     await fs.mkdir(dir, { recursive: true });
     return dir;
   }

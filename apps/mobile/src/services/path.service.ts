@@ -116,7 +116,15 @@ export class MobileStoragePathService implements IStoragePathService {
   }
 
   public async getSummariesBaseDirectory(): Promise<string> {
-    return this.getVaultSystemDirectory('default').then(p => `${p}/summaries`);
+    const vaultDir = await this.getVaultDirectory('default');
+    const dir = `${vaultDir}/Archives`;
+    try {
+      const info = await FileSystem.getInfoAsync(dir);
+      if (!info.exists) {
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      }
+    } catch {}
+    return dir;
   }
 
   public async getLegacyArchivesDirectory(): Promise<string | null> {
