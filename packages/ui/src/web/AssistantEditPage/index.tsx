@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { logger } from '@baishou/shared';
+import { logger, isEmbeddingModel, isTtsModel } from '@baishou/shared';
 import { ChevronLeft, Trash2, Smile, Plus, ChevronRight, Loader2, CheckCircle2, Info } from 'lucide-react';
 import { MdCloud } from 'react-icons/md';
 import { AvatarEditor } from '../AvatarEditor';
@@ -380,13 +380,19 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
 
       {providerPickerOpen && (
         <ModelSwitcherPopup
-          providers={pickerProviders.map(p => ({
-            id: p.id,
-            name: p.name || p.id,
-            type: p.type || 'custom',
-            models: p.models || [],
-            enabledModels: (p.enabledModels && p.enabledModels.length > 0) ? p.enabledModels : (p.models || [])
-          }))}
+          providers={pickerProviders
+            .map(p => {
+              const modelList = (p.enabledModels && p.enabledModels.length > 0) ? p.enabledModels : (p.models || []);
+              const filteredModels = modelList.filter(m => !isEmbeddingModel(m) && !isTtsModel(m));
+              return {
+                id: p.id,
+                name: p.name || p.id,
+                type: p.type || 'custom',
+                models: p.models || [],
+                enabledModels: filteredModels
+              };
+            })
+            .filter(p => p.enabledModels.length > 0)}
           currentProviderId={providerId || ''}
           currentModelId={modelId || ''}
           onSelect={(pid, mid) => {

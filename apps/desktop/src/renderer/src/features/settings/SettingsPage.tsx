@@ -1064,17 +1064,39 @@ const TTSSettingsPane: React.FC = () => {
       if (result?.success) {
         return { success: true, audioBase64: result.audioBase64, format: result.format };
       }
-      return { success: false, error: result?.errorCode || 'unknown' };
+      const errorMsg = result?.error ? `${result.errorCode}: ${result.error}` : (result?.errorCode || 'unknown');
+      return { success: false, error: errorMsg };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   };
 
+  const globalModels = settings.globalModels;
+  const providers = settings.providers;
+  const initialConfig = React.useMemo(() => {
+    const savedProviderId = globalModels?.globalTtsProviderId || 'openai-tts';
+    const providerConfig = (Array.isArray(providers) ? providers : []).find((p: any) => p.id === savedProviderId) || {};
+    return {
+      id: savedProviderId,
+      baseUrl: providerConfig.baseUrl !== undefined ? providerConfig.baseUrl : (savedProviderId === 'mimo-tts' ? '' : 'https://api.openai.com/v1'),
+      apiKey: providerConfig.apiKey || '',
+      modelId: globalModels?.globalTtsModelId || (savedProviderId === 'mimo-tts' ? 'mimo-v2.5-tts' : 'tts-1'),
+      voice: globalModels?.globalTtsSettings?.voice || (savedProviderId === 'mimo-tts' ? '冰糖' : 'alloy'),
+      speed: globalModels?.globalTtsSettings?.speed !== undefined ? globalModels.globalTtsSettings.speed : 1.0,
+      responseFormat: globalModels?.globalTtsSettings?.responseFormat || (savedProviderId === 'mimo-tts' ? 'wav' : 'mp3')
+    };
+  }, [globalModels, providers]);
+
   return (
     <div className="settings-pane settings-pane-full">
       <TTSProviderSettings
+        initialConfig={initialConfig}
+        providersList={providers}
         onSaveConfig={handleSaveConfig}
         onTestTts={handleTestTts}
+        onFetchModels={async (providerId, apiKey, baseUrl) => {
+          return await (window as any).api?.settings?.fetchProviderModels(providerId, apiKey, baseUrl) || [];
+        }}
       />
     </div>
   );

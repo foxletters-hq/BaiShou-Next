@@ -33,7 +33,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   const dialog = useDialog();
 
   // State to manage which model selector is currently open
-  const [activeSelector, setActiveSelector] = useState<'dialogue' | 'naming' | 'summary' | 'embedding' | 'tts' | null>(null);
+  const [activeSelector, setActiveSelector] = useState<'dialogue' | 'naming' | 'summary' | 'embedding' | null>(null);
 
   // Filter provider arrays for the popup
   const getProvidersArray = (forEmbedding: boolean, forTts: boolean = false) => {
@@ -62,7 +62,6 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
 
   const nonEmbeddingProviders = getProvidersArray(false);
   const embeddingProviders = getProvidersArray(true);
-  const ttsProviders = getProvidersArray(false, true);
 
   const handleSelectModel = async (providerId: string, modelId: string) => {
     if (!activeSelector) return;
@@ -104,9 +103,6 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     } else if (activeSelector === 'summary') {
       newConfig.globalSummaryProviderId = providerId;
       newConfig.globalSummaryModelId = modelId;
-    } else if (activeSelector === 'tts') {
-      newConfig.globalTtsProviderId = providerId;
-      newConfig.globalTtsModelId = modelId;
     }
 
     onChange(newConfig);
@@ -114,7 +110,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   };
 
   const renderSection = (
-    key: 'dialogue' | 'naming' | 'summary' | 'embedding' | 'tts',
+    key: 'dialogue' | 'naming' | 'summary' | 'embedding',
     title: string,
     desc: string,
     icon: React.ReactNode,
@@ -197,36 +193,24 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           config.globalEmbeddingProviderId, 
           config.globalEmbeddingModelId
         )}
-
-        {renderSection(
-          'tts', 
-          t('ai_config.tts_model_title', 'TTS 语音合成'), 
-          t('ai_config.tts_model_desc', '用于将文本转换为语音的模型，支持朗读消息和语音播放功能。'), 
-          <MdVolumeUp size={22} />, 
-          config.globalTtsProviderId || '', 
-          config.globalTtsModelId || ''
-        )}
       </div>
 
       {activeSelector && (
         <ModelSwitcherPopup
           providers={
             activeSelector === 'embedding' ? embeddingProviders :
-            activeSelector === 'tts' ? ttsProviders :
             nonEmbeddingProviders
           }
           currentProviderId={
             activeSelector === 'dialogue' ? config.globalDialogueProviderId :
             activeSelector === 'naming' ? config.globalNamingProviderId :
             activeSelector === 'summary' ? config.globalSummaryProviderId :
-            activeSelector === 'tts' ? (config.globalTtsProviderId || '') :
             config.globalEmbeddingProviderId
           }
           currentModelId={
             activeSelector === 'dialogue' ? config.globalDialogueModelId :
             activeSelector === 'naming' ? config.globalNamingModelId :
             activeSelector === 'summary' ? config.globalSummaryModelId :
-            activeSelector === 'tts' ? (config.globalTtsModelId || '') :
             config.globalEmbeddingModelId
           }
           onSelect={handleSelectModel}

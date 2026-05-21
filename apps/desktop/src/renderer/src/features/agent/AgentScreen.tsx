@@ -30,6 +30,7 @@ import { useStreamError } from './hooks/useStreamError';
 import { useRecallSearch } from './hooks/useRecallSearch';
 import { useAssistantResolver } from './hooks/useAssistantResolver';
 import { useTranslation } from 'react-i18next';
+import { isEmbeddingModel, isTtsModel } from '@baishou/shared';
 
 export const AgentScreen: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -457,13 +458,19 @@ export const AgentScreen: React.FC = () => {
       {showModelSwitcher && (
         <ModelSwitcherPopup 
           onClose={() => setShowModelSwitcher(false)}
-          providers={providers.map(p => ({
-            id: p.id,
-            name: p.name || p.id,
-            type: p.type || 'custom',
-            models: p.models || [],
-            enabledModels: p.enabledModels || [],
-          }))}
+          providers={providers
+            .map(p => {
+              const modelList = (p.enabledModels && p.enabledModels.length > 0) ? p.enabledModels : (p.models || []);
+              const filteredModels = modelList.filter(m => !isEmbeddingModel(m) && !isTtsModel(m));
+              return {
+                id: p.id,
+                name: p.name || p.id,
+                type: p.type || 'custom',
+                models: p.models || [],
+                enabledModels: filteredModels,
+              };
+            })
+            .filter(p => p.enabledModels.length > 0)}
           currentProviderId={model.currentProviderId}
           currentModelId={model.currentModelId}
           onSelect={(pid, mid) => {

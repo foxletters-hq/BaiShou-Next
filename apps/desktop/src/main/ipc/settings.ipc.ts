@@ -3,7 +3,7 @@ import { SettingsRepository } from '@baishou/database';
 import { SettingsFileService, SettingsManagerService } from '@baishou/core';
 import { getAppDb, onAppDbReset } from '../db';
 import { pathService } from './vault.ipc';
-import { AIProviderConfig, GlobalModelsConfig } from '@baishou/shared';
+import { AIProviderConfig, GlobalModelsConfig, logger } from '@baishou/shared';
 
 let _settingsManager: SettingsManagerService | null = null;
 export const settingsManager = new Proxy({} as SettingsManagerService, {
@@ -307,6 +307,46 @@ export function registerSettingsIPC() {
   });
 
   ipcMain.handle('settings:fetch-models', async (_, providerId: string, tempKey?: string, tempUrl?: string) => {
+    // 针对 TTS 供应商的特殊模型/音色获取逻辑
+    if (providerId === 'clone-tts') {
+      try {
+        const url = `${tempUrl?.replace(/\/$/, '')}/api/voices`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            // CloneTTS 音色列表，通常包含 alias 或 name 属性
+            return data.map((item: any) => item.alias || item.name || String(item)).filter(Boolean);
+          }
+        }
+        return [];
+      } catch (err) {
+        // @ts-ignore
+        logger.error?.('[TTS] Fetch CloneTTS voices failed:', err);
+        return [];
+      }
+    }
+    
+    if (providerId === 'openai-tts') {
+      try {
+        const url = `${tempUrl?.replace(/\/$/, '')}/models`;
+        const response = await fetch(url, {
+          headers: tempKey ? { 'Authorization': `Bearer ${tempKey}` } : {}
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data && Array.isArray(data.data)) {
+            return data.data
+              .map((m: any) => m.id)
+              .filter((id: string) => id.toLowerCase().includes('tts'));
+          }
+        }
+      } catch (err) {
+        // 报错则回退
+      }
+      return ['tts-1', 'tts-1-hd'];
+    }
+
     const providers = await getAutoFixedProviders();
     let config = providers.find(p => p.id === providerId);
     if (!config) {
