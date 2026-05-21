@@ -126,11 +126,17 @@ export class LegacyMigrationService {
         if (intersectCols.length === 0) return;
 
         const colsString = intersectCols.join(', ');
+        const selectCols = intersectCols.map((c: string) => {
+          if (tableName === 'summaries' && ['start_date', 'end_date', 'generated_at'].includes(c)) {
+            return `CASE WHEN ${c} < 10000000000 THEN ${c} * 1000 ELSE ${c} END as ${c}`;
+          }
+          return c;
+        }).join(', ');
 
         try {
           await executeRawSql(
             txClient,
-            `INSERT OR IGNORE INTO main.${tableName} (${colsString}) SELECT ${colsString} FROM ${alias}.${tableName}`,
+            `INSERT OR IGNORE INTO main.${tableName} (${colsString}) SELECT ${selectCols} FROM ${alias}.${tableName}`,
           );
         } catch (e: any) {
           logger.warn(`[LegacyMigration] SQL Table ${tableName} error: ${e.message}`);
