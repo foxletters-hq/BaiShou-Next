@@ -1,6 +1,7 @@
 export { TtsProviderRegistry } from './tts.registry';
 export { OpenAiTtsProvider } from './openai-tts.provider';
 export { MimoTtsProvider } from './mimo-tts.provider';
+export { CloneTtsProvider } from './clone-tts.provider';
 export {
   TtsNotConfiguredError,
   TtsProviderNotFoundError,

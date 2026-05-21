@@ -5,6 +5,7 @@ import { GlobalModelsConfig } from '@baishou/shared';
 import {
   OpenAiTtsProvider,
   MimoTtsProvider,
+  CloneTtsProvider,
   TtsProviderRegistry,
   TtsProviderNotFoundError,
   TtsApiError,
@@ -15,6 +16,7 @@ import {
 const registry = new TtsProviderRegistry();
 registry.register(new OpenAiTtsProvider());
 registry.register(new MimoTtsProvider());
+registry.register(new CloneTtsProvider());
 
 export function registerTtsIPC() {
   ipcMain.handle('agent:tts-synthesize', async (_event, text: string, providerId?: string, modelId?: string) => {
@@ -34,9 +36,12 @@ export function registerTtsIPC() {
         return { success: false, errorCode: 'tts_provider_not_found' };
       }
 
-      const ttsProvider = registry.findByModel(ttsModelId);
+      let ttsProvider = registry.get(ttsProviderId);
       if (!ttsProvider) {
-        logger.error(`[TTS] No provider found for model: ${ttsModelId}`);
+        ttsProvider = registry.findByModel(ttsModelId);
+      }
+      if (!ttsProvider) {
+        logger.error(`[TTS] No provider found for ID: ${ttsProviderId} or model: ${ttsModelId}`);
         return { success: false, errorCode: 'tts_provider_not_supported' };
       }
 
