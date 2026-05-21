@@ -1,4 +1,4 @@
-import { eq, sql, like } from 'drizzle-orm';
+import { eq, sql, like, and, gte, lte } from 'drizzle-orm';
 import { shadowJournalIndexTable } from '../schema/shadow-index';
 import { AppDatabase } from '../types';
 
@@ -262,6 +262,22 @@ export class ShadowIndexRepository {
       .select()
       .from(shadowJournalIndexTable)
       .where(like(shadowJournalIndexTable.date, `${dayStr}%`));
+  }
+
+  /**
+   * 按日期区间查询索引记录 (SQL 层面过滤，避免全量加载到内存)
+   */
+  async findByDateRange(startIso: string, endIso: string): Promise<ShadowJournalRecord[]> {
+    return await this.database
+      .select()
+      .from(shadowJournalIndexTable)
+      .where(
+        and(
+          gte(shadowJournalIndexTable.date, startIso),
+          lte(shadowJournalIndexTable.date, endIso)
+        )
+      )
+      .orderBy(sql`${shadowJournalIndexTable.date} ASC`);
   }
 
   /**

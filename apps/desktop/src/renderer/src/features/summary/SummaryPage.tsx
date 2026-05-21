@@ -405,6 +405,26 @@ export const SummaryPage: React.FC = () => {
                 // 点击编辑按钮跳转到详情页
                 navigate(`/summary/${id}`);
               }}
+              onSave={async (id, content) => {
+                const summary = summaries.find(s => String(s.id) === id);
+                if (!summary) return;
+                try {
+                  await window.electron.ipcRenderer.invoke(
+                    'summary:update',
+                    summary.id,
+                    summary.type,
+                    new Date(summary.startDate),
+                    new Date(summary.endDate),
+                    { content }
+                  );
+                  toast.showSuccess(t('common.save_success', '保存成功'));
+                  await refreshData();
+                } catch (e) {
+                  console.error('[SummaryPage] save error:', e);
+                  toast.showError(t('common.save_failed', '保存失败'));
+                  throw e;
+                }
+              }}
               onDelete={async (id) => {
                 const summary = summaries.find(s => String(s.id) === id);
                 if (!summary) return;

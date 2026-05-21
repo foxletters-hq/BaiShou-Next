@@ -16,7 +16,7 @@ import {
 import { generateText } from 'ai';
 import { settingsManager } from './settings.ipc';
 import { getActiveProvider } from './agent-helpers';
-import { GlobalModelsConfig, logger, parseDateStr } from '@baishou/shared';
+import { GlobalModelsConfig, logger, parseDateStr, formatLocalDate } from '@baishou/shared';
 import { SummaryQueueService } from '../services/summary-queue.service';
 
 import { pathService } from './vault.ipc';
@@ -87,11 +87,10 @@ function ensureQueueReady(): void {
     
     const diaryRepoAdapter = {
       async findByDateRange(start: Date, end: Date) {
-          const records = await shadowRepo.listAll();
-          return records.filter((r: any) => {
-             const d = parseDateStr(r.date).getTime();
-             return d >= start.getTime() && d <= end.getTime();
-          }).map((r: any) => {
+          const startIso = formatLocalDate(start);
+          const endIso = formatLocalDate(end);
+          const records = await shadowRepo.findByDateRange(startIso, endIso);
+          return records.map((r: any) => {
              const diaryDate = parseDateStr(r.date);
              return {
                id: r.id.toString(),
