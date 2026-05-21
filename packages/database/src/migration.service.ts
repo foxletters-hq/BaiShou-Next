@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { migrationsTable } from './schema/migration-table';
 import { logger } from '@baishou/shared';
+import { executeRawSql } from './raw-sql.executor';
 
 export interface MigrationJournal {
   version: string;
@@ -33,38 +34,8 @@ export class MigrationService {
     this.migrationDir = migrationDir;
   }
 
-  /**
-   * 统一的多态原始 SQL 执行助手
-   */
   private async _executeSql(statement: string, args: any[] = []): Promise<any> {
-    if (this.client && typeof this.client.execute === 'function') {
-      // LibSQL 驱动路径
-      return await this.client.execute({ sql: statement, args });
-    } else if (this.client) {
-      // Better-SQLite3 驱动路径
-      if (args.length > 0) {
-        const stmt = this.client.prepare(statement);
-        const info = stmt.run(...args);
-        // 为了兼容 LibSQL 返回的 rows，构造返回结构
-        return {
-          rows: [],
-          rowsAffected: info.changes,
-          lastInsertRowid: info.lastInsertRowid
-        };
-      } else {
-        // pragma 或者 alter 语句
-        const isSelect = statement.trim().toUpperCase().startsWith('SELECT') || 
-                        statement.trim().toUpperCase().startsWith('PRAGMA TABLE_INFO');
-        if (isSelect) {
-          const rows = this.client.prepare(statement).all();
-          return { rows };
-        } else {
-          this.client.exec(statement);
-          return { rows: [] };
-        }
-      }
-    }
-    throw new Error('[MigrationService] No database client was available to execute query.');
+    return executeRawSql(this.client, statement, args);
   }
 
   public async runMigrations(): Promise<void> {
