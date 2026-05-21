@@ -143,6 +143,10 @@
   flex-direction: column;
 }
 
+.gallery-detail.editing {
+  overflow: hidden;
+}
+
 .gallery-detail-empty {
   display: flex;
   flex-direction: column;
@@ -224,6 +228,25 @@
   flex: 1;
   line-height: 1.7;
   color: var(--text-primary);
+}
+
+.gallery-detail-content.editing {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.gallery-detail-content.editing .codemirror-editor-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.gallery-detail-content.editing .codemirror-editor-wrapper .cm-editor {
+  height: 100%;
 }
 
 .gallery-detail-content h1,

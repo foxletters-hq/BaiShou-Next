@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState, useMemo } from 'react';
-import { Edit3, Trash2, Calendar, Tag } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Edit3, Trash2, Calendar, Tag, Save, X } from 'lucide-react';
 import { MarkdownRenderer } from '../MarkdownRenderer';
+import { CodeMirrorEditor } from '../DiaryEditor';
 import './GalleryPanel.css';
 
 export interface SummaryItem {
@@ -18,6 +19,7 @@ export interface GalleryPanelProps {
   onOpen?: (id: string) => void;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onSave?: (id: string, content: string) => Promise<void>;
 }
 
 /** 总结类型 → i18n 键映射 */
@@ -32,11 +34,17 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   summaries = [], 
   onOpen, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onSave
 }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('weekly');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // 编辑模式状态
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   /** 按类型过滤 */
   const filteredSummaries = useMemo(() => {
@@ -120,6 +128,30 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
     return Math.ceil(diff / (7 * 24 * 60 * 60 * 1000));
   };
 
+  // 当选中项或 Tab 切换时重置编辑状态
+  useEffect(() => {
+    setIsEditing(false);
+    setEditContent('');
+  }, [selectedSummary?.id, activeTab]);
+
+  const handleSave = async () => {
+    if (!selectedSummary || !selectedSummary.id || !onSave) return;
+    setIsSaving(true);
+    try {
+      await onSave(String(selectedSummary.id), editContent);
+      setIsEditing(false);
+    } catch (e) {
+      console.error('[GalleryPanel] Save error:', e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditContent('');
+  };
+
   /** 处理列表项点击 */
   const handleItemClick = (id: string) => {
     setSelectedId(id);
@@ -187,7 +219,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
         <div className="gallery-divider" />
 
         {/* 右侧详情 */}
-        <div className="gallery-detail">
+        <div className={`gallery-detail ${isEditing ? 'editing' : ''}`}>
           {selectedSummary ? (
             <>
               <div className="gallery-detail-header">
@@ -202,24 +234,58 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
                   </span>
                 </div>
                 <div className="gallery-detail-actions">
-                  <button
-                    className="gallery-action-btn"
-                    onClick={() => onEdit?.(String(selectedSummary.id))}
-                    title={t('common.edit', '编辑')}
-                  >
-                    <Edit3 size={16} />
-                  </button>
-                  <button
-                    className="gallery-action-btn danger"
-                    onClick={() => onDelete?.(String(selectedSummary.id))}
-                    title={t('common.delete', '删除')}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {isEditing ? (
+                    <>
+                      <button
+                        className="gallery-action-btn"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        title={t('common.save', '保存')}
+                      >
+                        <Save size={16} />
+                      </button>
+                      <button
+                        className="gallery-action-btn"
+                        onClick={handleCancel}
+                        disabled={isSaving}
+                        title={t('common.cancel', '取消')}
+                      >
+                        <X size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="gallery-action-btn"
+                        onClick={() => {
+                          if (onSave) {
+                            setEditContent(selectedSummary.content);
+                            setIsEditing(true);
+                          } else {
+                            onEdit?.(String(selectedSummary.id));
+                          }
+                        }}
+                        title={t('common.edit', '编辑')}
+                      >
+                        <Edit3 size={16} />
+                      </button>
+                      <button
+                        className="gallery-action-btn danger"
+                        onClick={() => onDelete?.(String(selectedSummary.id))}
+                        title={t('common.delete', '删除')}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-              <div className="gallery-detail-content">
-                <MarkdownRenderer content={selectedSummary.content} />
+              <div className={`gallery-detail-content ${isEditing ? 'editing' : ''}`}>
+                {isEditing ? (
+                  <CodeMirrorEditor content={editContent} onChange={setEditContent} />
+                ) : (
+                  <MarkdownRenderer content={selectedSummary.content} />
+                )}
               </div>
             </>
           ) : (
