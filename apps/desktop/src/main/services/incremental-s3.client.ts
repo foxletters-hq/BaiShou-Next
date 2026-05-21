@@ -79,6 +79,7 @@ export class IncrementalS3Client implements ICloudSyncClient {
           filename: relativeName,
           lastModified: obj.lastModified || new Date(),
           sizeInBytes: obj.size || 0,
+          managed: /^BaiShou_.*\.zip$/i.test(relativeName),
         });
       });
 

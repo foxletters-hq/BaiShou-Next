@@ -73,6 +73,7 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
           filename: item.filename || item.basename,
           lastModified: item.lastmod ? new Date(item.lastmod) : new Date(),
           sizeInBytes: item.size || 0,
+          managed: /^BaiShou_.*\.zip$/i.test(item.filename || item.basename),
         });
       }
     } catch (e: any) {
