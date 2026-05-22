@@ -1,3 +1,19 @@
+export interface AttachmentFileItem {
+  name: string;
+  path: string;
+  sizeMB: number;
+  birthtime: string;
+}
+
+export interface SessionAttachmentGroup {
+  sessionId: string;
+  sessionTitle?: string;
+  isOrphan: boolean;
+  totalSizeMB: number;
+  fileCount: number;
+  files: AttachmentFileItem[];
+}
+
 export interface AttachmentItem {
   id: string; // Session ID for attachments folder, or the name of the folder if orphan
   name: string;
@@ -32,8 +48,23 @@ export interface IAttachmentManager {
   listOrphans(activeSessionIds: Set<string>): Promise<AttachmentItem[]>;
 
   /**
+   * Scans the Vault Attachments directory and groups files by session.
+   * @param activeSessionIds A Set of active valid UUIDs tracking valid Agent Sessions natively
+   * @returns A list of session attachment groups with nested file items
+   */
+  listSessionGroups(activeSessionIds: Set<string>): Promise<SessionAttachmentGroup[]>;
+
+  /**
+   * Deletes a specific file inside a session attachment directory.
+   * @param sessionId The UUID folder name
+   * @param fileName The specific file name to delete
+   */
+  deleteFile(sessionId: string, fileName: string): Promise<void>;
+
+  /**
    * Bulk deletion sweep for given folder UUIDs representing Session attachments
    * @param ids The UUID folder names to nuke natively 
    */
   deleteBatch(ids: string[]): Promise<void>;
 }
+

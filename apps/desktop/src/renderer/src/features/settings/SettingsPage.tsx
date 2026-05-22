@@ -1056,6 +1056,13 @@ const AttachmentManagementPane: React.FC = () => {
                 await (window as any).api?.attachment?.deleteBatch(ids);
                 await fetchData();
               }}
+              onDeleteFile={async (sessionId, fileName) => {
+                await (window as any).api?.attachment?.deleteFile(sessionId, fileName);
+                await fetchData();
+              }}
+              onOpenFileLocation={async (absolutePath) => {
+                await (window as any).api?.attachment?.openInFolder(absolutePath);
+              }}
           />
      </div>
   );
