@@ -78,7 +78,9 @@ export class S3NotConfiguredError extends Error {
 /** S3 连接失败 */
 export class S3ConnectionError extends Error {
   constructor(public readonly cause?: Error) {
-    super('Failed to connect to S3');
+    const code = (cause as any)?.code ? ` [${(cause as any).code}]` : '';
+    const causeMsg = cause ? ` (${cause.name || 'Error'}: ${cause.message})` : '';
+    super(`Failed to connect to S3${code}${causeMsg}`);
     this.name = 'S3ConnectionError';
   }
 }
@@ -86,7 +88,10 @@ export class S3ConnectionError extends Error {
 /** S3 同步失败 */
 export class S3SyncError extends Error {
   constructor(message: string, public readonly cause?: Error) {
-    super(message);
+    const code = (cause as any)?.code ? `[${(cause as any).code}] ` : '';
+    const causeMsg = cause ? `${code}${cause.name || 'Error'}: ${cause.message}` : '';
+    const suffix = causeMsg ? ` (${causeMsg})` : '';
+    super(`${message}${suffix}`);
     this.name = 'S3SyncError';
   }
 }
@@ -102,7 +107,9 @@ export class S3ConfigError extends Error {
 /** 文件清单获取失败 */
 export class ManifestFetchError extends Error {
   constructor(public readonly cause?: Error) {
-    super('Failed to fetch sync manifest');
+    const code = (cause as any)?.code ? ` [${(cause as any).code}]` : '';
+    const causeMsg = cause ? ` (${cause.name || 'Error'}: ${cause.message})` : '';
+    super(`Failed to fetch sync manifest${code}${causeMsg}`);
     this.name = 'ManifestFetchError';
   }
 }

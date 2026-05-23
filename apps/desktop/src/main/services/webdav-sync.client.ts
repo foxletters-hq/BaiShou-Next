@@ -5,7 +5,7 @@ import { ICloudSyncClient, SyncRecord } from '@baishou/core';
 
 /**
  * WebDAV 云客户端服务
- * 支持坚果云、Nextcloud、群晖 (Synology) 和自搭 WebDAV 服务器
+ * 支持 Nextcloud、群晖 (Synology) 和自搭 WebDAV 服务器
  * 1:1 还原老白守 webdav_client_service.dart 的全部能力
  */
 export class WebDavSyncClient implements ICloudSyncClient {

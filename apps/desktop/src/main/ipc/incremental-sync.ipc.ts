@@ -52,6 +52,7 @@ async function createSyncService(config: S3SyncConfig): Promise<IncrementalSyncS
       config.accessKey || '',
       config.secretKey || '',
       config.path || '',
+      config.chunkConcurrency,
     );
   }
 
@@ -106,19 +107,19 @@ export function registerIncrementalSyncIPC() {
       }
       return {
         enabled: false, endpoint: '', region: '', bucket: '',
-        path: '/baishou_backup/sync', accessKey: '', secretKey: '',
+        path: 'backup_sync', accessKey: '', secretKey: '',
       };
     }
     return syncService.getConfig();
   });
-
+ 
   ipcMain.handle('incrementalSync:updateConfig', async (_, config: Partial<S3SyncConfig>) => {
     const merged = {
       enabled: true,
       endpoint: '',
       region: '',
       bucket: '',
-      path: '/baishou_backup/sync',
+      path: 'backup_sync',
       accessKey: '',
       secretKey: '',
       ...config,
@@ -130,7 +131,7 @@ export function registerIncrementalSyncIPC() {
     }
     return { success: true };
   });
-
+ 
   ipcMain.handle('incrementalSync:testConnection', async (_, config?: Partial<S3SyncConfig>) => {
     const vaultPath = await pathService.getActiveVaultPath();
     let clientToTest: any;
@@ -140,7 +141,7 @@ export function registerIncrementalSyncIPC() {
         endpoint: '',
         region: '',
         bucket: '',
-        path: '/baishou_backup/sync',
+        path: 'backup_sync',
         accessKey: '',
         secretKey: '',
         ...config,

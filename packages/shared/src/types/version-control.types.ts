@@ -95,6 +95,10 @@ export interface S3SyncConfig {
   secretKey: string;
   /** WebDAV URL（仅 target=webdav 时使用） */
   webdavUrl?: string;
+  /** 大文件切片分块上传的并发度，默认 5 */
+  chunkConcurrency?: number;
+  /** 文件级别并发上传下载度，默认 5 */
+  fileConcurrency?: number;
 }
 
 /** 文件清单条目 */

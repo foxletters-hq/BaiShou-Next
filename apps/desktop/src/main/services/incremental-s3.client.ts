@@ -12,6 +12,7 @@ export class IncrementalS3Client implements ICloudSyncClient {
   private bucket: string;
   private basePath: string;
   private vaultPath: string | null = null;
+  private chunkConcurrency: number;
 
   constructor(
     endpoint: string,
@@ -20,6 +21,7 @@ export class IncrementalS3Client implements ICloudSyncClient {
     accessKey: string,
     secretKey: string,
     basePath: string,
+    chunkConcurrency?: number,
   ) {
     let safeEndpoint = endpoint && endpoint.trim() !== '' ? endpoint : 'http://localhost';
     if (!safeEndpoint.startsWith('http://') && !safeEndpoint.startsWith('https://')) {
@@ -36,6 +38,7 @@ export class IncrementalS3Client implements ICloudSyncClient {
       pathStyle: false,
     });
     this.bucket = bucket;
+    this.chunkConcurrency = chunkConcurrency || 5;
 
     let p = basePath || '';
     if (p.startsWith('/')) p = p.substring(1);
@@ -53,7 +56,106 @@ export class IncrementalS3Client implements ICloudSyncClient {
       ? path.relative(this.vaultPath, localFilePath).replace(/\\/g, '/')
       : path.basename(localFilePath);
     const objectName = this.basePath + relativePath;
-    await this.client.fPutObject(this.bucket, objectName, localFilePath);
+
+    const fs = require('fs');
+    const stat = await fs.promises.stat(localFilePath);
+    const fileSize = stat.size;
+    const partSize = 5 * 1024 * 1024; // 5MB
+
+    if (fileSize <= partSize) {
+      await this.client.fPutObject(this.bucket, objectName, localFilePath);
+      return;
+    }
+
+    // 初始化 Multipart Upload
+    const mime = require('mime-types');
+    const contentType = mime.lookup(localFilePath) || 'application/octet-stream';
+    const uploadId = await (this.client as any).initiateNewMultipartUpload(this.bucket, objectName, {
+      'Content-Type': contentType,
+    });
+
+    const totalParts = Math.ceil(fileSize / partSize);
+    const parts: { part: number; etag: string }[] = [];
+
+    // 实现一个带并发限制的上传池
+    const partNumbers = Array.from({ length: totalParts }, (_, i) => i + 1);
+    
+    const limitExecute = async <T, R>(
+      items: T[],
+      concurrencyLimit: number,
+      fn: (item: T) => Promise<R>
+    ): Promise<R[]> => {
+      const results: R[] = [];
+      const executing: Promise<void>[] = [];
+      let index = 0;
+
+      const enqueue = async (): Promise<void> => {
+        if (index === items.length) {
+          return Promise.resolve();
+        }
+        const currentIndex = index++;
+        const item = items[currentIndex]!;
+        const p = fn(item).then((result) => {
+          results[currentIndex] = result;
+        });
+        executing.push(p);
+        const clean = () => executing.splice(executing.indexOf(p), 1);
+        p.then(clean, clean);
+
+        if (executing.length >= concurrencyLimit) {
+          await Promise.race(executing);
+        }
+        return enqueue();
+      };
+
+      await enqueue();
+      await Promise.all(executing);
+      return results;
+    };
+
+    const fileHandle = await fs.promises.open(localFilePath, 'r');
+    try {
+      await limitExecute(partNumbers, this.chunkConcurrency, async (partNumber) => {
+        const start = (partNumber - 1) * partSize;
+        const end = Math.min(fileSize - 1, partNumber * partSize - 1);
+        const chunkSize = end - start + 1;
+        const buffer = Buffer.alloc(chunkSize);
+        await fileHandle.read(buffer, 0, chunkSize, start);
+
+        const md5 = require('crypto').createHash('md5').update(buffer).digest('base64');
+        const headers = {
+          'Content-Length': chunkSize.toString(),
+          'Content-MD5': md5,
+        };
+
+        const res = await (this.client as any).uploadPart({
+          bucketName: this.bucket,
+          objectName,
+          uploadID: uploadId,
+          partNumber,
+          headers,
+        }, buffer);
+
+        parts.push({
+          part: partNumber,
+          etag: res.etag,
+        });
+      });
+
+      // 排序 parts 数组
+      parts.sort((a, b) => a.part - b.part);
+
+      // 完成 Multipart Upload
+      await (this.client as any).completeMultipartUpload(this.bucket, objectName, uploadId, parts);
+    } catch (err) {
+      // 发生错误时中止 Multipart Upload，防止产生脏数据
+      try {
+        await (this.client as any).abortMultipartUpload(this.bucket, objectName, uploadId);
+      } catch {}
+      throw err;
+    } finally {
+      await fileHandle.close();
+    }
   }
 
   async downloadFile(remoteFilename: string, localDestPath: string): Promise<void> {

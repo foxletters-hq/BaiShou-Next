@@ -21,9 +21,11 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   endpoint: '',
   region: '',
   bucket: '',
-  path: '/baishou_backup/sync',
+  path: 'backup_sync',
   accessKey: '',
   secretKey: '',
+  chunkConcurrency: 5,
+  fileConcurrency: 5,
 };
 
 export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
