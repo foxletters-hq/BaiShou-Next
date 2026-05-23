@@ -91,6 +91,7 @@ describe('SyncConfig 配置类型', () => {
     const config: SyncConfig = {
       target: 'local',
       maxBackupCount: 20,
+      maxSnapshotCount: 5,
       webdavUrl: 'https://',
       webdavUsername: '',
       webdavPassword: '',
@@ -111,6 +112,7 @@ describe('SyncConfig 配置类型', () => {
     const config: SyncConfig = {
       target: 'webdav',
       maxBackupCount: 10,
+      maxSnapshotCount: 5,
       webdavUrl: 'https://dav.jianguoyun.com/dav/',
       webdavUsername: 'user@example.com',
       webdavPassword: 'app-secret-key',
@@ -127,6 +129,7 @@ describe('SyncConfig 配置类型', () => {
     const config: SyncConfig = {
       target: 's3',
       maxBackupCount: 50,
+      maxSnapshotCount: 5,
       webdavUrl: '', webdavUsername: '', webdavPassword: '', webdavPath: '',
       s3Endpoint: 'https://cos.ap-shanghai.myqcloud.com',
       s3Region: 'ap-shanghai',

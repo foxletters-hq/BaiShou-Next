@@ -254,6 +254,7 @@ export class LegacyImportService {
       s3Region: config['s3_region'] || '',
       s3Path: config['s3_path'] || '/baishou_backup',
       maxBackupCount: 5,
+      maxSnapshotCount: 5,
     };
 
     await this.settingsRepo.set('cloud_sync_config', cloudSync);

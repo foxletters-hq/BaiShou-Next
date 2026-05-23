@@ -13,6 +13,7 @@ export interface SyncRecord {
 export interface SyncConfig {
   target: SyncTarget;
   maxBackupCount: number;
+  maxSnapshotCount: number;
 
   // WebDAV
   webdavUrl: string;
