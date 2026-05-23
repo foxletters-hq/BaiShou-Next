@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import type {
   S3SyncConfig,
   SyncManifest,
+  ManifestEntry,
   IncrementalSyncResult,
   SyncProgressCallback,
 } from '@baishou/shared';
@@ -18,7 +19,7 @@ import {
 } from './sync.errors';
 
 const MANIFEST_FILENAME_V2 = 'manifest-v2.json';
-const REMOTE_SNAPSHOT_FILENAME = 'last-remote-manifest.json';
+const REMOTE_SNAPSHOT_FILENAME = 'last-remote-manifest-v2.json';
 const DEFAULT_CONFIG: S3SyncConfig = {
   enabled: false,
   endpoint: '',
@@ -354,7 +355,9 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
 
   async getRemoteManifest(): Promise<SyncManifest> {
     const remoteFiles = await this.cloudClient.listFiles();
-    const manifestFile = remoteFiles.find((f) => f.filename === MANIFEST_FILENAME_V2);
+    const manifestFile = remoteFiles.find(
+      (f) => f.filename === MANIFEST_FILENAME_V2 || f.filename.endsWith('/' + MANIFEST_FILENAME_V2)
+    );
 
     if (!manifestFile) {
       return { version: 2, updatedAt: 0, deviceId: '', files: {} };
@@ -367,7 +370,26 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
 
     try {
       const raw = await fs.promises.readFile(tempPath, 'utf8');
-      return JSON.parse(raw) as SyncManifest;
+      const manifest = JSON.parse(raw) as SyncManifest;
+
+      if (manifest && manifest.files) {
+        const actualFilesSet = new Set<string>();
+        for (const f of remoteFiles) {
+          actualFilesSet.add(f.filename);
+        }
+
+        const cleanFiles: Record<string, ManifestEntry> = {};
+        for (const [relPath, entry] of Object.entries(manifest.files)) {
+          if (actualFilesSet.has(relPath)) {
+            cleanFiles[relPath] = entry;
+          } else {
+            console.warn(`[ThreeWaySync] Remote manifest contains phantom file: ${relPath}, but it is missing on remote storage. Treating as deleted.`);
+          }
+        }
+        manifest.files = cleanFiles;
+      }
+
+      return manifest;
     } finally {
       try { fs.unlinkSync(tempPath); } catch {}
     }
@@ -427,7 +449,16 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
     const vaultPath = await this.getVaultPath();
     const fullPath = path.join(vaultPath, relPath);
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
-    await this.cloudClient.downloadFile(relPath, fullPath);
+    try {
+      await this.cloudClient.downloadFile(relPath, fullPath);
+    } catch (err: any) {
+      const isNotFound = err?.code === 'NotFound' || err?.statusCode === 404 || err?.message?.includes('Not Found') || err?.message?.includes('404');
+      if (isNotFound) {
+        console.warn(`[ThreeWaySync] Remote file is missing (NotFound): ${relPath}. Skipping download.`);
+        return;
+      }
+      throw err;
+    }
   }
 
   private async deleteRemoteFile(relPath: string): Promise<void> {

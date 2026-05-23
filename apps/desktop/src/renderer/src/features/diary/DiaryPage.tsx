@@ -468,7 +468,7 @@ export const DiaryPage: React.FC = () => {
                   onClick={() => goToEditor(formatDateStr(entry.date))}
                   onEdit={() => goToEditor(formatDateStr(entry.date))}
                   onDelete={() => setDeletingId(entry.id)}
-                  t={t}
+                  t={t as any}
                   basePath={attachmentBasePath}
                 />
               </motion.div>

@@ -199,7 +199,7 @@ export const SummaryPage: React.FC = () => {
 
   const itemVariants = {
     hidden: { opacity: 0, y: 15, scale: 0.98 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
+    show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } },
     exit: { opacity: 0, height: 0, overflow: 'hidden', padding: 0, margin: 0, transition: { duration: 0.4 } }
   };
 
@@ -296,7 +296,7 @@ export const SummaryPage: React.FC = () => {
                               {isBatchGenerating ? t('summary.generating', '生成中...') : t('summary.generate_all', '全部生成')}
                            </button>
                          )}
-                         <ConcurrencyDropdown value={concurrencyLimit} onChange={handleConcurrencyChange} disabled={isGenerating} t={t} />
+                         <ConcurrencyDropdown value={concurrencyLimit} onChange={handleConcurrencyChange} disabled={isGenerating} t={t as any} />
                       </div>
                    </div>
                 )}
@@ -310,7 +310,7 @@ export const SummaryPage: React.FC = () => {
                         <Sparkles size={14} />
                         {t('summary.generate_all', '全部生成')}
                      </button>
-                      <ConcurrencyDropdown value={concurrencyLimit} onChange={handleConcurrencyChange} disabled={isBatchGenerating} t={t} />
+                       <ConcurrencyDropdown value={concurrencyLimit} onChange={handleConcurrencyChange} disabled={isBatchGenerating} t={t as any} />
                   </div>
                )}
                

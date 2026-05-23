@@ -45,7 +45,24 @@ interface DiaryCardProps {
 }
 
 /** 日记卡片组件 */
-export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete, t, basePath }) => {
+export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete, t, basePath: initialBasePath }) => {
+  const [basePath, setBasePath] = React.useState<string | undefined>(initialBasePath);
+
+  React.useEffect(() => {
+    setBasePath(initialBasePath);
+  }, [initialBasePath]);
+
+  React.useEffect(() => {
+    if (entry.date) {
+      const dateStr = `${entry.date.getFullYear()}-${String(entry.date.getMonth() + 1).padStart(2, '0')}-01`;
+      (window as any).api?.diary?.getAttachmentDir?.(dateStr)?.then((res: any) => {
+        if (res?.success && res.path) {
+          setBasePath(res.path);
+        }
+      }).catch(() => {});
+    }
+  }, [entry.date]);
+
   const day = String(entry.date.getDate()).padStart(2, '0');
   const weekday = t(WEEKDAY_NAMES_KEYS[entry.date.getDay()], WEEKDAY_NAMES_DEFAULT[entry.date.getDay()]);
   const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`;

@@ -108,6 +108,19 @@ export const editorTheme = EditorView.baseTheme({
     fontSize: '13px',
     lineHeight: '1.6',
   },
+  '.cm-code-line': {
+    backgroundColor: 'var(--bg-surface-normal) !important',
+  },
+  '.cm-code-line-top': {
+    paddingTop: '8px !important',
+    borderTopLeftRadius: '8px',
+    borderTopRightRadius: '8px',
+  },
+  '.cm-code-line-bottom': {
+    paddingBottom: '8px !important',
+    borderBottomLeftRadius: '8px',
+    borderBottomRightRadius: '8px',
+  },
   '.cm-rendered-codeMark': {
     color: 'var(--text-tertiary)',
     fontSize: '0.85em',

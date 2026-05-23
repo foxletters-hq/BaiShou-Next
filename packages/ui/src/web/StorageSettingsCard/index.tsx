@@ -6,14 +6,15 @@ import { SettingsExpansionTile } from '../shared/SettingsExpansionTile';
 
 export interface StorageSettingsCardProps {
   storageRootPath?: string;
-  sqliteSizeStats: string;
-  vectorDbStats: string;
-  mediaCacheStats: string;
+  sqliteSizeStats?: string;
+  vectorDbStats?: string;
+  mediaCacheStats?: string;
   totalLimit?: string;
   onChangeRoot?: () => Promise<void>;
   onNavigateToAttachments?: () => void;
   onClearCache?: () => void;
   onVacuumDb?: () => void;
+  onRefreshStats?: () => Promise<any>;
 }
 
 export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({

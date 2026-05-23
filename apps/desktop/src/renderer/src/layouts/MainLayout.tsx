@@ -20,7 +20,7 @@ export const MainLayout: React.FC = () => {
             key={location.pathname.split('/')[1] || 'home'}
             initial={{ opacity: 1 }}
             animate={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
+            transition={{ duration: 0.3, ease: 'easeOut' as any }}
             style={{
               position: 'absolute',
               inset: 0,

@@ -267,7 +267,7 @@ export const api = {
   incrementalSync: {
     getConfig: () => ipcRenderer.invoke('incrementalSync:getConfig'),
     updateConfig: (config: any) => ipcRenderer.invoke('incrementalSync:updateConfig', config),
-    testConnection: () => ipcRenderer.invoke('incrementalSync:testConnection'),
+    testConnection: (config?: any) => ipcRenderer.invoke('incrementalSync:testConnection', config),
     sync: () => ipcRenderer.invoke('incrementalSync:sync'),
     uploadOnly: () => ipcRenderer.invoke('incrementalSync:uploadOnly'),
     downloadOnly: () => ipcRenderer.invoke('incrementalSync:downloadOnly'),

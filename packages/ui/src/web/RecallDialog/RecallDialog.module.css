@@ -27,7 +27,7 @@
 }
 
 .header {
-  padding: 20px 24px 16px;
+  padding: 12px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -314,7 +314,7 @@
 
 /* Footer Injection Area */
 .footer {
-  padding: 16px 24px 24px;
+  padding: 10px 24px;
   border-top: 1px solid rgba(var(--color-outline-variant-rgb), 0.4);
   display: flex;
   align-items: center;
@@ -342,12 +342,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
+  padding: 6px 14px;
   background: var(--color-primary, #5ba8f5);
   color: #ffffff !important;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(91, 168, 245, 0.2);

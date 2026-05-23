@@ -188,15 +188,29 @@
 /* ── Progress Bar ────────────────────────────────────────── */
 
 .progressBarContainer {
-  padding: 0;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  width: 240px;
+  background: var(--bg-surface-high, var(--bg-surface));
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08));
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 .progressTrack {
-  height: 3px;
+  height: 4px;
   background: var(--bg-surface-low);
   border-radius: 2px;
   overflow: hidden;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  width: 100%;
 }
 
 .progressFill {
@@ -208,11 +222,12 @@
 
 .progressText {
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  width: 100%;
+  text-align: left;
 }
 
 /* ── History Panel ───────────────────────────────────────── */

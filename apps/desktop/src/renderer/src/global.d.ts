@@ -2,12 +2,12 @@
 
 interface ElectronAPI {
   ipcRenderer: {
-    invoke(channel: string, ...args: unknown[]): Promise<unknown>;
-    on(channel: string, listener: (...args: unknown[]) => void): void;
-    off(channel: string, listener: (...args: unknown[]) => void): void;
+    invoke(channel: string, ...args: unknown[]): Promise<any>;
+    on(channel: string, listener: (...args: any[]) => void): () => void;
     removeAllListeners(channel: string): void;
     send(channel: string, ...args: unknown[]): void;
   };
+  process?: any;
 }
 
 interface OnboardingAPI {
@@ -37,11 +37,11 @@ interface DiaryAPI {
 }
 
 interface SummaryAPI {
-  save(input: unknown): Promise<unknown>;
-  update(id: number, type: string, startDate: Date, endDate: Date, update: unknown): Promise<unknown>;
+  save(input: any): Promise<any>;
+  update(id: number, type: string, startDate: Date, endDate: Date, update: any): Promise<any>;
   delete(type: string, startDate: Date, endDate: Date): Promise<void>;
-  readDetail(type: string, startDate: Date, endDate: Date): Promise<unknown>;
-  list(options?: unknown): Promise<unknown>;
+  readDetail(type: string, startDate: Date, endDate: Date): Promise<any>;
+  list(options?: any): Promise<any>;
 }
 
 interface ZoomAPI {
@@ -103,7 +103,7 @@ interface GitAPI {
 interface IncrementalSyncAPI {
   getConfig(): Promise<unknown>;
   updateConfig(config: unknown): Promise<{ success: boolean }>;
-  testConnection(): Promise<boolean>;
+  testConnection(config?: unknown): Promise<boolean>;
   sync(): Promise<unknown>;
   uploadOnly(): Promise<unknown>;
   downloadOnly(): Promise<unknown>;

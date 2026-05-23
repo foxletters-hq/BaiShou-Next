@@ -13,7 +13,7 @@ export function useSummaryData() {
     totalYearlyCount: 0 
   });
   const [missingSummaries, setMissingSummaries] = useState<any[]>([]);
-  const [generationStates, setGenerationStates] = useState<Record<string, { progress: number, phase: number, status: string }>>({});
+  const [generationStates, setGenerationStates] = useState<Record<string, { progress: number, phase: number, status: string, error?: string }>>({});
 
   const fetchQueueState = useCallback(async () => {
     if (typeof window !== 'undefined' && window.electron) {
@@ -55,7 +55,7 @@ export function useSummaryData() {
 
       try {
         const missing = await window.electron.ipcRenderer.invoke('summary:detect-missing', i18n.language);
-        logger.info('[RENDERER-DEBUG] summary:detect-missing →', missing?.length, 'items');
+        logger.info(`[RENDERER-DEBUG] summary:detect-missing → ${missing?.length ?? 0} items`);
         setMissingSummaries(missing || []);
       } catch (e) {
         logger.warn('[SummaryData] summary:detect-missing failed:', e);
@@ -71,7 +71,7 @@ export function useSummaryData() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electron) {
-       const removeListener = window.electron.ipcRenderer.on('summary:queue-progress', (_event, queue) => {
+       const handler = (_event: any, queue: any[]) => {
            const map: Record<string, { progress: number, phase: number, status: string, error?: string }> = {};
            queue.forEach(q => { map[q.id] = { progress: q.progress, phase: q.phaseIdx, status: q.status, error: q.error }; });
            setGenerationStates(map);
@@ -80,7 +80,20 @@ export function useSummaryData() {
            if (queue.some(q => q.status === 'completed')) {
                setTimeout(fetchData, 1000);
            }
-       });
+       };
+       const removeListener = window.electron.ipcRenderer.on('summary:queue-progress', handler);
+       return () => removeListener();
+    }
+    return undefined;
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electron) {
+       const handler = () => {
+           logger.info('[SummaryData] summary:file-changed event received, reloading summaries...');
+           fetchData();
+       };
+       const removeListener = window.electron.ipcRenderer.on('summary:file-changed', handler);
        return () => removeListener();
     }
     return undefined;

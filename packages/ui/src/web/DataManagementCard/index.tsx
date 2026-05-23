@@ -14,8 +14,10 @@ export interface SnapshotInfo {
 }
 
 export interface DataManagementCardProps {
-  onExportZip: () => Promise<void>;
-  onImportZip: (filePath: string) => Promise<void>;
+  onExportZip?: () => Promise<void>;
+  onImportZip?: (filePath: string) => Promise<void>;
+  onExport?: () => void;
+  onImport?: () => Promise<void>;
   onPickFile?: () => Promise<string | null>;
   snapshots?: SnapshotInfo[];
 }

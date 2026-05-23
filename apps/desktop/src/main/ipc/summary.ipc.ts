@@ -127,8 +127,11 @@ function ensureQueueReady(): void {
          return text;
       }
     };
+
+    const summaryConfig = await settingsManager.get<any>('summary_config');
+    const customTemplates = summaryConfig?.instructions;
     
-    return new SummaryGeneratorService(diaryRepoAdapter, summaryRepo, aiClient);
+    return new SummaryGeneratorService(diaryRepoAdapter, summaryRepo, aiClient, customTemplates);
   });
   _queueInitialized = true;
 }

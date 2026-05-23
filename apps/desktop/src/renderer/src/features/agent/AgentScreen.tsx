@@ -120,6 +120,8 @@ export const AgentScreen: React.FC = () => {
   });
   const [ttsPlayingMsgId, setTtsPlayingMsgId] = useState<string | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsModeRef = useRef(ttsMode);
+  ttsModeRef.current = ttsMode;
 
   const toggleTtsMode = useCallback(() => {
     setTtsMode(prev => {
@@ -133,10 +135,21 @@ export const AgentScreen: React.FC = () => {
 
   const handleTtsReadAloud = useCallback(async (content: string, messageId?: string) => {
     if (!content.trim()) return;
+
+    const reportError = (errorMsg: string) => {
+      toast.showError(errorMsg);
+      if (ttsModeRef.current === 'always') {
+        setTtsMode('manual');
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('baishou_tts_mode', 'manual');
+        }
+      }
+    };
+
     try {
       const api = (window as any).api;
       if (!api?.tts?.synthesize) {
-        toast.showError(t('agent.chat.tts_no_api', 'TTS 功能不可用'));
+        reportError(t('agent.chat.tts_no_api', 'TTS 功能不可用'));
         return;
       }
       const result = await api.tts.synthesize(content);
@@ -155,8 +168,15 @@ export const AgentScreen: React.FC = () => {
         audio.onerror = () => {
           setTtsPlayingMsgId(null);
           ttsAudioRef.current = null;
+          reportError(t('agent.chat.tts_play_failed', '语音播放失败，已自动切换为手动朗读'));
         };
-        await audio.play();
+        try {
+          await audio.play();
+        } catch (playErr) {
+          setTtsPlayingMsgId(null);
+          ttsAudioRef.current = null;
+          reportError(t('agent.chat.tts_play_blocked', '语音播放被浏览器拦截或失败，已自动切换为手动朗读'));
+        }
       } else {
         // 根据错误代码进行 i18n 翻译
         const errorCodeMap: Record<string, string> = {
@@ -169,12 +189,12 @@ export const AgentScreen: React.FC = () => {
         const errorMsg = errorCode 
           ? (errorCodeMap[errorCode] || t('agent.chat.tts_failed', '语音合成失败'))
           : (result.error || t('agent.chat.tts_failed', '语音合成失败'));
-        toast.showError(errorMsg);
+        reportError(errorMsg);
       }
     } catch (e: any) {
-      toast.showError(e.message || t('agent.chat.tts_failed', '语音合成失败'));
+      reportError(e.message || t('agent.chat.tts_failed', '语音合成失败'));
     }
-  }, [t, toast]);
+  }, [t, toast, setTtsMode]);
 
   // ── 获取价格表更新时间 ──
   const fetchPricingLastUpdated = useCallback(async () => {
@@ -247,25 +267,47 @@ export const AgentScreen: React.FC = () => {
     }
   }, [searchMode]);
 
-  // ── 流结束时刷新侧边栏 ──
+  // ── 流结束时刷新侧边栏与自动播放哨兵 ──
   const prevIsStreamingRef = useRef(stream.isStreaming);
-  const ttsModeRef = useRef(ttsMode);
   const chatMessagesRef = useRef(chat.messages);
-  ttsModeRef.current = ttsMode;
   chatMessagesRef.current = chat.messages;
+
+  const waitingForAutoPlayRef = useRef<string | null>(null);
+
+  // 当 sessionId 变化且没有在流式输出时，清空哨兵。如果在流式输出则保留。
+  useEffect(() => {
+    if (!stream.isStreaming) {
+      waitingForAutoPlayRef.current = null;
+    }
+  }, [sessionId]);
+
+  // 流结束时刷新侧边栏
   useEffect(() => {
     if (prevIsStreamingRef.current === true && stream.isStreaming === false) {
       if (loadSessions) loadSessions(true, currentAssistant?.id ? String(currentAssistant.id) : undefined);
-      // TTS auto-play when mode is 'always' and stream just finished
-      if (ttsModeRef.current === 'always' && chatMessagesRef.current.length > 0) {
-        const lastMsg = chatMessagesRef.current[chatMessagesRef.current.length - 1];
-        if (lastMsg.role === 'assistant' && lastMsg.content) {
+    }
+    prevIsStreamingRef.current = stream.isStreaming;
+  }, [stream.isStreaming, sessionId, loadSessions]);
+
+  // 只要开始流式输出，就为当前 session 开启自动播放哨兵
+  useEffect(() => {
+    if (stream.isStreaming && sessionId) {
+      waitingForAutoPlayRef.current = sessionId;
+    }
+  }, [stream.isStreaming, sessionId]);
+
+  // 当消息列表更新并且流式结束时，安全触发自动朗读并消费掉哨兵，修复时序竞态
+  useEffect(() => {
+    if (waitingForAutoPlayRef.current === sessionId && !stream.isStreaming && chat.messages.length > 0) {
+      const lastMsg = chat.messages[chat.messages.length - 1];
+      if (lastMsg.role === 'assistant' && lastMsg.content) {
+        waitingForAutoPlayRef.current = null; // 消费哨兵
+        if (ttsModeRef.current === 'always') {
           handleTtsReadAloud(lastMsg.content, lastMsg.id);
         }
       }
     }
-    prevIsStreamingRef.current = stream.isStreaming;
-  }, [stream.isStreaming, sessionId, loadSessions, handleTtsReadAloud]);
+  }, [chat.messages, stream.isStreaming, handleTtsReadAloud, sessionId]);
 
   // ── TTS cleanup on unmount ──
   useEffect(() => {
@@ -768,7 +810,6 @@ export const AgentScreen: React.FC = () => {
           onToggleSearchMode={toggleSearchMode}
           ttsMode={ttsMode}
           onToggleTtsMode={toggleTtsMode}
-          modelId={model.currentModelId}
         />
       </div>
     </div>

@@ -4,6 +4,8 @@ import { SessionRepository } from '@baishou/database';
 import { logger } from '@baishou/shared';
 
 export class TitleGeneratorService {
+  static onTitleUpdated?: (sessionId: string, newTitle: string) => Promise<void> | void;
+
   /**
    * 利用用户当前选择的强力主对话模型，通过生成 API 去取个好听简短的标题。
    * 完全脱机，不阻塞主会话流返回值。
@@ -44,6 +46,13 @@ export class TitleGeneratorService {
            modelId: currentSession.modelId,
          });
          logger.info(`[AutoTitler] -> Session(${sessionId}) title updated to: ${cleanTitle}`);
+         if (TitleGeneratorService.onTitleUpdated) {
+           try {
+             TitleGeneratorService.onTitleUpdated(sessionId, cleanTitle);
+           } catch (e: any) {
+             logger.warn('[AutoTitler] onTitleUpdated callback failed:', e.message);
+           }
+         }
       }
 
     } catch (e: any) {

@@ -9,10 +9,16 @@ export const IncrementalSyncPage: React.FC = () => {
   const [endpoint, setEndpoint] = useState('');
   const [region, setRegion] = useState('us-east-1');
   const [bucket, setBucket] = useState('');
-  const [pathPrefix, setPathPrefix] = useState('baishou/');
-  const [accessKey, setAccessKey] = useState('');
-  const [secretKey, setSecretKey] = useState('');
   const [webdavUrl, setWebdavUrl] = useState('');
+
+  // 隔离的特定凭据与前缀状态，防止 S3 与 WebDAV 相互污染
+  const [s3AccessKey, setS3AccessKey] = useState('');
+  const [s3SecretKey, setS3SecretKey] = useState('');
+  const [s3Path, setS3Path] = useState('baishou/');
+  const [webdavUsername, setWebdavUsername] = useState('');
+  const [webdavPassword, setWebdavPassword] = useState('');
+  const [webdavPath, setWebdavPath] = useState('baishou/');
+
   const [showSecret, setShowSecret] = useState(false);
   const [status, setStatus] = useState<'idle' | 'connecting' | 'syncing' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -28,18 +34,76 @@ export const IncrementalSyncPage: React.FC = () => {
     return unsub;
   }, []);
 
+  const friendlySyncError = (msg: string): string => {
+    if (!msg) return '同步失败';
+    let cleanMsg = msg.replace(/^Error:\s*/i, '');
+    cleanMsg = cleanMsg.replace(/^Error invoking remote method '.*?':\s*/i, '');
+    
+    if (cleanMsg.includes('SyncInProgressError') || cleanMsg.includes('already in progress')) {
+      return '同步操作正在进行中，请勿重复操作';
+    }
+    if (cleanMsg.includes('not initialized') || cleanMsg.includes('Please update config first')) {
+      return '同步服务尚未初始化，请先配置并保存您的 S3/WebDAV 连接信息';
+    }
+    if (cleanMsg.includes('S3NotConfiguredError')) {
+      return '同步服务尚未启用或配置不完整';
+    }
+    return `同步失败: ${cleanMsg}`;
+  };
+
+  const friendlyTestConnectionError = (msg: string): string => {
+    if (!msg) return '连接失败';
+    let cleanMsg = msg.replace(/^Error:\s*/i, '');
+    cleanMsg = cleanMsg.replace(/^Error invoking remote method '.*?':\s*/i, '');
+    
+    if (cleanMsg.includes('not initialized')) {
+      return '连接失败：同步服务未初始化，请输入配置';
+    }
+    if (
+      cleanMsg.includes('401') ||
+      cleanMsg.includes('Unauthorized') ||
+      cleanMsg.includes('access key') ||
+      cleanMsg.includes('signature') ||
+      cleanMsg.includes('AccessDenied') ||
+      cleanMsg.includes('InvalidAccessKeyId')
+    ) {
+      return '连接失败：凭据错误，请检查用户名/密码或 Access/Secret Key 是否正确';
+    }
+    if (cleanMsg.includes('ENOTFOUND') || cleanMsg.includes('getaddrinfo')) {
+      return '连接失败：域名解析失败，请检查网络和 Endpoint/URL';
+    }
+    if (cleanMsg.includes('ECONNREFUSED')) {
+      return '连接失败：连接被拒绝，请确认端点端口是否正确以及服务是否在线';
+    }
+    return `连接失败: ${cleanMsg}`;
+  };
+
   const loadConfig = async () => {
     try {
       const cfg = await (window as any).api?.incrementalSync?.getConfig();
       if (cfg) {
-        setTarget(cfg.target === 'webdav' ? 'webdav' : 's3');
+        const curTarget = cfg.target === 'webdav' ? 'webdav' : 's3';
+        setTarget(curTarget);
         setEndpoint(cfg.endpoint || '');
         setRegion(cfg.region || 'us-east-1');
         setBucket(cfg.bucket || '');
-        setPathPrefix(cfg.path || 'baishou/');
-        setAccessKey(cfg.accessKey || '');
-        setSecretKey(cfg.secretKey || '');
         setWebdavUrl(cfg.webdavUrl || '');
+
+        // 恢复 S3 的专属变量（兼容老版本未独立字段时降级使用主字段）
+        const loadedS3AccessKey = cfg.s3AccessKey !== undefined ? cfg.s3AccessKey : (curTarget === 's3' ? cfg.accessKey : '');
+        const loadedS3SecretKey = cfg.s3SecretKey !== undefined ? cfg.s3SecretKey : (curTarget === 's3' ? cfg.secretKey : '');
+        const loadedS3Path = cfg.s3Path !== undefined ? cfg.s3Path : (curTarget === 's3' ? cfg.path : 'baishou/');
+        setS3AccessKey(loadedS3AccessKey || '');
+        setS3SecretKey(loadedS3SecretKey || '');
+        setS3Path(loadedS3Path || 'baishou/');
+
+        // 恢复 WebDAV 的专属变量
+        const loadedWebdavUsername = cfg.webdavUsername !== undefined ? cfg.webdavUsername : (curTarget === 'webdav' ? cfg.accessKey : '');
+        const loadedWebdavPassword = cfg.webdavPassword !== undefined ? cfg.webdavPassword : (curTarget === 'webdav' ? cfg.secretKey : '');
+        const loadedWebdavPath = cfg.webdavPath !== undefined ? cfg.webdavPath : (curTarget === 'webdav' ? cfg.path : 'baishou/');
+        setWebdavUsername(loadedWebdavUsername || '');
+        setWebdavPassword(loadedWebdavPassword || '');
+        setWebdavPath(loadedWebdavPath || 'baishou/');
       }
     } catch {}
   };
@@ -52,10 +116,18 @@ export const IncrementalSyncPage: React.FC = () => {
         endpoint,
         region,
         bucket,
-        path: pathPrefix,
-        accessKey,
-        secretKey,
         webdavUrl,
+        // 后端核心消费字段根据 target 动态映射
+        path: target === 'webdav' ? webdavPath : s3Path,
+        accessKey: target === 'webdav' ? webdavUsername : s3AccessKey,
+        secretKey: target === 'webdav' ? webdavPassword : s3SecretKey,
+        // 保存两套各自隔离的字段以备下次无损恢复
+        s3AccessKey,
+        s3SecretKey,
+        s3Path,
+        webdavUsername,
+        webdavPassword,
+        webdavPath,
       });
       setMessage('配置已保存');
       setStatus('success');
@@ -70,11 +142,20 @@ export const IncrementalSyncPage: React.FC = () => {
     setStatus('connecting');
     setMessage('正在测试连接...');
     try {
-      const ok = await (window as any).api?.incrementalSync?.testConnection();
+      const ok = await (window as any).api?.incrementalSync?.testConnection({
+        target,
+        endpoint,
+        region,
+        bucket,
+        webdavUrl,
+        path: target === 'webdav' ? webdavPath : s3Path,
+        accessKey: target === 'webdav' ? webdavUsername : s3AccessKey,
+        secretKey: target === 'webdav' ? webdavPassword : s3SecretKey,
+      });
       setMessage(ok ? '连接成功' : '连接失败，请检查配置');
       setStatus(ok ? 'success' : 'error');
     } catch (e: any) {
-      setMessage(e?.message || '连接失败');
+      setMessage(friendlyTestConnectionError(e?.message || '连接失败'));
       setStatus('error');
     }
   };
@@ -91,7 +172,7 @@ export const IncrementalSyncPage: React.FC = () => {
       setMessage('同步完成');
       setStatus('success');
     } catch (e: any) {
-      setMessage(`同步失败: ${e?.message || '未知错误'}`);
+      setMessage(friendlySyncError(e?.message || '未知错误'));
       setStatus('error');
       setProgress(null);
     }
@@ -141,7 +222,6 @@ export const IncrementalSyncPage: React.FC = () => {
             <div style={{ gridColumn: 'span 2' }}>
               <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>WebDAV URL</label>
               <input type="text" value={webdavUrl} onChange={e => setWebdavUrl(e.target.value)}
-                placeholder="https://dav.example.com/remote.php/dav/files/user/"
                 style={inputStyle} />
             </div>
           ) : (
@@ -149,35 +229,40 @@ export const IncrementalSyncPage: React.FC = () => {
               <div>
                 <label style={labelStyle}>Endpoint</label>
                 <input type="text" value={endpoint} onChange={e => setEndpoint(e.target.value)}
-                  placeholder="https://s3.amazonaws.com" style={inputStyle} />
+                  style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Bucket</label>
                 <input type="text" value={bucket} onChange={e => setBucket(e.target.value)}
-                  placeholder="my-bucket" style={inputStyle} />
+                  style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Region</label>
                 <input type="text" value={region} onChange={e => setRegion(e.target.value)}
-                  placeholder="us-east-1" style={inputStyle} />
+                  style={inputStyle} />
               </div>
             </>
           )}
           <div>
             <label style={labelStyle}>路径前缀</label>
-            <input type="text" value={pathPrefix} onChange={e => setPathPrefix(e.target.value)}
-              placeholder="baishou/" style={inputStyle} />
+            <input type="text"
+              value={target === 'webdav' ? webdavPath : s3Path}
+              onChange={e => target === 'webdav' ? setWebdavPath(e.target.value) : setS3Path(e.target.value)}
+              style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>{target === 'webdav' ? '用户名' : 'Access Key'}</label>
-            <input type="text" value={accessKey} onChange={e => setAccessKey(e.target.value)}
-              placeholder={target === 'webdav' ? 'username' : 'AKIAIOSFODNN7EXAMPLE'} style={inputStyle} />
+            <input type="text"
+              value={target === 'webdav' ? webdavUsername : s3AccessKey}
+              onChange={e => target === 'webdav' ? setWebdavUsername(e.target.value) : setS3AccessKey(e.target.value)}
+              style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>{target === 'webdav' ? '密码' : 'Secret Key'}</label>
             <div style={{ position: 'relative' }}>
-              <input type={showSecret ? 'text' : 'password'} value={secretKey} onChange={e => setSecretKey(e.target.value)}
-                placeholder={target === 'webdav' ? 'password' : 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'}
+              <input type={showSecret ? 'text' : 'password'}
+                value={target === 'webdav' ? webdavPassword : s3SecretKey}
+                onChange={e => target === 'webdav' ? setWebdavPassword(e.target.value) : setS3SecretKey(e.target.value)}
                 style={{ ...inputStyle, paddingRight: 36 }} />
               <button onClick={() => setShowSecret(!showSecret)}
                 style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',

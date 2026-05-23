@@ -1,7 +1,7 @@
 .container {
   /* Adapting to BaiShou-Next's global theme variables, defaulting to light mode (dark text) */
   --theme-primary: var(--color-primary);
-  --theme-on-primary: var(--color-on-primary);
+  --theme-on-primary: var(--color-on-primary, #FFFFFF);
   --theme-primary-container-50: rgba(91, 168, 245, 0.15);
   
   --theme-on-surface: var(--text-primary);

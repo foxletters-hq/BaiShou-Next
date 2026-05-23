@@ -27,7 +27,7 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
   const settings = useSettingsStore();
 
   const providers = settings?.providers || [];
-  const fallbackProvider = providers.length > 0 ? providers[0] : null;
+  const fallbackProvider = (providers.length > 0 ? providers[0] : null) as any;
   const fallbackModelId = fallbackProvider?.enabledModels?.[0] || fallbackProvider?.models?.[0]?.id || 'unknown';
   const fallbackProviderId = fallbackProvider?.providerId || 'unknown';
 

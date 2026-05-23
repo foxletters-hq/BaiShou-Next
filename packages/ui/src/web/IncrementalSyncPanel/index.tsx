@@ -124,15 +124,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
           </span>
         </button>
 
-        {lastLog && lastLog.success && (
-          <button
-            className={styles.lastSync}
-            title={t('data_sync.last_sync', '上次同步')}
-          >
-            <CheckCircle size={12} className={styles.checkIcon} />
-            <span>{formatTime(lastLog.completedAt)}</span>
-          </button>
-        )}
+
 
         {history.length > 0 && (
           <button
@@ -143,30 +135,30 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
             <span>{history.length}</span>
           </button>
         )}
-      </div>
 
-      <AnimatePresence>
-        {isSyncing && progress && progress.total > 0 && (
-          <motion.div
-            className={styles.progressBarContainer}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className={styles.progressTrack}>
-              <div
-                className={styles.progressFill}
-                style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
-              />
-            </div>
-            <div className={styles.progressText}>
-              {progress.current}/{progress.total}
-              {progress.statusText && ` · ${progress.statusText}`}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <AnimatePresence>
+          {isSyncing && progress && progress.total > 0 && (
+            <motion.div
+              className={styles.progressBarContainer}
+              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className={styles.progressTrack}>
+                <div
+                  className={styles.progressFill}
+                  style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
+                />
+              </div>
+              <div className={styles.progressText}>
+                {progress.current}/{progress.total}
+                {progress.statusText && ` · ${progress.statusText}`}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <AnimatePresence>
         {showHistory && (

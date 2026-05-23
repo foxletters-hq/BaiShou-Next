@@ -22,7 +22,7 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const selected = options.find((o) => o.value === value);
   const displayLabel = selected?.label || placeholder;

@@ -41,23 +41,65 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('weekly');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // 年份筛选与滚动分页状态
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [pageSize, setPageSize] = useState<number>(10);
+
   // 编辑模式状态
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  /** 按类型过滤 */
-  const filteredSummaries = useMemo(() => {
-    return summaries.filter(s => s.type === activeTab);
-  }, [summaries, activeTab]);
+  /** 从周记中动态提取并排重所有的年份，按年份降序排列 */
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    summaries.forEach(s => {
+      if (s.type === 'weekly' && s.startDate) {
+        const dateObj = new Date(s.startDate);
+        const year = dateObj.getFullYear();
+        if (year && !isNaN(year)) {
+          years.add(String(year));
+        }
+      }
+    });
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [summaries]);
+
+  /** 先按类型及年份过滤，并按时间降序排序 */
+  const filteredAndSortedSummaries = useMemo(() => {
+    let items = summaries.filter(s => s.type === activeTab);
+
+    // 如果是周报，且筛选了年份
+    if (activeTab === 'weekly' && selectedYear !== 'all') {
+      items = items.filter(s => {
+        if (!s.startDate) return false;
+        return new Date(s.startDate).getFullYear().toString() === selectedYear;
+      });
+    }
+
+    // 按时间降序排列 (最新总结排最前)
+    return [...items].sort((a, b) => {
+      const timeA = a.startDate ? new Date(a.startDate).getTime() : 0;
+      const timeB = b.startDate ? new Date(b.startDate).getTime() : 0;
+      return timeB - timeA;
+    });
+  }, [summaries, activeTab, selectedYear]);
+
+  /** 分页截取展示，仅对周报限制分页加载，月/季/年展示全部 */
+  const displayedSummaries = useMemo(() => {
+    if (activeTab === 'weekly') {
+      return filteredAndSortedSummaries.slice(0, pageSize);
+    }
+    return filteredAndSortedSummaries;
+  }, [filteredAndSortedSummaries, activeTab, pageSize]);
 
   /** 当前选中的总结 */
   const selectedSummary = useMemo(() => {
     if (selectedId) {
-      return filteredSummaries.find(s => String(s.id) === selectedId);
+      return filteredAndSortedSummaries.find(s => String(s.id) === selectedId);
     }
-    return filteredSummaries[0];
-  }, [filteredSummaries, selectedId]);
+    return filteredAndSortedSummaries[0];
+  }, [filteredAndSortedSummaries, selectedId]);
 
   /** 格式化日期范围 */
   const formatDateRange = (s: SummaryItem) => {
@@ -134,6 +176,30 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
     setEditContent('');
   }, [selectedSummary?.id, activeTab]);
 
+  const handleTabChange = (tab: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
+    setActiveTab(tab);
+    setSelectedId(null);
+    setSelectedYear('all');
+    setPageSize(10);
+  };
+
+  const handleYearChange = (year: string) => {
+    setSelectedYear(year);
+    setSelectedId(null);
+    setPageSize(10);
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (activeTab !== 'weekly') return;
+    const target = e.currentTarget;
+    // 当滚动到底部 20px 阈值内时，加载更多
+    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 20) {
+      if (pageSize < filteredAndSortedSummaries.length) {
+        setPageSize(prev => prev + 10);
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedSummary || !selectedSummary.id || !onSave) return;
     setIsSaving(true);
@@ -160,33 +226,48 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
 
   return (
     <div className="gallery-panel">
-      {/* 标签栏 */}
-      <div className="gallery-tabs-container">
-        {(['weekly', 'monthly', 'quarterly', 'yearly'] as const).map(tab => (
-          <button 
-            key={tab}
-            className={`gallery-tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab(tab);
-              setSelectedId(null);
-            }}
-          >
-            {t(`summary.tab_${tab}`, tab)}
-          </button>
-        ))}
+      <div className="gallery-header-row">
+        {/* 标签栏 */}
+        <div className="gallery-tabs-container">
+          {(['weekly', 'monthly', 'quarterly', 'yearly'] as const).map(tab => (
+            <button 
+              key={tab}
+              className={`gallery-tab-btn ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => handleTabChange(tab)}
+            >
+              {t(`summary.tab_${tab}`, tab)}
+            </button>
+          ))}
+        </div>
+
+        {/* 年份筛选下拉选择器：仅在“周记”标签且有年份数据时显示 */}
+        {activeTab === 'weekly' && availableYears.length > 0 && (
+          <div className="gallery-filter-container">
+            <select
+              value={selectedYear}
+              onChange={(e) => handleYearChange(e.target.value)}
+              className="gallery-year-select"
+            >
+              <option value="all">{t('gallery.filter_all_years', '全部年份')}</option>
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}年</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* 双栏布局 */}
       <div className="gallery-layout">
         {/* 左侧列表 */}
-        <div className="gallery-list">
-          {filteredSummaries.length === 0 ? (
+        <div className="gallery-list" onScroll={handleScroll}>
+          {displayedSummaries.length === 0 ? (
             <div className="gallery-list-empty">
               <Edit3 size={32} className="gallery-empty-icon" />
               <div className="gallery-empty-text">{t('diary.no_content', '暂无内容')}</div>
             </div>
           ) : (
-            filteredSummaries.map((item) => {
+            displayedSummaries.map((item) => {
               const id = String(item.id ?? '');
               const isSelected = selectedSummary?.id === item.id;
               

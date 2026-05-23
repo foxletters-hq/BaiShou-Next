@@ -3,6 +3,7 @@ import { join } from 'path';
 import { initNodeDatabase } from '@baishou/database';
 import type { AppDatabase } from '@baishou/database/src/types';
 import { logger } from '@baishou/shared';
+import { renameSync, existsSync } from 'fs';
 
 /**
  * 全局 Agent DB（baishou_agent.db）— 懒加载单例
@@ -18,6 +19,41 @@ import { logger } from '@baishou/shared';
 let _appDb: AppDatabase | null = null;
 
 let _appDbPath: string | null = null;
+
+/**
+ * 处理数据库文件物理损坏的自动恢复
+ */
+function handleMalformedDb(dbPath: string, err: any) {
+  logger.error(`[DB] 检测到数据库损坏 (malformed)，启动自动修复。错误信息: ${err?.message || err}`);
+  
+  // 确保安全重置当前连结并清除外部的 Service/Repo 缓存
+  resetAppDb();
+
+  const timestamp = Date.now();
+  const corruptedPath = `${dbPath}.corrupted.${timestamp}`;
+  
+  try {
+    if (existsSync(dbPath)) {
+      renameSync(dbPath, corruptedPath);
+      logger.warn(`[DB] 已将损坏的数据库重命名为: ${corruptedPath}`);
+    }
+    
+    // 同时重命名其 WAL 与 SHM 附属缓存文件，杜绝残留坏帧
+    const walPath = `${dbPath}-wal`;
+    if (existsSync(walPath)) {
+      renameSync(walPath, `${walPath}.corrupted.${timestamp}`);
+      logger.warn(`[DB] 已将损坏的 WAL 文件重命名`);
+    }
+    
+    const shmPath = `${dbPath}-shm`;
+    if (existsSync(shmPath)) {
+      renameSync(shmPath, `${shmPath}.corrupted.${timestamp}`);
+      logger.warn(`[DB] 已将损坏的 SHM 文件重命名`);
+    }
+  } catch (fsErr) {
+    logger.error('[DB] 重命名损坏的数据库文件失败:', fsErr as any);
+  }
+}
 
 export function getAppDb(customBasePath?: string): AppDatabase {
   const agentDbPath = customBasePath
@@ -38,8 +74,33 @@ export function getAppDb(customBasePath?: string): AppDatabase {
   // 未初始化时创建新实例
   if (!_appDb) {
     logger.info(`[DB] Agent DB 初始化，路径: ${agentDbPath}`);
-    _appDb = initNodeDatabase(agentDbPath);
-    _appDbPath = agentDbPath;
+    try {
+      _appDb = initNodeDatabase(agentDbPath, (err) => {
+        handleMalformedDb(agentDbPath, err);
+      });
+      _appDbPath = agentDbPath;
+
+      // 运行一次快速完整性校验以发现损坏
+      const client = (_appDb as any)?.session?.client;
+      if (client && typeof client.pragma === 'function') {
+        const rows = client.pragma('integrity_check');
+        if (rows && rows[0] && rows[0].integrity_check !== 'ok') {
+          throw new Error(`integrity_check returned: ${rows[0].integrity_check}`);
+        }
+      }
+    } catch (err: any) {
+      if (err?.message?.includes('malformed') || err?.code === 'SQLITE_CORRUPT' || err?.message?.includes('database disk image is malformed')) {
+        handleMalformedDb(agentDbPath, err);
+        // 自动清除损毁数据库后，重新初始化全新空白数据库
+        logger.info(`[DB] 重新初始化全新的数据库...`);
+        _appDb = initNodeDatabase(agentDbPath, (err2) => {
+          handleMalformedDb(agentDbPath, err2);
+        });
+        _appDbPath = agentDbPath;
+      } else {
+        throw err; // 如果是其它原因的初始化错误，则原样抛出
+      }
+    }
   }
   
   return _appDb;

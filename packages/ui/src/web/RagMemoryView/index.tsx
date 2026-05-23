@@ -60,6 +60,8 @@ interface RagMemoryViewProps {
   onNavigateToConfig?: () => void;
   onDetectDimension?: () => Promise<void>;
   onPageChange?: (page: number, pageSize: number) => void;
+  onExportEmbeddings?: () => Promise<void>;
+  onManageBackups?: () => Promise<void>;
 }
 
 export const RagMemoryView: React.FC<RagMemoryViewProps> = ({ 

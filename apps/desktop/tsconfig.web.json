@@ -4,17 +4,35 @@
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
-    "src/preload/*.d.ts"
+    "src/preload/*.d.ts",
+    "../../packages/ui/src/env.d.ts"
   ],
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",
-    "types": [],
+    "types": ["node"],
     "baseUrl": ".",
     "ignoreDeprecations": "6.0",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "strict": false,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "useUnknownInCatchVariables": false,
+    "strictFunctionTypes": false,
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"
+      ],
+      "@baishou/store": [
+        "../../packages/store/src/index.ts"
+      ],
+      "@baishou/store/*": [
+        "../../packages/store/src/*"
+      ],
+      "@baishou/shared": [
+        "../../packages/shared/src/index.ts"
       ]
     }
   }

@@ -20,8 +20,7 @@ export interface UseChatMessagesResult {
   hasMore: boolean;
   pendingAssistantMsg: PendingAssistantMsg | null;
   loadMore: () => Promise<void>;
-  refreshMessages: (retryCount?: number) => Promise<boolean>;
-  addUserMessage: (id: string, text: string, attachments?: any[]) => void;
+  refreshMessages: (retryCount?: number, overrideSessionId?: string) => Promise<boolean>;
   optimisticRemove: (optimisticId: string) => void;
   setStreamSessionId: (id: string | null) => void;
 }

@@ -11,7 +11,8 @@ export class SummaryGeneratorService {
   constructor(
     private readonly diaryRepo: DiaryRepository,
     private readonly summaryRepo: SummaryRepository,
-    private readonly aiClient: SummaryAiClient
+    private readonly aiClient: SummaryAiClient,
+    private readonly customTemplates?: Record<string, string>
   ) {}
 
   async *generate(target: MissingSummary, modelId: string = 'gpt-4'): AsyncGenerator<string> {
@@ -40,6 +41,7 @@ export class SummaryGeneratorService {
             week: weekNum,
             start: startStr,
             end: endStr,
+            customTemplate: this.customTemplates?.weekly,
           });
           break;
         case SummaryType.monthly:
@@ -49,6 +51,7 @@ export class SummaryGeneratorService {
             month,
             start: startStr,
             end: endStr,
+            customTemplate: this.customTemplates?.monthly,
           });
           break;
         case SummaryType.quarterly:
@@ -59,6 +62,7 @@ export class SummaryGeneratorService {
             quarter,
             start: startStr,
             end: endStr,
+            customTemplate: this.customTemplates?.quarterly,
           });
           break;
         case SummaryType.yearly:
@@ -67,6 +71,7 @@ export class SummaryGeneratorService {
             year,
             start: startStr,
             end: endStr,
+            customTemplate: this.customTemplates?.yearly,
           });
           break;
       }

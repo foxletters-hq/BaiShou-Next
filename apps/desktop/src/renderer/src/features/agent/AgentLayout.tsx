@@ -118,6 +118,20 @@ export const AgentLayout: React.FC = () => {
     loadProfile();
   }, [fetchAssistants, loadConfig, loadProfile]);
 
+  // 监听主进程的 session:file-changed 消息，以实时更新会话列表里的标题
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electron) {
+      const handler = () => {
+        console.info('[AgentLayout] session:file-changed event received, reloading sessions...');
+        const currentAst = resolvedAssistantIdRef.current;
+        loadSessions(true, currentAst);
+      };
+      const removeListener = window.electron.ipcRenderer.on('session:file-changed', handler);
+      return () => removeListener();
+    }
+    return undefined;
+  }, []);
+
   const pinnedIds = assistants.filter((a: any) => a.isPinned).map(a => String(a.id));
   const pinnedAssistants: AgentAssistant[] = pinnedIds
     .map(id => assistants.find(a => String(a.id) === String(id)))

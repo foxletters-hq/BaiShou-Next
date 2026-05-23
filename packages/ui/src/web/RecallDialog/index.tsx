@@ -95,16 +95,6 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
         <div className={styles.dialog} onClick={e => e.stopPropagation()}>
            
            <div className={styles.header}>
-              <span className={styles.headerTitle}>
-                 <BookOpen size={20} className={styles.headerIcon} />
-                 {t('recall.title_new', '唤醒回忆')}
-              </span>
-              <button className={styles.closeBtn} onClick={onClose}>
-                 <X size={16} strokeWidth={3} />
-              </button>
-           </div>
-
-           <div className={styles.toolbar}>
               <div className={styles.tabs}>
                  <div 
                    className={`${styles.tab} ${activeTab === 'diary' ? styles.tabActive : ''}`}
@@ -119,6 +109,9 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                     {t('recall.tab_memory', '向量记忆')}
                  </div>
               </div>
+              <button className={styles.closeBtn} onClick={onClose}>
+                 <X size={16} strokeWidth={3} />
+              </button>
            </div>
 
            {/* 向量回忆 tab：RAG 风格搜索框 */}

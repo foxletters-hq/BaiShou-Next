@@ -11,7 +11,7 @@ import { MigrationService } from '../migration.service';
  * @param dbPath SQLite 文件路径 (例如 userData 目录下的 'baishou.db')
  * @returns 实例化的 Drizzle AppDatabase
  */
-export function initNodeDatabase(dbPath: string): AppDatabase {
+export function initNodeDatabase(dbPath: string, onCorrupt?: (err: any) => void): AppDatabase {
   const sqlite = new Database(dbPath);
   
   // 1. 一键载入 C++ 原生向量数据库引擎支持！
@@ -31,9 +31,75 @@ export function initNodeDatabase(dbPath: string): AppDatabase {
     console.warn('[DB] Failed to apply database pragmas synchronously:', e.message);
   }
   
-  // 3. 用 drizzle ORM 包装 better-sqlite3 实例
-  const db = drizzle(sqlite) as unknown as AppDatabase;
+  // 3. 用 proxy 代理底层实例，捕获运行时的 malformed/corrupt 报错
+  const wrappedSqlite = onCorrupt ? wrapSqlite(sqlite, onCorrupt) : sqlite;
+  
+  // 4. 用 drizzle ORM 包装 wrappedSqlite 实例
+  const db = drizzle(wrappedSqlite) as unknown as AppDatabase;
   return db;
+}
+
+/**
+ * 包装 better-sqlite3 实例以捕获 malformed/SQLITE_CORRUPT 异常并触发回调
+ */
+function wrapSqlite(sqlite: Database.Database, onCorrupt: (err: any) => void): Database.Database {
+  const handleErr = (err: any) => {
+    if (
+      err &&
+      (err.code === 'SQLITE_CORRUPT' ||
+        err.message?.includes('malformed') ||
+        err.message?.includes('database disk image is malformed'))
+    ) {
+      onCorrupt(err);
+    }
+  };
+
+  const wrapStatement = (stmt: Database.Statement): Database.Statement => {
+    return new Proxy(stmt, {
+      get(target, prop, receiver) {
+        const val = Reflect.get(target, prop, receiver);
+        if (typeof val === 'function') {
+          return function (this: any, ...args: any[]) {
+            try {
+              return val.apply(target, args);
+            } catch (err: any) {
+              handleErr(err);
+              throw err;
+            }
+          };
+        }
+        return val;
+      }
+    }) as unknown as Database.Statement;
+  };
+
+  return new Proxy(sqlite, {
+    get(target, prop, receiver) {
+      const val = Reflect.get(target, prop, receiver);
+      if (typeof val === 'function') {
+        if (prop === 'prepare') {
+          return function (this: any, ...args: any[]) {
+            try {
+              const stmt = val.apply(target, args);
+              return wrapStatement(stmt);
+            } catch (err: any) {
+              handleErr(err);
+              throw err;
+            }
+          };
+        }
+        return function (this: any, ...args: any[]) {
+          try {
+            return val.apply(target, args);
+          } catch (err: any) {
+            handleErr(err);
+            throw err;
+          }
+        };
+      }
+      return val;
+    }
+  });
 }
 
 export async function installDatabaseSchema(db: AppDatabase): Promise<void> {

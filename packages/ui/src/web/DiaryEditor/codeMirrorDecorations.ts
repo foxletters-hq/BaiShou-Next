@@ -183,6 +183,11 @@ const codeBlockMark = Decoration.mark({ class: 'cm-rendered-codeBlock' });
 const codeMarkStyle = Decoration.mark({ class: 'cm-rendered-codeMark' });
 const linkMark = Decoration.mark({ class: 'cm-rendered-link' });
 
+const codeLineStyle = Decoration.line({ class: 'cm-code-line' });
+const codeLineStyleTop = Decoration.line({ class: 'cm-code-line cm-code-line-top' });
+const codeLineStyleBottom = Decoration.line({ class: 'cm-code-line cm-code-line-bottom' });
+const codeLineStyleSingle = Decoration.line({ class: 'cm-code-line cm-code-line-top cm-code-line-bottom' });
+
 // ── 语法高亮样式（通过 HighlightStyle 注入，不创建额外 DOM 节点）──
 
 const livePreviewHighlight = HighlightStyle.define([
@@ -267,6 +272,21 @@ function buildMarkerHidingDecorations(
       // 围栏代码块：跳过子节点
       if (name === 'FencedCode') {
         marks.push(codeBlockMark.range(node.from, node.to));
+        
+        const startLine = doc.lineAt(node.from).number;
+        const endLine = doc.lineAt(node.to).number;
+        for (let l = startLine; l <= endLine; l++) {
+          const curLine = doc.line(l);
+          let style = codeLineStyle;
+          if (startLine === endLine) {
+            style = codeLineStyleSingle;
+          } else if (l === startLine) {
+            style = codeLineStyleTop;
+          } else if (l === endLine) {
+            style = codeLineStyleBottom;
+          }
+          marks.push(style.range(curLine.from));
+        }
         return false;
       }
 

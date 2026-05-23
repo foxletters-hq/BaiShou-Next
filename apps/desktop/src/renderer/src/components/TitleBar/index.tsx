@@ -49,12 +49,13 @@ export const TitleBar: React.FC = () => {
   }, [showVaultMenu]);
 
   useEffect(() => {
+    if (!activeVault) return undefined;
     let cancelled = false;
     (window as any).api?.incrementalSync?.getConfig?.().then((cfg: any) => {
       if (!cancelled) setS3Configured(!!cfg?.enabled);
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [activeVault]);
 
   const handleOrchestratedSync = async (): Promise<SyncProgress> => {
     return (window as any).api?.incrementalSync?.orchestratedSync();
@@ -129,46 +130,46 @@ export const TitleBar: React.FC = () => {
       <div className={styles.actions}>
         {!isOnboarding && (
           <>
+            {s3Configured && (
+              <div style={{ marginRight: '8px' }}>
+                <IncrementalSyncPanel
+                  onSync={handleOrchestratedSync}
+                  onGetHistory={handleGetHistory}
+                  isConfigured={s3Configured}
+                  onSyncProgress={(cb) => (window as any).api?.incrementalSync?.onSyncProgress(cb)}
+                />
+              </div>
+            )}
+
             <div className={styles.vaultSwitcherWrapper} ref={vaultMenuRef} style={{ position: 'relative' }}>
-          <div className={styles.vaultSwitcher} onClick={() => setShowVaultMenu(!showVaultMenu)}>
-            <MdFolderShared className={styles.actionIconSm} />
-            <span className={styles.vaultName}>{activeVault?.name || ''}</span>
-            <MdArrowDropDown className={styles.actionIconSm} />
-          </div>
-          {showVaultMenu && vaults.length > 0 && (
-            <div className={styles.vaultMenu} style={{
-              position: 'absolute', top: '100%', right: 0, marginTop: '4px',
-              background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-              borderRadius: '8px', boxShadow: 'var(--shadow-md)', zIndex: 1000,
-              minWidth: '150px', padding: '4px'
-            }}>
-              {vaults.map((v, i) => (
-                <div key={i} onClick={() => handleSwitchVault(v.name)} style={{
-                  padding: '8px 12px', cursor: 'pointer', borderRadius: '4px',
-                  display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px',
-                  color: v.name === activeVault?.name ? 'var(--color-primary)' : 'var(--text-primary)',
-                  background: v.name === activeVault?.name ? 'rgba(91,168,245,0.08)' : 'transparent'
+              <div className={styles.vaultSwitcher} onClick={() => setShowVaultMenu(!showVaultMenu)}>
+                <MdFolderShared className={styles.actionIconSm} />
+                <span className={styles.vaultName}>{activeVault?.name || ''}</span>
+                <MdArrowDropDown className={styles.actionIconSm} />
+              </div>
+              {showVaultMenu && vaults.length > 0 && (
+                <div className={styles.vaultMenu} style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: '4px',
+                  background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px', boxShadow: 'var(--shadow-md)', zIndex: 1000,
+                  minWidth: '150px', padding: '4px'
                 }}>
-                  {v.name}
+                  {vaults.map((v, i) => (
+                    <div key={i} onClick={() => handleSwitchVault(v.name)} style={{
+                      padding: '8px 12px', cursor: 'pointer', borderRadius: '4px',
+                      display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px',
+                      color: v.name === activeVault?.name ? 'var(--color-primary)' : 'var(--text-primary)',
+                      background: v.name === activeVault?.name ? 'rgba(91,168,245,0.08)' : 'transparent'
+                    }}>
+                      {v.name}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        {s3Configured && (
-          <div style={{ marginLeft: '8px' }}>
-            <IncrementalSyncPanel
-              onSync={handleOrchestratedSync}
-              onGetHistory={handleGetHistory}
-              isConfigured={s3Configured}
-              onSyncProgress={(cb) => (window as any).api?.incrementalSync?.onSyncProgress(cb)}
-            />
-          </div>
-        )}
-
-        <div className={styles.divider}></div>
-        </>
+            <div className={styles.divider}></div>
+          </>
         )}
 
         <div className={styles.windowControls}>

@@ -1,6 +1,7 @@
 :root {
   /* Colors from Flutter AppTheme.dart */
   --color-primary: #5BA8F5;
+  --color-on-primary: #FFFFFF;
   --color-background-light: #F6F7F8;
   --color-background-dark: #101922;
   --color-surface-dark: #192633;

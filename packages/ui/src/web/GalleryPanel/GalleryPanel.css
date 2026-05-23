@@ -348,3 +348,39 @@
     padding: 16px;
   }
 }
+
+/* 头部筛选区域与年份选择下拉框 */
+.gallery-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.gallery-filter-container {
+  margin-bottom: 6px;
+}
+
+.gallery-year-select {
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gallery-year-select:hover {
+  border-color: var(--color-primary, #5BA8F5);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.05);
+}
+
+.gallery-year-select:focus {
+  border-color: var(--color-primary, #5BA8F5);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+}

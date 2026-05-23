@@ -62,6 +62,9 @@ const DEFAULT_CONFIG: SyncConfig = {
   s3SecretKey: '',
 };
 
+const labelStyle: React.CSSProperties = { fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 };
+const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1px solid var(--border-muted)', borderRadius: '6px', background: 'var(--bg-surface-low)', color: 'var(--text-primary)', fontSize: '13px', boxSizing: 'border-box' };
+
 export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   onSyncNow,
   onListRecords,
@@ -307,33 +310,24 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
               {config.target === 'webdav' && (
                 <div className={styles.configGrid}>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.webdav_url_label', 'WebDAV URL 地址')}</label>
-                    <div className={styles.inputPill}>
-                      <Globe size={18} className={styles.pillIcon} />
-                      <input value={config.webdavUrl} onChange={(e) => updateField('webdavUrl', e.target.value)} />
-                    </div>
+                    <label style={labelStyle}>{t('data_sync.webdav_url_label', 'WebDAV URL 地址')}</label>
+                    <input style={inputStyle} value={config.webdavUrl} onChange={(e) => updateField('webdavUrl', e.target.value)} />
                   </div>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.webdav_path_label', 'Base Path 子路径')}</label>
-                    <div className={styles.inputPill}>
-                      <Folder size={18} className={styles.pillIcon} />
-                      <input value={config.webdavPath} onChange={(e) => updateField('webdavPath', e.target.value)} />
-                    </div>
+                    <label style={labelStyle}>{t('data_sync.webdav_path_label', 'Base Path 子路径')}</label>
+                    <input style={inputStyle} value={config.webdavPath} onChange={(e) => updateField('webdavPath', e.target.value)} />
                   </div>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.webdav_user_label', 'Username 用户名')}</label>
-                    <div className={styles.inputPill}>
-                      <Component size={18} className={styles.pillIcon} />
-                      <input value={config.webdavUsername} onChange={(e) => updateField('webdavUsername', e.target.value)} />
-                    </div>
+                    <label style={labelStyle}>{t('data_sync.webdav_user_label', 'Username 用户名')}</label>
+                    <input style={inputStyle} value={config.webdavUsername} onChange={(e) => updateField('webdavUsername', e.target.value)} />
                   </div>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.webdav_password_label', 'Password 密码')}</label>
-                    <div className={styles.inputPill}>
-                      <Key size={18} className={styles.pillIcon} />
-                      <input type={showPassword ? "text" : "password"} value={config.webdavPassword} onChange={(e) => updateField('webdavPassword', e.target.value)} />
-                      <button className={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    <label style={labelStyle}>{t('data_sync.webdav_password_label', 'Password 密码')}</label>
+                    <div style={{ position: 'relative' }}>
+                      <input type={showPassword ? "text" : "password"} style={{ ...inputStyle, paddingRight: 36 }} value={config.webdavPassword} onChange={(e) => updateField('webdavPassword', e.target.value)} />
+                      <button style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                        border: 'none', background: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
                   </div>
@@ -343,50 +337,38 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
               {config.target === 's3' && (
                 <div className={styles.configGrid}>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}</label>
-                    <div className={styles.inputPill}>
-                      <Component size={18} className={styles.pillIcon} />
-                      <input value={config.s3Endpoint} onChange={(e) => updateField('s3Endpoint', e.target.value)} />
-                    </div>
+                    <label style={labelStyle}>{t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}</label>
+                    <input style={inputStyle} value={config.s3Endpoint} onChange={(e) => updateField('s3Endpoint', e.target.value)} />
                   </div>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.s3_region_label', 'Region 区域名')}</label>
-                    <div className={styles.inputPill}>
-                      <Map size={18} className={styles.pillIcon} />
-                      <input value={config.s3Region} onChange={(e) => updateField('s3Region', e.target.value)} />
-                    </div>
+                    <label style={labelStyle}>{t('data_sync.s3_region_label', 'Region 区域名')}</label>
+                    <input style={inputStyle} value={config.s3Region} onChange={(e) => updateField('s3Region', e.target.value)} />
                   </div>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.s3_bucket_label', 'Bucket 存储桶')}</label>
-                    <div className={styles.inputPill}>
-                      <Database size={18} className={styles.pillIcon} />
-                      <input value={config.s3Bucket} onChange={(e) => updateField('s3Bucket', e.target.value)} />
-                    </div>
+                    <label style={labelStyle}>{t('data_sync.s3_bucket_label', 'Bucket 存储桶')}</label>
+                    <input style={inputStyle} value={config.s3Bucket} onChange={(e) => updateField('s3Bucket', e.target.value)} />
                   </div>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.s3_path_label', 'Path 子路径')}</label>
-                    <div className={styles.inputPill}>
-                      <Folder size={18} className={styles.pillIcon} />
-                      <input value={config.s3Path} onChange={(e) => updateField('s3Path', e.target.value)} />
-                    </div>
+                    <label style={labelStyle}>{t('data_sync.s3_path_label', 'Path 子路径')}</label>
+                    <input style={inputStyle} value={config.s3Path} onChange={(e) => updateField('s3Path', e.target.value)} />
                   </div>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.s3_ak_label', 'Access Key (AK)')}</label>
-                    <div className={styles.inputPill}>
-                      <Key size={18} className={styles.pillIcon} />
-                      <input type={showPassword ? "text" : "password"} value={config.s3AccessKey} onChange={(e) => updateField('s3AccessKey', e.target.value)} />
-                      <button className={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    <label style={labelStyle}>{t('data_sync.s3_ak_label', 'Access Key (AK)')}</label>
+                    <div style={{ position: 'relative' }}>
+                      <input type={showPassword ? "text" : "password"} style={{ ...inputStyle, paddingRight: 36 }} value={config.s3AccessKey} onChange={(e) => updateField('s3AccessKey', e.target.value)} />
+                      <button style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                        border: 'none', background: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label>{t('data_sync.s3_sk_label', 'Secret Key (SK)')}</label>
-                    <div className={styles.inputPill}>
-                      <Key size={18} className={styles.pillIcon} />
-                      <input type={showPassword ? "text" : "password"} value={config.s3SecretKey} onChange={(e) => updateField('s3SecretKey', e.target.value)} />
-                      <button className={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    <label style={labelStyle}>{t('data_sync.s3_sk_label', 'Secret Key (SK)')}</label>
+                    <div style={{ position: 'relative' }}>
+                      <input type={showPassword ? "text" : "password"} style={{ ...inputStyle, paddingRight: 36 }} value={config.s3SecretKey} onChange={(e) => updateField('s3SecretKey', e.target.value)} />
+                      <button style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                        border: 'none', background: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
                   </div>
