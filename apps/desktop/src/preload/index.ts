@@ -132,7 +132,9 @@ export const api = {
   // Attachment System
   attachment: {
     listAll: () => ipcRenderer.invoke('attachment:listAll'),
-    deleteBatch: (ids: string[]) => ipcRenderer.invoke('attachment:deleteBatch', ids)
+    deleteBatch: (ids: string[]) => ipcRenderer.invoke('attachment:deleteBatch', ids),
+    openInFolder: (absolutePath: string) => ipcRenderer.invoke('attachment:openInFolder', absolutePath),
+    deleteFile: (sessionId: string, fileName: string) => ipcRenderer.invoke('attachment:deleteFile', sessionId, fileName)
   },
 
   // Archive System (Phase B1)

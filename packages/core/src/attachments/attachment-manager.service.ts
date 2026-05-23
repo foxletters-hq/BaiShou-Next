@@ -3,7 +3,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { IStoragePathService } from '../vault/storage-path.types';
-import { IAttachmentManager, AttachmentItem } from './attachment-manager.types';
+import { IAttachmentManager, AttachmentItem, SessionAttachmentGroup, AttachmentFileItem } from './attachment-manager.types';
+
 
 export class AttachmentManagerService implements IAttachmentManager {
   constructor(private readonly pathProvider: IStoragePathService) {}
@@ -180,4 +181,114 @@ export class AttachmentManagerService implements IAttachmentManager {
       }
     }
   }
+
+  /**
+   * 递归获取目录下所有文件的详细信息
+   */
+  private async getDirectoryFiles(dirPath: string): Promise<AttachmentFileItem[]> {
+    const fileItems: AttachmentFileItem[] = [];
+    try {
+      const files = await fs.readdir(dirPath, { withFileTypes: true });
+      for (const file of files) {
+        const fullPath = path.join(dirPath, file.name);
+        if (file.isDirectory()) {
+          const subFiles = await this.getDirectoryFiles(fullPath);
+          fileItems.push(...subFiles);
+        } else {
+          const stat = await fs.stat(fullPath);
+          fileItems.push({
+            name: file.name,
+            path: fullPath,
+            sizeMB: stat.size / (1024 * 1024),
+            birthtime: stat.birthtime.toISOString(),
+          });
+        }
+      }
+    } catch {
+      // 忽略读取错误
+    }
+    return fileItems;
+  }
+
+  /**
+   * 扫描附件根目录，按会话分组返回其关联的文件列表
+   */
+  public async listSessionGroups(activeSessionIds: Set<string>): Promise<SessionAttachmentGroup[]> {
+    const groups: SessionAttachmentGroup[] = [];
+    let attachBase: string;
+    try {
+      attachBase = await this.pathProvider.getAttachmentsBaseDirectory();
+      if (!existsSync(attachBase)) {
+        return [];
+      }
+    } catch {
+      return [];
+    }
+
+    try {
+      const folders = await fs.readdir(attachBase, { withFileTypes: true });
+      
+      for (const folder of folders) {
+        if (!folder.isDirectory() || folder.name === 'avatars') {
+          continue;
+        }
+
+        const sessionId = folder.name;
+        const fullDir = path.join(attachBase, sessionId);
+        const files = await this.getDirectoryFiles(fullDir);
+        
+        // 如果没有文件，自动清理空目录
+        if (files.length === 0) {
+          try { await fs.rm(fullDir, { recursive: true, force: true }); } catch {}
+          continue;
+        }
+        
+        const totalSizeMB = files.reduce((sum, f) => sum + f.sizeMB, 0);
+        
+        groups.push({
+          sessionId,
+          isOrphan: !activeSessionIds.has(sessionId),
+          totalSizeMB,
+          fileCount: files.length,
+          files,
+        });
+      }
+    } catch (e) {
+      console.error('[AttachmentManager] Error listing session groups:', e);
+    }
+    
+    return groups;
+  }
+
+  /**
+   * 删除会话目录下的特定附件文件，并清理可能遗留下来的空会话目录
+   */
+  public async deleteFile(sessionId: string, fileName: string): Promise<void> {
+    const attachBase = await this.pathProvider.getAttachmentsBaseDirectory();
+    const safeSessionId = sessionId.replace(/[/\\]/g, '');
+    const safeFileName = fileName.replace(/[/\\]/g, '');
+    
+    if (safeSessionId === 'avatars' || safeSessionId.trim() === '' || safeFileName.trim() === '') {
+      return;
+    }
+    
+    const targetPath = path.join(attachBase, safeSessionId, safeFileName);
+    try {
+      if (existsSync(targetPath)) {
+        await fs.rm(targetPath, { force: true });
+      }
+      
+      // 检查该会话的附件目录，如果为空，则自动将该目录删除
+      const dirPath = path.dirname(targetPath);
+      if (existsSync(dirPath)) {
+        const remaining = await fs.readdir(dirPath);
+        if (remaining.length === 0) {
+          await fs.rm(dirPath, { recursive: true, force: true });
+        }
+      }
+    } catch (e) {
+      console.error(`[AttachmentManager] Failed to delete attachment file ${targetPath}:`, e);
+    }
+  }
 }
+
