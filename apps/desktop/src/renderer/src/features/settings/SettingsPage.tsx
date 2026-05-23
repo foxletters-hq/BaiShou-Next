@@ -54,7 +54,7 @@ export const SettingsPage: React.FC = () => {
     { id: 11, label: t('settings.tts_settings', 'TTS 语音合成'), icon: <MdVolumeUp /> },
     { type: 'divider' },
     { id: 8, label: t('settings.lan_transfer', '局域网传输'), icon: <MdOutlineWifiProtectedSetup /> },
-    { id: 9, label: t('data_sync.title', '数据同步'), icon: <MdSync /> },
+    { id: 9, label: t('data_sync.title', '数据备份'), icon: <MdSync /> },
     { id: 10, label: t('settings.attachment_management', '附件管理'), icon: <MdOutlineFolderDelete /> },
   ];
 

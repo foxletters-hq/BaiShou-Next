@@ -125,7 +125,8 @@ export function App() {
   useEffect(() => {
     const unsub = (window as any).api?.incrementalSync?.onSyncProgress((event: any) => {
       useSyncStore.getState().setProgress(event);
-      if (event && useSyncStore.getState().status !== 'syncing') {
+      const currentStatus = useSyncStore.getState().status;
+      if (event && currentStatus !== 'syncing' && currentStatus !== 'success' && currentStatus !== 'error') {
         useSyncStore.getState().setStatus('syncing');
       }
     });

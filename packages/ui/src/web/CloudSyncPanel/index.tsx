@@ -274,7 +274,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 <div className={styles.targetCardIcon}><Cloud size={24} /></div>
                 <div className={styles.targetCardContent}>
                   <div className={styles.targetCardTitle}>{t('data_sync.target_s3', 'S3 兼容存储')}</div>
-                  <div className={styles.targetCardDesc}>{t('data_sync.s3_storage_desc', '兼容 AWS S3 的云存储服务')}</div>
+                  <div className={styles.targetCardDesc}>{t('data_sync.s3_storage_desc', '兼容 S3 协议的对象存储服务')}</div>
                 </div>
               </div>
               <div 

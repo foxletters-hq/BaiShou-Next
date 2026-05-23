@@ -338,7 +338,7 @@ export const DataSyncScreen: React.FC = () => {
                     value={newTarget.url}
                     onChangeText={(text) => setNewTarget({ ...newTarget, url: text })}
                     placeholder={newTarget.type === 'webdav' ? 'https://example.com/webdav' : 
-                                 newTarget.type === 's3' ? 'https://s3.amazonaws.com/bucket' : '/path/to/folder'}
+                                 newTarget.type === 's3' ? 'https://s3.example.com/bucket' : '/path/to/folder'}
                     placeholderTextColor={colors.textSecondary}
                   />
                 </View>

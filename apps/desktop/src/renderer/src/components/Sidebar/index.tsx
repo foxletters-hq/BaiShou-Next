@@ -26,16 +26,16 @@ export const Sidebar: React.FC = () => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved) as string[];
-          // 版本号迁移：版本为 0 或不存在时，重新补全新项并置顶
+          // 版本号迁移：版本为 0-2 时，按最新默认排序强刷置顶一次
           const mv = parseInt(localStorage.getItem('desktop_sidebar_mv') || '0', 10);
-          const defaults = ['diary', 'summary', 'lan', 'sync', 'incr-sync', 'git'];
-          if (mv < 2) {
+          const defaults = ['diary', 'summary', 'incr-sync', 'sync', 'lan', 'git'];
+          if (mv < 3) {
             for (const item of [...defaults].reverse()) {
               const idx = parsed.indexOf(item);
               if (idx !== -1) parsed.splice(idx, 1);
               parsed.unshift(item);
             }
-            localStorage.setItem('desktop_sidebar_mv', '2');
+            localStorage.setItem('desktop_sidebar_mv', '3');
             localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
           } else {
             // 常规补全（置顶）
@@ -53,14 +53,14 @@ export const Sidebar: React.FC = () => {
           return parsed;
         } catch (e) {}
       }
-       return ['git', 'diary', 'summary', 'lan', 'sync', 'incr-sync'];
+       return ['diary', 'summary', 'incr-sync', 'sync', 'lan', 'git'];
    });
 
    const allItems = {
       'diary': { icon: <MdTimeline />, label: t('diary.title', '日记'), path: '/diary' },
       'summary': { icon: <MdAutoStories />, label: t('summary.dashboard_title', '全域仪表盘'), path: '/summary' },
       'lan': { icon: <MdWifiFind />, label: t('settings.lan_transfer', '局域网快传'), path: '/lan-transfer' },
-      'sync': { icon: <MdSync />, label: t('common.data_sync', '数据同步'), path: '/data-sync' },
+      'sync': { icon: <MdSync />, label: t('common.data_sync', '数据备份'), path: '/data-sync' },
       'incr-sync': { icon: <MdCloudUpload />, label: t('common.incremental_sync', '增量同步'), path: '/incremental-sync' },
       'git': { icon: <MdHistory />, label: t('version_control.title', '版本控制'), path: '/git' }
    };
