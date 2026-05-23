@@ -21,9 +21,13 @@ export class IncrementalS3Client implements ICloudSyncClient {
     secretKey: string,
     basePath: string,
   ) {
-    const uri = new URL(endpoint);
+    let safeEndpoint = endpoint && endpoint.trim() !== '' ? endpoint : 'http://localhost';
+    if (!safeEndpoint.startsWith('http://') && !safeEndpoint.startsWith('https://')) {
+      safeEndpoint = 'http://' + safeEndpoint;
+    }
+    const uri = new URL(safeEndpoint);
     this.client = new Minio.Client({
-      endPoint: uri.hostname,
+      endPoint: uri.hostname || 'localhost',
       port: uri.port ? parseInt(uri.port) : (uri.protocol === 'https:' ? 443 : 80),
       useSSL: uri.protocol === 'https:',
       accessKey,
@@ -33,7 +37,7 @@ export class IncrementalS3Client implements ICloudSyncClient {
     });
     this.bucket = bucket;
 
-    let p = basePath;
+    let p = basePath || '';
     if (p.startsWith('/')) p = p.substring(1);
     if (!p.endsWith('/') && p.length > 0) p += '/';
     this.basePath = p;

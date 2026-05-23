@@ -14,8 +14,13 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   private vaultPath: string | null = null;
 
   constructor(url: string, username: string, password: string, basePath: string) {
-    this.client = createClient(url, { username, password });
-    this.basePath = basePath.endsWith('/') ? basePath : basePath + '/';
+    let safeUrl = url && url.trim() !== '' ? url : 'http://localhost';
+    if (!safeUrl.startsWith('http://') && !safeUrl.startsWith('https://')) {
+      safeUrl = 'http://' + safeUrl;
+    }
+    this.client = createClient(safeUrl, { username, password });
+    const p = basePath || '';
+    this.basePath = p.endsWith('/') ? p : p + '/';
   }
 
   setVaultPath(vaultPath: string): void {
@@ -66,14 +71,33 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
     const records: SyncRecord[] = [];
 
     try {
-      const items = (await this.client.getDirectoryContents(this.basePath)) as any[];
+      const items = (await this.client.getDirectoryContents(this.basePath, { deep: true })) as any[];
       for (const item of items) {
         if (!item || item.type === 'directory') continue;
+
+        let relativeName = item.filename || item.basename;
+        const idx = relativeName.indexOf(this.basePath);
+        if (idx !== -1) {
+          relativeName = relativeName.substring(idx + this.basePath.length);
+        } else {
+          const cleanBasePath = this.basePath.replace(/^\/+|\/+$/g, '');
+          const cleanIdx = relativeName.indexOf(cleanBasePath);
+          if (cleanIdx !== -1) {
+            relativeName = relativeName.substring(cleanIdx + cleanBasePath.length);
+          } else {
+            relativeName = item.basename || relativeName;
+          }
+        }
+
+        if (relativeName.startsWith('/')) {
+          relativeName = relativeName.substring(1);
+        }
+
         records.push({
-          filename: item.filename || item.basename,
+          filename: relativeName,
           lastModified: item.lastmod ? new Date(item.lastmod) : new Date(),
           sizeInBytes: item.size || 0,
-          managed: /^BaiShou_.*\.zip$/i.test(item.filename || item.basename),
+          managed: /^BaiShou_.*\.zip$/i.test(relativeName),
         });
       }
     } catch (e: any) {

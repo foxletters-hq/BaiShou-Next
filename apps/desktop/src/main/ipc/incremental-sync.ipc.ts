@@ -35,36 +35,36 @@ async function createSyncService(config: S3SyncConfig): Promise<IncrementalSyncS
   const vaultPath = await pathService.getActiveVaultPath();
   const deviceId = 'desktop-' + crypto.randomUUID().substring(0, 8);
 
-  if (!vaultPath) {
-    // 无活跃仓库时创建默认 S3 客户端
-    const client = new IncrementalS3Client(
-      config.endpoint, config.region, config.bucket,
-      config.accessKey, config.secretKey, config.path,
-    );
-    syncService = new IncrementalSyncServiceImpl(pathService, client, deviceId);
-    return syncService;
-  }
-
   let client: IncrementalS3Client | IncrementalWebDavClient;
 
-  if (config.target === 'webdav' && config.webdavUrl) {
+  if (config.target === 'webdav') {
     client = new IncrementalWebDavClient(
-      config.webdavUrl,
-      config.accessKey,
-      config.secretKey,
-      config.path,
+      config.webdavUrl || '',
+      config.accessKey || '',
+      config.secretKey || '',
+      config.path || '',
     );
   } else {
     client = new IncrementalS3Client(
-      config.endpoint, config.region, config.bucket,
-      config.accessKey, config.secretKey, config.path,
+      config.endpoint || '',
+      config.region || '',
+      config.bucket || '',
+      config.accessKey || '',
+      config.secretKey || '',
+      config.path || '',
     );
   }
 
-  client.setVaultPath(vaultPath);
+  if (vaultPath) {
+    client.setVaultPath(vaultPath);
+  }
 
   // 旧版服务
   syncService = new IncrementalSyncServiceImpl(pathService, client, deviceId);
+
+  if (!vaultPath) {
+    return syncService;
+  }
 
   // 新版服务
   threeWayService = new ThreeWaySyncService(pathService, client, deviceId);
@@ -75,12 +75,11 @@ async function createSyncService(config: S3SyncConfig): Promise<IncrementalSyncS
 
   // Git 服务
   const gitService = getGitService();
-  const gitInit = await gitService.isInitialized();
 
   // 编排器
   orchestrator = new SyncOrchestrator(
     threeWayService, logService,
-    gitInit ? gitService : undefined, deviceId,
+    gitService, deviceId,
   );
 
   return syncService;
@@ -98,11 +97,10 @@ export function registerIncrementalSyncIPC() {
           try {
             const raw = await fs.promises.readFile(configPath, 'utf8');
             const saved = JSON.parse(raw) as Partial<S3SyncConfig>;
-            if (saved.enabled && saved.endpoint && saved.accessKey && saved.secretKey) {
-              await createSyncService(saved as S3SyncConfig);
-              if (threeWayService) await threeWayService.getConfig();
-              return syncService!.getConfig();
-            }
+            // 只要成功解析出配置，就初始化服务，不再进行不合理的严格检查，保证 WebDAV 或 disabled 状态的数据不被擦除
+            await createSyncService(saved as S3SyncConfig);
+            if (threeWayService) await threeWayService.getConfig();
+            return syncService!.getConfig();
           } catch {}
         }
       }
@@ -133,8 +131,54 @@ export function registerIncrementalSyncIPC() {
     return { success: true };
   });
 
-  ipcMain.handle('incrementalSync:testConnection', async () => {
-    return getSyncService().testConnection();
+  ipcMain.handle('incrementalSync:testConnection', async (_, config?: Partial<S3SyncConfig>) => {
+    const vaultPath = await pathService.getActiveVaultPath();
+    let clientToTest: any;
+    if (config) {
+      const merged = {
+        enabled: true,
+        endpoint: '',
+        region: '',
+        bucket: '',
+        path: 'baishou/',
+        accessKey: '',
+        secretKey: '',
+        ...config,
+      };
+      if (merged.target === 'webdav' && merged.webdavUrl) {
+        clientToTest = new IncrementalWebDavClient(
+          merged.webdavUrl,
+          merged.accessKey,
+          merged.secretKey,
+          merged.path,
+        );
+      } else {
+        clientToTest = new IncrementalS3Client(
+          merged.endpoint, merged.region, merged.bucket,
+          merged.accessKey, merged.secretKey, merged.path,
+        );
+      }
+      if (vaultPath) {
+        clientToTest.setVaultPath(vaultPath);
+      }
+    } else {
+      try {
+        const ok = await getSyncService().testConnection();
+        if (!ok) {
+          throw new Error('连接测试失败，请检查配置信息');
+        }
+        return true;
+      } catch (err) {
+        throw err;
+      }
+    }
+
+    try {
+      await clientToTest.listFiles();
+      return true;
+    } catch (err) {
+      throw err;
+    }
   });
 
   ipcMain.handle('incrementalSync:sync', async () => {
