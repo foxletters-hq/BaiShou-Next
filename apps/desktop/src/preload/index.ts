@@ -141,7 +141,12 @@ export const api = {
   archive: {
     exportZip: () => ipcRenderer.invoke('archive:export'),
     importZip: (filePath: string) => ipcRenderer.invoke('archive:import', filePath),
-    pickZip: () => ipcRenderer.invoke('archive:pick-zip')
+    pickZip: () => ipcRenderer.invoke('archive:pick-zip'),
+    listSnapshots: () => ipcRenderer.invoke('archive:list-snapshots'),
+    deleteSnapshot: (filename: string) => ipcRenderer.invoke('archive:delete-snapshot', filename),
+    restoreSnapshot: (filename: string) => ipcRenderer.invoke('archive:restore-snapshot', filename),
+    renameSnapshot: (oldName: string, newName: string) => ipcRenderer.invoke('archive:rename-snapshot', oldName, newName),
+    batchDeleteSnapshots: (filenames: string[]) => ipcRenderer.invoke('archive:batch-delete-snapshots', filenames)
   },
 
   // Diary System (Phase 13)

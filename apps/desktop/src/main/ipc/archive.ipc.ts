@@ -17,7 +17,7 @@ export function registerArchiveIPC() {
     const { dialog, BrowserWindow } = require('electron');
     const win = BrowserWindow.fromWebContents(event.sender);
     const result = await dialog.showOpenDialog(win, {
-      title: '选择白守容灾备份文件 (ZIP)',
+      title: '选择白守备份文件 (ZIP)',
       filters: [{ name: 'ZIP Archives', extensions: ['zip'] }],
       properties: ['openFile']
     });
@@ -35,5 +35,14 @@ export function registerArchiveIPC() {
 
   ipcMain.handle('archive:restore-snapshot', async (_, filename: string) => {
     return await archiveService.restoreFromSnapshot(filename);
+  });
+
+  ipcMain.handle('archive:rename-snapshot', async (_, oldName: string, newName: string) => {
+    await archiveService.renameSnapshot(oldName, newName);
+    return true;
+  });
+
+  ipcMain.handle('archive:batch-delete-snapshots', async (_, filenames: string[]) => {
+    return await archiveService.batchDeleteSnapshots(filenames);
   });
 }
