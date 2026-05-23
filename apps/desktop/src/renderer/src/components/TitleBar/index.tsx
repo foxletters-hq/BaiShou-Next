@@ -4,7 +4,7 @@ import styles from './TitleBar.module.css';
 import { MdAutoStories, MdAutoAwesome, MdMinimize, MdCropSquare, MdClose, MdFolderShared, MdArrowDropDown, MdSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { IncrementalSyncPanel } from '@baishou/ui';
-import type { SyncProgress, SyncHistoryEntry } from '@baishou/ui';
+import type { SyncProgress } from '@baishou/ui';
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation();
@@ -51,18 +51,25 @@ export const TitleBar: React.FC = () => {
   useEffect(() => {
     if (!activeVault) return undefined;
     let cancelled = false;
-    (window as any).api?.incrementalSync?.getConfig?.().then((cfg: any) => {
-      if (!cancelled) setS3Configured(!!cfg?.enabled);
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    let retryTimer: any;
+    let retries = 0;
+    const fetchConfig = async () => {
+      try {
+        const cfg = await (window as any).api?.incrementalSync?.getConfig?.();
+        if (!cancelled) setS3Configured(!!cfg?.enabled);
+      } catch {
+        if (!cancelled && retries < 5) {
+          retries++;
+          retryTimer = setTimeout(fetchConfig, 1000);
+        }
+      }
+    };
+    fetchConfig();
+    return () => { cancelled = true; clearTimeout(retryTimer); };
   }, [activeVault]);
 
   const handleOrchestratedSync = async (): Promise<SyncProgress> => {
     return (window as any).api?.incrementalSync?.orchestratedSync();
-  };
-
-  const handleGetHistory = async (limit?: number): Promise<SyncHistoryEntry[]> => {
-    return (window as any).api?.incrementalSync?.getSyncHistory(limit) ?? [];
   };
 
   const handleSwitchVault = async (vaultName: string) => {
@@ -134,7 +141,6 @@ export const TitleBar: React.FC = () => {
               <div style={{ marginRight: '8px' }}>
                 <IncrementalSyncPanel
                   onSync={handleOrchestratedSync}
-                  onGetHistory={handleGetHistory}
                   isConfigured={s3Configured}
                   onSyncProgress={(cb) => (window as any).api?.incrementalSync?.onSyncProgress(cb)}
                 />
