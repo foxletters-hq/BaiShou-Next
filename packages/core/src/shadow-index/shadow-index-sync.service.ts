@@ -1,4 +1,3 @@
-import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
@@ -119,7 +118,13 @@ export class ShadowIndexSyncService {
         const dateKey = dateStr;
 
         // ── 1. 孤立检测 ──
-        if (!fs.existsSync(filePath)) {
+        let fileExists = false;
+        try {
+          await fsp.access(filePath);
+          fileExists = true;
+        } catch {}
+
+        if (!fileExists) {
           const existingRows = await this.shadowRepo.findByDatePrefix(dateStr);
           if (existingRows.length > 0) {
             for (const row of existingRows) {
@@ -260,7 +265,13 @@ export class ShadowIndexSyncService {
       const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/;
       const targetDates: string[] = [];
 
-      if (fs.existsSync(journalsDir)) {
+      let journalsDirExists = false;
+      try {
+        await fsp.access(journalsDir);
+        journalsDirExists = true;
+      } catch {}
+
+      if (journalsDirExists) {
         await this._walkDir(journalsDir, (filePath) => {
           const fileName = path.basename(filePath);
           const match = dateFileRegex.exec(fileName);
@@ -278,17 +289,14 @@ export class ShadowIndexSyncService {
 
       // 3. 【关键】清理孤立索引 (Orphaned Index Cleanup)
       const allRecords = await this.shadowRepo.getAllRecords();
-      const journalBase = await this.pathService.getJournalsBaseDirectory();
+      const existingDatesSet = new Set(targetDates);
 
       for (const record of allRecords) {
         const dateStr = record.date.split('T')[0]; // 提取 yyyy-MM-dd
         if (!dateStr) continue;
 
-        // 实时检查物理文件是否存在（而非依赖启动时的快照）
-        const [year, month] = dateStr.split('-');
-        const filePath = path.join(journalBase, year!, month!, `${dateStr}.md`);
-
-        if (!fs.existsSync(filePath)) {
+        // 不需要再去判断 fs.existsSync(filePath)，直接查 Set！
+        if (!existingDatesSet.has(dateStr)) {
           // 物理文件确实不存在，安全执行影子清理
           await this.shadowRepo.deleteById(record.id);
 
