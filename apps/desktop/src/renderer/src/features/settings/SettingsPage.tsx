@@ -344,7 +344,6 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
             onPickFile={async () => {
                return await (window as any).api?.archive?.pickZip();
             }}
-            snapshots={[]}
           />
           <div className="settings-item-divider" />
 
