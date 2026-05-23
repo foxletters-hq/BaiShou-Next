@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { RefreshCw, CheckCircle, AlertTriangle, X } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import type { SyncProgressEvent } from '@baishou/shared';
@@ -17,42 +17,21 @@ export interface SyncProgress {
   sessionId: string;
 }
 
-export interface SyncHistoryEntry {
-  sessionId: string;
-  deviceId: string;
-  direction: string;
-  startedAt: string;
-  completedAt: string;
-  success: boolean;
-  summary: SyncProgress;
-  error?: string;
-}
-
 export interface IncrementalSyncPanelProps {
   onSync: () => Promise<SyncProgress>;
-  onGetHistory: (limit?: number) => Promise<SyncHistoryEntry[]>;
   isConfigured: boolean;
   onSyncProgress?: (callback: (event: SyncProgressEvent) => void) => (() => void);
 }
 
 export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
   onSync,
-  onGetHistory,
   isConfigured,
   onSyncProgress,
 }) => {
   const { t } = useTranslation();
   const toast = useToast();
   const [isSyncing, setIsSyncing] = useState(false);
-  const [history, setHistory] = useState<SyncHistoryEntry[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
   const [progress, setProgress] = useState<SyncProgressEvent | null>(null);
-
-  useEffect(() => {
-    if (isConfigured) {
-      onGetHistory(5).then(setHistory).catch(() => {});
-    }
-  }, [isConfigured, onGetHistory]);
 
   useEffect(() => {
     if (!onSyncProgress) return undefined;
@@ -70,41 +49,49 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
     try {
       await onSync();
       setProgress(null);
-      const updated = await onGetHistory(5).catch((): SyncHistoryEntry[] => []);
-      setHistory(updated);
       toast.showSuccess(t('data_sync.sync_completed', '同步成功'));
-    } catch (e) {
-      toast.showError(t('data_sync.sync_failed', '同步失败'));
+    } catch (e: any) {
+      toast.showError(friendlySyncError(e?.message || ''));
       setProgress(null);
     } finally {
       setIsSyncing(false);
     }
-  }, [isSyncing, isConfigured, onSync, onGetHistory, t, toast]);
+  }, [isSyncing, isConfigured, onSync, t, toast]);
 
-  const formatTime = (iso: string) => {
-    try {
-      const d = new Date(iso);
-      const now = new Date();
-      const diffMs = now.getTime() - d.getTime();
-      const diffMin = Math.floor(diffMs / 60000);
-      if (diffMin < 1) return t('common.just_now', '刚刚');
-      if (diffMin < 60) return t('common.minutes_ago', '$count 分钟前').replace('$count', diffMin.toString());
-      const diffH = Math.floor(diffMin / 60);
-      if (diffH < 24) return t('common.hours_ago', '$count 小时前').replace('$count', diffH.toString());
-      const diffD = Math.floor(diffH / 24);
-      if (diffD < 7) return t('common.days_ago', '$count 天前').replace('$count', diffD.toString());
-      return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return '';
+  const friendlySyncError = (msg: string): string => {
+    if (!msg) return t('data_sync.sync_failed', '同步失败');
+    let cleanMsg = msg.replace(/^Error:\s*/i, '');
+    cleanMsg = cleanMsg.replace(/^Error invoking remote method '.*?':\s*/i, '');
+
+    if (cleanMsg.includes('SyncInProgressError') || cleanMsg.includes('already in progress')) {
+      return t('data_sync.error_in_progress', '同步操作正在进行中，请勿重复操作');
     }
+    if (cleanMsg.includes('not initialized') || cleanMsg.includes('Please update config first')) {
+      return t('data_sync.error_not_initialized', '同步服务尚未初始化，请先配置并保存您的连接信息');
+    }
+    if (cleanMsg.includes('S3NotConfiguredError')) {
+      return t('data_sync.error_not_configured', '同步服务尚未启用或配置不完整');
+    }
+    if (cleanMsg.includes('InvalidAccessKeyId')) {
+      return t('data_sync.error_invalid_access_key', 'Access Key 无效或已过期，请在设置中更新您的密钥');
+    }
+    if (cleanMsg.includes('SignatureDoesNotMatch') || (cleanMsg.includes('signature') && cleanMsg.includes('does not match'))) {
+      return t('data_sync.error_invalid_secret', 'Secret Key 无效，请在设置中更新您的密钥');
+    }
+    if (cleanMsg.includes('AccessDenied')) {
+      return t('data_sync.error_access_denied', '访问被拒绝，请检查 Bucket 权限或密钥配置');
+    }
+    if (cleanMsg.includes('NoSuchBucket')) {
+      return t('data_sync.error_no_bucket', 'Bucket 不存在，请检查 Bucket 名称配置');
+    }
+    if (cleanMsg.includes('ENOTFOUND') || cleanMsg.includes('getaddrinfo')) {
+      return t('data_sync.error_dns', '无法解析域名，请检查 Endpoint 地址和网络连接');
+    }
+    if (cleanMsg.includes('ECONNREFUSED')) {
+      return t('data_sync.error_conn_refused', '连接被拒绝，请检查 Endpoint 地址和服务是否在线');
+    }
+    return t('data_sync.sync_failed', '同步失败') + `: ${cleanMsg}`;
   };
-
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  };
-
-  const lastLog = history.length > 0 ? history[0] : null;
 
   return (
     <>
@@ -123,18 +110,6 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
             {isSyncing ? t('data_sync.syncing', '同步中...') : t('data_sync.sync_now', '同步')}
           </span>
         </button>
-
-
-
-        {history.length > 0 && (
-          <button
-            className={styles.historyBtn}
-            onClick={() => setShowHistory(!showHistory)}
-            title={t('data_sync.sync_records', '同步历史')}
-          >
-            <span>{history.length}</span>
-          </button>
-        )}
 
         <AnimatePresence>
           {isSyncing && progress && progress.total > 0 && (
@@ -159,92 +134,6 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
           )}
         </AnimatePresence>
       </div>
-
-      <AnimatePresence>
-        {showHistory && (
-          <SyncHistoryPanel
-            history={history}
-            onClose={() => setShowHistory(false)}
-            formatTime={formatTime}
-            formatDuration={formatDuration}
-          />
-        )}
-      </AnimatePresence>
     </>
-  );
-};
-
-interface SyncHistoryPanelProps {
-  history: SyncHistoryEntry[];
-  onClose: () => void;
-  formatTime: (iso: string) => string;
-  formatDuration: (ms: number) => string;
-}
-
-const SyncHistoryPanel: React.FC<SyncHistoryPanelProps> = ({
-  history,
-  onClose,
-  formatTime,
-  formatDuration,
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <motion.div
-      className={styles.overlay}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className={styles.historyPanel}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 20 }}
-        transition={{ duration: 0.15 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={styles.dialogHeader}>
-          <h3>{t('data_sync.sync_records', '同步历史')}</h3>
-          <button onClick={onClose} className={styles.closeBtn}>
-            <X size={16} />
-          </button>
-        </div>
-
-        {history.length === 0 ? (
-          <div className={styles.emptyHistory}>{t('data_sync.no_records', '暂无同步记录')}</div>
-        ) : (
-          <div className={styles.historyList}>
-            {history.map((entry) => (
-              <div key={entry.sessionId} className={styles.historyItem}>
-                <div className={styles.historyItemHeader}>
-                  {entry.success ? (
-                    <CheckCircle size={14} className={styles.successIcon} />
-                  ) : (
-                    <AlertTriangle size={14} className={styles.errorIcon} />
-                  )}
-                  <span className={styles.historyTime}>{formatTime(entry.completedAt)}</span>
-                  <span className={styles.historyDuration}>{formatDuration(new Date(entry.completedAt).getTime() - new Date(entry.startedAt).getTime())}</span>
-                </div>
-                {entry.success ? (
-                  <div className={styles.historySummary}>
-                    <span>↑{entry.summary.uploaded}</span>
-                    <span>↓{entry.summary.downloaded}</span>
-                    <span>✕{entry.summary.deletedRemote + entry.summary.deletedLocal}</span>
-                    {entry.summary.conflicts > 0 && (
-                      <span className={styles.warnText}>!{entry.summary.conflicts}</span>
-                    )}
-                  </div>
-                ) : (
-                  <div className={styles.historyError}>{entry.error}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
   );
 };
