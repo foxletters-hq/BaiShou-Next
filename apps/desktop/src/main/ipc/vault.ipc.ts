@@ -3,6 +3,8 @@ import { VaultService } from '@baishou/core';
 import { shadowConnectionManager } from '@baishou/database';
 import { logger } from '@baishou/shared';
 import { DesktopStoragePathService } from '../services/path.service';
+import { resetSyncService } from './incremental-sync.ipc';
+import { resetGitService } from './git-sync.ipc';
 
 export const pathService = new DesktopStoragePathService();
 
@@ -61,6 +63,8 @@ export function registerVaultIPC() {
     await vaultService.initRegistry();
     // 重新连接 Shadow DB（新路径下的 Vault）
     await connectShadowForActiveVault();
+    resetSyncService();
+    resetGitService();
     return newPath;
   });
 
@@ -86,6 +90,9 @@ export function registerVaultIPC() {
     const { globalBootstrapper } = await import('../services/bootstrapper.service');
     await globalBootstrapper.fullyResyncAllEcosystems();
 
+    resetSyncService();
+    resetGitService();
+
     return vaultService.getActiveVault();
   });
 
@@ -104,6 +111,9 @@ export function registerVaultIPC() {
     // Vault Switch: 全量 SSOT 同步
     const { globalBootstrapper } = await import('../services/bootstrapper.service');
     await globalBootstrapper.fullyResyncAllEcosystems();
+
+    resetSyncService();
+    resetGitService();
 
     return vaultService.getActiveVault();
   });

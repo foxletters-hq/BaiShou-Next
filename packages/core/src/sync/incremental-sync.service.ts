@@ -21,7 +21,7 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   endpoint: '',
   region: '',
   bucket: '',
-  path: 'baishou/',
+  path: '/baishou_backup/sync',
   accessKey: '',
   secretKey: '',
 };

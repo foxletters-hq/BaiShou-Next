@@ -8,17 +8,17 @@ type SyncTarget = 's3' | 'webdav';
 export const IncrementalSyncPage: React.FC = () => {
   const [target, setTarget] = useState<SyncTarget>('s3');
   const [endpoint, setEndpoint] = useState('');
-  const [region, setRegion] = useState('us-east-1');
+  const [region, setRegion] = useState('');
   const [bucket, setBucket] = useState('');
   const [webdavUrl, setWebdavUrl] = useState('');
 
   // 隔离的特定凭据与前缀状态，防止 S3 与 WebDAV 相互污染
   const [s3AccessKey, setS3AccessKey] = useState('');
   const [s3SecretKey, setS3SecretKey] = useState('');
-  const [s3Path, setS3Path] = useState('baishou/');
+  const [s3Path, setS3Path] = useState('/baishou_backup/sync');
   const [webdavUsername, setWebdavUsername] = useState('');
   const [webdavPassword, setWebdavPassword] = useState('');
-  const [webdavPath, setWebdavPath] = useState('baishou/');
+  const [webdavPath, setWebdavPath] = useState('/baishou_backup/sync');
 
   const [showSecret, setShowSecret] = useState(false);
   const {
@@ -85,25 +85,25 @@ export const IncrementalSyncPage: React.FC = () => {
         const curTarget = cfg.target === 'webdav' ? 'webdav' : 's3';
         setTarget(curTarget);
         setEndpoint(cfg.endpoint || '');
-        setRegion(cfg.region || 'us-east-1');
+        setRegion(cfg.region || '');
         setBucket(cfg.bucket || '');
         setWebdavUrl(cfg.webdavUrl || '');
 
         // 恢复 S3 的专属变量（兼容老版本未独立字段时降级使用主字段）
         const loadedS3AccessKey = cfg.s3AccessKey !== undefined ? cfg.s3AccessKey : (curTarget === 's3' ? cfg.accessKey : '');
         const loadedS3SecretKey = cfg.s3SecretKey !== undefined ? cfg.s3SecretKey : (curTarget === 's3' ? cfg.secretKey : '');
-        const loadedS3Path = cfg.s3Path !== undefined ? cfg.s3Path : (curTarget === 's3' ? cfg.path : 'baishou/');
+        const loadedS3Path = cfg.s3Path !== undefined ? cfg.s3Path : (curTarget === 's3' ? cfg.path : '/baishou_backup/sync');
         setS3AccessKey(loadedS3AccessKey || '');
         setS3SecretKey(loadedS3SecretKey || '');
-        setS3Path(loadedS3Path || 'baishou/');
+        setS3Path(loadedS3Path || '/baishou_backup/sync');
 
         // 恢复 WebDAV 的专属变量
         const loadedWebdavUsername = cfg.webdavUsername !== undefined ? cfg.webdavUsername : (curTarget === 'webdav' ? cfg.accessKey : '');
         const loadedWebdavPassword = cfg.webdavPassword !== undefined ? cfg.webdavPassword : (curTarget === 'webdav' ? cfg.secretKey : '');
-        const loadedWebdavPath = cfg.webdavPath !== undefined ? cfg.webdavPath : (curTarget === 'webdav' ? cfg.path : 'baishou/');
+        const loadedWebdavPath = cfg.webdavPath !== undefined ? cfg.webdavPath : (curTarget === 'webdav' ? cfg.path : '/baishou_backup/sync');
         setWebdavUsername(loadedWebdavUsername || '');
         setWebdavPassword(loadedWebdavPassword || '');
-        setWebdavPath(loadedWebdavPath || 'baishou/');
+        setWebdavPath(loadedWebdavPath || '/baishou_backup/sync');
       }
     } catch {}
   };

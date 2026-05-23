@@ -119,7 +119,7 @@ describe('SyncOrchestrator', () => {
     it('should get S3 config', async () => {
       const config: S3SyncConfig = {
         enabled: true, endpoint: 'https://s3.example.com', region: 'us-east-1',
-        bucket: 'my-bucket', path: 'baishou/', accessKey: 'AK', secretKey: 'SK',
+        bucket: 'my-bucket', path: '/baishou_backup/sync', accessKey: 'AK', secretKey: 'SK',
       };
       vi.mocked(orchestrator.getConfig).mockResolvedValue(config);
       expect(await orchestrator.getConfig()).toEqual(config);

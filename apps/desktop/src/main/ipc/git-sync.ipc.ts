@@ -167,3 +167,8 @@ export function registerGitSyncIPC() {
     return { success: true };
   });
 }
+
+export function resetGitService() {
+  gitService = null;
+}
+

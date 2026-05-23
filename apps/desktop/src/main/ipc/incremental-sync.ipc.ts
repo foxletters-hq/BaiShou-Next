@@ -106,7 +106,7 @@ export function registerIncrementalSyncIPC() {
       }
       return {
         enabled: false, endpoint: '', region: '', bucket: '',
-        path: 'baishou/', accessKey: '', secretKey: '',
+        path: '/baishou_backup/sync', accessKey: '', secretKey: '',
       };
     }
     return syncService.getConfig();
@@ -118,7 +118,7 @@ export function registerIncrementalSyncIPC() {
       endpoint: '',
       region: '',
       bucket: '',
-      path: 'baishou/',
+      path: '/baishou_backup/sync',
       accessKey: '',
       secretKey: '',
       ...config,
@@ -140,7 +140,7 @@ export function registerIncrementalSyncIPC() {
         endpoint: '',
         region: '',
         bucket: '',
-        path: 'baishou/',
+        path: '/baishou_backup/sync',
         accessKey: '',
         secretKey: '',
         ...config,
@@ -261,4 +261,10 @@ export function registerIncrementalSyncIPC() {
       return null;
     });
   });
+}
+
+export function resetSyncService() {
+  syncService = null;
+  threeWayService = null;
+  orchestrator = null;
 }

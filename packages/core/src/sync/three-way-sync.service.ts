@@ -25,7 +25,7 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   endpoint: '',
   region: '',
   bucket: '',
-  path: 'baishou/',
+  path: '/baishou_backup/sync',
   accessKey: '',
   secretKey: '',
 };
@@ -153,20 +153,6 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
       const ancestorSnapshot = await this.getRemoteSnapshot();
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot);
-      
-      try {
-        const vaultPath = await this.getVaultPath();
-        const debugPath = path.join(vaultPath, '.baishou', 'sync-debug.json');
-        await fs.promises.writeFile(debugPath, JSON.stringify({
-          local: localManifest,
-          remote: remoteManifest,
-          ancestor: ancestorSnapshot,
-          decisions: decisions
-        }, null, 2), 'utf8');
-      } catch (err) {
-        console.error('Debug log write failed', err);
-      }
-
       const total = decisions.length;
 
       for (let i = 0; i < decisions.length; i++) {
