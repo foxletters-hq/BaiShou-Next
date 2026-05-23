@@ -138,6 +138,22 @@ export class GitSyncServiceImpl implements IGitSyncService {
 
     if (!fs.existsSync(gitignorePath)) {
       await fs.promises.writeFile(gitignorePath, GITIGNORE_CONTENT, 'utf8');
+    } else {
+      try {
+        let content = await fs.promises.readFile(gitignorePath, 'utf8');
+        let modified = false;
+        if (!content.includes('.baishou/')) {
+          content += '\n# 忽略数据文件夹\n.baishou/\n';
+          modified = true;
+        }
+        if (!content.includes('*.db-shm')) {
+          content += '\n*.db-shm\n';
+          modified = true;
+        }
+        if (modified) {
+          await fs.promises.writeFile(gitignorePath, content, 'utf8');
+        }
+      } catch {}
     }
 
     await this.untrackBaishouDir();
@@ -201,6 +217,18 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async getStatus(): Promise<GitStatus> {
     const git = await this.ensureGit();
     const status = await git.status();
+
+    // 自动清除误追踪的 .baishou 内置文件，防止泄露
+    const hasTrackedBaishou = status.files.some(f => f.path.startsWith('.baishou/'));
+    if (hasTrackedBaishou) {
+      logger.info('[GitSync] 发现有 .baishou 内部文件被错误追踪，正在强制移除追踪...');
+      try {
+        await git.raw(['rm', '--cached', '-r', '.baishou']);
+        return this.getStatus();
+      } catch (err) {
+        logger.error('[GitSync] 强制移出 .baishou 追踪失败:', err as any);
+      }
+    }
 
     const staged: GitStatusFile[] = [];
     const unstaged: GitStatusFile[] = [];
