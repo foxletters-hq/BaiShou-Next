@@ -1,17 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdOutlineStorage, MdOutlineDownload, MdOutlineUploadFile, MdHistory, MdChevronRight, MdOutlineArchive } from 'react-icons/md';
+import { MdOutlineStorage, MdOutlineDownload, MdOutlineUploadFile, MdChevronRight } from 'react-icons/md';
 import { useDialog } from '../Dialog';
 import { useToast } from '../Toast/useToast';
 import '../shared/SettingsListTile.css';
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile';
-
-export interface SnapshotInfo {
-  filename: string;
-  sizeMB: string;
-  fullPath: string;
-  timeLabel: string;
-}
 
 export interface DataManagementCardProps {
   onExportZip?: () => Promise<void>;
@@ -19,14 +12,12 @@ export interface DataManagementCardProps {
   onExport?: () => void;
   onImport?: () => Promise<void>;
   onPickFile?: () => Promise<string | null>;
-  snapshots?: SnapshotInfo[];
 }
 
 export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   onExportZip,
   onImportZip,
-  onPickFile,
-  snapshots = []
+  onPickFile
 }) => {
   const { t } = useTranslation();
   const dialog = useDialog();
@@ -50,21 +41,6 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
     setIsImporting(true);
     try {
       await onImportZip(filePath);
-      toast.showSuccess(t('settings.restore_success_simple', '恢复成功'));
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (e: any) {
-      toast.showError(t('settings.restore_failed', '恢复失败：') + e.message);
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  const handleRestoreSnapshot = async (snapshot: SnapshotInfo) => {
-    const confirmed = await dialog.confirm(t('settings.confirm_restore', '确认从快照恢复？'));
-    if (!confirmed) return;
-    setIsImporting(true);
-    try {
-      await onImportZip(snapshot.fullPath);
       toast.showSuccess(t('settings.restore_success_simple', '恢复成功'));
       setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
@@ -105,33 +81,6 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
           </div>
           <MdChevronRight size={22} className="settings-list-tile-trailing" />
         </button>
-
-        <div className="settings-list-divider indent" />
-
-        {/* 恢复快照 */}
-        <SettingsExpansionTile
-          icon={<MdHistory size={22} />}
-          title={t('settings.restore_snapshot', '从快照恢复')}
-          subtitle={t('settings.restore_desc', '从系统自动创建的本地快照中恢复数据')}
-          nested={true}
-        >
-            {snapshots.length === 0 ? (
-              <div className="settings-empty-hint">{t('settings.no_snapshots_available', '暂无可用快照')}</div>
-            ) : (
-              snapshots.map(sn => (
-                <button key={sn.filename} className="settings-list-tile" onClick={() => handleRestoreSnapshot(sn)} disabled={isImporting}>
-                  <div className="settings-list-tile-leading">
-                    <MdOutlineArchive size={22} />
-                  </div>
-                  <div className="settings-list-tile-content">
-                    <span className="settings-list-tile-title">{sn.timeLabel}</span>
-                    <span className="settings-list-tile-subtitle">{sn.sizeMB} MB</span>
-                  </div>
-                  <MdChevronRight size={22} className="settings-list-tile-trailing" />
-                </button>
-              ))
-            )}
-        </SettingsExpansionTile>
     </SettingsExpansionTile>
   );
 };

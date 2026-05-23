@@ -3,6 +3,7 @@ import { StorageSettingsCard, DataManagementCard } from '@baishou/ui';
 import { useTranslation } from 'react-i18next';
 
 
+
 export const StoragePage: React.FC = () => {
   const { t } = useTranslation();
 
@@ -21,12 +22,10 @@ export const StoragePage: React.FC = () => {
             if (zipPath) await window.electron.ipcRenderer.invoke('archive:import', zipPath, true);
           }
         }}
-        snapshots={[]} // TODO: 从 archive:list-snapshots 获取
       />
       <StorageSettingsCard
         onRefreshStats={async () => {
   if (typeof window !== 'undefined' && window.electron) {
-
 
              return window.electron.ipcRenderer.invoke('rag:get-stats');
           }

@@ -227,9 +227,11 @@
               border-color var(--duration-fast) var(--ease-in-out);
   box-shadow: inset 0 1px 0 rgba(var(--bg-surface-lowest-rgb), 0.1);
   padding: 24px;
+  padding-bottom: 20px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  height: 280px;
 }
 
 /* 玻璃高光反射效果 */
@@ -317,7 +319,8 @@
 
 /* 内容预览 */
 .diary-card-content {
-  height: 120px;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   position: relative;
   margin-bottom: 8px;
@@ -406,11 +409,20 @@
   color: var(--color-primary);
 }
 
-/* 悬浮操作按钮 */
+/* 悬浮操作按钮 — 绝对定位在卡片底部，不占用布局高度 */
 .diary-card-actions {
-  margin-top: 12px;
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 12px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 24px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(128, 128, 128, 0.08) 100%
+  );
+  border-bottom-left-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
   display: flex;
   justify-content: flex-end;
   gap: 8px;
