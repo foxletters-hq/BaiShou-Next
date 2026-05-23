@@ -286,7 +286,12 @@ const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
                window.location.reload();
             }}
             onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
-            onCreate={async () => await (window as any).api?.vault?.createDialog()}
+             onCreate={async (name) => {
+                await (window as any).api?.vault?.createDialog(name);
+                const active = await (window as any).api?.vault?.getActive();
+                if (active) setActiveVault(active);
+                window.location.reload();
+             }}
          />
          <div className="settings-item-divider" />
 

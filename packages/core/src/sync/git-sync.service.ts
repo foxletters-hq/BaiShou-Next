@@ -24,7 +24,6 @@ import type { IStoragePathService } from '../vault/storage-path.types';
 
 const DEFAULT_CONFIG: GitSyncConfig = {
   enabled: false,
-  commitMessageTemplate: 'sync: {date}',
 };
 
 const GITIGNORE_CONTENT = `# SQLite 数据库
@@ -169,6 +168,27 @@ export class GitSyncServiceImpl implements IGitSyncService {
     }
   }
 
+  private getAuthenticatedUrl(url: string, username?: string, token?: string): string {
+    const isHttp = url.startsWith('http://');
+    const isHttps = url.startsWith('https://');
+    if (!isHttp && !isHttps) {
+      return url;
+    }
+    if (!username && !token) {
+      return url;
+    }
+    const protocolLength = isHttps ? 8 : 7;
+    const cleanUrl = url.substring(protocolLength);
+    const atIndex = cleanUrl.indexOf('@');
+    const urlWithoutCredentials = atIndex !== -1 ? cleanUrl.substring(atIndex + 1) : cleanUrl;
+    const credentials = username && token
+      ? `${encodeURIComponent(username)}:${encodeURIComponent(token)}`
+      : username
+        ? encodeURIComponent(username)
+        : encodeURIComponent(token!);
+    return isHttps ? `https://${credentials}@${urlWithoutCredentials}` : `http://${credentials}@${urlWithoutCredentials}`;
+  }
+
   private mapStatusToType(status: string): FileChange['status'] {
     switch (status) {
       case 'A':
@@ -194,9 +214,34 @@ export class GitSyncServiceImpl implements IGitSyncService {
         await this.ensureGitignore();
         await this.loadConfig();
 
+        // 应用本地已保存的 git 用户配置
+        if (this.config.userName) {
+          await git.addConfig('user.name', this.config.userName);
+        }
+        if (this.config.userEmail) {
+          await git.addConfig('user.email', this.config.userEmail);
+        }
+
         // 创建初始 commit，确保仓库有历史记录
         await git.add('.gitignore');
-        await git.commit('初始化 Git 版本管理');
+        try {
+          await git.commit('初始化 Git 版本管理');
+        } catch (commitErr) {
+          logger.warn(`[GitSync] 初始提交失败 (可能是未配置 user.name/email):`, commitErr as any);
+        }
+
+        // 同步远程仓库配置（如果已有）
+        if (this.config.remote?.url) {
+          const authenticatedUrl = this.getAuthenticatedUrl(
+            this.config.remote.url,
+            this.config.remote.username,
+            this.config.remote.token
+          );
+          try {
+            await git.remote(['add', 'origin', authenticatedUrl]);
+          } catch {}
+        }
+
         logger.info(`[GitSync] Git 仓库初始化成功: ${vaultPath}`);
       } catch (error) {
         logger.error(`[GitSync] Git 仓库初始化失败: ${error}`);
@@ -382,32 +427,66 @@ export class GitSyncServiceImpl implements IGitSyncService {
 
   async updateConfig(config: Partial<GitSyncConfig>): Promise<void> {
     const oldRemoteUrl = this.config.remote?.url;
+    const oldUsername = this.config.remote?.username;
+    const oldToken = this.config.remote?.token;
+    const oldUserName = this.config.userName;
+    const oldUserEmail = this.config.userEmail;
+
     this.config = { ...this.config, ...config };
     await this.saveConfig();
 
-    // 同步 git remote 配置
-    const newRemoteUrl = this.config.remote?.url;
-    if (oldRemoteUrl !== newRemoteUrl) {
-      try {
-        const git = await this.ensureGit();
+    try {
+      const git = await this.ensureGit();
+
+      // 同步 git local config (user.name / user.email)
+      if (this.config.userName !== oldUserName) {
+        if (this.config.userName) {
+          await git.addConfig('user.name', this.config.userName);
+        } else {
+          try {
+            await git.raw(['config', '--unset', 'user.name']);
+          } catch {}
+        }
+      }
+      if (this.config.userEmail !== oldUserEmail) {
+        if (this.config.userEmail) {
+          await git.addConfig('user.email', this.config.userEmail);
+        } else {
+          try {
+            await git.raw(['config', '--unset', 'user.email']);
+          } catch {}
+        }
+      }
+
+      // 同步 git remote 配置
+      const newRemoteUrl = this.config.remote?.url;
+      const newUsername = this.config.remote?.username;
+      const newToken = this.config.remote?.token;
+
+      if (
+        oldRemoteUrl !== newRemoteUrl ||
+        oldUsername !== newUsername ||
+        oldToken !== newToken
+      ) {
         const remotes = await git.getRemotes(true);
         const hasOrigin = remotes.some(r => r.name === 'origin');
 
         if (newRemoteUrl) {
+          const authenticatedUrl = this.getAuthenticatedUrl(newRemoteUrl, newUsername, newToken);
           if (hasOrigin) {
-            await git.remote(['set-url', 'origin', newRemoteUrl]);
-            logger.info(`[GitSync] 已更新远程仓库: ${newRemoteUrl}`);
+            await git.remote(['set-url', 'origin', authenticatedUrl]);
+            logger.info(`[GitSync] 已更新远程仓库: ${newRemoteUrl} (已配凭据: ${!!(newUsername || newToken)})`);
           } else {
-            await git.remote(['add', 'origin', newRemoteUrl]);
-            logger.info(`[GitSync] 已添加远程仓库: ${newRemoteUrl}`);
+            await git.remote(['add', 'origin', authenticatedUrl]);
+            logger.info(`[GitSync] 已添加远程仓库: ${newRemoteUrl} (已配凭据: ${!!(newUsername || newToken)})`);
           }
         } else if (hasOrigin) {
           await git.remote(['remove', 'origin']);
           logger.info('[GitSync] 已移除远程仓库');
         }
-      } catch (e) {
-        logger.warn(`[GitSync] 远程仓库配置同步失败:`, e as any);
       }
+    } catch (e) {
+      logger.warn(`[GitSync] 仓库配置更新或同步失败:`, e as any);
     }
   }
 
@@ -722,12 +801,19 @@ export class GitSyncServiceImpl implements IGitSyncService {
     const remotes = await git.getRemotes(true);
     const origin = remotes.find(r => r.name === 'origin');
 
+    const username = this.config.remote?.username;
+    const token = this.config.remote?.token;
+    const authenticatedUrl = this.getAuthenticatedUrl(url, username, token);
+
     if (!origin) {
-      await git.remote(['add', 'origin', url]);
+      await git.remote(['add', 'origin', authenticatedUrl]);
       logger.info(`[GitSync] 自动添加远程仓库: ${url}`);
-    } else if (origin.refs.fetch !== url && origin.refs.push !== url) {
-      await git.remote(['set-url', 'origin', url]);
-      logger.info(`[GitSync] 自动更新远程仓库: ${url}`);
+    } else {
+      const currentUrl = origin.refs.push;
+      if (currentUrl !== authenticatedUrl) {
+        await git.remote(['set-url', 'origin', authenticatedUrl]);
+        logger.info(`[GitSync] 自动更新远程仓库: ${url}`);
+      }
     }
   }
 

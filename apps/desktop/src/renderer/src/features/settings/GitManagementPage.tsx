@@ -8,7 +8,6 @@ export const GitManagementPage: React.FC = () => {
   const toast = useToast();
   const [config, setConfig] = useState<GitSyncConfig>({
     enabled: false,
-    commitMessageTemplate: 'sync: {date}',
   });
   const [isInitialized, setIsInitialized] = useState(false);
 

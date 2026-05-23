@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { IGitSyncService } from '../git-sync.interface';
 import type { GitCommit, GitSyncConfig, VersionHistoryEntry } from '@baishou/shared';
+import { GitSyncServiceImpl } from '../git-sync.service';
 import {
   GitInitError,
   GitCommitError,
@@ -72,7 +73,6 @@ describe('GitSyncService', () => {
     it('should return current git sync config', async () => {
       const config: GitSyncConfig = {
         enabled: true,
-        commitMessageTemplate: 'sync: {date}',
       };
       vi.mocked(service.getConfig).mockResolvedValue(config);
 
@@ -235,6 +235,46 @@ describe('GitSyncService', () => {
       await expect(
         service.resolveConflict('file.md', 'theirs')
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('GitSyncServiceImpl helper - getAuthenticatedUrl', () => {
+    it('should inject username and password correctly in HTTPS URL', () => {
+      const impl = new GitSyncServiceImpl({} as any);
+      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl);
+
+      expect(getAuthenticatedUrl('https://github.com/user/repo.git', 'admin', 'pass'))
+        .toBe('https://admin:pass@github.com/user/repo.git');
+
+      expect(getAuthenticatedUrl('https://github.com/user/repo.git', 'admin'))
+        .toBe('https://admin@github.com/user/repo.git');
+
+      expect(getAuthenticatedUrl('https://github.com/user/repo.git', undefined, 'token123'))
+        .toBe('https://token123@github.com/user/repo.git');
+    });
+
+    it('should clean existing credentials in HTTPS URL', () => {
+      const impl = new GitSyncServiceImpl({} as any);
+      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl);
+
+      expect(getAuthenticatedUrl('https://old:oldpass@github.com/user/repo.git', 'new', 'newpass'))
+        .toBe('https://new:newpass@github.com/user/repo.git');
+    });
+
+    it('should keep original URL if not HTTP/HTTPS', () => {
+      const impl = new GitSyncServiceImpl({} as any);
+      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl);
+
+      expect(getAuthenticatedUrl('git@github.com:user/repo.git', 'admin', 'pass'))
+        .toBe('git@github.com:user/repo.git');
+    });
+
+    it('should inject username and password correctly in HTTP URL', () => {
+      const impl = new GitSyncServiceImpl({} as any);
+      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl);
+
+      expect(getAuthenticatedUrl('http://github.com/user/repo.git', 'admin', 'pass'))
+        .toBe('http://admin:pass@github.com/user/repo.git');
     });
   });
 });

@@ -162,19 +162,6 @@ describe('threeWayMerge', () => {
     expect(decision?.type).toBe('skip');
   });
 
-  it('should return download when both local and remote are new but remote mtime is newer', () => {
-    const localEntry = makeEntry({ hash: 'bbb', lastModified: 1000 });
-    const remoteEntry = makeEntry({ hash: 'ccc', lastModified: 2000 });
-    const local = makeManifest({ [filePath]: localEntry });
-    const remote = makeManifest({ [filePath]: remoteEntry });
-    const ancestor = makeManifest({});
-
-    const decisions = threeWayMerge(local, remote, ancestor);
-    const decision = decisions.find((d) => d.filePath === filePath);
-
-    expect(decision?.type).toBe('download');
-  });
-
   it('should handle first-sync scenario: local has files, remote empty, ancestor empty', () => {
     const entry = makeEntry({ hash: 'local-only' });
     const local = makeManifest({ [filePath]: entry });

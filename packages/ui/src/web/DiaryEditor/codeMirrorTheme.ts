@@ -29,9 +29,11 @@ export const editorTheme = EditorView.baseTheme({
   '&.cm-focused .cm-activeLine': {
     backgroundColor: 'transparent !important',
   },
-  '.cm-selectionBackground': {
-    backgroundColor:
-      'var(--color-primary-light, rgba(99, 102, 241, 0.2)) !important',
+  '::selection': {
+    backgroundColor: 'var(--color-primary-light, rgba(99, 102, 241, 0.35)) !important',
+  },
+  '.cm-content ::selection': {
+    backgroundColor: 'var(--color-primary-light, rgba(99, 102, 241, 0.35)) !important',
   },
   '.cm-cursor': {
     borderLeftColor: 'var(--text-primary)',
@@ -109,6 +111,9 @@ export const editorTheme = EditorView.baseTheme({
     lineHeight: '1.6',
   },
   '.cm-code-line': {
+    backgroundColor: 'var(--bg-surface-normal) !important',
+  },
+  '.cm-activeLine.cm-code-line': {
     backgroundColor: 'var(--bg-surface-normal) !important',
   },
   '.cm-code-line-top': {

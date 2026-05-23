@@ -95,7 +95,7 @@ export class IncrementalSyncServiceImpl implements IIncrementalSyncService {
             await scan(fullPath, relPath);
           }
         } else if (!entry.name.startsWith('.')) {
-          files.push(relPath);
+          files.push(relPath.replace(/\\/g, '/'));
         }
       }
     };

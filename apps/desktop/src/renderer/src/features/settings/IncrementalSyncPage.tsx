@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, TestTube, RefreshCw, Settings, Cloud, FileText, Eye, EyeOff, Globe } from 'lucide-react';
 import type { SyncProgressEvent } from '@baishou/shared';
+import { useSyncStore } from '@baishou/store';
 
 type SyncTarget = 's3' | 'webdav';
 
@@ -20,19 +21,18 @@ export const IncrementalSyncPage: React.FC = () => {
   const [webdavPath, setWebdavPath] = useState('baishou/');
 
   const [showSecret, setShowSecret] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'connecting' | 'syncing' | 'success' | 'error'>('idle');
-  const [message, setMessage] = useState('');
-  const [syncResult, setSyncResult] = useState<any>(null);
-  const [progress, setProgress] = useState<SyncProgressEvent | null>(null);
+  const {
+    status,
+    message,
+    syncResult,
+    progress,
+    setStatus,
+    setMessage,
+    setSyncResult,
+    setProgress,
+  } = useSyncStore();
 
   useEffect(() => { loadConfig(); }, []);
-
-  useEffect(() => {
-    const unsub = (window as any).api?.incrementalSync?.onSyncProgress((event: SyncProgressEvent) => {
-      setProgress(event);
-    });
-    return unsub;
-  }, []);
 
   const friendlySyncError = (msg: string): string => {
     if (!msg) return '同步失败';

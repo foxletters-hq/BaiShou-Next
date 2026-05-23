@@ -11,7 +11,6 @@ import {
   EditorView,
   keymap,
   placeholder as cmPlaceholder,
-  drawSelection,
   highlightActiveLine,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -163,7 +162,6 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       const extensions = [
         EditorView.lineWrapping,
         highlightActiveLine(),
-        drawSelection(),
         history(),
         markdownKeymap,
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),

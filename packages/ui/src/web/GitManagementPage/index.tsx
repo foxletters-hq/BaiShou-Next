@@ -83,8 +83,11 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   const [tab, setTab] = useState<'config' | 'version'>('config');
   const [remoteUrl, setRemoteUrl] = useState(config.remote?.url || '');
   const [remoteBranch, setRemoteBranch] = useState(config.remote?.branch || 'main');
+  const [remoteUsername, setRemoteUsername] = useState(config.remote?.username || '');
+  const [remoteToken, setRemoteToken] = useState(config.remote?.token || '');
+  const [userName, setUserName] = useState(config.userName || '');
+  const [userEmail, setUserEmail] = useState(config.userEmail || '');
   const [showPassword, setShowPassword] = useState(false);
-  const [commitTemplate, setCommitTemplate] = useState(config.commitMessageTemplate);
 
   // 工作区状态
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
@@ -116,7 +119,10 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   useEffect(() => {
     setRemoteUrl(config.remote?.url || '');
     setRemoteBranch(config.remote?.branch || 'main');
-    setCommitTemplate(config.commitMessageTemplate);
+    setRemoteUsername(config.remote?.username || '');
+    setRemoteToken(config.remote?.token || '');
+    setUserName(config.userName || '');
+    setUserEmail(config.userEmail || '');
   }, [config]);
 
   const toggleSection = useCallback((section: string) => {
@@ -145,14 +151,20 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   const handleSaveConfig = useCallback(async () => {
     try {
       onSaveConfig({
-        commitMessageTemplate: commitTemplate,
-        remote: remoteUrl ? { url: remoteUrl, branch: remoteBranch } : undefined,
+        userName: userName || undefined,
+        userEmail: userEmail || undefined,
+        remote: remoteUrl ? {
+          url: remoteUrl,
+          branch: remoteBranch,
+          username: remoteUsername || undefined,
+          token: remoteToken || undefined
+        } : undefined,
       });
       onToast(t('common.save_success', '保存成功'), 'success');
     } catch (e: any) {
       onToast(e?.message || t('common.error', '保存失败'), 'error');
     }
-  }, [commitTemplate, remoteUrl, remoteBranch, onSaveConfig, onToast, t]);
+  }, [remoteUrl, remoteBranch, remoteUsername, remoteToken, userName, userEmail, onSaveConfig, onToast, t]);
 
   const handleTestRemote = useCallback(async () => {
     const ok = await onTestRemote();
@@ -418,6 +430,31 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
               </div>
             )}
 
+            {/* Git 提交签名 */}
+            <div className="gmp-section">
+              <div className="gmp-section-header" style={{ marginBottom: 12 }}>
+                <span className="gmp-label" style={{ marginBottom: 0 }}>{t('version_control.author_signature', 'Git 提交签名')}</span>
+              </div>
+              <div className="gmp-label">{t('version_control.author_name', '用户名 (user.name)')}</div>
+              <input
+                className="gmp-input"
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder={t('version_control.author_name_hint', '例如: latte')}
+              />
+              <div className="gmp-label" style={{ marginTop: 12 }}>
+                {t('version_control.author_email', '邮箱 (user.email)')}
+              </div>
+              <input
+                className="gmp-input"
+                type="text"
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder={t('version_control.author_email_hint', '例如: latte@example.com')}
+              />
+            </div>
+
             {/* 远程仓库配置 */}
             <div className="gmp-section">
               <div className="gmp-label">{t('version_control.remote_url', '远程仓库地址')}</div>
@@ -438,7 +475,48 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                 onChange={(e) => setRemoteBranch(e.target.value)}
                 placeholder={t('version_control.remote_branch_default', '默认: main')}
               />
-              <div className="gmp-btn-row" style={{ marginTop: 12 }}>
+              <div className="gmp-label" style={{ marginTop: 12 }}>
+                {t('version_control.remote_username', '远程仓库用户名')}
+              </div>
+              <input
+                className="gmp-input"
+                type="text"
+                value={remoteUsername}
+                onChange={(e) => setRemoteUsername(e.target.value)}
+                placeholder={t('version_control.remote_username_hint', '例如: github-user (仅 HTTPS 协议需要)')}
+              />
+              <div className="gmp-label" style={{ marginTop: 12 }}>
+                {t('version_control.remote_token', '密码 / Access Token')}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="gmp-input"
+                  type={showPassword ? 'text' : 'password'}
+                  value={remoteToken}
+                  onChange={(e) => setRemoteToken(e.target.value)}
+                  placeholder={t('version_control.remote_token_hint', '密码或个人访问令牌 (Token)')}
+                  style={{ paddingRight: '50px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    padding: '4px'
+                  }}
+                >
+                  {showPassword ? t('common.hide', '隐藏') : t('common.show', '显示')}
+                </button>
+              </div>
+              <div className="gmp-btn-row" style={{ marginTop: 16 }}>
                 <button className="gmp-btn" onClick={handleTestRemote}>
                   {t('version_control.test_connection', '测试连接')}
                 </button>
@@ -451,19 +529,9 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
               </div>
             </div>
 
-            {/* 提交消息模板 */}
-            <div className="gmp-section">
-              <div className="gmp-label">
-                {t('version_control.commit_message_template', '提交消息模板')}
-              </div>
-              <input
-                className="gmp-input"
-                type="text"
-                value={commitTemplate}
-                onChange={(e) => setCommitTemplate(e.target.value)}
-                placeholder={t('version_control.commit_message_hint', '支持 {date} 占位符')}
-              />
-              <button className="gmp-btn" style={{ marginTop: 12 }} onClick={handleSaveConfig}>
+            {/* 保存配置 */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="gmp-btn gmp-btn-primary" onClick={handleSaveConfig}>
                 {t('common.save', '保存配置')}
               </button>
             </div>

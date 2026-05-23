@@ -55,14 +55,20 @@ export interface GitRemoteConfig {
   url: string;
   /** 分支名 */
   branch: string;
+  /** 用户名 */
+  username?: string;
+  /** 密码或个人访问令牌 */
+  token?: string;
 }
 
 /** Git 同步配置 */
 export interface GitSyncConfig {
   /** 是否启用 Git 版本管理 */
   enabled: boolean;
-  /** commit 消息模板，支持 {date} 占位符 */
-  commitMessageTemplate: string;
+  /** 提交用户名 */
+  userName?: string;
+  /** 提交邮箱 */
+  userEmail?: string;
   /** 远程仓库配置（可选） */
   remote?: GitRemoteConfig;
 }

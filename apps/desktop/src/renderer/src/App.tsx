@@ -21,7 +21,7 @@ import { GitManagementPage } from './features/settings/GitManagementPage';
 import { useToast, useDialog, DialogProvider, ToastProvider } from '@baishou/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '@baishou/store';
+import { useSettingsStore, useSyncStore } from '@baishou/store';
 import { i18n } from '@baishou/shared';
 import { TitleBar } from './components/TitleBar';
 import { useZoom } from './hooks/useZoom';
@@ -120,6 +120,17 @@ const AppRoutes = () => {
 export function App() {
   useZoom();
   const locale = useSettingsStore(s => s.locale);
+
+  // 监听并更新全局增量同步进度
+  useEffect(() => {
+    const unsub = (window as any).api?.incrementalSync?.onSyncProgress((event: any) => {
+      useSyncStore.getState().setProgress(event);
+      if (event && useSyncStore.getState().status !== 'syncing') {
+        useSyncStore.getState().setStatus('syncing');
+      }
+    });
+    return unsub;
+  }, []);
 
   const themeColor = useSettingsStore(s => s.themeColor);
 

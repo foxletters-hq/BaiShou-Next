@@ -110,7 +110,7 @@ export const api = {
     getActive: () => ipcRenderer.invoke('vault:getActive'),
     switchActive: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
     delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
-    createDialog: () => ipcRenderer.invoke('vault:createDialog'),
+    createDialog: (name?: string) => ipcRenderer.invoke('vault:createDialog', name),
     pickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
     getCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
   },

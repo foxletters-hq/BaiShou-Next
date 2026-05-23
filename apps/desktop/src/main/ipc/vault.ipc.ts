@@ -94,8 +94,8 @@ export function registerVaultIPC() {
     return true;
   });
 
-  ipcMain.handle('vault:createDialog', async () => {
-    const newName = 'Workspace_' + Math.floor(Math.random() * 10000);
+  ipcMain.handle('vault:createDialog', async (_, customName?: string) => {
+    const newName = customName?.trim() || ('Workspace_' + Math.floor(Math.random() * 10000));
     await vaultService.switchVault(newName);
 
     // 新 Vault 切换后连接新的 Shadow DB

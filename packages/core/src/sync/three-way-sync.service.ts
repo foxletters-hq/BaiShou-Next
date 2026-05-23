@@ -99,7 +99,7 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
             await scan(fullPath, relPath);
           }
         } else if (!entry.name.startsWith('.')) {
-          files.push(relPath);
+          files.push(relPath.replace(/\\/g, '/'));
         }
       }
     };
@@ -153,6 +153,20 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
       const ancestorSnapshot = await this.getRemoteSnapshot();
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot);
+      
+      try {
+        const vaultPath = await this.getVaultPath();
+        const debugPath = path.join(vaultPath, '.baishou', 'sync-debug.json');
+        await fs.promises.writeFile(debugPath, JSON.stringify({
+          local: localManifest,
+          remote: remoteManifest,
+          ancestor: ancestorSnapshot,
+          decisions: decisions
+        }, null, 2), 'utf8');
+      } catch (err) {
+        console.error('Debug log write failed', err);
+      }
+
       const total = decisions.length;
 
       for (let i = 0; i < decisions.length; i++) {
@@ -375,13 +389,14 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
       if (manifest && manifest.files) {
         const actualFilesSet = new Set<string>();
         for (const f of remoteFiles) {
-          actualFilesSet.add(f.filename);
+          actualFilesSet.add(f.filename.replace(/\\/g, '/'));
         }
 
         const cleanFiles: Record<string, ManifestEntry> = {};
         for (const [relPath, entry] of Object.entries(manifest.files)) {
-          if (actualFilesSet.has(relPath)) {
-            cleanFiles[relPath] = entry;
+          const normalizedPath = relPath.replace(/\\/g, '/');
+          if (actualFilesSet.has(normalizedPath)) {
+            cleanFiles[normalizedPath] = entry;
           } else {
             console.warn(`[ThreeWaySync] Remote manifest contains phantom file: ${relPath}, but it is missing on remote storage. Treating as deleted.`);
           }
