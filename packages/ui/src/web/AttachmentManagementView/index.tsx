@@ -8,39 +8,57 @@ import {
   FolderMinus,
   Folder,
   Trash2,
-  CheckSquare
+  CheckSquare,
+  ChevronDown,
+  ChevronUp,
+  File,
+  FileImage,
+  FileVideo,
+  FolderSearch,
 } from 'lucide-react';
 
-export interface AttachmentItem {
-  id: string;
+export interface AttachmentFileItem {
   name: string;
+  path: string;
   sizeMB: number;
+  birthtime: string;
+}
+
+export interface SessionAttachmentGroup {
+  sessionId: string;
+  sessionTitle?: string;
   isOrphan: boolean;
+  totalSizeMB: number;
   fileCount: number;
-  date: string;
+  files: AttachmentFileItem[];
 }
 
 export interface AttachmentManagementViewProps {
-  attachments: AttachmentItem[];
+  attachments: SessionAttachmentGroup[];
   onDeleteSelected: (ids: string[]) => Promise<void>;
+  onDeleteFile?: (sessionId: string, fileName: string) => Promise<void>;
+  onOpenFileLocation?: (path: string) => Promise<void>;
 }
 
 export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> = ({
   attachments,
-  onDeleteSelected
+  onDeleteSelected,
+  onDeleteFile,
+  onOpenFileLocation
 }) => {
   const { t } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'all' | 'orphans'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
   const orphans = attachments.filter(a => a.isOrphan);
   
-  const totalSizeMB = attachments.reduce((sum, item) => sum + item.sizeMB, 0);
+  const totalSizeMB = attachments.reduce((sum, item) => sum + item.totalSizeMB, 0);
   const totalFiles = attachments.reduce((sum, item) => sum + item.fileCount, 0);
-  const orphanSizeMB = orphans.reduce((sum, item) => sum + item.sizeMB, 0);
+  const orphanSizeMB = orphans.reduce((sum, item) => sum + item.totalSizeMB, 0);
 
   const displayList = activeTab === 'all' ? attachments : orphans;
 
@@ -48,7 +66,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
     if (selectedIds.size === displayList.length) {
        setSelectedIds(new Set());
     } else {
-       setSelectedIds(new Set(displayList.map(a => a.id)));
+       setSelectedIds(new Set(displayList.map(a => a.sessionId)));
     }
   };
 
@@ -59,6 +77,13 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
     setSelectedIds(clone);
   };
 
+  const toggleExpand = (id: string) => {
+    const clone = new Set(expandedIds);
+    if (clone.has(id)) clone.delete(id);
+    else clone.add(id);
+    setExpandedIds(clone);
+  };
+
   const formatSize = (mb: number) => {
     if (mb <= 0) return "0 B";
     if (mb < 1) return (mb * 1024).toFixed(2) + " KB";
@@ -66,10 +91,21 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
     return mb.toFixed(2) + " MB";
   };
 
-  const handleDelete = async () => {
+  const getFileIcon = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase();
+    if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'heic'].includes(ext || '')) {
+      return <FileImage size={16} className={styles.fileIcon} />;
+    }
+    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext || '')) {
+      return <FileVideo size={16} className={styles.fileIcon} />;
+    }
+    return <File size={16} className={styles.fileIcon} />;
+  };
+
+  const handleDeleteGroups = async () => {
     if (selectedIds.size === 0) return;
     
-    let confirmMsg = t('settings.attachment_delete_selected_confirm', '确定要删除选中的 $count 个附件文件夹吗？此操作不可撤销。');
+    let confirmMsg = t('settings.attachment_delete_selected_confirm', '确定要删除选中的 $count 个会话的附件文件夹吗？此操作不可撤销。');
     if (confirmMsg.includes('$count')) {
       confirmMsg = confirmMsg.replace('$count', selectedIds.size.toString());
     }
@@ -79,19 +115,43 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
 
     setIsDeleting(true);
     try {
-      const freedMB = Array.from(selectedIds).reduce((sum, id) => {
-         const folder = attachments.find(a => a.id === id);
-         return sum + (folder ? folder.sizeMB : 0);
-      }, 0);
-      
       await onDeleteSelected(Array.from(selectedIds));
-      
-      let successStr = t('settings.attachment_clear_completed', '清理完成，共释放 $size 空间');
-      if (successStr.includes('$size')) {
-        successStr = successStr.replace('$size', formatSize(freedMB));
-      }
-      toast.showSuccess(successStr);
+      toast.showSuccess(t('settings.attachment_clear_completed', '清理完成'));
       setSelectedIds(new Set());
+    } catch (e: any) {
+      toast.showError(`${t('common.error', '错误')}: ${e.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteSingleGroup = async (sessionId: string) => {
+    const confirmed = await dialog.confirm(t('settings.attachment_delete_group_confirm', '确定要删除该会话的所有附件吗？此操作不可撤销。'));
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await onDeleteSelected([sessionId]);
+      toast.showSuccess(t('settings.attachment_clear_completed', '清理完成'));
+      const clone = new Set(selectedIds);
+      clone.delete(sessionId);
+      setSelectedIds(clone);
+    } catch (e: any) {
+      toast.showError(`${t('common.error', '错误')}: ${e.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteSingleFile = async (sessionId: string, name: string) => {
+    if (!onDeleteFile) return;
+    const confirmed = await dialog.confirm(t('settings.attachment_delete_file_confirm', '确定要删除该文件吗？此操作不可撤销。'));
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await onDeleteFile(sessionId, name);
+      toast.showSuccess(t('settings.attachment_file_deleted', '文件已成功删除'));
     } catch (e: any) {
       toast.showError(`${t('common.error', '错误')}: ${e.message}`);
     } finally {
@@ -107,7 +167,6 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
 
   return (
     <div className={styles.container}>
-      {/* 概览大盘 */}
       <div className={styles.overviewCardWrapper}>
         <div className={styles.overviewCard}>
           <div className={styles.statColumn}>
@@ -129,7 +188,6 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
         </div>
       </div>
 
-      {/* Toolbar */}
       <div className={styles.toolbarWrapper}>
         <div className={styles.tabsRow}>
           <button 
@@ -138,7 +196,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
               setActiveTab('all'); setSelectedIds(new Set()); 
             }}
           >
-            {t('settings.attachment_tab_all', '全部附件')} {attachments.length}
+            {t('settings.attachment_tab_all', '会话附件')} {attachments.length}
           </button>
           <button 
             className={`${styles.actionBtn} ${activeTab === 'orphans' ? styles.btnFilled : styles.btnOutlined}`}
@@ -146,7 +204,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
               setActiveTab('orphans'); setSelectedIds(new Set()); 
             }}
           >
-            {t('settings.attachment_tab_orphans', '孤立附件')} {orphans.length}
+            {t('settings.attachment_tab_orphans', '孤立残留')} {orphans.length}
           </button>
         </div>
         
@@ -154,7 +212,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
            {displayList.length > 0 && selectedIds.size > 0 && (
               <button 
                 className={`${styles.actionBtn} ${styles.btnDangerFilled}`} 
-                onClick={handleDelete}
+                onClick={handleDeleteGroups}
                 disabled={isDeleting}
               >
                 <Trash2 size={16} /> 
@@ -176,7 +234,6 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
         </div>
       </div>
 
-      {/* 列表主体 */}
       <div className={styles.listArea}>
         {displayList.length === 0 ? (
           <div className={styles.emptyState}>
@@ -187,53 +244,116 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
             )}
             <span className={styles.emptyText}>
               {activeTab === 'orphans' 
-                ? t('settings.attachment_no_orphans', '暂时没有发现孤立的附件') 
-                : t('settings.attachment_no_attachments', '当前空间没有任何附件')
+                ? t('settings.attachment_no_orphans', '没有发现已删除会话的残留附件') 
+                : t('settings.attachment_no_attachments', '当前没有任何会话关联的附件')
               }
             </span>
           </div>
         ) : (
-          displayList.map(folder => {
-            const isChecked = selectedIds.has(folder.id);
+          displayList.map(group => {
+            const isChecked = selectedIds.has(group.sessionId);
+            const isExpanded = expandedIds.has(group.sessionId);
             return (
-              <div 
-                key={folder.id} 
-                className={`${styles.folderItem} ${isChecked ? styles.itemSelected : ''}`}
-                onClick={() => toggleSelect(folder.id, !isChecked)}
-              >
-                <div className={styles.checkboxWrapper}>
-                  <input 
-                    type="checkbox" 
-                    className={styles.customCheck} 
-                    checked={isChecked}
-                    onChange={(e) => toggleSelect(folder.id, e.target.checked)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-                
-                <div className={`${styles.folderIconBox} ${folder.isOrphan ? styles.folderIconBoxOrphan : ''}`}>
-                  {folder.isOrphan ? <FolderMinus /> : <Folder />}
-                </div>
-                
-                <div className={styles.folderInfo}>
-                  <div className={styles.folderTitleRow}>
-                    <span className={styles.folderTitle} title={folder.name || folder.id}>
-                      {folder.name || folder.id}
-                    </span>
-                    {folder.isOrphan && (
-                      <span className={styles.orphanLabel}>
-                        {t('settings.attachment_orphan_label', '孤立')}
-                      </span>
-                    )}
+              <div key={group.sessionId}>
+                <div 
+                  className={`${styles.folderItem} ${isChecked ? styles.itemSelected : ''}`}
+                  onClick={() => toggleExpand(group.sessionId)}
+                >
+                  <div className={styles.checkboxWrapper} onClick={(e) => e.stopPropagation()}>
+                    <input 
+                      type="checkbox" 
+                      className={styles.customCheck} 
+                      checked={isChecked}
+                      onChange={(e) => toggleSelect(group.sessionId, e.target.checked)}
+                    />
                   </div>
-                  <span className={styles.folderFilesSubtitle}>
-                    {folder.fileCount} files
-                  </span>
+                  
+                  <div className={`${styles.folderIconBox} ${group.isOrphan ? styles.folderIconBoxOrphan : ''}`}>
+                    {group.isOrphan ? <FolderMinus size={20} /> : <Folder size={20} />}
+                  </div>
+                  
+                  <div className={styles.folderInfo}>
+                    <div className={styles.folderTitleRow}>
+                      <span className={styles.folderTitle} title={group.sessionTitle || group.sessionId}>
+                        {group.sessionTitle || t('settings.attachment_orphan_session', '已删除的会话残留')}
+                      </span>
+                      {group.isOrphan && (
+                        <span className={styles.orphanLabel}>
+                          {t('settings.attachment_orphan_label', '孤立')}
+                        </span>
+                      )}
+                    </div>
+                    <span className={styles.folderFilesSubtitle}>
+                      {group.fileCount} {t('settings.files_count', '个文件')} • {group.isOrphan ? `UUID: ${group.sessionId}` : t('settings.active_session', '活动对话')}
+                    </span>
+                  </div>
+
+                  <div className={styles.folderSizeWrapper}>
+                    <span className={styles.folderSizeValue}>{formatSize(group.totalSizeMB)}</span>
+                  </div>
+
+                  <div className={styles.cardHeaderActions} onClick={(e) => e.stopPropagation()}>
+                    <button 
+                      className={`${styles.cardHeaderActionBtn} ${styles.cardHeaderActionBtnDanger}`} 
+                      onClick={() => handleDeleteSingleGroup(group.sessionId)}
+                      title={t('settings.delete_all_files', '清理该会话所有附件')}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <button 
+                      className={styles.cardHeaderActionBtn}
+                      onClick={() => toggleExpand(group.sessionId)}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp size={18} className={styles.expandIcon} />
+                      ) : (
+                        <ChevronDown size={18} className={styles.expandIcon} />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <div className={styles.folderSizeWrapper}>
-                  <span className={styles.folderSizeValue}>{formatSize(folder.sizeMB)}</span>
-                </div>
+                {isExpanded && (
+                  <div className={styles.fileListContainer}>
+                    {group.files.map(file => (
+                      <div key={file.path} className={styles.fileItem}>
+                        <div className={styles.fileIcon}>
+                          {getFileIcon(file.name)}
+                        </div>
+                        <span className={styles.fileName} title={file.path}>
+                          {file.name}
+                        </span>
+                        
+                        <div className={styles.fileMeta}>
+                          <span className={styles.fileSize}>{formatSize(file.sizeMB)}</span>
+                          
+                          <div className={styles.fileActions}>
+                            {onOpenFileLocation && (
+                              <button 
+                                className={styles.fileActionBtn}
+                                onClick={() => onOpenFileLocation(file.path)}
+                                title={t('settings.open_file_location', '在文件夹中显示')}
+                              >
+                                <FolderSearch size={14} />
+                              </button>
+                            )}
+                            {onDeleteFile && (
+                              <button 
+                                className={`${styles.fileActionBtn} ${styles.fileActionBtnDanger}`}
+                                onClick={() => handleDeleteSingleFile(group.sessionId, file.name)}
+                                title={t('common.delete', '删除')}
+                                disabled={isDeleting}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })

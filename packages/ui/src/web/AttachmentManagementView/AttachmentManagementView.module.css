@@ -268,3 +268,135 @@
   font-weight: bold;
   color: var(--text-primary);
 }
+
+/* 新增的卡片动作样式 */
+.cardHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.cardHeaderActionBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.cardHeaderActionBtn:hover:not(:disabled) {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+}
+
+.cardHeaderActionBtnDanger:hover:not(:disabled) {
+  background: var(--color-error-container);
+  color: var(--color-error);
+}
+
+.expandIcon {
+  transition: transform 0.2s ease;
+}
+
+.expandIconRotated {
+  transform: rotate(180deg);
+}
+
+/* 子文件列表样式 */
+.fileListContainer {
+  background: var(--bg-surface-normal);
+  border-left: 3px solid var(--color-primary);
+  padding: 6px 0;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  padding: 10px 24px 10px 76px;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.2s;
+}
+
+.fileItem:last-child {
+  border-bottom: none;
+}
+
+.fileItem:hover {
+  background: rgba(var(--text-primary-rgb), 0.02);
+}
+
+.fileIcon {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.fileName {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.fileMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.fileSize {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 60px;
+  text-align: right;
+}
+
+.fileActions {
+  display: flex;
+  gap: 4px;
+}
+
+.fileActionBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.fileActionBtn:hover:not(:disabled) {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+}
+
+.fileActionBtnDanger:hover:not(:disabled) {
+  background: var(--color-error-container);
+  color: var(--color-error);
+}
+
