@@ -106,7 +106,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [expandedCommit, setExpandedCommit] = useState<string | null>(null);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
-  const [expandedWorkingFile, setExpandedWorkingFile] = useState<string | null>(null);
+  const [expandedWorkingFile, setExpandedWorkingFile] = useState<{ path: string; staged: boolean } | null>(null);
   const [workingFileDiff, setWorkingFileDiff] = useState<FileDiff | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -296,12 +296,12 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   }, [onGetFileDiff, selectedCommit, expandedFile]);
 
   const handleViewWorkingDiff = useCallback(async (filePath: string, staged: boolean) => {
-    if (expandedWorkingFile === filePath) {
+    if (expandedWorkingFile?.path === filePath && expandedWorkingFile.staged === staged) {
       setExpandedWorkingFile(null);
       setWorkingFileDiff(null);
       return;
     }
-    setExpandedWorkingFile(filePath);
+    setExpandedWorkingFile({ path: filePath, staged });
     const diff = await onGetWorkingDiff(filePath, staged);
     setWorkingFileDiff(diff);
   }, [onGetWorkingDiff, expandedWorkingFile]);
@@ -562,7 +562,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                               {t('version_control.unstage', '取消暂存')}
                             </button>
                           </div>
-                          {expandedWorkingFile === file.path && workingFileDiff && (
+                          {expandedWorkingFile?.path === file.path && expandedWorkingFile.staged && workingFileDiff && (
                             <div className="gmp-diff-viewer">
                               <pre className="gmp-diff-content">
                                 {workingFileDiff.hunks.length === 0 ? (
@@ -658,6 +658,30 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                                 {t('version_control.discard', '撤销')}
                               </button>
                             </div>
+                            {expandedWorkingFile?.path === file.path && !expandedWorkingFile.staged && workingFileDiff && (
+                              <div className="gmp-diff-viewer">
+                                <pre className="gmp-diff-content">
+                                  {workingFileDiff.hunks.length === 0 ? (
+                                    <div className="gmp-diff-normal" style={{ opacity: 0.5 }}>无差异</div>
+                                  ) : (
+                                    workingFileDiff.hunks.map((hunk, i) => (
+                                      <div key={i} className="gmp-diff-hunk">
+                                        <div className="gmp-diff-hunk-header">
+                                          @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
+                                        </div>
+                                        {hunk.content.split('\n').map((line, j) => (
+                                          <div key={j} className={
+                                            line.startsWith('+') ? 'gmp-diff-add' :
+                                            line.startsWith('-') ? 'gmp-diff-remove' :
+                                            'gmp-diff-normal'
+                                          }>{line}</div>
+                                        ))}
+                                      </div>
+                                    ))
+                                  )}
+                                </pre>
+                              </div>
+                            )}
                           </div>
                         ))}
                         {gitStatus!.untracked.map((file) => (
