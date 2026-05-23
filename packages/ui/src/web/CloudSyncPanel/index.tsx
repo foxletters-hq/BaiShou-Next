@@ -16,6 +16,7 @@ export type SyncTarget = 'local' | 's3' | 'webdav';
 export interface SyncConfig {
   target: SyncTarget;
   maxBackupCount: number;
+  maxSnapshotCount?: number;
   webdavUrl: string;
   webdavUsername: string;
   webdavPassword: string;
@@ -45,11 +46,19 @@ export interface CloudSyncPanelProps {
   onRename: (config: SyncConfig, oldName: string, newName: string) => Promise<boolean>;
   savedConfig?: SyncConfig;
   onSaveConfig?: (config: SyncConfig) => void;
+
+  // Local Snapshot additions
+  onListSnapshots?: () => Promise<SyncRecord[]>;
+  onRestoreSnapshot?: (filename: string) => Promise<{ success: boolean; message: string }>;
+  onDeleteSnapshot?: (filename: string) => Promise<boolean>;
+  onBatchDeleteSnapshots?: (filenames: string[]) => Promise<number>;
+  onRenameSnapshot?: (oldName: string, newName: string) => Promise<boolean>;
 }
 
 const DEFAULT_CONFIG: SyncConfig = {
   target: 'local',
   maxBackupCount: 20,
+  maxSnapshotCount: 5,
   webdavUrl: 'https://',
   webdavUsername: '',
   webdavPassword: '',
@@ -74,7 +83,13 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   onBatchDelete,
   onRename,
   savedConfig,
-  onSaveConfig
+  onSaveConfig,
+
+  onListSnapshots,
+  onRestoreSnapshot,
+  onDeleteSnapshot,
+  onBatchDeleteSnapshots,
+  onRenameSnapshot
 }) => {
   const { t } = useTranslation();
   const toast = useToast();
@@ -88,25 +103,25 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   const [manageMode, setManageMode] = useState(false);
   const [showCountModal, setShowCountModal] = useState(false);
   const [tempCount, setTempCount] = useState(config.maxBackupCount);
-
-  // Keep config in sync if savedConfig is loaded asynchronously or updated externally
-  useEffect(() => {
-    if (savedConfig) {
-      const next = { ...DEFAULT_CONFIG, ...savedConfig };
-      setConfig(next);
-      if (next.target !== 'local') {
-        setIsLoading(true);
-        onListRecords(next)
-          .then(r => setRecords(r))
-          .catch(e => toast.showError(t('cloud.fetch_backup_list_failed', '获取备份列表失败: ') + (e.message || e)))
-          .finally(() => { setIsLoading(false); setManageMode(false); setSelected(new Set()); });
-      } else {
-        setRecords([]);
-      }
-    }
-  }, [savedConfig]);
+  const [activeTab, setActiveTab] = useState<'cloud' | 'snapshot'>('cloud');
 
   const fetchRecords = useCallback(async () => {
+    if (activeTab === 'snapshot') {
+      if (!onListSnapshots) return;
+      setIsLoading(true);
+      try {
+        const r = await onListSnapshots();
+        setRecords(r);
+      } catch (e: any) {
+        toast.showError(t('cloud.fetch_snapshot_list_failed', '获取本地快照列表失败: ') + (e.message || e));
+      } finally {
+        setIsLoading(false);
+        setManageMode(false);
+        setSelected(new Set());
+      }
+      return;
+    }
+
     if (config.target === 'local') { setRecords([]); return; }
     setIsLoading(true);
     try {
@@ -119,7 +134,34 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       setManageMode(false);
       setSelected(new Set());
     }
-  }, [config, onListRecords, toast]);
+  }, [config, activeTab, onListRecords, onListSnapshots, toast, t]);
+
+  // Keep config in sync if savedConfig is loaded asynchronously or updated externally
+  useEffect(() => {
+    if (savedConfig) {
+      const next = { ...DEFAULT_CONFIG, ...savedConfig };
+      setConfig(next);
+      if (activeTab === 'cloud') {
+        if (next.target !== 'local') {
+          setIsLoading(true);
+          onListRecords(next)
+            .then(r => setRecords(r))
+            .catch(e => toast.showError(t('cloud.fetch_backup_list_failed', '获取备份列表失败: ') + (e.message || e)))
+            .finally(() => { setIsLoading(false); setManageMode(false); setSelected(new Set()); });
+        } else {
+          setRecords([]);
+        }
+      } else {
+        if (onListSnapshots) {
+          setIsLoading(true);
+          onListSnapshots()
+            .then(r => setRecords(r))
+            .catch(e => toast.showError(t('cloud.fetch_snapshot_list_failed', '获取本地快照列表失败: ') + (e.message || e)))
+            .finally(() => { setIsLoading(false); setManageMode(false); setSelected(new Set()); });
+        }
+      }
+    }
+  }, [savedConfig, activeTab, onListRecords, onListSnapshots, toast, t]);
 
   const handleSaveConfig = () => {
     onSaveConfig?.(config);
@@ -128,9 +170,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   };
 
   useEffect(() => {
-    if (!savedConfig) fetchRecords();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchRecords();
+  }, [activeTab, fetchRecords]);
 
   const handleSync = async () => {
     if (config.target === 'local') { toast.show(t('cloud.sync_target_local_hint', '当前同步目标为本地，请先配置云端')); return; }
@@ -146,12 +187,16 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
 
   const handleRestore = async (filename: string) => {
     const confirmed = await dialog.confirm(
-      t('sync.restore_confirm_msg', `确定要恢复备份 ${filename} 吗？\n当前本地数据将被覆盖。`)
+      activeTab === 'snapshot'
+        ? t('sync.restore_snapshot_confirm_msg', `确定要从本地快照 ${filename} 恢复吗？\n当前本地数据将被覆盖。`)
+        : t('sync.restore_confirm_msg', `确定要恢复备份 ${filename} 吗？\n当前本地数据将被覆盖。`)
     );
     if (!confirmed) return;
     setIsSyncing(true);
     try {
-      const res = await onRestore(config, filename);
+      const res = activeTab === 'snapshot'
+        ? (onRestoreSnapshot ? await onRestoreSnapshot(filename) : { success: false, message: '未实现快照还原' })
+        : await onRestore(config, filename);
       if (res.success) toast.showSuccess(res.message); else toast.showError(res.message);
       if (res.success) {
         setTimeout(() => window.location.reload(), 1500);
@@ -176,10 +221,16 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   };
 
   const handleDelete = async (filename: string) => {
-    const confirmed = await dialog.confirm(t('sync.delete_confirm', `真的要删除云端备份 "${filename}" 吗？`));
+    const confirmed = activeTab === 'snapshot'
+      ? await dialog.confirm(t('sync.delete_snapshot_confirm', `真的要删除本地快照 "${filename}" 吗？`))
+      : await dialog.confirm(t('sync.delete_confirm', `真的要删除云端备份 "${filename}" 吗？`));
     if (!confirmed) return;
     try {
-      await onDeleteRecord(config, filename);
+      if (activeTab === 'snapshot') {
+        if (onDeleteSnapshot) await onDeleteSnapshot(filename);
+      } else {
+        await onDeleteRecord(config, filename);
+      }
       await fetchRecords();
       toast.showSuccess(t('cloud.delete_success', '删除成功'));
     } catch (e: any) {
@@ -189,10 +240,16 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
 
   const handleBatchDelete = async () => {
     if (selected.size === 0) return;
-    const confirmed = await dialog.confirm(t('sync.bulk_delete_confirm', `是否彻底删除选定的 ${selected.size} 个备份档案？此操作不可逆。`));
+    const confirmed = activeTab === 'snapshot'
+      ? await dialog.confirm(t('sync.bulk_delete_snapshot_confirm', `是否彻底删除选定的 ${selected.size} 个本地快照？此操作不可逆。`))
+      : await dialog.confirm(t('sync.bulk_delete_confirm', `是否彻底删除选定的 ${selected.size} 个备份档案？此操作不可逆。`));
     if (!confirmed) return;
     try {
-      await onBatchDelete(config, Array.from(selected));
+      if (activeTab === 'snapshot') {
+        if (onBatchDeleteSnapshots) await onBatchDeleteSnapshots(Array.from(selected));
+      } else {
+        await onBatchDelete(config, Array.from(selected));
+      }
       await fetchRecords();
       toast.showSuccess(t('cloud.batch_delete_success', '批量删除成功'));
     } catch (e: any) {
@@ -204,7 +261,11 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     const newName = await dialog.prompt(t('cloud.rename', '重命名'), oldName);
     if (!newName || newName === oldName) return;
     try {
-      await onRename(config, oldName, newName);
+      if (activeTab === 'snapshot') {
+        if (onRenameSnapshot) await onRenameSnapshot(oldName, newName);
+      } else {
+        await onRename(config, oldName, newName);
+      }
       await fetchRecords();
       toast.showSuccess(t('cloud.rename_success', '重命名成功'));
     } catch (e: any) {
@@ -250,12 +311,12 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         <div className={styles.configPageWrapper}>
           <div className={styles.configAppBar}>
             <button className={styles.configBackButton} onClick={() => setShowConfig(false)}><ArrowLeft size={24} /></button>
-            <div className={styles.configAppTitle}>{t('data_sync.config_title', '数据同步配置')}</div>
+            <div className={styles.configAppTitle}>{t('data_sync.config_title', '数据备份配置')}</div>
             <div style={{ width: 40 }} /> {/* spacer for centering */}
           </div>
           
           <div className={styles.configContent}>
-            <div className={styles.targetSectionTitle}>{t('data_sync.select_target_title', '选择同步目标')}</div>
+            <div className={styles.targetSectionTitle}>{t('data_sync.select_target_title', '选择备份目标')}</div>
             <div className={styles.targetCardsLayout}>
               <div 
                 className={`${styles.targetCardBig} ${config.target === 'local' ? styles.targetCardSelected : ''}`}
@@ -400,7 +461,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
             {getTargetIcon(config.target)}
           </div>
           <div className={styles.statInfo}>
-             <div className={styles.statLabel}>{t('data_sync.sync_target', '同步目标 (Target)')}</div>
+             <div className={styles.statLabel}>{t('data_sync.sync_target', '备份目标 (Target)')}</div>
              <div className={styles.statValue}>{config.target.toUpperCase()}</div>
           </div>
         </div>
@@ -410,7 +471,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
             <Database size={24} strokeWidth={1.5} />
           </div>
           <div className={styles.statInfo}>
-             <div className={styles.statLabel}>{t('data_sync.total_backup_size', '总备份大小')}</div>
+             <div className={styles.statLabel}>{activeTab === 'snapshot' ? t('data_sync.total_snapshot_size', '总快照大小') : t('data_sync.total_backup_size', '总备份大小')}</div>
              <div className={styles.statValue}>{sizeString}</div>
           </div>
         </div>
@@ -420,27 +481,59 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
             <History size={24} strokeWidth={1.5} />
           </div>
           <div className={styles.statInfo}>
-             <div className={styles.statLabel}>{t('data_sync.backup_count', '备份数量')}</div>
+             <div className={styles.statLabel}>{activeTab === 'snapshot' ? t('data_sync.snapshot_count', '快照数量') : t('data_sync.backup_count', '备份数量')}</div>
              <div className={styles.statValue}>{records.length} <span style={{fontSize: 14, fontWeight:'normal'}}>{t('common.copies_unit', '份')}</span></div>
           </div>
         </div>
       </div>
 
+      {/* 标签页切换按钮 */}
+      <div className={styles.tabsContainer}>
+        <button 
+          className={`${styles.tabButton} ${activeTab === 'cloud' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('cloud')}
+        >
+          {t('data_sync.cloud_backups_tab', '云端备份')}
+        </button>
+        <button 
+          className={`${styles.tabButton} ${activeTab === 'snapshot' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('snapshot')}
+        >
+          {t('data_sync.local_snapshots_tab', '本地快照')}
+        </button>
+      </div>
+
       <div className={styles.headerRow}>
         <div className={styles.titleArea}>
           <div className={styles.titleBlock}>
-            <span className={styles.titleLabel}>{t('data_sync.sync_records', '同步记录')}</span>
-            <span className={styles.targetBadge}>{config.target.toUpperCase()}</span>
+            <span className={styles.titleLabel}>{activeTab === 'snapshot' ? t('data_sync.local_snapshots', '本地快照') : t('data_sync.sync_records', '云端备份')}</span>
+            {activeTab === 'cloud' && <span className={styles.targetBadge}>{config.target.toUpperCase()}</span>}
             <button className={styles.refreshBtn} onClick={fetchRecords} disabled={isLoading} title={t('common.refresh', '刷新')}>
                <RefreshCw size={18} />
             </button>
           </div>
-          <span className={styles.subtitle}>{t('data_sync.records_scope_hint', '所选节点范围内的全部记录档案。')}</span>
+          <span className={styles.subtitle}>
+            {activeTab === 'snapshot' 
+              ? t('data_sync.snapshots_scope_hint', '系统在还原备份等重大变动前自动生成本地快照，方便数据回滚。')
+              : t('data_sync.records_scope_hint', '所选节点范围内的全部记录档案。')}
+          </span>
         </div>
 
         <div className={styles.actionsGroup}>
           {manageMode ? (
             <>
+              <button 
+                className={`${styles.actionBtn} ${styles.btnOutlined}`} 
+                onClick={() => {
+                  if (selected.size === records.length) {
+                    setSelected(new Set());
+                  } else {
+                    setSelected(new Set(records.map(r => r.filename)));
+                  }
+                }}
+              >
+                {selected.size === records.length ? t('settings.attachment_deselect_all', '取消全选') : t('settings.attachment_select_all', '全选')}
+              </button>
               <button className={`${styles.actionBtn} ${styles.textBtn}`} onClick={() => { setManageMode(false); setSelected(new Set()); }}>
                 {t('common.cancel', '取消')}
               </button>
@@ -454,35 +547,59 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
              </button>
           )}
 
-          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
-            setConfig({ ...DEFAULT_CONFIG, ...(savedConfig || {}) });
-            setShowConfig(true);
-          }}>
-            <Settings size={16} /> {t('data_sync.sync_settings_button', '同步设置')}
-          </button>
-          
-          <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
-            setTempCount(config.maxBackupCount === -1 ? 20 : config.maxBackupCount);
-            setShowCountModal(true);
-          }}>
-            <Archive size={16} /> {config.maxBackupCount === -1 ? t('data_sync.no_limit', '不限制数量') : t('data_sync.max_backup_count_value', '保留: $count').replace('$count', config.maxBackupCount.toString())}
-          </button>
+          {activeTab === 'snapshot' && (
+            <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
+              setTempCount(config.maxSnapshotCount === -1 ? 5 : config.maxSnapshotCount);
+              setShowCountModal(true);
+            }}>
+              <Archive size={16} /> {config.maxSnapshotCount === -1 ? t('data_sync.no_limit', '不限制数量') : t('data_sync.max_backup_count_value', '保留: $count').replace('$count', config.maxSnapshotCount.toString())}
+            </button>
+          )}
 
-          <button className={`${styles.actionBtn} ${styles.btnFilled}`} onClick={handleSync} disabled={isSyncing || config.target === 'local'}>
-             {isSyncing ? <><Loader2 size={16} style={{animation: 'spin 1.5s linear infinite'}} /> {t('data_sync.syncing_status', '同步中...')}</> : <><CloudUpload size={16} /> {t('data_sync.sync_now_button', '立即同步')}</>}
-          </button>
+          {activeTab === 'cloud' && (
+            <>
+              <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
+                setConfig({ ...DEFAULT_CONFIG, ...(savedConfig || {}) });
+                setShowConfig(true);
+              }}>
+                <Settings size={16} /> {t('data_sync.sync_settings_button', '备份设置')}
+              </button>
+              
+              <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => {
+                setTempCount(config.maxBackupCount === -1 ? 20 : config.maxBackupCount);
+                setShowCountModal(true);
+              }}>
+                <Archive size={16} /> {config.maxBackupCount === -1 ? t('data_sync.no_limit', '不限制数量') : t('data_sync.max_backup_count_value', '保留: $count').replace('$count', config.maxBackupCount.toString())}
+              </button>
+
+              <button className={`${styles.actionBtn} ${styles.btnFilled}`} onClick={handleSync} disabled={isSyncing || config.target === 'local'}>
+                 {isSyncing ? <><Loader2 size={16} style={{animation: 'spin 1.5s linear infinite'}} /> {t('data_sync.syncing_status', '备份中...')}</> : <><CloudUpload size={16} /> {t('data_sync.sync_now_button', '立即备份')}</>}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {isLoading ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', gap: '16px' }}>
           <Loader2 size={32} style={{ animation: 'spin 1.5s linear infinite', color: 'var(--color-primary, #0ea5e9)' }} />
-          <div style={{ color: 'var(--color-on-surface-variant)', fontSize: 14 }}>{t('data_sync.loading_records', '正在连线获取云端记录...')}</div>
+          <div style={{ color: 'var(--color-on-surface-variant)', fontSize: 14 }}>
+            {activeTab === 'snapshot' ? t('data_sync.loading_snapshots', '正在载入本地快照...') : t('data_sync.loading_records', '正在连线获取云端记录...')}
+          </div>
         </div>
       ) : records.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', gap: '8px', color: 'var(--color-on-surface-variant)' }}>
           <Package size={48} strokeWidth={1} style={{ opacity: 0.5, marginBottom: 8 }} />
-          <div>{t('data_sync.no_records_hint', '暂无云端同步记录')}</div>
+          {activeTab === 'cloud' && config.target === 'local' ? (
+            <div style={{ textAlign: 'center', maxWidth: '380px', lineHeight: '1.5' }}>
+              <div>{t('data_sync.local_target_no_cloud_records', '当前备份目标为本地存储。')}</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>
+                {t('data_sync.local_target_no_cloud_records_desc', '您可切换至「本地快照」标签页管理系统快照，或在「备份设置」中绑定 S3/WebDAV 云端存储。')}
+              </div>
+            </div>
+          ) : (
+            <div>{activeTab === 'snapshot' ? t('data_sync.no_snapshots_hint', '暂无本地快照') : t('data_sync.no_records_hint', '暂无云端备份')}</div>
+          )}
         </div>
       ) : (
         <div className={styles.recordList}>
@@ -502,7 +619,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
               <div className={styles.recordInfo}>
                 <div className={styles.recordName}>
                   {r.filename}
-                  {!r.managed && (
+                  {!r.managed && activeTab === 'cloud' && (
                     <span className={styles.unmanagedBadge} title={t('cloud.unmanaged_hint', '此文件不受自动清理管理')}>
                       {t('cloud.unmanaged_label', '手动')}
                     </span>
@@ -514,10 +631,20 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
               </div>
               {!manageMode && (
                 <div className={styles.recordActions}>
-                  {onDownloadBackup && <button className={`${styles.iconBtn}`} onClick={() => handleDownload(r.filename)} title={t('cloud.download_to_local', '下载到本地')}><DownloadCloud size={16} /></button>}
-                  <button className={`${styles.iconBtn} ${styles.iconBtnRestore}`} onClick={() => handleRestore(r.filename)} title={t('cloud.restore_to_local', '覆盖并恢复到本机')}><Package size={16} /></button>
-                  <button className={styles.iconBtn} onClick={() => handleRename(r.filename)} title={t('cloud.rename', '重命名')}><Edit3 size={16} /></button>
-                  <button className={`${styles.iconBtn} ${styles.iconBtnDelete}`} onClick={() => handleDelete(r.filename)} title={t('cloud.delete', '删除')}><Trash2 size={16} /></button>
+                  {activeTab === 'cloud' && onDownloadBackup && (
+                    <button className={`${styles.iconBtn}`} onClick={() => handleDownload(r.filename)} title={t('cloud.download_to_local', '下载到本地')}>
+                      <DownloadCloud size={16} />
+                    </button>
+                  )}
+                  <button className={`${styles.iconBtn} ${styles.iconBtnRestore}`} onClick={() => handleRestore(r.filename)} title={activeTab === 'snapshot' ? t('cloud.restore_snapshot', '覆盖并恢复到本机') : t('cloud.restore_to_local', '覆盖并恢复到本机')}>
+                    <Package size={16} />
+                  </button>
+                  <button className={styles.iconBtn} onClick={() => handleRename(r.filename)} title={t('cloud.rename', '重命名')}>
+                    <Edit3 size={16} />
+                  </button>
+                  <button className={`${styles.iconBtn} ${styles.iconBtnDelete}`} onClick={() => handleDelete(r.filename)} title={t('cloud.delete', '删除')}>
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               )}
             </div>
@@ -529,48 +656,96 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         <div className={styles.modalOverlay} onClick={() => setShowCountModal(false)}>
           <div className={styles.countModal} onClick={e => e.stopPropagation()}>
             <div className={styles.countModalHeader}>
-              <Archive size={20} color="var(--color-primary, #0ea5e9)" />
-              <div style={{fontWeight: 'bold'}}>{t('data_sync.max_backup_title', '设置最大备份数')}</div>
+              <div className={styles.countModalTitleRow} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className={styles.countModalTitleBlock} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Archive size={20} color="var(--color-primary, #0ea5e9)" />
+                  <span className={styles.countModalTitle} style={{ fontWeight: 'bold', fontSize: 16 }}>
+                    {activeTab === 'snapshot' ? t('data_sync.max_snapshot_title', '快照上限设置') : t('data_sync.max_backup_title', '备份上限设置')}
+                  </span>
+                </div>
+                <input 
+                  type="text"
+                  className={styles.smNumberInput}
+                  style={{ width: 72, padding: '4px 8px', border: '1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5)', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center', background: 'var(--bg-surface-lowest, #f8fafc)', outline: 'none' }}
+                  value={tempCount === -1 ? t('data_sync.no_limit', '不限制') : tempCount}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    if (val === '' || val === '不限制' || val === '不限制数量' || val === '∞' || val === '-1') {
+                      setTempCount(-1);
+                    } else {
+                      const num = parseInt(val);
+                      if (!isNaN(num)) {
+                        setTempCount(Math.min(100, Math.max(1, num)));
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    if (tempCount !== -1) {
+                      setTempCount(Math.min(100, Math.max(1, tempCount)));
+                    }
+                  }}
+                />
+              </div>
             </div>
-            <div className={styles.countModalBody}>
-              <div style={{fontSize: 13, color: 'var(--color-on-surface-variant)', marginBottom: 16}}>{t('data_sync.max_backup_desc', '超出的旧备份将在同步后自动清理。')}</div>
-              <div className={styles.sliderRow}>
+
+            <div className={styles.countModalBody} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className={styles.countModalDesc} style={{ fontSize: 13, color: 'var(--color-on-surface-variant)', lineHeight: 1.5 }}>
+                {activeTab === 'snapshot' 
+                  ? t('data_sync.max_snapshot_desc', '超过上限后，自动生成新快照时将清理最早的历史快照。')
+                  : t('data_sync.max_backup_desc', '超过上限后，同步备份时将自动删除最早的备份文件。')}
+              </div>
+
+              <div className={styles.smSliderContainer}>
                 <input 
                   type="range" 
                   min="1" 
                   max="50" 
                   value={tempCount === -1 ? 50 : tempCount}
-                  disabled={tempCount === -1}
                   onChange={(e) => setTempCount(parseInt(e.target.value))} 
-                  className={styles.rangeSlider}
+                  className={styles.smSlider}
+                  style={{
+                    backgroundSize: `${tempCount === -1 ? 100 : ((tempCount - 1) * 100) / 49}% 100%`
+                  }}
                 />
-                <span className={styles.countValueText}>{tempCount === -1 ? '∞' : tempCount}</span>
+              </div>
+
+              <div className={styles.chipsContainer} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                {[1, 2, 3, 5, 10, 15, -1].map((val) => (
+                  <button
+                    key={val}
+                    className={`${styles.chipItem} ${tempCount === val ? styles.chipItemActive : ''}`}
+                    onClick={() => setTempCount(val)}
+                    style={{
+                      background: tempCount === val ? 'var(--color-primary, #0ea5e9)' : 'var(--bg-surface-normal, #f1f5f9)',
+                      color: tempCount === val ? 'var(--text-on-primary, #fff)' : 'var(--text-secondary, #64748b)',
+                      border: tempCount === val ? '1px solid var(--color-primary, #0ea5e9)' : '1px solid var(--border-subtle, #e2e8f0)',
+                      padding: '6px 12px',
+                      borderRadius: 12,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {val === -1 ? t('data_sync.no_limit', '不限制数量') : t('data_sync.count_unit_value', '$count 个').replace('$count', val.toString())}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className={styles.countModalFooter}>
+
+            <div className={styles.countModalFooter} style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowCountModal(false)}>{t('common.cancel', '取消')}</button>
               <button 
-                className={styles.noLimitBtn} 
+                className={`${styles.actionBtn} ${styles.btnFilled}`} 
                 onClick={() => {
-                  updateField('maxBackupCount', -1);
-                  onSaveConfig?.({ ...config, maxBackupCount: -1 });
+                  const targetField = activeTab === 'snapshot' ? 'maxSnapshotCount' : 'maxBackupCount';
+                  updateField(targetField, tempCount);
+                  onSaveConfig?.({ ...config, [targetField]: tempCount });
                   setShowCountModal(false);
                 }}
               >
-                {t('data_sync.no_limit', '不限制数量')}
+                {t('common.confirm', '确定')}
               </button>
-              <div style={{display: 'flex', gap: 8}}>
-                <button className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={() => setShowCountModal(false)}>{t('common.cancel', '取消')}</button>
-                <button 
-                  className={`${styles.actionBtn} ${styles.btnFilled}`} 
-                  onClick={() => {
-                    updateField('maxBackupCount', tempCount);
-                    onSaveConfig?.({ ...config, maxBackupCount: tempCount });
-                    setShowCountModal(false);
-                  }}
-                >
-                  {t('common.confirm', '确定')}
-                </button>
-              </div>
             </div>
           </div>
         </div>

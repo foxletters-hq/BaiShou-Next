@@ -79,13 +79,13 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 4px;
   margin-bottom: 16px;
   position: sticky;
   top: 0;
   z-index: 10;
   background: var(--bg-app);
-  padding: 16px 0;
+  padding: 8px 0 16px 0;
   border-bottom: 1px solid var(--color-outline-variant);
 }
 
@@ -769,5 +769,98 @@
   border-top: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
   margin-top: 24px;
   padding-top: 24px;
+}
+
+/* Tabs Container */
+.tabsContainer {
+  display: flex;
+  gap: 8px;
+  background: var(--bg-surface-normal);
+  padding: 4px;
+  border-radius: 8px;
+  width: fit-content;
+  margin-top: 16px;
+  margin-bottom: 4px;
+  border: 1px solid var(--border-subtle);
+}
+
+.tabButton {
+  background: transparent;
+  border: none;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tabButton:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.tabButtonActive, .tabButtonActive:hover {
+  background: var(--bg-surface) !important;
+  color: var(--color-primary) !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.smSliderContainer {
+  width: 100%;
+  padding: 8px 0;
+}
+
+.smSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(14, 165, 233, 0.12);
+  border-radius: 3px;
+  outline: none;
+  background-image: linear-gradient(var(--color-primary, #0ea5e9), var(--color-primary, #0ea5e9));
+  background-repeat: no-repeat;
+}
+
+.smSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-primary, #0ea5e9);
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+}
+
+.smSlider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 10px rgba(14, 165, 233, 0.16);
+}
+
+.smSlider::-webkit-slider-thumb:active {
+  box-shadow: 0 0 0 14px rgba(14, 165, 233, 0.24);
+}
+
+.smSlider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-primary, #0ea5e9);
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+}
+
+.smSlider::-moz-range-thumb:hover {
+  box-shadow: 0 0 0 10px rgba(14, 165, 233, 0.16);
+}
+
+.smSlider::-moz-range-thumb:active {
+  box-shadow: 0 0 0 14px rgba(14, 165, 233, 0.24);
 }
 
