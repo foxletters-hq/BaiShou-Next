@@ -206,6 +206,9 @@ export class GitSyncServiceImpl implements IGitSyncService {
     const unstaged: GitStatusFile[] = [];
 
     for (const file of status.files) {
+      if (file.index === '?' || file.working_dir === '?') {
+        continue;
+      }
       const stagedStatus = this.mapWorkingStatus(file.index);
       const unstagedStatus = this.mapWorkingStatus(file.working_dir);
 
@@ -247,8 +250,6 @@ export class GitSyncServiceImpl implements IGitSyncService {
         return 'deleted';
       case 'R':
         return 'renamed';
-      case '?':
-        return 'added';
       default:
         return '';
     }
@@ -274,7 +275,7 @@ export class GitSyncServiceImpl implements IGitSyncService {
     return this._withGitLock(async () => {
       const git = await this.ensureGit();
       logger.info(`[GitSync] 取消暂存: ${filePath}`);
-      await git.raw(['reset', 'HEAD', '--', filePath]);
+      await git.reset(['--', filePath]);
     });
   }
 
@@ -282,7 +283,7 @@ export class GitSyncServiceImpl implements IGitSyncService {
     return this._withGitLock(async () => {
       const git = await this.ensureGit();
       logger.info('[GitSync] 取消暂存全部文件');
-      await git.raw(['reset', 'HEAD', '--', '.']);
+      await git.reset();
     });
   }
 
@@ -451,7 +452,7 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async getHistory(filePath?: string, limit = 50): Promise<VersionHistoryEntry[]> {
     const git = await this.ensureGit();
 
-    const options = ['--oneline', '--max-count', String(limit)];
+    const options = ['--max-count', String(limit)];
     if (filePath) {
       options.push('--', filePath);
     }
