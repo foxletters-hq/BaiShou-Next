@@ -202,6 +202,13 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       const view = new EditorView({ state, parent: container });
       viewRef.current = view;
 
+      // 将光标定位在最末尾，并自动聚焦
+      const docLength = state.doc.length;
+      view.dispatch({
+        selection: { anchor: docLength, head: docLength }
+      });
+      view.focus();
+
       return () => {
         view.destroy();
         viewRef.current = null;

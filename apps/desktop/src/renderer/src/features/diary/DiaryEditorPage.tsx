@@ -34,13 +34,20 @@ export const DiaryEditorPage: React.FC = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [diaryId, setDiaryId] = useState<number | null>(null);
   const [mediaPaths, setMediaPaths] = useState<string[]>([]);
-
   const tagsRef = useRef<string[]>(tags);
   useEffect(() => {
     tagsRef.current = tags;
   }, [tags]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const initialStateRef = useRef<{
+    content: string;
+    tags: string[];
+    selectedDate: Date;
+    weather: string;
+    isFavorite: boolean;
+    mediaPaths: string[];
+  } | null>(null);
 
   // ── 加载日记（原版 _loadDiary 逻辑）──────────────────────────────────
   // 根据日期查找已有日记，支持追加模式（appendOnLoad）
@@ -48,6 +55,14 @@ export const DiaryEditorPage: React.FC = () => {
     if (!dateStr || dateStr === 'new') {
       const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
       setContent(timeMark);
+      initialStateRef.current = {
+        content: timeMark,
+        tags: [],
+        selectedDate: parseInitialDate(),
+        weather: '',
+        isFavorite: false,
+        mediaPaths: []
+      };
       setIsLoading(false);
       return;
     }
@@ -55,6 +70,12 @@ export const DiaryEditorPage: React.FC = () => {
     if (typeof window !== 'undefined' && (window as any).api?.diary) {
       (window as any).api.diary.findByDate(dateStr)
         .then((diary: any) => {
+          let initialContent = '';
+          let initialTags: string[] = [];
+          let initialWeather = '';
+          let initialFavorite = false;
+          let initialMedia: string[] = [];
+
           if (diary) {
             setDiaryId(diary.id || null);
             setTags(diary.tags || []);
@@ -62,22 +83,44 @@ export const DiaryEditorPage: React.FC = () => {
             setIsFavorite(diary.isFavorite || false);
             setMediaPaths(diary.mediaPaths || []);
 
+            initialTags = diary.tags || [];
+            initialWeather = diary.weather || '';
+            initialFavorite = diary.isFavorite || false;
+            initialMedia = diary.mediaPaths || [];
+
             if (isAppendMode) {
               const existing = (diary.content || '').trimEnd();
               const timeMark = `\n\n##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
-              setContent(existing ? existing + timeMark : timeMark.trimStart());
+              initialContent = existing ? existing + timeMark : timeMark.trimStart();
             } else {
-              setContent(diary.content || '');
+              initialContent = diary.content || '';
             }
           } else {
-            const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
-            setContent(timeMark);
+            initialContent = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
           }
+
+          setContent(initialContent);
+          initialStateRef.current = {
+            content: initialContent,
+            tags: initialTags,
+            selectedDate: parseInitialDate(),
+            weather: initialWeather,
+            isFavorite: initialFavorite,
+            mediaPaths: initialMedia
+          };
         })
         .catch((e: any) => {
           console.error('Failed to load diary:', e);
           const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`;
           setContent(timeMark);
+          initialStateRef.current = {
+            content: timeMark,
+            tags: [],
+            selectedDate: parseInitialDate(),
+            weather: '',
+            isFavorite: false,
+            mediaPaths: []
+          };
         })
         .finally(() => {
           setIsLoading(false);
@@ -133,6 +176,14 @@ export const DiaryEditorPage: React.FC = () => {
         }
       }
       setIsDirty(false);
+      initialStateRef.current = {
+        content: newContent,
+        tags: tagsRef.current,
+        selectedDate,
+        weather,
+        isFavorite,
+        mediaPaths
+      };
     } catch (e: any) {
       console.error('Save failed:', e);
       throw e;
@@ -144,11 +195,31 @@ export const DiaryEditorPage: React.FC = () => {
     setIsDirty(true);
   };
 
+  const checkIsReallyDirty = (): boolean => {
+    if (!initialStateRef.current) return false;
+    const init = initialStateRef.current;
+    
+    if (content !== init.content) return true;
+    if (weather !== init.weather) return true;
+    if (isFavorite !== init.isFavorite) return true;
+    if (formatLocalDate(selectedDate) !== formatLocalDate(init.selectedDate)) return true;
+    
+    const currentTagsSorted = [...tags].sort().join(',');
+    const initTagsSorted = [...init.tags].sort().join(',');
+    if (currentTagsSorted !== initTagsSorted) return true;
+    
+    const currentMediaSorted = [...mediaPaths].sort().join(',');
+    const initMediaSorted = [...init.mediaPaths].sort().join(',');
+    if (currentMediaSorted !== initMediaSorted) return true;
+    
+    return false;
+  };
+
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleBack = () => {
-    if (isDirty) {
+    if (checkIsReallyDirty()) {
       setShowExitConfirm(true);
     } else {
       goBackToSidebar();
