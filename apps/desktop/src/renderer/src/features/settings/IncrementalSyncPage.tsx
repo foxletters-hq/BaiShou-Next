@@ -15,12 +15,17 @@ export const IncrementalSyncPage: React.FC = () => {
   // 隔离的特定凭据与前缀状态，防止 S3 与 WebDAV 相互污染
   const [s3AccessKey, setS3AccessKey] = useState('');
   const [s3SecretKey, setS3SecretKey] = useState('');
-  const [s3Path, setS3Path] = useState('/baishou_backup/sync');
+  const [s3Path, setS3Path] = useState('backup_sync');
   const [webdavUsername, setWebdavUsername] = useState('');
   const [webdavPassword, setWebdavPassword] = useState('');
-  const [webdavPath, setWebdavPath] = useState('/baishou_backup/sync');
+  const [webdavPath, setWebdavPath] = useState('backup_sync');
 
-  const [showSecret, setShowSecret] = useState(false);
+  // 并行度配置
+  const [chunkConcurrency, setChunkConcurrency] = useState(5);
+  const [fileConcurrency, setFileConcurrency] = useState(5);
+
+  const [showAccessKey, setShowAccessKey] = useState(false);
+  const [showSecretKey, setShowSecretKey] = useState(false);
   const {
     status,
     message,
@@ -43,10 +48,28 @@ export const IncrementalSyncPage: React.FC = () => {
       return '同步操作正在进行中，请勿重复操作';
     }
     if (cleanMsg.includes('not initialized') || cleanMsg.includes('Please update config first')) {
-      return '同步服务尚未初始化，请先配置并保存您的 S3/WebDAV 连接信息';
+      return '同步服务尚未初始化，请先配置并保存您的连接信息';
     }
     if (cleanMsg.includes('S3NotConfiguredError')) {
       return '同步服务尚未启用或配置不完整';
+    }
+    if (cleanMsg.includes('InvalidAccessKeyId')) {
+      return 'Access Key 无效或已过期，请在设置中更新您的密钥';
+    }
+    if (cleanMsg.includes('SignatureDoesNotMatch') || (cleanMsg.includes('signature') && cleanMsg.includes('does not match'))) {
+      return 'Secret Key 无效，请在设置中更新您的密钥';
+    }
+    if (cleanMsg.includes('AccessDenied')) {
+      return '访问被拒绝，请检查 Bucket 权限或密钥配置';
+    }
+    if (cleanMsg.includes('NoSuchBucket')) {
+      return 'Bucket 不存在，请检查 Bucket 名称配置';
+    }
+    if (cleanMsg.includes('ENOTFOUND') || cleanMsg.includes('getaddrinfo')) {
+      return '无法解析域名，请检查 Endpoint 地址和网络连接';
+    }
+    if (cleanMsg.includes('ECONNREFUSED')) {
+      return '连接被拒绝，请检查 Endpoint 地址和服务是否在线';
     }
     return `同步失败: ${cleanMsg}`;
   };
@@ -92,18 +115,22 @@ export const IncrementalSyncPage: React.FC = () => {
         // 恢复 S3 的专属变量（兼容老版本未独立字段时降级使用主字段）
         const loadedS3AccessKey = cfg.s3AccessKey !== undefined ? cfg.s3AccessKey : (curTarget === 's3' ? cfg.accessKey : '');
         const loadedS3SecretKey = cfg.s3SecretKey !== undefined ? cfg.s3SecretKey : (curTarget === 's3' ? cfg.secretKey : '');
-        const loadedS3Path = cfg.s3Path !== undefined ? cfg.s3Path : (curTarget === 's3' ? cfg.path : '/baishou_backup/sync');
+        const loadedS3Path = cfg.s3Path !== undefined ? cfg.s3Path : (curTarget === 's3' ? cfg.path : 'backup_sync');
         setS3AccessKey(loadedS3AccessKey || '');
         setS3SecretKey(loadedS3SecretKey || '');
-        setS3Path(loadedS3Path || '/baishou_backup/sync');
+        setS3Path(loadedS3Path || 'backup_sync');
 
         // 恢复 WebDAV 的专属变量
         const loadedWebdavUsername = cfg.webdavUsername !== undefined ? cfg.webdavUsername : (curTarget === 'webdav' ? cfg.accessKey : '');
         const loadedWebdavPassword = cfg.webdavPassword !== undefined ? cfg.webdavPassword : (curTarget === 'webdav' ? cfg.secretKey : '');
-        const loadedWebdavPath = cfg.webdavPath !== undefined ? cfg.webdavPath : (curTarget === 'webdav' ? cfg.path : '/baishou_backup/sync');
+        const loadedWebdavPath = cfg.webdavPath !== undefined ? cfg.webdavPath : (curTarget === 'webdav' ? cfg.path : 'backup_sync');
         setWebdavUsername(loadedWebdavUsername || '');
         setWebdavPassword(loadedWebdavPassword || '');
-        setWebdavPath(loadedWebdavPath || '/baishou_backup/sync');
+        setWebdavPath(loadedWebdavPath || 'backup_sync');
+
+        // 恢复并发度设置
+        setChunkConcurrency(cfg.chunkConcurrency !== undefined ? cfg.chunkConcurrency : 5);
+        setFileConcurrency(cfg.fileConcurrency !== undefined ? cfg.fileConcurrency : 5);
       }
     } catch {}
   };
@@ -128,6 +155,9 @@ export const IncrementalSyncPage: React.FC = () => {
         webdavUsername,
         webdavPassword,
         webdavPath,
+        // 并行度
+        chunkConcurrency,
+        fileConcurrency,
       });
       setMessage('配置已保存');
       setStatus('success');
@@ -151,6 +181,8 @@ export const IncrementalSyncPage: React.FC = () => {
         path: target === 'webdav' ? webdavPath : s3Path,
         accessKey: target === 'webdav' ? webdavUsername : s3AccessKey,
         secretKey: target === 'webdav' ? webdavPassword : s3SecretKey,
+        chunkConcurrency,
+        fileConcurrency,
       });
       setMessage(ok ? '连接成功' : '连接失败，请检查配置');
       setStatus(ok ? 'success' : 'error');
@@ -187,7 +219,7 @@ export const IncrementalSyncPage: React.FC = () => {
         S3 / WebDAV 逐文件增量同步
       </h2>
       <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: 'var(--text-tertiary)' }}>
-        逐文件增量同步，支持删除传播。适合日常跨设备同步。全量备份请使用数据同步页面。
+        逐文件增量同步，支持删除传播。适合日常跨设备同步。全量备份请使用数据备份页面。
       </p>
 
       {/* 配置表单 */}
@@ -252,24 +284,50 @@ export const IncrementalSyncPage: React.FC = () => {
           </div>
           <div>
             <label style={labelStyle}>{target === 'webdav' ? '用户名' : 'Access Key'}</label>
-            <input type="text"
-              value={target === 'webdav' ? webdavUsername : s3AccessKey}
-              onChange={e => target === 'webdav' ? setWebdavUsername(e.target.value) : setS3AccessKey(e.target.value)}
-              style={inputStyle} />
+            <div style={{ position: 'relative' }}>
+              <input type={showAccessKey ? 'text' : 'password'}
+                value={target === 'webdav' ? webdavUsername : s3AccessKey}
+                onChange={e => target === 'webdav' ? setWebdavUsername(e.target.value) : setS3AccessKey(e.target.value)}
+                style={{ ...inputStyle, paddingRight: 36 }} />
+              <button onClick={() => setShowAccessKey(!showAccessKey)}
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  border: 'none', background: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 2 }}>
+                {showAccessKey ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
           </div>
           <div>
             <label style={labelStyle}>{target === 'webdav' ? '密码' : 'Secret Key'}</label>
             <div style={{ position: 'relative' }}>
-              <input type={showSecret ? 'text' : 'password'}
+              <input type={showSecretKey ? 'text' : 'password'}
                 value={target === 'webdav' ? webdavPassword : s3SecretKey}
                 onChange={e => target === 'webdav' ? setWebdavPassword(e.target.value) : setS3SecretKey(e.target.value)}
                 style={{ ...inputStyle, paddingRight: 36 }} />
-              <button onClick={() => setShowSecret(!showSecret)}
+              <button onClick={() => setShowSecretKey(!showSecretKey)}
                 style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
                   border: 'none', background: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 2 }}>
-                {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                {showSecretKey ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
+          </div>
+          <div>
+            <label style={labelStyle}>文件并行度</label>
+            <select value={fileConcurrency} onChange={e => setFileConcurrency(parseInt(e.target.value))}
+              style={selectStyle}>
+              {[1, 2, 3, 5, 10, 15, 20].map(v => (
+                <option key={v} value={v}>{v} 个文件并发</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>分块并行度（对象存储大文件）</label>
+            <select value={chunkConcurrency} onChange={e => setChunkConcurrency(parseInt(e.target.value))}
+              disabled={target !== 's3'}
+              style={{ ...selectStyle, opacity: target !== 's3' ? 0.5 : 1 }}>
+              {[5, 10, 15, 20].map(v => (
+                <option key={v} value={v}>{v} 个分块并发</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -354,6 +412,7 @@ export const IncrementalSyncPage: React.FC = () => {
 
 const labelStyle: React.CSSProperties = { fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 };
 const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1px solid var(--border-muted)', borderRadius: '6px', background: 'var(--bg-surface-low)', color: 'var(--text-primary)', fontSize: '13px', boxSizing: 'border-box' };
+const selectStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1px solid var(--border-muted)', borderRadius: '6px', background: 'var(--bg-surface-low)', color: 'var(--text-primary)', fontSize: '13px', boxSizing: 'border-box', outline: 'none' };
 
 const StatCard: React.FC<{ label: string; value: number | string; color: string; isText?: boolean }> = ({ label, value, color, isText }) => (
   <div style={{ background: 'var(--bg-surface-low)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
