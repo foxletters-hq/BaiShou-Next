@@ -56,9 +56,9 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
 
   const orphans = attachments.filter(a => a.isOrphan);
   
-  const totalSizeMB = attachments.reduce((sum, item) => sum + item.totalSizeMB, 0);
-  const totalFiles = attachments.reduce((sum, item) => sum + item.fileCount, 0);
-  const orphanSizeMB = orphans.reduce((sum, item) => sum + item.totalSizeMB, 0);
+  const totalSizeMB = attachments.reduce((sum, item) => sum + (item.totalSizeMB ?? (item as any).sizeMB ?? 0), 0);
+  const totalFiles = attachments.reduce((sum, item) => sum + (item.fileCount ?? 0), 0);
+  const orphanSizeMB = orphans.reduce((sum, item) => sum + (item.totalSizeMB ?? (item as any).sizeMB ?? 0), 0);
 
   const displayList = activeTab === 'all' ? attachments : orphans;
 
@@ -84,7 +84,8 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
     setExpandedIds(clone);
   };
 
-  const formatSize = (mb: number) => {
+  const formatSize = (mb: number | undefined | null) => {
+    if (mb === undefined || mb === null || isNaN(mb)) return "0 B";
     if (mb <= 0) return "0 B";
     if (mb < 1) return (mb * 1024).toFixed(2) + " KB";
     if (mb >= 1024) return (mb / 1024).toFixed(2) + " GB";
@@ -289,7 +290,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
                   </div>
 
                   <div className={styles.folderSizeWrapper}>
-                    <span className={styles.folderSizeValue}>{formatSize(group.totalSizeMB)}</span>
+                    <span className={styles.folderSizeValue}>{formatSize(group.totalSizeMB ?? (group as any).sizeMB ?? 0)}</span>
                   </div>
 
                   <div className={styles.cardHeaderActions} onClick={(e) => e.stopPropagation()}>
@@ -314,7 +315,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
                   </div>
                 </div>
 
-                {isExpanded && (
+                {isExpanded && Array.isArray(group.files) && (
                   <div className={styles.fileListContainer}>
                     {group.files.map(file => (
                       <div key={file.path} className={styles.fileItem}>
