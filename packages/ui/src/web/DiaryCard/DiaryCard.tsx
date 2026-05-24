@@ -1,35 +1,34 @@
-import { useTranslation } from 'react-i18next';
-import React, { useState } from 'react';
-import './DiaryCard.css';
+import { useTranslation } from 'react-i18next'
+import React, { useState } from 'react'
+import './DiaryCard.css'
 
 interface DiaryCardProps {
-  id: string;
-  contentSnippet: string;
-  tags: string[];
-  createdAt: Date;
-  onClick?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
+  id: string
+  contentSnippet: string
+  tags: string[]
+  createdAt: Date
+  onClick?: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
 // TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
 
-
-export const DiaryCard: React.FC<DiaryCardProps> = ({ 
-  contentSnippet, 
-  tags, 
-  createdAt, 
+export const DiaryCard: React.FC<DiaryCardProps> = ({
+  contentSnippet,
+  tags,
+  createdAt,
   onClick,
   onEdit,
   onDelete
 }) => {
-  const { t } = useTranslation();
-  const [isHovered, setIsHovered] = useState(false);
+  const { t } = useTranslation()
+  const [isHovered, setIsHovered] = useState(false)
 
   // 日期格式化 Mock
-  const day = createdAt.getDate().toString().padStart(2, '0');
-  const month = createdAt.getMonth() + 1;
-  const year = createdAt.getFullYear();
+  const day = createdAt.getDate().toString().padStart(2, '0')
+  const month = createdAt.getMonth() + 1
+  const year = createdAt.getFullYear()
   const WEEKDAYS = [
     t('diary.weekday.sunday', '周日'),
     t('diary.weekday.monday', '周一'),
@@ -37,26 +36,26 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
     t('diary.weekday.wednesday', '周三'),
     t('diary.weekday.thursday', '周四'),
     t('diary.weekday.friday', '周五'),
-    t('diary.weekday.saturday', '周六'),
-  ];
-  const weekday = WEEKDAYS[createdAt.getDay()];
+    t('diary.weekday.saturday', '周六')
+  ]
+  const weekday = WEEKDAYS[createdAt.getDay()]
 
   // Tags Color Hash Logic
   const getTagColor = (tag: string) => {
-  // Web mock colors based on flutter source
+    // Web mock colors based on flutter source
     const colors = [
       { bg: 'rgba(33, 150, 243, 0.1)', fg: '#1976D2' }, // Blue
-      { bg: 'rgba(76, 175, 80, 0.1)', fg: '#388E3C' },  // Green
-      { bg: 'rgba(255, 152, 0, 0.1)', fg: '#F57C00' },  // Orange
-      { bg: 'rgba(156, 39, 176, 0.1)', fg: '#7B1FA2' }  // Purple
-    ];
-    let sum = 0;
-    for (let i = 0; i < tag.length; i++) sum += tag.charCodeAt(i);
-    return colors[sum % colors.length];
-  };
+      { bg: 'rgba(76, 175, 80, 0.1)', fg: '#388E3C' }, // Green
+      { bg: 'rgba(255, 152, 0, 0.1)', fg: '#F57C00' }, // Orange
+      { bg: 'rgba(156, 39, 176, 0.1)', fg: '#7B1FA2' } // Purple
+    ]
+    let sum = 0
+    for (let i = 0; i < tag.length; i++) sum += tag.charCodeAt(i)
+    return colors[sum % colors.length]
+  }
 
   return (
-    <div 
+    <div
       className="diary-card-v2"
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
@@ -68,7 +67,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           <div className="diary-card-v2-date-meta">
             <span className="diary-card-v2-weekday">{weekday}</span>
             <div className="diary-card-v2-badge">
-              {year} · {month}{t('diary.month_suffix', '月')}
+              {year} · {month}
+              {t('diary.month_suffix', '月')}
             </div>
           </div>
         </div>
@@ -83,13 +83,17 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
 
       {tags.length > 0 && (
         <div className="diary-card-v2-tags">
-          {tags.map(tag => {
-  const { bg, fg } = getTagColor(tag);
+          {tags.map((tag) => {
+            const { bg, fg } = getTagColor(tag)
             return (
-              <span key={tag} className="diary-card-v2-tag" style={{ backgroundColor: bg, color: fg }}>
+              <span
+                key={tag}
+                className="diary-card-v2-tag"
+                style={{ backgroundColor: bg, color: fg }}
+              >
                 #{tag}
               </span>
-            );
+            )
           })}
         </div>
       )}
@@ -98,17 +102,26 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       <div className={`diary-card-v2-actions ${isHovered ? 'visible' : ''}`}>
         <div className="actions-divider" />
         <div className="actions-buttons">
-          <button className="action-btn edit-btn" onClick={(e) => {
-  e.stopPropagation(); onEdit?.(); }}>
+          <button
+            className="action-btn edit-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit?.()
+            }}
+          >
             ✏️ {t('common.edit') || '编辑'}
           </button>
-          <button className="action-btn delete-btn" onClick={(e) => {
-
- e.stopPropagation(); onDelete?.(); }}>
+          <button
+            className="action-btn delete-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete?.()
+            }}
+          >
             🗑️ {t('common.delete') || '删除'}
           </button>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

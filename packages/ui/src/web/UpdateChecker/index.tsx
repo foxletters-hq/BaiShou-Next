@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineSystemUpdate, MdOpenInNew, MdDownload, MdCheckCircle, MdError, MdHourglassEmpty } from 'react-icons/md'
+import {
+  MdOutlineSystemUpdate,
+  MdOpenInNew,
+  MdDownload,
+  MdCheckCircle,
+  MdError,
+  MdHourglassEmpty
+} from 'react-icons/md'
 import { useUpdaterStore, UpdateStatus } from '@baishou/store'
 import '../shared/SettingsListTile.css'
 import './UpdateChecker.css'
@@ -24,7 +31,7 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
     quitAndInstall,
     setAutoCheck,
     loadAutoCheck,
-    initIpcListeners,
+    initIpcListeners
   } = useUpdaterStore()
 
   const [isChecking, setIsChecking] = useState(false)
@@ -79,9 +86,13 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
       case UpdateStatus.CHECKING:
         return t('updater.checking', '检查更新中...')
       case UpdateStatus.AVAILABLE:
-        return t('updater.available', '发现新版本 v{{version}}', { version: updateInfo?.version })
+        return t('updater.available', '发现新版本 v{{version}}', {
+          version: updateInfo?.version
+        })
       case UpdateStatus.DOWNLOADING:
-        return t('updater.downloading', '下载中 {{progress}}%', { progress: Math.round(downloadProgress) })
+        return t('updater.downloading', '下载中 {{progress}}%', {
+          progress: Math.round(downloadProgress)
+        })
       case UpdateStatus.DOWNLOADED:
         return t('updater.downloaded', '下载完成，准备安装')
       case UpdateStatus.NOT_AVAILABLE:

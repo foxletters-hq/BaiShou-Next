@@ -1,1 +1,1 @@
-export * from './DiaryCard';
+export * from './DiaryCard'

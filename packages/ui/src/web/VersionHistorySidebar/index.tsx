@@ -1,17 +1,17 @@
-import React, { useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
-import './VersionHistorySidebar.css';
-import type { VersionHistoryEntry, FileDiff, FileChange } from '@baishou/shared';
+import React, { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { motion, AnimatePresence } from 'framer-motion'
+import './VersionHistorySidebar.css'
+import type { VersionHistoryEntry, FileDiff, FileChange } from '@baishou/shared'
 
 export interface VersionHistorySidebarProps {
-  filePath: string;
-  onGetHistory: (filePath: string, limit?: number) => Promise<VersionHistoryEntry[]>;
-  onGetFileDiff: (filePath: string, commitHash?: string) => Promise<FileDiff>;
-  onGetCommitChanges: (commitHash: string) => Promise<FileChange[]>;
-  onRollback: (filePath: string, commitHash: string) => Promise<{ success: boolean }>;
-  isOpen: boolean;
-  onClose: () => void;
+  filePath: string
+  onGetHistory: (filePath: string, limit?: number) => Promise<VersionHistoryEntry[]>
+  onGetFileDiff: (filePath: string, commitHash?: string) => Promise<FileDiff>
+  onGetCommitChanges: (commitHash: string) => Promise<FileChange[]>
+  onRollback: (filePath: string, commitHash: string) => Promise<{ success: boolean }>
+  isOpen: boolean
+  onClose: () => void
 }
 
 export const VersionHistorySidebar: React.FC<VersionHistorySidebarProps> = ({
@@ -21,51 +21,57 @@ export const VersionHistorySidebar: React.FC<VersionHistorySidebarProps> = ({
   onGetCommitChanges,
   onRollback,
   isOpen,
-  onClose,
+  onClose
 }) => {
-  const { t } = useTranslation();
-  const [history, setHistory] = useState<VersionHistoryEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
-  const [selectedDiff, setSelectedDiff] = useState<FileDiff | null>(null);
-  const [rollbackConfirm, setRollbackConfirm] = useState<string | null>(null);
+  const { t } = useTranslation()
+  const [history, setHistory] = useState<VersionHistoryEntry[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedCommit, setSelectedCommit] = useState<string | null>(null)
+  const [selectedDiff, setSelectedDiff] = useState<FileDiff | null>(null)
+  const [rollbackConfirm, setRollbackConfirm] = useState<string | null>(null)
 
   const loadHistory = useCallback(async () => {
-    if (!filePath) return;
-    setLoading(true);
+    if (!filePath) return
+    setLoading(true)
     try {
-      const entries = await onGetHistory(filePath, 20);
-      setHistory(entries);
+      const entries = await onGetHistory(filePath, 20)
+      setHistory(entries)
     } catch {
       // silent
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [filePath, onGetHistory]);
+  }, [filePath, onGetHistory])
 
   React.useEffect(() => {
     if (isOpen && filePath) {
-      loadHistory();
+      loadHistory()
     }
-  }, [isOpen, filePath, loadHistory]);
+  }, [isOpen, filePath, loadHistory])
 
-  const handleSelectCommit = useCallback(async (hash: string) => {
-    setSelectedCommit(hash);
-    try {
-      const diff = await onGetFileDiff(filePath, hash);
-      setSelectedDiff(diff);
-    } catch {
-      setSelectedDiff(null);
-    }
-  }, [filePath, onGetFileDiff]);
+  const handleSelectCommit = useCallback(
+    async (hash: string) => {
+      setSelectedCommit(hash)
+      try {
+        const diff = await onGetFileDiff(filePath, hash)
+        setSelectedDiff(diff)
+      } catch {
+        setSelectedDiff(null)
+      }
+    },
+    [filePath, onGetFileDiff]
+  )
 
-  const handleRollback = useCallback(async (hash: string) => {
-    await onRollback(filePath, hash);
-    setRollbackConfirm(null);
-    setSelectedCommit(null);
-    setSelectedDiff(null);
-    loadHistory();
-  }, [filePath, onRollback, loadHistory]);
+  const handleRollback = useCallback(
+    async (hash: string) => {
+      await onRollback(filePath, hash)
+      setRollbackConfirm(null)
+      setSelectedCommit(null)
+      setSelectedDiff(null)
+      loadHistory()
+    },
+    [filePath, onRollback, loadHistory]
+  )
 
   return (
     <AnimatePresence>
@@ -87,7 +93,9 @@ export const VersionHistorySidebar: React.FC<VersionHistorySidebarProps> = ({
           >
             <div className="vhs-header">
               <span className="vhs-title">{t('version_control.version_history', '版本历史')}</span>
-              <button className="vhs-close" onClick={onClose}>×</button>
+              <button className="vhs-close" onClick={onClose}>
+                ×
+              </button>
             </div>
 
             {loading ? (
@@ -114,14 +122,22 @@ export const VersionHistorySidebar: React.FC<VersionHistorySidebarProps> = ({
                           {selectedDiff.hunks.map((hunk, i) => (
                             <div key={i}>
                               <div className="vhs-diff-hunk-header">
-                                @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
+                                @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines}{' '}
+                                @@
                               </div>
                               {hunk.content.split('\n').map((line, j) => (
-                                <div key={j} className={
-                                  line.startsWith('+') ? 'vhs-diff-add' :
-                                  line.startsWith('-') ? 'vhs-diff-remove' :
-                                  'vhs-diff-normal'
-                                }>{line}</div>
+                                <div
+                                  key={j}
+                                  className={
+                                    line.startsWith('+')
+                                      ? 'vhs-diff-add'
+                                      : line.startsWith('-')
+                                        ? 'vhs-diff-remove'
+                                        : 'vhs-diff-normal'
+                                  }
+                                >
+                                  {line}
+                                </div>
                               ))}
                             </div>
                           ))}
@@ -133,7 +149,10 @@ export const VersionHistorySidebar: React.FC<VersionHistorySidebarProps> = ({
                               <span className="vhs-confirm-text">
                                 {t('version_control.rollback_confirm', '确定回滚吗？')}
                               </span>
-                              <button className="vhs-btn vhs-btn-danger" onClick={() => handleRollback(entry.commit.hash)}>
+                              <button
+                                className="vhs-btn vhs-btn-danger"
+                                onClick={() => handleRollback(entry.commit.hash)}
+                              >
                                 {t('common.confirm', '确定')}
                               </button>
                               <button className="vhs-btn" onClick={() => setRollbackConfirm(null)}>
@@ -162,5 +181,5 @@ export const VersionHistorySidebar: React.FC<VersionHistorySidebarProps> = ({
         </motion.div>
       )}
     </AnimatePresence>
-  );
-};
+  )
+}

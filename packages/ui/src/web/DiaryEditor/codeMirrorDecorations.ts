@@ -1,26 +1,35 @@
-import { EditorView, Decoration, DecorationSet, ViewPlugin, ViewUpdate, WidgetType } from '@codemirror/view';
-import { syntaxTree } from '@codemirror/language';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { tags } from '@lezer/highlight';
-import type { SyntaxNodeRef } from '@lezer/common';
-import type { Extension } from '@codemirror/state';
-import { StateEffect } from '@codemirror/state';
-import { parseImageMarkdown, clampWidth, IMAGE_SIZE_CONFIG } from './image-utils';
+import {
+  EditorView,
+  Decoration,
+  DecorationSet,
+  ViewPlugin,
+  ViewUpdate,
+  WidgetType
+} from '@codemirror/view'
+import { syntaxTree } from '@codemirror/language'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { tags } from '@lezer/highlight'
+import type { SyntaxNodeRef } from '@lezer/common'
+import type { Extension } from '@codemirror/state'
+import { StateEffect } from '@codemirror/state'
+import { parseImageMarkdown, clampWidth, IMAGE_SIZE_CONFIG } from './image-utils'
 
-export const forceImageRefresh = StateEffect.define();
+export const forceImageRefresh = StateEffect.define()
 
 // 全局回调函数，用于更新文档中的图片宽度
-let updateImageWidthCallback: ((from: number, to: number, newWidth: number) => void) | null = null;
+let updateImageWidthCallback: ((from: number, to: number, newWidth: number) => void) | null = null
 
-export function setUpdateImageWidthCallback(callback: (from: number, to: number, newWidth: number) => void) {
-  updateImageWidthCallback = callback;
+export function setUpdateImageWidthCallback(
+  callback: (from: number, to: number, newWidth: number) => void
+) {
+  updateImageWidthCallback = callback
 }
 
 class ImageWidget extends WidgetType {
-  private container: HTMLElement | null = null;
-  private resizeHandle: HTMLElement | null = null;
-  private linkBar: HTMLElement | null = null;
-  private linkInput: HTMLInputElement | null = null;
+  private container: HTMLElement | null = null
+  private resizeHandle: HTMLElement | null = null
+  private linkBar: HTMLElement | null = null
+  private linkInput: HTMLInputElement | null = null
 
   constructor(
     private src: string,
@@ -28,145 +37,158 @@ class ImageWidget extends WidgetType {
     private width?: number,
     private imageFrom?: number,
     private imageTo?: number,
-    private showLinkBar: boolean = false,
+    private showLinkBar: boolean = false
   ) {
-    super();
+    super()
   }
 
   eq(other: ImageWidget): boolean {
-    return this.src === other.src && this.alt === other.alt && this.width === other.width && this.showLinkBar === other.showLinkBar;
+    return (
+      this.src === other.src &&
+      this.alt === other.alt &&
+      this.width === other.width &&
+      this.showLinkBar === other.showLinkBar
+    )
   }
 
   toDOM(): HTMLElement {
     // 创建容器
-    this.container = document.createElement('div');
-    this.container.className = 'cm-image-container';
+    this.container = document.createElement('div')
+    this.container.className = 'cm-image-container'
     if (this.width) {
-      this.container.style.width = `${this.width}px`;
+      this.container.style.width = `${this.width}px`
     }
 
     // 创建链接栏
-    this.linkBar = document.createElement('div');
-    this.linkBar.className = 'cm-image-link-bar';
-    this.linkBar.style.display = this.showLinkBar ? 'block' : 'none';
+    this.linkBar = document.createElement('div')
+    this.linkBar.className = 'cm-image-link-bar'
+    this.linkBar.style.display = this.showLinkBar ? 'block' : 'none'
 
-    this.linkInput = document.createElement('input');
-    this.linkInput.type = 'text';
-    this.linkInput.className = 'cm-image-link-input';
-    this.linkInput.value = this.src;
-    this.linkInput.readOnly = true;
+    this.linkInput = document.createElement('input')
+    this.linkInput.type = 'text'
+    this.linkInput.className = 'cm-image-link-input'
+    this.linkInput.value = this.src
+    this.linkInput.readOnly = true
 
-    this.linkBar.appendChild(this.linkInput);
-    this.container.appendChild(this.linkBar);
+    this.linkBar.appendChild(this.linkInput)
+    this.container.appendChild(this.linkBar)
 
     // 创建图片
-    const img = document.createElement('img');
-    img.src = this.src;
-    img.alt = this.alt;
-    img.className = 'cm-image-resizable';
-    img.draggable = false;
-    this.container.appendChild(img);
+    const img = document.createElement('img')
+    img.src = this.src
+    img.alt = this.alt
+    img.className = 'cm-image-resizable'
+    img.draggable = false
+    this.container.appendChild(img)
 
     // 创建缩放手柄
-    this.resizeHandle = document.createElement('div');
-    this.resizeHandle.className = 'cm-image-resize-handle';
-    this.container.appendChild(this.resizeHandle);
+    this.resizeHandle = document.createElement('div')
+    this.resizeHandle.className = 'cm-image-resize-handle'
+    this.container.appendChild(this.resizeHandle)
 
     // 如果是活动行，添加激活状态
     if (this.showLinkBar) {
-      this.container.classList.add('cm-image-active');
+      this.container.classList.add('cm-image-active')
     }
 
     // 绑定事件
-    this.bindEvents(img);
+    this.bindEvents(img)
 
-    return this.container;
+    return this.container
   }
 
   private bindEvents(img: HTMLElement) {
-    if (!this.container || !this.resizeHandle || !this.linkBar) return;
+    if (!this.container || !this.resizeHandle || !this.linkBar) return
 
     // 点击图片显示链接栏
     img.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.linkBar!.style.display = 'block';
-      this.container!.classList.add('cm-image-active');
-    });
+      e.stopPropagation()
+      this.linkBar!.style.display = 'block'
+      this.container!.classList.add('cm-image-active')
+    })
 
     // 点击其他区域隐藏链接栏
     document.addEventListener('click', (e) => {
       if (!this.container!.contains(e.target as Node)) {
-        this.linkBar!.style.display = 'none';
-        this.container!.classList.remove('cm-image-active');
+        this.linkBar!.style.display = 'none'
+        this.container!.classList.remove('cm-image-active')
       }
-    });
+    })
 
     // 拖拽缩放
-    let startX = 0;
-    let startWidth = 0;
+    let startX = 0
+    let startWidth = 0
 
     this.resizeHandle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      startX = e.clientX;
-      startWidth = this.container!.offsetWidth;
+      e.preventDefault()
+      e.stopPropagation()
+      startX = e.clientX
+      startWidth = this.container!.offsetWidth
 
       const onMouseMove = (e: MouseEvent) => {
-        const delta = e.clientX - startX;
-        const newWidth = clampWidth(startWidth + delta);
-        this.container!.style.width = `${newWidth}px`;
-      };
+        const delta = e.clientX - startX
+        const newWidth = clampWidth(startWidth + delta)
+        this.container!.style.width = `${newWidth}px`
+      }
 
       const onMouseUp = () => {
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('mousemove', onMouseMove)
+        document.removeEventListener('mouseup', onMouseUp)
         // 触发文档更新
-        const newWidth = this.container!.offsetWidth;
-        if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageWidthCallback) {
-          updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth);
+        const newWidth = this.container!.offsetWidth
+        if (
+          this.imageFrom !== undefined &&
+          this.imageTo !== undefined &&
+          updateImageWidthCallback
+        ) {
+          updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth)
         }
-      };
+      }
 
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    });
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onMouseUp)
+    })
 
     // 滚轮缩放
     this.container.addEventListener('wheel', (e) => {
       if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = e.deltaY > 0 ? -IMAGE_SIZE_CONFIG.step : IMAGE_SIZE_CONFIG.step;
-        const currentWidth = this.container!.offsetWidth;
-        const newWidth = clampWidth(currentWidth + delta);
-        this.container!.style.width = `${newWidth}px`;
+        e.preventDefault()
+        const delta = e.deltaY > 0 ? -IMAGE_SIZE_CONFIG.step : IMAGE_SIZE_CONFIG.step
+        const currentWidth = this.container!.offsetWidth
+        const newWidth = clampWidth(currentWidth + delta)
+        this.container!.style.width = `${newWidth}px`
         // 触发文档更新
-        if (this.imageFrom !== undefined && this.imageTo !== undefined && updateImageWidthCallback) {
-          updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth);
+        if (
+          this.imageFrom !== undefined &&
+          this.imageTo !== undefined &&
+          updateImageWidthCallback
+        ) {
+          updateImageWidthCallback(this.imageFrom, this.imageTo, newWidth)
         }
       }
-    });
+    })
   }
 
   ignoreEvent(): boolean {
-    return false;
+    return false
   }
 }
 
 function getCursorPositions(view: EditorView): number[] {
-  return view.state.selection.ranges.map((r) => r.head);
+  return view.state.selection.ranges.map((r) => r.head)
 }
 
 function isCursorInRange(from: number, to: number, cursors: number[]): boolean {
-  return cursors.some((c) => c >= from && c <= to);
+  return cursors.some((c) => c >= from && c <= to)
 }
 
 function isCursorOnLine(lineFrom: number, lineTo: number, cursors: number[]): boolean {
-  return cursors.some((c) => c >= lineFrom && c <= lineTo);
+  return cursors.some((c) => c >= lineFrom && c <= lineTo)
 }
 
 // ── 标记隐藏（Decoration.replace 从 DOM 中移除标记字符，零占位）──
 
-const hideMark = Decoration.replace({});
+const hideMark = Decoration.replace({})
 
 // ── 块级装饰器（不跨行内元素，安全）───────────────────────────
 
@@ -176,254 +198,274 @@ const headingStyles: Record<number, Decoration> = {
   3: Decoration.mark({ class: 'cm-rendered-h3' }),
   4: Decoration.mark({ class: 'cm-rendered-h4' }),
   5: Decoration.mark({ class: 'cm-rendered-h5' }),
-  6: Decoration.mark({ class: 'cm-rendered-h6' }),
-};
+  6: Decoration.mark({ class: 'cm-rendered-h6' })
+}
 
-const codeBlockMark = Decoration.mark({ class: 'cm-rendered-codeBlock' });
-const codeMarkStyle = Decoration.mark({ class: 'cm-rendered-codeMark' });
-const linkMark = Decoration.mark({ class: 'cm-rendered-link' });
+const codeBlockMark = Decoration.mark({ class: 'cm-rendered-codeBlock' })
+const codeMarkStyle = Decoration.mark({ class: 'cm-rendered-codeMark' })
+const linkMark = Decoration.mark({ class: 'cm-rendered-link' })
 
-const codeLineStyle = Decoration.line({ class: 'cm-code-line' });
-const codeLineStyleTop = Decoration.line({ class: 'cm-code-line cm-code-line-top' });
-const codeLineStyleBottom = Decoration.line({ class: 'cm-code-line cm-code-line-bottom' });
-const codeLineStyleSingle = Decoration.line({ class: 'cm-code-line cm-code-line-top cm-code-line-bottom' });
+const codeLineStyle = Decoration.line({ class: 'cm-code-line' })
+const codeLineStyleTop = Decoration.line({
+  class: 'cm-code-line cm-code-line-top'
+})
+const codeLineStyleBottom = Decoration.line({
+  class: 'cm-code-line cm-code-line-bottom'
+})
+const codeLineStyleSingle = Decoration.line({
+  class: 'cm-code-line cm-code-line-top cm-code-line-bottom'
+})
 
 // ── 语法高亮样式（通过 HighlightStyle 注入，不创建额外 DOM 节点）──
 
 const livePreviewHighlight = HighlightStyle.define([
   { tag: tags.strong, fontWeight: '700' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.strikethrough, textDecoration: 'line-through', color: 'var(--text-tertiary)' },
-  { tag: tags.monospace, fontFamily: "'Fira Code', 'Courier New', monospace", backgroundColor: 'var(--bg-surface-normal)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.9em' },
-]);
+  {
+    tag: tags.strikethrough,
+    textDecoration: 'line-through',
+    color: 'var(--text-tertiary)'
+  },
+  {
+    tag: tags.monospace,
+    fontFamily: "'Fira Code', 'Courier New', monospace",
+    backgroundColor: 'var(--bg-surface-normal)',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '0.9em'
+  }
+])
 
 export function livePreviewSyntaxHighlighting() {
-  return syntaxHighlighting(livePreviewHighlight);
+  return syntaxHighlighting(livePreviewHighlight)
 }
 
 // ── 标记隐藏插件 ──────────────────────────────────────────────
 
 function buildMarkerHidingDecorations(
   view: EditorView,
-  resolveUrl?: (url: string) => string,
+  resolveUrl?: (url: string) => string
 ): DecorationSet {
-  const cursors = getCursorPositions(view);
-  const marks: { from: number; to: number; value: Decoration }[] = [];
-  const tree = syntaxTree(view.state);
-  const doc = view.state.doc;
+  const cursors = getCursorPositions(view)
+  const marks: { from: number; to: number; value: Decoration }[] = []
+  const tree = syntaxTree(view.state)
+  const doc = view.state.doc
 
   // 1. 先用正则全局查找所有图片（包含带/不带宽度的自定义/标准语法），添加图片 Widget 装饰器
-  const docText = doc.toString();
-  const globalRegex = /!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)/g;
-  const imageRanges: { from: number; to: number }[] = [];
-  let match;
+  const docText = doc.toString()
+  const globalRegex = /!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)/g
+  const imageRanges: { from: number; to: number }[] = []
+  let match
   while ((match = globalRegex.exec(docText)) !== null) {
-    const matchStart = match.index;
-    const matchEnd = matchStart + match[0].length;
-    
+    const matchStart = match.index
+    const matchEnd = matchStart + match[0].length
+
     // 检查是否在代码块中
-    const pos = matchStart;
-    const nodeAtPos = tree.resolveInner(pos, 1);
-    let insideCode = false;
-    let curr: typeof nodeAtPos | null = nodeAtPos;
+    const pos = matchStart
+    const nodeAtPos = tree.resolveInner(pos, 1)
+    let insideCode = false
+    let curr: typeof nodeAtPos | null = nodeAtPos
     while (curr) {
       if (curr.name === 'FencedCode' || curr.name === 'CodeBlock' || curr.name === 'InlineCode') {
-        insideCode = true;
-        break;
+        insideCode = true
+        break
       }
-      curr = curr.parent;
+      curr = curr.parent
     }
-    if (insideCode) continue;
+    if (insideCode) continue
 
-    const line = doc.lineAt(matchStart);
-    const onActiveLine = isCursorOnLine(line.from, line.to, cursors);
+    const line = doc.lineAt(matchStart)
+    const onActiveLine = isCursorOnLine(line.from, line.to, cursors)
 
-    const alt = match[1] ?? '';
-    const srcRaw = match[2] ?? '';
-    const widthStr = match[3];
-    const width = widthStr ? parseInt(widthStr, 10) : undefined;
-    const validWidth = width && !isNaN(width) && width > 0 ? width : undefined;
+    const alt = match[1] ?? ''
+    const srcRaw = match[2] ?? ''
+    const widthStr = match[3]
+    const width = widthStr ? parseInt(widthStr, 10) : undefined
+    const validWidth = width && !isNaN(width) && width > 0 ? width : undefined
 
-    const src = resolveUrl ? resolveUrl(srcRaw) : srcRaw;
-    
-    imageRanges.push({ from: matchStart, to: matchEnd });
+    const src = resolveUrl ? resolveUrl(srcRaw) : srcRaw
+
+    imageRanges.push({ from: matchStart, to: matchEnd })
     marks.push({
       from: matchStart,
       to: matchEnd,
       value: Decoration.replace({
-        widget: new ImageWidget(src, alt, validWidth, matchStart, matchEnd, onActiveLine),
-      }),
-    });
+        widget: new ImageWidget(src, alt, validWidth, matchStart, matchEnd, onActiveLine)
+      })
+    })
   }
 
   // 2. 迭代语法树添加其他 Markdown 渲染样式，跳过已被正则图片占用的范围
   tree.iterate({
     enter(node: SyntaxNodeRef) {
       // 检查当前节点是否完全在某个图片范围内，如果是则跳过，以正则解析结果为准
-      const insideImage = imageRanges.some(r => node.from >= r.from && node.to <= r.to);
+      const insideImage = imageRanges.some((r) => node.from >= r.from && node.to <= r.to)
       if (insideImage) {
-        return false;
+        return false
       }
 
-      const line = doc.lineAt(node.from);
-      const onActiveLine = isCursorOnLine(line.from, line.to, cursors);
-      const name = node.type.name;
+      const line = doc.lineAt(node.from)
+      const onActiveLine = isCursorOnLine(line.from, line.to, cursors)
+      const name = node.type.name
 
       // 围栏代码块：跳过子节点
       if (name === 'FencedCode') {
-        marks.push(codeBlockMark.range(node.from, node.to));
-        
-        const startLine = doc.lineAt(node.from).number;
-        const endLine = doc.lineAt(node.to).number;
+        marks.push(codeBlockMark.range(node.from, node.to))
+
+        const startLine = doc.lineAt(node.from).number
+        const endLine = doc.lineAt(node.to).number
         for (let l = startLine; l <= endLine; l++) {
-          const curLine = doc.line(l);
-          let style = codeLineStyle;
+          const curLine = doc.line(l)
+          let style = codeLineStyle
           if (startLine === endLine) {
-            style = codeLineStyleSingle;
+            style = codeLineStyleSingle
           } else if (l === startLine) {
-            style = codeLineStyleTop;
+            style = codeLineStyleTop
           } else if (l === endLine) {
-            style = codeLineStyleBottom;
+            style = codeLineStyleBottom
           }
-          marks.push(style.range(curLine.from));
+          marks.push(style.range(curLine.from))
         }
-        return false;
+        return false
       }
 
       // 围栏代码块的 ``` 分隔符
       if (name === 'CodeMark') {
-        const parent = node.node.parent;
+        const parent = node.node.parent
         if (parent && parent.type.name === 'FencedCode') {
-          marks.push(codeMarkStyle.range(node.from, node.to));
-          return;
+          marks.push(codeMarkStyle.range(node.from, node.to))
+          return
         }
         if (!onActiveLine) {
-          marks.push(hideMark.range(node.from, node.to));
+          marks.push(hideMark.range(node.from, node.to))
         }
-        return;
+        return
       }
 
       // ATX 标题：隐藏 # 前缀，添加标题样式
       if (name.startsWith('ATXHeading')) {
-        const text = doc.sliceString(node.from, node.to);
-        const match = text.match(/^(#{1,6})\s?/);
+        const text = doc.sliceString(node.from, node.to)
+        const match = text.match(/^(#{1,6})\s?/)
         if (match) {
-          const prefixEnd = node.from + match[0].length;
-          const cursorInMarker = isCursorInRange(node.from, prefixEnd, cursors);
+          const prefixEnd = node.from + match[0].length
+          const cursorInMarker = isCursorInRange(node.from, prefixEnd, cursors)
           if (!onActiveLine || !cursorInMarker) {
-            marks.push(hideMark.range(node.from, prefixEnd));
+            marks.push(hideMark.range(node.from, prefixEnd))
           }
-          const level = match[1]!.length;
-          marks.push(headingStyles[level]!.range(cursorInMarker ? node.from : prefixEnd, node.to));
+          const level = match[1]!.length
+          marks.push(headingStyles[level]!.range(cursorInMarker ? node.from : prefixEnd, node.to))
         }
-        return;
+        return
       }
 
       // 粗体标记 ** __
       if (name === 'StrongEmphasis') {
-        const text = doc.sliceString(node.from, node.to);
-        const openLen = text.startsWith('**') || text.startsWith('__') ? 2 : 1;
-        const closeLen = text.endsWith('**') || text.endsWith('__') ? 2 : 1;
-        const from = node.from;
-        const to = node.to;
-        const cursorInOpen = isCursorInRange(from, from + openLen, cursors);
-        const cursorInClose = isCursorInRange(to - closeLen, to, cursors);
-        if (!cursorInOpen) marks.push(hideMark.range(from, from + openLen));
-        if (!cursorInClose) marks.push(hideMark.range(to - closeLen, to));
-        return;
+        const text = doc.sliceString(node.from, node.to)
+        const openLen = text.startsWith('**') || text.startsWith('__') ? 2 : 1
+        const closeLen = text.endsWith('**') || text.endsWith('__') ? 2 : 1
+        const from = node.from
+        const to = node.to
+        const cursorInOpen = isCursorInRange(from, from + openLen, cursors)
+        const cursorInClose = isCursorInRange(to - closeLen, to, cursors)
+        if (!cursorInOpen) marks.push(hideMark.range(from, from + openLen))
+        if (!cursorInClose) marks.push(hideMark.range(to - closeLen, to))
+        return
       }
 
       // 斜体标记 * _
       if (name === 'Emphasis') {
-        const text = doc.sliceString(node.from, node.to);
-        if (text.length < 3) return;
-        const from = node.from;
-        const to = node.to;
-        const cursorInOpen = isCursorInRange(from, from + 1, cursors);
-        const cursorInClose = isCursorInRange(to - 1, to, cursors);
-        if (!cursorInOpen) marks.push(hideMark.range(from, from + 1));
-        if (!cursorInClose) marks.push(hideMark.range(to - 1, to));
-        return;
+        const text = doc.sliceString(node.from, node.to)
+        if (text.length < 3) return
+        const from = node.from
+        const to = node.to
+        const cursorInOpen = isCursorInRange(from, from + 1, cursors)
+        const cursorInClose = isCursorInRange(to - 1, to, cursors)
+        if (!cursorInOpen) marks.push(hideMark.range(from, from + 1))
+        if (!cursorInClose) marks.push(hideMark.range(to - 1, to))
+        return
       }
 
       // 删除线标记 ~~
       if (name === 'Strikethrough') {
-        const from = node.from;
-        const to = node.to;
-        const cursorInOpen = isCursorInRange(from, from + 2, cursors);
-        const cursorInClose = isCursorInRange(to - 2, to, cursors);
-        if (!cursorInOpen) marks.push(hideMark.range(from, from + 2));
-        if (!cursorInClose) marks.push(hideMark.range(to - 2, to));
-        return;
+        const from = node.from
+        const to = node.to
+        const cursorInOpen = isCursorInRange(from, from + 2, cursors)
+        const cursorInClose = isCursorInRange(to - 2, to, cursors)
+        if (!cursorInOpen) marks.push(hideMark.range(from, from + 2))
+        if (!cursorInClose) marks.push(hideMark.range(to - 2, to))
+        return
       }
 
       // 行内代码标记 `
       if (name === 'InlineCode') {
-        const text = doc.sliceString(node.from, node.to);
-        const tickLen = text.startsWith('``') ? 2 : 1;
-        const from = node.from;
-        const to = node.to;
-        const cursorInOpen = isCursorInRange(from, from + tickLen, cursors);
-        const cursorInClose = isCursorInRange(to - tickLen, to, cursors);
-        if (!cursorInOpen) marks.push(hideMark.range(from, from + tickLen));
-        if (!cursorInClose) marks.push(hideMark.range(to - tickLen, to));
-        return;
+        const text = doc.sliceString(node.from, node.to)
+        const tickLen = text.startsWith('``') ? 2 : 1
+        const from = node.from
+        const to = node.to
+        const cursorInOpen = isCursorInRange(from, from + tickLen, cursors)
+        const cursorInClose = isCursorInRange(to - tickLen, to, cursors)
+        if (!cursorInOpen) marks.push(hideMark.range(from, from + tickLen))
+        if (!cursorInClose) marks.push(hideMark.range(to - tickLen, to))
+        return
       }
 
       // 链接：隐藏 [ 和 ](url)
       if (name === 'Link') {
-        const text = doc.sliceString(node.from, node.to);
-        const bracketOpen = text.indexOf('[');
-        const bracketClose = text.indexOf('](');
+        const text = doc.sliceString(node.from, node.to)
+        const bracketOpen = text.indexOf('[')
+        const bracketClose = text.indexOf('](')
         if (bracketOpen !== -1 && bracketClose !== -1) {
-          const openFrom = node.from + bracketOpen;
-          const closeFrom = node.from + bracketClose;
-          const cursorInOpen = isCursorInRange(openFrom, openFrom + 1, cursors);
-          const cursorInClose = isCursorInRange(closeFrom, node.to, cursors);
-          if (!cursorInOpen) marks.push(hideMark.range(openFrom, openFrom + 1));
-          if (!cursorInClose) marks.push(hideMark.range(closeFrom, node.to));
-          marks.push(linkMark.range(openFrom + 1, closeFrom));
+          const openFrom = node.from + bracketOpen
+          const closeFrom = node.from + bracketClose
+          const cursorInOpen = isCursorInRange(openFrom, openFrom + 1, cursors)
+          const cursorInClose = isCursorInRange(closeFrom, node.to, cursors)
+          if (!cursorInOpen) marks.push(hideMark.range(openFrom, openFrom + 1))
+          if (!cursorInClose) marks.push(hideMark.range(closeFrom, node.to))
+          marks.push(linkMark.range(openFrom + 1, closeFrom))
         }
-        return;
+        return
       }
 
       // 以下元素仅在非活动行隐藏
-      if (onActiveLine) return;
+      if (onActiveLine) return
 
       if (name === 'QuoteMark') {
-        marks.push(hideMark.range(node.from, node.to));
-        return;
+        marks.push(hideMark.range(node.from, node.to))
+        return
       }
 
       if (name === 'ListMark') {
-        marks.push(hideMark.range(node.from, node.to));
-        return;
+        marks.push(hideMark.range(node.from, node.to))
+        return
       }
 
       if (name === 'TaskMarker') {
-        marks.push(hideMark.range(node.from, node.to));
-        return;
+        marks.push(hideMark.range(node.from, node.to))
+        return
       }
-    },
-  });
+    }
+  })
 
-  return Decoration.set(marks, true);
+  return Decoration.set(marks, true)
 }
 
 export function livePreviewPlugin(resolveUrl?: (url: string) => string) {
   return ViewPlugin.fromClass(
     class {
-      decorations: DecorationSet;
+      decorations: DecorationSet
       constructor(view: EditorView) {
-        this.decorations = buildMarkerHidingDecorations(view, resolveUrl);
+        this.decorations = buildMarkerHidingDecorations(view, resolveUrl)
       }
       update(update: ViewUpdate) {
-        if (update.docChanged || update.selectionSet ||
-            update.transactions.some(t => t.effects.some(e => e.is(forceImageRefresh)))) {
-          this.decorations = buildMarkerHidingDecorations(update.view, resolveUrl);
+        if (
+          update.docChanged ||
+          update.selectionSet ||
+          update.transactions.some((t) => t.effects.some((e) => e.is(forceImageRefresh)))
+        ) {
+          this.decorations = buildMarkerHidingDecorations(update.view, resolveUrl)
         }
       }
     },
-    { decorations: (v) => v.decorations },
-  );
+    { decorations: (v) => v.decorations }
+  )
 }

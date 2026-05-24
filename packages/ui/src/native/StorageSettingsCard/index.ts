@@ -1,1 +1,1 @@
-export * from './StorageSettingsCard';
+export * from './StorageSettingsCard'

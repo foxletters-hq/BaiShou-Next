@@ -1,89 +1,89 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import './WeatherPicker.css';
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import './WeatherPicker.css'
 
 export interface WeatherOption {
-  value: string;
-  label: string;
+  value: string
+  label: string
 }
 
 interface WeatherPickerProps {
-  value: string;
-  options: WeatherOption[];
-  onChange: (value: string) => void;
-  placeholder?: string;
+  value: string
+  options: WeatherOption[]
+  onChange: (value: string) => void
+  placeholder?: string
 }
 
 export const WeatherPicker: React.FC<WeatherPickerProps> = ({
   value,
   options,
   onChange,
-  placeholder = '天气',
+  placeholder = '天气'
 }) => {
-  const [open, setOpen] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  const selected = options.find((o) => o.value === value);
-  const displayLabel = selected?.label || placeholder;
+  const selected = options.find((o) => o.value === value)
+  const displayLabel = selected?.label || placeholder
 
   const closeDropdown = useCallback(() => {
-    setClosing(true);
+    setClosing(true)
     closeTimerRef.current = setTimeout(() => {
-      setOpen(false);
-      setClosing(false);
-    }, 200);
-  }, []);
+      setOpen(false)
+      setClosing(false)
+    }, 200)
+  }, [])
 
   const handleToggle = useCallback(() => {
     if (open) {
-      closeDropdown();
+      closeDropdown()
     } else {
-      setOpen(true);
+      setOpen(true)
     }
-  }, [open, closeDropdown]);
+  }, [open, closeDropdown])
 
   const handleSelect = useCallback(
     (option: WeatherOption) => {
-      onChange(option.value);
-      closeDropdown();
+      onChange(option.value)
+      closeDropdown()
     },
-    [onChange, closeDropdown],
-  );
+    [onChange, closeDropdown]
+  )
 
   const handleOptionClick = useCallback(
     (option: WeatherOption) => (e: React.MouseEvent) => {
-      e.stopPropagation();
-      handleSelect(option);
+      e.stopPropagation()
+      handleSelect(option)
     },
-    [handleSelect],
-  );
+    [handleSelect]
+  )
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
 
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        closeDropdown();
+        closeDropdown()
       }
-    };
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeDropdown();
-    };
+      if (e.key === 'Escape') closeDropdown()
+    }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [open, closeDropdown]);
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, closeDropdown])
 
   useEffect(() => {
     return () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    };
-  }, []);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    }
+  }, [])
 
   return (
     <div className="wp-container" ref={containerRef}>
@@ -112,12 +112,9 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
       </button>
 
       {open && (
-        <div
-          className={`wp-dropdown${closing ? ' wp-dropdown-closing' : ''}`}
-          role="listbox"
-        >
+        <div className={`wp-dropdown${closing ? ' wp-dropdown-closing' : ''}`} role="listbox">
           {options.map((option) => {
-            const isSelected = option.value === value;
+            const isSelected = option.value === value
             return (
               <button
                 key={option.value}
@@ -145,10 +142,10 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
                   </span>
                 )}
               </button>
-            );
+            )
           })}
         </div>
       )}
     </div>
-  );
-};
+  )
+}

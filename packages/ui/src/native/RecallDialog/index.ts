@@ -1,1 +1,1 @@
-export * from './RecallDialog';
+export * from './RecallDialog'

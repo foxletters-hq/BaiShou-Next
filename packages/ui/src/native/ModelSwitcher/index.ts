@@ -1,1 +1,1 @@
-export * from './ModelSwitcher';
+export * from './ModelSwitcher'

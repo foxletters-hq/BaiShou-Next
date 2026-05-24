@@ -1,11 +1,11 @@
-import React from 'react';
-import './StatisticCard.css';
+import React from 'react'
+import './StatisticCard.css'
 
 interface StatisticCardProps {
-  title: string;
-  value: number | string;
-  subtitle?: string;
-  icon?: React.ReactNode;
+  title: string
+  value: number | string
+  subtitle?: string
+  icon?: React.ReactNode
 }
 
 export const StatisticCard: React.FC<StatisticCardProps> = ({ title, value, subtitle, icon }) => {
@@ -24,5 +24,5 @@ export const StatisticCard: React.FC<StatisticCardProps> = ({ title, value, subt
         </div>
       )}
     </div>
-  );
-};
+  )
+}

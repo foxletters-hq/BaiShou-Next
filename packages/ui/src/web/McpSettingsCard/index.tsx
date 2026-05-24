@@ -1,27 +1,31 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { MdOutlineHub, MdOutlineLan, MdExpandMore, MdExpandLess } from 'react-icons/md';
-import '../shared/SettingsListTile.css';
-import styles from './McpSettingsCard.module.css';
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { MdOutlineHub, MdOutlineLan, MdExpandMore, MdExpandLess } from 'react-icons/md'
+import '../shared/SettingsListTile.css'
+import styles from './McpSettingsCard.module.css'
 
 export interface McpServerConfig {
-  mcpEnabled: boolean;
-  mcpPort: number;
+  mcpEnabled: boolean
+  mcpPort: number
 }
 
 interface McpSettingsCardProps {
-  config: McpServerConfig;
-  onChange: (config: McpServerConfig) => void;
+  config: McpServerConfig
+  onChange: (config: McpServerConfig) => void
 }
 
 export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChange }) => {
-  const { t } = useTranslation();
-  const [collapsed, setCollapsed] = React.useState(true);
+  const { t } = useTranslation()
+  const [collapsed, setCollapsed] = React.useState(true)
 
   return (
     <div>
       {/* 标题行：点击展开/收起 */}
-      <div className="settings-list-tile" onClick={() => setCollapsed(!collapsed)} style={{ cursor: 'pointer' }}>
+      <div
+        className="settings-list-tile"
+        onClick={() => setCollapsed(!collapsed)}
+        style={{ cursor: 'pointer' }}
+      >
         <div className="settings-list-tile-leading">
           <MdOutlineHub size={24} />
         </div>
@@ -32,18 +36,21 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           </span>
           <span className="settings-list-tile-subtitle">
             {config.mcpEnabled
-              ? t('settings.mcp_running', 'MCP 服务运行中，端口: $port').replace('$port', config.mcpPort.toString())
+              ? t('settings.mcp_running', 'MCP 服务运行中，端口: $port').replace(
+                  '$port',
+                  config.mcpPort.toString()
+                )
               : t('settings.mcp_desc', '将数据以 MCP 协议提供给外部 IDE 或智能应用')}
           </span>
         </div>
-        <MdExpandMore 
-          size={24} 
-          style={{ 
-            color: 'var(--color-on-surface-variant)', 
-            transition: 'transform 0.25s', 
+        <MdExpandMore
+          size={24}
+          style={{
+            color: 'var(--color-on-surface-variant)',
+            transition: 'transform 0.25s',
             transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
-            flexShrink: 0 
-          }} 
+            flexShrink: 0
+          }}
         />
       </div>
 
@@ -57,7 +64,9 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
               <MdOutlineHub size={20} />
             </div>
             <div className="settings-list-tile-content">
-              <span className="settings-list-tile-title">{t('settings.mcp_enable', '启用 MCP 服务')}</span>
+              <span className="settings-list-tile-title">
+                {t('settings.mcp_enable', '启用 MCP 服务')}
+              </span>
             </div>
             <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
               <input
@@ -78,7 +87,9 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
                   <MdOutlineLan size={20} />
                 </div>
                 <div className="settings-list-tile-content">
-                  <span className="settings-list-tile-title">{t('settings.mcp_port', '监听端口')}</span>
+                  <span className="settings-list-tile-title">
+                    {t('settings.mcp_port', '监听端口')}
+                  </span>
                 </div>
                 <input
                   type="number"
@@ -87,14 +98,17 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
                   min={1000}
                   max={65535}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    if (!isNaN(val)) onChange({ ...config, mcpPort: val });
+                    const val = parseInt(e.target.value)
+                    if (!isNaN(val)) onChange({ ...config, mcpPort: val })
                   }}
                 />
               </div>
               <div className="settings-list-divider indent" />
               {/* 状态行 */}
-              <div className="settings-list-tile settings-list-tile-noclick" style={{ paddingBottom: 12 }}>
+              <div
+                className="settings-list-tile settings-list-tile-noclick"
+                style={{ paddingBottom: 12 }}
+              >
                 <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }} />
                 <span className="settings-list-tile-subtitle settings-monospace">
                   http://localhost:{config.mcpPort}/mcp
@@ -105,5 +119,5 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

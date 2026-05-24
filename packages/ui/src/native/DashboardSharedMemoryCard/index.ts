@@ -1,1 +1,1 @@
-export * from './DashboardSharedMemoryCard';
+export * from './DashboardSharedMemoryCard'

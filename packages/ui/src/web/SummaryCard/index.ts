@@ -1,1 +1,1 @@
-export * from './SummaryCard';
+export * from './SummaryCard'

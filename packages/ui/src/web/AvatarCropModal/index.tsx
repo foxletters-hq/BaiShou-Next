@@ -1,36 +1,40 @@
-import React, { useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { useTranslation } from 'react-i18next';
-import Cropper from 'react-easy-crop';
-import { getCroppedImg } from './cropImage';
-import styles from './AvatarCropModal.module.css';
+import React, { useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
+import Cropper from 'react-easy-crop'
+import { getCroppedImg } from './cropImage'
+import styles from './AvatarCropModal.module.css'
 
 export interface AvatarCropModalProps {
-  imageSrc: string;
-  onCanceled: () => void;
-  onCropped: (croppedImageBase64OrURL: string) => void;
+  imageSrc: string
+  onCanceled: () => void
+  onCropped: (croppedImageBase64OrURL: string) => void
 }
 
-export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, onCanceled, onCropped }) => {
-  const { t } = useTranslation();
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
+  imageSrc,
+  onCanceled,
+  onCropped
+}) => {
+  const { t } = useTranslation()
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
 
   const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixelsVal: any) => {
-    setCroppedAreaPixels(croppedAreaPixelsVal);
-  }, []);
+    setCroppedAreaPixels(croppedAreaPixelsVal)
+  }, [])
 
   const handleConfirm = async () => {
     try {
-      if (!croppedAreaPixels) return;
-      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels, 0);
-      onCropped(croppedImage);
+      if (!croppedAreaPixels) return
+      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels, 0)
+      onCropped(croppedImage)
     } catch (e) {
-      console.error('Crop Error', e);
-      onCanceled();
+      console.error('Crop Error', e)
+      onCanceled()
     }
-  };
+  }
 
   const modalRender = (
     <div className={styles.modalOverlay}>
@@ -48,12 +52,12 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, onCa
             onZoomChange={setZoom}
             style={{
               cropAreaStyle: {
-                border: '2px dashed var(--color-primary)',
+                border: '2px dashed var(--color-primary)'
               }
             }}
           />
         </div>
-        
+
         <div className={styles.controls}>
           <div className={styles.sliderGroup}>
             <label>{t('avatarCrop.zoom', '缩放')}</label>
@@ -67,15 +71,19 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({ imageSrc, onCa
               onChange={(e) => setZoom(Number(e.target.value))}
             />
           </div>
-          
+
           <div className={styles.actions}>
-            <button className={styles.cancelBtn} onClick={onCanceled}>{t('common.cancel', '取消')}</button>
-            <button className={styles.confirmBtn} onClick={handleConfirm}>{t('avatarCrop.saveCrop', '保存裁剪')}</button>
+            <button className={styles.cancelBtn} onClick={onCanceled}>
+              {t('common.cancel', '取消')}
+            </button>
+            <button className={styles.confirmBtn} onClick={handleConfirm}>
+              {t('avatarCrop.saveCrop', '保存裁剪')}
+            </button>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 
-  return createPortal(modalRender, document.body);
-};
+  return createPortal(modalRender, document.body)
+}

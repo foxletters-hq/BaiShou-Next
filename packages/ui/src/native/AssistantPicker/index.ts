@@ -1,1 +1,1 @@
-export * from './AssistantPicker';
+export * from './AssistantPicker'

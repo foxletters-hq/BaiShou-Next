@@ -1,1 +1,1 @@
-export * from './SummaryDashboard';
+export * from './SummaryDashboard'

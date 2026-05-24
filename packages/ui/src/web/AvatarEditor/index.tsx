@@ -1,57 +1,59 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import 'emoji-picker-element';
-import type Picker from 'emoji-picker-element/picker';
-import type { EmojiClickEvent, NativeEmoji } from 'emoji-picker-element/shared';
-import { ImagePlus } from 'lucide-react';
-import emojiDataUrl from 'emoji-picker-element-data/en/cldr/data.json?url';
-import { useTheme } from '../../hooks';
-import { AvatarCropModal } from '../AvatarCropModal';
-import styles from './AvatarEditor.module.css';
+import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import 'emoji-picker-element'
+import type Picker from 'emoji-picker-element/picker'
+import type { EmojiClickEvent, NativeEmoji } from 'emoji-picker-element/shared'
+import { ImagePlus } from 'lucide-react'
+import emojiDataUrl from 'emoji-picker-element-data/en/cldr/data.json?url'
+import { useTheme } from '../../hooks'
+import { AvatarCropModal } from '../AvatarCropModal'
+import styles from './AvatarEditor.module.css'
 
 export interface AvatarEditorProps {
-  emoji?: string;
-  avatarPath?: string;
-  onChange: (type: 'emoji' | 'image', value: string) => void;
-  children: React.ReactNode;
+  emoji?: string
+  avatarPath?: string
+  onChange: (type: 'emoji' | 'image', value: string) => void
+  children: React.ReactNode
 }
 
 export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }) => {
-  const { t } = useTranslation();
-  const [showPicker, setShowPicker] = useState(false);
-  const [showCropModal, setShowCropModal] = useState(false);
-  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const pickerRef = useRef<Picker>(null);
-  const { isDark } = useTheme();
+  const { t } = useTranslation()
+  const [showPicker, setShowPicker] = useState(false)
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const pickerRef = useRef<Picker>(null)
+  const { isDark } = useTheme()
 
   // Close when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setShowPicker(false);
+        setShowPicker(false)
       }
-    };
+    }
     if (showPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside)
     }
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showPicker]);
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showPicker])
 
   // Bind emoji click listener and attach i18n translation
   useEffect(() => {
-    const picker = pickerRef.current;
+    const picker = pickerRef.current
     if (picker && showPicker) {
-      
       // Provide local offline emoji data to prevent CDN timeouts/blocks (e.g. jsdelivr in China)
-      picker.dataSource = emojiDataUrl;
+      picker.dataSource = emojiDataUrl
 
       // Inject i18n translations using t() function
       picker.i18n = {
         categoriesLabel: t('avatarEditor.categoriesLabel', '类别'),
-        emojiUnsupportedMessage: t('avatarEditor.emojiUnsupportedMessage', '你的浏览器不支持彩色表情符号'),
+        emojiUnsupportedMessage: t(
+          'avatarEditor.emojiUnsupportedMessage',
+          '你的浏览器不支持彩色表情符号'
+        ),
         favoritesLabel: t('avatarEditor.favoritesLabel', '收藏'),
         loadingMessage: t('avatarEditor.loadingMessage', '加载中…'),
         networkErrorMessage: t('avatarEditor.networkErrorMessage', '无法加载表情符号'),
@@ -82,15 +84,15 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
           symbols: t('avatarEditor.categories.symbols', '符号'),
           flags: t('avatarEditor.categories.flags', '旗帜')
         }
-      };
+      }
 
       // Force hide the search bar and skin tone picker through Shadow DOM
       // since emoji-picker-element does not natively expose these as ::part
       if (picker.shadowRoot) {
-        let style = picker.shadowRoot.querySelector('#hide-search-style');
+        let style = picker.shadowRoot.querySelector('#hide-search-style')
         if (!style) {
-          style = document.createElement('style');
-          style.id = 'hide-search-style';
+          style = document.createElement('style')
+          style.id = 'hide-search-style'
           style.textContent = `
             .search-row,
             .search-wrapper,
@@ -103,61 +105,65 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
             [id="skin-tone"] {
                display: none !important;
             }
-          `;
-          picker.shadowRoot.appendChild(style);
+          `
+          picker.shadowRoot.appendChild(style)
         }
       }
-      
+
       const handleEmojiClick = (event: EmojiClickEvent) => {
-        event.stopPropagation();
-        const { detail } = event;
+        event.stopPropagation()
+        const { detail } = event
         // Fallback safely to OS native unicode if detail.unicode not processed
-        const unicode = detail.unicode || ('unicode' in detail.emoji ? (detail.emoji as NativeEmoji).unicode : '');
-        onChange('emoji', unicode);
-        setShowPicker(false);
-      };
-      picker.addEventListener('emoji-click', handleEmojiClick);
-      return () => picker.removeEventListener('emoji-click', handleEmojiClick);
+        const unicode =
+          detail.unicode || ('unicode' in detail.emoji ? (detail.emoji as NativeEmoji).unicode : '')
+        onChange('emoji', unicode)
+        setShowPicker(false)
+      }
+      picker.addEventListener('emoji-click', handleEmojiClick)
+      return () => picker.removeEventListener('emoji-click', handleEmojiClick)
     }
-  }, [onChange, showPicker, t]);
+  }, [onChange, showPicker, t])
 
   const triggerImageInput = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/png, image/jpeg, image/webp';
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/png, image/jpeg, image/webp'
     input.onchange = (e: any) => {
-      const file = e.target.files?.[0];
+      const file = e.target.files?.[0]
       if (file) {
-        const reader = new FileReader();
+        const reader = new FileReader()
         reader.onload = (ev) => {
           if (typeof ev.target?.result === 'string') {
-            setTempImageSrc(ev.target.result);
-            setShowCropModal(true);
+            setTempImageSrc(ev.target.result)
+            setShowCropModal(true)
           }
-        };
-        reader.readAsDataURL(file);
+        }
+        reader.readAsDataURL(file)
       }
-    };
-    input.click();
-    setShowPicker(false);
-  };
+    }
+    input.click()
+    setShowPicker(false)
+  }
 
   const cancelCrop = () => {
-    setShowCropModal(false);
-    setTempImageSrc(null);
-  };
+    setShowCropModal(false)
+    setTempImageSrc(null)
+  }
 
   const finishCrop = (croppedUrl: string) => {
-    onChange('image', croppedUrl);
-    setShowCropModal(false);
-    setTempImageSrc(null);
-  };
+    onChange('image', croppedUrl)
+    setShowCropModal(false)
+    setTempImageSrc(null)
+  }
 
   return (
     <>
       <div className={styles.editorContainer} ref={containerRef}>
-        <div 
-          onClick={(e) => { e.preventDefault(); setShowPicker(!showPicker); }}
+        <div
+          onClick={(e) => {
+            e.preventDefault()
+            setShowPicker(!showPicker)
+          }}
           className={styles.triggerWrapper}
         >
           {children}
@@ -165,41 +171,39 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
 
         {showPicker && (
           <div className={styles.popover} onClick={(e) => e.stopPropagation()}>
-             <div className={styles.popoverHeader}>
-                 <span className={styles.popoverTitle}>{t('avatarEditor.personalizeIcon', '个性化图标')}</span>
-                 <button 
-                    className={styles.uploadBtnIcon} 
-                    onClick={triggerImageInput} 
-                    title={t('avatarEditor.uploadImageAsAvatar', '从本地上传图片作为头像')}
-                >
-                   <ImagePlus size={16} />
-                </button>
-             </div>
-             <div className={styles.pickerWrapper}>
-               {/* @ts-ignore Since it's a web component */}
-               <emoji-picker 
-                 ref={pickerRef} 
-                 class={isDark ? "dark" : "light"} 
-                 style={{ 
-                   width: '100%', 
-                   height: '300px', 
-                   border: 'none', 
-                   background: 'transparent',
-                   '--indicator-color': 'var(--color-primary)'
-                 }} 
-               />
-             </div>
+            <div className={styles.popoverHeader}>
+              <span className={styles.popoverTitle}>
+                {t('avatarEditor.personalizeIcon', '个性化图标')}
+              </span>
+              <button
+                className={styles.uploadBtnIcon}
+                onClick={triggerImageInput}
+                title={t('avatarEditor.uploadImageAsAvatar', '从本地上传图片作为头像')}
+              >
+                <ImagePlus size={16} />
+              </button>
+            </div>
+            <div className={styles.pickerWrapper}>
+              {/* @ts-ignore Since it's a web component */}
+              <emoji-picker
+                ref={pickerRef}
+                class={isDark ? 'dark' : 'light'}
+                style={{
+                  width: '100%',
+                  height: '300px',
+                  border: 'none',
+                  background: 'transparent',
+                  '--indicator-color': 'var(--color-primary)'
+                }}
+              />
+            </div>
           </div>
         )}
       </div>
 
       {showCropModal && tempImageSrc && (
-        <AvatarCropModal 
-          imageSrc={tempImageSrc}
-          onCanceled={cancelCrop}
-          onCropped={finishCrop}
-        />
+        <AvatarCropModal imageSrc={tempImageSrc} onCanceled={cancelCrop} onCropped={finishCrop} />
       )}
     </>
-  );
-};
+  )
+}

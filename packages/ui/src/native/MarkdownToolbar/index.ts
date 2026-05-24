@@ -1,1 +1,1 @@
-export * from './MarkdownToolbar';
+export * from './MarkdownToolbar'

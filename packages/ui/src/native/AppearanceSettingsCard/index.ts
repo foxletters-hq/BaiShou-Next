@@ -1,1 +1,1 @@
-export * from './AppearanceSettingsCard';
+export * from './AppearanceSettingsCard'

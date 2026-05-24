@@ -1,1 +1,1 @@
-export * from './DashboardStatsCard';
+export * from './DashboardStatsCard'

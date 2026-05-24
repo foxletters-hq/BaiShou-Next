@@ -1,18 +1,18 @@
-import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '../theme';
+import React from 'react'
+import { View, Text, Pressable } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { useNativeTheme } from '../theme'
 
 export interface NativeStorageSettingsCardProps {
-  storageRootPath?: string;
-  sqliteSizeStats: string;
-  vectorDbStats: string;
-  mediaCacheStats: string;
-  totalLimit?: string;
-  onChangeRoot?: () => Promise<void>;
-  onNavigateToAttachments?: () => void;
-  onClearCache?: () => void;
-  onVacuumDb?: () => void;
+  storageRootPath?: string
+  sqliteSizeStats: string
+  vectorDbStats: string
+  mediaCacheStats: string
+  totalLimit?: string
+  onChangeRoot?: () => Promise<void>
+  onNavigateToAttachments?: () => void
+  onClearCache?: () => void
+  onVacuumDb?: () => void
 }
 
 export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
@@ -23,93 +23,113 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
   onChangeRoot,
   onNavigateToAttachments,
   onClearCache,
-  onVacuumDb,
+  onVacuumDb
 }) => {
-  const { t } = useTranslation();
-  const { colors, tokens } = useNativeTheme();
+  const { t } = useTranslation()
+  const { colors, tokens } = useNativeTheme()
 
   const renderStatItem = (label: string, value: string, icon: string) => (
-    <View style={{
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: tokens.spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderSubtle,
-      gap: tokens.spacing.sm,
-    }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: tokens.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.borderSubtle,
+        gap: tokens.spacing.sm
+      }}
+    >
       <Text style={{ fontSize: 18 }}>{icon}</Text>
       <View style={{ flex: 1 }}>
-        <Text style={{
-          fontSize: 14,
-          color: colors.textSecondary,
-        }}>
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary
+          }}
+        >
           {label}
         </Text>
-        <Text style={{
-          fontSize: 16,
-          fontWeight: '600',
-          color: colors.textPrimary,
-        }}>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '600',
+            color: colors.textPrimary
+          }}
+        >
           {value}
         </Text>
       </View>
     </View>
-  );
+  )
 
   return (
-    <View style={{
-      backgroundColor: colors.bgSurface,
-      borderRadius: tokens.radius.lg,
-      overflow: 'hidden',
-    }}>
+    <View
+      style={{
+        backgroundColor: colors.bgSurface,
+        borderRadius: tokens.radius.lg,
+        overflow: 'hidden'
+      }}
+    >
       {/* 头部 */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: tokens.spacing.lg,
-        gap: tokens.spacing.sm,
-      }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: tokens.spacing.lg,
+          gap: tokens.spacing.sm
+        }}
+      >
         <Text style={{ fontSize: 20 }}>💾</Text>
         <View style={{ flex: 1 }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: colors.textPrimary,
-          }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: colors.textPrimary
+            }}
+          >
             {t('settings.storage_manager', '存储管理')}
           </Text>
-          <Text style={{
-            fontSize: 14,
-            color: colors.textSecondary,
-          }}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.textSecondary
+            }}
+          >
             {t('settings.storage_root_desc', '管理数据存储路径与附件')}
           </Text>
         </View>
       </View>
 
       {/* 数据根目录 */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: tokens.spacing.md,
-        paddingHorizontal: tokens.spacing.lg,
-        borderTopWidth: 1,
-        borderTopColor: colors.borderSubtle,
-        gap: tokens.spacing.sm,
-      }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: tokens.spacing.md,
+          paddingHorizontal: tokens.spacing.lg,
+          borderTopWidth: 1,
+          borderTopColor: colors.borderSubtle,
+          gap: tokens.spacing.sm
+        }}
+      >
         <Text style={{ fontSize: 18 }}>📁</Text>
         <View style={{ flex: 1 }}>
-          <Text style={{
-            fontSize: 14,
-            color: colors.textSecondary,
-          }}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.textSecondary
+            }}
+          >
             {t('settings.storage_root', '数据根目录')}
           </Text>
-          <Text style={{
-            fontSize: 14,
-            color: colors.textPrimary,
-            fontFamily: 'monospace',
-          }}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.textPrimary,
+              fontFamily: 'monospace'
+            }}
+          >
             {storageRootPath}
           </Text>
         </View>
@@ -121,14 +141,16 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               paddingHorizontal: tokens.spacing.sm,
               paddingVertical: tokens.spacing.xs,
               borderRadius: tokens.radius.md,
-              backgroundColor: colors.primaryContainer,
+              backgroundColor: colors.primaryContainer
             })}
           >
-            <Text style={{
-              fontSize: 14,
-              color: colors.onPrimaryContainer,
-              fontWeight: '600',
-            }}>
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.onPrimaryContainer,
+                fontWeight: '600'
+              }}
+            >
               {t('settings.change_storage_root', '更换目录')}
             </Text>
           </Pressable>
@@ -136,11 +158,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
       </View>
 
       {/* 存储统计 */}
-      {renderStatItem(
-        t('settings.sqlite_size', 'SQLite 大小'),
-        sqliteSizeStats || '0 MB',
-        '🗄️'
-      )}
+      {renderStatItem(t('settings.sqlite_size', 'SQLite 大小'), sqliteSizeStats || '0 MB', '🗄️')}
       {renderStatItem(
         t('settings.vector_db_size', '向量数据库大小'),
         vectorDbStats || '0 MB',
@@ -153,15 +171,17 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
       )}
 
       {/* 操作按钮 */}
-      <View style={{
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: tokens.spacing.sm,
-        padding: tokens.spacing.md,
-        paddingHorizontal: tokens.spacing.lg,
-        borderTopWidth: 1,
-        borderTopColor: colors.borderSubtle,
-      }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: tokens.spacing.sm,
+          padding: tokens.spacing.md,
+          paddingHorizontal: tokens.spacing.lg,
+          borderTopWidth: 1,
+          borderTopColor: colors.borderSubtle
+        }}
+      >
         {onNavigateToAttachments && (
           <Pressable
             onPress={onNavigateToAttachments}
@@ -170,13 +190,15 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               paddingHorizontal: tokens.spacing.md,
               paddingVertical: tokens.spacing.sm,
               borderRadius: tokens.radius.md,
-              backgroundColor: colors.bgSurfaceNormal,
+              backgroundColor: colors.bgSurfaceNormal
             })}
           >
-            <Text style={{
-              fontSize: 14,
-              color: colors.textPrimary,
-            }}>
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.textPrimary
+              }}
+            >
               📎 {t('settings.manage_attachments', '管理附件')}
             </Text>
           </Pressable>
@@ -190,13 +212,15 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               paddingHorizontal: tokens.spacing.md,
               paddingVertical: tokens.spacing.sm,
               borderRadius: tokens.radius.md,
-              backgroundColor: colors.bgSurfaceNormal,
+              backgroundColor: colors.bgSurfaceNormal
             })}
           >
-            <Text style={{
-              fontSize: 14,
-              color: colors.textPrimary,
-            }}>
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.textPrimary
+              }}
+            >
               🧹 {t('settings.clear_cache', '清理缓存')}
             </Text>
           </Pressable>
@@ -210,18 +234,20 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               paddingHorizontal: tokens.spacing.md,
               paddingVertical: tokens.spacing.sm,
               borderRadius: tokens.radius.md,
-              backgroundColor: colors.bgSurfaceNormal,
+              backgroundColor: colors.bgSurfaceNormal
             })}
           >
-            <Text style={{
-              fontSize: 14,
-              color: colors.textPrimary,
-            }}>
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.textPrimary
+              }}
+            >
               ⚡ {t('settings.vacuum_db', '压缩数据库')}
             </Text>
           </Pressable>
         )}
       </View>
     </View>
-  );
-};
+  )
+}

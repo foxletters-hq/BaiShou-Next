@@ -1,1 +1,1 @@
-export * from './DashboardHeroBanner';
+export * from './DashboardHeroBanner'

@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
-import { useNativeTheme } from '../../native/theme';
+import React from 'react'
+import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native'
+import { useNativeTheme } from '../../native/theme'
 
 interface MarkdownToolbarProps {
-  isPreview: boolean;
-  onTogglePreview: () => void;
-  onHideKeyboard: () => void;
-  onInsertText: (prefix: string, suffix?: string) => void;
+  isPreview: boolean
+  onTogglePreview: () => void
+  onHideKeyboard: () => void
+  onInsertText: (prefix: string, suffix?: string) => void
 }
 
 export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
@@ -15,17 +15,30 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
   onHideKeyboard,
   onInsertText
 }) => {
-  const { colors } = useNativeTheme();
+  const { colors } = useNativeTheme()
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgSurface, borderTopColor: colors.borderSubtle, shadowColor: colors.textPrimary }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.bgSurface,
+          borderTopColor: colors.borderSubtle,
+          shadowColor: colors.textPrimary
+        }
+      ]}
+    >
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
         <View style={styles.toolRow}>
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('**', '**')}>
-            <Text style={[styles.btnText, { color: colors.textSecondary, fontWeight: 'bold' }]}>B</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary, fontWeight: 'bold' }]}>
+              B
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('*', '*')}>
-            <Text style={[styles.btnText, { color: colors.textSecondary, fontStyle: 'italic' }]}>I</Text>
+            <Text style={[styles.btnText, { color: colors.textSecondary, fontStyle: 'italic' }]}>
+              I
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('## ')}>
             <Text style={[styles.btnText, { color: colors.textSecondary }]}>H</Text>
@@ -53,7 +66,13 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
 
       <View style={[styles.actions, { borderLeftColor: colors.borderSubtle }]}>
         <TouchableOpacity style={styles.actionBtn} onPress={onTogglePreview}>
-          <Text style={[styles.actionBtnText, { color: colors.textSecondary }, isPreview && { color: colors.primary }]}>
+          <Text
+            style={[
+              styles.actionBtnText,
+              { color: colors.textSecondary },
+              isPreview && { color: colors.primary }
+            ]}
+          >
             {isPreview ? '✎' : '👁️'}
           </Text>
         </TouchableOpacity>
@@ -62,8 +81,8 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
         </TouchableOpacity>
       </View>
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -75,46 +94,46 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 8
   },
   scroll: {
-    flex: 1,
+    flex: 1
   },
   toolRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 4
   },
   btn: {
     width: 36,
     height: 36,
     borderRadius: 8,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   btnText: {
-    fontSize: 16,
+    fontSize: 16
   },
   divider: {
     width: 1,
     height: 20,
-    marginHorizontal: 4,
+    marginHorizontal: 4
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     borderLeftWidth: 1,
     paddingLeft: 8,
-    gap: 4,
+    gap: 4
   },
   actionBtn: {
     width: 40,
     height: 40,
     borderRadius: 8,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   actionBtnText: {
-    fontSize: 18,
+    fontSize: 18
   }
-});
+})

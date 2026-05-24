@@ -1,23 +1,22 @@
-import React, { useState } from 'react';
-import styles from './Sidebar.module.css';
-import { useTranslation } from 'react-i18next';
-
+import React, { useState } from 'react'
+import styles from './Sidebar.module.css'
+import { useTranslation } from 'react-i18next'
 
 export interface NavItem {
-  id: string;
-  icon: React.ReactNode;
-  label: string;
+  id: string
+  icon: React.ReactNode
+  label: string
 }
 
 interface SidebarProps {
-  items: NavItem[];
-  activeId: string;
-  onItemClick: (id: string) => void;
-  onOrderChange?: (newOrder: string[]) => void;
+  items: NavItem[]
+  activeId: string
+  onItemClick: (id: string) => void
+  onOrderChange?: (newOrder: string[]) => void
   user?: {
-    nickname: string;
-    avatarUrl?: string;
-  };
+    nickname: string
+    avatarUrl?: string
+  }
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -27,41 +26,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOrderChange,
   user
 }) => {
-  const { t } = useTranslation();
-  const [orderedItems, setOrderedItems] = useState(items);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const { t } = useTranslation()
+  const [orderedItems, setOrderedItems] = useState(items)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
-  setDraggedId(id);
-    e.dataTransfer.effectAllowed = 'move';
+    setDraggedId(id)
+    e.dataTransfer.effectAllowed = 'move'
     // Transparent drag image
-    const img = new Image();
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(img, 0, 0);
-  };
+    const img = new Image()
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    e.dataTransfer.setDragImage(img, 0, 0)
+  }
 
   const handleDragOver = (e: React.DragEvent, id: string) => {
-  e.preventDefault();
-    if (!draggedId || draggedId === id) return;
-    
+    e.preventDefault()
+    if (!draggedId || draggedId === id) return
+
     setOrderedItems((prev) => {
-  const oldIndex = prev.findIndex((i) => i.id === draggedId);
-      const newIndex = prev.findIndex((i) => i.id === id);
-      const newArray = [...prev];
-      const [movedItem] = newArray.splice(oldIndex, 1);
-      newArray.splice(newIndex, 0, movedItem);
-      return newArray;
-    });
-  };
+      const oldIndex = prev.findIndex((i) => i.id === draggedId)
+      const newIndex = prev.findIndex((i) => i.id === id)
+      const newArray = [...prev]
+      const [movedItem] = newArray.splice(oldIndex, 1)
+      newArray.splice(newIndex, 0, movedItem)
+      return newArray
+    })
+  }
 
   const handleDragEnd = () => {
-  setDraggedId(null);
+    setDraggedId(null)
     if (onOrderChange) {
-
-
-      onOrderChange(orderedItems.map(i => i.id));
+      onOrderChange(orderedItems.map((i) => i.id))
     }
-  };
+  }
 
   return (
     <div className={styles.sidebar}>
@@ -97,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ))}
 
         <div className={styles.divider} />
-        
+
         {/* Settings - Static */}
         <div
           className={`${styles.navItem} ${activeId === 'settings' ? styles.active : ''}`}
@@ -118,9 +115,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
         <div className={styles.userInfo}>
-          <span className={styles.nickname}>{user?.nickname || t('profile.no_nickname', '未设置昵称')}</span>
+          <span className={styles.nickname}>
+            {user?.nickname || t('profile.no_nickname', '未设置昵称')}
+          </span>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

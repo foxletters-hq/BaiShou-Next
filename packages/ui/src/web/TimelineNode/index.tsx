@@ -1,15 +1,15 @@
-import React from 'react';
-import type { TimelineNode as TimelineNodeType } from '@baishou/shared';
+import React from 'react'
+import type { TimelineNode as TimelineNodeType } from '@baishou/shared'
 // @ts-ignore
-import styles from './TimelineNode.module.css';
-import { DiaryMetaCard } from '../DiaryMetaCard';
+import styles from './TimelineNode.module.css'
+import { DiaryMetaCard } from '../DiaryMetaCard'
 
 interface TimelineNodeProps {
-  node: TimelineNodeType;
-  isFirst?: boolean;
-  isLast?: boolean;
-  onDiaryDelete?: (id: number) => void;
-  onDiaryClick?: (id: number) => void;
+  node: TimelineNodeType
+  isFirst?: boolean
+  isLast?: boolean
+  onDiaryDelete?: (id: number) => void
+  onDiaryClick?: (id: number) => void
 }
 
 export const TimelineNode: React.FC<TimelineNodeProps> = ({
@@ -26,13 +26,13 @@ export const TimelineNode: React.FC<TimelineNodeProps> = ({
           {node.date.getFullYear()}/{node.date.getMonth() + 1}
         </h2>
       </div>
-    );
+    )
   }
 
   // format time like "10:00"
-  const hours = node.date.getHours().toString().padStart(2, '0');
-  const minutes = node.date.getMinutes().toString().padStart(2, '0');
-  const timeStr = `${hours}:${minutes}`;
+  const hours = node.date.getHours().toString().padStart(2, '0')
+  const minutes = node.date.getMinutes().toString().padStart(2, '0')
+  const timeStr = `${hours}:${minutes}`
 
   return (
     <div className={styles.nodeContainer}>
@@ -50,13 +50,13 @@ export const TimelineNode: React.FC<TimelineNodeProps> = ({
 
       <div className={styles.contentAxis}>
         {node.meta && (
-          <DiaryMetaCard 
-            meta={node.meta} 
+          <DiaryMetaCard
+            meta={node.meta}
             onDelete={onDiaryDelete ? () => onDiaryDelete(node.meta!.id) : undefined}
             onClick={onDiaryClick ? () => onDiaryClick(node.meta!.id) : undefined}
           />
         )}
       </div>
     </div>
-  );
-};
+  )
+}

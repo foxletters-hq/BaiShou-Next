@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { 
-  MdOutlineSystemUpdate, 
-  MdOpenInNew, 
-  MdDownload, 
-  MdCheckCircle, 
-  MdError, 
+import {
+  MdOutlineSystemUpdate,
+  MdOpenInNew,
+  MdDownload,
+  MdCheckCircle,
+  MdError,
   MdHourglassEmpty,
   MdUpdate,
   MdHistory,
@@ -23,7 +23,7 @@ export interface VersionManagerProps {
   onOpenGithubHost?: () => void
 }
 
-export const VersionManager: React.FC<VersionManagerProps> = ({ 
+export const VersionManager: React.FC<VersionManagerProps> = ({
   version,
   heroImageSrc,
   onOpenGithubHost
@@ -41,7 +41,7 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
     quitAndInstall,
     setAutoCheck,
     loadAutoCheck,
-    initIpcListeners,
+    initIpcListeners
   } = useUpdaterStore()
 
   const [isChecking, setIsChecking] = useState(false)
@@ -99,9 +99,13 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
       case UpdateStatus.CHECKING:
         return t('updater.checking', '检查更新中...')
       case UpdateStatus.AVAILABLE:
-        return t('updater.available', '发现新版本 v{{version}}', { version: updateInfo?.version })
+        return t('updater.available', '发现新版本 v{{version}}', {
+          version: updateInfo?.version
+        })
       case UpdateStatus.DOWNLOADING:
-        return t('updater.downloading', '下载中 {{progress}}%', { progress: Math.round(downloadProgress) })
+        return t('updater.downloading', '下载中 {{progress}}%', {
+          progress: Math.round(downloadProgress)
+        })
       case UpdateStatus.DOWNLOADED:
         return t('updater.downloaded', '下载完成，准备安装')
       case UpdateStatus.NOT_AVAILABLE:
@@ -200,7 +204,7 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
         <div className="version-release-notes-header">
           <MdHistory size={16} />
           <span>{t('updater.release_notes', '更新日志')}</span>
-          <button 
+          <button
             className="version-release-notes-toggle"
             onClick={() => setShowReleaseNotes(!showReleaseNotes)}
           >
@@ -208,9 +212,7 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
           </button>
         </div>
         {showReleaseNotes && (
-          <div className="version-release-notes-content">
-            {updateInfo.releaseNotes}
-          </div>
+          <div className="version-release-notes-content">{updateInfo.releaseNotes}</div>
         )}
       </div>
     )
@@ -248,17 +250,15 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
               {getStatusText()}
             </span>
           </div>
-          <div className="version-actions">
-            {renderActionButton()}
-          </div>
+          <div className="version-actions">{renderActionButton()}</div>
         </div>
 
         {/* 进度条（下载时显示） */}
         {status === UpdateStatus.DOWNLOADING && (
           <div className="version-progress-section">
             <div className="version-progress-bar-large">
-              <div 
-                className="version-progress-fill-large" 
+              <div
+                className="version-progress-fill-large"
                 style={{ width: `${downloadProgress}%` }}
               />
             </div>

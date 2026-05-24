@@ -1,9 +1,9 @@
-import React, { InputHTMLAttributes } from 'react';
-import styles from './Switch.module.css';
+import React, { InputHTMLAttributes } from 'react'
+import styles from './Switch.module.css'
 
 export interface SwitchProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  labelOn?: string;
-  labelOff?: string;
+  labelOn?: string
+  labelOff?: string
 }
 
 export const Switch: React.FC<SwitchProps> = ({ labelOn, labelOff, className = '', ...props }) => {
@@ -17,5 +17,5 @@ export const Switch: React.FC<SwitchProps> = ({ labelOn, labelOff, className = '
         </div>
       </div>
     </label>
-  );
-};
+  )
+}

@@ -1,62 +1,63 @@
-import React, { useState } from 'react';
-import styles from './DatetimePickerSheet.module.css';
-import { useTranslation } from 'react-i18next';
-
+import React, { useState } from 'react'
+import styles from './DatetimePickerSheet.module.css'
+import { useTranslation } from 'react-i18next'
 
 interface DatetimePickerSheetProps {
-  initialDate?: Date;
-  onConfirm: (date: Date) => void;
-  onClose: () => void;
+  initialDate?: Date
+  onConfirm: (date: Date) => void
+  onClose: () => void
 }
 
-export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({ 
-  initialDate = new Date(), 
-  onConfirm, 
-  onClose 
+export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
+  initialDate = new Date(),
+  onConfirm,
+  onClose
 }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   // A simplistic mock for the wheel picker since Native wheel is complex to recreate in bare React CSS
-  const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
+  const [selectedDate, setSelectedDate] = useState<Date>(initialDate)
 
   const handleConfirm = () => {
-
-
-    onConfirm(selectedDate);
-    onClose();
-  };
+    onConfirm(selectedDate)
+    onClose()
+  }
 
   return (
     <>
       <div className={styles.overlay} onClick={onClose} />
       <div className={styles.sheet}>
-         <div className={styles.handleBar} />
-         <div className={styles.header}>
-            <button className={styles.cancelBtn} onClick={onClose}>{t('common.cancel', '取消')}</button>
-            <h3>{t('common.select_time', '选择时间')}</h3>
-            <button className={styles.confirmBtn} onClick={handleConfirm}>{t('common.confirm', '确定')}</button>
-         </div>
+        <div className={styles.handleBar} />
+        <div className={styles.header}>
+          <button className={styles.cancelBtn} onClick={onClose}>
+            {t('common.cancel', '取消')}
+          </button>
+          <h3>{t('common.select_time', '选择时间')}</h3>
+          <button className={styles.confirmBtn} onClick={handleConfirm}>
+            {t('common.confirm', '确定')}
+          </button>
+        </div>
 
-         <div className={styles.fakePickerContainer}>
-            {/* Visual mock of a scroll wheel picker for date and time */}
-             <div className={styles.wheelColumn}>
-                <div className={styles.wheelItem}>{t('datetime.year2024', '2024年')}</div>
-                <div className={styles.wheelItemActive}>{t('datetime.year2025', '2025年')}</div>
-                <div className={styles.wheelItem}>{t('datetime.year2026', '2026年')}</div>
-             </div>
-             <div className={styles.wheelColumn}>
-                <div className={styles.wheelItem}>{t('datetime.month02', '02月')}</div>
-                <div className={styles.wheelItemActive}>{t('datetime.month03', '03月')}</div>
-                <div className={styles.wheelItem}>{t('datetime.month04', '04月')}</div>
-             </div>
-             <div className={styles.wheelColumn}>
-                <div className={styles.wheelItem}>{t('datetime.day28', '28日')}</div>
-                <div className={styles.wheelItemActive}>{t('datetime.day29', '29日')}</div>
-                <div className={styles.wheelItem}>{t('datetime.day30', '30日')}</div>
-             </div>
-            
-            <div className={styles.highlightBar} />
-         </div>
+        <div className={styles.fakePickerContainer}>
+          {/* Visual mock of a scroll wheel picker for date and time */}
+          <div className={styles.wheelColumn}>
+            <div className={styles.wheelItem}>{t('datetime.year2024', '2024年')}</div>
+            <div className={styles.wheelItemActive}>{t('datetime.year2025', '2025年')}</div>
+            <div className={styles.wheelItem}>{t('datetime.year2026', '2026年')}</div>
+          </div>
+          <div className={styles.wheelColumn}>
+            <div className={styles.wheelItem}>{t('datetime.month02', '02月')}</div>
+            <div className={styles.wheelItemActive}>{t('datetime.month03', '03月')}</div>
+            <div className={styles.wheelItem}>{t('datetime.month04', '04月')}</div>
+          </div>
+          <div className={styles.wheelColumn}>
+            <div className={styles.wheelItem}>{t('datetime.day28', '28日')}</div>
+            <div className={styles.wheelItemActive}>{t('datetime.day29', '29日')}</div>
+            <div className={styles.wheelItem}>{t('datetime.day30', '30日')}</div>
+          </div>
+
+          <div className={styles.highlightBar} />
+        </div>
       </div>
     </>
-  );
-};
+  )
+}

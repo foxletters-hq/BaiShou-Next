@@ -1,11 +1,11 @@
-import React from 'react';
-import { Switch as RNSwitch, SwitchProps as RNSwitchProps } from 'react-native';
-import { useNativeTheme } from '../theme';
+import React from 'react'
+import { Switch as RNSwitch, SwitchProps as RNSwitchProps } from 'react-native'
+import { useNativeTheme } from '../theme'
 
 export interface NativeSwitchProps extends RNSwitchProps {}
 
 export const Switch: React.FC<NativeSwitchProps> = (props) => {
-  const { colors } = useNativeTheme();
+  const { colors } = useNativeTheme()
 
   return (
     <RNSwitch
@@ -14,5 +14,5 @@ export const Switch: React.FC<NativeSwitchProps> = (props) => {
       ios_backgroundColor={colors.bgSurfaceNormal}
       {...props}
     />
-  );
-};
+  )
+}

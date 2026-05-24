@@ -1,1 +1,1 @@
-export * from './WorkspaceSettingsCard';
+export * from './WorkspaceSettingsCard'

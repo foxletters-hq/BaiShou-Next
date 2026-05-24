@@ -1,1 +1,1 @@
-export * from './ContextChainDialog';
+export * from './ContextChainDialog'
