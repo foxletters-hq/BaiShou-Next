@@ -21,7 +21,7 @@ export class SettingsFileService {
     const fullPath = await this.getSettingsPath()
     const tmpPath = fullPath + '.tmp'
 
-    const writeOp = (async () => {
+    const writeOp = async () => {
       await fs.writeFile(tmpPath, JSON.stringify(settingsMap, null, 2), 'utf8')
       try {
         await fs.rename(tmpPath, fullPath)
@@ -46,13 +46,11 @@ export class SettingsFileService {
           throw renameErr
         }
       }
-    })()
+    }
 
-    this.writeLock = this.writeLock.then(
-      () => writeOp,
-      () => writeOp
-    )
-    await writeOp
+    const nextLock = this.writeLock.then(writeOp, writeOp)
+    this.writeLock = nextLock
+    await nextLock
   }
 
   async readAllSettings(): Promise<Record<string, any>> {

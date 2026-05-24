@@ -79,6 +79,8 @@ describe('SettingsFileService', () => {
       // 让微任务队列清空，确保第一次写入已开始
       await new Promise((r) => setTimeout(r, 0))
       const p2 = service.writeAllSettings(settings2)
+      // 让微任务队列再次清空，确保第二次写入的异步 getSettingsPath 能够 resolve 并开始执行 writeOp 逻辑
+      await new Promise((r) => setTimeout(r, 0))
 
       // 第二次写入不应该开始（writeFile 还未被第二次调用），因为第一次还在进行中
       expect(mockWriteFile).toHaveBeenCalledTimes(1)
