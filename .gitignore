@@ -115,6 +115,7 @@ _agents/
 _agent/
 .gemini/
 .claude/
+.antigravitycli/
 opencode.json
 AGENTS.md
 
