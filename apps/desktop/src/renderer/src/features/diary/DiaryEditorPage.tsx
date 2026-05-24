@@ -79,7 +79,7 @@ export const DiaryEditorPage: React.FC = () => {
 
           if (diary) {
             setDiaryId(diary.id || null)
-            setTags(diary.tags || [])
+            setTags(typeof diary.tags === 'string' ? diary.tags.split(','): (diary.tags || []));
             setWeather(diary.weather || '')
             setIsFavorite(diary.isFavorite || false)
             setMediaPaths(diary.mediaPaths || [])
