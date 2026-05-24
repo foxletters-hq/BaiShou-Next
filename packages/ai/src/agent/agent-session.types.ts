@@ -10,6 +10,11 @@ export interface AttachmentInput {
   data?: string // base64
   mimeType?: string
   name?: string
+  isText?: boolean
+  textContent?: string
+  isImage?: boolean
+  isPdf?: boolean
+  filePath?: string
 }
 
 export interface StreamChatOptions {

@@ -1,4 +1,4 @@
-import { AgentMessage, AgentPart } from '@baishou/shared'
+import { AgentMessage, AgentPart, supportsNativePdf } from '@baishou/shared'
 import { ModelMessage, ToolResultPart } from 'ai'
 
 export interface MessageWithParts extends AgentMessage {
@@ -10,7 +10,11 @@ export class MessageAdapter {
    * 将白守数据库结构的 Message 列表转换为 Vercel AI SDK (ModelMessage[]) 所能理解的格式。
    * 它将正确还原 Assistant 发出的工具调用（ToolCall）以及对应的结果回填（ToolResult）。
    */
-  static toVercelMessages(dbMessages: MessageWithParts[]): ModelMessage[] {
+  static async toVercelMessages(
+    dbMessages: MessageWithParts[],
+    activeModelId?: string,
+    activeProviderType?: string
+  ): Promise<ModelMessage[]> {
     const vercelMessages: ModelMessage[] = []
 
     for (const msg of dbMessages) {
@@ -37,7 +41,13 @@ export class MessageAdapter {
             }
           } else if (p.type === 'attachment') {
             const att = p.data as any
-            if (att.type === 'image') {
+            if (att.isText === true || att.textContent) {
+              const textContent = att.textContent || ''
+              contentParts.push({
+                type: 'text',
+                text: `\n\n[User Uploaded File Attachment: ${att.name || att.fileName || 'Attachment'}]\n\`\`\`\n${textContent}\n\`\`\`\n`
+              })
+            } else if (att.isImage === true) {
               if (att.url) {
                 contentParts.push({ type: 'image', image: new URL(att.url) })
               } else if (att.data) {
@@ -46,12 +56,53 @@ export class MessageAdapter {
                 const base64Data = att.data.startsWith('data:') ? att.data : prefix + att.data
                 contentParts.push({ type: 'image', image: base64Data })
               }
-            } else if (att.type === 'file') {
-              contentParts.push({
-                type: 'file',
-                mimeType: att.mimeType || 'application/octet-stream',
-                data: att.url ? new URL(att.url) : att.data || ''
-              })
+            } else if (att.isPdf === true) {
+              const nativePdfSupported = supportsNativePdf(activeModelId || '', activeProviderType || '')
+              if (nativePdfSupported) {
+                let fileData: string = ''
+                try {
+                  let filePath = att.filePath || ''
+                  if (!filePath && att.url?.startsWith('file:///')) {
+                    filePath = decodeURIComponent((att.url || '').replace('file:///', ''))
+                  }
+                  if (filePath && typeof process !== 'undefined' && process.versions && process.versions.node) {
+                    const fs = require('fs')
+                    fileData = fs.readFileSync(filePath).toString('base64')
+                  }
+                } catch (readErr) {
+                  console.warn('Failed to read local PDF file for adapter part, fallback:', readErr)
+                }
+
+                contentParts.push({
+                  type: 'file',
+                  mediaType: 'application/pdf',
+                  data: fileData || att.data || ''
+                })
+              } else {
+                let textContent = att.textContent || ''
+                if (!textContent) {
+                  try {
+                    let filePath = att.filePath || ''
+                    if (!filePath && att.url?.startsWith('file:///')) {
+                      filePath = decodeURIComponent((att.url || '').replace('file:///', ''))
+                    }
+                    if (filePath && typeof process !== 'undefined' && process.versions && process.versions.node) {
+                      const fs = require('fs')
+                      const pdfParse = require('pdf-parse')
+                      const dataBuffer = fs.readFileSync(filePath)
+                      const pdfData = await pdfParse(dataBuffer)
+                      textContent = pdfData.text || ''
+                      att.textContent = textContent
+                    }
+                  } catch (pdfErr) {
+                    console.error('Failed to parse PDF file on adapter fallback:', pdfErr)
+                  }
+                }
+                contentParts.push({
+                  type: 'text',
+                  text: `\n\n[User Uploaded File Attachment: ${att.name || att.fileName || 'Attachment'}]\n\`\`\`\n${textContent}\n\`\`\`\n`
+                })
+              }
             }
           }
         }
