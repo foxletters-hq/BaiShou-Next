@@ -1,296 +1,308 @@
-import { create } from 'zustand';
-import { persist, devtools } from 'zustand/middleware';
-import { i18n } from '@baishou/shared';
-import type { 
-  AIProviderConfig, 
-  GlobalModelsConfig, 
-  AgentBehaviorConfig, 
-  RagConfig, 
-  WebSearchConfig, 
-  SummaryConfig, 
-  ToolManagementConfig, 
+import { create } from 'zustand'
+import { persist, devtools } from 'zustand/middleware'
+import { i18n } from '@baishou/shared'
+import type {
+  AIProviderConfig,
+  GlobalModelsConfig,
+  AgentBehaviorConfig,
+  RagConfig,
+  WebSearchConfig,
+  SummaryConfig,
+  ToolManagementConfig,
   McpServerConfig,
   HotkeyConfig
-} from '@baishou/shared';
+} from '@baishou/shared'
 
-export type AppThemeMode = 'light' | 'dark' | 'system';
+export type AppThemeMode = 'light' | 'dark' | 'system'
 
 export interface SettingsState {
   // --- UI Preferences ---
-  themeMode: AppThemeMode;
-  useGlassmorphism: boolean;
-  locale: string;
-  themeColor: string;
+  themeMode: AppThemeMode
+  useGlassmorphism: boolean
+  locale: string
+  themeColor: string
 
   // --- Domain Config Blocks ---
-  providers: AIProviderConfig[];
-  globalModels: GlobalModelsConfig | null;
-  agentBehavior: AgentBehaviorConfig | null;
-  ragConfig: RagConfig | null;
-  webSearchConfig: WebSearchConfig | null;
-  summaryConfig: SummaryConfig | null;
-  toolManagementConfig: ToolManagementConfig | null;
-  mcpServerConfig: McpServerConfig | null;
-  hotkeyConfig: HotkeyConfig | null;
-  cloudSyncConfig: any | null;
+  providers: AIProviderConfig[]
+  globalModels: GlobalModelsConfig | null
+  agentBehavior: AgentBehaviorConfig | null
+  ragConfig: RagConfig | null
+  webSearchConfig: WebSearchConfig | null
+  summaryConfig: SummaryConfig | null
+  toolManagementConfig: ToolManagementConfig | null
+  mcpServerConfig: McpServerConfig | null
+  hotkeyConfig: HotkeyConfig | null
+  cloudSyncConfig: any | null
 
-  isLoading: boolean;
+  isLoading: boolean
 }
 
 export interface SettingsActions {
-  setThemeMode: (mode: AppThemeMode) => void;
-  toggleGlassmorphism: (enabled: boolean) => void;
-  setLocale: (locale: string) => void;
-  setThemeColor: (color: string) => void;
+  setThemeMode: (mode: AppThemeMode) => void
+  toggleGlassmorphism: (enabled: boolean) => void
+  setLocale: (locale: string) => void
+  setThemeColor: (color: string) => void
 
   // AI 设定异步操作
-  loadConfig: () => Promise<void>;
-  
+  loadConfig: () => Promise<void>
+
   // Provider Configs
-  setProviders: (providers: AIProviderConfig[]) => Promise<void>;
-  updateProvider: (provider: AIProviderConfig) => Promise<void>;
-  toggleProvider: (id: string, isEnabled: boolean) => Promise<void>;
+  setProviders: (providers: AIProviderConfig[]) => Promise<void>
+  updateProvider: (provider: AIProviderConfig) => Promise<void>
+  toggleProvider: (id: string, isEnabled: boolean) => Promise<void>
 
   // Domain Config Actions
-  setGlobalModels: (config: GlobalModelsConfig) => Promise<void>;
-  setAgentBehaviorConfig: (config: AgentBehaviorConfig) => Promise<void>;
-  setRagConfig: (config: RagConfig) => Promise<void>;
-  setWebSearchConfig: (config: WebSearchConfig) => Promise<void>;
-  setSummaryConfig: (config: SummaryConfig) => Promise<void>;
-  setToolManagementConfig: (config: ToolManagementConfig) => Promise<void>;
-  setMcpServerConfig: (config: McpServerConfig) => Promise<void>;
-  setHotkeyConfig: (config: HotkeyConfig) => Promise<void>;
-  setCloudSyncConfig: (config: any) => Promise<void>;
+  setGlobalModels: (config: GlobalModelsConfig) => Promise<void>
+  setAgentBehaviorConfig: (config: AgentBehaviorConfig) => Promise<void>
+  setRagConfig: (config: RagConfig) => Promise<void>
+  setWebSearchConfig: (config: WebSearchConfig) => Promise<void>
+  setSummaryConfig: (config: SummaryConfig) => Promise<void>
+  setToolManagementConfig: (config: ToolManagementConfig) => Promise<void>
+  setMcpServerConfig: (config: McpServerConfig) => Promise<void>
+  setHotkeyConfig: (config: HotkeyConfig) => Promise<void>
+  setCloudSyncConfig: (config: any) => Promise<void>
 }
 
 export const useSettingsStore = create<SettingsState & SettingsActions>()(
   persist(
     devtools(
       (set, get: any) => ({
-  themeMode: 'system',
-  useGlassmorphism: true,
-  locale: 'zh',
-  themeColor: '#5BA8F5',
-  
-  providers: [],
-  globalModels: null,
-  agentBehavior: null,
-  ragConfig: null,
-  webSearchConfig: null,
-  summaryConfig: null,
-  toolManagementConfig: null,
-  mcpServerConfig: null,
-  hotkeyConfig: null,
-  cloudSyncConfig: null,
-  
-  isLoading: false,
+        themeMode: 'system',
+        useGlassmorphism: true,
+        locale: 'zh',
+        themeColor: '#5BA8F5',
 
-  setThemeMode: (themeMode) => set({ themeMode }),
-  toggleGlassmorphism: (useGlassmorphism) => set({ useGlassmorphism }),
-  setThemeColor: (themeColor) => set({ themeColor }),
-  setLocale: (locale) => {
-    set({ locale });
-    // 同步更新 i18next 语言，确保所有使用 useTranslation() 的组件立即重渲染
-    i18n.changeLanguage(locale === 'system' ? navigator.language.split('-')[0] : locale);
-  },
+        providers: [],
+        globalModels: null,
+        agentBehavior: null,
+        ragConfig: null,
+        webSearchConfig: null,
+        summaryConfig: null,
+        toolManagementConfig: null,
+        mcpServerConfig: null,
+        hotkeyConfig: null,
+        cloudSyncConfig: null,
 
-  loadConfig: async () => {
-    set({ isLoading: true });
-    try {
-      if (typeof window !== 'undefined' && (window as any).api?.settings) {
-        const { settings } = (window as any).api;
-        const [
-          providers, globalModels, agentBehavior, ragConfig, 
-          webSearchConfig, summaryConfig, toolManagementConfig, mcpServerConfig, hotkeyConfig, cloudSyncConfig
-        ] = await Promise.all([
-          settings.getProviders(),
-          settings.getGlobalModels(),
-          settings.getAgentBehaviorConfig(),
-          settings.getRagConfig(),
-          settings.getWebSearchConfig(),
-          settings.getSummaryConfig(),
-          settings.getToolManagementConfig(),
-          settings.getMcpServerConfig(),
-          settings.getHotkeyConfig(),
-          typeof settings.getCloudSyncConfig === 'function' ? settings.getCloudSyncConfig() : Promise.resolve(null)
-        ]);
-        
-        const defaultGlobalModels: GlobalModelsConfig = {
-          globalDialogueProviderId: '',
-          globalDialogueModelId: '',
-          globalNamingProviderId: '',
-          globalNamingModelId: '',
-          globalSummaryProviderId: '',
-          globalSummaryModelId: '',
-          globalEmbeddingProviderId: '',
-          globalEmbeddingModelId: '',
-          globalTtsProviderId: '',
-          globalTtsModelId: '',
-          globalTtsSettings: {
-            voice: 'alloy',
-            speed: 1.0,
-            responseFormat: 'mp3'
-          },
-          monthlySummarySource: 'weeklies'
-        };
+        isLoading: false,
 
-        const defaultAgentBehavior: AgentBehaviorConfig = {
-          agentContextWindowSize: 20,
-          companionCompressTokens: 8000,
-          companionTruncateTokens: 4000,
-          agentPersona: '',
-          agentGuidelines: '',
-          pinnedAssistantIds: []
-        };
+        setThemeMode: (themeMode) => set({ themeMode }),
+        toggleGlassmorphism: (useGlassmorphism) => set({ useGlassmorphism }),
+        setThemeColor: (themeColor) => set({ themeColor }),
+        setLocale: (locale) => {
+          set({ locale })
+          // 同步更新 i18next 语言，确保所有使用 useTranslation() 的组件立即重渲染
+          i18n.changeLanguage(locale === 'system' ? navigator.language.split('-')[0] : locale)
+        },
 
-        const defaultRagConfig: RagConfig = {
-          ragEnabled: true,
-          ragTopK: 20,
-          ragSimilarityThreshold: 0.4
-        };
+        loadConfig: async () => {
+          set({ isLoading: true })
+          try {
+            if (typeof window !== 'undefined' && (window as any).api?.settings) {
+              const { settings } = (window as any).api
+              const [
+                providers,
+                globalModels,
+                agentBehavior,
+                ragConfig,
+                webSearchConfig,
+                summaryConfig,
+                toolManagementConfig,
+                mcpServerConfig,
+                hotkeyConfig,
+                cloudSyncConfig
+              ] = await Promise.all([
+                settings.getProviders(),
+                settings.getGlobalModels(),
+                settings.getAgentBehaviorConfig(),
+                settings.getRagConfig(),
+                settings.getWebSearchConfig(),
+                settings.getSummaryConfig(),
+                settings.getToolManagementConfig(),
+                settings.getMcpServerConfig(),
+                settings.getHotkeyConfig(),
+                typeof settings.getCloudSyncConfig === 'function'
+                  ? settings.getCloudSyncConfig()
+                  : Promise.resolve(null)
+              ])
 
-        const defaultWebSearchConfig: WebSearchConfig = {
-          webSearchEngine: 'duckduckgo',
-          webSearchMaxResults: 5,
-          webSearchRagEnabled: false,
-          tavilyApiKey: '',
-          webSearchRagMaxChunks: 12,
-          webSearchRagChunksPerSource: 4,
-          webSearchPlainSnippetLength: 3000
-        };
+              const defaultGlobalModels: GlobalModelsConfig = {
+                globalDialogueProviderId: '',
+                globalDialogueModelId: '',
+                globalNamingProviderId: '',
+                globalNamingModelId: '',
+                globalSummaryProviderId: '',
+                globalSummaryModelId: '',
+                globalEmbeddingProviderId: '',
+                globalEmbeddingModelId: '',
+                globalTtsProviderId: '',
+                globalTtsModelId: '',
+                globalTtsSettings: {
+                  voice: 'alloy',
+                  speed: 1.0,
+                  responseFormat: 'mp3'
+                },
+                monthlySummarySource: 'weeklies'
+              }
 
-        const defaultSummaryConfig: SummaryConfig = {
-          instructions: {}
-        };
+              const defaultAgentBehavior: AgentBehaviorConfig = {
+                agentContextWindowSize: 20,
+                companionCompressTokens: 8000,
+                companionTruncateTokens: 4000,
+                agentPersona: '',
+                agentGuidelines: '',
+                pinnedAssistantIds: []
+              }
 
-        const defaultToolManagementConfig: ToolManagementConfig = {
-          disabledToolIds: [],
-          customConfigs: {}
-        };
+              const defaultRagConfig: RagConfig = {
+                ragEnabled: true,
+                ragTopK: 20,
+                ragSimilarityThreshold: 0.4
+              }
 
-        const defaultMcpServerConfig: McpServerConfig = {
-          mcpEnabled: false,
-          mcpPort: 31004
-        };
+              const defaultWebSearchConfig: WebSearchConfig = {
+                webSearchEngine: 'duckduckgo',
+                webSearchMaxResults: 5,
+                webSearchRagEnabled: false,
+                tavilyApiKey: '',
+                webSearchRagMaxChunks: 12,
+                webSearchRagChunksPerSource: 4,
+                webSearchPlainSnippetLength: 3000
+              }
 
-        const defaultHotkeyConfig: HotkeyConfig = {
-          hotkeyEnabled: false,
-          hotkeyModifier: 'Alt',
-          hotkeyKey: 'Space'
-        };
-        
-        set({ 
-          providers: providers || [], 
-          globalModels: globalModels || defaultGlobalModels, 
-          agentBehavior: agentBehavior || defaultAgentBehavior, 
-          ragConfig: ragConfig || defaultRagConfig, 
-          webSearchConfig: webSearchConfig || defaultWebSearchConfig, 
-          summaryConfig: summaryConfig || defaultSummaryConfig, 
-          toolManagementConfig: toolManagementConfig || defaultToolManagementConfig, 
-          mcpServerConfig: mcpServerConfig || defaultMcpServerConfig, 
-          hotkeyConfig: hotkeyConfig || defaultHotkeyConfig,
-          cloudSyncConfig: cloudSyncConfig || null
-        });
-      }
-    } catch (e) {
-      console.error('[SettingsStore] Failed to load config from IPC', e);
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+              const defaultSummaryConfig: SummaryConfig = {
+                instructions: {}
+              }
 
-  setProviders: async (providers) => {
-    set({ providers });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setProviders(providers);
-      const updatedGlobalModels = await (window as any).api.settings.getGlobalModels();
-      if (updatedGlobalModels) set({ globalModels: updatedGlobalModels });
-    }
-  },
+              const defaultToolManagementConfig: ToolManagementConfig = {
+                disabledToolIds: [],
+                customConfigs: {}
+              }
 
-  updateProvider: async (provider) => {
-    const { providers, setProviders } = get() as SettingsState & SettingsActions;
-    const exists = providers.some(p => p.id === provider.id);
-    const newProviders = exists 
-      ? providers.map(p => p.id === provider.id ? provider : p)
-      : [...providers, provider];
-    await setProviders(newProviders);
-  },
+              const defaultMcpServerConfig: McpServerConfig = {
+                mcpEnabled: false,
+                mcpPort: 31004
+              }
 
-  toggleProvider: async (id, isEnabled) => {
-    const { providers, updateProvider } = get() as SettingsState & SettingsActions;
-    const provider = providers.find(p => p.id === id);
-    if (provider) {
-      await updateProvider({ ...provider, isEnabled });
-    }
-  },
+              const defaultHotkeyConfig: HotkeyConfig = {
+                hotkeyEnabled: false,
+                hotkeyModifier: 'Alt',
+                hotkeyKey: 'Space'
+              }
 
-  setGlobalModels: async (config) => {
-    set({ globalModels: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setGlobalModels(config);
-    }
-  },
+              set({
+                providers: providers || [],
+                globalModels: globalModels || defaultGlobalModels,
+                agentBehavior: agentBehavior || defaultAgentBehavior,
+                ragConfig: ragConfig || defaultRagConfig,
+                webSearchConfig: webSearchConfig || defaultWebSearchConfig,
+                summaryConfig: summaryConfig || defaultSummaryConfig,
+                toolManagementConfig: toolManagementConfig || defaultToolManagementConfig,
+                mcpServerConfig: mcpServerConfig || defaultMcpServerConfig,
+                hotkeyConfig: hotkeyConfig || defaultHotkeyConfig,
+                cloudSyncConfig: cloudSyncConfig || null
+              })
+            }
+          } catch (e) {
+            console.error('[SettingsStore] Failed to load config from IPC', e)
+          } finally {
+            set({ isLoading: false })
+          }
+        },
 
-  setAgentBehaviorConfig: async (config) => {
-    set({ agentBehavior: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setAgentBehaviorConfig(config);
-    }
-  },
+        setProviders: async (providers) => {
+          set({ providers })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setProviders(providers)
+            const updatedGlobalModels = await (window as any).api.settings.getGlobalModels()
+            if (updatedGlobalModels) set({ globalModels: updatedGlobalModels })
+          }
+        },
 
-  setRagConfig: async (config) => {
-    set({ ragConfig: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setRagConfig(config);
-    }
-  },
+        updateProvider: async (provider) => {
+          const { providers, setProviders } = get() as SettingsState & SettingsActions
+          const exists = providers.some((p) => p.id === provider.id)
+          const newProviders = exists
+            ? providers.map((p) => (p.id === provider.id ? provider : p))
+            : [...providers, provider]
+          await setProviders(newProviders)
+        },
 
-  setWebSearchConfig: async (config) => {
-    set({ webSearchConfig: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setWebSearchConfig(config);
-    }
-  },
+        toggleProvider: async (id, isEnabled) => {
+          const { providers, updateProvider } = get() as SettingsState & SettingsActions
+          const provider = providers.find((p) => p.id === id)
+          if (provider) {
+            await updateProvider({ ...provider, isEnabled })
+          }
+        },
 
-  setSummaryConfig: async (config) => {
-    set({ summaryConfig: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setSummaryConfig(config);
-    }
-  },
+        setGlobalModels: async (config) => {
+          set({ globalModels: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setGlobalModels(config)
+          }
+        },
 
-  setToolManagementConfig: async (config) => {
-    set({ toolManagementConfig: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setToolManagementConfig(config);
-    }
-  },
+        setAgentBehaviorConfig: async (config) => {
+          set({ agentBehavior: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setAgentBehaviorConfig(config)
+          }
+        },
 
-  setMcpServerConfig: async (config) => {
-    set({ mcpServerConfig: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setMcpServerConfig(config);
-    }
-  },
+        setRagConfig: async (config) => {
+          set({ ragConfig: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setRagConfig(config)
+          }
+        },
 
-  setHotkeyConfig: async (config) => {
-    set({ hotkeyConfig: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      await (window as any).api.settings.setHotkeyConfig(config);
-    }
-  },
+        setWebSearchConfig: async (config) => {
+          set({ webSearchConfig: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setWebSearchConfig(config)
+          }
+        },
 
-  setCloudSyncConfig: async (config) => {
-    set({ cloudSyncConfig: config });
-    if (typeof window !== 'undefined' && (window as any).api?.settings) {
-      if (typeof (window as any).api.settings.setCloudSyncConfig === 'function') {
-         await (window as any).api.settings.setCloudSyncConfig(config);
-      } else {
-         console.warn('[SettingsStore] setCloudSyncConfig missing in preload, skipping ipc update');
-      }
-    }
-  }
+        setSummaryConfig: async (config) => {
+          set({ summaryConfig: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setSummaryConfig(config)
+          }
+        },
+
+        setToolManagementConfig: async (config) => {
+          set({ toolManagementConfig: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setToolManagementConfig(config)
+          }
+        },
+
+        setMcpServerConfig: async (config) => {
+          set({ mcpServerConfig: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setMcpServerConfig(config)
+          }
+        },
+
+        setHotkeyConfig: async (config) => {
+          set({ hotkeyConfig: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            await (window as any).api.settings.setHotkeyConfig(config)
+          }
+        },
+
+        setCloudSyncConfig: async (config) => {
+          set({ cloudSyncConfig: config })
+          if (typeof window !== 'undefined' && (window as any).api?.settings) {
+            if (typeof (window as any).api.settings.setCloudSyncConfig === 'function') {
+              await (window as any).api.settings.setCloudSyncConfig(config)
+            } else {
+              console.warn(
+                '[SettingsStore] setCloudSyncConfig missing in preload, skipping ipc update'
+              )
+            }
+          }
+        }
       }),
       { name: 'SettingsStore' }
     ),
@@ -304,4 +316,4 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       })
     }
   )
-);
+)

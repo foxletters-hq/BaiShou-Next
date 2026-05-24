@@ -9,7 +9,7 @@ export enum UpdateStatus {
   DOWNLOADING = 'downloading',
   DOWNLOADED = 'downloaded',
   NOT_AVAILABLE = 'not_available',
-  ERROR = 'error',
+  ERROR = 'error'
 }
 
 /** 更新信息 */
@@ -62,12 +62,12 @@ export const useUpdaterStore = create<UpdaterState & UpdaterActions>()(
           set({
             status: result.hasUpdate ? UpdateStatus.AVAILABLE : UpdateStatus.NOT_AVAILABLE,
             currentVersion: result.currentVersion,
-            updateInfo: result.updateInfo,
+            updateInfo: result.updateInfo
           })
         } catch (error: any) {
           set({
             status: UpdateStatus.ERROR,
-            error: error.message || '检查更新失败',
+            error: error.message || '检查更新失败'
           })
         }
       },
@@ -84,7 +84,7 @@ export const useUpdaterStore = create<UpdaterState & UpdaterActions>()(
         } catch (error: any) {
           set({
             status: UpdateStatus.ERROR,
-            error: error.message || '下载更新失败',
+            error: error.message || '下载更新失败'
           })
         }
       },
@@ -126,14 +126,14 @@ export const useUpdaterStore = create<UpdaterState & UpdaterActions>()(
           set({
             status: state.status,
             updateInfo: state.updateInfo || get().updateInfo,
-            error: state.status === UpdateStatus.ERROR ? state.error : null,
+            error: state.status === UpdateStatus.ERROR ? state.error : null
           })
         })
 
         updater.onDownloadProgress((progress: number) => {
           set({ downloadProgress: progress })
         })
-      },
+      }
     }),
     { name: 'UpdaterStore' }
   )
