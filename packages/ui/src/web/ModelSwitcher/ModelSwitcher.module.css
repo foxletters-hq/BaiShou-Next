@@ -4,7 +4,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: var(--bg-overlay);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -25,9 +25,9 @@
   background-color: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.85);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.6);
   border-radius: 20px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(var(--bg-surface-rgb, 255,255,255), 0.5) inset;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(var(--bg-surface-rgb), 0.5) inset;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -53,11 +53,11 @@
   gap: 10px;
   font-size: 16px;
   font-weight: 700;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary);
 }
 
 .titleIcon {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
 }
@@ -213,7 +213,7 @@
 }
 
 .modelItemSelected .modelItemIcon {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .modelItemCenter {
@@ -230,7 +230,7 @@
 }
 
 .modelItemSelected .modelItemName {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
 }
 
 .modelPricingBar {
@@ -258,7 +258,7 @@
 }
 
 .checkIcon {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   margin-left: 12px;

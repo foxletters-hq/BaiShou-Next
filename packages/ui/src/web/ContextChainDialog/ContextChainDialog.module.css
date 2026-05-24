@@ -145,23 +145,23 @@
 }
 
 .roleAssistant {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background-color: rgba(var(--color-success-rgb, 16, 185, 129), 0.1);
+  color: var(--color-success);
 }
 
 .roleSystem {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background-color: rgba(var(--color-warning-rgb, 245, 158, 11), 0.1);
+  color: var(--color-warning);
 }
 
 .roleTool {
-  background-color: rgba(100, 116, 139, 0.1);
-  color: #64748b;
+  background-color: rgba(var(--text-tertiary-rgb, 100, 116, 139), 0.1);
+  color: var(--text-tertiary);
 }
 
 .roleDefault {
-  background-color: rgba(100, 116, 139, 0.1);
-  color: #64748b;
+  background-color: rgba(var(--text-tertiary-rgb, 100, 116, 139), 0.1);
+  color: var(--text-tertiary);
 }
 
 .msgPreview {
