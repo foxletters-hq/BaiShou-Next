@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
 
 /**
  * 会话压缩快照表 — 像素级对齐原版 `CompressionSnapshots` Drift 表定义
@@ -21,4 +21,4 @@ export const compressionSnapshotsTable = sqliteTable('compression_snapshots', {
   /** 摘要本身的 token 数估算（可为 null） */
   tokenCount: integer('token_count'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow()
-});
+})

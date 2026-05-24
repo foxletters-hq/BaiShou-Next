@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 /**
  * 日记影子索引主表 — 对齐原版 `journals_index` 表名
@@ -31,12 +31,12 @@ export const shadowJournalIndexTable = sqliteTable(
     /** 原始 Markdown 正文（不含 Frontmatter） */
     rawContent: text('raw_content'),
     /** 以逗号分隔的标签字符串（eg: "日记,美食,旅行"） */
-    tags: text('tags'),
+    tags: text('tags')
   },
   (t) => ({
-    filePathUniq: uniqueIndex('journals_index_file_path_unique').on(t.filePath),
+    filePathUniq: uniqueIndex('journals_index_file_path_unique').on(t.filePath)
   })
-);
+)
 
 /**
  * 日记全文搜索 FTS5 虚拟表 — 对齐原版 `journals_fts` 表名
@@ -47,5 +47,5 @@ export const shadowJournalIndexTable = sqliteTable(
 export const shadowJournalFtsTable = sqliteTable('journals_fts', {
   rowid: integer('rowid').primaryKey(),
   content: text('content'),
-  tags: text('tags'),
-});
+  tags: text('tags')
+})

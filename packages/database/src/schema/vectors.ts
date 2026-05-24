@@ -1,16 +1,16 @@
-import { sqliteTable, integer, text, customType } from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text, customType } from 'drizzle-orm/sqlite-core'
 
 const sqliteVecBlob = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {
-    return 'blob';
+    return 'blob'
   },
   toDriver(val: Buffer): Buffer {
-    return val;
+    return val
   },
   fromDriver(val: unknown): Buffer {
-    return val as Buffer;
-  },
-});
+    return val as Buffer
+  }
+})
 
 export const memoryEmbeddingsTable = sqliteTable('memory_embeddings', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -26,4 +26,4 @@ export const memoryEmbeddingsTable = sqliteTable('memory_embeddings', {
   modelId: text('model_id').notNull().default(''),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   sourceCreatedAt: integer('source_created_at', { mode: 'timestamp' })
-});
+})

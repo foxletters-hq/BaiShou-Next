@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
 
 export const agentSessionsTable = sqliteTable('agent_sessions', {
   id: text('id').primaryKey(),
@@ -14,4 +14,4 @@ export const agentSessionsTable = sqliteTable('agent_sessions', {
   totalCostMicros: integer('total_cost_micros').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow()
-});
+})

@@ -46,4 +46,4 @@ END;
 -- 针对 message 的级联删除：由于 agent_parts 依赖 message_id 会产生 cascaded delete，上面的 delete trigger 也会自动连锁清理 FTS 表。
 
 -- 只保留 Agent 聊天消息的 FTS 表
-`;
+`

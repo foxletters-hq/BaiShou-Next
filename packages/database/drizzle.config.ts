@@ -1,4 +1,4 @@
-import { defineConfig } from 'drizzle-kit';
+import { defineConfig } from 'drizzle-kit'
 
 export default defineConfig({
   schema: './src/schema/index.ts',
@@ -8,4 +8,4 @@ export default defineConfig({
     // Local file representation for drizzle-kit
     url: process.env.DB_PATH ? `file:${process.env.DB_PATH}` : 'file:./local.db'
   }
-});
+})

@@ -1,15 +1,14 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import { summariesTable } from '../schema/summaries';
-
+import { describe, it, expect, beforeAll } from 'vitest'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import Database from 'better-sqlite3'
+import { summariesTable } from '../schema/summaries'
 
 describe('Database Schema', () => {
-  let db: ReturnType<typeof drizzle>;
+  let db: ReturnType<typeof drizzle>
 
   beforeAll(() => {
-    const sqlite = new Database(':memory:');
-    db = drizzle(sqlite);
+    const sqlite = new Database(':memory:')
+    db = drizzle(sqlite)
 
     // 建表 SQL 匹配真实 Drizzle schema
     sqlite.exec(`
@@ -23,12 +22,12 @@ describe('Database Schema', () => {
         generated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
         UNIQUE(type, start_date, end_date)
       );
-    `);
-  });
+    `)
+  })
 
   it('should execute schema query successfully', async () => {
-    const result = await db.select().from(summariesTable);
-    expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
-  });
-});
+    const result = await db.select().from(summariesTable)
+    expect(result).toBeDefined()
+    expect(Array.isArray(result)).toBe(true)
+  })
+})

@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
 
 /**
  * AI 伙伴表 — 像素级对齐原版 `AgentAssistants` Drift 表定义
@@ -30,4 +30,4 @@ export const agentAssistantsTable = sqliteTable('agent_assistants', {
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow()
-});
+})

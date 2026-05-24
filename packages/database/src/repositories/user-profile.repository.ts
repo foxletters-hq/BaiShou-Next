@@ -1,23 +1,23 @@
-import { eq } from 'drizzle-orm';
-import { systemSettingsTable } from '../schema/system-settings';
-import type { UserProfile } from '@baishou/shared';
+import { eq } from 'drizzle-orm'
+import { systemSettingsTable } from '../schema/system-settings'
+import type { UserProfile } from '@baishou/shared'
 
-const KEY = 'user_profile_data';
+const KEY = 'user_profile_data'
 
 export const DEFAULT_PROFILE: UserProfile = {
   nickname: '白守用户', // t.settings.default_nickname
   avatarPath: null,
   activePersonaId: '默认身份卡', // t.settings.default_identity
   personas: {
-    '默认身份卡': {
+    默认身份卡: {
       id: '默认身份卡',
       facts: {}
     }
   }
-};
+}
 
 export class UserProfileRepository {
-  public readonly table = systemSettingsTable; // exposed for tests if needed
+  public readonly table = systemSettingsTable // exposed for tests if needed
 
   constructor(private readonly db: any) {}
 
@@ -29,17 +29,17 @@ export class UserProfileRepository {
       .select({ value: systemSettingsTable.value })
       .from(systemSettingsTable)
       .where(eq(systemSettingsTable.key, KEY))
-      .limit(1);
+      .limit(1)
 
     if (result.length === 0) {
-      return DEFAULT_PROFILE;
+      return DEFAULT_PROFILE
     }
 
     try {
-      return JSON.parse(result[0].value) as UserProfile;
+      return JSON.parse(result[0].value) as UserProfile
     } catch (e) {
-      console.error(`[UserProfileRepository] Failed to parse: ${e}`);
-      return DEFAULT_PROFILE;
+      console.error(`[UserProfileRepository] Failed to parse: ${e}`)
+      return DEFAULT_PROFILE
     }
   }
 
@@ -47,9 +47,10 @@ export class UserProfileRepository {
    * 保存或更新完整的档案 JSON。
    */
   async saveProfile(profile: UserProfile): Promise<void> {
-    const jsonStr = JSON.stringify(profile);
-    
-    await this.db.insert(systemSettingsTable)
+    const jsonStr = JSON.stringify(profile)
+
+    await this.db
+      .insert(systemSettingsTable)
       .values({
         key: KEY,
         value: jsonStr,
@@ -61,6 +62,6 @@ export class UserProfileRepository {
           value: jsonStr,
           updatedAt: new Date()
         }
-      });
+      })
   }
 }

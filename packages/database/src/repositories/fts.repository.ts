@@ -1,14 +1,14 @@
 // no db global import
-import { sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm'
 
 export interface FTSResult {
-  sourceId: string; // 统一抽象结果ID (Message ID 或 Diary ID)
-  sourceType: 'chat' | 'diary';
-  contentSnippet: string; // MATCH 的高亮摘录
-  rankScore: number; // 原生 MATCH 出来的原始秩分
+  sourceId: string // 统一抽象结果ID (Message ID 或 Diary ID)
+  sourceType: 'chat' | 'diary'
+  contentSnippet: string // MATCH 的高亮摘录
+  rankScore: number // 原生 MATCH 出来的原始秩分
 }
 
-import { AppDatabase } from '../types';
+import { AppDatabase } from '../types'
 
 export class FTSRepository {
   constructor(private readonly database: AppDatabase) {}
@@ -20,7 +20,7 @@ export class FTSRepository {
     // 假设 db.run 存在，不同 driver 下略有区别，在 better-sqlite3 是 db.run()
     // 由于 drizzle 没有直接给原生执行多条 SQL 的简易方法，我们通过注入的 db 执行
     // @ts-ignore
-    this.database.run(sql.raw(rawSqlString)); 
+    this.database.run(sql.raw(rawSqlString))
   }
 
   /**
@@ -31,10 +31,10 @@ export class FTSRepository {
    * 此处不跨库引用 diaries_fts。
    */
   async searchAll(query: string, limit: number = 20): Promise<FTSResult[]> {
-    if (!query || query.trim().length === 0) return [];
+    if (!query || query.trim().length === 0) return []
 
-    const cleanedQuery = query.replace(/"/g, ' ').trim();
-    if (!cleanedQuery) return [];
+    const cleanedQuery = query.replace(/"/g, ' ').trim()
+    if (!cleanedQuery) return []
 
     const rawMatch = sql`
       SELECT
@@ -45,16 +45,16 @@ export class FTSRepository {
       FROM agent_messages_fts WHERE agent_messages_fts MATCH '"' || ${cleanedQuery} || '"'
       ORDER BY fts_rank ASC
       LIMIT ${limit}
-    `;
+    `
 
-    const results = await this.database.all(rawMatch) as any[];
+    const results = (await this.database.all(rawMatch)) as any[]
 
-    return results.map(row => ({
+    return results.map((row) => ({
       sourceId: row.source_id,
       sourceType: row.source_type,
       contentSnippet: row.snippet,
       rankScore: row.fts_rank
-    }));
+    }))
   }
 
   /**
@@ -62,9 +62,9 @@ export class FTSRepository {
    * 摒弃了日记干扰，单纯通过底层 FTS 去匹配聊天纪要
    */
   async searchMessages(query: string, limit: number = 20): Promise<FTSResult[]> {
-    if (!query || query.trim().length === 0) return [];
-    const cleanedQuery = query.replace(/"/g, ' ').trim();
-    if (!cleanedQuery) return [];
+    if (!query || query.trim().length === 0) return []
+    const cleanedQuery = query.replace(/"/g, ' ').trim()
+    if (!cleanedQuery) return []
 
     const rawMatch = sql`
       SELECT 
@@ -76,15 +76,15 @@ export class FTSRepository {
       WHERE agent_messages_fts MATCH '"' || ${cleanedQuery} || '"'
       ORDER BY fts_rank ASC
       LIMIT ${limit}
-    `;
+    `
 
-    const results = await this.database.all(rawMatch) as any[];
+    const results = (await this.database.all(rawMatch)) as any[]
 
-    return results.map(row => ({
+    return results.map((row) => ({
       sourceId: row.source_id,
       sourceType: row.source_type,
       contentSnippet: row.snippet,
       rankScore: row.fts_rank
-    }));
+    }))
   }
 }

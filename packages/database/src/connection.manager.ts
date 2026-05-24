@@ -1,76 +1,80 @@
-import { createClient, Client } from '@libsql/client';
-import { drizzle } from 'drizzle-orm/libsql';
-import { AppDatabase } from './types';
+import { createClient, Client } from '@libsql/client'
+import { drizzle } from 'drizzle-orm/libsql'
+import { AppDatabase } from './types'
 import {
   IDatabaseConnectionManager,
   DatabaseLifecycleListener,
   DatabaseConnectionError,
   DatabaseNotConnectedError
-} from './connection.manager.types';
+} from './connection.manager.types'
 
 export class DatabaseConnectionManager implements IDatabaseConnectionManager {
-  private _sqliteDb: Client | null = null;
-  private _drizzleDb: AppDatabase | null = null;
-  private _currentPath: string | null = null;
-  
-  private _onConnectListeners: Set<DatabaseLifecycleListener> = new Set();
-  private _onDisconnectListeners: Set<() => void | Promise<void>> = new Set();
+  private _sqliteDb: Client | null = null
+  private _drizzleDb: AppDatabase | null = null
+  private _currentPath: string | null = null
+
+  private _onConnectListeners: Set<DatabaseLifecycleListener> = new Set()
+  private _onDisconnectListeners: Set<() => void | Promise<void>> = new Set()
 
   public async connect(dbPath: string): Promise<AppDatabase> {
     // If connecting to the same path, just return the current instance.
     if (this._currentPath === dbPath && this._drizzleDb) {
-      return this._drizzleDb;
+      return this._drizzleDb
     }
 
     // If connected to a different path, disconnect first.
     if (this.isConnected()) {
-      await this.disconnect();
+      await this.disconnect()
     }
 
     try {
-      this._sqliteDb = createClient({ url: `file:${dbPath}` });
-      
-      this._drizzleDb = drizzle(this._sqliteDb);
-      this._currentPath = dbPath;
+      this._sqliteDb = createClient({ url: `file:${dbPath}` })
+
+      this._drizzleDb = drizzle(this._sqliteDb)
+      this._currentPath = dbPath
 
       // Notify connect listeners
       for (const listener of this._onConnectListeners) {
-        await listener(this._drizzleDb, dbPath);
+        await listener(this._drizzleDb, dbPath)
       }
 
-      return this._drizzleDb;
+      return this._drizzleDb
     } catch (error: any) {
-      this._sqliteDb = null;
-      this._drizzleDb = null;
-      this._currentPath = null;
-      throw new DatabaseConnectionError(dbPath, error.message || String(error));
+      this._sqliteDb = null
+      this._drizzleDb = null
+      this._currentPath = null
+      throw new DatabaseConnectionError(dbPath, error.message || String(error))
     }
   }
 
   public async disconnect(): Promise<void> {
+    // 无论有没有 libsql 客户端，都必须清空 drizzle 引用
+    // 避免 resetAppDb() 关闭 better-sqlite3 底层文件后，_drizzleDb 仍指向已关闭实例
     if (!this._sqliteDb) {
-      return;
+      this._drizzleDb = null
+      this._currentPath = null
+      return
     }
 
     try {
       // Notify disconnect listeners first before closing the DB
       for (const listener of this._onDisconnectListeners) {
-        await listener();
+        await listener()
       }
-      
-      this._sqliteDb.close();
+
+      this._sqliteDb.close()
     } finally {
-      this._sqliteDb = null;
-      this._drizzleDb = null;
-      this._currentPath = null;
+      this._sqliteDb = null
+      this._drizzleDb = null
+      this._currentPath = null
     }
   }
 
   public getDb(): AppDatabase {
     if (!this._drizzleDb) {
-      throw new DatabaseNotConnectedError();
+      throw new DatabaseNotConnectedError()
     }
-    return this._drizzleDb;
+    return this._drizzleDb
   }
 
   /**
@@ -78,32 +82,32 @@ export class DatabaseConnectionManager implements IDatabaseConnectionManager {
    * 不需要冗余的路径重连。
    */
   public setDb(db: AppDatabase): void {
-    this._drizzleDb = db;
+    this._drizzleDb = db
     // _sqliteDb 和 _currentPath 在这种模式下不需要，第一次 connect 调用仍行
   }
 
   public isConnected(): boolean {
-    return this._drizzleDb !== null;
+    return this._drizzleDb !== null
   }
 
   public getCurrentPath(): string | null {
-    return this._currentPath;
+    return this._currentPath
   }
 
   public onConnect(listener: DatabaseLifecycleListener): () => void {
-    this._onConnectListeners.add(listener);
+    this._onConnectListeners.add(listener)
     return () => {
-      this._onConnectListeners.delete(listener);
-    };
+      this._onConnectListeners.delete(listener)
+    }
   }
 
   public onDisconnect(listener: () => void | Promise<void>): () => void {
-    this._onDisconnectListeners.add(listener);
+    this._onDisconnectListeners.add(listener)
     return () => {
-      this._onDisconnectListeners.delete(listener);
-    };
+      this._onDisconnectListeners.delete(listener)
+    }
   }
 }
 
 // Export a global singleton instance for easy DI / module usage
-export const connectionManager = new DatabaseConnectionManager();
+export const connectionManager = new DatabaseConnectionManager()

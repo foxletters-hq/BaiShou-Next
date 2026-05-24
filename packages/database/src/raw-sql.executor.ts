@@ -1,7 +1,7 @@
 export interface RawSqlResult {
-  rows: any[];
-  rowsAffected?: number;
-  lastInsertRowid?: number | bigint;
+  rows: any[]
+  rowsAffected?: number
+  lastInsertRowid?: number | bigint
 }
 
 /**
@@ -11,39 +11,37 @@ export interface RawSqlResult {
 export async function executeRawSql(
   client: any,
   statement: string,
-  args: any[] = [],
+  args: any[] = []
 ): Promise<RawSqlResult> {
   if (!client) {
-    throw new Error('[executeRawSql] No database client available.');
+    throw new Error('[executeRawSql] No database client available.')
   }
 
   if (typeof client.execute === 'function') {
     if (args.length > 0) {
-      return await client.execute({ sql: statement, args });
+      return await client.execute({ sql: statement, args })
     }
-    return await client.execute(statement);
+    return await client.execute(statement)
   }
 
   if (args.length > 0) {
-    const stmt = client.prepare(statement);
-    const info = stmt.run(...args);
+    const stmt = client.prepare(statement)
+    const info = stmt.run(...args)
     return {
       rows: [],
       rowsAffected: info.changes,
-      lastInsertRowid: info.lastInsertRowid,
-    };
+      lastInsertRowid: info.lastInsertRowid
+    }
   }
 
-  const trimmed = statement.trim().toUpperCase();
-  const isReadQuery =
-    trimmed.startsWith('SELECT') ||
-    trimmed.includes('TABLE_INFO');
+  const trimmed = statement.trim().toUpperCase()
+  const isReadQuery = trimmed.startsWith('SELECT') || trimmed.includes('TABLE_INFO')
 
   if (isReadQuery) {
-    const rows = client.prepare(statement).all();
-    return { rows };
+    const rows = client.prepare(statement).all()
+    return { rows }
   }
 
-  client.exec(statement);
-  return { rows: [] };
+  client.exec(statement)
+  return { rows: [] }
 }

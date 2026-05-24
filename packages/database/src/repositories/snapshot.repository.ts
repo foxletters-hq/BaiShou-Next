@@ -1,15 +1,15 @@
-import { AppDatabase } from '../types';
-import { compressionSnapshotsTable } from '../schema/compression-snapshots';
-import { eq, desc } from 'drizzle-orm';
+import { AppDatabase } from '../types'
+import { compressionSnapshotsTable } from '../schema/compression-snapshots'
+import { eq, desc } from 'drizzle-orm'
 
 export interface Snapshot {
-  id: number;
-  sessionId: string;
-  summaryText: string;
-  coveredUpToMessageId: string;
-  messageCount: number;
-  tokenCount: number | null;
-  createdAt: Date;
+  id: number
+  sessionId: string
+  summaryText: string
+  coveredUpToMessageId: string
+  messageCount: number
+  tokenCount: number | null
+  createdAt: Date
 }
 
 export class SnapshotRepository {
@@ -21,13 +21,13 @@ export class SnapshotRepository {
    */
   async appendSnapshot(params: Omit<Snapshot, 'id' | 'createdAt'>): Promise<void> {
     await this.db.insert(compressionSnapshotsTable).values({
-      sessionId: params.sessionId,            // TEXT UUID，直接存储，无需强转
+      sessionId: params.sessionId, // TEXT UUID，直接存储，无需强转
       summaryText: params.summaryText,
       coveredUpToMessageId: params.coveredUpToMessageId, // TEXT UUID
       messageCount: params.messageCount,
       tokenCount: params.tokenCount ?? null,
-      createdAt: new Date(),
-    });
+      createdAt: new Date()
+    })
   }
 
   /**
@@ -41,9 +41,9 @@ export class SnapshotRepository {
       .where(eq(compressionSnapshotsTable.sessionId, sessionId))
       .orderBy(desc(compressionSnapshotsTable.createdAt), desc(compressionSnapshotsTable.id))
       .limit(1)
-      .get();
+      .get()
 
-    if (!result) return null;
+    if (!result) return null
 
     return {
       id: result.id,
@@ -52,7 +52,7 @@ export class SnapshotRepository {
       coveredUpToMessageId: result.coveredUpToMessageId,
       messageCount: result.messageCount,
       tokenCount: result.tokenCount ?? null,
-      createdAt: result.createdAt,
-    };
+      createdAt: result.createdAt
+    }
   }
 }
