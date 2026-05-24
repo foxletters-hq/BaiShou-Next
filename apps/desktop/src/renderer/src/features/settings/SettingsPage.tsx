@@ -1,14 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useSettingsStore, useUserProfileStore } from '@baishou/store';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { MdOutlineSettings, MdOutlineCloudQueue, MdOutlineStarBorder, MdSchool, MdColorLens, MdTravelExplore, MdOutlineExtension, MdOutlineAutoAwesome, MdOutlineWifiProtectedSetup, MdSync, MdOutlineFolderDelete, MdArrowBack, MdVolumeUp } from 'react-icons/md';
-import './SettingsPage.css';
-import { useTranslation } from 'react-i18next';
-import baishouHeroImg from '../../assets/images/BaiShou-v0.0.1.jpeg';
-import { 
-  AppearanceSettingsCard, 
-  DataManagementCard, 
-  LanSyncCard, 
+import React, { useState, useEffect, useRef } from 'react'
+import { useSettingsStore, useUserProfileStore } from '@baishou/store'
+import { useNavigate, useLocation } from 'react-router-dom'
+import {
+  MdOutlineSettings,
+  MdOutlineCloudQueue,
+  MdOutlineStarBorder,
+  MdSchool,
+  MdColorLens,
+  MdTravelExplore,
+  MdOutlineExtension,
+  MdOutlineAutoAwesome,
+  MdOutlineWifiProtectedSetup,
+  MdSync,
+  MdOutlineFolderDelete,
+  MdArrowBack,
+  MdVolumeUp
+} from 'react-icons/md'
+import './SettingsPage.css'
+import { useTranslation } from 'react-i18next'
+import baishouHeroImg from '../../assets/images/BaiShou-v0.0.1.jpeg'
+import {
+  AppearanceSettingsCard,
+  DataManagementCard,
+  LanSyncCard,
   CloudSyncPanel,
   ProfileSettingsCard,
   HotkeySettingsCard,
@@ -29,16 +43,16 @@ import {
   TTSProviderSettings,
   useDialog,
   useToast
-} from '@baishou/ui';
-import { AssistantManagementScreen } from '../agent/AssistantManagementScreen';
+} from '@baishou/ui'
+import { AssistantManagementScreen } from '../agent/AssistantManagementScreen'
 
 export const SettingsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
-  const settings = useSettingsStore();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<number>(0);
-  const [isClosing, setIsClosing] = useState(false);
+  const settings = useSettingsStore()
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<number>(0)
+  const [isClosing, setIsClosing] = useState(false)
 
   const TABS = [
     { id: 0, label: t('settings.general', '常规设置'), icon: <MdOutlineSettings /> },
@@ -50,105 +64,191 @@ export const SettingsPage: React.FC = () => {
     { id: 4, label: t('agent.rag.title', 'RAG 记忆管理'), icon: <MdColorLens /> },
     { id: 5, label: t('agent.tools.web_search', '网络搜索'), icon: <MdTravelExplore /> },
     { id: 6, label: t('settings.agent_tools_title', '工具管理'), icon: <MdOutlineExtension /> },
-    { id: 7, label: t('settings.summary_settings_title', '回忆生成设置'), icon: <MdOutlineAutoAwesome /> },
+    {
+      id: 7,
+      label: t('settings.summary_settings_title', '回忆生成设置'),
+      icon: <MdOutlineAutoAwesome />
+    },
     { id: 11, label: t('settings.tts_settings', 'TTS 语音合成'), icon: <MdVolumeUp /> },
     { type: 'divider' },
-    { id: 8, label: t('settings.lan_transfer', '局域网传输'), icon: <MdOutlineWifiProtectedSetup /> },
+    {
+      id: 8,
+      label: t('settings.lan_transfer', '局域网传输'),
+      icon: <MdOutlineWifiProtectedSetup />
+    },
     { id: 9, label: t('data_sync.title', '数据备份'), icon: <MdSync /> },
-    { id: 10, label: t('settings.attachment_management', '附件管理'), icon: <MdOutlineFolderDelete /> },
-  ];
+    {
+      id: 10,
+      label: t('settings.attachment_management', '附件管理'),
+      icon: <MdOutlineFolderDelete />
+    }
+  ]
 
-  const location = useLocation();
+  const location = useLocation()
 
   useEffect(() => {
-  switch (location.pathname) {
-      case '/settings/ai-services': setActiveTab(1); break;
-      case '/settings/ai-models': setActiveTab(2); break;
-      case '/settings/assistants': setActiveTab(3); break;
-      case '/settings/rag': setActiveTab(4); break;
-      case '/settings/web-search': setActiveTab(5); break;
-      case '/settings/agent-tools': setActiveTab(6); break;
-      case '/settings/summary': setActiveTab(7); break;
-      case '/settings/tts': setActiveTab(11); break;
-      case '/settings/lan-transfer': setActiveTab(8); break;
-      case '/settings/data-sync': setActiveTab(9); break;
-      case '/settings/attachments': setActiveTab(10); break;
+    switch (location.pathname) {
+      case '/settings/ai-services':
+        setActiveTab(1)
+        break
+      case '/settings/ai-models':
+        setActiveTab(2)
+        break
+      case '/settings/assistants':
+        setActiveTab(3)
+        break
+      case '/settings/rag':
+        setActiveTab(4)
+        break
+      case '/settings/web-search':
+        setActiveTab(5)
+        break
+      case '/settings/agent-tools':
+        setActiveTab(6)
+        break
+      case '/settings/summary':
+        setActiveTab(7)
+        break
+      case '/settings/tts':
+        setActiveTab(11)
+        break
+      case '/settings/lan-transfer':
+        setActiveTab(8)
+        break
+      case '/settings/data-sync':
+        setActiveTab(9)
+        break
+      case '/settings/attachments':
+        setActiveTab(10)
+        break
       case '/settings':
       case '/settings/general':
       default:
-        setActiveTab(0);
+        setActiveTab(0)
     }
-  }, [location.pathname]);
+  }, [location.pathname])
 
   useEffect(() => {
-  settings.loadConfig();
-  }, [settings.loadConfig]);
+    settings.loadConfig()
+  }, [settings.loadConfig])
 
   // Sync state to URL without pushing history excessively
   const handleTabChange = (tabId: number) => {
-  setActiveTab(tabId);
+    setActiveTab(tabId)
     switch (tabId) {
-      case 0: navigate('/settings/general', { replace: true }); break;
-      case 1: navigate('/settings/ai-services', { replace: true }); break;
-      case 2: navigate('/settings/ai-models', { replace: true }); break;
-      case 3: navigate('/settings/assistants', { replace: true }); break;
-      case 4: navigate('/settings/rag', { replace: true }); break;
-      case 5: navigate('/settings/web-search', { replace: true }); break;
-      case 6: navigate('/settings/agent-tools', { replace: true }); break;
-      case 7: navigate('/settings/summary', { replace: true }); break;
-      case 11: navigate('/settings/tts', { replace: true }); break;
-      case 8: navigate('/settings/lan-transfer', { replace: true }); break;
-      case 9: navigate('/settings/data-sync', { replace: true }); break;
-      case 10: navigate('/settings/attachments', { replace: true }); break;
+      case 0:
+        navigate('/settings/general', { replace: true })
+        break
+      case 1:
+        navigate('/settings/ai-services', { replace: true })
+        break
+      case 2:
+        navigate('/settings/ai-models', { replace: true })
+        break
+      case 3:
+        navigate('/settings/assistants', { replace: true })
+        break
+      case 4:
+        navigate('/settings/rag', { replace: true })
+        break
+      case 5:
+        navigate('/settings/web-search', { replace: true })
+        break
+      case 6:
+        navigate('/settings/agent-tools', { replace: true })
+        break
+      case 7:
+        navigate('/settings/summary', { replace: true })
+        break
+      case 11:
+        navigate('/settings/tts', { replace: true })
+        break
+      case 8:
+        navigate('/settings/lan-transfer', { replace: true })
+        break
+      case 9:
+        navigate('/settings/data-sync', { replace: true })
+        break
+      case 10:
+        navigate('/settings/attachments', { replace: true })
+        break
     }
-  };
+  }
 
   const renderActiveView = () => {
-  if (settings.isLoading) {
-         return <div style={{ display: 'flex', justifyContent: 'center', marginTop: 100, color: 'var(--color-on-surface-variant)' }}>{t('common.loading_settings', '读取配置表项状态中...')}</div>;
-     }
-     switch (activeTab) {
-       case 0: return <GeneralSettingsView settings={settings} />;
-       case 1: return <AiModelServicesPane settings={settings} />;
-       case 2: return <AiGlobalModelsPane settings={settings} />;
-       case 3: return <AssistantPane settings={settings} />;
-       case 4: return <RagSettingsPane settings={settings} />;
-       case 5: return <WebSearchPane settings={settings} />;
-       case 6: return <AgentToolsPane settings={settings} />;
-       case 7: return <SummarySettingsPane settings={settings} />;
-       case 11: return <TTSSettingsPane />;
-       case 8: return <LanTransferPane />;
-       case 9: return <DataSyncPane settings={settings} />;
-       case 10: return <AttachmentManagementPane />;
-       default: return <div />;
-     }
-  };
+    if (settings.isLoading) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: 100,
+            color: 'var(--color-on-surface-variant)'
+          }}
+        >
+          {t('common.loading_settings', '读取配置表项状态中...')}
+        </div>
+      )
+    }
+    switch (activeTab) {
+      case 0:
+        return <GeneralSettingsView settings={settings} />
+      case 1:
+        return <AiModelServicesPane settings={settings} />
+      case 2:
+        return <AiGlobalModelsPane settings={settings} />
+      case 3:
+        return <AssistantPane settings={settings} />
+      case 4:
+        return <RagSettingsPane settings={settings} />
+      case 5:
+        return <WebSearchPane settings={settings} />
+      case 6:
+        return <AgentToolsPane settings={settings} />
+      case 7:
+        return <SummarySettingsPane settings={settings} />
+      case 11:
+        return <TTSSettingsPane />
+      case 8:
+        return <LanTransferPane />
+      case 9:
+        return <DataSyncPane settings={settings} />
+      case 10:
+        return <AttachmentManagementPane />
+      default:
+        return <div />
+    }
+  }
 
   const handleBack = () => {
-    setIsClosing(true);
+    setIsClosing(true)
     setTimeout(() => {
-      navigate(-1);
-    }, 250); // Matches the exit animation duration
-  };
+      navigate(-1)
+    }, 250) // Matches the exit animation duration
+  }
 
   return (
     <div className={`settings-page-wrapper ${isClosing ? 'settings-closing' : ''}`}>
       <div className="settings-layout-body">
         <div className="settings-sidebar">
-           <div className="settings-header">
-              <button className="settings-back-btn" onClick={handleBack} title={t('common.cancel', '取消')}>
-                 <MdArrowBack />
-              </button>
-              <h1 className="settings-title">{t('settings.title', '系统设置')}</h1>
-           </div>
-           
-           <div className="settings-nav-scroll">
-              <div className="settings-nav-group">
+          <div className="settings-header">
+            <button
+              className="settings-back-btn"
+              onClick={handleBack}
+              title={t('common.cancel', '取消')}
+            >
+              <MdArrowBack />
+            </button>
+            <h1 className="settings-title">{t('settings.title', '系统设置')}</h1>
+          </div>
+
+          <div className="settings-nav-scroll">
+            <div className="settings-nav-group">
               {TABS.map((tab, idx) => {
-  if (tab.type === 'divider') {
-                   return <div key={`div-${idx}`} className="settings-divider" />;
+                if (tab.type === 'divider') {
+                  return <div key={`div-${idx}`} className="settings-divider" />
                 }
-                const isSelected = activeTab === tab.id;
+                const isSelected = activeTab === tab.id
                 return (
                   <button
                     key={tab.id}
@@ -158,210 +258,227 @@ export const SettingsPage: React.FC = () => {
                     <div className="settings-nav-icon">{tab.icon}</div>
                     <span className="settings-nav-label">{tab.label}</span>
                   </button>
-                );
+                )
               })}
             </div>
-         </div>
-      </div>
+          </div>
+        </div>
 
-      <div className="settings-content-area" style={{ position: 'relative' }}>
-         {activeTab === 8 || activeTab === 1 || activeTab === 2 || activeTab === 11 ? (
-             renderActiveView()
-         ) : (
-             <div className="settings-content-scroll" key={activeTab}>
-                {renderActiveView()}
-             </div>
-         )}
-      </div>
+        <div className="settings-content-area" style={{ position: 'relative' }}>
+          {activeTab === 8 || activeTab === 1 || activeTab === 2 || activeTab === 11 ? (
+            renderActiveView()
+          ) : (
+            <div className="settings-content-scroll" key={activeTab}>
+              {renderActiveView()}
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // --- Sub-Panes Implementation ---
 
 const GeneralSettingsView: React.FC<{ settings: any }> = ({ settings }) => {
-  const { t } = useTranslation();
-  const { profile, loadProfile } = useUserProfileStore() as any;
-  const [vaults, setVaults] = useState<any[]>([]);
-  const [activeVault, setActiveVault] = useState<any>(null);
-  
-  const [storageStats, setStorageStats] = useState({ 
-    storageRootPath: 'Loading...', 
-    sqliteSizeStats: '0 MB', 
-    vectorDbStats: '0 MB', 
-    mediaCacheStats: '0 MB' 
-  });
+  const { t } = useTranslation()
+  const { profile, loadProfile } = useUserProfileStore() as any
+  const [vaults, setVaults] = useState<any[]>([])
+  const [activeVault, setActiveVault] = useState<any>(null)
+
+  const [storageStats, setStorageStats] = useState({
+    storageRootPath: 'Loading...',
+    sqliteSizeStats: '0 MB',
+    vectorDbStats: '0 MB',
+    mediaCacheStats: '0 MB'
+  })
 
   useEffect(() => {
-    if (loadProfile) loadProfile();
+    if (loadProfile) loadProfile()
     const fetchVaults = async () => {
       try {
-        const vList = await (window as any).api?.vault?.list();
-        const active = await (window as any).api?.vault?.getActive();
-        if (vList) setVaults(vList);
-        if (active) setActiveVault(active);
+        const vList = await (window as any).api?.vault?.list()
+        const active = await (window as any).api?.vault?.getActive()
+        if (vList) setVaults(vList)
+        if (active) setActiveVault(active)
       } catch (e) {}
-    };
-    
+    }
+
     const fetchStorage = async () => {
       try {
         if ((window as any).api?.storage) {
-          const stats = await (window as any).api.storage.getStats();
-          if (stats) setStorageStats(stats);
+          const stats = await (window as any).api.storage.getStats()
+          if (stats) setStorageStats(stats)
         }
       } catch (e) {}
-    };
+    }
 
-    fetchVaults();
-    fetchStorage();
-  }, [loadProfile]);
+    fetchVaults()
+    fetchStorage()
+  }, [loadProfile])
 
   return (
     <div className="settings-pane" style={{ paddingBottom: 0 }}>
+      {/* 账户设置 */}
+      <div className="glass-panel-card">
+        <ProfileSettingsCard
+          profile={profile || { nickname: '', autoSync: false, avatarUrl: '' }}
+          onSave={async (p) => {
+            if (typeof window !== 'undefined' && window.electron) {
+              await window.electron.ipcRenderer.invoke('profile:save', p)
+              if (loadProfile) await loadProfile()
+            }
+          }}
+        />
+      </div>
 
-       {/* 账户设置 */}
-       <div className="glass-panel-card">
-         <ProfileSettingsCard 
-           profile={profile || { nickname: '', autoSync: false, avatarUrl: '' }}
-           onSave={async (p) => {
-             if (typeof window !== 'undefined' && window.electron) {
-               await window.electron.ipcRenderer.invoke('profile:save', p);
-               if (loadProfile) await loadProfile();
-             }
-           }}
-         />
-       </div>
+      {/* 身份卡组 */}
+      <div className="glass-panel-card">
+        <IdentitySettingsCard
+          profile={
+            profile || {
+              nickname: '',
+              avatarPath: '',
+              activePersonaId: 'Default',
+              personas: { Default: { id: 'Default', facts: {} } }
+            }
+          }
+          onChange={async (newProfile) => {
+            if (typeof window !== 'undefined' && window.electron) {
+              await window.electron.ipcRenderer.invoke('profile:save', newProfile)
+              if (loadProfile) await loadProfile()
+            }
+          }}
+        />
+      </div>
 
-       {/* 身份卡组 */}
-       <div className="glass-panel-card">
-         <IdentitySettingsCard 
-           profile={profile || { nickname: '', avatarPath: '', activePersonaId: 'Default', personas: { 'Default': { id: 'Default', facts: {} } } }}
-           onChange={async (newProfile) => {
-             if (typeof window !== 'undefined' && window.electron) {
-               await window.electron.ipcRenderer.invoke('profile:save', newProfile);
-               if (loadProfile) await loadProfile();
-             }
-           }}
-         />
-       </div>
+      {/* 偏好设置组 */}
+      <div className="glass-panel-card">
+        <AppearanceSettingsCard
+          themeMode={settings.themeMode}
+          seedColor={settings.themeColor || '#5BA8F5'}
+          language={settings.locale}
+          onThemeModeChange={settings.setThemeMode}
+          onSeedColorChange={settings.setThemeColor}
+          onLanguageChange={settings.setLocale}
+        />
 
-       {/* 偏好设置组 */}
-       <div className="glass-panel-card">
-         <AppearanceSettingsCard 
-           themeMode={settings.themeMode}
-           seedColor={settings.themeColor || '#5BA8F5'}
-           language={settings.locale}
-           onThemeModeChange={settings.setThemeMode}
-           onSeedColorChange={settings.setThemeColor}
-           onLanguageChange={settings.setLocale}
-         />
-         
-         {settings.hotkeyConfig && (
-            <>
-              <div className="settings-item-divider" />
-              <HotkeySettingsCard 
-                 config={settings.hotkeyConfig}
-                 onChange={(config) => settings.setHotkeyConfig(config)}
-              />
-            </>
-         )}
-         
-         <div className="settings-item-divider" />
-         <McpSettingsCard 
-           config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
-           onChange={settings.setMcpServerConfig}
-         />
-       </div>
+        {settings.hotkeyConfig && (
+          <>
+            <div className="settings-item-divider" />
+            <HotkeySettingsCard
+              config={settings.hotkeyConfig}
+              onChange={(config) => settings.setHotkeyConfig(config)}
+            />
+          </>
+        )}
 
-       {/* 系统与数据组 */}
-       <div className="glass-panel-card">
-         <WorkspaceSettingsCard 
-            vaults={vaults.length > 0 ? vaults : [{ name: t('common.loading', 'Loading...'), path: '--' }]}
-            activeVault={activeVault || vaults[0] || null}
-            onSwitch={async (id) => {
-               await (window as any).api?.vault?.switchActive(id);
-               const active = await (window as any).api?.vault?.getActive();
-               if (active) setActiveVault(active);
-               window.location.reload();
-            }}
-            onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
-             onCreate={async (name) => {
-                await (window as any).api?.vault?.createDialog(name);
-                const active = await (window as any).api?.vault?.getActive();
-                if (active) setActiveVault(active);
-                window.location.reload();
-             }}
-         />
-         <div className="settings-item-divider" />
+        <div className="settings-item-divider" />
+        <McpSettingsCard
+          config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
+          onChange={settings.setMcpServerConfig}
+        />
+      </div>
 
-         <StorageSettingsCard 
-           storageRootPath={storageStats.storageRootPath}
-           sqliteSizeStats={storageStats.sqliteSizeStats}
-           vectorDbStats={storageStats.vectorDbStats}
-           mediaCacheStats={storageStats.mediaCacheStats}
-           onChangeRoot={async () => {
-             try {
-                // If the app exposes pickCustomRootPath or similar
-                const newPath = await (window as any).api?.vault?.pickCustomRootPath?.() || await (window as any).api?.system?.pickDirectory?.();
-                if (newPath) {
-                   // Refresh the stats immediately if it caused a change or the backend handles setting it
-                   // Typically the UI will restart or show toast, but we can optimistically query storage
-                   if ((window as any).api?.storage) {
-                      const s = await (window as any).api.storage.getStats();
-                      if (s) setStorageStats(s);
-                   }
+      {/* 系统与数据组 */}
+      <div className="glass-panel-card">
+        <WorkspaceSettingsCard
+          vaults={
+            vaults.length > 0 ? vaults : [{ name: t('common.loading', 'Loading...'), path: '--' }]
+          }
+          activeVault={activeVault || vaults[0] || null}
+          onSwitch={async (id) => {
+            await (window as any).api?.vault?.switchActive(id)
+            const active = await (window as any).api?.vault?.getActive()
+            if (active) setActiveVault(active)
+            window.location.reload()
+          }}
+          onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
+          onCreate={async (name) => {
+            await (window as any).api?.vault?.createDialog(name)
+            const active = await (window as any).api?.vault?.getActive()
+            if (active) setActiveVault(active)
+            window.location.reload()
+          }}
+        />
+        <div className="settings-item-divider" />
+
+        <StorageSettingsCard
+          storageRootPath={storageStats.storageRootPath}
+          sqliteSizeStats={storageStats.sqliteSizeStats}
+          vectorDbStats={storageStats.vectorDbStats}
+          mediaCacheStats={storageStats.mediaCacheStats}
+          onChangeRoot={async () => {
+            try {
+              // If the app exposes pickCustomRootPath or similar
+              const newPath =
+                (await (window as any).api?.vault?.pickCustomRootPath?.()) ||
+                (await (window as any).api?.system?.pickDirectory?.())
+              if (newPath) {
+                // Refresh the stats immediately if it caused a change or the backend handles setting it
+                // Typically the UI will restart or show toast, but we can optimistically query storage
+                if ((window as any).api?.storage) {
+                  const s = await (window as any).api.storage.getStats()
+                  if (s) setStorageStats(s)
                 }
-             } catch (e) { console.error(e); }
-           }}
-           onClearCache={async () => {
-             await (window as any).api?.storage?.clearCache();
-             if ((window as any).api?.storage) {
-                const s = await (window as any).api.storage.getStats();
-                if (s) setStorageStats(s);
-             }
-           }}
-           onVacuumDb={async () => {
-             await (window as any).api?.storage?.vacuumDb();
-             if ((window as any).api?.storage) {
-                const s = await (window as any).api.storage.getStats();
-                if (s) setStorageStats(s);
-             }
-           }}
-         />
-         <div className="settings-item-divider" />
+              }
+            } catch (e) {
+              console.error(e)
+            }
+          }}
+          onClearCache={async () => {
+            await (window as any).api?.storage?.clearCache()
+            if ((window as any).api?.storage) {
+              const s = await (window as any).api.storage.getStats()
+              if (s) setStorageStats(s)
+            }
+          }}
+          onVacuumDb={async () => {
+            await (window as any).api?.storage?.vacuumDb()
+            if ((window as any).api?.storage) {
+              const s = await (window as any).api.storage.getStats()
+              if (s) setStorageStats(s)
+            }
+          }}
+        />
+        <div className="settings-item-divider" />
 
-          <DataManagementCard 
-            onExportZip={async () => {
-               await (window as any).api?.archive?.exportZip();
-            }}
-            onImportZip={async () => {
-               const file = await (window as any).api?.archive?.pickZip();
-               if (file) {
-                  await (window as any).api?.archive?.importZip(file);
-               }
-            }}
-            onPickFile={async () => {
-               return await (window as any).api?.archive?.pickZip();
-            }}
-          />
-          <div className="settings-item-divider" />
+        <DataManagementCard
+          onExportZip={async () => {
+            await (window as any).api?.archive?.exportZip()
+          }}
+          onImportZip={async () => {
+            const file = await (window as any).api?.archive?.pickZip()
+            if (file) {
+              await (window as any).api?.archive?.importZip(file)
+            }
+          }}
+          onPickFile={async () => {
+            return await (window as any).api?.archive?.pickZip()
+          }}
+        />
+        <div className="settings-item-divider" />
 
-          <AboutSettingsCard 
-              version="v2.0.0-Next-Canary"
-              heroImageSrc={baishouHeroImg}
-              onOpenPrivacyPolicy={async () => await (window as any).api?.shell?.openExternal('https://github.com')}
-              onOpenGithubHost={async () => await (window as any).api?.shell?.openExternal('https://github.com/Anson-Trio/BaiShou-Next/issues')}
-          />
-       </div>
-
+        <AboutSettingsCard
+          version="v2.0.0-Next-Canary"
+          heroImageSrc={baishouHeroImg}
+          onOpenPrivacyPolicy={async () =>
+            await (window as any).api?.shell?.openExternal('https://github.com')
+          }
+          onOpenGithubHost={async () =>
+            await (window as any).api?.shell?.openExternal(
+              'https://github.com/Anson-Trio/BaiShou-Next/issues'
+            )
+          }
+        />
+      </div>
     </div>
-  );
-};
+  )
+}
 
 const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
   const providerRecord = React.useMemo(() => {
-    const rec: Record<string, any> = {};
+    const rec: Record<string, any> = {}
     if (Array.isArray(settings.providers)) {
       settings.providers.forEach((p: any) => {
         rec[p.id] = {
@@ -374,78 +491,104 @@ const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
           models: p.models,
           enabledModels: p.enabledModels,
           sortOrder: p.sortOrder
-        };
-      });
+        }
+      })
     }
-    return rec;
-  }, [settings.providers]);
+    return rec
+  }, [settings.providers])
 
   return (
     <div style={{ height: '100%', display: 'flex', width: '100%' }}>
       <div style={{ height: '100%', display: 'flex', width: '100%' }}>
-         <AIModelServicesView 
-             providers={providerRecord}
-             onUpdateProvider={(id, updates) => {
-               const existing = (Array.isArray(settings.providers) ? settings.providers : []).find((p: any) => p.id === id) || { 
-                 id: id, name: updates.name || id, type: 'custom', isSystem: false, sortOrder: 999
-               };
-               
-                const newConfig = { ...existing };
-                if (updates.name !== undefined) newConfig.name = updates.name;
-                if (updates.isSystem !== undefined) newConfig.isSystem = updates.isSystem;
-                if (updates.enabled !== undefined) newConfig.isEnabled = updates.enabled;
-                if (updates.apiKey !== undefined) newConfig.apiKey = updates.apiKey;
-                if (updates.apiBaseUrl !== undefined) newConfig.baseUrl = updates.apiBaseUrl;
-                if (updates.models !== undefined) newConfig.models = updates.models;
-                if (updates.enabledModels !== undefined) newConfig.enabledModels = updates.enabledModels;
-                if (updates.sortOrder !== undefined) newConfig.sortOrder = updates.sortOrder;
+        <AIModelServicesView
+          providers={providerRecord}
+          onUpdateProvider={(id, updates) => {
+            const existing = (Array.isArray(settings.providers) ? settings.providers : []).find(
+              (p: any) => p.id === id
+            ) || {
+              id: id,
+              name: updates.name || id,
+              type: 'custom',
+              isSystem: false,
+              sortOrder: 999
+            }
 
-               settings.updateProvider(newConfig);
-             }}
-             onDeleteProvider={(id) => {
-               const filtered = (Array.isArray(settings.providers) ? settings.providers : []).filter((p: any) => p.id !== id);
-               settings.setProviders(filtered);
-             }}
-             onReorderProviders={async (orderedIds) => {
-               console.log('[Drag Tracking IPC] Received Reorder request in SettingsPage with ids:', orderedIds);
-               try {
-                 // The main process reads the full DB records and only updates sortOrder
-                 // No stubs needed - this is fully handled server-side
-                 console.log('[Drag Tracking IPC] Awaiting api.settings.reorderProviders IPC bridge...');
-                 await (window as any).api?.settings?.reorderProviders(orderedIds);
-                 console.log('[Drag Tracking IPC] IPC bridge completed successfully.');
-                 
-                 // Refresh local store state to reflect new sortOrder values
-                 console.log('[Drag Tracking IPC] Awaiting api.settings.getProviders to pull refreshed state...');
-                 const updated = await (window as any).api?.settings?.getProviders();
-                 console.log('[Drag Tracking IPC] Fetched updated providers from DB:', updated);
-                 
-                 if (updated) {
-                   settings.setProviders(updated);
-                   console.log('[Drag Tracking IPC] Pushed refreshed sorted list into Zustand settings store.');
-                 } else {
-                   console.warn('[Drag Tracking IPC] getProviders returned null or undefined.');
-                 }
-               } catch (err) {
-                 console.error('[Drag Tracking IPC] Failed to execute Reorder operation:', err);
-               }
-             }}
-             onTestConnection={async (provId, tempKey, tempUrl, testModelId) => {
-               await (window as any).api?.settings?.testProviderConnection(provId, tempKey, tempUrl, testModelId);
-             }}
-             onFetchModels={async (provId, tempKey, tempUrl) => {
-               const models = await (window as any).api?.settings?.fetchProviderModels(provId, tempKey, tempUrl);
-               return models || [];
-             }}
-         />
+            const newConfig = { ...existing }
+            if (updates.name !== undefined) newConfig.name = updates.name
+            if (updates.isSystem !== undefined) newConfig.isSystem = updates.isSystem
+            if (updates.enabled !== undefined) newConfig.isEnabled = updates.enabled
+            if (updates.apiKey !== undefined) newConfig.apiKey = updates.apiKey
+            if (updates.apiBaseUrl !== undefined) newConfig.baseUrl = updates.apiBaseUrl
+            if (updates.models !== undefined) newConfig.models = updates.models
+            if (updates.enabledModels !== undefined) newConfig.enabledModels = updates.enabledModels
+            if (updates.sortOrder !== undefined) newConfig.sortOrder = updates.sortOrder
+
+            settings.updateProvider(newConfig)
+          }}
+          onDeleteProvider={(id) => {
+            const filtered = (Array.isArray(settings.providers) ? settings.providers : []).filter(
+              (p: any) => p.id !== id
+            )
+            settings.setProviders(filtered)
+          }}
+          onReorderProviders={async (orderedIds) => {
+            console.log(
+              '[Drag Tracking IPC] Received Reorder request in SettingsPage with ids:',
+              orderedIds
+            )
+            try {
+              // The main process reads the full DB records and only updates sortOrder
+              // No stubs needed - this is fully handled server-side
+              console.log(
+                '[Drag Tracking IPC] Awaiting api.settings.reorderProviders IPC bridge...'
+              )
+              await (window as any).api?.settings?.reorderProviders(orderedIds)
+              console.log('[Drag Tracking IPC] IPC bridge completed successfully.')
+
+              // Refresh local store state to reflect new sortOrder values
+              console.log(
+                '[Drag Tracking IPC] Awaiting api.settings.getProviders to pull refreshed state...'
+              )
+              const updated = await (window as any).api?.settings?.getProviders()
+              console.log('[Drag Tracking IPC] Fetched updated providers from DB:', updated)
+
+              if (updated) {
+                settings.setProviders(updated)
+                console.log(
+                  '[Drag Tracking IPC] Pushed refreshed sorted list into Zustand settings store.'
+                )
+              } else {
+                console.warn('[Drag Tracking IPC] getProviders returned null or undefined.')
+              }
+            } catch (err) {
+              console.error('[Drag Tracking IPC] Failed to execute Reorder operation:', err)
+            }
+          }}
+          onTestConnection={async (provId, tempKey, tempUrl, testModelId) => {
+            await (window as any).api?.settings?.testProviderConnection(
+              provId,
+              tempKey,
+              tempUrl,
+              testModelId
+            )
+          }}
+          onFetchModels={async (provId, tempKey, tempUrl) => {
+            const models = await (window as any).api?.settings?.fetchProviderModels(
+              provId,
+              tempKey,
+              tempUrl
+            )
+            return models || []
+          }}
+        />
       </div>
     </div>
-  );
-};
+  )
+}
 
 const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const providerRecord = React.useMemo(() => {
-    const rec: Record<string, any> = {};
+    const rec: Record<string, any> = {}
     if (Array.isArray(settings.providers)) {
       settings.providers.forEach((p: any) => {
         rec[p.id] = {
@@ -455,354 +598,476 @@ const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
           apiBaseUrl: p.baseUrl,
           models: p.models,
           enabledModels: p.enabledModels
-        };
-      });
+        }
+      })
     }
-    return rec;
-  }, [settings.providers]);
+    return rec
+  }, [settings.providers])
 
   return (
     <div className="settings-pane settings-pane-full">
       {settings.globalModels && (
         <div style={{ height: '100%', display: 'flex', width: '100%' }}>
-           <AIGlobalModelsView 
-               config={settings.globalModels}
-               availableProviders={providerRecord}
-               onChange={(config) => settings.setGlobalModels(config)}
-               onEmbeddingMigrationRequest={async () => true}
-           />
+          <AIGlobalModelsView
+            config={settings.globalModels}
+            availableProviders={providerRecord}
+            onChange={(config) => settings.setGlobalModels(config)}
+            onEmbeddingMigrationRequest={async () => true}
+          />
         </div>
       )}
       {settings.agentBehaviorConfig && (
         <div className="glass-panel-card">
-           <AgentBehaviorSettingsCard 
-               config={settings.agentBehaviorConfig}
-               onChange={(config) => settings.setAgentBehaviorConfig(config)}
-           />
+          <AgentBehaviorSettingsCard
+            config={settings.agentBehaviorConfig}
+            onChange={(config) => settings.setAgentBehaviorConfig(config)}
+          />
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
 const AssistantPane: React.FC<{ settings: any }> = ({ settings }) => {
   return (
     <div className="settings-pane settings-pane-full" style={{ padding: 0 }}>
       {settings.userProfileConfig && (
         <div className="glass-panel-card" style={{ margin: '16px 16px 0 16px' }}>
-            <IdentitySettingsCard 
-                profile={settings.userProfileConfig}
-                onChange={(profile) => settings.setUserProfileConfig(profile)}
-            />
+          <IdentitySettingsCard
+            profile={settings.userProfileConfig}
+            onChange={(profile) => settings.setUserProfileConfig(profile)}
+          />
         </div>
       )}
       <div style={{ flex: 1, position: 'relative' }}>
-         <AssistantManagementScreen />
+        <AssistantManagementScreen />
       </div>
     </div>
-  );
-};
+  )
+}
 
 const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
-  const navigate = useNavigate();
-  const { t } = useTranslation();
-  const [ragStats, setRagStats] = useState<any>({ totalCount: 0, currentDimension: 0, totalSizeText: '0 KB' });
-  const [ragEntries, setRagEntries] = useState<any[]>([]);
-  const [ragTotalCount, setRagTotalCount] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [activeRagState, setActiveRagState] = useState<any>({ isRunning: false, type: 'idle', progress: 0, total: 0, statusText: '' });
-  const [hasMismatchModel, setHasMismatchModel] = useState(false);
-  const { confirm, prompt, alert } = useDialog();
-  const toast = useToast();
+  const navigate = useNavigate()
+  const { t } = useTranslation()
+  const [ragStats, setRagStats] = useState<any>({
+    totalCount: 0,
+    currentDimension: 0,
+    totalSizeText: '0 KB'
+  })
+  const [ragEntries, setRagEntries] = useState<any[]>([])
+  const [ragTotalCount, setRagTotalCount] = useState(0)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [activeRagState, setActiveRagState] = useState<any>({
+    isRunning: false,
+    type: 'idle',
+    progress: 0,
+    total: 0,
+    statusText: ''
+  })
+  const [hasMismatchModel, setHasMismatchModel] = useState(false)
+  const { confirm, prompt, alert } = useDialog()
+  const toast = useToast()
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
-  const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize });
+  const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
   useEffect(() => {
-    stateRef.current = { searchQuery, searchMode, currentPage, pageSize };
-  }, [searchQuery, searchMode, currentPage, pageSize]);
+    stateRef.current = { searchQuery, searchMode, currentPage, pageSize }
+  }, [searchQuery, searchMode, currentPage, pageSize])
 
-  const loadRagData = async (
-    q: string,
-    mode: 'semantic' | 'text',
-    page: number,
-    size: number
-  ) => {
+  const loadRagData = async (q: string, mode: 'semantic' | 'text', page: number, size: number) => {
     try {
-      const s = await (window as any).api?.rag?.getStats();
-      if (s) setRagStats(s);
+      const s = await (window as any).api?.rag?.getStats()
+      if (s) setRagStats(s)
 
-      const limit = size;
-      const offset = (page - 1) * limit;
-      const params: any = { limit, offset, mode, withTotal: true };
-      
+      const limit = size
+      const offset = (page - 1) * limit
+      const params: any = { limit, offset, mode, withTotal: true }
+
       if (q && q.trim() !== '') {
-        params.keyword = q;
+        params.keyword = q
         if (mode === 'semantic') {
-          params.limit = 50;
-          params.offset = 0;
+          params.limit = 50
+          params.offset = 0
         }
       }
 
-      const res = await (window as any).api?.rag?.queryEntries(params);
+      const res = await (window as any).api?.rag?.queryEntries(params)
       if (res) {
         if (res.entries && typeof res.total === 'number') {
-          const total = res.total;
+          const total = res.total
           if (total > 0 && (page - 1) * size >= total) {
-            const maxPage = Math.max(1, Math.ceil(total / size));
-            setCurrentPage(maxPage);
-            loadRagData(q, mode, maxPage, size);
-            return;
+            const maxPage = Math.max(1, Math.ceil(total / size))
+            setCurrentPage(maxPage)
+            loadRagData(q, mode, maxPage, size)
+            return
           }
           if (q && q.trim() !== '' && mode === 'semantic') {
-            const allEntries = res.entries;
-            const semanticTotal = res.total;
-            const sliced = allEntries.slice((page - 1) * size, page * size);
-            setRagEntries(sliced);
-            setRagTotalCount(semanticTotal);
+            const allEntries = res.entries
+            const semanticTotal = res.total
+            const sliced = allEntries.slice((page - 1) * size, page * size)
+            setRagEntries(sliced)
+            setRagTotalCount(semanticTotal)
           } else {
-            setRagEntries(res.entries);
-            setRagTotalCount(res.total);
+            setRagEntries(res.entries)
+            setRagTotalCount(res.total)
           }
         } else {
           // 历史兼容
-          setRagEntries(res);
-          setRagTotalCount(s ? s.totalCount || 0 : 0);
+          setRagEntries(res)
+          setRagTotalCount(s ? s.totalCount || 0 : 0)
         }
       }
 
       try {
-        const pending = await (window as any).api?.rag?.hasPendingMigration?.();
-        const mismatch = await (window as any).api?.rag?.hasModelMismatch?.();
-        setHasMismatchModel(!!pending || !!mismatch);
+        const pending = await (window as any).api?.rag?.hasPendingMigration?.()
+        const mismatch = await (window as any).api?.rag?.hasModelMismatch?.()
+        setHasMismatchModel(!!pending || !!mismatch)
       } catch {}
     } catch (err) {
-      console.error('[SettingsPage] loadRagData failed:', err);
+      console.error('[SettingsPage] loadRagData failed:', err)
     }
-  };
+  }
 
   const fetchRagInfo = async (page?: number, size?: number) => {
-    const targetPage = page !== undefined ? page : stateRef.current.currentPage;
-    const targetSize = size !== undefined ? size : stateRef.current.pageSize;
-    await loadRagData(stateRef.current.searchQuery, stateRef.current.searchMode, targetPage, targetSize);
-  };
+    const targetPage = page !== undefined ? page : stateRef.current.currentPage
+    const targetSize = size !== undefined ? size : stateRef.current.pageSize
+    await loadRagData(
+      stateRef.current.searchQuery,
+      stateRef.current.searchMode,
+      targetPage,
+      targetSize
+    )
+  }
 
   useEffect(() => {
-    loadRagData(searchQuery, searchMode, currentPage, pageSize);
-    let cleanup: any;
+    loadRagData(searchQuery, searchMode, currentPage, pageSize)
+    let cleanup: any
     if ((window as any).api?.rag?.onRagProgress) {
       cleanup = (window as any).api.rag.onRagProgress((state: any) => {
-        setActiveRagState(state);
-      });
+        setActiveRagState(state)
+      })
     }
     return () => {
-      if (cleanup) cleanup();
-    };
-  }, []);
+      if (cleanup) cleanup()
+    }
+  }, [])
 
-  if (!settings.ragConfig) return <div />;
+  if (!settings.ragConfig) return <div />
   return (
     <div className="settings-pane settings-pane-full">
-         <RagMemoryView 
-             config={settings.ragConfig}
-             stats={ragStats}
-             ragState={activeRagState.isRunning ? activeRagState : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }}
-             hasMismatchModel={hasMismatchModel}
-             embeddingModelId={settings.globalModels?.globalEmbeddingModelId}
-             entries={ragEntries}
-             totalCount={ragTotalCount}
-             currentPage={currentPage}
-             pageSize={pageSize}
-             onChange={(config) => settings.setRagConfig(config)}
-             onNavigateToConfig={() => navigate('/settings/ai-models')}
-             onPageChange={(page, size) => {
-               setCurrentPage(page);
-               setPageSize(size);
-               loadRagData(searchQuery, searchMode, page, size);
-             }}
-             onDetectDimension={async () => {
-               setIsProcessing(true);
-               try {
-                 const detectedDim = await (window as any).api?.rag?.detectDimension();
-                 await fetchRagInfo();
-                  if (detectedDim > 0) {
-                     toast.showSuccess(t('settings.rag_detect_success', '检测完成，该模型向量维度为：') + detectedDim);
-                 } else {
-                    await alert(t('ai_config.error_no_model', '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'), t('common.error', '错误'));
-                 }
-                } catch (e: any) {
-                  await alert(t('settings.rag_detect_error', '检测发生错误：') + e.message, t('common.error', '错误'));
-               } finally { setIsProcessing(false); }
-             }}
-             onClearDimension={async () => {
-               if (!await confirm(t('settings.rag_clear_dimension', '清理当前维度数据') + '?', t('common.warning', '警告'))) return;
-               setIsProcessing(true);
-               try {
-                 await (window as any).api?.rag?.clearDimension();
-                 await fetchRagInfo();
-               } finally { setIsProcessing(false); }
-             }}
-             onBatchEmbed={async () => {
-               if (!await confirm(t('settings.rag_batch_embed', '全量扫描未索引日记') + '?', t('common.warning', '警告'))) return;
-               setIsProcessing(true);
-               try {
-                 await (window as any).api?.rag?.triggerBatchEmbed();
-                 await fetchRagInfo();
-               } finally { setIsProcessing(false); }
-             }}
-              onAddManualMemory={async () => {
-                const text = await prompt('', '', t('settings.rag_add_manual', '添加手动记忆片段'), true);
-                if (!text || text.trim().length === 0) return;
-                setIsProcessing(true);
-                try {
-                  await (window as any).api?.rag?.addManualMemory?.(text);
-                  toast.showSuccess(t('settings.rag_add_manual_success', '记忆片段已添加'));
-                  await fetchRagInfo();
-                } catch (e: any) {
-                  toast.showError(t('settings.rag_add_manual_failed', '添加失败: ') + (e?.message || t('common.error', '错误')));
-                } finally { setIsProcessing(false); }
-              }}
-             onTriggerMigration={async () => {
-               if (!await confirm(t('settings.rag_trigger_migration', '执行向量库迁移') + '?', t('common.warning', '警告'))) return;
-               setIsProcessing(true);
-               try {
-                 await (window as any).api?.rag?.triggerMigration();
-                 await fetchRagInfo();
-               } finally { setIsProcessing(false); }
-             }}
-             onClearAll={async () => {
-               if (!await confirm(t('settings.rag_clear_all', '清空现有记忆') + '?', t('common.dangerous_action', '危险操作'))) return;
-               setIsProcessing(true);
-               try {
-                 await (window as any).api?.rag?.clearAll();
-                 await fetchRagInfo();
-               } finally { setIsProcessing(false); }
-             }}
-             onSearch={(q, mode) => {
-               setSearchQuery(q);
-               setSearchMode(mode);
-               setCurrentPage(1);
-               loadRagData(q, mode, 1, pageSize);
-             }}
-             onDeleteEntry={async (id) => {
-               if (!await confirm(t('common.delete', '删除') + '?', t('common.warning', '警告'))) return;
-               setIsProcessing(true);
-               try {
-                 await (window as any).api?.rag?.deleteEntry(id);
-                 await fetchRagInfo();
-               } finally { setIsProcessing(false); }
-             }}
-              onEditEntry={async (entry) => {
-                const newText = await prompt(t('settings.rag_edit_prompt', '请修改下方的记忆片段内容：'), entry.text, t('settings.rag_edit_manual', '编辑记忆内容'), true);
-                if (!newText || newText === entry.text) return;
-                setIsProcessing(true);
-                try {
-                  await (window as any).api?.rag?.editEntry({ embeddingId: entry.embeddingId, newText: newText });
-                  await fetchRagInfo();
-                } catch (e: any) {
-                  await alert(e.message, t('common.error', '错误'));
-                } finally { setIsProcessing(false); }
-              }}
-              onExportEmbeddings={async () => {
-                setIsProcessing(true);
-                try {
-                  const data = await (window as any).api?.rag?.exportEmbeddings();
-                  if (data && data.entries && data.entries.length > 0) {
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `rag-export-${new Date().toISOString().slice(0, 10)}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    toast.showSuccess(t('settings.rag_export_success', '导出成功') + ` (${data.count} ${t('settings.rag_entries', '条')})`);
-                  } else {
-                    toast.showWarning(t('settings.rag_export_empty', '没有可导出的数据'));
-                  }
-                } catch (e: any) {
-                  await alert(t('settings.rag_export_error', '导出失败: ') + e.message, t('common.error', '错误'));
-                } finally { setIsProcessing(false); }
-              }}
-              onManageBackups={async () => {
-                setIsProcessing(true);
-                try {
-                  const backups = await (window as any).api?.rag?.listSafetyBackups();
-                  if (!backups || backups.length === 0) {
-                    await alert(t('settings.rag_no_backups', '暂无备份'), t('common.info', '提示'));
-                    return;
-                  }
-                  
-                  const backupList = backups.map((b: any, i: number) => 
-                    `${i + 1}. ${b.name} (${b.count} ${t('settings.rag_entries', '条')})`
-                  ).join('\n');
-                  
-                  const choice = await prompt(
-                    t('settings.rag_backup_list', '可用备份列表：') + '\n\n' + backupList + '\n\n' + 
-                    t('settings.rag_backup_actions', '输入序号恢复备份，或输入 "delete:序号" 删除备份：'),
-                    '',
-                    t('settings.rag_manage_backups', '备份管理'),
-                    true
-                  );
-                  
-                  if (!choice) return;
-                  
-                  if (choice.startsWith('delete:')) {
-                    const idx = parseInt(choice.replace('delete:', '')) - 1;
-                    if (idx >= 0 && idx < backups.length) {
-                      if (!await confirm(t('settings.rag_confirm_delete_backup', '确认删除此备份?'), t('common.warning', '警告'))) return;
-                      await (window as any).api?.rag?.deleteBackup(backups[idx].name);
-                      toast.showSuccess(t('settings.rag_backup_deleted', '备份已删除'));
-                    }
-                  } else {
-                    const idx = parseInt(choice) - 1;
-                    if (idx >= 0 && idx < backups.length) {
-                      if (!await confirm(
-                        t('settings.rag_confirm_restore', '恢复将清空当前记忆并从备份导入，是否继续?'),
-                        t('common.warning', '警告')
-                      )) return;
-                      setIsProcessing(true);
-                      const count = await (window as any).api?.rag?.restoreFromBackup(backups[idx].name);
-                      toast.showSuccess(t('settings.rag_restore_success', '恢复成功') + ` (${count} ${t('settings.rag_entries', '条')})`);
-                      await fetchRagInfo();
-                    }
-                  }
-                } catch (e: any) {
-                  await alert(t('settings.rag_backup_error', '操作失败: ') + e.message, t('common.error', '错误'));
-                } finally { setIsProcessing(false); }
-              }}
-          />
+      <RagMemoryView
+        config={settings.ragConfig}
+        stats={ragStats}
+        ragState={
+          activeRagState.isRunning
+            ? activeRagState
+            : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }
+        }
+        hasMismatchModel={hasMismatchModel}
+        embeddingModelId={settings.globalModels?.globalEmbeddingModelId}
+        entries={ragEntries}
+        totalCount={ragTotalCount}
+        currentPage={currentPage}
+        pageSize={pageSize}
+        onChange={(config) => settings.setRagConfig(config)}
+        onNavigateToConfig={() => navigate('/settings/ai-models')}
+        onPageChange={(page, size) => {
+          setCurrentPage(page)
+          setPageSize(size)
+          loadRagData(searchQuery, searchMode, page, size)
+        }}
+        onDetectDimension={async () => {
+          setIsProcessing(true)
+          try {
+            const detectedDim = await (window as any).api?.rag?.detectDimension()
+            await fetchRagInfo()
+            if (detectedDim > 0) {
+              toast.showSuccess(
+                t('settings.rag_detect_success', '检测完成，该模型向量维度为：') + detectedDim
+              )
+            } else {
+              await alert(
+                t(
+                  'ai_config.error_no_model',
+                  '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
+                ),
+                t('common.error', '错误')
+              )
+            }
+          } catch (e: any) {
+            await alert(
+              t('settings.rag_detect_error', '检测发生错误：') + e.message,
+              t('common.error', '错误')
+            )
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onClearDimension={async () => {
+          if (
+            !(await confirm(
+              t('settings.rag_clear_dimension', '清理当前维度数据') + '?',
+              t('common.warning', '警告')
+            ))
+          )
+            return
+          setIsProcessing(true)
+          try {
+            await (window as any).api?.rag?.clearDimension()
+            await fetchRagInfo()
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onBatchEmbed={async () => {
+          if (
+            !(await confirm(
+              t('settings.rag_batch_embed', '全量扫描未索引日记') + '?',
+              t('common.warning', '警告')
+            ))
+          )
+            return
+          setIsProcessing(true)
+          try {
+            await (window as any).api?.rag?.triggerBatchEmbed()
+            await fetchRagInfo()
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onAddManualMemory={async () => {
+          const text = await prompt('', '', t('settings.rag_add_manual', '添加手动记忆片段'), true)
+          if (!text || text.trim().length === 0) return
+          setIsProcessing(true)
+          try {
+            await (window as any).api?.rag?.addManualMemory?.(text)
+            toast.showSuccess(t('settings.rag_add_manual_success', '记忆片段已添加'))
+            await fetchRagInfo()
+          } catch (e: any) {
+            toast.showError(
+              t('settings.rag_add_manual_failed', '添加失败: ') +
+                (e?.message || t('common.error', '错误'))
+            )
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onTriggerMigration={async () => {
+          if (
+            !(await confirm(
+              t('settings.rag_trigger_migration', '执行向量库迁移') + '?',
+              t('common.warning', '警告')
+            ))
+          )
+            return
+          setIsProcessing(true)
+          try {
+            await (window as any).api?.rag?.triggerMigration()
+            await fetchRagInfo()
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onClearAll={async () => {
+          const phrase = t('settings.rag_clear_all_confirm_phrase', '确认清除')
+          const confirmText = await prompt(
+            t(
+              'settings.rag_clear_all_confirm',
+              '请在下方输入「{{phrase}}」以确认清空所有RAG记忆：'
+            ).replace('{{phrase}}', phrase),
+            '',
+            t('settings.rag_clear_all', '清空现有记忆')
+          )
+          if (confirmText !== phrase) {
+            if (confirmText !== null) {
+              await alert(
+                t('settings.rag_clear_all_mismatch', '输入内容不匹配，操作已取消。'),
+                t('common.warning', '警告')
+              )
+            }
+            return
+          }
+          setIsProcessing(true)
+          try {
+            await (window as any).api?.rag?.clearAll()
+            await fetchRagInfo()
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onSearch={(q, mode) => {
+          setSearchQuery(q)
+          setSearchMode(mode)
+          setCurrentPage(1)
+          loadRagData(q, mode, 1, pageSize)
+        }}
+        onDeleteEntry={async (id) => {
+          if (!(await confirm(t('common.delete', '删除') + '?', t('common.warning', '警告'))))
+            return
+          setIsProcessing(true)
+          try {
+            await (window as any).api?.rag?.deleteEntry(id)
+            await fetchRagInfo()
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onEditEntry={async (entry) => {
+          const newText = await prompt(
+            t('settings.rag_edit_prompt', '请修改下方的记忆片段内容：'),
+            entry.text,
+            t('settings.rag_edit_manual', '编辑记忆内容'),
+            true
+          )
+          if (!newText || newText === entry.text) return
+          setIsProcessing(true)
+          try {
+            await (window as any).api?.rag?.editEntry({
+              embeddingId: entry.embeddingId,
+              newText: newText
+            })
+            await fetchRagInfo()
+          } catch (e: any) {
+            await alert(e.message, t('common.error', '错误'))
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onExportEmbeddings={async () => {
+          setIsProcessing(true)
+          try {
+            const data = await (window as any).api?.rag?.exportEmbeddings()
+            if (data && data.entries && data.entries.length > 0) {
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `rag-export-${new Date().toISOString().slice(0, 10)}.json`
+              document.body.appendChild(a)
+              a.click()
+              document.body.removeChild(a)
+              URL.revokeObjectURL(url)
+              toast.showSuccess(
+                t('settings.rag_export_success', '导出成功') +
+                  ` (${data.count} ${t('settings.rag_entries', '条')})`
+              )
+            } else {
+              toast.showWarning(t('settings.rag_export_empty', '没有可导出的数据'))
+            }
+          } catch (e: any) {
+            await alert(
+              t('settings.rag_export_error', '导出失败: ') + e.message,
+              t('common.error', '错误')
+            )
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+        onManageBackups={async () => {
+          setIsProcessing(true)
+          try {
+            const backups = await (window as any).api?.rag?.listSafetyBackups()
+            if (!backups || backups.length === 0) {
+              await alert(t('settings.rag_no_backups', '暂无备份'), t('common.info', '提示'))
+              return
+            }
+
+            const backupList = backups
+              .map(
+                (b: any, i: number) =>
+                  `${i + 1}. ${b.name} (${b.count} ${t('settings.rag_entries', '条')})`
+              )
+              .join('\n')
+
+            const choice = await prompt(
+              t('settings.rag_backup_list', '可用备份列表：') +
+                '\n\n' +
+                backupList +
+                '\n\n' +
+                t(
+                  'settings.rag_backup_actions',
+                  '输入序号恢复备份，或输入 "delete:序号" 删除备份：'
+                ),
+              '',
+              t('settings.rag_manage_backups', '备份管理'),
+              true
+            )
+
+            if (!choice) return
+
+            if (choice.startsWith('delete:')) {
+              const idx = parseInt(choice.replace('delete:', '')) - 1
+              if (idx >= 0 && idx < backups.length) {
+                if (
+                  !(await confirm(
+                    t('settings.rag_confirm_delete_backup', '确认删除此备份?'),
+                    t('common.warning', '警告')
+                  ))
+                )
+                  return
+                await (window as any).api?.rag?.deleteBackup(backups[idx].name)
+                toast.showSuccess(t('settings.rag_backup_deleted', '备份已删除'))
+              }
+            } else {
+              const idx = parseInt(choice) - 1
+              if (idx >= 0 && idx < backups.length) {
+                if (
+                  !(await confirm(
+                    t('settings.rag_confirm_restore', '恢复将清空当前记忆并从备份导入，是否继续?'),
+                    t('common.warning', '警告')
+                  ))
+                )
+                  return
+                setIsProcessing(true)
+                const count = await (window as any).api?.rag?.restoreFromBackup(backups[idx].name)
+                toast.showSuccess(
+                  t('settings.rag_restore_success', '恢复成功') +
+                    ` (${count} ${t('settings.rag_entries', '条')})`
+                )
+                await fetchRagInfo()
+              }
+            }
+          } catch (e: any) {
+            await alert(
+              t('settings.rag_backup_error', '操作失败: ') + e.message,
+              t('common.error', '错误')
+            )
+          } finally {
+            setIsProcessing(false)
+          }
+        }}
+      />
     </div>
-  );
-};
+  )
+}
 
 const WebSearchPane: React.FC<{ settings: any }> = ({ settings }) => {
-  if (!settings.webSearchConfig) return <div />;
+  if (!settings.webSearchConfig) return <div />
   return (
     <div className="settings-pane settings-pane-full">
-         <WebSearchSettingsView 
-             searchConfig={settings.webSearchConfig}
-             onSearchChange={(config) => settings.setWebSearchConfig(config)}
-         />
+      <WebSearchSettingsView
+        searchConfig={settings.webSearchConfig}
+        onSearchChange={(config) => settings.setWebSearchConfig(config)}
+      />
     </div>
-  );
-};
+  )
+}
 
 const AgentToolsPane: React.FC<{ settings: any }> = ({ settings }) => {
-  if (!settings.toolManagementConfig) return <div />;
+  if (!settings.toolManagementConfig) return <div />
   return (
     <div className="settings-pane settings-pane-full">
-         <AgentToolsView 
-             config={settings.toolManagementConfig}
-             onChange={(config) => settings.setToolManagementConfig(config)}
-         />
+      <AgentToolsView
+        config={settings.toolManagementConfig}
+        onChange={(config) => settings.setToolManagementConfig(config)}
+      />
     </div>
-  );
-};
+  )
+}
 
 const DEFAULT_SUMMARY_TEMPLATES = {
   weekly: `你是一个专业的个人传记作家伙伴。
@@ -957,129 +1222,141 @@ const DEFAULT_SUMMARY_TEMPLATES = {
 ###### 💌 给未来的一封信
 > 
 \`\`\``
-};
+}
 
 const SummarySettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   // If settings are not loaded yet, wait.
-  if (settings.isLoading || !settings.summaryConfig || !settings.globalModels) return <div />;
+  if (settings.isLoading || !settings.summaryConfig || !settings.globalModels) return <div />
 
-  const currentInstructions = settings.summaryConfig.instructions || {};
-  
+  const currentInstructions = settings.summaryConfig.instructions || {}
+
   const combinedConfig = {
     monthlySummarySource: settings.globalModels.monthlySummarySource || 'weeklies',
     templates: {
-        weekly: currentInstructions.weekly || DEFAULT_SUMMARY_TEMPLATES.weekly,
-        monthly: currentInstructions.monthly || DEFAULT_SUMMARY_TEMPLATES.monthly,
-        quarterly: currentInstructions.quarterly || DEFAULT_SUMMARY_TEMPLATES.quarterly,
-        yearly: currentInstructions.yearly || DEFAULT_SUMMARY_TEMPLATES.yearly
+      weekly: currentInstructions.weekly || DEFAULT_SUMMARY_TEMPLATES.weekly,
+      monthly: currentInstructions.monthly || DEFAULT_SUMMARY_TEMPLATES.monthly,
+      quarterly: currentInstructions.quarterly || DEFAULT_SUMMARY_TEMPLATES.quarterly,
+      yearly: currentInstructions.yearly || DEFAULT_SUMMARY_TEMPLATES.yearly
     }
-  };
+  }
 
   return (
     <div className="settings-pane settings-pane-full">
-          <SummarySettingsView 
-             config={combinedConfig}
-             onChange={(newConfig) => {
-               settings.setGlobalModels({
-                 ...settings.globalModels,
-                 monthlySummarySource: newConfig.monthlySummarySource
-               });
-               settings.setSummaryConfig({
-                 ...settings.summaryConfig,
-                 instructions: newConfig.templates
-               });
-             }}
-             onResetTemplate={(type) => {
-               return DEFAULT_SUMMARY_TEMPLATES[type] || '';
-             }}
-          />
+      <SummarySettingsView
+        config={combinedConfig}
+        onChange={(newConfig) => {
+          settings.setGlobalModels({
+            ...settings.globalModels,
+            monthlySummarySource: newConfig.monthlySummarySource
+          })
+          settings.setSummaryConfig({
+            ...settings.summaryConfig,
+            instructions: newConfig.templates
+          })
+        }}
+        onResetTemplate={(type) => {
+          return DEFAULT_SUMMARY_TEMPLATES[type] || ''
+        }}
+      />
     </div>
-  );
-};
+  )
+}
 
 const LanTransferPane: React.FC = () => {
   return (
     <div style={{ position: 'absolute', inset: 0, padding: 0, overflow: 'hidden' }}>
-         <LanSyncCard
-          onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
-          onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}
-          onStartDiscovery={async (onFound: any, onLost: any) => {
-            (window as any).api?.lan?.onDeviceFound(onFound);
-            (window as any).api?.lan?.onDeviceLost(onLost);
-            await (window as any).api?.lan?.startDiscovery();
-          }}
-          onStopDiscovery={async () => (window as any).api?.lan?.stopDiscovery()}
-          onSendFile={async (ip: string, port: number, progress: any) => {
-            (window as any).api?.lan?.onSendProgress(progress);
-            return await (window as any).api?.lan?.sendFile(ip, port);
-          }}
-          onFileReceivedListener={(cb: any) => (window as any).api?.lan?.onFileReceived(cb)}
-          onImportZip={async (file: string) => {(window as any).api?.archive.importZip(file)}}
-        />
+      <LanSyncCard
+        onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
+        onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}
+        onStartDiscovery={async (onFound: any, onLost: any) => {
+          ;(window as any).api?.lan?.onDeviceFound(onFound)
+          ;(window as any).api?.lan?.onDeviceLost(onLost)
+          await (window as any).api?.lan?.startDiscovery()
+        }}
+        onStopDiscovery={async () => (window as any).api?.lan?.stopDiscovery()}
+        onSendFile={async (ip: string, port: number, progress: any) => {
+          ;(window as any).api?.lan?.onSendProgress(progress)
+          return await (window as any).api?.lan?.sendFile(ip, port)
+        }}
+        onFileReceivedListener={(cb: any) => (window as any).api?.lan?.onFileReceived(cb)}
+        onImportZip={async (file: string) => {
+          ;(window as any).api?.archive.importZip(file)
+        }}
+      />
     </div>
-  );
-};
+  )
+}
 
 const DataSyncPane: React.FC<{ settings: any }> = ({ settings }) => {
   return (
     <div className="settings-pane settings-pane-full">
-       <CloudSyncPanel
-         savedConfig={settings.cloudSyncConfig}
-         onSaveConfig={settings.setCloudSyncConfig}
-         onSyncNow={async (config: any) => (window as any).api?.cloud?.syncNow(config)}
-         onListRecords={async (config: any) => (window as any).api?.cloud?.listRecords(config)}
-         onRestore={async (config: any, filename: string) => (window as any).api?.cloud?.restore(config, filename)}
-         onDownloadBackup={async (config: any, filename: string) => (window as any).api?.cloud?.downloadRecord(config, filename)}
-         onDeleteRecord={async (config: any, filename: string) => (window as any).api?.cloud?.deleteRecord(config, filename)}
-         onBatchDelete={async (config: any, filenames: string[]) => (window as any).api?.cloud?.batchDelete(config, filenames)}
-         onRename={async (config: any, oldName: string, newName: string) => (window as any).api?.cloud?.rename(config, oldName, newName)}
-       />
+      <CloudSyncPanel
+        savedConfig={settings.cloudSyncConfig}
+        onSaveConfig={settings.setCloudSyncConfig}
+        onSyncNow={async (config: any) => (window as any).api?.cloud?.syncNow(config)}
+        onListRecords={async (config: any) => (window as any).api?.cloud?.listRecords(config)}
+        onRestore={async (config: any, filename: string) =>
+          (window as any).api?.cloud?.restore(config, filename)
+        }
+        onDownloadBackup={async (config: any, filename: string) =>
+          (window as any).api?.cloud?.downloadRecord(config, filename)
+        }
+        onDeleteRecord={async (config: any, filename: string) =>
+          (window as any).api?.cloud?.deleteRecord(config, filename)
+        }
+        onBatchDelete={async (config: any, filenames: string[]) =>
+          (window as any).api?.cloud?.batchDelete(config, filenames)
+        }
+        onRename={async (config: any, oldName: string, newName: string) =>
+          (window as any).api?.cloud?.rename(config, oldName, newName)
+        }
+      />
     </div>
-  );
-};
+  )
+}
 
 const AttachmentManagementPane: React.FC = () => {
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<any[]>([])
 
   const fetchData = async () => {
     try {
-      const att = await (window as any).api?.attachment?.listAll();
-      if (att) setAttachments(att);
+      const att = await (window as any).api?.attachment?.listAll()
+      if (att) setAttachments(att)
     } catch (e) {}
-  };
+  }
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData()
+  }, [])
 
   return (
     <div className="settings-pane settings-pane-full">
-          <AttachmentManagementView 
-              attachments={attachments}
-              onDeleteSelected={async (ids) => {
-                await (window as any).api?.attachment?.deleteBatch(ids);
-                await fetchData();
-              }}
-              onDeleteFile={async (sessionId, fileName) => {
-                await (window as any).api?.attachment?.deleteFile(sessionId, fileName);
-                await fetchData();
-              }}
-              onOpenFileLocation={async (absolutePath) => {
-                await (window as any).api?.attachment?.openInFolder(absolutePath);
-              }}
-          />
-     </div>
-  );
-};
+      <AttachmentManagementView
+        attachments={attachments}
+        onDeleteSelected={async (ids) => {
+          await (window as any).api?.attachment?.deleteBatch(ids)
+          await fetchData()
+        }}
+        onDeleteFile={async (sessionId, fileName) => {
+          await (window as any).api?.attachment?.deleteFile(sessionId, fileName)
+          await fetchData()
+        }}
+        onOpenFileLocation={async (absolutePath) => {
+          await (window as any).api?.attachment?.openInFolder(absolutePath)
+        }}
+      />
+    </div>
+  )
+}
 
 const TTSSettingsPane: React.FC = () => {
-  const settings = useSettingsStore();
+  const settings = useSettingsStore()
 
   const handleSaveConfig = async (config: any) => {
-    const providers = Array.isArray(settings.providers) ? settings.providers : [];
-    const existingProvider = providers.find((p: any) => p.id === config.id);
+    const providers = Array.isArray(settings.providers) ? settings.providers : []
+    const existingProvider = providers.find((p: any) => p.id === config.id)
 
-    let providerData;
+    let providerData
     if (existingProvider) {
       providerData = {
         ...existingProvider,
@@ -1087,8 +1364,8 @@ const TTSSettingsPane: React.FC = () => {
         apiKey: config.apiKey,
         models: existingProvider.models || [config.modelId],
         enabledModels: [config.modelId],
-        defaultDialogueModel: config.modelId,
-      };
+        defaultDialogueModel: config.modelId
+      }
     } else {
       providerData = {
         id: config.id,
@@ -1101,14 +1378,14 @@ const TTSSettingsPane: React.FC = () => {
         defaultDialogueModel: config.modelId,
         isEnabled: true,
         isSystem: false,
-        sortOrder: providers.length,
-      };
+        sortOrder: providers.length
+      }
     }
 
-    await settings.updateProvider(providerData);
+    await settings.updateProvider(providerData)
 
-    const globalModels = settings.globalModels;
-    if (!globalModels) return;
+    const globalModels = settings.globalModels
+    if (!globalModels) return
 
     await settings.setGlobalModels({
       ...globalModels,
@@ -1121,43 +1398,71 @@ const TTSSettingsPane: React.FC = () => {
         refAudioPath: config.refAudioPath,
         promptText: config.promptText,
         promptLang: config.promptLang,
-        textLang: config.textLang,
-      },
-    });
-  };
+        textLang: config.textLang
+      }
+    })
+  }
 
   const handleTestTts = async (config: any, text: string) => {
     try {
-      const result = await (window as any).api?.tts?.synthesize(text, config.id, config.modelId);
+      const result = await (window as any).api?.tts?.synthesize(text, config.id, config.modelId)
       if (result?.success) {
-        return { success: true, audioBase64: result.audioBase64, format: result.format };
+        return { success: true, audioBase64: result.audioBase64, format: result.format }
       }
-      const errorMsg = result?.error ? `${result.errorCode}: ${result.error}` : (result?.errorCode || 'unknown');
-      return { success: false, error: errorMsg };
+      const errorMsg = result?.error
+        ? `${result.errorCode}: ${result.error}`
+        : result?.errorCode || 'unknown'
+      return { success: false, error: errorMsg }
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message }
     }
-  };
+  }
 
-  const globalModels = settings.globalModels;
-  const providers = settings.providers;
+  const globalModels = settings.globalModels
+  const providers = settings.providers
   const initialConfig = React.useMemo(() => {
-    const savedProviderId = globalModels?.globalTtsProviderId || 'openai-tts';
-    const providerConfig = ((Array.isArray(providers) ? providers : []).find((p: any) => p.id === savedProviderId) || {}) as any;
+    const savedProviderId = globalModels?.globalTtsProviderId || 'openai-tts'
+    const providerConfig = ((Array.isArray(providers) ? providers : []).find(
+      (p: any) => p.id === savedProviderId
+    ) || {}) as any
     return {
       id: savedProviderId,
-      baseUrl: providerConfig.baseUrl !== undefined ? providerConfig.baseUrl : (savedProviderId === 'gpt-sovits' ? 'http://127.0.0.1:9880' : (savedProviderId === 'mimo-tts' ? '' : 'https://api.openai.com/v1')),
+      baseUrl:
+        providerConfig.baseUrl !== undefined
+          ? providerConfig.baseUrl
+          : savedProviderId === 'gpt-sovits'
+            ? 'http://127.0.0.1:9880'
+            : savedProviderId === 'mimo-tts'
+              ? ''
+              : 'https://api.openai.com/v1',
       apiKey: providerConfig.apiKey || '',
-      modelId: globalModels?.globalTtsModelId || (savedProviderId === 'gpt-sovits' ? 'default' : (savedProviderId === 'mimo-tts' ? 'mimo-v2.5-tts' : 'tts-1')),
-      voice: globalModels?.globalTtsSettings?.voice || (savedProviderId === 'gpt-sovits' ? 'default' : (savedProviderId === 'mimo-tts' ? '冰糖' : 'alloy')),
-      speed: globalModels?.globalTtsSettings?.speed !== undefined ? globalModels.globalTtsSettings.speed : 1.0,
-      responseFormat: globalModels?.globalTtsSettings?.responseFormat || (savedProviderId === 'mimo-tts' || savedProviderId === 'gpt-sovits' ? 'wav' : 'mp3'),
+      modelId:
+        globalModels?.globalTtsModelId ||
+        (savedProviderId === 'gpt-sovits'
+          ? 'default'
+          : savedProviderId === 'mimo-tts'
+            ? 'mimo-v2.5-tts'
+            : 'tts-1'),
+      voice:
+        globalModels?.globalTtsSettings?.voice ||
+        (savedProviderId === 'gpt-sovits'
+          ? 'default'
+          : savedProviderId === 'mimo-tts'
+            ? '冰糖'
+            : 'alloy'),
+      speed:
+        globalModels?.globalTtsSettings?.speed !== undefined
+          ? globalModels.globalTtsSettings.speed
+          : 1.0,
+      responseFormat:
+        globalModels?.globalTtsSettings?.responseFormat ||
+        (savedProviderId === 'mimo-tts' || savedProviderId === 'gpt-sovits' ? 'wav' : 'mp3'),
       refAudioPath: globalModels?.globalTtsSettings?.refAudioPath || '',
       promptText: globalModels?.globalTtsSettings?.promptText || '',
       promptLang: globalModels?.globalTtsSettings?.promptLang || 'zh',
-      textLang: globalModels?.globalTtsSettings?.textLang || 'zh',
-    };
-  }, [globalModels, providers]);
+      textLang: globalModels?.globalTtsSettings?.textLang || 'zh'
+    }
+  }, [globalModels, providers])
 
   return (
     <div className="settings-pane settings-pane-full">
@@ -1167,9 +1472,15 @@ const TTSSettingsPane: React.FC = () => {
         onSaveConfig={handleSaveConfig}
         onTestTts={handleTestTts}
         onFetchModels={async (providerId, apiKey, baseUrl) => {
-          return await (window as any).api?.settings?.fetchProviderModels(providerId, apiKey, baseUrl) || [];
+          return (
+            (await (window as any).api?.settings?.fetchProviderModels(
+              providerId,
+              apiKey,
+              baseUrl
+            )) || []
+          )
         }}
       />
     </div>
-  );
-};
+  )
+}

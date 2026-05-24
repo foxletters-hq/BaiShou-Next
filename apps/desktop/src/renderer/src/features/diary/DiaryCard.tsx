@@ -1,72 +1,119 @@
-import React from 'react';
-import { Edit3, Trash2, Heart } from 'lucide-react';
-import { MarkdownRenderer } from '@baishou/ui';
-import { getWeatherEmoji } from '@baishou/shared';
+import React from 'react'
+import { Edit3, Trash2, Heart } from 'lucide-react'
+import { MarkdownRenderer } from '@baishou/ui'
+import { getWeatherEmoji } from '@baishou/shared'
 
 /** 星期几名称 */
-const WEEKDAY_NAMES_KEYS = ['diary.weekday.sun', 'diary.weekday.mon', 'diary.weekday.tue', 'diary.weekday.wed', 'diary.weekday.thu', 'diary.weekday.fri', 'diary.weekday.sat'];
-const WEEKDAY_NAMES_DEFAULT = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const WEEKDAY_NAMES_KEYS = [
+  'diary.weekday.sun',
+  'diary.weekday.mon',
+  'diary.weekday.tue',
+  'diary.weekday.wed',
+  'diary.weekday.thu',
+  'diary.weekday.fri',
+  'diary.weekday.sat'
+]
+const WEEKDAY_NAMES_DEFAULT = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
 /** 月份名称 */
-const MONTH_NAMES_KEYS = ['diary.month.jan', 'diary.month.feb', 'diary.month.mar', 'diary.month.apr', 'diary.month.may', 'diary.month.jun', 'diary.month.jul', 'diary.month.aug', 'diary.month.sep', 'diary.month.oct', 'diary.month.nov', 'diary.month.dec'];
-const MONTH_NAMES_DEFAULT = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+const MONTH_NAMES_KEYS = [
+  'diary.month.jan',
+  'diary.month.feb',
+  'diary.month.mar',
+  'diary.month.apr',
+  'diary.month.may',
+  'diary.month.jun',
+  'diary.month.jul',
+  'diary.month.aug',
+  'diary.month.sep',
+  'diary.month.oct',
+  'diary.month.nov',
+  'diary.month.dec'
+]
+const MONTH_NAMES_DEFAULT = [
+  '一月',
+  '二月',
+  '三月',
+  '四月',
+  '五月',
+  '六月',
+  '七月',
+  '八月',
+  '九月',
+  '十月',
+  '十一月',
+  '十二月'
+]
 
 /** 标签颜色映射 */
-const TAG_COLORS = ['tag-blue', 'tag-green', 'tag-orange', 'tag-purple'] as const;
+const TAG_COLORS = ['tag-blue', 'tag-green', 'tag-orange', 'tag-purple'] as const
 
 /** 根据标签文本计算颜色类名 */
 function getTagColor(tag: string): string {
-  const sum = tag.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return TAG_COLORS[sum % TAG_COLORS.length];
+  const sum = tag.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  return TAG_COLORS[sum % TAG_COLORS.length]
 }
 
 /** 日记条目数据 */
 export interface DiaryEntry {
-  id: number;
-  date: Date;
-  content: string;
-  tags: string[];
-  preview: string;
-  weather?: string;
-  mood?: string;
-  location?: string;
-  isFavorite?: boolean;
-  hasMedia?: boolean;
+  id: number
+  date: Date
+  content: string
+  tags: string[]
+  preview: string
+  weather?: string
+  mood?: string
+  location?: string
+  isFavorite?: boolean
+  hasMedia?: boolean
 }
 
 /** DiaryCard 组件属性 */
 interface DiaryCardProps {
-  entry: DiaryEntry;
-  onClick: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  t: (key: string, fallback?: string) => string;
-  basePath?: string;
+  entry: DiaryEntry
+  onClick: () => void
+  onEdit: () => void
+  onDelete: () => void
+  t: (key: string, fallback?: string) => string
+  basePath?: string
 }
 
 /** 日记卡片组件 */
-export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, onDelete, t, basePath: initialBasePath }) => {
-  const [basePath, setBasePath] = React.useState<string | undefined>(initialBasePath);
+export const DiaryCard: React.FC<DiaryCardProps> = ({
+  entry,
+  onClick,
+  onEdit,
+  onDelete,
+  t,
+  basePath: initialBasePath
+}) => {
+  const [basePath, setBasePath] = React.useState<string | undefined>(initialBasePath)
 
   React.useEffect(() => {
-    setBasePath(initialBasePath);
-  }, [initialBasePath]);
+    setBasePath(initialBasePath)
+  }, [initialBasePath])
 
   React.useEffect(() => {
     if (entry.date) {
-      const dateStr = `${entry.date.getFullYear()}-${String(entry.date.getMonth() + 1).padStart(2, '0')}-01`;
-      (window as any).api?.diary?.getAttachmentDir?.(dateStr)?.then((res: any) => {
-        if (res?.success && res.path) {
-          setBasePath(res.path);
-        }
-      }).catch(() => {});
+      const dateStr = `${entry.date.getFullYear()}-${String(entry.date.getMonth() + 1).padStart(2, '0')}-01`
+      ;(window as any).api?.diary
+        ?.getAttachmentDir?.(dateStr)
+        ?.then((res: any) => {
+          if (res?.success && res.path) {
+            setBasePath(res.path)
+          }
+        })
+        .catch(() => {})
     }
-  }, [entry.date]);
+  }, [entry.date])
 
-  const day = String(entry.date.getDate()).padStart(2, '0');
-  const weekday = t(WEEKDAY_NAMES_KEYS[entry.date.getDay()], WEEKDAY_NAMES_DEFAULT[entry.date.getDay()]);
-  const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`;
-  const visibleTags = entry.tags.filter(t => t.trim().length > 0);
+  const day = String(entry.date.getDate()).padStart(2, '0')
+  const weekday = t(
+    WEEKDAY_NAMES_KEYS[entry.date.getDay()],
+    WEEKDAY_NAMES_DEFAULT[entry.date.getDay()]
+  )
+  const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`
+  const visibleTags = entry.tags.filter((t) => t.trim().length > 0)
 
   return (
     <div className="diary-card" onClick={onClick}>
@@ -81,13 +128,19 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, on
             </div>
           </div>
         </div>
-        {entry.isFavorite && <Heart size={18} className="diary-card-fav-star" fill="currentColor" />}
+        {entry.isFavorite && (
+          <Heart size={18} className="diary-card-fav-star" fill="currentColor" />
+        )}
       </div>
 
       {/* 元数据：天气、心情、位置 */}
       {(entry.weather || entry.mood || entry.location) && (
         <div className="diary-card-meta-row">
-          {entry.weather && <span className="diary-card-meta-badge">{getWeatherEmoji(entry.weather)} {entry.weather}</span>}
+          {entry.weather && (
+            <span className="diary-card-meta-badge">
+              {getWeatherEmoji(entry.weather)} {entry.weather}
+            </span>
+          )}
           {entry.mood && <span className="diary-card-meta-badge">{entry.mood}</span>}
           {entry.location && <span className="diary-card-meta-badge">📍 {entry.location}</span>}
         </div>
@@ -98,7 +151,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, on
         <div className="diary-card-content-text">
           <MarkdownRenderer content={entry.preview} basePath={basePath} />
         </div>
-        
+
         {/* 媒体指示器 */}
         {entry.hasMedia && (
           <div className="diary-card-media-indicator">
@@ -131,5 +184,5 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onClick, onEdit, on
         </button>
       </div>
     </div>
-  );
-};
+  )
+}

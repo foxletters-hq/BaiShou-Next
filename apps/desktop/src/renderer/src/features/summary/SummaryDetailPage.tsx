@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { MarkdownRenderer, useToast } from '@baishou/ui';
-import { ArrowLeft, Calendar, Tag, Trash2, Copy, Clock, Edit3, Save, X } from 'lucide-react';
-import './SummaryDetailPage.css';
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { MarkdownRenderer, useToast } from '@baishou/ui'
+import { ArrowLeft, Calendar, Tag, Trash2, Copy, Clock, Edit3, Save, X } from 'lucide-react'
+import './SummaryDetailPage.css'
 
 interface SummaryDetail {
-  id?: number;
-  type: string;
-  startDate: string;
-  endDate: string;
-  content: string;
-  sourceIds?: string | null;
-  generatedAt?: string;
+  id?: number
+  type: string
+  startDate: string
+  endDate: string
+  content: string
+  sourceIds?: string | null
+  generatedAt?: string
 }
 
 /** 总结类型 → i18n 键映射 */
@@ -20,75 +20,76 @@ const TYPE_I18N_MAP: Record<string, string> = {
   weekly: 'summary.stats_week',
   monthly: 'summary.stats_month',
   quarterly: 'summary.stats_quarter',
-  yearly: 'summary.stats_year',
-};
+  yearly: 'summary.stats_year'
+}
 
 /** 总结类型 → CSS 类名映射 */
 const TYPE_CLASS_MAP: Record<string, string> = {
   weekly: 'type-weekly',
   monthly: 'type-monthly',
   quarterly: 'type-quarterly',
-  yearly: 'type-yearly',
-};
+  yearly: 'type-yearly'
+}
 
 export const SummaryDetailPage: React.FC = () => {
-  const { t } = useTranslation();
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const toast = useToast();
-  const [summary, setSummary] = useState<SummaryDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const { t } = useTranslation()
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const toast = useToast()
+  const [summary, setSummary] = useState<SummaryDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editContent, setEditContent] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     const fetchSummary = async () => {
-      if (!id || !window.electron) return;
-      setLoading(true);
+      if (!id || !window.electron) return
+      setLoading(true)
       try {
-        const allSummaries: SummaryDetail[] = await window.electron.ipcRenderer.invoke('summary:list');
-        const found = allSummaries.find(s => String(s.id) === id);
+        const allSummaries: SummaryDetail[] =
+          await window.electron.ipcRenderer.invoke('summary:list')
+        const found = allSummaries.find((s) => String(s.id) === id)
         if (found) {
-          setSummary(found);
+          setSummary(found)
         } else {
-          toast.showError(t('summary.not_found', '总结未找到'));
-          navigate('/summary', { replace: true });
+          toast.showError(t('summary.not_found', '总结未找到'))
+          navigate('/summary', { replace: true })
         }
       } catch (e) {
-        console.error('[SummaryDetail] fetch error:', e);
-        toast.showError(t('common.error', '加载失败'));
+        console.error('[SummaryDetail] fetch error:', e)
+        toast.showError(t('common.error', '加载失败'))
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
-    fetchSummary();
-  }, [id, navigate, toast, t]);
+    }
+    fetchSummary()
+  }, [id, navigate, toast, t])
 
   const handleCopy = async () => {
-    if (!summary?.content) return;
+    if (!summary?.content) return
     try {
-      await navigator.clipboard.writeText(summary.content);
-      toast.showSuccess(t('common.copy_success', '已复制到剪贴板'));
+      await navigator.clipboard.writeText(summary.content)
+      toast.showSuccess(t('common.copy_success', '已复制到剪贴板'))
     } catch {
-      toast.showError(t('common.copy_failed', '复制失败'));
+      toast.showError(t('common.copy_failed', '复制失败'))
     }
-  };
+  }
 
   const handleEdit = () => {
-    if (!summary) return;
-    setEditContent(summary.content);
-    setIsEditing(true);
-  };
+    if (!summary) return
+    setEditContent(summary.content)
+    setIsEditing(true)
+  }
 
   const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditContent('');
-  };
+    setIsEditing(false)
+    setEditContent('')
+  }
 
   const handleSave = async () => {
-    if (!summary || !summary.id) return;
-    setIsSaving(true);
+    if (!summary || !summary.id) return
+    setIsSaving(true)
     try {
       await window.electron.ipcRenderer.invoke(
         'summary:update',
@@ -97,63 +98,68 @@ export const SummaryDetailPage: React.FC = () => {
         new Date(summary.startDate),
         new Date(summary.endDate),
         { content: editContent }
-      );
-      setSummary({ ...summary, content: editContent });
-      setIsEditing(false);
-      toast.showSuccess(t('common.save_success', '保存成功'));
+      )
+      setSummary({ ...summary, content: editContent })
+      setIsEditing(false)
+      toast.showSuccess(t('common.save_success', '保存成功'))
     } catch (e) {
-      console.error('[SummaryDetail] save error:', e);
-      toast.showError(t('common.save_failed', '保存失败'));
+      console.error('[SummaryDetail] save error:', e)
+      toast.showError(t('common.save_failed', '保存失败'))
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   const handleDelete = async () => {
-    if (!summary) return;
+    if (!summary) return
     try {
       await window.electron.ipcRenderer.invoke(
         'summary:delete',
         summary.type,
         new Date(summary.startDate),
         new Date(summary.endDate)
-      );
-      toast.showSuccess(t('common.delete_success', '已删除'));
-      navigate('/summary', { replace: true });
+      )
+      toast.showSuccess(t('common.delete_success', '已删除'))
+      navigate('/summary', { replace: true })
     } catch (e) {
-      console.error('[SummaryDetail] delete error:', e);
-      toast.showError(t('common.delete_failed', '删除失败'));
+      console.error('[SummaryDetail] delete error:', e)
+      toast.showError(t('common.delete_failed', '删除失败'))
     }
-  };
+  }
 
   const formatDate = (d: string) => {
-    if (!d) return '';
+    if (!d) return ''
     return new Date(d).toLocaleDateString(undefined, {
-      year: 'numeric', month: 'long', day: 'numeric'
-    });
-  };
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
 
   const formatGeneratedAt = (d?: string) => {
-    if (!d) return '';
+    if (!d) return ''
     try {
-      const date = new Date(d);
+      const date = new Date(d)
       // 检查日期是否有效
       if (isNaN(date.getTime())) {
-        return '';
+        return ''
       }
       // 检查年份是否在合理范围内
-      const year = date.getFullYear();
+      const year = date.getFullYear()
       if (year < 2000 || year > 2100) {
-        return '';
+        return ''
       }
       return date.toLocaleString(undefined, {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      });
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     } catch {
-      return '';
+      return ''
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -163,13 +169,13 @@ export const SummaryDetailPage: React.FC = () => {
           <span>{t('common.loading', '加载中...')}</span>
         </div>
       </div>
-    );
+    )
   }
 
-  if (!summary) return null;
+  if (!summary) return null
 
-  const typeClass = TYPE_CLASS_MAP[summary.type] || '';
-  const typeLabel = t(TYPE_I18N_MAP[summary.type] || summary.type, summary.type);
+  const typeClass = TYPE_CLASS_MAP[summary.type] || ''
+  const typeLabel = t(TYPE_I18N_MAP[summary.type] || summary.type, summary.type)
 
   return (
     <div className="summary-detail-container">
@@ -181,16 +187,16 @@ export const SummaryDetailPage: React.FC = () => {
         <div className="summary-detail-actions">
           {isEditing ? (
             <>
-              <button 
-                className="summary-detail-action-btn" 
-                onClick={handleSave} 
+              <button
+                className="summary-detail-action-btn"
+                onClick={handleSave}
                 disabled={isSaving}
                 title={t('common.save', '保存')}
               >
                 <Save size={16} />
               </button>
-              <button 
-                className="summary-detail-action-btn" 
+              <button
+                className="summary-detail-action-btn"
                 onClick={handleCancelEdit}
                 title={t('common.cancel', '取消')}
               >
@@ -199,13 +205,25 @@ export const SummaryDetailPage: React.FC = () => {
             </>
           ) : (
             <>
-              <button className="summary-detail-action-btn" onClick={handleEdit} title={t('common.edit', '编辑')}>
+              <button
+                className="summary-detail-action-btn"
+                onClick={handleEdit}
+                title={t('common.edit', '编辑')}
+              >
                 <Edit3 size={16} />
               </button>
-              <button className="summary-detail-action-btn" onClick={handleCopy} title={t('common.copy', '复制')}>
+              <button
+                className="summary-detail-action-btn"
+                onClick={handleCopy}
+                title={t('common.copy', '复制')}
+              >
                 <Copy size={16} />
               </button>
-              <button className="summary-detail-action-btn danger" onClick={handleDelete} title={t('common.delete', '删除')}>
+              <button
+                className="summary-detail-action-btn danger"
+                onClick={handleDelete}
+                title={t('common.delete', '删除')}
+              >
                 <Trash2 size={16} />
               </button>
             </>
@@ -220,12 +238,16 @@ export const SummaryDetailPage: React.FC = () => {
         </div>
         <div className="summary-detail-date">
           <Calendar size={14} />
-          <span>{formatDate(summary.startDate)} — {formatDate(summary.endDate)}</span>
+          <span>
+            {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
+          </span>
         </div>
         {summary.generatedAt && (
           <div className="summary-detail-generated">
             <Clock size={14} />
-            <span>{t('summary.generated_at', '生成于')} {formatGeneratedAt(summary.generatedAt)}</span>
+            <span>
+              {t('summary.generated_at', '生成于')} {formatGeneratedAt(summary.generatedAt)}
+            </span>
           </div>
         )}
       </div>
@@ -243,5 +265,5 @@ export const SummaryDetailPage: React.FC = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}

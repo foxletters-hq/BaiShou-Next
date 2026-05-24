@@ -1,11 +1,11 @@
-import * as path from 'path';
-import * as fsp from 'fs/promises';
-import { app } from 'electron';
+import * as path from 'path'
+import * as fsp from 'fs/promises'
+import { app } from 'electron'
 
-import { SyncConfig, ICloudSyncClient, SyncRecord } from '@baishou/core';
-import { WebDavSyncClient } from './webdav-sync.client';
-import { S3SyncClient } from './s3-sync.client';
-import { DesktopArchiveService } from './archive.service';
+import { SyncConfig, ICloudSyncClient, SyncRecord } from '@baishou/core'
+import { WebDavSyncClient } from './webdav-sync.client'
+import { S3SyncClient } from './s3-sync.client'
+import { DesktopArchiveService } from './archive.service'
 
 /**
  * 桌面端云同步服务
@@ -27,7 +27,7 @@ export class DesktopCloudSyncService {
         config.webdavUsername,
         config.webdavPassword,
         config.webdavPath
-      );
+      )
     } else if (config.target === 's3') {
       return new S3SyncClient(
         config.s3Endpoint,
@@ -36,9 +36,9 @@ export class DesktopCloudSyncService {
         config.s3AccessKey,
         config.s3SecretKey,
         config.s3Path
-      );
+      )
     }
-    throw new Error('Unsupported sync target: ' + config.target);
+    throw new Error('Unsupported sync target: ' + config.target)
   }
 
   /**
@@ -46,30 +46,30 @@ export class DesktopCloudSyncService {
    */
   async syncNow(config: SyncConfig): Promise<{ success: boolean; message: string }> {
     if (config.target === 'local') {
-      return { success: false, message: '当前同步目标为本地，无需云同步' };
+      return { success: false, message: '当前同步目标为本地，无需云同步' }
     }
 
     try {
-      const client = this.createClient(config);
+      const client = this.createClient(config)
 
       // 1. 生成临时 ZIP
-      const zipPath = await this.archiveService.exportToTempFile();
+      const zipPath = await this.archiveService.exportToTempFile()
       if (!zipPath) {
-        return { success: false, message: '生成备份 ZIP 失败' };
+        return { success: false, message: '生成备份 ZIP 失败' }
       }
 
       // 2. 上传
-      await client.uploadFile(zipPath);
+      await client.uploadFile(zipPath)
 
       // 3. 清除临时文件
-      await fsp.unlink(zipPath).catch(() => {});
+      await fsp.unlink(zipPath).catch(() => {})
 
       // 4. 超限清理
-      await this.autoCleanOldBackups(client, config.maxBackupCount);
+      await this.autoCleanOldBackups(client, config.maxBackupCount)
 
-      return { success: true, message: '同步成功' };
+      return { success: true, message: '同步成功' }
     } catch (e: any) {
-      return { success: false, message: `同步失败: ${e.message || e}` };
+      return { success: false, message: `同步失败: ${e.message || e}` }
     }
   }
 
@@ -77,9 +77,9 @@ export class DesktopCloudSyncService {
    * 列出远端备份记录
    */
   async listRecords(config: SyncConfig): Promise<SyncRecord[]> {
-    if (config.target === 'local') return [];
-    const client = this.createClient(config);
-    return await client.listFiles();
+    if (config.target === 'local') return []
+    const client = this.createClient(config)
+    return await client.listFiles()
   }
 
   /**
@@ -90,28 +90,25 @@ export class DesktopCloudSyncService {
     remoteFilename: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const client = this.createClient(config);
-      const tempPath = path.join(
-        app.getPath('temp'),
-        `restore_${Date.now()}.zip`
-      );
+      const client = this.createClient(config)
+      const tempPath = path.join(app.getPath('temp'), `restore_${Date.now()}.zip`)
 
-      await client.downloadFile(remoteFilename, tempPath);
+      await client.downloadFile(remoteFilename, tempPath)
 
       // 调用 archive service 的 importFromZip
-      const result = await this.archiveService.importFromZip(tempPath);
+      const result = await this.archiveService.importFromZip(tempPath)
 
       // 清理临时文件
-      await fsp.unlink(tempPath).catch(() => {});
+      await fsp.unlink(tempPath).catch(() => {})
 
       if (result.fileCount > 0 || result.fileCount === -1) {
-        const countMsg = result.fileCount > 0 ? `，共还原 ${result.fileCount} 个文件` : '';
-        return { success: true, message: `云端恢复成功${countMsg}` };
+        const countMsg = result.fileCount > 0 ? `，共还原 ${result.fileCount} 个文件` : ''
+        return { success: true, message: `云端恢复成功${countMsg}` }
       } else {
-        return { success: false, message: '导入完成但未检测到文件' };
+        return { success: false, message: '导入完成但未检测到文件' }
       }
     } catch (e: any) {
-      return { success: false, message: `恢复失败: ${e.message || e}` };
+      return { success: false, message: `恢复失败: ${e.message || e}` }
     }
   }
 
@@ -124,11 +121,11 @@ export class DesktopCloudSyncService {
     localDestPath: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const client = this.createClient(config);
-      await client.downloadFile(remoteFilename, localDestPath);
-      return { success: true, message: `已成功保存到: ${localDestPath}` };
+      const client = this.createClient(config)
+      await client.downloadFile(remoteFilename, localDestPath)
+      return { success: true, message: `已成功保存到: ${localDestPath}` }
     } catch (e: any) {
-      return { success: false, message: `下载失败: ${e.message || e}` };
+      return { success: false, message: `下载失败: ${e.message || e}` }
     }
   }
 
@@ -136,33 +133,33 @@ export class DesktopCloudSyncService {
    * 删除云端指定文件
    */
   async deleteRecord(config: SyncConfig, filename: string): Promise<void> {
-    const client = this.createClient(config);
-    await client.deleteFile(filename);
+    const client = this.createClient(config)
+    await client.deleteFile(filename)
   }
 
   /**
    * 批量删除
    */
   async batchDeleteRecords(config: SyncConfig, filenames: string[]): Promise<number> {
-    const client = this.createClient(config);
-    let deleted = 0;
+    const client = this.createClient(config)
+    let deleted = 0
     for (const f of filenames) {
       try {
-        await client.deleteFile(f);
-        deleted++;
+        await client.deleteFile(f)
+        deleted++
       } catch (e) {
-        console.error(`Failed to delete ${f}:`, e);
+        console.error(`Failed to delete ${f}:`, e)
       }
     }
-    return deleted;
+    return deleted
   }
 
   /**
    * 重命名云端文件
    */
   async renameRecord(config: SyncConfig, oldName: string, newName: string): Promise<void> {
-    const client = this.createClient(config);
-    await client.renameFile(oldName, newName);
+    const client = this.createClient(config)
+    await client.renameFile(oldName, newName)
   }
 
   /**
@@ -171,21 +168,21 @@ export class DesktopCloudSyncService {
    * 用户手动上传或重命名的文件不受自动清理影响
    */
   private async autoCleanOldBackups(client: ICloudSyncClient, maxCount: number): Promise<number> {
-    const records = await client.listFiles();
+    const records = await client.listFiles()
     // 只筛选受管备份进行数量统计和清理
-    const managedRecords = records.filter(r => r.managed);
-    if (managedRecords.length <= maxCount) return 0;
+    const managedRecords = records.filter((r) => r.managed)
+    if (managedRecords.length <= maxCount) return 0
 
-    const toDelete = managedRecords.slice(maxCount);
-    let deleted = 0;
+    const toDelete = managedRecords.slice(maxCount)
+    let deleted = 0
     for (const record of toDelete) {
       try {
-        await client.deleteFile(record.filename);
-        deleted++;
+        await client.deleteFile(record.filename)
+        deleted++
       } catch (e) {
-        console.error('Auto-clean failed for:', record.filename, e);
+        console.error('Auto-clean failed for:', record.filename, e)
       }
     }
-    return deleted;
+    return deleted
   }
 }

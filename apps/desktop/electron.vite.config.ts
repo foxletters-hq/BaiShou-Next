@@ -12,8 +12,12 @@ const workspaceAliases = {
 }
 
 const workspaceExcludes = [
-  '@baishou/ai', '@baishou/core', '@baishou/database', 
-  '@baishou/shared', '@baishou/store', '@baishou/ui'
+  '@baishou/ai',
+  '@baishou/core',
+  '@baishou/database',
+  '@baishou/shared',
+  '@baishou/store',
+  '@baishou/ui'
 ]
 
 export default defineConfig({
@@ -43,6 +47,8 @@ export default defineConfig({
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src'),
+        react: resolve('node_modules/react'),
+        'react-dom': resolve('node_modules/react-dom'),
         ...workspaceAliases
       }
     },

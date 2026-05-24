@@ -13,19 +13,19 @@ vi.mock('electron-updater', () => ({
     autoDownload: false,
     autoInstallOnAppQuit: false,
     logger: null,
-    currentVersion: '1.0.0',
-  },
+    currentVersion: '1.0.0'
+  }
 }))
 
 // Mock electron
 vi.mock('electron', () => ({
   app: {
     getVersion: vi.fn(() => '1.0.0'),
-    isPackaged: false,
+    isPackaged: false
   },
   BrowserWindow: {
-    getAllWindows: vi.fn(() => []),
-  },
+    getAllWindows: vi.fn(() => [])
+  }
 }))
 
 describe('UpdaterService', () => {
@@ -58,12 +58,12 @@ describe('UpdaterService', () => {
       const mockUpdateInfo = {
         version: '2.0.0',
         releaseNotes: 'New features',
-        releaseDate: '2026-05-13',
+        releaseDate: '2026-05-13'
       }
 
       mockAutoUpdater.checkForUpdates.mockResolvedValue({
         isUpdateAvailable: true,
-        updateInfo: mockUpdateInfo,
+        updateInfo: mockUpdateInfo
       })
 
       const result = await updaterService.checkForUpdates()
@@ -74,14 +74,14 @@ describe('UpdaterService', () => {
         version: '2.0.0',
         releaseNotes: 'New features',
         releaseDate: '2026-05-13',
-        releaseUrl: expect.any(String),
+        releaseUrl: expect.any(String)
       })
     })
 
     it('should return hasUpdate false when no update available', async () => {
       mockAutoUpdater.checkForUpdates.mockResolvedValue({
         isUpdateAvailable: false,
-        updateInfo: null,
+        updateInfo: null
       })
 
       const result = await updaterService.checkForUpdates()
@@ -90,17 +90,13 @@ describe('UpdaterService', () => {
       expect(result.updateInfo).toBeNull()
     })
 
-    it(
-      'should throw UpdateTimeoutError when check times out',
-      async () => {
-        mockAutoUpdater.checkForUpdates.mockImplementation(
-          () => new Promise((resolve) => setTimeout(resolve, 15000))
-        )
+    it('should throw UpdateTimeoutError when check times out', async () => {
+      mockAutoUpdater.checkForUpdates.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 15000))
+      )
 
-        await expect(updaterService.checkForUpdates()).rejects.toThrow(UpdateTimeoutError)
-      },
-      15000
-    )
+      await expect(updaterService.checkForUpdates()).rejects.toThrow(UpdateTimeoutError)
+    }, 15000)
 
     it('should throw UpdateCheckError when check fails', async () => {
       mockAutoUpdater.checkForUpdates.mockRejectedValue(new Error('Network error'))
@@ -165,14 +161,14 @@ describe('UpdaterService', () => {
         updateAvailableCallback({
           version: '2.0.0',
           releaseNotes: 'New features',
-          releaseDate: '2026-05-13',
+          releaseDate: '2026-05-13'
         })
 
         expect(statusChangeHandler).toHaveBeenCalledWith({
           status: UpdateStatus.AVAILABLE,
           updateInfo: expect.objectContaining({
-            version: '2.0.0',
-          }),
+            version: '2.0.0'
+          })
         })
       }
     })

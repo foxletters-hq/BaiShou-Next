@@ -7,7 +7,10 @@ import { UpdateTimeoutError, UpdateCheckError } from './updater.errors'
 const CHECK_TIMEOUT_MS = 10000
 
 /** 更新事件回调类型 */
-type StatusChangeCallback = (state: { status: UpdateStatus; updateInfo?: UpdateInfo | null }) => void
+type StatusChangeCallback = (state: {
+  status: UpdateStatus
+  updateInfo?: UpdateInfo | null
+}) => void
 type ProgressCallback = (progress: number) => void
 
 export class UpdaterService {
@@ -26,7 +29,7 @@ export class UpdaterService {
         version: info.version,
         releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : '',
         releaseDate: info.releaseDate,
-        releaseUrl: this.buildReleaseUrl(info.version),
+        releaseUrl: this.buildReleaseUrl(info.version)
       })
     })
 
@@ -43,7 +46,7 @@ export class UpdaterService {
         version: info.version,
         releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : '',
         releaseDate: info.releaseDate,
-        releaseUrl: this.buildReleaseUrl(info.version),
+        releaseUrl: this.buildReleaseUrl(info.version)
       })
     })
 
@@ -94,14 +97,14 @@ export class UpdaterService {
     try {
       const result = await Promise.race([
         autoUpdater.checkForUpdates(),
-        this.createTimeoutPromise(),
+        this.createTimeoutPromise()
       ])
 
       if (!result) {
         return {
           hasUpdate: false,
           currentVersion: this.getCurrentVersion(),
-          updateInfo: null,
+          updateInfo: null
         }
       }
 
@@ -116,14 +119,14 @@ export class UpdaterService {
               ? result.updateInfo.releaseNotes
               : '',
           releaseDate: result.updateInfo.releaseDate,
-          releaseUrl: this.buildReleaseUrl(result.updateInfo.version),
+          releaseUrl: this.buildReleaseUrl(result.updateInfo.version)
         }
       }
 
       return {
         hasUpdate,
         currentVersion: this.getCurrentVersion(),
-        updateInfo,
+        updateInfo
       }
     } catch (error) {
       if (error instanceof UpdateTimeoutError) {

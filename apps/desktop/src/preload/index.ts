@@ -4,35 +4,37 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Custom APIs for renderer
 
 // --- 全局 IPC 拦截器（仅用于开发调试） ---
-const originalInvoke = electronAPI.ipcRenderer.invoke;
+const originalInvoke = electronAPI.ipcRenderer.invoke
 electronAPI.ipcRenderer.invoke = async (channel: string, ...args: any[]) => {
-  const startTime = performance.now();
-  console.groupCollapsed(`[IPC Request] ➔ ${channel}`);
-  console.log('Payload:', args);
-  console.groupEnd();
-  
+  const startTime = performance.now()
+  console.groupCollapsed(`[IPC Request] ➔ ${channel}`)
+  console.log('Payload:', args)
+  console.groupEnd()
+
   try {
-    const result = await originalInvoke(channel, ...args);
-    const cost = Math.round(performance.now() - startTime);
-    console.groupCollapsed(`[IPC Response] ⬅ ${channel} (${cost}ms)`);
-    console.log('Result:', result);
-    console.groupEnd();
-    return result;
+    const result = await originalInvoke(channel, ...args)
+    const cost = Math.round(performance.now() - startTime)
+    console.groupCollapsed(`[IPC Response] ⬅ ${channel} (${cost}ms)`)
+    console.log('Result:', result)
+    console.groupEnd()
+    return result
   } catch (e) {
-    const cost = Math.round(performance.now() - startTime);
-    console.groupCollapsed(`%c[IPC Error] ❌ ${channel} (${cost}ms)`, 'color: red');
-    console.error(e);
-    console.groupEnd();
-    throw e;
+    const cost = Math.round(performance.now() - startTime)
+    console.groupCollapsed(`%c[IPC Error] ❌ ${channel} (${cost}ms)`, 'color: red')
+    console.error(e)
+    console.groupEnd()
+    throw e
   }
-};
+}
 // ----------------------------------------
 
 export const api = {
-  agentChat: (params: { sessionId: string; text: string }) => ipcRenderer.invoke('agent:chat', params),
-  saveUserMessage: (params: { sessionId: string; text: string; attachments?: any[] }) => ipcRenderer.invoke('agent:save-user-message', params),
+  agentChat: (params: { sessionId: string; text: string }) =>
+    ipcRenderer.invoke('agent:chat', params),
+  saveUserMessage: (params: { sessionId: string; text: string; attachments?: any[] }) =>
+    ipcRenderer.invoke('agent:save-user-message', params),
   getMessages: (sessionId: string) => ipcRenderer.invoke('agent:get-messages', sessionId),
-  
+
   onAgentStreamChunk: (callback: (chunk: string) => void) => {
     ipcRenderer.on('agent:stream-chunk', (_event, chunk) => callback(chunk))
   },
@@ -43,14 +45,15 @@ export const api = {
     ipcRenderer.removeAllListeners('agent:stream-chunk')
     ipcRenderer.removeAllListeners('agent:stream-finish')
   },
-  
+
   // Phase 10 Extracted System Access
   pickFiles: () => ipcRenderer.invoke('system:pick-files'),
   getProviders: () => ipcRenderer.invoke('agent:get-providers'),
 
   // TTS
   tts: {
-    synthesize: (text: string, providerId?: string, modelId?: string) => ipcRenderer.invoke('agent:tts-synthesize', text, providerId, modelId),
+    synthesize: (text: string, providerId?: string, modelId?: string) =>
+      ipcRenderer.invoke('agent:tts-synthesize', text, providerId, modelId)
   },
 
   // Settings
@@ -61,47 +64,62 @@ export const api = {
     setGlobalModels: (config: any) => ipcRenderer.invoke('settings:set-global-models', config),
     getFeatures: () => ipcRenderer.invoke('settings:get-features'),
     setFeatures: (config: any) => ipcRenderer.invoke('settings:set-features', config),
-    
+
     getAgentBehaviorConfig: () => ipcRenderer.invoke('settings:get-agent-behavior-config'),
-    setAgentBehaviorConfig: (config: any) => ipcRenderer.invoke('settings:set-agent-behavior-config', config),
-    
+    setAgentBehaviorConfig: (config: any) =>
+      ipcRenderer.invoke('settings:set-agent-behavior-config', config),
+
     getRagConfig: () => ipcRenderer.invoke('settings:get-rag-config'),
     setRagConfig: (config: any) => ipcRenderer.invoke('settings:set-rag-config', config),
-    
+
     getWebSearchConfig: () => ipcRenderer.invoke('settings:get-web-search-config'),
-    setWebSearchConfig: (config: any) => ipcRenderer.invoke('settings:set-web-search-config', config),
-    
+    setWebSearchConfig: (config: any) =>
+      ipcRenderer.invoke('settings:set-web-search-config', config),
+
     getSummaryConfig: () => ipcRenderer.invoke('settings:get-summary-config'),
     setSummaryConfig: (config: any) => ipcRenderer.invoke('settings:set-summary-config', config),
-    
+
     getToolManagementConfig: () => ipcRenderer.invoke('settings:get-tool-management-config'),
-    setToolManagementConfig: (config: any) => ipcRenderer.invoke('settings:set-tool-management-config', config),
+    setToolManagementConfig: (config: any) =>
+      ipcRenderer.invoke('settings:set-tool-management-config', config),
 
     getSearchModeEnabled: () => ipcRenderer.invoke('settings:get-search-mode-enabled'),
-    setSearchModeEnabled: (enabled: boolean) => ipcRenderer.invoke('settings:set-search-mode-enabled', enabled),
-    
+    setSearchModeEnabled: (enabled: boolean) =>
+      ipcRenderer.invoke('settings:set-search-mode-enabled', enabled),
+
     getMcpServerConfig: () => ipcRenderer.invoke('settings:get-mcp-server-config'),
-    setMcpServerConfig: (config: any) => ipcRenderer.invoke('settings:set-mcp-server-config', config),
-    
+    setMcpServerConfig: (config: any) =>
+      ipcRenderer.invoke('settings:set-mcp-server-config', config),
+
     getHotkeyConfig: () => ipcRenderer.invoke('settings:get-hotkey-config'),
     setHotkeyConfig: (config: any) => ipcRenderer.invoke('settings:set-hotkey-config', config),
-    
+
     getCloudSyncConfig: () => ipcRenderer.invoke('settings:get-cloud-sync-config'),
-    setCloudSyncConfig: (config: any) => ipcRenderer.invoke('settings:set-cloud-sync-config', config),
-    
-    reorderProviders: (orderedIds: string[]) => ipcRenderer.invoke('settings:reorder-providers', orderedIds),
-    testProviderConnection: (providerId: string, tempKey?: string, tempUrl?: string, testModelId?: string) => ipcRenderer.invoke('settings:test-connection', providerId, tempKey, tempUrl, testModelId),
-    fetchProviderModels: (providerId: string, tempKey?: string, tempUrl?: string) => ipcRenderer.invoke('settings:fetch-models', providerId, tempKey, tempUrl),
+    setCloudSyncConfig: (config: any) =>
+      ipcRenderer.invoke('settings:set-cloud-sync-config', config),
+
+    reorderProviders: (orderedIds: string[]) =>
+      ipcRenderer.invoke('settings:reorder-providers', orderedIds),
+    testProviderConnection: (
+      providerId: string,
+      tempKey?: string,
+      tempUrl?: string,
+      testModelId?: string
+    ) => ipcRenderer.invoke('settings:test-connection', providerId, tempKey, tempUrl, testModelId),
+    fetchProviderModels: (providerId: string, tempKey?: string, tempUrl?: string) =>
+      ipcRenderer.invoke('settings:fetch-models', providerId, tempKey, tempUrl)
   },
 
   // Data Routing API (Phase 11: Data Wiring)
   getSessions: () => ipcRenderer.invoke('agent:get-sessions'),
   deleteSessions: (ids: string[]) => ipcRenderer.invoke('agent:delete-sessions', ids),
-  pinSession: (id: string, isPinned: boolean) => ipcRenderer.invoke('agent:pin-session', id, isPinned),
+  pinSession: (id: string, isPinned: boolean) =>
+    ipcRenderer.invoke('agent:pin-session', id, isPinned),
 
   getAssistants: () => ipcRenderer.invoke('agent:get-assistants'),
   createAssistant: (input: any) => ipcRenderer.invoke('agent:create-assistant', input),
-  updateAssistant: (id: string, input: any) => ipcRenderer.invoke('agent:update-assistant', id, input),
+  updateAssistant: (id: string, input: any) =>
+    ipcRenderer.invoke('agent:update-assistant', id, input),
   deleteAssistant: (id: string) => ipcRenderer.invoke('agent:delete-assistant', id),
 
   // Vault/Workspace System
@@ -112,7 +130,7 @@ export const api = {
     delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
     createDialog: (name?: string) => ipcRenderer.invoke('vault:createDialog', name),
     pickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
-    getCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
+    getCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath')
   },
 
   // Profile System
@@ -133,8 +151,10 @@ export const api = {
   attachment: {
     listAll: () => ipcRenderer.invoke('attachment:listAll'),
     deleteBatch: (ids: string[]) => ipcRenderer.invoke('attachment:deleteBatch', ids),
-    openInFolder: (absolutePath: string) => ipcRenderer.invoke('attachment:openInFolder', absolutePath),
-    deleteFile: (sessionId: string, fileName: string) => ipcRenderer.invoke('attachment:deleteFile', sessionId, fileName)
+    openInFolder: (absolutePath: string) =>
+      ipcRenderer.invoke('attachment:openInFolder', absolutePath),
+    deleteFile: (sessionId: string, fileName: string) =>
+      ipcRenderer.invoke('attachment:deleteFile', sessionId, fileName)
   },
 
   // Archive System (Phase B1)
@@ -145,8 +165,10 @@ export const api = {
     listSnapshots: () => ipcRenderer.invoke('archive:list-snapshots'),
     deleteSnapshot: (filename: string) => ipcRenderer.invoke('archive:delete-snapshot', filename),
     restoreSnapshot: (filename: string) => ipcRenderer.invoke('archive:restore-snapshot', filename),
-    renameSnapshot: (oldName: string, newName: string) => ipcRenderer.invoke('archive:rename-snapshot', oldName, newName),
-    batchDeleteSnapshots: (filenames: string[]) => ipcRenderer.invoke('archive:batch-delete-snapshots', filenames)
+    renameSnapshot: (oldName: string, newName: string) =>
+      ipcRenderer.invoke('archive:rename-snapshot', oldName, newName),
+    batchDeleteSnapshots: (filenames: string[]) =>
+      ipcRenderer.invoke('archive:batch-delete-snapshots', filenames)
   },
 
   // Diary System (Phase 13)
@@ -160,31 +182,35 @@ export const api = {
     search: (query: string, options?: any) => ipcRenderer.invoke('diary:search', query, options),
     count: () => ipcRenderer.invoke('diary:count'),
     onSyncEvent: (callback: (event: any) => void) => {
-      const handler = (_: any, event: any) => callback(event);
-      ipcRenderer.on('diary:sync-event', handler);
-      return () => ipcRenderer.off('diary:sync-event', handler);
+      const handler = (_: any, event: any) => callback(event)
+      ipcRenderer.on('diary:sync-event', handler)
+      return () => ipcRenderer.off('diary:sync-event', handler)
     },
     // 日记附件相关API
-    uploadAttachments: (args: { date: string; attachments: Array<{ filePath?: string; fileName?: string; data?: string; mimeType?: string }> }) => 
-      ipcRenderer.invoke('diary:upload-attachments', args),
+    uploadAttachments: (args: {
+      date: string
+      attachments: Array<{ filePath?: string; fileName?: string; data?: string; mimeType?: string }>
+    }) => ipcRenderer.invoke('diary:upload-attachments', args),
     listAttachments: (dateStr: string) => ipcRenderer.invoke('diary:list-attachments', dateStr),
     deleteAttachment: (filePath: string) => ipcRenderer.invoke('diary:delete-attachment', filePath),
-    openAttachmentFolder: (filePath: string) => ipcRenderer.invoke('diary:open-attachment-folder', filePath),
+    openAttachmentFolder: (filePath: string) =>
+      ipcRenderer.invoke('diary:open-attachment-folder', filePath),
     copyAttachment: (filePath: string) => ipcRenderer.invoke('diary:copy-attachment', filePath),
-    getAttachmentDir: (dateStr: string) => ipcRenderer.invoke('diary:get-attachment-dir', dateStr),
+    getAttachmentDir: (dateStr: string) => ipcRenderer.invoke('diary:get-attachment-dir', dateStr)
   },
 
   // Summary System (Phase 13)
   summary: {
     save: (input: any) => ipcRenderer.invoke('summary:save', input),
-    update: (id: number, type: string, startDate: string, endDate: string, update: any) => 
+    update: (id: number, type: string, startDate: string, endDate: string, update: any) =>
       ipcRenderer.invoke('summary:update', id, type, startDate, endDate, update),
-    delete: (type: string, startDate: string, endDate: string) => 
+    delete: (type: string, startDate: string, endDate: string) =>
       ipcRenderer.invoke('summary:delete', type, startDate, endDate),
-    readDetail: (type: string, startDate: string, endDate: string) => 
+    readDetail: (type: string, startDate: string, endDate: string) =>
       ipcRenderer.invoke('summary:readDetail', type, startDate, endDate),
     list: (options?: any) => ipcRenderer.invoke('summary:list', options),
-    buildSharedContext: (lookbackMonths: number, locale?: string) => ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale),
+    buildSharedContext: (lookbackMonths: number, locale?: string) =>
+      ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale)
   },
 
   // RAG System
@@ -198,15 +224,17 @@ export const api = {
     triggerMigration: () => ipcRenderer.invoke('rag:trigger-migration'),
     queryEntries: (params: any) => ipcRenderer.invoke('rag:query-entries', params),
     deleteEntry: (id: string) => ipcRenderer.invoke('rag:delete-entry', id),
-    editEntry: (params: { embeddingId: string, newText: string }) => ipcRenderer.invoke('rag:edit-entry', params),
+    editEntry: (params: { embeddingId: string; newText: string }) =>
+      ipcRenderer.invoke('rag:edit-entry', params),
     hasPendingMigration: () => ipcRenderer.invoke('rag:has-pending-migration'),
     hasModelMismatch: () => ipcRenderer.invoke('rag:has-model-mismatch'),
     onRagProgress: (callback: (state: any) => void) => {
-      const handler = (_: any, state: any) => callback(state);
-      ipcRenderer.on('agent:rag-progress', handler);
-      return () => ipcRenderer.off('agent:rag-progress', handler);
+      const handler = (_: any, state: any) => callback(state)
+      ipcRenderer.on('agent:rag-progress', handler)
+      return () => ipcRenderer.off('agent:rag-progress', handler)
     },
-    buildSharedContext: (lookbackMonths: number, locale?: string) => ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale),
+    buildSharedContext: (lookbackMonths: number, locale?: string) =>
+      ipcRenderer.invoke('summary:buildSharedContext', lookbackMonths, locale)
   },
 
   // LAN Sync (Phase B)
@@ -216,7 +244,7 @@ export const api = {
     startDiscovery: () => ipcRenderer.invoke('lan:startDiscovery'),
     stopDiscovery: () => ipcRenderer.invoke('lan:stopDiscovery'),
     sendFile: (ip: string, port: number) => ipcRenderer.invoke('lan:sendFile', ip, port),
-    
+
     // Listeners
     onDeviceFound: (callback: (device: any) => void) => {
       const handler = (_: any, device: any) => callback(device)
@@ -256,18 +284,24 @@ export const api = {
     testRemote: () => ipcRenderer.invoke('git:testRemote'),
     commitAll: (message: string) => ipcRenderer.invoke('git:commitAll', message),
     commit: (files: string[], message: string) => ipcRenderer.invoke('git:commit', files, message),
-    getHistory: (filePath?: string, limit?: number, offset?: number) => ipcRenderer.invoke('git:getHistory', filePath, limit, offset),
+    getHistory: (filePath?: string, limit?: number, offset?: number) =>
+      ipcRenderer.invoke('git:getHistory', filePath, limit, offset),
     getRecentPulls: (limit?: number) => ipcRenderer.invoke('git:getRecentPulls', limit),
-    getCommitChanges: (commitHash: string) => ipcRenderer.invoke('git:getCommitChanges', commitHash),
-    getFileDiff: (filePath: string, commitHash?: string) => ipcRenderer.invoke('git:getFileDiff', filePath, commitHash),
-    getWorkingDiff: (filePath: string, staged: boolean) => ipcRenderer.invoke('git:getWorkingDiff', filePath, staged),
-    rollbackFile: (filePath: string, commitHash: string) => ipcRenderer.invoke('git:rollbackFile', filePath, commitHash),
+    getCommitChanges: (commitHash: string) =>
+      ipcRenderer.invoke('git:getCommitChanges', commitHash),
+    getFileDiff: (filePath: string, commitHash?: string) =>
+      ipcRenderer.invoke('git:getFileDiff', filePath, commitHash),
+    getWorkingDiff: (filePath: string, staged: boolean) =>
+      ipcRenderer.invoke('git:getWorkingDiff', filePath, staged),
+    rollbackFile: (filePath: string, commitHash: string) =>
+      ipcRenderer.invoke('git:rollbackFile', filePath, commitHash),
     rollbackAll: (commitHash: string) => ipcRenderer.invoke('git:rollbackAll', commitHash),
     push: () => ipcRenderer.invoke('git:push'),
     pull: () => ipcRenderer.invoke('git:pull'),
     hasConflicts: () => ipcRenderer.invoke('git:hasConflicts'),
     getConflicts: () => ipcRenderer.invoke('git:getConflicts'),
-    resolveConflict: (filePath: string, resolution: 'ours' | 'theirs') => ipcRenderer.invoke('git:resolveConflict', filePath, resolution),
+    resolveConflict: (filePath: string, resolution: 'ours' | 'theirs') =>
+      ipcRenderer.invoke('git:resolveConflict', filePath, resolution)
   },
 
   // Incremental Sync (S3)
@@ -289,19 +323,24 @@ export const api = {
     getSyncHistory: (limit?: number) => ipcRenderer.invoke('incrementalSync:getSyncHistory', limit),
     getLastSyncSummary: () => ipcRenderer.invoke('incrementalSync:getLastSyncSummary'),
     onSyncProgress: (callback: (event: any) => void) => {
-      const handler = (_: any, event: any) => callback(event);
-      ipcRenderer.on('incrementalSync:progress', handler);
-      return () => ipcRenderer.off('incrementalSync:progress', handler);
-    },
+      const handler = (_: any, event: any) => callback(event)
+      ipcRenderer.on('incrementalSync:progress', handler)
+      return () => ipcRenderer.off('incrementalSync:progress', handler)
+    }
   },
   cloud: {
     syncNow: (config: any) => ipcRenderer.invoke('cloud:syncNow', config),
     listRecords: (config: any) => ipcRenderer.invoke('cloud:listRecords', config),
-    restore: (config: any, filename: string) => ipcRenderer.invoke('cloud:restore', config, filename),
-    downloadRecord: (config: any, filename: string) => ipcRenderer.invoke('cloud:downloadRecord', config, filename),
-    deleteRecord: (config: any, filename: string) => ipcRenderer.invoke('cloud:deleteRecord', config, filename),
-    batchDelete: (config: any, filenames: string[]) => ipcRenderer.invoke('cloud:batchDelete', config, filenames),
-    rename: (config: any, oldName: string, newName: string) => ipcRenderer.invoke('cloud:rename', config, oldName, newName)
+    restore: (config: any, filename: string) =>
+      ipcRenderer.invoke('cloud:restore', config, filename),
+    downloadRecord: (config: any, filename: string) =>
+      ipcRenderer.invoke('cloud:downloadRecord', config, filename),
+    deleteRecord: (config: any, filename: string) =>
+      ipcRenderer.invoke('cloud:deleteRecord', config, filename),
+    batchDelete: (config: any, filenames: string[]) =>
+      ipcRenderer.invoke('cloud:batchDelete', config, filenames),
+    rename: (config: any, oldName: string, newName: string) =>
+      ipcRenderer.invoke('cloud:rename', config, oldName, newName)
   },
 
   // Onboarding
@@ -311,9 +350,9 @@ export const api = {
     setDirectory: (path: string) => ipcRenderer.invoke('onboarding:set-directory', path),
     finish: () => ipcRenderer.invoke('onboarding:finish'),
     onReady: (callback: () => void) => {
-      const handler = () => callback();
-      ipcRenderer.on('onboarding:ready', handler);
-      return () => ipcRenderer.off('onboarding:ready', handler);
+      const handler = () => callback()
+      ipcRenderer.on('onboarding:ready', handler)
+      return () => ipcRenderer.off('onboarding:ready', handler)
     }
   },
 
@@ -347,7 +386,7 @@ export const api = {
       const handler = (_: any, progress: number) => callback(progress)
       ipcRenderer.on('updater:download-progress', handler)
       return () => ipcRenderer.off('updater:download-progress', handler)
-    },
+    }
   }
 }
 

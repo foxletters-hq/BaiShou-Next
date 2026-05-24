@@ -1,6 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
-import { useTranslation } from 'react-i18next';
-
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   children?: ReactNode
@@ -26,7 +25,7 @@ class ErrorBoundaryClass extends Component<Props & { t: any }, State> {
   }
 
   public render() {
-    const { t } = this.props;
+    const { t } = this.props
     if (this.state.hasError) {
       return (
         <div
@@ -75,6 +74,6 @@ class ErrorBoundaryClass extends Component<Props & { t: any }, State> {
 }
 
 export function ErrorBoundary(props: Props) {
-  const { t } = useTranslation();
-  return <ErrorBoundaryClass {...props} t={t} />;
+  const { t } = useTranslation()
+  return <ErrorBoundaryClass {...props} t={t} />
 }

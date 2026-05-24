@@ -1,13 +1,13 @@
-import React from 'react';
+import React from 'react'
 
 export class ErrorBoundary extends React.Component<any, any> {
   constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
+    super(props)
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
   render() {
@@ -17,8 +17,8 @@ export class ErrorBoundary extends React.Component<any, any> {
           <h1>React Error</h1>
           <pre>{this.state.error?.stack}</pre>
         </div>
-      );
+      )
     }
-    return this.props.children;
+    return this.props.children
   }
 }

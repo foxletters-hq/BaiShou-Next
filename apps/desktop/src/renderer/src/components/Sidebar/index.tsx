@@ -1,112 +1,133 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { MdTimeline, MdAutoStories, MdSync, MdSettings, MdDragIndicator, MdWifiFind, MdHistory, MdCloudUpload } from 'react-icons/md';
-import styles from './Sidebar.module.css';
-import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { useUserProfileStore } from '@baishou/store';
-import { useToast } from '@baishou/ui';
-import appIcon from '@baishou/shared/assets/images/icon.png';
-
-
-
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import {
+  MdTimeline,
+  MdAutoStories,
+  MdSync,
+  MdSettings,
+  MdDragIndicator,
+  MdWifiFind,
+  MdHistory,
+  MdCloudUpload
+} from 'react-icons/md'
+import styles from './Sidebar.module.css'
+import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
+import { useUserProfileStore } from '@baishou/store'
+import { useToast } from '@baishou/ui'
+import appIcon from '@baishou/shared/assets/images/icon.png'
 
 export const Sidebar: React.FC = () => {
-  const { t } = useTranslation();
-  const { profile, loadProfile } = useUserProfileStore();
-  const toast = useToast();
+  const { t } = useTranslation()
+  const { profile, loadProfile } = useUserProfileStore()
+  const toast = useToast()
 
   // Default nav items
-  const navigate = useNavigate();
-  const location = useLocation();
-  
-   const [navOrder, setNavOrder] = useState(() => {
-    const saved = localStorage.getItem('desktop_sidebar_nav_order');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as string[];
-          // 版本号迁移：版本为 0-2 时，按最新默认排序强刷置顶一次
-          const mv = parseInt(localStorage.getItem('desktop_sidebar_mv') || '0', 10);
-          const defaults = ['diary', 'summary', 'incr-sync', 'sync', 'lan', 'git'];
-          if (mv < 3) {
-            for (const item of [...defaults].reverse()) {
-              const idx = parsed.indexOf(item);
-              if (idx !== -1) parsed.splice(idx, 1);
-              parsed.unshift(item);
-            }
-            localStorage.setItem('desktop_sidebar_mv', '3');
-            localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
-          } else {
-            // 常规补全（置顶）
-            let changed = false;
-            for (const item of defaults) {
-              if (!parsed.includes(item)) {
-                parsed.unshift(item);
-                changed = true;
-              }
-            }
-            if (changed) {
-              localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed));
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const [navOrder, setNavOrder] = useState(() => {
+    const saved = localStorage.getItem('desktop_sidebar_nav_order')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as string[]
+        // 版本号迁移：版本为 0-2 时，按最新默认排序强刷置顶一次
+        const mv = parseInt(localStorage.getItem('desktop_sidebar_mv') || '0', 10)
+        const defaults = ['diary', 'summary', 'incr-sync', 'sync', 'lan', 'git']
+        if (mv < 3) {
+          for (const item of [...defaults].reverse()) {
+            const idx = parsed.indexOf(item)
+            if (idx !== -1) parsed.splice(idx, 1)
+            parsed.unshift(item)
+          }
+          localStorage.setItem('desktop_sidebar_mv', '3')
+          localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed))
+        } else {
+          // 常规补全（置顶）
+          let changed = false
+          for (const item of defaults) {
+            if (!parsed.includes(item)) {
+              parsed.unshift(item)
+              changed = true
             }
           }
-          return parsed;
-        } catch (e) {}
-      }
-       return ['diary', 'summary', 'incr-sync', 'sync', 'lan', 'git'];
-   });
+          if (changed) {
+            localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(parsed))
+          }
+        }
+        return parsed
+      } catch (e) {}
+    }
+    return ['diary', 'summary', 'incr-sync', 'sync', 'lan', 'git']
+  })
 
-   const allItems = {
-      'diary': { icon: <MdTimeline />, label: t('diary.title', '日记'), path: '/diary' },
-      'summary': { icon: <MdAutoStories />, label: t('summary.dashboard_title', '全域仪表盘'), path: '/summary' },
-      'lan': { icon: <MdWifiFind />, label: t('settings.lan_transfer', '局域网快传'), path: '/lan-transfer' },
-      'sync': { icon: <MdSync />, label: t('common.data_sync', '数据备份'), path: '/data-sync' },
-      'incr-sync': { icon: <MdCloudUpload />, label: t('common.incremental_sync', '增量同步'), path: '/incremental-sync' },
-      'git': { icon: <MdHistory />, label: t('version_control.title', '版本控制'), path: '/git' }
-   };
+  const allItems = {
+    diary: { icon: <MdTimeline />, label: t('diary.title', '日记'), path: '/diary' },
+    summary: {
+      icon: <MdAutoStories />,
+      label: t('summary.dashboard_title', '全域仪表盘'),
+      path: '/summary'
+    },
+    lan: {
+      icon: <MdWifiFind />,
+      label: t('settings.lan_transfer', '局域网快传'),
+      path: '/lan-transfer'
+    },
+    sync: { icon: <MdSync />, label: t('common.data_sync', '数据备份'), path: '/data-sync' },
+    'incr-sync': {
+      icon: <MdCloudUpload />,
+      label: t('common.incremental_sync', '增量同步'),
+      path: '/incremental-sync'
+    },
+    git: { icon: <MdHistory />, label: t('version_control.title', '版本控制'), path: '/git' }
+  }
 
   useEffect(() => {
-    localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder));
-  }, [navOrder]);
+    localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder))
+  }, [navOrder])
 
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+    loadProfile()
+  }, [loadProfile])
 
   useEffect(() => {
     if (profile?.avatarFileMissing && !localStorage.getItem('avatar_missing_warned')) {
-      localStorage.setItem('avatar_missing_warned', '1');
-      toast.showWarning(t('profile.avatar_file_missing', '检测到头像文件不存在，已恢复为默认头像'));
+      localStorage.setItem('avatar_missing_warned', '1')
+      toast.showWarning(t('profile.avatar_file_missing', '检测到头像文件不存在，已恢复为默认头像'))
     }
-  }, [profile, toast, t]);
+  }, [profile, toast, t])
 
   const onDragEnd = (result: DropResult) => {
-  if (!result.destination) return;
-    const newOrder = Array.from(navOrder);
-    const [reorderedItem] = newOrder.splice(result.source.index, 1);
-    newOrder.splice(result.destination.index, 0, reorderedItem as string);
-    setNavOrder(newOrder);
-  };
+    if (!result.destination) return
+    const newOrder = Array.from(navOrder)
+    const [reorderedItem] = newOrder.splice(result.source.index, 1)
+    newOrder.splice(result.destination.index, 0, reorderedItem as string)
+    setNavOrder(newOrder)
+  }
 
-  const isAgentMode = location.pathname.startsWith('/chat') || location.pathname.startsWith('/agent');
+  const isAgentMode =
+    location.pathname.startsWith('/chat') || location.pathname.startsWith('/agent')
 
-  if (isAgentMode) return null;
+  if (isAgentMode) return null
 
   return (
-    <motion.div 
+    <motion.div
       className={styles.sidebar}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
     >
-       <div className={styles.brandRow}>
-          <div className={styles.logoBox}>
-            <img src={appIcon} alt="Logo" className={styles.brandLogo} />
+      <div className={styles.brandRow}>
+        <div className={styles.logoBox}>
+          <img src={appIcon} alt="Logo" className={styles.brandLogo} />
+        </div>
+        <div className={styles.brandText}>
+          <div className={styles.brandName}>{t('common.app_title', 'BaiShou AI')}</div>
+          <div className={styles.brandSlogan}>
+            {t('settings.tagline_short', '下一代本地优先 AI 记忆终端')}
           </div>
-         <div className={styles.brandText}>
-            <div className={styles.brandName}>{t('common.app_title', 'BaiShou AI')}</div>
-            <div className={styles.brandSlogan}>{t('settings.tagline_short', '下一代本地优先 AI 记忆终端')}</div>
-         </div>
+        </div>
       </div>
 
       <div className={styles.menuContainer}>
@@ -115,11 +136,9 @@ export const Sidebar: React.FC = () => {
             {(provided) => (
               <div {...provided.droppableProps} ref={provided.innerRef} className={styles.navList}>
                 {navOrder.map((id, index) => {
-
-
-                  const item = allItems[id as keyof typeof allItems];
-                  if (!item) return null;
-                  const isSelected = location.pathname.startsWith(item.path);
+                  const item = allItems[id as keyof typeof allItems]
+                  if (!item) return null
+                  const isSelected = location.pathname.startsWith(item.path)
 
                   return (
                     <Draggable key={id} draggableId={id} index={index}>
@@ -133,9 +152,9 @@ export const Sidebar: React.FC = () => {
                             className={`${styles.navItem} ${isSelected ? styles.selected : ''}`}
                             onClick={() => {
                               if (!location.pathname.startsWith(item.path)) {
-                                sessionStorage.setItem('desktop_last_nav', location.pathname);
+                                sessionStorage.setItem('desktop_last_nav', location.pathname)
                               }
-                              navigate(item.path);
+                              navigate(item.path)
                             }}
                           >
                             <div {...provided.dragHandleProps} className={styles.dragHandle}>
@@ -147,7 +166,7 @@ export const Sidebar: React.FC = () => {
                         </div>
                       )}
                     </Draggable>
-                  );
+                  )
                 })}
                 {provided.placeholder}
               </div>
@@ -160,32 +179,48 @@ export const Sidebar: React.FC = () => {
         </div>
 
         <div className={styles.fixedNav}>
-          <div 
-             className={`${styles.navItem} ${location.pathname.startsWith('/settings') ? styles.selected : ''}`}
-             onClick={() => navigate('/settings')}
+          <div
+            className={`${styles.navItem} ${location.pathname.startsWith('/settings') ? styles.selected : ''}`}
+            onClick={() => navigate('/settings')}
           >
-             <span className={styles.navIcon}><MdSettings /></span>
-             <span className={styles.navLabel}>{t('settings.title', '设置')}</span>
+            <span className={styles.navIcon}>
+              <MdSettings />
+            </span>
+            <span className={styles.navLabel}>{t('settings.title', '设置')}</span>
           </div>
         </div>
       </div>
 
       <div className={styles.userCard}>
-         <div className={styles.avatar}>
-           {profile?.avatarPath && profile.avatarPath !== 'default' ? (
-             <img 
-               src={profile.avatarPath.startsWith('http') || profile.avatarPath.startsWith('data:') || profile.avatarPath.startsWith('local://') ? profile.avatarPath : `local://${profile.avatarPath}`} 
-               alt="avatar" 
-               style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', backgroundColor: 'transparent'}} 
-             />
-           ) : (
-             (profile?.nickname || 'U').charAt(0).toUpperCase()
-           )}
-         </div>
-         <div className={styles.userInfo}>
-            <div className={styles.userName}>{profile?.nickname || t('profile.default_nickname', '白守用户')}</div>
-         </div>
+        <div className={styles.avatar}>
+          {profile?.avatarPath && profile.avatarPath !== 'default' ? (
+            <img
+              src={
+                profile.avatarPath.startsWith('http') ||
+                profile.avatarPath.startsWith('data:') ||
+                profile.avatarPath.startsWith('local://')
+                  ? profile.avatarPath
+                  : `local://${profile.avatarPath}`
+              }
+              alt="avatar"
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                backgroundColor: 'transparent'
+              }}
+            />
+          ) : (
+            (profile?.nickname || 'U').charAt(0).toUpperCase()
+          )}
+        </div>
+        <div className={styles.userInfo}>
+          <div className={styles.userName}>
+            {profile?.nickname || t('profile.default_nickname', '白守用户')}
+          </div>
+        </div>
       </div>
     </motion.div>
-  );
-};
+  )
+}

@@ -1,17 +1,17 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 export interface UseChatScrollParams {
-  messages: any[];
-  streamingText: string;
-  streamingReasoning: string;
-  isStreaming: boolean;
-  activeTool: { name: string; args: any } | null;
+  messages: any[]
+  streamingText: string
+  streamingReasoning: string
+  isStreaming: boolean
+  activeTool: { name: string; args: any } | null
 }
 
 export interface UseChatScrollResult {
-  scrollRef: React.RefObject<HTMLDivElement | null>;
-  showScrollButton: boolean;
-  scrollToBottom: (force?: boolean) => void;
+  scrollRef: React.RefObject<HTMLDivElement | null>
+  showScrollButton: boolean
+  scrollToBottom: (force?: boolean) => void
 }
 
 /**
@@ -23,47 +23,47 @@ export interface UseChatScrollResult {
  * 3. 显示"回到底部"按钮
  */
 export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult {
-  const { messages, streamingText, streamingReasoning, isStreaming, activeTool } = params;
+  const { messages, streamingText, streamingReasoning, isStreaming, activeTool } = params
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isUserScrollingRef = useRef(false);
-  const [showScrollButton, setShowScrollButton] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const isUserScrollingRef = useRef(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
-      if (!scrollRef.current) return;
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 150;
-      isUserScrollingRef.current = !isAtBottom;
-      setShowScrollButton(!isAtBottom);
-    };
-    const el = scrollRef.current;
-    if (el) el.addEventListener('scroll', handleScroll);
+      if (!scrollRef.current) return
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 150
+      isUserScrollingRef.current = !isAtBottom
+      setShowScrollButton(!isAtBottom)
+    }
+    const el = scrollRef.current
+    if (el) el.addEventListener('scroll', handleScroll)
     return () => {
-      if (el) el.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
+      if (el) el.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
 
   const scrollToBottom = useCallback((force = false) => {
     if (scrollRef.current && (!isUserScrollingRef.current || force)) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
       if (force) {
-        setShowScrollButton(false);
-        isUserScrollingRef.current = false;
+        setShowScrollButton(false)
+        isUserScrollingRef.current = false
       }
     }
-  }, []);
+  }, [])
 
-  const prevNewestIdRef = useRef<string | null>(null);
+  const prevNewestIdRef = useRef<string | null>(null)
   useEffect(() => {
-    const newestMsg = messages[messages.length - 1];
-    const isNewMessageAdded = newestMsg?.id && newestMsg.id !== prevNewestIdRef.current;
+    const newestMsg = messages[messages.length - 1]
+    const isNewMessageAdded = newestMsg?.id && newestMsg.id !== prevNewestIdRef.current
 
     if (isNewMessageAdded || isStreaming || streamingText || activeTool) {
-      scrollToBottom();
+      scrollToBottom()
     }
-    prevNewestIdRef.current = newestMsg?.id || null;
-  }, [messages, streamingText, streamingReasoning, isStreaming, activeTool, scrollToBottom]);
+    prevNewestIdRef.current = newestMsg?.id || null
+  }, [messages, streamingText, streamingReasoning, isStreaming, activeTool, scrollToBottom])
 
-  return { scrollRef, showScrollButton, scrollToBottom };
+  return { scrollRef, showScrollButton, scrollToBottom }
 }

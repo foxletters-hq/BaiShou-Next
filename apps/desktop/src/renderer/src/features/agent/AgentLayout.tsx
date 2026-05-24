@@ -1,286 +1,329 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AgentSidebar } from './components/AgentSidebar';
-import type { AgentAssistant } from './components/AgentSidebar';
-import { useAssistantStore, useSettingsStore, useUserProfileStore } from '@baishou/store';
-import { type SessionData, useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui';
-import { MdAutoAwesome } from 'react-icons/md';
-import styles from './AgentLayout.module.css';
+import React, { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { AgentSidebar } from './components/AgentSidebar'
+import type { AgentAssistant } from './components/AgentSidebar'
+import { useAssistantStore, useSettingsStore, useUserProfileStore } from '@baishou/store'
+import {
+  type SessionData,
+  useToast,
+  AssistantPickerSheet,
+  Modal,
+  AssistantEditPage,
+  useDialog
+} from '@baishou/ui'
+import { MdAutoAwesome } from 'react-icons/md'
+import styles from './AgentLayout.module.css'
 
 export const AgentLayout: React.FC = () => {
-  const navigate = useNavigate();
-  const { sessionId } = useParams();
-  const [searchParams] = useSearchParams();
-  
-  const { assistants, fetchAssistants, isLoading: isAssistantsLoading } = useAssistantStore();
-  const { agentBehavior, loadConfig } = useSettingsStore();
-  const { loadProfile } = useUserProfileStore();
-  
-  const [sessions, setSessions] = useState<SessionData[]>([]);
-  const [hasMoreSessions, setHasMoreSessions] = useState(false);
-  const SESSION_LIMIT = 10;
+  const navigate = useNavigate()
+  const { sessionId } = useParams()
+  const [searchParams] = useSearchParams()
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false);
-  const [sidebarScrollKey, setSidebarScrollKey] = useState(0);
-  
+  const { assistants, fetchAssistants, isLoading: isAssistantsLoading } = useAssistantStore()
+  const { agentBehavior, loadConfig } = useSettingsStore()
+  const { loadProfile } = useUserProfileStore()
+
+  const [sessions, setSessions] = useState<SessionData[]>([])
+  const [hasMoreSessions, setHasMoreSessions] = useState(false)
+  const SESSION_LIMIT = 10
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false)
+  const [sidebarScrollKey, setSidebarScrollKey] = useState(0)
+
   // 重命名 inline modal 状态
-  const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  const toast = useToast();
-  const dialog = useDialog();
-  const { t } = useTranslation();
+  const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const toast = useToast()
+  const dialog = useDialog()
+  const { t } = useTranslation()
 
-  const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null);
-  const resolvedAssistantIdRef = useRef<string | undefined>(undefined);
+  const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
+  const resolvedAssistantIdRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     if (sessionId) {
       if (typeof window !== 'undefined' && window.electron) {
-        window.electron.ipcRenderer.invoke('agent:get-session', sessionId).then(doc => {
-           if (doc) setStandaloneSessionDoc(doc);
-        });
+        window.electron.ipcRenderer.invoke('agent:get-session', sessionId).then((doc) => {
+          if (doc) setStandaloneSessionDoc(doc)
+        })
       }
     } else {
-      setStandaloneSessionDoc(null);
+      setStandaloneSessionDoc(null)
     }
-  }, [sessionId]);
+  }, [sessionId])
 
-  const lastLoadRequestId = useRef<number>(0);
+  const lastLoadRequestId = useRef<number>(0)
 
   const loadSessions = async (resetOffset = false, overrideAssistantId?: string) => {
     try {
       if (typeof window !== 'undefined' && window.electron) {
-        const reqId = ++lastLoadRequestId.current;
-        const offset = resetOffset ? 0 : sessions.length;
-        const sanitizedOverride = sanitizeAssistantId(overrideAssistantId);
-        const targetAst = sanitizedOverride || resolvedAssistantIdRef.current;
-        if (!targetAst) return;
+        const reqId = ++lastLoadRequestId.current
+        const offset = resetOffset ? 0 : sessions.length
+        const sanitizedOverride = sanitizeAssistantId(overrideAssistantId)
+        const targetAst = sanitizedOverride || resolvedAssistantIdRef.current
+        if (!targetAst) return
 
-        console.info(`[AgentLayout] Loading sessions: astId=${targetAst}, reset=${resetOffset}, offset=${offset}`);
-        const data = await window.electron.ipcRenderer.invoke('agent:get-sessions', SESSION_LIMIT, offset, targetAst);
-        
+        console.info(
+          `[AgentLayout] Loading sessions: astId=${targetAst}, reset=${resetOffset}, offset=${offset}`
+        )
+        const data = await window.electron.ipcRenderer.invoke(
+          'agent:get-sessions',
+          SESSION_LIMIT,
+          offset,
+          targetAst
+        )
+
         // 竞态保护
         if (reqId !== lastLoadRequestId.current) {
-          console.warn(`[AgentLayout] Dropping stale response (reqId: ${reqId})`);
-          return;
+          console.warn(`[AgentLayout] Dropping stale response (reqId: ${reqId})`)
+          return
         }
 
-        console.info(`[AgentLayout] Loaded ${data?.length || 0} sessions.`);
+        console.info(`[AgentLayout] Loaded ${data?.length || 0} sessions.`)
 
         if (data && data.length > 0) {
-           setSessions(prev => resetOffset ? data : [...prev, ...data]);
-           setHasMoreSessions(data.length === SESSION_LIMIT);
+          setSessions((prev) => (resetOffset ? data : [...prev, ...data]))
+          setHasMoreSessions(data.length === SESSION_LIMIT)
         } else {
-           if (resetOffset) setSessions([]);
-           setHasMoreSessions(false);
+          if (resetOffset) setSessions([])
+          setHasMoreSessions(false)
         }
         if (resetOffset) {
-           setSidebarScrollKey(prev => prev + 1);
+          setSidebarScrollKey((prev) => prev + 1)
         }
       }
     } catch (e) {
-      console.error('[AgentLayout] Failed to load sessions:', e);
+      console.error('[AgentLayout] Failed to load sessions:', e)
     }
-  };
+  }
 
   useEffect(() => {
     fetchAssistants().then(() => {
-      const store = useAssistantStore.getState();
+      const store = useAssistantStore.getState()
       if (store.assistants.length === 0 && typeof window !== 'undefined' && window.electron) {
-        window.electron.ipcRenderer.invoke('agent:create-assistant', {
-           id: 'default',
-           name: t('agent.default_assistant_name', '默认伙伴'),
-           emoji: '🍵',
-           systemPrompt: '',
-           isDefault: true,
-           contextWindow: 20
-        }).then(() => fetchAssistants()).then(() => {
-          const finalStore = useAssistantStore.getState();
-          const ast = finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0];
-          if (ast) {
-            resolvedAssistantIdRef.current = String(ast.id);
-            loadSessions(true, String(ast.id));
-          }
-        }).catch(console.error);
+        window.electron.ipcRenderer
+          .invoke('agent:create-assistant', {
+            id: 'default',
+            name: t('agent.default_assistant_name', '默认伙伴'),
+            emoji: '🍵',
+            systemPrompt: '',
+            isDefault: true,
+            contextWindow: 20
+          })
+          .then(() => fetchAssistants())
+          .then(() => {
+            const finalStore = useAssistantStore.getState()
+            const ast =
+              finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0]
+            if (ast) {
+              resolvedAssistantIdRef.current = String(ast.id)
+              loadSessions(true, String(ast.id))
+            }
+          })
+          .catch(console.error)
       } else {
-        const ast = store.assistants.find((a: any) => a.isDefault) || store.assistants[0];
+        const ast = store.assistants.find((a: any) => a.isDefault) || store.assistants[0]
         if (ast) {
-          resolvedAssistantIdRef.current = String(ast.id);
-          loadSessions(true, String(ast.id));
+          resolvedAssistantIdRef.current = String(ast.id)
+          loadSessions(true, String(ast.id))
         }
       }
-    });
-    loadConfig();
-    loadProfile();
-  }, [fetchAssistants, loadConfig, loadProfile]);
+    })
+    loadConfig()
+    loadProfile()
+  }, [fetchAssistants, loadConfig, loadProfile])
 
   // 监听主进程的 session:file-changed 消息，以实时更新会话列表里的标题
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electron) {
       const handler = () => {
-        console.info('[AgentLayout] session:file-changed event received, reloading sessions...');
-        const currentAst = resolvedAssistantIdRef.current;
-        loadSessions(true, currentAst);
-      };
-      const removeListener = window.electron.ipcRenderer.on('session:file-changed', handler);
-      return () => removeListener();
+        console.info('[AgentLayout] session:file-changed event received, reloading sessions...')
+        const currentAst = resolvedAssistantIdRef.current
+        loadSessions(true, currentAst)
+      }
+      const removeListener = window.electron.ipcRenderer.on('session:file-changed', handler)
+      return () => removeListener()
     }
-    return undefined;
-  }, []);
+    return undefined
+  }, [])
 
-  const pinnedIds = assistants.filter((a: any) => a.isPinned).map(a => String(a.id));
+  const pinnedIds = assistants.filter((a: any) => a.isPinned).map((a) => String(a.id))
   const pinnedAssistants: AgentAssistant[] = pinnedIds
-    .map(id => assistants.find(a => String(a.id) === String(id)))
+    .map((id) => assistants.find((a) => String(a.id) === String(id)))
     .filter(Boolean)
-    .map(a => ({
+    .map((a) => ({
       id: String(a!.id),
       name: a!.name,
       emoji: a!.emoji,
       avatarPath: (a as any).avatarPath
-    }));
+    }))
 
   const sanitizeAssistantId = (raw: unknown): string | undefined => {
-    if (typeof raw === 'string' && raw.length > 0) return raw;
-    if (typeof raw === 'number') return String(raw);
-    return undefined;
-  };
-
-  const currentSession = sessions.find(s => s.id === sessionId);
-  let activeAssistantId: string | undefined = undefined;
-  if (!sessionId) {
-    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId'));
-  } else if (currentSession) {
-    activeAssistantId = sanitizeAssistantId((currentSession as any).assistantId);
-  } else if (standaloneSessionDoc?.id === sessionId) {
-    activeAssistantId = sanitizeAssistantId(standaloneSessionDoc.assistantId);
+    if (typeof raw === 'string' && raw.length > 0) return raw
+    if (typeof raw === 'number') return String(raw)
+    return undefined
   }
-  
+
+  const currentSession = sessions.find((s) => s.id === sessionId)
+  let activeAssistantId: string | undefined = undefined
+  if (!sessionId) {
+    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId'))
+  } else if (currentSession) {
+    activeAssistantId = sanitizeAssistantId((currentSession as any).assistantId)
+  } else if (standaloneSessionDoc?.id === sessionId) {
+    activeAssistantId = sanitizeAssistantId(standaloneSessionDoc.assistantId)
+  }
+
   if (!activeAssistantId && sessionId) {
-    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId')) || resolvedAssistantIdRef.current;
+    activeAssistantId =
+      sanitizeAssistantId(searchParams.get('assistantId')) || resolvedAssistantIdRef.current
   }
 
   const currentAssistant = activeAssistantId
-    ? assistants.find(a => String(a.id) === String(activeAssistantId)) || assistants.find(a => a.isDefault)
-    : assistants.find(a => a.isDefault) || (assistants.length > 0 ? assistants[0] : undefined);
+    ? assistants.find((a) => String(a.id) === String(activeAssistantId)) ||
+      assistants.find((a) => a.isDefault)
+    : assistants.find((a) => a.isDefault) || (assistants.length > 0 ? assistants[0] : undefined)
 
   // 始终有一个 mappedAssistant — 如果还在加载就显示 fallback placeholder
-  const mappedAssistant = currentAssistant ? {
-    id: String(currentAssistant.id),
-    name: currentAssistant.name,
-    description: currentAssistant.description || t('agent.default_assistant_desc', '通用 AI 伙伴'),
-    emoji: currentAssistant.emoji,
-    avatarPath: (currentAssistant as any).avatarPath
-  } : (!isAssistantsLoading ? {
-    id: 'default',
-    name: t('agent.default_assistant_name', '默认伙伴'),
-    description: t('agent.default_assistant_desc', '通用 AI 伙伴'),
-    emoji: '🍵'
-  } : undefined); // undefined 触发骨架态
+  const mappedAssistant = currentAssistant
+    ? {
+        id: String(currentAssistant.id),
+        name: currentAssistant.name,
+        description:
+          currentAssistant.description || t('agent.default_assistant_desc', '通用 AI 伙伴'),
+        emoji: currentAssistant.emoji,
+        avatarPath: (currentAssistant as any).avatarPath
+      }
+    : !isAssistantsLoading
+      ? {
+          id: 'default',
+          name: t('agent.default_assistant_name', '默认伙伴'),
+          description: t('agent.default_assistant_desc', '通用 AI 伙伴'),
+          emoji: '🍵'
+        }
+      : undefined // undefined 触发骨架态
 
   useEffect(() => {
     if (mappedAssistant?.id && resolvedAssistantIdRef.current !== mappedAssistant.id) {
-       resolvedAssistantIdRef.current = mappedAssistant.id;
-       loadSessions(true, mappedAssistant.id);
+      resolvedAssistantIdRef.current = mappedAssistant.id
+      loadSessions(true, mappedAssistant.id)
     }
-  }, [mappedAssistant?.id]);
+  }, [mappedAssistant?.id])
 
   const handleNewChat = async (targetAssistantId?: string) => {
-    const urlAstId = sanitizeAssistantId(searchParams.get('assistantId'));
-    let astId = targetAssistantId || urlAstId || currentAssistant?.id;
+    const urlAstId = sanitizeAssistantId(searchParams.get('assistantId'))
+    let astId = targetAssistantId || urlAstId || currentAssistant?.id
     if (!astId) {
-      const store = useAssistantStore.getState();
-      const defaultAst = store.assistants.find(a => a.isDefault) || store.assistants[0];
-      astId = defaultAst?.id || 'default';
+      const store = useAssistantStore.getState()
+      const defaultAst = store.assistants.find((a) => a.isDefault) || store.assistants[0]
+      astId = defaultAst?.id || 'default'
     }
-    navigate(`/chat?assistantId=${astId}`);
-  };
+    navigate(`/chat?assistantId=${astId}`)
+  }
 
   const handleSelect = (id: string) => {
-    const astId = currentAssistant?.id;
-    navigate(astId ? `/chat/${id}?assistantId=${astId}` : `/chat/${id}`);
-  };
+    const astId = currentAssistant?.id
+    navigate(astId ? `/chat/${id}?assistantId=${astId}` : `/chat/${id}`)
+  }
 
   const handlePin = async (id: string) => {
     try {
       if (typeof window !== 'undefined' && window.electron) {
-        const s = sessions.find(s => s.id === id);
+        const s = sessions.find((s) => s.id === id)
         if (s) {
-          await window.electron.ipcRenderer.invoke('agent:pin-session', id, !s.isPinned);
-          loadSessions(true);
+          await window.electron.ipcRenderer.invoke('agent:pin-session', id, !s.isPinned)
+          loadSessions(true)
         }
       }
     } catch (e) {}
-  };
+  }
 
   const handleDelete = async (id: string) => {
-    const ok = await dialog.confirm(t('agent.delete_session_confirm', '您确定要永久删除这篇对话吗？此操作不可逆转。'), t('common.confirm_delete', '确认删除'));
-    if (!ok) return;
+    const ok = await dialog.confirm(
+      t('agent.delete_session_confirm', '您确定要永久删除这篇对话吗？此操作不可逆转。'),
+      t('common.confirm_delete', '确认删除')
+    )
+    if (!ok) return
     try {
       if (typeof window !== 'undefined' && window.electron) {
-        await window.electron.ipcRenderer.invoke('agent:delete-sessions', [id]);
-        loadSessions(true);
+        await window.electron.ipcRenderer.invoke('agent:delete-sessions', [id])
+        loadSessions(true)
         if (sessionId === id) {
-          const astId = currentAssistant?.id;
-          navigate(astId ? `/chat?assistantId=${astId}` : '/chat');
+          const astId = currentAssistant?.id
+          navigate(astId ? `/chat?assistantId=${astId}` : '/chat')
         }
       }
     } catch (e) {}
-  };
+  }
 
   const handleBatchDelete = async (ids: string[]) => {
-    const ok = await dialog.confirm(t('agent.batch_delete_confirm', '您确定要删除选中的 {{count}} 篇对话吗？此操作不可逆转。', { count: ids.length }), t('common.confirm_delete', '确认删除'));
-    if (!ok) return;
+    const ok = await dialog.confirm(
+      t('agent.batch_delete_confirm', '您确定要删除选中的 {{count}} 篇对话吗？此操作不可逆转。', {
+        count: ids.length
+      }),
+      t('common.confirm_delete', '确认删除')
+    )
+    if (!ok) return
     try {
       if (typeof window !== 'undefined' && window.electron) {
-        await window.electron.ipcRenderer.invoke('agent:delete-sessions', ids);
-        loadSessions(true);
+        await window.electron.ipcRenderer.invoke('agent:delete-sessions', ids)
+        loadSessions(true)
         if (sessionId && ids.includes(sessionId)) {
-          const astId = currentAssistant?.id;
-          navigate(astId ? `/chat?assistantId=${astId}` : '/chat');
+          const astId = currentAssistant?.id
+          navigate(astId ? `/chat?assistantId=${astId}` : '/chat')
         }
       }
     } catch (e) {}
-  };
+  }
 
   const handleRename = (id: string) => {
-    const s = sessions.find(s => s.id === id);
-    if (!s) return;
+    const s = sessions.find((s) => s.id === id)
+    if (!s) return
     // 弹出内联重命名框
-    setRenameTarget({ id, title: s.title || '' });
-    setTimeout(() => renameInputRef.current?.select(), 50);
-  };
+    setRenameTarget({ id, title: s.title || '' })
+    setTimeout(() => renameInputRef.current?.select(), 50)
+  }
 
   const commitRename = async () => {
-    if (!renameTarget) return;
-    const newTitle = renameTarget.title.trim();
+    if (!renameTarget) return
+    const newTitle = renameTarget.title.trim()
     if (newTitle && window.electron) {
-      await window.electron.ipcRenderer.invoke('agent:update-session-title', renameTarget.id, newTitle);
-      loadSessions(true);
-      toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title: newTitle }));
+      await window.electron.ipcRenderer.invoke(
+        'agent:update-session-title',
+        renameTarget.id,
+        newTitle
+      )
+      loadSessions(true)
+      toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title: newTitle }))
     }
-    setRenameTarget(null);
-  };
+    setRenameTarget(null)
+  }
 
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
-     if (typeof window !== 'undefined' && window.electron) {
-        try {
-          const sessionsList = await window.electron.ipcRenderer.invoke('agent:list-sessions-by-assistant', assistant.id);
-          if (sessionsList && sessionsList.length > 0) {
-             const sorted = sessionsList.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-             const targetId = sorted[0].id;
-             navigate(`/chat/${targetId}?assistantId=${assistant.id}`);
-             return;
-          }
-        } catch (e) {
-          console.error('[AgentLayout] Failed to switch to existing session', e);
+    if (typeof window !== 'undefined' && window.electron) {
+      try {
+        const sessionsList = await window.electron.ipcRenderer.invoke(
+          'agent:list-sessions-by-assistant',
+          assistant.id
+        )
+        if (sessionsList && sessionsList.length > 0) {
+          const sorted = sessionsList.sort(
+            (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )
+          const targetId = sorted[0].id
+          navigate(`/chat/${targetId}?assistantId=${assistant.id}`)
+          return
         }
-     }
-     handleNewChat(assistant.id);
-  };
+      } catch (e) {
+        console.error('[AgentLayout] Failed to switch to existing session', e)
+      }
+    }
+    handleNewChat(assistant.id)
+  }
 
   return (
     <div className={styles.layoutContainer}>
@@ -306,26 +349,45 @@ export const AgentLayout: React.FC = () => {
         onExpand={() => setIsSidebarCollapsed(false)}
         onShowPicker={() => setIsPickerOpen(true)}
       />
-      
+
       <div className={styles.chatArea}>
         <Outlet context={{ sessions, loadSessions }} />
       </div>
 
       {/* ─── 内联重命名 Toast Modal ─── */}
       {renameTarget && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.3)',
-        }} onClick={() => setRenameTarget(null)}>
-          <div style={{
-            background: 'var(--bg-surface, #fff)',
-            borderRadius: 16,
-            padding: '24px 24px 16px',
-            width: 320,
-            boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: 'var(--text-primary, #1e293b)' }}>{t('agent.rename_session', '重命名对话')}</div>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.3)'
+          }}
+          onClick={() => setRenameTarget(null)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface, #fff)',
+              borderRadius: 16,
+              padding: '24px 24px 16px',
+              width: 320,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.15)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 12,
+                color: 'var(--text-primary, #1e293b)'
+              }}
+            >
+              {t('agent.rename_session', '重命名对话')}
+            </div>
             <input
               ref={renameInputRef}
               autoFocus
@@ -338,24 +400,45 @@ export const AgentLayout: React.FC = () => {
                 outline: 'none',
                 background: 'var(--bg-surface-highlight, #f8fafc)',
                 color: 'var(--text-primary, #1e293b)',
-                boxSizing: 'border-box',
+                boxSizing: 'border-box'
               }}
               value={renameTarget.title}
-              onChange={e => setRenameTarget({ ...renameTarget, title: e.target.value })}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitRename();
-                if (e.key === 'Escape') setRenameTarget(null);
+              onChange={(e) => setRenameTarget({ ...renameTarget, title: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename()
+                if (e.key === 'Escape') setRenameTarget(null)
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
               <button
-                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)' }}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  color: 'var(--text-secondary)'
+                }}
                 onClick={() => setRenameTarget(null)}
-              >{t('common.cancel', '取消')}</button>
+              >
+                {t('common.cancel', '取消')}
+              </button>
               <button
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--color-primary, #5BA8F5)', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'var(--color-primary, #5BA8F5)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
                 onClick={commitRename}
-              >{t('common.confirm', '确定')}</button>
+              >
+                {t('common.confirm', '确定')}
+              </button>
             </div>
           </div>
         </div>
@@ -367,21 +450,21 @@ export const AgentLayout: React.FC = () => {
         assistants={assistants as any}
         currentAssistantId={mappedAssistant?.id}
         onSelect={(ast) => {
-          setIsPickerOpen(false);
-          handleAssistantSwitched(ast as any);
+          setIsPickerOpen(false)
+          handleAssistantSwitched(ast as any)
         }}
         onClose={() => setIsPickerOpen(false)}
         onRefreshAssistants={() => fetchAssistants()}
         pinnedIds={new Set(pinnedIds)}
         onTogglePin={async (id, isPinned) => {
           if (typeof window !== 'undefined' && window.electron) {
-            await window.electron.ipcRenderer.invoke('agent:pin-assistant', id, isPinned);
-            await fetchAssistants(); 
+            await window.electron.ipcRenderer.invoke('agent:pin-assistant', id, isPinned)
+            await fetchAssistants()
           }
         }}
         onCreateNew={() => {
-          setIsPickerOpen(false);
-          setIsCreateAssistantOpen(true);
+          setIsPickerOpen(false)
+          setIsCreateAssistantOpen(true)
         }}
       />
 
@@ -389,8 +472,8 @@ export const AgentLayout: React.FC = () => {
       <Modal
         isOpen={isCreateAssistantOpen}
         onClose={() => {
-          setIsCreateAssistantOpen(false);
-          setIsPickerOpen(true);
+          setIsCreateAssistantOpen(false)
+          setIsPickerOpen(true)
         }}
         closeOnOverlayClick={false}
         style={{ padding: 0 }}
@@ -401,18 +484,18 @@ export const AgentLayout: React.FC = () => {
             isLastAssistant={assistants.length <= 1}
             onSave={async (data) => {
               if (typeof window !== 'undefined' && window.electron) {
-                await window.electron.ipcRenderer.invoke('agent:create-assistant', data);
-                await fetchAssistants();
-                setIsCreateAssistantOpen(false);
+                await window.electron.ipcRenderer.invoke('agent:create-assistant', data)
+                await fetchAssistants()
+                setIsCreateAssistantOpen(false)
               }
             }}
             onBack={() => {
-              setIsCreateAssistantOpen(false);
-              setIsPickerOpen(true);
+              setIsCreateAssistantOpen(false)
+              setIsPickerOpen(true)
             }}
           />
         </div>
       </Modal>
     </div>
-  );
-};
+  )
+}

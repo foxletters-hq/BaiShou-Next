@@ -1,9 +1,9 @@
-import { BrowserWindow } from 'electron';
-import * as fs from 'fs';
-import * as path from 'path';
-import { getShadowSync } from '../ipc/diary.ipc';
-import { logger } from '@baishou/shared';
-import * as chokidar from 'chokidar';
+import { BrowserWindow } from 'electron'
+import * as fs from 'fs'
+import * as path from 'path'
+import { getShadowSync } from '../ipc/diary.ipc'
+import { logger } from '@baishou/shared'
+import * as chokidar from 'chokidar'
 
 /**
  * 日记文件变动监听服务
@@ -12,26 +12,26 @@ import * as chokidar from 'chokidar';
  * 使用 awaitWriteFinish 来避免 Windows/网络驱动下的原子写入冲突问题。
  */
 export class DiaryWatcherService {
-  private watcher: chokidar.FSWatcher | null = null;
-  private journalsPath: string | null = null;
+  private watcher: chokidar.FSWatcher | null = null
+  private journalsPath: string | null = null
   /** 收集短期内发生变动的文件路径 */
-  private pendingPaths = new Set<string>();
-  private isProcessing = false;
-  private globalDebounceTimer: NodeJS.Timeout | null = null;
+  private pendingPaths = new Set<string>()
+  private isProcessing = false
+  private globalDebounceTimer: NodeJS.Timeout | null = null
 
   public start(vaultPath: string) {
-    this.stop();
-    this.journalsPath = path.join(vaultPath, 'Journals');
-    
-    logger.info(`[DiaryWatcher] 🚀 journalsPath = ${this.journalsPath}`);
+    this.stop()
+    this.journalsPath = path.join(vaultPath, 'Journals')
+
+    logger.info(`[DiaryWatcher] 🚀 journalsPath = ${this.journalsPath}`)
 
     // 确保 Journals 目录存在（第一次打开可能未创建）
     if (!fs.existsSync(this.journalsPath)) {
       try {
-        fs.mkdirSync(this.journalsPath, { recursive: true });
-        logger.info(`[DiaryWatcher] 📁 Journals 目录已创建`);
+        fs.mkdirSync(this.journalsPath, { recursive: true })
+        logger.info(`[DiaryWatcher] 📁 Journals 目录已创建`)
       } catch (e: any) {
-        logger.error(`[DiaryWatcher] ❌ 无法创建 Journals 目录:`, e);
+        logger.error(`[DiaryWatcher] ❌ 无法创建 Journals 目录:`, e)
       }
     }
 
@@ -39,116 +39,120 @@ export class DiaryWatcherService {
     this.watcher = chokidar.watch(this.journalsPath, {
       ignored: /(^|[\/\\])\../, // 忽略隐藏文件
       ignoreInitial: true, // 初始加载时不触发 add 事件
-      disableGlobbing: true, // 因为直接传绝对路径，关掉 glob 解析提升一点性能和健壮性
-    } as any);
+      disableGlobbing: true // 因为直接传绝对路径，关掉 glob 解析提升一点性能和健壮性
+    } as any)
 
     this.watcher.on('all', (eventName, fullPath) => {
       // 只要是 .md 文件的 增、改、删 就触发同步
-      if (!fullPath.endsWith('.md')) return;
+      if (!fullPath.endsWith('.md')) return
       if (eventName === 'add' || eventName === 'change' || eventName === 'unlink') {
-        logger.info(`[DiaryWatcher] 📄 检测到文件变动: ${eventName} → ${fullPath}`);
-        this.scheduleSync(fullPath);
+        logger.info(`[DiaryWatcher] 📄 检测到文件变动: ${eventName} → ${fullPath}`)
+        this.scheduleSync(fullPath)
       }
-    });
+    })
 
-    logger.info(`[DiaryWatcher] ✅ Chokidar 监听已启动（最高速响应模式）`);
+    logger.info(`[DiaryWatcher] ✅ Chokidar 监听已启动（最高速响应模式）`)
   }
 
   public stop() {
     if (this.watcher) {
-      this.watcher.close();
-      this.watcher = null;
+      this.watcher.close()
+      this.watcher = null
     }
-    if (this.globalDebounceTimer) clearTimeout(this.globalDebounceTimer);
-    this.pendingPaths.clear();
-    this.isProcessing = false;
-    this.journalsPath = null;
-    logger.info(`[DiaryWatcher] 🛑 监听已停止`);
+    if (this.globalDebounceTimer) clearTimeout(this.globalDebounceTimer)
+    this.pendingPaths.clear()
+    this.isProcessing = false
+    this.journalsPath = null
+    logger.info(`[DiaryWatcher] 🛑 监听已停止`)
   }
 
   // ── 内部方法 ──────────────────────────────────────
 
   private scheduleSync(changedPath: string) {
-    this.pendingPaths.add(changedPath);
+    this.pendingPaths.add(changedPath)
     if (this.globalDebounceTimer) {
-      clearTimeout(this.globalDebounceTimer);
+      clearTimeout(this.globalDebounceTimer)
     }
     // 延迟更长一点，收集一波连续的文件变动
     this.globalDebounceTimer = setTimeout(async () => {
-      await this.processQueue();
-    }, 500);
+      await this.processQueue()
+    }, 500)
   }
 
   private async processQueue() {
     if (this.isProcessing) {
       // 已在处理中，不重复进入。scheduleSync 会把新路径加入 pendingPaths，
       // 当前正在运行的 processQueue 的 while 循环会在下一轮迭代中处理它们。
-      return;
+      return
     }
-    this.isProcessing = true;
+    this.isProcessing = true
 
     try {
       while (this.pendingPaths.size > 0) {
         // 取出当前的子集
-        const pathsToProcess = Array.from(this.pendingPaths);
-        this.pendingPaths.clear();
+        const pathsToProcess = Array.from(this.pendingPaths)
+        this.pendingPaths.clear()
 
         // 批量提取有效日期
-        const dateStrs: string[] = [];
-        const validPaths: string[] = [];
-        const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/;
+        const dateStrs: string[] = []
+        const validPaths: string[] = []
+        const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/
 
         for (const changedPath of pathsToProcess) {
-          const fileName = path.basename(changedPath);
-          const match = dateFileRegex.exec(fileName);
+          const fileName = path.basename(changedPath)
+          const match = dateFileRegex.exec(fileName)
           if (match && match[1]) {
-            dateStrs.push(match[1]);
-            validPaths.push(changedPath);
+            dateStrs.push(match[1])
+            validPaths.push(changedPath)
           }
         }
 
         if (dateStrs.length > 0) {
-          logger.info(`[DiaryWatcher] 🔍 提取到 ${dateStrs.length} 个日期: [${dateStrs.join(', ')}]`);
+          logger.info(
+            `[DiaryWatcher] 🔍 提取到 ${dateStrs.length} 个日期: [${dateStrs.join(', ')}]`
+          )
           try {
-             const shadowSync = getShadowSync();
-             const results = await shadowSync.syncJournalsBatch(dateStrs);
-             logger.info(`[DiaryWatcher] ✅ syncJournalsBatch 返回 ${results.length} 条结果`, JSON.stringify(results.map(r => ({ isChanged: r.isChanged, hasMeta: !!r.meta }))));
+            const shadowSync = getShadowSync()
+            const results = await shadowSync.syncJournalsBatch(dateStrs)
+            logger.info(
+              `[DiaryWatcher] ✅ syncJournalsBatch 返回 ${results.length} 条结果`,
+              JSON.stringify(results.map((r) => ({ isChanged: r.isChanged, hasMeta: !!r.meta })))
+            )
 
-             const wins = BrowserWindow.getAllWindows();
-             wins.forEach(w => {
-               // 批量发送单独的变化事件给UI (为了兼容现有的 diary:sync-event 监听器)
-               for (let i = 0; i < results.length; i++) {
-                 w.webContents.send('diary:sync-event', {
-                   path: validPaths[i],
-                   date: dateStrs[i]!,
-                   result: results[i],
-                   forced: true,
-                 });
-               }
-              });
-           } catch (e: any) {
-              logger.error('[DiaryWatcher] ❌ 批量同步失败:', e);
-           }
+            const wins = BrowserWindow.getAllWindows()
+            wins.forEach((w) => {
+              // 批量发送单独的变化事件给UI (为了兼容现有的 diary:sync-event 监听器)
+              for (let i = 0; i < results.length; i++) {
+                w.webContents.send('diary:sync-event', {
+                  path: validPaths[i],
+                  date: dateStrs[i]!,
+                  result: results[i],
+                  forced: true
+                })
+              }
+            })
+          } catch (e: any) {
+            logger.error('[DiaryWatcher] ❌ 批量同步失败:', e)
+          }
         }
       }
-
     } finally {
-      this.isProcessing = false;
+      this.isProcessing = false
       // 如果在处理期间有新事件到达，立即调度下一轮处理
       if (this.pendingPaths.size > 0) {
-        this.scheduleRetry();
+        this.scheduleRetry()
       }
     }
   }
 
   private scheduleRetry() {
     if (this.globalDebounceTimer) {
-      clearTimeout(this.globalDebounceTimer);
+      clearTimeout(this.globalDebounceTimer)
     }
     this.globalDebounceTimer = setTimeout(async () => {
-      await this.processQueue();
-    }, 200);
+      await this.processQueue()
+    }, 200)
   }
 }
 
-export const diaryWatcher = new DiaryWatcherService();
+export const diaryWatcher = new DiaryWatcherService()

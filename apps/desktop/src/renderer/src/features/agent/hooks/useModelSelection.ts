@@ -1,17 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
-import { useSettingsStore } from '@baishou/store';
+import { useState, useRef, useEffect } from 'react'
+import { useSettingsStore } from '@baishou/store'
 
 export interface UseModelSelectionParams {
-  sessionId: string | undefined;
-  currentAssistant: any;
+  sessionId: string | undefined
+  currentAssistant: any
 }
 
 export interface UseModelSelectionResult {
-  currentProviderId: string;
-  currentModelId: string;
-  setCurrentProviderId: (id: string) => void;
-  setCurrentModelId: (id: string) => void;
-  userManuallySetModelRef: React.MutableRefObject<boolean>;
+  currentProviderId: string
+  currentModelId: string
+  setCurrentProviderId: (id: string) => void
+  setCurrentModelId: (id: string) => void
+  userManuallySetModelRef: React.MutableRefObject<boolean>
 }
 
 /**
@@ -23,65 +23,79 @@ export interface UseModelSelectionResult {
  * 3. 会话切换时重置手动标记
  */
 export function useModelSelection(params: UseModelSelectionParams): UseModelSelectionResult {
-  const { sessionId, currentAssistant } = params;
-  const settings = useSettingsStore();
+  const { sessionId, currentAssistant } = params
+  const settings = useSettingsStore()
 
-  const providers = settings?.providers || [];
-  const fallbackProvider = (providers.length > 0 ? providers[0] : null) as any;
-  const fallbackModelId = fallbackProvider?.enabledModels?.[0] || fallbackProvider?.models?.[0]?.id || 'unknown';
-  const fallbackProviderId = fallbackProvider?.providerId || 'unknown';
+  const providers = settings?.providers || []
+  const fallbackProvider = (providers.length > 0 ? providers[0] : null) as any
+  const fallbackModelId =
+    fallbackProvider?.enabledModels?.[0] || fallbackProvider?.models?.[0]?.id || 'unknown'
+  const fallbackProviderId = fallbackProvider?.providerId || 'unknown'
 
-  let defaultProviderInfo = fallbackProviderId;
-  let defaultModelInfo = fallbackModelId;
+  let defaultProviderInfo = fallbackProviderId
+  let defaultModelInfo = fallbackModelId
 
-  if (settings.globalModels?.globalDialogueProviderId && settings.globalModels?.globalDialogueModelId) {
-    defaultProviderInfo = settings.globalModels.globalDialogueProviderId;
-    defaultModelInfo = settings.globalModels.globalDialogueModelId;
+  if (
+    settings.globalModels?.globalDialogueProviderId &&
+    settings.globalModels?.globalDialogueModelId
+  ) {
+    defaultProviderInfo = settings.globalModels.globalDialogueProviderId
+    defaultModelInfo = settings.globalModels.globalDialogueModelId
   }
 
-  const [currentProviderId, setCurrentProviderId] = useState<string>(defaultProviderInfo);
-  const [currentModelId, setCurrentModelId] = useState<string>(defaultModelInfo);
-  const userManuallySetModelRef = useRef<boolean>(false);
-  const prevSessionIdRef = useRef<string | null>(null);
+  const [currentProviderId, setCurrentProviderId] = useState<string>(defaultProviderInfo)
+  const [currentModelId, setCurrentModelId] = useState<string>(defaultModelInfo)
+  const userManuallySetModelRef = useRef<boolean>(false)
+  const prevSessionIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (prevSessionIdRef.current !== sessionId) {
-      userManuallySetModelRef.current = false;
-      prevSessionIdRef.current = sessionId || null;
+      userManuallySetModelRef.current = false
+      prevSessionIdRef.current = sessionId || null
     }
 
-    if (userManuallySetModelRef.current) return;
+    if (userManuallySetModelRef.current) return
 
-    const assistantProviderId = (currentAssistant as any)?.providerId;
-    const assistantModelId = (currentAssistant as any)?.modelId;
+    const assistantProviderId = (currentAssistant as any)?.providerId
+    const assistantModelId = (currentAssistant as any)?.modelId
 
-    let baseProviderId = fallbackProviderId;
-    let baseModelId = fallbackModelId;
+    let baseProviderId = fallbackProviderId
+    let baseModelId = fallbackModelId
 
-    if (assistantProviderId && assistantModelId && assistantProviderId !== 'unknown' && assistantModelId !== 'unknown') {
-      baseProviderId = assistantProviderId;
-      baseModelId = assistantModelId;
+    if (
+      assistantProviderId &&
+      assistantModelId &&
+      assistantProviderId !== 'unknown' &&
+      assistantModelId !== 'unknown'
+    ) {
+      baseProviderId = assistantProviderId
+      baseModelId = assistantModelId
     } else if (
       settings.globalModels?.globalDialogueProviderId &&
       settings.globalModels?.globalDialogueModelId &&
       settings.globalModels.globalDialogueProviderId !== 'unknown' &&
       settings.globalModels.globalDialogueModelId !== 'unknown'
     ) {
-      baseProviderId = settings.globalModels.globalDialogueProviderId;
-      baseModelId = settings.globalModels.globalDialogueModelId;
+      baseProviderId = settings.globalModels.globalDialogueProviderId
+      baseModelId = settings.globalModels.globalDialogueModelId
     }
 
-    if (baseModelId && baseModelId !== 'unknown' && baseProviderId && baseProviderId !== 'unknown') {
-      setCurrentProviderId(baseProviderId);
-      setCurrentModelId(baseModelId);
+    if (
+      baseModelId &&
+      baseModelId !== 'unknown' &&
+      baseProviderId &&
+      baseProviderId !== 'unknown'
+    ) {
+      setCurrentProviderId(baseProviderId)
+      setCurrentModelId(baseModelId)
     }
-  }, [sessionId, currentAssistant, settings.globalModels, fallbackProviderId, fallbackModelId]);
+  }, [sessionId, currentAssistant, settings.globalModels, fallbackProviderId, fallbackModelId])
 
   return {
     currentProviderId,
     currentModelId,
     setCurrentProviderId,
     setCurrentModelId,
-    userManuallySetModelRef,
-  };
+    userManuallySetModelRef
+  }
 }

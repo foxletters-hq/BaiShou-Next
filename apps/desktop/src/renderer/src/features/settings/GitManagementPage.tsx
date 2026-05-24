@@ -1,48 +1,54 @@
-import React, { useEffect, useState } from 'react';
-import { GitManagementPage as GitPage, useToast } from '@baishou/ui';
-import { useTranslation } from 'react-i18next';
-import type { GitSyncConfig } from '@baishou/shared';
+import React, { useEffect, useState } from 'react'
+import { GitManagementPage as GitPage, useToast } from '@baishou/ui'
+import { useTranslation } from 'react-i18next'
+import type { GitSyncConfig } from '@baishou/shared'
 
 export const GitManagementPage: React.FC = () => {
-  const { t } = useTranslation();
-  const toast = useToast();
+  const { t } = useTranslation()
+  const toast = useToast()
   const [config, setConfig] = useState<GitSyncConfig>({
-    enabled: false,
-  });
-  const [isInitialized, setIsInitialized] = useState(false);
+    enabled: false
+  })
+  const [isInitialized, setIsInitialized] = useState(false)
 
-  const api = (window as any).api?.git;
+  const api = (window as any).api?.git
 
   useEffect(() => {
-    if (!api) return;
-    api.getConfig().then((c: GitSyncConfig) => {
-      if (c) setConfig(c);
-    }).catch(() => {});
-    api.isInitialized().then((v: boolean) => setIsInitialized(v)).catch(() => {});
-  }, [api]);
+    if (!api) return
+    api
+      .getConfig()
+      .then((c: GitSyncConfig) => {
+        if (c) setConfig(c)
+      })
+      .catch(() => {})
+    api
+      .isInitialized()
+      .then((v: boolean) => setIsInitialized(v))
+      .catch(() => {})
+  }, [api])
 
   const handleSaveConfig = async (partial: Partial<GitSyncConfig>) => {
-    const newConfig = { ...config, ...partial };
-    setConfig(newConfig);
+    const newConfig = { ...config, ...partial }
+    setConfig(newConfig)
     if (api) {
       try {
-        await api.updateConfig(partial);
+        await api.updateConfig(partial)
       } catch (e: any) {
-        toast.showError(e?.message || t('common.error', '保存失败'));
+        toast.showError(e?.message || t('common.error', '保存失败'))
       }
     }
-  };
+  }
 
   const handleInit = async () => {
-    if (!api) return { success: false, message: 'API not available' };
+    if (!api) return { success: false, message: 'API not available' }
     try {
-      const result = await api.init();
-      if (result.success) setIsInitialized(true);
-      return result;
+      const result = await api.init()
+      if (result.success) setIsInitialized(true)
+      return result
     } catch (e: any) {
-      return { success: false, message: e?.message };
+      return { success: false, message: e?.message }
     }
-  };
+  }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -53,37 +59,65 @@ export const GitManagementPage: React.FC = () => {
         isInitialized={isInitialized}
         onTestRemote={async () => api?.testRemote() ?? false}
         onCommit={async (message) => api?.commitAll(message)}
-        onGetStatus={async () => api?.getStatus() ?? { staged: [], unstaged: [], untracked: [], conflicted: [], hasChanges: false }}
+        onGetStatus={async () =>
+          api?.getStatus() ?? {
+            staged: [],
+            unstaged: [],
+            untracked: [],
+            conflicted: [],
+            hasChanges: false
+          }
+        }
         onGetHistory={async (filePath?, limit?, offset?) => {
-          if (!api) return [];
-          return api.getHistory(filePath, limit, offset) ?? [];
+          if (!api) return []
+          return api.getHistory(filePath, limit, offset) ?? []
         }}
         onGetRecentPulls={async (limit?) => {
-          if (!api) return [];
-          return api.getRecentPulls(limit) ?? [];
+          if (!api) return []
+          return api.getRecentPulls(limit) ?? []
         }}
         onGetCommitChanges={async (hash) => api?.getCommitChanges(hash) ?? []}
-        onGetFileDiff={async (filePath, hash) => api?.getFileDiff(filePath, hash) ?? { path: filePath, hunks: [] }}
-        onGetWorkingDiff={async (filePath, staged) => api?.getWorkingDiff(filePath, staged) ?? { path: filePath, hunks: [] }}
-        onStageFile={async (filePath) => { await api?.stageFile(filePath); }}
-        onStageAll={async () => { await api?.stageAll(); }}
-        onUnstageFile={async (filePath) => { await api?.unstageFile(filePath); }}
-        onUnstageAll={async () => { await api?.unstageAll(); }}
-        onDiscardFile={async (filePath) => { await api?.discardFile(filePath); }}
-        onDiscardAllChanges={async () => { await api?.discardAllChanges(); }}
+        onGetFileDiff={async (filePath, hash) =>
+          api?.getFileDiff(filePath, hash) ?? { path: filePath, hunks: [] }
+        }
+        onGetWorkingDiff={async (filePath, staged) =>
+          api?.getWorkingDiff(filePath, staged) ?? { path: filePath, hunks: [] }
+        }
+        onStageFile={async (filePath) => {
+          await api?.stageFile(filePath)
+        }}
+        onStageAll={async () => {
+          await api?.stageAll()
+        }}
+        onUnstageFile={async (filePath) => {
+          await api?.unstageFile(filePath)
+        }}
+        onUnstageAll={async () => {
+          await api?.unstageAll()
+        }}
+        onDiscardFile={async (filePath) => {
+          await api?.discardFile(filePath)
+        }}
+        onDiscardAllChanges={async () => {
+          await api?.discardAllChanges()
+        }}
         onPush={async () => api?.push() ?? { success: false, message: 'API not available' }}
         onPull={async () => api?.pull() ?? { success: false, message: 'API not available' }}
         onHasConflicts={async () => api?.hasConflicts() ?? false}
         onGetConflicts={async () => api?.getConflicts() ?? []}
-        onResolveConflict={async (filePath, resolution) => api?.resolveConflict(filePath, resolution) ?? { success: false }}
-        onRollbackFile={async (filePath, hash) => api?.rollbackFile(filePath, hash) ?? { success: false }}
+        onResolveConflict={async (filePath, resolution) =>
+          api?.resolveConflict(filePath, resolution) ?? { success: false }
+        }
+        onRollbackFile={async (filePath, hash) =>
+          api?.rollbackFile(filePath, hash) ?? { success: false }
+        }
         onRollbackAll={async (hash) => api?.rollbackAll(hash) ?? { success: false }}
         onToast={(msg, type) => {
-          if (type === 'error') toast.showError(msg);
-          else if (type === 'success') toast.showSuccess(msg);
-          else toast.show(msg);
+          if (type === 'error') toast.showError(msg)
+          else if (type === 'success') toast.showSuccess(msg)
+          else toast.show(msg)
         }}
       />
     </div>
-  );
-};
+  )
+}

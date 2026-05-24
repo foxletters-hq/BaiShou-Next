@@ -1,7 +1,7 @@
-import * as path from 'path';
-import * as fs from 'fs';
-import { createClient, WebDAVClient } from 'webdav';
-import { ICloudSyncClient, SyncRecord } from '@baishou/core';
+import * as path from 'path'
+import * as fs from 'fs'
+import { createClient, WebDAVClient } from 'webdav'
+import { ICloudSyncClient, SyncRecord } from '@baishou/core'
 
 /**
  * WebDAV 云客户端服务
@@ -9,24 +9,24 @@ import { ICloudSyncClient, SyncRecord } from '@baishou/core';
  * 1:1 还原老白守 webdav_client_service.dart 的全部能力
  */
 export class WebDavSyncClient implements ICloudSyncClient {
-  private client: WebDAVClient;
-  private basePath: string;
+  private client: WebDAVClient
+  private basePath: string
 
   constructor(url: string, username: string, password: string, basePath: string) {
-    this.client = createClient(url, { username, password });
-    this.basePath = basePath.endsWith('/') ? basePath : basePath + '/';
+    this.client = createClient(url, { username, password })
+    this.basePath = basePath.endsWith('/') ? basePath : basePath + '/'
   }
 
   /**
    * 递归地确保远端目录层级存在（WebDAV MKCOL 一次只能建一级）
    */
   private async ensureDirExists(dirPath: string): Promise<void> {
-    const parts = dirPath.split('/').filter(Boolean);
-    let currentPath = '';
+    const parts = dirPath.split('/').filter(Boolean)
+    let currentPath = ''
     for (const part of parts) {
-      currentPath += '/' + part;
+      currentPath += '/' + part
       try {
-        await this.client.createDirectory(currentPath);
+        await this.client.createDirectory(currentPath)
       } catch (e: any) {
         // 目录已存在 (405/409 都可能，取决于服务器实现)
       }
@@ -34,68 +34,68 @@ export class WebDavSyncClient implements ICloudSyncClient {
   }
 
   async uploadFile(localFilePath: string): Promise<void> {
-    const filename = path.basename(localFilePath);
-    await this.ensureDirExists(this.basePath);
+    const filename = path.basename(localFilePath)
+    await this.ensureDirExists(this.basePath)
 
-    const remotePath = this.basePath + filename;
-    const readStream = fs.createReadStream(localFilePath);
-    
+    const remotePath = this.basePath + filename
+    const readStream = fs.createReadStream(localFilePath)
+
     // WebDAV client allows readable streams for putFileContents in newer versions
-    await this.client.putFileContents(remotePath, readStream as any, { overwrite: true });
+    await this.client.putFileContents(remotePath, readStream as any, { overwrite: true })
   }
 
   async downloadFile(remoteFilename: string, localDestPath: string): Promise<void> {
-    const remotePath = this.basePath + remoteFilename;
-    const writeStream = fs.createWriteStream(localDestPath);
-    const readStream = this.client.createReadStream(remotePath);
-    
+    const remotePath = this.basePath + remoteFilename
+    const writeStream = fs.createWriteStream(localDestPath)
+    const readStream = this.client.createReadStream(remotePath)
+
     return new Promise((resolve, reject) => {
-      readStream.pipe(writeStream);
-      writeStream.on('finish', () => resolve());
-      readStream.on('error', reject);
-      writeStream.on('error', reject);
-    });
+      readStream.pipe(writeStream)
+      writeStream.on('finish', () => resolve())
+      readStream.on('error', reject)
+      writeStream.on('error', reject)
+    })
   }
 
   async listFiles(): Promise<SyncRecord[]> {
-    const records: SyncRecord[] = [];
+    const records: SyncRecord[] = []
 
     try {
-      const items = await this.client.getDirectoryContents(this.basePath) as any[];
+      const items = (await this.client.getDirectoryContents(this.basePath)) as any[]
 
       for (const item of items) {
-        if (item.type === 'directory') continue;
+        if (item.type === 'directory') continue
         // 仅列出 .zip 文件，不限制命名前缀
-        if (!/\.zip$/i.test(item.basename)) continue;
-        const isManaged = /^BaiShou_.*\.zip$/i.test(item.basename);
+        if (!/\.zip$/i.test(item.basename)) continue
+        const isManaged = /^BaiShou_.*\.zip$/i.test(item.basename)
         records.push({
           filename: item.basename,
           lastModified: new Date(item.lastmod),
           sizeInBytes: item.size || 0,
-          managed: isManaged,
-        });
+          managed: isManaged
+        })
       }
 
-      records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+      records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
     } catch (e: any) {
       if (e.status === 404 || e.message?.includes('404')) {
-        return [];
+        return []
       }
-      throw new Error(`WebDAV 列出文件失败: ${e.message || e}`);
+      throw new Error(`WebDAV 列出文件失败: ${e.message || e}`)
     }
 
-    return records;
+    return records
   }
 
   async deleteFile(remoteFilename: string): Promise<void> {
-    const remotePath = this.basePath + remoteFilename;
-    await this.client.deleteFile(remotePath);
+    const remotePath = this.basePath + remoteFilename
+    await this.client.deleteFile(remotePath)
   }
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
-    const oldPath = this.basePath + oldFilename;
-    const newPath = this.basePath + newFilename;
+    const oldPath = this.basePath + oldFilename
+    const newPath = this.basePath + newFilename
     // WebDAV 使用 MOVE 方法
-    await this.client.moveFile(oldPath, newPath);
+    await this.client.moveFile(oldPath, newPath)
   }
 }

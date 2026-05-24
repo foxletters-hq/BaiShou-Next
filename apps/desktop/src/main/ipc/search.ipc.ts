@@ -32,7 +32,8 @@ export function registerSearchIPC() {
       const { net } = require('electron')
       const response = await net.fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
       })
 
@@ -41,7 +42,7 @@ export function registerSearchIPC() {
       }
 
       const html = await response.text()
-      
+
       // 简单剥离 HTML
       let plainText = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '\n')
       plainText = plainText.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '\n')
@@ -51,7 +52,8 @@ export function registerSearchIPC() {
       // 防止过大撑爆上下文
       const LIMIT = 15000
       if (plainText.length > LIMIT) {
-        plainText = plainText.substring(0, LIMIT) + '\n\n[Content truncated due to length limits...]'
+        plainText =
+          plainText.substring(0, LIMIT) + '\n\n[Content truncated due to length limits...]'
       }
 
       return plainText || 'The webpage is empty or cannot be parsed textually.'

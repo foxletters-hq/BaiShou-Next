@@ -1,47 +1,50 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { SessionListItem } from '@baishou/ui';
-import type { SessionData } from '@baishou/ui';
-import { MdAutoAwesome, MdUnfoldMore, MdAdd, MdSettings, MdChecklist, MdMenu } from 'react-icons/md';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import appIcon from '@baishou/shared/assets/images/icon.png';
-import styles from './AgentSidebar.module.css';
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { SessionListItem } from '@baishou/ui'
+import type { SessionData } from '@baishou/ui'
+import { MdAutoAwesome, MdUnfoldMore, MdAdd, MdSettings, MdChecklist, MdMenu } from 'react-icons/md'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import appIcon from '@baishou/shared/assets/images/icon.png'
+import styles from './AgentSidebar.module.css'
 
 export interface AgentAssistant {
-  id: string;
-  name: string;
-  description?: string;
-  avatarPath?: string;
-  emoji?: string;
+  id: string
+  name: string
+  description?: string
+  avatarPath?: string
+  emoji?: string
 }
 
 export interface AgentSidebarProps {
-  currentAssistant?: AgentAssistant;
-  sessions: SessionData[];
-  isLoading?: boolean;
-  selectedSessionId?: string;
-  searchQuery?: string;
-  hasMore?: boolean;
-  scrollKey?: number;
-  pinnedAssistants?: AgentAssistant[];
-  onSearchQueryChanged: (q: string) => void;
-  onLoadMore?: () => void;
-  onSessionSelected: (id: string) => void;
-  onNewSession: (assistantId?: string) => void;
-  onAssistantSwitched: (assistant: AgentAssistant) => void;
-  onPinSession?: (id: string) => void;
-  onDeleteSession?: (id: string) => void;
-  onRenameSession?: (id: string) => void;
-  onBatchDelete?: (ids: string[]) => void;
-  onCollapse?: () => void;
-  onShowPicker?: () => void;
-  isCollapsed?: boolean;
-  onExpand?: () => void;
+  currentAssistant?: AgentAssistant
+  sessions: SessionData[]
+  isLoading?: boolean
+  selectedSessionId?: string
+  searchQuery?: string
+  hasMore?: boolean
+  scrollKey?: number
+  pinnedAssistants?: AgentAssistant[]
+  onSearchQueryChanged: (q: string) => void
+  onLoadMore?: () => void
+  onSessionSelected: (id: string) => void
+  onNewSession: (assistantId?: string) => void
+  onAssistantSwitched: (assistant: AgentAssistant) => void
+  onPinSession?: (id: string) => void
+  onDeleteSession?: (id: string) => void
+  onRenameSession?: (id: string) => void
+  onBatchDelete?: (ids: string[]) => void
+  onCollapse?: () => void
+  onShowPicker?: () => void
+  isCollapsed?: boolean
+  onExpand?: () => void
 }
 
 // 原版 buildAssistantAvatar 逻辑 — 支持图片路径或 emoji fallback
-const AssistantAvatar: React.FC<{ assistant: AgentAssistant; size: number }> = ({ assistant, size }) => {
+const AssistantAvatar: React.FC<{ assistant: AgentAssistant; size: number }> = ({
+  assistant,
+  size
+}) => {
   if (assistant.avatarPath && assistant.avatarPath !== 'default') {
     return (
       <img
@@ -49,24 +52,26 @@ const AssistantAvatar: React.FC<{ assistant: AgentAssistant; size: number }> = (
         alt={assistant.name}
         style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }}
       />
-    );
+    )
   }
   return (
-    <div style={{
-      width: size,
-      height: size,
-      borderRadius: '50%',
-      backgroundColor: 'transparent',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: size * 0.5,
-      flexShrink: 0,
-    }}>
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        backgroundColor: 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: size * 0.5,
+        flexShrink: 0
+      }}
+    >
       {assistant.emoji || '🤖'}
     </div>
-  );
-};
+  )
+}
 
 export const AgentSidebar: React.FC<AgentSidebarProps> = ({
   currentAssistant,
@@ -89,33 +94,32 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
   scrollKey,
   onLoadMore,
   isCollapsed = false,
-  onExpand,
+  onExpand
 }) => {
-  const navigate = useNavigate();
-  const { t } = useTranslation();
-  const [isMultiSelect, setIsMultiSelect] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const navigate = useNavigate()
+  const { t } = useTranslation()
+  const [isMultiSelect, setIsMultiSelect] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const scrollerRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
     if (scrollKey && scrollKey > 0 && scrollerRef.current) {
-      scrollerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [scrollKey]);
-
+  }, [scrollKey])
 
   const handleBatchDelete = () => {
     if (selectedIds.size > 0 && onBatchDelete) {
-      onBatchDelete(Array.from(selectedIds));
-      setIsMultiSelect(false);
-      setSelectedIds(new Set());
+      onBatchDelete(Array.from(selectedIds))
+      setIsMultiSelect(false)
+      setSelectedIds(new Set())
     }
-  };
+  }
 
   const toggleMultiSelect = () => {
-    setIsMultiSelect(prev => !prev);
-    setSelectedIds(new Set());
-  };
+    setIsMultiSelect((prev) => !prev)
+    setSelectedIds(new Set())
+  }
 
   return (
     <div className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
@@ -132,7 +136,11 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
           <button
             className={styles.toggleBtn}
             onClick={isCollapsed ? onExpand : onCollapse}
-            title={isCollapsed ? t('agent.sidebar.expand', '展开侧边栏') : t('agent.sidebar.collapse', '折叠侧边栏')}
+            title={
+              isCollapsed
+                ? t('agent.sidebar.expand', '展开侧边栏')
+                : t('agent.sidebar.collapse', '折叠侧边栏')
+            }
           >
             {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
           </button>
@@ -149,9 +157,9 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
               className={styles.currentAssistantCard}
               onClick={() => {
                 if (onShowPicker) {
-                  onShowPicker();
+                  onShowPicker()
                 } else if (currentAssistant) {
-                  onAssistantSwitched(currentAssistant);
+                  onAssistantSwitched(currentAssistant)
                 }
               }}
             >
@@ -182,12 +190,12 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
 
           <div className={styles.pinnedRow}>
             {pinnedAssistants.length === 0 && (
-               <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', flex: 1 }}>
-                 {t('agent.sidebar.pin_hint', '这里可以置顶伙伴')}
-               </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', flex: 1 }}>
+                {t('agent.sidebar.pin_hint', '这里可以置顶伙伴')}
+              </div>
             )}
-            {pinnedAssistants.map(assistant => {
-              const isSelected = currentAssistant?.id === assistant.id;
+            {pinnedAssistants.map((assistant) => {
+              const isSelected = currentAssistant?.id === assistant.id
               return (
                 <div
                   key={assistant.id}
@@ -195,13 +203,13 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
                   title={assistant.name}
                   onClick={() => {
                     if (!isSelected) {
-                      onAssistantSwitched(assistant);
+                      onAssistantSwitched(assistant)
                     }
                   }}
                 >
                   <AssistantAvatar assistant={assistant} size={40} />
                 </div>
-              );
+              )
             })}
           </div>
 
@@ -209,7 +217,10 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
 
           {/* ─── 新对话按钮 — 原版 FilledButton padding:vertical:14 ─── */}
           <div className={styles.newChatWrapper}>
-            <button className={styles.newChatBtn} onClick={() => onNewSession(currentAssistant?.id)}>
+            <button
+              className={styles.newChatBtn}
+              onClick={() => onNewSession(currentAssistant?.id)}
+            >
               <MdAdd size={18} />
               <span>{t('agent.sessions.new_chat', '新对话')}</span>
             </button>
@@ -230,10 +241,16 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
           <div className={styles.historyHeader}>
             <span>{t('agent.sidebar.recent_chats', '最近对话')}</span>
             {sessions.length > 0 && (
-              <button className={styles.multiSelectToggle} onClick={toggleMultiSelect} title={t('common.multi_select', '多选')}>
+              <button
+                className={styles.multiSelectToggle}
+                onClick={toggleMultiSelect}
+                title={t('common.multi_select', '多选')}
+              >
                 <MdChecklist
                   size={16}
-                  color={isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)'}
+                  color={
+                    isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)'
+                  }
                 />
               </button>
             )}
@@ -246,10 +263,12 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
               type="text"
               placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
               value={searchQuery}
-              onChange={e => onSearchQueryChanged(e.target.value)}
+              onChange={(e) => onSearchQueryChanged(e.target.value)}
             />
             {searchQuery && (
-              <button className={styles.searchClearBtn} onClick={() => onSearchQueryChanged('')}>✕</button>
+              <button className={styles.searchClearBtn} onClick={() => onSearchQueryChanged('')}>
+                ✕
+              </button>
             )}
           </div>
 
@@ -258,47 +277,64 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
             {isLoading ? (
               <div className={styles.emptyHint}>{t('common.loading', '加载中...')}</div>
             ) : sessions.length === 0 ? (
-              <div className={styles.emptyHint}>{t('agent.sidebar.no_recent_chats', '暂无近期对话，快点开始一个吧~')}</div>
+              <div className={styles.emptyHint}>
+                {t('agent.sidebar.no_recent_chats', '暂无近期对话，快点开始一个吧~')}
+              </div>
             ) : (
               <>
                 {sessions
-                  .filter(session => !searchQuery || session.title?.toLowerCase().includes(searchQuery.toLowerCase()))
-                  .map(session => (
-                  <SessionListItem
-                    key={session.id}
-                    session={session}
-                    isSelected={session.id === selectedSessionId}
-                    isMultiSelect={isMultiSelect}
-                    isChecked={selectedIds.has(session.id)}
-                    onTap={() => {
-                      if (isMultiSelect) {
-                        const next = new Set(selectedIds);
-                        if (next.has(session.id)) next.delete(session.id);
-                        else next.add(session.id);
-                        setSelectedIds(next);
-                      } else {
-                        onSessionSelected(session.id);
-                      }
-                    }}
-                    onPin={onPinSession ? () => onPinSession(session.id) : undefined}
-                    onRename={onRenameSession ? () => onRenameSession(session.id) : undefined}
-                    onDelete={onDeleteSession ? () => onDeleteSession(session.id) : undefined}
-                    onCheckChanged={checked => {
-                      const next = new Set(selectedIds);
-                      if (checked) next.add(session.id);
-                      else next.delete(session.id);
-                      setSelectedIds(next);
-                    }}
-                  />
-                ))}
+                  .filter(
+                    (session) =>
+                      !searchQuery ||
+                      session.title?.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((session) => (
+                    <SessionListItem
+                      key={session.id}
+                      session={session}
+                      isSelected={session.id === selectedSessionId}
+                      isMultiSelect={isMultiSelect}
+                      isChecked={selectedIds.has(session.id)}
+                      onTap={() => {
+                        if (isMultiSelect) {
+                          const next = new Set(selectedIds)
+                          if (next.has(session.id)) next.delete(session.id)
+                          else next.add(session.id)
+                          setSelectedIds(next)
+                        } else {
+                          onSessionSelected(session.id)
+                        }
+                      }}
+                      onPin={onPinSession ? () => onPinSession(session.id) : undefined}
+                      onRename={onRenameSession ? () => onRenameSession(session.id) : undefined}
+                      onDelete={onDeleteSession ? () => onDeleteSession(session.id) : undefined}
+                      onCheckChanged={(checked) => {
+                        const next = new Set(selectedIds)
+                        if (checked) next.add(session.id)
+                        else next.delete(session.id)
+                        setSelectedIds(next)
+                      }}
+                    />
+                  ))}
                 {hasMore && (
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0', marginTop: '8px' }}>
-                    <button 
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      padding: '16px 0',
+                      marginTop: '8px'
+                    }}
+                  >
+                    <button
                       onClick={onLoadMore}
-                      style={{ 
-                        background: 'transparent', border: 'none', 
-                        color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, 
-                        cursor: 'pointer', opacity: 0.8 
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--color-primary)',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        opacity: 0.8
                       }}
                     >
                       {t('agent.sidebar.load_more', '加载更多对话')}
@@ -321,11 +357,13 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
               <button
                 className={styles.selectAllBtn}
                 onClick={() => {
-                  if (selectedIds.size === sessions.length) setSelectedIds(new Set());
-                  else setSelectedIds(new Set(sessions.map(s => s.id)));
+                  if (selectedIds.size === sessions.length) setSelectedIds(new Set())
+                  else setSelectedIds(new Set(sessions.map((s) => s.id)))
                 }}
               >
-                {selectedIds.size === sessions.length ? t('agent.chat.cancel_select_all', '取消全选') : t('agent.chat.select_all', '全选')}
+                {selectedIds.size === sessions.length
+                  ? t('agent.chat.cancel_select_all', '取消全选')
+                  : t('agent.chat.select_all', '全选')}
               </button>
               <div style={{ flex: 1 }} />
               <button
@@ -340,5 +378,5 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

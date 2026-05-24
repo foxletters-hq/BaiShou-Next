@@ -1,14 +1,14 @@
-import { dialog } from 'electron';
-import { AttachmentManagerService } from '@baishou/core';
-import { DesktopStoragePathService } from './path.service';
+import { dialog } from 'electron'
+import { AttachmentManagerService } from '@baishou/core'
+import { DesktopStoragePathService } from './path.service'
 
 /**
  * 后端 User Profile 管理服务封装
  * 处理前端沙箱无法接触的物理文件 IO
  */
 export class ProfileService {
-  private pathService = new DesktopStoragePathService();
-  private attachmentManager = new AttachmentManagerService(this.pathService);
+  private pathService = new DesktopStoragePathService()
+  private attachmentManager = new AttachmentManagerService(this.pathService)
 
   /**
    * 唤起系统文件选择框，让用户选择新头像
@@ -21,46 +21,51 @@ export class ProfileService {
       title: '选择新头像',
       buttonLabel: '确定',
       properties: ['openFile'],
-      filters: [
-        { name: 'Images', extensions: ['jpg', 'png', 'jpeg', 'webp', 'gif'] }
-      ]
-    });
+      filters: [{ name: 'Images', extensions: ['jpg', 'png', 'jpeg', 'webp', 'gif'] }]
+    })
 
     if (canceled || filePaths.length === 0) {
-      return null;
+      return null
     }
 
-    const sourcePath = filePaths[0];
-    
+    const sourcePath = filePaths[0]
+
     // Delegate to central core logic
-    const relativePath = await this.attachmentManager.importAvatar(sourcePath, 'user_avatar');
-    
+    const relativePath = await this.attachmentManager.importAvatar(sourcePath, 'user_avatar')
+
     // Resolve back to absolute since the electron dialog boundary and UI expects physical previews instantly
-    return await this.attachmentManager.resolveAvatarPath(relativePath);
+    return await this.attachmentManager.resolveAvatarPath(relativePath)
   }
 
   async processProfileInput(input: any) {
-    if (input.avatarPath && typeof input.avatarPath === 'string' && input.avatarPath.trim() !== '') {
+    if (
+      input.avatarPath &&
+      typeof input.avatarPath === 'string' &&
+      input.avatarPath.trim() !== ''
+    ) {
       if (!input.avatarPath.startsWith('avatars/')) {
-        input.avatarPath = await this.attachmentManager.importAvatar(input.avatarPath, 'user_avatar');
+        input.avatarPath = await this.attachmentManager.importAvatar(
+          input.avatarPath,
+          'user_avatar'
+        )
       }
     }
   }
 
   async mapProfileOutput(profile: any) {
-    if (!profile) return profile;
+    if (!profile) return profile
     if (profile.avatarPath && profile.avatarPath.startsWith('avatars/')) {
       try {
-        profile.avatarPath = await this.attachmentManager.resolveAvatarPath(profile.avatarPath);
+        profile.avatarPath = await this.attachmentManager.resolveAvatarPath(profile.avatarPath)
       } catch (e: any) {
         if (e instanceof Error && e.message === 'AVATAR_FILE_NOT_FOUND') {
-          profile.avatarPath = null;
-          profile.avatarFileMissing = true;
+          profile.avatarPath = null
+          profile.avatarFileMissing = true
         }
       }
     }
-    return profile;
+    return profile
   }
 }
 
-export const profileService = new ProfileService();
+export const profileService = new ProfileService()

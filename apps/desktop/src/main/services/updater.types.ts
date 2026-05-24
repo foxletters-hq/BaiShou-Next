@@ -6,7 +6,7 @@ export enum UpdateStatus {
   DOWNLOADING = 'downloading',
   DOWNLOADED = 'downloaded',
   NOT_AVAILABLE = 'not_available',
-  ERROR = 'error',
+  ERROR = 'error'
 }
 
 /** 更新信息 */

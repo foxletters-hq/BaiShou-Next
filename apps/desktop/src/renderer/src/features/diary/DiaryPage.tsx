@@ -1,169 +1,197 @@
-import { useTranslation } from 'react-i18next';
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Edit3, CalendarCheck, Filter, X, Heart, Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind, Thermometer } from 'lucide-react';
-import { useDiaryData } from './hooks/useDiaryData';
-import { motion, AnimatePresence } from 'framer-motion';
-import { DiaryCard } from './DiaryCard';
-import type { DiaryEntry } from './DiaryCard';
-import { YearMonthPicker, PageSizeSelector, Pagination, useToast } from '@baishou/ui';
-import './DiaryPage.css';
+import { useTranslation } from 'react-i18next'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Search,
+  Plus,
+  Edit3,
+  CalendarCheck,
+  Filter,
+  X,
+  Heart,
+  Cloud,
+  Sun,
+  CloudRain,
+  CloudSnow,
+  CloudLightning,
+  Wind,
+  Thermometer
+} from 'lucide-react'
+import { useDiaryData } from './hooks/useDiaryData'
+import { motion, AnimatePresence } from 'framer-motion'
+import { DiaryCard } from './DiaryCard'
+import type { DiaryEntry } from './DiaryCard'
+import { YearMonthPicker, PageSizeSelector, Pagination, useToast } from '@baishou/ui'
+import './DiaryPage.css'
 
 export const DiaryPage: React.FC = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { t } = useTranslation()
+  const navigate = useNavigate()
 
   const [searchQuery, setSearchQuery] = useState(() => {
-    return sessionStorage.getItem('diary_searchQuery') || '';
-  });
+    return sessionStorage.getItem('diary_searchQuery') || ''
+  })
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(() => {
-    const saved = sessionStorage.getItem('diary_selectedMonth');
-    if (saved === 'all') return null;
+    const saved = sessionStorage.getItem('diary_selectedMonth')
+    if (saved === 'all') return null
     if (saved) {
       try {
-        const d = new Date(saved);
-        if (!isNaN(d.getTime())) return d;
-      } catch { /* ignore */ }
+        const d = new Date(saved)
+        if (!isNaN(d.getTime())) return d
+      } catch {
+        /* ignore */
+      }
     }
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
 
   // 筛选状态
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [filterWeathers, setFilterWeathers] = useState<string[]>(() => {
     try {
-      const saved = sessionStorage.getItem('diary_filterWeathers');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+      const saved = sessionStorage.getItem('diary_filterWeathers')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [filterFavorite, setFilterFavorite] = useState(() => {
-    return sessionStorage.getItem('diary_filterFavorite') === 'true';
-  });
-  const filterRef = useRef<HTMLDivElement>(null);
+    return sessionStorage.getItem('diary_filterFavorite') === 'true'
+  })
+  const filterRef = useRef<HTMLDivElement>(null)
 
   // 保存筛选状态到 sessionStorage
   useEffect(() => {
-    sessionStorage.setItem('diary_searchQuery', searchQuery);
-  }, [searchQuery]);
+    sessionStorage.setItem('diary_searchQuery', searchQuery)
+  }, [searchQuery])
   useEffect(() => {
-    sessionStorage.setItem('diary_selectedMonth', selectedMonth ? selectedMonth.toISOString() : 'all');
-  }, [selectedMonth]);
+    sessionStorage.setItem(
+      'diary_selectedMonth',
+      selectedMonth ? selectedMonth.toISOString() : 'all'
+    )
+  }, [selectedMonth])
   useEffect(() => {
-    sessionStorage.setItem('diary_filterWeathers', JSON.stringify(filterWeathers));
-  }, [filterWeathers]);
+    sessionStorage.setItem('diary_filterWeathers', JSON.stringify(filterWeathers))
+  }, [filterWeathers])
   useEffect(() => {
-    sessionStorage.setItem('diary_filterFavorite', String(filterFavorite));
-  }, [filterFavorite]);
+    sessionStorage.setItem('diary_filterFavorite', String(filterFavorite))
+  }, [filterFavorite])
 
-
-
-  const { entries, loadEntries } = useDiaryData();
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const toast = useToast();
-  const [attachmentBasePath, setAttachmentBasePath] = useState<string>('');
+  const { entries, loadEntries } = useDiaryData()
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const toast = useToast()
+  const [attachmentBasePath, setAttachmentBasePath] = useState<string>('')
 
   // 获取当前月份的附件目录路径
   useEffect(() => {
-    if (!selectedMonth) return;
-    const dateStr = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
-    (window as any).api?.diary?.getAttachmentDir?.(dateStr)?.then((res: any) => {
-      if (res?.success && res.path) {
-        setAttachmentBasePath(res.path);
-      }
-    }).catch(() => {});
-  }, [selectedMonth]);
+    if (!selectedMonth) return
+    const dateStr = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`
+    ;(window as any).api?.diary
+      ?.getAttachmentDir?.(dateStr)
+      ?.then((res: any) => {
+        if (res?.success && res.path) {
+          setAttachmentBasePath(res.path)
+        }
+      })
+      .catch(() => {})
+  }, [selectedMonth])
 
   // 分页状态（持久化到 sessionStorage）
   const [currentPage, setCurrentPage] = useState(() => {
-    const saved = sessionStorage.getItem('diary_currentPage');
-    return saved ? Math.max(1, Number(saved)) : 1;
-  });
+    const saved = sessionStorage.getItem('diary_currentPage')
+    return saved ? Math.max(1, Number(saved)) : 1
+  })
   const [pageSize, setPageSize] = useState(() => {
-    const saved = sessionStorage.getItem('diary_pageSize');
-    return saved ? Number(saved) : 50;
-  });
+    const saved = sessionStorage.getItem('diary_pageSize')
+    return saved ? Number(saved) : 50
+  })
 
   // 保存分页状态到 sessionStorage
   useEffect(() => {
-    sessionStorage.setItem('diary_currentPage', String(currentPage));
-  }, [currentPage]);
+    sessionStorage.setItem('diary_currentPage', String(currentPage))
+  }, [currentPage])
   useEffect(() => {
-    sessionStorage.setItem('diary_pageSize', String(pageSize));
-  }, [pageSize]);
+    sessionStorage.setItem('diary_pageSize', String(pageSize))
+  }, [pageSize])
 
   /** 执行删除操作 */
   const performDelete = async () => {
-    if (deletingId === null) return;
+    if (deletingId === null) return
     try {
-      await window.api.diary.delete(deletingId);
-      loadEntries();
-      setDeletingId(null);
-      toast.showSuccess(t('diary.delete_success', '日记已删除'));
+      await window.api.diary.delete(deletingId)
+      loadEntries()
+      setDeletingId(null)
+      toast.showSuccess(t('diary.delete_success', '日记已删除'))
     } catch (e) {
-      console.error('Delete failed', e);
-      toast.showError(t('diary.delete_failed', '删除失败'));
+      console.error('Delete failed', e)
+      toast.showError(t('diary.delete_failed', '删除失败'))
     }
-  };
+  }
 
   /** 查找今天的日记条目 */
   const todayEntry = useMemo(() => {
-    if (!entries) return null;
-    const today = new Date();
-    return entries.find((e: DiaryEntry) => {
-      const d = e.date ? new Date(e.date) : null;
-      return d && d.getFullYear() === today.getFullYear() &&
-        d.getMonth() === today.getMonth() &&
-        d.getDate() === today.getDate();
-    }) || null;
-  }, [entries]);
+    if (!entries) return null
+    const today = new Date()
+    return (
+      entries.find((e: DiaryEntry) => {
+        const d = e.date ? new Date(e.date) : null
+        return (
+          d &&
+          d.getFullYear() === today.getFullYear() &&
+          d.getMonth() === today.getMonth() &&
+          d.getDate() === today.getDate()
+        )
+      }) || null
+    )
+  }, [entries])
 
   /** 编辑今日日记：有则追加，无则新建 */
   const handleEditToday = () => {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
-    const dateStr = `${y}-${m}-${d}`;
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = String(today.getMonth() + 1).padStart(2, '0')
+    const d = String(today.getDate()).padStart(2, '0')
+    const dateStr = `${y}-${m}-${d}`
     if (todayEntry) {
-      sessionStorage.setItem('desktop_last_nav', '/diary');
-      navigate(`/diary/${dateStr}?append=1`);
+      sessionStorage.setItem('desktop_last_nav', '/diary')
+      navigate(`/diary/${dateStr}?append=1`)
     } else {
-      sessionStorage.setItem('desktop_last_nav', '/diary');
-      navigate(`/diary/${dateStr}`);
+      sessionStorage.setItem('desktop_last_nav', '/diary')
+      navigate(`/diary/${dateStr}`)
     }
-  };
+  }
 
   /** 新建日记 */
   const handleAddNew = () => {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
-    const dateStr = `${y}-${m}-${d}`;
-    sessionStorage.setItem('desktop_last_nav', '/diary');
-    navigate(`/diary/new?date=${dateStr}`);
-  };
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = String(today.getMonth() + 1).padStart(2, '0')
+    const d = String(today.getDate()).padStart(2, '0')
+    const dateStr = `${y}-${m}-${d}`
+    sessionStorage.setItem('desktop_last_nav', '/diary')
+    navigate(`/diary/new?date=${dateStr}`)
+  }
 
   const goToEditor = (dateStr: string) => {
-    sessionStorage.setItem('desktop_last_nav', '/diary');
-    navigate(`/diary/${dateStr}`);
-  };
+    sessionStorage.setItem('desktop_last_nav', '/diary')
+    navigate(`/diary/${dateStr}`)
+  }
 
   /** 处理过滤和排序 */
   const filteredEntries = useMemo(() => {
-    if (!entries || entries.length === 0) return [];
+    if (!entries || entries.length === 0) return []
 
-    let filtered = [...entries].map(e => {
-      let parsedDate = new Date();
+    let filtered = [...entries].map((e) => {
+      let parsedDate = new Date()
       if (e.date) {
-        const pd = new Date(e.date);
-        if (!isNaN(pd.getTime())) parsedDate = pd;
+        const pd = new Date(e.date)
+        if (!isNaN(pd.getTime())) parsedDate = pd
       }
       if (isNaN(parsedDate.getTime()) || !e.date) {
         if (e.createdAt) {
-          const cd = new Date(e.createdAt);
-          if (!isNaN(cd.getTime())) parsedDate = cd;
+          const cd = new Date(e.createdAt)
+          if (!isNaN(cd.getTime())) parsedDate = cd
         }
       }
 
@@ -177,109 +205,120 @@ export const DiaryPage: React.FC = () => {
         mood: e.mood,
         location: e.location,
         isFavorite: e.isFavorite,
-        hasMedia: e.hasMedia || false,
-      } as DiaryEntry;
-    });
+        hasMedia: e.hasMedia || false
+      } as DiaryEntry
+    })
 
     // 月份过滤
     if (selectedMonth) {
-      filtered = filtered.filter(e =>
-        e.date.getFullYear() === selectedMonth.getFullYear() &&
-        e.date.getMonth() === selectedMonth.getMonth()
-      );
+      filtered = filtered.filter(
+        (e) =>
+          e.date.getFullYear() === selectedMonth.getFullYear() &&
+          e.date.getMonth() === selectedMonth.getMonth()
+      )
     }
 
     // 搜索过滤
     if (searchQuery.trim()) {
-      const lowerQ = searchQuery.trim().toLowerCase();
-      filtered = filtered.filter(e =>
-        e.preview.toLowerCase().includes(lowerQ) ||
-        e.tags.some(tag => tag.toLowerCase().includes(lowerQ))
-      );
+      const lowerQ = searchQuery.trim().toLowerCase()
+      filtered = filtered.filter(
+        (e) =>
+          e.preview.toLowerCase().includes(lowerQ) ||
+          e.tags.some((tag) => tag.toLowerCase().includes(lowerQ))
+      )
     }
 
     // 天气筛选（多选）
     if (filterWeathers.length > 0) {
-      filtered = filtered.filter(e => e.weather && filterWeathers.includes(e.weather));
+      filtered = filtered.filter((e) => e.weather && filterWeathers.includes(e.weather))
     }
 
     // 收藏筛选
     if (filterFavorite) {
-      filtered = filtered.filter(e => e.isFavorite);
+      filtered = filtered.filter((e) => e.isFavorite)
     }
 
     // 按日期降序排序
-    filtered.sort((a, b) => b.date.getTime() - a.date.getTime());
+    filtered.sort((a, b) => b.date.getTime() - a.date.getTime())
 
-    return filtered;
-  }, [entries, selectedMonth, searchQuery, filterWeathers, filterFavorite]);
+    return filtered
+  }, [entries, selectedMonth, searchQuery, filterWeathers, filterFavorite])
 
   // 筛选条件变化时重置到第一页
   useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite]);
+    setCurrentPage(1)
+  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
 
   // 分页计算
-  const showPagination = filteredEntries.length > 50;
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const showPagination = filteredEntries.length > 50
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
   const paginatedEntries = showPagination
     ? filteredEntries.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize)
-    : filteredEntries;
+    : filteredEntries
 
   // 页码越界时自动修正
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages);
+      setCurrentPage(totalPages)
     }
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages])
 
   /** 格式化日期字符串为 YYYY-MM-DD */
   const formatDateStr = (date: Date): string => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  };
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
 
   /** 获取天气图标 */
   const getWeatherIcon = (weather: string) => {
     switch (weather) {
-      case 'sunny': return <Sun size={16} />;
-      case 'cloudy': return <Cloud size={16} />;
-      case 'overcast': return <Cloud size={16} />;
-      case 'light_rain': return <CloudRain size={16} />;
-      case 'heavy_rain': return <CloudRain size={16} />;
-      case 'snow': return <CloudSnow size={16} />;
-      case 'fog': return <Cloud size={16} />;
-      case 'windy': return <Wind size={16} />;
-      default: return <Thermometer size={16} />;
+      case 'sunny':
+        return <Sun size={16} />
+      case 'cloudy':
+        return <Cloud size={16} />
+      case 'overcast':
+        return <Cloud size={16} />
+      case 'light_rain':
+        return <CloudRain size={16} />
+      case 'heavy_rain':
+        return <CloudRain size={16} />
+      case 'snow':
+        return <CloudSnow size={16} />
+      case 'fog':
+        return <Cloud size={16} />
+      case 'windy':
+        return <Wind size={16} />
+      default:
+        return <Thermometer size={16} />
     }
-  };
+  }
 
   /** 获取天气名称 */
   const getWeatherName = (weather: string) => {
     const weatherMap: Record<string, string> = {
-      'sunny': t('diary.weather.sunny', '晴'),
-      'cloudy': t('diary.weather.cloudy', '多云'),
-      'overcast': t('diary.weather.overcast', '阴'),
-      'light_rain': t('diary.weather.light_rain', '小雨'),
-      'heavy_rain': t('diary.weather.heavy_rain', '大雨'),
-      'snow': t('diary.weather.snow', '雪'),
-      'fog': t('diary.weather.fog', '雾'),
-      'windy': t('diary.weather.windy', '风'),
-    };
-    return weatherMap[weather] || weather;
-  };
+      sunny: t('diary.weather.sunny', '晴'),
+      cloudy: t('diary.weather.cloudy', '多云'),
+      overcast: t('diary.weather.overcast', '阴'),
+      light_rain: t('diary.weather.light_rain', '小雨'),
+      heavy_rain: t('diary.weather.heavy_rain', '大雨'),
+      snow: t('diary.weather.snow', '雪'),
+      fog: t('diary.weather.fog', '雾'),
+      windy: t('diary.weather.windy', '风')
+    }
+    return weatherMap[weather] || weather
+  }
 
   /** 清除所有筛选 */
   const clearFilters = () => {
-    setFilterWeathers([]);
-    setFilterFavorite(false);
-  };
+    setFilterWeathers([])
+    setFilterFavorite(false)
+  }
 
   /** 是否有激活的筛选 */
-  const hasActiveFilters = filterWeathers.length > 0 || filterFavorite;
+  const hasActiveFilters = filterWeathers.length > 0 || filterFavorite
 
   return (
     <motion.div
@@ -338,7 +377,13 @@ export const DiaryPage: React.FC = () => {
                   <div className="diary-filter-header">
                     <span className="diary-filter-title">{t('diary.filter', '筛选')}</span>
                     {hasActiveFilters && (
-                      <button className="diary-filter-clear" onClick={(e) => { e.stopPropagation(); clearFilters(); }}>
+                      <button
+                        className="diary-filter-clear"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          clearFilters()
+                        }}
+                      >
                         <X size={14} />
                         {t('diary.clear_filter', '清除')}
                       </button>
@@ -349,7 +394,10 @@ export const DiaryPage: React.FC = () => {
                   <div className="diary-filter-section">
                     <button
                       className={`diary-filter-option ${filterFavorite ? 'active' : ''}`}
-                      onClick={(e) => { e.stopPropagation(); setFilterFavorite(!filterFavorite); }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFilterFavorite(!filterFavorite)
+                      }}
                     >
                       <Heart size={16} fill={filterFavorite ? 'currentColor' : 'none'} />
                       <span>{t('diary.filter_favorite', '收藏')}</span>
@@ -358,19 +406,30 @@ export const DiaryPage: React.FC = () => {
 
                   {/* 天气筛选 */}
                   <div className="diary-filter-section">
-                    <div className="diary-filter-section-label">{t('diary.filter_weather', '天气')}</div>
+                    <div className="diary-filter-section-label">
+                      {t('diary.filter_weather', '天气')}
+                    </div>
                     <div className="diary-filter-weather-grid">
-                      {['sunny', 'cloudy', 'overcast', 'light_rain', 'heavy_rain', 'snow', 'fog', 'windy'].map(weather => (
+                      {[
+                        'sunny',
+                        'cloudy',
+                        'overcast',
+                        'light_rain',
+                        'heavy_rain',
+                        'snow',
+                        'fog',
+                        'windy'
+                      ].map((weather) => (
                         <button
                           key={weather}
                           className={`diary-filter-weather-btn ${filterWeathers.includes(weather) ? 'active' : ''}`}
                           onClick={(e) => {
-                            e.stopPropagation();
-                            setFilterWeathers(prev =>
+                            e.stopPropagation()
+                            setFilterWeathers((prev) =>
                               prev.includes(weather)
-                                ? prev.filter(w => w !== weather)
+                                ? prev.filter((w) => w !== weather)
                                 : [...prev, weather]
-                            );
+                            )
                           }}
                           title={getWeatherName(weather)}
                         >
@@ -400,7 +459,11 @@ export const DiaryPage: React.FC = () => {
           <button
             className="diary-today-btn"
             onClick={handleEditToday}
-            title={todayEntry ? t('settings.edit_today_tooltip', '编辑今日记录') : t('settings.write_today_tooltip', '记录今天')}
+            title={
+              todayEntry
+                ? t('settings.edit_today_tooltip', '编辑今日记录')
+                : t('settings.write_today_tooltip', '记录今天')
+            }
           >
             {todayEntry ? <Edit3 size={18} /> : <CalendarCheck size={18} />}
           </button>
@@ -409,19 +472,17 @@ export const DiaryPage: React.FC = () => {
             <Plus size={18} />
             {t('settings.write_diary_button', '写日记')}
           </button>
-
         </div>
       </div>
 
-        {/* 内容区 */}
-        {filteredEntries.length === 0 ? (
+      {/* 内容区 */}
+      {filteredEntries.length === 0 ? (
         <div className="diary-empty-state">
           <Edit3 size={56} className="diary-empty-icon" />
           <div className="diary-empty-text">
             {selectedMonth
               ? t('diary.no_diaries_month', '本月暂无日记')
-              : t('diary.no_diaries', '暂无日记，开始记录吧')
-            }
+              : t('diary.no_diaries', '暂无日记，开始记录吧')}
           </div>
           {selectedMonth && (
             <button className="diary-view-all-btn" onClick={() => setSelectedMonth(null)}>
@@ -444,7 +505,10 @@ export const DiaryPage: React.FC = () => {
                 <PageSizeSelector
                   value={pageSize}
                   options={[50, 80, 100, 200]}
-                  onChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                  onChange={(size) => {
+                    setPageSize(size)
+                    setCurrentPage(1)
+                  }}
                   label={t('diary.per_page', '条/页')}
                 />
                 <Pagination
@@ -462,7 +526,12 @@ export const DiaryPage: React.FC = () => {
 
           <div className="diary-grid-inner">
             {paginatedEntries.map((entry) => (
-              <motion.div layout="position" key={entry.id} style={{ height: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}>
+              <motion.div
+                layout="position"
+                key={entry.id}
+                style={{ height: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              >
                 <DiaryCard
                   entry={entry}
                   onClick={() => goToEditor(formatDateStr(entry.date))}
@@ -488,7 +557,10 @@ export const DiaryPage: React.FC = () => {
                 <PageSizeSelector
                   value={pageSize}
                   options={[50, 80, 100, 200]}
-                  onChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                  onChange={(size) => {
+                    setPageSize(size)
+                    setCurrentPage(1)
+                  }}
                   label={t('diary.per_page', '条/页')}
                 />
                 <Pagination
@@ -509,7 +581,7 @@ export const DiaryPage: React.FC = () => {
       {/* 删除确认弹窗 */}
       {deletingId !== null && (
         <div className="diary-delete-modal-overlay" onClick={() => setDeletingId(null)}>
-          <div className="diary-delete-modal" onClick={e => e.stopPropagation()}>
+          <div className="diary-delete-modal" onClick={(e) => e.stopPropagation()}>
             <div className="dd-modal-title">{t('common.confirm_delete', '确认删除')}</div>
             <div className="dd-modal-content">
               {t('diary.delete_warning', '您确定要永久删除这篇日记吗？此操作不可逆转。')}
@@ -526,5 +598,5 @@ export const DiaryPage: React.FC = () => {
         </div>
       )}
     </motion.div>
-  );
-};
+  )
+}
