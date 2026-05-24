@@ -76,6 +76,44 @@ const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({
   )
 }
 
+const getTaskStatusText = (
+  taskState: { progress: number; phase: number; status: string; error?: string } | undefined,
+  t: any
+): string => {
+  if (!taskState) return ''
+  const { status, phase, progress, error } = taskState
+
+  if (status === 'pending') {
+    return t('summary.preparing', '准备中...')
+  }
+  if (status === 'completed' || progress >= 100) {
+    return t('summary.step_done', '摘要归档完毕，已永久存盘。')
+  }
+  if (status === 'error') {
+    return `${t('summary.generation_failed', '生成失败')}: ${error || ''}`
+  }
+  if (status === 'running') {
+    if (phase === 0) {
+      return t('summary.status_sending', '发送请求中...')
+    }
+    if (phase === 1) {
+      return t('summary.status_reading_data', '正在解析源数据...')
+    }
+    if (phase === 2) {
+      return t('summary.status_thinking', '正在思考...')
+        .replace(' ($model)', '')
+        .replace('($model)', '')
+    }
+    if (phase === 3) {
+      return t('summary.step_write', 'AI 总结正流式接收生成...')
+    }
+    if (progress === 95) {
+      return t('summary.status_saving', '正在保存总结...')
+    }
+  }
+  return ''
+}
+
 export const SummaryPage: React.FC = () => {
   const { t, i18n } = useTranslation()
   const { language } = i18n
@@ -395,12 +433,14 @@ export const SummaryPage: React.FC = () => {
                       const isCompleted = taskState?.status === 'completed'
                       const progress = taskState?.progress || 0
 
+                      const statusText = getTaskStatusText(taskState, t)
+
                       return (
                         <motion.div
                           key={uKey}
                           variants={itemVariants}
                           exit="exit"
-                          style={{ display: 'flex' }}
+                          style={{ display: 'flex', flexDirection: 'column', width: '100%' }}
                         >
                           <div className="sp-missing-card">
                             {/* 图标区域 */}
@@ -469,6 +509,20 @@ export const SummaryPage: React.FC = () => {
                               )}
                             </div>
                           </div>
+                          <AnimatePresence>
+                            {statusText && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
+                                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className={`sp-missing-card-status ${taskState?.status || ''}`}
+                              >
+                                <span className="sp-status-bullet" />
+                                <span className="sp-status-text">{statusText}</span>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </motion.div>
                       )
                     }

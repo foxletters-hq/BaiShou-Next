@@ -101,12 +101,113 @@ function ensureQueueReady(): void {
         const finalModelId = globalModels?.globalSummaryModelId || modelId || 'deepseek-chat'
         const model = finalProvider.getLanguageModel(finalModelId)
 
-        const { text } = await generateText({
-          model,
-          prompt,
-          maxSteps: 1
-        } as any)
-        return text
+        const providerUrl = finalProvider.config?.baseUrl || 'default'
+        logger.info(
+          `[SummaryAI] Starting generation request to model: ${finalModelId} (baseUrl: ${providerUrl}), prompt length: ${prompt.length}`
+        )
+
+        // 写入详细诊断日志开始记录至 Vault 目录下，便于用户查看
+        const activeVaultPath = await pathService.getActiveVaultPath()
+        const logData = {
+          timestamp: new Date().toISOString(),
+          event: 'start',
+          providerId: finalProvider.config?.id,
+          modelId: finalModelId,
+          baseUrl: providerUrl,
+          promptLength: prompt.length
+        }
+        if (activeVaultPath) {
+          const logFile = require('path').join(activeVaultPath, 'summary_generation_debug.log')
+          require('fs').appendFileSync(logFile, JSON.stringify(logData) + '\n', 'utf-8')
+        }
+
+        const startTime = Date.now()
+        const abortController = new AbortController()
+        
+        let timeoutId: any
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            abortController.abort()
+            const err = new Error('AI generation timed out after 45 seconds (Promise level force-abort).')
+            err.name = 'AbortError'
+            reject(err)
+          }, 45000) // 45秒 Promise 级别强制超时，绝对防止任何流挂起
+        })
+
+        try {
+          logger.info(
+            `[SummaryAI] Invoking Vercel AI SDK generateText with 45s Promise-race timeout...`
+          )
+          
+          const generatePromise = (async () => {
+            const { text } = await generateText({
+              model,
+              prompt,
+              maxSteps: 1,
+              abortSignal: abortController.signal
+            } as any)
+            return text
+          })()
+
+          const text = await Promise.race([generatePromise, timeoutPromise])
+
+          const duration = Date.now() - startTime
+          logger.info(
+            `[SummaryAI] generateText request succeeded in ${duration}ms. Response text length: ${text.length} characters.`
+          )
+
+          if (activeVaultPath) {
+            const logFile = require('path').join(activeVaultPath, 'summary_generation_debug.log')
+            require('fs').appendFileSync(
+              logFile,
+              JSON.stringify({
+                timestamp: new Date().toISOString(),
+                event: 'success',
+                durationMs: duration,
+                responseLength: text.length
+              }) + '\n',
+              'utf-8'
+            )
+          }
+
+          return text
+        } catch (err: any) {
+          const duration = Date.now() - startTime
+          if (
+            err.name === 'AbortError' ||
+            err.message?.includes('aborted') ||
+            err.message?.includes('timeout')
+          ) {
+            logger.error(
+              `[SummaryAI] REQUEST TIMED OUT! AI generation request failed in ${duration}ms after exceeding the 45 seconds limit. Please check your network connection, proxy settings, or AI provider API server status.`
+            )
+          } else {
+            logger.error(
+              `[SummaryAI] generateText request failed in ${duration}ms. Error name: ${err.name}, message: ${err.message}`,
+              err
+            )
+          }
+
+          if (activeVaultPath) {
+            const logFile = require('path').join(activeVaultPath, 'summary_generation_debug.log')
+            require('fs').appendFileSync(
+              logFile,
+              JSON.stringify({
+                timestamp: new Date().toISOString(),
+                event: 'error',
+                durationMs: duration,
+                errorMessage: err.message || String(err),
+                errorStack: err.stack || ''
+              }) + '\n',
+              'utf-8'
+            )
+          }
+          throw err
+        } finally {
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+          }
+        }
       }
     }
 

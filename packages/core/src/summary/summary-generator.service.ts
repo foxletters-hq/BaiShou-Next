@@ -1,4 +1,4 @@
-import { MissingSummary, SummaryType } from '@baishou/shared'
+import { MissingSummary, SummaryType, logger } from '@baishou/shared'
 import { DiaryRepository } from '@baishou/database/src/repositories/diary.repository'
 import { SummaryRepository } from '@baishou/database/src/repositories/summary.repository'
 import {
@@ -85,17 +85,33 @@ export class SummaryGeneratorService {
       }
 
       if (!contextData) {
+        logger.warn(
+          `[SummaryGeneratorService] No context data found for target: ${target.type} (${startStr} to ${endStr})`
+        )
         yield 'STATUS:no_data_error'
         return
       }
 
+      logger.info(
+        `[SummaryGeneratorService] Context data successfully built. Prompt template size: ${promptTemplate.length} chars. Context data size: ${contextData.length} chars.`
+      )
       yield `STATUS:thinking_via_${modelId}`
 
       const combinedPrompt = `${promptTemplate}\n\n---\n\n以下是需要总结的原始数据：\n\n${contextData}`
+      logger.info(
+        `[SummaryGeneratorService] Dispatching prompt to AI client (Model: ${modelId})...`
+      )
       const generatedResult = await this.aiClient.generateContent(combinedPrompt, modelId)
 
+      logger.info(
+        `[SummaryGeneratorService] AI generation successfully retrieved. Content size: ${generatedResult.length} chars.`
+      )
       yield generatedResult
     } catch (e: any) {
+      logger.error(
+        `[SummaryGeneratorService] Failed to generate summary for target ${target.type}:`,
+        e
+      )
       const safeMsg = this.sanitizeError(e)
       yield `STATUS:generation_failed_error: ${safeMsg}`
       throw new Error(safeMsg)

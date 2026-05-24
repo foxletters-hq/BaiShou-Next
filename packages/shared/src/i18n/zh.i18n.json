@@ -956,6 +956,8 @@
     "generation_failed_error": "「$label」生成失败：$e",
     "status_thinking": "正在思考 ($model)...",
     "status_reading_data": "正在解析源数据...",
+    "status_sending": "发送请求中...",
+    "status_saving": "正在保存总结...",
     "no_data_error": "没有足够的数据来生成总结。",
     "error_no_provider": "未找到对应的 AI 配置 ($id)。请在设置中重新选择全局模型。",
     "error_no_model": "未配置模型。请在\"设置\"中配置对话模型 (Settings -> AI Config -> 默认模型)",

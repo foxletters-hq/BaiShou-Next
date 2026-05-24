@@ -912,6 +912,8 @@
     "generation_failed_error": "Failed to generate \"$label\": $e",
     "status_thinking": "Thinking ($model)...",
     "status_reading_data": "Reading source data...",
+    "status_sending": "Sending request...",
+    "status_saving": "Saving summary...",
     "no_data_error": "Not enough data to generate summary.",
     "error_no_provider": "AI config not found ($id). Please re-select global model in settings.",
     "error_no_model": "Model not configured. Please set chat model in Settings -> AI Config -> Default Model.",
