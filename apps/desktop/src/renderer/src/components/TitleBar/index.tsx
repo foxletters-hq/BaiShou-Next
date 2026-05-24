@@ -142,12 +142,7 @@ export const TitleBar: React.FC = () => {
               <MdAutoAwesome className={styles.tabIcon} />
               <span>{t('nav.agent', '伙伴')}</span>
             </div>
-            {isSettings && (
-              <div className={`${styles.tab} ${styles.activeTab}`}>
-                <MdSettings className={styles.tabIcon} />
-                <span>{t('settings.title', '设置')}</span>
-              </div>
-            )}
+
           </div>
         )}
       </div>
