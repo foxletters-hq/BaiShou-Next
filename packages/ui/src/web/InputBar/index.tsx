@@ -253,7 +253,16 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(
           // @ts-ignore
           const newAtts = await window.api.pickFiles()
           if (newAtts && newAtts.length > 0) {
-            setAttachments((prev) => [...prev, ...newAtts])
+            const validAtts = newAtts.filter((att: any) => {
+              if (att.isText && att.fileSize && att.fileSize > 512 * 1024) {
+                toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
+                return false
+              }
+              return true
+            })
+            if (validAtts.length > 0) {
+              setAttachments((prev) => [...prev, ...validAtts])
+            }
           }
         } catch (e) {
           console.error('Failed to pick file via IPC:', e)
@@ -272,20 +281,32 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(
 
       // Simulate reading via standard Web File API and converting to MockChatAttachment
       // Note: In a complete implementation we might read Blob/DataURL
-      const newAtts = Array.from(e.target.files).map((file) => {
-        const isImage = file.type.startsWith('image/')
-        const isPdf = file.type === 'application/pdf'
-        return {
-          id: Math.random().toString(36).substring(7),
-          fileName: file.name,
-          filePath: URL.createObjectURL(file), // create local blob string to display
-          isImage,
-          isPdf,
-          fileSize: file.size
-        }
-      })
+      const newAtts = Array.from(e.target.files)
+        .map((file) => {
+          const isImage = file.type.startsWith('image/')
+          const isPdf = file.type === 'application/pdf'
+          const isText = file.type.startsWith('text/') || /\.(txt|md)$/i.test(file.name)
+          return {
+            id: Math.random().toString(36).substring(7),
+            fileName: file.name,
+            filePath: URL.createObjectURL(file), // create local blob string to display
+            isImage,
+            isPdf,
+            isText,
+            fileSize: file.size
+          }
+        })
+        .filter((att) => {
+          if (att.isText && att.fileSize > 512 * 1024) {
+            toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
+            return false
+          }
+          return true
+        })
 
-      setAttachments((prev) => [...prev, ...newAtts])
+      if (newAtts.length > 0) {
+        setAttachments((prev) => [...prev, ...newAtts])
+      }
       // Reset file input
       e.target.value = ''
     }
@@ -363,7 +384,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(
                   ) : (
                     <div className={styles.attFileBox}>
                       <span className={styles.attFileIcon}>
-                        {att.isPdf ? <FileText size={18} /> : <Folder size={18} />}
+                        {(att.isPdf || att.isText) ? <FileText size={18} /> : <Folder size={18} />}
                       </span>
                       <div className={styles.attFileMeta}>
                         <span className={styles.attFileName}>{att.fileName}</span>

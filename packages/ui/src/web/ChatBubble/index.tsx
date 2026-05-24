@@ -169,7 +169,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               />
             ) : (
               <div className={styles.attDocument}>
-                <span className={styles.attDocIcon}>{att.isPdf ? '📄' : '📁'}</span>
+                <span className={styles.attDocIcon}>{(att.isPdf || att.isText) ? '📄' : '📁'}</span>
                 <span className={styles.attDocName}>{att.fileName}</span>
               </div>
             )}
@@ -230,7 +230,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
           {isEditing ? (
             <div
-              className={styles.userBubbleCard}
+              className={`${styles.userBubbleCard} ${styles.editingBubbleCard}`}
               style={{
                 background: '#FFFFFF',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
@@ -323,7 +323,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           </div>
 
           {isEditing ? (
-            <div className={styles.aiBubbleCard}>{renderEditor()}</div>
+            <div className={`${styles.aiBubbleCard} ${styles.editingBubbleCard}`}>{renderEditor()}</div>
           ) : (
             <>
               <div className={styles.aiBubbleCard}>

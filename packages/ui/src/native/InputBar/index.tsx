@@ -6,7 +6,8 @@ import {
   StyleSheet,
   Text,
   Image,
-  ScrollView
+  ScrollView,
+  Alert
 } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import type { MockChatAttachment } from '@baishou/shared'
@@ -41,20 +42,33 @@ export const InputBar: React.FC<InputBarProps> = ({
       })
 
       if (!result.canceled && result.assets) {
-        const newAtts = result.assets.map((asset) => {
-          const isImage =
-            /\.(png|jpe?g|gif|webp|bmp)$/i.test(asset.name) ||
-            (asset.mimeType?.startsWith('image/') ?? false)
-          const isPdf = /\.pdf$/i.test(asset.name) || asset.mimeType === 'application/pdf'
-          return {
-            id: Math.random().toString(36).substring(7),
-            fileName: asset.name,
-            filePath: asset.uri,
-            isImage,
-            isPdf
-          }
-        })
-        setAttachments((prev) => [...prev, ...newAtts])
+        const newAtts = result.assets
+          .map((asset) => {
+            const isImage =
+              /\.(png|jpe?g|gif|webp|bmp)$/i.test(asset.name) ||
+              (asset.mimeType?.startsWith('image/') ?? false)
+            const isPdf = /\.pdf$/i.test(asset.name) || asset.mimeType === 'application/pdf'
+            const isText = /\.(txt|md)$/i.test(asset.name) || (asset.mimeType?.startsWith('text/') ?? false)
+            return {
+              id: Math.random().toString(36).substring(7),
+              fileName: asset.name,
+              filePath: asset.uri,
+              isImage,
+              isPdf,
+              isText,
+              fileSize: asset.size
+            }
+          })
+          .filter((att) => {
+            if (att.isText && att.fileSize && att.fileSize > 512 * 1024) {
+              Alert.alert(t('common.error', '错误'), t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
+              return false
+            }
+            return true
+          })
+        if (newAtts.length > 0) {
+          setAttachments((prev) => [...prev, ...newAtts])
+        }
       }
     } catch (err) {
       console.warn('Document picker error:', err)
@@ -96,7 +110,7 @@ export const InputBar: React.FC<InputBarProps> = ({
                 <Image source={{ uri: att.filePath }} style={styles.attImage} />
               ) : (
                 <View style={styles.attDoc}>
-                  <Text style={styles.attDocIcon}>{att.isPdf ? '📄' : '📁'}</Text>
+                  <Text style={styles.attDocIcon}>{att.isPdf || att.isText ? '📄' : '📁'}</Text>
                   <Text
                     style={[styles.attDocName, { color: colors.textSecondary }]}
                     numberOfLines={1}
