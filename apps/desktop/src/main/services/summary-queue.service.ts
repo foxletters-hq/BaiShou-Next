@@ -1,6 +1,7 @@
 import { BrowserWindow } from 'electron'
-import { MissingSummary } from '@baishou/shared'
+import { MissingSummary, logger, GlobalModelsConfig } from '@baishou/shared'
 import { SummaryGeneratorService, SummaryManagerService } from '@baishou/core'
+import { settingsManager } from '../ipc/settings.ipc'
 
 export interface QueueItem {
   id: string // Type_Time format e.g. "weekly_16200000"
@@ -127,8 +128,28 @@ export class SummaryQueueService {
     const signal = this.abortController?.signal
 
     try {
+      logger.info(`[SummaryQueueService] Starting summary task: ${task.id}`, {
+        target: task.target
+      })
+      // 阶段 0: 发送请求中... 停留一小会儿让用户感知到
+      task.status = 'running'
+      task.phaseIdx = 0
+      task.progress = 5
+      this.broadcastState()
+      await new Promise((r) => setTimeout(r, 500))
+
+      if (signal?.aborted) {
+        throw new Error('用户取消了生成')
+      }
+
+      logger.info(`[SummaryQueueService] Loading generator factory for task: ${task.id}`)
       const generator = await this.generatorFactory()
-      const stream = generator.generate(task.target)
+
+      // 获取当前设置的 AI 总结模型 ID，并传递给生成器以准确显示正在思考的模型
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+      const finalModelId = globalModels?.globalSummaryModelId || 'deepseek-chat'
+
+      const stream = generator.generate(task.target, finalModelId)
 
       let finalContent = ''
 
@@ -142,16 +163,34 @@ export class SummaryQueueService {
         if (chunk.includes('STATUS:reading_data')) {
           task.phaseIdx = 1
           task.progress = 25
+          this.broadcastState()
+          // 阶段 1: 正在解析源数据... 停留一小会儿让用户有清晰感知
+          await new Promise((r) => setTimeout(r, 600))
         } else if (chunk.includes('STATUS:thinking_via_')) {
+          logger.info(`[SummaryQueueService] Task ${task.id} entered thinking phase: ${chunk}`)
           task.phaseIdx = 2
           task.progress = 50
         } else if (chunk.includes('STATUS:generation_failed_error')) {
           const cleanMsg = chunk.replace('STATUS:generation_failed_error:', '').trim()
           throw new Error(cleanMsg)
         } else if (!chunk.startsWith('STATUS:')) {
-          task.phaseIdx = 3
-          task.progress = 85
-          finalContent += chunk
+          // 阶段 3: AI 总结正流式接收生成... 模拟流式打字机效果输出
+          const textLength = chunk.length
+          const stepSize = 12 // 每次输出 12 个字
+          let currentIdx = 0
+          while (currentIdx < textLength) {
+            if (signal?.aborted) {
+              break
+            }
+            const nextPart = chunk.substring(currentIdx, currentIdx + stepSize)
+            finalContent += nextPart
+            currentIdx += stepSize
+
+            task.phaseIdx = 3
+            task.progress = 85
+            this.broadcastState()
+            await new Promise((r) => setTimeout(r, 30)) // 每隔 30ms 输出一次
+          }
         }
         this.broadcastState()
       }
@@ -159,9 +198,14 @@ export class SummaryQueueService {
       if (task.status === 'error') return
 
       if (finalContent.trim().length > 0) {
+        // 正在保存总结... 停留一小会儿让用户感知到
         task.progress = 95
         this.broadcastState()
+        await new Promise((r) => setTimeout(r, 600))
 
+        logger.info(
+          `[SummaryQueueService] Saving generated summary for task: ${task.id}, content length: ${finalContent.length}`
+        )
         await this.summaryManager.save({
           type: task.target.type,
           startDate: task.target.startDate,
@@ -173,11 +217,12 @@ export class SummaryQueueService {
         task.progress = 100
         task.phaseIdx = 4
         this.broadcastState()
+        logger.info(`[SummaryQueueService] Task completed successfully: ${task.id}`)
       } else {
         throw new Error('Generated content was empty.')
       }
     } catch (e: any) {
-      console.error('[SummaryQueueService] Task Failed:', e)
+      logger.error(`[SummaryQueueService] Task ${task.id} Failed:`, e)
       task.status = 'error'
       task.error = e.message || String(e)
       this.broadcastState()

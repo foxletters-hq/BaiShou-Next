@@ -874,6 +874,8 @@
     "generation_failed_error": "「$label」の生成に失敗しました: $e",
     "status_thinking": "思考中 ($model)...",
     "status_reading_data": "ソースデータを読み込んでいます...",
+    "status_sending": "リクエスト送信中...",
+    "status_saving": "要約を保存中...",
     "no_data_error": "生成するためのデータが不足しています。",
     "error_no_provider": "AI 設定が見つかりません ($id)。設定でグローバルモデルを再選択してください。",
     "error_no_model": "モデル未設定。設定 -> AI 設定 -> デフォルトモデル で設定してください。",

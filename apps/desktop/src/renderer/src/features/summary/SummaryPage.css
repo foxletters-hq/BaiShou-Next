@@ -390,3 +390,66 @@
 .sp-stop-btn:hover {
   opacity: 0.8;
 }
+
+/* ── 缺失项生成状态指示 ── */
+.sp-missing-card-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  background: var(--bg-surface-normal);
+  border-radius: var(--radius-md);
+  margin-left: 8px;
+  margin-right: 8px;
+  border-left: 3px solid var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.sp-missing-card-status.pending {
+  border-left-color: var(--text-tertiary);
+}
+
+.sp-missing-card-status.running {
+  border-left-color: var(--color-primary);
+}
+
+.sp-missing-card-status.completed {
+  border-left-color: var(--color-success);
+  color: var(--color-success);
+  background: var(--bg-surface-normal);
+}
+
+.sp-missing-card-status.error {
+  border-left-color: var(--color-error);
+  color: var(--color-error);
+  background: var(--bg-surface-normal);
+}
+
+.sp-status-text {
+  font-weight: 500;
+}
+
+.sp-status-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+/* 运行中状态下呼吸指示灯 */
+.sp-missing-card-status.running .sp-status-bullet {
+  animation: baishouPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes baishouPulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
