@@ -221,24 +221,30 @@
 }
 .contextMenu {
   position: absolute;
-  background: var(--bg-surface);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-overlay);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-  padding: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  padding: 6px;
   display: flex;
   flex-direction: column;
   min-width: 120px;
+  gap: 2px;
+  z-index: 1001;
 }
 .contextMenu button {
   background: none; border: none;
-  padding: 8px 12px; text-align: left;
-  cursor: pointer; font-size: 14px;
+  padding: 6px 12px; text-align: left;
+  cursor: pointer; font-size: 12px;
+  font-weight: 500;
   color: var(--text-primary);
   border-radius: 6px;
+  transition: all 0.2s ease;
 }
 .contextMenu button:hover {
-  background: var(--bg-surface-low);
+  background: rgba(var(--color-primary-rgb), 0.08);
+  color: var(--color-primary);
 }
 
 /* --- Added for Reasoning --- */

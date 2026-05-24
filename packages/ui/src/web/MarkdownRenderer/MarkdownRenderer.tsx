@@ -8,6 +8,10 @@ import rehypeKatex from 'rehype-katex'
 import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
 import styles from './MarkdownRenderer.module.css'
+import { ContextMenu, ContextMenuItem } from '../ContextMenu'
+import { useDialog } from '../Dialog'
+import { useToast } from '../Toast/useToast'
+import { Copy, FolderOpen, Trash2 } from 'lucide-react'
 
 export interface MarkdownRendererProps {
   content: string
@@ -45,6 +49,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   plainText = false
 }) => {
   const { t } = useTranslation()
+  const toast = useToast()
+  const dialog = useDialog()
 
   const processedContent = React.useMemo(() => {
     return preprocessContent(content)
@@ -95,17 +101,99 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           ),
           img: ({ node, ...props }) => {
             const { src: cleanSrc, width } = parseImgWidth(props.src)
-            return (
+            const resolvedSrc = resolveAttachment(cleanSrc)
+            const isLocal = cleanSrc && basePath && cleanSrc.startsWith('attachment/')
+
+            const renderImg = () => (
               <img
                 {...props}
-                src={resolveAttachment(cleanSrc)}
+                src={resolvedSrc}
                 style={{
                   maxWidth: '100%',
                   width: width || undefined,
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  cursor: isLocal ? 'context-menu' : 'default'
                 }}
               />
             )
+
+            if (isLocal) {
+              const normalizedBase = basePath!.replace(/\\/g, '/')
+              const normalizedName = cleanSrc!.replace('attachment/', '')
+              const absolutePath = `${normalizedBase}/${normalizedName}`
+
+              const menuItems: ContextMenuItem[] = [
+                {
+                  label: t('markdown.copy_image', '复制图片'),
+                  icon: <Copy size={14} />,
+                  onClick: async () => {
+                    try {
+                      const res = await (window as any).api?.diary?.copyAttachment(absolutePath)
+                      if (res?.success) {
+                        toast.showSuccess(t('markdown.copy_image_success', '图片已复制到剪贴板'))
+                      } else {
+                        toast.showError(res?.error || t('markdown.copy_image_failed', '复制失败'))
+                      }
+                    } catch (err: any) {
+                      toast.showError(err.message)
+                    }
+                  }
+                },
+                {
+                  label: t('markdown.open_folder', '打开所在文件夹'),
+                  icon: <FolderOpen size={14} />,
+                  onClick: async () => {
+                    try {
+                      await (window as any).api?.diary?.openAttachmentFolder(absolutePath)
+                    } catch (err: any) {
+                      toast.showError(err.message)
+                    }
+                  }
+                },
+                {
+                  divider: true,
+                  label: '',
+                  onClick: () => {}
+                },
+                {
+                  label: t('markdown.delete_attachment', '删除附件'),
+                  icon: <Trash2 size={14} style={{ color: 'var(--color-error)' }} />,
+                  onClick: async () => {
+                    const confirmed = await dialog.confirm(
+                      t(
+                        'markdown.delete_attachment_confirm',
+                        '确定要删除此附件图片吗？该操作不可逆，且正文 Markdown 引用不会被清除。'
+                      )
+                    )
+                    if (!confirmed) return
+
+                    try {
+                      const res = await (window as any).api?.diary?.deleteAttachment(absolutePath)
+                      if (res?.success) {
+                        toast.showSuccess(
+                          t(
+                            'markdown.delete_attachment_success',
+                            '附件物理文件已成功删除。若要清理正文占位，请编辑日记移除 Markdown 引用。'
+                          )
+                        )
+                      } else {
+                        toast.showError(res?.error || t('markdown.delete_attachment_failed', '删除失败'))
+                      }
+                    } catch (err: any) {
+                      toast.showError(err.message)
+                    }
+                  }
+                }
+              ]
+
+              return (
+                <ContextMenu items={menuItems}>
+                  {renderImg()}
+                </ContextMenu>
+              )
+            }
+
+            return renderImg()
           },
           video: ({ node, ...props }) => (
             <video
