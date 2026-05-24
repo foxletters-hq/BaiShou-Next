@@ -20,6 +20,7 @@ export * from './i18n/i18n.types'
 export * from './utils/pricing.util'
 export * from './utils/date.utils'
 export { logger } from './utils/logger'
+export * from './utils/model-capabilities'
 
 // Mock 数据与类型（供开发阶段跨包使用）
 export * from './mock/agent.mock'

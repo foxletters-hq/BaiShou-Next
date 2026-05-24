@@ -1408,7 +1408,8 @@
     "upload_attachment": "上傳附件",
     "shortcut_command": "快捷指令",
     "vision_not_supported_warn": "當前選中的模型不支持圖片識別，建議更換為支持多模態的模型（如 gpt-4o, gemini-1.5）以獲得最佳效果。",
-    "model_no_vision_hint": "當前模型可能不支持圖片，建議切換至支持多模態的模型"
+    "model_no_vision_hint": "當前模型可能不支持圖片，建議切換至支持多模態的模型",
+    "file_too_large": "檔案大小超過限制 (最大 512KB)"
   },
   "shortcut": {
     "label_name": "指令標識名 (展示標籤)",

@@ -4,6 +4,8 @@ export type MockChatAttachment = {
   fileName: string
   isImage: boolean
   isPdf: boolean
+  isText?: boolean
+  textContent?: string
   fileSize?: number
 }
 

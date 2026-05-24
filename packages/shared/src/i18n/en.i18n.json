@@ -1420,7 +1420,8 @@
     "upload_attachment": "Upload Attachment",
     "shortcut_command": "Shortcut Command",
     "vision_not_supported_warn": "The current model does not support image recognition. We recommend switching to a multimodal model (e.g. gpt-4o, gemini-1.5) for the best results.",
-    "model_no_vision_hint": "Current model does not support images. Please switch to a multimodal model"
+    "model_no_vision_hint": "Current model does not support images. Please switch to a multimodal model",
+    "file_too_large": "File size exceeds limit (max 512KB)"
   },
   "shortcut": {
     "label_name": "Shortcut Label Name",
