@@ -63,12 +63,16 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!isOpen) return
-    const timeoutId = setTimeout(() => {
-      onSearch(searchQuery, activeTab)
-    }, 400)
-
-    return () => clearTimeout(timeoutId)
+    let cleanup: (() => void) | undefined
+    if (isOpen) {
+      const timeoutId = setTimeout(() => {
+        onSearch(searchQuery, activeTab)
+      }, 400)
+      cleanup = () => {
+        clearTimeout(timeoutId)
+      }
+    }
+    return cleanup
   }, [searchQuery, activeTab, isOpen])
 
   const toggleSelect = (id: string) => {
@@ -372,10 +376,10 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                           </Text>
                         </View>
                         <Text
+                          numberOfLines={2}
                           style={{
                             fontSize: 14,
-                            color: colors.textSecondary,
-                            numberOfLines: 2
+                            color: colors.textSecondary
                           }}
                         >
                           {item.snippet}

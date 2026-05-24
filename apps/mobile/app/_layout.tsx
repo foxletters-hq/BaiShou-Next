@@ -113,6 +113,12 @@ function AppContent() {
           }}
         />
         <Stack.Screen
+          name="incremental-sync"
+          options={{
+            title: t('incremental_sync.title', '增量同步')
+          }}
+        />
+        <Stack.Screen
           name="modal"
           options={{
             presentation: 'modal',
