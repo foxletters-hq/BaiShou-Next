@@ -11,9 +11,6 @@
     "noUnusedParameters": false,
     "strictNullChecks": false
   },
-  "include": [
-    "src/native/**/*",
-    "src/theme/**/*"
-  ],
+  "include": ["src/native/**/*", "src/theme/**/*"],
   "exclude": ["src/web/**/*"]
 }

@@ -4,8 +4,5 @@
   "compilerOptions": {
     "jsx": "react-jsx"
   },
-  "references": [
-    { "path": "./tsconfig.web.json" },
-    { "path": "./tsconfig.native.json" }
-  ]
+  "references": [{ "path": "./tsconfig.web.json" }, { "path": "./tsconfig.native.json" }]
 }

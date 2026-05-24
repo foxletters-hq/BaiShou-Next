@@ -6,10 +6,10 @@
  * @returns number[] 年份数组
  */
 export function getPickerYearRange(reverse: boolean = false): number[] {
-  const currentPhysicalYear = new Date().getFullYear();
-  const startYear = 2000;
-  const endYear = currentPhysicalYear + 30;
-  const length = endYear - startYear + 1;
-  const years = Array.from({ length }, (_, i) => startYear + i);
-  return reverse ? years.reverse() : years;
+  const currentPhysicalYear = new Date().getFullYear()
+  const startYear = 2000
+  const endYear = currentPhysicalYear + 30
+  const length = endYear - startYear + 1
+  const years = Array.from({ length }, (_, i) => startYear + i)
+  return reverse ? years.reverse() : years
 }

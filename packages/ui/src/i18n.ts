@@ -1,5 +1,5 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
 
 // Placeholder dictionaries
 const resources = {
@@ -97,23 +97,21 @@ const resources = {
       minimax: 'MiniMax',
       vertexai: 'Google Vertex AI',
       vercel: 'Vercel AI Gateway',
-      xiaomimimo: '小米 MiMo',
+      xiaomimimo: '小米 MiMo'
     },
     common: {
       copied: '已复制到剪贴板'
     }
   }
-};
+}
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: 'zh', // default
-    fallbackLng: 'en',
-    interpolation: {
-      escapeValue: false 
-    }
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  lng: 'zh', // default
+  fallbackLng: 'en',
+  interpolation: {
+    escapeValue: false
+  }
+})
 
-export default i18n;
+export default i18n
