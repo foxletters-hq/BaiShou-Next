@@ -70,10 +70,7 @@ apps/mobile/ios/*.xcodeproj/xcuserdata/
 *.sublime-workspace
 *.sublime-project
 
-# 保留 .vscode 中的推荐配置
-!.vscode/settings.json
-!.vscode/extensions.json
-!.vscode/launch.json
+.vscode/
 
 # ─── 操作系统 ──────────────────────────────────────────────
 .DS_Store

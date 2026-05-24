@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useMemo, useEffect } from 'react'
-import { Edit3, Trash2, Calendar, Tag, Save, X } from 'lucide-react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { Edit3, Trash2, Calendar, Tag, Save, X, ChevronDown } from 'lucide-react'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { CodeMirrorEditor } from '../DiaryEditor'
 import './GalleryPanel.css'
@@ -47,16 +47,33 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   const [selectedYear, setSelectedYear] = useState<string>('all')
   const [pageSize, setPageSize] = useState<number>(10)
 
+  // 自定义年份下拉框展开状态与 Ref
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false)
+  const yearDropdownRef = useRef<HTMLDivElement>(null)
+
+  // 点击外部关闭年份下拉框
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target as Node)) {
+        setIsYearDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
   // 编辑模式状态
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
-  /** 从周记中动态提取并排重所有的年份，按年份降序排列 */
+  /** 从所有总结中动态提取并排重所有的年份，按年份降序排列 */
   const availableYears = useMemo(() => {
     const years = new Set<string>()
     summaries.forEach((s) => {
-      if (s.type === 'weekly' && s.startDate) {
+      if (s.startDate) {
         const dateObj = new Date(s.startDate)
         const year = dateObj.getFullYear()
         if (year && !isNaN(year)) {
@@ -71,8 +88,8 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   const filteredAndSortedSummaries = useMemo(() => {
     let items = summaries.filter((s) => s.type === activeTab)
 
-    // 如果是周报，且筛选了年份
-    if (activeTab === 'weekly' && selectedYear !== 'all') {
+    // 筛选了年份
+    if (selectedYear !== 'all') {
       items = items.filter((s) => {
         if (!s.startDate) return false
         return new Date(s.startDate).getFullYear().toString() === selectedYear
@@ -183,12 +200,14 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
     setSelectedId(null)
     setSelectedYear('all')
     setPageSize(10)
+    setIsYearDropdownOpen(false)
   }
 
   const handleYearChange = (year: string) => {
     setSelectedYear(year)
     setSelectedId(null)
     setPageSize(10)
+    setIsYearDropdownOpen(false)
   }
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -242,21 +261,39 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
           ))}
         </div>
 
-        {/* 年份筛选下拉选择器：仅在“周记”标签且有年份数据时显示 */}
-        {activeTab === 'weekly' && availableYears.length > 0 && (
-          <div className="gallery-filter-container">
-            <select
-              value={selectedYear}
-              onChange={(e) => handleYearChange(e.target.value)}
-              className="gallery-year-select"
+        {/* 年份筛选下拉选择器：当有年份数据时在所有标签页显示 */}
+        {availableYears.length > 0 && (
+          <div className="gallery-filter-container" ref={yearDropdownRef}>
+            <button
+              className={`gallery-year-select-trigger ${isYearDropdownOpen ? 'open' : ''}`}
+              onClick={() => setIsYearDropdownOpen((prev) => !prev)}
             >
-              <option value="all">{t('gallery.filter_all_years', '全部年份')}</option>
-              {availableYears.map((year) => (
-                <option key={year} value={year}>
-                  {year}年
-                </option>
-              ))}
-            </select>
+              <span>
+                {selectedYear === 'all'
+                  ? t('gallery.filter_all_years', '全部年份')
+                  : `${selectedYear}年`}
+              </span>
+              <ChevronDown size={16} className="gallery-select-chevron" />
+            </button>
+            {isYearDropdownOpen && (
+              <div className="gallery-year-select-dropdown">
+                <div
+                  className={`gallery-year-select-option ${selectedYear === 'all' ? 'active' : ''}`}
+                  onClick={() => handleYearChange('all')}
+                >
+                  {t('gallery.filter_all_years', '全部年份')}
+                </div>
+                {availableYears.map((year) => (
+                  <div
+                    key={year}
+                    className={`gallery-year-select-option ${selectedYear === year ? 'active' : ''}`}
+                    onClick={() => handleYearChange(year)}
+                  >
+                    {year}年
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
