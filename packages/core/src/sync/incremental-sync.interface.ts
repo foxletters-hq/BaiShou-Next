@@ -2,8 +2,8 @@ import type {
   S3SyncConfig,
   SyncManifest,
   IncrementalSyncResult,
-  SyncProgressCallback,
-} from '@baishou/shared';
+  SyncProgressCallback
+} from '@baishou/shared'
 
 /**
  * S3 增量同步服务接口 (V2)
@@ -21,19 +21,19 @@ export interface IIncrementalSyncService {
   /**
    * 获取当前 S3 同步配置
    */
-  getConfig(): Promise<S3SyncConfig>;
+  getConfig(): Promise<S3SyncConfig>
 
   /**
    * 更新 S3 同步配置
    * @throws {S3ConfigError} 配置无效
    */
-  updateConfig(config: Partial<S3SyncConfig>): Promise<void>;
+  updateConfig(config: Partial<S3SyncConfig>): Promise<void>
 
   /**
    * 测试 S3 连接
    * @returns 连接是否成功
    */
-  testConnection(): Promise<boolean>;
+  testConnection(): Promise<boolean>
 
   // ── 同步操作 ───────────────────────────────────────────────
 
@@ -56,46 +56,46 @@ export interface IIncrementalSyncService {
    * @throws {ManifestFetchError} 获取远程 manifest 失败
    * @param onProgress - 可选的进度回调，逐文件处理时触发
    */
-  sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
+  sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
 
   /**
    * 仅上传变更（不同步下载）
    * 用于移动端快速备份
    * @param onProgress - 可选的进度回调
    */
-  uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
+  uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
 
   /**
    * 仅下载变更（不同步上传）
    * 用于移动端恢复数据
    * @param onProgress - 可选的进度回调
    */
-  downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
+  downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
 
   // ── 清单管理 ───────────────────────────────────────────────
 
   /**
    * 构建本地 manifest（扫描 vault 当前文件状态）
    */
-  buildLocalManifest(): Promise<SyncManifest>;
+  buildLocalManifest(): Promise<SyncManifest>
 
   /**
    * 获取本地已保存的 manifest
    */
-  getLocalManifest(): Promise<SyncManifest>;
+  getLocalManifest(): Promise<SyncManifest>
 
   /**
    * 获取远程 manifest（从 S3 下载）
    * @throws {S3ConnectionError} 获取失败
    * @throws {ManifestFetchError} manifest 不存在或损坏
    */
-  getRemoteManifest(): Promise<SyncManifest>;
+  getRemoteManifest(): Promise<SyncManifest>
 
   /**
    * 获取远程快照（三向合并的共同祖先）
    * 首次同步时返回空 manifest (version=2, files={})
    */
-  getRemoteSnapshot(): Promise<SyncManifest>;
+  getRemoteSnapshot(): Promise<SyncManifest>
 
   // ── 冲突处理 ───────────────────────────────────────────────
 
@@ -104,5 +104,5 @@ export interface IIncrementalSyncService {
    * 冲突文件已通过 mtime 策略自动处理
    * 旧版本：桌面端备份到 .versions/，移动端创建 .conflict-*.md
    */
-  getLastSyncConflicts(): Promise<string[]>;
+  getLastSyncConflicts(): Promise<string[]>
 }

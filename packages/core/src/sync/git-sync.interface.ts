@@ -4,8 +4,8 @@ import type {
   GitStatus,
   FileChange,
   FileDiff,
-  VersionHistoryEntry,
-} from '@baishou/shared';
+  VersionHistoryEntry
+} from '@baishou/shared'
 
 /**
  * Git 同步服务接口
@@ -19,68 +19,68 @@ export interface IGitSyncService {
    * 在 Vault 根目录执行 git init
    * @throws {GitInitError} 初始化失败
    */
-  init(): Promise<void>;
+  init(): Promise<void>
 
   /**
    * 检查 Git 仓库是否已初始化
    */
-  isInitialized(): Promise<boolean>;
+  isInitialized(): Promise<boolean>
 
   // ── 配置 ───────────────────────────────────────────────────
 
   /**
    * 获取当前 Git 同步配置
    */
-  getConfig(): Promise<GitSyncConfig>;
+  getConfig(): Promise<GitSyncConfig>
 
   /**
    * 更新 Git 同步配置
    * @throws {GitConfigError} 配置无效
    */
-  updateConfig(config: Partial<GitSyncConfig>): Promise<void>;
+  updateConfig(config: Partial<GitSyncConfig>): Promise<void>
 
   /**
    * 测试远程仓库连接
    * @returns 连接是否成功
    */
-  testRemoteConnection(): Promise<boolean>;
+  testRemoteConnection(): Promise<boolean>
 
   // ── 工作区状态 ─────────────────────────────────────────────
 
   /**
    * 获取当前工作区状态（暂存区 + 工作区变更）
    */
-  getStatus(): Promise<GitStatus>;
+  getStatus(): Promise<GitStatus>
 
   /**
    * 暂存指定文件（git add）
    */
-  stageFile(filePath: string): Promise<void>;
+  stageFile(filePath: string): Promise<void>
 
   /**
    * 暂存全部文件（git add .）
    */
-  stageAll(): Promise<void>;
+  stageAll(): Promise<void>
 
   /**
    * 取消暂存指定文件（从暂存区移回工作区）
    */
-  unstageFile(filePath: string): Promise<void>;
+  unstageFile(filePath: string): Promise<void>
 
   /**
    * 取消暂存全部文件
    */
-  unstageAll(): Promise<void>;
+  unstageAll(): Promise<void>
 
   /**
    * 丢弃指定文件的工作区修改（恢复到暂存区状态或 HEAD）
    */
-  discardFile(filePath: string): Promise<void>;
+  discardFile(filePath: string): Promise<void>
 
   /**
    * 丢弃所有工作区修改（含已跟踪文件变更和未跟踪文件）
    */
-  discardAllChanges(): Promise<void>;
+  discardAllChanges(): Promise<void>
 
   // ── 提交操作 ───────────────────────────────────────────────
 
@@ -90,7 +90,7 @@ export interface IGitSyncService {
    * @returns 创建的 commit
    * @throws {GitCommitError} 提交失败
    */
-  commitAll(message: string): Promise<GitCommit | null>;
+  commitAll(message: string): Promise<GitCommit | null>
 
   /**
    * 提交指定文件的变更
@@ -99,7 +99,7 @@ export interface IGitSyncService {
    * @returns 创建的 commit
    * @throws {GitCommitError} 提交失败
    */
-  commit(files: string[], message: string): Promise<GitCommit>;
+  commit(files: string[], message: string): Promise<GitCommit>
 
   // ── 版本历史 ───────────────────────────────────────────────
 
@@ -110,19 +110,19 @@ export interface IGitSyncService {
    * @param offset - 偏移量，默认 0
    * @returns 版本历史列表（按时间倒序）
    */
-  getHistory(filePath?: string, limit?: number, offset?: number): Promise<VersionHistoryEntry[]>;
+  getHistory(filePath?: string, limit?: number, offset?: number): Promise<VersionHistoryEntry[]>
 
   /**
    * 获取最近拉取的提交记录（来自远程分支）
    * @param limit - 返回数量限制，默认 10
    */
-  getRecentPulls(limit?: number): Promise<VersionHistoryEntry[]>;
+  getRecentPulls(limit?: number): Promise<VersionHistoryEntry[]>
 
   /**
    * 获取指定 commit 的文件变更列表
    * @param commitHash - commit hash
    */
-  getCommitChanges(commitHash: string): Promise<FileChange[]>;
+  getCommitChanges(commitHash: string): Promise<FileChange[]>
 
   /**
    * 获取文件的 diff
@@ -130,14 +130,14 @@ export interface IGitSyncService {
    * @param commitHash - commit hash（可选，默认与上一版本比较）
    * @returns diff 详情
    */
-  getFileDiff(filePath: string, commitHash?: string): Promise<FileDiff>;
+  getFileDiff(filePath: string, commitHash?: string): Promise<FileDiff>
 
   /**
    * 获取工作区文件的 diff（暂存区 vs HEAD 或 工作区 vs 暂存区）
    * @param filePath - 文件路径
    * @param staged - true 表示暂存区 vs HEAD，false 表示工作区 vs 暂存区
    */
-  getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff>;
+  getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff>
 
   // ── 回滚操作 ───────────────────────────────────────────────
 
@@ -147,7 +147,7 @@ export interface IGitSyncService {
    * @param commitHash - 目标 commit hash
    * @throws {GitRollbackError} 回滚失败
    */
-  rollbackFile(filePath: string, commitHash: string): Promise<void>;
+  rollbackFile(filePath: string, commitHash: string): Promise<void>
 
   /**
    * 回滚整个仓库到指定 commit 的状态
@@ -155,7 +155,7 @@ export interface IGitSyncService {
    * @param commitHash - 目标 commit hash
    * @throws {GitRollbackError} 回滚失败
    */
-  rollbackAll(commitHash: string): Promise<void>;
+  rollbackAll(commitHash: string): Promise<void>
 
   // ── 远程同步 ───────────────────────────────────────────────
 
@@ -164,29 +164,29 @@ export interface IGitSyncService {
    * @throws {GitPushError} 推送失败
    * @throws {GitRemoteNotConfiguredError} 未配置远程仓库
    */
-  push(): Promise<void>;
+  push(): Promise<void>
 
   /**
    * 从远程仓库拉取
    * @throws {GitPullError} 拉取失败（含冲突）
    * @throws {GitRemoteNotConfiguredError} 未配置远程仓库
    */
-  pull(): Promise<void>;
+  pull(): Promise<void>
 
   /**
    * 检查是否有未解决的冲突
    */
-  hasConflicts(): Promise<boolean>;
+  hasConflicts(): Promise<boolean>
 
   /**
    * 获取冲突文件列表
    */
-  getConflicts(): Promise<string[]>;
+  getConflicts(): Promise<string[]>
 
   /**
    * 解决冲突（采用指定版本）
    * @param filePath - 文件路径
    * @param resolution - 'ours' | 'theirs'
    */
-  resolveConflict(filePath: string, resolution: 'ours' | 'theirs'): Promise<void>;
+  resolveConflict(filePath: string, resolution: 'ours' | 'theirs'): Promise<void>
 }

@@ -1,4 +1,4 @@
-import type { SyncSessionLog, SyncSummary } from '@baishou/shared';
+import type { SyncSessionLog, SyncSummary } from '@baishou/shared'
 
 /**
  * 同步操作日志服务接口
@@ -14,7 +14,7 @@ export interface IOperationLogService {
    * @param log - 完整的会话日志
    * @throws {SyncLogError} 写入失败
    */
-  writeLog(log: SyncSessionLog): Promise<void>;
+  writeLog(log: SyncSessionLog): Promise<void>
 
   /**
    * 获取最近的同步日志列表
@@ -22,19 +22,19 @@ export interface IOperationLogService {
    * @param limit - 最大返回条数，默认 20
    * @returns 按时间倒序排列的日志列表
    */
-  getRecentLogs(limit?: number): Promise<SyncSessionLog[]>;
+  getRecentLogs(limit?: number): Promise<SyncSessionLog[]>
 
   /**
    * 获取最近一次同步的摘要
    *
    * @returns 摘要信息；无日志时返回 null
    */
-  getLastSyncSummary(): Promise<SyncSummary | null>;
+  getLastSyncSummary(): Promise<SyncSummary | null>
 
   /**
    * 获取日志总条数
    */
-  getLogCount(): Promise<number>;
+  getLogCount(): Promise<number>
 
   /**
    * 清理旧日志，保留最近 keepCount 条。
@@ -42,5 +42,5 @@ export interface IOperationLogService {
    *
    * @param keepCount - 保留条数，默认 50
    */
-  cleanupOldLogs(keepCount?: number): Promise<void>;
+  cleanupOldLogs(keepCount?: number): Promise<void>
 }

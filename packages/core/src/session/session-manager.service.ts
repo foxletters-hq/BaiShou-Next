@@ -1,6 +1,11 @@
-import { SessionRepository, InsertSessionInput, InsertMessageInput, InsertPartInput } from '@baishou/database/src/repositories/session.repository';
-import { SessionSyncService } from './session-sync.service';
-import { SessionFileService } from './session-file.service';
+import {
+  SessionRepository,
+  InsertSessionInput,
+  InsertMessageInput,
+  InsertPartInput
+} from '@baishou/database/src/repositories/session.repository'
+import { SessionSyncService } from './session-sync.service'
+import { SessionFileService } from './session-file.service'
 
 /**
  * AI 会话总管
@@ -14,40 +19,48 @@ export class SessionManagerService {
   ) {}
 
   async upsertSession(input: InsertSessionInput): Promise<void> {
-    await this.sessionRepo.upsertSession(input);
-    await this.flushSessionToDisk(input.id);
+    await this.sessionRepo.upsertSession(input)
+    await this.flushSessionToDisk(input.id)
   }
 
-  async insertMessageWithParts(message: InsertMessageInput, parts: InsertPartInput[]): Promise<void> {
-    await this.sessionRepo.insertMessageWithParts(message, parts);
-    await this.flushSessionToDisk(message.sessionId);
+  async insertMessageWithParts(
+    message: InsertMessageInput,
+    parts: InsertPartInput[]
+  ): Promise<void> {
+    await this.sessionRepo.insertMessageWithParts(message, parts)
+    await this.flushSessionToDisk(message.sessionId)
   }
 
-  async updateTokenUsage(id: string, inputTokens: number, outputTokens: number, costMicros: number = 0): Promise<void> {
-    await this.sessionRepo.updateTokenUsage(id, inputTokens, outputTokens, costMicros);
-    await this.flushSessionToDisk(id);
+  async updateTokenUsage(
+    id: string,
+    inputTokens: number,
+    outputTokens: number,
+    costMicros: number = 0
+  ): Promise<void> {
+    await this.sessionRepo.updateTokenUsage(id, inputTokens, outputTokens, costMicros)
+    await this.flushSessionToDisk(id)
   }
 
   async togglePin(id: string, isPinned: boolean): Promise<void> {
-    await this.sessionRepo.togglePin(id, isPinned);
-    await this.flushSessionToDisk(id);
+    await this.sessionRepo.togglePin(id, isPinned)
+    await this.flushSessionToDisk(id)
   }
 
   async deleteSessions(ids: string[]): Promise<void> {
-    await this.sessionRepo.deleteSessions(ids);
+    await this.sessionRepo.deleteSessions(ids)
     for (const id of ids) {
-      await this.fileService.deleteSession(id);
+      await this.fileService.deleteSession(id)
     }
   }
 
-  // ========== Query Readthrough ========== 
+  // ========== Query Readthrough ==========
 
   async getMessagesBySession(sessionId: string, limit: number = 50) {
-    return this.sessionRepo.getMessagesBySession(sessionId, limit);
+    return this.sessionRepo.getMessagesBySession(sessionId, limit)
   }
 
   async findAllSessions(limit: number = 20, offset: number = 0, assistantId?: string) {
-    return this.sessionRepo.findAllSessions(limit, offset, assistantId);
+    return this.sessionRepo.findAllSessions(limit, offset, assistantId)
   }
 
   // ========== Internal Engine ==========
@@ -57,9 +70,9 @@ export class SessionManagerService {
    * 外部的流式回答或业务组装方也可以手动调用它来归档会话。
    */
   public async flushSessionToDisk(sessionId: string): Promise<void> {
-    const aggregate = await this.sessionRepo.getSessionAggregate(sessionId);
+    const aggregate = await this.sessionRepo.getSessionAggregate(sessionId)
     if (aggregate) {
-      await this.fileService.writeSession(sessionId, aggregate);
+      await this.fileService.writeSession(sessionId, aggregate)
     }
   }
 
@@ -67,6 +80,6 @@ export class SessionManagerService {
    * 对外暴露，当需要触发从云盘恢复数据时调用
    */
   async fullResyncFromDisks(): Promise<void> {
-      await this.syncService.fullScanArchives();
+    await this.syncService.fullScanArchives()
   }
 }

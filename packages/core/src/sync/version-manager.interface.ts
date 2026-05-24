@@ -1,4 +1,4 @@
-import type { VersionSnapshot } from '@baishou/shared';
+import type { VersionSnapshot } from '@baishou/shared'
 
 /**
  * 版本管理服务接口
@@ -11,21 +11,21 @@ export interface IVersionManager {
    * @returns 备份文件路径
    * @throws {VersionBackupError} 备份失败
    */
-  backup(filePath: string): Promise<string>;
+  backup(filePath: string): Promise<string>
 
   /**
    * 批量备份多个文件
    * @param filePaths - 文件路径列表
    * @returns 备份文件路径列表
    */
-  backupBatch(filePaths: string[]): Promise<string[]>;
+  backupBatch(filePaths: string[]): Promise<string[]>
 
   /**
    * 获取文件的版本历史
    * @param filePath - 文件相对路径
    * @returns 版本列表（按时间倒序）
    */
-  getVersions(filePath: string): Promise<VersionSnapshot[]>;
+  getVersions(filePath: string): Promise<VersionSnapshot[]>
 
   /**
    * 恢复文件到指定版本
@@ -34,12 +34,12 @@ export interface IVersionManager {
    * @throws {VersionRestoreError} 恢复失败
    * @throws {VersionNotFoundError} 版本不存在
    */
-  restore(filePath: string, versionId: number): Promise<void>;
+  restore(filePath: string, versionId: number): Promise<void>
 
   /**
    * 清理旧版本，保留最近 N 个
    * @param filePath - 文件路径
    * @param keepCount - 保留数量，默认 10
    */
-  cleanup(filePath: string, keepCount?: number): Promise<void>;
+  cleanup(filePath: string, keepCount?: number): Promise<void>
 }

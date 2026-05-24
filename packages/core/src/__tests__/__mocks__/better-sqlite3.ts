@@ -4,18 +4,24 @@
  * 此 mock 防止 native binding 加载失败阻断整个测试套件。
  */
 class MockDatabase {
-  pragma(_: string) { return undefined; }
+  pragma(_: string) {
+    return undefined
+  }
   prepare(_: string) {
     return {
       run: (..._args: any[]) => ({ changes: 0 }),
       get: (..._args: any[]) => undefined,
-      all: (..._args: any[]) => [],
-    };
+      all: (..._args: any[]) => []
+    }
   }
-  exec(_: string) { return this; }
+  exec(_: string) {
+    return this
+  }
   close() {}
-  transaction(fn: any) { return fn; }
+  transaction(fn: any) {
+    return fn
+  }
 }
 
-export default MockDatabase;
-export { MockDatabase as Database };
+export default MockDatabase
+export { MockDatabase as Database }

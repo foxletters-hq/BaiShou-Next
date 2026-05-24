@@ -7,9 +7,9 @@
 
 export interface CompressionPromptInput {
   /** 上一次压缩生成的摘要文本（首次压缩时为 undefined） */
-  previousSummary?: string;
+  previousSummary?: string
   /** 需要被压缩的新消息，已格式化为纯文本 */
-  messagesToCompress: string;
+  messagesToCompress: string
 }
 
 /**
@@ -32,21 +32,21 @@ ${input.previousSummary ?? '无，这是首次压缩'}
 ## 需要压缩的新消息
 ${input.messagesToCompress}
 
-## 请输出更新后的完整摘要：`;
+## 请输出更新后的完整摘要：`
 }
 
 /**
  * 将消息列表格式化为压缩输入文本
  */
 export function formatMessagesForCompression(
-  messages: Array<{ role: string; content?: string | null }>,
+  messages: Array<{ role: string; content?: string | null }>
 ): string {
-  const lines: string[] = [];
+  const lines: string[] = []
   for (const msg of messages) {
-    const content = msg.content ?? '';
+    const content = msg.content ?? ''
     if (content.length > 0) {
-      lines.push(`[${msg.role}]: ${content}\n`);
+      lines.push(`[${msg.role}]: ${content}\n`)
     }
   }
-  return lines.join('');
+  return lines.join('')
 }

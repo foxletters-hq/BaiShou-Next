@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest'
 import type {
   IArchiveService,
   ImportResult,
@@ -7,7 +7,7 @@ import type {
   SyncConfig,
   ILanSyncService,
   DiscoveredDevice
-} from '../index';
+} from '../index'
 
 /**
  * 数据漫游系统 - 契约接口完整性验证
@@ -20,13 +20,13 @@ describe('IArchiveService 接口契约', () => {
       exportToTempFile: async () => '/tmp/archive.zip',
       exportToUserDevice: async () => '/Downloads/archive.zip',
       importFromZip: async () => ({ fileCount: 10, profileRestored: true }),
-      createSnapshot: async () => '/tmp/snapshot.zip',
-    };
-    expect(mock.exportToTempFile).toBeDefined();
-    expect(mock.exportToUserDevice).toBeDefined();
-    expect(mock.importFromZip).toBeDefined();
-    expect(mock.createSnapshot).toBeDefined();
-  });
+      createSnapshot: async () => '/tmp/snapshot.zip'
+    }
+    expect(mock.exportToTempFile).toBeDefined()
+    expect(mock.exportToUserDevice).toBeDefined()
+    expect(mock.importFromZip).toBeDefined()
+    expect(mock.createSnapshot).toBeDefined()
+  })
 
   it('importFromZip 返回值必须包含 fileCount 和 profileRestored', async () => {
     const mock: IArchiveService = {
@@ -35,17 +35,17 @@ describe('IArchiveService 接口契约', () => {
       importFromZip: async (_zipPath: string) => ({
         fileCount: 42,
         profileRestored: true,
-        snapshotPath: '/tmp/pre-import-snapshot.zip',
+        snapshotPath: '/tmp/pre-import-snapshot.zip'
       }),
-      createSnapshot: async () => null,
-    };
+      createSnapshot: async () => null
+    }
 
-    const result: ImportResult = await mock.importFromZip('/fake.zip');
-    expect(result.fileCount).toBe(42);
-    expect(result.profileRestored).toBe(true);
-    expect(result.snapshotPath).toBe('/tmp/pre-import-snapshot.zip');
-  });
-});
+    const result: ImportResult = await mock.importFromZip('/fake.zip')
+    expect(result.fileCount).toBe(42)
+    expect(result.profileRestored).toBe(true)
+    expect(result.snapshotPath).toBe('/tmp/pre-import-snapshot.zip')
+  })
+})
 
 describe('ICloudSyncClient 接口契约', () => {
   it('必须支持五大操作：上传/下载/列出/删除/重命名', () => {
@@ -54,37 +54,47 @@ describe('ICloudSyncClient 接口契约', () => {
       downloadFile: async () => {},
       listFiles: async () => [],
       deleteFile: async () => {},
-      renameFile: async () => {},
-    };
-    expect(mock.uploadFile).toBeDefined();
-    expect(mock.downloadFile).toBeDefined();
-    expect(mock.listFiles).toBeDefined();
-    expect(mock.deleteFile).toBeDefined();
-    expect(mock.renameFile).toBeDefined();
-  });
+      renameFile: async () => {}
+    }
+    expect(mock.uploadFile).toBeDefined()
+    expect(mock.downloadFile).toBeDefined()
+    expect(mock.listFiles).toBeDefined()
+    expect(mock.deleteFile).toBeDefined()
+    expect(mock.renameFile).toBeDefined()
+  })
 
   it('listFiles 应该返回 SyncRecord 数组', async () => {
     const mockRecords: SyncRecord[] = [
-      { filename: 'BaiShou_Backup_2026-03-31.zip', lastModified: new Date(), sizeInBytes: 50 * 1024 * 1024, managed: true },
-      { filename: 'v3.0.0测试用例.zip', lastModified: new Date(Date.now() - 86400000), sizeInBytes: 48 * 1024 * 1024, managed: false },
-    ];
+      {
+        filename: 'BaiShou_Backup_2026-03-31.zip',
+        lastModified: new Date(),
+        sizeInBytes: 50 * 1024 * 1024,
+        managed: true
+      },
+      {
+        filename: 'v3.0.0测试用例.zip',
+        lastModified: new Date(Date.now() - 86400000),
+        sizeInBytes: 48 * 1024 * 1024,
+        managed: false
+      }
+    ]
 
     const mock: ICloudSyncClient = {
       uploadFile: async () => {},
       downloadFile: async () => {},
       listFiles: async () => mockRecords,
       deleteFile: async () => {},
-      renameFile: async () => {},
-    };
+      renameFile: async () => {}
+    }
 
-    const records = await mock.listFiles();
-    expect(records).toHaveLength(2);
-    expect(records[0]!.filename).toBe('BaiShou_Backup_2026-03-31.zip');
-    expect(records[0]!.sizeInBytes).toBe(50 * 1024 * 1024);
-    expect(records[0]!.managed).toBe(true);
-    expect(records[1]!.managed).toBe(false);
-  });
-});
+    const records = await mock.listFiles()
+    expect(records).toHaveLength(2)
+    expect(records[0]!.filename).toBe('BaiShou_Backup_2026-03-31.zip')
+    expect(records[0]!.sizeInBytes).toBe(50 * 1024 * 1024)
+    expect(records[0]!.managed).toBe(true)
+    expect(records[1]!.managed).toBe(false)
+  })
+})
 
 describe('SyncConfig 配置类型', () => {
   it('默认配置结构应当完整可初始化', () => {
@@ -101,12 +111,12 @@ describe('SyncConfig 配置类型', () => {
       s3Bucket: '',
       s3Path: '/baishou_backup',
       s3AccessKey: '',
-      s3SecretKey: '',
-    };
+      s3SecretKey: ''
+    }
 
-    expect(config.target).toBe('local');
-    expect(config.maxBackupCount).toBe(20);
-  });
+    expect(config.target).toBe('local')
+    expect(config.maxBackupCount).toBe(20)
+  })
 
   it('切换 target 为 webdav 时相关字段应生效', () => {
     const config: SyncConfig = {
@@ -117,33 +127,40 @@ describe('SyncConfig 配置类型', () => {
       webdavUsername: 'user@example.com',
       webdavPassword: 'app-secret-key',
       webdavPath: '/baishou_backup',
-      s3Endpoint: '', s3Region: '', s3Bucket: '',
-      s3Path: '', s3AccessKey: '', s3SecretKey: '',
-    };
+      s3Endpoint: '',
+      s3Region: '',
+      s3Bucket: '',
+      s3Path: '',
+      s3AccessKey: '',
+      s3SecretKey: ''
+    }
 
-    expect(config.target).toBe('webdav');
-    expect(config.webdavUrl).toContain('jianguoyun');
-  });
+    expect(config.target).toBe('webdav')
+    expect(config.webdavUrl).toContain('jianguoyun')
+  })
 
   it('切换 target 为 s3 时相关字段应生效', () => {
     const config: SyncConfig = {
       target: 's3',
       maxBackupCount: 50,
       maxSnapshotCount: 5,
-      webdavUrl: '', webdavUsername: '', webdavPassword: '', webdavPath: '',
+      webdavUrl: '',
+      webdavUsername: '',
+      webdavPassword: '',
+      webdavPath: '',
       s3Endpoint: 'https://cos.ap-shanghai.myqcloud.com',
       s3Region: 'ap-shanghai',
       s3Bucket: 'baishou-backup-123',
       s3Path: '/data',
       s3AccessKey: 'AKIDxxxx',
-      s3SecretKey: 'xxxx',
-    };
+      s3SecretKey: 'xxxx'
+    }
 
-    expect(config.target).toBe('s3');
-    expect(config.s3Endpoint).toContain('cos.ap-shanghai');
-    expect(config.s3Bucket).toBe('baishou-backup-123');
-  });
-});
+    expect(config.target).toBe('s3')
+    expect(config.s3Endpoint).toContain('cos.ap-shanghai')
+    expect(config.s3Bucket).toBe('baishou-backup-123')
+  })
+})
 
 describe('ILanSyncService 接口契约', () => {
   it('必须包含完整的双向通讯能力', () => {
@@ -153,16 +170,16 @@ describe('ILanSyncService 接口契约', () => {
       startDiscovery: async () => {},
       stopDiscovery: async () => {},
       sendFile: async () => true,
-      onFileReceived: () => {},
-    };
+      onFileReceived: () => {}
+    }
 
-    expect(mock.startBroadcasting).toBeDefined();
-    expect(mock.stopBroadcasting).toBeDefined();
-    expect(mock.startDiscovery).toBeDefined();
-    expect(mock.stopDiscovery).toBeDefined();
-    expect(mock.sendFile).toBeDefined();
-    expect(mock.onFileReceived).toBeDefined();
-  });
+    expect(mock.startBroadcasting).toBeDefined()
+    expect(mock.stopBroadcasting).toBeDefined()
+    expect(mock.startDiscovery).toBeDefined()
+    expect(mock.stopDiscovery).toBeDefined()
+    expect(mock.sendFile).toBeDefined()
+    expect(mock.onFileReceived).toBeDefined()
+  })
 
   it('startBroadcasting 应该返回 IP 和端口', async () => {
     const mock: ILanSyncService = {
@@ -171,13 +188,13 @@ describe('ILanSyncService 接口契约', () => {
       startDiscovery: async () => {},
       stopDiscovery: async () => {},
       sendFile: async () => true,
-      onFileReceived: () => {},
-    };
+      onFileReceived: () => {}
+    }
 
-    const result = await mock.startBroadcasting();
-    expect(result).not.toBeNull();
-    expect(result!.ip).toBe('10.0.0.5');
-  });
+    const result = await mock.startBroadcasting()
+    expect(result).not.toBeNull()
+    expect(result!.ip).toBe('10.0.0.5')
+  })
 
   it('DiscoveredDevice 类型应包含关键字段', () => {
     const device: DiscoveredDevice = {
@@ -185,14 +202,14 @@ describe('ILanSyncService 接口契约', () => {
       ip: '192.168.1.101',
       port: 54321,
       deviceType: 'desktop',
-      rawServiceId: 'BaiShou-Desktop-a1b2',
-    };
+      rawServiceId: 'BaiShou-Desktop-a1b2'
+    }
 
-    expect(device.nickname).toContain('BaiShou');
-    expect(device.deviceType).toBe('desktop');
-    expect(device.port).toBeGreaterThan(0);
-  });
-});
+    expect(device.nickname).toContain('BaiShou')
+    expect(device.deviceType).toBe('desktop')
+    expect(device.port).toBeGreaterThan(0)
+  })
+})
 
 describe('超限自动清理逻辑 (模拟)', () => {
   it('当记录数超过 maxCount 时应删除最旧的部分', async () => {
@@ -200,30 +217,30 @@ describe('超限自动清理逻辑 (模拟)', () => {
       filename: `BaiShou_Backup_${String(i).padStart(2, '0')}.zip`,
       lastModified: new Date(Date.now() - i * 86400000),
       sizeInBytes: 1024 * 1024,
-      managed: true,
-    }));
+      managed: true
+    }))
 
     // 模拟排序后取超限部分
-    const maxCount = 20;
-    const sorted = [...records].sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
-    const toDelete = sorted.slice(maxCount);
+    const maxCount = 20
+    const sorted = [...records].sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
+    const toDelete = sorted.slice(maxCount)
 
-    expect(toDelete).toHaveLength(5);
+    expect(toDelete).toHaveLength(5)
     // 最旧的应该被删除
-    expect(toDelete[0]!.filename).toBe('BaiShou_Backup_20.zip');
-    expect(toDelete[4]!.filename).toBe('BaiShou_Backup_24.zip');
-  });
+    expect(toDelete[0]!.filename).toBe('BaiShou_Backup_20.zip')
+    expect(toDelete[4]!.filename).toBe('BaiShou_Backup_24.zip')
+  })
 
   it('当记录数不超过 maxCount 时不应删除任何东西', () => {
     const records: SyncRecord[] = Array.from({ length: 10 }, (_, i) => ({
       filename: `BaiShou_Backup_${i}.zip`,
       lastModified: new Date(),
       sizeInBytes: 512,
-      managed: true,
-    }));
+      managed: true
+    }))
 
-    const maxCount = 20;
-    const toDelete = records.length > maxCount ? records.slice(maxCount) : [];
-    expect(toDelete).toHaveLength(0);
-  });
-});
+    const maxCount = 20
+    const toDelete = records.length > maxCount ? records.slice(maxCount) : []
+    expect(toDelete).toHaveLength(0)
+  })
+})

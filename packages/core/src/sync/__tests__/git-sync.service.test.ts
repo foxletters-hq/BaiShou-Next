@@ -1,18 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { IGitSyncService } from '../git-sync.interface';
-import type { GitCommit, GitSyncConfig, VersionHistoryEntry } from '@baishou/shared';
-import { GitSyncServiceImpl } from '../git-sync.service';
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { IGitSyncService } from '../git-sync.interface'
+import type { GitCommit, GitSyncConfig, VersionHistoryEntry } from '@baishou/shared'
+import { GitSyncServiceImpl } from '../git-sync.service'
 import {
   GitInitError,
   GitCommitError,
   GitPushError,
   GitPullError,
   GitRemoteNotConfiguredError,
-  GitRollbackError,
-} from '../sync.errors';
+  GitRollbackError
+} from '../sync.errors'
 
 describe('GitSyncService', () => {
-  let service: IGitSyncService;
+  let service: IGitSyncService
 
   beforeEach(() => {
     // Mock 实现将在实现阶段替换
@@ -33,62 +33,62 @@ describe('GitSyncService', () => {
       pull: vi.fn(),
       hasConflicts: vi.fn(),
       getConflicts: vi.fn(),
-      resolveConflict: vi.fn(),
-    } as unknown as IGitSyncService;
-  });
+      resolveConflict: vi.fn()
+    } as unknown as IGitSyncService
+  })
 
   describe('init', () => {
     it('should initialize git repository successfully', async () => {
-      vi.mocked(service.init).mockResolvedValue(undefined);
+      vi.mocked(service.init).mockResolvedValue(undefined)
 
-      await expect(service.init()).resolves.toBeUndefined();
-      expect(service.init).toHaveBeenCalledOnce();
-    });
+      await expect(service.init()).resolves.toBeUndefined()
+      expect(service.init).toHaveBeenCalledOnce()
+    })
 
     it('should throw GitInitError when initialization fails', async () => {
-      const cause = new Error('git init failed');
-      vi.mocked(service.init).mockRejectedValue(new GitInitError(cause));
+      const cause = new Error('git init failed')
+      vi.mocked(service.init).mockRejectedValue(new GitInitError(cause))
 
-      await expect(service.init()).rejects.toThrow(GitInitError);
-    });
-  });
+      await expect(service.init()).rejects.toThrow(GitInitError)
+    })
+  })
 
   describe('isInitialized', () => {
     it('should return true when repository exists', async () => {
-      vi.mocked(service.isInitialized).mockResolvedValue(true);
+      vi.mocked(service.isInitialized).mockResolvedValue(true)
 
-      const result = await service.isInitialized();
-      expect(result).toBe(true);
-    });
+      const result = await service.isInitialized()
+      expect(result).toBe(true)
+    })
 
     it('should return false when repository does not exist', async () => {
-      vi.mocked(service.isInitialized).mockResolvedValue(false);
+      vi.mocked(service.isInitialized).mockResolvedValue(false)
 
-      const result = await service.isInitialized();
-      expect(result).toBe(false);
-    });
-  });
+      const result = await service.isInitialized()
+      expect(result).toBe(false)
+    })
+  })
 
   describe('getConfig', () => {
     it('should return current git sync config', async () => {
       const config: GitSyncConfig = {
-        enabled: true,
-      };
-      vi.mocked(service.getConfig).mockResolvedValue(config);
+        enabled: true
+      }
+      vi.mocked(service.getConfig).mockResolvedValue(config)
 
-      const result = await service.getConfig();
-      expect(result).toEqual(config);
-    });
-  });
+      const result = await service.getConfig()
+      expect(result).toEqual(config)
+    })
+  })
 
   describe('updateConfig', () => {
     it('should update config with partial values', async () => {
-      vi.mocked(service.updateConfig).mockResolvedValue(undefined);
+      vi.mocked(service.updateConfig).mockResolvedValue(undefined)
 
-      await expect(service.updateConfig({ enabled: true })).resolves.toBeUndefined();
-      expect(service.updateConfig).toHaveBeenCalledWith({ enabled: true });
-    });
-  });
+      await expect(service.updateConfig({ enabled: true })).resolves.toBeUndefined()
+      expect(service.updateConfig).toHaveBeenCalledWith({ enabled: true })
+    })
+  })
 
   describe('commit', () => {
     it('should commit specified files with message', async () => {
@@ -96,23 +96,20 @@ describe('GitSyncService', () => {
         hash: 'def5678',
         message: '更新日记',
         date: new Date(),
-        files: ['Journals/2026/05/2026-05-13.md'],
-      };
-      vi.mocked(service.commit).mockResolvedValue(commit);
+        files: ['Journals/2026/05/2026-05-13.md']
+      }
+      vi.mocked(service.commit).mockResolvedValue(commit)
 
-      const result = await service.commit(
-        ['Journals/2026/05/2026-05-13.md'],
-        '更新日记'
-      );
-      expect(result).toEqual(commit);
-    });
+      const result = await service.commit(['Journals/2026/05/2026-05-13.md'], '更新日记')
+      expect(result).toEqual(commit)
+    })
 
     it('should throw GitCommitError when commit fails', async () => {
-      vi.mocked(service.commit).mockRejectedValue(new GitCommitError());
+      vi.mocked(service.commit).mockRejectedValue(new GitCommitError())
 
-      await expect(service.commit(['file.md'], 'test')).rejects.toThrow(GitCommitError);
-    });
-  });
+      await expect(service.commit(['file.md'], 'test')).rejects.toThrow(GitCommitError)
+    })
+  })
 
   describe('getHistory', () => {
     it('should return version history for specific file', async () => {
@@ -122,159 +119,164 @@ describe('GitSyncService', () => {
             hash: 'abc1234',
             message: '更新日记',
             date: new Date(),
-            files: ['Journals/2026/05/2026-05-13.md'],
+            files: ['Journals/2026/05/2026-05-13.md']
           },
           changes: [
-            { path: 'Journals/2026/05/2026-05-13.md', status: 'modified', additions: 5, deletions: 2 },
+            {
+              path: 'Journals/2026/05/2026-05-13.md',
+              status: 'modified',
+              additions: 5,
+              deletions: 2
+            }
           ],
-          isCurrent: true,
-        },
-      ];
-      vi.mocked(service.getHistory).mockResolvedValue(history);
+          isCurrent: true
+        }
+      ]
+      vi.mocked(service.getHistory).mockResolvedValue(history)
 
-      const result = await service.getHistory('Journals/2026/05/2026-05-13.md');
-      expect(result).toEqual(history);
-    });
+      const result = await service.getHistory('Journals/2026/05/2026-05-13.md')
+      expect(result).toEqual(history)
+    })
 
     it('should return global history when no file specified', async () => {
-      vi.mocked(service.getHistory).mockResolvedValue([]);
+      vi.mocked(service.getHistory).mockResolvedValue([])
 
-      const result = await service.getHistory();
-      expect(result).toEqual([]);
-    });
+      const result = await service.getHistory()
+      expect(result).toEqual([])
+    })
 
     it('should respect limit parameter', async () => {
-      vi.mocked(service.getHistory).mockResolvedValue([]);
+      vi.mocked(service.getHistory).mockResolvedValue([])
 
-      await service.getHistory(undefined, 10);
-      expect(service.getHistory).toHaveBeenCalledWith(undefined, 10);
-    });
-  });
+      await service.getHistory(undefined, 10)
+      expect(service.getHistory).toHaveBeenCalledWith(undefined, 10)
+    })
+  })
 
   describe('rollbackFile', () => {
     it('should rollback file to specified version', async () => {
-      vi.mocked(service.rollbackFile).mockResolvedValue(undefined);
+      vi.mocked(service.rollbackFile).mockResolvedValue(undefined)
 
       await expect(
         service.rollbackFile('Journals/2026/05/2026-05-13.md', 'abc1234')
-      ).resolves.toBeUndefined();
-    });
+      ).resolves.toBeUndefined()
+    })
 
     it('should throw GitRollbackError when rollback fails', async () => {
-      vi.mocked(service.rollbackFile).mockRejectedValue(new GitRollbackError());
+      vi.mocked(service.rollbackFile).mockRejectedValue(new GitRollbackError())
 
-      await expect(
-        service.rollbackFile('file.md', 'abc1234')
-      ).rejects.toThrow(GitRollbackError);
-    });
-  });
+      await expect(service.rollbackFile('file.md', 'abc1234')).rejects.toThrow(GitRollbackError)
+    })
+  })
 
   describe('push', () => {
     it('should push to remote successfully', async () => {
-      vi.mocked(service.push).mockResolvedValue(undefined);
+      vi.mocked(service.push).mockResolvedValue(undefined)
 
-      await expect(service.push()).resolves.toBeUndefined();
-    });
+      await expect(service.push()).resolves.toBeUndefined()
+    })
 
     it('should throw GitRemoteNotConfiguredError when remote not configured', async () => {
-      vi.mocked(service.push).mockRejectedValue(new GitRemoteNotConfiguredError());
+      vi.mocked(service.push).mockRejectedValue(new GitRemoteNotConfiguredError())
 
-      await expect(service.push()).rejects.toThrow(GitRemoteNotConfiguredError);
-    });
+      await expect(service.push()).rejects.toThrow(GitRemoteNotConfiguredError)
+    })
 
     it('should throw GitPushError when push fails', async () => {
-      vi.mocked(service.push).mockRejectedValue(new GitPushError());
+      vi.mocked(service.push).mockRejectedValue(new GitPushError())
 
-      await expect(service.push()).rejects.toThrow(GitPushError);
-    });
-  });
+      await expect(service.push()).rejects.toThrow(GitPushError)
+    })
+  })
 
   describe('pull', () => {
     it('should pull from remote successfully', async () => {
-      vi.mocked(service.pull).mockResolvedValue(undefined);
+      vi.mocked(service.pull).mockResolvedValue(undefined)
 
-      await expect(service.pull()).resolves.toBeUndefined();
-    });
+      await expect(service.pull()).resolves.toBeUndefined()
+    })
 
     it('should throw GitPullError with conflicts when pull has conflicts', async () => {
-      const conflicts = ['Journals/2026/05/2026-05-13.md'];
-      vi.mocked(service.pull).mockRejectedValue(new GitPullError(conflicts));
+      const conflicts = ['Journals/2026/05/2026-05-13.md']
+      vi.mocked(service.pull).mockRejectedValue(new GitPullError(conflicts))
 
-      await expect(service.pull()).rejects.toThrow(GitPullError);
-    });
-  });
+      await expect(service.pull()).rejects.toThrow(GitPullError)
+    })
+  })
 
   describe('hasConflicts', () => {
     it('should return true when there are conflicts', async () => {
-      vi.mocked(service.hasConflicts).mockResolvedValue(true);
+      vi.mocked(service.hasConflicts).mockResolvedValue(true)
 
-      const result = await service.hasConflicts();
-      expect(result).toBe(true);
-    });
+      const result = await service.hasConflicts()
+      expect(result).toBe(true)
+    })
 
     it('should return false when there are no conflicts', async () => {
-      vi.mocked(service.hasConflicts).mockResolvedValue(false);
+      vi.mocked(service.hasConflicts).mockResolvedValue(false)
 
-      const result = await service.hasConflicts();
-      expect(result).toBe(false);
-    });
-  });
+      const result = await service.hasConflicts()
+      expect(result).toBe(false)
+    })
+  })
 
   describe('resolveConflict', () => {
     it('should resolve conflict with ours', async () => {
-      vi.mocked(service.resolveConflict).mockResolvedValue(undefined);
+      vi.mocked(service.resolveConflict).mockResolvedValue(undefined)
 
-      await expect(
-        service.resolveConflict('file.md', 'ours')
-      ).resolves.toBeUndefined();
-    });
+      await expect(service.resolveConflict('file.md', 'ours')).resolves.toBeUndefined()
+    })
 
     it('should resolve conflict with theirs', async () => {
-      vi.mocked(service.resolveConflict).mockResolvedValue(undefined);
+      vi.mocked(service.resolveConflict).mockResolvedValue(undefined)
 
-      await expect(
-        service.resolveConflict('file.md', 'theirs')
-      ).resolves.toBeUndefined();
-    });
-  });
+      await expect(service.resolveConflict('file.md', 'theirs')).resolves.toBeUndefined()
+    })
+  })
 
   describe('GitSyncServiceImpl helper - getAuthenticatedUrl', () => {
     it('should inject username and password correctly in HTTPS URL', () => {
-      const impl = new GitSyncServiceImpl({} as any);
-      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl);
+      const impl = new GitSyncServiceImpl({} as any)
+      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl)
 
-      expect(getAuthenticatedUrl('https://github.com/user/repo.git', 'admin', 'pass'))
-        .toBe('https://admin:pass@github.com/user/repo.git');
+      expect(getAuthenticatedUrl('https://github.com/user/repo.git', 'admin', 'pass')).toBe(
+        'https://admin:pass@github.com/user/repo.git'
+      )
 
-      expect(getAuthenticatedUrl('https://github.com/user/repo.git', 'admin'))
-        .toBe('https://admin@github.com/user/repo.git');
+      expect(getAuthenticatedUrl('https://github.com/user/repo.git', 'admin')).toBe(
+        'https://admin@github.com/user/repo.git'
+      )
 
-      expect(getAuthenticatedUrl('https://github.com/user/repo.git', undefined, 'token123'))
-        .toBe('https://token123@github.com/user/repo.git');
-    });
+      expect(getAuthenticatedUrl('https://github.com/user/repo.git', undefined, 'token123')).toBe(
+        'https://token123@github.com/user/repo.git'
+      )
+    })
 
     it('should clean existing credentials in HTTPS URL', () => {
-      const impl = new GitSyncServiceImpl({} as any);
-      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl);
+      const impl = new GitSyncServiceImpl({} as any)
+      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl)
 
-      expect(getAuthenticatedUrl('https://old:oldpass@github.com/user/repo.git', 'new', 'newpass'))
-        .toBe('https://new:newpass@github.com/user/repo.git');
-    });
+      expect(
+        getAuthenticatedUrl('https://old:oldpass@github.com/user/repo.git', 'new', 'newpass')
+      ).toBe('https://new:newpass@github.com/user/repo.git')
+    })
 
     it('should keep original URL if not HTTP/HTTPS', () => {
-      const impl = new GitSyncServiceImpl({} as any);
-      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl);
+      const impl = new GitSyncServiceImpl({} as any)
+      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl)
 
-      expect(getAuthenticatedUrl('git@github.com:user/repo.git', 'admin', 'pass'))
-        .toBe('git@github.com:user/repo.git');
-    });
+      expect(getAuthenticatedUrl('git@github.com:user/repo.git', 'admin', 'pass')).toBe(
+        'git@github.com:user/repo.git'
+      )
+    })
 
     it('should inject username and password correctly in HTTP URL', () => {
-      const impl = new GitSyncServiceImpl({} as any);
-      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl);
+      const impl = new GitSyncServiceImpl({} as any)
+      const getAuthenticatedUrl = (impl as any).getAuthenticatedUrl.bind(impl)
 
-      expect(getAuthenticatedUrl('http://github.com/user/repo.git', 'admin', 'pass'))
-        .toBe('http://admin:pass@github.com/user/repo.git');
-    });
-  });
-});
+      expect(getAuthenticatedUrl('http://github.com/user/repo.git', 'admin', 'pass')).toBe(
+        'http://admin:pass@github.com/user/repo.git'
+      )
+    })
+  })
+})

@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import simpleGit, { SimpleGit } from 'simple-git';
-import { logger } from '@baishou/shared';
+import * as fs from 'fs'
+import * as path from 'path'
+import simpleGit, { SimpleGit } from 'simple-git'
+import { logger } from '@baishou/shared'
 import type {
   GitCommit,
   GitSyncConfig,
@@ -9,22 +9,22 @@ import type {
   GitStatusFile,
   FileChange,
   FileDiff,
-  VersionHistoryEntry,
-} from '@baishou/shared';
-import type { IGitSyncService } from './git-sync.interface';
+  VersionHistoryEntry
+} from '@baishou/shared'
+import type { IGitSyncService } from './git-sync.interface'
 import {
   GitInitError,
   GitCommitError,
   GitPushError,
   GitPullError,
   GitRemoteNotConfiguredError,
-  GitRollbackError,
-} from './sync.errors';
-import type { IStoragePathService } from '../vault/storage-path.types';
+  GitRollbackError
+} from './sync.errors'
+import type { IStoragePathService } from '../vault/storage-path.types'
 
 const DEFAULT_CONFIG: GitSyncConfig = {
-  enabled: false,
-};
+  enabled: false
+}
 
 const GITIGNORE_CONTENT = `# SQLite 数据库
 *.db
@@ -42,163 +42,162 @@ const GITIGNORE_CONTENT = `# SQLite 数据库
 *.tmp
 .DS_Store
 Thumbs.db
-`;
+`
 
 export class GitSyncServiceImpl implements IGitSyncService {
-  private git: SimpleGit | null = null;
-  private config: GitSyncConfig = { ...DEFAULT_CONFIG };
-  private readonly configFileName = '.baishou-git.json';
+  private git: SimpleGit | null = null
+  private config: GitSyncConfig = { ...DEFAULT_CONFIG }
+  private readonly configFileName = '.baishou-git.json'
 
   constructor(private readonly pathService: IStoragePathService) {}
 
   // ── Git 操作锁（防止并发导致 index.lock 竞争）──────────────
 
-  private _gitBusy = false;
-  private _gitQueue: Array<() => void> = [];
+  private _gitBusy = false
+  private _gitQueue: Array<() => void> = []
 
   private _acquireGitLock(): Promise<void> {
     if (!this._gitBusy) {
-      this._gitBusy = true;
-      return Promise.resolve();
+      this._gitBusy = true
+      return Promise.resolve()
     }
     return new Promise<void>((resolve) => {
-      this._gitQueue.push(resolve);
-    });
+      this._gitQueue.push(resolve)
+    })
   }
 
   private _releaseGitLock(): void {
     if (this._gitQueue.length > 0) {
-      const next = this._gitQueue.shift()!;
-      next();
+      const next = this._gitQueue.shift()!
+      next()
     } else {
-      this._gitBusy = false;
+      this._gitBusy = false
     }
   }
 
   private async _withGitLock<T>(fn: () => Promise<T>): Promise<T> {
-    await this._acquireGitLock();
+    await this._acquireGitLock()
     try {
-      return await fn();
+      return await fn()
     } finally {
-      this._releaseGitLock();
+      this._releaseGitLock()
     }
   }
 
   // ── 内部辅助 ───────────────────────────────────────────────
 
   private async getVaultPath(): Promise<string> {
-    const vaultPath = await this.pathService.getActiveVaultPath();
+    const vaultPath = await this.pathService.getActiveVaultPath()
     if (!vaultPath) {
-      throw new GitInitError(new Error('No active vault found'));
+      throw new GitInitError(new Error('No active vault found'))
     }
-    return vaultPath;
+    return vaultPath
   }
 
-  private currentVaultPath: string | null = null;
+  private currentVaultPath: string | null = null
 
   private async ensureGit(): Promise<SimpleGit> {
-    const vaultPath = await this.getVaultPath();
+    const vaultPath = await this.getVaultPath()
     if (!this.git || this.currentVaultPath !== vaultPath) {
-      this.git = simpleGit(vaultPath);
-      this.currentVaultPath = vaultPath;
+      this.git = simpleGit(vaultPath)
+      this.currentVaultPath = vaultPath
     }
-    return this.git;
+    return this.git
   }
 
   private async loadConfig(): Promise<void> {
-    const vaultPath = await this.getVaultPath();
-    const configPath = path.join(vaultPath, this.configFileName);
+    const vaultPath = await this.getVaultPath()
+    const configPath = path.join(vaultPath, this.configFileName)
 
     if (fs.existsSync(configPath)) {
       try {
-        const raw = await fs.promises.readFile(configPath, 'utf8');
-        const saved = JSON.parse(raw) as Partial<GitSyncConfig>;
-        this.config = { ...DEFAULT_CONFIG, ...saved };
+        const raw = await fs.promises.readFile(configPath, 'utf8')
+        const saved = JSON.parse(raw) as Partial<GitSyncConfig>
+        this.config = { ...DEFAULT_CONFIG, ...saved }
       } catch {
-        this.config = { ...DEFAULT_CONFIG };
+        this.config = { ...DEFAULT_CONFIG }
       }
     }
   }
 
   private async saveConfig(): Promise<void> {
-    const vaultPath = await this.getVaultPath();
-    const configPath = path.join(vaultPath, this.configFileName);
+    const vaultPath = await this.getVaultPath()
+    const configPath = path.join(vaultPath, this.configFileName)
 
-    await fs.promises.writeFile(
-      configPath,
-      JSON.stringify(this.config, null, 2),
-      'utf8'
-    );
+    await fs.promises.writeFile(configPath, JSON.stringify(this.config, null, 2), 'utf8')
   }
 
   private async ensureGitignore(): Promise<void> {
-    const vaultPath = await this.getVaultPath();
-    const gitignorePath = path.join(vaultPath, '.gitignore');
+    const vaultPath = await this.getVaultPath()
+    const gitignorePath = path.join(vaultPath, '.gitignore')
 
     if (!fs.existsSync(gitignorePath)) {
-      await fs.promises.writeFile(gitignorePath, GITIGNORE_CONTENT, 'utf8');
+      await fs.promises.writeFile(gitignorePath, GITIGNORE_CONTENT, 'utf8')
     } else {
       try {
-        let content = await fs.promises.readFile(gitignorePath, 'utf8');
-        let modified = false;
+        let content = await fs.promises.readFile(gitignorePath, 'utf8')
+        let modified = false
         if (!content.includes('.baishou/')) {
-          content += '\n# 忽略数据文件夹\n.baishou/\n';
-          modified = true;
+          content += '\n# 忽略数据文件夹\n.baishou/\n'
+          modified = true
         }
         if (!content.includes('*.db-shm')) {
-          content += '\n*.db-shm\n';
-          modified = true;
+          content += '\n*.db-shm\n'
+          modified = true
         }
         if (modified) {
-          await fs.promises.writeFile(gitignorePath, content, 'utf8');
+          await fs.promises.writeFile(gitignorePath, content, 'utf8')
         }
       } catch {}
     }
 
-    await this.untrackBaishouDir();
+    await this.untrackBaishouDir()
   }
 
   private async untrackBaishouDir(): Promise<void> {
-    const git = await this.ensureGit();
+    const git = await this.ensureGit()
     try {
-      await git.raw(['rm', '--cached', '-r', '.baishou']);
-      logger.info('[GitSync] 已将 .baishou/ 从 Git 索引中移除');
+      await git.raw(['rm', '--cached', '-r', '.baishou'])
+      logger.info('[GitSync] 已将 .baishou/ 从 Git 索引中移除')
     } catch {
       // .baishou/ 不存在或未被追踪，无需处理
     }
   }
 
   private getAuthenticatedUrl(url: string, username?: string, token?: string): string {
-    const isHttp = url.startsWith('http://');
-    const isHttps = url.startsWith('https://');
+    const isHttp = url.startsWith('http://')
+    const isHttps = url.startsWith('https://')
     if (!isHttp && !isHttps) {
-      return url;
+      return url
     }
     if (!username && !token) {
-      return url;
+      return url
     }
-    const protocolLength = isHttps ? 8 : 7;
-    const cleanUrl = url.substring(protocolLength);
-    const atIndex = cleanUrl.indexOf('@');
-    const urlWithoutCredentials = atIndex !== -1 ? cleanUrl.substring(atIndex + 1) : cleanUrl;
-    const credentials = username && token
-      ? `${encodeURIComponent(username)}:${encodeURIComponent(token)}`
-      : username
-        ? encodeURIComponent(username)
-        : encodeURIComponent(token!);
-    return isHttps ? `https://${credentials}@${urlWithoutCredentials}` : `http://${credentials}@${urlWithoutCredentials}`;
+    const protocolLength = isHttps ? 8 : 7
+    const cleanUrl = url.substring(protocolLength)
+    const atIndex = cleanUrl.indexOf('@')
+    const urlWithoutCredentials = atIndex !== -1 ? cleanUrl.substring(atIndex + 1) : cleanUrl
+    const credentials =
+      username && token
+        ? `${encodeURIComponent(username)}:${encodeURIComponent(token)}`
+        : username
+          ? encodeURIComponent(username)
+          : encodeURIComponent(token!)
+    return isHttps
+      ? `https://${credentials}@${urlWithoutCredentials}`
+      : `http://${credentials}@${urlWithoutCredentials}`
   }
 
   private mapStatusToType(status: string): FileChange['status'] {
     switch (status) {
       case 'A':
-        return 'added';
+        return 'added'
       case 'D':
-        return 'deleted';
+        return 'deleted'
       case 'R':
-        return 'renamed';
+        return 'renamed'
       default:
-        return 'modified';
+        return 'modified'
     }
   }
 
@@ -207,27 +206,27 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async init(): Promise<void> {
     return this._withGitLock(async () => {
       try {
-        const vaultPath = await this.getVaultPath();
-        logger.info(`[GitSync] 正在初始化 Git 仓库: ${vaultPath}`);
-        const git = await this.ensureGit();
-        await git.init();
-        await this.ensureGitignore();
-        await this.loadConfig();
+        const vaultPath = await this.getVaultPath()
+        logger.info(`[GitSync] 正在初始化 Git 仓库: ${vaultPath}`)
+        const git = await this.ensureGit()
+        await git.init()
+        await this.ensureGitignore()
+        await this.loadConfig()
 
         // 应用本地已保存的 git 用户配置
         if (this.config.userName) {
-          await git.addConfig('user.name', this.config.userName);
+          await git.addConfig('user.name', this.config.userName)
         }
         if (this.config.userEmail) {
-          await git.addConfig('user.email', this.config.userEmail);
+          await git.addConfig('user.email', this.config.userEmail)
         }
 
         // 创建初始 commit，确保仓库有历史记录
-        await git.add('.gitignore');
+        await git.add('.gitignore')
         try {
-          await git.commit('初始化 Git 版本管理');
+          await git.commit('初始化 Git 版本管理')
         } catch (commitErr) {
-          logger.warn(`[GitSync] 初始提交失败 (可能是未配置 user.name/email):`, commitErr as any);
+          logger.warn(`[GitSync] 初始提交失败 (可能是未配置 user.name/email):`, commitErr as any)
         }
 
         // 同步远程仓库配置（如果已有）
@@ -236,62 +235,62 @@ export class GitSyncServiceImpl implements IGitSyncService {
             this.config.remote.url,
             this.config.remote.username,
             this.config.remote.token
-          );
+          )
           try {
-            await git.remote(['add', 'origin', authenticatedUrl]);
+            await git.remote(['add', 'origin', authenticatedUrl])
           } catch {}
         }
 
-        logger.info(`[GitSync] Git 仓库初始化成功: ${vaultPath}`);
+        logger.info(`[GitSync] Git 仓库初始化成功: ${vaultPath}`)
       } catch (error) {
-        logger.error(`[GitSync] Git 仓库初始化失败: ${error}`);
-        throw new GitInitError(error instanceof Error ? error : undefined);
+        logger.error(`[GitSync] Git 仓库初始化失败: ${error}`)
+        throw new GitInitError(error instanceof Error ? error : undefined)
       }
-    });
+    })
   }
 
   async isInitialized(): Promise<boolean> {
     try {
-      const vaultPath = await this.getVaultPath();
-      return fs.existsSync(path.join(vaultPath, '.git'));
+      const vaultPath = await this.getVaultPath()
+      return fs.existsSync(path.join(vaultPath, '.git'))
     } catch {
-      return false;
+      return false
     }
   }
 
   async getStatus(): Promise<GitStatus> {
-    const git = await this.ensureGit();
-    const status = await git.status();
+    const git = await this.ensureGit()
+    const status = await git.status()
 
     // 自动清除误追踪的 .baishou 内置文件，防止泄露
-    const hasTrackedBaishou = status.files.some(f => f.path.startsWith('.baishou/'));
+    const hasTrackedBaishou = status.files.some((f) => f.path.startsWith('.baishou/'))
     if (hasTrackedBaishou) {
-      logger.info('[GitSync] 发现有 .baishou 内部文件被错误追踪，正在强制移除追踪...');
+      logger.info('[GitSync] 发现有 .baishou 内部文件被错误追踪，正在强制移除追踪...')
       try {
-        await git.raw(['rm', '--cached', '-r', '.baishou']);
-        return this.getStatus();
+        await git.raw(['rm', '--cached', '-r', '.baishou'])
+        return this.getStatus()
       } catch (err) {
-        logger.error('[GitSync] 强制移出 .baishou 追踪失败:', err as any);
+        logger.error('[GitSync] 强制移出 .baishou 追踪失败:', err as any)
       }
     }
 
-    const staged: GitStatusFile[] = [];
-    const unstaged: GitStatusFile[] = [];
+    const staged: GitStatusFile[] = []
+    const unstaged: GitStatusFile[] = []
 
     for (const file of status.files) {
       if (file.index === '?' || file.working_dir === '?') {
-        continue;
+        continue
       }
-      const stagedStatus = this.mapWorkingStatus(file.index);
-      const unstagedStatus = this.mapWorkingStatus(file.working_dir);
+      const stagedStatus = this.mapWorkingStatus(file.index)
+      const unstagedStatus = this.mapWorkingStatus(file.working_dir)
 
       // 已暂存的文件（index 不为空）
       if (stagedStatus !== '') {
         staged.push({
           path: file.path,
           stagedStatus,
-          unstagedStatus: '',
-        });
+          unstagedStatus: ''
+        })
       }
 
       // 工作区有修改但未暂存的文件（working_dir 不为空）
@@ -299,8 +298,8 @@ export class GitSyncServiceImpl implements IGitSyncService {
         unstaged.push({
           path: file.path,
           stagedStatus: '',
-          unstagedStatus,
-        });
+          unstagedStatus
+        })
       }
     }
 
@@ -309,373 +308,371 @@ export class GitSyncServiceImpl implements IGitSyncService {
       unstaged,
       untracked: status.created,
       conflicted: status.conflicted,
-      hasChanges: !status.isClean(),
-    };
+      hasChanges: !status.isClean()
+    }
   }
 
   private mapWorkingStatus(status: string): FileChange['status'] | '' {
     switch (status.trim()) {
       case 'A':
-        return 'added';
+        return 'added'
       case 'M':
-        return 'modified';
+        return 'modified'
       case 'D':
-        return 'deleted';
+        return 'deleted'
       case 'R':
-        return 'renamed';
+        return 'renamed'
       default:
-        return '';
+        return ''
     }
   }
 
   async stageFile(filePath: string): Promise<void> {
     return this._withGitLock(async () => {
-      const git = await this.ensureGit();
-      logger.info(`[GitSync] 暂存文件: ${filePath}`);
-      await git.add(filePath);
-    });
+      const git = await this.ensureGit()
+      logger.info(`[GitSync] 暂存文件: ${filePath}`)
+      await git.add(filePath)
+    })
   }
 
   async stageAll(): Promise<void> {
     return this._withGitLock(async () => {
-      const git = await this.ensureGit();
-      logger.info('[GitSync] 暂存全部文件');
-      await git.add('.');
-    });
+      const git = await this.ensureGit()
+      logger.info('[GitSync] 暂存全部文件')
+      await git.add('.')
+    })
   }
 
   async unstageFile(filePath: string): Promise<void> {
     return this._withGitLock(async () => {
-      const git = await this.ensureGit();
-      logger.info(`[GitSync] 取消暂存: ${filePath}`);
-      await git.reset(['--', filePath]);
-    });
+      const git = await this.ensureGit()
+      logger.info(`[GitSync] 取消暂存: ${filePath}`)
+      await git.reset(['--', filePath])
+    })
   }
 
   async unstageAll(): Promise<void> {
     return this._withGitLock(async () => {
-      const git = await this.ensureGit();
-      logger.info('[GitSync] 取消暂存全部文件');
-      await git.reset();
-    });
+      const git = await this.ensureGit()
+      logger.info('[GitSync] 取消暂存全部文件')
+      await git.reset()
+    })
   }
 
   async discardFile(filePath: string): Promise<void> {
     return this._withGitLock(async () => {
-      const git = await this.ensureGit();
-      logger.info(`[GitSync] 丢弃修改: ${filePath}`);
-      await git.checkout(['--', filePath]);
-    });
+      const git = await this.ensureGit()
+      logger.info(`[GitSync] 丢弃修改: ${filePath}`)
+      await git.checkout(['--', filePath])
+    })
   }
 
   async discardAllChanges(): Promise<void> {
     return this._withGitLock(async () => {
-      const git = await this.ensureGit();
-      logger.info('[GitSync] 丢弃全部修改');
+      const git = await this.ensureGit()
+      logger.info('[GitSync] 丢弃全部修改')
 
       try {
-        await git.checkout(['--', '.']);
+        await git.checkout(['--', '.'])
       } catch (err: any) {
-        const msg = err?.message || '';
+        const msg = err?.message || ''
         if (msg.includes('unable to unlink') || msg.includes('Invalid argument')) {
-          logger.warn('[GitSync] 整体丢弃遇到锁定文件，改为逐文件丢弃');
-          await this.discardAllFileByFile(git);
+          logger.warn('[GitSync] 整体丢弃遇到锁定文件，改为逐文件丢弃')
+          await this.discardAllFileByFile(git)
         } else {
-          throw err;
+          throw err
         }
       }
 
-      await this.cleanUntracked(git);
-    });
+      await this.cleanUntracked(git)
+    })
   }
 
   private async discardAllFileByFile(git: SimpleGit): Promise<void> {
-    const modifiedFiles = await git.raw(['diff', '--name-only']);
-    const files = modifiedFiles.split('\n').filter(Boolean);
-    let failCount = 0;
+    const modifiedFiles = await git.raw(['diff', '--name-only'])
+    const files = modifiedFiles.split('\n').filter(Boolean)
+    let failCount = 0
 
     for (const file of files) {
       try {
-        await git.checkout(['--', file]);
+        await git.checkout(['--', file])
       } catch {
-        failCount++;
-        logger.warn(`[GitSync] 跳过无法丢弃的锁定文件: ${file}`);
+        failCount++
+        logger.warn(`[GitSync] 跳过无法丢弃的锁定文件: ${file}`)
       }
     }
 
-    logger.info(`[GitSync] 逐文件丢弃完成，跳过 ${failCount} 个锁定文件`);
+    logger.info(`[GitSync] 逐文件丢弃完成，跳过 ${failCount} 个锁定文件`)
   }
 
   private async cleanUntracked(git: SimpleGit): Promise<void> {
     try {
-      await git.clean('f', ['-d']);
-      logger.info('[GitSync] 已清理未跟踪文件');
+      await git.clean('f', ['-d'])
+      logger.info('[GitSync] 已清理未跟踪文件')
     } catch (err: any) {
-      const msg = err?.message || '';
+      const msg = err?.message || ''
       if (msg.includes('unable to unlink') || msg.includes('Invalid argument')) {
-        logger.warn('[GitSync] 清理未跟踪文件时遇到锁定文件，已跳过');
+        logger.warn('[GitSync] 清理未跟踪文件时遇到锁定文件，已跳过')
       } else {
-        logger.warn(`[GitSync] 清理未跟踪文件失败: ${msg}`);
+        logger.warn(`[GitSync] 清理未跟踪文件失败: ${msg}`)
       }
     }
   }
 
   async getConfig(): Promise<GitSyncConfig> {
-    await this.loadConfig();
-    return { ...this.config };
+    await this.loadConfig()
+    return { ...this.config }
   }
 
   async updateConfig(config: Partial<GitSyncConfig>): Promise<void> {
-    const oldRemoteUrl = this.config.remote?.url;
-    const oldUsername = this.config.remote?.username;
-    const oldToken = this.config.remote?.token;
-    const oldUserName = this.config.userName;
-    const oldUserEmail = this.config.userEmail;
+    const oldRemoteUrl = this.config.remote?.url
+    const oldUsername = this.config.remote?.username
+    const oldToken = this.config.remote?.token
+    const oldUserName = this.config.userName
+    const oldUserEmail = this.config.userEmail
 
-    this.config = { ...this.config, ...config };
-    await this.saveConfig();
+    this.config = { ...this.config, ...config }
+    await this.saveConfig()
 
     try {
-      const git = await this.ensureGit();
+      const git = await this.ensureGit()
 
       // 同步 git local config (user.name / user.email)
       if (this.config.userName !== oldUserName) {
         if (this.config.userName) {
-          await git.addConfig('user.name', this.config.userName);
+          await git.addConfig('user.name', this.config.userName)
         } else {
           try {
-            await git.raw(['config', '--unset', 'user.name']);
+            await git.raw(['config', '--unset', 'user.name'])
           } catch {}
         }
       }
       if (this.config.userEmail !== oldUserEmail) {
         if (this.config.userEmail) {
-          await git.addConfig('user.email', this.config.userEmail);
+          await git.addConfig('user.email', this.config.userEmail)
         } else {
           try {
-            await git.raw(['config', '--unset', 'user.email']);
+            await git.raw(['config', '--unset', 'user.email'])
           } catch {}
         }
       }
 
       // 同步 git remote 配置
-      const newRemoteUrl = this.config.remote?.url;
-      const newUsername = this.config.remote?.username;
-      const newToken = this.config.remote?.token;
+      const newRemoteUrl = this.config.remote?.url
+      const newUsername = this.config.remote?.username
+      const newToken = this.config.remote?.token
 
-      if (
-        oldRemoteUrl !== newRemoteUrl ||
-        oldUsername !== newUsername ||
-        oldToken !== newToken
-      ) {
-        const remotes = await git.getRemotes(true);
-        const hasOrigin = remotes.some(r => r.name === 'origin');
+      if (oldRemoteUrl !== newRemoteUrl || oldUsername !== newUsername || oldToken !== newToken) {
+        const remotes = await git.getRemotes(true)
+        const hasOrigin = remotes.some((r) => r.name === 'origin')
 
         if (newRemoteUrl) {
-          const authenticatedUrl = this.getAuthenticatedUrl(newRemoteUrl, newUsername, newToken);
+          const authenticatedUrl = this.getAuthenticatedUrl(newRemoteUrl, newUsername, newToken)
           if (hasOrigin) {
-            await git.remote(['set-url', 'origin', authenticatedUrl]);
-            logger.info(`[GitSync] 已更新远程仓库: ${newRemoteUrl} (已配凭据: ${!!(newUsername || newToken)})`);
+            await git.remote(['set-url', 'origin', authenticatedUrl])
+            logger.info(
+              `[GitSync] 已更新远程仓库: ${newRemoteUrl} (已配凭据: ${!!(newUsername || newToken)})`
+            )
           } else {
-            await git.remote(['add', 'origin', authenticatedUrl]);
-            logger.info(`[GitSync] 已添加远程仓库: ${newRemoteUrl} (已配凭据: ${!!(newUsername || newToken)})`);
+            await git.remote(['add', 'origin', authenticatedUrl])
+            logger.info(
+              `[GitSync] 已添加远程仓库: ${newRemoteUrl} (已配凭据: ${!!(newUsername || newToken)})`
+            )
           }
         } else if (hasOrigin) {
-          await git.remote(['remove', 'origin']);
-          logger.info('[GitSync] 已移除远程仓库');
+          await git.remote(['remove', 'origin'])
+          logger.info('[GitSync] 已移除远程仓库')
         }
       }
     } catch (e) {
-      logger.warn(`[GitSync] 仓库配置更新或同步失败:`, e as any);
+      logger.warn(`[GitSync] 仓库配置更新或同步失败:`, e as any)
     }
   }
 
   async testRemoteConnection(): Promise<boolean> {
     if (!this.config.remote?.url) {
-      return false;
+      return false
     }
 
     try {
-      const git = await this.ensureGit();
-      await git.listRemote([this.config.remote.url]);
-      return true;
+      const git = await this.ensureGit()
+      await git.listRemote([this.config.remote.url])
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
   async commitAll(message: string): Promise<GitCommit | null> {
-    return this._withGitLock(() => this._commitAll(message));
+    return this._withGitLock(() => this._commitAll(message))
   }
 
   private async _commitAll(message: string): Promise<GitCommit | null> {
-    const git = await this.ensureGit();
+    const git = await this.ensureGit()
 
     try {
       // 如果已有暂存文件，直接提交暂存区内容；否则自动暂存全部变更
-      const status = await git.status();
-      const hasStaged = status.files.some(f => f.index.trim() !== '');
+      const status = await git.status()
+      const hasStaged = status.files.some((f) => f.index.trim() !== '')
       if (hasStaged) {
-        logger.info('[GitSync] 提交已暂存文件');
+        logger.info('[GitSync] 提交已暂存文件')
       } else {
-        logger.info(`[GitSync] 暂存 ${status.files.length} 个文件`);
-        await git.add('.');
+        logger.info(`[GitSync] 暂存 ${status.files.length} 个文件`)
+        await git.add('.')
       }
 
       // add 之后取 status，此时暂存区包含新文件 + 变更文件
-      const stagedStatus = await git.status();
-      const result = await git.commit(message);
+      const stagedStatus = await git.status()
+      const result = await git.commit(message)
 
       return {
         hash: result.commit,
         message,
         date: new Date(),
-        files: stagedStatus.files.map((f) => f.path),
-      };
+        files: stagedStatus.files.map((f) => f.path)
+      }
     } catch (error) {
-      throw new GitCommitError(error instanceof Error ? error : undefined);
+      throw new GitCommitError(error instanceof Error ? error : undefined)
     }
   }
 
   async commit(files: string[], message: string): Promise<GitCommit> {
     return this._withGitLock(async () => {
       try {
-        const git = await this.ensureGit();
-        await git.add(files);
-        const result = await git.commit(message);
+        const git = await this.ensureGit()
+        await git.add(files)
+        const result = await git.commit(message)
 
         return {
           hash: result.commit,
           message,
           date: new Date(),
-          files,
-        };
+          files
+        }
       } catch (error) {
-        throw new GitCommitError(error instanceof Error ? error : undefined);
+        throw new GitCommitError(error instanceof Error ? error : undefined)
       }
-    });
+    })
   }
 
   async getHistory(filePath?: string, limit = 50): Promise<VersionHistoryEntry[]> {
-    const git = await this.ensureGit();
+    const git = await this.ensureGit()
 
-    const options = ['--max-count', String(limit)];
+    const options = ['--max-count', String(limit)]
     if (filePath) {
-      options.push('--', filePath);
+      options.push('--', filePath)
     }
 
     try {
-      const log = await git.log(options);
-      const entries: VersionHistoryEntry[] = [];
+      const log = await git.log(options)
+      const entries: VersionHistoryEntry[] = []
       for (const commit of log.all) {
-        const changes = await this.getCommitChanges(commit.hash);
+        const changes = await this.getCommitChanges(commit.hash)
         entries.push({
           commit: {
             hash: commit.hash.substring(0, 7),
             message: commit.message,
             date: new Date(commit.date),
-            files: changes.map((c) => c.path),
+            files: changes.map((c) => c.path)
           },
           changes,
-          isCurrent: entries.length === 0,
-        });
+          isCurrent: entries.length === 0
+        })
       }
-      return entries;
+      return entries
     } catch {
       // 仓库无 commit 时返回空
-      return [];
+      return []
     }
   }
 
   async getRecentPulls(limit = 10): Promise<VersionHistoryEntry[]> {
-    const git = await this.ensureGit();
+    const git = await this.ensureGit()
     try {
-      const branch = this.config.remote?.branch || 'main';
-      const log = await git.log([`origin/${branch}`, '--max-count', String(limit)]);
-      const entries: VersionHistoryEntry[] = [];
+      const branch = this.config.remote?.branch || 'main'
+      const log = await git.log([`origin/${branch}`, '--max-count', String(limit)])
+      const entries: VersionHistoryEntry[] = []
       for (const commit of log.all) {
         entries.push({
           commit: {
             hash: commit.hash.substring(0, 7),
             message: commit.message,
             date: new Date(commit.date),
-            files: [],
+            files: []
           },
           changes: [],
-          isCurrent: false,
-        });
+          isCurrent: false
+        })
       }
-      return entries;
+      return entries
     } catch {
-      return [];
+      return []
     }
   }
 
   async getCommitChanges(commitHash: string): Promise<FileChange[]> {
-    const git = await this.ensureGit();
+    const git = await this.ensureGit()
     try {
-      const diff = await git.diffSummary([`${commitHash}~1`, commitHash]);
+      const diff = await git.diffSummary([`${commitHash}~1`, commitHash])
 
       return diff.files.map((file) => ({
         path: file.file,
         status: this.mapStatusToType((file as { status?: string }).status ?? 'M'),
         additions: 'insertions' in file ? file.insertions : 0,
-        deletions: 'deletions' in file ? file.deletions : 0,
-      }));
+        deletions: 'deletions' in file ? file.deletions : 0
+      }))
     } catch {
       // 首次提交无父节点时，尝试不带 ~1
       try {
-        const diff = await git.diffSummary([commitHash]);
+        const diff = await git.diffSummary([commitHash])
         return diff.files.map((file) => ({
           path: file.file,
           status: 'added' as FileChange['status'],
           additions: 'insertions' in file ? file.insertions : 0,
-          deletions: 'deletions' in file ? file.deletions : 0,
-        }));
+          deletions: 'deletions' in file ? file.deletions : 0
+        }))
       } catch {
-        return [];
+        return []
       }
     }
   }
 
   async getFileDiff(filePath: string, commitHash?: string): Promise<FileDiff> {
-    const git = await this.ensureGit();
+    const git = await this.ensureGit()
 
     const args = commitHash
       ? [`${commitHash}~1`, commitHash, '--', filePath]
-      : ['HEAD~1', 'HEAD', '--', filePath];
+      : ['HEAD~1', 'HEAD', '--', filePath]
 
     try {
-      const diff = await git.diff(args);
-      return { path: filePath, hunks: this.parseDiffHunks(diff) };
+      const diff = await git.diff(args)
+      return { path: filePath, hunks: this.parseDiffHunks(diff) }
     } catch {
-      return { path: filePath, hunks: [] };
+      return { path: filePath, hunks: [] }
     }
   }
 
   async getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff> {
-    const git = await this.ensureGit();
-    const args = staged
-      ? ['--cached', '--', filePath]
-      : ['--', filePath];
+    const git = await this.ensureGit()
+    const args = staged ? ['--cached', '--', filePath] : ['--', filePath]
 
     try {
-      const diff = await git.diff(args);
-      return { path: filePath, hunks: this.parseDiffHunks(diff) };
+      const diff = await git.diff(args)
+      return { path: filePath, hunks: this.parseDiffHunks(diff) }
     } catch {
-      return { path: filePath, hunks: [] };
+      return { path: filePath, hunks: [] }
     }
   }
 
   private parseDiffHunks(diff: string): FileDiff['hunks'] {
-    const hunks: FileDiff['hunks'] = [];
-    const hunkRegex = /^@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@(.*)$/gm;
-    let match: RegExpExecArray | null;
-    let lastIndex = 0;
+    const hunks: FileDiff['hunks'] = []
+    const hunkRegex = /^@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@(.*)$/gm
+    let match: RegExpExecArray | null
+    let lastIndex = 0
 
     while ((match = hunkRegex.exec(diff)) !== null) {
       if (hunks.length > 0) {
-        hunks[hunks.length - 1]!.content = diff.substring(lastIndex, match.index);
+        hunks[hunks.length - 1]!.content = diff.substring(lastIndex, match.index)
       }
 
       hunks.push({
@@ -683,60 +680,60 @@ export class GitSyncServiceImpl implements IGitSyncService {
         oldLines: match[2] ? parseInt(match[2], 10) : 1,
         newStart: parseInt(match[3]!, 10),
         newLines: match[4] ? parseInt(match[4], 10) : 1,
-        content: '',
-      });
+        content: ''
+      })
 
-      lastIndex = match.index + match[0].length;
+      lastIndex = match.index + match[0].length
     }
 
     if (hunks.length > 0) {
-      hunks[hunks.length - 1]!.content = diff.substring(lastIndex);
+      hunks[hunks.length - 1]!.content = diff.substring(lastIndex)
     }
 
-    return hunks;
+    return hunks
   }
 
   async rollbackFile(filePath: string, commitHash: string): Promise<void> {
     return this._withGitLock(async () => {
       try {
-        const git = await this.ensureGit();
-        const vaultPath = await this.getVaultPath();
-        const fullPath = path.join(vaultPath, filePath);
-        logger.info(`[GitSync] 回滚文件: ${filePath} <- ${commitHash}~1`);
+        const git = await this.ensureGit()
+        const vaultPath = await this.getVaultPath()
+        const fullPath = path.join(vaultPath, filePath)
+        logger.info(`[GitSync] 回滚文件: ${filePath} <- ${commitHash}~1`)
 
         // 回滚到变更前版本 (commitHash~1 = 该 commit 的上一个版本)
-        let restored = false;
+        let restored = false
         try {
-          await git.raw(['restore', '--source', `${commitHash}~1`, '--', filePath]);
-          logger.info(`[GitSync] 回滚成功(已恢复): ${filePath}`);
-          restored = true;
+          await git.raw(['restore', '--source', `${commitHash}~1`, '--', filePath])
+          logger.info(`[GitSync] 回滚成功(已恢复): ${filePath}`)
+          restored = true
         } catch {
           // ~1 不存在: 文件在此 commit 首次添加，应删除
-          logger.info(`[GitSync] ${filePath} 在旧版本不存在，执行删除`);
+          logger.info(`[GitSync] ${filePath} 在旧版本不存在，执行删除`)
           try {
             if (fs.existsSync(fullPath)) {
-              await fs.promises.unlink(fullPath);
-              logger.info(`[GitSync] 回滚成功(已删除): ${filePath}`);
-              restored = true;
+              await fs.promises.unlink(fullPath)
+              logger.info(`[GitSync] 回滚成功(已删除): ${filePath}`)
+              restored = true
             }
           } catch (unlinkErr) {
-            logger.error(`[GitSync] 删除文件失败: ${unlinkErr}`);
+            logger.error(`[GitSync] 删除文件失败: ${unlinkErr}`)
           }
         }
 
         if (!restored) {
-          throw new Error(`无法回滚 ${filePath}: 文件在此版本前后均不存在`);
+          throw new Error(`无法回滚 ${filePath}: 文件在此版本前后均不存在`)
         }
 
         // 创建回滚 commit 作为撤销点（使用内部方法避免重复获取锁）
-        await this._commitAll(`回滚文件: ${filePath} ← ${commitHash}`).catch(e => {
-          logger.warn(`[GitSync] 回滚自动提交失败:`, e as any);
-        });
+        await this._commitAll(`回滚文件: ${filePath} ← ${commitHash}`).catch((e) => {
+          logger.warn(`[GitSync] 回滚自动提交失败:`, e as any)
+        })
       } catch (error) {
-        logger.error(`[GitSync] 回滚失败 ${filePath}: ${error}`);
-        throw new GitRollbackError(error instanceof Error ? error : undefined);
+        logger.error(`[GitSync] 回滚失败 ${filePath}: ${error}`)
+        throw new GitRollbackError(error instanceof Error ? error : undefined)
       }
-    });
+    })
   }
 
   /**
@@ -745,141 +742,141 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async rollbackAll(commitHash: string): Promise<void> {
     return this._withGitLock(async () => {
       try {
-        const git = await this.ensureGit();
-        logger.info(`[GitSync] 回滚仓库: ${commitHash}`);
+        const git = await this.ensureGit()
+        logger.info(`[GitSync] 回滚仓库: ${commitHash}`)
 
         // 先尝试整体 checkout
         try {
-          await git.raw(['checkout', commitHash, '--', '.']);
-          logger.info(`[GitSync] 仓库回滚成功: ${commitHash}`);
+          await git.raw(['checkout', commitHash, '--', '.'])
+          logger.info(`[GitSync] 仓库回滚成功: ${commitHash}`)
         } catch (checkoutErr: any) {
-          const msg = checkoutErr?.message || '';
+          const msg = checkoutErr?.message || ''
           // 如果是因为文件锁定，逐一回滚跳过锁定文件
           if (msg.includes('unable to unlink') || msg.includes('Invalid argument')) {
-            logger.warn(`[GitSync] 整体回滚遇到锁定文件，改为逐文件回滚`);
-            await this.rollbackAllFileByFile(git, commitHash);
+            logger.warn(`[GitSync] 整体回滚遇到锁定文件，改为逐文件回滚`)
+            await this.rollbackAllFileByFile(git, commitHash)
           } else {
-            throw checkoutErr;
+            throw checkoutErr
           }
         }
 
         // 创建回滚 commit 作为撤销点（使用内部方法避免重复获取锁）
-        await this._commitAll(`回滚整仓库到: ${commitHash}`).catch(e => {
-          logger.warn(`[GitSync] 回滚自动提交失败:`, e as any);
-        });
+        await this._commitAll(`回滚整仓库到: ${commitHash}`).catch((e) => {
+          logger.warn(`[GitSync] 回滚自动提交失败:`, e as any)
+        })
       } catch (error) {
-        logger.error(`[GitSync] 仓库回滚失败: ${error}`);
-        throw new GitRollbackError(error instanceof Error ? error : undefined);
+        logger.error(`[GitSync] 仓库回滚失败: ${error}`)
+        throw new GitRollbackError(error instanceof Error ? error : undefined)
       }
-    });
+    })
   }
 
   /**
    * 逐文件回滚，跳过无法操作的锁定文件
    */
   private async rollbackAllFileByFile(git: SimpleGit, commitHash: string): Promise<void> {
-    const diff = await git.diffSummary([`${commitHash}~1`, commitHash]);
-    let failCount = 0;
+    const diff = await git.diffSummary([`${commitHash}~1`, commitHash])
+    let failCount = 0
 
     for (const file of diff.files) {
       try {
-        await git.raw(['checkout', commitHash, '--', file.file]);
+        await git.raw(['checkout', commitHash, '--', file.file])
       } catch {
-        failCount++;
-        logger.warn(`[GitSync] 跳过无法回滚的文件: ${file.file}`);
+        failCount++
+        logger.warn(`[GitSync] 跳过无法回滚的文件: ${file.file}`)
       }
     }
 
-    logger.info(`[GitSync] 逐文件回滚完成，跳过 ${failCount} 个锁定文件`);
+    logger.info(`[GitSync] 逐文件回滚完成，跳过 ${failCount} 个锁定文件`)
   }
 
   private async ensureRemote(): Promise<void> {
-    const url = this.config.remote?.url;
-    if (!url) throw new GitRemoteNotConfiguredError();
+    const url = this.config.remote?.url
+    if (!url) throw new GitRemoteNotConfiguredError()
 
-    const git = await this.ensureGit();
-    const remotes = await git.getRemotes(true);
-    const origin = remotes.find(r => r.name === 'origin');
+    const git = await this.ensureGit()
+    const remotes = await git.getRemotes(true)
+    const origin = remotes.find((r) => r.name === 'origin')
 
-    const username = this.config.remote?.username;
-    const token = this.config.remote?.token;
-    const authenticatedUrl = this.getAuthenticatedUrl(url, username, token);
+    const username = this.config.remote?.username
+    const token = this.config.remote?.token
+    const authenticatedUrl = this.getAuthenticatedUrl(url, username, token)
 
     if (!origin) {
-      await git.remote(['add', 'origin', authenticatedUrl]);
-      logger.info(`[GitSync] 自动添加远程仓库: ${url}`);
+      await git.remote(['add', 'origin', authenticatedUrl])
+      logger.info(`[GitSync] 自动添加远程仓库: ${url}`)
     } else {
-      const currentUrl = origin.refs.push;
+      const currentUrl = origin.refs.push
       if (currentUrl !== authenticatedUrl) {
-        await git.remote(['set-url', 'origin', authenticatedUrl]);
-        logger.info(`[GitSync] 自动更新远程仓库: ${url}`);
+        await git.remote(['set-url', 'origin', authenticatedUrl])
+        logger.info(`[GitSync] 自动更新远程仓库: ${url}`)
       }
     }
   }
 
   async push(): Promise<void> {
     return this._withGitLock(async () => {
-      await this.ensureRemote();
+      await this.ensureRemote()
 
       try {
-        const git = await this.ensureGit();
-        const branch = this.config.remote!.branch || 'main';
-        logger.info(`[GitSync] 推送至远程: origin/${branch}`);
-        await git.push('origin', branch);
-        logger.info('[GitSync] 推送成功');
+        const git = await this.ensureGit()
+        const branch = this.config.remote!.branch || 'main'
+        logger.info(`[GitSync] 推送至远程: origin/${branch}`)
+        await git.push('origin', branch)
+        logger.info('[GitSync] 推送成功')
       } catch (error) {
-        logger.error(`[GitSync] 推送失败: ${error}`);
-        throw new GitPushError(error instanceof Error ? error : undefined);
+        logger.error(`[GitSync] 推送失败: ${error}`)
+        throw new GitPushError(error instanceof Error ? error : undefined)
       }
-    });
+    })
   }
 
   async pull(): Promise<void> {
     return this._withGitLock(async () => {
-      await this.ensureRemote();
+      await this.ensureRemote()
 
       try {
-        const git = await this.ensureGit();
-        const branch = this.config.remote!.branch || 'main';
-        logger.info(`[GitSync] 从远程拉取: origin/${branch}`);
-        await git.pull('origin', branch);
-        logger.info('[GitSync] 拉取成功');
+        const git = await this.ensureGit()
+        const branch = this.config.remote!.branch || 'main'
+        logger.info(`[GitSync] 从远程拉取: origin/${branch}`)
+        await git.pull('origin', branch)
+        logger.info('[GitSync] 拉取成功')
       } catch (error) {
-        logger.error(`[GitSync] 拉取失败: ${error}`);
+        logger.error(`[GitSync] 拉取失败: ${error}`)
         // 检查是否是冲突
-        const conflicts = await this.getConflicts();
+        const conflicts = await this.getConflicts()
         if (conflicts.length > 0) {
-          throw new GitPullError(conflicts, error instanceof Error ? error : undefined);
+          throw new GitPullError(conflicts, error instanceof Error ? error : undefined)
         }
-        throw new GitPullError(undefined, error instanceof Error ? error : undefined);
+        throw new GitPullError(undefined, error instanceof Error ? error : undefined)
       }
-    });
+    })
   }
 
   async hasConflicts(): Promise<boolean> {
-    const conflicts = await this.getConflicts();
-    return conflicts.length > 0;
+    const conflicts = await this.getConflicts()
+    return conflicts.length > 0
   }
 
   async getConflicts(): Promise<string[]> {
     try {
-      const git = await this.ensureGit();
-      const status = await git.status();
-      return status.conflicted;
+      const git = await this.ensureGit()
+      const status = await git.status()
+      return status.conflicted
     } catch {
-      return [];
+      return []
     }
   }
 
   async resolveConflict(filePath: string, resolution: 'ours' | 'theirs'): Promise<void> {
     return this._withGitLock(async () => {
       try {
-        const git = await this.ensureGit();
-        await git.raw(['checkout', `--${resolution}`, filePath]);
-        await git.add(filePath);
+        const git = await this.ensureGit()
+        await git.raw(['checkout', `--${resolution}`, filePath])
+        await git.add(filePath)
       } catch (error) {
-        throw new GitRollbackError(error instanceof Error ? error : undefined);
+        throw new GitRollbackError(error instanceof Error ? error : undefined)
       }
-    });
+    })
   }
 }

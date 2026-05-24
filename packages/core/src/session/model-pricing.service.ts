@@ -10,19 +10,19 @@
 // ─── 类型定义 ──────────────────────────────────────────────
 
 export interface TokenUsage {
-  inputTokens: number;
-  outputTokens: number;
-  cachedInputTokens?: number;
+  inputTokens: number
+  outputTokens: number
+  cachedInputTokens?: number
 }
 
 export interface ModelPrice {
   /** 美元 / 百万 token */
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheWrite: number;
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite: number
   /** 200K+ 上下文的阶梯价格 */
-  over200K?: ModelPrice;
+  over200K?: ModelPrice
 }
 
 // ─── 费用计算 ──────────────────────────────────────────────
@@ -31,53 +31,45 @@ export interface ModelPrice {
  * 根据 token 用量计算费用（美元）
  * 自动判断是否使用 200K+ 阶梯价
  */
-export function calculateTokenCost(
-  price: ModelPrice,
-  usage: TokenUsage,
-): number {
-  const totalInput = usage.inputTokens + (usage.cachedInputTokens ?? 0);
+export function calculateTokenCost(price: ModelPrice, usage: TokenUsage): number {
+  const totalInput = usage.inputTokens + (usage.cachedInputTokens ?? 0)
 
   // 如果有 200K+ 阶梯价且总输入超过 200K，使用阶梯价
-  const effectivePrice =
-    price.over200K && totalInput > 200_000 ? price.over200K : price;
+  const effectivePrice = price.over200K && totalInput > 200_000 ? price.over200K : price
 
-  const inputCost = (usage.inputTokens * effectivePrice.input) / 1_000_000;
-  const outputCost = (usage.outputTokens * effectivePrice.output) / 1_000_000;
-  const cacheCost =
-    ((usage.cachedInputTokens ?? 0) * effectivePrice.cacheRead) / 1_000_000;
+  const inputCost = (usage.inputTokens * effectivePrice.input) / 1_000_000
+  const outputCost = (usage.outputTokens * effectivePrice.output) / 1_000_000
+  const cacheCost = ((usage.cachedInputTokens ?? 0) * effectivePrice.cacheRead) / 1_000_000
 
-  return inputCost + outputCost + cacheCost;
+  return inputCost + outputCost + cacheCost
 }
 
 // ─── 定价服务（单例） ──────────────────────────────────────
 
 export class ModelPricingService {
-  private readonly prices = new Map<string, ModelPrice>();
-  private lastFetchTime: Date | null = null;
+  private readonly prices = new Map<string, ModelPrice>()
+  private lastFetchTime: Date | null = null
 
   /** 缓存有效期 1 小时 */
-  private static readonly CACHE_DURATION_MS = 60 * 60 * 1000;
+  private static readonly CACHE_DURATION_MS = 60 * 60 * 1000
 
   /**
    * 获取模型价格
    */
-  async getPrice(
-    providerId: string,
-    modelId: string,
-  ): Promise<ModelPrice | null> {
-    await this.ensureLoaded();
+  async getPrice(providerId: string, modelId: string): Promise<ModelPrice | null> {
+    await this.ensureLoaded()
 
     // 先精确匹配
-    const key = `${providerId}/${modelId}`;
-    const exact = this.prices.get(key);
-    if (exact) return exact;
+    const key = `${providerId}/${modelId}`
+    const exact = this.prices.get(key)
+    if (exact) return exact
 
     // 再尝试仅 modelId 匹配（用户可能用自定义 provider）
     for (const [k, v] of this.prices.entries()) {
-      if (k.endsWith(`/${modelId}`)) return v;
+      if (k.endsWith(`/${modelId}`)) return v
     }
 
-    return null;
+    return null
   }
 
   /**
@@ -86,11 +78,11 @@ export class ModelPricingService {
   async calculateCost(
     providerId: string,
     modelId: string,
-    usage: TokenUsage,
+    usage: TokenUsage
   ): Promise<number | null> {
-    const price = await this.getPrice(providerId, modelId);
-    if (!price) return null;
-    return calculateTokenCost(price, usage);
+    const price = await this.getPrice(providerId, modelId)
+    if (!price) return null
+    return calculateTokenCost(price, usage)
   }
 
   /**
@@ -100,12 +92,11 @@ export class ModelPricingService {
     if (
       this.prices.size > 0 &&
       this.lastFetchTime &&
-      Date.now() - this.lastFetchTime.getTime() <
-        ModelPricingService.CACHE_DURATION_MS
+      Date.now() - this.lastFetchTime.getTime() < ModelPricingService.CACHE_DURATION_MS
     ) {
-      return;
+      return
     }
-    await this.fetchPrices();
+    await this.fetchPrices()
   }
 
   /**
@@ -113,48 +104,44 @@ export class ModelPricingService {
    */
   private async fetchPrices(): Promise<void> {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10_000);
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10_000)
 
       const response = await fetch('https://models.dev/api.json', {
-        signal: controller.signal,
-      });
+        signal: controller.signal
+      })
 
-      clearTimeout(timeout);
+      clearTimeout(timeout)
 
-      if (!response.ok) return;
+      if (!response.ok) return
 
       const data = (await response.json()) as Record<
         string,
         { models?: Record<string, { cost?: Record<string, unknown> }> }
-      >;
+      >
 
-      this.prices.clear();
+      this.prices.clear()
 
       for (const [providerId, provider] of Object.entries(data)) {
-        if (!provider?.models) continue;
+        if (!provider?.models) continue
 
         for (const [modelId, model] of Object.entries(provider.models)) {
-          if (!model?.cost) continue;
-          const cost = model.cost;
+          if (!model?.cost) continue
+          const cost = model.cost
 
-          const inputPrice = Number(cost['input'] ?? 0);
-          if (inputPrice === 0) continue; // 跳过免费/未知模型
+          const inputPrice = Number(cost['input'] ?? 0)
+          if (inputPrice === 0) continue // 跳过免费/未知模型
 
           // 解析 200K+ 阶梯价
-          const over200KData = cost['context_over_200k'] as
-            | Record<string, unknown>
-            | undefined;
-          let over200K: ModelPrice | undefined;
+          const over200KData = cost['context_over_200k'] as Record<string, unknown> | undefined
+          let over200K: ModelPrice | undefined
           if (over200KData) {
             over200K = {
               input: Number(over200KData['input'] ?? inputPrice),
-              output: Number(
-                over200KData['output'] ?? cost['output'] ?? 0,
-              ),
+              output: Number(over200KData['output'] ?? cost['output'] ?? 0),
               cacheRead: Number(over200KData['cache_read'] ?? 0),
-              cacheWrite: Number(over200KData['cache_write'] ?? 0),
-            };
+              cacheWrite: Number(over200KData['cache_write'] ?? 0)
+            }
           }
 
           this.prices.set(`${providerId}/${modelId}`, {
@@ -162,12 +149,12 @@ export class ModelPricingService {
             output: Number(cost['output'] ?? 0),
             cacheRead: Number(cost['cache_read'] ?? 0),
             cacheWrite: Number(cost['cache_write'] ?? 0),
-            over200K,
-          });
+            over200K
+          })
         }
       }
 
-      this.lastFetchTime = new Date();
+      this.lastFetchTime = new Date()
     } catch {
       // 获取失败不阻塞主流程
     }
@@ -175,4 +162,4 @@ export class ModelPricingService {
 }
 
 /** 全局单例 */
-export const modelPricingService = new ModelPricingService();
+export const modelPricingService = new ModelPricingService()

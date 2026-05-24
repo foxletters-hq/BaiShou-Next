@@ -1,15 +1,21 @@
-import type { IncrementalSyncResult, SyncSessionLog, S3SyncConfig, SyncSummary, SyncProgressCallback } from '@baishou/shared';
-import type { ISyncOrchestrator } from './sync-orchestrator.interface';
-import type { IIncrementalSyncService } from './incremental-sync.interface';
-import type { IOperationLogService } from './operation-log.interface';
-import type { IGitSyncService } from './git-sync.interface';
-import { SyncInProgressError } from './sync.errors';
+import type {
+  IncrementalSyncResult,
+  SyncSessionLog,
+  S3SyncConfig,
+  SyncSummary,
+  SyncProgressCallback
+} from '@baishou/shared'
+import type { ISyncOrchestrator } from './sync-orchestrator.interface'
+import type { IIncrementalSyncService } from './incremental-sync.interface'
+import type { IOperationLogService } from './operation-log.interface'
+import type { IGitSyncService } from './git-sync.interface'
+import { SyncInProgressError } from './sync.errors'
 
 /** 生成跨平台唯一 ID */
-let _counter = 0;
+let _counter = 0
 function generateId(): string {
-  _counter++;
-  return `${Date.now().toString(36)}-${_counter.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  _counter++
+  return `${Date.now().toString(36)}-${_counter.toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 /**
@@ -19,33 +25,33 @@ function generateId(): string {
  * 移动端：三向合并同步 → 操作日志
  */
 export class SyncOrchestrator implements ISyncOrchestrator {
-  private isSyncing = false;
+  private isSyncing = false
 
   constructor(
     private readonly syncService: IIncrementalSyncService,
     private readonly logService: IOperationLogService,
     private readonly gitService?: IGitSyncService,
-    private readonly deviceId?: string,
+    private readonly deviceId?: string
   ) {}
 
   private acquireLock(): void {
     if (this.isSyncing) {
-      throw new SyncInProgressError();
+      throw new SyncInProgressError()
     }
-    this.isSyncing = true;
+    this.isSyncing = true
   }
 
   private releaseLock(): void {
-    this.isSyncing = false;
+    this.isSyncing = false
   }
 
   private async tryGitCommit(): Promise<void> {
-    if (!this.gitService) return;
+    if (!this.gitService) return
 
     try {
-      const isInit = await this.gitService.isInitialized();
+      const isInit = await this.gitService.isInitialized()
       if (isInit) {
-        await this.gitService.commitAll('sync: 同步前自动保存');
+        await this.gitService.commitAll('sync: 同步前自动保存')
       }
     } catch {
       // git 预提交失败不阻塞同步
@@ -55,20 +61,20 @@ export class SyncOrchestrator implements ISyncOrchestrator {
   private async doSync(
     operation: (onProgress?: SyncProgressCallback) => Promise<IncrementalSyncResult>,
     direction: 'full-sync' | 'upload-only' | 'download-only',
-    onProgress?: SyncProgressCallback,
+    onProgress?: SyncProgressCallback
   ): Promise<IncrementalSyncResult> {
-    this.acquireLock();
+    this.acquireLock()
 
-    const sessionId = generateId();
-    const startedAt = new Date().toISOString();
+    const sessionId = generateId()
+    const startedAt = new Date().toISOString()
 
     try {
-      await this.tryGitCommit();
+      await this.tryGitCommit()
 
-      const result = await operation(onProgress);
-      result.sessionId = sessionId;
+      const result = await operation(onProgress)
+      result.sessionId = sessionId
 
-      const completedAt = new Date().toISOString();
+      const completedAt = new Date().toISOString()
 
       const summary: SyncSummary = {
         uploaded: result.uploaded.length,
@@ -76,8 +82,8 @@ export class SyncOrchestrator implements ISyncOrchestrator {
         deletedRemote: result.deletedRemote.length,
         deletedLocal: result.deletedLocal.length,
         conflicts: result.conflicted.length,
-        skipped: result.skipped.length,
-      };
+        skipped: result.skipped.length
+      }
 
       const log: SyncSessionLog = {
         sessionId,
@@ -87,14 +93,14 @@ export class SyncOrchestrator implements ISyncOrchestrator {
         completedAt,
         success: true,
         operations: [],
-        summary,
-      };
+        summary
+      }
 
-      await this.logService.writeLog(log);
-      void this.logService.cleanupOldLogs().catch(() => {});
-      return result;
+      await this.logService.writeLog(log)
+      void this.logService.cleanupOldLogs().catch(() => {})
+      return result
     } catch (e) {
-      const completedAt = new Date().toISOString();
+      const completedAt = new Date().toISOString()
 
       const log: SyncSessionLog = {
         sessionId,
@@ -104,48 +110,55 @@ export class SyncOrchestrator implements ISyncOrchestrator {
         completedAt,
         success: false,
         operations: [],
-        summary: { uploaded: 0, downloaded: 0, deletedRemote: 0, deletedLocal: 0, conflicts: 0, skipped: 0 },
-        error: e instanceof Error ? e.message : String(e),
-      };
+        summary: {
+          uploaded: 0,
+          downloaded: 0,
+          deletedRemote: 0,
+          deletedLocal: 0,
+          conflicts: 0,
+          skipped: 0
+        },
+        error: e instanceof Error ? e.message : String(e)
+      }
 
       try {
-        await this.logService.writeLog(log);
-        void this.logService.cleanupOldLogs().catch(() => {});
+        await this.logService.writeLog(log)
+        void this.logService.cleanupOldLogs().catch(() => {})
       } catch {
         // 日志写入失败不重新抛出
       }
 
-      throw e;
+      throw e
     } finally {
-      this.releaseLock();
+      this.releaseLock()
     }
   }
 
   async sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
-    return this.doSync((p) => this.syncService.sync(p), 'full-sync', onProgress);
+    return this.doSync((p) => this.syncService.sync(p), 'full-sync', onProgress)
   }
 
   async uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
-    return this.doSync((p) => this.syncService.uploadOnly(p), 'upload-only', onProgress);
+    return this.doSync((p) => this.syncService.uploadOnly(p), 'upload-only', onProgress)
   }
 
   async downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
-    return this.doSync((p) => this.syncService.downloadOnly(p), 'download-only', onProgress);
+    return this.doSync((p) => this.syncService.downloadOnly(p), 'download-only', onProgress)
   }
 
   async getSyncHistory(limit?: number): Promise<SyncSessionLog[]> {
-    return this.logService.getRecentLogs(limit);
+    return this.logService.getRecentLogs(limit)
   }
 
   async testConnection(): Promise<boolean> {
-    return this.syncService.testConnection();
+    return this.syncService.testConnection()
   }
 
   async getConfig(): Promise<S3SyncConfig> {
-    return this.syncService.getConfig();
+    return this.syncService.getConfig()
   }
 
   async updateConfig(config: Partial<S3SyncConfig>): Promise<void> {
-    await this.syncService.updateConfig(config);
+    await this.syncService.updateConfig(config)
   }
 }

@@ -1,26 +1,26 @@
 export interface AttachmentFileItem {
-  name: string;
-  path: string;
-  sizeMB: number;
-  birthtime: string;
+  name: string
+  path: string
+  sizeMB: number
+  birthtime: string
 }
 
 export interface SessionAttachmentGroup {
-  sessionId: string;
-  sessionTitle?: string;
-  isOrphan: boolean;
-  totalSizeMB: number;
-  fileCount: number;
-  files: AttachmentFileItem[];
+  sessionId: string
+  sessionTitle?: string
+  isOrphan: boolean
+  totalSizeMB: number
+  fileCount: number
+  files: AttachmentFileItem[]
 }
 
 export interface AttachmentItem {
-  id: string; // Session ID for attachments folder, or the name of the folder if orphan
-  name: string;
-  sizeMB: number;
-  isOrphan: boolean;
-  fileCount: number;
-  date: string;
+  id: string // Session ID for attachments folder, or the name of the folder if orphan
+  name: string
+  sizeMB: number
+  isOrphan: boolean
+  fileCount: number
+  date: string
 }
 
 export interface IAttachmentManager {
@@ -31,40 +31,39 @@ export interface IAttachmentManager {
    * @returns The relative path representing the imported avatar (e.g., 'avatars/agent_123.jpg').
    *          If the source doesn't exist or fails, it should return the original input or null.
    */
-  importAvatar(absoluteSourcePath: string, prefix?: string): Promise<string>;
+  importAvatar(absoluteSourcePath: string, prefix?: string): Promise<string>
 
   /**
    * Converts a Vault-relative avatar path back into an absolute URI for native desktop rendering.
    * @param relativePath The path saved in DB (e.g. 'avatars/agent_123.jpg')
    * @returns Absolute path safely resolvable by the viewer
    */
-  resolveAvatarPath(relativePath: string): Promise<string>;
+  resolveAvatarPath(relativePath: string): Promise<string>
 
   /**
    * Scans the Vault Attachments directory and checks for folder names against active session criteria.
    * @param activeSessionIds A Set of active valid UUIDs tracking valid Agent Sessions natively
    * @returns A list of calculated attachment folders
    */
-  listOrphans(activeSessionIds: Set<string>): Promise<AttachmentItem[]>;
+  listOrphans(activeSessionIds: Set<string>): Promise<AttachmentItem[]>
 
   /**
    * Scans the Vault Attachments directory and groups files by session.
    * @param activeSessionIds A Set of active valid UUIDs tracking valid Agent Sessions natively
    * @returns A list of session attachment groups with nested file items
    */
-  listSessionGroups(activeSessionIds: Set<string>): Promise<SessionAttachmentGroup[]>;
+  listSessionGroups(activeSessionIds: Set<string>): Promise<SessionAttachmentGroup[]>
 
   /**
    * Deletes a specific file inside a session attachment directory.
    * @param sessionId The UUID folder name
    * @param fileName The specific file name to delete
    */
-  deleteFile(sessionId: string, fileName: string): Promise<void>;
+  deleteFile(sessionId: string, fileName: string): Promise<void>
 
   /**
    * Bulk deletion sweep for given folder UUIDs representing Session attachments
-   * @param ids The UUID folder names to nuke natively 
+   * @param ids The UUID folder names to nuke natively
    */
-  deleteBatch(ids: string[]): Promise<void>;
+  deleteBatch(ids: string[]): Promise<void>
 }
-

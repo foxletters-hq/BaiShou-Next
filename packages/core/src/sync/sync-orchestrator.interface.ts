@@ -1,4 +1,9 @@
-import type { IncrementalSyncResult, SyncSessionLog, S3SyncConfig, SyncProgressCallback } from '@baishou/shared';
+import type {
+  IncrementalSyncResult,
+  SyncSessionLog,
+  S3SyncConfig,
+  SyncProgressCallback
+} from '@baishou/shared'
 
 /**
  * 同步编排器接口
@@ -33,19 +38,19 @@ export interface ISyncOrchestrator {
    * ```
    * @param onProgress - 可选的进度回调，逐文件处理时触发
    */
-  sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
+  sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
 
   /**
    * 仅上传变更（不同步下载）
    * @param onProgress - 可选的进度回调
    */
-  uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
+  uploadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
 
   /**
    * 仅下载变更（不同步上传）
    * @param onProgress - 可选的进度回调
    */
-  downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>;
+  downloadOnly(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult>
 
   /**
    * 获取同步历史记录
@@ -53,21 +58,21 @@ export interface ISyncOrchestrator {
    * @param limit - 最大返回条数，默认 20
    * @returns 按时间倒序排列
    */
-  getSyncHistory(limit?: number): Promise<SyncSessionLog[]>;
+  getSyncHistory(limit?: number): Promise<SyncSessionLog[]>
 
   /**
    * 测试 S3 连接
    */
-  testConnection(): Promise<boolean>;
+  testConnection(): Promise<boolean>
 
   /**
    * 获取 S3 配置
    */
-  getConfig(): Promise<S3SyncConfig>;
+  getConfig(): Promise<S3SyncConfig>
 
   /**
    * 更新 S3 配置
    * @throws {S3ConfigError} 配置无效
    */
-  updateConfig(config: Partial<S3SyncConfig>): Promise<void>;
+  updateConfig(config: Partial<S3SyncConfig>): Promise<void>
 }

@@ -1,7 +1,7 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { formatLocalDate } from '@baishou/shared';
-import { IStoragePathService } from './storage-path.types';
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { formatLocalDate } from '@baishou/shared'
+import { IStoragePathService } from './storage-path.types'
 
 /**
  * 日记文件读写服务（vault 层简化版）
@@ -13,10 +13,10 @@ export class JournalFileService {
 
   /** 根据本地时区日期构建文件路径：journalBase/YYYY/MM/YYYY-MM-DD.md */
   private buildFilePath(journalBase: string, date: Date): string {
-    const dateStr = formatLocalDate(date);
-    const year = dateStr.substring(0, 4);
-    const month = dateStr.substring(5, 7);
-    return path.join(journalBase, year, month, `${dateStr}.md`);
+    const dateStr = formatLocalDate(date)
+    const year = dateStr.substring(0, 4)
+    const month = dateStr.substring(5, 7)
+    return path.join(journalBase, year, month, `${dateStr}.md`)
   }
 
   /**
@@ -25,31 +25,31 @@ export class JournalFileService {
    * @param content 日记内容
    */
   async writeJournal(date: Date, content: string): Promise<string> {
-    const journalBase = await this.pathProvider.getJournalsBaseDirectory();
-    const fullPath = this.buildFilePath(journalBase, date);
-    await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    await fs.writeFile(fullPath, content.trim(), 'utf8');
-    return fullPath;
+    const journalBase = await this.pathProvider.getJournalsBaseDirectory()
+    const fullPath = this.buildFilePath(journalBase, date)
+    await fs.mkdir(path.dirname(fullPath), { recursive: true })
+    await fs.writeFile(fullPath, content.trim(), 'utf8')
+    return fullPath
   }
 
   async readJournal(date: Date): Promise<string | null> {
-    const journalBase = await this.pathProvider.getJournalsBaseDirectory();
-    const fullPath = this.buildFilePath(journalBase, date);
+    const journalBase = await this.pathProvider.getJournalsBaseDirectory()
+    const fullPath = this.buildFilePath(journalBase, date)
     try {
-      return await fs.readFile(fullPath, 'utf8');
+      return await fs.readFile(fullPath, 'utf8')
     } catch (e: any) {
-      if (e.code === 'ENOENT') return null;
-      throw e;
+      if (e.code === 'ENOENT') return null
+      throw e
     }
   }
 
   async deleteJournal(date: Date): Promise<void> {
-    const journalBase = await this.pathProvider.getJournalsBaseDirectory();
-    const fullPath = this.buildFilePath(journalBase, date);
+    const journalBase = await this.pathProvider.getJournalsBaseDirectory()
+    const fullPath = this.buildFilePath(journalBase, date)
     try {
-      await fs.unlink(fullPath);
+      await fs.unlink(fullPath)
     } catch (e: any) {
-      if (e.code !== 'ENOENT') throw e;
+      if (e.code !== 'ENOENT') throw e
     }
   }
 }

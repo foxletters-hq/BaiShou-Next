@@ -9,68 +9,66 @@
 
 export interface SystemPromptConfig {
   /** 人设描述（来自用户设置或 i18n 默认值） */
-  persona?: string;
+  persona?: string
   /** 行为准则（来自用户设置或 i18n 默认值） */
-  guidelines?: string;
+  guidelines?: string
   /** 用户身份卡片文本 */
-  userProfileBlock?: string;
+  userProfileBlock?: string
   /** 当前 Vault 名称 */
-  vaultName: string;
+  vaultName: string
   /** 可用工具 ID → 描述映射 */
-  tools: Array<{ id: string; description: string }>;
+  tools: Array<{ id: string; description: string }>
 }
 
 /**
  * 构建完整的 Agent System Prompt
  */
 export function buildSystemPrompt(config: SystemPromptConfig): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
   // 人设
   if (config.persona && config.persona.length > 0) {
-    parts.push(config.persona);
+    parts.push(config.persona)
   }
 
   // 用户身份卡
   if (config.userProfileBlock && config.userProfileBlock.length > 0) {
-    parts.push(config.userProfileBlock);
+    parts.push(config.userProfileBlock)
   }
 
   // 时间上下文
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hour = String(now.getHours()).padStart(2, '0');
-  const minute = String(now.getMinutes()).padStart(2, '0');
-  parts.push(`${year}-${month}-${day} ${hour}:${minute}`);
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hour = String(now.getHours()).padStart(2, '0')
+  const minute = String(now.getMinutes()).padStart(2, '0')
+  parts.push(`${year}-${month}-${day} ${hour}:${minute}`)
 
   // Vault 上下文
-  parts.push(`Vault: ${config.vaultName}`);
+  parts.push(`Vault: ${config.vaultName}`)
 
   // 可用工具说明
   if (config.tools.length > 0) {
-    const toolLines = config.tools.map(
-      (t) => `- **${t.id}**: ${t.description}`,
-    );
-    parts.push(toolLines.join('\n'));
+    const toolLines = config.tools.map((t) => `- **${t.id}**: ${t.description}`)
+    parts.push(toolLines.join('\n'))
 
     // RAG 工具禁用时，指引 AI 使用日记工具
-    const hasMemoryStore = config.tools.some((t) => t.id === 'memory_store');
-    const hasVectorSearch = config.tools.some((t) => t.id === 'vector_search');
+    const hasMemoryStore = config.tools.some((t) => t.id === 'memory_store')
+    const hasVectorSearch = config.tools.some((t) => t.id === 'vector_search')
     if (!hasMemoryStore || !hasVectorSearch) {
       parts.push(
         'Note: Memory/RAG tools are currently disabled by the user. ' +
           'For storing and retrieving information, use the diary/summary tools instead. ' +
-          'Do NOT attempt to call memory_store or vector_search.',
-      );
+          'Do NOT attempt to call memory_store or vector_search.'
+      )
     }
   }
 
   // 行为准则
   if (config.guidelines && config.guidelines.length > 0) {
-    parts.push(config.guidelines);
+    parts.push(config.guidelines)
   }
 
-  return parts.join('\n\n');
+  return parts.join('\n\n')
 }

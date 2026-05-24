@@ -12,21 +12,21 @@
  * 原始实现：lib/agent/session/context_window.dart (140 行)
  */
 
-import type { CompressionSnapshot } from './compression.service';
+import type { CompressionSnapshot } from './compression.service'
 
 // ─── 类型定义 ──────────────────────────────────────────────
 
 export interface ContextWindowConfig {
   /** 最近消息条数（用户可配，默认 30，0 表示不限制） */
-  recentCount: number;
+  recentCount: number
 }
 
 export interface ContextMessage {
-  role: string;
-  content: string;
+  role: string
+  content: string
 }
 
-const DEFAULT_CONFIG: ContextWindowConfig = { recentCount: 30 };
+const DEFAULT_CONFIG: ContextWindowConfig = { recentCount: 30 }
 
 // ─── 核心逻辑 ──────────────────────────────────────────────
 
@@ -39,40 +39,40 @@ const DEFAULT_CONFIG: ContextWindowConfig = { recentCount: 30 };
  * 3. 如果有压缩摘要，始终保留在上下文头部
  */
 export function buildContextWindow(options: {
-  messages: ContextMessage[];
-  config?: ContextWindowConfig;
-  snapshot?: CompressionSnapshot | null;
+  messages: ContextMessage[]
+  config?: ContextWindowConfig
+  snapshot?: CompressionSnapshot | null
 }): ContextMessage[] {
-  const config = options.config ?? DEFAULT_CONFIG;
-  const snapshot = options.snapshot ?? null;
+  const config = options.config ?? DEFAULT_CONFIG
+  const snapshot = options.snapshot ?? null
 
-  let effectiveMessages: ContextMessage[];
+  let effectiveMessages: ContextMessage[]
 
   if (snapshot) {
     // 有摘要：在头部插入摘要作为 system 消息
     effectiveMessages = [
       { role: 'system', content: `[对话摘要]\n${snapshot.summaryText}` },
-      ...options.messages,
-    ];
+      ...options.messages
+    ]
   } else {
-    effectiveMessages = [...options.messages];
+    effectiveMessages = [...options.messages]
   }
 
-  if (effectiveMessages.length === 0) return effectiveMessages;
+  if (effectiveMessages.length === 0) return effectiveMessages
 
   // recentCount <= 0 表示无限轮，不截断
   if (config.recentCount <= 0 || effectiveMessages.length <= config.recentCount) {
-    return effectiveMessages;
+    return effectiveMessages
   }
 
   // 取最后 N 条（但始终保留摘要消息如果有的话）
-  let startIndex = effectiveMessages.length - config.recentCount;
+  let startIndex = effectiveMessages.length - config.recentCount
 
   // 确保摘要消息不被裁掉（如果存在，它在 index 0）
   if (snapshot && startIndex > 0) {
-    startIndex = Math.max(1, Math.min(startIndex, effectiveMessages.length - 1));
+    startIndex = Math.max(1, Math.min(startIndex, effectiveMessages.length - 1))
     // 重新拼接：摘要 + 裁剪后的消息
-    return [effectiveMessages[0]!, ...effectiveMessages.slice(startIndex)];
+    return [effectiveMessages[0]!, ...effectiveMessages.slice(startIndex)]
   }
 
   // 往前修正：不要在 tool result 开头截断（保持 assistant+tool 的完整性）
@@ -81,10 +81,10 @@ export function buildContextWindow(options: {
     startIndex < effectiveMessages.length &&
     effectiveMessages[startIndex]?.role === 'tool'
   ) {
-    startIndex--;
+    startIndex--
   }
 
   // 最终安全兜底
-  startIndex = Math.max(0, Math.min(startIndex, effectiveMessages.length));
-  return effectiveMessages.slice(startIndex);
+  startIndex = Math.max(0, Math.min(startIndex, effectiveMessages.length))
+  return effectiveMessages.slice(startIndex)
 }

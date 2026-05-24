@@ -1,13 +1,13 @@
-import { AgentSessionRepository, AgentMessageRepository } from '@baishou/database';
-import { AIProviderRegistry, ToolRegistry } from '@baishou/ai';
-import { streamText, ModelMessage, stepCountIs } from 'ai';
-import { SessionNotFoundError } from '../errors/agent.errors';
+import { AgentSessionRepository, AgentMessageRepository } from '@baishou/database'
+import { AIProviderRegistry, ToolRegistry } from '@baishou/ai'
+import { streamText, ModelMessage, stepCountIs } from 'ai'
+import { SessionNotFoundError } from '../errors/agent.errors'
 
 export interface AgentChatInput {
-  sessionId: string;
-  userMessage: string;
+  sessionId: string
+  userMessage: string
   // 以下参数为临时覆盖或自定义传递，可选
-  maxSteps?: number;
+  maxSteps?: number
 }
 
 export class AgentService {
@@ -15,7 +15,7 @@ export class AgentService {
     private readonly sessionRepo: AgentSessionRepository,
     private readonly messageRepo: AgentMessageRepository,
     private readonly providerRegistry: AIProviderRegistry,
-    private readonly toolRegistry: ToolRegistry,
+    private readonly toolRegistry: ToolRegistry
   ) {}
 
   /**
@@ -23,39 +23,39 @@ export class AgentService {
    * 1:1 复刻旧版白守循环，但是借助 Vercel AI SDK 的 stopWhen/stepCountIs 和 tool 特性自动化。
    */
   async streamChat(input: AgentChatInput) {
-    const session = await this.sessionRepo.findById(input.sessionId);
+    const session = await this.sessionRepo.findById(input.sessionId)
     if (!session) {
-      throw new SessionNotFoundError(input.sessionId);
+      throw new SessionNotFoundError(input.sessionId)
     }
 
-    const provider = this.providerRegistry.getProvider(session.providerId);
-    const model = provider.getModel(session.modelId);
+    const provider = this.providerRegistry.getProvider(session.providerId)
+    const model = provider.getModel(session.modelId)
 
     // 1. 获取最近对话历史 (假定仓库支持)
-    const history = await this.messageRepo.findBySessionId(input.sessionId, 20);
-    const messages: ModelMessage[] = history.map(msg => ({
+    const history = await this.messageRepo.findBySessionId(input.sessionId, 20)
+    const messages: ModelMessage[] = history.map((msg) => ({
       role: msg.role as any,
       content: (msg as any).data || '' // 对于 tool_calls 和 tool_results 等后续需拓展类型适配
-    }));
+    }))
 
     // 2. 将此条 User 消息记录到内存上下文，同时存入基础库
-    messages.push({ role: 'user', content: input.userMessage });
-    
+    messages.push({ role: 'user', content: input.userMessage })
+
     // 异步存入用户的消息（实际实现可考虑等待其成功或发后台）
     const userMsgTask = this.messageRepo.create({
       sessionId: input.sessionId,
       role: 'user',
       isSummary: false,
-      orderIndex: history.length,
+      orderIndex: history.length
       // ...实际应存放内容 parts
-    });
+    })
 
     // 3. 构建 tools 环境
-    // Vercel 会在生成过程中自动匹配对应的 tools 并执行 
+    // Vercel 会在生成过程中自动匹配对应的 tools 并执行
     const vercelTools = this.toolRegistry.getEnabledToolsAsVercel({
       sessionId: input.sessionId,
-      vaultName: session.vaultName,
-    });
+      vaultName: session.vaultName
+    })
 
     // 4. 调用流式生成接口
     const result = streamText({
@@ -68,7 +68,7 @@ export class AgentService {
         // [完成] 当所有步骤（包含工具调用）完成后，同步回写 DB
 
         // 包含 assistant 的多段生成消息或工具执行结果，遍历存入消息表
-        let orderIndex = history.length + 1;
+        let orderIndex = history.length + 1
         for (const appendedMsg of event.response.messages) {
           await this.messageRepo.create({
             sessionId: input.sessionId,
@@ -76,32 +76,32 @@ export class AgentService {
             isSummary: false,
             providerId: session.providerId,
             modelId: session.modelId,
-            orderIndex: orderIndex++,
+            orderIndex: orderIndex++
             // 细粒度的 toolCalls 等待数据库 schema 对齐后再做转换支持
-          });
+          })
         }
-        
+
         // 更新用量和费用估算
         if (event.usage) {
-          const { modelPricingService, usdToMicros } = await import('@baishou/shared');
+          const { modelPricingService, usdToMicros } = await import('@baishou/shared')
           const costUsd = await modelPricingService.calculateCost(
-             session.providerId,
-             session.modelId, 
-             event.usage.inputTokens!, 
-             event.usage.outputTokens!
-          );
+            session.providerId,
+            session.modelId,
+            event.usage.inputTokens!,
+            event.usage.outputTokens!
+          )
 
           await this.sessionRepo.updateTokenUsage(
-            input.sessionId, 
-            event.usage.inputTokens!, 
+            input.sessionId,
+            event.usage.inputTokens!,
             event.usage.outputTokens!,
             costUsd !== null ? usdToMicros(costUsd) : 0
-          );
+          )
         }
       }
-    });
+    })
 
-    await userMsgTask; // 确保前面的插入发起已完毕
-    return result;
+    await userMsgTask // 确保前面的插入发起已完毕
+    return result
   }
 }
