@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod'
 
 export const AgentSessionSchema = z.object({
   id: z.string(),
@@ -14,11 +14,11 @@ export const AgentSessionSchema = z.object({
   totalCostMicros: z.number().int().nonnegative().default(0),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional()
-});
+})
 
-export type AgentSession = z.infer<typeof AgentSessionSchema>;
+export type AgentSession = z.infer<typeof AgentSessionSchema>
 
-export const AgentMessageRoleSchema = z.enum(['system', 'user', 'assistant', 'tool']);
+export const AgentMessageRoleSchema = z.enum(['system', 'user', 'assistant', 'tool'])
 
 export const AgentMessageSchema = z.object({
   id: z.string(),
@@ -33,11 +33,18 @@ export const AgentMessageSchema = z.object({
   outputTokens: z.number().int().nonnegative().optional(),
   costMicros: z.number().int().nonnegative().optional(),
   createdAt: z.date().optional()
-});
+})
 
-export type AgentMessage = z.infer<typeof AgentMessageSchema>;
+export type AgentMessage = z.infer<typeof AgentMessageSchema>
 
-export const AgentPartTypeSchema = z.enum(['text', 'tool', 'stepFinish', 'compaction', 'attachment', 'context_snapshot']);
+export const AgentPartTypeSchema = z.enum([
+  'text',
+  'tool',
+  'stepFinish',
+  'compaction',
+  'attachment',
+  'context_snapshot'
+])
 
 export const AgentPartSchema = z.object({
   id: z.string(),
@@ -46,9 +53,9 @@ export const AgentPartSchema = z.object({
   type: AgentPartTypeSchema,
   data: z.any(),
   createdAt: z.date().optional()
-});
+})
 
-export type AgentPart = z.infer<typeof AgentPartSchema>;
+export type AgentPart = z.infer<typeof AgentPartSchema>
 
 export const AgentAssistantSchema = z.object({
   id: z.string(),
@@ -66,6 +73,6 @@ export const AgentAssistantSchema = z.object({
   sortOrder: z.number().int().default(0),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional()
-});
+})
 
-export type AgentAssistant = z.infer<typeof AgentAssistantSchema>;
+export type AgentAssistant = z.infer<typeof AgentAssistantSchema>

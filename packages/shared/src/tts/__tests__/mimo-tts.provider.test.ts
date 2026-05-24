@@ -1,106 +1,114 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MimoTtsProvider } from '../mimo-tts.provider';
-import { TtsApiError, TtsInvalidResponseError } from '../tts.errors';
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { MimoTtsProvider } from '../mimo-tts.provider'
+import { TtsApiError, TtsInvalidResponseError } from '../tts.errors'
 
 describe('MimoTtsProvider', () => {
-  let provider: MimoTtsProvider;
+  let provider: MimoTtsProvider
 
   beforeEach(() => {
-    provider = new MimoTtsProvider();
-    vi.restoreAllMocks();
-  });
+    provider = new MimoTtsProvider()
+    vi.restoreAllMocks()
+  })
 
   describe('id', () => {
     it('should return "mimo-tts" as provider id', () => {
-      expect(provider.id).toBe('mimo-tts');
-    });
-  });
+      expect(provider.id).toBe('mimo-tts')
+    })
+  })
 
   describe('name', () => {
     it('should return display name', () => {
-      expect(provider.name).toBe('小米 MiMo TTS');
-    });
-  });
+      expect(provider.name).toBe('小米 MiMo TTS')
+    })
+  })
 
   describe('supportsModel', () => {
     it('should return true for mimo-v2.5-tts models', () => {
-      expect(provider.supportsModel('mimo-v2.5-tts')).toBe(true);
-      expect(provider.supportsModel('some-mimo-v2.5-tts-pro')).toBe(true);
-    });
+      expect(provider.supportsModel('mimo-v2.5-tts')).toBe(true)
+      expect(provider.supportsModel('some-mimo-v2.5-tts-pro')).toBe(true)
+    })
 
     it('should return false for non-mimo models', () => {
-      expect(provider.supportsModel('tts-1')).toBe(false);
-      expect(provider.supportsModel('gpt-4o-mini-tts')).toBe(false);
-    });
-  });
+      expect(provider.supportsModel('tts-1')).toBe(false)
+      expect(provider.supportsModel('gpt-4o-mini-tts')).toBe(false)
+    })
+  })
 
   describe('synthesize', () => {
     const mockConfig = {
       baseUrl: 'https://api.mimo.com/v1',
-      apiKey: 'test-api-key',
-    };
+      apiKey: 'test-api-key'
+    }
 
     const mockRequest = {
       text: '你好世界',
       modelId: 'mimo-v2.5-tts',
       settings: {
         voice: '冰糖',
-        responseFormat: 'wav',
-      },
-    };
+        responseFormat: 'wav'
+      }
+    }
 
     it('should call /chat/completions endpoint with correct parameters', async () => {
       const mockResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
-          choices: [{
-            message: {
-              audio: {
-                data: 'base64audiodata',
-              },
-            },
-          }],
-        }),
-      };
-      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any);
+          choices: [
+            {
+              message: {
+                audio: {
+                  data: 'base64audiodata'
+                }
+              }
+            }
+          ]
+        })
+      }
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
 
-      const result = await provider.synthesize(mockRequest, mockConfig);
+      const result = await provider.synthesize(mockRequest, mockConfig)
 
       expect(fetchSpy).toHaveBeenCalledWith('https://api.mimo.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer test-api-key',
-          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-api-key',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'mimo-v2.5-tts',
           messages: [
-            { role: 'user', content: 'Natural, clear and professional speech style.' },
-            { role: 'assistant', content: '你好世界' },
+            {
+              role: 'user',
+              content: 'Natural, clear and professional speech style.'
+            },
+            { role: 'assistant', content: '你好世界' }
           ],
           audio: {
             format: 'wav',
-            voice: '冰糖',
-          },
-        }),
-      });
-      expect(result.audioBase64).toBe('base64audiodata');
-      expect(result.format).toBe('wav');
-    });
+            voice: '冰糖'
+          }
+        })
+      })
+      expect(result.audioBase64).toBe('base64audiodata')
+      expect(result.format).toBe('wav')
+    })
 
     it('should use default values when settings are missing', async () => {
       const mockResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
-          choices: [{ message: { audio: { data: 'test' } } }],
-        }),
-      };
-      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any);
+          choices: [{ message: { audio: { data: 'test' } } }]
+        })
+      }
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
 
-      await provider.synthesize({
-        ...mockRequest,
-        settings: { voice: '', responseFormat: '' },
-      }, mockConfig);
+      await provider.synthesize(
+        {
+          ...mockRequest,
+          settings: { voice: '', responseFormat: '' }
+        },
+        mockConfig
+      )
 
       expect(fetchSpy).toHaveBeenCalledWith(
         expect.any(String),
@@ -108,39 +116,44 @@ describe('MimoTtsProvider', () => {
           body: JSON.stringify({
             model: 'mimo-v2.5-tts',
             messages: [
-              { role: 'user', content: 'Natural, clear and professional speech style.' },
-              { role: 'assistant', content: '你好世界' },
+              {
+                role: 'user',
+                content: 'Natural, clear and professional speech style.'
+              },
+              { role: 'assistant', content: '你好世界' }
             ],
             audio: {
               format: 'wav',
-              voice: '冰糖',
-            },
-          }),
-        }),
-      );
-    });
+              voice: '冰糖'
+            }
+          })
+        })
+      )
+    })
 
     it('should throw TtsApiError when API returns error status', async () => {
       const mockResponse = {
         ok: false,
         status: 400,
-        text: vi.fn().mockResolvedValue('Bad request'),
-      };
-      vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any);
+        text: vi.fn().mockResolvedValue('Bad request')
+      }
+      vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
 
-      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(TtsApiError);
-    });
+      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(TtsApiError)
+    })
 
     it('should throw TtsInvalidResponseError when no audio data in response', async () => {
       const mockResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
-          choices: [{ message: {} }],
-        }),
-      };
-      vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any);
+          choices: [{ message: {} }]
+        })
+      }
+      vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
 
-      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(TtsInvalidResponseError);
-    });
-  });
-});
+      await expect(provider.synthesize(mockRequest, mockConfig)).rejects.toThrow(
+        TtsInvalidResponseError
+      )
+    })
+  })
+})

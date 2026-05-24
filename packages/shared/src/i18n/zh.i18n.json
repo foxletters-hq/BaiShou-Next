@@ -59,16 +59,7 @@
     "time": "时间",
     "exit_hint": "再按一次回到桌面",
     "search_hint": "搜索记忆...",
-    "weekdays": [
-      "",
-      "周一",
-      "周二",
-      "周三",
-      "周四",
-      "周五",
-      "周六",
-      "周日"
-    ],
+    "weekdays": ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"],
     "months": [
       "一月",
       "二月",
@@ -511,6 +502,9 @@
     "rag_add_manual_success": "记忆片段已添加",
     "rag_add_manual_failed": "添加失败: ",
     "rag_clear_all": "清空现有记忆",
+    "rag_clear_all_confirm_phrase": "确认清除",
+    "rag_clear_all_confirm": "请在下方输入「确认清除」以确认清空所有RAG记忆：",
+    "rag_clear_all_mismatch": "输入内容不匹配，操作已取消。",
     "rag_empty_desc": "当 AI 阅读日记或生成内容时，底层向量数据将在这里自动生成并被管理。",
     "theme_hue": "色相",
     "theme_saturation": "饱和",

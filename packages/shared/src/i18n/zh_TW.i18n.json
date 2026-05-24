@@ -59,16 +59,7 @@
     "time": "時間",
     "exit_hint": "再按一次回到桌面",
     "search_hint": "搜尋記憶...",
-    "weekdays": [
-      "",
-      "週一",
-      "週二",
-      "週三",
-      "週四",
-      "週五",
-      "週六",
-      "週日"
-    ],
+    "weekdays": ["", "週一", "週二", "週三", "週四", "週五", "週六", "週日"],
     "months": [
       "一月",
       "二月",
@@ -502,6 +493,9 @@
     "rag_batch_embed": "全量掃描未索引日記",
     "rag_add_manual": "新增手動記憶片段",
     "rag_clear_all": "清除現有記憶",
+    "rag_clear_all_confirm_phrase": "確認清除",
+    "rag_clear_all_confirm": "請在下方輸入「確認清除」以確認清空所有RAG記憶：",
+    "rag_clear_all_mismatch": "輸入內容不符，操作已取消。",
     "rag_empty_desc": "當 AI 閱讀日記或生成內容時，底層向量資料將在這裡自動生成並被管理。",
     "theme_hue": "色相",
     "theme_saturation": "饱和",

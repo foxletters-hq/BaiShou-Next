@@ -59,16 +59,7 @@
     "time": "時間",
     "exit_hint": "もう一度押すと終了します",
     "search_hint": "記憶を検索...",
-    "weekdays": [
-      "",
-      "月",
-      "火",
-      "水",
-      "木",
-      "金",
-      "土",
-      "日"
-    ],
+    "weekdays": ["", "月", "火", "水", "木", "金", "土", "日"],
     "months": [
       "1月",
       "2月",
@@ -502,6 +493,9 @@
     "fact_key_placeholder": "例：年齢、性格、身份",
     "fact_value_placeholder": "例：25歳、ツンデレ、魔法使い",
     "rag_clear_all": "既存のメモリをクリア",
+    "rag_clear_all_confirm_phrase": "確認清除",
+    "rag_clear_all_confirm": "下に「確認清除」と入力してRAGメモリをクリアしてください：",
+    "rag_clear_all_mismatch": "入力が一致しません。操作はキャンセルされました。",
     "rag_disabled_alert": "RAGメモリ機能はオフになりました~",
     "rag_model_unassigned": "未配置(点击跳转)",
     "rag_detect_dimension": "检测维度",

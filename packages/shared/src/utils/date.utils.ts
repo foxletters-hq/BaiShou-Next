@@ -20,10 +20,10 @@
  * 等价于 Flutter 的 DateFormat('yyyy-MM-dd').format(date)
  */
 export function formatLocalDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 /**
@@ -33,15 +33,11 @@ export function formatLocalDate(date: Date): string {
  *    在东八区等非 UTC 时区会产生日期偏移一天的 Bug。
  */
 export function parseDateStr(dateStr: string): Date {
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!match) {
-    throw new RangeError(`[date.utils] 无效的日期字符串: "${dateStr}"，期望格式 YYYY-MM-DD`);
+    throw new RangeError(`[date.utils] 无效的日期字符串: "${dateStr}"，期望格式 YYYY-MM-DD`)
   }
-  return new Date(
-    parseInt(match[1]!, 10),
-    parseInt(match[2]!, 10) - 1,
-    parseInt(match[3]!, 10),
-  );
+  return new Date(parseInt(match[1]!, 10), parseInt(match[2]!, 10) - 1, parseInt(match[3]!, 10))
 }
 
 /**
@@ -50,11 +46,11 @@ export function parseDateStr(dateStr: string): Date {
  * 适合处理来自 URL 参数、IPC 传输等不可信来源的日期字符串。
  */
 export function safeParseDate(str: string | undefined | null, fallback?: Date): Date {
-  if (!str) return fallback ?? new Date();
+  if (!str) return fallback ?? new Date()
   try {
-    return parseDateStr(str);
+    return parseDateStr(str)
   } catch {
-    return fallback ?? new Date();
+    return fallback ?? new Date()
   }
 }
 
@@ -68,5 +64,5 @@ export function isSameLocalDay(a: Date, b: Date): boolean {
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
-  );
+  )
 }

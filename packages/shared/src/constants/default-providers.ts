@@ -1,4 +1,4 @@
-import { AiProviderModel, ProviderType, WebSearchMode } from '../types/ai-provider.types';
+import { AiProviderModel, ProviderType, WebSearchMode } from '../types/ai-provider.types'
 
 export const DEFAULT_AI_PROVIDERS: AiProviderModel[] = [
   {
@@ -14,7 +14,7 @@ export const DEFAULT_AI_PROVIDERS: AiProviderModel[] = [
     enabledModels: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
     isSystem: true,
     sortOrder: 0,
-    webSearchMode: WebSearchMode.Tool,
+    webSearchMode: WebSearchMode.Tool
   },
   {
     id: 'anthropic_default',
@@ -22,14 +22,23 @@ export const DEFAULT_AI_PROVIDERS: AiProviderModel[] = [
     type: ProviderType.Anthropic,
     apiKey: '',
     baseUrl: 'https://api.anthropic.com/v1',
-    models: ['claude-3-7-sonnet-20250219', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
+    models: [
+      'claude-3-7-sonnet-20250219',
+      'claude-3-5-sonnet-20241022',
+      'claude-3-opus-20240229',
+      'claude-3-haiku-20240307'
+    ],
     defaultDialogueModel: 'claude-3-7-sonnet-20250219',
     defaultNamingModel: 'claude-3-haiku-20240307',
     isEnabled: true,
-    enabledModels: ['claude-3-7-sonnet-20250219', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
+    enabledModels: [
+      'claude-3-7-sonnet-20250219',
+      'claude-3-5-sonnet-20241022',
+      'claude-3-haiku-20240307'
+    ],
     isSystem: true,
     sortOrder: 1,
-    webSearchMode: WebSearchMode.Tool,
+    webSearchMode: WebSearchMode.Tool
   },
   {
     id: 'gemini_default',
@@ -44,7 +53,7 @@ export const DEFAULT_AI_PROVIDERS: AiProviderModel[] = [
     enabledModels: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
     isSystem: true,
     sortOrder: 2,
-    webSearchMode: WebSearchMode.Tool,
+    webSearchMode: WebSearchMode.Tool
   },
   {
     id: 'deepseek_default',
@@ -59,7 +68,7 @@ export const DEFAULT_AI_PROVIDERS: AiProviderModel[] = [
     enabledModels: ['deepseek-chat', 'deepseek-reasoner'],
     isSystem: true,
     sortOrder: 3,
-    webSearchMode: WebSearchMode.Tool,
+    webSearchMode: WebSearchMode.Tool
   },
   {
     id: 'kimi_default',
@@ -74,6 +83,6 @@ export const DEFAULT_AI_PROVIDERS: AiProviderModel[] = [
     enabledModels: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
     isSystem: true,
     sortOrder: 4,
-    webSearchMode: WebSearchMode.Tool,
+    webSearchMode: WebSearchMode.Tool
   }
-];
+]

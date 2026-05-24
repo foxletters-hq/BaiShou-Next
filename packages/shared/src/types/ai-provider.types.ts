@@ -19,42 +19,44 @@ export enum ProviderType {
   VertexAI = 'vertexai',
   Vercel = 'vercel',
   XiaomiMiMo = 'xiaomimimo',
-  Custom = 'custom',
+  Custom = 'custom'
 }
 
 export enum WebSearchMode {
   Off = 'off',
-  Tool = 'tool',
+  Tool = 'tool'
 }
 
 export interface AiProviderModel {
-  id: string;
-  name: string;
-  type: ProviderType;
-  apiKey: string;
-  baseUrl: string;
-  models: string[];
-  defaultDialogueModel: string;
-  defaultNamingModel: string;
-  isEnabled: boolean;
-  enabledModels: string[];
-  notes?: string;
-  isSystem: boolean;
-  sortOrder: number;
-  webSearchMode: WebSearchMode;
+  id: string
+  name: string
+  type: ProviderType
+  apiKey: string
+  baseUrl: string
+  models: string[]
+  defaultDialogueModel: string
+  defaultNamingModel: string
+  isEnabled: boolean
+  enabledModels: string[]
+  notes?: string
+  isSystem: boolean
+  sortOrder: number
+  webSearchMode: WebSearchMode
 }
 
 /**
  * 根据 ProviderType 返回默认的搜索模式
  */
 export function getDefaultWebSearchMode(_type: ProviderType): WebSearchMode {
-  return WebSearchMode.Tool;
+  return WebSearchMode.Tool
 }
 
 /**
  * 创建一个符合要求且带默认字段的 AI 提供商配置
  */
-export function createAiProvider(model: Partial<AiProviderModel> & Pick<AiProviderModel, 'id' | 'name' | 'type'>): AiProviderModel {
+export function createAiProvider(
+  model: Partial<AiProviderModel> & Pick<AiProviderModel, 'id' | 'name' | 'type'>
+): AiProviderModel {
   return {
     apiKey: '',
     baseUrl: '',
@@ -66,6 +68,6 @@ export function createAiProvider(model: Partial<AiProviderModel> & Pick<AiProvid
     isSystem: true,
     sortOrder: 0,
     webSearchMode: model.webSearchMode ?? getDefaultWebSearchMode(model.type),
-    ...model,
-  };
+    ...model
+  }
 }

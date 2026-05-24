@@ -7,36 +7,37 @@
  */
 
 // 匹配常见的 Embedding 模型名称模式
-const embeddingRegex = /(?:text-embedding|embed|bge-|e5-|retrieval|uae-|gte-|jina-embeddings|voyage-|nomic-embed)/i;
+const embeddingRegex =
+  /(?:text-embedding|embed|bge-|e5-|retrieval|uae-|gte-|jina-embeddings|voyage-|nomic-embed)/i
 
 // 匹配 Rerank 模型（排除在 Embedding 之外）
-const rerankRegex = /(?:rerank|re-rank|re-ranker|re-ranking)/i;
+const rerankRegex = /(?:rerank|re-rank|re-ranker|re-ranking)/i
 
 // 匹配常见的 TTS 模型名称模式
-const ttsRegex = /(?:tts|text-to-speech|speech|voice|audio)/i;
+const ttsRegex = /(?:tts|text-to-speech|speech|voice|audio)/i
 
 /**
  * 判断给定的模型 ID 是否为 Embedding 模型
  */
 export function isEmbeddingModel(modelId: string): boolean {
-  if (!modelId) return false;
+  if (!modelId) return false
   // Rerank 模型不算 Embedding
-  if (rerankRegex.test(modelId)) return false;
-  return embeddingRegex.test(modelId);
+  if (rerankRegex.test(modelId)) return false
+  return embeddingRegex.test(modelId)
 }
 
 /**
  * 判断给定的模型 ID 是否为 Rerank 模型
  */
 export function isRerankModel(modelId: string): boolean {
-  if (!modelId) return false;
-  return rerankRegex.test(modelId);
+  if (!modelId) return false
+  return rerankRegex.test(modelId)
 }
 
 /**
  * 判断给定的模型 ID 是否为 TTS 模型
  */
 export function isTtsModel(modelId: string): boolean {
-  if (!modelId) return false;
-  return ttsRegex.test(modelId);
+  if (!modelId) return false
+  return ttsRegex.test(modelId)
 }
