@@ -172,13 +172,13 @@ SDD 要求在编写任何实现代码之前，先产出**明确的接口规格**
 ```typescript
 // ✅ 先定义接口
 export interface DiaryRepository {
-  findById(id: number): Promise<Diary | null>;
-  findByDate(date: Date): Promise<Diary | null>;
-  findByDateRange(start: Date, end: Date): Promise<Diary[]>;
-  create(diary: CreateDiaryInput): Promise<Diary>;
-  update(id: number, diary: UpdateDiaryInput): Promise<Diary>;
-  delete(id: number): Promise<void>;
-  search(query: string, options?: SearchOptions): Promise<Diary[]>;
+  findById(id: number): Promise<Diary | null>
+  findByDate(date: Date): Promise<Diary | null>
+  findByDateRange(start: Date, end: Date): Promise<Diary[]>
+  create(diary: CreateDiaryInput): Promise<Diary>
+  update(id: number, diary: UpdateDiaryInput): Promise<Diary>
+  delete(id: number): Promise<void>
+  search(query: string, options?: SearchOptions): Promise<Diary[]>
 }
 ```
 
@@ -207,8 +207,8 @@ export interface DiaryRepository {
 export async function generateWeeklySummary(
   startDate: Date,
   endDate: Date,
-  options?: SummaryGenerationOptions,
-): Promise<string>;
+  options?: SummaryGenerationOptions
+): Promise<string>
 ````
 
 #### 错误场景枚举
@@ -327,18 +327,18 @@ describe('DiaryService', () => {
 export class DiaryService {
   constructor(
     private readonly repo: DiaryRepository,
-    private readonly fileService: FileService,
+    private readonly fileService: FileService
   ) {}
 }
 
 // 测试中注入 Mock
 const mockRepo = {
   findById: vi.fn(),
-  create: vi.fn(),
+  create: vi.fn()
   // ...
-} satisfies DiaryRepository;
+} satisfies DiaryRepository
 
-const service = new DiaryService(mockRepo, mockFileService);
+const service = new DiaryService(mockRepo, mockFileService)
 ```
 
 ### 5.4 覆盖率要求
@@ -524,8 +524,8 @@ src/
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
-  },
+    "noUnusedParameters": true
+  }
 }
 ```
 
@@ -533,16 +533,16 @@ src/
 
 ```typescript
 // 1. 外部依赖
-import { z } from "zod";
-import { streamText } from "ai";
+import { z } from 'zod'
+import { streamText } from 'ai'
 
 // 2. 内部包（monorepo）
-import { Diary } from "@baishou/shared";
-import { DiaryRepository } from "@baishou/database";
+import { Diary } from '@baishou/shared'
+import { DiaryRepository } from '@baishou/database'
 
 // 3. 当前包内相对导入
-import { validateDiaryInput } from "./diary.utils";
-import { DiaryNotFoundError } from "./diary.errors";
+import { validateDiaryInput } from './diary.utils'
+import { DiaryNotFoundError } from './diary.errors'
 ```
 
 ### 8.5 错误处理
@@ -587,11 +587,11 @@ const [diary, summary] = await Promise.all([
 ```typescript
 // ✅ 解释"为什么"，而非"是什么"
 // 使用 RRF 而非简单的分数加权，因为不同搜索引擎的分数尺度不可比
-const fusedResults = reciprocalRankFusion(vectorResults, ftsResults);
+const fusedResults = reciprocalRankFusion(vectorResults, ftsResults)
 
 // ❌ 无意义的注释
 // 获取日记
-const diary = await getDiary(id);
+const diary = await getDiary(id)
 ```
 
 ---
@@ -626,6 +626,7 @@ BaiShou-Next/
 ```
 
 **规则：**
+
 - API Key 等敏感信息**只能**存在 `.env` 中，**严禁**硬编码或提交到仓库
 - 新增环境变量时，**必须**同步更新 `.env.example`
 - 跨包共享的变量在根 `.env` 定义，通过 Turborepo `globalEnv` 透传
@@ -637,24 +638,24 @@ BaiShou-Next/
 
 ```typescript
 // ✅ 使用分级日志
-import { logger } from '@baishou/shared';
+import { logger } from '@baishou/shared'
 
-logger.info('Diary created', { diaryId: 42, date: '2026-03-29' });
-logger.warn('Compression threshold approaching', { usage: 58000 });
-logger.error('AI provider failed', { provider: 'gemini', error });
+logger.info('Diary created', { diaryId: 42, date: '2026-03-29' })
+logger.warn('Compression threshold approaching', { usage: 58000 })
+logger.error('AI provider failed', { provider: 'gemini', error })
 
 // ❌ 禁止裸 console.log
-console.log('diary created');  // 不允许
+console.log('diary created') // 不允许
 ```
 
 **日志级别约定：**
 
-| 级别    | 用途                                     |
-| ------- | ---------------------------------------- |
-| `error` | 不可恢复的错误，需要人工介入             |
-| `warn`  | 可恢复但需关注的异常（降级、重试等）     |
-| `info`  | 关键业务事件（创建/删除/同步完成等）     |
-| `debug` | 开发调试信息（生产环境自动关闭）         |
+| 级别    | 用途                                 |
+| ------- | ------------------------------------ |
+| `error` | 不可恢复的错误，需要人工介入         |
+| `warn`  | 可恢复但需关注的异常（降级、重试等） |
+| `info`  | 关键业务事件（创建/删除/同步完成等） |
+| `debug` | 开发调试信息（生产环境自动关闭）     |
 
 ### 9.4 依赖管理策略
 
@@ -673,6 +674,7 @@ console.log('diary created');  // 不允许
    - 引入新的构建工具链
 
 **版本锁定：**
+
 - `dependencies` 使用 `^` 语义化版本
 - `devDependencies` 使用 `^` 语义化版本
 - 安全关键的依赖（如 `sqlite3`）使用精确版本锁定
@@ -796,20 +798,17 @@ export interface DiaryRepository {
 export class DiaryService {
   constructor(
     private readonly repo: DiaryRepository, // 接口
-    private readonly fileService: FileService, // 接口
+    private readonly fileService: FileService // 接口
   ) {}
 }
 
 // 在组合根（Composition Root）中注入具体实现
-const diaryService = new DiaryService(
-  new SqliteDiaryRepository(db),
-  new LocalFileService(basePath),
-);
+const diaryService = new DiaryService(new SqliteDiaryRepository(db), new LocalFileService(basePath))
 
 // ❌ 坏的：直接依赖具体实现
-import { SqliteDiaryRepository } from "../database/sqlite-diary-repo";
+import { SqliteDiaryRepository } from '../database/sqlite-diary-repo'
 export class DiaryService {
-  private repo = new SqliteDiaryRepository(); // 硬编码依赖
+  private repo = new SqliteDiaryRepository() // 硬编码依赖
 }
 ```
 
