@@ -19,7 +19,7 @@ describe('WebSearchService', () => {
         </div>
       `
       const results = WebSearchService.parseDuckDuckGoResults(html, 5)
-      
+
       expect(results).toHaveLength(2)
       expect(results[0]!.title).toBe('Example Title')
       expect(results[0]!.url).toBe('https://example.com')
@@ -48,14 +48,14 @@ describe('WebSearchService', () => {
         </div>
       `
       const results = WebSearchService.parseDuckDuckGoResults(html, 2)
-      
+
       expect(results).toHaveLength(2)
     })
 
     it('should return empty array for invalid HTML', () => {
       const html = '<html><body>No results</body></html>'
       const results = WebSearchService.parseDuckDuckGoResults(html, 5)
-      
+
       expect(results).toHaveLength(0)
     })
   })

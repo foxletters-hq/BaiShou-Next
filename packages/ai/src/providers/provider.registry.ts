@@ -1,46 +1,46 @@
-import { AiProviderModel, ProviderType, createAiProvider, AIProviderConfig } from '@baishou/shared';
-import { IAIProvider } from './provider.interface';
-import { ProviderFactory } from './provider.factory';
+import { AiProviderModel, ProviderType, createAiProvider, AIProviderConfig } from '@baishou/shared'
+import { IAIProvider } from './provider.interface'
+import { ProviderFactory } from './provider.factory'
 
 /**
  * 全局 AI 提供商中心注册表
  * 负责各服务提供商对象的缓存生命周期、检索和维护
  */
 export class AIProviderRegistry {
-  private static instance: AIProviderRegistry;
-  private providers: Map<string, IAIProvider> = new Map();
+  private static instance: AIProviderRegistry
+  private providers: Map<string, IAIProvider> = new Map()
 
   private constructor() {}
 
   public static getInstance(): AIProviderRegistry {
     if (!AIProviderRegistry.instance) {
-      AIProviderRegistry.instance = new AIProviderRegistry();
+      AIProviderRegistry.instance = new AIProviderRegistry()
     }
-    return AIProviderRegistry.instance;
+    return AIProviderRegistry.instance
   }
 
   /**
    * 清除所有缓存的支持商实例
    */
   public clearProviders(): void {
-    this.providers.clear();
+    this.providers.clear()
   }
 
   /**
    * 加载默认的内置生态提供商字典配置
    */
   public initializeDefaultProviders(): void {
-    const builtinIds = Object.values(ProviderType);
+    const builtinIds = Object.values(ProviderType)
     for (const type of builtinIds) {
-      if (type === ProviderType.Custom) continue;
-      
+      if (type === ProviderType.Custom) continue
+
       const config = createAiProvider({
         id: type,
-        name: type.charAt(0).toUpperCase() + type.slice(1), /* 临时命名规则，可按需补充细化 */
-        type: type as ProviderType,
-      });
+        name: type.charAt(0).toUpperCase() + type.slice(1) /* 临时命名规则，可按需补充细化 */,
+        type: type as ProviderType
+      })
 
-      this.providers.set(config.id, this.createProviderInstance(config));
+      this.providers.set(config.id, this.createProviderInstance(config))
     }
   }
 
@@ -48,19 +48,20 @@ export class AIProviderRegistry {
    * 返回当前系统中可用的全部 Provider 实例列表
    */
   public listProviders(): IAIProvider[] {
-    return Array.from(this.providers.values())
-      .sort((a, b) => a.config.sortOrder - b.config.sortOrder);
+    return Array.from(this.providers.values()).sort(
+      (a, b) => a.config.sortOrder - b.config.sortOrder
+    )
   }
 
   /**
    * 根据 ID 安全地获取指定的服务提供商实例
    */
   public getProvider(id: string): IAIProvider | undefined {
-    return this.providers.get(id);
+    return this.providers.get(id)
   }
 
   public hasProvider(id: string): boolean {
-    return this.providers.has(id);
+    return this.providers.has(id)
   }
 
   /**
@@ -68,34 +69,34 @@ export class AIProviderRegistry {
    * 对比配置对象，如果有变动则自动重建缓存并返回新实例，无变动则直接返回现有缓存。
    */
   public getOrUpdateProvider(config: AiProviderModel | AIProviderConfig): IAIProvider {
-    const existing = this.providers.get(config.id);
-    
+    const existing = this.providers.get(config.id)
+
     if (existing) {
-        // 使用序列化比对，确保配置无变动时复用单例
-        const oldStr = JSON.stringify(existing.config || {});
-        const newStr = JSON.stringify(config || {});
-        if (oldStr === newStr) {
-            return existing;
-        }
+      // 使用序列化比对，确保配置无变动时复用单例
+      const oldStr = JSON.stringify(existing.config || {})
+      const newStr = JSON.stringify(config || {})
+      if (oldStr === newStr) {
+        return existing
+      }
     }
-    
-    const newProvider = this.createProviderInstance(config);
-    this.providers.set(config.id, newProvider);
-    return newProvider;
+
+    const newProvider = this.createProviderInstance(config)
+    this.providers.set(config.id, newProvider)
+    return newProvider
   }
 
   public removeProvider(id: string): void {
-    this.providers.delete(id);
+    this.providers.delete(id)
   }
 
   public registerProvider(provider: IAIProvider): void {
-    this.providers.set(provider.config.id, provider);
+    this.providers.set(provider.config.id, provider)
   }
 
   /**
    * 内部工厂临时桩，待具体 Provider 实现完毕后将补充基于 config.type 的分发调度
    */
   public createProviderInstance(config: AiProviderModel | AIProviderConfig): IAIProvider {
-    return ProviderFactory.createProviderFromConfig(config as AiProviderModel);
+    return ProviderFactory.createProviderFromConfig(config as AiProviderModel)
   }
 }

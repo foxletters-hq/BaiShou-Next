@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
@@ -7,7 +7,7 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
-      'scripts/**',  // E2E 测试需要真实 API Key，不在单元测试中执行
-    ],
-  },
-});
+      'scripts/**' // E2E 测试需要真实 API Key，不在单元测试中执行
+    ]
+  }
+})

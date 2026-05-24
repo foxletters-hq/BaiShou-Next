@@ -10,35 +10,35 @@
  * 原始实现：lib/agent/middleware/gemini_thought_signature.dart (39 行)
  */
 
-import type { ModelMessage } from 'ai';
-import type { MessageMiddleware } from './message-middleware';
+import type { ModelMessage } from 'ai'
+import type { MessageMiddleware } from './message-middleware'
 
-const SKIP_VALIDATOR = 'skip_thought_signature_validator';
+const SKIP_VALIDATOR = 'skip_thought_signature_validator'
 
 export class GeminiThoughtSignatureMiddleware implements MessageMiddleware {
-  readonly name = 'gemini-thought-signature-skip';
+  readonly name = 'gemini-thought-signature-skip'
 
   process(messages: ModelMessage[]): ModelMessage[] {
     for (const message of messages) {
-      if (message.role !== 'assistant') continue;
+      if (message.role !== 'assistant') continue
 
       // Vercel AI SDK 将 tool calls 包装在 content parts 中
-      if (!Array.isArray(message.content)) continue;
+      if (!Array.isArray(message.content)) continue
 
-      let isFirstToolCall = true;
+      let isFirstToolCall = true
       for (const part of message.content) {
         if (typeof part === 'object' && 'type' in part && part.type === 'tool-call') {
           if (isFirstToolCall) {
             // 在 experimental_providerMetadata 上注入跳过标记
             // 当前 Vercel AI SDK 通过此字段透传 provider 元数据
-            (part as unknown as Record<string, unknown>)['experimental_providerMetadata'] = {
-              google: { thoughtSignature: SKIP_VALIDATOR },
-            };
-            isFirstToolCall = false;
+            ;(part as unknown as Record<string, unknown>)['experimental_providerMetadata'] = {
+              google: { thoughtSignature: SKIP_VALIDATOR }
+            }
+            isFirstToolCall = false
           }
         }
       }
     }
-    return messages;
+    return messages
   }
 }

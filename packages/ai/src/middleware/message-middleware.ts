@@ -7,44 +7,44 @@
  * 原始实现：lib/agent/middleware/message_middleware.dart (33 行)
  */
 
-import type { ModelMessage } from 'ai';
+import type { ModelMessage } from 'ai'
 
 /**
  * 消息中间件接口
  */
 export interface MessageMiddleware {
   /** 中间件名称（用于调试日志） */
-  readonly name: string;
+  readonly name: string
 
   /**
    * 处理消息列表
-   * 
+   *
    * @param messages Vercel AI SDK 格式的消息列表
    * @returns 处理后的消息列表
    */
-  process(messages: ModelMessage[]): ModelMessage[];
+  process(messages: ModelMessage[]): ModelMessage[]
 }
 
 /**
  * 中间件链 — 按顺序执行多个中间件
  */
 export class MiddlewareChain {
-  private readonly middlewares: MessageMiddleware[];
+  private readonly middlewares: MessageMiddleware[]
 
   constructor(middlewares: MessageMiddleware[]) {
-    this.middlewares = middlewares;
+    this.middlewares = middlewares
   }
 
   /** 依次执行所有中间件 */
   apply(messages: ModelMessage[]): ModelMessage[] {
-    let result = messages;
+    let result = messages
     for (const mw of this.middlewares) {
-      result = mw.process(result);
+      result = mw.process(result)
     }
-    return result;
+    return result
   }
 
   get isEmpty(): boolean {
-    return this.middlewares.length === 0;
+    return this.middlewares.length === 0
   }
 }

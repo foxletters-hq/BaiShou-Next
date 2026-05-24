@@ -7,39 +7,39 @@
  * 原始实现：lib/agent/middleware/middleware_factory.dart (36 行)
  */
 
-import { MiddlewareChain } from './message-middleware';
-import type { MessageMiddleware } from './message-middleware';
-import { GeminiThoughtSignatureMiddleware } from './gemini-thought-signature';
+import { MiddlewareChain } from './message-middleware'
+import type { MessageMiddleware } from './message-middleware'
+import { GeminiThoughtSignatureMiddleware } from './gemini-thought-signature'
 
-export type ProviderType = 'openai' | 'anthropic' | 'gemini' | 'deepseek' | 'custom';
+export type ProviderType = 'openai' | 'anthropic' | 'gemini' | 'deepseek' | 'custom'
 
 /**
  * 根据 Provider 类型构建对应的中间件链
  */
 export function buildMiddlewareChain(providerType: ProviderType): MiddlewareChain {
-  const middlewares: MessageMiddleware[] = [];
+  const middlewares: MessageMiddleware[] = []
 
   switch (providerType) {
     case 'gemini':
-      middlewares.push(new GeminiThoughtSignatureMiddleware());
+      middlewares.push(new GeminiThoughtSignatureMiddleware())
       // 未来: GeminiSafetySettingsMiddleware, ...
-      break;
+      break
 
     case 'anthropic':
       // 未来: AnthropicCacheMiddleware, ...
-      break;
+      break
 
     case 'deepseek':
       // DeepSeek reasoning 中间件已通过 Vercel AI SDK 的 LanguageModelV3Middleware 实现
       // 参见 ./deepseek-reasoning.ts
-      break;
+      break
 
     case 'openai':
     case 'custom':
     default:
       // OpenAI 标准协议族 (OpenAI, DeepSeek, Kimi, GLM 等)
-      break;
+      break
   }
 
-  return new MiddlewareChain(middlewares);
+  return new MiddlewareChain(middlewares)
 }

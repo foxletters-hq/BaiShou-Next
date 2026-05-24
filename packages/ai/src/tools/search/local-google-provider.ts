@@ -19,7 +19,8 @@ export class LocalGoogleProvider extends LocalSearchProvider {
     try {
       // Google 搜索结果在 div.g 中，标题在 h3 中，链接在 a 中
       // 匹配所有搜索结果项
-      const itemRegex = /<div class="g"[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/gi
+      const itemRegex =
+        /<div class="g"[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/gi
       let match
 
       while ((match = itemRegex.exec(html)) !== null) {
@@ -37,7 +38,8 @@ export class LocalGoogleProvider extends LocalSearchProvider {
       // 如果正则没有匹配到，尝试备用解析方式
       if (results.length === 0) {
         // 备用：匹配所有 h3 标签中的链接
-        const fallbackRegex = /<a[^>]*href="([^"]*)"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/gi
+        const fallbackRegex =
+          /<a[^>]*href="([^"]*)"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/gi
         while ((match = fallbackRegex.exec(html)) !== null) {
           const url = match[1]!
           const title = match[2]!.replace(/<[^>]+>/g, '').trim()
@@ -53,7 +55,8 @@ export class LocalGoogleProvider extends LocalSearchProvider {
 
       // 再次备用：匹配所有包含 h3 的链接
       if (results.length === 0) {
-        const lastResortRegex = /<a[^>]*href="(https?:\/\/[^"]*)"[^>]*>[^<]*<h3[^>]*>([^<]*)<\/h3>/gi
+        const lastResortRegex =
+          /<a[^>]*href="(https?:\/\/[^"]*)"[^>]*>[^<]*<h3[^>]*>([^<]*)<\/h3>/gi
         while ((match = lastResortRegex.exec(html)) !== null) {
           const url = match[1]!
           const title = match[2]!.trim()

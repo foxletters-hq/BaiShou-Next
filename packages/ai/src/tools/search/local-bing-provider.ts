@@ -20,9 +20,10 @@ export class LocalBingProvider extends LocalSearchProvider {
       // 使用正则表达式解析 Bing 搜索结果
       // Bing 搜索结果在 #b_results 中，每个结果是 li.b_algo
       // 标题在 h2 > a 中
-      
+
       // 匹配所有搜索结果项
-      const itemRegex = /<li class="b_algo"[^>]*>[\s\S]*?<h2[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h2>/gi
+      const itemRegex =
+        /<li class="b_algo"[^>]*>[\s\S]*?<h2[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h2>/gi
       let match
 
       while ((match = itemRegex.exec(html)) !== null) {
@@ -40,7 +41,8 @@ export class LocalBingProvider extends LocalSearchProvider {
       // 如果正则没有匹配到，尝试备用解析方式
       if (results.length === 0) {
         // 备用：匹配所有 h2 标签中的链接
-        const fallbackRegex = /<h2[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h2>/gi
+        const fallbackRegex =
+          /<h2[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h2>/gi
         while ((match = fallbackRegex.exec(html)) !== null) {
           const url = match[1]!
           const title = match[2]!.replace(/<[^>]+>/g, '').trim()

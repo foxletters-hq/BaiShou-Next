@@ -12,7 +12,7 @@
  * 参考: DeepSeek API 文档 - 多轮对话中的思维链
  */
 
-import type { LanguageModelV3Middleware } from '@ai-sdk/provider';
+import type { LanguageModelV3Middleware } from '@ai-sdk/provider'
 
 /**
  * 创建 DeepSeek reasoning 内容处理中间件。
@@ -23,33 +23,35 @@ export function createDeepSeekReasoningMiddleware(): LanguageModelV3Middleware {
     specificationVersion: 'v3' as const,
     transformParams: async ({ params, type }) => {
       // eslint-disable-next-line no-console
-      console.log('[DeepSeekReasoning] transformParams called, type=%s', type);
+      console.log('[DeepSeekReasoning] transformParams called, type=%s', type)
 
       if (!params.prompt) {
         // eslint-disable-next-line no-console
-        console.log('[DeepSeekReasoning] No prompt found in params');
-        return params;
+        console.log('[DeepSeekReasoning] No prompt found in params')
+        return params
       }
 
       // eslint-disable-next-line no-console
-      console.log('[DeepSeekReasoning] prompt messages count:', params.prompt.length);
+      console.log('[DeepSeekReasoning] prompt messages count:', params.prompt.length)
 
       // 检查所有消息的内容结构
       for (let i = 0; i < params.prompt.length; i++) {
-        const msg = params.prompt[i] as any;
+        const msg = params.prompt[i] as any
         if (msg.role === 'assistant' && Array.isArray(msg.content)) {
-          const partTypes = msg.content.map((p: any) => p.type);
+          const partTypes = msg.content.map((p: any) => p.type)
           // eslint-disable-next-line no-console
-          console.log(`[DeepSeekReasoning] Assistant message ${i} part types:`, partTypes);
+          console.log(`[DeepSeekReasoning] Assistant message ${i} part types:`, partTypes)
 
           // 检查是否有 reasoning parts
-          const reasoningParts = msg.content.filter((p: any) => p.type === 'reasoning');
+          const reasoningParts = msg.content.filter((p: any) => p.type === 'reasoning')
           if (reasoningParts.length > 0) {
             // eslint-disable-next-line no-console
-            console.log(`[DeepSeekReasoning] Found ${reasoningParts.length} reasoning parts in message ${i}`);
+            console.log(
+              `[DeepSeekReasoning] Found ${reasoningParts.length} reasoning parts in message ${i}`
+            )
             for (const rp of reasoningParts) {
               // eslint-disable-next-line no-console
-              console.log(`[DeepSeekReasoning] Reasoning text length: ${rp.text?.length || 0}`);
+              console.log(`[DeepSeekReasoning] Reasoning text length: ${rp.text?.length || 0}`)
             }
           }
         }
@@ -61,53 +63,53 @@ export function createDeepSeekReasoningMiddleware(): LanguageModelV3Middleware {
           msg.role === 'assistant' &&
           Array.isArray(msg.content) &&
           msg.content.some((p: any) => p.type === 'reasoning')
-      );
+      )
 
       // eslint-disable-next-line no-console
-      console.log('[DeepSeekReasoning] hasReasoning=%s', hasReasoning);
+      console.log('[DeepSeekReasoning] hasReasoning=%s', hasReasoning)
 
-      if (!hasReasoning) return params;
+      if (!hasReasoning) return params
 
       const transformedPrompt = params.prompt.map((message: any, idx: number) => {
-        if (message.role !== 'assistant') return message;
-        if (!Array.isArray(message.content)) return message;
+        if (message.role !== 'assistant') return message
+        if (!Array.isArray(message.content)) return message
 
         // 查找 reasoning parts
-        const reasoningParts = message.content.filter(
-          (part: any) => part.type === 'reasoning'
-        );
+        const reasoningParts = message.content.filter((part: any) => part.type === 'reasoning')
 
-        if (reasoningParts.length === 0) return message;
+        if (reasoningParts.length === 0) return message
 
         // 提取 reasoning 文本
         const reasoningText = reasoningParts
           .map((part: any) => part.text || '')
           .filter(Boolean)
-          .join('\n');
+          .join('\n')
 
-        if (!reasoningText) return message;
+        if (!reasoningText) return message
 
         // eslint-disable-next-line no-console
-        console.log(`[DeepSeekReasoning] Converting reasoning to think tags for message ${idx}, length=${reasoningText.length}`);
+        console.log(
+          `[DeepSeekReasoning] Converting reasoning to think tags for message ${idx}, length=${reasoningText.length}`
+        )
 
         // 将 reasoning 内容以 <think> 标签内联到 text part 中
-        const newContent: any[] = [];
-        let textMerged = false;
+        const newContent: any[] = []
+        let textMerged = false
 
         for (const part of message.content) {
           if ((part as any).type === 'reasoning') {
             // 跳过 reasoning parts，后面会合并到 text 中
-            continue;
+            continue
           }
           if ((part as any).type === 'text' && !textMerged) {
             // 将 reasoning 内容前置到第一个 text part
             newContent.push({
               ...part,
-              text: `<think>\n${reasoningText}\n</think>\n${(part as any).text}`,
-            });
-            textMerged = true;
+              text: `<think>\n${reasoningText}\n</think>\n${(part as any).text}`
+            })
+            textMerged = true
           } else {
-            newContent.push(part);
+            newContent.push(part)
           }
         }
 
@@ -115,20 +117,22 @@ export function createDeepSeekReasoningMiddleware(): LanguageModelV3Middleware {
         if (!textMerged && reasoningText) {
           newContent.push({
             type: 'text',
-            text: `<think>\n${reasoningText}\n</think>`,
-          });
+            text: `<think>\n${reasoningText}\n</think>`
+          })
         }
 
         // eslint-disable-next-line no-console
-        console.log(`[DeepSeekReasoning] Transformed message ${idx}: ${message.content.length} parts -> ${newContent.length} parts`);
+        console.log(
+          `[DeepSeekReasoning] Transformed message ${idx}: ${message.content.length} parts -> ${newContent.length} parts`
+        )
 
-        return { ...message, content: newContent };
-      });
+        return { ...message, content: newContent }
+      })
 
       return {
         ...params,
-        prompt: transformedPrompt,
-      };
-    },
-  };
+        prompt: transformedPrompt
+      }
+    }
+  }
 }

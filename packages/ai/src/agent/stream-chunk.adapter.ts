@@ -10,110 +10,109 @@
  * 替代了原来 consumeAndPersistStream 里散落的 if/else 逻辑。
  */
 
-import type { StreamTextResult } from 'ai';
-import { ChunkType, type StreamChunk, type StreamMetrics } from './stream-chunk.types';
-import { StreamAccumulator } from './stream-accumulator';
-import { logger } from '@baishou/shared';
+import type { StreamTextResult } from 'ai'
+import { ChunkType, type StreamChunk, type StreamMetrics } from './stream-chunk.types'
+import { StreamAccumulator } from './stream-accumulator'
+import { logger } from '@baishou/shared'
 
 export interface StreamChunkAdapterCallbacks {
-  onChunk?: (chunk: StreamChunk) => void;
+  onChunk?: (chunk: StreamChunk) => void
 }
 
 export class StreamChunkAdapter {
-  private accumulator: StreamAccumulator;
-  private callbacks: StreamChunkAdapterCallbacks;
+  private accumulator: StreamAccumulator
+  private callbacks: StreamChunkAdapterCallbacks
 
   // ─── 性能指标追踪 ───
-  private streamStartTime: number = 0;
-  private firstTokenTime: number | null = null;
+  private streamStartTime: number = 0
+  private firstTokenTime: number | null = null
 
-  constructor(
-    accumulator: StreamAccumulator,
-    callbacks: StreamChunkAdapterCallbacks = {}
-  ) {
-    this.accumulator = accumulator;
-    this.callbacks = callbacks;
+  constructor(accumulator: StreamAccumulator, callbacks: StreamChunkAdapterCallbacks = {}) {
+    this.accumulator = accumulator
+    this.callbacks = callbacks
   }
 
   /**
    * 消费 Vercel AI SDK 的 fullStream 并通过 onChunk 推送标准化 Chunk。
-   * 
+   *
    * @returns 流执行过程中遇到的致命错误（如果有），null 表示正常结束。
    */
   async consumeStream(streamResult: StreamTextResult<any, any>): Promise<{ error: any | null }> {
     if (!streamResult.fullStream) {
-      return { error: null };
+      return { error: null }
     }
 
-    this.streamStartTime = Date.now();
-    this.firstTokenTime = null;
+    this.streamStartTime = Date.now()
+    this.firstTokenTime = null
 
-    const reader = streamResult.fullStream.getReader();
-    let fatalError: any = null;
+    const reader = streamResult.fullStream.getReader()
+    let fatalError: any = null
 
     try {
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const { done, value } = await reader.read()
+        if (done) break
 
         // 交给累积器保存进度
-        this.accumulator.add(value);
+        this.accumulator.add(value)
 
         // 将原始 AI SDK 事件映射为标准化 Chunk
-        const chunk = this.mapToChunk(value);
+        const chunk = this.mapToChunk(value)
         if (chunk) {
           // 标记首 Token 时间
           if (
             this.firstTokenTime === null &&
             (chunk.type === ChunkType.TEXT_DELTA || chunk.type === ChunkType.REASONING_DELTA)
           ) {
-            this.firstTokenTime = Date.now();
+            this.firstTokenTime = Date.now()
           }
 
-          this.callbacks.onChunk?.(chunk);
+          this.callbacks.onChunk?.(chunk)
         }
       }
     } catch (e: any) {
       // AI_NoOutputGeneratedError 在 agent tool-call 场景中是正常的
       // 模型只返回工具调用而没有文本时会触发此错误，不应阻止后续计费和持久化
-      const isNoOutputError = e?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true;
-      
+      const isNoOutputError = e?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true
+
       if (isNoOutputError) {
-        logger.info('[StreamChunkAdapter] AI_NoOutputGeneratedError detected (normal for tool-call only responses), treating as non-fatal');
+        logger.info(
+          '[StreamChunkAdapter] AI_NoOutputGeneratedError detected (normal for tool-call only responses), treating as non-fatal'
+        )
       } else {
-        fatalError = e;
+        fatalError = e
         this.callbacks.onChunk?.({
           type: ChunkType.ERROR,
-          error: e,
-        });
+          error: e
+        })
       }
     } finally {
-      reader.releaseLock();
+      reader.releaseLock()
     }
 
-    return { error: fatalError };
+    return { error: fatalError }
   }
 
   /**
    * 获取性能指标
    */
   getMetrics(): StreamMetrics {
-    const now = Date.now();
-    const totalDuration = Math.max(now - this.streamStartTime, 1);
+    const now = Date.now()
+    const totalDuration = Math.max(now - this.streamStartTime, 1)
     const timeToFirstToken = this.firstTokenTime
       ? Math.max(this.firstTokenTime - this.streamStartTime, 0)
-      : totalDuration;
+      : totalDuration
 
-    const outputTokens = this.accumulator.usage.outputTokens;
+    const outputTokens = this.accumulator.usage.outputTokens
     // 去除 TTFT 后的纯生成时间计算 TPS
-    const generationTime = Math.max(totalDuration - timeToFirstToken, 1);
-    const tokensPerSecond = outputTokens > 0 ? (outputTokens / generationTime) * 1000 : 0;
+    const generationTime = Math.max(totalDuration - timeToFirstToken, 1)
+    const tokensPerSecond = outputTokens > 0 ? (outputTokens / generationTime) * 1000 : 0
 
     return {
       timeToFirstToken,
       totalDuration,
-      tokensPerSecond: Math.round(tokensPerSecond * 10) / 10,
-    };
+      tokensPerSecond: Math.round(tokensPerSecond * 10) / 10
+    }
   }
 
   /**
@@ -123,15 +122,15 @@ export class StreamChunkAdapter {
   private mapToChunk(part: any): StreamChunk | null {
     switch (part.type) {
       case 'text-delta': {
-        const text = part.textDelta || part.text || '';
-        if (!text) return null;
-        return { type: ChunkType.TEXT_DELTA, text };
+        const text = part.textDelta || part.text || ''
+        if (!text) return null
+        return { type: ChunkType.TEXT_DELTA, text }
       }
 
       case 'reasoning-delta': {
-        const text = part.textDelta || part.text || '';
-        if (!text) return null;
-        return { type: ChunkType.REASONING_DELTA, text };
+        const text = part.textDelta || part.text || ''
+        if (!text) return null
+        return { type: ChunkType.REASONING_DELTA, text }
       }
 
       case 'tool-call': {
@@ -139,8 +138,8 @@ export class StreamChunkAdapter {
           type: ChunkType.TOOL_CALL,
           toolCallId: part.toolCallId,
           toolName: part.toolName,
-          input: part.input ?? part.args ?? {},
-        };
+          input: part.input ?? part.args ?? {}
+        }
       }
 
       case 'tool-result': {
@@ -148,16 +147,16 @@ export class StreamChunkAdapter {
           type: ChunkType.TOOL_RESULT,
           toolCallId: part.toolCallId,
           toolName: part.toolName,
-          output: part.output ?? part.result,
-        };
+          output: part.output ?? part.result
+        }
       }
 
       case 'error': {
-        return { type: ChunkType.ERROR, error: part.error };
+        return { type: ChunkType.ERROR, error: part.error }
       }
 
       case 'abort': {
-        return { type: ChunkType.ABORT };
+        return { type: ChunkType.ABORT }
       }
 
       case 'finish-step': {
@@ -167,29 +166,29 @@ export class StreamChunkAdapter {
           usage: part.usage
             ? {
                 inputTokens: part.usage.inputTokens || part.usage.promptTokens || 0,
-                outputTokens: part.usage.outputTokens || part.usage.completionTokens || 0,
+                outputTokens: part.usage.outputTokens || part.usage.completionTokens || 0
               }
-            : undefined,
-        };
+            : undefined
+        }
       }
 
       case 'finish': {
-        const u = part.totalUsage || part.usage;
+        const u = part.totalUsage || part.usage
         return {
           type: ChunkType.FINISH,
           usage: u
             ? {
                 inputTokens: u.inputTokens || u.promptTokens || 0,
-                outputTokens: u.outputTokens || u.completionTokens || 0,
+                outputTokens: u.outputTokens || u.completionTokens || 0
               }
-            : undefined,
-        };
+            : undefined
+        }
       }
 
       default:
         // 其他类型（如 text-start、text-end、reasoning-start 等）
         // 不需要显式推送，accumulator 已经处理了
-        return null;
+        return null
     }
   }
 }

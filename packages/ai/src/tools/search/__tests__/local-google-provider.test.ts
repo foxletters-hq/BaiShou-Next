@@ -23,7 +23,7 @@ describe('LocalGoogleProvider', () => {
         </html>
       `
       const results = (provider as any).parseSearchResults(html)
-      
+
       expect(results).toHaveLength(2)
       expect(results[0].title).toBe('Example Title')
       expect(results[0].url).toBe('https://example.com')
@@ -34,14 +34,14 @@ describe('LocalGoogleProvider', () => {
     it('should return empty array for invalid HTML', () => {
       const html = '<html><body>No results</body></html>'
       const results = (provider as any).parseSearchResults(html)
-      
+
       expect(results).toHaveLength(0)
     })
 
     it('should handle malformed HTML gracefully', () => {
       const html = '<div>malformed'
       const results = (provider as any).parseSearchResults(html)
-      
+
       expect(results).toHaveLength(0)
     })
 
@@ -63,7 +63,7 @@ describe('LocalGoogleProvider', () => {
         </html>
       `
       const results = (provider as any).parseSearchResults(html)
-      
+
       expect(results).toHaveLength(1)
       expect(results[0].url).toBe('https://example.com')
     })

@@ -1,9 +1,9 @@
 /**
  * 统一的流式 Chunk 类型系统
- * 
+ *
  * 替代原来在 consumeAndPersistStream 里散落的 if/else 判断，
  * 将 Vercel AI SDK 的 TextStreamPart 映射为应用层标准化的 Chunk 类型。
- * 
+ *
  * 不做过度封装——底层仍然是 Vercel AI SDK 原生能力。
  */
 
@@ -32,53 +32,53 @@ export enum ChunkType {
   STEP_FINISH = 'step-finish',
 
   /** 整个流完成 */
-  FINISH = 'finish',
+  FINISH = 'finish'
 }
 
 // ─── Chunk 联合类型 ───
 
 export interface TextDeltaChunk {
-  type: ChunkType.TEXT_DELTA;
-  text: string;
+  type: ChunkType.TEXT_DELTA
+  text: string
 }
 
 export interface ReasoningDeltaChunk {
-  type: ChunkType.REASONING_DELTA;
-  text: string;
+  type: ChunkType.REASONING_DELTA
+  text: string
 }
 
 export interface ToolCallChunk {
-  type: ChunkType.TOOL_CALL;
-  toolCallId: string;
-  toolName: string;
-  input: unknown;
+  type: ChunkType.TOOL_CALL
+  toolCallId: string
+  toolName: string
+  input: unknown
 }
 
 export interface ToolResultChunk {
-  type: ChunkType.TOOL_RESULT;
-  toolCallId: string;
-  toolName: string;
-  output: unknown;
+  type: ChunkType.TOOL_RESULT
+  toolCallId: string
+  toolName: string
+  output: unknown
 }
 
 export interface ErrorChunk {
-  type: ChunkType.ERROR;
-  error: unknown;
+  type: ChunkType.ERROR
+  error: unknown
 }
 
 export interface AbortChunk {
-  type: ChunkType.ABORT;
+  type: ChunkType.ABORT
 }
 
 export interface StepFinishChunk {
-  type: ChunkType.STEP_FINISH;
-  finishReason: string;
-  usage?: { inputTokens: number; outputTokens: number };
+  type: ChunkType.STEP_FINISH
+  finishReason: string
+  usage?: { inputTokens: number; outputTokens: number }
 }
 
 export interface FinishChunk {
-  type: ChunkType.FINISH;
-  usage?: { inputTokens: number; outputTokens: number };
+  type: ChunkType.FINISH
+  usage?: { inputTokens: number; outputTokens: number }
 }
 
 export type StreamChunk =
@@ -89,15 +89,15 @@ export type StreamChunk =
   | ErrorChunk
   | AbortChunk
   | StepFinishChunk
-  | FinishChunk;
+  | FinishChunk
 
 // ─── 性能指标 ───
 
 export interface StreamMetrics {
   /** 首 Token 延迟 (ms) */
-  timeToFirstToken: number;
+  timeToFirstToken: number
   /** 总生成耗时 (ms) */
-  totalDuration: number;
+  totalDuration: number
   /** 生成速度 (tokens/sec) */
-  tokensPerSecond: number;
+  tokensPerSecond: number
 }

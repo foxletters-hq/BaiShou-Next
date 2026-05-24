@@ -1,8 +1,8 @@
-import { AgentMessage, AgentPart } from '@baishou/shared';
-import { ModelMessage, ToolResultPart } from 'ai';
+import { AgentMessage, AgentPart } from '@baishou/shared'
+import { ModelMessage, ToolResultPart } from 'ai'
 
 export interface MessageWithParts extends AgentMessage {
-  parts: AgentPart[];
+  parts: AgentPart[]
 }
 
 export class MessageAdapter {
@@ -11,95 +11,95 @@ export class MessageAdapter {
    * 它将正确还原 Assistant 发出的工具调用（ToolCall）以及对应的结果回填（ToolResult）。
    */
   static toVercelMessages(dbMessages: MessageWithParts[]): ModelMessage[] {
-    const vercelMessages: ModelMessage[] = [];
+    const vercelMessages: ModelMessage[] = []
 
     for (const msg of dbMessages) {
-      if (!msg.parts || msg.parts.length === 0) continue;
+      if (!msg.parts || msg.parts.length === 0) continue
 
       if (msg.role === 'system' || msg.role === 'user') {
         // System 和 User 现在支持多模态内容与引用快照
-        const contentParts: any[] = [];
-        
+        const contentParts: any[] = []
+
         for (const p of msg.parts) {
           if (p.type === 'text') {
-            const data = p.data as any;
+            const data = p.data as any
             if (data?.text) {
-               contentParts.push({ type: 'text', text: data.text });
+              contentParts.push({ type: 'text', text: data.text })
             }
           } else if (p.type === 'context_snapshot') {
-            const snaps = (p.data as any).snapshots;
+            const snaps = (p.data as any).snapshots
             if (Array.isArray(snaps) && snaps.length > 0) {
-              let refBlock = '\n\n[Reference Contexts]\n';
+              let refBlock = '\n\n[Reference Contexts]\n'
               for (const s of snaps) {
-                refBlock += `--- ${s.title || 'Context'} ---\n${s.content}\n\n`;
+                refBlock += `--- ${s.title || 'Context'} ---\n${s.content}\n\n`
               }
-              contentParts.push({ type: 'text', text: refBlock });
+              contentParts.push({ type: 'text', text: refBlock })
             }
           } else if (p.type === 'attachment') {
-            const att = p.data as any;
+            const att = p.data as any
             if (att.type === 'image') {
               if (att.url) {
-                 contentParts.push({ type: 'image', image: new URL(att.url) });
+                contentParts.push({ type: 'image', image: new URL(att.url) })
               } else if (att.data) {
-                 // Format as Data URL since that is widely safe for string or buffer fallback in custom impls
-                 const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`;
-                 const base64Data = att.data.startsWith('data:') ? att.data : (prefix + att.data);
-                 contentParts.push({ type: 'image', image: base64Data });
+                // Format as Data URL since that is widely safe for string or buffer fallback in custom impls
+                const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`
+                const base64Data = att.data.startsWith('data:') ? att.data : prefix + att.data
+                contentParts.push({ type: 'image', image: base64Data })
               }
             } else if (att.type === 'file') {
               contentParts.push({
-                 type: 'file',
-                 mimeType: att.mimeType || 'application/octet-stream',
-                 data: att.url ? new URL(att.url) : (att.data || '')
-              });
+                type: 'file',
+                mimeType: att.mimeType || 'application/octet-stream',
+                data: att.url ? new URL(att.url) : att.data || ''
+              })
             }
           }
         }
 
         // Vercel SDK 需要处理：如果纯文本，直接塞 string（节约处理和提高多数模型兼容性）
-        let finalContent: any = contentParts;
+        let finalContent: any = contentParts
         if (contentParts.length === 1 && contentParts[0].type === 'text') {
-           finalContent = contentParts[0].text;
+          finalContent = contentParts[0].text
         } else if (contentParts.length === 0) {
-           finalContent = '';
+          finalContent = ''
         }
 
         vercelMessages.push({
           role: msg.role as 'system' | 'user',
-          content: finalContent,
-        });
-      } 
-      else if (msg.role === 'assistant') {
-        const contentParts: any[] = [];
+          content: finalContent
+        })
+      } else if (msg.role === 'assistant') {
+        const contentParts: any[] = []
         // 收集已完成的工具调用结果，后续生成独立的 role: 'tool' 消息
-        const toolResultParts: ToolResultPart[] = [];
+        const toolResultParts: ToolResultPart[] = []
 
         for (const p of msg.parts) {
           if (p.type === 'text') {
-            const data = p.data as any;
+            const data = p.data as any
             if (data.text) {
               if (data.isReasoning) {
                 // 深度求索 API 要求将推理内容作为 reasoning 类型回传
-                contentParts.push({ type: 'reasoning', text: data.text });
+                contentParts.push({ type: 'reasoning', text: data.text })
               } else {
-                contentParts.push({ type: 'text', text: data.text });
+                contentParts.push({ type: 'text', text: data.text })
               }
             }
           } else if (p.type === 'tool') {
-            const data = p.data as any;
+            const data = p.data as any
             if (data.callId && data.name) {
               // 解析工具参数，确保始终是有效的 JSON 对象
-              let parsedArgs: Record<string, unknown> = {};
+              let parsedArgs: Record<string, unknown> = {}
               if (data.arguments) {
                 try {
-                  parsedArgs = typeof data.arguments === 'string' 
-                    ? JSON.parse(data.arguments) 
-                    : (data.arguments || {});
+                  parsedArgs =
+                    typeof data.arguments === 'string'
+                      ? JSON.parse(data.arguments)
+                      : data.arguments || {}
                 } catch {
-                  parsedArgs = {};
+                  parsedArgs = {}
                 }
               }
-              
+
               // 符合 Vercel AI SDK ToolCallPart 标准接口
               // @see node_modules/@ai-sdk/provider-utils/dist/index.d.ts:656
               // input 是标准字段，args 是向后兼容字段
@@ -108,8 +108,8 @@ export class MessageAdapter {
                 toolCallId: data.callId,
                 toolName: data.name,
                 args: parsedArgs,
-                input: parsedArgs,
-              });
+                input: parsedArgs
+              })
 
               // Vercel AI SDK 要求每个 tool-call 必须有对应的 tool-result
               // 在 role: 'tool' 消息中。已完成的工具提取结果，失败的提供错误信息。
@@ -117,54 +117,56 @@ export class MessageAdapter {
                 type: 'tool-result',
                 toolCallId: data.callId,
                 toolName: data.name,
-                output: { type: 'text', value: data.result ?? `[工具执行失败: ${data.name}]` },
-              });
+                output: {
+                  type: 'text',
+                  value: data.result ?? `[工具执行失败: ${data.name}]`
+                }
+              })
             }
           }
         }
-        
+
         if (contentParts.length > 0) {
           vercelMessages.push({
             role: 'assistant',
-            content: contentParts,
-          });
+            content: contentParts
+          })
 
           // 为已完成的工具调用生成独立的 tool 消息（紧跟在助理消息之后）
           // 这确保了 Vercel AI SDK 的 tool-call ↔ tool-result 校验通过
           if (toolResultParts.length > 0) {
             vercelMessages.push({
               role: 'tool',
-              content: toolResultParts,
-            });
+              content: toolResultParts
+            })
           }
         }
-      } 
-      else if (msg.role === 'tool') {
+      } else if (msg.role === 'tool') {
         // Tool Result Message 极其特殊，它里面存放着由于 assistant tool-call 所生成的结果。
         // 在老白守里由于有 ToolPart 存在，可能是直接从里面拿 result
-        const resultParts: ToolResultPart[] = [];
-        
+        const resultParts: ToolResultPart[] = []
+
         for (const p of msg.parts) {
           if (p.type === 'tool') {
-            const data = p.data as any;
+            const data = p.data as any
             if (data.callId && data.name && typeof data.result !== 'undefined') {
               resultParts.push({
                 type: 'tool-result',
                 toolCallId: data.callId,
                 toolName: data.name,
-                output: { type: 'text', value: data.result },
-              });
+                output: { type: 'text', value: data.result }
+              })
             }
           } else if (p.type === 'text') {
             // 说明它可能是一个以 text 代替结果的特殊 part
-            const data = p.data as any;
+            const data = p.data as any
             if (data.toolCallId && data.toolName) {
-               resultParts.push({
-                 type: 'tool-result',
-                 toolCallId: data.toolCallId,
-                 toolName: data.toolName,
-                 output: { type: 'text', value: data.text },
-               });
+              resultParts.push({
+                type: 'tool-result',
+                toolCallId: data.toolCallId,
+                toolName: data.toolName,
+                output: { type: 'text', value: data.text }
+              })
             }
           }
         }
@@ -172,12 +174,12 @@ export class MessageAdapter {
         if (resultParts.length > 0) {
           vercelMessages.push({
             role: 'tool',
-            content: resultParts,
-          });
+            content: resultParts
+          })
         }
       }
     }
 
-    return vercelMessages;
+    return vercelMessages
   }
 }

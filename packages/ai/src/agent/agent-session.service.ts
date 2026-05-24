@@ -1,24 +1,30 @@
-import { streamText, wrapLanguageModel, extractReasoningMiddleware, smoothStream, stepCountIs } from 'ai';
-import type { LanguageModelV3Middleware } from '@ai-sdk/provider';
-import { IAIProvider } from '../providers/provider.interface';
-import { createDeepSeekReasoningMiddleware } from '../middleware/deepseek-reasoning';
-import { MessageAdapter } from './message.adapter';
-import { StreamAccumulator } from './stream-accumulator';
-import { StreamChunkAdapter } from './stream-chunk.adapter';
-import { ChunkType } from './stream-chunk.types';
-import type { StreamChunk } from './stream-chunk.types';
-import { SystemPromptBuilder } from './system-prompt.builder';
-import { logger } from '@baishou/shared';
+import {
+  streamText,
+  wrapLanguageModel,
+  extractReasoningMiddleware,
+  smoothStream,
+  stepCountIs
+} from 'ai'
+import type { LanguageModelV3Middleware } from '@ai-sdk/provider'
+import { IAIProvider } from '../providers/provider.interface'
+import { createDeepSeekReasoningMiddleware } from '../middleware/deepseek-reasoning'
+import { MessageAdapter } from './message.adapter'
+import { StreamAccumulator } from './stream-accumulator'
+import { StreamChunkAdapter } from './stream-chunk.adapter'
+import { ChunkType } from './stream-chunk.types'
+import type { StreamChunk } from './stream-chunk.types'
+import { SystemPromptBuilder } from './system-prompt.builder'
+import { logger } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
-import { ContextWindowBuilder } from './context-window.builder';
+import { ContextWindowBuilder } from './context-window.builder'
 // @ts-ignore
-import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository';
+import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
 
-import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types';
-import { persistResult } from './agent-session-persist';
+import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
+import { persistResult } from './agent-session-persist'
 
-export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types';
+export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
 export class AgentSessionService {
   /**
@@ -27,139 +33,154 @@ export class AgentSessionService {
    * 它的主要职责是拦截状态并驱动 StreamAccumulator，最后完成 Drizzle 事务落盘。
    */
   async streamChat(options: StreamChatOptions, callbacks?: StreamChatCallbacks): Promise<void> {
-    const { 
-      sessionId, 
-      userText, 
-      provider, 
-      modelId, 
-      toolRegistry, 
-      sessionRepo, 
+    const {
+      sessionId,
+      userText,
+      provider,
+      modelId,
+      toolRegistry,
+      sessionRepo,
       snapshotRepo,
-      systemPrompt, 
+      systemPrompt,
       systemModels,
       userConfig,
       attachments,
       webSearchResultFetcher,
       abortSignal
-    } = options;
+    } = options
 
     try {
       // 1. 获取基础模型，然后用 Vercel 原生 middleware 包装
-      const baseModel = provider.getLanguageModel(modelId);
-      const middlewares = this.buildMiddlewares(provider);
-      const model = middlewares.length > 0
-        ? wrapLanguageModel({ model: baseModel as any, middleware: middlewares })
-        : baseModel;
+      const baseModel = provider.getLanguageModel(modelId)
+      const middlewares = this.buildMiddlewares(provider)
+      const model =
+        middlewares.length > 0
+          ? wrapLanguageModel({
+              model: baseModel as any,
+              middleware: middlewares
+            })
+          : baseModel
 
       // 2. 加载历史并使用 Builder+Adapter 进行超长截断和压缩感知注入
-      const configRecentCount = typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30;
-      
-      const dbHistory = await ContextWindowBuilder.build(
-          sessionId, 
-          sessionRepo, 
-          snapshotRepo, 
-          { recentCount: configRecentCount }
-      );
-      const coreMessages = MessageAdapter.toVercelMessages(dbHistory);
+      const configRecentCount =
+        typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
+
+      const dbHistory = await ContextWindowBuilder.build(sessionId, sessionRepo, snapshotRepo, {
+        recentCount: configRecentCount
+      })
+      const coreMessages = MessageAdapter.toVercelMessages(dbHistory)
 
       // 将当前用户消息追加到上下文窗口，供 AI 推理使用（不再落盘，仅在内存中追加）
-      const lastCoreMsg = coreMessages.length > 0 ? coreMessages[coreMessages.length - 1]! : null;
-      const userContentAlreadyInContext = lastCoreMsg && lastCoreMsg.role === 'user' && 
-        (typeof lastCoreMsg.content === 'string' ? lastCoreMsg.content === userText : true);
-      
+      const lastCoreMsg = coreMessages.length > 0 ? coreMessages[coreMessages.length - 1]! : null
+      const userContentAlreadyInContext =
+        lastCoreMsg &&
+        lastCoreMsg.role === 'user' &&
+        (typeof lastCoreMsg.content === 'string' ? lastCoreMsg.content === userText : true)
+
       if (!userContentAlreadyInContext) {
         if (attachments && attachments.length > 0) {
-           const contentParts: any[] = [{ type: 'text', text: userText }];
-           for (const att of attachments) {
-              if (att.type === 'image') {
-                 if (att.url) {
-                    contentParts.push({ type: 'image', image: new URL(att.url) });
-                 } else if (att.data) {
-                    const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`;
-                    const base64Data = att.data.startsWith('data:') ? att.data : (prefix + att.data);
-                    contentParts.push({ type: 'image', image: base64Data });
-                 }
-              } else if (att.type === 'file') {
-                 contentParts.push({
-                    type: 'file',
-                    mimeType: att.mimeType || 'application/octet-stream',
-                    data: att.url ? new URL(att.url) : (att.data || '')
-                 });
+          const contentParts: any[] = [{ type: 'text', text: userText }]
+          for (const att of attachments) {
+            if (att.type === 'image') {
+              if (att.url) {
+                contentParts.push({ type: 'image', image: new URL(att.url) })
+              } else if (att.data) {
+                const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`
+                const base64Data = att.data.startsWith('data:') ? att.data : prefix + att.data
+                contentParts.push({ type: 'image', image: base64Data })
               }
-           }
-           coreMessages.push({ role: 'user', content: contentParts });
+            } else if (att.type === 'file') {
+              contentParts.push({
+                type: 'file',
+                mimeType: att.mimeType || 'application/octet-stream',
+                data: att.url ? new URL(att.url) : att.data || ''
+              })
+            }
+          }
+          coreMessages.push({ role: 'user', content: contentParts })
         } else {
-           coreMessages.push({ role: 'user', content: userText });
+          coreMessages.push({ role: 'user', content: userText })
         }
       }
 
       // 3. 构建可用的 Tools 及其底层接续支持
-      const { SqliteHybridSearchRepository, MessageRepository } = await import('@baishou/database');
-      const { DatabaseAdapter } = await import('../tools/adapters/database.adapter');
-      const { EmbeddingAdapter } = await import('../tools/adapters/embedding.adapter');
-      
-      const drizzleDb = (sessionRepo as any).db || (sessionRepo as any).database;
-      const rawClient = drizzleDb?.session?.client || drizzleDb;
-      const hsRepo = new SqliteHybridSearchRepository(rawClient);
-      const msgRepo = new MessageRepository(drizzleDb);
+      const { SqliteHybridSearchRepository, MessageRepository } = await import('@baishou/database')
+      const { DatabaseAdapter } = await import('../tools/adapters/database.adapter')
+      const { EmbeddingAdapter } = await import('../tools/adapters/embedding.adapter')
+
+      const drizzleDb = (sessionRepo as any).db || (sessionRepo as any).database
+      const rawClient = drizzleDb?.session?.client || drizzleDb
+      const hsRepo = new SqliteHybridSearchRepository(rawClient)
+      const msgRepo = new MessageRepository(drizzleDb)
 
       // memory_embeddings 表由 Drizzle ORM 迁移统一管理，不再在此处建表
 
-      const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo);
-      let embAdapter: any = undefined;
+      const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo)
+      let embAdapter: any = undefined
       if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
-         embAdapter = new EmbeddingAdapter(systemModels.embeddingProvider, systemModels.embeddingModelId, hsRepo);
+        embAdapter = new EmbeddingAdapter(
+          systemModels.embeddingProvider,
+          systemModels.embeddingModelId,
+          hsRepo
+        )
       } else if (provider && modelId && userConfig?.['hasEmbeddingModel']) {
-         embAdapter = new EmbeddingAdapter(provider, modelId, hsRepo);
+        embAdapter = new EmbeddingAdapter(provider, modelId, hsRepo)
       }
 
       // 构建记忆去重服务
-      let dedupService: any = undefined;
+      let dedupService: any = undefined
       if (embAdapter && systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
-         const { MemoryDeduplicationServiceImpl } = await import('../rag/memory-deduplication.service');
-         dedupService = new MemoryDeduplicationServiceImpl(
-           embAdapter, dbAdapter, systemModels.embeddingProvider, systemModels.embeddingModelId
-         );
+        const { MemoryDeduplicationServiceImpl } =
+          await import('../rag/memory-deduplication.service')
+        dedupService = new MemoryDeduplicationServiceImpl(
+          embAdapter,
+          dbAdapter,
+          systemModels.embeddingProvider,
+          systemModels.embeddingModelId
+        )
       }
 
-      const sessionObj = await sessionRepo.getSessionById?.(sessionId);
+      const sessionObj = await sessionRepo.getSessionById?.(sessionId)
 
       const enabledTools = toolRegistry.getEnabledToolsAsVercel({
-         userConfig: userConfig || {},
-         sessionId,
-         vaultName: sessionObj?.vaultName || 'default',
-         embeddingService: embAdapter,
-         vectorStore: dbAdapter,
-         messageSearcher: dbAdapter,
-         summaryReader: dbAdapter,
-         deduplicationService: dedupService,
-         diarySearcher: options.diarySearcher,
-         webSearchResultFetcher: webSearchResultFetcher,
-         fetchSearchPage: options.fetchSearchPage
-      });
+        userConfig: userConfig || {},
+        sessionId,
+        vaultName: sessionObj?.vaultName || 'default',
+        embeddingService: embAdapter,
+        vectorStore: dbAdapter,
+        messageSearcher: dbAdapter,
+        summaryReader: dbAdapter,
+        deduplicationService: dedupService,
+        diarySearcher: options.diarySearcher,
+        webSearchResultFetcher: webSearchResultFetcher,
+        fetchSearchPage: options.fetchSearchPage
+      })
 
       // --- 灵魂注入 (如果有 Assistant 绑定) ---
-      let effectiveSystemPrompt = systemPrompt;
+      let effectiveSystemPrompt = systemPrompt
       if (sessionObj?.assistantId) {
-         const { AssistantRepository } = await import('@baishou/database');
-         const astRepo = new AssistantRepository((sessionRepo as any).db || (sessionRepo as any).database);
-         const ast = await astRepo.findById(sessionObj.assistantId);
-         if (ast && ast.systemPrompt) {
-            effectiveSystemPrompt = ast.systemPrompt;
-         }
+        const { AssistantRepository } = await import('@baishou/database')
+        const astRepo = new AssistantRepository(
+          (sessionRepo as any).db || (sessionRepo as any).database
+        )
+        const ast = await astRepo.findById(sessionObj.assistantId)
+        if (ast && ast.systemPrompt) {
+          effectiveSystemPrompt = ast.systemPrompt
+        }
       }
 
       const builtSystemPrompt = SystemPromptBuilder.build({
-         vaultName: sessionObj?.vaultName || 'default',
-         tools: enabledTools as any,
-         customPersona: effectiveSystemPrompt,
-         userProfileBlock: typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined
-      });
+        vaultName: sessionObj?.vaultName || 'default',
+        tools: enabledTools as any,
+        customPersona: effectiveSystemPrompt,
+        userProfileBlock:
+          typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined
+      })
 
       // 4. 调用 Vercel streamText
       // 使用 Intl.Segmenter 做 CJK 友好的词级流式分割，替代默认的 /\S+\s+/m
       // 默认的 word 模式对中文按空格切分，会导致大量碎片化的流式输出
-      const cjkSegmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' });
+      const cjkSegmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' })
       const streamResult = await streamText({
         model,
         messages: coreMessages,
@@ -167,23 +188,25 @@ export class AgentSessionService {
         tools: enabledTools,
         stopWhen: stepCountIs(10),
         abortSignal,
-        experimental_transform: smoothStream({ chunking: cjkSegmenter }),
-      } as any);
+        experimental_transform: smoothStream({ chunking: cjkSegmenter })
+      } as any)
 
       // 5. 使用统一的 StreamChunkAdapter 消费流
-      const accumulator = new StreamAccumulator();
+      const accumulator = new StreamAccumulator()
       const adapter = new StreamChunkAdapter(accumulator, {
-        onChunk: (chunk) => this.dispatchChunkToCallbacks(chunk, callbacks),
-      });
+        onChunk: (chunk) => this.dispatchChunkToCallbacks(chunk, callbacks)
+      })
 
-      const { error: streamError } = await adapter.consumeStream(streamResult);
+      const { error: streamError } = await adapter.consumeStream(streamResult)
 
       // 记录性能指标
-      const metrics = adapter.getMetrics();
-      logger.info(`[AgentSessionService] 性能指标: TTFT=${metrics.timeToFirstToken}ms, 总耗时=${metrics.totalDuration}ms, 速度=${metrics.tokensPerSecond} tok/s`);
+      const metrics = adapter.getMetrics()
+      logger.info(
+        `[AgentSessionService] 性能指标: TTFT=${metrics.timeToFirstToken}ms, 总耗时=${metrics.totalDuration}ms, 速度=${metrics.tokensPerSecond} tok/s`
+      )
 
       if (streamError) {
-        logger.warn('[AgentSessionService] Stream encountered a fatal error:', streamError);
+        logger.warn('[AgentSessionService] Stream encountered a fatal error:', streamError)
       }
 
       // 6. 落盘
@@ -197,20 +220,19 @@ export class AgentSessionService {
         provider,
         modelId,
         skipUserMessageRecording: (options as any).skipUserMessageRecording,
-        streamError,
-      });
+        streamError
+      })
 
       // 7. 向外抛出完成回调
       if (callbacks?.onFinish) {
-        callbacks.onFinish();
+        callbacks.onFinish()
       }
-
     } catch (e: any) {
-      logger.error('[AgentSessionService] Error in streamChat:', e);
+      logger.error('[AgentSessionService] Error in streamChat:', e)
       if (callbacks?.onError) {
-        callbacks.onError(e);
+        callbacks.onError(e)
       }
-      throw e;
+      throw e
     }
   }
 
@@ -220,38 +242,38 @@ export class AgentSessionService {
    * 根据 Provider 类型构建 Vercel AI SDK 原生 LanguageModelMiddleware 列表。
    */
   private buildMiddlewares(provider: IAIProvider): LanguageModelV3Middleware[] {
-    const middlewares: LanguageModelV3Middleware[] = [];
-    const providerType = provider.config?.type || '';
+    const middlewares: LanguageModelV3Middleware[] = []
+    const providerType = provider.config?.type || ''
 
     // eslint-disable-next-line no-console
-    console.log('[AgentSessionService] buildMiddlewares called, providerType=%s', providerType);
+    console.log('[AgentSessionService] buildMiddlewares called, providerType=%s', providerType)
 
     // 1. DeepSeek reasoning 内容处理中间件 — 将历史消息中的 reasoning parts 转换为 <think> 标签
     //    解决 DeepSeek API 要求回传 reasoning_content 的问题
     if (providerType === 'deepseek') {
       try {
-        middlewares.push(createDeepSeekReasoningMiddleware());
+        middlewares.push(createDeepSeekReasoningMiddleware())
         // eslint-disable-next-line no-console
-        console.log('[AgentSessionService] DeepSeek reasoning middleware added');
+        console.log('[AgentSessionService] DeepSeek reasoning middleware added')
       } catch (e: any) {
-        logger.warn('[AgentSessionService] createDeepSeekReasoningMiddleware not available:', e);
+        logger.warn('[AgentSessionService] createDeepSeekReasoningMiddleware not available:', e)
       }
     }
 
     // 2. 推理提取中间件 — 适用于 DeepSeek-R1、QwQ 等在文本中嵌入 <think> 标签的模型
     if (providerType === 'deepseek' || providerType === 'openai') {
       try {
-        middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as any);
+        middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as any)
         // eslint-disable-next-line no-console
-        console.log('[AgentSessionService] extractReasoningMiddleware added');
+        console.log('[AgentSessionService] extractReasoningMiddleware added')
       } catch (e: any) {
-        logger.warn('[AgentSessionService] extractReasoningMiddleware not available:', e);
+        logger.warn('[AgentSessionService] extractReasoningMiddleware not available:', e)
       }
     }
 
     // eslint-disable-next-line no-console
-    console.log('[AgentSessionService] Total middlewares: %d', middlewares.length);
-    return middlewares;
+    console.log('[AgentSessionService] Total middlewares: %d', middlewares.length)
+    return middlewares
   }
 
   // ─── 将标准化 Chunk 分发到旧式回调 ───
@@ -260,26 +282,26 @@ export class AgentSessionService {
    * 将统一的 StreamChunk 分发到 IPC 层的老式回调接口。
    */
   private dispatchChunkToCallbacks(chunk: StreamChunk, callbacks?: StreamChatCallbacks): void {
-    if (!callbacks) return;
+    if (!callbacks) return
 
     switch (chunk.type) {
       case ChunkType.TEXT_DELTA:
-        callbacks.onTextDelta?.(chunk.text);
-        break;
+        callbacks.onTextDelta?.(chunk.text)
+        break
       case ChunkType.REASONING_DELTA:
-        callbacks.onReasoningDelta?.(chunk.text);
-        break;
+        callbacks.onReasoningDelta?.(chunk.text)
+        break
       case ChunkType.TOOL_CALL:
-        callbacks.onToolCallStart?.(chunk.toolName, chunk.input);
-        break;
+        callbacks.onToolCallStart?.(chunk.toolName, chunk.input)
+        break
       case ChunkType.TOOL_RESULT:
-        callbacks.onToolCallResult?.(chunk.toolName, chunk.output);
-        break;
+        callbacks.onToolCallResult?.(chunk.toolName, chunk.output)
+        break
       case ChunkType.ERROR:
         if (callbacks.onError && chunk.error instanceof Error) {
-          callbacks.onError(chunk.error);
+          callbacks.onError(chunk.error)
         }
-        break;
+        break
     }
   }
 }

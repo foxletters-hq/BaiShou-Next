@@ -1,55 +1,50 @@
-import { z } from 'zod';
-import { AgentTool } from './agent.tool';
-import type { ToolContext } from './agent.tool';
+import { z } from 'zod'
+import { AgentTool } from './agent.tool'
+import type { ToolContext } from './agent.tool'
 // @ts-ignore - Node built-in, available at runtime
-import { unlink, access } from 'node:fs/promises';
+import { unlink, access } from 'node:fs/promises'
 // @ts-ignore - Node built-in, available at runtime
-import { join } from 'node:path';
+import { join } from 'node:path'
 
 const diaryDeleteParams = z.object({
-  date: z
-    .string()
-    .describe('The exact date of the diary to delete. Format: YYYY-MM-DD.'),
-});
+  date: z.string().describe('The exact date of the diary to delete. Format: YYYY-MM-DD.')
+})
 
 export class DiaryDeleteTool extends AgentTool<typeof diaryDeleteParams> {
-  readonly name = 'diary_delete';
+  readonly name = 'diary_delete'
 
   readonly description =
     'Delete a specific diary entry. ' +
-    'This is a destructive action and cannot be undone. Always double check before using.';
+    'This is a destructive action and cannot be undone. Always double check before using.'
 
-  readonly parameters = diaryDeleteParams;
+  readonly parameters = diaryDeleteParams
 
-  async execute(
-    args: z.infer<typeof diaryDeleteParams>,
-    context: ToolContext,
-  ): Promise<string> {
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  async execute(args: z.infer<typeof diaryDeleteParams>, context: ToolContext): Promise<string> {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(args.date)) {
-      return `Error: Invalid date format "${args.date}". Expected YYYY-MM-DD.`;
+      return `Error: Invalid date format "${args.date}". Expected YYYY-MM-DD.`
     }
 
-    const year = args.date.substring(0, 4);
-    const month = args.date.substring(5, 7);
-    const fileName = `${args.date}.md`;
-    const filePath = join(context.vaultName, 'Journals', year, month, fileName);
+    const year = args.date.substring(0, 4)
+    const month = args.date.substring(5, 7)
+    const fileName = `${args.date}.md`
+    const filePath = join(context.vaultName, 'Journals', year, month, fileName)
 
     try {
-      await access(filePath);
-      await unlink(filePath);
-      
+      await access(filePath)
+      await unlink(filePath)
+
       if (context.vectorStore) {
-         try {
-           await context.vectorStore.deleteFile?.(filePath);
-         } catch (e) {
-           console.warn('[Tool] Failed to unindex on delete', e);
-         }
+        try {
+          await context.vectorStore.deleteFile?.(filePath)
+        } catch (e) {
+          console.warn('[Tool] Failed to unindex on delete', e)
+        }
       }
 
-      return `Successfully deleted the diary entry for ${args.date}.`;
+      return `Successfully deleted the diary entry for ${args.date}.`
     } catch {
-      return `Error: Could not find diary entry for ${args.date} to delete.`;
+      return `Error: Could not find diary entry for ${args.date} to delete.`
     }
   }
 }

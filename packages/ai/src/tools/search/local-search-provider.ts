@@ -25,7 +25,11 @@ export abstract class LocalSearchProvider {
   protected searchUrl: string
   private fetchSearchPageFn?: (url: string) => Promise<string>
 
-  constructor(providerId: string, searchUrl: string, fetchSearchPageFn?: (url: string) => Promise<string>) {
+  constructor(
+    providerId: string,
+    searchUrl: string,
+    fetchSearchPageFn?: (url: string) => Promise<string>
+  ) {
     this.providerId = providerId
     this.searchUrl = searchUrl
     this.fetchSearchPageFn = fetchSearchPageFn
@@ -68,7 +72,7 @@ export abstract class LocalSearchProvider {
           } else {
             content = await this.fetchPageContent(item.url)
           }
-          
+
           if (content && !content.startsWith('Failed to read URL')) {
             results.push({
               title: item.title,
