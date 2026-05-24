@@ -28,4 +28,18 @@ export const lightColors = {
   warning: '#F59E0B',
   error: '#EF4444',
   colorOutlineVariant: 'rgba(208, 208, 208, 0.5)',
-};
+
+  primaryContainer: '#E0F0FE',
+  onPrimaryContainer: '#0D3C61',
+  secondaryContainer: '#ECEFF1',
+  onSecondaryContainer: '#37474F',
+  errorContainer: '#FEE2E2',
+  onErrorContainer: '#991B1B',
+  tertiary: '#8B5CF6',
+  onPrimary: '#FFFFFF',
+  onError: '#FFFFFF',
+  outlineVariant: 'rgba(208, 208, 208, 0.5)',
+  inverseSurface: '#1A1C23',
+  inverseOnSurface: '#F4F5F7',
+  overlay: 'rgba(0, 0, 0, 0.35)'
+}

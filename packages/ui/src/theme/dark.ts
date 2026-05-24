@@ -28,4 +28,18 @@ export const darkColors = {
   warning: '#F59E0B',
   error: '#EF4444',
   colorOutlineVariant: 'rgba(255, 255, 255, 0.10)',
-};
+
+  primaryContainer: 'rgba(91, 168, 245, 0.2)',
+  onPrimaryContainer: '#D6EBFF',
+  secondaryContainer: 'rgba(100, 116, 139, 0.2)',
+  onSecondaryContainer: '#CBD5E1',
+  errorContainer: 'rgba(239, 68, 68, 0.2)',
+  onErrorContainer: '#FCA5A5',
+  tertiary: '#A78BFA',
+  onPrimary: '#FFFFFF',
+  onError: '#FFFFFF',
+  outlineVariant: 'rgba(255, 255, 255, 0.10)',
+  inverseSurface: '#F8FAFC',
+  inverseOnSurface: '#1A1A1E',
+  overlay: 'rgba(0, 0, 0, 0.55)'
+}
