@@ -1,5 +1,5 @@
-import { StorageScreen } from '@/src/screens/StorageScreen';
+import { StorageScreen } from '@/src/screens/StorageScreen'
 
 export default function StorageRoute() {
-  return <StorageScreen />;
+  return <StorageScreen />
 }

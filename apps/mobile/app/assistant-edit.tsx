@@ -1,5 +1,5 @@
-import { AssistantEditScreen } from '@/src/screens/AssistantEditScreen';
+import { AssistantEditScreen } from '@/src/screens/AssistantEditScreen'
 
 export default function AssistantEditRoute() {
-  return <AssistantEditScreen />;
+  return <AssistantEditScreen />
 }

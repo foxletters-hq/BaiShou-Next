@@ -1,17 +1,17 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import type { FlatList } from 'react-native';
+import { useState, useRef, useCallback, useEffect } from 'react'
+import type { FlatList } from 'react-native'
 
 export interface UseChatScrollParams {
-  messages: any[];
-  isStreaming: boolean;
-  streamingText: string;
+  messages: any[]
+  isStreaming: boolean
+  streamingText: string
 }
 
 export interface UseChatScrollResult {
-  flatListRef: React.RefObject<FlatList<any> | null>;
-  showScrollButton: boolean;
-  scrollToBottom: (force?: boolean) => void;
-  handleScroll: (event: any) => void;
+  flatListRef: React.RefObject<FlatList<any> | null>
+  showScrollButton: boolean
+  scrollToBottom: (force?: boolean) => void
+  handleScroll: (event: any) => void
 }
 
 /**
@@ -23,42 +23,42 @@ export interface UseChatScrollResult {
  * 3. 显示"回到底部"按钮
  */
 export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult {
-  const { messages, isStreaming, streamingText } = params;
+  const { messages, isStreaming, streamingText } = params
 
-  const flatListRef = useRef<FlatList>(null);
-  const isUserScrollingRef = useRef(false);
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const prevMessageCountRef = useRef(0);
+  const flatListRef = useRef<FlatList>(null)
+  const isUserScrollingRef = useRef(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  const prevMessageCountRef = useRef(0)
 
   const handleScroll = useCallback((event: any) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const isAtBottom = contentSize.height - contentOffset.y - layoutMeasurement.height < 150;
-    isUserScrollingRef.current = !isAtBottom;
-    setShowScrollButton(!isAtBottom);
-  }, []);
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+    const isAtBottom = contentSize.height - contentOffset.y - layoutMeasurement.height < 150
+    isUserScrollingRef.current = !isAtBottom
+    setShowScrollButton(!isAtBottom)
+  }, [])
 
   const scrollToBottom = useCallback((force = false) => {
     if (flatListRef.current && (!isUserScrollingRef.current || force)) {
-      flatListRef.current.scrollToEnd({ animated: true });
+      flatListRef.current.scrollToEnd({ animated: true })
       if (force) {
-        setShowScrollButton(false);
-        isUserScrollingRef.current = false;
+        setShowScrollButton(false)
+        isUserScrollingRef.current = false
       }
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     if (messages.length > 0 && messages.length !== prevMessageCountRef.current) {
-      setTimeout(() => scrollToBottom(), 100);
+      setTimeout(() => scrollToBottom(), 100)
     }
-    prevMessageCountRef.current = messages.length;
-  }, [messages.length, scrollToBottom]);
+    prevMessageCountRef.current = messages.length
+  }, [messages.length, scrollToBottom])
 
   useEffect(() => {
     if (isStreaming || streamingText) {
-      scrollToBottom();
+      scrollToBottom()
     }
-  }, [streamingText, isStreaming, scrollToBottom]);
+  }, [streamingText, isStreaming, scrollToBottom])
 
-  return { flatListRef, showScrollButton, scrollToBottom, handleScroll };
+  return { flatListRef, showScrollButton, scrollToBottom, handleScroll }
 }

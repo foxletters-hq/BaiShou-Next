@@ -1,16 +1,16 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/native';
+import React from 'react'
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { useNativeTheme } from '@baishou/ui/native'
 
 // Token 统计对话框属性
 interface TokenUsageDialogProps {
-  visible: boolean;
-  onClose: () => void;
-  currentModelId: string | null;
-  inputTokens: number;
-  outputTokens: number;
-  estimatedCost: number;
+  visible: boolean
+  onClose: () => void
+  currentModelId: string | null
+  inputTokens: number
+  outputTokens: number
+  estimatedCost: number
 }
 
 export const TokenUsageDialog: React.FC<TokenUsageDialogProps> = ({
@@ -19,18 +19,13 @@ export const TokenUsageDialog: React.FC<TokenUsageDialogProps> = ({
   currentModelId,
   inputTokens,
   outputTokens,
-  estimatedCost,
+  estimatedCost
 }) => {
-  const { t } = useTranslation();
-  const { colors } = useNativeTheme();
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
         <View style={[styles.dialogContent, { backgroundColor: colors.bgSurface }]}>
           <Text style={[styles.dialogTitle, { color: colors.textPrimary }]}>
@@ -83,47 +78,47 @@ export const TokenUsageDialog: React.FC<TokenUsageDialogProps> = ({
         </View>
       </View>
     </Modal>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   dialogContent: {
     width: '80%',
     borderRadius: 24,
-    padding: 24,
+    padding: 24
   },
   dialogTitle: {
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   dialogRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 12
   },
   dialogLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   dialogValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   closeButton: {
     marginTop: 20,
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   closeButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-});
+    fontWeight: '600'
+  }
+})

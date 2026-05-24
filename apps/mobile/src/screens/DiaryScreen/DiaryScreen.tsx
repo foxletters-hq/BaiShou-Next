@@ -1,147 +1,165 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator, Alert, TextInput, FlatList } from 'react-native';
-import { DiaryCard, TimelineNode, YearMonthPicker } from '@baishou/ui/native';
-import { useNativeTheme } from '@baishou/ui/native';
-import { useBaishou } from '../../providers/BaishouProvider';
-import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
+  ActivityIndicator,
+  Alert,
+  TextInput,
+  FlatList
+} from 'react-native'
+import { DiaryCard, TimelineNode, YearMonthPicker } from '@baishou/ui/native'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../providers/BaishouProvider'
+import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 interface DiaryEntry {
-  id: number;
-  date: Date;
-  content: string;
-  tags: string[];
-  preview: string;
-  weather?: string;
-  mood?: string;
-  location?: string;
-  isFavorite?: boolean;
+  id: number
+  date: Date
+  content: string
+  tags: string[]
+  preview: string
+  weather?: string
+  mood?: string
+  location?: string
+  isFavorite?: boolean
 }
 
 export const DiaryScreen: React.FC = () => {
-  const { t } = useTranslation();
-  const { colors, isDark } = useNativeTheme();
-  const { services, dbReady } = useBaishou();
-  const router = useRouter();
+  const { t } = useTranslation()
+  const { colors, isDark } = useNativeTheme()
+  const { services, dbReady } = useBaishou()
+  const router = useRouter()
 
-  const [diaries, setDiaries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [diaries, setDiaries] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filterWeather, setFilterWeather] = useState<string | null>(null);
-  const [filterFavorite, setFilterFavorite] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<'timeline' | 'grid'>('timeline');
-  const [isStateRestored, setIsStateRestored] = useState(false);
-  
-  // 分页状态
-  const PAGE_SIZE = 50;
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [filterWeather, setFilterWeather] = useState<string | null>(null)
+  const [filterFavorite, setFilterFavorite] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'timeline' | 'grid'>('timeline')
+  const [isStateRestored, setIsStateRestored] = useState(false)
 
-  const fetchDiaries = useCallback(async (reset = true) => {
-    if (!dbReady || !services) return;
-    try {
-      const currentOffset = reset ? 0 : offset;
-      const list = await services.diaryService.listAll({ 
-        limit: PAGE_SIZE, 
-        offset: currentOffset 
-      });
-      
-      if (reset) {
-        setDiaries(list);
-        setOffset(PAGE_SIZE);
-      } else {
-        setDiaries(prev => [...prev, ...list]);
-        setOffset(prev => prev + PAGE_SIZE);
+  // 分页状态
+  const PAGE_SIZE = 50
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const fetchDiaries = useCallback(
+    async (reset = true) => {
+      if (!dbReady || !services) return
+      try {
+        const currentOffset = reset ? 0 : offset
+        const list = await services.diaryService.listAll({
+          limit: PAGE_SIZE,
+          offset: currentOffset
+        })
+
+        if (reset) {
+          setDiaries(list)
+          setOffset(PAGE_SIZE)
+        } else {
+          setDiaries((prev) => [...prev, ...list])
+          setOffset((prev) => prev + PAGE_SIZE)
+        }
+        setHasMore(list.length === PAGE_SIZE)
+      } catch (e) {
+        console.error('Failed to fetch diaries', e)
+      } finally {
+        setLoading(false)
+        setLoadingMore(false)
       }
-      setHasMore(list.length === PAGE_SIZE);
-    } catch (e) {
-      console.error('Failed to fetch diaries', e);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [dbReady, services]);
+    },
+    [dbReady, services]
+  )
 
   const loadMore = useCallback(async () => {
-    if (!hasMore || loadingMore || !dbReady || !services) return;
-    setLoadingMore(true);
-    await fetchDiaries(false);
-  }, [hasMore, loadingMore, dbReady, services, fetchDiaries]);
+    if (!hasMore || loadingMore || !dbReady || !services) return
+    setLoadingMore(true)
+    await fetchDiaries(false)
+  }, [hasMore, loadingMore, dbReady, services, fetchDiaries])
 
   useEffect(() => {
-    setOffset(0);
-    setHasMore(true);
-    fetchDiaries(true);
-  }, [fetchDiaries, selectedMonth, searchQuery, filterWeather, filterFavorite]);
+    setOffset(0)
+    setHasMore(true)
+    fetchDiaries(true)
+  }, [fetchDiaries, selectedMonth, searchQuery, filterWeather, filterFavorite])
 
   // 从 AsyncStorage 恢复筛选状态
   useEffect(() => {
     const restoreState = async () => {
       try {
-        const [savedQuery, savedMonth, savedWeather, savedFavorite, savedViewMode] = await Promise.all([
-          AsyncStorage.getItem('diary_searchQuery'),
-          AsyncStorage.getItem('diary_selectedMonth'),
-          AsyncStorage.getItem('diary_filterWeather'),
-          AsyncStorage.getItem('diary_filterFavorite'),
-          AsyncStorage.getItem('diary_viewMode'),
-        ]);
+        const [savedQuery, savedMonth, savedWeather, savedFavorite, savedViewMode] =
+          await Promise.all([
+            AsyncStorage.getItem('diary_searchQuery'),
+            AsyncStorage.getItem('diary_selectedMonth'),
+            AsyncStorage.getItem('diary_filterWeather'),
+            AsyncStorage.getItem('diary_filterFavorite'),
+            AsyncStorage.getItem('diary_viewMode')
+          ])
 
         if (savedQuery) {
-          setSearchQuery(savedQuery);
+          setSearchQuery(savedQuery)
         }
 
         if (savedMonth) {
           try {
-            const d = new Date(savedMonth);
+            const d = new Date(savedMonth)
             if (!isNaN(d.getTime())) {
-              setSelectedMonth(d);
+              setSelectedMonth(d)
             }
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
 
         if (savedWeather) {
-          setFilterWeather(savedWeather);
+          setFilterWeather(savedWeather)
         }
 
         if (savedFavorite === 'true') {
-          setFilterFavorite(true);
+          setFilterFavorite(true)
         }
 
         if (savedViewMode === 'timeline' || savedViewMode === 'grid') {
-          setViewMode(savedViewMode);
+          setViewMode(savedViewMode)
         }
       } catch (e) {
-        console.error('Failed to restore diary filter state', e);
+        console.error('Failed to restore diary filter state', e)
       } finally {
-        setIsStateRestored(true);
+        setIsStateRestored(true)
       }
-    };
+    }
 
-    restoreState();
-  }, []);
+    restoreState()
+  }, [])
 
   // 处理过滤和排序
   const filteredEntries = useMemo(() => {
-    if (!diaries || diaries.length === 0) return [];
+    if (!diaries || diaries.length === 0) return []
 
-    let filtered = [...diaries].map(e => {
-      let parsedDate = new Date();
+    let filtered = [...diaries].map((e) => {
+      let parsedDate = new Date()
       if (e.date) {
-        const pd = new Date(e.date);
-        if (!isNaN(pd.getTime())) parsedDate = pd;
+        const pd = new Date(e.date)
+        if (!isNaN(pd.getTime())) parsedDate = pd
       }
       if (isNaN(parsedDate.getTime()) || !e.date) {
         if (e.createdAt) {
-          const cd = new Date(e.createdAt);
-          if (!isNaN(cd.getTime())) parsedDate = cd;
+          const cd = new Date(e.createdAt)
+          if (!isNaN(cd.getTime())) parsedDate = cd
         }
       }
 
@@ -154,174 +172,191 @@ export const DiaryScreen: React.FC = () => {
         weather: e.weather,
         mood: e.mood,
         location: e.location,
-        isFavorite: e.isFavorite,
-      } as DiaryEntry;
-    });
+        isFavorite: e.isFavorite
+      } as DiaryEntry
+    })
 
     // 月份过滤
     if (selectedMonth) {
-      filtered = filtered.filter(e =>
-        e.date.getFullYear() === selectedMonth.getFullYear() &&
-        e.date.getMonth() === selectedMonth.getMonth()
-      );
+      filtered = filtered.filter(
+        (e) =>
+          e.date.getFullYear() === selectedMonth.getFullYear() &&
+          e.date.getMonth() === selectedMonth.getMonth()
+      )
     }
 
     // 搜索过滤
     if (searchQuery.trim()) {
-      const lowerQ = searchQuery.trim().toLowerCase();
-      filtered = filtered.filter(e =>
-        e.preview.toLowerCase().includes(lowerQ) ||
-        e.tags.some(tag => tag.toLowerCase().includes(lowerQ))
-      );
+      const lowerQ = searchQuery.trim().toLowerCase()
+      filtered = filtered.filter(
+        (e) =>
+          e.preview.toLowerCase().includes(lowerQ) ||
+          e.tags.some((tag) => tag.toLowerCase().includes(lowerQ))
+      )
     }
 
     // 天气筛选
     if (filterWeather) {
-      filtered = filtered.filter(e => e.weather === filterWeather);
+      filtered = filtered.filter((e) => e.weather === filterWeather)
     }
 
     // 收藏筛选
     if (filterFavorite) {
-      filtered = filtered.filter(e => e.isFavorite);
+      filtered = filtered.filter((e) => e.isFavorite)
     }
 
     // 按日期降序排序
-    filtered.sort((a, b) => b.date.getTime() - a.date.getTime());
+    filtered.sort((a, b) => b.date.getTime() - a.date.getTime())
 
-    return filtered;
-  }, [diaries, selectedMonth, searchQuery, filterWeather, filterFavorite]);
+    return filtered
+  }, [diaries, selectedMonth, searchQuery, filterWeather, filterFavorite])
 
   // 保存筛选状态到 AsyncStorage
   useEffect(() => {
-    if (!isStateRestored) return;
-    AsyncStorage.setItem('diary_searchQuery', searchQuery).catch(e => 
+    if (!isStateRestored) return
+    AsyncStorage.setItem('diary_searchQuery', searchQuery).catch((e) =>
       console.error('Failed to save searchQuery', e)
-    );
-  }, [searchQuery, isStateRestored]);
+    )
+  }, [searchQuery, isStateRestored])
 
   useEffect(() => {
-    if (!isStateRestored) return;
-    AsyncStorage.setItem('diary_selectedMonth', selectedMonth ? selectedMonth.toISOString() : '').catch(e => 
-      console.error('Failed to save selectedMonth', e)
-    );
-  }, [selectedMonth, isStateRestored]);
+    if (!isStateRestored) return
+    AsyncStorage.setItem(
+      'diary_selectedMonth',
+      selectedMonth ? selectedMonth.toISOString() : ''
+    ).catch((e) => console.error('Failed to save selectedMonth', e))
+  }, [selectedMonth, isStateRestored])
 
   useEffect(() => {
-    if (!isStateRestored) return;
-    AsyncStorage.setItem('diary_filterWeather', filterWeather || '').catch(e => 
+    if (!isStateRestored) return
+    AsyncStorage.setItem('diary_filterWeather', filterWeather || '').catch((e) =>
       console.error('Failed to save filterWeather', e)
-    );
-  }, [filterWeather, isStateRestored]);
+    )
+  }, [filterWeather, isStateRestored])
 
   useEffect(() => {
-    if (!isStateRestored) return;
-    AsyncStorage.setItem('diary_filterFavorite', String(filterFavorite)).catch(e => 
+    if (!isStateRestored) return
+    AsyncStorage.setItem('diary_filterFavorite', String(filterFavorite)).catch((e) =>
       console.error('Failed to save filterFavorite', e)
-    );
-  }, [filterFavorite, isStateRestored]);
+    )
+  }, [filterFavorite, isStateRestored])
 
   useEffect(() => {
-    if (!isStateRestored) return;
-    AsyncStorage.setItem('diary_viewMode', viewMode).catch(e => 
+    if (!isStateRestored) return
+    AsyncStorage.setItem('diary_viewMode', viewMode).catch((e) =>
       console.error('Failed to save viewMode', e)
-    );
-  }, [viewMode, isStateRestored]);
+    )
+  }, [viewMode, isStateRestored])
 
   // 格式化日期字符串为 YYYY-MM-DD
   const formatDateStr = (date: Date): string => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  };
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
 
   // 获取天气图标
   const getWeatherIcon = (weather: string) => {
     switch (weather) {
-      case 'sunny': return '☀️';
-      case 'cloudy': return '☁️';
-      case 'overcast': return '☁️';
-      case 'light_rain': return '🌧️';
-      case 'heavy_rain': return '🌧️';
-      case 'snow': return '❄️';
-      case 'fog': return '🌫️';
-      case 'windy': return '💨';
-      default: return '🌡️';
+      case 'sunny':
+        return '☀️'
+      case 'cloudy':
+        return '☁️'
+      case 'overcast':
+        return '☁️'
+      case 'light_rain':
+        return '🌧️'
+      case 'heavy_rain':
+        return '🌧️'
+      case 'snow':
+        return '❄️'
+      case 'fog':
+        return '🌫️'
+      case 'windy':
+        return '💨'
+      default:
+        return '🌡️'
     }
-  };
+  }
 
   // 获取天气名称
   const getWeatherName = (weather: string) => {
-    return t(`diary.weather.${weather}`, weather);
-  };
+    return t(`diary.weather.${weather}`, weather)
+  }
 
   // 清除所有筛选
   const clearFilters = () => {
-    setFilterWeather(null);
-    setFilterFavorite(false);
-  };
+    setFilterWeather(null)
+    setFilterFavorite(false)
+  }
 
   // 是否有激活的筛选
-  const hasActiveFilters = filterWeather || filterFavorite;
+  const hasActiveFilters = filterWeather || filterFavorite
 
   // 查找今天的日记条目
   const todayEntry = useMemo(() => {
-    if (!diaries) return null;
-    const today = new Date();
-    return diaries.find((e: any) => {
-      const d = e.date ? new Date(e.date) : null;
-      return d && d.getFullYear() === today.getFullYear() &&
-        d.getMonth() === today.getMonth() &&
-        d.getDate() === today.getDate();
-    }) || null;
-  }, [diaries]);
+    if (!diaries) return null
+    const today = new Date()
+    return (
+      diaries.find((e: any) => {
+        const d = e.date ? new Date(e.date) : null
+        return (
+          d &&
+          d.getFullYear() === today.getFullYear() &&
+          d.getMonth() === today.getMonth() &&
+          d.getDate() === today.getDate()
+        )
+      }) || null
+    )
+  }, [diaries])
 
   // 编辑今日日记：有则追加，无则新建
   const handleEditToday = () => {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
-    const dateStr = `${y}-${m}-${d}`;
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = String(today.getMonth() + 1).padStart(2, '0')
+    const d = String(today.getDate()).padStart(2, '0')
+    const dateStr = `${y}-${m}-${d}`
     if (todayEntry) {
-      router.push(`/(tabs)/diary-editor?date=${dateStr}&append=1`);
+      router.push(`/(tabs)/diary-editor?date=${dateStr}&append=1`)
     } else {
-      router.push(`/(tabs)/diary-editor?date=${dateStr}`);
+      router.push(`/(tabs)/diary-editor?date=${dateStr}`)
     }
-  };
+  }
 
   // 新建日记
   const handleAddNew = () => {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
-    const dateStr = `${y}-${m}-${d}`;
-    router.push(`/(tabs)/diary-editor?date=${dateStr}`);
-  };
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = String(today.getMonth() + 1).padStart(2, '0')
+    const d = String(today.getDate()).padStart(2, '0')
+    const dateStr = `${y}-${m}-${d}`
+    router.push(`/(tabs)/diary-editor?date=${dateStr}`)
+  }
 
   // 执行删除操作
   const performDelete = async () => {
-    if (deletingId === null || !services) return;
+    if (deletingId === null || !services) return
     try {
-      await services.diaryService.delete(deletingId);
-       await fetchDiaries();
-       setDeletingId(null);
-       Alert.alert(t('common.success', '成功'), t('diary.delete_success', '日记已删除'));
+      await services.diaryService.delete(deletingId)
+      await fetchDiaries()
+      setDeletingId(null)
+      Alert.alert(t('common.success', '成功'), t('diary.delete_success', '日记已删除'))
     } catch (e) {
-       console.error('Delete failed', e);
-       Alert.alert(t('common.error', '错误'), t('diary.delete_failed', '删除失败'));
-     }
-  };
+      console.error('Delete failed', e)
+      Alert.alert(t('common.error', '错误'), t('diary.delete_failed', '删除失败'))
+    }
+  }
 
   // 渲染日记卡片
   const renderDiaryCard = (entry: DiaryEntry, index: number) => {
-    const isLast = index === filteredEntries.length - 1;
-    const isFirst = index === 0;
-    
+    const isLast = index === filteredEntries.length - 1
+    const isFirst = index === 0
+
     const cardContent = (
       <View style={styles.cardWrapper}>
-        <DiaryCard 
+        <DiaryCard
           id={entry.id}
           contentSnippet={entry.preview || t('diary.no_preview', '暂无预览...')}
           tags={entry.tags || []}
@@ -331,38 +366,55 @@ export const DiaryScreen: React.FC = () => {
           onDelete={() => setDeletingId(entry.id)}
         />
         {/* 叠加光晕掩码进行降噪隔离 */}
-        <View style={[styles.glassMask, { backgroundColor: colors.bgApp + '03' }]} pointerEvents="none" />
+        <View
+          style={[styles.glassMask, { backgroundColor: colors.bgApp + '03' }]}
+          pointerEvents="none"
+        />
       </View>
-    );
+    )
 
     if (viewMode === 'timeline') {
       return (
         <TimelineNode key={entry.id} isLast={isLast} isFirst={isFirst}>
           {cardContent}
         </TimelineNode>
-      );
+      )
     } else {
       return (
         <View key={entry.id} style={styles.gridItem}>
           {cardContent}
         </View>
-      );
+      )
     }
-  };
+  }
 
   return (
     <>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bgApp} />
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.bgApp}
+      />
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
         <View style={[styles.container, { backgroundColor: colors.bgApp }]}>
-          
-          <View style={[styles.header, { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle }]}>
+          <View
+            style={[
+              styles.header,
+              {
+                backgroundColor: colors.bgSurface,
+                borderBottomColor: colors.borderSubtle
+              }
+            ]}
+          >
             <View>
-              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('diary.title', '记忆节点')}</Text>
-              <Text style={[styles.headerSubtitle, { color: colors.accentGreen }]}>NEURAL SNAPSHOTS (B8.1)</Text>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                {t('diary.title', '记忆节点')}
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: colors.accentGreen }]}>
+                NEURAL SNAPSHOTS (B8.1)
+              </Text>
             </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.viewModeButton, { backgroundColor: colors.bgSurfaceHighest }]}
                 onPress={() => setViewMode(viewMode === 'timeline' ? 'grid' : 'timeline')}
               >
@@ -370,7 +422,7 @@ export const DiaryScreen: React.FC = () => {
                   {viewMode === 'timeline' ? '☷' : '☵'}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.todayButton, { backgroundColor: colors.bgSurfaceHighest }]}
                 onPress={handleEditToday}
               >
@@ -378,12 +430,20 @@ export const DiaryScreen: React.FC = () => {
                   {todayEntry ? '✍️' : '📅'}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.addBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
+              <TouchableOpacity
+                style={[
+                  styles.addBtn,
+                  {
+                    backgroundColor: colors.primary + '15',
+                    borderColor: colors.primary + '30'
+                  }
+                ]}
                 onPress={handleAddNew}
               >
                 <Text style={styles.addBtnIcon}>✍️</Text>
-                <Text style={[styles.addBtnText, { color: colors.primary }]}>{t('diary.write_today', '写日记')}</Text>
+                <Text style={[styles.addBtnText, { color: colors.primary }]}>
+                  {t('diary.write_today', '写日记')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -400,12 +460,26 @@ export const DiaryScreen: React.FC = () => {
                 onChangeText={setSearchQuery}
               />
             </View>
-            
-            <TouchableOpacity 
-              style={[styles.filterButton, { backgroundColor: hasActiveFilters ? colors.primary : colors.bgSurfaceHighest }]}
+
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                {
+                  backgroundColor: hasActiveFilters ? colors.primary : colors.bgSurfaceHighest
+                }
+              ]}
               onPress={() => setIsFilterOpen(!isFilterOpen)}
             >
-              <Text style={[styles.filterButtonText, { color: hasActiveFilters ? colors.bgSurface : colors.textSecondary }]}>{t('diary.filter', '筛选')}</Text>
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  {
+                    color: hasActiveFilters ? colors.bgSurface : colors.textSecondary
+                  }
+                ]}
+              >
+                {t('diary.filter', '筛选')}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -413,36 +487,75 @@ export const DiaryScreen: React.FC = () => {
           {isFilterOpen && (
             <View style={[styles.filterPanel, { backgroundColor: colors.bgSurface }]}>
               <View style={styles.filterHeader}>
-                <Text style={[styles.filterTitle, { color: colors.textPrimary }]}>{t('diary.filter', '筛选')}</Text>
+                <Text style={[styles.filterTitle, { color: colors.textPrimary }]}>
+                  {t('diary.filter', '筛选')}
+                </Text>
                 {hasActiveFilters && (
                   <TouchableOpacity onPress={clearFilters}>
-                    <Text style={[styles.filterClear, { color: colors.primary }]}>{t('diary.clear_filter', '清除')}</Text>
+                    <Text style={[styles.filterClear, { color: colors.primary }]}>
+                      {t('diary.clear_filter', '清除')}
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
 
               {/* 收藏筛选 */}
               <TouchableOpacity
-                style={[styles.filterOption, { backgroundColor: filterFavorite ? colors.primary + '20' : colors.bgSurfaceHighest }]}
+                style={[
+                  styles.filterOption,
+                  {
+                    backgroundColor: filterFavorite
+                      ? colors.primary + '20'
+                      : colors.bgSurfaceHighest
+                  }
+                ]}
                 onPress={() => setFilterFavorite(!filterFavorite)}
               >
-                <Text style={[styles.filterOptionText, { color: filterFavorite ? colors.primary : colors.textPrimary }]}>❤️ {t('diary.filter_favorite', '收藏')}</Text>
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    {
+                      color: filterFavorite ? colors.primary : colors.textPrimary
+                    }
+                  ]}
+                >
+                  ❤️ {t('diary.filter_favorite', '收藏')}
+                </Text>
               </TouchableOpacity>
 
               {/* 天气筛选 */}
-              <Text style={[styles.filterSectionLabel, { color: colors.textSecondary }]}>{t('diary.filter_weather', '天气')}</Text>
+              <Text style={[styles.filterSectionLabel, { color: colors.textSecondary }]}>
+                {t('diary.filter_weather', '天气')}
+              </Text>
               <View style={styles.filterWeatherGrid}>
-                {['sunny', 'cloudy', 'overcast', 'light_rain', 'heavy_rain', 'snow', 'fog', 'windy'].map(weather => (
+                {[
+                  'sunny',
+                  'cloudy',
+                  'overcast',
+                  'light_rain',
+                  'heavy_rain',
+                  'snow',
+                  'fog',
+                  'windy'
+                ].map((weather) => (
                   <TouchableOpacity
                     key={weather}
-                    style={[styles.filterWeatherButton, { 
-                      backgroundColor: filterWeather === weather ? colors.primary + '20' : colors.bgSurfaceHighest,
-                      borderColor: filterWeather === weather ? colors.primary : 'transparent',
-                    }]}
+                    style={[
+                      styles.filterWeatherButton,
+                      {
+                        backgroundColor:
+                          filterWeather === weather
+                            ? colors.primary + '20'
+                            : colors.bgSurfaceHighest,
+                        borderColor: filterWeather === weather ? colors.primary : 'transparent'
+                      }
+                    ]}
                     onPress={() => setFilterWeather(filterWeather === weather ? null : weather)}
                   >
                     <Text style={styles.filterWeatherIcon}>{getWeatherIcon(weather)}</Text>
-                    <Text style={[styles.filterWeatherName, { color: colors.textSecondary }]}>{getWeatherName(weather)}</Text>
+                    <Text style={[styles.filterWeatherName, { color: colors.textSecondary }]}>
+                      {getWeatherName(weather)}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -465,18 +578,22 @@ export const DiaryScreen: React.FC = () => {
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🌌</Text>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                 {selectedMonth ? t('diary.no_diaries_month', '本月暂无日记') : t('diary.no_diaries', '暂无日记，开始记录吧')}
-               </Text>
+                {selectedMonth
+                  ? t('diary.no_diaries_month', '本月暂无日记')
+                  : t('diary.no_diaries', '暂无日记，开始记录吧')}
+              </Text>
               {selectedMonth && (
                 <TouchableOpacity onPress={() => setSelectedMonth(null)}>
-                  <Text style={[styles.viewAllButton, { color: colors.primary }]}>{t('common.view_all', '查看全部')}</Text>
+                  <Text style={[styles.viewAllButton, { color: colors.primary }]}>
+                    {t('common.view_all', '查看全部')}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
           ) : (
-            <ScrollView 
-              style={styles.contentContainer} 
-              contentContainerStyle={styles.timelinePadding} 
+            <ScrollView
+              style={styles.contentContainer}
+              contentContainerStyle={styles.timelinePadding}
               indicatorStyle="white"
             >
               {viewMode === 'timeline' ? (
@@ -486,9 +603,9 @@ export const DiaryScreen: React.FC = () => {
                   {filteredEntries.map((entry, index) => renderDiaryCard(entry, index))}
                 </View>
               )}
-              
+
               {hasMore && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.loadMoreButton, { backgroundColor: colors.bgSurfaceHighest }]}
                   onPress={loadMore}
                   disabled={loadingMore}
@@ -502,18 +619,19 @@ export const DiaryScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
               )}
-              
+
               <View style={styles.footerMarker}>
-                 <Text style={[styles.footerMarkerText, { color: colors.textSecondary }]}>
-                   {hasMore 
-                     ? t('diary.loaded_count', { count: diaries.length, defaultValue: `已加载 ${diaries.length} 条` })
-                     : t('diary.footer_marker', '=== 已触达此神经链路的底层 ===')
-                   }
-                 </Text>
+                <Text style={[styles.footerMarkerText, { color: colors.textSecondary }]}>
+                  {hasMore
+                    ? t('diary.loaded_count', {
+                        count: diaries.length,
+                        defaultValue: `已加载 ${diaries.length} 条`
+                      })
+                    : t('diary.footer_marker', '=== 已触达此神经链路的底层 ===')}
+                </Text>
               </View>
             </ScrollView>
           )}
-
         </View>
       </SafeAreaView>
 
@@ -521,37 +639,46 @@ export const DiaryScreen: React.FC = () => {
       {deletingId !== null && (
         <View style={[styles.deleteModalOverlay, { backgroundColor: colors.bgApp + '80' }]}>
           <View style={[styles.deleteModal, { backgroundColor: colors.bgSurface }]}>
-            <Text style={[styles.deleteModalTitle, { color: colors.textPrimary }]}>{t('common.confirm_delete', '确认删除')}</Text>
+            <Text style={[styles.deleteModalTitle, { color: colors.textPrimary }]}>
+              {t('common.confirm_delete', '确认删除')}
+            </Text>
             <Text style={[styles.deleteModalContent, { color: colors.textSecondary }]}>
-               {t('diary.delete_warning', '您确定要永久删除这篇日记吗？此操作不可逆�?')}
-             </Text>
+              {t('diary.delete_warning', '您确定要永久删除这篇日记吗？此操作不可逆�?')}
+            </Text>
             <View style={styles.deleteModalActions}>
-              <TouchableOpacity 
-                style={[styles.deleteModalCancelButton, { backgroundColor: colors.bgSurfaceHighest }]}
+              <TouchableOpacity
+                style={[
+                  styles.deleteModalCancelButton,
+                  { backgroundColor: colors.bgSurfaceHighest }
+                ]}
                 onPress={() => setDeletingId(null)}
               >
-                <Text style={[styles.deleteModalCancelButtonText, { color: colors.textSecondary }]}>{t('common.cancel', '取消')}</Text>
+                <Text style={[styles.deleteModalCancelButtonText, { color: colors.textSecondary }]}>
+                  {t('common.cancel', '取消')}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.deleteModalConfirmButton, { backgroundColor: colors.primary }]}
                 onPress={performDelete}
               >
-                <Text style={[styles.deleteModalConfirmButtonText, { color: colors.bgSurface }]}>{t('common.delete', '删除')}</Text>
+                <Text style={[styles.deleteModalConfirmButtonText, { color: colors.bgSurface }]}>
+                  {t('common.delete', '删除')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       )}
     </>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   safeArea: {
-    flex: 1,
+    flex: 1
   },
   container: {
-    flex: 1,
+    flex: 1
   },
   header: {
     flexDirection: 'row',
@@ -559,12 +686,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 20,
     paddingVertical: 18,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '900',
-    letterSpacing: -0.5,
+    letterSpacing: -0.5
   },
   headerSubtitle: {
     fontSize: 10,
@@ -575,27 +702,27 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 8
   },
   viewModeButton: {
     width: 36,
     height: 36,
     borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   viewModeButtonText: {
-    fontSize: 16,
+    fontSize: 16
   },
   todayButton: {
     width: 36,
     height: 36,
     borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   todayButtonText: {
-    fontSize: 16,
+    fontSize: 16
   },
   addBtn: {
     flexDirection: 'row',
@@ -607,103 +734,103 @@ const styles = StyleSheet.create({
     gap: 6
   },
   addBtnIcon: {
-    fontSize: 14,
+    fontSize: 14
   },
   addBtnText: {
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 14
   },
   searchFilterBar: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 12,
+    gap: 12
   },
   searchWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 12
   },
   searchIcon: {
     fontSize: 16,
-    marginRight: 8,
+    marginRight: 8
   },
   searchInput: {
     flex: 1,
     height: 40,
-    fontSize: 16,
+    fontSize: 16
   },
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 8
   },
   filterButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   filterPanel: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 16
   },
   filterHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 12
   },
   filterTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   filterClear: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   filterOption: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
-    marginBottom: 12,
+    marginBottom: 12
   },
   filterOptionText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   filterSectionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 8
   },
   filterWeatherGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 8
   },
   filterWeatherButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   filterWeatherIcon: {
     fontSize: 16,
-    marginBottom: 4,
+    marginBottom: 4
   },
   filterWeatherName: {
-    fontSize: 12,
+    fontSize: 12
   },
   monthSelector: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 8,
+    gap: 8
   },
   contentContainer: {
-    flex: 1,
+    flex: 1
   },
   timelinePadding: {
     padding: 24,
@@ -712,14 +839,14 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 16
   },
   gridItem: {
-    width: '48%',
+    width: '48%'
   },
   cardWrapper: {
     position: 'relative',
-    marginBottom: 8,
+    marginBottom: 8
   },
   glassMask: {
     ...StyleSheet.absoluteFillObject,
@@ -761,60 +888,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 12,
     marginTop: 16,
-    marginHorizontal: 24,
+    marginHorizontal: 24
   },
   loadMoreText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   deleteModalOverlay: {
-     position: 'absolute',
-     top: 0,
-     left: 0,
-     right: 0,
-     bottom: 0,
-     justifyContent: 'center',
-     alignItems: 'center',
-   },
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
   deleteModal: {
     width: '80%',
     borderRadius: 24,
-    padding: 24,
+    padding: 24
   },
   deleteModalTitle: {
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   deleteModalContent: {
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 24
   },
   deleteModalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 12
   },
   deleteModalCancelButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   deleteModalCancelButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   deleteModalConfirmButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   deleteModalConfirmButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-});
+    fontWeight: '600'
+  }
+})

@@ -1,28 +1,20 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/native';
+import React from 'react'
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { useNativeTheme } from '@baishou/ui/native'
 
 // 工具管理器属性
 interface ToolManagerDialogProps {
-  visible: boolean;
-  onClose: () => void;
+  visible: boolean
+  onClose: () => void
 }
 
-export const ToolManagerDialog: React.FC<ToolManagerDialogProps> = ({
-  visible,
-  onClose,
-}) => {
-  const { t } = useTranslation();
-  const { colors } = useNativeTheme();
+export const ToolManagerDialog: React.FC<ToolManagerDialogProps> = ({ visible, onClose }) => {
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
         <View style={[styles.dialogContent, { backgroundColor: colors.bgSurface }]}>
           <Text style={[styles.dialogTitle, { color: colors.textPrimary }]}>
@@ -42,38 +34,38 @@ export const ToolManagerDialog: React.FC<ToolManagerDialogProps> = ({
         </View>
       </View>
     </Modal>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   dialogContent: {
     width: '80%',
     borderRadius: 24,
-    padding: 24,
+    padding: 24
   },
   dialogTitle: {
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   dialogDescription: {
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 20
   },
   closeButton: {
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   closeButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-});
+    fontWeight: '600'
+  }
+})

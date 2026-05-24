@@ -1,88 +1,98 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/src/native/theme';
-import { useBaishou } from '../../providers/BaishouProvider';
+import React, { useEffect, useState, useCallback } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { useNativeTheme } from '@baishou/ui/src/native/theme'
+import { useBaishou } from '../../providers/BaishouProvider'
 
 export const AttachmentManagementSection: React.FC = () => {
-  const { t } = useTranslation();
-  const { colors } = useNativeTheme();
-  const { services, dbReady } = useBaishou();
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+  const { services, dbReady } = useBaishou()
 
-  const [attachments, setAttachments] = useState<any[]>([]);
-  const [storageStats, setStorageStats] = useState<any>({});
-  const [selectedAttachments, setSelectedAttachments] = useState<Set<string>>(new Set());
-  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>([])
+  const [storageStats, setStorageStats] = useState<any>({})
+  const [selectedAttachments, setSelectedAttachments] = useState<Set<string>>(new Set())
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false)
 
   const loadAttachments = useCallback(async () => {
-    if (!services || !dbReady) return;
+    if (!services || !dbReady) return
     try {
-      setIsLoadingAttachments(true);
-      const storageStatsData = await services.settingsManager.get<any>('storage_stats') || {};
-      setStorageStats(storageStatsData);
-      const attachmentList = storageStatsData.attachments || [];
-      setAttachments(attachmentList);
+      setIsLoadingAttachments(true)
+      const storageStatsData = (await services.settingsManager.get<any>('storage_stats')) || {}
+      setStorageStats(storageStatsData)
+      const attachmentList = storageStatsData.attachments || []
+      setAttachments(attachmentList)
     } catch (e) {
-      console.warn('Load attachments failed', e);
+      console.warn('Load attachments failed', e)
     } finally {
-      setIsLoadingAttachments(false);
+      setIsLoadingAttachments(false)
     }
-  }, [services, dbReady]);
+  }, [services, dbReady])
 
   useEffect(() => {
-    loadAttachments();
-  }, [loadAttachments]);
+    loadAttachments()
+  }, [loadAttachments])
 
   const handleToggleAttachmentSelection = (id: string) => {
-    setSelectedAttachments(prev => {
-      const newSet = new Set(prev);
+    setSelectedAttachments((prev) => {
+      const newSet = new Set(prev)
       if (newSet.has(id)) {
-        newSet.delete(id);
+        newSet.delete(id)
       } else {
-        newSet.add(id);
+        newSet.add(id)
       }
-      return newSet;
-    });
-  };
+      return newSet
+    })
+  }
 
   const handleSelectAllAttachments = () => {
     if (selectedAttachments.size === attachments.length) {
-      setSelectedAttachments(new Set());
+      setSelectedAttachments(new Set())
     } else {
-      setSelectedAttachments(new Set(attachments.map(a => a.id)));
+      setSelectedAttachments(new Set(attachments.map((a) => a.id)))
     }
-  };
+  }
 
   const handleDeleteSelectedAttachments = async () => {
-    if (selectedAttachments.size === 0) return;
+    if (selectedAttachments.size === 0) return
     Alert.alert(
       t('settings.delete_attachments_confirm_title', '确认删除'),
-      t('settings.delete_attachments_confirm_message', '确定删除选中的 {count} 个附件吗？').replace('{count}', selectedAttachments.size.toString()),
+      t('settings.delete_attachments_confirm_message', '确定删除选中的 {count} 个附件吗？').replace(
+        '{count}',
+        selectedAttachments.size.toString()
+      ),
       [
         { text: t('common.cancel', '取消'), style: 'cancel' },
-        { 
-          text: t('common.delete', '删除'), 
+        {
+          text: t('common.delete', '删除'),
           style: 'destructive',
           onPress: async () => {
             try {
-              const remaining = attachments.filter(a => !selectedAttachments.has(a.id));
-              setAttachments(remaining);
-              setSelectedAttachments(new Set());
-              
-              const storageStatsData = await services?.settingsManager.get<any>('storage_stats') || {};
-              storageStatsData.attachments = remaining;
-              storageStatsData.attachmentCount = remaining.length;
-              await services?.settingsManager.set('storage_stats', storageStatsData);
-              
-              Alert.alert(t('common.success', '成功'), t('settings.attachments_deleted', '附件已删除'));
+              const remaining = attachments.filter((a) => !selectedAttachments.has(a.id))
+              setAttachments(remaining)
+              setSelectedAttachments(new Set())
+
+              const storageStatsData =
+                (await services?.settingsManager.get<any>('storage_stats')) || {}
+              storageStatsData.attachments = remaining
+              storageStatsData.attachmentCount = remaining.length
+              await services?.settingsManager.set('storage_stats', storageStatsData)
+
+              Alert.alert(
+                t('common.success', '成功'),
+                t('settings.attachments_deleted', '附件已删除')
+              )
             } catch (e) {
-              Alert.alert(t('common.error', '错误'), t('settings.delete_attachments_failed', '删除附件失败'));
+              Alert.alert(
+                t('common.error', '错误'),
+                t('settings.delete_attachments_failed', '删除附件失败')
+              )
             }
           }
         }
       ]
-    );
-  };
+    )
+  }
 
   return (
     <View style={styles.section}>
@@ -92,44 +102,57 @@ export const AttachmentManagementSection: React.FC = () => {
       <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
         {t('settings.attachments_desc', '管理附件和存储空间')}
       </Text>
-      
+
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>{t('settings.attachment_count', '附件数量')}</Text>
+        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+          {t('settings.attachment_count', '附件数量')}
+        </Text>
         <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
           {attachments.length || storageStats.attachmentCount || 0} {t('settings.count_unit', '个')}
         </Text>
       </View>
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>{t('settings.attachment_size', '附件大小')}</Text>
+        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+          {t('settings.attachment_size', '附件大小')}
+        </Text>
         <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
           {storageStats.attachmentSize || '0 MB'}
         </Text>
       </View>
 
       <View style={styles.attachmentActions}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: colors.primary }]}
           onPress={handleSelectAllAttachments}
           disabled={attachments.length === 0}
         >
           <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
-            {selectedAttachments.size === attachments.length 
-              ? t('settings.deselect_all', '取消全选') 
+            {selectedAttachments.size === attachments.length
+              ? t('settings.deselect_all', '取消全选')
               : t('settings.select_all', '全选')}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.actionButton, { 
-            backgroundColor: selectedAttachments.size > 0 ? (colors.error || '#FF4444') : colors.bgSurfaceHighest 
-          }]}
+        <TouchableOpacity
+          style={[
+            styles.actionButton,
+            {
+              backgroundColor:
+                selectedAttachments.size > 0 ? colors.error || '#FF4444' : colors.bgSurfaceHighest
+            }
+          ]}
           onPress={handleDeleteSelectedAttachments}
           disabled={selectedAttachments.size === 0}
         >
-          <Text style={[styles.actionButtonText, { 
-            color: selectedAttachments.size > 0 ? '#FFF' : colors.textSecondary 
-          }]}>
+          <Text
+            style={[
+              styles.actionButtonText,
+              {
+                color: selectedAttachments.size > 0 ? '#FFF' : colors.textSecondary
+              }
+            ]}
+          >
             {t('settings.delete_selected', '删除选中')} ({selectedAttachments.size})
           </Text>
         </TouchableOpacity>
@@ -147,29 +170,43 @@ export const AttachmentManagementSection: React.FC = () => {
           {attachments.map((attachment) => (
             <TouchableOpacity
               key={attachment.id}
-              style={[styles.attachmentItem, { 
-                backgroundColor: selectedAttachments.has(attachment.id) ? colors.bgSurface : 'transparent',
-                borderBottomColor: colors.borderSubtle,
-              }]}
+              style={[
+                styles.attachmentItem,
+                {
+                  backgroundColor: selectedAttachments.has(attachment.id)
+                    ? colors.bgSurface
+                    : 'transparent',
+                  borderBottomColor: colors.borderSubtle
+                }
+              ]}
               onPress={() => handleToggleAttachmentSelection(attachment.id)}
             >
               <View style={styles.attachmentCheckbox}>
-                <View style={[
-                  styles.checkbox, 
-                  { borderColor: colors.borderSubtle },
-                  selectedAttachments.has(attachment.id) && { backgroundColor: colors.primary, borderColor: colors.primary }
-                ]}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    { borderColor: colors.borderSubtle },
+                    selectedAttachments.has(attachment.id) && {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary
+                    }
+                  ]}
+                >
                   {selectedAttachments.has(attachment.id) && (
                     <Text style={styles.checkmark}>✓</Text>
                   )}
                 </View>
               </View>
               <View style={styles.attachmentInfo}>
-                <Text style={[styles.attachmentName, { color: colors.textPrimary }]} numberOfLines={1}>
+                <Text
+                  style={[styles.attachmentName, { color: colors.textPrimary }]}
+                  numberOfLines={1}
+                >
                   {attachment.name || attachment.id}
                 </Text>
                 <Text style={[styles.attachmentMeta, { color: colors.textSecondary }]}>
-                  {attachment.fileCount || 0} {t('settings.files', '文件')} • {attachment.sizeMB?.toFixed(2) || '0'} MB
+                  {attachment.fileCount || 0} {t('settings.files', '文件')} •{' '}
+                  {attachment.sizeMB?.toFixed(2) || '0'} MB
                   {attachment.isOrphan && ` • ${t('settings.orphan', '孤立')}`}
                 </Text>
               </View>
@@ -184,82 +221,84 @@ export const AttachmentManagementSection: React.FC = () => {
         </View>
       )}
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: colors.bgSurface }]}
         onPress={loadAttachments}
       >
-        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>{t('settings.refresh_attachments', '刷新列表')}</Text>
+        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+          {t('settings.refresh_attachments', '刷新列表')}
+        </Text>
       </TouchableOpacity>
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 24,
+    marginBottom: 24
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '800',
     marginBottom: 12,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1
   },
   sectionDescription: {
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: 16
   },
   settingItem: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 12
   },
   settingLabel: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 8
   },
   settingValue: {
-    fontSize: 14,
+    fontSize: 14
   },
   attachmentActions: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 16
   },
   actionButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 12
   },
   actionButtonText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: 40
   },
   loadingText: {
     fontSize: 14,
-    marginTop: 12,
+    marginTop: 12
   },
   attachmentList: {
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 16
   },
   attachmentItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1
   },
   attachmentCheckbox: {
-    marginRight: 12,
+    marginRight: 12
   },
   checkbox: {
     width: 24,
@@ -267,31 +306,31 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 2,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   checkmark: {
     color: '#FFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   attachmentInfo: {
-    flex: 1,
+    flex: 1
   },
   attachmentName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 4
   },
   attachmentMeta: {
-    fontSize: 12,
+    fontSize: 12
   },
   emptyContainer: {
     borderRadius: 12,
     padding: 40,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 16
   },
   emptyText: {
-    fontSize: 14,
-  },
-});
+    fontSize: 14
+  }
+})

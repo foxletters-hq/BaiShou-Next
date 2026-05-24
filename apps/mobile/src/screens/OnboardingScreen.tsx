@@ -1,24 +1,33 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dimensions, Animated } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useNativeTheme } from '@baishou/ui/native';
-import { CompressionChart } from '../components/CompressionChart';
+import React, { useState, useRef, useEffect } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  Dimensions,
+  Animated
+} from 'react-native'
+import { useRouter } from 'expo-router'
+import { useNativeTheme } from '@baishou/ui/native'
+import { CompressionChart } from '../components/CompressionChart'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 interface OnboardingPage {
-  id: number;
-  title: string;
-  subtitle: string;
-  content?: React.ReactNode;
+  id: number
+  title: string
+  subtitle: string
+  content?: React.ReactNode
 }
 
 export const OnboardingScreen = () => {
-  const router = useRouter();
-  const { colors, isDark } = useNativeTheme();
-  const [currentPage, setCurrentPage] = useState(0);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const router = useRouter()
+  const { colors, isDark } = useNativeTheme()
+  const [currentPage, setCurrentPage] = useState(0)
+  const scrollViewRef = useRef<ScrollView>(null)
+  const fadeAnim = useRef(new Animated.Value(1)).current
 
   const pages: OnboardingPage[] = [
     {
@@ -34,7 +43,7 @@ export const OnboardingScreen = () => {
             强大的伙伴网络系统，为你提供智能且高效的移动端响应。
           </Text>
         </View>
-      ),
+      )
     },
     {
       id: 2,
@@ -47,7 +56,7 @@ export const OnboardingScreen = () => {
           </Text>
           <CompressionChart delay={300} />
         </View>
-      ),
+      )
     },
     {
       id: 3,
@@ -58,20 +67,26 @@ export const OnboardingScreen = () => {
           <View style={[styles.featureItem, { backgroundColor: colors.bgSurfaceHighest }]}>
             <Text style={styles.featureIcon}>🤖</Text>
             <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>多模型支持</Text>
-            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>支持 OpenAI、Claude、Gemini 等多种 AI 模型</Text>
+            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>
+              支持 OpenAI、Claude、Gemini 等多种 AI 模型
+            </Text>
           </View>
           <View style={[styles.featureItem, { backgroundColor: colors.bgSurfaceHighest }]}>
             <Text style={styles.featureIcon}>💬</Text>
             <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>流式对话</Text>
-            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>实时流式输出，打字机效果</Text>
+            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>
+              实时流式输出，打字机效果
+            </Text>
           </View>
           <View style={[styles.featureItem, { backgroundColor: colors.bgSurfaceHighest }]}>
             <Text style={styles.featureIcon}>🔧</Text>
             <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>工具调用</Text>
-            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>支持搜索、记忆召回等工具</Text>
+            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>
+              支持搜索、记忆召回等工具
+            </Text>
           </View>
         </View>
-      ),
+      )
     },
     {
       id: 4,
@@ -82,44 +97,53 @@ export const OnboardingScreen = () => {
           <View style={[styles.securityItem, { backgroundColor: colors.bgSurfaceHighest }]}>
             <Text style={styles.securityIcon}>🔒</Text>
             <Text style={[styles.securityTitle, { color: colors.textPrimary }]}>本地存储</Text>
-            <Text style={[styles.securityDesc, { color: colors.textSecondary }]}>所有数据存储在本地 SQLite 数据库</Text>
+            <Text style={[styles.securityDesc, { color: colors.textSecondary }]}>
+              所有数据存储在本地 SQLite 数据库
+            </Text>
           </View>
           <View style={[styles.securityItem, { backgroundColor: colors.bgSurfaceHighest }]}>
             <Text style={styles.securityIcon}>📡</Text>
             <Text style={[styles.securityTitle, { color: colors.textPrimary }]}>局域网同步</Text>
-            <Text style={[styles.securityDesc, { color: colors.textSecondary }]}>支持局域网设备间同步</Text>
+            <Text style={[styles.securityDesc, { color: colors.textSecondary }]}>
+              支持局域网设备间同步
+            </Text>
           </View>
           <View style={[styles.securityItem, { backgroundColor: colors.bgSurfaceHighest }]}>
             <Text style={styles.securityIcon}>☁️</Text>
             <Text style={[styles.securityTitle, { color: colors.textPrimary }]}>云备份</Text>
-            <Text style={[styles.securityDesc, { color: colors.textSecondary }]}>支持 WebDAV/S3 云备份</Text>
+            <Text style={[styles.securityDesc, { color: colors.textSecondary }]}>
+              支持 WebDAV/S3 云备份
+            </Text>
           </View>
         </View>
-      ),
-    },
-  ];
+      )
+    }
+  ]
 
   const handleNext = () => {
     if (currentPage < pages.length - 1) {
-      const nextPage = currentPage + 1;
-      setCurrentPage(nextPage);
-      scrollViewRef.current?.scrollTo({ x: nextPage * SCREEN_WIDTH, animated: true });
+      const nextPage = currentPage + 1
+      setCurrentPage(nextPage)
+      scrollViewRef.current?.scrollTo({
+        x: nextPage * SCREEN_WIDTH,
+        animated: true
+      })
     } else {
-      router.replace('/(tabs)/agent');
+      router.replace('/(tabs)/agent')
     }
-  };
+  }
 
   const handleSkip = () => {
-    router.replace('/(tabs)/agent');
-  };
+    router.replace('/(tabs)/agent')
+  }
 
   const handleScroll = (event: any) => {
-    const contentOffset = event.nativeEvent.contentOffset;
-    const page = Math.round(contentOffset.x / SCREEN_WIDTH);
+    const contentOffset = event.nativeEvent.contentOffset
+    const page = Math.round(contentOffset.x / SCREEN_WIDTH)
     if (page !== currentPage) {
-      setCurrentPage(page);
+      setCurrentPage(page)
     }
-  };
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgApp }]}>
@@ -139,8 +163,8 @@ export const OnboardingScreen = () => {
               styles.indicator,
               {
                 backgroundColor: index === currentPage ? colors.primary : colors.bgSurfaceHighest,
-                width: index === currentPage ? 24 : 8,
-              },
+                width: index === currentPage ? 24 : 8
+              }
             ]}
           />
         ))}
@@ -179,23 +203,23 @@ export const OnboardingScreen = () => {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex: 1
   },
   skipButton: {
     position: 'absolute',
     top: 16,
     right: 16,
     zIndex: 10,
-    padding: 8,
+    padding: 8
   },
   skipText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '500'
   },
   indicatorContainer: {
     flexDirection: 'row',
@@ -203,38 +227,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 60,
     marginBottom: 20,
-    gap: 8,
+    gap: 8
   },
   indicator: {
     height: 8,
-    borderRadius: 4,
+    borderRadius: 4
   },
   scrollView: {
-    flex: 1,
+    flex: 1
   },
   page: {
     width: SCREEN_WIDTH,
-    flex: 1,
+    flex: 1
   },
   pageContent: {
     flex: 1,
     paddingHorizontal: 32,
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   pageTitle: {
     fontSize: 28,
     fontWeight: '900',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 8
   },
   pageSubtitle: {
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 32
   },
   heroContainer: {
-    alignItems: 'center',
+    alignItems: 'center'
   },
   logoBox: {
     width: 100,
@@ -242,80 +266,80 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 24
   },
   logoText: {
-    fontSize: 50,
+    fontSize: 50
   },
   heroSubtitle: {
     fontSize: 16,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 24
   },
   chartContainer: {
-    alignItems: 'center',
+    alignItems: 'center'
   },
   chartDescription: {
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 24,
+    marginBottom: 24
   },
   featureContainer: {
-    gap: 16,
+    gap: 16
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderRadius: 16,
-    gap: 16,
+    gap: 16
   },
   featureIcon: {
-    fontSize: 32,
+    fontSize: 32
   },
   featureTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 4
   },
   featureDesc: {
     fontSize: 14,
-    flex: 1,
+    flex: 1
   },
   securityContainer: {
-    gap: 16,
+    gap: 16
   },
   securityItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderRadius: 16,
-    gap: 16,
+    gap: 16
   },
   securityIcon: {
-    fontSize: 32,
+    fontSize: 32
   },
   securityTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 4
   },
   securityDesc: {
     fontSize: 14,
-    flex: 1,
+    flex: 1
   },
   footer: {
-    padding: 24,
+    padding: 24
   },
   nextButton: {
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   nextButtonText: {
     color: '#FFF',
     fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
+    fontWeight: 'bold'
+  }
+})

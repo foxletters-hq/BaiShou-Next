@@ -1,5 +1,5 @@
-import { AssistantManagementScreen } from '@/src/screens/AssistantManagementScreen';
+import { AssistantManagementScreen } from '@/src/screens/AssistantManagementScreen'
 
 export default function AssistantsRoute() {
-  return <AssistantManagementScreen />;
+  return <AssistantManagementScreen />
 }

@@ -1,50 +1,77 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
-import { useNativeTheme } from '@baishou/ui/native';
+import React, { useEffect, useRef } from 'react'
+import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native'
+import { useNativeTheme } from '@baishou/ui/native'
 
 interface CompressionChartProps {
-  delay?: number;
+  delay?: number
 }
 
 export const CompressionChart: React.FC<CompressionChartProps> = ({ delay = 0 }) => {
-  const { colors } = useNativeTheme();
-  const screenWidth = Dimensions.get('window').width;
-  const maxWidth = Math.min(screenWidth - 40, 420);
+  const { colors } = useNativeTheme()
+  const screenWidth = Dimensions.get('window').width
+  const maxWidth = Math.min(screenWidth - 40, 420)
 
-  const anim1 = useRef(new Animated.Value(0)).current;
-  const anim2 = useRef(new Animated.Value(0)).current;
-  const anim3 = useRef(new Animated.Value(0)).current;
-  const anim4 = useRef(new Animated.Value(0)).current;
-  const anim5 = useRef(new Animated.Value(0)).current;
+  const anim1 = useRef(new Animated.Value(0)).current
+  const anim2 = useRef(new Animated.Value(0)).current
+  const anim3 = useRef(new Animated.Value(0)).current
+  const anim4 = useRef(new Animated.Value(0)).current
+  const anim5 = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     const animations = [
-      Animated.timing(anim1, { toValue: 1, duration: 800, delay: delay + 0, useNativeDriver: true }),
-      Animated.timing(anim2, { toValue: 1, duration: 800, delay: delay + 150, useNativeDriver: true }),
-      Animated.timing(anim3, { toValue: 1, duration: 800, delay: delay + 300, useNativeDriver: true }),
-      Animated.timing(anim4, { toValue: 1, duration: 800, delay: delay + 450, useNativeDriver: true }),
-      Animated.timing(anim5, { toValue: 1, duration: 800, delay: delay + 600, useNativeDriver: true }),
-    ];
+      Animated.timing(anim1, {
+        toValue: 1,
+        duration: 800,
+        delay: delay + 0,
+        useNativeDriver: true
+      }),
+      Animated.timing(anim2, {
+        toValue: 1,
+        duration: 800,
+        delay: delay + 150,
+        useNativeDriver: true
+      }),
+      Animated.timing(anim3, {
+        toValue: 1,
+        duration: 800,
+        delay: delay + 300,
+        useNativeDriver: true
+      }),
+      Animated.timing(anim4, {
+        toValue: 1,
+        duration: 800,
+        delay: delay + 450,
+        useNativeDriver: true
+      }),
+      Animated.timing(anim5, {
+        toValue: 1,
+        duration: 800,
+        delay: delay + 600,
+        useNativeDriver: true
+      })
+    ]
 
-    Animated.stagger(100, animations).start();
-  }, [delay, anim1, anim2, anim3, anim4, anim5]);
+    Animated.stagger(100, animations).start()
+  }, [delay, anim1, anim2, anim3, anim4, anim5])
 
   const createStepStyle = (anim: Animated.Value, widthFactor: number, color: string) => ({
     opacity: anim,
-    transform: [{
-      translateY: anim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [10, 0],
-      })
-    }],
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [10, 0]
+        })
+      }
+    ],
     width: maxWidth * widthFactor,
-    backgroundColor: color,
-  });
+    backgroundColor: color
+  })
 
   return (
     <View style={styles.container}>
       {/* 日 */}
-      <Animated.View style={[styles.step, createStepStyle(anim1, 0.30, '#B3E5FC')]}>
+      <Animated.View style={[styles.step, createStepStyle(anim1, 0.3, '#B3E5FC')]}>
         <Text style={styles.stepText}>日</Text>
       </Animated.View>
 
@@ -64,25 +91,32 @@ export const CompressionChart: React.FC<CompressionChartProps> = ({ delay = 0 })
       </Animated.View>
 
       {/* 年基底 */}
-      <Animated.View style={[styles.baseBar, {
-        opacity: anim5,
-        transform: [{
-          translateY: anim5.interpolate({
-            inputRange: [0, 1],
-            outputRange: [14, 0],
-          })
-        }],
-        width: maxWidth,
-      }]}>
+      <Animated.View
+        style={[
+          styles.baseBar,
+          {
+            opacity: anim5,
+            transform: [
+              {
+                translateY: anim5.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [14, 0]
+                })
+              }
+            ],
+            width: maxWidth
+          }
+        ]}
+      >
         <Text style={styles.baseBarText}>年</Text>
       </Animated.View>
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'flex-start',
+    alignItems: 'flex-start'
   },
   step: {
     height: 40,
@@ -94,13 +128,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 4
   },
   stepText: {
     color: '#FFF',
     fontWeight: '600',
     fontSize: 14,
-    letterSpacing: 0.5,
+    letterSpacing: 0.5
   },
   baseBar: {
     height: 46,
@@ -113,12 +147,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
-    elevation: 6,
+    elevation: 6
   },
   baseBarText: {
     color: '#FFF',
     fontWeight: '700',
     fontSize: 17,
-    letterSpacing: 3,
-  },
-});
+    letterSpacing: 3
+  }
+})

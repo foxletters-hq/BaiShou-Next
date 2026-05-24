@@ -1,1 +1,1 @@
-export * from './DiaryScreen';
+export * from './DiaryScreen'

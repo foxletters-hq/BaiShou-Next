@@ -1,12 +1,12 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { useNativeTheme } from '@baishou/ui/native';
+import { Tabs } from 'expo-router'
+import React from 'react'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
+import { useNativeTheme } from '@baishou/ui/native'
 
 export default function TabLayout() {
-  const { t } = useTranslation();
-  const { colors, isDark } = useNativeTheme();
+  const { t } = useTranslation()
+  const { colors, isDark } = useNativeTheme()
 
   return (
     <Tabs
@@ -16,28 +16,29 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: colors.bgSurface,
           borderTopWidth: 0,
-          elevation: 0,
+          elevation: 0
         },
         headerStyle: {
           backgroundColor: colors.bgSurface,
           elevation: 0,
           shadowOpacity: 0,
-          borderBottomWidth: 0,
+          borderBottomWidth: 0
         },
         headerTintColor: colors.textPrimary,
         headerTitleAlign: 'center',
         headerTitleStyle: {
           fontWeight: 'bold',
-          fontSize: 18,
-        },
-      }}>
+          fontSize: 18
+        }
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: t('nav.diary', '日记'),
           tabBarIcon: ({ color, focused }) => (
             <MaterialIcons name="timeline" size={24} color={color} />
-          ),
+          )
         }}
       />
       <Tabs.Screen
@@ -46,7 +47,7 @@ export default function TabLayout() {
           title: t('nav.agent', '伙伴'),
           tabBarIcon: ({ color, focused }) => (
             <MaterialIcons name="auto-awesome" size={24} color={color} />
-          ),
+          )
         }}
       />
       <Tabs.Screen
@@ -55,7 +56,7 @@ export default function TabLayout() {
           title: t('nav.summary', '归档'),
           tabBarIcon: ({ color, focused }) => (
             <MaterialIcons name="menu-book" size={24} color={color} />
-          ),
+          )
         }}
       />
       <Tabs.Screen
@@ -64,9 +65,9 @@ export default function TabLayout() {
           title: t('nav.settings', '设置'),
           tabBarIcon: ({ color, focused }) => (
             <MaterialIcons name="settings" size={24} color={color} />
-          ),
+          )
         }}
       />
     </Tabs>
-  );
+  )
 }

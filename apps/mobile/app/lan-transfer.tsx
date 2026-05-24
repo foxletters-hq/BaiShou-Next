@@ -1,5 +1,5 @@
-import { LanTransferScreen } from '@/src/screens/LanTransferScreen';
+import { LanTransferScreen } from '@/src/screens/LanTransferScreen'
 
 export default function LanTransferRoute() {
-  return <LanTransferScreen />;
+  return <LanTransferScreen />
 }

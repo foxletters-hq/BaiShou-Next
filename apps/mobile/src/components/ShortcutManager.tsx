@@ -1,142 +1,143 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { useNativeTheme } from '@baishou/ui/native';
-import { useBaishou } from '../providers/BaishouProvider';
+import React, { useState, useEffect } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert
+} from 'react-native'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../providers/BaishouProvider'
 
 interface PromptShortcut {
-  id: string;
-  icon: string;
-  name: string;
-  content: string;
+  id: string
+  icon: string
+  name: string
+  content: string
 }
 
 interface ShortcutManagerProps {
-  isVisible: boolean;
-  onClose: () => void;
-  onSelect: (shortcut: PromptShortcut) => void;
+  isVisible: boolean
+  onClose: () => void
+  onSelect: (shortcut: PromptShortcut) => void
 }
 
 export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
   isVisible,
   onClose,
-  onSelect,
+  onSelect
 }) => {
-  const { colors } = useNativeTheme();
-  const { services, dbReady } = useBaishou();
-  const [shortcuts, setShortcuts] = useState<PromptShortcut[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingShortcut, setEditingShortcut] = useState<PromptShortcut | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [editIcon, setEditIcon] = useState('⚡');
+  const { colors } = useNativeTheme()
+  const { services, dbReady } = useBaishou()
+  const [shortcuts, setShortcuts] = useState<PromptShortcut[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editingShortcut, setEditingShortcut] = useState<PromptShortcut | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editContent, setEditContent] = useState('')
+  const [editIcon, setEditIcon] = useState('⚡')
 
   const loadShortcuts = async () => {
-    if (!dbReady || !services) return;
+    if (!dbReady || !services) return
     try {
-      const shortcutList = await services.settingsManager.get<PromptShortcut[]>('prompt_shortcuts') || [];
-      setShortcuts(shortcutList);
+      const shortcutList =
+        (await services.settingsManager.get<PromptShortcut[]>('prompt_shortcuts')) || []
+      setShortcuts(shortcutList)
     } catch (e) {
-      console.warn('Failed to load shortcuts', e);
+      console.warn('Failed to load shortcuts', e)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
     if (isVisible) {
-      loadShortcuts();
+      loadShortcuts()
     }
-  }, [isVisible, dbReady, services]);
+  }, [isVisible, dbReady, services])
 
   const handleAdd = () => {
-    setEditingShortcut(null);
-    setEditName('');
-    setEditContent('');
-    setEditIcon('⚡');
-    setShowEditDialog(true);
-  };
+    setEditingShortcut(null)
+    setEditName('')
+    setEditContent('')
+    setEditIcon('⚡')
+    setShowEditDialog(true)
+  }
 
   const handleEdit = (shortcut: PromptShortcut) => {
-    setEditingShortcut(shortcut);
-    setEditName(shortcut.name);
-    setEditContent(shortcut.content);
-    setEditIcon(shortcut.icon);
-    setShowEditDialog(true);
-  };
+    setEditingShortcut(shortcut)
+    setEditName(shortcut.name)
+    setEditContent(shortcut.content)
+    setEditIcon(shortcut.icon)
+    setShowEditDialog(true)
+  }
 
   const handleDelete = (shortcut: PromptShortcut) => {
-    Alert.alert(
-      '确认删除',
-      `确定要删除快捷方式「${shortcut.name}」吗？`,
-      [
-        { text: '取消', style: 'cancel' },
-        { 
-          text: '删除', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const newShortcuts = shortcuts.filter(s => s.id !== shortcut.id);
-              await services?.settingsManager.set('prompt_shortcuts', newShortcuts);
-              setShortcuts(newShortcuts);
-            } catch (e) {
-              console.error('Failed to delete shortcut', e);
-            }
+    Alert.alert('确认删除', `确定要删除快捷方式「${shortcut.name}」吗？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const newShortcuts = shortcuts.filter((s) => s.id !== shortcut.id)
+            await services?.settingsManager.set('prompt_shortcuts', newShortcuts)
+            setShortcuts(newShortcuts)
+          } catch (e) {
+            console.error('Failed to delete shortcut', e)
           }
-        },
-      ]
-    );
-  };
+        }
+      }
+    ])
+  }
 
   const handleSave = async () => {
     if (!editName.trim() || !editContent.trim()) {
-      Alert.alert('错误', '名称和内容不能为空');
-      return;
+      Alert.alert('错误', '名称和内容不能为空')
+      return
     }
 
     try {
-      let newShortcuts: PromptShortcut[];
-      
+      let newShortcuts: PromptShortcut[]
+
       if (editingShortcut) {
         // 编辑现有快捷方式
-        newShortcuts = shortcuts.map(s => 
-          s.id === editingShortcut.id 
+        newShortcuts = shortcuts.map((s) =>
+          s.id === editingShortcut.id
             ? { ...s, name: editName, content: editContent, icon: editIcon }
             : s
-        );
+        )
       } else {
         // 添加新快捷方式
         const newShortcut: PromptShortcut = {
           id: Date.now().toString(),
           icon: editIcon,
           name: editName,
-          content: editContent,
-        };
-        newShortcuts = [...shortcuts, newShortcut];
+          content: editContent
+        }
+        newShortcuts = [...shortcuts, newShortcut]
       }
 
-      await services?.settingsManager.set('prompt_shortcuts', newShortcuts);
-      setShortcuts(newShortcuts);
-      setShowEditDialog(false);
+      await services?.settingsManager.set('prompt_shortcuts', newShortcuts)
+      setShortcuts(newShortcuts)
+      setShowEditDialog(false)
     } catch (e) {
-      console.error('Failed to save shortcut', e);
-      Alert.alert('错误', '保存失败');
+      console.error('Failed to save shortcut', e)
+      Alert.alert('错误', '保存失败')
     }
-  };
+  }
 
   const handleSelect = (shortcut: PromptShortcut) => {
-    onSelect(shortcut);
-    onClose();
-  };
+    onSelect(shortcut)
+    onClose()
+  }
 
   return (
     <>
-      <Modal
-        visible={isVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={onClose}
-      >
+      <Modal visible={isVisible} animationType="slide" transparent={true} onRequestClose={onClose}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.bgSurface }]}>
             {/* 标题栏 */}
@@ -158,7 +159,9 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
                 </View>
               ) : shortcuts.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>暂无快捷指令</Text>
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    暂无快捷指令
+                  </Text>
                 </View>
               ) : (
                 shortcuts.map((shortcut) => (
@@ -171,19 +174,26 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
                       <Text style={styles.shortcutIconText}>{shortcut.icon}</Text>
                     </View>
                     <View style={styles.shortcutInfo}>
-                      <Text style={[styles.shortcutName, { color: colors.textPrimary }]}>{shortcut.name}</Text>
-                      <Text style={[styles.shortcutContent, { color: colors.textSecondary }]} numberOfLines={1}>
+                      <Text style={[styles.shortcutName, { color: colors.textPrimary }]}>
+                        {shortcut.name}
+                      </Text>
+                      <Text
+                        style={[styles.shortcutContent, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
                         {shortcut.content}
                       </Text>
                     </View>
                     <View style={styles.shortcutActions}>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.shortcutActionButton}
                         onPress={() => handleEdit(shortcut)}
                       >
-                        <Text style={[styles.shortcutActionText, { color: colors.textSecondary }]}>编辑</Text>
+                        <Text style={[styles.shortcutActionText, { color: colors.textSecondary }]}>
+                          编辑
+                        </Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.shortcutActionButton}
                         onPress={() => handleDelete(shortcut)}
                       >
@@ -196,7 +206,7 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
             </ScrollView>
 
             {/* 关闭按钮 */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.closeButton, { backgroundColor: colors.bgSurfaceHighest }]}
               onPress={onClose}
             >
@@ -222,11 +232,14 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
             <View style={styles.editForm}>
               <View style={styles.editIconRow}>
                 <TextInput
-                  style={[styles.editIconInput, { 
-                    backgroundColor: colors.bgSurfaceHighest,
-                    color: colors.textPrimary,
-                    borderColor: colors.borderSubtle,
-                  }]}
+                  style={[
+                    styles.editIconInput,
+                    {
+                      backgroundColor: colors.bgSurfaceHighest,
+                      color: colors.textPrimary,
+                      borderColor: colors.borderSubtle
+                    }
+                  ]}
                   value={editIcon}
                   onChangeText={setEditIcon}
                   maxLength={2}
@@ -234,11 +247,14 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
                   placeholderTextColor={colors.textSecondary}
                 />
                 <TextInput
-                  style={[styles.editNameInput, { 
-                    backgroundColor: colors.bgSurfaceHighest,
-                    color: colors.textPrimary,
-                    borderColor: colors.borderSubtle,
-                  }]}
+                  style={[
+                    styles.editNameInput,
+                    {
+                      backgroundColor: colors.bgSurfaceHighest,
+                      color: colors.textPrimary,
+                      borderColor: colors.borderSubtle
+                    }
+                  ]}
                   value={editName}
                   onChangeText={setEditName}
                   placeholder="指令名称"
@@ -247,11 +263,14 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
               </View>
 
               <TextInput
-                style={[styles.editContentInput, { 
-                  backgroundColor: colors.bgSurfaceHighest,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle,
-                }]}
+                style={[
+                  styles.editContentInput,
+                  {
+                    backgroundColor: colors.bgSurfaceHighest,
+                    color: colors.textPrimary,
+                    borderColor: colors.borderSubtle
+                  }
+                ]}
                 value={editContent}
                 onChangeText={setEditContent}
                 placeholder="输入将要发送给AI的Prompt模板..."
@@ -263,13 +282,15 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
             </View>
 
             <View style={styles.editActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.editCancelButton, { backgroundColor: colors.bgSurfaceHighest }]}
                 onPress={() => setShowEditDialog(false)}
               >
-                <Text style={[styles.editCancelButtonText, { color: colors.textSecondary }]}>取消</Text>
+                <Text style={[styles.editCancelButtonText, { color: colors.textSecondary }]}>
+                  取消
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.editSaveButton, { backgroundColor: colors.primary }]}
                 onPress={handleSave}
               >
@@ -280,60 +301,60 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
         </View>
       </Modal>
     </>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-end'
   },
   modalContent: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '80%',
+    maxHeight: '80%'
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 24,
-    paddingBottom: 16,
+    paddingBottom: 16
   },
   modalTitleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   modalIcon: {
     fontSize: 24,
-    marginRight: 8,
+    marginRight: 8
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   addButton: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   list: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 24
   },
   emptyContainer: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 16
   },
   shortcutItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 12
   },
   shortcutIcon: {
     width: 40,
@@ -341,67 +362,67 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 12
   },
   shortcutIconText: {
-    fontSize: 20,
+    fontSize: 20
   },
   shortcutInfo: {
-    flex: 1,
+    flex: 1
   },
   shortcutName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 4
   },
   shortcutContent: {
-    fontSize: 14,
+    fontSize: 14
   },
   shortcutActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 8
   },
   shortcutActionButton: {
-    padding: 8,
+    padding: 8
   },
   shortcutActionText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '500'
   },
   closeButton: {
     margin: 24,
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   closeButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   editModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   editModalContent: {
     width: '90%',
     borderRadius: 20,
-    padding: 24,
+    padding: 24
   },
   editModalTitle: {
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   editForm: {
-    marginBottom: 24,
+    marginBottom: 24
   },
   editIconRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 16
   },
   editIconInput: {
     width: 56,
@@ -409,7 +430,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     textAlign: 'center',
-    fontSize: 20,
+    fontSize: 20
   },
   editNameInput: {
     flex: 1,
@@ -417,7 +438,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 16,
-    fontSize: 16,
+    fontSize: 16
   },
   editContentInput: {
     borderWidth: 1,
@@ -425,32 +446,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    minHeight: 120,
+    minHeight: 120
   },
   editActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 12
   },
   editCancelButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   editCancelButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   editSaveButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   editSaveButtonText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '600',
-  },
-});
+    fontWeight: '600'
+  }
+})

@@ -1,18 +1,13 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SummaryDetailScreen } from '@/src/screens/SummaryScreen/SummaryDetailScreen';
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { SummaryDetailScreen } from '@/src/screens/SummaryScreen/SummaryDetailScreen'
 
 export default function SummaryDetailPage() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const router = useRouter()
 
   if (!id) {
-    return null;
+    return null
   }
 
-  return (
-    <SummaryDetailScreen
-      summaryId={id}
-      onBack={() => router.back()}
-    />
-  );
+  return <SummaryDetailScreen summaryId={id} onBack={() => router.back()} />
 }

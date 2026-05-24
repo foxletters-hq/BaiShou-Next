@@ -1,5 +1,5 @@
-import { SessionManagementScreen } from '@/src/screens/SessionManagementScreen';
+import { SessionManagementScreen } from '@/src/screens/SessionManagementScreen'
 
 export default function SessionsRoute() {
-  return <SessionManagementScreen />;
+  return <SessionManagementScreen />
 }

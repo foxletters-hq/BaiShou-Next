@@ -1,1 +1,1 @@
-export * from './SummaryScreen';
+export * from './SummaryScreen'
