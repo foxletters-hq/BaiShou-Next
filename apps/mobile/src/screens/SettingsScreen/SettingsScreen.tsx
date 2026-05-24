@@ -18,6 +18,7 @@ import { WebSearchSection } from './components/WebSearchSection'
 import { AgentToolsSection } from './components/AgentToolsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
+import { TTSSettingsSection } from './components/TTSSettingsSection'
 import { AssistantsSection, LanTransferSection, DataSyncSection } from './components/SimpleSections'
 
 interface SettingsTab {
@@ -88,6 +89,12 @@ const SETTINGS_TABS: SettingsTab[] = [
     titleKey: 'settings.attachments',
     defaultTitle: '附件管理',
     icon: '📎'
+  },
+  {
+    id: 'tts',
+    titleKey: 'settings.tts',
+    defaultTitle: '语音合成',
+    icon: '🔊'
   }
 ]
 
@@ -122,6 +129,8 @@ export const SettingsScreen: React.FC = () => {
         return <DataSyncSection />
       case 'attachments':
         return <AttachmentManagementSection />
+      case 'tts':
+        return <TTSSettingsSection />
       default:
         return null
     }
