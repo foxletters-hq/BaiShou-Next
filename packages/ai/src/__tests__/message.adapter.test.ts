@@ -66,13 +66,13 @@ function makeUserMsg(text: string) {
 
 describe('MessageAdapter.toVercelMessages', () => {
   describe('助理消息中的工具调用 (tool parts in assistant messages)', () => {
-    it('should generate tool-call in assistant and tool-result in tool message when tool part has result', () => {
+    it('should generate tool-call in assistant and tool-result in tool message when tool part has result', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('搜索新闻'),
         makeAssistantMsg([makeTextPart('正在搜索...'), makeToolPart()])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       expect(result).toHaveLength(3)
 
@@ -103,13 +103,13 @@ describe('MessageAdapter.toVercelMessages', () => {
       })
     })
 
-    it('should generate tool-result with fallback error when tool part has no result', () => {
+    it('should generate tool-result with fallback error when tool part has no result', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('搜索新闻'),
         makeAssistantMsg([makeToolPart({ result: undefined, status: 'failed' })])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       expect(result).toHaveLength(3)
       const toolMsg = result[2]!
@@ -121,7 +121,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       })
     })
 
-    it('should handle multiple tool parts in one assistant message', () => {
+    it('should handle multiple tool parts in one assistant message', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('搜索并读取'),
         makeAssistantMsg([
@@ -143,7 +143,7 @@ describe('MessageAdapter.toVercelMessages', () => {
         ])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       expect(result).toHaveLength(3)
 
@@ -159,20 +159,20 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolResults[1].output).toEqual({ type: 'text', value: '结果2' })
     })
 
-    it('should NOT generate a tool message when assistant has no tool parts', () => {
+    it('should NOT generate a tool message when assistant has no tool parts', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('你好'),
         makeAssistantMsg([makeTextPart('你好！有什么可以帮助你的？')])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       expect(result).toHaveLength(2)
       expect(result[0]?.role).toBe('user')
       expect(result[1]?.role).toBe('assistant')
     })
 
-    it('should place tool messages immediately after their corresponding assistant message', () => {
+    it('should place tool messages immediately after their corresponding assistant message', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('第一次'),
         makeAssistantMsg([
@@ -196,7 +196,7 @@ describe('MessageAdapter.toVercelMessages', () => {
         ])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       // 期望顺序: user, assistant(call_a), tool(result_a), user, assistant(call_b), tool(result_b)
       expect(result).toHaveLength(6)
@@ -216,7 +216,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect((result[5]!.content as any[])[0]!.toolCallId).toBe('call_b')
     })
 
-    it('should correctly parse stringified arguments', () => {
+    it('should correctly parse stringified arguments', async () => {
       const args = { queries: ['最新 Flutter 特性', 'Flutter 迁移指南'] }
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('搜索'),
@@ -231,14 +231,14 @@ describe('MessageAdapter.toVercelMessages', () => {
         ])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       const assistantMsg = result[1]!
       const toolCall = (assistantMsg.content as any[]).find((p: any) => p.type === 'tool-call')
       expect(toolCall.args).toEqual(args)
     })
 
-    it('should use empty object as args when arguments is not a string', () => {
+    it('should use empty object as args when arguments is not a string', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('搜索'),
         makeAssistantMsg([
@@ -252,20 +252,20 @@ describe('MessageAdapter.toVercelMessages', () => {
         ])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       const assistantMsg = result[1]!
       const toolCall = (assistantMsg.content as any[]).find((p: any) => p.type === 'tool-call')
       expect(toolCall.args).toEqual({})
     })
 
-    it('should handle reasoning parts alongside tool parts', () => {
+    it('should handle reasoning parts alongside tool parts', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('搜索'),
         makeAssistantMsg([makeTextPart('思考过程', true), makeTextPart('执行搜索'), makeToolPart()])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       const assistantMsg = result[1]!
       const contentArr = assistantMsg.content as any[]
@@ -278,7 +278,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolMsg?.role).toBe('tool')
     })
 
-    it('should still handle existing tool role messages from DB correctly', () => {
+    it('should still handle existing tool role messages from DB correctly', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('搜索'),
         {
@@ -305,7 +305,7 @@ describe('MessageAdapter.toVercelMessages', () => {
         }
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       expect(result).toHaveLength(2)
       expect(result[0]?.role).toBe('user')
@@ -318,7 +318,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       })
     })
 
-    it('should skip assistant messages with no parts', () => {
+    it('should skip assistant messages with no parts', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('你好'),
         makeAssistantMsg([]),
@@ -326,7 +326,7 @@ describe('MessageAdapter.toVercelMessages', () => {
         makeAssistantMsg([makeTextPart('我在')])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       expect(result).toHaveLength(3)
       expect(result[0]?.role).toBe('user')
@@ -334,7 +334,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(result[2]?.role).toBe('assistant')
     })
 
-    it('should skip tool parts without callId or name', () => {
+    it('should skip tool parts without callId or name', async () => {
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('搜索'),
         makeAssistantMsg([
@@ -349,7 +349,7 @@ describe('MessageAdapter.toVercelMessages', () => {
         ])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       expect(result).toHaveLength(2)
       const assistantMsg = result[1]!
@@ -360,7 +360,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(contentArr[0].type).toBe('text')
     })
 
-    it('should pass Vercel SDK validation: tool-call count matches tool-result count', () => {
+    it('should pass Vercel SDK validation: tool-call count matches tool-result count', async () => {
       const toolData = [
         {
           callId: 'call_1',
@@ -387,7 +387,7 @@ describe('MessageAdapter.toVercelMessages', () => {
         ])
       ]
 
-      const result = MessageAdapter.toVercelMessages(dbMessages)
+      const result = await MessageAdapter.toVercelMessages(dbMessages)
 
       const assistantContent = result[1]!.content as any[]
       const toolCallCount = assistantContent.filter((p: any) => p.type === 'tool-call').length

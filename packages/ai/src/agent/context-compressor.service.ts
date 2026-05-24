@@ -41,7 +41,7 @@ export class ContextCompressorService {
 
       if (uncompressedChunk.length < 10) return // 新轮次积累不满 10 句话，省算力，下次再说！
 
-      const coreMessages = MessageAdapter.toVercelMessages(uncompressedChunk)
+      const coreMessages = await MessageAdapter.toVercelMessages(uncompressedChunk)
 
       const oldSummary = latestSnapshot
         ? `旧有的前情提要为：\n${latestSnapshot.summaryText}\n\n`

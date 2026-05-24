@@ -14,7 +14,7 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import { logger } from '@baishou/shared'
+import { logger, supportsNativePdf } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -68,7 +68,7 @@ export class AgentSessionService {
       const dbHistory = await ContextWindowBuilder.build(sessionId, sessionRepo, snapshotRepo, {
         recentCount: configRecentCount
       })
-      const coreMessages = MessageAdapter.toVercelMessages(dbHistory)
+      const coreMessages = await MessageAdapter.toVercelMessages(dbHistory, modelId, provider.config?.type)
 
       // 将当前用户消息追加到上下文窗口，供 AI 推理使用（不再落盘，仅在内存中追加）
       const lastCoreMsg = coreMessages.length > 0 ? coreMessages[coreMessages.length - 1]! : null
@@ -81,7 +81,13 @@ export class AgentSessionService {
         if (attachments && attachments.length > 0) {
           const contentParts: any[] = [{ type: 'text', text: userText }]
           for (const att of attachments) {
-            if (att.type === 'image') {
+            if (att.isText === true || att.textContent) {
+              const textContent = att.textContent || ''
+              contentParts.push({
+                type: 'text',
+                text: `\n\n[User Uploaded File Attachment: ${att.name || 'Attachment'}]\n\`\`\`\n${textContent}\n\`\`\`\n`
+              })
+            } else if (att.isImage === true) {
               if (att.url) {
                 contentParts.push({ type: 'image', image: new URL(att.url) })
               } else if (att.data) {
@@ -89,12 +95,53 @@ export class AgentSessionService {
                 const base64Data = att.data.startsWith('data:') ? att.data : prefix + att.data
                 contentParts.push({ type: 'image', image: base64Data })
               }
-            } else if (att.type === 'file') {
-              contentParts.push({
-                type: 'file',
-                mimeType: att.mimeType || 'application/octet-stream',
-                data: att.url ? new URL(att.url) : att.data || ''
-              })
+            } else if (att.isPdf === true) {
+              const nativePdfSupported = supportsNativePdf(modelId, provider.config?.type)
+              if (nativePdfSupported) {
+                let fileData: string = ''
+                try {
+                  let filePath = att.filePath || ''
+                  if (!filePath && att.url?.startsWith('file:///')) {
+                    filePath = decodeURIComponent(att.url.replace('file:///', ''))
+                  }
+                  if (filePath && typeof process !== 'undefined' && process.versions && process.versions.node) {
+                    const fs = require('fs')
+                    fileData = fs.readFileSync(filePath).toString('base64')
+                  }
+                } catch (readErr) {
+                  logger.warn('Failed to read local PDF file for model part, fallback', { error: readErr as any })
+                }
+
+                contentParts.push({
+                  type: 'file',
+                  mediaType: 'application/pdf',
+                  data: fileData || att.data || ''
+                })
+              } else {
+                let textContent = att.textContent || ''
+                if (!textContent) {
+                  try {
+                    let filePath = att.filePath || ''
+                    if (!filePath && att.url?.startsWith('file:///')) {
+                      filePath = decodeURIComponent(att.url.replace('file:///', ''))
+                    }
+                    if (filePath && typeof process !== 'undefined' && process.versions && process.versions.node) {
+                      const fs = require('fs')
+                      const pdfParse = require('pdf-parse')
+                      const dataBuffer = fs.readFileSync(filePath)
+                      const pdfData = await pdfParse(dataBuffer)
+                      textContent = pdfData.text || ''
+                      att.textContent = textContent
+                    }
+                  } catch (pdfErr) {
+                    logger.error('Failed to parse PDF file on fallback:', { error: pdfErr as any })
+                  }
+                }
+                contentParts.push({
+                  type: 'text',
+                  text: `\n\n[User Uploaded File Attachment: ${att.name || (att as any).fileName || 'Attachment'}]\n\`\`\`\n${textContent}\n\`\`\`\n`
+                })
+              }
             }
           }
           coreMessages.push({ role: 'user', content: contentParts })
