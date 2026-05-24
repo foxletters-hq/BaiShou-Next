@@ -4,7 +4,8 @@ import styles from './ModelSwitcherPopup.module.css'
 import { useTranslation } from 'react-i18next'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
-import { MdCloud, MdCheck, MdSearch } from 'react-icons/md'
+import { MdCloud, MdCheck, MdSearch, MdVisibility } from 'react-icons/md'
+import { isVisionModel } from '@baishou/shared'
 
 export interface AiProviderModel {
   id: string
@@ -120,7 +121,21 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
                         onClick={() => onSelect(provider.id, modelId)}
                       >
                         <ProviderIcon id={provider.id} type={provider.type} />
-                        <span className={styles.modelIdText}>{modelId}</span>
+                        <span className={styles.modelIdText}>
+                          {modelId}
+                          {isVisionModel(modelId) && (
+                            <MdVisibility
+                              title={t('models.vision_supported', '支持视觉多模态')}
+                              style={{
+                                marginLeft: 6,
+                                fontSize: 13,
+                                color: 'var(--text-secondary, #666)',
+                                verticalAlign: 'middle',
+                                opacity: 0.8
+                              }}
+                            />
+                          )}
+                        </span>
                         {isSelected && (
                           <span className={styles.checkIcon}>
                             <MdCheck />
