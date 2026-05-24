@@ -14,7 +14,10 @@ import {
   File,
   FileImage,
   FileVideo,
-  FolderSearch
+  FolderSearch,
+  FileText,
+  FileAudio,
+  FileCode
 } from 'lucide-react'
 
 export interface AttachmentFileItem {
@@ -99,14 +102,26 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   }
 
   const getFileIcon = (name: string) => {
-    const ext = name.split('.').pop()?.toLowerCase()
-    if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'heic'].includes(ext || '')) {
-      return <FileImage size={16} className={styles.fileIcon} />
+    const ext = name.split('.').pop()?.toLowerCase() || ''
+    if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'heic'].includes(ext)) {
+      return <FileImage size={18} className={`${styles.fileIcon} ${styles.iconImage}`} />
     }
-    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext || '')) {
-      return <FileVideo size={16} className={styles.fileIcon} />
+    if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext)) {
+      return <FileVideo size={18} className={`${styles.fileIcon} ${styles.iconVideo}`} />
     }
-    return <File size={16} className={styles.fileIcon} />
+    if (ext === 'pdf') {
+      return <FileText size={18} className={`${styles.fileIcon} ${styles.iconPdf}`} />
+    }
+    if (['txt', 'md', 'json', 'js', 'ts', 'tsx', 'html', 'css', 'yaml', 'yml'].includes(ext)) {
+      return <FileCode size={18} className={`${styles.fileIcon} ${styles.iconText}`} />
+    }
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+      return <File size={18} className={`${styles.fileIcon} ${styles.iconArchive}`} />
+    }
+    if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+      return <FileAudio size={18} className={`${styles.fileIcon} ${styles.iconAudio}`} />
+    }
+    return <File size={18} className={styles.fileIcon} />
   }
 
   const handleDeleteGroups = async () => {
@@ -284,7 +299,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
             return (
               <div key={group.sessionId}>
                 <div
-                  className={`${styles.folderItem} ${isChecked ? styles.itemSelected : ''}`}
+                  className={styles.folderItem}
                   onClick={() => toggleExpand(group.sessionId)}
                 >
                   <div className={styles.checkboxWrapper} onClick={(e) => e.stopPropagation()}>
@@ -353,9 +368,9 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
                   </div>
                 </div>
 
-                {isExpanded && Array.isArray(group.files) && (
-                  <div className={styles.fileListContainer}>
-                    {group.files.map((file) => (
+                <div className={`${styles.fileListContainer} ${isExpanded ? styles.expanded : ''}`}>
+                  <div className={styles.fileListContent}>
+                    {Array.isArray(group.files) && group.files.map((file) => (
                       <div key={file.path} className={styles.fileItem}>
                         <div className={styles.fileIcon}>{getFileIcon(file.name)}</div>
                         <span className={styles.fileName} title={file.path}>
@@ -390,7 +405,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             )
           })
