@@ -1,0 +1,226 @@
+import { useTranslation } from 'react-i18next'
+import React, { useState } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Modal
+} from 'react-native'
+import { useNativeTheme } from '../theme'
+import { SettingsSection } from '../SettingsSection'
+import { Button } from '../Button'
+
+export interface SummarySettingsViewProps {
+  config: {
+    weeklyTemplate: string
+    monthlyTemplate: string
+    quarterlyTemplate: string
+    yearlyTemplate: string
+  }
+  onChange: (config: {
+    weeklyTemplate: string
+    monthlyTemplate: string
+    quarterlyTemplate: string
+    yearlyTemplate: string
+  }) => void
+}
+
+interface TemplateItem {
+  key: keyof SummarySettingsViewProps['config']
+  title: string
+  icon: string
+}
+
+const TEMPLATES: TemplateItem[] = [
+  { key: 'weeklyTemplate', title: '周结', icon: '📋' },
+  { key: 'monthlyTemplate', title: '月结', icon: '📅' },
+  { key: 'quarterlyTemplate', title: '季结', icon: '📊' },
+  { key: 'yearlyTemplate', title: '年结', icon: '📈' }
+]
+
+export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
+  config,
+  onChange
+}) => {
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+  const [editingKey, setEditingKey] = useState<keyof SummarySettingsViewProps['config'] | null>(
+    null
+  )
+  const [editValue, setEditValue] = useState('')
+
+  const openEditor = (key: keyof SummarySettingsViewProps['config']) => {
+    setEditingKey(key)
+    setEditValue(config[key])
+  }
+
+  const saveEditor = () => {
+    if (editingKey) {
+      onChange({ ...config, [editingKey]: editValue })
+    }
+    setEditingKey(null)
+  }
+
+  const editingTemplate = editingKey
+    ? TEMPLATES.find((t) => t.key === editingKey)
+    : null
+
+  return (
+    <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
+      <SettingsSection title={t('summary.templates', 'AI 总结指令模板')}>
+        {TEMPLATES.map((item) => {
+          const preview = config[item.key]
+          const previewText =
+            preview.length > 80 ? preview.substring(0, 80) + '...' : preview
+
+          return (
+            <View
+              key={item.key}
+              style={[styles.templateCard, { borderBottomColor: colors.borderSubtle }]}
+            >
+              <View style={styles.templateHeader}>
+                <Text style={styles.templateIcon}>{item.icon}</Text>
+                <Text style={[styles.templateTitle, { color: colors.textPrimary }]}>
+                  {item.title}
+                </Text>
+              </View>
+              <Text style={[styles.preview, { color: colors.textSecondary }]} numberOfLines={2}>
+                {previewText || t('summary.empty_template', '未设置模板')}
+              </Text>
+              <Button
+                variant="outlined"
+                onPress={() => openEditor(item.key)}
+                style={styles.editBtn}
+              >
+                {t('common.edit', '编辑')}
+              </Button>
+            </View>
+          )
+        })}
+      </SettingsSection>
+
+      <Modal visible={editingKey !== null} transparent animationType="fade">
+        <View style={[styles.modalOverlay, { backgroundColor: colors.bgOverlay }]}>
+          <View
+            style={[
+              styles.modalBox,
+              { backgroundColor: colors.bgSurface }
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              {editingTemplate
+                ? `${editingTemplate.icon} ${t('summary.edit_template', '编辑')}${editingTemplate.title}${t('summary.template', '模板')}`
+                : t('summary.edit_template_title', '编辑模板')}
+            </Text>
+
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: colors.bgSurfaceNormal,
+                  color: colors.textPrimary,
+                  borderColor: colors.borderMuted
+                }
+              ]}
+              value={editValue}
+              onChangeText={setEditValue}
+              multiline
+              numberOfLines={12}
+              textAlignVertical="top"
+              placeholderTextColor={colors.textTertiary}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => setEditingKey(null)}
+                style={styles.modalBtn}
+              >
+                <Text style={[styles.modalBtnTextGray, { color: colors.textSecondary }]}>
+                  {t('common.cancel', '取消')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={saveEditor}
+                style={[
+                  styles.modalBtn,
+                  { backgroundColor: colors.primary }
+                ]}
+              >
+                <Text style={[styles.modalBtnTextWhite, { color: colors.textOnPrimary }]}>
+                  {t('common.save', '保存')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <View style={styles.bottomSpacer} />
+    </ScrollView>
+  )
+}
+
+const styles = StyleSheet.create({
+  scroll: { flex: 1 },
+  templateCard: {
+    padding: 16,
+    borderBottomWidth: 1
+  },
+  templateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  templateIcon: { fontSize: 20, marginRight: 8 },
+  templateTitle: { fontSize: 16, fontWeight: '500' },
+  preview: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10
+  },
+  editBtn: { alignSelf: 'flex-start' },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  modalBox: {
+    width: '90%',
+    borderRadius: 24,
+    padding: 24,
+    maxHeight: '80%'
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    minHeight: 200,
+    lineHeight: 20
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 20,
+    gap: 12
+  },
+  modalBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  modalBtnTextGray: { fontWeight: 'bold' },
+  modalBtnTextWhite: { fontWeight: 'bold' },
+  bottomSpacer: { height: 40 }
+})
