@@ -25,6 +25,15 @@ export function setUpdateImageWidthCallback(
   updateImageWidthCallback = callback
 }
 
+// 全局回调函数，用于在编辑器中对图片执行右键操作
+let imageActionCallback: ((action: 'delete' | 'copy' | 'open', from: number, to: number, src: string) => void) | null = null
+
+export function setImageActionCallback(
+  callback: ((action: 'delete' | 'copy' | 'open', from: number, to: number, src: string) => void) | null
+) {
+  imageActionCallback = callback
+}
+
 class ImageWidget extends WidgetType {
   private container: HTMLElement | null = null
   private resizeHandle: HTMLElement | null = null
@@ -99,6 +108,75 @@ class ImageWidget extends WidgetType {
 
   private bindEvents(img: HTMLElement) {
     if (!this.container || !this.resizeHandle || !this.linkBar) return
+
+    // 图片右键菜单事件
+    img.addEventListener('contextmenu', (e) => {
+      const isLocal = this.src.startsWith('local:///')
+      if (!isLocal) return
+
+      e.preventDefault()
+      e.stopPropagation()
+
+      // 移除已有的右键菜单
+      const existingMenu = document.querySelector('.cm-context-menu')
+      if (existingMenu) existingMenu.remove()
+
+      // 创建菜单容器
+      const menu = document.createElement('div')
+      menu.className = 'cm-context-menu'
+      menu.style.left = `${e.clientX}px`
+      menu.style.top = `${e.clientY}px`
+
+      const items = [
+        {
+          label: '复制图片',
+          onClick: () => {
+            if (this.imageFrom !== undefined && this.imageTo !== undefined && imageActionCallback) {
+              imageActionCallback('copy', this.imageFrom, this.imageTo, this.src)
+            }
+          }
+        },
+        {
+          label: '打开所在文件夹',
+          onClick: () => {
+            if (this.imageFrom !== undefined && this.imageTo !== undefined && imageActionCallback) {
+              imageActionCallback('open', this.imageFrom, this.imageTo, this.src)
+            }
+          }
+        },
+        {
+          label: '删除图片附件',
+          isDanger: true,
+          onClick: () => {
+            if (this.imageFrom !== undefined && this.imageTo !== undefined && imageActionCallback) {
+              imageActionCallback('delete', this.imageFrom, this.imageTo, this.src)
+            }
+          }
+        }
+      ]
+
+      items.forEach((item) => {
+        const btn = document.createElement('button')
+        btn.className = `cm-context-menu-item ${item.isDanger ? 'danger' : ''}`
+        btn.innerText = item.label
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          item.onClick()
+          menu.remove()
+        })
+        menu.appendChild(btn)
+      })
+
+      document.body.appendChild(menu)
+
+      const closeMenu = () => {
+        menu.remove()
+        document.removeEventListener('click', closeMenu)
+      }
+      setTimeout(() => {
+        document.addEventListener('click', closeMenu)
+      }, 0)
+    })
 
     // 点击图片显示链接栏
     img.addEventListener('click', (e) => {

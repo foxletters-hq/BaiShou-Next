@@ -183,8 +183,9 @@
 .cm-image-container {
   position: relative;
   display: inline-block;
+  vertical-align: middle;
   max-width: 100%;
-  margin: 8px 0;
+  margin: 8px 8px;
   border-radius: 8px;
   overflow: visible;
 }
@@ -241,4 +242,67 @@
   font-size: 12px;
   font-family: 'Fira Code', 'Courier New', monospace;
   outline: none;
+}
+
+.cm-context-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 150px;
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  animation: cm-context-menu-appear 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@keyframes cm-context-menu-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cm-context-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.cm-context-menu-item:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+  color: var(--color-primary);
+}
+
+.cm-context-menu-item.danger {
+  color: var(--color-error);
+}
+
+.cm-context-menu-item.danger:hover {
+  background: var(--color-error-container);
+  color: var(--color-error);
+}
+
+.cm-context-menu-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
 }
