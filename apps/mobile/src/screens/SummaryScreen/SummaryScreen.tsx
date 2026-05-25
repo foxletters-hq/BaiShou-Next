@@ -12,13 +12,17 @@ import {
   Alert
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import * as Clipboard from 'expo-clipboard'
 import {
   SummaryCard,
   DashboardHeroBanner,
   DashboardStatsCard,
   DashboardSharedMemoryCard,
+  ActivityHeatmap,
+  GalleryPanel,
   useNativeTheme
 } from '@baishou/ui/native'
+import { logger } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { useSummaryData } from '../../hooks/useSummaryData'
 import { useTranslation } from 'react-i18next'
@@ -35,8 +39,10 @@ export const SummaryScreen: React.FC = () => {
     missingSummaries,
     generationStates,
     queueGeneration,
+    stopGeneration,
     refreshData,
-    loading
+    loading,
+    isGenerating
   } = useSummaryData()
 
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
@@ -93,9 +99,27 @@ export const SummaryScreen: React.FC = () => {
   // 处理复制上下文
   const handleCopyContext = async () => {
     try {
-      // 这里需要实现复制功能
-      Alert.alert(t('common.success', '成功'), t('summary.copied', '共同回忆已复制'))
-    } catch {
+      // 获取最近的总结内容作为共同回忆
+      const now = new Date()
+      const cutoffDate = new Date()
+      cutoffDate.setMonth(cutoffDate.getMonth() - lookbackMonths)
+      cutoffDate.setDate(1)
+      cutoffDate.setHours(0, 0, 0, 0)
+
+      const allSummaries = await services?.summaryManager.list({ start: cutoffDate })
+      if (allSummaries && allSummaries.length > 0) {
+        const contextParts = allSummaries.map((s) => {
+          const dateRange = `${new Date(s.startDate).toLocaleDateString()} - ${new Date(s.endDate).toLocaleDateString()}`
+          return `## ${s.type === 'weekly' ? '周记' : s.type === 'monthly' ? '月记' : s.type === 'quarterly' ? '季度记' : '年记'} (${dateRange})\n${s.content}`
+        })
+        const context = contextParts.join('\n\n---\n\n')
+        await Clipboard.setStringAsync(context)
+        Alert.alert(t('common.success', '成功'), t('summary.copied', '共同回忆已复制'))
+      } else {
+        Alert.alert(t('common.info', '提示'), t('summary.no_content', '暂无可复制的内容'))
+      }
+    } catch (e) {
+      logger.error('复制共同回忆失败', e instanceof Error ? e : String(e))
       Alert.alert(t('common.error', '错误'), t('summary.copy_failed', '复制失败'))
     }
   }
@@ -114,7 +138,7 @@ export const SummaryScreen: React.FC = () => {
       })
 
       if (pendingTasks.length > 0) {
-        await queueGeneration(pendingTasks)
+        await queueGeneration(pendingTasks, concurrencyLimit)
         Alert.alert(
           t('common.success', '成功'),
           t('summary.batch_queued', `已将 ${pendingTasks.length} 项任务加入后台构建队列`, {
@@ -132,6 +156,17 @@ export const SummaryScreen: React.FC = () => {
       Alert.alert(t('common.error', '错误'), t('summary.batch_failed', '批量生成失败'))
     } finally {
       setTimeout(() => setIsBatchGenerating(false), 800)
+    }
+  }
+
+  // 处理停止生成
+  const handleStopGeneration = async () => {
+    try {
+      await stopGeneration()
+      Alert.alert(t('common.success', '成功'), t('summary.generation_stopped', '已停止所有生成任务'))
+    } catch (e) {
+      console.error('Stop generation failed', e)
+      Alert.alert(t('common.error', '错误'), t('summary.stop_failed', '停止生成失败'))
     }
   }
 
@@ -183,9 +218,9 @@ export const SummaryScreen: React.FC = () => {
             try {
               if (services) {
                 await services.summaryManager.delete(
-                  summary.type,
-                  summary.startDate,
-                  summary.endDate
+                  summary.type as any,
+                  new Date(summary.startDate),
+                  new Date(summary.endDate)
                 )
                 Alert.alert(t('common.success', '成功'), t('summary.deleted', '已删除'))
                 refreshData()
@@ -226,6 +261,7 @@ export const SummaryScreen: React.FC = () => {
               </View>
               <TouchableOpacity
                 style={[styles.settingsBtn, { backgroundColor: colors.bgSurfaceHighest }]}
+                onPress={() => router.push('/(tabs)/settings')}
               >
                 <Text style={styles.settingsIcon}>⚙️</Text>
               </TouchableOpacity>
@@ -296,63 +332,7 @@ export const SummaryScreen: React.FC = () => {
               </View>
 
               {/* 活动热力图 */}
-              <View
-                style={[styles.activityHeatmapContainer, { backgroundColor: colors.bgSurface }]}
-              >
-                <Text style={[styles.activityHeatmapTitle, { color: colors.textPrimary }]}>
-                  {t('summary.activity_heatmap', '活动热力图')}
-                </Text>
-                <View style={styles.activityHeatmapGrid}>
-                  {activityData.slice(0, 28).map((day, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.activityHeatmapCell,
-                        {
-                          backgroundColor:
-                            day.count > 0 ? colors.primary + '40' : colors.bgSurfaceHighest,
-                          opacity: day.count > 0 ? 0.5 + (day.count / 10) * 0.5 : 0.3
-                        }
-                      ]}
-                    />
-                  ))}
-                </View>
-                <View style={styles.activityHeatmapLegend}>
-                  <Text style={[styles.activityHeatmapLegendText, { color: colors.textSecondary }]}>
-                    少
-                  </Text>
-                  <View
-                    style={[
-                      styles.activityHeatmapLegendCell,
-                      { backgroundColor: colors.primary + '20' }
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.activityHeatmapLegendCell,
-                      { backgroundColor: colors.primary + '40' }
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.activityHeatmapLegendCell,
-                      { backgroundColor: colors.primary + '60' }
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.activityHeatmapLegendCell,
-                      { backgroundColor: colors.primary + '80' }
-                    ]}
-                  />
-                  <View
-                    style={[styles.activityHeatmapLegendCell, { backgroundColor: colors.primary }]}
-                  />
-                  <Text style={[styles.activityHeatmapLegendText, { color: colors.textSecondary }]}>
-                    多
-                  </Text>
-                </View>
-              </View>
+              <ActivityHeatmap data={activityData} year={selectedYear} />
 
               {/* AI 建议补全区域 */}
               {(missingSummaries.length > 0 || stats.totalDiaryCount > 0) && (
@@ -368,7 +348,7 @@ export const SummaryScreen: React.FC = () => {
                       <TouchableOpacity
                         style={[styles.batchGenerateButton, { backgroundColor: colors.primary }]}
                         onPress={handleBatchGenerate}
-                        disabled={isBatchGenerating}
+                        disabled={isBatchGenerating || isGenerating}
                       >
                         <Text
                           style={[styles.batchGenerateButtonText, { color: colors.textOnPrimary }]}
@@ -378,6 +358,17 @@ export const SummaryScreen: React.FC = () => {
                             : t('summary.generate_all', '全部生成')}
                         </Text>
                       </TouchableOpacity>
+
+                      {isGenerating && (
+                        <TouchableOpacity
+                          style={[styles.stopButton, { backgroundColor: colors.error }]}
+                          onPress={handleStopGeneration}
+                        >
+                          <Text style={[styles.stopButtonText, { color: colors.textOnPrimary }]}>
+                            {t('summary.stop', '停止')}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
 
                       <TouchableOpacity
                         style={[
@@ -497,79 +488,26 @@ export const SummaryScreen: React.FC = () => {
             </ScrollView>
           ) : (
             <View style={styles.galleryContent}>
-              <View style={styles.galleryActions}>
-                <TouchableOpacity
-                  onPress={() => setViewMode('list')}
-                  style={[
-                    styles.toggleBtn,
-                    viewMode === 'list' && {
-                      backgroundColor: colors.primary + '20'
-                    }
-                  ]}
-                >
-                  <Text
-                    style={[styles.toggleBtnText, viewMode === 'list' && { color: colors.primary }]}
-                  >
-                    ☵
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setViewMode('grid')}
-                  style={[
-                    styles.toggleBtn,
-                    viewMode === 'grid' && {
-                      backgroundColor: colors.primary + '20'
-                    }
-                  ]}
-                >
-                  <Text
-                    style={[styles.toggleBtnText, viewMode === 'grid' && { color: colors.primary }]}
-                  >
-                    ☷
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView contentContainerStyle={styles.scrollItems} indicatorStyle="white">
-                {loading ? (
-                  <ActivityIndicator
-                    size="large"
-                    color={colors.primary}
-                    style={{ marginTop: 40 }}
-                  />
-                ) : summaries.length === 0 ? (
-                  <View
-                    style={{
-                      alignItems: 'center',
-                      marginTop: 40,
-                      opacity: 0.5
-                    }}
-                  >
-                    <Text style={{ fontSize: 32, marginBottom: 12 }}>🕸️</Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: 15 }}>
-                      {t('summary.no_data', '无聚合数据产生')}
-                    </Text>
-                  </View>
-                ) : (
-                  summaries.map((item) => (
-                    <View key={item.id} style={styles.cardContainer}>
-                      <SummaryCard
-                        id={item.id}
-                        title={item.title}
-                        dateRange={item.dateRange}
-                        summaryText={item.summaryText}
-                        type={item.type}
-                        onClick={() =>
-                          router.push({
-                            pathname: '/summary-detail',
-                            params: { id: item.id }
-                          })
-                        }
-                        onDelete={() => handleDeleteSummary(item.id)}
-                      />
-                    </View>
-                  ))
-                )}
-              </ScrollView>
+              <GalleryPanel
+                summaries={summaries.map((s) => ({
+                  id: s.id,
+                  type: s.type,
+                  startDate: s.startDate,
+                  endDate: s.endDate,
+                  content: s.content
+                }))}
+                onOpen={(id) => {
+                  // 点击列表项只切换视图，不进入编辑
+                }}
+                onEdit={(id) => {
+                  // 点击编辑按钮跳转到详情页
+                  router.push({
+                    pathname: '/summary-detail',
+                    params: { id }
+                  })
+                }}
+                onDelete={handleDeleteSummary}
+              />
             </View>
           )}
         </View>
@@ -622,52 +560,6 @@ const styles = StyleSheet.create({
   narrowLayout: { flexDirection: 'column', gap: 24 },
 
   galleryContent: { flex: 1 },
-  galleryActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
-    gap: 8
-  },
-  toggleBtn: { padding: 8, borderRadius: 8 },
-  toggleBtnText: { fontSize: 16, fontWeight: '900' },
-
-  scrollItems: { paddingHorizontal: 16, paddingBottom: 40 },
-  cardContainer: { marginBottom: 16 },
-
-  activityHeatmapContainer: {
-    borderRadius: 16,
-    padding: 16
-  },
-  activityHeatmapTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16
-  },
-  activityHeatmapGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4
-  },
-  activityHeatmapCell: {
-    width: 16,
-    height: 16,
-    borderRadius: 4
-  },
-  activityHeatmapLegend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    gap: 4
-  },
-  activityHeatmapLegendText: {
-    fontSize: 12
-  },
-  activityHeatmapLegendCell: {
-    width: 12,
-    height: 12,
-    borderRadius: 3
-  },
 
   aiSuggestionsContainer: {
     borderRadius: 16,
@@ -693,6 +585,15 @@ const styles = StyleSheet.create({
     borderRadius: 8
   },
   batchGenerateButtonText: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  stopButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8
+  },
+  stopButtonText: {
     fontSize: 14,
     fontWeight: '600'
   },
