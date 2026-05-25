@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -12,8 +12,10 @@ import {
   TextInput,
   FlatList
 } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { DiaryCard, TimelineNode, YearMonthPicker } from '@baishou/ui/native'
 import { useNativeTheme } from '@baishou/ui/native'
+import { logger } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -45,15 +47,15 @@ export const DiaryScreen: React.FC = () => {
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
   const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [filterWeather, setFilterWeather] = useState<string | null>(null)
+  const [filterWeathers, setFilterWeathers] = useState<string[]>([])
   const [filterFavorite, setFilterFavorite] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'timeline' | 'grid'>('timeline')
   const [isStateRestored, setIsStateRestored] = useState(false)
 
   // 分页状态
-  const PAGE_SIZE = 50
-  const [offset, setOffset] = useState(0)
+  const [pageSize, setPageSize] = useState(50)
+  const offsetRef = useRef(0)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
 
@@ -61,28 +63,28 @@ export const DiaryScreen: React.FC = () => {
     async (reset = true) => {
       if (!dbReady || !services) return
       try {
-        const currentOffset = reset ? 0 : offset
+        const currentOffset = reset ? 0 : offsetRef.current
         const list = await services.diaryService.listAll({
-          limit: PAGE_SIZE,
+          limit: pageSize,
           offset: currentOffset
         })
 
         if (reset) {
           setDiaries(list)
-          setOffset(PAGE_SIZE)
+          offsetRef.current = pageSize
         } else {
           setDiaries((prev) => [...prev, ...list])
-          setOffset((prev) => prev + PAGE_SIZE)
+          offsetRef.current += pageSize
         }
-        setHasMore(list.length === PAGE_SIZE)
+        setHasMore(list.length === pageSize)
       } catch (e) {
-        console.error('Failed to fetch diaries', e)
+        logger.error('获取日记列表失败', e instanceof Error ? e : String(e))
       } finally {
         setLoading(false)
         setLoadingMore(false)
       }
     },
-    [dbReady, services]
+    [dbReady, services, pageSize]
   )
 
   const loadMore = useCallback(async () => {
@@ -92,22 +94,23 @@ export const DiaryScreen: React.FC = () => {
   }, [hasMore, loadingMore, dbReady, services, fetchDiaries])
 
   useEffect(() => {
-    setOffset(0)
+    offsetRef.current = 0
     setHasMore(true)
     fetchDiaries(true)
-  }, [fetchDiaries, selectedMonth, searchQuery, filterWeather, filterFavorite])
+  }, [fetchDiaries, selectedMonth, searchQuery, filterWeathers, filterFavorite, pageSize])
 
   // 从 AsyncStorage 恢复筛选状态
   useEffect(() => {
     const restoreState = async () => {
       try {
-        const [savedQuery, savedMonth, savedWeather, savedFavorite, savedViewMode] =
+        const [savedQuery, savedMonth, savedWeathers, savedFavorite, savedViewMode, savedPageSize] =
           await Promise.all([
             AsyncStorage.getItem('diary_searchQuery'),
             AsyncStorage.getItem('diary_selectedMonth'),
-            AsyncStorage.getItem('diary_filterWeather'),
+            AsyncStorage.getItem('diary_filterWeathers'),
             AsyncStorage.getItem('diary_filterFavorite'),
-            AsyncStorage.getItem('diary_viewMode')
+            AsyncStorage.getItem('diary_viewMode'),
+            AsyncStorage.getItem('diary_pageSize')
           ])
 
         if (savedQuery) {
@@ -125,8 +128,15 @@ export const DiaryScreen: React.FC = () => {
           }
         }
 
-        if (savedWeather) {
-          setFilterWeather(savedWeather)
+        if (savedWeathers) {
+          try {
+            const parsed = JSON.parse(savedWeathers)
+            if (Array.isArray(parsed)) {
+              setFilterWeathers(parsed)
+            }
+          } catch {
+            /* ignore */
+          }
         }
 
         if (savedFavorite === 'true') {
@@ -136,8 +146,15 @@ export const DiaryScreen: React.FC = () => {
         if (savedViewMode === 'timeline' || savedViewMode === 'grid') {
           setViewMode(savedViewMode)
         }
+
+        if (savedPageSize) {
+          const size = parseInt(savedPageSize, 10)
+          if (!isNaN(size) && [50, 100, 200].includes(size)) {
+            setPageSize(size)
+          }
+        }
       } catch (e) {
-        console.error('Failed to restore diary filter state', e)
+        logger.error('恢复日记筛选状态失败', e instanceof Error ? e : String(e))
       } finally {
         setIsStateRestored(true)
       }
@@ -195,9 +212,9 @@ export const DiaryScreen: React.FC = () => {
       )
     }
 
-    // 天气筛选
-    if (filterWeather) {
-      filtered = filtered.filter((e) => e.weather === filterWeather)
+    // 天气筛选（支持多选）
+    if (filterWeathers.length > 0) {
+      filtered = filtered.filter((e) => filterWeathers.includes(e.weather || ''))
     }
 
     // 收藏筛选
@@ -209,13 +226,13 @@ export const DiaryScreen: React.FC = () => {
     filtered.sort((a, b) => b.date.getTime() - a.date.getTime())
 
     return filtered
-  }, [diaries, selectedMonth, searchQuery, filterWeather, filterFavorite])
+  }, [diaries, selectedMonth, searchQuery, filterWeathers, filterFavorite])
 
   // 保存筛选状态到 AsyncStorage
   useEffect(() => {
     if (!isStateRestored) return
     AsyncStorage.setItem('diary_searchQuery', searchQuery).catch((e) =>
-      console.error('Failed to save searchQuery', e)
+      logger.error('保存搜索查询失败', e)
     )
   }, [searchQuery, isStateRestored])
 
@@ -224,29 +241,36 @@ export const DiaryScreen: React.FC = () => {
     AsyncStorage.setItem(
       'diary_selectedMonth',
       selectedMonth ? selectedMonth.toISOString() : ''
-    ).catch((e) => console.error('Failed to save selectedMonth', e))
+    ).catch((e) => logger.error('保存选中月份失败', e))
   }, [selectedMonth, isStateRestored])
 
   useEffect(() => {
     if (!isStateRestored) return
-    AsyncStorage.setItem('diary_filterWeather', filterWeather || '').catch((e) =>
-      console.error('Failed to save filterWeather', e)
+    AsyncStorage.setItem('diary_filterWeathers', JSON.stringify(filterWeathers)).catch((e) =>
+      logger.error('保存天气筛选失败', e)
     )
-  }, [filterWeather, isStateRestored])
+  }, [filterWeathers, isStateRestored])
 
   useEffect(() => {
     if (!isStateRestored) return
     AsyncStorage.setItem('diary_filterFavorite', String(filterFavorite)).catch((e) =>
-      console.error('Failed to save filterFavorite', e)
+      logger.error('保存收藏筛选失败', e)
     )
   }, [filterFavorite, isStateRestored])
 
   useEffect(() => {
     if (!isStateRestored) return
     AsyncStorage.setItem('diary_viewMode', viewMode).catch((e) =>
-      console.error('Failed to save viewMode', e)
+      logger.error('保存视图模式失败', e)
     )
   }, [viewMode, isStateRestored])
+
+  useEffect(() => {
+    if (!isStateRestored) return
+    AsyncStorage.setItem('diary_pageSize', String(pageSize)).catch((e) =>
+      logger.error('保存分页大小失败', e)
+    )
+  }, [pageSize, isStateRestored])
 
   // 格式化日期字符串为 YYYY-MM-DD
   const formatDateStr = (date: Date): string => {
@@ -287,12 +311,12 @@ export const DiaryScreen: React.FC = () => {
 
   // 清除所有筛选
   const clearFilters = () => {
-    setFilterWeather(null)
+    setFilterWeathers([])
     setFilterFavorite(false)
   }
 
   // 是否有激活的筛选
-  const hasActiveFilters = filterWeather || filterFavorite
+  const hasActiveFilters = filterWeathers.length > 0 || filterFavorite
 
   // 查找今天的日记条目
   const todayEntry = useMemo(() => {
@@ -344,7 +368,7 @@ export const DiaryScreen: React.FC = () => {
       setDeletingId(null)
       Alert.alert(t('common.success', '成功'), t('diary.delete_success', '日记已删除'))
     } catch (e) {
-      console.error('Delete failed', e)
+      logger.error('删除日记失败', e instanceof Error ? e : String(e))
       Alert.alert(t('common.error', '错误'), t('diary.delete_failed', '删除失败'))
     }
   }
@@ -355,22 +379,28 @@ export const DiaryScreen: React.FC = () => {
     const isFirst = index === 0
 
     const cardContent = (
-      <View style={styles.cardWrapper}>
-        <DiaryCard
-          id={entry.id}
-          contentSnippet={entry.preview || t('diary.no_preview', '暂无预览...')}
-          tags={entry.tags || []}
-          createdAt={entry.date}
-          onClick={() => router.push(`/(tabs)/diary-editor?id=${entry.id}`)}
-          onEdit={() => router.push(`/(tabs)/diary-editor?id=${entry.id}`)}
-          onDelete={() => setDeletingId(entry.id)}
-        />
-        {/* 叠加光晕掩码进行降噪隔离 */}
-        <View
-          style={[styles.glassMask, { backgroundColor: colors.bgApp + '03' }]}
-          pointerEvents="none"
-        />
-      </View>
+      <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 50).springify()}>
+        <View style={styles.cardWrapper}>
+          <DiaryCard
+            id={entry.id}
+            contentSnippet={entry.preview || t('diary.no_preview', '暂无预览...')}
+            tags={entry.tags || []}
+            createdAt={entry.date}
+            weather={entry.weather}
+            mood={entry.mood}
+            location={entry.location}
+            isFavorite={entry.isFavorite}
+            onClick={() => router.push(`/(tabs)/diary-editor?id=${entry.id}`)}
+            onEdit={() => router.push(`/(tabs)/diary-editor?id=${entry.id}`)}
+            onDelete={() => setDeletingId(entry.id)}
+          />
+          {/* 叠加光晕掩码进行降噪隔离 */}
+          <View
+            style={[styles.glassMask, { backgroundColor: colors.bgApp + '03' }]}
+            pointerEvents="none"
+          />
+        </View>
+      </Animated.View>
     )
 
     if (viewMode === 'timeline') {
@@ -544,13 +574,19 @@ export const DiaryScreen: React.FC = () => {
                       styles.filterWeatherButton,
                       {
                         backgroundColor:
-                          filterWeather === weather
+                          filterWeathers.includes(weather)
                             ? colors.primary + '20'
                             : colors.bgSurfaceHighest,
-                        borderColor: filterWeather === weather ? colors.primary : 'transparent'
+                        borderColor: filterWeathers.includes(weather) ? colors.primary : 'transparent'
                       }
                     ]}
-                    onPress={() => setFilterWeather(filterWeather === weather ? null : weather)}
+                    onPress={() => {
+                      setFilterWeathers(prev =>
+                        prev.includes(weather)
+                          ? prev.filter(w => w !== weather)
+                          : [...prev, weather]
+                      )
+                    }}
                   >
                     <Text style={styles.filterWeatherIcon}>{getWeatherIcon(weather)}</Text>
                     <Text style={[styles.filterWeatherName, { color: colors.textSecondary }]}>
@@ -562,13 +598,35 @@ export const DiaryScreen: React.FC = () => {
             </View>
           )}
 
-          {/* 月份选择器 */}
+          {/* 月份选择器和每页条数选择器 */}
           <View style={[styles.monthSelector, { backgroundColor: colors.bgSurface }]}>
             <YearMonthPicker
               selectedMonth={selectedMonth}
               onChange={setSelectedMonth}
               titlePlaceholder={t('diary.all', '全部')}
             />
+            <View style={styles.pageSizeSelector}>
+              {[50, 100, 200].map(size => (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.pageSizeButton,
+                    {
+                      backgroundColor: pageSize === size ? colors.primary : colors.bgSurfaceHighest,
+                      borderColor: pageSize === size ? colors.primary : colors.borderSubtle
+                    }
+                  ]}
+                  onPress={() => setPageSize(size)}
+                >
+                  <Text style={[
+                    styles.pageSizeButtonText,
+                    { color: pageSize === size ? colors.bgSurface : colors.textSecondary }
+                  ]}>
+                    {size}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* 内容区 */}
@@ -594,7 +652,7 @@ export const DiaryScreen: React.FC = () => {
             <ScrollView
               style={styles.contentContainer}
               contentContainerStyle={styles.timelinePadding}
-              indicatorStyle="white"
+              indicatorStyle={isDark ? "white" : "default"}
             >
               {viewMode === 'timeline' ? (
                 filteredEntries.map((entry, index) => renderDiaryCard(entry, index))
@@ -942,6 +1000,23 @@ const styles = StyleSheet.create({
   },
   deleteModalConfirmButtonText: {
     fontSize: 16,
+    fontWeight: '600'
+  },
+  pageSizeSelector: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center'
+  },
+  pageSizeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    minWidth: 40,
+    alignItems: 'center'
+  },
+  pageSizeButtonText: {
+    fontSize: 12,
     fontWeight: '600'
   }
 })

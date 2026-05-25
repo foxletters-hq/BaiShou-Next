@@ -1,7 +1,8 @@
 import { z } from 'zod'
 
-/** 天气值到 emoji 的映射表 */
+/** 天气值到 emoji 的映射表（同时支持中文键和英文键） */
 export const WEATHER_EMOJI: Record<string, string> = {
+  // 中文键
   晴: '☀️',
   多云: '⛅',
   阴: '☁️',
@@ -9,7 +10,16 @@ export const WEATHER_EMOJI: Record<string, string> = {
   大雨: '🌧️',
   雪: '❄️',
   雾: '🌫️',
-  风: '💨'
+  风: '💨',
+  // 英文键（与数据库存储一致）
+  sunny: '☀️',
+  cloudy: '⛅',
+  overcast: '☁️',
+  light_rain: '🌦️',
+  heavy_rain: '🌧️',
+  snow: '❄️',
+  fog: '🌫️',
+  windy: '💨'
 }
 
 /** 根据天气值获取对应 emoji，无匹配时返回默认 🌤️ */
@@ -50,6 +60,18 @@ export interface DiaryMeta {
   location?: string
   isFavorite?: boolean
   hasMedia?: boolean
+}
+
+/** 日记列表服务端筛选 / 分页参数 */
+export interface DiaryListFilter {
+  year?: number
+  /** 1-12，与 year 同时传入时按月份筛选 */
+  month?: number
+  favorite?: boolean
+  weathers?: string[]
+  limit?: number
+  offset?: number
+  orderBy?: 'asc' | 'desc'
 }
 
 export interface TimelineNode {

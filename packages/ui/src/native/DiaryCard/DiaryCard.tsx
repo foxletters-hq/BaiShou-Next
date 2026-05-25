@@ -2,12 +2,17 @@ import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
+import { getWeatherEmoji } from '@baishou/shared'
 
 interface DiaryCardProps {
-  id: string
+  id: number
   contentSnippet: string
   tags: string[]
   createdAt: Date
+  weather?: string
+  mood?: string
+  location?: string
+  isFavorite?: boolean
   onClick?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -16,9 +21,14 @@ interface DiaryCardProps {
 // TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
 
 export const DiaryCard: React.FC<DiaryCardProps> = ({
+  id,
   contentSnippet,
   tags,
   createdAt,
+  weather,
+  mood,
+  location,
+  isFavorite,
   onClick,
   onEdit,
   onDelete
@@ -39,11 +49,12 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   ][createdAt.getDay()]
 
   const getTagColor = (tag: string) => {
+    // 使用主题颜色，确保深浅模式下对比度一致
     const tagColors = [
-      { bg: 'rgba(33, 150, 243, 0.1)', fg: '#1976D2' },
-      { bg: 'rgba(76, 175, 80, 0.1)', fg: '#388E3C' },
-      { bg: 'rgba(255, 152, 0, 0.1)', fg: '#F57C00' },
-      { bg: 'rgba(156, 39, 176, 0.1)', fg: '#7B1FA2' }
+      { bg: colors.accentBlue + '15', fg: colors.accentBlue },
+      { bg: colors.accentGreen + '15', fg: colors.accentGreen },
+      { bg: colors.warning + '15', fg: colors.warning },
+      { bg: colors.accentPurple + '15', fg: colors.accentPurple }
     ]
     let sum = 0
     for (let i = 0; i < tag.length; i++) sum += tag.charCodeAt(i)
@@ -79,6 +90,34 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
         </View>
         <Text style={styles.icon}>📑</Text>
       </View>
+
+      {/* 元数据行：天气、心情、位置、收藏 */}
+      {(weather || mood || location || isFavorite) && (
+        <View style={styles.metaRow}>
+          {weather && (
+            <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                {getWeatherEmoji(weather)} {t(`diary.weather.${weather}`, weather)}
+              </Text>
+            </View>
+          )}
+          {mood && (
+            <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>😊 {mood}</Text>
+            </View>
+          )}
+          {location && (
+            <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>📍 {location}</Text>
+            </View>
+          )}
+          {isFavorite && (
+            <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>❤️</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.contentContainer}>
         <Text style={[styles.snippet, { color: colors.textPrimary }]} numberOfLines={5}>
@@ -154,7 +193,19 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
   icon: { fontSize: 20, opacity: 0.3 },
-  contentContainer: { height: 120, overflow: 'hidden' },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 8
+  },
+  metaBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  metaText: { fontSize: 12 },
+  contentContainer: { maxHeight: 120, overflow: 'hidden' },
   snippet: { fontSize: 15, lineHeight: 24, opacity: 0.9 },
   tagsContainer: {
     flexDirection: 'row',
