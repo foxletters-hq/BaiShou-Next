@@ -214,18 +214,23 @@
 }
 .pinnedAvatarWrapper {
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
   cursor: pointer;
   border-radius: 50%;
-  padding: 0;
-  transition: opacity 0.2s;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.2s;
 }
+
 .pinnedAvatarWrapper:hover {
-  opacity: 0.8;
+  opacity: 1;
 }
+
 .pinnedAvatarWrapper.selected {
-  filter: brightness(1.2);
-  box-shadow: 0 0 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  box-shadow: 0 0 0 1.5px var(--color-primary);
 }
 .managePinnedBtn {
   width: 40px;

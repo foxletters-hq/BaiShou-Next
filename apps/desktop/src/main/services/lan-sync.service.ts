@@ -3,6 +3,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import * as http from 'http'
+import * as dgram from 'dgram'
 import { app } from 'electron'
 import express from 'express'
 import { Bonjour, Browser } from 'bonjour-service'
@@ -15,6 +16,7 @@ export class DesktopLanSyncService implements ILanSyncService {
   private bonjour: Bonjour | null = null
   private browser: Browser | null = null
   private publishedService: any = null
+  private publishedServiceName: string | null = null
 
   private fileReceivedCallback?: (path: string) => void
 
@@ -22,25 +24,133 @@ export class DesktopLanSyncService implements ILanSyncService {
     // Only used to generate archive zip internally for sending
   }
 
+  private isExcludedIp(ip: string): boolean {
+    const [a, b] = ip.split('.').map(Number)
+    if (Number.isNaN(a) || Number.isNaN(b)) return true
+    if (a === 127) return true
+    if (a === 169 && b === 254) return true
+    // RFC 2544 / Clash Meta TUN 等虚拟网段
+    if (a === 198 && (b === 18 || b === 19)) return true
+    return false
+  }
+
+  private isPrivateLanIp(ip: string): boolean {
+    const [a, b] = ip.split('.').map(Number)
+    if (a === 10) return true
+    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 192 && b === 168) return true
+    return false
+  }
+
+  private isVirtualInterface(name: string): boolean {
+    const lower = name.toLowerCase()
+    return [
+      'clash',
+      'meta',
+      'tun',
+      'wintun',
+      'wireguard',
+      'tailscale',
+      'vpn',
+      'virtual',
+      'vethernet',
+      'hyper-v',
+      'npcap',
+      'loopback'
+    ].some((keyword) => lower.includes(keyword))
+  }
+
+  private scoreNetworkCandidate(address: string, ifaceName: string): number {
+    if (this.isExcludedIp(address)) return -100
+    if (this.isVirtualInterface(ifaceName)) return -50
+
+    let score = 0
+    if (this.isPrivateLanIp(address)) score += 100
+
+    const lower = ifaceName.toLowerCase()
+    if (lower.includes('wi-fi') || lower.includes('wlan') || lower.includes('wireless')) {
+      score += 30
+    }
+    if (lower.includes('ethernet') || lower.includes('eth')) score += 20
+    return score
+  }
+
+  private pickBestIp(candidates: string[]): string | null {
+    const unique = Array.from(new Set(candidates.filter(Boolean)))
+    if (unique.length === 0) return null
+
+    const sorted = unique.sort((a, b) => {
+      const scoreIp = (ip: string) => {
+        if (this.isExcludedIp(ip)) return -100
+        if (this.isPrivateLanIp(ip)) return 100
+        return 0
+      }
+      return scoreIp(b) - scoreIp(a)
+    })
+
+    return sorted.find((ip) => !this.isExcludedIp(ip)) ?? sorted[0] ?? null
+  }
+
   private getLocalIps(): string[] {
     const ifs = os.networkInterfaces()
-    const ips: string[] = []
+    const candidates: { address: string; score: number }[] = []
+
     for (const name of Object.keys(ifs)) {
       for (const iface of ifs[name]!) {
-        // v4 only, not internal
         if (iface.family === 'IPv4' && !iface.internal) {
-          ips.push(iface.address)
+          candidates.push({
+            address: iface.address,
+            score: this.scoreNetworkCandidate(iface.address, name)
+          })
         }
+      }
+    }
+
+    return candidates
+      .filter((item) => item.score > -100)
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.address)
+  }
+
+  private getOutboundIp(): Promise<string | null> {
+    return new Promise((resolve) => {
+      const socket = dgram.createSocket('udp4')
+      socket.once('error', () => {
+        socket.close()
+        resolve(null)
+      })
+      socket.connect(53, '8.8.8.8', () => {
+        const addr = socket.address()
+        socket.close()
+        resolve(typeof addr === 'object' ? addr.address : null)
+      })
+    })
+  }
+
+  private async getPreferredLocalIps(): Promise<string[]> {
+    let ips = this.getLocalIps()
+    if (ips.length === 0) {
+      const outbound = await this.getOutboundIp()
+      if (outbound && !this.isExcludedIp(outbound)) {
+        ips = [outbound]
       }
     }
     return ips
   }
 
-  public async startBroadcasting(): Promise<{ ip: string; port: number } | null> {
+  public async startBroadcasting(): Promise<{
+    ip: string
+    port: number
+    serviceId: string
+    allIps: string[]
+  } | null> {
     if (this.server) return null // already running
 
-    const ips = this.getLocalIps()
+    const ips = await this.getPreferredLocalIps()
     if (ips.length === 0) throw new Error('No local network connection found')
+
+    const displayIp = this.pickBestIp(ips)
+    if (!displayIp) throw new Error('No usable local network connection found')
 
     const expressApp = express()
 
@@ -82,7 +192,6 @@ export class DesktopLanSyncService implements ILanSyncService {
         const addr = this.server?.address()
         if (addr && typeof addr !== 'string') {
           const port = addr.port
-          const displayIp = ips[0]
 
           // Start mDNS
           try {
@@ -91,6 +200,7 @@ export class DesktopLanSyncService implements ILanSyncService {
             const rawNickname = os.userInfo().username || 'Desktop'
             const safeNickname = rawNickname.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 10)
             const serviceName = `BaiShou-${safeNickname}-${uuidv4().substring(0, 4)}`
+            this.publishedServiceName = serviceName
 
             this.publishedService = this.bonjour.publish({
               name: serviceName,
@@ -103,7 +213,7 @@ export class DesktopLanSyncService implements ILanSyncService {
                 device_type: 'desktop'
               }
             })
-            resolve({ ip: displayIp, port })
+            resolve({ ip: displayIp, port, serviceId: serviceName, allIps: ips })
           } catch (e) {
             this.stopBroadcasting()
             reject(e)
@@ -121,6 +231,7 @@ export class DesktopLanSyncService implements ILanSyncService {
       this.publishedService.stop()
       this.publishedService = null
     }
+    this.publishedServiceName = null
     if (this.bonjour) {
       this.bonjour.destroy()
       this.bonjour = null
@@ -135,16 +246,30 @@ export class DesktopLanSyncService implements ILanSyncService {
     onDeviceFound: (device: DiscoveredDevice) => void,
     onDeviceLost: (deviceId: string) => void
   ): Promise<void> {
+    await this.stopDiscovery()
+
     if (!this.bonjour) {
       this.bonjour = new Bonjour()
     }
 
     this.browser = this.bonjour.find({ type: 'baishou' }, (service) => {
       try {
+        if (this.publishedServiceName && service.name === this.publishedServiceName) {
+          return
+        }
+
         const records = service.txt as any
+        const txtIps = String(records?.ip || '')
+          .split(',')
+          .map((ip) => ip.trim())
+          .filter(Boolean)
+        const addressIps = (service.addresses || []).filter((addr) => !addr.includes(':'))
+        const deviceIp =
+          this.pickBestIp([...txtIps, ...addressIps]) || txtIps[0] || addressIps[0] || 'Unknown'
+
         const device: DiscoveredDevice = {
           nickname: records?.nickname || service.name,
-          ip: (records?.ip || '').split(',')[0] || service.addresses?.[0] || 'Unknown',
+          ip: deviceIp,
           port: service.port,
           deviceType: records?.device_type || 'other',
           rawServiceId: service.name

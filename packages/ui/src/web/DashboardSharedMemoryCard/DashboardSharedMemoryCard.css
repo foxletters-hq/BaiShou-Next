@@ -124,3 +124,18 @@
 .sm-btn:hover {
   opacity: 0.9;
 }
+
+.sm-help-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  color: var(--text-secondary, #64748B);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.sm-help-icon-wrapper:hover {
+  color: var(--color-primary, #5BA8F5);
+}
+

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import styles from './LanSyncCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend, MdQrCode } from 'react-icons/md'
+import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend, MdQrCode, MdHelpOutline } from 'react-icons/md'
+import { Tooltip } from '../Tooltip/Tooltip'
 import { QRCodeSVG } from 'qrcode.react'
 
 export interface DiscoveredDevice {
@@ -15,12 +16,17 @@ export interface DiscoveredDevice {
 }
 
 export interface LanSyncCardProps {
-  onStartBroadcasting: () => Promise<{ ip: string; port: number } | null>
+  onStartBroadcasting: () => Promise<{
+    ip: string
+    port: number
+    serviceId: string
+    allIps?: string[]
+  } | null>
   onStopBroadcasting: () => Promise<void>
   onStartDiscovery: (
     onDeviceFound: (device: DiscoveredDevice) => void,
     onDeviceLost: (deviceId: string) => void
-  ) => Promise<void>
+  ) => Promise<(() => void) | void>
   onStopDiscovery: () => Promise<void>
   onSendFile: (ip: string, port: number, onProgress: (p: number) => void) => Promise<boolean>
   onFileReceivedListener?: (callback: (zipPath: string) => void) => () => void
@@ -54,31 +60,64 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   const [localConnection, setLocalConnection] = useState<{
     ip: string
     port: number
+    serviceId: string
+    allIps?: string[]
   } | null>(null)
   const [showQrCode, setShowQrCode] = useState(false)
+  const discoveryCleanupRef = useRef<(() => void) | null>(null)
+
+  const isSelfDevice = (
+    dev: DiscoveredDevice,
+    connInfo: {
+      ip: string
+      port: number
+      serviceId: string
+      allIps?: string[]
+    } | null
+  ) => {
+    if (!connInfo) return false
+    if (dev.rawServiceId === connInfo.serviceId) return true
+    if (dev.port !== connInfo.port) return false
+    const localIps = connInfo.allIps?.length ? connInfo.allIps : [connInfo.ip]
+    return localIps.includes(dev.ip)
+  }
 
   const startDualMode = async () => {
     setIsActive(true)
+    discoveryCleanupRef.current?.()
+    discoveryCleanupRef.current = null
+
     const connInfo = await onStartBroadcasting()
     if (connInfo) {
       setLocalConnection(connInfo)
     }
-    await onStartDiscovery(
+
+    const cleanup = await onStartDiscovery(
       (dev) =>
         setDevices((prev) => {
-          // 过滤掉自己（IP 和端口都相同则为本机）
-          if (connInfo && dev.ip === connInfo.ip && dev.port === connInfo.port) return prev
+          if (isSelfDevice(dev, connInfo)) return prev
+
           const idx = prev.findIndex((d) => d.rawServiceId === dev.rawServiceId)
-          if (idx !== -1) return prev
+          if (idx !== -1) {
+            const next = [...prev]
+            next[idx] = dev
+            return next
+          }
           return [...prev, dev]
         }),
       (id) => setDevices((prev) => prev.filter((d) => d.rawServiceId !== id))
     )
+    if (typeof cleanup === 'function') {
+      discoveryCleanupRef.current = cleanup
+    }
   }
 
   const stopDualMode = async () => {
     setIsActive(false)
     setDevices([])
+    discoveryCleanupRef.current?.()
+    discoveryCleanupRef.current = null
+    setLocalConnection(null)
     await onStopDiscovery()
     await onStopBroadcasting()
   }
@@ -111,13 +150,14 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   useEffect(() => {
     if (onFileReceivedListener && onImportZip) {
       const unsub = onFileReceivedListener(async (zipPath) => {
-        const confirmText = await dialog.prompt(
+        const confirmed = await dialog.confirm(
           t(
-            'lan.receive_confirm_msg',
-            '【局域网快传接收】\n发现来自局域网设备传来的全量备份包，是否立即应用并覆盖本地数据库？\n请输入 "CONFIRM" 以确认覆盖：'
-          )
+            'lan_transfer.received_backup_content',
+            '来自局域网设备的全量备份包。\n是否立即覆盖当前数据并导入？\n\n注意：导入前会自动创建当前数据的本地快照，可在「数据备份 → 本地快照」中查看。'
+          ),
+          t('lan_transfer.receive_confirm_title', '收到数据包')
         )
-        if (confirmText === 'CONFIRM') {
+        if (confirmed) {
           onImportZip(zipPath)
             .then(() => {
               toast.showSuccess(t('lan.import_success', '导入成功，应用即将重载'))
@@ -160,6 +200,11 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     <div className={styles.container}>
       <div className={styles.appBar}>
         <div style={{ flex: 1 }} />
+        <Tooltip content={t('lan_transfer.usage_tooltip', '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。')}>
+          <button className={styles.helpBtn} type="button" title={t('common.help', '帮助')}>
+            <MdHelpOutline size={20} />
+          </button>
+        </Tooltip>
         {localConnection && (
           <button
             className={styles.qrFixedBtn}

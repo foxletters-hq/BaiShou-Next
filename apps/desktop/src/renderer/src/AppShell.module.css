@@ -1,0 +1,20 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--bg-app);
+  padding-top: 48px;
+  box-sizing: border-box;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  background-color: var(--bg-app);
+}

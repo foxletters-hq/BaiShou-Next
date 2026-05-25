@@ -24,6 +24,7 @@ describe('GitSyncService', () => {
       testRemoteConnection: vi.fn(),
       commit: vi.fn(),
       commitAll: vi.fn(),
+      commitStaged: vi.fn(),
       getHistory: vi.fn(),
       getCommitChanges: vi.fn(),
       getFileDiff: vi.fn(),

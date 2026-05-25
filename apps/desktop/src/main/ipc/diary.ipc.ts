@@ -11,7 +11,7 @@ import { parseDateStr } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 import { pathService, vaultService } from './vault.ipc'
-import { CreateDiaryInput, UpdateDiaryInput } from '@baishou/shared'
+import { CreateDiaryInput, UpdateDiaryInput, DiaryListFilter } from '@baishou/shared'
 
 /**
  * 日记管理服务工厂
@@ -84,13 +84,24 @@ export function registerDiaryIPC() {
     return await getDiaryManager().listAll(options)
   })
 
+  ipcMain.handle('diary:listFiltered', async (_, filter?: DiaryListFilter) => {
+    return await getDiaryManager().listFiltered(filter)
+  })
+
+  ipcMain.handle(
+    'diary:countFiltered',
+    async (_, filter?: Omit<DiaryListFilter, 'limit' | 'offset'>) => {
+      return await getDiaryManager().countFiltered(filter)
+    }
+  )
+
   ipcMain.handle('diary:list', async (_, options?: { limit?: number; offset?: number }) => {
     return await getDiaryManager().listAll(options)
   })
 
   ipcMain.handle(
     'diary:search',
-    async (_, query: string, options?: { limit?: number; offset?: number }) => {
+    async (_, query: string, options?: DiaryListFilter & { limit?: number; offset?: number }) => {
       return await getDiaryManager().search(query, options)
     }
   )

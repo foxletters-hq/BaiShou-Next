@@ -165,7 +165,11 @@ describe('SyncConfig 配置类型', () => {
 describe('ILanSyncService 接口契约', () => {
   it('必须包含完整的双向通讯能力', () => {
     const mock: ILanSyncService = {
-      startBroadcasting: async () => ({ ip: '192.168.1.100', port: 8080 }),
+      startBroadcasting: async () => ({
+        ip: '192.168.1.100',
+        port: 8080,
+        serviceId: 'BaiShou-Test-ab12'
+      }),
       stopBroadcasting: async () => {},
       startDiscovery: async () => {},
       stopDiscovery: async () => {},
@@ -183,7 +187,11 @@ describe('ILanSyncService 接口契约', () => {
 
   it('startBroadcasting 应该返回 IP 和端口', async () => {
     const mock: ILanSyncService = {
-      startBroadcasting: async () => ({ ip: '10.0.0.5', port: 0 }),
+      startBroadcasting: async () => ({
+        ip: '10.0.0.5',
+        port: 0,
+        serviceId: 'BaiShou-Test-cd34'
+      }),
       stopBroadcasting: async () => {},
       startDiscovery: async () => {},
       stopDiscovery: async () => {},

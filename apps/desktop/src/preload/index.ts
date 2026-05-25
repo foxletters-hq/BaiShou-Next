@@ -179,6 +179,8 @@ export const api = {
     findById: (id: number) => ipcRenderer.invoke('diary:findById', id),
     findByDate: (dateStr: string) => ipcRenderer.invoke('diary:findByDate', dateStr),
     listAll: (options?: any) => ipcRenderer.invoke('diary:listAll', options),
+    listFiltered: (filter?: any) => ipcRenderer.invoke('diary:listFiltered', filter),
+    countFiltered: (filter?: any) => ipcRenderer.invoke('diary:countFiltered', filter),
     search: (query: string, options?: any) => ipcRenderer.invoke('diary:search', query, options),
     count: () => ipcRenderer.invoke('diary:count'),
     onSyncEvent: (callback: (event: any) => void) => {
@@ -283,6 +285,7 @@ export const api = {
     updateConfig: (config: any) => ipcRenderer.invoke('git:updateConfig', config),
     testRemote: () => ipcRenderer.invoke('git:testRemote'),
     commitAll: (message: string) => ipcRenderer.invoke('git:commitAll', message),
+    commitStaged: (message: string) => ipcRenderer.invoke('git:commitStaged', message),
     commit: (files: string[], message: string) => ipcRenderer.invoke('git:commit', files, message),
     getHistory: (filePath?: string, limit?: number, offset?: number) =>
       ipcRenderer.invoke('git:getHistory', filePath, limit, offset),

@@ -21,9 +21,20 @@
   
   /* Glassmorphism Overlays (Light) */
   --bg-overlay: rgba(0, 0, 0, 0.35);
-  --bg-glass-surface: rgba(255, 255, 255, 0.85);
-  --blur-overlay: blur(8px);
-  --blur-glass: blur(12px);
+  --bg-glass-surface: rgba(255, 255, 255, 0.48);
+  --bg-glass-inset: rgba(255, 255, 255, 0.24);
+  --blur-overlay: blur(20px) saturate(200%);
+  --blur-glass: blur(28px) saturate(200%);
+
+  /* 窗口顶栏专用毛玻璃（比通用层更透、更亮） */
+  --titlebar-glass-bg: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.58) 0%,
+    rgba(255, 255, 255, 0.22) 100%
+  );
+  --titlebar-glass-blur: blur(40px) saturate(220%) brightness(1.06);
+  --titlebar-glass-border: rgba(255, 255, 255, 0.62);
+  --titlebar-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 4px 24px rgba(91, 168, 245, 0.08);
 
   /* Borders / Dividers (Light) */
   --border-subtle: rgba(0, 0, 0, 0.04);
@@ -112,7 +123,17 @@
 
   /* Glassmorphism Overlays (Dark) */
   --bg-overlay: rgba(0, 0, 0, 0.55);
-  --bg-glass-surface: rgba(38, 38, 41, 0.75);
+  --bg-glass-surface: rgba(30, 30, 34, 0.40);
+  --bg-glass-inset: rgba(255, 255, 255, 0.06);
+
+  --titlebar-glass-bg: linear-gradient(
+    180deg,
+    rgba(48, 48, 52, 0.72) 0%,
+    rgba(26, 26, 30, 0.28) 100%
+  );
+  --titlebar-glass-blur: blur(40px) saturate(180%) brightness(1.12);
+  --titlebar-glass-border: rgba(255, 255, 255, 0.14);
+  --titlebar-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 4px 24px rgba(0, 0, 0, 0.35);
 
   /* Borders / Dividers (Dark) */
   --border-subtle: rgba(255, 255, 255, 0.08); /* increased visibility for dividers */

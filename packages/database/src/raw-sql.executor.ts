@@ -24,18 +24,23 @@ export async function executeRawSql(
     return await client.execute(statement)
   }
 
-  if (args.length > 0) {
-    const stmt = client.prepare(statement)
-    const info = stmt.run(...args)
-    return {
-      rows: [],
-      rowsAffected: info.changes,
-      lastInsertRowid: info.lastInsertRowid
-    }
-  }
-
   const trimmed = statement.trim().toUpperCase()
   const isReadQuery = trimmed.startsWith('SELECT') || trimmed.includes('TABLE_INFO')
+
+  if (args.length > 0) {
+    const stmt = client.prepare(statement)
+    if (isReadQuery) {
+      const rows = stmt.all(...args)
+      return { rows }
+    } else {
+      const info = stmt.run(...args)
+      return {
+        rows: [],
+        rowsAffected: info.changes,
+        lastInsertRowid: info.lastInsertRowid
+      }
+    }
+  }
 
   if (isReadQuery) {
     const rows = client.prepare(statement).all()

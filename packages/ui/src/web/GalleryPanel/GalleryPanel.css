@@ -10,7 +10,7 @@
 .gallery-tabs-container {
   display: flex;
   gap: 8px;
-  background: var(--bg-surface-lowest, rgba(248, 250, 252, 0.5));
+  background: var(--bg-surface, #ffffff);
   padding: 6px;
   border-radius: 12px 12px 0 0;
   width: fit-content;
@@ -61,7 +61,7 @@
   flex-shrink: 0;
   overflow-y: auto;
   padding: 8px;
-  background: var(--bg-surface-lowest, rgba(248, 250, 252, 0.5));
+  background: var(--bg-surface, #ffffff);
   height: 100%;
 }
 
@@ -138,7 +138,7 @@
 .gallery-detail {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 16px 24px;
   display: flex;
   flex-direction: column;
 }
@@ -160,10 +160,21 @@
 .gallery-detail-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.gallery-detail-content > *:first-child,
+.gallery-detail-content > div > *:first-child,
+.gallery-detail-content h1:first-child,
+.gallery-detail-content h2:first-child,
+.gallery-detail-content h3:first-child,
+.gallery-detail-content h4:first-child,
+.gallery-detail-content h5:first-child,
+.gallery-detail-content h6:first-child {
+  margin-top: 0.2em !important;
 }
 
 .gallery-detail-meta {
@@ -380,26 +391,28 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: var(--bg-surface-normal);
-  color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #111111);
+  border: 1px solid rgba(var(--color-primary-rgb, 91, 168, 245), 0.2);
+  padding: 8px 14px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   min-width: 110px;
-  transition: all var(--duration-fast) var(--ease-out-cubic);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .gallery-year-select-trigger:hover {
-  border-color: var(--color-primary);
-  background: rgba(var(--color-primary-rgb), 0.05);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.06);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .gallery-year-select-trigger.open {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.15);
+  border-color: var(--color-primary, #5ba8f5);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
 }
 
 .gallery-select-chevron {
@@ -411,49 +424,193 @@
   transform: rotate(180deg);
 }
 
-.gallery-year-select-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
+/* 年份选择弹窗 Overlay */
+.gallery-year-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
   right: 0;
-  z-index: 50;
-  background: var(--bg-surface-raised);
-  border: 1px solid var(--border-muted);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  min-width: 120px;
-  max-height: 250px;
-  overflow-y: auto;
-  padding: 4px;
-  animation: dropdown-fade-in var(--duration-fast) var(--ease-out-cubic);
+  bottom: 0;
+  z-index: 10000;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
 }
 
-@keyframes dropdown-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* 弹窗卡片 Content */
+.gallery-year-modal-content {
+  width: 420px;
+  max-width: 90vw;
+  background: var(--bg-surface, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  overflow: hidden;
 }
 
-.gallery-year-select-option {
-  padding: 8px 12px;
-  border-radius: var(--radius-xs);
-  font-size: 13px;
+.gallery-year-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gallery-year-modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.gallery-year-modal-close {
+  background: transparent;
+  border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--duration-fast) ease;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
-.gallery-year-select-option:hover {
-  background: var(--bg-surface-high);
+.gallery-year-modal-close:hover {
+  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
   color: var(--text-primary);
 }
 
-.gallery-year-select-option.active {
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+.gallery-year-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.gallery-year-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gallery-year-modal-body::-webkit-scrollbar-thumb {
+  background: var(--border-subtle, rgba(200, 200, 200, 0.4));
+  border-radius: 3px;
+}
+
+/* 全部年份 独立大按钮 */
+.gallery-year-modal-all-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-lowest, #f8fafc);
+  color: var(--text-secondary);
+  font-size: 14px;
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.gallery-year-modal-all-btn:hover {
+  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
+  color: var(--color-primary, #5ba8f5);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+}
+
+.gallery-year-modal-all-btn.active {
+  background: var(--color-primary, #5ba8f5) !important;
+  color: var(--text-on-primary, #ffffff) !important;
+  border-color: var(--color-primary, #5ba8f5) !important;
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+}
+
+/* 粘性置顶容器 */
+.gallery-year-modal-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-surface, #ffffff);
+  padding-bottom: 8px;
+  margin-top: -4px;
+}
+
+/* 网格布局 */
+.gallery-year-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.gallery-year-modal-grid-item {
+  padding: 10px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-lowest, #f8fafc);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.gallery-year-modal-grid-item:hover {
+  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
+  color: var(--text-primary);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+}
+
+/* 激活的年份 */
+.gallery-year-modal-grid-item.active {
+  background: var(--color-primary, #5ba8f5) !important;
+  color: var(--text-on-primary, #ffffff) !important;
+  border-color: var(--color-primary, #5ba8f5) !important;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+}
+
+/* Dark Mode Support for Modal */
+[data-theme="dark"] .gallery-year-modal-content {
+  background: var(--bg-surface-raised, #1a1a1a);
+  border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .gallery-year-modal-sticky-header {
+  background: var(--bg-surface-raised, #1a1a1a);
+}
+
+[data-theme="dark"] .gallery-year-modal-all-btn,
+[data-theme="dark"] .gallery-year-modal-grid-item {
+  background: var(--bg-surface-lowest, #121212);
+  border-color: var(--border-subtle, rgba(255, 255, 255, 0.05));
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .gallery-year-modal-all-btn:hover,
+[data-theme="dark"] .gallery-year-modal-grid-item:hover {
+  background: var(--bg-surface-high, #262626);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .gallery-year-modal-all-btn.active,
+[data-theme="dark"] .gallery-year-modal-grid-item.active {
+  background: var(--color-primary, #5ba8f5) !important;
+  color: var(--text-on-primary, #ffffff) !important;
+}
+
+[data-theme="dark"] .gallery-year-select-trigger {
+  background: var(--bg-surface, #1e1e1e);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }

@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PageSizeSelector, Pagination } from '@baishou/ui'
 import './GitManagementPage.css'
+import { HelpCircle } from 'lucide-react'
+import { Tooltip } from '../Tooltip/Tooltip'
+import { useDialog } from '../Dialog'
 import type {
   GitSyncConfig,
   GitCommit,
@@ -21,9 +24,12 @@ export interface GitManagementPageProps {
   isInitialized: boolean
   // 远程
   onTestRemote: () => Promise<boolean>
+  /** 仅提交已暂存文件 */
   onCommit: (message: string) => Promise<GitCommit | null>
+  /** 无暂存时自动 stage 全部后提交；有暂存时 UI 优先走 onCommit */
+  onCommitAll: (message: string) => Promise<GitCommit | null>
   // 提示
-  onToast: (message: string, type?: 'success' | 'error' | 'info') => void
+  onToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
   // 状态
   onGetStatus: () => Promise<GitStatus>
   // 历史
@@ -68,6 +74,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   isInitialized,
   onTestRemote,
   onCommit,
+  onCommitAll,
   onToast,
   onGetStatus,
   onGetHistory,
@@ -90,6 +97,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   onRollbackAll
 }) => {
   const { t } = useTranslation()
+  const dialog = useDialog()
 
   const [tab, setTab] = useState<'config' | 'version'>('config')
   const [remoteUrl, setRemoteUrl] = useState(config.remote?.url || '')
@@ -152,6 +160,28 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
     }
   }, [onGetStatus])
 
+  const handleLoadHistory = useCallback(async () => {
+    try {
+      const offset = (page - 1) * pageSize
+      const entries = await onGetHistory(undefined, pageSize, offset)
+      setTotalCount(
+        entries.length === pageSize ? page * pageSize + 1 : (page - 1) * pageSize + entries.length
+      )
+      setHistory(entries)
+    } catch {
+      onToast(t('version_control.load_history_failed', '加载历史失败'), 'error')
+    }
+  }, [onGetHistory, page, pageSize, onToast, t])
+
+  const handleLoadRecentPulls = useCallback(async () => {
+    try {
+      const pulls = await onGetRecentPulls(10)
+      setRecentPulls(pulls)
+    } catch {
+      // 静默失败
+    }
+  }, [onGetRecentPulls])
+
   const handleInit = useCallback(async () => {
     const result = await onInit()
     if (result.success) {
@@ -212,58 +242,117 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
     )
   }, [onPush, onToast, t])
 
+  const stagedCount = gitStatus?.staged.length ?? 0
+  const unstagedCount = (gitStatus?.unstaged.length ?? 0) + (gitStatus?.untracked.length ?? 0)
+  const canCommit = stagedCount > 0 || unstagedCount > 0
+
+  const performCommit = useCallback(
+    async (msg: string) => {
+      if (stagedCount > 0) {
+        return onCommit(msg)
+      }
+      return onCommitAll(msg)
+    },
+    [stagedCount, onCommit, onCommitAll]
+  )
+
+  const notifyCommitOutcome = useCallback(
+    (fileCount: number, mode: 'local' | 'push', usedStagedOnly: boolean) => {
+      if (fileCount === 0) {
+        onToast(
+          t('version_control.commit_result_count', '已提交 {{count}} 个文件', { count: 0 }),
+          'warning'
+        )
+        return
+      }
+
+      if (mode === 'push') {
+        onToast(
+          usedStagedOnly
+            ? t(
+                'version_control.commit_success_count',
+                '提交成功: {{count}} 个文件已提交，正在推送...',
+                { count: fileCount }
+              )
+            : t(
+                'version_control.commit_all_success_count_pushing',
+                '已暂存并提交 {{count}} 个文件，正在推送...',
+                { count: fileCount }
+              ),
+          'success'
+        )
+        return
+      }
+
+      onToast(
+        usedStagedOnly
+          ? t('version_control.commit_success_count', '提交成功: {{count}} 个文件已提交', {
+              count: fileCount
+            })
+          : t('version_control.commit_all_success_count', '已暂存并提交 {{count}} 个文件', {
+              count: fileCount
+            }),
+        'success'
+      )
+    },
+    [onToast, t]
+  )
+
   const handleManualCommit = useCallback(async () => {
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
     const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
     const msg = commitMessage.trim() || timestamp
+    const usedStagedOnly = stagedCount > 0
     try {
-      const result = await onCommit(msg)
-      if (!result) {
-        onToast(t('version_control.no_changes', '没有待提交的变更'), 'info')
-        return
-      }
-      onToast(
-        t('version_control.commit_success_count', '提交成功: {{count}} 个文件已提交', {
-          count: result.files.length
-        }),
-        'success'
-      )
+      const result = await performCommit(msg)
+      const fileCount = result?.files?.length ?? 0
+      notifyCommitOutcome(fileCount, 'local', usedStagedOnly)
+      if (fileCount === 0) return
+
       setCommitMessage('')
       handleRefreshStatus()
       handleLoadHistory()
     } catch (e: any) {
       const errorMsg = e?.message || ''
       if (errorMsg.includes('No changes')) {
-        onToast(t('version_control.no_changes', '没有待提交的变更'), 'info')
+        notifyCommitOutcome(0, 'local', usedStagedOnly)
       } else {
         onToast(errorMsg || t('version_control.git_commit_failed', '提交失败'), 'error')
       }
     }
-  }, [commitMessage, onCommit, onToast, t, handleRefreshStatus])
+  }, [
+    commitMessage,
+    performCommit,
+    stagedCount,
+    notifyCommitOutcome,
+    onToast,
+    t,
+    handleRefreshStatus,
+    handleLoadHistory
+  ])
 
   const handleCommitAndPush = useCallback(async () => {
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
     const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
     const msg = commitMessage.trim() || timestamp
+    const usedStagedOnly = stagedCount > 0
     try {
-      const result = await onCommit(msg)
-      if (!result) {
-        onToast(t('version_control.no_changes', '没有待提交的变更'), 'info')
+      const result = await performCommit(msg)
+      const fileCount = result?.files?.length ?? 0
+      if (fileCount === 0) {
+        notifyCommitOutcome(0, 'push', usedStagedOnly)
         return
       }
-      onToast(
-        t('version_control.commit_success_count', '提交成功: {{count}} 个文件已提交，正在推送...', {
-          count: result.files.length
-        }),
-        'success'
-      )
+
+      notifyCommitOutcome(fileCount, 'push', usedStagedOnly)
       setCommitMessage('')
       setSelectedCommit(null)
       setCommitChanges([])
       setSelectedFileDiff(null)
       handleRefreshStatus()
+      handleLoadHistory()
       const pushResult = await onPush()
       onToast(
         pushResult.success
@@ -272,9 +361,24 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
         pushResult.success ? 'success' : 'error'
       )
     } catch (e: any) {
-      onToast(e?.message || t('version_control.git_commit_failed', '提交失败'), 'error')
+      const errorMsg = e?.message || ''
+      if (errorMsg.includes('No changes')) {
+        notifyCommitOutcome(0, 'push', usedStagedOnly)
+      } else {
+        onToast(e?.message || t('version_control.git_commit_failed', '提交失败'), 'error')
+      }
     }
-  }, [commitMessage, onCommit, onPush, onToast, t, handleRefreshStatus])
+  }, [
+    commitMessage,
+    performCommit,
+    stagedCount,
+    notifyCommitOutcome,
+    onPush,
+    onToast,
+    t,
+    handleRefreshStatus,
+    handleLoadHistory
+  ])
 
   const handlePull = useCallback(async () => {
     const result = await onPull()
@@ -288,29 +392,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
         setConflicts(result.conflicts)
       }
     }
-  }, [onPull, onToast, t, handleRefreshStatus])
-
-  const handleLoadHistory = useCallback(async () => {
-    try {
-      const offset = (page - 1) * pageSize
-      const entries = await onGetHistory(undefined, pageSize, offset)
-      setTotalCount(
-        entries.length === pageSize ? page * pageSize + 1 : (page - 1) * pageSize + entries.length
-      )
-      setHistory(entries)
-    } catch {
-      onToast(t('version_control.load_history_failed', '加载历史失败'), 'error')
-    }
-  }, [onGetHistory, page, pageSize, onToast, t])
-
-  const handleLoadRecentPulls = useCallback(async () => {
-    try {
-      const pulls = await onGetRecentPulls(10)
-      setRecentPulls(pulls)
-    } catch {
-      // 静默失败
-    }
-  }, [onGetRecentPulls])
+  }, [onPull, onToast, t, handleRefreshStatus, handleLoadHistory])
 
   useEffect(() => {
     if (tab === 'version') {
@@ -435,9 +517,6 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
     [onRollbackAll, onToast, t]
   )
 
-  const stagedCount = gitStatus?.staged.length ?? 0
-  const unstagedCount = (gitStatus?.unstaged.length ?? 0) + (gitStatus?.untracked.length ?? 0)
-
   const getFileStatusIcon = (status: string) => {
     switch (status) {
       case 'added':
@@ -485,13 +564,17 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            {/* 初始化 Git */}
             {!isInitialized && (
               <div className="gmp-section">
-                <div className="gmp-section-header">
-                  <span className="gmp-label">
-                    {t('version_control.git_status', 'Git 仓库状态')}
-                  </span>
+                <div className="gmp-section-header" style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="gmp-label" style={{ marginBottom: 0 }}>
+                      {t('version_control.git_status', 'Git 仓库状态')}
+                    </span>
+                    <Tooltip content={t('version_control.git_status_tooltip', 'Git 用于本地数据版本控制，支持记录修改历史、推送到远程 Git 仓库（如 GitHub/Gitee）进行备份，以及多设备间同步。如果您在操作同步或备份恢复功能时误恢复了错误版本，可通过版本控制进行回滚或撤销变更，防止数据丢失。本功能仅在桌面端提供，移动端出于性能与平台限制未予支持。')}>
+                      <HelpCircle size={14} style={{ color: 'var(--text-tertiary)', cursor: 'pointer' }} />
+                    </Tooltip>
+                  </div>
                 </div>
                 <button className="gmp-btn gmp-btn-primary" onClick={handleInit}>
                   {t('version_control.init_git', '初始化 Git 仓库')}
@@ -500,10 +583,15 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
             )}
             {isInitialized && (
               <div className="gmp-section">
-                <div className="gmp-section-header">
-                  <span className="gmp-label">
-                    {t('version_control.git_status', 'Git 仓库状态')}
-                  </span>
+                <div className="gmp-section-header" style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="gmp-label" style={{ marginBottom: 0 }}>
+                      {t('version_control.git_status', 'Git 仓库状态')}
+                    </span>
+                    <Tooltip content={t('version_control.git_status_tooltip', 'Git 用于本地数据版本控制，支持记录修改历史、推送到远程 Git 仓库（如 GitHub/Gitee）进行备份，以及多设备间同步。如果您在操作同步或备份恢复功能时误恢复了错误版本，可通过版本控制进行回滚或撤销变更，防止数据丢失。本功能仅在桌面端提供，移动端出于性能与平台限制未予支持。')}>
+                      <HelpCircle size={14} style={{ color: 'var(--text-tertiary)', cursor: 'pointer' }} />
+                    </Tooltip>
+                  </div>
                   <span style={{ fontSize: 13, color: 'var(--color-primary)' }}>
                     {t('version_control.git_enabled', '已启用')}
                   </span>
@@ -677,10 +765,18 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                     '输入提交消息，留空将使用时间戳'
                   )}
                 />
-                <button className="gmp-btn gmp-btn-primary" onClick={handleManualCommit}>
+                <button
+                  className="gmp-btn gmp-btn-primary"
+                  onClick={handleManualCommit}
+                  disabled={!canCommit}
+                >
                   {t('version_control.commit_local', '提交')}
                 </button>
-                <button className="gmp-btn gmp-btn-primary" onClick={handleCommitAndPush}>
+                <button
+                  className="gmp-btn gmp-btn-primary"
+                  onClick={handleCommitAndPush}
+                  disabled={!canCommit}
+                >
                   {t('version_control.commit_push', '提交并推送')}
                 </button>
               </div>

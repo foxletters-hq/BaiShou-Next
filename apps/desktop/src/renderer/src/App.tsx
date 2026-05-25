@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { MainLayout } from './layouts/MainLayout'
+import { CachedRoutePlaceholder } from './layouts/MainPageCache'
 import { HomeScreen } from './features/home/HomeScreen'
 import { AgentScreen } from './features/agent/AgentScreen'
 import { OnboardingScreen } from './features/onboarding/OnboardingScreen'
@@ -9,15 +10,9 @@ import { AssistantEditScreen } from './features/agent/AssistantEditScreen'
 import { AgentLayout } from './features/agent/AgentLayout'
 
 // Phase 14: Recover Missing Feature Routes
-import { DiaryPage } from './features/diary/DiaryPage'
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage'
 import { SettingsPage } from './features/settings/SettingsPage'
-import { SummaryPage } from './features/summary/SummaryPage'
 import { SummaryDetailPage } from './features/summary/SummaryDetailPage'
-import { LanTransferPage } from './features/settings/LanTransferPage'
-import { CloudSyncPage } from './features/settings/CloudSyncPage'
-import { IncrementalSyncPage } from './features/settings/IncrementalSyncPage'
-import { GitManagementPage } from './features/settings/GitManagementPage'
 import { useToast, useDialog, DialogProvider, ToastProvider, GlobalInputContextMenu } from '@baishou/ui'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +20,7 @@ import { useSettingsStore, useSyncStore } from '@baishou/store'
 import { i18n } from '@baishou/shared'
 import { TitleBar } from './components/TitleBar'
 import { useZoom } from './hooks/useZoom'
+import shellStyles from './AppShell.module.css'
 
 const GlobalErrorHandler = () => {
   const toast = useToast()
@@ -91,17 +87,17 @@ const AppRoutes = () => {
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomeScreen />} />
 
-          {/* Main Business Logic Sub-Routes */}
-          <Route path="/diary" element={<DiaryPage />} />
+          {/* Main Business Logic Sub-Routes — 列表页由 MainPageCache 保活 */}
+          <Route path="/diary" element={<CachedRoutePlaceholder />} />
           <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
-          <Route path="/summary" element={<SummaryPage />} />
+          <Route path="/summary" element={<CachedRoutePlaceholder />} />
           <Route path="/summary/:id" element={<SummaryDetailPage />} />
 
           {/* Tools Routing */}
-          <Route path="/lan-transfer" element={<LanTransferPage />} />
-          <Route path="/data-sync" element={<CloudSyncPage />} />
-          <Route path="/incremental-sync" element={<IncrementalSyncPage />} />
-          <Route path="/git" element={<GitManagementPage />} />
+          <Route path="/lan-transfer" element={<CachedRoutePlaceholder />} />
+          <Route path="/data-sync" element={<CachedRoutePlaceholder />} />
+          <Route path="/incremental-sync" element={<CachedRoutePlaceholder />} />
+          <Route path="/git" element={<CachedRoutePlaceholder />} />
 
           {/* AI / Agent Role Routing - Wrapped in AgentLayout */}
           <Route element={<AgentLayout />}>
@@ -120,6 +116,21 @@ const AppRoutes = () => {
         </Routes>
       )}
     </>
+  )
+}
+
+const AppShell: React.FC = () => {
+  const location = useLocation()
+  const isOnboarding = location.pathname.startsWith('/welcome')
+
+  return (
+    <div className={shellStyles.shell}>
+      {!isOnboarding && <div className={shellStyles.titlebarBackdrop} aria-hidden />}
+      <TitleBar />
+      <div className={shellStyles.content}>
+        <AppRoutes />
+      </div>
+    </div>
   )
 }
 
@@ -203,21 +214,7 @@ export function App() {
         <GlobalErrorHandler />
         <GlobalInputContextMenu />
         <ErrorBoundary>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100vh',
-              width: '100vw',
-              overflow: 'hidden',
-              position: 'relative'
-            }}
-          >
-            <TitleBar />
-            <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
-              <AppRoutes />
-            </div>
-          </div>
+          <AppShell />
         </ErrorBoundary>
       </DialogProvider>
     </HashRouter>

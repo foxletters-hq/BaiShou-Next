@@ -817,4 +817,11 @@ export function registerChatIPC() {
       return { success: false, error: e.message }
     }
   })
+
+  // 软件启动时，自动尝试异步拉取最新的计费信息，确保首屏加载或点开计费面板时有最新价格和有效更新时间
+  ModelPricingService.getInstance()
+    .ensureLoaded()
+    .catch((err) => {
+      logger.warn('[ModelPricingService] Failed to auto-fetch pricing on boot:', err)
+    })
 }

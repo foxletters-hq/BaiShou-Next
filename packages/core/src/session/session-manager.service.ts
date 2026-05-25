@@ -46,6 +46,21 @@ export class SessionManagerService {
     await this.flushSessionToDisk(id)
   }
 
+  /**
+   * 更新会话标题
+   */
+  async updateTitle(sessionId: string, title: string): Promise<void> {
+    await this.sessionRepo.updateSessionTitle(sessionId, title)
+    await this.flushSessionToDisk(sessionId)
+  }
+
+  /**
+   * 获取所有会话列表（findAllSessions 的便捷别名）
+   */
+  async list(limit: number = 20, offset: number = 0, assistantId?: string) {
+    return this.findAllSessions(limit, offset, assistantId)
+  }
+
   async deleteSessions(ids: string[]): Promise<void> {
     await this.sessionRepo.deleteSessions(ids)
     for (const id of ids) {

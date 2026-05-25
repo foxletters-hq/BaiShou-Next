@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { Edit3, Trash2, Calendar, Tag, Save, X, ChevronDown } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { CodeMirrorEditor } from '../DiaryEditor'
 import './GalleryPanel.css'
@@ -37,7 +39,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   onDelete,
   onSave
 }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>(
     'weekly'
   )
@@ -47,22 +49,23 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   const [selectedYear, setSelectedYear] = useState<string>('all')
   const [pageSize, setPageSize] = useState<number>(10)
 
-  // 自定义年份下拉框展开状态与 Ref
-  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false)
-  const yearDropdownRef = useRef<HTMLDivElement>(null)
+  // 年份选择器弹窗状态与 activeYearRef 自动定位滚动
+  const [isYearPickerOpen, setIsYearPickerOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const activeYearRef = useRef<HTMLButtonElement>(null)
 
-  // 点击外部关闭年份下拉框
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target as Node)) {
-        setIsYearDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
+    setMounted(true)
   }, [])
+
+  // 弹窗打开时滚动到当前选中的年份
+  useEffect(() => {
+    if (isYearPickerOpen) {
+      setTimeout(() => {
+        activeYearRef.current?.scrollIntoView({ block: 'center', behavior: 'auto' })
+      }, 80)
+    }
+  }, [isYearPickerOpen])
 
   // 编辑模式状态
   const [isEditing, setIsEditing] = useState(false)
@@ -120,15 +123,21 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
     return filteredAndSortedSummaries[0]
   }, [filteredAndSortedSummaries, selectedId])
 
+  /** 格式化周报起始日期 */
+  const formatWeeklyStartDate = (date: Date) => {
+    return date.toLocaleDateString(i18n.language, { month: 'long', day: 'numeric' })
+  }
+
   /** 格式化日期范围 */
   const formatDateRange = (s: SummaryItem) => {
-    if (!s.startDate || !s.endDate) return ''
+    if (!s.startDate) return ''
     const start = new Date(s.startDate)
-    const end = new Date(s.endDate)
 
     if (s.type === 'weekly') {
-      return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`
+      return formatWeeklyStartDate(start)
     }
+    if (!s.endDate) return ''
+    const end = new Date(s.endDate)
     if (s.type === 'monthly') {
       return `${start.getFullYear()}年${start.getMonth() + 1}月`
     }
@@ -149,11 +158,15 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
 
     if (s.type === 'weekly') {
       const weekNum = getWeekNumber(dateObj)
-      return t('summary.card_week_title', '第 $week 周').replace('$week', String(weekNum))
+      const year = dateObj.getFullYear()
+      return t('summary.missing_label_weekly', '$year年第$week周')
+        .replace('$year', String(year))
+        .replace('$week', String(weekNum))
     }
     if (s.type === 'monthly') {
       const month = dateObj.getMonth() + 1
-      return t('summary.card_month_title', '$month月').replace('$month', String(month))
+      const year = dateObj.getFullYear()
+      return `${year}年${month}月`
     }
     if (s.type === 'quarterly') {
       const q = Math.ceil((dateObj.getMonth() + 1) / 3)
@@ -198,16 +211,15 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   const handleTabChange = (tab: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
     setActiveTab(tab)
     setSelectedId(null)
-    setSelectedYear('all')
     setPageSize(10)
-    setIsYearDropdownOpen(false)
+    setIsYearPickerOpen(false)
   }
 
   const handleYearChange = (year: string) => {
     setSelectedYear(year)
     setSelectedId(null)
     setPageSize(10)
-    setIsYearDropdownOpen(false)
+    setIsYearPickerOpen(false)
   }
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -263,10 +275,10 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
 
         {/* 年份筛选下拉选择器：当有年份数据时在所有标签页显示 */}
         {availableYears.length > 0 && (
-          <div className="gallery-filter-container" ref={yearDropdownRef}>
+          <div className="gallery-filter-container">
             <button
-              className={`gallery-year-select-trigger ${isYearDropdownOpen ? 'open' : ''}`}
-              onClick={() => setIsYearDropdownOpen((prev) => !prev)}
+              className={`gallery-year-select-trigger ${isYearPickerOpen ? 'open' : ''}`}
+              onClick={() => setIsYearPickerOpen(true)}
             >
               <span>
                 {selectedYear === 'all'
@@ -275,28 +287,89 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
               </span>
               <ChevronDown size={16} className="gallery-select-chevron" />
             </button>
-            {isYearDropdownOpen && (
-              <div className="gallery-year-select-dropdown">
-                <div
-                  className={`gallery-year-select-option ${selectedYear === 'all' ? 'active' : ''}`}
-                  onClick={() => handleYearChange('all')}
-                >
-                  {t('gallery.filter_all_years', '全部年份')}
-                </div>
-                {availableYears.map((year) => (
-                  <div
-                    key={year}
-                    className={`gallery-year-select-option ${selectedYear === year ? 'active' : ''}`}
-                    onClick={() => handleYearChange(year)}
-                  >
-                    {year}年
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </div>
+
+      {/* 传送门渲染年份选择弹窗 */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {isYearPickerOpen && (
+              <motion.div
+                className="gallery-year-modal-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsYearPickerOpen(false)}
+              >
+                <motion.div
+                  className="gallery-year-modal-content"
+                  initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{
+                    opacity: 0,
+                    scale: 0.96,
+                    transition: { duration: 0.15 }
+                  }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="gallery-year-modal-header">
+                    <h3>{t('gallery.select_year', '选择年份')}</h3>
+                    <button
+                      className="gallery-year-modal-close"
+                      onClick={() => setIsYearPickerOpen(false)}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="gallery-year-modal-body">
+                    {/* 全部年份 粘性置顶容器 */}
+                    <div className="gallery-year-modal-sticky-header">
+                      <button
+                        ref={selectedYear === 'all' ? activeYearRef : null}
+                        className={`gallery-year-modal-all-btn ${
+                          selectedYear === 'all' ? 'active' : ''
+                        }`}
+                        onClick={() => {
+                          handleYearChange('all')
+                          setIsYearPickerOpen(false)
+                        }}
+                      >
+                        {t('gallery.filter_all_years', '全部年份')}
+                      </button>
+                    </div>
+
+                    {/* 年份网格 */}
+                    <div className="gallery-year-modal-grid">
+                      {availableYears.map((year) => {
+                        const isSelected = selectedYear === year
+                        return (
+                          <button
+                            key={year}
+                            ref={isSelected ? activeYearRef : null}
+                            className={`gallery-year-modal-grid-item ${
+                              isSelected ? 'active' : ''
+                            }`}
+                            onClick={() => {
+                              handleYearChange(year)
+                              setIsYearPickerOpen(false)
+                            }}
+                          >
+                            {year}年
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
       {/* 双栏布局 */}
       <div className="gallery-layout">
@@ -320,7 +393,9 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
                 >
                   <div className="gallery-list-item-header">
                     <span className="gallery-list-item-title">{getTitle(item)}</span>
-                    <span className="gallery-list-item-date">{formatDateRange(item)}</span>
+                    {item.type === 'weekly' && (
+                      <span className="gallery-list-item-date">{formatDateRange(item)}</span>
+                    )}
                   </div>
                   {getPreview(item.content) && (
                     <div className="gallery-list-item-preview">{getPreview(item.content)}</div>

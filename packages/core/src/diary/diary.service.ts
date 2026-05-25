@@ -7,6 +7,7 @@ import {
   UpdateDiaryInput,
   Diary,
   DiaryMeta,
+  DiaryListFilter,
   formatLocalDate,
   parseDateStr
 } from '@baishou/shared'
@@ -196,33 +197,100 @@ export class DiaryService {
 
   async listAll(options?: { limit?: number; offset?: number }): Promise<DiaryMeta[]> {
     const shadows = await this.shadowRepo.listAllWithFTS(options)
-    return shadows.map((s) => {
-      let parsedTags: string[] = []
-      if (s.tagsStr) {
-        parsedTags = s.tagsStr
-          .split(',')
-          .map((t: string) => t.trim())
-          .filter(Boolean)
-      }
-      return {
-        id: s.id,
-        // DB date 字段存 YYYY-MM-DD，用 parseDateStr 解析为本地时区 Date
-        date: parseDateStr(s.date.split('T')[0]!),
-        preview: s.rawContent ? s.rawContent.substring(0, 500) : '',
-        tags: parsedTags,
-        updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
-        weather: s.weather || undefined,
-        mood: s.mood || undefined,
-        location: s.location || undefined,
-        isFavorite: s.isFavorite || false,
-        hasMedia: s.hasMedia || false
-      }
-    })
+    return shadows.map((s) => this.mapShadowRowToMeta(s))
   }
 
-  async search(query: string, options?: { limit?: number; offset?: number }): Promise<any[]> {
-    // 直接下探 ShadowIndex 全文快速检索表
-    return this.shadowRepo.searchFTS(query, options?.limit)
+  async listFiltered(filter: DiaryListFilter = {}): Promise<DiaryMeta[]> {
+    const shadows = await this.shadowRepo.listFiltered(filter)
+    return shadows.map((s) => this.mapShadowRowToMeta(s))
+  }
+
+  async countFiltered(
+    filter: Omit<DiaryListFilter, 'limit' | 'offset'> = {}
+  ): Promise<number> {
+    return this.shadowRepo.countFiltered(filter)
+  }
+
+  async search(
+    query: string,
+    options?: DiaryListFilter & { limit?: number; offset?: number }
+  ): Promise<DiaryMeta[]> {
+    const limit = options?.limit ?? 50
+    const offset = options?.offset ?? 0
+    const ftsResults = await this.shadowRepo.searchFTS(query, limit, offset)
+    if (ftsResults.length === 0) return []
+
+    const ids = ftsResults.map((r) => r.rowid)
+    const rows = await this.shadowRepo.findByIds(ids)
+    const rowMap = new Map(rows.map((r) => [r.id, r]))
+
+    const { limit: _l, offset: _o, orderBy: _ob, ...filterRest } = options || {}
+    const filterOpts = filterRest as Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
+
+    return ftsResults
+      .map((hit) => {
+        const row = rowMap.get(hit.rowid)
+        if (!row) return null
+        const meta = this.mapShadowRowToMeta(row, hit.contentSnippet)
+        return this.matchesListFilter(meta, filterOpts) ? meta : null
+      })
+      .filter((item): item is DiaryMeta => item !== null)
+  }
+
+  private matchesListFilter(meta: DiaryMeta, filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>): boolean {
+    if (filter.year != null && filter.month != null) {
+      if (
+        meta.date.getFullYear() !== filter.year ||
+        meta.date.getMonth() + 1 !== filter.month
+      ) {
+        return false
+      }
+    }
+    if (filter.favorite && !meta.isFavorite) return false
+    if (filter.weathers && filter.weathers.length > 0) {
+      if (!meta.weather || !filter.weathers.includes(meta.weather)) return false
+    }
+    return true
+  }
+
+  private mapShadowRowToMeta(
+    s: {
+      id: number
+      date: string
+      updatedAt: string
+      weather: string | null
+      mood: string | null
+      location: string | null
+      isFavorite: boolean
+      hasMedia: boolean
+      rawContent?: string | null
+      tags?: string | null
+      tagsStr?: string | null
+    },
+    previewOverride?: string
+  ): DiaryMeta {
+    const tagsSource = s.tags ?? s.tagsStr ?? ''
+    let parsedTags: string[] = []
+    if (tagsSource) {
+      parsedTags = tagsSource
+        .split(',')
+        .map((t: string) => t.trim())
+        .filter(Boolean)
+    }
+
+    const rawContent = s.rawContent ?? ''
+    return {
+      id: s.id,
+      date: parseDateStr(s.date.split('T')[0]!),
+      preview: previewOverride || (rawContent ? rawContent.substring(0, 500) : ''),
+      tags: parsedTags,
+      updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
+      weather: s.weather || undefined,
+      mood: s.mood || undefined,
+      location: s.location || undefined,
+      isFavorite: s.isFavorite || false,
+      hasMedia: s.hasMedia || false
+    }
   }
 
   async count(): Promise<number> {

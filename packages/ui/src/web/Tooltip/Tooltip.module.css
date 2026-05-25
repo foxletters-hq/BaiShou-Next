@@ -1,38 +1,46 @@
 .container {
-  position: relative;
   display: inline-flex;
 }
 
 .tooltip {
-  position: absolute;
-  bottom: calc(100% + var(--spacing-sm));
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: var(--text-primary);
-  color: var(--bg-surface);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  white-space: nowrap;
+  position: fixed;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 8px);
+  font-size: 13px;
+  white-space: normal;
+  max-width: 280px;
+  width: max-content;
+  line-height: 1.4;
+  text-align: left;
   pointer-events: none;
-  z-index: 100;
-  animation: fadeIn var(--duration-fast) ease-out;
-  box-shadow: var(--shadow-sm);
+  z-index: 99999;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
   font-family: var(--font-family);
+  transition: opacity 0.15s ease-out;
 }
 
 .tooltip::after {
   content: '';
   position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -4px;
   border-width: 4px;
   border-style: solid;
-  border-color: var(--text-primary) transparent transparent transparent;
+  left: var(--arrow-left, 50%);
+  transform: translateX(-50%);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translate(-50%, 4px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+.top::after {
+  top: 100%;
+  border-color: rgba(255, 255, 255, 0.65) transparent transparent transparent;
 }
+
+.bottom::after {
+  bottom: 100%;
+  border-color: transparent transparent rgba(255, 255, 255, 0.65) transparent;
+}
+
+
