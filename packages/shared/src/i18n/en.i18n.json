@@ -238,6 +238,11 @@
     "slogan": "\"Pure White Vow, Guarding a Lifetime\""
   },
   "settings": {
+    "tooltip_summary_model": "This model is used to generate weekly, monthly, quarterly summaries and annuals. Choosing a higher-performing model is recommended for better output quality.",
+    "tooltip_chat_model": "This model is used for daily chat interactions.",
+    "tooltip_naming_model": "Assign a lightweight model to automatically generate titles for your conversations, saving main model compute resources.",
+    "tooltip_embedding_model": "This model is utilized when storing vectors into RAG memory. When a diary changes, AI uses this model to generate vector indices, enabling semantic search index logic.",
+    "tooltip_rag_management": "A local RAG (Retrieval-Augmented Generation) knowledge base that enables AI to retrieve past diary contexts, auto-updating with diary changes for semantic memory recall.",
     "title": "System Settings",
     "general": "General Settings",
     "ai_services": "Provider Management",
@@ -427,6 +432,12 @@
     "mcp_stopped": "Stopped",
     "mcp_port": "Port",
     "mcp_restart": "Restart Server",
+    "tooltip_mcp_server": "Allows external AI clients (such as Cursor, Windsurf, VS Code Claude Dev extension, etc.) to invoke BaiShou's data and tools via the MCP protocol.",
+    "mcp_view_tools": "View Exposed Tools",
+    "mcp_view_tools_desc": "View the list of built-in tools (such as diary and memory management) exposed by the MCP server",
+    "mcp_tools_list": "Exposed MCP Tools",
+    "mcp_no_tools": "No exposed tools detected",
+    "mcp_tools_fetch_failed": "Failed to fetch tools list",
     "web_search_mode_title": "Web Search Mode",
     "web_search_mode_desc": "Choose how this provider performs web searches",
     "web_search_mode_off": "Off",
@@ -1625,5 +1636,37 @@
   },
   "version_control": {
     "git_status_tooltip": "Git is used for local data version control. It tracks change history, backups to remote Git repositories (like GitHub/Gitee), and syncs across devices. If you mistakenly restore a wrong version during file sync or backup operations, you can rollback or discard changes via version control to prevent data loss. Note: This feature is only available on desktop; mobile is not supported due to performance and platform constraints."
+  },
+  "agent": {
+    "tools": {
+      "web_search": "Web Search",
+      "web_search_desc": "Search the internet for current information, news, and real-time data. Use this when the user asks about recent events, current facts, or anything that requires up-to-date information beyond your training data.\n\nIMPORTANT: This tool searches the PUBLIC INTERNET only. Do NOT use this to search the user's personal diary entries — use diary_search for that.\n\nYou should provide 2-3 search queries with different angles/keywords to get comprehensive results. For example, if the user asks about \"iPhone 16 vs Samsung S25\", you could search [\"iPhone 16 specs review\", \"Samsung S25 specs review\", \"iPhone 16 vs Samsung S25 comparison\"].\n\nResults include clickable [title](url) citations — use the url_read tool to read specific pages in detail.",
+      "vector_search": "Semantic Search",
+      "vector_search_desc": "Semantic search over conversation history and stored memories. When the user asks about past content, previous decisions, personal preferences, or anything discussed before, you MUST call this tool first. Returns the most semantically relevant conversation snippets with scores.",
+      "url_read": "Read Webpage",
+      "url_read_desc": "Read the text content of a specific webpage URL directly. Use this when you have a specific link you want to analyze or summarize, instead of searching the whole web.",
+      "summary_read": "Read Summary",
+      "summary_read_desc": "Read AI-generated summaries (weekly, monthly, quarterly, or yearly). Returns the summary content for a specific time period. Use diary_list or diary_search for raw diary entries instead.",
+      "message_search": "Search Messages",
+      "message_search_desc": "Search past conversation messages across all sessions by keyword. Returns matching message snippets with session title and date. Useful when the user references something discussed before, or when you need to recall previous conversations.",
+      "memory_store": "Store Memory",
+      "memory_store_desc": "Store important information as long-term memory for later semantic search retrieval. Use this tool when the user expresses preferences, makes decisions, or when you encounter information worth remembering. Stored memories are vectorized and can be retrieved via the vector_search tool.",
+      "memory_delete": "Delete Memory",
+      "memory_delete_desc": "Delete stored memories by semantic search. First searches for memories matching the query, then deletes the matching entries. Use this when the user wants to forget something or remove outdated information. IMPORTANT: Always confirm with the user before deleting memories.",
+      "diary_write": "Write Diary",
+      "diary_write_desc": "Create a new diary entry for a given date. If a diary entry already exists for that date, use diary_edit instead.",
+      "diary_search": "Search Diary",
+      "diary_search_desc": "Search the user's PERSONAL DIARY/JOURNAL entries by keyword. Returns matching diary dates and content snippets. Use this when the user asks about their own past experiences, memories, or personal records.\n\nIMPORTANT: This tool ONLY searches the user's personal diary entries stored locally, NOT the internet. To search the internet, use the web_search tool instead.",
+      "diary_read": "Read Diary",
+      "diary_read_desc": "Read the full content of one or more diary entries by their exact dates. Supports reading up to 20 entries at once. Use diary_list or diary_search first if you do not know the exact date.",
+      "diary_list": "List Diaries",
+      "diary_list_desc": "List all diary entries within a date range (inclusive). Returns a list of dates that have diary entries, along with a brief preview of each entry. Use this to discover which days the user has written diaries.",
+      "diary_edit": "Edit Diary",
+      "diary_edit_desc": "Modify an existing diary entry. Default mode is \"append\", which adds new content with a timestamp header (##### HH:mm). Use \"overwrite\" mode to replace the entire content. Tags are automatically merged with existing ones.",
+      "diary_delete": "Delete Diary",
+      "diary_delete_desc": "Delete a specific diary entry. This is a destructive action and cannot be undone. Always double check before using.",
+      "current_time": "Current Time",
+      "current_time_desc": "Get the current real-world time, date, and day of the week. Very useful for answering questions related to time calculations, age, absolute dates, etc."
+    }
   }
 }
