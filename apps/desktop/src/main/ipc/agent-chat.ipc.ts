@@ -333,11 +333,9 @@ export function registerChatIPC() {
           },
           {
             onTextDelta: (chunk) => {
-              logger.info(`[IPC Stream] Text Delta: ${JSON.stringify(chunk)}`)
               event.sender.send('agent:stream-chunk', { sessionId: args.sessionId, chunk })
             },
             onReasoningDelta: (chunk) => {
-              logger.info(`[IPC Stream] Reasoning Delta: ${JSON.stringify(chunk)}`)
               event.sender.send('agent:reasoning-chunk', { sessionId: args.sessionId, chunk })
             },
             onToolCallStart: (name, argsObj) =>
