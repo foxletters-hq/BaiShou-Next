@@ -28,46 +28,44 @@ export function buildSystemPrompt(config: SystemPromptConfig): string {
 
   // 人设
   if (config.persona && config.persona.length > 0) {
-    parts.push(config.persona)
+    parts.push('<assistant_persona>\n' + config.persona.trim() + '\n</assistant_persona>')
   }
 
   // 用户身份卡
   if (config.userProfileBlock && config.userProfileBlock.length > 0) {
-    parts.push(config.userProfileBlock)
+    parts.push('<user_identity>\n' + config.userProfileBlock.trim() + '\n</user_identity>')
   }
 
-  // 时间上下文
+  // 系统上下文 (时间, 库)
   const now = new Date()
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')
   const hour = String(now.getHours()).padStart(2, '0')
   const minute = String(now.getMinutes()).padStart(2, '0')
-  parts.push(`${year}-${month}-${day} ${hour}:${minute}`)
-
-  // Vault 上下文
-  parts.push(`Vault: ${config.vaultName}`)
+  parts.push('<system_context>\n' + `Time: ${year}-${month}-${day} ${hour}:${minute}\nVault: ${config.vaultName}` + '\n</system_context>')
 
   // 可用工具说明
   if (config.tools.length > 0) {
+    let toolSection = 'Available Tools:\n'
     const toolLines = config.tools.map((t) => `- **${t.id}**: ${t.description}`)
-    parts.push(toolLines.join('\n'))
+    toolSection += toolLines.join('\n')
 
     // RAG 工具禁用时，指引 AI 使用日记工具
     const hasMemoryStore = config.tools.some((t) => t.id === 'memory_store')
     const hasVectorSearch = config.tools.some((t) => t.id === 'vector_search')
     if (!hasMemoryStore || !hasVectorSearch) {
-      parts.push(
+      toolSection += '\n\n' +
         'Note: Memory/RAG tools are currently disabled by the user. ' +
-          'For storing and retrieving information, use the diary/summary tools instead. ' +
-          'Do NOT attempt to call memory_store or vector_search.'
-      )
+        'For storing and retrieving information, use the diary/summary tools instead. ' +
+        'Do NOT attempt to call memory_store or vector_search.'
     }
+    parts.push('<available_tools>\n' + toolSection + '\n</available_tools>')
   }
 
   // 行为准则
   if (config.guidelines && config.guidelines.length > 0) {
-    parts.push(config.guidelines)
+    parts.push('<behavior_guidelines>\n' + config.guidelines.trim() + '\n</behavior_guidelines>')
   }
 
   return parts.join('\n\n')

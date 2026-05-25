@@ -17,16 +17,20 @@ export class SystemPromptBuilder {
 
     // 人设设定（如果用户或者系统传入了特殊要求）
     if (customPersona && customPersona.trim().length > 0) {
-      buffer.push(customPersona)
+      buffer.push('<assistant_persona>')
+      buffer.push(customPersona.trim())
+      buffer.push('</assistant_persona>')
       buffer.push('')
     }
 
     // 用户的偏好属性或者个人小卡片
     if (userProfileBlock && userProfileBlock.trim().length > 0) {
+      buffer.push('<user_identity>')
       buffer.push(
         '[Important: The following identity card describes the USER (human), NOT you (the AI assistant). Use this information to personalize your responses, but NEVER claim these facts as your own identity.]'
       )
-      buffer.push(userProfileBlock)
+      buffer.push(userProfileBlock.trim())
+      buffer.push('</user_identity>')
       buffer.push('')
     }
 
@@ -43,13 +47,16 @@ export class SystemPromptBuilder {
       `${String(now.getHours()).padStart(2, '0')}:` +
       `${String(now.getMinutes()).padStart(2, '0')}`
 
+    buffer.push('<system_context>')
     buffer.push(`[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`)
     buffer.push(`[Current Vault / Workspace]: ${vaultName}`)
+    buffer.push('</system_context>')
     buffer.push('')
 
     // 工具可用性宣告
     const availableToolIds = Object.keys(tools)
     if (availableToolIds.length > 0) {
+      buffer.push('<available_tools>')
       buffer.push('Available Tools:')
       for (const id of availableToolIds) {
         // 在 Vercel 中 getDescription 比较直接
@@ -82,14 +89,20 @@ export class SystemPromptBuilder {
         )
         buffer.push('')
       }
+      buffer.push('</available_tools>')
+      buffer.push('')
     } else {
+      buffer.push('<available_tools>')
       buffer.push('No tools are currently available.')
+      buffer.push('</available_tools>')
       buffer.push('')
     }
 
     // 额外的行为准则补丁
     if (customGuidelines && customGuidelines.trim().length > 0) {
-      buffer.push(customGuidelines)
+      buffer.push('<behavior_guidelines>')
+      buffer.push(customGuidelines.trim())
+      buffer.push('</behavior_guidelines>')
     }
 
     return buffer.join('\n')
