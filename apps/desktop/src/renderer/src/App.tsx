@@ -125,7 +125,6 @@ const AppShell: React.FC = () => {
 
   return (
     <div className={shellStyles.shell}>
-      {!isOnboarding && <div className={shellStyles.titlebarBackdrop} aria-hidden />}
       <TitleBar />
       <div className={shellStyles.content}>
         <AppRoutes />

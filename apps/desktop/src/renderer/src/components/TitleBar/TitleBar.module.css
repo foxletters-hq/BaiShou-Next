@@ -1,18 +1,15 @@
 .titleBar {
   height: 48px;
-  background: var(--titlebar-glass-bg);
-  backdrop-filter: var(--titlebar-glass-blur);
-  -webkit-backdrop-filter: var(--titlebar-glass-blur);
+  background: var(--bg-surface);
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--titlebar-glass-border);
-  box-shadow: var(--titlebar-glass-shadow);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: none;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 9999;
-  isolation: isolate;
+  z-index: 10000;
 }
 
 .dragRegion {
@@ -22,6 +19,7 @@
   display: flex;
   align-items: center;
   padding-left: 16px;
+  background: transparent;
 }
 
 .tabsContainer {
@@ -47,30 +45,19 @@
   position: relative;
 }
 
-.tab:hover {
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.08);
+.tab:hover:not(.activeTab) {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .activeTab {
   color: var(--color-primary);
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  box-shadow:
-    0 -2px 10px rgba(91, 168, 245, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  background: var(--color-primary-light);
+  box-shadow: none;
 }
 
-.activeTab::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: var(--color-primary);
-  border-radius: 12px 12px 0 0;
+.activeTab:hover {
+  background: var(--color-primary-light);
 }
 
 .tabIcon {
@@ -95,7 +82,7 @@
 }
 
 .vaultSwitcher:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .actionIconSm {
@@ -125,7 +112,7 @@
 }
 
 .actionBtn:hover {
-  background-color: rgba(255, 255, 255, 0.35);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .actionIcon {
@@ -160,7 +147,7 @@
 }
 
 .winBtn:hover {
-  background-color: rgba(255, 255, 255, 0.35);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .winCloseBtn:hover {
@@ -171,8 +158,6 @@
 /* Onboarding mode: transparent overlay titlebar */
 .titleBarOnboarding {
   background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
   border-bottom: none !important;
   box-shadow: none !important;
 }
@@ -193,15 +178,20 @@
   opacity: 1;
 }
 
+[data-theme='dark'] .tab:hover:not(.activeTab) {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
 [data-theme='dark'] .activeTab {
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 -2px 10px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: rgba(91, 168, 245, 0.15);
+}
+
+[data-theme='dark'] .activeTab:hover {
+  background: rgba(91, 168, 245, 0.15);
 }
 
 [data-theme='dark'] .vaultSwitcher:hover,
 [data-theme='dark'] .actionBtn:hover,
 [data-theme='dark'] .winBtn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.07);
 }

@@ -5,7 +5,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding-top: 48px;
   box-sizing: border-box;
   flex-shrink: 0;
 }
@@ -90,7 +89,7 @@
   position: relative;
 }
 
-.navItem:hover {
+.navItem:hover:not(.selected) {
   background-color: rgba(var(--text-primary-rgb), 0.04);
 }
 
@@ -98,6 +97,10 @@
   background-color: rgba(91, 168, 245, 0.15); /* primaryContainer ~0.4 */
   color: var(--color-primary);
   font-weight: bold;
+}
+
+.selected:hover {
+  background-color: rgba(91, 168, 245, 0.15);
 }
 
 .dragHandle {

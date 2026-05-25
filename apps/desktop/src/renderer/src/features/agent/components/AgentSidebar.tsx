@@ -162,8 +162,8 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
 
       {/* ─── 侧边栏内容容器（防挤压换行，虚化白化动画） ─── */}
       <div className={styles.sidebarContent}>
-        {/* 可滚动主体 */}
-        <div className={styles.scroller} ref={scrollerRef}>
+        {/* 顶部固定交互区 */}
+        <div className={styles.fixedHeaderArea}>
           {/* ─── 当前伙伴槽位 — 原版永远显示，即使 loading 也显示 placeholder ─── */}
           <div className={styles.currentAssistantWrapper}>
             <div
@@ -203,7 +203,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
 
           <div className={styles.pinnedRow}>
             {pinnedAssistants.length === 0 && (
-              <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', flex: 1 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {t('agent.sidebar.pin_hint', '这里可以置顶伙伴')}
               </div>
             )}
@@ -246,10 +246,6 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
               <span>{t('settings.title', '系统设置')}</span>
             </div>
           </div>
-
-          {/* 小间距 */}
-          <div style={{ height: 8 }} />
-
           {/* ─── 对话历史区标题 — labelSmall + letterSpacing:0.5 ─── */}
           <div className={styles.historyHeader}>
             <span>{t('agent.sidebar.recent_chats', '最近对话')}</span>
@@ -284,6 +280,13 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
               </button>
             )}
           </div>
+        </div>
+
+        {/* 小间距 */}
+        <div style={{ height: 8, flexShrink: 0 }} />
+
+        {/* 可滚动历史对话区 */}
+        <div className={styles.historyScroller} ref={scrollerRef}>
 
           {/* ─── 对话列表 ─── */}
           <div className={styles.sessionList}>

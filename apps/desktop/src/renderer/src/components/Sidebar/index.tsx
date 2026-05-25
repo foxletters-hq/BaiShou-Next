@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import {
@@ -112,7 +113,12 @@ export const Sidebar: React.FC = () => {
   if (isAgentMode) return null
 
   return (
-    <div className={styles.sidebar}>
+    <motion.div
+      className={styles.sidebar}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+    >
       <div className={styles.brandRow}>
         <div className={styles.logoBox}>
           <img src={appIcon} alt="Logo" className={styles.brandLogo} />
@@ -216,6 +222,6 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

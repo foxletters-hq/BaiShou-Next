@@ -252,7 +252,7 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         <div className="settings-content-area" style={{ position: 'relative' }}>
-          {activeTab === 8 || activeTab === 1 || activeTab === 2 || activeTab === 11 ? (
+          {activeTab === 8 || activeTab === 1 || activeTab === 2 || activeTab === 11 || activeTab === 4 ? (
             renderActiveView()
           ) : (
             <div className="settings-content-scroll" key={activeTab}>
