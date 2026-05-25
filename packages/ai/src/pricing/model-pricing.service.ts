@@ -117,7 +117,7 @@ export class ModelPricingService {
     return Math.round(costInUSD * 1000000) // 转成 Micros 并确保是整数存入 Int 表
   }
 
-  private async ensureLoaded() {
+  public async ensureLoaded() {
     if (
       this.prices.size > 0 &&
       this._lastFetchTime &&

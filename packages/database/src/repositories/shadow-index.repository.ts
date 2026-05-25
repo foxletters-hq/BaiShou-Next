@@ -1,4 +1,4 @@
-import { eq, sql, like, and, inArray, desc, asc } from 'drizzle-orm'
+import { eq, sql, like, and, inArray, desc, asc, gte, lte } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import { AppDatabase } from '../types'
 
@@ -361,7 +361,7 @@ export class ShadowIndexRepository {
   }
 
   private buildListFilterWhere(options: DiaryListFilterOptions) {
-    const conditions = []
+    const conditions: any[] = []
 
     if (options.year != null && options.month != null) {
       const monthStr = String(options.month).padStart(2, '0')
