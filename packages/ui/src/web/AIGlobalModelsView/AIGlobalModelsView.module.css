@@ -143,3 +143,19 @@
   font-size: 10px;
   color: var(--text-tertiary);
 }
+
+.titleTooltip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  cursor: pointer;
+}
+
+.helpIcon {
+  color: var(--text-tertiary);
+  transition: color 0.2s;
+}
+
+.helpIcon:hover {
+  color: var(--color-primary);
+}

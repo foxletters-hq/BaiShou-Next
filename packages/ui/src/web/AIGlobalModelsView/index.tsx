@@ -5,7 +5,8 @@ import { useDialog } from '../Dialog'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
-import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdVolumeUp } from 'react-icons/md'
+import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdVolumeUp, MdHelpOutline } from 'react-icons/md'
+import { Tooltip } from '../Tooltip/Tooltip'
 
 export interface AIProviderConfigInfo {
   providerId: string
@@ -132,6 +133,21 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     const isModelSet = currentProvider && currentModel
     const providerName = availableProviders[currentProvider]?.name || currentProvider
 
+    const getTooltipContent = () => {
+      switch (key) {
+        case 'summary':
+          return t('settings.tooltip_summary_model', '这个模型是用来生成周记、月报、季报、年鉴的模型，推荐用户选择最好的模型，这样生成出来的质量也会更好。')
+        case 'dialogue':
+          return t('settings.tooltip_chat_model', '这是用来聊天的模型。')
+        case 'naming':
+          return t('settings.tooltip_naming_model', '分配一个小体积轻量级模型，专门负责为你的每次对话写个标题以节约主力模型资源。')
+        case 'embedding':
+          return t('settings.tooltip_embedding_model', '它会在 AI 执行记忆存储（存储到 RAG 记忆中）的时候使用的模型。一旦日记发生变动，AI 也会用这个模型帮我们保存向量记忆。向量记忆相比于直接搜索的优点就是，它可以根据语义来进行近似搜索。')
+        default:
+          return ''
+      }
+    }
+
     return (
       <div className={`${styles.routingCard} ${isDanger ? styles.dangerCard : ''}`}>
         <div className={styles.routeHeader}>
@@ -139,6 +155,9 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           <span className={`${styles.routeName} ${isDanger ? styles.dangerName : ''}`}>
             {title}
           </span>
+          <Tooltip content={getTooltipContent()} className={styles.titleTooltip}>
+            <MdHelpOutline size={16} className={styles.helpIcon} />
+          </Tooltip>
         </div>
 
         <div

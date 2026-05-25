@@ -1,8 +1,10 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineHub, MdOutlineLan, MdExpandMore, MdExpandLess } from 'react-icons/md'
+import { MdOutlineHub, MdOutlineLan, MdExpandMore, MdExpandLess, MdHelpOutline, MdBuild, MdChevronRight } from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import styles from './McpSettingsCard.module.css'
+import { Tooltip } from '../Tooltip/Tooltip'
+import { useDialog } from '../Dialog'
 
 export interface McpServerConfig {
   mcpEnabled: boolean
@@ -17,6 +19,82 @@ interface McpSettingsCardProps {
 export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChange }) => {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = React.useState(true)
+  const dialog = useDialog()
+
+  const showToolsDialog = async () => {
+    try {
+      const tools = await (window as any).api?.settings?.getMcpTools()
+      if (!tools || tools.length === 0) {
+        dialog.alert(t('settings.mcp_no_tools', '未检测到任何暴露的工具'), t('settings.mcp_tools_list', 'MCP 工具列表'))
+        return
+      }
+
+      const content = (
+        <div style={{ maxHeight: '360px', overflowY: 'auto', paddingRight: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {tools.map((tItem: any) => {
+              const cleanName = tItem.displayName || tItem.name.replace(/^baishou_/, '')
+              const localizedTitle = t(`agent.tools.${cleanName}`, cleanName)
+              const localizedDesc = t(`agent.tools.${cleanName}_desc`, tItem.description)
+
+              return (
+                <div
+                  key={tItem.name}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: 'var(--color-surface-container-low, rgba(0, 0, 0, 0.02))',
+                    border: '1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08))'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'var(--color-primary, #5BA8F5)'
+                      }}
+                    >
+                      {tItem.name}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: 'var(--color-secondary-container, rgba(0, 0, 0, 0.05))',
+                        color: 'var(--color-on-secondary-container, var(--color-text-secondary))'
+                      }}
+                    >
+                      {tItem.category || 'general'}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--color-on-surface-variant, var(--color-text-secondary))',
+                        fontWeight: 500
+                      }}
+                    >
+                      ({localizedTitle})
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--color-on-surface-variant, var(--color-text-secondary))', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                    {localizedDesc}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )
+
+      dialog.alert(content, t('settings.mcp_tools_list', 'MCP 暴露工具列表'))
+    } catch (e) {
+      console.error(e)
+      dialog.alert(t('settings.mcp_tools_fetch_failed', '获取工具列表失败'))
+    }
+  }
 
   return (
     <div>
@@ -30,8 +108,30 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           <MdOutlineHub size={24} />
         </div>
         <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">
+          <span className="settings-list-tile-title" style={{ display: 'inline-flex', alignItems: 'center' }}>
             {t('settings.mcp_title', 'MCP Server')}
+            <Tooltip
+              content={t(
+                'settings.tooltip_mcp_server',
+                '允许外部 AI 客户端（如 Cursor、Windsurf、VS Code Claude Dev 插件等）通过 MCP 协议调用白守的数据与工具。'
+              )}
+            >
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--color-on-surface-variant)',
+                  cursor: 'pointer',
+                  transition: 'color 0.2s ease',
+                  marginLeft: '4px'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-on-surface-variant)')}
+              >
+                <MdHelpOutline size={16} />
+              </span>
+            </Tooltip>
             {config.mcpEnabled && <div className={styles.statusIndicator} />}
           </span>
           <span className="settings-list-tile-subtitle">
@@ -76,6 +176,30 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
               />
               <span className="settings-switch-slider" />
             </label>
+          </div>
+
+          <div className="settings-list-divider indent" />
+          {/* 查看暴露工具行 */}
+          <div
+            className="settings-list-tile"
+            onClick={showToolsDialog}
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }}>
+              <MdBuild size={20} />
+            </div>
+            <div className="settings-list-tile-content">
+              <span className="settings-list-tile-title">
+                {t('settings.mcp_view_tools', '查看已暴露的工具列表')}
+              </span>
+              <span className="settings-list-tile-subtitle">
+                {t('settings.mcp_view_tools_desc', '查看当前 MCP 服务对外提供的日记与记忆管理等内置工具清单')}
+              </span>
+            </div>
+            <MdChevronRight
+              size={20}
+              style={{ color: 'var(--color-on-surface-variant)' }}
+            />
           </div>
 
           {config.mcpEnabled && (

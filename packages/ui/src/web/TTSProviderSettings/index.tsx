@@ -447,13 +447,12 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
     providerType === 'openai-tts' || providerType === 'clone-tts' || providerType === 'gpt-sovits'
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
+    <div className={styles.page}>
+      <div className={styles.headerRow}>
         <h2 className={styles.title}>{t('tts.settings.title', 'TTS 语音合成设置')}</h2>
-        <p className={styles.description}>
-          {t('tts.settings.description', '配置 TTS 供应商、模型和发音参数')}
-        </p>
       </div>
+
+      <div className={styles.scrollArea}>
 
       <div className={styles.form}>
         <div className={styles.section}>
@@ -778,6 +777,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = ({
         <Button variant="elevated" onClick={handleSave} disabled={isSaving}>
           {t('common.save', '保存配置')}
         </Button>
+      </div>
       </div>
     </div>
   )

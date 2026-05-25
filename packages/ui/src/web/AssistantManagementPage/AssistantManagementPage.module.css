@@ -5,9 +5,14 @@
   background-color: var(--bg-app);
   overflow: hidden;
   color: var(--text-primary);
+  position: relative;
 }
 
 .appBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -93,7 +98,9 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 32px;
+  padding: 80px 32px 32px 32px;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .scrollArea::-webkit-scrollbar {

@@ -1,42 +1,79 @@
-.container {
+.page {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  gap: 16px;
-  padding: 16px 24px 48px 24px;
-  background: var(--bg-app);
-  min-height: 100%;
+  height: 100%;
   width: 100%;
+  background: var(--bg-app);
+  overflow: hidden;
   box-sizing: border-box;
+  position: relative;
 }
 
 /* === 1. Header === */
 .headerRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 56px;
-  padding: 12px 32px;
-  background-color: transparent;
+  padding: 20px 32px 16px;
+  background-color: var(--bg-glass-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 10;
 }
 
 .titleInfo {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.titleIcon {
-  font-size: 22px;
-  color: var(--color-primary);
+  gap: 12px;
 }
 
 .title {
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-primary);
   margin: 0;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.5px;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 80px 32px 48px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollArea::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: 4px;
+}
+
+.titleTooltip {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  cursor: pointer;
+}
+
+.helpIcon {
+  color: var(--text-tertiary);
+  transition: color 0.2s;
+}
+
+.helpIcon:hover {
+  color: var(--color-primary);
 }
 
 .headerClearAllBtn {

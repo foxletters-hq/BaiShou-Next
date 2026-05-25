@@ -15,10 +15,12 @@ import {
   MdSearch,
   MdClose,
   MdMoreVert,
-  MdWarning
+  MdWarning,
+  MdHelpOutline
 } from 'react-icons/md'
 import { Switch } from '../Switch/Switch'
 import { Pagination } from '../Pagination/index'
+import { Tooltip } from '../Tooltip/Tooltip'
 import styles from './RagMemoryView.module.css'
 
 export interface RagConfig {
@@ -167,14 +169,20 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   const totalPages = Math.ceil(effectiveTotal / pageSize)
 
   return (
-    <div className={styles.container}>
+    <div className={styles.page}>
       {/* 1. Header & Switch */}
       <div className={styles.headerRow}>
         <div className={styles.titleInfo}>
-          <div className={styles.titleIcon}>
-            <MdColorLens size={24} />
-          </div>
           <h2 className={styles.title}>{t('agent.rag.title', 'RAG 记忆管理')}</h2>
+          <Tooltip
+            content={t(
+              'settings.tooltip_rag_management',
+              '这是用以支持 AI 检索过去日记等上下文的本地 RAG（检索增强生成）知识库。它可以根据您的输入或日记变更自动更新，以实现长短期记忆的近似语义召回。'
+            )}
+            className={styles.titleTooltip}
+          >
+            <MdHelpOutline size={16} className={styles.helpIcon} />
+          </Tooltip>
           <Switch
             checked={config.ragEnabled}
             onChange={(e) => onChange({ ...config, ragEnabled: e.target.checked })}
@@ -189,12 +197,13 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         )}
       </div>
 
-      {!config.ragEnabled && (
-        <div className={styles.disabledAlert}>
-          <MdWarning size={16} style={{ marginRight: 8 }} />
-          {t('settings.rag_disabled_alert', 'RAG记忆功能已经关闭了喵~')}
-        </div>
-      )}
+      <div className={styles.scrollArea}>
+        {!config.ragEnabled && (
+          <div className={styles.disabledAlert}>
+            <MdWarning size={16} style={{ marginRight: 8 }} />
+            {t('settings.rag_disabled_alert', 'RAG记忆功能已经关闭了喵~')}
+          </div>
+        )}
 
       {/* 2. Stats Chips Row */}
       <div className={styles.statsChipsRow}>
@@ -565,6 +574,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )
