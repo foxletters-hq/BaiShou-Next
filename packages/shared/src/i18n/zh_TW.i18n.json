@@ -570,6 +570,9 @@
   },
   "data_sync": {
     "title": "資料同步",
+    "backup_tooltip": "全量打包所有日記和設置，保存到本地或備份到綁定的雲端存儲（如 S3 或 WebDAV），適用於防丟失和全量恢復。",
+    "snapshot_tooltip": "在還原備份等重大變動前，系統自動在本地生成的完整數據快照，方便您隨時撤銷並回滾數據。",
+    "incremental_sync_tooltip": "文件同步採用雙向增量同步機制，會自動對比本地與雲端文件的修改時間及哈希值，僅傳輸發生變更的文件，並在兩端同步應用刪除操作。同步的範圍包含您的日記內容、歷史總結以及 AI 聊天夥伴等核心數據。",
     "desc": "將你的記憶同步至雲端（S3 或 WebDAV），實現多裝置備份與同步。",
     "sync_target": "同步目標",
     "target_local": "本機儲存",
@@ -698,6 +701,7 @@
     "sync_result_conflicts": "$count 個衝突"
   },
   "lan_transfer": {
+    "usage_tooltip": "在同一局域網（Wi-Fi）下，兩台設備都打開此頁面，即可相互快速傳輸整個數據的全量備份包。",
     "status_idle": "等待發現...",
     "status_searching": "正在搜尋周遭裝置...",
     "status_serving": "等待接收中 (可被發現)...",
@@ -819,6 +823,7 @@
     "per_page": "條/頁"
   },
   "summary": {
+    "shared_memory_tooltip": "根據所選的回溯範圍（月），按年度、季度、月度和周度自動聚合並過濾日記與總結，生成純淨的上下文片段供 AI 檢索。",
     "dashboard_title": "白守資料概覽",
     "lookback_period": "過去 $months 個月",
     "collective_memories_title": "回憶",
@@ -1439,6 +1444,9 @@
       "speed_label": "語速比例 (Speed)",
       "format_label": "返回格式 (Format)"
     }
+  },
+  "version_control": {
+    "git_status_tooltip": "Git 用於本地數據版本控制，支持記錄修改歷史、推送到遠程 Git 倉庫（如 GitHub/Gitee）進行備份，以及多設備間同步。如果您在操作同步或備份恢復功能時誤恢復了錯誤版本，可通過版本控制進行回滾或撤銷變更，防止數據丟失。本功能僅在桌面端提供，移動端出於性能與平台限制未予支持。"
   },
   "dashboard": {
     "greeting": "又见面了，今天过得怎样？",

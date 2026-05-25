@@ -577,6 +577,9 @@
   },
   "data_sync": {
     "title": "数据备份",
+    "backup_tooltip": "全量打包所有日记和设置，保存到本地或备份到绑定的云端存储（如 S3 或 WebDAV），适用于防丢失和全量恢复。",
+    "snapshot_tooltip": "在还原备份等重大变动前，系统自动在本地生成的完整数据快照，方便您随时撤销并回滚数据。",
+    "incremental_sync_tooltip": "文件同步采用双向增量同步机制，会自动对比本地与云端文件的修改时间及哈希值，仅传输发生变更的文件，并在两端同步应用删除操作。同步的范围包含您的日记内容、历史总结以及 AI 聊天伙伴等核心数据。",
     "desc": "将你的记忆备份至云端（S3 或 WebDAV），实现多端安全备份。",
     "sync_target": "备份目标",
     "target_local": "本地存储",
@@ -730,6 +733,7 @@
     "sync_result_conflicts": "$count 个冲突"
   },
   "lan_transfer": {
+    "usage_tooltip": "在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。",
     "status_idle": "等待发现...",
     "status_searching": "正在搜索周围的设备...",
     "status_serving": "等待接收中 (可被发现)...",
@@ -869,6 +873,7 @@
     "per_page": "条/页"
   },
   "summary": {
+    "shared_memory_tooltip": "根据所选的回溯范围（月），按年度、季度、月度和周度自动聚合并过滤日记与总结，生成纯净的上下文片段供 AI 检索。",
     "dashboard_title": "回忆",
     "lookback_period": "过去 $months 个月",
     "collective_memories_title": "回忆",
@@ -1665,5 +1670,8 @@
       "speed_label": "语速比例 (Speed)",
       "format_label": "返回格式 (Format)"
     }
+  },
+  "version_control": {
+    "git_status_tooltip": "Git 用于本地数据版本控制，支持记录修改历史、推送到远程 Git 仓库（如 GitHub/Gitee）进行备份，以及多设备间同步。如果您在操作同步或备份恢复功能时误恢复了错误版本，可通过版本控制进行回滚或撤销变更，防止数据丢失。本功能仅在桌面端提供，移动端出于性能与平台限制未予支持。"
   }
 }

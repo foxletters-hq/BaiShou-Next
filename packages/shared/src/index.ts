@@ -30,3 +30,5 @@ export { signS3Request } from './utils/aws-v4-sign'
 
 export * from './tts'
 export type { TtsSettings } from './types/settings.types'
+export * from './constants/summary-templates'
+
