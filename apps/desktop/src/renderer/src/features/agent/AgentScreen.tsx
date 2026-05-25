@@ -773,18 +773,16 @@ export const AgentScreen: React.FC = () => {
                   if (msgIndex !== -1) {
                     chat.setMessages((prev) => prev.slice(0, msgIndex + 1))
                   }
-                  if (typeof window !== 'undefined' && window.electron) {
-                    await window.electron.ipcRenderer.invoke(
-                      'agent:edit-message',
-                      sessionId,
-                      msg.id,
-                      newContent,
-                      model.currentProviderId,
-                      model.currentModelId,
-                      undefined,
-                      searchMode
-                    )
-                  }
+                  chat.setStreamSessionId(sessionId)
+                  await stream.editChat(
+                    sessionId,
+                    msg.id,
+                    newContent,
+                    model.currentProviderId,
+                    model.currentModelId,
+                    undefined,
+                    searchMode
+                  )
                 }}
                 onResend={() => {
                   if (msg.role === 'user' && sessionId) {

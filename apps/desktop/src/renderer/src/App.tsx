@@ -18,7 +18,7 @@ import { LanTransferPage } from './features/settings/LanTransferPage'
 import { CloudSyncPage } from './features/settings/CloudSyncPage'
 import { IncrementalSyncPage } from './features/settings/IncrementalSyncPage'
 import { GitManagementPage } from './features/settings/GitManagementPage'
-import { useToast, useDialog, DialogProvider, ToastProvider } from '@baishou/ui'
+import { useToast, useDialog, DialogProvider, ToastProvider, GlobalInputContextMenu } from '@baishou/ui'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
@@ -201,6 +201,7 @@ export function App() {
       <DialogProvider>
         <ToastProvider />
         <GlobalErrorHandler />
+        <GlobalInputContextMenu />
         <ErrorBoundary>
           <div
             style={{

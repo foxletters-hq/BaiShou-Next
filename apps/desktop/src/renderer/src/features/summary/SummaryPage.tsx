@@ -311,8 +311,16 @@ export const SummaryPage: React.FC = () => {
       </div>
 
       <div className="sp-content">
-        {activeTab === 'panel' ? (
-          <div className="sp-panel-view">
+        <AnimatePresence mode="wait">
+          {activeTab === 'panel' ? (
+            <motion.div
+              key="panel"
+              className="sp-panel-view"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
             <DashboardHeroBanner />
 
             <div className="sp-dashboard-layout">
@@ -530,9 +538,16 @@ export const SummaryPage: React.FC = () => {
                 </AnimatePresence>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         ) : (
-          <div className="sp-gallery-view">
+          <motion.div
+            key="gallery"
+            className="sp-gallery-view"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
             <GalleryPanel
               summaries={summaries}
               onOpen={(id) => {
@@ -614,8 +629,9 @@ export const SummaryPage: React.FC = () => {
                 }
               }}
             />
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
     </div>
   )
