@@ -204,6 +204,18 @@ export function registerSettingsIPC() {
     return true
   })
 
+  ipcMain.handle('settings:get-mcp-tools', async () => {
+    const { toolRegistry } = await import('./agent-helpers')
+    if (!toolRegistry) return []
+    const tools = toolRegistry.getAllRaw()
+    return tools.map((tool: any) => ({
+      name: `baishou_${tool.name}`,
+      displayName: tool.displayName,
+      description: tool.description,
+      category: tool.category
+    }))
+  })
+
   ipcMain.handle('settings:get-hotkey-config', async () => {
     return (await settingsManager.get<any>('hotkey_config')) || null
   })

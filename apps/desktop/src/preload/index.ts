@@ -90,6 +90,7 @@ export const api = {
     getMcpServerConfig: () => ipcRenderer.invoke('settings:get-mcp-server-config'),
     setMcpServerConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-mcp-server-config', config),
+    getMcpTools: () => ipcRenderer.invoke('settings:get-mcp-tools'),
 
     getHotkeyConfig: () => ipcRenderer.invoke('settings:get-hotkey-config'),
     setHotkeyConfig: (config: any) => ipcRenderer.invoke('settings:set-hotkey-config', config),
