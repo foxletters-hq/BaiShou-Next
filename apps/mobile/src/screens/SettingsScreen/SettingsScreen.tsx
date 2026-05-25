@@ -19,6 +19,7 @@ import { AgentToolsSection } from './components/AgentToolsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { TTSSettingsSection } from './components/TTSSettingsSection'
+import { AgentBehaviorSection } from './components/AgentBehaviorSection'
 import { AssistantsSection, LanTransferSection, DataSyncSection } from './components/SimpleSections'
 
 interface SettingsTab {
@@ -54,6 +55,12 @@ const SETTINGS_TABS: SettingsTab[] = [
     icon: '🤖'
   },
   { id: 'rag', titleKey: 'settings.rag', defaultTitle: 'RAG 记忆', icon: '🧠' },
+  {
+    id: 'agent-behavior',
+    titleKey: 'settings.agent_behavior',
+    defaultTitle: 'Agent 行为',
+    icon: '🧩'
+  },
   {
     id: 'web-search',
     titleKey: 'settings.web_search',
@@ -117,6 +124,8 @@ export const SettingsScreen: React.FC = () => {
         return <AssistantsSection />
       case 'rag':
         return <RAGMemorySection />
+      case 'agent-behavior':
+        return <AgentBehaviorSection />
       case 'web-search':
         return <WebSearchSection />
       case 'agent-tools':
