@@ -13,7 +13,7 @@ import {
 } from 'react-icons/md'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
-import { motion } from 'framer-motion'
+import { RefreshCw, FolderArchive } from 'lucide-react'
 import { useUserProfileStore } from '@baishou/store'
 import { useToast } from '@baishou/ui'
 import appIcon from '@baishou/shared/assets/images/icon.png'
@@ -74,10 +74,10 @@ export const Sidebar: React.FC = () => {
       label: t('settings.lan_transfer', '局域网快传'),
       path: '/lan-transfer'
     },
-    sync: { icon: <MdSync />, label: t('common.data_sync', '数据备份'), path: '/data-sync' },
+    sync: { icon: <FolderArchive size={20} />, label: t('common.data_sync', '数据备份'), path: '/data-sync' },
     'incr-sync': {
-      icon: <MdCloudUpload />,
-      label: t('common.incremental_sync', '增量同步'),
+      icon: <RefreshCw size={20} />,
+      label: t('common.incremental_sync', '文件同步'),
       path: '/incremental-sync'
     },
     git: { icon: <MdHistory />, label: t('version_control.title', '版本控制'), path: '/git' }
@@ -112,12 +112,7 @@ export const Sidebar: React.FC = () => {
   if (isAgentMode) return null
 
   return (
-    <motion.div
-      className={styles.sidebar}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-    >
+    <div className={styles.sidebar}>
       <div className={styles.brandRow}>
         <div className={styles.logoBox}>
           <img src={appIcon} alt="Logo" className={styles.brandLogo} />
@@ -221,6 +216,6 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

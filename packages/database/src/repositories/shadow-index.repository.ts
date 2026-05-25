@@ -1,4 +1,4 @@
-import { eq, sql, like, and, gte, lte } from 'drizzle-orm'
+import { eq, sql, like, and, inArray, desc, asc } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import { AppDatabase } from '../types'
 
@@ -50,6 +50,21 @@ export interface ShadowFTSResult {
   contentSnippet: string
   tags: string
   rankScore: number
+}
+
+type ShadowJournalRow = ShadowJournalRecord & {
+  rawContent?: string | null
+  tags?: string | null
+}
+
+export interface DiaryListFilterOptions {
+  year?: number
+  month?: number
+  favorite?: boolean
+  weathers?: string[]
+  limit?: number
+  offset?: number
+  orderBy?: 'asc' | 'desc'
 }
 
 /**
@@ -306,7 +321,11 @@ export class ShadowIndexRepository {
   /**
    * 全文搜索 (journals_fts FTS5 虚拟表)
    */
-  async searchFTS(query: string, limit: number = 20): Promise<ShadowFTSResult[]> {
+  async searchFTS(
+    query: string,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<ShadowFTSResult[]> {
     if (!query || query.trim().length === 0) return []
     const cleanedQuery = query.replace(/"/g, ' ').trim()
     if (!cleanedQuery) return []
@@ -325,6 +344,7 @@ export class ShadowIndexRepository {
           WHERE journals_fts MATCH '"' || ${segmentedQuery} || '"'
           ORDER BY fts_rank ASC
           LIMIT ${limit}
+          OFFSET ${offset}
         `
       )) as any[]
 
@@ -338,6 +358,62 @@ export class ShadowIndexRepository {
       console.warn('[ShadowIndex] FTS 搜索失败:', e.message)
       return []
     }
+  }
+
+  private buildListFilterWhere(options: DiaryListFilterOptions) {
+    const conditions = []
+
+    if (options.year != null && options.month != null) {
+      const monthStr = String(options.month).padStart(2, '0')
+      conditions.push(like(shadowJournalIndexTable.date, `${options.year}-${monthStr}%`))
+    }
+
+    if (options.favorite) {
+      conditions.push(eq(shadowJournalIndexTable.isFavorite, true))
+    }
+
+    if (options.weathers && options.weathers.length > 0) {
+      conditions.push(inArray(shadowJournalIndexTable.weather, options.weathers))
+    }
+
+    return conditions.length > 0 ? and(...conditions) : undefined
+  }
+
+  async listFiltered(options: DiaryListFilterOptions = {}): Promise<ShadowJournalRow[]> {
+    const where = this.buildListFilterWhere(options)
+    const orderFn =
+      options.orderBy === 'asc'
+        ? asc(shadowJournalIndexTable.date)
+        : desc(shadowJournalIndexTable.date)
+
+    let query = this.database.select().from(shadowJournalIndexTable).orderBy(orderFn)
+    if (where) query = query.where(where) as typeof query
+    if (options.limit != null && options.limit > 0) {
+      query = query.limit(options.limit) as typeof query
+    }
+    if (options.offset != null && options.offset > 0) {
+      query = query.offset(options.offset) as typeof query
+    }
+
+    return (await query) as ShadowJournalRow[]
+  }
+
+  async countFiltered(options: Omit<DiaryListFilterOptions, 'limit' | 'offset'> = {}): Promise<number> {
+    const where = this.buildListFilterWhere(options)
+    let query = this.database
+      .select({ count: sql<number>`count(*)` })
+      .from(shadowJournalIndexTable)
+    if (where) query = query.where(where) as typeof query
+    const result = await query
+    return result[0]?.count || 0
+  }
+
+  async findByIds(ids: number[]): Promise<ShadowJournalRow[]> {
+    if (ids.length === 0) return []
+    return (await this.database
+      .select()
+      .from(shadowJournalIndexTable)
+      .where(inArray(shadowJournalIndexTable.id, ids))) as ShadowJournalRow[]
   }
 
   async findById(id: number): Promise<ShadowJournalRecord | null> {

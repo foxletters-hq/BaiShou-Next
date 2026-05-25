@@ -78,6 +78,10 @@ export function registerGitSyncIPC() {
     return getGitService().commitAll(message)
   })
 
+  ipcMain.handle('git:commitStaged', async (_, message: string) => {
+    return getGitService().commitStaged(message)
+  })
+
   ipcMain.handle('git:commit', async (_, files: string[], message: string) => {
     return getGitService().commit(files, message)
   })

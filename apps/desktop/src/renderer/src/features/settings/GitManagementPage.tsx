@@ -58,7 +58,8 @@ export const GitManagementPage: React.FC = () => {
         onInit={handleInit}
         isInitialized={isInitialized}
         onTestRemote={async () => api?.testRemote() ?? false}
-        onCommit={async (message) => api?.commitAll(message)}
+        onCommit={async (message) => api?.commitStaged(message)}
+        onCommitAll={async (message) => api?.commitAll(message)}
         onGetStatus={async () =>
           api?.getStatus() ?? {
             staged: [],
@@ -115,6 +116,7 @@ export const GitManagementPage: React.FC = () => {
         onToast={(msg, type) => {
           if (type === 'error') toast.showError(msg)
           else if (type === 'success') toast.showSuccess(msg)
+          else if (type === 'warning') toast.showWarning(msg)
           else toast.show(msg)
         }}
       />

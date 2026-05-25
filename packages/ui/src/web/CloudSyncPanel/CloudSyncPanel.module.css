@@ -15,60 +15,63 @@
 /* Stat Cards */
 .statCardsRow {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
   background: var(--bg-surface);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 11px;
+  padding: 14px 18px;
   border: 1px solid var(--border-subtle);
 }
 
 @media (max-width: 500px) {
   .statCardsRow {
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
 }
 
 .statCard {
   flex: 1;
   background: transparent;
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   border: 1px solid transparent;
 }
 
 
 .statIconWrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
 .statInfo {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .statLabel {
-  font-size: 13px;
-  color: var(--text-primary);
-  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
 }
 
 
 .statValue {
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--text-primary);
+  line-height: 1.2;
 }
 
 
@@ -502,15 +505,57 @@
   border-bottom: none;
 }
 .itemSelected {
-  background: var(--color-primary-container) !important;
+  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.08) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom-color: rgba(var(--color-primary-rgb, 14, 165, 233), 0.2) !important;
 }
 
-
 .customCheck {
+  -webkit-appearance: none;
+  appearance: none;
   width: 18px;
   height: 18px;
-  accent-color: var(--color-primary);
+  border-radius: 4px;
+  border: 1px solid rgba(var(--text-primary-rgb, 15, 23, 42), 0.15);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.customCheck:hover {
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.customCheck:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 14, 165, 233), 0.4);
+}
+
+.customCheck::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  transition: border-color 0.15s ease;
+}
+
+.customCheck:checked::after {
+  border-color: var(--text-on-primary, #fff);
 }
 
 .recordIcon {
@@ -778,8 +823,8 @@
   display: flex;
   gap: 8px;
   background: var(--bg-surface-normal);
-  padding: 4px;
-  border-radius: 8px;
+  padding: 6px;
+  border-radius: var(--radius-md);
   width: fit-content;
   margin-top: 16px;
   margin-bottom: 4px;
@@ -789,25 +834,25 @@
 .tabButton {
   background: transparent;
   border: none;
-  padding: 6px 16px;
+  padding: 8px 16px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   color: var(--text-secondary);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s var(--ease-in-out);
 }
 
 .tabButton:hover {
   color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--bg-surface);
 }
 
 .tabButtonActive, .tabButtonActive:hover {
-  background: var(--bg-surface) !important;
   color: var(--color-primary) !important;
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: var(--bg-surface) !important;
+  box-shadow: var(--shadow-sm) !important;
+  font-weight: 700;
 }
 
 .smSliderContainer {
@@ -865,4 +910,18 @@
 .smSlider::-moz-range-thumb:active {
   box-shadow: 0 0 0 14px rgba(14, 165, 233, 0.24);
 }
+
+.helpIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s var(--ease-in-out);
+}
+
+.helpIconWrapper:hover {
+  color: var(--color-primary);
+}
+
 

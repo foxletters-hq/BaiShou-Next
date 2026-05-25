@@ -78,10 +78,54 @@ export const DiaryPage: React.FC = () => {
     sessionStorage.setItem('diary_filterFavorite', String(filterFavorite))
   }, [filterFavorite])
 
-  const { entries, loadEntries } = useDiaryData()
+  // 分页状态（持久化到 sessionStorage）
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = sessionStorage.getItem('diary_currentPage')
+    return saved ? Math.max(1, Number(saved)) : 1
+  })
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = sessionStorage.getItem('diary_pageSize')
+    return saved ? Number(saved) : 50
+  })
+
+  const diaryQuery = useMemo(
+    () => ({
+      selectedMonth,
+      searchQuery,
+      filterWeathers,
+      filterFavorite,
+      page: currentPage,
+      pageSize
+    }),
+    [selectedMonth, searchQuery, filterWeathers, filterFavorite, currentPage, pageSize]
+  )
+
+  const { entries, totalCount, loading, loadEntries } = useDiaryData(diaryQuery)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [todayEntry, setTodayEntry] = useState<DiaryEntry | null>(null)
   const toast = useToast()
   const [attachmentBasePath, setAttachmentBasePath] = useState<string>('')
+
+  // 保存分页状态到 sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('diary_currentPage', String(currentPage))
+  }, [currentPage])
+  useEffect(() => {
+    sessionStorage.setItem('diary_pageSize', String(pageSize))
+  }, [pageSize])
+
+  // 筛选条件变化时重置到第一页
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
+
+  /** 格式化日期字符串为 YYYY-MM-DD */
+  const formatDateStr = (date: Date): string => {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
 
   // 获取当前月份的附件目录路径
   useEffect(() => {
@@ -97,23 +141,26 @@ export const DiaryPage: React.FC = () => {
       .catch(() => {})
   }, [selectedMonth])
 
-  // 分页状态（持久化到 sessionStorage）
-  const [currentPage, setCurrentPage] = useState(() => {
-    const saved = sessionStorage.getItem('diary_currentPage')
-    return saved ? Math.max(1, Number(saved)) : 1
-  })
-  const [pageSize, setPageSize] = useState(() => {
-    const saved = sessionStorage.getItem('diary_pageSize')
-    return saved ? Number(saved) : 50
-  })
-
-  // 保存分页状态到 sessionStorage
   useEffect(() => {
-    sessionStorage.setItem('diary_currentPage', String(currentPage))
-  }, [currentPage])
-  useEffect(() => {
-    sessionStorage.setItem('diary_pageSize', String(pageSize))
-  }, [pageSize])
+    const today = new Date()
+    const dateStr = formatDateStr(today)
+    ;(window as any).api?.diary
+      ?.findByDate?.(dateStr)
+      ?.then((entry: any) => {
+        if (!entry) {
+          setTodayEntry(null)
+          return
+        }
+        setTodayEntry({
+          id: entry.id,
+          date: entry.date ? new Date(entry.date) : today,
+          content: entry.content || '',
+          tags: [],
+          preview: entry.content?.substring(0, 500) || ''
+        })
+      })
+      .catch(() => setTodayEntry(null))
+  }, [loadEntries])
 
   /** 执行删除操作 */
   const performDelete = async () => {
@@ -128,23 +175,6 @@ export const DiaryPage: React.FC = () => {
       toast.showError(t('diary.delete_failed', '删除失败'))
     }
   }
-
-  /** 查找今天的日记条目 */
-  const todayEntry = useMemo(() => {
-    if (!entries) return null
-    const today = new Date()
-    return (
-      entries.find((e: DiaryEntry) => {
-        const d = e.date ? new Date(e.date) : null
-        return (
-          d &&
-          d.getFullYear() === today.getFullYear() &&
-          d.getMonth() === today.getMonth() &&
-          d.getDate() === today.getDate()
-        )
-      }) || null
-    )
-  }, [entries])
 
   /** 编辑今日日记：有则追加，无则新建 */
   const handleEditToday = () => {
@@ -178,23 +208,11 @@ export const DiaryPage: React.FC = () => {
     navigate(`/diary/${dateStr}`)
   }
 
-  /** 处理过滤和排序 */
-  const filteredEntries = useMemo(() => {
+  const displayEntries = useMemo(() => {
     if (!entries || entries.length === 0) return []
 
-    let filtered = [...entries].map((e) => {
-      let parsedDate = new Date()
-      if (e.date) {
-        const pd = new Date(e.date)
-        if (!isNaN(pd.getTime())) parsedDate = pd
-      }
-      if (isNaN(parsedDate.getTime()) || !e.date) {
-        if (e.createdAt) {
-          const cd = new Date(e.createdAt)
-          if (!isNaN(cd.getTime())) parsedDate = cd
-        }
-      }
-
+    return entries.map((e) => {
+      const parsedDate = e.date ? new Date(e.date) : new Date()
       return {
         id: e.id,
         date: parsedDate,
@@ -208,54 +226,11 @@ export const DiaryPage: React.FC = () => {
         hasMedia: e.hasMedia || false
       } as DiaryEntry
     })
+  }, [entries])
 
-    // 月份过滤
-    if (selectedMonth) {
-      filtered = filtered.filter(
-        (e) =>
-          e.date.getFullYear() === selectedMonth.getFullYear() &&
-          e.date.getMonth() === selectedMonth.getMonth()
-      )
-    }
-
-    // 搜索过滤
-    if (searchQuery.trim()) {
-      const lowerQ = searchQuery.trim().toLowerCase()
-      filtered = filtered.filter(
-        (e) =>
-          e.preview.toLowerCase().includes(lowerQ) ||
-          e.tags.some((tag) => tag.toLowerCase().includes(lowerQ))
-      )
-    }
-
-    // 天气筛选（多选）
-    if (filterWeathers.length > 0) {
-      filtered = filtered.filter((e) => e.weather && filterWeathers.includes(e.weather))
-    }
-
-    // 收藏筛选
-    if (filterFavorite) {
-      filtered = filtered.filter((e) => e.isFavorite)
-    }
-
-    // 按日期降序排序
-    filtered.sort((a, b) => b.date.getTime() - a.date.getTime())
-
-    return filtered
-  }, [entries, selectedMonth, searchQuery, filterWeathers, filterFavorite])
-
-  // 筛选条件变化时重置到第一页
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
-
-  // 分页计算
-  const showPagination = filteredEntries.length > 50
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize))
+  const showPagination = totalCount > pageSize
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const safeCurrentPage = Math.min(currentPage, totalPages)
-  const paginatedEntries = showPagination
-    ? filteredEntries.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize)
-    : filteredEntries
 
   // 页码越界时自动修正
   useEffect(() => {
@@ -263,14 +238,6 @@ export const DiaryPage: React.FC = () => {
       setCurrentPage(totalPages)
     }
   }, [currentPage, totalPages])
-
-  /** 格式化日期字符串为 YYYY-MM-DD */
-  const formatDateStr = (date: Date): string => {
-    const y = date.getFullYear()
-    const m = String(date.getMonth() + 1).padStart(2, '0')
-    const d = String(date.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }
 
   /** 获取天气图标 */
   const getWeatherIcon = (weather: string) => {
@@ -321,13 +288,7 @@ export const DiaryPage: React.FC = () => {
   const hasActiveFilters = filterWeathers.length > 0 || filterFavorite
 
   return (
-    <motion.div
-      className="diary-page-container"
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
-      transition={{ duration: 0.2 }}
-    >
+    <div className="diary-page-container">
       {/* 顶部工具栏 */}
       <div className="diary-appbar">
         <div className="diary-appbar-left">
@@ -476,7 +437,11 @@ export const DiaryPage: React.FC = () => {
       </div>
 
       {/* 内容区 */}
-      {filteredEntries.length === 0 ? (
+      {loading ? (
+        <div className="diary-empty-state">
+          <div className="diary-empty-text">{t('common.loading', '加载中...')}</div>
+        </div>
+      ) : totalCount === 0 ? (
         <div className="diary-empty-state">
           <Edit3 size={56} className="diary-empty-icon" />
           <div className="diary-empty-text">
@@ -497,7 +462,7 @@ export const DiaryPage: React.FC = () => {
             <div className="diary-pagination-top">
               <div className="diary-pagination-info">
                 {t('diary.pagination_info', '共 $total 条，第 $page / $pages 页')
-                  .replace('$total', String(filteredEntries.length))
+                  .replace('$total', String(totalCount))
                   .replace('$page', String(safeCurrentPage))
                   .replace('$pages', String(totalPages))}
               </div>
@@ -525,7 +490,7 @@ export const DiaryPage: React.FC = () => {
           )}
 
           <div className="diary-grid-inner">
-            {paginatedEntries.map((entry) => (
+            {displayEntries.map((entry) => (
               <motion.div
                 layout="position"
                 key={entry.id}
@@ -549,7 +514,7 @@ export const DiaryPage: React.FC = () => {
             <div className="diary-pagination">
               <div className="diary-pagination-info">
                 {t('diary.pagination_info', '共 $total 条，第 $page / $pages 页')
-                  .replace('$total', String(filteredEntries.length))
+                  .replace('$total', String(totalCount))
                   .replace('$page', String(safeCurrentPage))
                   .replace('$pages', String(totalPages))}
               </div>
@@ -597,6 +562,6 @@ export const DiaryPage: React.FC = () => {
           </div>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }

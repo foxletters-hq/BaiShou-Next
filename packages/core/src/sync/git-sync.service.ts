@@ -156,12 +156,7 @@ export class GitSyncServiceImpl implements IGitSyncService {
 
   private async untrackBaishouDir(): Promise<void> {
     const git = await this.ensureGit()
-    try {
-      await git.raw(['rm', '--cached', '-r', '.baishou'])
-      logger.info('[GitSync] 已将 .baishou/ 从 Git 索引中移除')
-    } catch {
-      // .baishou/ 不存在或未被追踪，无需处理
-    }
+    await this.untrackBaishouFiles(git)
   }
 
   private getAuthenticatedUrl(url: string, username?: string, token?: string): string {
@@ -199,6 +194,103 @@ export class GitSyncServiceImpl implements IGitSyncService {
       default:
         return 'modified'
     }
+  }
+
+  /** 获取暂存区中的文件路径列表 */
+  private async getCachedPaths(git: SimpleGit): Promise<string[]> {
+    const output = await git.raw(['diff', '--cached', '--name-only'])
+    return output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+  }
+
+  /** 不应进入 Git 版本库的路径（与 .gitignore 对齐） */
+  private isExcludedFromVersionControl(filePath: string): boolean {
+    return (
+      filePath.startsWith('.baishou/') ||
+      filePath.startsWith('.versions/') ||
+      filePath.endsWith('.db') ||
+      filePath.endsWith('.db-shm') ||
+      filePath.endsWith('.db-wal') ||
+      filePath.endsWith('.db-journal') ||
+      filePath.endsWith('.probe')
+    )
+  }
+
+  /** 列出索引中仍被追踪的 .baishou 路径 */
+  private async listIndexedBaishouPaths(git: SimpleGit): Promise<string[]> {
+    const output = await git.raw(['ls-files', '--', '.baishou'])
+    return output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+  }
+
+  /** 移除误追踪的 .baishou 内部文件 */
+  private async untrackBaishouFiles(git: SimpleGit): Promise<boolean> {
+    const tracked = await this.listIndexedBaishouPaths(git)
+    if (tracked.length === 0) return false
+
+    logger.info(
+      `[GitSync] 发现有 ${tracked.length} 个 .baishou 内部文件被错误追踪，正在强制移除追踪...`
+    )
+
+    let anyRemoved = false
+    for (const filePath of tracked) {
+      try {
+        await git.rm(['-f', '--cached', '--', filePath])
+        anyRemoved = true
+      } catch (err) {
+        logger.warn(`[GitSync] 无法移出追踪: ${filePath}`, err as any)
+      }
+    }
+    return anyRemoved
+  }
+
+  /** 收集 Changes 区域中、尚未暂存的用户文件 */
+  private async collectUnstagedPaths(git: SimpleGit): Promise<string[]> {
+    const status = await git.status()
+    const paths = new Set<string>()
+
+    for (const p of status.modified) {
+      if (!this.isExcludedFromVersionControl(p)) paths.add(p)
+    }
+    for (const p of status.deleted) {
+      if (!this.isExcludedFromVersionControl(p)) paths.add(p)
+    }
+    for (const p of status.not_added) {
+      if (!this.isExcludedFromVersionControl(p)) paths.add(p)
+    }
+    for (const p of status.created) {
+      if (!this.isExcludedFromVersionControl(p)) paths.add(p)
+    }
+    for (const item of status.renamed) {
+      const p = typeof item === 'string' ? item : item.to || item.from
+      if (p && !this.isExcludedFromVersionControl(p)) paths.add(p)
+    }
+
+    return [...paths]
+  }
+
+  /** 仅暂存 Changes 中的用户文件，排除 .baishou 等系统路径 */
+  private async stagePendingChanges(git: SimpleGit): Promise<number> {
+    await this.ensureGitignore()
+    await this.untrackBaishouFiles(git)
+
+    const paths = await this.collectUnstagedPaths(git)
+    if (paths.length === 0) {
+      logger.info('[GitSync] 没有可暂存的变更（Changes 区域为空或均为系统文件）')
+      return 0
+    }
+
+    logger.info(`[GitSync] 暂存 Changes 中的 ${paths.length} 个文件`)
+    await git.add(paths)
+    return paths.length
+  }
+
+  private filterVersionedPaths(paths: string[]): string[] {
+    return paths.filter((p) => !this.isExcludedFromVersionControl(p))
   }
 
   // ── 公开 API ───────────────────────────────────────────────
@@ -260,24 +352,20 @@ export class GitSyncServiceImpl implements IGitSyncService {
 
   async getStatus(): Promise<GitStatus> {
     const git = await this.ensureGit()
-    const status = await git.status()
 
-    // 自动清除误追踪的 .baishou 内置文件，防止泄露
-    const hasTrackedBaishou = status.files.some((f) => f.path.startsWith('.baishou/'))
-    if (hasTrackedBaishou) {
-      logger.info('[GitSync] 发现有 .baishou 内部文件被错误追踪，正在强制移除追踪...')
-      try {
-        await git.raw(['rm', '--cached', '-r', '.baishou'])
-        return this.getStatus()
-      } catch (err) {
-        logger.error('[GitSync] 强制移出 .baishou 追踪失败:', err as any)
-      }
+    if (await this.untrackBaishouFiles(git)) {
+      return this.getStatus()
     }
+
+    const status = await git.status()
 
     const staged: GitStatusFile[] = []
     const unstaged: GitStatusFile[] = []
 
     for (const file of status.files) {
+      if (this.isExcludedFromVersionControl(file.path)) {
+        continue
+      }
       if (file.index === '?' || file.working_dir === '?') {
         continue
       }
@@ -306,7 +394,7 @@ export class GitSyncServiceImpl implements IGitSyncService {
     return {
       staged,
       unstaged,
-      untracked: status.created,
+      untracked: status.created.filter((p) => !this.isExcludedFromVersionControl(p)),
       conflicted: status.conflicted,
       hasChanges: !status.isClean()
     }
@@ -338,8 +426,7 @@ export class GitSyncServiceImpl implements IGitSyncService {
   async stageAll(): Promise<void> {
     return this._withGitLock(async () => {
       const git = await this.ensureGit()
-      logger.info('[GitSync] 暂存全部文件')
-      await git.add('.')
+      await this.stagePendingChanges(git)
     })
   }
 
@@ -507,29 +594,56 @@ export class GitSyncServiceImpl implements IGitSyncService {
     return this._withGitLock(() => this._commitAll(message))
   }
 
+  async commitStaged(message: string): Promise<GitCommit | null> {
+    return this._withGitLock(async () => {
+      const git = await this.ensureGit()
+      await this.untrackBaishouFiles(git)
+      const stagedPaths = this.filterVersionedPaths(await this.getCachedPaths(git))
+      if (stagedPaths.length === 0) {
+        return null
+      }
+
+      logger.info(`[GitSync] 提交 ${stagedPaths.length} 个已暂存文件`)
+      try {
+        const result = await git.commit(message)
+        return {
+          hash: result.commit,
+          message,
+          date: new Date(),
+          files: stagedPaths
+        }
+      } catch (error) {
+        throw new GitCommitError(error instanceof Error ? error : undefined)
+      }
+    })
+  }
+
   private async _commitAll(message: string): Promise<GitCommit | null> {
     const git = await this.ensureGit()
 
     try {
-      // 如果已有暂存文件，直接提交暂存区内容；否则自动暂存全部变更
-      const status = await git.status()
-      const hasStaged = status.files.some((f) => f.index.trim() !== '')
-      if (hasStaged) {
-        logger.info('[GitSync] 提交已暂存文件')
-      } else {
-        logger.info(`[GitSync] 暂存 ${status.files.length} 个文件`)
-        await git.add('.')
+      await this.ensureGitignore()
+      await this.untrackBaishouFiles(git)
+
+      let stagedPaths = this.filterVersionedPaths(await this.getCachedPaths(git))
+      if (stagedPaths.length === 0) {
+        logger.info('[GitSync] 无暂存文件，自动暂存 Changes 中的变更')
+        await this.stagePendingChanges(git)
+        stagedPaths = this.filterVersionedPaths(await this.getCachedPaths(git))
       }
 
-      // add 之后取 status，此时暂存区包含新文件 + 变更文件
-      const stagedStatus = await git.status()
+      if (stagedPaths.length === 0) {
+        return null
+      }
+
+      logger.info(`[GitSync] 提交 ${stagedPaths.length} 个文件`)
       const result = await git.commit(message)
 
       return {
         hash: result.commit,
         message,
         date: new Date(),
-        files: stagedStatus.files.map((f) => f.path)
+        files: stagedPaths
       }
     } catch (error) {
       throw new GitCommitError(error instanceof Error ? error : undefined)

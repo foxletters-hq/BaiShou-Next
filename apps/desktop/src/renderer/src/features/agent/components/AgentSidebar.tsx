@@ -45,27 +45,40 @@ const AssistantAvatar: React.FC<{ assistant: AgentAssistant; size: number }> = (
   assistant,
   size
 }) => {
+  const shellStyle: React.CSSProperties = {
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    overflow: 'hidden',
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+
   if (assistant.avatarPath && assistant.avatarPath !== 'default') {
     return (
-      <img
-        src={assistant.avatarPath}
-        alt={assistant.name}
-        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }}
-      />
+      <div style={shellStyle}>
+        <img
+          src={assistant.avatarPath}
+          alt={assistant.name}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            display: 'block'
+          }}
+        />
+      </div>
     )
   }
   return (
     <div
       style={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
+        ...shellStyle,
         backgroundColor: 'transparent',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: size * 0.5,
-        flexShrink: 0
+        fontSize: size * 0.5
       }}
     >
       {assistant.emoji || '🤖'}

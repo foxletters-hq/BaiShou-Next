@@ -28,9 +28,11 @@ import {
   Eye,
   EyeOff,
   LayoutTemplate,
-  FileText
+  FileText,
+  HelpCircle
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Tooltip } from '../Tooltip/Tooltip'
 
 export type SyncTarget = 'local' | 's3' | 'webdav'
 
@@ -150,6 +152,15 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'cloud' | 'snapshot'>('cloud')
 
   const fetchRecords = useCallback(async () => {
+    const startTime = Date.now()
+    const ensureMinDelay = async () => {
+      const elapsed = Date.now() - startTime
+      const remaining = 300 - elapsed
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining))
+      }
+    }
+
     if (activeTab === 'snapshot') {
       if (!onListSnapshots) return
       setIsLoading(true)
@@ -161,6 +172,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           t('cloud.fetch_snapshot_list_failed', '获取本地快照列表失败: ') + (e.message || e)
         )
       } finally {
+        await ensureMinDelay()
         setIsLoading(false)
         setManageMode(false)
         setSelected(new Set())
@@ -179,6 +191,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     } catch (e: any) {
       toast.showError(t('cloud.fetch_backup_list_failed', '获取备份列表失败: ') + (e.message || e))
     } finally {
+      await ensureMinDelay()
       setIsLoading(false)
       setManageMode(false)
       setSelected(new Set())
@@ -190,6 +203,15 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     if (savedConfig) {
       const next = { ...DEFAULT_CONFIG, ...savedConfig }
       setConfig(next)
+      const startTime = Date.now()
+      const ensureMinDelay = async () => {
+        const elapsed = Date.now() - startTime
+        const remaining = 300 - elapsed
+        if (remaining > 0) {
+          await new Promise((resolve) => setTimeout(resolve, remaining))
+        }
+      }
+
       if (activeTab === 'cloud') {
         if (next.target !== 'local') {
           setIsLoading(true)
@@ -200,7 +222,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 t('cloud.fetch_backup_list_failed', '获取备份列表失败: ') + (e.message || e)
               )
             )
-            .finally(() => {
+            .finally(async () => {
+              await ensureMinDelay()
               setIsLoading(false)
               setManageMode(false)
               setSelected(new Set())
@@ -218,7 +241,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 t('cloud.fetch_snapshot_list_failed', '获取本地快照列表失败: ') + (e.message || e)
               )
             )
-            .finally(() => {
+            .finally(async () => {
+              await ensureMinDelay()
               setIsLoading(false)
               setManageMode(false)
               setSelected(new Set())
@@ -373,9 +397,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   }
 
   const getTargetIcon = (target: string) => {
-    if (target === 's3') return <Cloud size={24} strokeWidth={1.5} />
-    if (target === 'webdav') return <Globe size={24} strokeWidth={1.5} />
-    return <Folder size={24} strokeWidth={1.5} />
+    if (target === 's3') return <Cloud size={20} strokeWidth={1.5} />
+    if (target === 'webdav') return <Globe size={20} strokeWidth={1.5} />
+    return <Folder size={20} strokeWidth={1.5} />
   }
 
   const getTargetColor = (target: string) => {
@@ -391,9 +415,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       {showConfig ? (
         <motion.div
           key="config"
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -15 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           className={styles.container}
           style={{ padding: 0 }}
@@ -692,9 +716,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       ) : (
         <motion.div
           key="status"
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -15 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           className={styles.container}
         >
@@ -725,7 +749,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                   color: '#10b981'
                 }}
               >
-                <Database size={24} strokeWidth={1.5} />
+                <Database size={20} strokeWidth={1.5} />
               </div>
               <div className={styles.statInfo}>
                 <div className={styles.statLabel}>
@@ -745,7 +769,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                   color: '#a855f7'
                 }}
               >
-                <History size={24} strokeWidth={1.5} />
+                <History size={20} strokeWidth={1.5} />
               </div>
               <div className={styles.statInfo}>
                 <div className={styles.statLabel}>
@@ -755,7 +779,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                 </div>
                 <div className={styles.statValue}>
                   {records.length}{' '}
-                  <span style={{ fontSize: 14, fontWeight: 'normal' }}>
+                  <span style={{ fontSize: 13, fontWeight: 'normal' }}>
                     {t('common.copies_unit', '份')}
                   </span>
                 </div>
@@ -787,6 +811,23 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                     ? t('data_sync.local_snapshots', '本地快照')
                     : t('data_sync.sync_records', '云端备份')}
                 </span>
+                <Tooltip
+                  content={
+                    activeTab === 'snapshot'
+                      ? t(
+                          'data_sync.snapshot_tooltip',
+                          '本地快照是系统自动为您的核心配置文件所做的本地历史备份。在发生配置冲突或逻辑错乱时，您可将系统状态一键恢复至快照记录的时点。'
+                        )
+                      : t(
+                          'data_sync.backup_tooltip',
+                          '云端备份为您提供完整的云端历史档案存档。您可以手动或者通过自动策略随时将数据打包上传至指定云存储服务，确保数据绝对防丢。'
+                        )
+                  }
+                >
+                  <span className={styles.helpIconWrapper}>
+                    <HelpCircle size={16} className={styles.helpIcon} />
+                  </span>
+                </Tooltip>
                 {activeTab === 'cloud' && (
                   <span className={styles.targetBadge}>{config.target.toUpperCase()}</span>
                 )}
@@ -799,14 +840,6 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                   <RefreshCw size={18} />
                 </button>
               </div>
-              <span className={styles.subtitle}>
-                {activeTab === 'snapshot'
-                  ? t(
-                      'data_sync.snapshots_scope_hint',
-                      '系统在还原备份等重大变动前自动生成本地快照，方便数据回滚。'
-                    )
-                  : t('data_sync.records_scope_hint', '所选节点范围内的全部记录档案。')}
-              </span>
             </div>
 
             <div className={styles.actionsGroup}>
@@ -920,17 +953,23 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
             </div>
           </div>
 
-          {isLoading ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '64px 0',
-                gap: '16px'
-              }}
-            >
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '64px 0',
+                  gap: '16px'
+                }}
+              >
               <Loader2
                 size={32}
                 style={{
@@ -948,9 +987,14 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                   ? t('data_sync.loading_snapshots', '正在载入本地快照...')
                   : t('data_sync.loading_records', '正在连线获取云端记录...')}
               </div>
-            </div>
+            </motion.div>
           ) : records.length === 0 ? (
-            <div
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -987,19 +1031,35 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                     : t('data_sync.no_records_hint', '暂无云端备份')}
                 </div>
               )}
-            </div>
+            </motion.div>
           ) : (
-            <div className={styles.recordList}>
+            <motion.div
+              key="list"
+              className={styles.recordList}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
               {records.map((r) => (
                 <div
                   key={r.filename}
                   className={`${styles.recordItem} ${selected.has(r.filename) ? styles.itemSelected : ''}`}
+                  onClick={() => {
+                    if (manageMode) {
+                      const next = new Set(selected)
+                      selected.has(r.filename) ? next.delete(r.filename) : next.add(r.filename)
+                      setSelected(next)
+                    }
+                  }}
+                  style={{ cursor: manageMode ? 'pointer' : 'default' }}
                 >
                   {manageMode && (
                     <input
                       type="checkbox"
                       className={styles.customCheck}
                       checked={selected.has(r.filename)}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => {
                         const next = new Set(selected)
                         e.target.checked ? next.add(r.filename) : next.delete(r.filename)
@@ -1080,8 +1140,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                   )}
                 </div>
               ))}
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           {showCountModal && (
             <div className={styles.modalOverlay} onClick={() => setShowCountModal(false)}>

@@ -585,10 +585,12 @@ export const SummaryPage: React.FC = () => {
                 // 确认删除
                 const title =
                   summary.type === 'weekly'
-                    ? t('summary.card_week_title', '第 $week 周').replace(
-                        '$week',
-                        String(getWeekNumber(new Date(summary.startDate)))
-                      )
+                    ? t('summary.missing_label_weekly', '$year年第$week周')
+                        .replace('$year', String(new Date(summary.startDate).getFullYear()))
+                        .replace(
+                          '$week',
+                          String(getWeekNumber(new Date(summary.startDate)))
+                        )
                     : summary.type === 'monthly'
                       ? t('summary.card_month_title', '$month月').replace(
                           '$month',

@@ -14,7 +14,12 @@ export interface ILanSyncService {
    * 必须随机绑定到一个高位空闲端口 0 来避免端口死锁。
    * 返回实际暴露在局域网的 IP 与 端口。
    */
-  startBroadcasting(): Promise<{ ip: string; port: number } | null>
+  startBroadcasting(): Promise<{
+    ip: string
+    port: number
+    serviceId: string
+    allIps?: string[]
+  } | null>
 
   /**
    * 关闭雷达广播和关闭 HTTP 服务器。

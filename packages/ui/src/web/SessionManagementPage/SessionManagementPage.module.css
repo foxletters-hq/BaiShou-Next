@@ -191,17 +191,20 @@
 }
 
 .sessionCardSelected {
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.04);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.6);
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.08);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.08) !important;
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.6) !important;
+  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .sessionCheckbox {
+  -webkit-appearance: none;
   appearance: none;
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  border: 2px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.8);
+  border: 1.5px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
   margin: 0;
   cursor: pointer;
   display: flex;
@@ -209,19 +212,39 @@
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
-  background: var(--bg-surface);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  position: relative;
+  outline: none;
+}
+
+.sessionCheckbox:hover {
+  border-color: var(--color-primary, #5BA8F5);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .sessionCheckbox:checked {
   background-color: var(--color-primary, #5BA8F5);
   border-color: var(--color-primary, #5BA8F5);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+}
+
+.sessionCheckbox::after {
+  content: "";
+  width: 5px;
+  height: 10px;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  position: absolute;
+  top: 3px;
+  left: 7px;
+  transition: border-color 0.15s ease;
 }
 
 .sessionCheckbox:checked::after {
-  content: '✓';
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
+  border-color: #FFF;
 }
 
 .sessionInfo {

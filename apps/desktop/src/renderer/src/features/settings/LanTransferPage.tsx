@@ -9,9 +9,13 @@ export const LanTransferPage: React.FC = () => {
           onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
           onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}
           onStartDiscovery={async (onFound: any, onLost: any) => {
-            ;(window as any).api?.lan?.onDeviceFound(onFound)
-            ;(window as any).api?.lan?.onDeviceLost(onLost)
+            const unsubFound = (window as any).api?.lan?.onDeviceFound(onFound)
+            const unsubLost = (window as any).api?.lan?.onDeviceLost(onLost)
             await (window as any).api?.lan?.startDiscovery()
+            return () => {
+              unsubFound?.()
+              unsubLost?.()
+            }
           }}
           onStopDiscovery={async () => (window as any).api?.lan?.stopDiscovery()}
           onSendFile={async (ip: string, port: number, progress: any) => {

@@ -115,23 +115,6 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
           <div className={styles.divider} />
 
           <h3 className={styles.sectionTitle}>
-            {t('agent.chat.cost_context_title', '当前上下文')}
-          </h3>
-          <div className={styles.spacer8} />
-          <div className={styles.costRow}>
-            <span className={styles.costLabel}>
-              {t('agent.chat.cost_context_size', '上下文大小')}
-            </span>
-            <span className={styles.costValue}>
-              {(details.lastInputTokens || details.promptTokens) > 0
-                ? `${details.lastInputTokens || details.promptTokens} ${t('agent.chat.tokens_unit', 'tokens')}`
-                : t('agent.chat.cost_no_data', '暂无数据')}
-            </span>
-          </div>
-
-          <div className={styles.divider} />
-
-          <h3 className={styles.sectionTitle}>
             {t('agent.chat.pricing_table_title', '价格表信息')}
           </h3>
           <div className={styles.spacer8} />

@@ -85,12 +85,14 @@ export interface IGitSyncService {
   // ── 提交操作 ───────────────────────────────────────────────
 
   /**
-   * 提交所有变更（手动提交）
-   * @param message - 提交消息
-   * @returns 创建的 commit
-   * @throws {GitCommitError} 提交失败
+   * 提交所有变更（含自动暂存未暂存文件，供同步编排器等内部场景使用）
    */
   commitAll(message: string): Promise<GitCommit | null>
+
+  /**
+   * 仅提交已暂存文件，不自动 git add
+   */
+  commitStaged(message: string): Promise<GitCommit | null>
 
   /**
    * 提交指定文件的变更
