@@ -43,12 +43,12 @@ export const SessionManagementScreen: React.FC = () => {
     try {
       const sessionList = await services.sessionManager.list()
       setSessions(
-        sessionList.map((s) => ({
+        sessionList.map((s: any) => ({
           id: s.id,
           title: s.title || '新对话',
-          assistantId: s.assistantId,
+          assistantId: s.assistantId || undefined,
           isPinned: s.isPinned || false,
-          updatedAt: s.updatedAt || new Date().toISOString(),
+          updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : (s.updatedAt || new Date().toISOString()),
           inputTokens: s.inputTokens || 0,
           outputTokens: s.outputTokens || 0,
           totalCostMicros: s.totalCostMicros || 0
@@ -73,7 +73,7 @@ export const SessionManagementScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await services?.sessionManager.delete(sessionId)
+            await services?.sessionManager.deleteSessions([sessionId])
             await loadSessions()
           } catch (e) {
             console.error('Failed to delete session', e)
@@ -85,10 +85,52 @@ export const SessionManagementScreen: React.FC = () => {
 
   const handlePinSession = async (sessionId: string, isPinned: boolean) => {
     try {
-      await services?.sessionManager.update(sessionId, { isPinned: !isPinned })
+      await services?.sessionManager.togglePin(sessionId, !isPinned)
       await loadSessions()
     } catch (e) {
       console.error('Failed to pin session', e)
+    }
+  }
+
+  const handleRenameSession = (sessionId: string, currentTitle: string) => {
+    Alert.prompt(
+      t('session.rename.title', '重命名会话'),
+      t('session.rename.message', '请输入新的会话名称'),
+      [
+        { text: t('common.cancel', '取消'), style: 'cancel' },
+        {
+          text: t('common.confirm', '确定'),
+          onPress: async (newTitle?: string) => {
+            if (!newTitle?.trim()) return
+            try {
+              await services?.sessionManager.updateTitle(sessionId, newTitle.trim())
+              await loadSessions()
+            } catch (e) {
+              console.error('Failed to rename session', e)
+            }
+          }
+        }
+      ],
+      'plain-text',
+      currentTitle
+    )
+  }
+
+  const handleSelectAll = () => {
+    const filteredIds = new Set(filteredSessions.map((s) => s.id))
+    // 判断是否所有过滤结果都已被选中
+    const allFilteredSelected = filteredSessions.every((s) => selectedSessions.has(s.id))
+
+    if (allFilteredSelected && filteredSessions.length > 0) {
+      // 取消当前过滤结果的选中状态
+      const newSelected = new Set(selectedSessions)
+      filteredIds.forEach((id) => newSelected.delete(id))
+      setSelectedSessions(newSelected)
+    } else {
+      // 选中所有过滤结果
+      const newSelected = new Set(selectedSessions)
+      filteredIds.forEach((id) => newSelected.add(id))
+      setSelectedSessions(newSelected)
     }
   }
 
@@ -105,9 +147,8 @@ export const SessionManagementScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              for (const sessionId of selectedSessions) {
-                await services?.sessionManager.delete(sessionId)
-              }
+              // 批量删除，一次调用传入所有 ID
+              await services?.sessionManager.deleteSessions([...selectedSessions])
               setSelectedSessions(new Set())
               setIsMultiSelectMode(false)
               await loadSessions()
@@ -177,14 +218,8 @@ export const SessionManagementScreen: React.FC = () => {
         activeOpacity={0.7}
       >
         {isMultiSelectMode && (
-          <View
-            style={[
-              styles.checkbox,
-              { borderColor: colors.primary },
-              isSelected && { backgroundColor: colors.primary }
-            ]}
-          >
-            {isSelected && <Text style={styles.checkmark}>✓</Text>}
+          <View style={[styles.checkbox, { borderColor: colors.primary }, isSelected && { backgroundColor: colors.primary }]}>
+            {isSelected && <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>}
           </View>
         )}
 
@@ -225,9 +260,15 @@ export const SessionManagementScreen: React.FC = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
+              onPress={() => handleRenameSession(item.id, item.title)}
+            >
+              <Text style={[styles.actionText, { color: colors.primary }]}>重命名</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
               onPress={() => handleDeleteSession(item.id)}
             >
-              <Text style={[styles.actionText, { color: '#EF4444' }]}>删除</Text>
+              <Text style={[styles.actionText, { color: colors.error }]}>删除</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -290,16 +331,26 @@ export const SessionManagementScreen: React.FC = () => {
           </View>
 
           {/* 批量操作栏 */}
-          {isMultiSelectMode && selectedSessions.size > 0 && (
-            <View style={[styles.batchBar, { backgroundColor: colors.bgSurface }]}>
-              <Text style={[styles.batchText, { color: colors.textSecondary }]}>
-                已选择 {selectedSessions.size} 个会话
-              </Text>
+          {isMultiSelectMode && (
+            <View style={[styles.batchBar, { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle }]}>
+              <View style={styles.batchLeft}>
+                <Text style={[styles.batchText, { color: colors.textSecondary }]}>
+                  已选择 {selectedSessions.size} 个会话
+                </Text>
+                <TouchableOpacity
+                  style={[styles.selectAllButton, { borderColor: colors.primary }]}
+                  onPress={handleSelectAll}
+                >
+                  <Text style={[styles.selectAllText, { color: colors.primary }]}>
+                    {selectedSessions.size === filteredSessions.length ? '取消全选' : '全选'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity
-                style={[styles.batchDeleteButton, { backgroundColor: '#EF4444' }]}
+                style={[styles.batchDeleteButton, { backgroundColor: colors.error }]}
                 onPress={handleDeleteSelected}
               >
-                <Text style={styles.batchDeleteText}>删除选中</Text>
+                <Text style={[styles.batchDeleteText, { color: colors.textOnPrimary }]}>删除选中</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -376,11 +427,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)'
+    borderBottomWidth: 1
+  },
+  batchLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
   },
   batchText: {
     fontSize: 14,
+    fontWeight: '600'
+  },
+  selectAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  selectAllText: {
+    fontSize: 13,
     fontWeight: '600'
   },
   batchDeleteButton: {
@@ -389,7 +454,6 @@ const styles = StyleSheet.create({
     borderRadius: 8
   },
   batchDeleteText: {
-    color: '#FFF',
     fontSize: 14,
     fontWeight: '600'
   },
@@ -443,7 +507,6 @@ const styles = StyleSheet.create({
     marginRight: 12
   },
   checkmark: {
-    color: '#FFF',
     fontSize: 14,
     fontWeight: '700'
   },

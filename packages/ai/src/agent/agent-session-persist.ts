@@ -32,7 +32,11 @@ export interface PersistResultParams {
  * 将流结果落盘到数据库。
  * 从 AgentSessionService 中拆出，职责更清晰。
  */
-export async function persistResult(params: PersistResultParams): Promise<void> {
+export async function persistResult(params: PersistResultParams): Promise<{
+  inputTokens: number
+  outputTokens: number
+  costMicros: number
+}> {
   const {
     sessionId,
     rawUserText,
@@ -209,5 +213,12 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
       // 并行起跳长文压缩归纳检测机
       ContextCompressorService.compress(provider, modelId, sessionRepo, snapshotRepo, sessionId)
     }, 500)
+  }
+
+  // 返回 token 统计数据，供上层回调使用
+  return {
+    inputTokens: finalUsage.inputTokens,
+    outputTokens: finalUsage.outputTokens,
+    costMicros: costMicros
   }
 }

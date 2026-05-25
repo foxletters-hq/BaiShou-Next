@@ -59,7 +59,22 @@ export function useAgentUI() {
             setRecallItems([])
           }
         } else {
-          setRecallItems([])
+          // RAG 记忆搜索：移动端通过 diaryService 的全文搜索作为回退方案
+          const memoryEntries = await services.diaryService.search(query)
+          if (memoryEntries) {
+            setRecallItems(
+              memoryEntries.map((d: any) => ({
+                id: d.id.toString(),
+                type: 'memory',
+                title: d.title || t('agent.recall.memory', '记忆'),
+                snippet: d.snippet || d.content?.substring(0, 150) || '',
+                date: new Date(d.createdAt).toISOString().split('T')[0],
+                similarity: d.rankScore
+              }))
+            )
+          } else {
+            setRecallItems([])
+          }
         }
       } catch (err) {
         console.error('[AgentUI] Search fail:', err)

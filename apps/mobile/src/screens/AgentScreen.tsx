@@ -68,7 +68,10 @@ export const AgentScreen = () => {
   const {
     isStreaming,
     streamingText,
+    streamingReasoning,
     tokenUsage,
+    activeTool,
+    completedTools,
     handleSend,
     handleStop,
     handleRegenerate,
@@ -433,13 +436,45 @@ export const AgentScreen = () => {
             }}
             ListFooterComponent={
               isStreaming ? (
-                <StreamingBubble
-                  text={streamingText}
-                  aiProfile={{
-                    name: currentAssistant?.name || 'AI',
-                    emoji: currentAssistant?.emoji
-                  }}
-                />
+                <View>
+                  {/* 工具调用状态展示 */}
+                  {(activeTool || completedTools.length > 0) && (
+                    <View
+                      style={[
+                        styles.toolStatusContainer,
+                        { backgroundColor: colors.bgSurfaceNormal }
+                      ]}
+                    >
+                      {completedTools.map((tool, index) => (
+                        <View key={index} style={styles.toolItem}>
+                          <Text style={[styles.toolCheckmark, { color: colors.accentGreen }]}>
+                            ✓
+                          </Text>
+                          <Text style={[styles.toolName, { color: colors.textSecondary }]}>
+                            {tool.name}
+                          </Text>
+                        </View>
+                      ))}
+                      {activeTool && (
+                        <View style={styles.toolItem}>
+                          <Text style={[styles.toolSpinner, { color: colors.primary }]}>⟳</Text>
+                          <Text style={[styles.toolNameActive, { color: colors.textPrimary }]}>
+                            {activeTool.name}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                  <StreamingBubble
+                    text={streamingText}
+                    reasoning={streamingReasoning}
+                    isReasoning={isStreaming && !streamingText && !!streamingReasoning}
+                    aiProfile={{
+                      name: currentAssistant?.name || 'AI',
+                      emoji: currentAssistant?.emoji
+                    }}
+                  />
+                </View>
               ) : null
             }
             showsVerticalScrollIndicator={false}
@@ -688,6 +723,34 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { paddingVertical: 24, paddingHorizontal: 16, flexGrow: 1 },
   bubble: { marginBottom: 20 },
+  toolStatusContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 12,
+    gap: 6
+  },
+  toolItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  toolCheckmark: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  toolSpinner: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  toolName: {
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  toolNameActive: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
   empty: {
     flex: 1,
     alignItems: 'center',

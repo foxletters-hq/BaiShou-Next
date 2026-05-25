@@ -18,6 +18,7 @@ interface SessionListProps {
   onCreateSession: () => void
   onDeleteSession: (sessionId: string) => void
   onPinSession: (sessionId: string, isPinned: boolean) => void
+  onRenameSession?: (sessionId: string, newTitle: string) => void
 }
 
 export const SessionList: React.FC<SessionListProps> = ({
@@ -25,7 +26,8 @@ export const SessionList: React.FC<SessionListProps> = ({
   onSelectSession,
   onCreateSession,
   onDeleteSession,
-  onPinSession
+  onPinSession,
+  onRenameSession
 }) => {
   const { colors } = useNativeTheme()
   const { services, dbReady } = useBaishou()
@@ -37,11 +39,11 @@ export const SessionList: React.FC<SessionListProps> = ({
     try {
       const sessionList = await services.sessionManager.list()
       setSessions(
-        sessionList.map((s) => ({
+        sessionList.map((s: any) => ({
           id: s.id,
           title: s.title || '新对话',
           isPinned: s.isPinned || false,
-          updatedAt: s.updatedAt || new Date().toISOString(),
+          updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : (s.updatedAt || new Date().toISOString()),
           assistantId: s.assistantId
         }))
       )
@@ -64,7 +66,7 @@ export const SessionList: React.FC<SessionListProps> = ({
         style: 'destructive',
         onPress: async () => {
           try {
-            await services?.sessionManager.delete(sessionId)
+            await services?.sessionManager.deleteSessions([sessionId])
             await loadSessions()
             onDeleteSession(sessionId)
           } catch (e) {
@@ -77,7 +79,7 @@ export const SessionList: React.FC<SessionListProps> = ({
 
   const handlePinSession = async (sessionId: string, isPinned: boolean) => {
     try {
-      await services?.sessionManager.update(sessionId, { isPinned: !isPinned })
+      await services?.sessionManager.togglePin(sessionId, !isPinned)
       await loadSessions()
       onPinSession(sessionId, !isPinned)
     } catch (e) {
@@ -85,23 +87,56 @@ export const SessionList: React.FC<SessionListProps> = ({
     }
   }
 
+  const handleRenameSession = (sessionId: string, currentTitle: string) => {
+    Alert.prompt(
+      '重命名会话',
+      '请输入新的会话名称',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '确定',
+          onPress: async (newTitle?: string) => {
+            if (!newTitle?.trim()) return
+            try {
+              await services?.sessionManager.updateTitle(sessionId, newTitle.trim())
+              await loadSessions()
+              onRenameSession?.(sessionId, newTitle.trim())
+            } catch (e) {
+              console.error('Failed to rename session', e)
+            }
+          }
+        }
+      ],
+      'plain-text',
+      currentTitle
+    )
+  }
+
   const renderItem = ({ item }: { item: Session }) => (
-    <SessionListItem
-      session={item}
-      isSelected={item.id === selectedSessionId}
-      onTap={() => onSelectSession(item.id)}
-    />
+    <View style={styles.sessionRow}>
+      <SessionListItem
+        session={item}
+        isSelected={item.id === selectedSessionId}
+        onTap={() => onSelectSession(item.id)}
+      />
+      <TouchableOpacity
+        style={[styles.renameButton, { borderColor: colors.borderSubtle }]}
+        onPress={() => handleRenameSession(item.id, item.title)}
+      >
+        <Text style={[styles.renameButtonText, { color: colors.textSecondary }]}>重命名</Text>
+      </TouchableOpacity>
+    </View>
   )
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>会话列表</Text>
         <TouchableOpacity
           style={[styles.createButton, { backgroundColor: colors.primary }]}
           onPress={onCreateSession}
         >
-          <Text style={styles.createButtonText}>+</Text>
+          <Text style={[styles.createButtonText, { color: colors.textOnPrimary }]}>+</Text>
         </TouchableOpacity>
       </View>
 
@@ -137,8 +172,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)'
+    borderBottomWidth: 1
   },
   title: {
     fontSize: 18,
@@ -152,7 +186,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   createButtonText: {
-    color: '#FFF',
     fontSize: 20,
     fontWeight: '600'
   },
@@ -180,5 +213,20 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1
+  },
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  renameButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginLeft: 8
+  },
+  renameButtonText: {
+    fontSize: 12,
+    fontWeight: '500'
   }
 })

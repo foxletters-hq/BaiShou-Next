@@ -257,7 +257,7 @@ export class AgentSessionService {
       }
 
       // 6. 落盘
-      await persistResult({
+      const usageResult = await persistResult({
         sessionId,
         rawUserText: userText,
         streamResult,
@@ -270,9 +270,13 @@ export class AgentSessionService {
         streamError
       })
 
-      // 7. 向外抛出完成回调
+      // 7. 向外抛出完成回调，传入 token 统计数据
       if (callbacks?.onFinish) {
-        callbacks.onFinish()
+        callbacks.onFinish({
+          inputTokens: usageResult.inputTokens,
+          outputTokens: usageResult.outputTokens,
+          costMicros: usageResult.costMicros
+        })
       }
     } catch (e: any) {
       logger.error('[AgentSessionService] Error in streamChat:', e)

@@ -51,5 +51,5 @@ export interface StreamChatCallbacks {
   onToolCallStart?: (toolName: string, args: unknown) => void
   onToolCallResult?: (toolName: string, result: unknown) => void
   onError?: (error: Error) => void
-  onFinish?: () => void
+  onFinish?: (result?: { inputTokens?: number; outputTokens?: number; costMicros?: number }) => void
 }

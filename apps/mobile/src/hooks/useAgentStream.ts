@@ -11,6 +11,14 @@ interface TokenUsage {
   totalCostMicros: number
 }
 
+// 工具调用信息接口
+interface ToolCallInfo {
+  name: string
+  startTime: number
+  endTime?: number
+  result?: unknown
+}
+
 export function useAgentStream(
   currentSessionId: string | null,
   currentProviderId: string | null,
@@ -32,6 +40,10 @@ export function useAgentStream(
     outputTokens: 0,
     totalCostMicros: 0
   })
+
+  // 工具调用追踪状态
+  const [activeTool, setActiveTool] = useState<ToolCallInfo | null>(null)
+  const [completedTools, setCompletedTools] = useState<ToolCallInfo[]>([])
 
   // 保存 searchMode 引用用于 regenerate / edit 场景
   const searchModeRef = useRef(searchMode)
@@ -93,6 +105,8 @@ export function useAgentStream(
       setIsStreaming(true)
       setStreamingText('')
       setStreamingReasoning('')
+      setActiveTool(null)
+      setCompletedTools([])
 
       try {
         let currentText = ''
@@ -108,6 +122,24 @@ export function useAgentStream(
             },
             onReasoningDelta: (chunk) => {
               setStreamingReasoning((prev) => prev + chunk)
+            },
+            onToolCallStart: (toolName: string, args: unknown) => {
+              setActiveTool({
+                name: toolName,
+                startTime: Date.now()
+              })
+            },
+            onToolCallResult: (toolName: string, result: unknown) => {
+              setActiveTool(null)
+              setCompletedTools((prev) => [
+                ...prev,
+                {
+                  name: toolName,
+                  startTime: Date.now(),
+                  endTime: Date.now(),
+                  result
+                }
+              ])
             },
             onFinish: (result?: any) => {
               setLoading(false)
@@ -272,6 +304,8 @@ export function useAgentStream(
     streamingText,
     streamingReasoning,
     tokenUsage,
+    activeTool,
+    completedTools,
     // 方法
     handleSend,
     handleStop,

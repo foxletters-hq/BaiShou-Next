@@ -8,6 +8,7 @@ export interface RecallItem {
   title: string
   snippet: string
   date: string
+  similarity?: number
 }
 
 export interface UseRecallSearchResult {
@@ -47,7 +48,24 @@ export function useRecallSearch(): UseRecallSearchResult {
             setRecallItems([])
           }
         } else {
-          setRecallItems([])
+          // RAG 语义记忆搜索：使用向量嵌入 + 混合搜索（FTS + 向量 RRF 融合）
+          const memoryResults = await services?.memorySearch?.(query, { topK: 20, minScore: 0.3 })
+          if (memoryResults && memoryResults.length > 0) {
+            setRecallItems(
+              memoryResults.map((r, index) => ({
+                id: `memory_${index}`,
+                type: 'memory' as const,
+                title: t('agent.recall.memory', '记忆'),
+                snippet: r.chunkText.substring(0, 150),
+                date: r.createdAt
+                  ? new Date(r.createdAt * 1000).toISOString().split('T')[0]
+                  : '',
+                similarity: r.score
+              }))
+            )
+          } else {
+            setRecallItems([])
+          }
         }
       } catch (err) {
         console.error('[useRecallSearch] Search fail:', err)
