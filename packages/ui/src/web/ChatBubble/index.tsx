@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo, useLayoutEffect } from 'react'
 import styles from './ChatBubble.module.css'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { MessageActionBar } from '../MessageActionBar'
@@ -53,6 +53,28 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     y: number
   } | null>(null)
   const selectedTextRef = useRef<string>('')
+  const chatMenuRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (contextMenu && chatMenuRef.current) {
+      const rect = chatMenuRef.current.getBoundingClientRect()
+      const windowWidth = window.innerWidth
+      const windowHeight = window.innerHeight
+
+      let adjustedX = contextMenu.x
+      let adjustedY = contextMenu.y
+
+      if (contextMenu.x + rect.width > windowWidth) {
+        adjustedX = Math.max(10, windowWidth - rect.width - 10)
+      }
+      if (contextMenu.y + rect.height > windowHeight) {
+        adjustedY = Math.max(10, windowHeight - rect.height - 10)
+      }
+
+      chatMenuRef.current.style.left = `${adjustedX}px`
+      chatMenuRef.current.style.top = `${adjustedY}px`
+    }
+  }, [contextMenu])
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -398,7 +420,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             setContextMenu(null)
           }}
         >
-          <div className={styles.contextMenu} style={{ top: contextMenu.y, left: contextMenu.x }}>
+          <div
+            ref={chatMenuRef}
+            className={styles.contextMenu}
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+          >
             <button onMouseDown={handleCopy}>{t('common.copy', '复制')}</button>
             {isUser ? (
               <>

@@ -144,39 +144,37 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
           <div className={styles.costRow}>
             <span className={styles.costLabel}>{t('agent.chat.pricing_source', '价格数据源')}</span>
             <span className={styles.costValue}>
-              <div className={styles.tooltipContainer}>
-                <a
-                  href={sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.sourceLink}
-                >
-                  models.dev
-                </a>
-                <span className={styles.tooltipText}>
-                  {t(
-                    'agent.chat.pricing_source_tooltip',
-                    '点击在外部浏览器中查看原始 API 价格数据'
-                  )}
-                </span>
+              <div className={styles.pricingSourceContainer}>
+                <div className={styles.tooltipContainer}>
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.sourceLink}
+                  >
+                    models.dev
+                  </a>
+                  <span className={styles.tooltipText}>
+                    {t(
+                      'agent.chat.pricing_source_tooltip',
+                      '点击在外部浏览器中查看原始 API 价格数据'
+                    )}
+                  </span>
+                </div>
+                {onRefreshPricing && (
+                  <button
+                    className={styles.refreshButtonInline}
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                  >
+                    {isRefreshing
+                      ? t('agent.chat.pricing_refreshing', '刷新中...')
+                      : t('agent.chat.pricing_refresh', '刷新')}
+                  </button>
+                )}
               </div>
             </span>
           </div>
-          {onRefreshPricing && <div className={styles.spacer8} />}
-          {onRefreshPricing && (
-            <div className={styles.costRow}>
-              <span className={styles.costLabel}></span>
-              <button
-                className={styles.refreshButton}
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
-                {isRefreshing
-                  ? t('agent.chat.pricing_refreshing', '刷新中...')
-                  : t('agent.chat.pricing_refresh', '刷新价格表')}
-              </button>
-            </div>
-          )}
           {refreshError && <div className={styles.errorMessage}>{refreshError}</div>}
 
           <div className={styles.spacer16} />

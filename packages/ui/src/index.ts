@@ -23,6 +23,8 @@ export * from './web/PageSizeSelector/index'
 export * from './web/Pagination/index'
 export * from './web/DiaryEditor/index'
 export * from './web/MarkdownRenderer/index'
+export * from './web/ContextMenu/index'
+
 
 export * from './web/SummaryCard/index'
 export * from './web/MissingSummaryCard/MissingSummaryCard'

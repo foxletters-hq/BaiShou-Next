@@ -4,8 +4,10 @@ import React, {
   useCallback,
   useState,
   forwardRef,
-  useImperativeHandle
+  useImperativeHandle,
+  useLayoutEffect
 } from 'react'
+import { createPortal } from 'react-dom'
 import { EditorState } from '@codemirror/state'
 import {
   EditorView,
@@ -106,6 +108,28 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
       y: number
       hasSelection: boolean
     } | null>(null)
+    const cmMenuRef = useRef<HTMLDivElement>(null)
+
+    useLayoutEffect(() => {
+      if (textContextMenu && cmMenuRef.current) {
+        const rect = cmMenuRef.current.getBoundingClientRect()
+        const windowWidth = window.innerWidth
+        const windowHeight = window.innerHeight
+
+        let adjustedX = textContextMenu.x
+        let adjustedY = textContextMenu.y
+
+        if (textContextMenu.x + rect.width > windowWidth) {
+          adjustedX = Math.max(10, windowWidth - rect.width - 10)
+        }
+        if (textContextMenu.y + rect.height > windowHeight) {
+          adjustedY = Math.max(10, windowHeight - rect.height - 10)
+        }
+
+        cmMenuRef.current.style.left = `${adjustedX}px`
+        cmMenuRef.current.style.top = `${adjustedY}px`
+      }
+    }, [textContextMenu])
 
     useEffect(() => {
       const handleClose = () => setTextContextMenu(null)
@@ -420,87 +444,106 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
             onClose={() => setPreviewSrc(null)}
           />
         )}
-        {textContextMenu && (
-          <div
-            className="cm-context-menu"
-            style={{
-              left: textContextMenu.x,
-              top: textContextMenu.y
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="cm-context-menu-item"
-              disabled={!textContextMenu.hasSelection}
-              onClick={() => {
-                document.execCommand('copy')
-                setTextContextMenu(null)
+        {textContextMenu && createPortal(
+          <>
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 9999,
+                background: 'transparent'
               }}
-            >
-              {t('common.copy', '复制')}
-            </button>
-            <button
-              className="cm-context-menu-item"
-              disabled={!textContextMenu.hasSelection}
-              onClick={() => {
-                document.execCommand('cut')
-                setTextContextMenu(null)
+              onMouseDown={() => setTextContextMenu(null)}
+            />
+            <div
+              ref={cmMenuRef}
+              className="cm-context-menu"
+              style={{
+                position: 'fixed',
+                zIndex: 10000,
+                left: textContextMenu.x,
+                top: textContextMenu.y
               }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
-              {t('common.cut', '剪切')}
-            </button>
-            <button
-              className="cm-context-menu-item"
-              onClick={async () => {
-                try {
-                  const text = await navigator.clipboard.readText()
+              <button
+                className="cm-context-menu-item"
+                disabled={!textContextMenu.hasSelection}
+                onClick={() => {
+                  document.execCommand('copy')
+                  setTextContextMenu(null)
+                }}
+              >
+                {t('common.copy', '复制')}
+              </button>
+              <button
+                className="cm-context-menu-item"
+                disabled={!textContextMenu.hasSelection}
+                onClick={() => {
+                  document.execCommand('cut')
+                  setTextContextMenu(null)
+                }}
+              >
+                {t('common.cut', '剪切')}
+              </button>
+              <button
+                className="cm-context-menu-item"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText()
+                    const view = viewRef.current
+                    if (view) {
+                      const { from, to } = view.state.selection.main
+                      view.dispatch({
+                        changes: { from, to, insert: text },
+                        selection: { anchor: from + text.length }
+                      })
+                      view.focus()
+                    }
+                  } catch (err) {
+                    console.error(err)
+                  }
+                  setTextContextMenu(null)
+                }}
+              >
+                {t('common.paste', '粘贴')}
+              </button>
+              <div className="cm-context-menu-divider" />
+              <button
+                className="cm-context-menu-item"
+                onClick={() => {
                   const view = viewRef.current
                   if (view) {
-                    const { from, to } = view.state.selection.main
+                    undo(view)
+                    view.focus()
+                  }
+                  setTextContextMenu(null)
+                }}
+              >
+                {t('common.undo', '撤销')}
+              </button>
+              <button
+                className="cm-context-menu-item"
+                onClick={() => {
+                  const view = viewRef.current
+                  if (view) {
                     view.dispatch({
-                      changes: { from, to, insert: text },
-                      selection: { anchor: from + text.length }
+                      selection: { anchor: 0, head: view.state.doc.length }
                     })
                     view.focus()
                   }
-                } catch (err) {
-                  console.error(err)
-                }
-                setTextContextMenu(null)
-              }}
-            >
-              {t('common.paste', '粘贴')}
-            </button>
-            <div className="cm-context-menu-divider" />
-            <button
-              className="cm-context-menu-item"
-              onClick={() => {
-                const view = viewRef.current
-                if (view) {
-                  undo(view)
-                  view.focus()
-                }
-                setTextContextMenu(null)
-              }}
-            >
-              {t('common.undo', '撤销')}
-            </button>
-            <button
-              className="cm-context-menu-item"
-              onClick={() => {
-                const view = viewRef.current
-                if (view) {
-                  view.dispatch({
-                    selection: { anchor: 0, head: view.state.doc.length }
-                  })
-                  view.focus()
-                }
-                setTextContextMenu(null)
-              }}
-            >
-              {t('common.select_all', '全选')}
-            </button>
-          </div>
+                  setTextContextMenu(null)
+                }}
+              >
+                {t('common.select_all', '全选')}
+              </button>
+            </div>
+          </>,
+          document.body
         )}
       </div>
     )

@@ -169,6 +169,21 @@ class ImageWidget extends WidgetType {
 
       document.body.appendChild(menu)
 
+      // 确保菜单不超出边界
+      const rect = menu.getBoundingClientRect()
+      const windowWidth = window.innerWidth
+      const windowHeight = window.innerHeight
+      let newX = e.clientX
+      let newY = e.clientY
+      if (e.clientX + rect.width > windowWidth) {
+        newX = Math.max(10, windowWidth - rect.width - 10)
+      }
+      if (e.clientY + rect.height > windowHeight) {
+        newY = Math.max(10, windowHeight - rect.height - 10)
+      }
+      menu.style.left = `${newX}px`
+      menu.style.top = `${newY}px`
+
       const closeMenu = () => {
         menu.remove()
         document.removeEventListener('click', closeMenu)

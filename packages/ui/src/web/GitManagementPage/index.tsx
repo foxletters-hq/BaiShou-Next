@@ -454,24 +454,26 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
   return (
     <div className="git-management-page">
       {/* 标签栏 */}
-      <div className="gmp-tabs">
-        <button
-          className={`gmp-tab ${tab === 'config' ? 'gmp-tab-active' : ''}`}
-          onClick={() => setTab('config')}
-        >
-          {t('version_control.git_settings', 'Git 设置')}
-        </button>
-        <button
-          className={`gmp-tab ${tab === 'version' ? 'gmp-tab-active' : ''}`}
-          onClick={() => {
-            setTab('version')
-            handleLoadHistory()
-            handleRefreshStatus()
-            handleLoadRecentPulls()
-          }}
-        >
-          {t('version_control.version_control', '版本控制')}
-        </button>
+      <div className="gmp-header">
+        <div className="gmp-tabs">
+          <button
+            className={`gmp-tab ${tab === 'config' ? 'active' : ''}`}
+            onClick={() => setTab('config')}
+          >
+            {t('version_control.git_settings', 'Git 设置')}
+          </button>
+          <button
+            className={`gmp-tab ${tab === 'version' ? 'active' : ''}`}
+            onClick={() => {
+              setTab('version')
+              handleLoadHistory()
+              handleRefreshStatus()
+              handleLoadRecentPulls()
+            }}
+          >
+            {t('version_control.version_control', '版本控制')}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence mode="wait">

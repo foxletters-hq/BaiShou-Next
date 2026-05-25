@@ -236,12 +236,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  padding: 12px 24px;
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: var(--bg-app);
-  border-bottom: 1px solid var(--color-outline-variant);
+  z-index: 50;
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-overlay);
+  -webkit-backdrop-filter: var(--blur-overlay);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 
