@@ -27,16 +27,29 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
 
   // 日期格式化 Mock
   const day = createdAt.getDate().toString().padStart(2, '0')
-  const month = createdAt.getMonth() + 1
   const year = createdAt.getFullYear()
   const WEEKDAYS = [
-    t('diary.weekday.sunday', '周日'),
-    t('diary.weekday.monday', '周一'),
-    t('diary.weekday.tuesday', '周二'),
-    t('diary.weekday.wednesday', '周三'),
-    t('diary.weekday.thursday', '周四'),
-    t('diary.weekday.friday', '周五'),
-    t('diary.weekday.saturday', '周六')
+    t('diary.weekday_sun', '周日'),
+    t('diary.weekday_mon', '周一'),
+    t('diary.weekday_tue', '周二'),
+    t('diary.weekday_wed', '周三'),
+    t('diary.weekday_thu', '周四'),
+    t('diary.weekday_fri', '周五'),
+    t('diary.weekday_sat', '周六')
+  ]
+  const MONTH_NAMES = [
+    t('diary.month_jan', '一月'),
+    t('diary.month_feb', '二月'),
+    t('diary.month_mar', '三月'),
+    t('diary.month_apr', '四月'),
+    t('diary.month_may', '五月'),
+    t('diary.month_jun', '六月'),
+    t('diary.month_jul', '七月'),
+    t('diary.month_aug', '八月'),
+    t('diary.month_sep', '九月'),
+    t('diary.month_oct', '十月'),
+    t('diary.month_nov', '十一月'),
+    t('diary.month_dec', '十二月')
   ]
   const weekday = WEEKDAYS[createdAt.getDay()]
 
@@ -67,8 +80,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           <div className="diary-card-v2-date-meta">
             <span className="diary-card-v2-weekday">{weekday}</span>
             <div className="diary-card-v2-badge">
-              {year} · {month}
-              {t('diary.month_suffix', '月')}
+              {year} · {MONTH_NAMES[createdAt.getMonth()]}
             </div>
           </div>
         </div>

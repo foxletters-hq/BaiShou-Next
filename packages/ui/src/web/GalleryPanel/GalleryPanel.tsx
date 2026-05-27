@@ -137,49 +137,55 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
       return formatWeeklyStartDate(start)
     }
     if (!s.endDate) return ''
-    const end = new Date(s.endDate)
     if (s.type === 'monthly') {
-      return `${start.getFullYear()}年${start.getMonth() + 1}月`
+      return start.toLocaleDateString(i18n.language, { year: 'numeric', month: 'long' })
     }
     if (s.type === 'quarterly') {
       const q = Math.ceil((start.getMonth() + 1) / 3)
-      return `${start.getFullYear()}年 Q${q}`
+      return t('summary.missing_label_quarterly', '$year Q$q')
+        .replace('$year', String(start.getFullYear()))
+        .replace('$q', String(q))
     }
     if (s.type === 'yearly') {
-      return `${start.getFullYear()}年`
+      return t('summary.missing_label_yearly', 'Year $year').replace(
+        '$year',
+        String(start.getFullYear())
+      )
     }
     return ''
   }
 
   /** 获取标题 */
   const getTitle = (s: SummaryItem) => {
-    if (!s.startDate) return t('gallery.summary', '总结')
+    if (!s.startDate) return t('gallery.summary', 'Summary')
     const dateObj = new Date(s.startDate)
 
     if (s.type === 'weekly') {
       const weekNum = getWeekNumber(dateObj)
       const year = dateObj.getFullYear()
-      return t('summary.missing_label_weekly', '$year年第$week周')
+      return t('summary.missing_label_weekly', 'Week $week, $year')
         .replace('$year', String(year))
         .replace('$week', String(weekNum))
     }
     if (s.type === 'monthly') {
       const month = dateObj.getMonth() + 1
       const year = dateObj.getFullYear()
-      return `${year}年${month}月`
+      return t('summary.title_monthly', 'Monthly Report ($year-$month)')
+        .replace('$year', String(year))
+        .replace('$month', String(month))
     }
     if (s.type === 'quarterly') {
       const q = Math.ceil((dateObj.getMonth() + 1) / 3)
       const year = dateObj.getFullYear()
-      return t('summary.missing_label_quarterly', '$year年Q$q')
+      return t('summary.missing_label_quarterly', '$year Q$q')
         .replace('$year', String(year))
         .replace('$q', String(q))
     }
     if (s.type === 'yearly') {
       const year = dateObj.getFullYear()
-      return t('summary.card_year_suffix', '$year年').replace('$year', String(year))
+      return t('summary.missing_label_yearly', 'Year $year').replace('$year', String(year))
     }
-    return t('gallery.summary', '总结')
+    return t('gallery.summary', 'Summary')
   }
 
   /** 获取内容预览 */
@@ -282,8 +288,8 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
             >
               <span>
                 {selectedYear === 'all'
-                  ? t('gallery.filter_all_years', '全部年份')
-                  : `${selectedYear}年`}
+                  ? t('gallery.filter_all_years', 'All Years')
+                  : `${selectedYear}${t('common.year_suffix', '')}`}
               </span>
               <ChevronDown size={16} className="gallery-select-chevron" />
             </button>
@@ -316,7 +322,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="gallery-year-modal-header">
-                    <h3>{t('gallery.select_year', '选择年份')}</h3>
+                    <h3>{t('gallery.select_year', 'Select Year')}</h3>
                     <button
                       className="gallery-year-modal-close"
                       onClick={() => setIsYearPickerOpen(false)}
@@ -358,7 +364,8 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
                               setIsYearPickerOpen(false)
                             }}
                           >
-                            {year}年
+                            {year}
+                            {t('common.year_suffix', '')}
                           </button>
                         )
                       })}

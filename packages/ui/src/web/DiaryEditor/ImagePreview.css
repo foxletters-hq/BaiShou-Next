@@ -9,58 +9,121 @@
 
 .image-preview-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10050;
+  background: rgba(100, 116, 139, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: image-preview-fade-in 0.2s ease;
+}
+
+:global(body[data-theme='dark']) .image-preview-overlay {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+@keyframes image-preview-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.image-preview-container {
+  flex: 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  overflow: hidden;
+  padding: 56px 24px 96px;
+  box-sizing: border-box;
+}
+
+.image-preview-container img {
+  max-width: min(92vw, 1200px);
+  max-height: calc(100vh - 160px);
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.18));
+}
+
+.image-preview-toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 10051;
+  max-width: calc(100vw - 32px);
 }
 
 .image-preview-controls {
-  position: absolute;
-  top: 20px;
-  right: 20px;
   display: flex;
-  gap: 8px;
-  z-index: 10000;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.96));
+  border: 1px solid var(--border-subtle, rgba(15, 23, 42, 0.08));
+  box-shadow:
+    0 10px 40px rgba(15, 23, 42, 0.12),
+    0 2px 8px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+:global(body[data-theme='dark']) .image-preview-controls {
+  background: var(--bg-surface-raised, rgba(30, 30, 30, 0.94));
+  border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.image-preview-controls-divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: var(--border-subtle, rgba(15, 23, 42, 0.1));
+  flex-shrink: 0;
+}
+
+:global(body[data-theme='dark']) .image-preview-controls-divider {
+  background: var(--border-muted, rgba(255, 255, 255, 0.12));
 }
 
 .image-preview-controls button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border: none;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary, #334155);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.12s ease;
+  flex-shrink: 0;
 }
 
 .image-preview-controls button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.12);
+  color: var(--color-primary, #5ba8f5);
 }
 
-.image-preview-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+.image-preview-controls button:active {
+  transform: scale(0.94);
 }
 
-.image-preview-container img {
-  max-width: 90%;
-  max-height: 90%;
-  object-fit: contain;
-  transition: transform 0.1s ease;
-  user-select: none;
-  -webkit-user-drag: none;
+.image-preview-controls button.image-preview-close-btn:hover {
+  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.12);
+  color: var(--color-error, #ef4444);
 }

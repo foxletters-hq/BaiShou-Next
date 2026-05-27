@@ -29,28 +29,28 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({ meta, onDelete, on
   const { t } = useTranslation()
 
   const WEEKDAY_NAMES = [
-    t('diary.weekday.sunday', '周日'),
-    t('diary.weekday.monday', '周一'),
-    t('diary.weekday.tuesday', '周二'),
-    t('diary.weekday.wednesday', '周三'),
-    t('diary.weekday.thursday', '周四'),
-    t('diary.weekday.friday', '周五'),
-    t('diary.weekday.saturday', '周六')
+    t('diary.weekday_sun', '周日'),
+    t('diary.weekday_mon', '周一'),
+    t('diary.weekday_tue', '周二'),
+    t('diary.weekday_wed', '周三'),
+    t('diary.weekday_thu', '周四'),
+    t('diary.weekday_fri', '周五'),
+    t('diary.weekday_sat', '周六')
   ]
 
   const MONTH_NAMES = [
-    t('diary.month.january', '一月'),
-    t('diary.month.february', '二月'),
-    t('diary.month.march', '三月'),
-    t('diary.month.april', '四月'),
-    t('diary.month.may', '五月'),
-    t('diary.month.june', '六月'),
-    t('diary.month.july', '七月'),
-    t('diary.month.august', '八月'),
-    t('diary.month.september', '九月'),
-    t('diary.month.october', '十月'),
-    t('diary.month.november', '十一月'),
-    t('diary.month.december', '十二月')
+    t('diary.month_jan', '一月'),
+    t('diary.month_feb', '二月'),
+    t('diary.month_mar', '三月'),
+    t('diary.month_apr', '四月'),
+    t('diary.month_may', '五月'),
+    t('diary.month_jun', '六月'),
+    t('diary.month_jul', '七月'),
+    t('diary.month_aug', '八月'),
+    t('diary.month_sep', '九月'),
+    t('diary.month_oct', '十月'),
+    t('diary.month_nov', '十一月'),
+    t('diary.month_dec', '十二月')
   ]
 
   const d = meta.date instanceof Date ? meta.date : new Date(meta.date)

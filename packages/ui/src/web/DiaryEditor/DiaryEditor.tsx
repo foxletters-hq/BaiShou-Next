@@ -1,5 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import {
+  WEATHER_IDS,
+  getWeatherEmoji,
+  weatherI18nKey,
+  normalizeWeatherId,
+  type WeatherId
+} from '@baishou/shared'
 import { CodeMirrorEditor, CodeMirrorEditorHandle } from './CodeMirrorEditor'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { TagInput } from '../TagInput'
@@ -152,17 +159,35 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     [selectedDate, onMediaPathsChange]
   )
 
-  const WEATHER_OPTIONS = [
-    { value: '', label: t('diary.weather.default', '天气') },
-    { value: '晴', label: `☀️ ${t('diary.weather.sunny', '晴')}` },
-    { value: '多云', label: `⛅ ${t('diary.weather.cloudy', '多云')}` },
-    { value: '阴', label: `☁️ ${t('diary.weather.overcast', '阴')}` },
-    { value: '小雨', label: `🌦️ ${t('diary.weather.light_rain', '小雨')}` },
-    { value: '大雨', label: `🌧️ ${t('diary.weather.heavy_rain', '大雨')}` },
-    { value: '雪', label: `❄️ ${t('diary.weather.snow', '雪')}` },
-    { value: '雾', label: `🌫️ ${t('diary.weather.fog', '雾')}` },
-    { value: '风', label: `💨 ${t('diary.weather.wind', '风')}` }
-  ]
+  const weatherLabelFallback: Record<WeatherId, string> = {
+    sunny: '晴',
+    cloudy: '多云',
+    overcast: '阴',
+    light_rain: '小雨',
+    heavy_rain: '大雨',
+    snow: '雪',
+    fog: '雾',
+    windy: '风'
+  }
+
+  const WEATHER_OPTIONS = useMemo(
+    () => [
+      { value: '', label: t('diary.weather.default', '天气') },
+      ...WEATHER_IDS.map((id) => ({
+        value: id,
+        label: `${getWeatherEmoji(id)} ${t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])}`
+      }))
+    ],
+    [t]
+  )
+
+  const normalizedWeather = normalizeWeatherId(weather)
+
+  useEffect(() => {
+    if (normalizedWeather && normalizedWeather !== weather) {
+      onWeatherChange?.(normalizedWeather)
+    }
+  }, [normalizedWeather, weather, onWeatherChange])
 
   const MOOD_OPTIONS = [
     { value: '', label: t('diary.mood.default', '心情') },
@@ -219,7 +244,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           {!isSummaryMode && (
             <div className="de-meta-bar">
               <WeatherPicker
-                value={weather}
+                value={normalizedWeather}
                 options={WEATHER_OPTIONS}
                 onChange={(v) => onWeatherChange?.(v)}
                 placeholder={t('diary.weather.default', '天气')}

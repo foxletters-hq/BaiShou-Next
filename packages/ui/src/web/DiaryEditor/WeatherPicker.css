@@ -1,6 +1,6 @@
 .wp-container {
   position: relative;
-  min-width: 120px;
+  min-width: 176px;
 }
 
 .wp-trigger {
@@ -65,6 +65,8 @@
   top: calc(100% + 6px);
   left: 0;
   right: 0;
+  min-width: 100%;
+  width: max-content;
   z-index: 50;
   background: var(--bg-surface-raised);
   border: 1px solid var(--border-subtle);
@@ -106,17 +108,19 @@
 
 .wp-option-selected {
   background: var(--color-primary-light);
-  color: var(--color-primary);
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .wp-option-selected:hover {
   background: var(--color-primary-light);
+  color: var(--text-primary);
 }
 
 .wp-option-label {
   flex: 1;
   text-align: left;
+  white-space: nowrap;
 }
 
 .wp-check {

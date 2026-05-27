@@ -113,7 +113,7 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
 
       {open && (
         <div className={`wp-dropdown${closing ? ' wp-dropdown-closing' : ''}`} role="listbox">
-          {options.map((option) => {
+          {options.filter((option) => option.value !== '').map((option) => {
             const isSelected = option.value === value
             return (
               <button
