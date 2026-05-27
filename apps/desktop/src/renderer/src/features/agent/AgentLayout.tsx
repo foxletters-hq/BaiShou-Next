@@ -5,15 +5,14 @@ import { AgentSidebar } from './components/AgentSidebar'
 import type { AgentAssistant } from './components/AgentSidebar'
 import { useAssistantStore, useSettingsStore, useUserProfileStore } from '@baishou/store'
 import {
-  type SessionData,
   useToast,
   AssistantPickerSheet,
   Modal,
   AssistantEditPage,
   useDialog
 } from '@baishou/ui'
-import { MdAutoAwesome } from 'react-icons/md'
 import styles from './AgentLayout.module.css'
+import { useAgentSessions } from './hooks/useAgentSessions'
 
 export const AgentLayout: React.FC = () => {
   const navigate = useNavigate()
@@ -24,26 +23,30 @@ export const AgentLayout: React.FC = () => {
   const { agentBehavior, loadConfig } = useSettingsStore()
   const { loadProfile } = useUserProfileStore()
 
-  const [sessions, setSessions] = useState<SessionData[]>([])
-  const [hasMoreSessions, setHasMoreSessions] = useState(false)
-  const SESSION_LIMIT = 10
-
   const [searchQuery, setSearchQuery] = useState('')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false)
-  const [sidebarScrollKey, setSidebarScrollKey] = useState(0)
+  const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
+  const resolvedAssistantIdRef = useRef<string | undefined>(undefined)
 
-  // 重命名 inline modal 状态
-  const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null)
-  const renameInputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
   const dialog = useDialog()
   const { t } = useTranslation()
 
-  const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
-  const resolvedAssistantIdRef = useRef<string | undefined>(undefined)
+  const {
+    sessions,
+    hasMoreSessions,
+    sidebarScrollKey,
+    loadSessions,
+    renameTarget,
+    renameInputRef,
+    setRenameTarget,
+    handleRenameSession,
+    commitRename
+  } = useAgentSessions(resolvedAssistantIdRef.current)
 
+  // 加载独立会话文档（通过 URL 直接访问时使用）
   useEffect(() => {
     if (sessionId) {
       if (typeof window !== 'undefined' && window.electron) {
@@ -56,51 +59,7 @@ export const AgentLayout: React.FC = () => {
     }
   }, [sessionId])
 
-  const lastLoadRequestId = useRef<number>(0)
-
-  const loadSessions = async (resetOffset = false, overrideAssistantId?: string) => {
-    try {
-      if (typeof window !== 'undefined' && window.electron) {
-        const reqId = ++lastLoadRequestId.current
-        const offset = resetOffset ? 0 : sessions.length
-        const sanitizedOverride = sanitizeAssistantId(overrideAssistantId)
-        const targetAst = sanitizedOverride || resolvedAssistantIdRef.current
-        if (!targetAst) return
-
-        console.info(
-          `[AgentLayout] Loading sessions: astId=${targetAst}, reset=${resetOffset}, offset=${offset}`
-        )
-        const data = await window.electron.ipcRenderer.invoke(
-          'agent:get-sessions',
-          SESSION_LIMIT,
-          offset,
-          targetAst
-        )
-
-        // 竞态保护
-        if (reqId !== lastLoadRequestId.current) {
-          console.warn(`[AgentLayout] Dropping stale response (reqId: ${reqId})`)
-          return
-        }
-
-        console.info(`[AgentLayout] Loaded ${data?.length || 0} sessions.`)
-
-        if (data && data.length > 0) {
-          setSessions((prev) => (resetOffset ? data : [...prev, ...data]))
-          setHasMoreSessions(data.length === SESSION_LIMIT)
-        } else {
-          if (resetOffset) setSessions([])
-          setHasMoreSessions(false)
-        }
-        if (resetOffset) {
-          setSidebarScrollKey((prev) => prev + 1)
-        }
-      }
-    } catch (e) {
-      console.error('[AgentLayout] Failed to load sessions:', e)
-    }
-  }
-
+  // 初始化：加载助手列表，如无助手则创建默认助手
   useEffect(() => {
     fetchAssistants().then(() => {
       const store = useAssistantStore.getState()
@@ -117,8 +76,7 @@ export const AgentLayout: React.FC = () => {
           .then(() => fetchAssistants())
           .then(() => {
             const finalStore = useAssistantStore.getState()
-            const ast =
-              finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0]
+            const ast = finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0]
             if (ast) {
               resolvedAssistantIdRef.current = String(ast.id)
               loadSessions(true, String(ast.id))
@@ -137,31 +95,6 @@ export const AgentLayout: React.FC = () => {
     loadProfile()
   }, [fetchAssistants, loadConfig, loadProfile])
 
-  // 监听主进程的 session:file-changed 消息，以实时更新会话列表里的标题
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.electron) {
-      const handler = () => {
-        console.info('[AgentLayout] session:file-changed event received, reloading sessions...')
-        const currentAst = resolvedAssistantIdRef.current
-        loadSessions(true, currentAst)
-      }
-      const removeListener = window.electron.ipcRenderer.on('session:file-changed', handler)
-      return () => removeListener()
-    }
-    return undefined
-  }, [])
-
-  const pinnedIds = assistants.filter((a: any) => a.isPinned).map((a) => String(a.id))
-  const pinnedAssistants: AgentAssistant[] = pinnedIds
-    .map((id) => assistants.find((a) => String(a.id) === String(id)))
-    .filter(Boolean)
-    .map((a) => ({
-      id: String(a!.id),
-      name: a!.name,
-      emoji: a!.emoji,
-      avatarPath: (a as any).avatarPath
-    }))
-
   const sanitizeAssistantId = (raw: unknown): string | undefined => {
     if (typeof raw === 'string' && raw.length > 0) return raw
     if (typeof raw === 'number') return String(raw)
@@ -169,7 +102,7 @@ export const AgentLayout: React.FC = () => {
   }
 
   const currentSession = sessions.find((s) => s.id === sessionId)
-  let activeAssistantId: string | undefined = undefined
+  let activeAssistantId: string | undefined
   if (!sessionId) {
     activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId'))
   } else if (currentSession) {
@@ -177,35 +110,25 @@ export const AgentLayout: React.FC = () => {
   } else if (standaloneSessionDoc?.id === sessionId) {
     activeAssistantId = sanitizeAssistantId(standaloneSessionDoc.assistantId)
   }
-
   if (!activeAssistantId && sessionId) {
-    activeAssistantId =
-      sanitizeAssistantId(searchParams.get('assistantId')) || resolvedAssistantIdRef.current
+    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId')) || resolvedAssistantIdRef.current
   }
 
   const currentAssistant = activeAssistantId
-    ? assistants.find((a) => String(a.id) === String(activeAssistantId)) ||
-      assistants.find((a) => a.isDefault)
+    ? assistants.find((a) => String(a.id) === String(activeAssistantId)) || assistants.find((a) => a.isDefault)
     : assistants.find((a) => a.isDefault) || (assistants.length > 0 ? assistants[0] : undefined)
 
-  // 始终有一个 mappedAssistant — 如果还在加载就显示 fallback placeholder
   const mappedAssistant = currentAssistant
     ? {
         id: String(currentAssistant.id),
         name: currentAssistant.name,
-        description:
-          currentAssistant.description || t('agent.default_assistant_desc', '通用 AI 伙伴'),
+        description: currentAssistant.description || t('agent.default_assistant_desc', '通用 AI 伙伴'),
         emoji: currentAssistant.emoji,
         avatarPath: (currentAssistant as any).avatarPath
       }
     : !isAssistantsLoading
-      ? {
-          id: 'default',
-          name: t('agent.default_assistant_name', '默认伙伴'),
-          description: t('agent.default_assistant_desc', '通用 AI 伙伴'),
-          emoji: '🍵'
-        }
-      : undefined // undefined 触发骨架态
+      ? { id: 'default', name: t('agent.default_assistant_name', '默认伙伴'), description: t('agent.default_assistant_desc', '通用 AI 伙伴'), emoji: '🍵' }
+      : undefined
 
   useEffect(() => {
     if (mappedAssistant?.id && resolvedAssistantIdRef.current !== mappedAssistant.id) {
@@ -213,6 +136,12 @@ export const AgentLayout: React.FC = () => {
       loadSessions(true, mappedAssistant.id)
     }
   }, [mappedAssistant?.id])
+
+  const pinnedIds = assistants.filter((a: any) => a.isPinned).map((a) => String(a.id))
+  const pinnedAssistants: AgentAssistant[] = pinnedIds
+    .map((id) => assistants.find((a) => String(a.id) === id))
+    .filter(Boolean)
+    .map((a) => ({ id: String(a!.id), name: a!.name, emoji: a!.emoji, avatarPath: (a as any).avatarPath }))
 
   const handleNewChat = async (targetAssistantId?: string) => {
     const urlAstId = sanitizeAssistantId(searchParams.get('assistantId'))
@@ -225,21 +154,20 @@ export const AgentLayout: React.FC = () => {
     navigate(`/chat?assistantId=${astId}`)
   }
 
-  const handleSelect = (id: string) => {
-    const astId = currentAssistant?.id
-    navigate(astId ? `/chat/${id}?assistantId=${astId}` : `/chat/${id}`)
-  }
-
-  const handlePin = async (id: string) => {
-    try {
-      if (typeof window !== 'undefined' && window.electron) {
-        const s = sessions.find((s) => s.id === id)
-        if (s) {
-          await window.electron.ipcRenderer.invoke('agent:pin-session', id, !s.isPinned)
-          loadSessions(true)
+  const handleAssistantSwitched = async (assistant: AgentAssistant) => {
+    if (typeof window !== 'undefined' && window.electron) {
+      try {
+        const sessionsList = await window.electron.ipcRenderer.invoke('agent:list-sessions-by-assistant', assistant.id)
+        if (sessionsList && sessionsList.length > 0) {
+          const sorted = sessionsList.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          navigate(`/chat/${sorted[0].id}?assistantId=${assistant.id}`)
+          return
         }
+      } catch (e) {
+        console.error('[AgentLayout] Failed to switch to existing session', e)
       }
-    } catch (e) {}
+    }
+    handleNewChat(assistant.id)
   }
 
   const handleDelete = async (id: string) => {
@@ -248,81 +176,24 @@ export const AgentLayout: React.FC = () => {
       t('common.confirm_delete', '确认删除')
     )
     if (!ok) return
-    try {
-      if (typeof window !== 'undefined' && window.electron) {
-        await window.electron.ipcRenderer.invoke('agent:delete-sessions', [id])
-        loadSessions(true)
-        if (sessionId === id) {
-          const astId = currentAssistant?.id
-          navigate(astId ? `/chat?assistantId=${astId}` : '/chat')
-        }
-      }
-    } catch (e) {}
+    if (typeof window !== 'undefined' && window.electron) {
+      await window.electron.ipcRenderer.invoke('agent:delete-sessions', [id])
+      loadSessions(true)
+      if (sessionId === id) navigate(currentAssistant?.id ? `/chat?assistantId=${currentAssistant.id}` : '/chat')
+    }
   }
 
   const handleBatchDelete = async (ids: string[]) => {
     const ok = await dialog.confirm(
-      t('agent.batch_delete_confirm', '您确定要删除选中的 {{count}} 篇对话吗？此操作不可逆转。', {
-        count: ids.length
-      }),
+      t('agent.batch_delete_confirm', '您确定要删除选中的 {{count}} 篇对话吗？此操作不可逆转。', { count: ids.length }),
       t('common.confirm_delete', '确认删除')
     )
     if (!ok) return
-    try {
-      if (typeof window !== 'undefined' && window.electron) {
-        await window.electron.ipcRenderer.invoke('agent:delete-sessions', ids)
-        loadSessions(true)
-        if (sessionId && ids.includes(sessionId)) {
-          const astId = currentAssistant?.id
-          navigate(astId ? `/chat?assistantId=${astId}` : '/chat')
-        }
-      }
-    } catch (e) {}
-  }
-
-  const handleRename = (id: string) => {
-    const s = sessions.find((s) => s.id === id)
-    if (!s) return
-    // 弹出内联重命名框
-    setRenameTarget({ id, title: s.title || '' })
-    setTimeout(() => renameInputRef.current?.select(), 50)
-  }
-
-  const commitRename = async () => {
-    if (!renameTarget) return
-    const newTitle = renameTarget.title.trim()
-    if (newTitle && window.electron) {
-      await window.electron.ipcRenderer.invoke(
-        'agent:update-session-title',
-        renameTarget.id,
-        newTitle
-      )
-      loadSessions(true)
-      toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title: newTitle }))
-    }
-    setRenameTarget(null)
-  }
-
-  const handleAssistantSwitched = async (assistant: AgentAssistant) => {
     if (typeof window !== 'undefined' && window.electron) {
-      try {
-        const sessionsList = await window.electron.ipcRenderer.invoke(
-          'agent:list-sessions-by-assistant',
-          assistant.id
-        )
-        if (sessionsList && sessionsList.length > 0) {
-          const sorted = sessionsList.sort(
-            (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          )
-          const targetId = sorted[0].id
-          navigate(`/chat/${targetId}?assistantId=${assistant.id}`)
-          return
-        }
-      } catch (e) {
-        console.error('[AgentLayout] Failed to switch to existing session', e)
-      }
+      await window.electron.ipcRenderer.invoke('agent:delete-sessions', ids)
+      loadSessions(true)
+      if (sessionId && ids.includes(sessionId)) navigate(currentAssistant?.id ? `/chat?assistantId=${currentAssistant.id}` : '/chat')
     }
-    handleNewChat(assistant.id)
   }
 
   return (
@@ -337,12 +208,18 @@ export const AgentLayout: React.FC = () => {
         searchQuery={searchQuery}
         pinnedAssistants={pinnedAssistants}
         onSearchQueryChanged={setSearchQuery}
-        onSessionSelected={handleSelect}
+        onSessionSelected={(id) => navigate(currentAssistant?.id ? `/chat/${id}?assistantId=${currentAssistant.id}` : `/chat/${id}`)}
         onNewSession={handleNewChat}
         onAssistantSwitched={handleAssistantSwitched}
-        onPinSession={handlePin}
+        onPinSession={async (id) => {
+          const s = sessions.find((s) => s.id === id)
+          if (s && window.electron) {
+            await window.electron.ipcRenderer.invoke('agent:pin-session', id, !s.isPinned)
+            loadSessions(true)
+          }
+        }}
         onDeleteSession={handleDelete}
-        onRenameSession={handleRename}
+        onRenameSession={(id) => handleRenameSession(id, sessions)}
         onBatchDelete={handleBatchDelete}
         isCollapsed={isSidebarCollapsed}
         onCollapse={() => setIsSidebarCollapsed(true)}
@@ -354,88 +231,37 @@ export const AgentLayout: React.FC = () => {
         <Outlet context={{ sessions, loadSessions }} />
       </div>
 
-      {/* ─── 内联重命名 Toast Modal ─── */}
+      {/* ─── 内联重命名 Modal ─── */}
       {renameTarget && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.3)'
-          }}
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)' }}
           onClick={() => setRenameTarget(null)}
         >
           <div
-            style={{
-              background: 'var(--bg-surface, #fff)',
-              borderRadius: 16,
-              padding: '24px 24px 16px',
-              width: 320,
-              boxShadow: '0 12px 40px rgba(0,0,0,0.15)'
-            }}
+            style={{ background: 'var(--bg-surface, #fff)', borderRadius: 16, padding: '24px 24px 16px', width: 320, boxShadow: '0 12px 40px rgba(0,0,0,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: 15,
-                marginBottom: 12,
-                color: 'var(--text-primary, #1e293b)'
-              }}
-            >
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: 'var(--text-primary, #1e293b)' }}>
               {t('agent.rename_session', '重命名对话')}
             </div>
             <input
               ref={renameInputRef}
               autoFocus
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 10,
-                border: '1px solid rgba(148,163,184,0.4)',
-                fontSize: 14,
-                outline: 'none',
-                background: 'var(--bg-surface-highlight, #f8fafc)',
-                color: 'var(--text-primary, #1e293b)',
-                boxSizing: 'border-box'
-              }}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(148,163,184,0.4)', fontSize: 14, outline: 'none', background: 'var(--bg-surface-highlight, #f8fafc)', color: 'var(--text-primary, #1e293b)', boxSizing: 'border-box' }}
               value={renameTarget.title}
               onChange={(e) => setRenameTarget({ ...renameTarget, title: e.target.value })}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') commitRename()
+                if (e.key === 'Enter') commitRename((title) => toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title })))
                 if (e.key === 'Escape') setRenameTarget(null)
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  color: 'var(--text-secondary)'
-                }}
-                onClick={() => setRenameTarget(null)}
-              >
+              <button style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)' }} onClick={() => setRenameTarget(null)}>
                 {t('common.cancel', '取消')}
               </button>
               <button
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: 'var(--color-primary, #5BA8F5)',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: 600
-                }}
-                onClick={commitRename}
+                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--color-primary, #5BA8F5)', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+                onClick={() => commitRename((title) => toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title })))}
               >
                 {t('common.confirm', '确定')}
               </button>
@@ -449,50 +275,33 @@ export const AgentLayout: React.FC = () => {
         isOpen={isPickerOpen}
         assistants={assistants as any}
         currentAssistantId={mappedAssistant?.id}
-        onSelect={(ast) => {
-          setIsPickerOpen(false)
-          handleAssistantSwitched(ast as any)
-        }}
+        onSelect={(ast) => { setIsPickerOpen(false); handleAssistantSwitched(ast as any) }}
         onClose={() => setIsPickerOpen(false)}
         onRefreshAssistants={() => fetchAssistants()}
         pinnedIds={new Set(pinnedIds)}
         onTogglePin={async (id, isPinned) => {
-          if (typeof window !== 'undefined' && window.electron) {
+          if (window.electron) {
             await window.electron.ipcRenderer.invoke('agent:pin-assistant', id, isPinned)
             await fetchAssistants()
           }
         }}
-        onCreateNew={() => {
-          setIsPickerOpen(false)
-          setIsCreateAssistantOpen(true)
-        }}
+        onCreateNew={() => { setIsPickerOpen(false); setIsCreateAssistantOpen(true) }}
       />
 
       {/* ─── Assistant Create Modal ─── */}
-      <Modal
-        isOpen={isCreateAssistantOpen}
-        onClose={() => {
-          setIsCreateAssistantOpen(false)
-          setIsPickerOpen(true)
-        }}
-        closeOnOverlayClick={false}
-        style={{ padding: 0 }}
-      >
+      <Modal isOpen={isCreateAssistantOpen} onClose={() => { setIsCreateAssistantOpen(false); setIsPickerOpen(true) }} closeOnOverlayClick={false} style={{ padding: 0 }}>
         <div style={{ width: '80vw', maxWidth: '800px', height: '85vh', overflow: 'hidden' }}>
           <AssistantEditPage
             assistant={null}
             isLastAssistant={assistants.length <= 1}
             onSave={async (data) => {
-              if (typeof window !== 'undefined' && window.electron) {
+              if (window.electron) {
                 await window.electron.ipcRenderer.invoke('agent:create-assistant', data)
                 await fetchAssistants()
                 setIsCreateAssistantOpen(false)
               }
             }}
-            onBack={() => {
-              setIsCreateAssistantOpen(false)
-              setIsPickerOpen(true)
-            }}
+            onBack={() => { setIsCreateAssistantOpen(false); setIsPickerOpen(true) }}
           />
         </div>
       </Modal>
