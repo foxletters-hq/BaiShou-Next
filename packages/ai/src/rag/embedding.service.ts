@@ -1,4 +1,3 @@
-import { get_encoding } from 'tiktoken'
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid'
 import { embed } from 'ai'
@@ -10,12 +9,17 @@ import {
   ChunkResult,
   MigrationProgress
 } from './embedding.types'
+import { splitTextIntoChunks, normalizeEmbeddingVector } from './embedding-chunk'
+import {
+  migrateEmbeddings as runMigrateEmbeddings,
+  continueMigration as runContinueMigration,
+  type EmbeddingMigrationDeps
+} from './embedding-migration'
+
+/** Migration path uses createMigrationBackup, clearAndReinitEmbeddings, doReEmbedFromBackup (embedding-migration.ts). */
 
 export class EmbeddingService {
-  private static readonly MAX_CHUNK_TOKENS = 1024
-  private static readonly CHUNK_OVERLAP_TOKENS = 128
-
-  private isMigrating = false
+  private readonly migrationRef = { current: false }
 
   constructor(
     private readonly config: IEmbeddingConfig,
@@ -28,9 +32,6 @@ export class EmbeddingService {
     return Boolean(modelId && providerId)
   }
 
-  /**
-   * 按需检测底层向量引擎的维度以保证后续矢量比较计算
-   */
   public async detectDimension(): Promise<number> {
     if (!this.isConfigured) return 0
 
@@ -74,7 +75,6 @@ export class EmbeddingService {
 
       const aiModel = provider.getEmbeddingModel(modelId)
 
-      // 前置维度监测
       const currentDim = await this.detectDimension()
       if (currentDim > 0) {
         await this.db.initVectorIndex(currentDim)
@@ -263,204 +263,28 @@ export class EmbeddingService {
   }
 
   public async *migrateEmbeddings(): AsyncGenerator<MigrationProgress, void, unknown> {
-    if (this.isMigrating) {
-      yield { total: 0, completed: 0, status: '已经有迁移任务在运行' }
-      return
-    }
-    this.isMigrating = true
-    try {
-      if (!this.isConfigured) {
-        yield { total: 0, completed: 0, status: '嵌入模型未配置' }
-        return
-      }
-      const modelId = this.config.getGlobalEmbeddingModelId()
-      const provider = await this.config.getProviderInstance()
-      if (!provider) {
-        yield { total: 0, completed: 0, status: '供应商未找到' }
-        return
-      }
-
-      const clientModel = provider.getEmbeddingModel(modelId)
-      yield { total: 0, completed: 0, status: '正在备份元数据...' }
-      const total = await this.db.createMigrationBackup()
-
-      if (total === 0) {
-        await this.db.dropMigrationBackup()
-        yield { total: 0, completed: 0, status: '没有需要迁移的数据' }
-        return
-      }
-
-      yield { total, completed: 0, status: '正在检测新模型维度...' }
-      let newDimension = 0
-      try {
-        const { embedding } = await embed({ model: clientModel, value: 'hi' })
-        newDimension = embedding.length
-      } catch (e) {
-        logger.error('Dimension check failed during migration', { error: e })
-      }
-
-      if (newDimension <= 0) {
-        yield { total, completed: 0, status: '新模型维度检测失败，迁移中止' }
-        return
-      }
-
-      await this.db.clearAndReinitEmbeddings(newDimension)
-      await this.config.setGlobalEmbeddingDimension(newDimension)
-
-      yield* this.doReEmbedFromBackup(clientModel, modelId, total)
-    } finally {
-      this.isMigrating = false
-    }
+    yield* runMigrateEmbeddings(this.migrationDeps(), this.migrationRef)
   }
 
   public async *continueMigration(): AsyncGenerator<MigrationProgress, void, unknown> {
-    if (this.isMigrating) {
-      yield { total: 0, completed: 0, status: '已经有迁移任务在运行' }
-      return
-    }
-    this.isMigrating = true
-    try {
-      if (!this.isConfigured) {
-        yield { total: 0, completed: 0, status: '嵌入模型未配置' }
-        return
-      }
-      const modelId = this.config.getGlobalEmbeddingModelId()
-      const provider = await this.config.getProviderInstance()
-      if (!provider) {
-        yield { total: 0, completed: 0, status: '供应商未找到' }
-        return
-      }
-
-      const clientModel = provider.getEmbeddingModel(modelId)
-      const remaining = await this.db.getUnmigratedCount()
-
-      if (remaining === 0) {
-        await this.db.dropMigrationBackup()
-        yield { total: 0, completed: 0, status: '迁移已完成' }
-        return
-      }
-
-      yield* this.doReEmbedFromBackup(clientModel, modelId, remaining)
-    } finally {
-      this.isMigrating = false
-    }
+    yield* runContinueMigration(this.migrationDeps(), this.migrationRef)
   }
 
-  private async *doReEmbedFromBackup(
-    aiModel: any,
-    modelId: string,
-    total: number
-  ): AsyncGenerator<MigrationProgress, void, unknown> {
-    yield { total, completed: 0, status: '开始重嵌入...' }
-
-    const chunks = await this.db.getUnmigratedBackupChunks()
-    let completed = 0
-    let failed = 0
-
-    for (const chunk of chunks) {
-      try {
-        await this.retryEmbed(async () => {
-          const { embedding } = await embed({
-            model: aiModel,
-            value: chunk.chunk_text
-          })
-
-          await this.db.insertEmbedding({
-            id: chunk.embedding_id,
-            sourceType: chunk.source_type,
-            sourceId: chunk.source_id,
-            groupId: chunk.group_id,
-            chunkIndex: chunk.chunk_index,
-            chunkText: chunk.chunk_text,
-            metadataJson: chunk.metadata_json,
-            embedding: this.normalize(embedding),
-            modelId,
-            sourceCreatedAt: chunk.source_created_at
-          })
-
-          await this.db.markBackupChunkMigrated(chunk.embedding_id)
-        }, `migrate chunk ${chunk.embedding_id}`)
-        completed++
-      } catch (e) {
-        failed++
-        logger.error(`Migration failed for chunk ${chunk.embedding_id}`, {
-          error: e
-        })
-      }
-
-      yield {
-        total,
-        completed,
-        failed,
-        status: `迁移中 ${completed}/${total}${failed > 0 ? ` (失败 ${failed})` : ''}`
-      }
-    }
-
-    const [allMigrated, noStale] = await this.db.verifyMigrationComplete(modelId)
-
-    if (allMigrated && noStale) {
-      await this.db.dropMigrationBackup()
-      yield {
-        total,
-        completed,
-        failed,
-        status: `迁移完成 ✅ ${completed}/${total}`
-      }
-    } else {
-      yield {
-        total,
-        completed,
-        failed,
-        status: `迁移完成但校验未通过 ⚠️${!allMigrated ? ' (部分 chunk 未迁移)' : ''}${!noStale ? ' (存在旧模型数据)' : ''}`
-      }
-    }
-  }
-
-  // --- Utility functions (public for testing) ---
-
-  /**
-   * 基于 tiktoken (cl100k_base 即 gpt-4 时代的分词规则) 的语义长切边
-   */
   public splitIntoChunks(text: string): ChunkResult[] {
-    const enc = get_encoding('cl100k_base')
-    const tokens = enc.encode(text)
-    const max = EmbeddingService.MAX_CHUNK_TOKENS
-    const overlap = EmbeddingService.CHUNK_OVERLAP_TOKENS
-
-    if (tokens.length <= max) {
-      enc.free()
-      return [{ index: 0, text }]
-    }
-
-    const chunks: ChunkResult[] = []
-    let start = 0
-    let index = 0
-    while (start < tokens.length) {
-      let end = start + max
-      if (end > tokens.length) end = tokens.length
-
-      const chunkTokens = tokens.slice(start, end)
-      // 将 uint32 array 映射回来转回字符串
-      const chunkText = new TextDecoder().decode(enc.decode(chunkTokens))
-      chunks.push({ index, text: chunkText })
-
-      if (end >= tokens.length) break
-
-      start = end - overlap
-      if (start >= tokens.length) break
-      index++
-    }
-
-    enc.free()
-    return chunks
+    return splitTextIntoChunks(text)
   }
 
   public normalize(vec: number[]): number[] {
-    let norm = 0
-    for (const v of vec) norm += v * v
-    norm = Math.sqrt(norm)
-    if (norm === 0) return vec
-    return vec.map((v) => v / norm)
+    return normalizeEmbeddingVector(vec)
+  }
+
+  private migrationDeps(): EmbeddingMigrationDeps {
+    return {
+      config: this.config,
+      db: this.db,
+      isConfigured: this.isConfigured,
+      retryEmbed: (action, label) => this.retryEmbed(action, label)
+    }
   }
 
   private async retryEmbed(

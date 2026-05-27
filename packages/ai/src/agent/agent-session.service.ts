@@ -19,7 +19,7 @@ import { logger, supportsNativePdf, type ISqlExecutor } from '@baishou/shared'
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
 // @ts-ignore
-import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
+import { SnapshotRepository } from '@baishou/database'
 
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'

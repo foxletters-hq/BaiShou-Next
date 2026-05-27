@@ -1,7 +1,7 @@
 import { SessionRepository } from '@baishou/database'
 import { MessageWithParts } from './message.adapter'
 // @ts-ignore
-import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
+import { SnapshotRepository } from '@baishou/database'
 
 export interface ContextWindowConfig {
   /**

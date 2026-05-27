@@ -2,7 +2,7 @@ import { IAIProvider } from '../providers/provider.interface'
 import { ToolRegistry } from '../tools/tool-registry'
 import { SessionRepository } from '@baishou/database'
 // @ts-ignore
-import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
+import { SnapshotRepository } from '@baishou/database'
 
 export interface AttachmentInput {
   type: 'image' | 'file'

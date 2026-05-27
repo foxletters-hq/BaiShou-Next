@@ -2,7 +2,7 @@ import { generateText } from 'ai'
 import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
 // @ts-ignore (因为可能还没在 types 中对齐出它的 exports，如果 tsconfig 发现不了问题则忽略)
-import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
+import { SnapshotRepository } from '@baishou/database'
 // @ts-ignore
 import { MessageWithParts, MessageAdapter } from './message.adapter'
 import { logger } from '@baishou/shared'

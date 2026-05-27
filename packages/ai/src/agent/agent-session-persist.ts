@@ -5,7 +5,7 @@ import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { StreamAccumulator } from './stream-accumulator'
 // @ts-ignore
-import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
+import { SnapshotRepository } from '@baishou/database'
 
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
