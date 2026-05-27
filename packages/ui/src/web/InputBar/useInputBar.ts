@@ -1,0 +1,161 @@
+import { useState, useRef, useEffect, useImperativeHandle, useCallback } from 'react'
+import type { InputBarProps, InputBarRef } from './input-bar.types'
+import { useInputBarExpand } from './useInputBarExpand'
+import { useInputBarAttachments } from './useInputBarAttachments'
+import type { MockChatAttachment } from '@baishou/shared'
+import { useTranslation } from 'react-i18next'
+
+export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputBarRef>) {
+  const {
+    isLoading,
+    onSend,
+    onStop,
+    assistantName,
+    onAssistantTap,
+    onRecall,
+    onTriggerShortcut,
+    onManageShortcuts,
+    onOpenTools,
+    searchMode = false,
+    onToggleSearchMode,
+    ttsMode = 'manual',
+    onToggleTtsMode
+  } = props
+
+  const { t } = useTranslation()
+  const [text, setText] = useState('')
+  const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
+  const [showToolbar, setShowToolbar] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('baishou_toolbar_open') === 'true'
+    }
+    return false
+  })
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const toolbarViewportRef = useRef<HTMLDivElement>(null)
+  const [toolbarOverflow, setToolbarOverflow] = useState(false)
+  const [toolbarCanScrollLeft, setToolbarCanScrollLeft] = useState(false)
+  const [toolbarCanScrollRight, setToolbarCanScrollRight] = useState(false)
+
+  const expand = useInputBarExpand(textareaRef, text)
+  const attachmentHandlers = useInputBarAttachments(setAttachments)
+
+  const updateToolbarScrollState = useCallback(() => {
+    const el = toolbarViewportRef.current
+    if (!el) {
+      setToolbarOverflow(false)
+      setToolbarCanScrollLeft(false)
+      setToolbarCanScrollRight(false)
+      return
+    }
+    const { scrollLeft, scrollWidth, clientWidth } = el
+    const overflow = scrollWidth - clientWidth > 4
+    setToolbarOverflow(overflow)
+    setToolbarCanScrollLeft(overflow && scrollLeft > 4)
+    setToolbarCanScrollRight(overflow && scrollLeft < scrollWidth - clientWidth - 4)
+  }, [])
+
+  const scrollToolbar = (direction: -1 | 1) => {
+    toolbarViewportRef.current?.scrollBy({ left: direction * 180, behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    if (!showToolbar) return
+    const sync = () => updateToolbarScrollState()
+    let disposed = false
+    let resizeObserver: ResizeObserver | undefined
+    let viewportEl: HTMLDivElement | null = null
+    const attach = () => {
+      viewportEl = toolbarViewportRef.current
+      if (!viewportEl || disposed) return
+      sync()
+      viewportEl.addEventListener('scroll', sync, { passive: true })
+      resizeObserver = new ResizeObserver(sync)
+      resizeObserver.observe(viewportEl)
+    }
+    attach()
+    const retryId = window.setTimeout(attach, 240)
+    return () => {
+      disposed = true
+      window.clearTimeout(retryId)
+      if (viewportEl) viewportEl.removeEventListener('scroll', sync)
+      resizeObserver?.disconnect()
+    }
+  }, [showToolbar, updateToolbarScrollState])
+
+  useImperativeHandle(ref, () => ({
+    insertText: (newText) => {
+      setText((prev) => (prev ? `${prev}\n${newText}` : newText))
+      setTimeout(() => textareaRef.current?.focus(), 0)
+    },
+    focus: () => textareaRef.current?.focus()
+  }))
+
+  const handleSend = () => {
+    if ((!text.trim() && attachments.length === 0) || isLoading) return
+    onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined, searchMode)
+    setText('')
+    setAttachments([])
+    if (textareaRef.current) {
+      textareaRef.current.style.height = expand.isExpanded ? '100%' : 'auto'
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const handlePromptShortcut = () => {
+    if (onManageShortcuts) onManageShortcuts()
+    else if (onTriggerShortcut) onTriggerShortcut()
+  }
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value
+    if (val.endsWith('/') && val.length > text.length && onTriggerShortcut) onTriggerShortcut()
+    setText(val)
+  }
+
+  return {
+    t,
+    text,
+    setText,
+    attachments,
+    setAttachments,
+    showToolbar,
+    setShowToolbar,
+    textareaRef,
+    toolbarViewportRef,
+    toolbarOverflow,
+    toolbarCanScrollLeft,
+    toolbarCanScrollRight,
+    updateToolbarScrollState,
+    scrollToolbar,
+    isExpanded: expand.isExpanded,
+    isAnimating: expand.isAnimating,
+    handleMouseDown: expand.handleMouseDown,
+    toggleExpand: expand.toggleExpand,
+    handleSend,
+    handleKeyDown,
+    fileInputRef: attachmentHandlers.fileInputRef,
+    handlePickFiles: attachmentHandlers.handlePickFiles,
+    handleNativeWebFileChange: attachmentHandlers.handleNativeWebFileChange,
+    handleTextChange,
+    toggleSearchMode: () => onToggleSearchMode?.(),
+    handlePromptShortcut,
+    isLoading,
+    onStop,
+    assistantName,
+    onAssistantTap,
+    onRecall,
+    onTriggerShortcut,
+    onManageShortcuts,
+    onOpenTools,
+    searchMode,
+    ttsMode,
+    onToggleTtsMode
+  }
+}

@@ -1,6 +1,6 @@
 import React from 'react'
 import styles from './ContextChainDialog.module.css'
-import { MockChatMessage } from '@baishou/shared/src/mock/agent.mock'
+import { MockChatMessage } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 
 export interface ContextChainDialogProps {

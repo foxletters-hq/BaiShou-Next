@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import styles from './ModelSwitcher.module.css'
-import { MockAiProviderModel } from '@baishou/shared/src/mock/agent.mock'
+import { MockAiProviderModel } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeftRight,

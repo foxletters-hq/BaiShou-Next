@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import styles from './ToolResultGroupCard.module.css'
-import { MockToolInvocation } from '@baishou/shared/src/mock/agent.mock'
+import { MockToolInvocation } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, CheckCircle2, XCircle } from 'lucide-react'
 

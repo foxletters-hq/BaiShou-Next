@@ -1,0 +1,117 @@
+import { useState, useEffect } from 'react'
+import { logger } from '@baishou/shared'
+import type { AssistantFormData } from './assistant-edit.types'
+
+interface UseAssistantEditPageOptions {
+  assistant: AssistantFormData | null
+  onSave: (data: AssistantFormData) => void
+}
+
+export function useAssistantEditPage({ assistant, onSave }: UseAssistantEditPageOptions) {
+  const isEditing = assistant !== null
+
+  const [name, setName] = useState(assistant?.name ?? '')
+  const [emoji, setEmoji] = useState(assistant?.emoji ?? '🍵')
+  const [description, setDescription] = useState(assistant?.description ?? '')
+  const [systemPrompt, setSystemPrompt] = useState(assistant?.systemPrompt ?? '')
+  const [contextWindow, setContextWindow] = useState(assistant?.contextWindow ?? -1)
+  const [providerId, setProviderId] = useState(assistant?.providerId)
+  const [modelId, setModelId] = useState(assistant?.modelId)
+  const [compressThreshold, setCompressThreshold] = useState(
+    assistant?.compressTokenThreshold ?? 60000
+  )
+  const [compressKeepTurns, setCompressKeepTurns] = useState(assistant?.compressKeepTurns ?? 3)
+  const [avatarPath, setAvatarPath] = useState(assistant?.avatarPath ?? '')
+  const [avatarRemoved, setAvatarRemoved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [providerPickerOpen, setProviderPickerOpen] = useState(false)
+  const [pickerProviders, setPickerProviders] = useState<any[]>([])
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showCompressTooltip, setShowCompressTooltip] = useState(false)
+  const [showKeepTurnsTooltip, setShowKeepTurnsTooltip] = useState(false)
+
+  const isUnlimitedContext = contextWindow < 0
+  const isCompressDisabled = compressThreshold <= 0
+  const currentAvatarImagePath = !avatarRemoved && avatarPath ? avatarPath : null
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).electron) {
+      ;(window as any).electron.ipcRenderer
+        .invoke('agent:get-providers')
+        .then((list: any) => {
+          setPickerProviders((list || []).filter((p: any) => p.isEnabled))
+        })
+        .catch(console.error)
+    }
+  }, [])
+
+  const handleSave = () => {
+    if (!name.trim()) return
+    setSaving(true)
+    try {
+      onSave({
+        id: assistant?.id ?? crypto.randomUUID(),
+        name: name.trim(),
+        emoji,
+        description: description.trim(),
+        systemPrompt: systemPrompt.trim(),
+        contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
+        providerId: providerId ?? undefined,
+        modelId: modelId ?? undefined,
+        compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressThreshold),
+        compressKeepTurns: Math.round(compressKeepTurns),
+        avatarPath: avatarRemoved ? '' : avatarPath
+      })
+    } catch (e) {
+      logger.error('Failed to save assistant:', e)
+    } finally {
+      setTimeout(() => setSaving(false), 500)
+    }
+  }
+
+  const clearModelBinding = () => {
+    setProviderId(undefined)
+    setModelId(undefined)
+  }
+
+  return {
+    isEditing,
+    name,
+    setName,
+    emoji,
+    setEmoji,
+    description,
+    setDescription,
+    systemPrompt,
+    setSystemPrompt,
+    contextWindow,
+    setContextWindow,
+    providerId,
+    modelId,
+    compressThreshold,
+    setCompressThreshold,
+    compressKeepTurns,
+    setCompressKeepTurns,
+    avatarPath,
+    setAvatarPath,
+    avatarRemoved,
+    setAvatarRemoved,
+    saving,
+    providerPickerOpen,
+    setProviderPickerOpen,
+    pickerProviders,
+    showDeleteConfirm,
+    setShowDeleteConfirm,
+    showCompressTooltip,
+    setShowCompressTooltip,
+    showKeepTurnsTooltip,
+    setShowKeepTurnsTooltip,
+    isUnlimitedContext,
+    isCompressDisabled,
+    currentAvatarImagePath,
+    handleSave,
+    clearModelBinding,
+    setProviderId,
+    setModelId
+  }
+}
