@@ -71,6 +71,7 @@ describe('SessionRepository', () => {
       update: mockUpdate,
       delete: mockDelete,
       select: mockSelect,
+      all: vi.fn().mockResolvedValue([]),
       transaction: vi.fn().mockImplementation(async (cb) => {
         // Transaction provides a 'tx' that behaves like 'db' — select/delete chains return arrays
         const txWhere = vi.fn().mockResolvedValue([])
@@ -85,7 +86,8 @@ describe('SessionRepository', () => {
           select: txSelect,
           delete: txDelete,
           insert: mockInsert,
-          update: mockUpdate
+          update: mockUpdate,
+          all: vi.fn().mockResolvedValue([])
         }
         return await cb(tx)
       })

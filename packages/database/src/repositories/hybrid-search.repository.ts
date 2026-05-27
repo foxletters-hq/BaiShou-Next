@@ -4,12 +4,80 @@ import {
   IEmbeddingStorage,
   ISqlExecutor
 } from '@baishou/shared'
+import { sql } from 'drizzle-orm'
 import { createHybridSearchRuntimeState } from './hybrid-search.repository.constants'
 import {
   HybridSearchEmbeddingStore,
   HybridSearchMigrationStore
 } from './hybrid-search.repository.embedding'
 import { HybridSearchVectorQuery } from './hybrid-search.repository.vector-search'
+
+function wrapSqlExecutor(db: any): ISqlExecutor {
+  if (db && typeof db.execute === 'function') {
+    return db
+  }
+
+  // 尝试从 Drizzle 实例或底层对象中提取 client
+  const client = db?.session?.client || db?.$client || db
+
+  return {
+    execute: async (statement: string | { sql: string; args?: any[] }) => {
+      let sqlStr = ''
+      let sqlArgs: any[] = []
+      if (typeof statement === 'string') {
+        sqlStr = statement
+      } else {
+        sqlStr = statement.sql
+        sqlArgs = statement.args || []
+      }
+
+      const isQuery =
+        sqlStr.trim().toUpperCase().startsWith('SELECT') ||
+        sqlStr.trim().toUpperCase().startsWith('PRAGMA')
+
+      // 1. Better-SQLite3
+      if (client && typeof client.prepare === 'function') {
+        const stmt = client.prepare(sqlStr)
+        if (isQuery) {
+          return { rows: stmt.all(...sqlArgs) }
+        } else {
+          const res = stmt.run(...sqlArgs)
+          return { rows: [], rowsAffected: res.changes }
+        }
+      }
+
+      // 2. Expo-SQLite (RN Mobile)
+      if (client && typeof client.getAllAsync === 'function' && typeof client.runAsync === 'function') {
+        if (isQuery) {
+          const rows = await client.getAllAsync(sqlStr, sqlArgs)
+          return { rows }
+        } else {
+          const res = await client.runAsync(sqlStr, sqlArgs)
+          return { rows: [], rowsAffected: res.changes }
+        }
+      }
+
+      // 3. Drizzle ORM fallback via sql.raw
+      if (db && typeof db.run === 'function' && typeof db.all === 'function') {
+        if (isQuery) {
+          const rows = await db.all(sql.raw(sqlStr), sqlArgs)
+          return { rows }
+        } else {
+          const res = await db.run(sql.raw(sqlStr), sqlArgs)
+          return { rows: [], rowsAffected: res.changes }
+        }
+      }
+
+      // 4. Ultimate Drizzle run fallback
+      if (db && typeof db.run === 'function') {
+        const res = await db.run(sql.raw(sqlStr), sqlArgs)
+        return { rows: Array.isArray(res) ? res : [], rowsAffected: res?.changes }
+      }
+
+      throw new Error(`Unsupported database client type for ISqlExecutor wrapping`)
+    }
+  }
+}
 
 /**
  * SQLite + libsql 混合搜索仓库
@@ -42,10 +110,11 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
   private readonly migrationStore: HybridSearchMigrationStore
   private readonly vectorQuery: HybridSearchVectorQuery
 
-  constructor(db: ISqlExecutor) {
-    this.embeddingStore = new HybridSearchEmbeddingStore(db)
-    this.migrationStore = new HybridSearchMigrationStore(db)
-    this.vectorQuery = new HybridSearchVectorQuery(db, this.runtime)
+  constructor(db: any) {
+    const wrappedDb = wrapSqlExecutor(db)
+    this.embeddingStore = new HybridSearchEmbeddingStore(wrappedDb)
+    this.migrationStore = new HybridSearchMigrationStore(wrappedDb)
+    this.vectorQuery = new HybridSearchVectorQuery(wrappedDb, this.runtime)
   }
 
   initVectorIndex(...args: Parameters<HybridSearchEmbeddingStore['initVectorIndex']>) {
@@ -114,6 +183,32 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     ...args: Parameters<HybridSearchMigrationStore['verifyMigrationComplete']>
   ) {
     return this.migrationStore.verifyMigrationComplete(...args)
+  }
+
+  createRollbackSnapshot(
+    ...args: Parameters<HybridSearchMigrationStore['createRollbackSnapshot']>
+  ) {
+    return this.migrationStore.createRollbackSnapshot(...args)
+  }
+
+  restoreRollbackSnapshot(
+    ...args: Parameters<HybridSearchMigrationStore['restoreRollbackSnapshot']>
+  ) {
+    return this.migrationStore.restoreRollbackSnapshot(...args)
+  }
+
+  dropRollbackSnapshot(...args: Parameters<HybridSearchMigrationStore['dropRollbackSnapshot']>) {
+    return this.migrationStore.dropRollbackSnapshot(...args)
+  }
+
+  hasRollbackSnapshot(...args: Parameters<HybridSearchMigrationStore['hasRollbackSnapshot']>) {
+    return this.migrationStore.hasRollbackSnapshot(...args)
+  }
+
+  getCurrentEmbeddingMeta(
+    ...args: Parameters<HybridSearchMigrationStore['getCurrentEmbeddingMeta']>
+  ) {
+    return this.migrationStore.getCurrentEmbeddingMeta(...args)
   }
 
   supportsNativeVectorSearch(): boolean {

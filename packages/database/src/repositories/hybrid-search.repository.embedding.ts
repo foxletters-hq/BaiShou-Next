@@ -1,9 +1,10 @@
-import { logger } from '@baishou/shared'
-import type { ISqlExecutor } from '@baishou/shared'
+import { logger, mapMigrationBackupRow } from '@baishou/shared'
+import type { ISqlExecutor, EmbeddingSnapshotMeta } from '@baishou/shared'
 import {
   HYBRID_SEARCH_BACKUP_TABLE,
   HYBRID_SEARCH_INDEX_NAME,
-  HYBRID_SEARCH_TABLE
+  HYBRID_SEARCH_TABLE,
+  HYBRID_SEARCH_ROLLBACK_TABLE
 } from './hybrid-search.repository.constants'
 
 export class HybridSearchEmbeddingStore {
@@ -158,7 +159,9 @@ export class HybridSearchMigrationStore {
         WHERE is_migrated = 0
         LIMIT 50
       `)
-      return Array.from(res.rows)
+      return Array.from(res.rows).map((row) =>
+        mapMigrationBackupRow(row as Record<string, unknown>)
+      )
     } catch {
       return []
     }
@@ -175,5 +178,64 @@ export class HybridSearchMigrationStore {
     const pending = await this.hasPendingMigration()
     const mismatchedCount = await this.countHeterogeneousEmbeddings(modelId)
     return [!pending, mismatchedCount === 0]
+  }
+
+  async getCurrentEmbeddingMeta(): Promise<EmbeddingSnapshotMeta | null> {
+    const countRow = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
+    const count = Number(countRow.rows[0]?.c ?? 0)
+    if (count === 0) return null
+    const metaRow = await this.db.execute(`
+      SELECT model_id as modelId, dimension, count(*) as c FROM ${HYBRID_SEARCH_TABLE}
+      GROUP BY model_id, dimension ORDER BY c DESC LIMIT 1
+    `)
+    const row = metaRow.rows[0]
+    if (!row?.modelId) return null
+    return { modelId: String(row.modelId), dimension: Number(row.dimension ?? 0), count }
+  }
+
+  async createRollbackSnapshot(): Promise<number> {
+    const countRow = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
+    const count = Number(countRow.rows[0]?.c ?? 0)
+    if (count === 0) return 0
+    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_ROLLBACK_TABLE}`)
+    await this.db.execute(`
+      CREATE TABLE ${HYBRID_SEARCH_ROLLBACK_TABLE} AS
+      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+             metadata_json, embedding, dimension, model_id, created_at, source_created_at FROM ${HYBRID_SEARCH_TABLE}
+    `)
+    logger.info(`[RAG] Migration rollback snapshot created: ${count} rows`)
+    return count
+  }
+
+  async restoreRollbackSnapshot(): Promise<number> {
+    const checkTable = await this.db.execute(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='${HYBRID_SEARCH_ROLLBACK_TABLE}'`
+    )
+    if (checkTable.rows.length === 0)
+      throw new Error(`Rollback snapshot table ${HYBRID_SEARCH_ROLLBACK_TABLE} does not exist`)
+    await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
+    await this.db.execute(`
+      INSERT INTO ${HYBRID_SEARCH_TABLE} (embedding_id, source_type, source_id, group_id, chunk_index,
+                                          chunk_text, metadata_json, embedding, dimension, model_id, created_at, source_created_at)
+      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+             metadata_json, embedding, dimension, model_id, created_at, source_created_at FROM ${HYBRID_SEARCH_ROLLBACK_TABLE}
+    `)
+    const restored = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
+    return Number(restored.rows[0]?.c ?? 0)
+  }
+
+  async dropRollbackSnapshot(): Promise<void> {
+    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_ROLLBACK_TABLE}`)
+  }
+
+  async hasRollbackSnapshot(): Promise<boolean> {
+    const checkTable = await this.db.execute(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='${HYBRID_SEARCH_ROLLBACK_TABLE}'`
+    )
+    if (checkTable.rows.length === 0) return false
+    const countRow = await this.db.execute(
+      `SELECT count(*) as c FROM ${HYBRID_SEARCH_ROLLBACK_TABLE}`
+    )
+    return Number(countRow.rows[0]?.c ?? 0) > 0
   }
 }

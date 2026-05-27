@@ -65,7 +65,7 @@ export class SessionAggregateSync {
 
   private async _upsertAggregateInternal(aggregate: any): Promise<void> {
     const { session, messages } = aggregate
-    const rawClient = (this.db as any).$client
+    const rawClient = (this.db as any).session?.client || (this.db as any).$client
 
     const toUnixSec = (ts: any): number => {
       const d = this._toDate(ts)

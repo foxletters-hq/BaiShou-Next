@@ -95,7 +95,7 @@ describe('SqliteHybridSearchRepository - Migration and Interrupt Recovery', () =
 
     // 模拟调用大模型取得了 768 维度的结果，再导回！
     const fakeEmb768 = new Array(768).fill(0.999)
-    const chunk0Id = unmigratedItems[0]!.embedding_id as string
+    const chunk0Id = unmigratedItems[0]!.embeddingId
     await repo.insertEmbedding({
       id: chunk0Id,
       sourceType: unmigratedItems[0]!.sourceType as string,
@@ -114,7 +114,7 @@ describe('SqliteHybridSearchRepository - Migration and Interrupt Recovery', () =
     expect(await repo.getUnmigratedCount()).toBe(1)
 
     // 最后一块也迁完了
-    const chunk1Id = unmigratedItems[1]!.embedding_id as string
+    const chunk1Id = unmigratedItems[1]!.embeddingId
     await repo.markBackupChunkMigrated(chunk1Id)
     expect(await repo.getUnmigratedCount()).toBe(0)
     expect(await repo.hasPendingMigration()).toBe(false) // 洗白完成，可以把备份表彻底爆破了

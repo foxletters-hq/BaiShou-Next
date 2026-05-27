@@ -1,4 +1,4 @@
-import { eq, desc, or, isNull, sql } from 'drizzle-orm'
+import { eq, desc, or, isNull, sql, and, inArray } from 'drizzle-orm'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
@@ -51,23 +51,111 @@ export class SessionCrudOps {
       .where(eq(agentSessionsTable.id, id))
   }
 
-  async findAllSessions(limit: number = 20, offset: number = 0, assistantId?: string) {
-    let q = this.db.select().from(agentSessionsTable)
-    if (assistantId) {
-      q = q.where(
-        or(eq(agentSessionsTable.assistantId, assistantId), isNull(agentSessionsTable.assistantId))
-      ) as any
+  async findAllSessions(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
+    searchQuery?: string
+  ) {
+    let matchedSessionIds: string[] = []
+
+    if (searchQuery && searchQuery.trim()) {
+      const cleaned = searchQuery.replace(/"/g, ' ').trim()
+      const pattern = `%${searchQuery.replace(/[%_\\]/g, '\\$&')}%`
+      const sessionIdsSet = new Set<string>()
+
+      const tasks: Promise<void>[] = []
+
+      // 1. 尝试使用 FTS 快速查询匹配的会话 ID
+      if (cleaned) {
+        tasks.push(
+          (async () => {
+            try {
+              const ftsRows = await this.db.all(sql`
+                SELECT DISTINCT session_id as sessionId
+                FROM agent_messages_fts
+                WHERE agent_messages_fts MATCH ${`"${cleaned}"`}
+              `)
+              ftsRows.map((r: any) => r.sessionId).filter(Boolean).forEach((id: string) => sessionIdsSet.add(id))
+            } catch (e) {
+              console.warn('[SessionRepo] FTS search failed:', e)
+            }
+          })()
+        )
+      }
+
+      // 2. 无论 FTS 结果如何，都使用 LIKE 模糊查询补充
+      tasks.push(
+        (async () => {
+          try {
+            const likeRows = await this.db
+              .select({ sessionId: partsTbl.sessionId })
+              .from(partsTbl)
+              .where(
+                and(
+                  eq(partsTbl.type, 'text'),
+                  or(
+                    sql`json_extract(${partsTbl.data}, '$.isReasoning') IS NULL`,
+                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = 0`,
+                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = false`,
+                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = 'false'`
+                  ),
+                  sql`json_extract(${partsTbl.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
+                )
+              )
+            likeRows.map((r: any) => r.sessionId).filter(Boolean).forEach((id: string) => sessionIdsSet.add(id))
+          } catch (e) {
+            console.error('[SessionRepo] LIKE message search failed:', e)
+          }
+        })()
+      )
+
+      await Promise.all(tasks)
+      matchedSessionIds = Array.from(sessionIdsSet)
     }
-    const finalQuery = q
+
+    let q = this.db.select().from(agentSessionsTable)
+
+    // 组合过滤条件
+    const conditions: any[] = []
+
+    if (assistantId) {
+      conditions.push(
+        or(eq(agentSessionsTable.assistantId, assistantId), isNull(agentSessionsTable.assistantId))
+      )
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      const titlePattern = `%${searchQuery.replace(/[%_\\]/g, '\\$&')}%`
+      const titleCond = sql`${agentSessionsTable.title} LIKE ${titlePattern} ESCAPE '\\'`
+
+      if (matchedSessionIds.length > 0) {
+        conditions.push(or(titleCond, inArray(agentSessionsTable.id, matchedSessionIds)))
+      } else {
+        conditions.push(titleCond)
+      }
+    }
+
+    if (conditions.length > 0) {
+      if (conditions.length === 1) {
+        q = q.where(conditions[0]!) as any
+      } else {
+        q = q.where(and(...conditions)) as any
+      }
+    }
+
+    let finalQuery: any = q
       .orderBy(desc(agentSessionsTable.isPinned), desc(agentSessionsTable.updatedAt))
-      .limit(limit)
-      .offset(offset)
+
+    if (limit > 0) {
+      finalQuery = finalQuery.limit(limit).offset(offset)
+    }
 
     const results = await finalQuery
     console.log(
-      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, astId=${assistantId}) => returned ${results.length} rows.`
+      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
     )
-    if (results.length === 0) {
+    if (results.length === 0 && !searchQuery) {
       const allDocs = await this.db.select().from(agentSessionsTable)
       console.log(`[SessionRepo] WARNING: Returned 0, but total rows in DB: ${allDocs.length}`)
       if (allDocs.length > 0) {

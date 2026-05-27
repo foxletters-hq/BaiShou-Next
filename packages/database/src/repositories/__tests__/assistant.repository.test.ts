@@ -25,6 +25,7 @@ describe('AssistantRepository', () => {
         avatar_path TEXT,
         system_prompt TEXT,
         is_default INTEGER NOT NULL DEFAULT 0,
+        is_pinned INTEGER NOT NULL DEFAULT 0,
         context_window INTEGER NOT NULL DEFAULT 10,
         provider_id TEXT NOT NULL,
         model_id TEXT NOT NULL,

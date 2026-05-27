@@ -14,7 +14,7 @@ export class SessionRepository {
   private readonly messageOps: SessionMessageOps
   private readonly aggregateSync: SessionAggregateSync
 
-  constructor(private readonly db: AppDatabase) {
+  constructor(public readonly db: AppDatabase) {
     this.crudOps = new SessionCrudOps(db)
     this.messageOps = new SessionMessageOps(db)
     this.aggregateSync = new SessionAggregateSync(db)

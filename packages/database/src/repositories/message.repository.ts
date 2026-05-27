@@ -106,10 +106,28 @@ export class MessageRepository implements AgentMessageRepository {
     const trimmed = keyword.trim()
     if (!trimmed) return []
 
-    const ftsResults = await this.searchMessagesViaFts(trimmed, limit)
-    if (ftsResults.length > 0) return ftsResults
+    const [ftsResults, likeResults] = await Promise.all([
+      this.searchMessagesViaFts(trimmed, limit),
+      this.searchMessagesViaLike(trimmed, limit)
+    ])
 
-    return this.searchMessagesViaLike(trimmed, limit)
+    const seen = new Set<string>()
+    const merged: any[] = []
+
+    for (const r of [...ftsResults, ...likeResults]) {
+      const key = `${r.sessionTitle}_${r.role}_${r.content}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push(r)
+    }
+
+    merged.sort((a, b) => {
+      const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : Number(a.createdAt || 0)
+      const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : Number(b.createdAt || 0)
+      return timeB - timeA
+    })
+
+    return merged.slice(0, limit)
   }
 
   private escapeLikePattern(value: string): string {
