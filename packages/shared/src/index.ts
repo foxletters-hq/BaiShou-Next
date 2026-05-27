@@ -27,6 +27,7 @@ export * from './utils/model-capabilities'
 export * from './mock/agent.mock'
 
 export * from './utils/embedding.utils'
+export * from './utils/web-search-config.util'
 export { signS3Request } from './utils/aws-v4-sign'
 
 export * from './tts'

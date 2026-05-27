@@ -12,16 +12,39 @@ export function registerPricingIPC() {
   })
 
   // ==========================================
+  // API: 获取价格表加载状态（含启动拉取结果）
+  // ==========================================
+  ipcMain.handle('pricing:get-status', async () => {
+    const pricingService = ModelPricingService.getInstance()
+    try {
+      await pricingService.ensureLoaded()
+    } catch (err) {
+      logger.warn('[ModelPricingService] ensureLoaded failed in pricing:get-status:', err)
+    }
+
+    return {
+      lastUpdated: pricingService.lastFetchTime?.toISOString() || null,
+      hasPrices: pricingService.hasCachedPrices,
+      loadFailed: pricingService.lastFetchFailed
+    }
+  })
+
+  // ==========================================
   // API: 强制刷新计费价格表
   // ==========================================
   ipcMain.handle('pricing:refresh', async () => {
     try {
       const pricingService = ModelPricingService.getInstance()
       await pricingService.forceRefresh()
-      return { success: true, lastUpdated: pricingService.lastFetchTime?.toISOString() || null }
+      return {
+        success: !pricingService.lastFetchFailed,
+        lastUpdated: pricingService.lastFetchTime?.toISOString() || null,
+        loadFailed: pricingService.lastFetchFailed,
+        hasPrices: pricingService.hasCachedPrices
+      }
     } catch (e: any) {
       logger.error('Failed to refresh pricing:', e)
-      return { success: false, error: e.message }
+      return { success: false, error: e.message, loadFailed: true, hasPrices: false }
     }
   })
 

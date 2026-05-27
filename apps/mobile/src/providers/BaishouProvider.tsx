@@ -34,7 +34,9 @@ import {
   AIProviderRegistry,
   ToolRegistry,
   AgentSessionService,
-  StreamChatCallbacks
+  StreamChatCallbacks,
+  htmlToPlainText,
+  webSearchConfigToUserConfig
 } from '@baishou/ai'
 import { EmbeddingAdapter } from '@baishou/ai/src/tools/adapters/embedding.adapter'
 import { HybridSearchService } from '@baishou/ai/src/rag/hybrid-search.service'
@@ -80,7 +82,7 @@ const BaishouContext = createContext<BaishouContextValue>({
 
 export const useBaishou = () => useContext(BaishouContext)
 
-/** 使用 native fetch 获取网页内容并剥离 HTML */
+/** 使用 native fetch 获取网页内容并转换为正文（长度限制由工具层按设置处理） */
 async function webFetchContent(url: string): Promise<string> {
   try {
     const response = await fetch(url, {
@@ -94,18 +96,7 @@ async function webFetchContent(url: string): Promise<string> {
       throw new Error(`HTTP error: ${response.status}`)
     }
 
-    const html = await response.text()
-
-    let plainText = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '\n')
-    plainText = plainText.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '\n')
-    plainText = plainText.replace(/<[^>]+>/g, ' ')
-    plainText = plainText.replace(/\s+/g, ' ').trim()
-
-    const LIMIT = 15000
-    if (plainText.length > LIMIT) {
-      plainText = plainText.substring(0, LIMIT) + '\n\n[Content truncated due to length limits...]'
-    }
-
+    const plainText = htmlToPlainText(await response.text())
     return plainText || 'The webpage is empty or cannot be parsed textually.'
   } catch (e: any) {
     logger.error(`Failed to fetch URL: ${url}`, e)
@@ -340,10 +331,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
             const userConfig: Record<string, unknown> = {
               web_search_enabled: searchMode,
-              web_search_engine: webSearchConfig?.webSearchEngine || 'duckduckgo',
-              web_search_max_results: webSearchConfig?.webSearchMaxResults || 5,
-              web_search_rag_enabled: webSearchConfig?.webSearchRagEnabled ?? true,
-              tavily_api_key: webSearchConfig?.webSearchApiKey || '',
+              ...webSearchConfigToUserConfig(webSearchConfig),
               ragEnabled: ragConfig?.ragEnabled ?? true
             }
 

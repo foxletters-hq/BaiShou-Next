@@ -6,6 +6,7 @@ export interface CompressInput {
   results: Array<{ title: string; url: string; content: string }>
   embeddingService: ToolEmbeddingService
   totalMaxChunks?: number
+  chunksPerSource?: number
 }
 
 export interface CompressedResult {
@@ -20,7 +21,7 @@ export class SearchRagService {
    * 对网络搜索结果进行语义压缩：按与 query 的相关度排序，返回最相关的 Top-K 结果。
    */
   static async compress(input: CompressInput): Promise<CompressedResult[]> {
-    const { query, results, embeddingService, totalMaxChunks = 5 } = input
+    const { query, results, embeddingService, totalMaxChunks = 5, chunksPerSource = 4 } = input
 
     if (!embeddingService.isConfigured || results.length === 0) {
       return results.map((r) => ({ ...r, avgScore: 0 }))
@@ -43,7 +44,7 @@ export class SearchRagService {
         }
 
         const chunks = this.splitIntoChunks(text, 600)
-        const limitedChunks = chunks.slice(0, 10) // 每个结果最多 10 块
+        const limitedChunks = chunks.slice(0, chunksPerSource)
 
         let totalScore = 0
         let scoredChunkCount = 0

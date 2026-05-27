@@ -1379,6 +1379,7 @@
       "pricing_refresh_failed": "刷新价格表失败",
       "pricing_refresh_network_error": "网络错误，请检查网络连接",
       "pricing_unknown": "未知",
+      "pricing_boot_load_failed": "未能拉取 models.dev 价格表，计费估算可能不准确，请检查网络后在计费面板中刷新",
       "pricing_just_now": "刚刚",
       "pricing_minutes_ago": "$count 分钟前",
       "pricing_hours_ago": "$count 小时前",

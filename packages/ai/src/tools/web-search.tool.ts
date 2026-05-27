@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { AgentTool, ToolContext, ToolConfigParam } from './agent.tool'
 import { WebSearchService, SearchEngineType, SearchResult } from './search/web-search.service'
 import { SearchRagService } from './search/search-rag.service'
+import { resolveWebSearchLimits } from './search/web-search-config.util'
 
 const webSearchParams = z.object({
   queries: z
@@ -83,7 +84,8 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
 
     const engineStr =
       (context.userConfig?.['web_search_engine'] as SearchEngineType | undefined) || 'duckduckgo'
-    const maxResults = (context.userConfig?.['web_search_max_results'] as number | undefined) || 5
+    const limits = resolveWebSearchLimits(context.userConfig)
+    const maxResults = limits.maxResults
     const ragEnabled =
       (context.userConfig?.['web_search_rag_enabled'] as boolean | undefined) !== false
     const tavilyKey = context.userConfig?.['tavily_api_key'] as string | undefined
@@ -103,7 +105,8 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
           totalMaxResults: maxResults + 5,
           apiKey: tavilyKey,
           webSearchResultFetcher: context.webSearchResultFetcher,
-          fetchSearchPage: context.fetchSearchPage
+          fetchSearchPage: context.fetchSearchPage,
+          plainSnippetLength: limits.plainSnippetLength
         })
       } catch (primaryErr) {
         console.warn(
@@ -122,7 +125,8 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
           totalMaxResults: maxResults,
           apiKey: tavilyKey,
           webSearchResultFetcher: context.webSearchResultFetcher,
-          fetchSearchPage: context.fetchSearchPage
+          fetchSearchPage: context.fetchSearchPage,
+          plainSnippetLength: limits.plainSnippetLength
         })
       }
 
@@ -140,7 +144,8 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
             content: r.snippet
           })),
           embeddingService: context.embeddingService,
-          totalMaxChunks: maxResults
+          totalMaxChunks: limits.ragMaxChunks,
+          chunksPerSource: limits.ragChunksPerSource
         })
 
         if (compressed.length > 0) {

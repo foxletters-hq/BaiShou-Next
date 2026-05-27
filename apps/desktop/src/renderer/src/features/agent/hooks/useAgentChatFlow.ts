@@ -88,6 +88,7 @@ export function useAgentChatFlow() {
     systemPrompt?: string
   }>({ isOpen: false })
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
+  const pricingBootWarnShownRef = useRef(false)
   const inputBarRef = useRef<InputBarRef>(null)
 
   // ── 4. TTS 音频朗读 Hook ──
@@ -97,15 +98,36 @@ export function useAgentChatFlow() {
   const fetchPricingLastUpdated = useCallback(async () => {
     if (typeof window !== 'undefined' && window.electron) {
       try {
-        const isoString = await window.electron.ipcRenderer.invoke('pricing:get-last-updated')
-        if (isoString) {
-          setPricingLastUpdated(new Date(isoString))
+        const status = await window.electron.ipcRenderer.invoke('pricing:get-status')
+        if (status?.lastUpdated) {
+          setPricingLastUpdated(new Date(status.lastUpdated))
+        }
+
+        const pricingUnavailable =
+          status?.loadFailed || status?.hasPrices === false || !status?.lastUpdated
+        if (pricingUnavailable && !pricingBootWarnShownRef.current) {
+          pricingBootWarnShownRef.current = true
+          toast.showWarning(
+            t(
+              'agent.chat.pricing_boot_load_failed',
+              '未能拉取 models.dev 价格表，计费估算可能不准确，请检查网络后在计费面板中刷新'
+            )
+          )
         }
       } catch (e) {
-        console.error('Failed to get pricing last updated:', e)
+        console.error('Failed to get pricing status:', e)
+        if (!pricingBootWarnShownRef.current) {
+          pricingBootWarnShownRef.current = true
+          toast.showWarning(
+            t(
+              'agent.chat.pricing_boot_load_failed',
+              '未能拉取 models.dev 价格表，计费估算可能不准确，请检查网络后在计费面板中刷新'
+            )
+          )
+        }
       }
     }
-  }, [])
+  }, [t])
 
   const handleRefreshPricing = useCallback(async () => {
     if (typeof window !== 'undefined' && window.electron) {
@@ -114,7 +136,7 @@ export function useAgentChatFlow() {
         if (result.success && result.lastUpdated) {
           setPricingLastUpdated(new Date(result.lastUpdated))
           toast.showSuccess(t('agent.chat.pricing_refreshed', '价格表已更新'))
-        } else if (!result.success) {
+        } else if (!result.success || result.loadFailed || !result.hasPrices) {
           toast.showError(result.error || t('agent.chat.pricing_refresh_failed', '价格表刷新失败'))
         }
         return result

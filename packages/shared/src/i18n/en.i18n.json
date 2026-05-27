@@ -1331,6 +1331,7 @@
       "pricing_refresh_failed": "Failed to refresh pricing",
       "pricing_refresh_network_error": "Network error, please check your connection",
       "pricing_unknown": "Unknown",
+      "pricing_boot_load_failed": "Could not fetch the models.dev pricing table. Cost estimates may be inaccurate — check your network and refresh in the billing panel.",
       "pricing_just_now": "Just now",
       "pricing_minutes_ago": "$count minutes ago",
       "pricing_hours_ago": "$count hours ago",

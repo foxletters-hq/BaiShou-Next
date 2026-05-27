@@ -1,18 +1,8 @@
 import { z } from 'zod'
-import { normalizeWeatherId } from '../constants/weather.constants'
+import { normalizeWeatherId, type WeatherId, WEATHER_IDS } from '../constants/weather.constants'
 
-/** 天气值到 emoji 的映射表（同时支持中文键和英文键） */
-export const WEATHER_EMOJI: Record<string, string> = {
-  // 中文键
-  晴: '☀️',
-  多云: '⛅',
-  阴: '☁️',
-  小雨: '🌦️',
-  大雨: '🌧️',
-  雪: '❄️',
-  雾: '🌫️',
-  风: '💨',
-  // 英文键（与数据库存储一致）
+/** Weather id → emoji (canonical English ids only) */
+export const WEATHER_EMOJI: Record<WeatherId, string> = {
   sunny: '☀️',
   cloudy: '⛅',
   overcast: '☁️',
@@ -23,11 +13,14 @@ export const WEATHER_EMOJI: Record<string, string> = {
   windy: '💨'
 }
 
-/** 根据天气值获取对应 emoji，无匹配时返回默认 🌤️ */
+/** 根据天气 id 获取对应 emoji，无匹配时返回默认 🌤️ */
 export function getWeatherEmoji(weather?: string): string {
   if (!weather) return ''
   const key = normalizeWeatherId(weather)
-  return WEATHER_EMOJI[key] || WEATHER_EMOJI[weather] || '🌤️'
+  if ((WEATHER_IDS as readonly string[]).includes(key)) {
+    return WEATHER_EMOJI[key as WeatherId]
+  }
+  return '🌤️'
 }
 
 export const DiarySchema = z.object({

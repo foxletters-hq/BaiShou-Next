@@ -52,6 +52,7 @@ export class ModelPricingService {
   private static instance: ModelPricingService
   private prices: Map<string, ModelPrice> = new Map()
   private _lastFetchTime?: Date
+  private _lastFetchFailed = false
   private readonly CACHE_DURATION_MS = 60 * 60 * 1000 // 1小时缓存失效
 
   private constructor() {}
@@ -68,6 +69,16 @@ export class ModelPricingService {
    */
   public get lastFetchTime(): Date | undefined {
     return this._lastFetchTime
+  }
+
+  /** 是否已有可用的缓存价格表 */
+  public get hasCachedPrices(): boolean {
+    return this.prices.size > 0
+  }
+
+  /** 最近一次拉取是否失败（无缓存时影响计费准确度） */
+  public get lastFetchFailed(): boolean {
+    return this._lastFetchFailed
   }
 
   /**
@@ -143,6 +154,7 @@ export class ModelPricingService {
 
       if (!response.ok) {
         logger.warn(`[ModelPricingService] models.dev returned HTTP ${response.status}`)
+        this._lastFetchFailed = true
         return
       }
 
@@ -188,8 +200,10 @@ export class ModelPricingService {
       }
 
       this._lastFetchTime = new Date()
+      this._lastFetchFailed = false
     } catch (e: any) {
       logger.warn('[ModelPricingService] prices fetch failed:', e)
+      this._lastFetchFailed = true
       // 网络打不开没关系，失败的话大不了不扣钱，决不能让 Agent 崩溃停止回答
     }
   }

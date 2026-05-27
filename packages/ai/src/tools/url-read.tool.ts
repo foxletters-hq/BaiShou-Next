@@ -1,7 +1,12 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
-import { SearchRagService } from './search/search-rag.service'
+import {
+  EMPTY_WEB_PAGE_MESSAGE,
+  htmlToPlainText,
+  limitWebPlainText
+} from './search/web-content.util'
+import { resolveWebSearchLimits } from './search/web-search-config.util'
 
 const urlReadParams = z.object({
   url: z.string().url().describe('The exact URL of the webpage or resource you want to read.'),
@@ -24,45 +29,34 @@ export class UrlReadTool extends AgentTool<typeof urlReadParams> {
 
   async execute(args: z.infer<typeof urlReadParams>, context: ToolContext): Promise<string> {
     try {
-      // 外部环境劫持 (如 Electron 中绕开 CORS 等)
+      let plainText = ''
+
       if (context.webSearchResultFetcher) {
-        return await context.webSearchResultFetcher(args.url)
-      }
-
-      // 如果没有挂载，自己简单拉一遍获取
-      const response = await fetch(args.url)
-      if (!response.ok) {
-        return `Failed to fetch URL: HTTP status ${response.status} - ${response.statusText}`
-      }
-
-      const htmlText = await response.text()
-
-      // 简单剥离 HTML（保留主要的文本）
-      // 去除 script 和 style 块
-      let plainText = htmlText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '\n')
-      plainText = plainText.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '\n')
-
-      // 替换所有其他的标签为你空格并整理
-      plainText = plainText.replace(/<[^>]+>/g, ' ')
-      plainText = plainText.replace(/\s+/g, ' ').trim()
-
-      // 防止过大撑爆上下文。遇到超级巨怪进行临时 RAG 降频打击
-      const LIMIT = 15000
-      if (plainText.length > LIMIT) {
-        if (args.query && context.embeddingService?.isConfigured) {
-          plainText = await SearchRagService.extractRelevantChunks(
-            context.embeddingService,
-            plainText,
-            args.query,
-            LIMIT
-          )
-        } else {
-          plainText =
-            plainText.substring(0, LIMIT) + '\n\n[Content truncated due to length limits...]'
+        plainText = await context.webSearchResultFetcher(args.url)
+      } else {
+        const response = await fetch(args.url)
+        if (!response.ok) {
+          return `Failed to fetch URL: HTTP status ${response.status} - ${response.statusText}`
         }
+        plainText = htmlToPlainText(await response.text())
       }
 
-      return plainText || 'The webpage is empty or cannot be parsed textually.'
+      if (!plainText || plainText === EMPTY_WEB_PAGE_MESSAGE) {
+        return plainText || EMPTY_WEB_PAGE_MESSAGE
+      }
+
+      const limits = resolveWebSearchLimits(context.userConfig)
+      const ragEnabled =
+        (context.userConfig?.web_search_rag_enabled as boolean | undefined) !== false
+
+      plainText = await limitWebPlainText(plainText, {
+        query: args.query,
+        limit: limits.plainSnippetLength,
+        embeddingService: context.embeddingService,
+        ragEnabled
+      })
+
+      return plainText || EMPTY_WEB_PAGE_MESSAGE
     } catch (e) {
       return 'The webpage content is currently unavailable or inaccessible.'
     }

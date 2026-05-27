@@ -1,4 +1,5 @@
 import { logger } from '@baishou/shared'
+import { DEFAULT_WEB_SEARCH_LIMITS } from './web-search-config.util'
 
 export interface SearchItem {
   title: string
@@ -41,7 +42,8 @@ export abstract class LocalSearchProvider {
   public async search(
     query: string,
     maxResults: number = 5,
-    webSearchResultFetcher?: (url: string) => Promise<string>
+    webSearchResultFetcher?: (url: string) => Promise<string>,
+    plainSnippetLength?: number
   ): Promise<LocalSearchResponse> {
     try {
       if (!query.trim()) {
@@ -61,6 +63,7 @@ export abstract class LocalSearchProvider {
 
       // 限制结果数量
       const limitedItems = searchItems.slice(0, maxResults)
+      const snippetLimit = plainSnippetLength ?? DEFAULT_WEB_SEARCH_LIMITS.plainSnippetLength
 
       // 获取每个搜索结果的详细内容
       const results: SearchResult[] = []
@@ -77,7 +80,7 @@ export abstract class LocalSearchProvider {
             results.push({
               title: item.title,
               url: item.url,
-              content: this.truncateContent(content, 3000)
+              content: this.truncateContent(content, snippetLimit)
             })
           }
         } catch (e: any) {

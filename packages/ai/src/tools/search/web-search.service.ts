@@ -50,6 +50,7 @@ export class WebSearchService {
     apiKey?: string
     webSearchResultFetcher?: (url: string) => Promise<string>
     fetchSearchPage?: (url: string) => Promise<string>
+    plainSnippetLength?: number
   }): Promise<SearchResult[]> {
     const {
       queries,
@@ -58,7 +59,8 @@ export class WebSearchService {
       totalMaxResults = 10,
       apiKey,
       webSearchResultFetcher,
-      fetchSearchPage
+      fetchSearchPage,
+      plainSnippetLength
     } = params
 
     if (queries.length === 0) return []
@@ -69,12 +71,21 @@ export class WebSearchService {
         totalMaxResults,
         apiKey,
         webSearchResultFetcher,
-        fetchSearchPage
+        fetchSearchPage,
+        plainSnippetLength
       )
     }
 
     const promises = queries.map((q) =>
-      this.search(q, engine, maxResultsPerQuery, apiKey, webSearchResultFetcher, fetchSearchPage)
+      this.search(
+        q,
+        engine,
+        maxResultsPerQuery,
+        apiKey,
+        webSearchResultFetcher,
+        fetchSearchPage,
+        plainSnippetLength
+      )
     )
     const allResultsRaw = await Promise.allSettled(promises)
 
@@ -102,16 +113,28 @@ export class WebSearchService {
     maxResults: number = this.defaultMaxResults,
     apiKey?: string,
     webSearchResultFetcher?: (url: string) => Promise<string>,
-    fetchSearchPage?: (url: string) => Promise<string>
+    fetchSearchPage?: (url: string) => Promise<string>,
+    plainSnippetLength?: number
   ): Promise<SearchResult[]> {
     if (engine === 'duckduckgo') {
       return this.searchDuckDuckGo(query, maxResults)
     }
     if (engine === 'local-bing') {
-      return this.searchLocalBing(query, maxResults, webSearchResultFetcher)
+      return this.searchLocalBing(
+        query,
+        maxResults,
+        webSearchResultFetcher,
+        plainSnippetLength
+      )
     }
     if (engine === 'local-google') {
-      return this.searchLocalGoogle(query, maxResults, webSearchResultFetcher, fetchSearchPage)
+      return this.searchLocalGoogle(
+        query,
+        maxResults,
+        webSearchResultFetcher,
+        fetchSearchPage,
+        plainSnippetLength
+      )
     }
     return this.searchTavily(query, maxResults, apiKey)
   }
@@ -264,11 +287,17 @@ export class WebSearchService {
   private static async searchLocalBing(
     query: string,
     maxResults: number,
-    webSearchResultFetcher?: (url: string) => Promise<string>
+    webSearchResultFetcher?: (url: string) => Promise<string>,
+    plainSnippetLength?: number
   ): Promise<SearchResult[]> {
     try {
       const provider = new LocalBingProvider()
-      const response = await provider.search(query, maxResults, webSearchResultFetcher)
+      const response = await provider.search(
+        query,
+        maxResults,
+        webSearchResultFetcher,
+        plainSnippetLength
+      )
 
       return response.results.map((r) => ({
         title: r.title,
@@ -286,11 +315,17 @@ export class WebSearchService {
     query: string,
     maxResults: number,
     webSearchResultFetcher?: (url: string) => Promise<string>,
-    fetchSearchPage?: (url: string) => Promise<string>
+    fetchSearchPage?: (url: string) => Promise<string>,
+    plainSnippetLength?: number
   ): Promise<SearchResult[]> {
     try {
       const provider = new LocalGoogleProvider(fetchSearchPage)
-      const response = await provider.search(query, maxResults, webSearchResultFetcher)
+      const response = await provider.search(
+        query,
+        maxResults,
+        webSearchResultFetcher,
+        plainSnippetLength
+      )
 
       return response.results.map((r) => ({
         title: r.title,

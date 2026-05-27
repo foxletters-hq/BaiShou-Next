@@ -32,6 +32,8 @@ export * from './tools/message-search.tool'
 export * from './tools/summary-read.tool'
 export * from './tools/web-search.tool'
 export * from './tools/url-read.tool'
+export * from './tools/search/web-content.util'
+export * from './tools/search/web-search-config.util'
 
 // Middleware
 export * from './middleware/message-middleware'

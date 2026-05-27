@@ -8,6 +8,7 @@ import {
 import type { LanguageModelV3Middleware } from '@ai-sdk/provider'
 import { IAIProvider } from '../providers/provider.interface'
 import { createDeepSeekReasoningMiddleware } from '../middleware/deepseek-reasoning'
+import { buildMiddlewareChain, type ProviderType } from '../middleware/middleware-factory'
 import { MessageAdapter } from './message.adapter'
 import { StreamAccumulator } from './stream-accumulator'
 import { StreamChunkAdapter } from './stream-chunk.adapter'
@@ -166,6 +167,12 @@ export class AgentSessionService {
         }
       }
 
+      const providerType = (provider.config?.type || 'openai') as ProviderType
+      const messageMiddlewareChain = buildMiddlewareChain(providerType)
+      const messagesForModel = messageMiddlewareChain.isEmpty
+        ? coreMessages
+        : messageMiddlewareChain.apply(coreMessages)
+
       // 3. 构建可用的 Tools 及其底层接续支持
       const { SqliteHybridSearchRepository, MessageRepository } = await import('@baishou/database')
       const { DatabaseAdapter } = await import('../tools/adapters/database.adapter')
@@ -249,7 +256,7 @@ export class AgentSessionService {
       const cjkSegmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' })
       const streamResult = await streamText({
         model,
-        messages: coreMessages,
+        messages: messagesForModel,
         system: builtSystemPrompt,
         tools: enabledTools,
         stopWhen: stepCountIs(10),

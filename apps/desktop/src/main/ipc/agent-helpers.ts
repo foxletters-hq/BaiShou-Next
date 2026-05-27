@@ -21,7 +21,15 @@ import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import { AIProviderConfig, GlobalModelsConfig, logger } from '@baishou/shared'
 import { searchService } from '../services/search.service'
-import { AgentSessionService, ToolRegistry, AIProviderRegistry } from '@baishou/ai'
+import {
+  AgentSessionService,
+  ToolRegistry,
+  AIProviderRegistry,
+  htmlToPlainText,
+  EMPTY_WEB_PAGE_MESSAGE,
+  UNAVAILABLE_WEB_PAGE_MESSAGE,
+  webSearchConfigToUserConfig
+} from '@baishou/ai'
 
 export const toolRegistry = new ToolRegistry()
 export const agentService = new AgentSessionService()
@@ -85,41 +93,54 @@ export function createDiarySearcher() {
   }
 }
 
+const WEB_FETCH_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+async function fetchUrlHtmlViaBrowserWindow(url: string): Promise<string> {
+  const uid = `fetch-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  try {
+    return await searchService.openUrlInSearchWindow(uid, url)
+  } finally {
+    await searchService.closeSearchWindow(uid)
+  }
+}
+
+async function fetchUrlHtmlViaNet(url: string): Promise<string> {
+  const response = await net.fetch(url, {
+    headers: { 'User-Agent': WEB_FETCH_USER_AGENT }
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status} - ${response.statusText}`)
+  }
+
+  return response.text()
+}
+
 /**
- * 创建网页内容获取器，使用 Electron net.fetch 绕过 CORS 限制
+ * 创建网页内容获取器。
+ * 负责抓取并转换为正文，不在此处截断长度；
+ * 截取长度由设置项 webSearchPlainSnippetLength 经 userConfig 注入到 url_read / web_search 工具。
  */
 export function createWebSearchResultFetcher() {
   return async (url: string): Promise<string> => {
     try {
-      const response = await net.fetch(url, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error: ${response.status} - ${response.statusText}`)
+      let html = ''
+      try {
+        html = await fetchUrlHtmlViaBrowserWindow(url)
+      } catch (browserErr: any) {
+        logger.warn(
+          `[createWebSearchResultFetcher] BrowserWindow fetch failed for ${url}, falling back to net.fetch:`,
+          browserErr
+        )
+        html = await fetchUrlHtmlViaNet(url)
       }
 
-      const html = await response.text()
-
-      // 简单剥离 HTML（保留主要的文本）
-      let plainText = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '\n')
-      plainText = plainText.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '\n')
-      plainText = plainText.replace(/<[^>]+>/g, ' ')
-      plainText = plainText.replace(/\s+/g, ' ').trim()
-
-      const LIMIT = 15000
-      if (plainText.length > LIMIT) {
-        plainText =
-          plainText.substring(0, LIMIT) + '\n\n[Content truncated due to length limits...]'
-      }
-
-      return plainText || 'The webpage is empty or cannot be parsed textually.'
+      const plainText = htmlToPlainText(html)
+      return plainText || EMPTY_WEB_PAGE_MESSAGE
     } catch (e: any) {
       logger.error(`Failed to fetch URL: ${url}`, e)
-      return 'The webpage content is currently unavailable or inaccessible.'
+      return UNAVAILABLE_WEB_PAGE_MESSAGE
     }
   }
 }
@@ -257,10 +278,7 @@ export async function buildStreamConfig(
           : assistantContextWindow
         : (behaviorConfig?.agentContextWindowSize ?? 30),
     web_search_enabled: searchMode ?? false,
-    web_search_engine: webSearchConfig?.webSearchEngine || 'duckduckgo',
-    web_search_max_results: webSearchConfig?.webSearchMaxResults || 5,
-    web_search_rag_enabled: webSearchConfig?.webSearchRagEnabled ?? true,
-    tavily_api_key: webSearchConfig?.tavilyApiKey || '',
+    ...webSearchConfigToUserConfig(webSearchConfig),
     userCard
   }
 

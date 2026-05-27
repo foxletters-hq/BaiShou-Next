@@ -1321,6 +1321,7 @@
       "pricing_refresh_failed": "重新整理價格表失敗",
       "pricing_refresh_network_error": "網路錯誤，請檢查網路連線",
       "pricing_unknown": "未知",
+      "pricing_boot_load_failed": "未能拉取 models.dev 價格表，計費估算可能不準確，請檢查網路後在計費面板中重新整理",
       "pricing_just_now": "剛剛",
       "pricing_minutes_ago": "$count 分鐘前",
       "pricing_hours_ago": "$count 小時前",

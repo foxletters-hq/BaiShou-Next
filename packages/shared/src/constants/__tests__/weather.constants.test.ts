@@ -6,22 +6,21 @@ import {
 } from '../weather.constants'
 
 describe('weather.constants', () => {
-  it('normalizes legacy Chinese labels to canonical ids', () => {
-    expect(normalizeWeatherId('晴')).toBe('sunny')
-    expect(normalizeWeatherId('风')).toBe('windy')
+  it('normalizes English aliases to canonical ids', () => {
+    expect(normalizeWeatherId('wind')).toBe('windy')
     expect(normalizeWeatherId('sunny')).toBe('sunny')
   })
 
-  it('expands filter ids to include legacy stored values', () => {
-    const expanded = expandWeatherFilterValues(['sunny'])
+  it('expands filter ids to canonical values', () => {
+    const expanded = expandWeatherFilterValues(['sunny', 'wind'])
     expect(expanded).toContain('sunny')
-    expect(expanded).toContain('晴')
+    expect(expanded).toContain('wind')
+    expect(expanded).toContain('windy')
   })
 
-  it('matches diary weather stored as Chinese when filtering by canonical id', () => {
-    expect(weatherMatchesFilter('晴', ['sunny'])).toBe(true)
+  it('matches diary weather by canonical id', () => {
     expect(weatherMatchesFilter('sunny', ['sunny'])).toBe(true)
-    expect(weatherMatchesFilter('多云', ['cloudy'])).toBe(true)
-    expect(weatherMatchesFilter('晴', ['cloudy'])).toBe(false)
+    expect(weatherMatchesFilter('cloudy', ['cloudy'])).toBe(true)
+    expect(weatherMatchesFilter('sunny', ['cloudy'])).toBe(false)
   })
 })
