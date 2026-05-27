@@ -132,6 +132,23 @@ describe('OpenAiTtsProvider', () => {
       )
     })
 
+    it('should omit Authorization header when apiKey is empty', async () => {
+      const mockResponse = {
+        ok: true,
+        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8))
+      }
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse as any)
+
+      await provider.synthesize(mockRequest, { ...mockConfig, apiKey: '' })
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
+    })
+
     it('should throw TtsApiError when API returns error status', async () => {
       const mockResponse = {
         ok: false,

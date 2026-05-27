@@ -5,6 +5,7 @@ import {
   TtsProviderConfig
 } from '../types/tts.types'
 import { TtsApiError } from './tts.errors'
+import { buildTtsAuthHeaders } from './tts-http'
 
 export class OpenAiTtsProvider implements TtsProvider {
   readonly id = 'openai-tts'
@@ -23,10 +24,7 @@ export class OpenAiTtsProvider implements TtsProvider {
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: buildTtsAuthHeaders(config.apiKey, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         model: request.modelId,
         input: request.text,

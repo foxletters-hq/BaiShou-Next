@@ -5,6 +5,7 @@ import {
   TtsProviderConfig
 } from '../types/tts.types'
 import { TtsApiError, TtsInvalidResponseError } from './tts.errors'
+import { buildTtsAuthHeaders } from './tts-http'
 
 export class MimoTtsProvider implements TtsProvider {
   readonly id = 'mimo-tts'
@@ -23,10 +24,7 @@ export class MimoTtsProvider implements TtsProvider {
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: buildTtsAuthHeaders(config.apiKey, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         model: request.modelId,
         messages: [
