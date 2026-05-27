@@ -1,7 +1,6 @@
 import { app } from 'electron'
 import { join } from 'path'
-import { initNodeDatabase } from '@baishou/database'
-import type { AppDatabase } from '@baishou/database/src/types'
+import { initNodeDatabase, AppDatabase } from '@baishou/database'
 import { logger } from '@baishou/shared'
 import { renameSync, existsSync } from 'fs'
 

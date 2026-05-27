@@ -31,8 +31,12 @@ export interface UpdaterState {
 }
 
 /** 更新操作接口 */
+export type CheckForUpdatesResult =
+  | { skipped: false }
+  | { skipped: true; reason?: 'development' | 'unconfigured' }
+
 export interface UpdaterActions {
-  checkForUpdates: () => Promise<void>
+  checkForUpdates: () => Promise<CheckForUpdatesResult>
   downloadUpdate: () => Promise<void>
   quitAndInstall: () => void
   setAutoCheck: (enabled: boolean) => void
@@ -52,23 +56,35 @@ export const useUpdaterStore = create<UpdaterState & UpdaterActions>()(
 
       checkForUpdates: async () => {
         if (typeof window === 'undefined' || !(window as any).api?.updater) {
-          return
+          return { skipped: true, reason: 'unconfigured' as const }
         }
 
         set({ status: UpdateStatus.CHECKING, error: null })
 
         try {
           const result = await (window as any).api.updater.check()
+          if (result.skipped) {
+            set({
+              status: UpdateStatus.IDLE,
+              currentVersion: result.currentVersion,
+              updateInfo: null,
+              error: null
+            })
+            return { skipped: true, reason: result.skipReason }
+          }
           set({
             status: result.hasUpdate ? UpdateStatus.AVAILABLE : UpdateStatus.NOT_AVAILABLE,
             currentVersion: result.currentVersion,
-            updateInfo: result.updateInfo
+            updateInfo: result.updateInfo,
+            error: null
           })
+          return { skipped: false }
         } catch (error: any) {
           set({
             status: UpdateStatus.ERROR,
-            error: error.message || '检查更新失败'
+            error: error.message || 'Update check failed'
           })
+          return { skipped: false }
         }
       },
 

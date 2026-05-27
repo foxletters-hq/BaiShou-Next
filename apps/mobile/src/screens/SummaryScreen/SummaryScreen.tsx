@@ -365,7 +365,7 @@ export const SummaryScreen: React.FC = () => {
                           onPress={handleStopGeneration}
                         >
                           <Text style={[styles.stopButtonText, { color: colors.textOnPrimary }]}>
-                            {t('summary.stop', '停止')}
+                            {t('summary.stop', 'Stop')}
                           </Text>
                         </TouchableOpacity>
                       )}

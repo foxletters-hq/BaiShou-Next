@@ -95,12 +95,8 @@ export const DiaryEditorScreen: React.FC = () => {
         isFavorite
       }
 
-      if (existingId) {
-        // 追加模式下 content 已包含原内容+追加内容，直接保存
-        await services.diaryService.update(existingId, input)
-      } else {
-        await services.diaryService.create(input)
-      }
+      // 统一使用下沉到 DiaryService 中的 save 接口，自动处理新建、更新与冲突自动合并
+      await services.diaryService.save(existingId, input)
       setIsDirty(false)
       router.back()
     } catch (e) {
