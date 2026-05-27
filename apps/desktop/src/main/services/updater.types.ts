@@ -31,4 +31,7 @@ export interface UpdateCheckResult {
   hasUpdate: boolean
   currentVersion: string
   updateInfo: UpdateInfo | null
+  /** Dev / unpackaged build — electron-updater is not configured */
+  skipped?: boolean
+  skipReason?: 'development' | 'unconfigured'
 }

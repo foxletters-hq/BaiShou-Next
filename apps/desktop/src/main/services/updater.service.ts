@@ -92,6 +92,19 @@ export class UpdaterService {
 
   /** 检查更新 */
   async checkForUpdates(): Promise<UpdateCheckResult> {
+    const currentVersion = this.getCurrentVersion()
+
+    if (!app.isPackaged) {
+      this.notifyStatusChange(UpdateStatus.IDLE)
+      return {
+        hasUpdate: false,
+        currentVersion,
+        updateInfo: null,
+        skipped: true,
+        skipReason: 'development'
+      }
+    }
+
     this.notifyStatusChange(UpdateStatus.CHECKING)
 
     try {
@@ -129,10 +142,25 @@ export class UpdaterService {
         updateInfo
       }
     } catch (error) {
+      this.notifyStatusChange(UpdateStatus.ERROR)
+      const message = error instanceof Error ? error.message : String(error)
+      const looksUnconfigured =
+        /app-update\.yml|dev-app-update|ENOENT|404|not configured|no published|channel/i.test(
+          message
+        )
+      if (looksUnconfigured) {
+        return {
+          hasUpdate: false,
+          currentVersion,
+          updateInfo: null,
+          skipped: true,
+          skipReason: 'unconfigured'
+        }
+      }
       if (error instanceof UpdateTimeoutError) {
         throw error
       }
-      throw new UpdateCheckError(error instanceof Error ? error.message : '检查更新失败')
+      throw new UpdateCheckError(message || 'Update check failed')
     }
   }
 

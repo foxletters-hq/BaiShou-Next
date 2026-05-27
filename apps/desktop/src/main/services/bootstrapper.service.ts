@@ -46,6 +46,40 @@ export class GlobalDataBootstrapper {
   }
 
   /**
+   * 切换 Vault 后的轻量激活：文件监听 + Git 检查（不扫盘）。
+   * 必须在 Shadow DB 已 connect 之后调用。
+   */
+  async activateVaultRuntime(): Promise<void> {
+    const activeVault = vaultService.getActiveVault()
+    if (!activeVault) {
+      logger.warn('[Bootstrapper] activateVaultRuntime: activeVault is empty')
+      return
+    }
+
+    try {
+      const gitService = getGitService()
+      const initialized = await gitService.isInitialized()
+      if (!initialized) {
+        await gitService.init()
+        logger.info('[Bootstrapper] Git 仓库已自动初始化')
+      }
+    } catch (e) {
+      logger.warn('[Bootstrapper] Git 自动初始化失败:', e as any)
+    }
+
+    diaryWatcher.start(activeVault.path)
+    summaryWatcher.start(activeVault.path)
+    sessionWatcher.start(activeVault.path)
+  }
+
+  private notifyRenderersAfterResync(): void {
+    BrowserWindow.getAllWindows().forEach((w) => {
+      w.webContents.send('session:file-changed')
+      w.webContents.send('diary:sync-event', { type: 'vault-resync-complete' })
+    })
+  }
+
+  /**
    * 将所有的漫游明文资产猛烈拍进本地缓存中
    * 必须在确保 Shadow DB 已连接（shadowConnectionManager.connect() 已调用）的状态下执行。
    */
@@ -53,27 +87,7 @@ export class GlobalDataBootstrapper {
     logger.info('--- 🌊 GLOBAL BOOTSTRAPPER TRIGGERED. INITIATING ECOSYSTEM SSOT WATER-CYCLE ---')
 
     try {
-      const activeVault = vaultService.getActiveVault()
-      logger.info(`[Bootstrapper] 正在尝试启动监听。activeVault:`, { activeVault })
-      if (activeVault) {
-        // 自动初始化 Git 仓库（如果尚未初始化）
-        try {
-          const gitService = getGitService()
-          const initialized = await gitService.isInitialized()
-          if (!initialized) {
-            await gitService.init()
-            logger.info('[Bootstrapper] Git 仓库已自动初始化')
-          }
-        } catch (e) {
-          logger.warn('[Bootstrapper] Git 自动初始化失败:', e as any)
-        }
-
-        diaryWatcher.start(activeVault.path)
-        summaryWatcher.start(activeVault.path)
-        sessionWatcher.start(activeVault.path)
-      } else {
-        logger.warn(`[Bootstrapper] ⚠️ 发现 activeVault 为空！`)
-      }
+      await this.activateVaultRuntime()
 
       const shadowScout = this.tryGetShadowBootstrapper()
       const summaryScout = this.tryGetSummaryBootstrapper()
@@ -100,11 +114,7 @@ export class GlobalDataBootstrapper {
       await settingsManager.fullResyncFromDisk()
 
       logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---')
-
-      // 通知所有渲染器窗口刷新会话列表，确保备份恢复后 UI 立即显示数据
-      BrowserWindow.getAllWindows().forEach((w) => {
-        w.webContents.send('session:file-changed')
-      })
+      this.notifyRenderersAfterResync()
     } catch (e) {
       logger.error('--- ❌ GLOBAL BOOTSTRAPPER FAILED. SEVERE SYNCHRONIZATION ERROR ---', e as any)
     }

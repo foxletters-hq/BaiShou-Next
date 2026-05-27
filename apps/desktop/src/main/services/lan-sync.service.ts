@@ -6,30 +6,24 @@ import * as http from 'http'
 import * as dgram from 'dgram'
 import { app } from 'electron'
 import express from 'express'
-import { Bonjour, Browser } from 'bonjour-service'
 import { v4 as uuidv4 } from 'uuid'
 
 import { ILanSyncService, DiscoveredDevice, IArchiveService } from '@baishou/core'
+import { LanDiscovery } from './LanDiscovery'
 
 export class DesktopLanSyncService implements ILanSyncService {
   private server: http.Server | null = null
-  private bonjour: Bonjour | null = null
-  private browser: Browser | null = null
-  private publishedService: any = null
+  private discovery: LanDiscovery = new LanDiscovery()
   private publishedServiceName: string | null = null
-
   private fileReceivedCallback?: (path: string) => void
 
-  constructor(private archiveService: IArchiveService) {
-    // Only used to generate archive zip internally for sending
-  }
+  constructor(private archiveService: IArchiveService) {}
 
   private isExcludedIp(ip: string): boolean {
     const [a, b] = ip.split('.').map(Number)
     if (Number.isNaN(a) || Number.isNaN(b)) return true
     if (a === 127) return true
     if (a === 169 && b === 254) return true
-    // RFC 2544 / Clash Meta TUN 等虚拟网段
     if (a === 198 && (b === 18 || b === 19)) return true
     return false
   }
@@ -45,18 +39,8 @@ export class DesktopLanSyncService implements ILanSyncService {
   private isVirtualInterface(name: string): boolean {
     const lower = name.toLowerCase()
     return [
-      'clash',
-      'meta',
-      'tun',
-      'wintun',
-      'wireguard',
-      'tailscale',
-      'vpn',
-      'virtual',
-      'vethernet',
-      'hyper-v',
-      'npcap',
-      'loopback'
+      'clash', 'meta', 'tun', 'wintun', 'wireguard', 'tailscale',
+      'vpn', 'virtual', 'vethernet', 'hyper-v', 'npcap', 'loopback'
     ].some((keyword) => lower.includes(keyword))
   }
 
@@ -144,7 +128,7 @@ export class DesktopLanSyncService implements ILanSyncService {
     serviceId: string
     allIps: string[]
   } | null> {
-    if (this.server) return null // already running
+    if (this.server) return null
 
     const ips = await this.getPreferredLocalIps()
     if (ips.length === 0) throw new Error('No local network connection found')
@@ -154,9 +138,7 @@ export class DesktopLanSyncService implements ILanSyncService {
 
     const expressApp = express()
 
-    // Endpoints
     expressApp.get('/info', (_req, res) => {
-      // Return same schema as mobile and original expectation
       res.json({ nickname: os.userInfo().username || 'Desktop User' })
     })
 
@@ -166,14 +148,11 @@ export class DesktopLanSyncService implements ILanSyncService {
       const writeStream = fs.createWriteStream(tempPath)
 
       req.pipe(writeStream)
-
       req.on('end', () => {
-        // 网络请求结束，等待文件流彻底刷入磁盘
         writeStream.end()
       })
 
       writeStream.on('finish', () => {
-        // 此时写入进程正式完成关停，并解除文件句柄占用，可安全进行解压
         if (this.fileReceivedCallback) {
           this.fileReceivedCallback(tempPath)
         }
@@ -187,31 +166,21 @@ export class DesktopLanSyncService implements ILanSyncService {
     })
 
     return new Promise((resolve, reject) => {
-      // Listens on random open port 0
       this.server = expressApp.listen(0, '0.0.0.0', () => {
         const addr = this.server?.address()
         if (addr && typeof addr !== 'string') {
           const port = addr.port
 
-          // Start mDNS
           try {
-            this.bonjour = new Bonjour()
-
             const rawNickname = os.userInfo().username || 'Desktop'
             const safeNickname = rawNickname.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 10)
             const serviceName = `BaiShou-${safeNickname}-${uuidv4().substring(0, 4)}`
             this.publishedServiceName = serviceName
 
-            this.publishedService = this.bonjour.publish({
-              name: serviceName,
-              type: 'baishou', // translates to _baishou._tcp
-              protocol: 'tcp',
-              port: port,
-              txt: {
-                nickname: safeNickname,
-                ip: ips.slice(0, 4).join(','),
-                device_type: 'desktop'
-              }
+            this.discovery.publish(serviceName, port, {
+              nickname: safeNickname,
+              ip: ips.slice(0, 4).join(','),
+              device_type: 'desktop'
             })
             resolve({ ip: displayIp, port, serviceId: serviceName, allIps: ips })
           } catch (e) {
@@ -227,15 +196,9 @@ export class DesktopLanSyncService implements ILanSyncService {
   }
 
   public async stopBroadcasting(): Promise<void> {
-    if (this.publishedService) {
-      this.publishedService.stop()
-      this.publishedService = null
-    }
+    this.discovery.unpublish()
     this.publishedServiceName = null
-    if (this.bonjour) {
-      this.bonjour.destroy()
-      this.bonjour = null
-    }
+    this.discovery.destroy()
     if (this.server) {
       this.server.close()
       this.server = null
@@ -247,53 +210,18 @@ export class DesktopLanSyncService implements ILanSyncService {
     onDeviceLost: (deviceId: string) => void
   ): Promise<void> {
     await this.stopDiscovery()
-
-    if (!this.bonjour) {
-      this.bonjour = new Bonjour()
-    }
-
-    this.browser = this.bonjour.find({ type: 'baishou' }, (service) => {
-      try {
-        if (this.publishedServiceName && service.name === this.publishedServiceName) {
-          return
-        }
-
-        const records = service.txt as any
-        const txtIps = String(records?.ip || '')
-          .split(',')
-          .map((ip) => ip.trim())
-          .filter(Boolean)
-        const addressIps = (service.addresses || []).filter((addr) => !addr.includes(':'))
-        const deviceIp =
-          this.pickBestIp([...txtIps, ...addressIps]) || txtIps[0] || addressIps[0] || 'Unknown'
-
-        const device: DiscoveredDevice = {
-          nickname: records?.nickname || service.name,
-          ip: deviceIp,
-          port: service.port,
-          deviceType: records?.device_type || 'other',
-          rawServiceId: service.name
-        }
-        onDeviceFound(device)
-      } catch (e) {
-        console.error('Failed to parse mDNS txt string', e)
-      }
-    })
-
-    this.browser.on('down', (service) => {
-      onDeviceLost(service.name)
-    })
+    this.discovery.startDiscovery(
+      this.publishedServiceName,
+      this.pickBestIp.bind(this),
+      onDeviceFound,
+      onDeviceLost
+    )
   }
 
   public async stopDiscovery(): Promise<void> {
-    if (this.browser) {
-      this.browser.stop()
-      this.browser = null
-    }
-    // We only destroy Bonjour if not broadcasting either
-    if (!this.publishedService && this.bonjour) {
-      this.bonjour.destroy()
-      this.bonjour = null
+    this.discovery.stopDiscovery()
+    if (!this.discovery.hasPublishedService()) {
+      this.discovery.destroy()
     }
   }
 
