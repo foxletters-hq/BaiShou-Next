@@ -16,7 +16,8 @@
     "db:generate": "turbo run db:generate --filter=@baishou/database",
     "db:push": "turbo run db:push --filter=@baishou/database",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,yaml,yml,css}\" --ignore-path .prettierignore",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yaml,yml,css}\" --ignore-path .prettierignore"
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yaml,yml,css}\" --ignore-path .prettierignore",
+    "ci:check": "node scripts/ci-check-runner.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",

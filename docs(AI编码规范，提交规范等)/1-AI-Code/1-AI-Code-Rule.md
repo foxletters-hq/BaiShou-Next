@@ -1,4 +1,4 @@
-# 白守 Next — AI 编码规范
+# AI 编码规范
 
 > **本文档是所有 AI 协作者（包括但不限于 Claude、Gemini、GPT、Cursor、Copilot 等）的强制性行为准则。**
 > 在开始任何编码工作之前，你必须完整阅读本规范并严格遵守。
@@ -420,6 +420,8 @@ pnpm test --coverage --filter=<包名>
 ---
 
 ## 七、Phase 5：提交与合并
+
+> **流程与本地 CI**：检查清单、`pnpm ci:check`、Fork → PR 以 [1-Submit-Rule.md](../2-Submit/1-Submit-Rule.md) 为准。下文 Commit 格式与之 §2 一致，可择一遵循。
 
 ### 7.1 Commit Message 规范
 
