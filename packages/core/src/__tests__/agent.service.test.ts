@@ -6,8 +6,11 @@ import { AIProviderRegistry, ToolRegistry } from '@baishou/ai'
 
 // 模拟返回 Stream 的 Provider
 const mockProvider = {
-  getModel: vi.fn(),
-  supportsModel: vi.fn().mockReturnValue(true)
+  config: { id: 'mock-provider' },
+  getLanguageModel: vi.fn(),
+  getEmbeddingModel: vi.fn(),
+  fetchAvailableModels: vi.fn(),
+  testConnection: vi.fn()
 }
 
 describe('AgentService', () => {
@@ -20,10 +23,11 @@ describe('AgentService', () => {
   beforeEach(() => {
     sessionRepo = new MockAgentSessionRepository()
     messageRepo = new MockAgentMessageRepository()
-    providerRegistry = new AIProviderRegistry()
+    providerRegistry = AIProviderRegistry.getInstance()
+    providerRegistry.clearProviders()
     toolRegistry = new ToolRegistry()
 
-    providerRegistry.register('mock-provider', mockProvider as any)
+    providerRegistry.registerProvider(mockProvider as any)
 
     service = new AgentService(sessionRepo, messageRepo, providerRegistry, toolRegistry)
   })

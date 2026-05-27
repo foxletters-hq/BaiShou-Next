@@ -29,7 +29,10 @@ export class AgentService {
     }
 
     const provider = this.providerRegistry.getProvider(session.providerId)
-    const model = provider.getModel(session.modelId)
+    if (!provider) {
+      throw new Error(`Provider not found: ${session.providerId}`)
+    }
+    const model = provider.getLanguageModel(session.modelId)
 
     // 1. 获取最近对话历史 (假定仓库支持)
     const history = await this.messageRepo.findBySessionId(input.sessionId, 20)

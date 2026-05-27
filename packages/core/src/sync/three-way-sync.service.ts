@@ -227,7 +227,6 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
                     ? 'upload'
                     : 'download'
                   : (d.type as 'upload' | 'download' | 'delete'),
-            statusText: `${d.type === 'upload' ? '上传' : d.type === 'download' ? '下载' : d.type === 'delete-remote' ? '删除远程' : d.type === 'delete-local' ? '删除本地' : d.type === 'conflict-resolved' ? '解决冲突' : '跳过'}: ${d.filePath}`
           })
         }
       }
@@ -293,7 +292,6 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
             total,
             fileName: relPath,
             action: action as 'upload' | 'skip',
-            statusText: `${action === 'upload' ? '上传' : '跳过'}: ${relPath}`
           })
         }
       }
@@ -358,7 +356,6 @@ export class ThreeWaySyncService implements IIncrementalSyncService {
             total,
             fileName: d.filePath,
             action: isDownload ? 'download' : 'skip',
-            statusText: `${isDownload ? '下载' : '跳过'}: ${d.filePath}`
           })
         }
       }

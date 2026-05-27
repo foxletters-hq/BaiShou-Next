@@ -9,7 +9,8 @@ import {
   DiaryMeta,
   DiaryListFilter,
   formatLocalDate,
-  parseDateStr
+  parseDateStr,
+  weatherMatchesFilter
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
 
@@ -151,6 +152,50 @@ export class DiaryService {
     return mergedDiaryToSave
   }
 
+  /**
+   * 统一的保存日记接口（支持新建与更新）。
+   * 自动处理日期冲突与内容合并，保证桌面端与移动端业务表现一致。
+   *
+   * @param id - 日记的物理 ID，为 null 时代表新建，不为 null 时代表更新
+   * @param input - 日记输入数据
+   * @returns 保存/更新/合并后的日记实体
+   *
+   * @throws {DiaryNotFoundError} 更新模式下如果找不到对应的原日记文件则抛出
+   */
+  async save(
+    id: number | null,
+    input: CreateDiaryInput & { id?: number }
+  ): Promise<Diary> {
+    if (id !== null) {
+      return this.update(id, input)
+    }
+
+    // 新建模式，提取日期
+    const inputDate = input.date
+      ? input.date instanceof Date
+        ? input.date
+        : parseDateStr(String(input.date).split('T')[0]!)
+      : new Date()
+
+    // 检查此日期是否已经存在日记文件
+    const existingDiary = await this.fileSync.readJournal(inputDate)
+    if (existingDiary) {
+      // 若已存在，则合并内容并做更新
+      this._mergeDiaries(input, existingDiary)
+      const finalId = existingDiary.id ?? Date.now()
+      return this.update(finalId, {
+        ...input,
+        date: inputDate
+      })
+    }
+
+    // 若无冲突，则创建新日记
+    return this.create({
+      ...input,
+      date: inputDate
+    })
+  }
+
   async delete(id: number): Promise<void> {
     const existingShadow = await this.shadowRepo.findById(id)
     if (existingShadow) {
@@ -248,7 +293,7 @@ export class DiaryService {
     }
     if (filter.favorite && !meta.isFavorite) return false
     if (filter.weathers && filter.weathers.length > 0) {
-      if (!meta.weather || !filter.weathers.includes(meta.weather)) return false
+      if (!weatherMatchesFilter(meta.weather, filter.weathers)) return false
     }
     return true
   }

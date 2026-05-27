@@ -240,4 +240,106 @@ describe('DiaryService - Single Source of Truth architecture', () => {
     expect(mockShadowSync.syncJournal).toHaveBeenCalledWith('2026-03-25')
     expect(mockVaultIndex.remove).toHaveBeenCalledWith(1)
   })
+
+  describe('save() unified entry', () => {
+    it('should create a new diary when id is null and no date conflict', async () => {
+      const inputDate = parseDateStr('2026-03-31')
+      const input = { date: inputDate, content: 'Test body', isFavorite: false }
+
+      mockFileSync.readJournal.mockResolvedValue(null)
+      mockShadowSync.syncJournal.mockResolvedValue({
+        isChanged: true,
+        meta: { id: 42, date: inputDate, preview: 'Test body', tags: [], updatedAt: inputDate }
+      })
+
+      const result = await service.save(null, input)
+      expect(result.id).toBe(42)
+      expect(mockFileSync.writeJournal).toHaveBeenCalled()
+    })
+
+    it('should merge content and tags when id is null and date conflict exists', async () => {
+      const inputDate = parseDateStr('2026-03-31')
+      const input = { date: inputDate, content: 'Additional text', tags: 'tag2', isFavorite: false }
+
+      const existingDiary: Diary = {
+        id: 10,
+        date: inputDate,
+        content: 'Original text',
+        tags: 'tag1',
+        isFavorite: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        mediaPaths: []
+      }
+      mockFileSync.readJournal.mockResolvedValue(existingDiary)
+      mockShadowRepo.findById.mockResolvedValue({
+        id: 10,
+        date: '2026-03-31',
+        filePath: '',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: true,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null
+      })
+      mockShadowSync.syncJournal.mockResolvedValue({
+        isChanged: true,
+        meta: { id: 10, date: inputDate, preview: 'Original text\n\nAdditional text', tags: ['tag1', 'tag2'], updatedAt: new Date() }
+      })
+
+      const result = await service.save(null, input)
+      expect(result.id).toBe(10)
+      expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'Original text\n\nAdditional text',
+          tags: 'tag1,tag2'
+        })
+      )
+    })
+
+    it('should delegate to update() when id is provided', async () => {
+      const inputDate = parseDateStr('2026-03-31')
+      const input = { date: inputDate, content: 'Updated content' }
+
+      mockShadowRepo.findById.mockResolvedValue({
+        id: 20,
+        date: '2026-03-31',
+        filePath: '',
+        contentHash: '',
+        createdAt: '',
+        updatedAt: '',
+        isFavorite: false,
+        hasMedia: false,
+        weather: null,
+        mood: null,
+        location: null,
+        locationDetail: null
+      })
+      mockFileSync.readJournal.mockResolvedValue({
+        id: 20,
+        date: inputDate,
+        content: 'Old content',
+        isFavorite: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        mediaPaths: []
+      })
+      mockShadowSync.syncJournal.mockResolvedValue({
+        isChanged: true,
+        meta: { id: 20, date: inputDate, preview: 'Updated content', tags: [], updatedAt: new Date() }
+      })
+
+      const result = await service.save(20, input)
+      expect(result.id).toBe(20)
+      expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'Updated content'
+        })
+      )
+    })
+  })
 })

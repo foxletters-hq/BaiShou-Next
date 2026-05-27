@@ -23,6 +23,16 @@ export interface AttachmentItem {
   date: string
 }
 
+export interface DiaryAttachmentFileItem {
+  name: string
+  path: string         // 绝对物理路径 (用于打开位置/删除)
+  relativePath: string   // 相对 Journals 目录的路径 (如: 2026/05/attachment/pasted_123.png)
+  sizeMB: number
+  birthtime: string
+  yearMonth: string    // 格式: YYYY-MM
+  isOrphan: boolean    // 是否是孤立附件 (在同年月的所有日记中都没有被引用)
+}
+
 export interface IAttachmentManager {
   /**
    * Imports an avatar into the local Vault Avatar pool.
@@ -66,4 +76,16 @@ export interface IAttachmentManager {
    * @param ids The UUID folder names to nuke natively
    */
   deleteBatch(ids: string[]): Promise<void>
+
+  /**
+   * 扫描日记所有的附件文件，并进行孤立状态的脏检查
+   */
+  listDiaryAttachments(): Promise<DiaryAttachmentFileItem[]>
+
+  /**
+   * 物理删除指定的日记附件文件，并清理可能产生空子文件夹
+   * @param filePath 绝对路径
+   */
+  deleteDiaryAttachment(filePath: string): Promise<void>
 }
+

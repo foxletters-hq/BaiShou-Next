@@ -26,7 +26,6 @@ export * from './settings/settings-manager.service'
 
 export * from './session/compression-prompt'
 export * from './session/compression.service'
-export * from './session/context-window'
 export * from './session/system-prompt-builder'
 export * from './session/model-pricing.service'
 export * from './session/memory-deduplication.service'
@@ -38,6 +37,7 @@ export * from './vault/summary-file.service'
 export * from './summary/summary-sync.service'
 export * from './summary/summary-manager.service'
 export * from './summary/missing-summary-detector.service'
+export * from './summary/summary-context'
 
 // 存档系统
 export * from './archive/archive.interface'
