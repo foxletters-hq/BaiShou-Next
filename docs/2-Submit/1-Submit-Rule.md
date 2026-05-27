@@ -49,9 +49,7 @@ pnpm ci:check
 | 现象                                   | 处理                                                                                            |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `NODE_MODULE_VERSION` / better-sqlite3 | 在仓库根执行：`pnpm rebuild better-sqlite3`                                                     |
-| 本机集成测被 skip                      | 见 `better-sqlite3-available.ts`（Node 与 better-sqlite3 二进制不一致） |
-| `legacy-migration.integration` 被 skip | 需本机 `d:/Projects/test/cases` 或设置 `LEGACY_MIGRATION_FIXTURES_ROOT`；GitHub CI 默认跳过 |
-| GitHub CI 集成测                       | Linux + Node 22 会跑 `archive-export-real-db` 等；legacy 迁移大 fixture 测仅在本地有数据时运行 |
+| 本机 `archive-export-real-db` 被 skip | 见 `better-sqlite3-available.ts`（Node 与 better-sqlite3 二进制不一致）；GitHub CI（Linux）会跑 |
 | `format:check` 失败                    | 在仓库根执行 `pnpm format`，仅将格式化相关文件纳入 commit                                       |
 | 不在 Git 仓库里执行                    | 先 `git clone` 你的 Fork，再在克隆目录内运行 `pnpm ci:check`                                    |
 
