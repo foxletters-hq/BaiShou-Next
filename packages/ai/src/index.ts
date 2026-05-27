@@ -48,3 +48,8 @@ export * from './agent/agent-session.service'
 export * from './agent/context-window.builder'
 export * from './agent/title-generator.service'
 export * from './agent/context-compressor.service'
+
+export type { IStreamEmitter } from './agent/stream-emitter.interface'
+export { AgentChatCoreService } from './agent/agent-chat-core.service'
+export { AgentChatActionCoreRunner } from './agent/agent-chat-action-core.runner'
+export type { ActionDeps, StreamRunConfig } from './agent/actions/base.action'
