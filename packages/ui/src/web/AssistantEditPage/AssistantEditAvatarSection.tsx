@@ -38,9 +38,7 @@ export const AssistantEditAvatarSection: React.FC<AssistantEditAvatarSectionProp
           <div
             className={styles.avatarCircle}
             style={{
-              backgroundImage: currentAvatarImagePath
-                ? `url(${currentAvatarImagePath})`
-                : 'none'
+              backgroundImage: currentAvatarImagePath ? `url(${currentAvatarImagePath})` : 'none'
             }}
           >
             {!currentAvatarImagePath && <span className={styles.emojiText}>{emoji}</span>}

@@ -40,8 +40,7 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('rag.similarity_threshold', '相似度阈值')}:{' '}
-          {config.ragSimilarityThreshold.toFixed(2)}
+          {t('rag.similarity_threshold', '相似度阈值')}: {config.ragSimilarityThreshold.toFixed(2)}
         </Text>
         <Slider
           style={styles.slider}

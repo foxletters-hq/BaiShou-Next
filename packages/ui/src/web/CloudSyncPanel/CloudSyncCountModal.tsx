@@ -86,7 +86,10 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
           </div>
         </div>
 
-        <div className={styles.countModalBody} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div
+          className={styles.countModalBody}
+          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+        >
           <div
             className={styles.countModalDesc}
             style={{ fontSize: 13, color: 'var(--color-on-surface-variant)', lineHeight: 1.5 }}
@@ -96,10 +99,7 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
                   'data_sync.max_snapshot_desc',
                   '超过上限后，自动生成新快照时将清理最早的历史快照。'
                 )
-              : t(
-                  'data_sync.max_backup_desc',
-                  '超过上限后，同步备份时将自动删除最早的备份文件。'
-                )}
+              : t('data_sync.max_backup_desc', '超过上限后，同步备份时将自动删除最早的备份文件。')}
           </div>
 
           <div className={styles.smSliderContainer}>
@@ -116,7 +116,10 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
             />
           </div>
 
-          <div className={styles.chipsContainer} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <div
+            className={styles.chipsContainer}
+            style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}
+          >
             {[1, 2, 3, 5, 10, 15, -1].map((val) => (
               <button
                 key={val}

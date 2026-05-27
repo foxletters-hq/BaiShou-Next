@@ -5,4 +5,3 @@ export type {
   DiaryAttachmentFileItem,
   AttachmentManagementViewProps
 } from './attachment-management.types'
-

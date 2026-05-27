@@ -17,11 +17,11 @@
   z-index: 1001;
   font-family: var(--font-family-main);
   animation: slideUp 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.15);
-  box-shadow: 0 -8px 24px rgba(0,0,0,0.1);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.1);
 }
 
-[data-theme="dark"] .sheet {
-  box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+[data-theme='dark'] .sheet {
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .handleBar {
@@ -112,11 +112,19 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }

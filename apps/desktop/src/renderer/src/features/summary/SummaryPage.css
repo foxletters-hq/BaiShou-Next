@@ -446,7 +446,8 @@
 }
 
 @keyframes baishouPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.4;
   }
   50% {

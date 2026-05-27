@@ -25,4 +25,3 @@ export interface AIModelServicesViewProps {
   ) => Promise<void>
   onFetchModels?: (providerId: string, tempKey?: string, tempUrl?: string) => Promise<string[]>
 }
-

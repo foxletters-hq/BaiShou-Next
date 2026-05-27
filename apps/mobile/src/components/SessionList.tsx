@@ -43,7 +43,10 @@ export const SessionList: React.FC<SessionListProps> = ({
           id: s.id,
           title: s.title || '新对话',
           isPinned: s.isPinned || false,
-          updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : (s.updatedAt || new Date().toISOString()),
+          updatedAt:
+            s.updatedAt instanceof Date
+              ? s.updatedAt.toISOString()
+              : s.updatedAt || new Date().toISOString(),
           assistantId: s.assistantId
         }))
       )

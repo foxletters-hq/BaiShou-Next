@@ -1,12 +1,5 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  type ViewProps,
-} from 'react-native'
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
@@ -56,18 +49,18 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
           styles.itemRow,
           {
             backgroundColor: colors.bgSurfaceNormal,
-            borderColor: colors.borderSubtle,
-          },
+            borderColor: colors.borderSubtle
+          }
         ]}
       >
         <View style={styles.itemContent}>
           <View style={styles.itemHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm }}>
-              <Text style={[styles.itemName, { color: colors.textPrimary }]}>
-                {item.name}
-              </Text>
+              <Text style={[styles.itemName, { color: colors.textPrimary }]}>{item.name}</Text>
               {item.isDefault && (
-                <View style={[styles.defaultBadge, { backgroundColor: colors.primaryLight + '30' }]}>
+                <View
+                  style={[styles.defaultBadge, { backgroundColor: colors.primaryLight + '30' }]}
+                >
                   <Text style={[styles.defaultBadgeText, { color: colors.primary }]}>
                     {t('assistant.default', '默认')}
                   </Text>
@@ -87,13 +80,9 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
             </TouchableOpacity>
           </View>
           <View style={styles.itemMeta}>
-            <Text style={[styles.metaText, { color: colors.textTertiary }]}>
-              {item.providerId}
-            </Text>
+            <Text style={[styles.metaText, { color: colors.textTertiary }]}>{item.providerId}</Text>
             <View style={[styles.metaDot, { backgroundColor: colors.textTertiary }]} />
-            <Text style={[styles.metaText, { color: colors.textTertiary }]}>
-              {item.modelId}
-            </Text>
+            <Text style={[styles.metaText, { color: colors.textTertiary }]}>{item.modelId}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -141,80 +130,80 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   createButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 8
   },
   createButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   listContent: {
-    padding: 12,
+    padding: 12
   },
   itemRow: {
     borderRadius: 10,
     borderWidth: 1,
-    padding: 14,
+    padding: 14
   },
   itemContent: {
-    flex: 1,
+    flex: 1
   },
   itemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
   itemName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   defaultBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 4
   },
   defaultBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   deleteBtn: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: 1
   },
   deleteBtnText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   itemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
-    gap: 6,
+    gap: 6
   },
   metaDot: {
     width: 4,
     height: 4,
-    borderRadius: 2,
+    borderRadius: 2
   },
   metaText: {
-    fontSize: 12,
+    fontSize: 12
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 40
   },
   emptyText: {
-    fontSize: 14,
-  },
+    fontSize: 14
+  }
 })

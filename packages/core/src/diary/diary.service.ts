@@ -162,10 +162,7 @@ export class DiaryService {
    *
    * @throws {DiaryNotFoundError} 更新模式下如果找不到对应的原日记文件则抛出
    */
-  async save(
-    id: number | null,
-    input: CreateDiaryInput & { id?: number }
-  ): Promise<Diary> {
+  async save(id: number | null, input: CreateDiaryInput & { id?: number }): Promise<Diary> {
     if (id !== null) {
       return this.update(id, input)
     }
@@ -250,9 +247,7 @@ export class DiaryService {
     return shadows.map((s) => this.mapShadowRowToMeta(s))
   }
 
-  async countFiltered(
-    filter: Omit<DiaryListFilter, 'limit' | 'offset'> = {}
-  ): Promise<number> {
+  async countFiltered(filter: Omit<DiaryListFilter, 'limit' | 'offset'> = {}): Promise<number> {
     return this.shadowRepo.countFiltered(filter)
   }
 
@@ -282,12 +277,12 @@ export class DiaryService {
       .filter((item): item is DiaryMeta => item !== null)
   }
 
-  private matchesListFilter(meta: DiaryMeta, filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>): boolean {
+  private matchesListFilter(
+    meta: DiaryMeta,
+    filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
+  ): boolean {
     if (filter.year != null && filter.month != null) {
-      if (
-        meta.date.getFullYear() !== filter.year ||
-        meta.date.getMonth() + 1 !== filter.month
-      ) {
+      if (meta.date.getFullYear() !== filter.year || meta.date.getMonth() + 1 !== filter.month) {
         return false
       }
     }

@@ -39,10 +39,10 @@ export const diaryApi = {
     deleteFile: (sessionId: string, fileName: string) =>
       ipcRenderer.invoke('attachment:deleteFile', sessionId, fileName),
     listDiaryAttachments: () => ipcRenderer.invoke('attachment:listDiaryAttachments'),
-    deleteDiaryAttachment: (filePath: string) => ipcRenderer.invoke('attachment:deleteDiaryAttachment', filePath),
+    deleteDiaryAttachment: (filePath: string) =>
+      ipcRenderer.invoke('attachment:deleteDiaryAttachment', filePath),
     getThumbnail: (filePath: string, maxSize?: number) =>
       ipcRenderer.invoke('attachment:getThumbnail', filePath, maxSize),
-    getFullImage: (filePath: string) =>
-      ipcRenderer.invoke('attachment:getFullImage', filePath)
+    getFullImage: (filePath: string) => ipcRenderer.invoke('attachment:getFullImage', filePath)
   }
 }

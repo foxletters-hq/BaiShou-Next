@@ -3,10 +3,7 @@ import type { IIncrementalSyncService } from './incremental-sync.interface'
 import type { ICloudSyncClient } from '../network/cloud-sync.interface'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import { IncrementalSyncConfigStore } from './incremental-sync.config'
-import {
-  IncrementalSyncFileOps,
-  IncrementalSyncManifestStore
-} from './incremental-sync.manifest'
+import { IncrementalSyncFileOps, IncrementalSyncManifestStore } from './incremental-sync.manifest'
 import { S3NotConfiguredError, S3SyncError } from './sync.errors'
 
 export class IncrementalSyncServiceImpl implements IIncrementalSyncService {

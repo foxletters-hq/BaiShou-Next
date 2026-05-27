@@ -48,4 +48,3 @@ export const AttachmentManagementPane: React.FC = () => {
     </div>
   )
 }
-

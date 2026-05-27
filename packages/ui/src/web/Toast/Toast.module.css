@@ -66,7 +66,7 @@
   word-break: break-word;
 }
 
-[data-theme="dark"] .toast {
+[data-theme='dark'] .toast {
   background-color: var(--color-surface, #242424);
   color: var(--color-on-surface, #e2e8f0);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);

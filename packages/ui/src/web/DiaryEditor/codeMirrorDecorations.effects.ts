@@ -2,8 +2,7 @@ import { StateEffect } from '@codemirror/state'
 
 export const forceImageRefresh = StateEffect.define()
 
-let updateImageWidthCallback: ((from: number, to: number, newWidth: number) => void) | null =
-  null
+let updateImageWidthCallback: ((from: number, to: number, newWidth: number) => void) | null = null
 
 export function setUpdateImageWidthCallback(
   callback: (from: number, to: number, newWidth: number) => void
@@ -22,18 +21,11 @@ let imageActionCallback:
   | null = null
 
 export function setImageActionCallback(
-  callback:
-    | ((action: ImageAction, from: number, to: number, src: string) => void)
-    | null
+  callback: ((action: ImageAction, from: number, to: number, src: string) => void) | null
 ) {
   imageActionCallback = callback
 }
 
-export function invokeImageAction(
-  action: ImageAction,
-  from: number,
-  to: number,
-  src: string
-) {
+export function invokeImageAction(action: ImageAction, from: number, to: number, src: string) {
   imageActionCallback?.(action, from, to, src)
 }

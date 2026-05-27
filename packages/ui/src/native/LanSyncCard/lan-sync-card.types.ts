@@ -14,11 +14,7 @@ export interface LanSyncCardProps {
     onLost: (id: string) => void
   ) => Promise<void>
   onStopDiscovery: () => Promise<void>
-  onSendFile: (
-    ip: string,
-    port: number,
-    onProgress: (p: number) => void
-  ) => Promise<boolean>
+  onSendFile: (ip: string, port: number, onProgress: (p: number) => void) => Promise<boolean>
   discoveredDevices?: DiscoveredDevice[]
   localConnection?: { ip: string; port: number } | null
   isActive?: boolean

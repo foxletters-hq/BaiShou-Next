@@ -33,10 +33,7 @@ export const IdentityPersonaChips: React.FC<IdentityPersonaChipsProps> = ({
             >
               <span>{pid}</span>
               {isActive && Object.keys(allPersonas).length > 1 && (
-                <button
-                  className={styles.chipCloseBtn}
-                  onClick={(e) => onDeletePersona(pid, e)}
-                >
+                <button className={styles.chipCloseBtn} onClick={(e) => onDeletePersona(pid, e)}>
                   <MdClose size={14} />
                 </button>
               )}

@@ -19,32 +19,28 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
   if (!isInitialized) return null
 
   return (
-  <div className="gmp-commit-area">
-    <input
-      className="gmp-input gmp-commit-input"
-      type="text"
-      value={commitMessage}
-      onChange={(e) => setCommitMessage(e.target.value)}
-      placeholder={t(
-        'version_control.commit_placeholder',
-        '输入提交消息，留空将使用时间戳'
-      )}
-    />
-    <button
-      className="gmp-btn gmp-btn-primary"
-      onClick={handleManualCommit}
-      disabled={!canCommit}
-    >
-      {t('version_control.commit_local', '提交')}
-    </button>
-    <button
-      className="gmp-btn gmp-btn-primary"
-      onClick={handleCommitAndPush}
-      disabled={!canCommit}
-    >
-      {t('version_control.commit_push', '提交并推送')}
-    </button>
-  </div>
+    <div className="gmp-commit-area">
+      <input
+        className="gmp-input gmp-commit-input"
+        type="text"
+        value={commitMessage}
+        onChange={(e) => setCommitMessage(e.target.value)}
+        placeholder={t('version_control.commit_placeholder', '输入提交消息，留空将使用时间戳')}
+      />
+      <button
+        className="gmp-btn gmp-btn-primary"
+        onClick={handleManualCommit}
+        disabled={!canCommit}
+      >
+        {t('version_control.commit_local', '提交')}
+      </button>
+      <button
+        className="gmp-btn gmp-btn-primary"
+        onClick={handleCommitAndPush}
+        disabled={!canCommit}
+      >
+        {t('version_control.commit_push', '提交并推送')}
+      </button>
+    </div>
   )
 }
-

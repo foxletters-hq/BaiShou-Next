@@ -53,7 +53,7 @@
   border-radius: 12px;
 }
 
-[data-theme="dark"] .countBadge {
+[data-theme='dark'] .countBadge {
   background: var(--color-surface-highest-dark);
 }
 
@@ -62,7 +62,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
-  grid-auto-rows: 180px; 
+  grid-auto-rows: 180px;
 }
 
 .imageCard {
@@ -72,18 +72,20 @@
   cursor: pointer;
   background: var(--color-surface-highest-light);
   border: 1px solid rgba(128, 128, 128, 0.15);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  transition: transform var(--animation-micro), box-shadow var(--animation-micro);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition:
+    transform var(--animation-micro),
+    box-shadow var(--animation-micro);
 }
 
-[data-theme="dark"] .imageCard {
+[data-theme='dark'] .imageCard {
   background: var(--color-surface-highest-dark);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .imageCard:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .imageCard img {
@@ -103,7 +105,7 @@
   left: 0;
   right: 0;
   padding: 24px 12px 12px 12px;
-  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
   opacity: 0;
   transition: opacity var(--animation-micro);
   display: flex;

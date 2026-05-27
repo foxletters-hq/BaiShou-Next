@@ -83,10 +83,7 @@ export const DiaryEditorPage: React.FC = () => {
               )}
             </div>
             <div className="dd-modal-actions" style={{ marginTop: '24px' }}>
-              <button
-                className="dd-btn-cancel"
-                onClick={() => editor.setShowExitConfirm(false)}
-              >
+              <button className="dd-btn-cancel" onClick={() => editor.setShowExitConfirm(false)}>
                 {editor.t('common.cancel', '我再写写')}
               </button>
               <button

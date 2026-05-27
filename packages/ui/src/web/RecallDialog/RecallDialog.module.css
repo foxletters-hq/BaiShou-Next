@@ -1,6 +1,9 @@
 .overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: var(--bg-overlay, rgba(0, 0, 0, 0.5));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -19,7 +22,9 @@
   height: 75vh;
   max-height: 640px;
   min-height: 480px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15), 0 1px 0 rgba(255, 255, 255, 0.4) inset;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.15),
+    0 1px 0 rgba(255, 255, 255, 0.4) inset;
   display: flex;
   flex-direction: column;
   animation: slideUpCenter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -140,7 +145,9 @@
   border-radius: 12px;
   padding: 10px 14px;
   gap: 8px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .ragSearchInner:focus-within {
@@ -293,8 +300,12 @@
   gap: 6px;
 }
 
-.diaryIcon { color: var(--color-secondary); }
-.memoryIcon { color: var(--color-tertiary); }
+.diaryIcon {
+  color: var(--color-secondary);
+}
+.memoryIcon {
+  color: var(--color-tertiary);
+}
 
 .cardDate {
   font-size: 11px;
@@ -369,12 +380,22 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes slideUpCenter {
-  from { opacity: 0; transform: translateY(20px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .similarityBadge {

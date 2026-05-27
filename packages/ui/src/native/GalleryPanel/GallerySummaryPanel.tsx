@@ -141,8 +141,7 @@ export const GallerySummaryPanel: React.FC<GallerySummaryPanelProps> = ({
                 {
                   backgroundColor:
                     String(item.id) === selectedId ? colors.primary + '10' : colors.bgSurfaceNormal,
-                  borderColor:
-                    String(item.id) === selectedId ? colors.primary : colors.borderSubtle
+                  borderColor: String(item.id) === selectedId ? colors.primary : colors.borderSubtle
                 }
               ]}
               onPress={() => onItemClick(String(item.id))}

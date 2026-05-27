@@ -15,8 +15,14 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; backdrop-filter: blur(0px); }
-  to { opacity: 1; backdrop-filter: blur(4px); }
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
 }
 
 .dialog {
@@ -27,7 +33,9 @@
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(var(--color-outline-variant-rgb), 0.6);
   border-radius: 20px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(var(--bg-surface-rgb), 0.5) inset;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(var(--bg-surface-rgb), 0.5) inset;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -35,8 +43,14 @@
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Header */
@@ -79,7 +93,7 @@
 }
 
 .searchInputWrapper:focus-within {
-  background-color: var(--bg-surface, #FFFFFF);
+  background-color: var(--bg-surface, #ffffff);
   border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.6);
   box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
 }
@@ -97,7 +111,7 @@
   background: transparent;
   outline: none;
   font-size: 14px;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   font-family: inherit;
 }
 
@@ -226,7 +240,7 @@
 .modelItemName {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
 }
 
 .modelItemSelected .modelItemName {
@@ -253,7 +267,7 @@
 }
 
 .modelBadgeHighlighted {
-  color: var(--color-tertiary, #AD88D4);
+  color: var(--color-tertiary, #ad88d4);
   background-color: rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.1);
 }
 
@@ -290,5 +304,5 @@
 
 .manageBtn:hover {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
 }

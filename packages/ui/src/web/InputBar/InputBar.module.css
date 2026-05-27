@@ -45,7 +45,9 @@
   cursor: pointer;
   padding: 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  transition: opacity 0.2s, background-color 0.2s;
+  transition:
+    opacity 0.2s,
+    background-color 0.2s;
 }
 
 .toolbarScrollBtn:hover:not(:disabled) {
@@ -114,13 +116,15 @@
   background-color: var(--bg-surface-low);
 }
 
-.chipActive, .chipActive:hover {
+.chipActive,
+.chipActive:hover {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--text-on-primary) !important;
 }
 
-.chipActive .chipLabel, .chipActive .chipIcon {
+.chipActive .chipLabel,
+.chipActive .chipIcon {
   color: var(--text-on-primary) !important;
 }
 
@@ -158,7 +162,7 @@
   background-color: var(--bg-surface-normal);
   border: 1px solid rgba(var(--color-outline-variant-rgb), 0.4);
   border-radius: 12px;
-  overflow: hidden; 
+  overflow: hidden;
   height: 64px;
   box-sizing: border-box;
   align-items: center;
@@ -245,15 +249,21 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  transition: max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+  transition:
+    max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    border-color 0.2s,
+    background-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .inputCardAnimating {
-  transition: height 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
-              max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
-              border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-              padding 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-              background-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition:
+    height 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    padding 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    background-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
   min-height: 0 !important; /* Allow the container to animate below 180px, avoiding the jump-expansion */
   position: relative; /* Ensure absolute positioning context is preserved during animation */
   overflow: hidden; /* Prevent text overflow during collapse/expand transition */
@@ -262,7 +272,9 @@
 .inputCard:focus-within {
   border-color: var(--color-primary);
   background-color: var(--bg-surface);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--color-primary);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    0 0 0 1px var(--color-primary);
 }
 
 .topRow {
@@ -325,7 +337,9 @@
   color: var(--text-primary);
   padding: 8px 6px;
   line-height: 1.5;
-  transition: padding-top 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), padding-right 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition:
+    padding-top 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    padding-right 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .textarea::placeholder {
@@ -401,7 +415,7 @@
 
 .warningText {
   font-size: 11px;
-  color: #D97706;
+  color: #d97706;
   font-weight: 500;
   line-height: 1.3;
 }
@@ -498,4 +512,3 @@
 }
 
 /* bottomRow 不再使用绝对定位，始终保持常规文档流，以防状态切换瞬间宽度计算冲突导致溢出 */
-

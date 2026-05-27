@@ -1,11 +1,5 @@
 import React, { useState } from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet
-} from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
 
 interface ToolInvocation {
@@ -34,9 +28,7 @@ const ToolResultItem: React.FC<{
     'error' in invocation.result
 
   return (
-    <View
-      style={[styles.toolItem, { borderColor: colors.borderSubtle }]}
-    >
+    <View style={[styles.toolItem, { borderColor: colors.borderSubtle }]}>
       <TouchableOpacity
         style={styles.toolItemHeader}
         onPress={() => setExpanded((prev) => !prev)}
@@ -64,10 +56,7 @@ const ToolResultItem: React.FC<{
           horizontal
           nestedScrollEnabled
         >
-          <Text
-            style={[styles.resultText, { color: colors.textPrimary }]}
-            selectable
-          >
+          <Text style={[styles.resultText, { color: colors.textPrimary }]} selectable>
             {resultStr}
           </Text>
         </ScrollView>
@@ -76,9 +65,7 @@ const ToolResultItem: React.FC<{
   )
 }
 
-export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({
-  invocations
-}) => {
+export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({ invocations }) => {
   const { colors, tokens } = useNativeTheme()
   const [expanded, setExpanded] = useState(true)
 
@@ -110,11 +97,7 @@ export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({
       {expanded && (
         <View style={styles.itemsContainer}>
           {invocations.map((inv) => (
-            <ToolResultItem
-              key={inv.toolCallId}
-              invocation={inv}
-              colors={colors}
-            />
+            <ToolResultItem key={inv.toolCallId} invocation={inv} colors={colors} />
           ))}
         </View>
       )}

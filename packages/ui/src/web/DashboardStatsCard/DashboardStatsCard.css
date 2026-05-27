@@ -78,17 +78,37 @@
 }
 
 /* Color Variants exactly mirroring Flutter withValues(alpha: 0.08) */
-.color-green { background: rgba(76, 175, 80, 0.08); }
-.color-green .stats-count { color: #4CAF50; }
+.color-green {
+  background: rgba(76, 175, 80, 0.08);
+}
+.color-green .stats-count {
+  color: #4caf50;
+}
 
-.color-indigo { background: rgba(63, 81, 181, 0.08); }
-.color-indigo .stats-count { color: #3F51B5; }
+.color-indigo {
+  background: rgba(63, 81, 181, 0.08);
+}
+.color-indigo .stats-count {
+  color: #3f51b5;
+}
 
-.color-blue { background: rgba(33, 150, 243, 0.08); }
-.color-blue .stats-count { color: #2196F3; }
+.color-blue {
+  background: rgba(33, 150, 243, 0.08);
+}
+.color-blue .stats-count {
+  color: #2196f3;
+}
 
-.color-amber { background: rgba(251, 192, 45, 0.08); } /* amber.shade700 in flutter is roughly #FBC02D */
-.color-amber .stats-count { color: #FBC02D; }
+.color-amber {
+  background: rgba(251, 192, 45, 0.08);
+} /* amber.shade700 in flutter is roughly #FBC02D */
+.color-amber .stats-count {
+  color: #fbc02d;
+}
 
-.color-orange { background: rgba(255, 152, 0, 0.08); }
-.color-orange .stats-count { color: #FF9800; }
+.color-orange {
+  background: rgba(255, 152, 0, 0.08);
+}
+.color-orange .stats-count {
+  color: #ff9800;
+}

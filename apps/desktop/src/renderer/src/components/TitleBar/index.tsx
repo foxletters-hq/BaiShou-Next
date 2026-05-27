@@ -101,9 +101,15 @@ export const TitleBar: React.FC = () => {
       const errorMsg = e?.message || '未知错误'
       let friendlyMsg = errorMsg.replace(/^Error:\s*/i, '')
       friendlyMsg = friendlyMsg.replace(/^Error invoking remote method '.*?':\s*/i, '')
-      if (friendlyMsg.includes('SyncInProgressError') || friendlyMsg.includes('already in progress')) {
+      if (
+        friendlyMsg.includes('SyncInProgressError') ||
+        friendlyMsg.includes('already in progress')
+      ) {
         friendlyMsg = '同步操作正在进行中，请勿重复操作'
-      } else if (friendlyMsg.includes('not initialized') || friendlyMsg.includes('Please update config first')) {
+      } else if (
+        friendlyMsg.includes('not initialized') ||
+        friendlyMsg.includes('Please update config first')
+      ) {
         friendlyMsg = '同步服务尚未初始化，请先配置并保存您的连接信息'
       } else if (friendlyMsg.includes('S3NotConfiguredError')) {
         friendlyMsg = '同步服务尚未启用或配置不完整'
@@ -199,7 +205,6 @@ export const TitleBar: React.FC = () => {
               <MdAutoAwesome className={styles.tabIcon} />
               <span>{t('nav.agent', '伙伴')}</span>
             </div>
-
           </div>
         )}
       </div>

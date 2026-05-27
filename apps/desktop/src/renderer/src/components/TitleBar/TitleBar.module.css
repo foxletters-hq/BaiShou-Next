@@ -151,7 +151,7 @@
 }
 
 .winCloseBtn:hover {
-  background-color: #E81123 !important;
+  background-color: #e81123 !important;
   color: var(--text-on-primary) !important;
 }
 
@@ -173,9 +173,7 @@
 }
 
 .titleBarOnboarding .winCloseBtn:hover {
-  background-color: #E81123 !important;
+  background-color: #e81123 !important;
   color: var(--text-on-primary) !important;
   opacity: 1;
 }
-
-

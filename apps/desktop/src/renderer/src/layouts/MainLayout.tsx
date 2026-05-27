@@ -17,7 +17,7 @@ export const MainLayout: React.FC = () => {
         <Sidebar />
         <div className={styles.pageContent}>
           <MainPageCache activeKey={cacheKey} />
-          
+
           <AnimatePresence mode="wait">
             {showOutlet && (
               <motion.div

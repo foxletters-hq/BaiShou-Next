@@ -48,7 +48,10 @@ export const SessionManagementScreen: React.FC = () => {
           title: s.title || '新对话',
           assistantId: s.assistantId || undefined,
           isPinned: s.isPinned || false,
-          updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : (s.updatedAt || new Date().toISOString()),
+          updatedAt:
+            s.updatedAt instanceof Date
+              ? s.updatedAt.toISOString()
+              : s.updatedAt || new Date().toISOString(),
           inputTokens: s.inputTokens || 0,
           outputTokens: s.outputTokens || 0,
           totalCostMicros: s.totalCostMicros || 0
@@ -218,8 +221,16 @@ export const SessionManagementScreen: React.FC = () => {
         activeOpacity={0.7}
       >
         {isMultiSelectMode && (
-          <View style={[styles.checkbox, { borderColor: colors.primary }, isSelected && { backgroundColor: colors.primary }]}>
-            {isSelected && <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>}
+          <View
+            style={[
+              styles.checkbox,
+              { borderColor: colors.primary },
+              isSelected && { backgroundColor: colors.primary }
+            ]}
+          >
+            {isSelected && (
+              <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>
+            )}
           </View>
         )}
 
@@ -332,7 +343,12 @@ export const SessionManagementScreen: React.FC = () => {
 
           {/* 批量操作栏 */}
           {isMultiSelectMode && (
-            <View style={[styles.batchBar, { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle }]}>
+            <View
+              style={[
+                styles.batchBar,
+                { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle }
+              ]}
+            >
               <View style={styles.batchLeft}>
                 <Text style={[styles.batchText, { color: colors.textSecondary }]}>
                   已选择 {selectedSessions.size} 个会话
@@ -350,7 +366,9 @@ export const SessionManagementScreen: React.FC = () => {
                 style={[styles.batchDeleteButton, { backgroundColor: colors.error }]}
                 onPress={handleDeleteSelected}
               >
-                <Text style={[styles.batchDeleteText, { color: colors.textOnPrimary }]}>删除选中</Text>
+                <Text style={[styles.batchDeleteText, { color: colors.textOnPrimary }]}>
+                  删除选中
+                </Text>
               </TouchableOpacity>
             </View>
           )}

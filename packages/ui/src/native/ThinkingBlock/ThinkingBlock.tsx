@@ -1,10 +1,5 @@
 import React, { useState } from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet
-} from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 
@@ -24,9 +19,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   autoCollapse = false
 }) => {
   const { colors, tokens } = useNativeTheme()
-  const [expanded, setExpanded] = useState(
-    autoCollapse ? false : defaultOpen
-  )
+  const [expanded, setExpanded] = useState(autoCollapse ? false : defaultOpen)
 
   const toggleExpand = () => {
     setExpanded((prev) => !prev)
@@ -57,11 +50,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         }
       ]}
     >
-      <TouchableOpacity
-        style={styles.header}
-        onPress={toggleExpand}
-        activeOpacity={0.7}
-      >
+      <TouchableOpacity style={styles.header} onPress={toggleExpand} activeOpacity={0.7}>
         <View style={styles.headerLeft}>
           <Text style={styles.icon}>✨</Text>
           <Text style={[styles.headerText, { color: colors.textSecondary }]}>
@@ -87,10 +76,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         </View>
       ) : (
         <View style={styles.previewContainer}>
-          <Text
-            style={[styles.previewText, { color: colors.textTertiary }]}
-            numberOfLines={3}
-          >
+          <Text style={[styles.previewText, { color: colors.textTertiary }]} numberOfLines={3}>
             {getLastLines(content, 3)}
           </Text>
           <View

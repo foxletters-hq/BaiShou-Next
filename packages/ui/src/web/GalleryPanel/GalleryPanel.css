@@ -580,36 +580,36 @@
 }
 
 /* Dark Mode Support for Modal */
-[data-theme="dark"] .gallery-year-modal-content {
+[data-theme='dark'] .gallery-year-modal-content {
   background: var(--bg-surface-raised, #1a1a1a);
   border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
-[data-theme="dark"] .gallery-year-modal-sticky-header {
+[data-theme='dark'] .gallery-year-modal-sticky-header {
   background: var(--bg-surface-raised, #1a1a1a);
 }
 
-[data-theme="dark"] .gallery-year-modal-all-btn,
-[data-theme="dark"] .gallery-year-modal-grid-item {
+[data-theme='dark'] .gallery-year-modal-all-btn,
+[data-theme='dark'] .gallery-year-modal-grid-item {
   background: var(--bg-surface-lowest, #121212);
   border-color: var(--border-subtle, rgba(255, 255, 255, 0.05));
   color: var(--text-secondary);
 }
 
-[data-theme="dark"] .gallery-year-modal-all-btn:hover,
-[data-theme="dark"] .gallery-year-modal-grid-item:hover {
+[data-theme='dark'] .gallery-year-modal-all-btn:hover,
+[data-theme='dark'] .gallery-year-modal-grid-item:hover {
   background: var(--bg-surface-high, #262626);
   color: var(--text-primary);
 }
 
-[data-theme="dark"] .gallery-year-modal-all-btn.active,
-[data-theme="dark"] .gallery-year-modal-grid-item.active {
+[data-theme='dark'] .gallery-year-modal-all-btn.active,
+[data-theme='dark'] .gallery-year-modal-grid-item.active {
   background: var(--color-primary, #5ba8f5) !important;
   color: var(--text-on-primary, #ffffff) !important;
 }
 
-[data-theme="dark"] .gallery-year-select-trigger {
+[data-theme='dark'] .gallery-year-select-trigger {
   background: var(--bg-surface, #1e1e1e);
   border-color: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);

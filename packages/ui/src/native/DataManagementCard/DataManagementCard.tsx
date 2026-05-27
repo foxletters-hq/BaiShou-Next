@@ -24,7 +24,10 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
   const handleClearAll = () => {
     Alert.alert(
       t('dataManagement.clearAllTitle', '清除所有数据'),
-      t('dataManagement.clearAllMessage', '确定要清除所有数据吗？此操作不可撤销，所有日记、会话和数据将被永久删除。'),
+      t(
+        'dataManagement.clearAllMessage',
+        '确定要清除所有数据吗？此操作不可撤销，所有日记、会话和数据将被永久删除。'
+      ),
       [
         { text: t('common.cancel', '取消'), style: 'cancel' },
         {

@@ -119,5 +119,9 @@
   gap: 4px;
 }
 
-.edit-btn { color: var(--text-secondary); }
-.delete-btn { color: var(--color-error); } /* Red for delete */
+.edit-btn {
+  color: var(--text-secondary);
+}
+.delete-btn {
+  color: var(--color-error);
+} /* Red for delete */

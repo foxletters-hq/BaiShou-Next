@@ -4,13 +4,13 @@
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
   font-family: var(--font-family-main);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
   max-width: 100%;
   min-width: 0;
 }
 
-[data-theme="dark"] .container {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+[data-theme='dark'] .container {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .header {
@@ -115,24 +115,34 @@
   color: var(--color-primary);
 }
 
-.yearOption[data-active="true"] {
+.yearOption[data-active='true'] {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--text-on-primary);
 }
 
-.yearOption[data-active="true"]:hover {
+.yearOption[data-active='true']:hover {
   background: var(--color-primary);
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .header h3 {
@@ -236,20 +246,28 @@
   border-radius: 3px;
   outline: 1px solid rgba(27, 31, 35, 0.06);
   outline-offset: -1px;
-  transition: transform var(--animation-micro), opacity var(--animation-micro);
+  transition:
+    transform var(--animation-micro),
+    opacity var(--animation-micro);
   cursor: pointer;
 }
 
 .cell:hover {
   transform: scale(1.2);
   z-index: 10;
-  box-shadow: 0 0 4px rgba(0,0,0,0.2);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Coloring Levels */
-.level0 { background: var(--color-surface-highest-light); }
-[data-theme="dark"] .level0 { background: var(--color-surface-highest-dark); }
-.level1 { background: var(--color-primary); }
+.level0 {
+  background: var(--color-surface-highest-light);
+}
+[data-theme='dark'] .level0 {
+  background: var(--color-surface-highest-dark);
+}
+.level1 {
+  background: var(--color-primary);
+}
 
 /* 独立滑块控件 */
 .sliderTrack {
@@ -274,7 +292,9 @@
   border-radius: 4px;
   cursor: grab;
   will-change: transform;
-  transition: transform 60ms cubic-bezier(0.25, 0.1, 0.25, 1), background-color var(--duration-fast) var(--ease-in-out);
+  transition:
+    transform 60ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    background-color var(--duration-fast) var(--ease-in-out);
 }
 
 .sliderThumb:hover {

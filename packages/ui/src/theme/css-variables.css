@@ -4,21 +4,21 @@
   /* ========================================================= */
 
   /* Brand Colors */
-  --color-primary: #5BA8F5;
-  --color-primary-dark: #3A88D5;
-  --color-primary-light: #E0F0FE;
-  
+  --color-primary: #5ba8f5;
+  --color-primary-dark: #3a88d5;
+  --color-primary-light: #e0f0fe;
+
   /* Backgrounds: Depth and Elevations (Light) */
-  --bg-app: #F4F5F7;             /* Cool, purely neutral grayish background for sidebar and app shell */
-  --bg-surface: #FFFFFF;         /* Primary container backgrounds - stark white */
-  --bg-surface-raised: #FFFFFF;  /* Cards, Dropdowns */
-  --bg-surface-highest: #E8EAED; /* Modals, Popovers */
-  --bg-surface-high: #F0F2F5;    /* Hover states for surface items */
-  --bg-surface-normal: #EAECEF;  /* Secondary containers (e.g. gray panels) */
-  --bg-surface-lowest: #F8FAFC;   /* Lightest surface, near-white */
+  --bg-app: #f4f5f7; /* Cool, purely neutral grayish background for sidebar and app shell */
+  --bg-surface: #ffffff; /* Primary container backgrounds - stark white */
+  --bg-surface-raised: #ffffff; /* Cards, Dropdowns */
+  --bg-surface-highest: #e8eaed; /* Modals, Popovers */
+  --bg-surface-high: #f0f2f5; /* Hover states for surface items */
+  --bg-surface-normal: #eaecef; /* Secondary containers (e.g. gray panels) */
+  --bg-surface-lowest: #f8fafc; /* Lightest surface, near-white */
   --bg-surface-lowest-rgb: 248, 250, 252;
-  --bg-surface-low: #F8F9FA;     /* Tertiary background */
-  
+  --bg-surface-low: #f8f9fa; /* Tertiary background */
+
   /* Glassmorphism Overlays (Light) */
   --bg-overlay: rgba(0, 0, 0, 0.35);
   --bg-glass-surface: rgba(255, 255, 255, 0.48);
@@ -36,22 +36,22 @@
   --border-subtle: rgba(0, 0, 0, 0.04);
   --border-muted: rgba(0, 0, 0, 0.08); /* faint lines */
   --border-strong: rgba(0, 0, 0, 0.16);
-  
+
   /* Text & Inks (Light) */
-  --text-primary: #1A1C23;       /* Headlines, strong text */
-  --text-secondary: #4A5568;     /* Body text, descriptions */
-  --text-tertiary: #A0AEC0;      /* Placeholders, disabled states */
-  --text-on-primary: #FFFFFF;
+  --text-primary: #1a1c23; /* Headlines, strong text */
+  --text-secondary: #4a5568; /* Body text, descriptions */
+  --text-tertiary: #a0aec0; /* Placeholders, disabled states */
+  --text-on-primary: #ffffff;
 
   /* Semantic Colors */
-  --color-accent-green: #34D399;
-  --color-accent-blue: #60A5FA;
-  --color-accent-purple: #A78BFA;
-  --color-accent-pink: #F472B6;
-  --color-secondary: #78909C;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
+  --color-accent-green: #34d399;
+  --color-accent-blue: #60a5fa;
+  --color-accent-purple: #a78bfa;
+  --color-accent-pink: #f472b6;
+  --color-secondary: #78909c;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
 
   /* Typography */
   --font-family: 'Inter', 'Roboto', 'Outfit', 'Microsoft YaHei', 'PingFang SC', sans-serif;
@@ -81,9 +81,9 @@
   --color-surface-variant: #f1f5f9;
 
   /* Shadows (Light) */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04); 
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05); 
-  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08); 
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08);
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.12);
   --shadow-glow: 0 0 16px rgba(91, 168, 245, 0.3);
 
@@ -99,27 +99,27 @@
 /* ========================================================= */
 /* COLOR PALETTE - DARK THEME                                */
 /* ========================================================= */
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Brand Colors - Adjusted for dark mode contrast */
-  --color-primary: #5BA8F5;
-  --color-primary-dark: #3A88D5;
+  --color-primary: #5ba8f5;
+  --color-primary-dark: #3a88d5;
   --color-primary-light: rgba(91, 168, 245, 0.2);
 
   /* Backgrounds: Depth and Elevations (Dark) */
   /* Using sleek, slightly tinted dark grays instead of pure black for a premium look */
-  --bg-app: #1A1A1E;             /* App Sidebar & deeply recessed area */
-  --bg-surface: #262629;         /* Main Content / Chat Windows */
-  --bg-surface-raised: #2D2D31;  /* Cards, Dropdowns */
-  --bg-surface-highest: #38383D; /* Modals, Popovers */
-  --bg-surface-high: #323236;    /* Hover states for surface items */
-  --bg-surface-normal: #1E1E22;  /* Secondary containers (e.g. gray panels, sidebars) */
-  --bg-surface-lowest: #151518;   /* Darkest surface, near-black */
+  --bg-app: #1a1a1e; /* App Sidebar & deeply recessed area */
+  --bg-surface: #262629; /* Main Content / Chat Windows */
+  --bg-surface-raised: #2d2d31; /* Cards, Dropdowns */
+  --bg-surface-highest: #38383d; /* Modals, Popovers */
+  --bg-surface-high: #323236; /* Hover states for surface items */
+  --bg-surface-normal: #1e1e22; /* Secondary containers (e.g. gray panels, sidebars) */
+  --bg-surface-lowest: #151518; /* Darkest surface, near-black */
   --bg-surface-lowest-rgb: 21, 21, 24;
-  --bg-surface-low: #151518;     /* Tertiary background */
+  --bg-surface-low: #151518; /* Tertiary background */
 
   /* Glassmorphism Overlays (Dark) */
   --bg-overlay: rgba(0, 0, 0, 0.55);
-  --bg-glass-surface: rgba(30, 30, 34, 0.40);
+  --bg-glass-surface: rgba(30, 30, 34, 0.4);
   --bg-glass-inset: rgba(255, 255, 255, 0.06);
 
   --titlebar-glass-bg: var(--bg-surface);
@@ -130,33 +130,33 @@
   /* Borders / Dividers (Dark) */
   --border-subtle: rgba(255, 255, 255, 0.08); /* increased visibility for dividers */
   --border-muted: rgba(255, 255, 255, 0.12);
-  --border-strong: rgba(255, 255, 255, 0.20);
+  --border-strong: rgba(255, 255, 255, 0.2);
 
-  --color-outline-variant: rgba(255, 255, 255, 0.10);
+  --color-outline-variant: rgba(255, 255, 255, 0.1);
   --color-outline-variant-rgb: 255, 255, 255;
 
   /* Surface Variants */
   --color-surface-variant: rgba(255, 255, 255, 0.05);
 
   /* Text & Inks (Dark) */
-  --text-primary: #F8FAFC;       /* Headlines, strong text */
-  --text-secondary: #A1A1AA;     /* Body text, descriptions */
-  --text-tertiary: #71717A;      /* Placeholders, disabled states */
-  --text-on-primary: #FFFFFF;
+  --text-primary: #f8fafc; /* Headlines, strong text */
+  --text-secondary: #a1a1aa; /* Body text, descriptions */
+  --text-tertiary: #71717a; /* Placeholders, disabled states */
+  --text-on-primary: #ffffff;
 
   /* Semantic Colors (Tweaked slightly for dark mode vibrancy) */
-  --color-accent-green: #10B981;
-  --color-accent-blue: #3B82F6;
-  --color-accent-purple: #8B5CF6;
-  --color-accent-pink: #EC4899;
-  --color-secondary: #64748B;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
+  --color-accent-green: #10b981;
+  --color-accent-blue: #3b82f6;
+  --color-accent-purple: #8b5cf6;
+  --color-accent-pink: #ec4899;
+  --color-secondary: #64748b;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
 
   /* Shadows (Dark) - Deeper to simulate elevation without strong light sources */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5); 
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6); 
-  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.7); 
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.7);
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.8);
   --shadow-glow: 0 0 20px rgba(91, 168, 245, 0.15);
 }
@@ -166,8 +166,9 @@ body {
   background-color: var(--bg-app);
   color: var(--text-primary);
   font-family: var(--font-family);
-  transition: background-color var(--duration-normal) var(--ease-out-cubic), 
-              color var(--duration-normal) var(--ease-out-cubic);
+  transition:
+    background-color var(--duration-normal) var(--ease-out-cubic),
+    color var(--duration-normal) var(--ease-out-cubic);
 }
 
 * {

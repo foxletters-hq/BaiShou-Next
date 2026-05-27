@@ -26,9 +26,7 @@ export const AgentToolCard: React.FC<AgentToolCardProps> = ({
   const hasParams = tool.configurableParams && tool.configurableParams.length > 0
 
   return (
-    <div
-      className={`${styles.toolCard} ${isEnabled ? styles.enabled : styles.disabled}`}
-    >
+    <div className={`${styles.toolCard} ${isEnabled ? styles.enabled : styles.disabled}`}>
       <div className={styles.cardMain}>
         <div className={styles.toolIconWrapper}>
           <span className={styles.toolEmoji}>{tool.icon}</span>
@@ -36,9 +34,7 @@ export const AgentToolCard: React.FC<AgentToolCardProps> = ({
         <div className={styles.toolInfo}>
           <div className={styles.toolNameRow}>
             <span className={styles.toolName}>{tool.name}</span>
-            <HelpTooltip
-              content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
-            />
+            <HelpTooltip content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))} />
             <span className={styles.toolIdTag}>{tool.id}</span>
           </div>
         </div>

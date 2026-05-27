@@ -40,9 +40,7 @@ export const AssistantEditCompressionSection: React.FC<AssistantEditCompressionS
         </label>
         <div style={{ flex: 1 }} />
         {!isCompressDisabled && (
-          <span className={styles.valueText}>
-            {formatTokens(Math.round(compressThreshold))}
-          </span>
+          <span className={styles.valueText}>{formatTokens(Math.round(compressThreshold))}</span>
         )}
         <div style={{ width: 8 }} />
         <Switch
@@ -72,14 +70,8 @@ export const AssistantEditCompressionSection: React.FC<AssistantEditCompressionS
       </div>
       <div className={styles.descText}>
         {isCompressDisabled
-          ? t(
-              'agent.assistant.compress_disabled_desc',
-              '如果无限制上下文，超过模型上限会导致出错'
-            )
-          : t(
-              'agent.assistant.compress_enabled_desc',
-              '超过预设体积将丢弃早期会话（并自动压缩）'
-            )}
+          ? t('agent.assistant.compress_disabled_desc', '如果无限制上下文，超过模型上限会导致出错')
+          : t('agent.assistant.compress_enabled_desc', '超过预设体积将丢弃早期会话（并自动压缩）')}
       </div>
 
       {!isCompressDisabled && (

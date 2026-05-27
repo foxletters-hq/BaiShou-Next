@@ -66,10 +66,7 @@ export const AssistantEditModelBinding: React.FC<AssistantEditModelBindingProps>
         </div>
       )}
       <div className={styles.descText} style={{ marginTop: 4 }}>
-        {t(
-          'agent.assistant.bind_model_desc',
-          '绑定后，和伙伴创建对话时，会默认优先使用选择的模型'
-        )}
+        {t('agent.assistant.bind_model_desc', '绑定后，和伙伴创建对话时，会默认优先使用选择的模型')}
       </div>
     </>
   )

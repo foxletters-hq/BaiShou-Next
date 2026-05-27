@@ -15,7 +15,8 @@ vi.mock('electron', () => ({
       if (name === 'userData') return mockUserData
       if (name === 'temp') return mockTempDir
       return mockTempDir
-    })
+    }),
+    getVersion: vi.fn(() => '4.0.0-test')
   },
   dialog: { showSaveDialog: vi.fn(), showOpenDialog: vi.fn() }
 }))
@@ -34,6 +35,11 @@ const fakeSettingsRepo = {
     if (key === 'feature_settings') return { enableX: true }
     return null
   }),
+  getAll: vi.fn().mockResolvedValue({
+    ai_providers: [{ id: 'test-provider' }],
+    global_models: { defaultModel: 'gpt-4' },
+    feature_settings: { enableX: true }
+  }),
   set: vi.fn()
 }
 
@@ -44,8 +50,16 @@ vi.mock('@baishou/database', () => {
       get(key: string) {
         return fakeSettingsRepo.get(key)
       }
+      getAll() {
+        return fakeSettingsRepo.getAll()
+      }
       set(key: string, val: any) {
         return fakeSettingsRepo.set(key, val)
+      }
+    },
+    UserProfileRepository: class {
+      getProfile() {
+        return Promise.resolve({ displayName: 'Test User' })
       }
     },
     initNodeDatabase: vi.fn()

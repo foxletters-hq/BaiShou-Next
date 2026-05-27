@@ -11,7 +11,10 @@ export function useInputBarAttachments(
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handlePickFiles = async () => {
-    const api = typeof window !== 'undefined' ? (window as Window & { api?: { pickFiles?: () => Promise<MockChatAttachment[]> } }).api : undefined
+    const api =
+      typeof window !== 'undefined'
+        ? (window as Window & { api?: { pickFiles?: () => Promise<MockChatAttachment[]> } }).api
+        : undefined
     if (api?.pickFiles) {
       try {
         const newAtts = await api.pickFiles()

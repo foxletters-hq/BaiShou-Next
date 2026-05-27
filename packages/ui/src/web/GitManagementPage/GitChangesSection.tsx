@@ -27,104 +27,93 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
   if (!isInitialized) return null
 
   return (
-  <div className="gmp-collapsible-section">
-    <div className="gmp-collapsible-header" onClick={() => toggleSection('changes')}>
-      <span className="gmp-collapsible-arrow">
-        {expandedSections.changes ? '▾' : '▸'}
-      </span>
-      <span className="gmp-collapsible-title">
-        {t('version_control.changes', 'Changes')}
-      </span>
-      {unstagedCount > 0 && (
-        <span className="gmp-collapsible-badge">{unstagedCount}</span>
-      )}
-      {unstagedCount > 0 && (
-        <button
-          className="gmp-btn-tiny"
-          onClick={(e) => {
-            e.stopPropagation()
-            handleStageAll()
-          }}
-        >
-          {t('version_control.stage_all', '全部暂存')}
-        </button>
-      )}
-      {unstagedCount > 0 && (
-        <button
-          className="gmp-btn-tiny"
-          onClick={(e) => {
-            e.stopPropagation()
-            handleDiscardAll()
-          }}
-        >
-          {t('version_control.discard_all', '全部撤销')}
-        </button>
-      )}
-    </div>
-    {expandedSections.changes && (
-      <div className="gmp-collapsible-body">
-        {unstagedCount === 0 ? (
-          <div className="gmp-section-empty">
-            {t('version_control.no_changes', '没有变更')}
-          </div>
-        ) : (
-          <>
-            {gitStatus!.unstaged.map((file) => (
-              <div key={file.path}>
-                <div
-                  className="gmp-file-row gmp-file-row-clickable"
-                  onClick={() => handleViewWorkingDiff(file.path, false)}
-                >
-                  <span className={`gmp-file-badge gmp-file-${file.unstagedStatus}`}>
-                    {getFileStatusIcon(file.unstagedStatus)}
-                  </span>
-                  <span className="gmp-file-path">{file.path}</span>
+    <div className="gmp-collapsible-section">
+      <div className="gmp-collapsible-header" onClick={() => toggleSection('changes')}>
+        <span className="gmp-collapsible-arrow">{expandedSections.changes ? '▾' : '▸'}</span>
+        <span className="gmp-collapsible-title">{t('version_control.changes', 'Changes')}</span>
+        {unstagedCount > 0 && <span className="gmp-collapsible-badge">{unstagedCount}</span>}
+        {unstagedCount > 0 && (
+          <button
+            className="gmp-btn-tiny"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleStageAll()
+            }}
+          >
+            {t('version_control.stage_all', '全部暂存')}
+          </button>
+        )}
+        {unstagedCount > 0 && (
+          <button
+            className="gmp-btn-tiny"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleDiscardAll()
+            }}
+          >
+            {t('version_control.discard_all', '全部撤销')}
+          </button>
+        )}
+      </div>
+      {expandedSections.changes && (
+        <div className="gmp-collapsible-body">
+          {unstagedCount === 0 ? (
+            <div className="gmp-section-empty">{t('version_control.no_changes', '没有变更')}</div>
+          ) : (
+            <>
+              {gitStatus!.unstaged.map((file) => (
+                <div key={file.path}>
+                  <div
+                    className="gmp-file-row gmp-file-row-clickable"
+                    onClick={() => handleViewWorkingDiff(file.path, false)}
+                  >
+                    <span className={`gmp-file-badge gmp-file-${file.unstagedStatus}`}>
+                      {getFileStatusIcon(file.unstagedStatus)}
+                    </span>
+                    <span className="gmp-file-path">{file.path}</span>
+                    <button
+                      className="gmp-btn-tiny"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStageFile(file.path)
+                      }}
+                    >
+                      {t('version_control.stage', '暂存')}
+                    </button>
+                    <button
+                      className="gmp-btn-tiny"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDiscardFile(file.path)
+                      }}
+                    >
+                      {t('version_control.discard', '撤销')}
+                    </button>
+                  </div>
+                  {expandedWorkingFile?.path === file.path &&
+                    !expandedWorkingFile.staged &&
+                    workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
+                </div>
+              ))}
+              {gitStatus!.untracked.map((file) => (
+                <div key={file} className="gmp-file-row">
+                  <span className="gmp-file-badge gmp-file-untracked">U</span>
+                  <span className="gmp-file-path">{file}</span>
                   <button
                     className="gmp-btn-tiny"
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleStageFile(file.path)
+                      handleStageFile(file)
                     }}
                   >
                     {t('version_control.stage', '暂存')}
                   </button>
-                  <button
-                    className="gmp-btn-tiny"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDiscardFile(file.path)
-                    }}
-                  >
-                    {t('version_control.discard', '撤销')}
-                  </button>
                 </div>
-                {expandedWorkingFile?.path === file.path &&
-                  !expandedWorkingFile.staged &&
-                              workingFileDiff && (
-                                <GitDiffViewer diff={workingFileDiff} />
-                              )}
-              </div>
-            ))}
-            {gitStatus!.untracked.map((file) => (
-              <div key={file} className="gmp-file-row">
-                <span className="gmp-file-badge gmp-file-untracked">U</span>
-                <span className="gmp-file-path">{file}</span>
-                <button
-                  className="gmp-btn-tiny"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleStageFile(file)
-                  }}
-                >
-                  {t('version_control.stage', '暂存')}
-                </button>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-    )}
-  </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
-

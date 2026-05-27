@@ -1,12 +1,5 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  type ViewProps,
-} from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, type ViewProps } from 'react-native'
 import { useNativeTheme } from '../theme'
 
 export interface PageSizeSelectorProps extends ViewProps {
@@ -44,8 +37,8 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
                 styles.chip,
                 {
                   backgroundColor: isSelected ? colors.primary : colors.bgSurfaceNormal,
-                  borderColor: isSelected ? colors.primary : colors.borderSubtle,
-                },
+                  borderColor: isSelected ? colors.primary : colors.borderSubtle
+                }
               ]}
             >
               <Text
@@ -53,8 +46,8 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
                   styles.chipText,
                   {
                     color: isSelected ? colors.bgSurface : colors.textPrimary,
-                    fontWeight: isSelected ? ('700' as const) : ('500' as const),
-                  },
+                    fontWeight: isSelected ? ('700' as const) : ('500' as const)
+                  }
                 ]}
               >
                 {option}
@@ -69,13 +62,13 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingVertical: 4,
+    paddingVertical: 4
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 4
   },
   chip: {
     paddingHorizontal: 16,
@@ -83,9 +76,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
     minWidth: 44,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   chipText: {
-    fontSize: 14,
-  },
+    fontSize: 14
+  }
 })

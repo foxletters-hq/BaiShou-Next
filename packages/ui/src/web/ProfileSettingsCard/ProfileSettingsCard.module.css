@@ -34,12 +34,15 @@
 .avatarFallback {
   font-size: 32px;
   font-weight: 600;
-  color: #9AD4EA;
+  color: #9ad4ea;
 }
 
 .avatarHover {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
@@ -102,7 +105,10 @@
 /* Crop Modal */
 .cropOverlay {
   position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100vh;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(8px);
   z-index: 1000;
@@ -161,7 +167,7 @@
   border-radius: 50%; /* 圆形视觉预览，但裁剪时切方块 */
   cursor: move;
   background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 0 2000px rgba(0,0,0,0.7);
+  box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.7);
 }
 
 .sizeSlider {
@@ -176,7 +182,8 @@
   gap: 16px;
 }
 
-.cancelBtn, .confirmBtn {
+.cancelBtn,
+.confirmBtn {
   flex: 1;
   padding: 10px;
   border-radius: 8px;
@@ -207,6 +214,10 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

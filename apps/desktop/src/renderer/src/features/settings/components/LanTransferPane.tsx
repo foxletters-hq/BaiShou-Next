@@ -3,7 +3,10 @@ import { LanSyncCard } from '@baishou/ui'
 
 export const LanTransferPane: React.FC = () => {
   return (
-    <div className="settings-pane settings-pane-full" style={{ position: 'absolute', inset: 0, padding: 0, overflow: 'hidden' }}>
+    <div
+      className="settings-pane settings-pane-full"
+      style={{ position: 'absolute', inset: 0, padding: 0, overflow: 'hidden' }}
+    >
       <LanSyncCard
         onStartBroadcasting={async () => (window as any).api?.lan?.startBroadcasting()}
         onStopBroadcasting={async () => (window as any).api?.lan?.stopBroadcasting()}

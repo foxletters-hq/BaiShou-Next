@@ -1,5 +1,10 @@
 import { logger } from '@baishou/shared'
-import { GitPushError, GitPullError, GitRemoteNotConfiguredError, GitRollbackError } from './sync.errors'
+import {
+  GitPushError,
+  GitPullError,
+  GitRemoteNotConfiguredError,
+  GitRollbackError
+} from './sync.errors'
 import { GitSyncHistoryMixin } from './git-sync.history'
 
 export abstract class GitSyncRemoteMixin extends GitSyncHistoryMixin {

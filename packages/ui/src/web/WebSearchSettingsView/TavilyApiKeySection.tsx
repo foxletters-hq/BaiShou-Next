@@ -29,10 +29,7 @@ export const TavilyApiKeySection: React.FC<TavilyApiKeySectionProps> = ({
             {t('agent.tools.param_tavily_api_key', 'Tavily API Key')}
           </h3>
           <HelpTooltip
-            content={t(
-              'agent.tools.param_tavily_api_key_desc',
-              '请前往 tvly 官网申请您的私人密钥'
-            )}
+            content={t('agent.tools.param_tavily_api_key_desc', '请前往 tvly 官网申请您的私人密钥')}
           />
         </div>
 

@@ -8,7 +8,10 @@ import path from 'path'
 import fs from 'fs'
 
 /** 写调试日志到 Vault 目录，便于用户排查生成问题 */
-async function appendDebugLog(vaultPath: string | null, data: Record<string, unknown>): Promise<void> {
+async function appendDebugLog(
+  vaultPath: string | null,
+  data: Record<string, unknown>
+): Promise<void> {
   if (!vaultPath) return
   const logFile = path.join(vaultPath, 'summary_generation_debug.log')
   fs.appendFileSync(logFile, JSON.stringify(data) + '\n', 'utf-8')
@@ -58,14 +61,18 @@ export function buildSummaryAiClient(): SummaryAiClient {
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           abortController.abort()
-          const err = new Error('AI generation timed out after 45 seconds (Promise level force-abort).')
+          const err = new Error(
+            'AI generation timed out after 45 seconds (Promise level force-abort).'
+          )
           err.name = 'AbortError'
           reject(err)
         }, 45000)
       })
 
       try {
-        logger.info(`[SummaryAI] Invoking Vercel AI SDK generateText with 45s Promise-race timeout...`)
+        logger.info(
+          `[SummaryAI] Invoking Vercel AI SDK generateText with 45s Promise-race timeout...`
+        )
 
         const generatePromise = (async () => {
           const { text } = await generateText({

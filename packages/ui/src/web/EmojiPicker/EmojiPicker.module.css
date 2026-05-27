@@ -1,6 +1,9 @@
 .overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -14,7 +17,9 @@
 .container {
   background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.85);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5) inset;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5) inset;
   border-radius: 28px;
   width: 90%;
   max-width: 380px;
@@ -41,13 +46,13 @@
 .title {
   font-size: 16px;
   font-weight: 800;
-  color: var(--text-primary, #0F172A);
+  color: var(--text-primary, #0f172a);
   letter-spacing: -0.3px;
 }
 
 .subtitle {
   font-size: 13px;
-  color: var(--text-secondary, #64748B);
+  color: var(--text-secondary, #64748b);
   margin-top: 2px;
 }
 
@@ -56,7 +61,7 @@
   height: 32px;
   border-radius: 50%;
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
-  color: var(--text-secondary, #64748B);
+  color: var(--text-secondary, #64748b);
   border: none;
   cursor: pointer;
   display: flex;
@@ -67,7 +72,7 @@
 
 .closeBtn:hover {
   background: rgba(var(--color-error-rgb, 244, 67, 54), 0.1);
-  color: var(--color-error, #F44336);
+  color: var(--color-error, #f44336);
   transform: rotate(90deg);
 }
 
@@ -113,11 +118,21 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleUp {
-  from { opacity: 0; transform: scale(0.9) translateY(20px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }

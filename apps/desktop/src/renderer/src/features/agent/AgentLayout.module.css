@@ -41,7 +41,7 @@
 .collapsedIcon {
   width: 40px;
   height: 40px;
-  background-color: var(--color-primary, #5BA8F5);
+  background-color: var(--color-primary, #5ba8f5);
   border-radius: 12px;
   display: flex;
   align-items: center;

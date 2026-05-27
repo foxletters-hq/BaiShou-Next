@@ -7,7 +7,7 @@ import { ConcurrencyDropdown } from './ConcurrencyDropdown'
 /** 获取任务状态描述文本 */
 export const getTaskStatusText = (
   taskState: { progress: number; phase: number; status: string; error?: string } | undefined,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   t: any
 ): string => {
   if (!taskState) return ''
@@ -24,7 +24,9 @@ export const getTaskStatusText = (
     if (phase === 0) return t('summary.status_sending', 'Sending request...')
     if (phase === 1) return t('summary.status_reading_data', 'Reading source data...')
     if (phase === 2) {
-      return t('summary.status_thinking', 'Thinking...').replace(' ($model)', '').replace('($model)', '')
+      return t('summary.status_thinking', 'Thinking...')
+        .replace(' ($model)', '')
+        .replace('($model)', '')
     }
     if (phase === 3) return t('summary.step_write', 'Receiving AI summary stream...')
     if (progress === 95) return t('summary.status_saving', 'Saving summary...')
@@ -99,7 +101,10 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
   return (
     <motion.div
       style={{ marginTop: 24, paddingBottom: 24 }}
-      variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }}
+      variants={{
+        hidden: { opacity: 0 },
+        show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+      }}
       initial="hidden"
       animate="show"
     >
@@ -108,7 +113,10 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
           <Sparkles size={18} color="var(--color-warning)" />
           <span>{t('summary.ai_suggestions', 'AI 建议补全')}</span>
           <div className="sp-missing-count">
-            {t('common.count_items', '$count个').replace('$count', missingSummaries.length.toString())}
+            {t('common.count_items', '$count个').replace(
+              '$count',
+              missingSummaries.length.toString()
+            )}
           </div>
         </div>
       )}
@@ -252,10 +260,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                         <CheckCircle2 size={22} color="var(--color-success)" />
                       </div>
                     ) : (
-                      <div
-                        className="sp-missing-card-action"
-                        onClick={() => onQueueSingle(mp)}
-                      >
+                      <div className="sp-missing-card-action" onClick={() => onQueueSingle(mp)}>
                         <Sparkles size={18} />
                       </div>
                     )}

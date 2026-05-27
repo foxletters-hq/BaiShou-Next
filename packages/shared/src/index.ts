@@ -35,4 +35,3 @@ export * from './constants/summary-templates'
 export * from './constants/weather.constants'
 export * from './constants/github.constants'
 export * from './utils/version.utils'
-

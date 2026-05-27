@@ -17,10 +17,7 @@ export const IdentitySettingsHeader: React.FC<IdentitySettingsHeaderProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div
-      className={`${styles.headerRow} ${styles.headerRowHover}`}
-      onClick={onToggle}
-    >
+    <div className={`${styles.headerRow} ${styles.headerRowHover}`} onClick={onToggle}>
       <div className={styles.headerTitleGroup} style={{ flex: 1 }}>
         <div
           style={{

@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import extract from 'extract-zip'
 import { initNodeDatabase } from '@baishou/database'
+import { isBetterSqlite3Available } from './better-sqlite3-available'
 
 const mockTempDir = path.join(__dirname, '.temp-full-archive-test')
 const mockUserData = path.join(mockTempDir, 'userData')
@@ -30,7 +31,7 @@ vi.mock('../db', () => ({
 
 import { DesktopArchiveService } from '../archive.service'
 
-describe('Real Database Full Data Export Extraction', () => {
+describe.skipIf(!isBetterSqlite3Available())('Real Database Full Data Export Extraction', () => {
   let service: DesktopArchiveService
   let mockPathService: any
   let mockVaultService: any

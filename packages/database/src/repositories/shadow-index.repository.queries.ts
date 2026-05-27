@@ -128,11 +128,11 @@ export class ShadowIndexQueryOps {
     return (await query) as ShadowJournalRow[]
   }
 
-  async countFiltered(options: Omit<DiaryListFilterOptions, 'limit' | 'offset'> = {}): Promise<number> {
+  async countFiltered(
+    options: Omit<DiaryListFilterOptions, 'limit' | 'offset'> = {}
+  ): Promise<number> {
     const where = this.buildListFilterWhere(options)
-    let query = this.database
-      .select({ count: sql<number>`count(*)` })
-      .from(shadowJournalIndexTable)
+    let query = this.database.select({ count: sql<number>`count(*)` }).from(shadowJournalIndexTable)
     if (where) query = query.where(where) as typeof query
     const result = await query
     return result[0]?.count || 0

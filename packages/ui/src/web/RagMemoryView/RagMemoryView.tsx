@@ -53,12 +53,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
 
   return (
     <div className={styles.page}>
-      <RagMemoryHeader
-        config={config}
-        stats={stats}
-        onChange={onChange}
-        onClearAll={onClearAll}
-      />
+      <RagMemoryHeader config={config} stats={stats} onChange={onChange} onClearAll={onClearAll} />
 
       <div className={styles.scrollArea}>
         <RagMemoryDisabledAlert ragEnabled={config.ragEnabled} />

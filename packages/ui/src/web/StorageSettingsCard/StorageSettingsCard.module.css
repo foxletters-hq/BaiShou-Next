@@ -8,7 +8,10 @@
 
 .scanOverlay {
   position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(12px);
   z-index: 50;
@@ -26,17 +29,23 @@
   width: 32px;
   height: 32px;
   border: 3px solid rgba(154, 212, 234, 0.2);
-  border-top-color: #9AD4EA;
+  border-top-color: #9ad4ea;
   border-radius: 50%;
   animation: spin 1s infinite linear;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .header {
@@ -102,7 +111,7 @@
   flex-shrink: 0;
   margin-left: 12px;
   background: rgba(154, 212, 234, 0.15);
-  color: #9AD4EA;
+  color: #9ad4ea;
   border: none;
   border-radius: 6px;
   padding: 6px 12px;
@@ -124,10 +133,21 @@
   background: rgba(148, 163, 184, 0.1);
 }
 
-.chunkSqlite { background: #4ade80; transition: width 0.5s ease; }
-.chunkVector { background: #c084fc; transition: width 0.5s ease; }
-.chunkMedia  { background: #60a5fa; transition: width 0.5s ease; }
-.chunkEmpty  { background: transparent; }
+.chunkSqlite {
+  background: #4ade80;
+  transition: width 0.5s ease;
+}
+.chunkVector {
+  background: #c084fc;
+  transition: width 0.5s ease;
+}
+.chunkMedia {
+  background: #60a5fa;
+  transition: width 0.5s ease;
+}
+.chunkEmpty {
+  background: transparent;
+}
 
 .legend {
   display: flex;
@@ -178,7 +198,8 @@
   border-top: 1px solid rgba(148, 163, 184, 0.1);
 }
 
-.vacuumBtn, .clearBtn {
+.vacuumBtn,
+.clearBtn {
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;

@@ -177,7 +177,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                           )
                         )
                       } else {
-                        toast.showError(res?.error || t('markdown.delete_attachment_failed', '删除失败'))
+                        toast.showError(
+                          res?.error || t('markdown.delete_attachment_failed', '删除失败')
+                        )
                       }
                     } catch (err: any) {
                       toast.showError(err.message)
@@ -186,11 +188,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 }
               ]
 
-              return (
-                <ContextMenu items={menuItems}>
-                  {renderImg()}
-                </ContextMenu>
-              )
+              return <ContextMenu items={menuItems}>{renderImg()}</ContextMenu>
             }
 
             return renderImg()

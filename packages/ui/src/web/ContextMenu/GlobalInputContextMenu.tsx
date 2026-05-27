@@ -13,14 +13,13 @@ export const GlobalInputContextMenu: React.FC = () => {
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      
+
       // Check if it's a standard text input/textarea
-      const isTextInput = (
+      const isTextInput =
         (target instanceof HTMLInputElement &&
           ['text', 'password', 'email', 'search', 'url', 'tel'].includes(target.type)) ||
         target instanceof HTMLTextAreaElement
-      )
-      
+
       // Avoid overriding CodeMirror or custom menus
       if (isTextInput && !target.closest('.cm-editor') && !target.closest('.cm-content')) {
         e.preventDefault()
@@ -28,7 +27,7 @@ export const GlobalInputContextMenu: React.FC = () => {
         textEl.focus()
         setTargetEl(textEl)
         setPosition({ x: e.clientX, y: e.clientY })
-        
+
         const start = textEl.selectionStart ?? 0
         const end = textEl.selectionEnd ?? 0
         setHasSelection(start !== end)
@@ -98,7 +97,7 @@ export const GlobalInputContextMenu: React.FC = () => {
       navigator.clipboard.writeText(selectedText)
       targetEl.value = val.substring(0, start) + val.substring(end)
       targetEl.selectionStart = targetEl.selectionEnd = start
-      
+
       // Trigger React state change
       const tracker = (targetEl as any)._valueTracker
       if (tracker) {
@@ -118,7 +117,7 @@ export const GlobalInputContextMenu: React.FC = () => {
       const val = targetEl.value
       targetEl.value = val.substring(0, start) + text + val.substring(end)
       targetEl.selectionStart = targetEl.selectionEnd = start + text.length
-      
+
       // Trigger React state change
       const tracker = (targetEl as any)._valueTracker
       if (tracker) {
@@ -162,11 +161,7 @@ export const GlobalInputContextMenu: React.FC = () => {
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <button
-          className="context-menu-item"
-          onClick={handleCopy}
-          disabled={!hasSelection}
-        >
+        <button className="context-menu-item" onClick={handleCopy} disabled={!hasSelection}>
           <span className="context-menu-label">{t('common.copy', '复制')}</span>
           <span className="context-menu-shortcut">Ctrl+C</span>
         </button>
@@ -178,19 +173,12 @@ export const GlobalInputContextMenu: React.FC = () => {
           <span className="context-menu-label">{t('common.cut', '剪切')}</span>
           <span className="context-menu-shortcut">Ctrl+X</span>
         </button>
-        <button
-          className="context-menu-item"
-          onClick={handlePaste}
-          disabled={isReadOnly}
-        >
+        <button className="context-menu-item" onClick={handlePaste} disabled={isReadOnly}>
           <span className="context-menu-label">{t('common.paste', '粘贴')}</span>
           <span className="context-menu-shortcut">Ctrl+V</span>
         </button>
         <div className="context-menu-divider" />
-        <button
-          className="context-menu-item"
-          onClick={handleSelectAll}
-        >
+        <button className="context-menu-item" onClick={handleSelectAll}>
           <span className="context-menu-label">{t('common.select_all', '全选')}</span>
           <span className="context-menu-shortcut">Ctrl+A</span>
         </button>

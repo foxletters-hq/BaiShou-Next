@@ -1,13 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Platform,
-  UIManager,
-  LayoutAnimation
-} from 'react-native'
+import { View, Text, TouchableOpacity, Platform, UIManager, LayoutAnimation } from 'react-native'
 import { useNativeTheme } from '../theme'
 import type { AppearanceSettingsProps } from './appearance-settings.types'
 import { hslToHex } from './appearance-color.utils'

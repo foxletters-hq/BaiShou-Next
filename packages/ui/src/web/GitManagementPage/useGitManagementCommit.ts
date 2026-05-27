@@ -170,6 +170,5 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     handleLoadHistory
   ])
 
-
   return { handleManualCommit, handleCommitAndPush }
 }

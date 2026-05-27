@@ -28,11 +28,7 @@ export const StatisticCard: React.FC<StatisticCardProps> = ({
   const { colors, tokens } = useNativeTheme()
 
   const trendColor =
-    trend === 'up'
-      ? colors.success
-      : trend === 'down'
-        ? colors.error
-        : colors.textTertiary
+    trend === 'up' ? colors.success : trend === 'down' ? colors.error : colors.textTertiary
 
   return (
     <View
@@ -47,29 +43,19 @@ export const StatisticCard: React.FC<StatisticCardProps> = ({
     >
       <View style={styles.header}>
         {icon ? <Text style={styles.icon}>{icon}</Text> : null}
-        <Text style={[styles.title, { color: colors.textSecondary }]}>
-          {title}
-        </Text>
+        <Text style={[styles.title, { color: colors.textSecondary }]}>{title}</Text>
       </View>
 
-      <Text style={[styles.value, { color: colors.textPrimary }]}>
-        {value}
-      </Text>
+      <Text style={[styles.value, { color: colors.textPrimary }]}>{value}</Text>
 
       <View style={styles.footer}>
         {subtitle ? (
-          <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
-            {subtitle}
-          </Text>
+          <Text style={[styles.subtitle, { color: colors.textTertiary }]}>{subtitle}</Text>
         ) : null}
         {trend && trendValue ? (
           <View style={styles.trendRow}>
-            <Text style={[styles.trendIcon, { color: trendColor }]}>
-              {TREND_ICONS[trend]}
-            </Text>
-            <Text style={[styles.trendValue, { color: trendColor }]}>
-              {trendValue}
-            </Text>
+            <Text style={[styles.trendIcon, { color: trendColor }]}>{TREND_ICONS[trend]}</Text>
+            <Text style={[styles.trendValue, { color: trendColor }]}>{trendValue}</Text>
           </View>
         ) : null}
       </View>

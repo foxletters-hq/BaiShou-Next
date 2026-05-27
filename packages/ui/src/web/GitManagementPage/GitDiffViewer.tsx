@@ -42,4 +42,3 @@ export const GitDiffViewer: React.FC<GitDiffViewerProps> = ({ diff }) => {
     </div>
   )
 }
-

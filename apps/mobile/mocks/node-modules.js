@@ -1,8 +1,8 @@
-const noop = () => {};
-const noopAsync = () => Promise.resolve();
-const emptyObj = {};
-const emptyArr = [];
-const emptyStr = '';
+const noop = () => {}
+const noopAsync = () => Promise.resolve()
+const emptyObj = {}
+const emptyArr = []
+const emptyStr = ''
 
 module.exports = {
   readFile: noopAsync,
@@ -22,8 +22,16 @@ module.exports = {
   resolve: (...args) => args.join('/'),
   basename: (p) => p.split('/').pop() || '',
   dirname: (p) => p.split('/').slice(0, -1).join('/') || '/',
-  extname: (p) => { const parts = p.split('.'); return parts.length > 1 ? '.' + parts.pop() : ''; },
-  randomUUID: () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; const v = c === 'x' ? r : (r & 0x3) | 0x8; return v.toString(16); }),
+  extname: (p) => {
+    const parts = p.split('.')
+    return parts.length > 1 ? '.' + parts.pop() : ''
+  },
+  randomUUID: () =>
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0
+      const v = c === 'x' ? r : (r & 0x3) | 0x8
+      return v.toString(16)
+    }),
   homedir: () => '/',
   tmpdir: () => '/tmp',
   platform: () => 'linux',
@@ -31,5 +39,5 @@ module.exports = {
   cpus: () => [],
   totalmem: () => 0,
   freemem: () => 0,
-  networkInterfaces: () => emptyObj,
-};
+  networkInterfaces: () => emptyObj
+}

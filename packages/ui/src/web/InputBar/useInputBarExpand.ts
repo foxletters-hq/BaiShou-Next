@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import styles from './InputBar.module.css'
 
-export function useInputBarExpand(textareaRef: React.RefObject<HTMLTextAreaElement | null>, text: string) {
+export function useInputBarExpand(
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>,
+  text: string
+) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const isResizing = useRef(false)
@@ -57,7 +60,10 @@ export function useInputBarExpand(textareaRef: React.RefObject<HTMLTextAreaEleme
       setIsExpanded(true)
       setTimeout(() => {
         const maxHeight = Math.max(180, window.innerHeight - 180)
-        const safeHeight = Math.max(140, Math.min(expandedHeightRef.current, Math.min(600, maxHeight)))
+        const safeHeight = Math.max(
+          140,
+          Math.min(expandedHeightRef.current, Math.min(600, maxHeight))
+        )
         cardEl.style.height = `${safeHeight}px`
         expandedHeightRef.current = safeHeight
         if (textareaRef.current) textareaRef.current.style.height = '100%'

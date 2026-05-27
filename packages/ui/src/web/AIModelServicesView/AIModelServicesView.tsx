@@ -18,4 +18,3 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = (props) =
     </div>
   )
 }
-

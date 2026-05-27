@@ -1,10 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet
-} from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
 
 export interface MessageActionBarProps {
@@ -54,13 +49,20 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
   const getHandler = (key: string): (() => void) | undefined => {
     switch (key) {
-      case 'copy': return handleCopy
-      case 'readAloud': return onReadAloud
-      case 'edit': return onEdit
-      case 'retry': return onRetry
-      case 'branch': return onBranch
-      case 'delete': return onDelete
-      default: return undefined
+      case 'copy':
+        return handleCopy
+      case 'readAloud':
+        return onReadAloud
+      case 'edit':
+        return onEdit
+      case 'retry':
+        return onRetry
+      case 'branch':
+        return onBranch
+      case 'delete':
+        return onDelete
+      default:
+        return undefined
     }
   }
 
@@ -95,18 +97,14 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
             style={[
               styles.actionButton,
               {
-                backgroundColor: isTtsActive
-                  ? colors.primaryLight
-                  : 'transparent'
+                backgroundColor: isTtsActive ? colors.primaryLight : 'transparent'
               }
             ]}
             onPress={handler}
             disabled={!handler}
             activeOpacity={0.6}
           >
-            <Text style={styles.actionEmoji}>
-              {isCopied ? '✓' : action.emoji}
-            </Text>
+            <Text style={styles.actionEmoji}>{isCopied ? '✓' : action.emoji}</Text>
             <Text
               style={[
                 styles.actionLabel,

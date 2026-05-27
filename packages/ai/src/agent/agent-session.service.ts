@@ -68,7 +68,11 @@ export class AgentSessionService {
       const dbHistory = await ContextWindowBuilder.build(sessionId, sessionRepo, snapshotRepo, {
         recentCount: configRecentCount
       })
-      const coreMessages = await MessageAdapter.toVercelMessages(dbHistory, modelId, provider.config?.type)
+      const coreMessages = await MessageAdapter.toVercelMessages(
+        dbHistory,
+        modelId,
+        provider.config?.type
+      )
 
       // 将当前用户消息追加到上下文窗口，供 AI 推理使用（不再落盘，仅在内存中追加）
       const lastCoreMsg = coreMessages.length > 0 ? coreMessages[coreMessages.length - 1]! : null
@@ -104,12 +108,19 @@ export class AgentSessionService {
                   if (!filePath && att.url?.startsWith('file:///')) {
                     filePath = decodeURIComponent(att.url.replace('file:///', ''))
                   }
-                  if (filePath && typeof process !== 'undefined' && process.versions && process.versions.node) {
+                  if (
+                    filePath &&
+                    typeof process !== 'undefined' &&
+                    process.versions &&
+                    process.versions.node
+                  ) {
                     const fs = require('fs')
                     fileData = fs.readFileSync(filePath).toString('base64')
                   }
                 } catch (readErr) {
-                  logger.warn('Failed to read local PDF file for model part, fallback', { error: readErr as any })
+                  logger.warn('Failed to read local PDF file for model part, fallback', {
+                    error: readErr as any
+                  })
                 }
 
                 contentParts.push({
@@ -125,7 +136,12 @@ export class AgentSessionService {
                     if (!filePath && att.url?.startsWith('file:///')) {
                       filePath = decodeURIComponent(att.url.replace('file:///', ''))
                     }
-                    if (filePath && typeof process !== 'undefined' && process.versions && process.versions.node) {
+                    if (
+                      filePath &&
+                      typeof process !== 'undefined' &&
+                      process.versions &&
+                      process.versions.node
+                    ) {
                       const fs = require('fs')
                       const pdfParse = require('pdf-parse')
                       const dataBuffer = fs.readFileSync(filePath)

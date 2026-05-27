@@ -124,7 +124,7 @@
   font-weight: 500;
 }
 
-[data-theme="dark"] .selected {
+[data-theme='dark'] .selected {
   background-color: rgba(91, 168, 245, 0.15);
   color: var(--color-primary);
 }

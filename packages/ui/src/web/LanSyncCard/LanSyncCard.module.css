@@ -114,8 +114,20 @@
   pointer-events: none;
   opacity: 0.1;
   background:
-    linear-gradient(to right, transparent 49.8%, var(--color-primary) 49.8%, var(--color-primary) 50.2%, transparent 50.2%),
-    linear-gradient(to bottom, transparent 49.8%, var(--color-primary) 49.8%, var(--color-primary) 50.2%, transparent 50.2%);
+    linear-gradient(
+      to right,
+      transparent 49.8%,
+      var(--color-primary) 49.8%,
+      var(--color-primary) 50.2%,
+      transparent 50.2%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 49.8%,
+      var(--color-primary) 49.8%,
+      var(--color-primary) 50.2%,
+      transparent 50.2%
+    );
 }
 
 /* 雷达扫描旋转 — 特殊视觉效果，持续时间不受 0.2s 限制 */
@@ -141,8 +153,12 @@
 }
 
 @keyframes radarSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 雷达波纹容器 */
@@ -169,13 +185,27 @@
   animation: radarWave 6s infinite ease-out;
 }
 
-.ring1 { animation-delay: 0s; }
-.ring2 { animation-delay: 2s; }
-.ring3 { animation-delay: 4s; }
+.ring1 {
+  animation-delay: 0s;
+}
+.ring2 {
+  animation-delay: 2s;
+}
+.ring3 {
+  animation-delay: 4s;
+}
 
 @keyframes radarWave {
-  0% { width: 0; height: 0; opacity: 0.5; }
-  100% { width: 150vmax; height: 150vmax; opacity: 0; }
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.5;
+  }
+  100% {
+    width: 150vmax;
+    height: 150vmax;
+    opacity: 0;
+  }
 }
 
 /* 雷达中心核心 */
@@ -202,9 +232,18 @@
 }
 
 @keyframes coreThrob {
-  0% { transform: scale(1); box-shadow: 0 0 4px rgba(91, 168, 245, 0.1); }
-  50% { transform: scale(1.03); box-shadow: 0 0 10px rgba(91, 168, 245, 0.15); }
-  100% { transform: scale(1); box-shadow: 0 0 4px rgba(91, 168, 245, 0.1); }
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 4px rgba(91, 168, 245, 0.1);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 0 10px rgba(91, 168, 245, 0.15);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 4px rgba(91, 168, 245, 0.1);
+  }
 }
 
 /* 扫描提示区域 */
@@ -250,8 +289,12 @@
 }
 
 @keyframes floatBubble {
-  to { transform: translateY(-10px); }
-  from { transform: translateY(10px); }
+  to {
+    transform: translateY(-10px);
+  }
+  from {
+    transform: translateY(10px);
+  }
 }
 
 .deviceBubble:hover {
@@ -305,8 +348,12 @@
 /* 发送覆盖按钮 */
 .sendOverlayBtn {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   background: var(--color-primary);
   border: none;
   color: var(--text-on-primary);
@@ -379,13 +426,23 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .qrTitle {

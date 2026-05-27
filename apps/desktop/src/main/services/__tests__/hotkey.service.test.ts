@@ -37,7 +37,8 @@ describe('HotkeyService', () => {
       restore: vi.fn(),
       focus: vi.fn(),
       setSkipTaskbar: vi.fn(),
-      setAlwaysOnTop: vi.fn()
+      setAlwaysOnTop: vi.fn(),
+      setVisibleOnAllWorkspaces: vi.fn()
     }
 
     service = new HotkeyService(mockRepo, mockWindow)

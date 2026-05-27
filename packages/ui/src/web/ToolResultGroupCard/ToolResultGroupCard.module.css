@@ -180,7 +180,7 @@
 
 .structItem {
   background-color: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200,200,200), 0.4);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
   padding: 8px 10px;
   border-radius: 6px;
   display: flex;
@@ -216,7 +216,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  border-bottom: 1px dashed rgba(var(--color-outline-variant-rgb, 200,200,200), 0.5);
+  border-bottom: 1px dashed rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   padding: 2px 0;
 }
 
@@ -248,5 +248,3 @@
   background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.2);
   border-color: rgba(var(--color-error-rgb, 244, 67, 54), 0.3);
 }
-
-

@@ -103,7 +103,10 @@ export function useCloudSyncActions({
             ? await onRestoreSnapshot(filename)
             : {
                 success: false,
-                message: t('sync.snapshot_restore_not_implemented', 'Snapshot restore is not available')
+                message: t(
+                  'sync.snapshot_restore_not_implemented',
+                  'Snapshot restore is not available'
+                )
               }
           : await onRestore(config, filename)
       if (res.success) toast.showSuccess(res.message)
@@ -134,18 +137,14 @@ export function useCloudSyncActions({
     const confirmed =
       activeTab === 'snapshot'
         ? await dialog.confirm(
-            t(
-              'sync.delete_snapshot_confirm',
-              'Permanently delete local snapshot "{{filename}}"?',
-              { filename }
-            )
+            t('sync.delete_snapshot_confirm', 'Permanently delete local snapshot "{{filename}}"?', {
+              filename
+            })
           )
         : await dialog.confirm(
-            t(
-              'sync.delete_confirm',
-              'Permanently delete cloud backup "{{filename}}"?',
-              { filename }
-            )
+            t('sync.delete_confirm', 'Permanently delete cloud backup "{{filename}}"?', {
+              filename
+            })
           )
     if (!confirmed) return
     try {

@@ -106,4 +106,3 @@ export const MainPageCache: React.FC<{ activeKey: string | null }> = ({ activeKe
 
 /** 占位路由：实际内容由 MainPageCache 渲染 */
 export const CachedRoutePlaceholder: React.FC = () => null
-

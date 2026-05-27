@@ -10,10 +10,18 @@ const IncrementalSyncScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgApp} />
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.bgApp}
+      />
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.bgApp }]}>
         <View style={[styles.container, { backgroundColor: colors.bgApp }]}>
-          <View style={[styles.header, { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle }]}>
+          <View
+            style={[
+              styles.header,
+              { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle }
+            ]}
+          >
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               {t('incremental_sync.title', '增量同步')}
             </Text>

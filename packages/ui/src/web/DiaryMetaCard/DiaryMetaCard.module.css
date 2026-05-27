@@ -34,7 +34,7 @@
   font-size: 32px;
   font-weight: 800;
   color: var(--color-on-surface);
-  line-height: 1.0;
+  line-height: 1;
 }
 
 .weekdayCol {
@@ -152,18 +152,18 @@
 }
 
 .tagGreen {
-  background-color: #F0FDF4;
-  color: #15803D;
+  background-color: #f0fdf4;
+  color: #15803d;
 }
 
 .tagOrange {
-  background-color: #FFF7ED;
-  color: #C2410C;
+  background-color: #fff7ed;
+  color: #c2410c;
 }
 
 .tagPurple {
-  background-color: #FAF5FF;
-  color: #7E22CE;
+  background-color: #faf5ff;
+  color: #7e22ce;
 }
 
 .deleteBtn {

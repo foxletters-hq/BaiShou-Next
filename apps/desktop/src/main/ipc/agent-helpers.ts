@@ -230,7 +230,7 @@ export async function buildStreamConfig(
   const behaviorConfig = await settingsManager.get<any>('agent_behavior_config')
   const webSearchConfig = await settingsManager.get<any>('web_search_config')
 
-  let embeddingProviderId = globalModels?.globalEmbeddingProviderId
+  const embeddingProviderId = globalModels?.globalEmbeddingProviderId
   let embeddingModelId = globalModels?.globalEmbeddingModelId
   let embeddingProvider: any = undefined
 

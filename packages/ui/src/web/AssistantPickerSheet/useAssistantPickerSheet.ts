@@ -130,10 +130,7 @@ export function useAssistantPickerSheet({
   const confirmDelete = async () => {
     if (deleteTargetId === null) return
     if (typeof window !== 'undefined' && (window as any).electron) {
-      await (window as any).electron.ipcRenderer.invoke(
-        'agent:delete-assistant',
-        deleteTargetId
-      )
+      await (window as any).electron.ipcRenderer.invoke('agent:delete-assistant', deleteTargetId)
       onRefreshAssistants?.()
       if (deleteTargetId === selectedId && assistants.length > 0) {
         setSelectedId(assistants.find((a) => a.id !== deleteTargetId)?.id || null)

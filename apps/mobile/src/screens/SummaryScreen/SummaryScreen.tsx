@@ -163,7 +163,10 @@ export const SummaryScreen: React.FC = () => {
   const handleStopGeneration = async () => {
     try {
       await stopGeneration()
-      Alert.alert(t('common.success', '成功'), t('summary.generation_stopped', '已停止所有生成任务'))
+      Alert.alert(
+        t('common.success', '成功'),
+        t('summary.generation_stopped', '已停止所有生成任务')
+      )
     } catch (e) {
       console.error('Stop generation failed', e)
       Alert.alert(t('common.error', '错误'), t('summary.stop_failed', '停止生成失败'))

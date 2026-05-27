@@ -51,10 +51,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
   }
 
   const renderTool = (tool: ToolDef) => (
-    <View
-      key={tool.id}
-      style={[styles.toolRow, { borderBottomColor: colors.borderSubtle }]}
-    >
+    <View key={tool.id} style={[styles.toolRow, { borderBottomColor: colors.borderSubtle }]}>
       <View style={styles.toolInfo}>
         <Text style={[styles.toolName, { color: colors.textPrimary }]}>{tool.name}</Text>
         <Text style={[styles.toolId, { color: colors.textTertiary }]}>{tool.id}</Text>

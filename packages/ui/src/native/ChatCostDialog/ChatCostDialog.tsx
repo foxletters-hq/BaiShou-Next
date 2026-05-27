@@ -35,10 +35,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        style={[styles.overlay, { backgroundColor: colors.overlay }]}
-        onPress={onClose}
-      >
+      <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
         <SafeAreaView style={styles.safeArea}>
           <Pressable
             style={[
@@ -96,9 +93,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                 </Text>
               </View>
 
-              <View
-                style={[styles.divider, { backgroundColor: colors.borderSubtle }]}
-              />
+              <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
               {/* Total Stats */}
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>

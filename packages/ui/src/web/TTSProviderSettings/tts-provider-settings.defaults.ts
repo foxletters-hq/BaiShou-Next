@@ -58,4 +58,3 @@ export const getInitialConfigs = (): Record<string, ProviderLocalState> => {
   } catch (e) {}
   return defaults
 }
-

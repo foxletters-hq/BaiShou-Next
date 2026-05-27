@@ -39,8 +39,18 @@ export class DesktopLanSyncService implements ILanSyncService {
   private isVirtualInterface(name: string): boolean {
     const lower = name.toLowerCase()
     return [
-      'clash', 'meta', 'tun', 'wintun', 'wireguard', 'tailscale',
-      'vpn', 'virtual', 'vethernet', 'hyper-v', 'npcap', 'loopback'
+      'clash',
+      'meta',
+      'tun',
+      'wintun',
+      'wireguard',
+      'tailscale',
+      'vpn',
+      'virtual',
+      'vethernet',
+      'hyper-v',
+      'npcap',
+      'loopback'
     ].some((keyword) => lower.includes(keyword))
   }
 

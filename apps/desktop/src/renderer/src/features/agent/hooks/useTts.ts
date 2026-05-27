@@ -3,7 +3,7 @@ import { toast } from '@baishou/ui'
 
 /**
  * 封装 Text-to-Speech (TTS) 音频播放、模式控制、生命周期清理状态的自定义 Hook。
- * 
+ *
  * @param t - 翻译函数
  * @returns 包含 TTS 状态和控制方法的对象
  */
@@ -17,7 +17,7 @@ export function useTts(t: any) {
   const [ttsPlayingMsgId, setTtsPlayingMsgId] = useState<string | null>(null)
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null)
   const ttsModeRef = useRef(ttsMode)
-  
+
   useEffect(() => {
     ttsModeRef.current = ttsMode
   }, [ttsMode])

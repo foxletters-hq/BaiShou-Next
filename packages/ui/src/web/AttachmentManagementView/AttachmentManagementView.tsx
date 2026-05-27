@@ -58,4 +58,3 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
     </div>
   )
 }
-

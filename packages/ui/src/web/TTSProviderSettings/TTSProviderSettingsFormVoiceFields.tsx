@@ -4,11 +4,7 @@ import { Select } from '../Select/Select'
 import styles from './TTSProviderSettings.module.css'
 import type { TTSProviderSettingsViewModel } from './useTTSProviderSettings'
 
-export function TTSProviderSettingsFormVoiceFields({
-  vm
-}: {
-  vm: TTSProviderSettingsViewModel
-}) {
+export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSettingsViewModel }) {
   const {
     t,
     providerType,

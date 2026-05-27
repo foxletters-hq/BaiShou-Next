@@ -19,7 +19,7 @@
   background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
 }
 
-[data-theme="dark"] .headerRowHover:hover {
+[data-theme='dark'] .headerRowHover:hover {
   background-color: rgba(255, 255, 255, 0.04);
 }
 
@@ -84,8 +84,9 @@
 .collapseWrapper {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.3s ease;
+  transition:
+    grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
   opacity: 0;
   overflow: hidden;
 }
@@ -236,16 +237,16 @@
   border-color: var(--color-outline);
 }
 
-[data-theme="dark"] .factsHeaderTitle {
+[data-theme='dark'] .factsHeaderTitle {
   color: rgba(255, 255, 255, 0.6);
 }
 
-[data-theme="dark"] .addFactButton {
+[data-theme='dark'] .addFactButton {
   color: rgba(255, 255, 255, 0.9);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-[data-theme="dark"] .addFactButton:hover {
+[data-theme='dark'] .addFactButton:hover {
   background-color: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.3);
 }
@@ -295,36 +296,35 @@
   gap: 8px;
 }
 
-[data-theme="dark"] .headerText,
-[data-theme="dark"] .inputChip,
-[data-theme="dark"] .actionChip,
-[data-theme="dark"] .factKey {
+[data-theme='dark'] .headerText,
+[data-theme='dark'] .inputChip,
+[data-theme='dark'] .actionChip,
+[data-theme='dark'] .factKey {
   color: rgba(255, 255, 255, 0.9);
 }
 
-[data-theme="dark"] .iconIconButton,
-[data-theme="dark"] .descriptionText,
-[data-theme="dark"] .emptyContainer,
-[data-theme="dark"] .factValue {
+[data-theme='dark'] .iconIconButton,
+[data-theme='dark'] .descriptionText,
+[data-theme='dark'] .emptyContainer,
+[data-theme='dark'] .factValue {
   color: rgba(255, 255, 255, 0.6);
 }
 
-[data-theme="dark"] .inputChip {
+[data-theme='dark'] .inputChip {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-[data-theme="dark"] .iconIconButton:hover,
-[data-theme="dark"] .inputChip:hover {
+[data-theme='dark'] .iconIconButton:hover,
+[data-theme='dark'] .inputChip:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-[data-theme="dark"] .actionChip,
-[data-theme="dark"] .emptyContainer {
+[data-theme='dark'] .actionChip,
+[data-theme='dark'] .emptyContainer {
   background-color: rgba(255, 255, 255, 0.03);
 }
 
-
-[data-theme="dark"] .actionChip:hover {
+[data-theme='dark'] .actionChip:hover {
   background-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -357,7 +357,7 @@
   font-weight: 500;
 }
 
-[data-theme="dark"] .factEditInput {
+[data-theme='dark'] .factEditInput {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.9);
@@ -382,7 +382,7 @@
   color: var(--color-on-surface);
 }
 
-[data-theme="dark"] .modalField label {
+[data-theme='dark'] .modalField label {
   color: rgba(255, 255, 255, 0.9);
 }
 

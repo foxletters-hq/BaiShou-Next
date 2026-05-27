@@ -11,8 +11,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .dialog {
@@ -21,7 +25,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: 400px;
-  background-color: var(--bg-surface, #FFFFFF);
+  background-color: var(--bg-surface, #ffffff);
   border-radius: 28px;
   z-index: 201;
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
@@ -31,8 +35,14 @@
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .title {
@@ -40,7 +50,7 @@
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   line-height: 28px;
 }
 
@@ -84,7 +94,7 @@
 .costValue {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   line-height: 20px;
   font-variant-numeric: tabular-nums;
 }
@@ -97,7 +107,7 @@
 .disclaimer {
   margin: 0;
   font-size: 12px;
-  color: var(--text-tertiary, #94A3B8);
+  color: var(--text-tertiary, #94a3b8);
   line-height: 18px;
 }
 
@@ -110,7 +120,7 @@
 .textButton {
   background: transparent;
   border: none;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
   font-size: 14px;
   font-weight: 500;
   padding: 8px 12px;
@@ -127,8 +137,8 @@
 
 .refreshButton {
   background: transparent;
-  border: 1px solid var(--color-primary, #5BA8F5);
-  color: var(--color-primary, #5BA8F5);
+  border: 1px solid var(--color-primary, #5ba8f5);
+  color: var(--color-primary, #5ba8f5);
   font-size: 12px;
   font-weight: 500;
   padding: 4px 12px;
@@ -150,14 +160,14 @@
   margin-top: 8px;
   padding: 8px 12px;
   font-size: 12px;
-  color: var(--color-error, #EF4444);
+  color: var(--color-error, #ef4444);
   background-color: rgba(var(--color-error-rgb, 239, 68, 68), 0.1);
   border-radius: 8px;
   line-height: 18px;
 }
 
 .sourceLink {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
   text-decoration: none;
   font-weight: 500;
   cursor: pointer;
@@ -181,7 +191,7 @@
 .tooltipText {
   visibility: hidden;
   width: 220px;
-  background-color: var(--bg-surface-elevated, #2D3748);
+  background-color: var(--bg-surface-elevated, #2d3748);
   color: #fff;
   text-align: center;
   border-radius: 6px;
@@ -196,19 +206,21 @@
   font-size: 12px;
   font-weight: normal;
   pointer-events: none;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   line-height: 1.4;
 }
 
 .tooltipText::after {
-  content: "";
+  content: '';
   position: absolute;
   top: 100%;
   left: 50%;
   margin-left: -5px;
   border-width: 5px;
   border-style: solid;
-  border-color: var(--bg-surface-elevated, #2D3748) transparent transparent transparent;
+  border-color: var(--bg-surface-elevated, #2d3748) transparent transparent transparent;
 }
 
 .tooltipContainer:hover .tooltipText {
@@ -224,8 +236,8 @@
 
 .refreshButtonInline {
   background: transparent;
-  border: 1px solid var(--color-primary, #5BA8F5);
-  color: var(--color-primary, #5BA8F5);
+  border: 1px solid var(--color-primary, #5ba8f5);
+  color: var(--color-primary, #5ba8f5);
   font-size: 12px;
   font-weight: 500;
   padding: 4px 10px;

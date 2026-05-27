@@ -110,10 +110,7 @@ export const DiaryAttachmentGrid: React.FC<DiaryAttachmentGridProps> = ({ vm }) 
                     )}
 
                     {/* 多选复选框 */}
-                    <div
-                      className={styles.diaryCardCheckbox}
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <div className={styles.diaryCardCheckbox} onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         className={styles.customCheck}

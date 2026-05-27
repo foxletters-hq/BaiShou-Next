@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { UpdateStatus } from '../updater.types'
 import { UpdateTimeoutError, UpdateCheckError } from '../updater.errors'
 
+const electronAppMock = vi.hoisted(() => ({
+  getVersion: vi.fn(() => '1.0.0'),
+  isPackaged: false
+}))
+
 // Mock electron-updater
 vi.mock('electron-updater', () => ({
   autoUpdater: {
@@ -17,12 +22,8 @@ vi.mock('electron-updater', () => ({
   }
 }))
 
-// Mock electron
 vi.mock('electron', () => ({
-  app: {
-    getVersion: vi.fn(() => '1.0.0'),
-    isPackaged: false
-  },
+  app: electronAppMock,
   BrowserWindow: {
     getAllWindows: vi.fn(() => [])
   }
@@ -54,6 +55,10 @@ describe('UpdaterService', () => {
   })
 
   describe('checkForUpdates', () => {
+    beforeEach(() => {
+      electronAppMock.isPackaged = true
+    })
+
     it('should return hasUpdate true when update is available', async () => {
       const mockUpdateInfo = {
         version: '2.0.0',

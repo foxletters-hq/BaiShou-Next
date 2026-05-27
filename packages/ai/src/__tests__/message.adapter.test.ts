@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { MessageAdapter, type MessageWithParts } from '../agent/message.adapter'
-import { makeAssistantMsg, makeTextPart, makeToolPart, makeUserMsg } from './message.adapter.test.fixtures'
+import {
+  makeAssistantMsg,
+  makeTextPart,
+  makeToolPart,
+  makeUserMsg
+} from './message.adapter.test.fixtures'
 
 describe('MessageAdapter.toVercelMessages', () => {
   describe('助理消息中的工具调用 (tool parts in assistant messages)', () => {

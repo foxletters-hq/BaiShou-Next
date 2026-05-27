@@ -47,10 +47,7 @@ export const AttachmentYearPickerPortal: React.FC<AttachmentYearPickerPortalProp
           >
             <div className={styles.yearModalHeader}>
               <h3>{t('gallery.select_year', '选择年份')}</h3>
-              <button
-                className={styles.yearModalClose}
-                onClick={() => setIsYearPickerOpen(false)}
-              >
+              <button className={styles.yearModalClose} onClick={() => setIsYearPickerOpen(false)}>
                 <X size={18} />
               </button>
             </div>
@@ -80,9 +77,7 @@ export const AttachmentYearPickerPortal: React.FC<AttachmentYearPickerPortalProp
                     <button
                       key={year}
                       ref={isSelected ? activeYearRef : null}
-                      className={`${styles.yearModalGridItem} ${
-                        isSelected ? styles.active : ''
-                      }`}
+                      className={`${styles.yearModalGridItem} ${isSelected ? styles.active : ''}`}
                       onClick={() => {
                         setDiaryYear(year)
                         setIsYearPickerOpen(false)
@@ -102,4 +97,3 @@ export const AttachmentYearPickerPortal: React.FC<AttachmentYearPickerPortalProp
     document.body
   )
 }
-

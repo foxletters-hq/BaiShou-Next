@@ -45,7 +45,10 @@ export class MetadataMigrator {
               logger.info(`[MetadataMigrator] Cleaned root shadow_index file: ${filePath}`)
             }
           } catch (e: any) {
-            logger.error(`[MetadataMigrator] Failed to clean root shadow_index file: ${filePath}`, e)
+            logger.error(
+              `[MetadataMigrator] Failed to clean root shadow_index file: ${filePath}`,
+              e
+            )
           }
         }
       }

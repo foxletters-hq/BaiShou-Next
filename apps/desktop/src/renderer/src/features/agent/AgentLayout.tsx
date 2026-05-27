@@ -4,13 +4,7 @@ import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-do
 import { AgentSidebar } from './components/AgentSidebar'
 import type { AgentAssistant } from './components/AgentSidebar'
 import { useAssistantStore, useSettingsStore, useUserProfileStore } from '@baishou/store'
-import {
-  useToast,
-  AssistantPickerSheet,
-  Modal,
-  AssistantEditPage,
-  useDialog
-} from '@baishou/ui'
+import { useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui'
 import styles from './AgentLayout.module.css'
 import { useAgentSessions } from './hooks/useAgentSessions'
 
@@ -76,7 +70,8 @@ export const AgentLayout: React.FC = () => {
           .then(() => fetchAssistants())
           .then(() => {
             const finalStore = useAssistantStore.getState()
-            const ast = finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0]
+            const ast =
+              finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0]
             if (ast) {
               resolvedAssistantIdRef.current = String(ast.id)
               loadSessions(true, String(ast.id))
@@ -111,23 +106,31 @@ export const AgentLayout: React.FC = () => {
     activeAssistantId = sanitizeAssistantId(standaloneSessionDoc.assistantId)
   }
   if (!activeAssistantId && sessionId) {
-    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId')) || resolvedAssistantIdRef.current
+    activeAssistantId =
+      sanitizeAssistantId(searchParams.get('assistantId')) || resolvedAssistantIdRef.current
   }
 
   const currentAssistant = activeAssistantId
-    ? assistants.find((a) => String(a.id) === String(activeAssistantId)) || assistants.find((a) => a.isDefault)
+    ? assistants.find((a) => String(a.id) === String(activeAssistantId)) ||
+      assistants.find((a) => a.isDefault)
     : assistants.find((a) => a.isDefault) || (assistants.length > 0 ? assistants[0] : undefined)
 
   const mappedAssistant = currentAssistant
     ? {
         id: String(currentAssistant.id),
         name: currentAssistant.name,
-        description: currentAssistant.description || t('agent.default_assistant_desc', '通用 AI 伙伴'),
+        description:
+          currentAssistant.description || t('agent.default_assistant_desc', '通用 AI 伙伴'),
         emoji: currentAssistant.emoji,
         avatarPath: (currentAssistant as any).avatarPath
       }
     : !isAssistantsLoading
-      ? { id: 'default', name: t('agent.default_assistant_name', '默认伙伴'), description: t('agent.default_assistant_desc', '通用 AI 伙伴'), emoji: '🍵' }
+      ? {
+          id: 'default',
+          name: t('agent.default_assistant_name', '默认伙伴'),
+          description: t('agent.default_assistant_desc', '通用 AI 伙伴'),
+          emoji: '🍵'
+        }
       : undefined
 
   useEffect(() => {
@@ -141,7 +144,12 @@ export const AgentLayout: React.FC = () => {
   const pinnedAssistants: AgentAssistant[] = pinnedIds
     .map((id) => assistants.find((a) => String(a.id) === id))
     .filter(Boolean)
-    .map((a) => ({ id: String(a!.id), name: a!.name, emoji: a!.emoji, avatarPath: (a as any).avatarPath }))
+    .map((a) => ({
+      id: String(a!.id),
+      name: a!.name,
+      emoji: a!.emoji,
+      avatarPath: (a as any).avatarPath
+    }))
 
   const handleNewChat = async (targetAssistantId?: string) => {
     const urlAstId = sanitizeAssistantId(searchParams.get('assistantId'))
@@ -157,9 +165,14 @@ export const AgentLayout: React.FC = () => {
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
     if (typeof window !== 'undefined' && window.electron) {
       try {
-        const sessionsList = await window.electron.ipcRenderer.invoke('agent:list-sessions-by-assistant', assistant.id)
+        const sessionsList = await window.electron.ipcRenderer.invoke(
+          'agent:list-sessions-by-assistant',
+          assistant.id
+        )
         if (sessionsList && sessionsList.length > 0) {
-          const sorted = sessionsList.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          const sorted = sessionsList.sort(
+            (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )
           navigate(`/chat/${sorted[0].id}?assistantId=${assistant.id}`)
           return
         }
@@ -179,20 +192,24 @@ export const AgentLayout: React.FC = () => {
     if (typeof window !== 'undefined' && window.electron) {
       await window.electron.ipcRenderer.invoke('agent:delete-sessions', [id])
       loadSessions(true)
-      if (sessionId === id) navigate(currentAssistant?.id ? `/chat?assistantId=${currentAssistant.id}` : '/chat')
+      if (sessionId === id)
+        navigate(currentAssistant?.id ? `/chat?assistantId=${currentAssistant.id}` : '/chat')
     }
   }
 
   const handleBatchDelete = async (ids: string[]) => {
     const ok = await dialog.confirm(
-      t('agent.batch_delete_confirm', '您确定要删除选中的 {{count}} 篇对话吗？此操作不可逆转。', { count: ids.length }),
+      t('agent.batch_delete_confirm', '您确定要删除选中的 {{count}} 篇对话吗？此操作不可逆转。', {
+        count: ids.length
+      }),
       t('common.confirm_delete', '确认删除')
     )
     if (!ok) return
     if (typeof window !== 'undefined' && window.electron) {
       await window.electron.ipcRenderer.invoke('agent:delete-sessions', ids)
       loadSessions(true)
-      if (sessionId && ids.includes(sessionId)) navigate(currentAssistant?.id ? `/chat?assistantId=${currentAssistant.id}` : '/chat')
+      if (sessionId && ids.includes(sessionId))
+        navigate(currentAssistant?.id ? `/chat?assistantId=${currentAssistant.id}` : '/chat')
     }
   }
 
@@ -208,7 +225,11 @@ export const AgentLayout: React.FC = () => {
         searchQuery={searchQuery}
         pinnedAssistants={pinnedAssistants}
         onSearchQueryChanged={setSearchQuery}
-        onSessionSelected={(id) => navigate(currentAssistant?.id ? `/chat/${id}?assistantId=${currentAssistant.id}` : `/chat/${id}`)}
+        onSessionSelected={(id) =>
+          navigate(
+            currentAssistant?.id ? `/chat/${id}?assistantId=${currentAssistant.id}` : `/chat/${id}`
+          )
+        }
         onNewSession={handleNewChat}
         onAssistantSwitched={handleAssistantSwitched}
         onPinSession={async (id) => {
@@ -234,34 +255,96 @@ export const AgentLayout: React.FC = () => {
       {/* ─── 内联重命名 Modal ─── */}
       {renameTarget && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)' }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.3)'
+          }}
           onClick={() => setRenameTarget(null)}
         >
           <div
-            style={{ background: 'var(--bg-surface, #fff)', borderRadius: 16, padding: '24px 24px 16px', width: 320, boxShadow: '0 12px 40px rgba(0,0,0,0.15)' }}
+            style={{
+              background: 'var(--bg-surface, #fff)',
+              borderRadius: 16,
+              padding: '24px 24px 16px',
+              width: 320,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.15)'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: 'var(--text-primary, #1e293b)' }}>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                marginBottom: 12,
+                color: 'var(--text-primary, #1e293b)'
+              }}
+            >
               {t('agent.rename_session', '重命名对话')}
             </div>
             <input
               ref={renameInputRef}
               autoFocus
-              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(148,163,184,0.4)', fontSize: 14, outline: 'none', background: 'var(--bg-surface-highlight, #f8fafc)', color: 'var(--text-primary, #1e293b)', boxSizing: 'border-box' }}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 10,
+                border: '1px solid rgba(148,163,184,0.4)',
+                fontSize: 14,
+                outline: 'none',
+                background: 'var(--bg-surface-highlight, #f8fafc)',
+                color: 'var(--text-primary, #1e293b)',
+                boxSizing: 'border-box'
+              }}
               value={renameTarget.title}
               onChange={(e) => setRenameTarget({ ...renameTarget, title: e.target.value })}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') commitRename((title) => toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title })))
+                if (e.key === 'Enter')
+                  commitRename((title) =>
+                    toast.showSuccess(
+                      t('agent.renamed_toast', '已重命名为「{{title}}」', { title })
+                    )
+                  )
                 if (e.key === 'Escape') setRenameTarget(null)
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)' }} onClick={() => setRenameTarget(null)}>
+              <button
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  color: 'var(--text-secondary)'
+                }}
+                onClick={() => setRenameTarget(null)}
+              >
                 {t('common.cancel', '取消')}
               </button>
               <button
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'var(--color-primary, #5BA8F5)', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
-                onClick={() => commitRename((title) => toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title })))}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'var(--color-primary, #5BA8F5)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
+                onClick={() =>
+                  commitRename((title) =>
+                    toast.showSuccess(
+                      t('agent.renamed_toast', '已重命名为「{{title}}」', { title })
+                    )
+                  )
+                }
               >
                 {t('common.confirm', '确定')}
               </button>
@@ -275,7 +358,10 @@ export const AgentLayout: React.FC = () => {
         isOpen={isPickerOpen}
         assistants={assistants as any}
         currentAssistantId={mappedAssistant?.id}
-        onSelect={(ast) => { setIsPickerOpen(false); handleAssistantSwitched(ast as any) }}
+        onSelect={(ast) => {
+          setIsPickerOpen(false)
+          handleAssistantSwitched(ast as any)
+        }}
         onClose={() => setIsPickerOpen(false)}
         onRefreshAssistants={() => fetchAssistants()}
         pinnedIds={new Set(pinnedIds)}
@@ -285,11 +371,22 @@ export const AgentLayout: React.FC = () => {
             await fetchAssistants()
           }
         }}
-        onCreateNew={() => { setIsPickerOpen(false); setIsCreateAssistantOpen(true) }}
+        onCreateNew={() => {
+          setIsPickerOpen(false)
+          setIsCreateAssistantOpen(true)
+        }}
       />
 
       {/* ─── Assistant Create Modal ─── */}
-      <Modal isOpen={isCreateAssistantOpen} onClose={() => { setIsCreateAssistantOpen(false); setIsPickerOpen(true) }} closeOnOverlayClick={false} style={{ padding: 0 }}>
+      <Modal
+        isOpen={isCreateAssistantOpen}
+        onClose={() => {
+          setIsCreateAssistantOpen(false)
+          setIsPickerOpen(true)
+        }}
+        closeOnOverlayClick={false}
+        style={{ padding: 0 }}
+      >
         <div style={{ width: '80vw', maxWidth: '800px', height: '85vh', overflow: 'hidden' }}>
           <AssistantEditPage
             assistant={null}
@@ -301,7 +398,10 @@ export const AgentLayout: React.FC = () => {
                 setIsCreateAssistantOpen(false)
               }
             }}
-            onBack={() => { setIsCreateAssistantOpen(false); setIsPickerOpen(true) }}
+            onBack={() => {
+              setIsCreateAssistantOpen(false)
+              setIsPickerOpen(true)
+            }}
           />
         </div>
       </Modal>

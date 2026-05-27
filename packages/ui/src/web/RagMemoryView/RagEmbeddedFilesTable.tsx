@@ -75,9 +75,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
           <div className={styles.memoryEntryActionsBlock} style={{ position: 'relative' }}>
             <button
               className={styles.memoryMoreBtn}
-              onClick={() =>
-                setActiveMenuId(activeMenuId === e.embeddingId ? null : e.embeddingId)
-              }
+              onClick={() => setActiveMenuId(activeMenuId === e.embeddingId ? null : e.embeddingId)}
             >
               <MdMoreVert size={20} />
             </button>
@@ -116,8 +114,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                       zIndex: 11
                     }}
                     onMouseEnter={(ev) =>
-                      (ev.currentTarget.style.background =
-                        'var(--bg-color-secondary, #f5f5f5)')
+                      (ev.currentTarget.style.background = 'var(--bg-color-secondary, #f5f5f5)')
                     }
                     onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
                     onClick={() => {
@@ -139,8 +136,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                       zIndex: 11
                     }}
                     onMouseEnter={(ev) =>
-                      (ev.currentTarget.style.background =
-                        'var(--bg-color-secondary, #f5f5f5)')
+                      (ev.currentTarget.style.background = 'var(--bg-color-secondary, #f5f5f5)')
                     }
                     onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
                     onClick={() => {

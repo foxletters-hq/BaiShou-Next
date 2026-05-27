@@ -19,7 +19,9 @@ export function YearMonthPickerModal({
   colors: ReturnType<typeof useNativeTheme>['colors']
 }) {
   const years = React.useMemo(() => getPickerYearRange(), [])
-  const [viewYear, setViewYear] = useState(() => selectedMonth?.getFullYear() ?? new Date().getFullYear())
+  const [viewYear, setViewYear] = useState(
+    () => selectedMonth?.getFullYear() ?? new Date().getFullYear()
+  )
   const yearScrollViewRef = React.useRef<ScrollView>(null)
 
   const currentPhysicalYear = new Date().getFullYear()
@@ -170,7 +172,9 @@ export function YearMonthPickerModal({
                 style={[styles.footerBtn, { backgroundColor: colors.bgSurfaceHighest }]}
                 onPress={handleClear}
               >
-                <Text style={[styles.footerBtnText, { color: colors.textSecondary }]}>查看全部</Text>
+                <Text style={[styles.footerBtnText, { color: colors.textSecondary }]}>
+                  查看全部
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.footerBtn, { backgroundColor: colors.primary }]}

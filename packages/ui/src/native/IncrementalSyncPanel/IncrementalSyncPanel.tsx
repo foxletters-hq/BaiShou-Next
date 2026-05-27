@@ -1,11 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Animated
-} from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native'
 import { useNativeTheme } from '../theme'
 
 export interface IncrementalSyncPanelProps {
@@ -33,8 +27,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
   const { colors, tokens } = useNativeTheme()
   const progressAnim = useRef(new Animated.Value(0)).current
 
-  const progressRatio =
-    progress && progress.total > 0 ? progress.current / progress.total : 0
+  const progressRatio = progress && progress.total > 0 ? progress.current / progress.total : 0
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -62,13 +55,9 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
       ]}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          🔄 增量同步
-        </Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>🔄 增量同步</Text>
         {!isConfigured && (
-          <Text style={[styles.hint, { color: colors.error }]}>
-            未配置同步目标
-          </Text>
+          <Text style={[styles.hint, { color: colors.error }]}>未配置同步目标</Text>
         )}
       </View>
 
@@ -98,12 +87,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
 
       {progress && (
         <View style={styles.progressSection}>
-          <View
-            style={[
-              styles.progressBarBg,
-              { backgroundColor: colors.bgSurfaceNormal }
-            ]}
-          >
+          <View style={[styles.progressBarBg, { backgroundColor: colors.bgSurfaceNormal }]}>
             <Animated.View
               style={[
                 styles.progressBarFill,

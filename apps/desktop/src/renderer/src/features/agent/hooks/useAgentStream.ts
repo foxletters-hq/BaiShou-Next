@@ -83,7 +83,7 @@ function updateSessionState(sessionId: string, updater: (state: SessionStreamSta
 }
 
 export function useAgentStream(currentSessionId?: string): UseAgentStreamResult {
-  const [version, setVersion] = useState(0)
+  const [, setVersion] = useState(0)
   const sessionIdRef = useRef(currentSessionId)
 
   useEffect(() => {

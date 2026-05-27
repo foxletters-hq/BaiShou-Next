@@ -7,11 +7,23 @@ interface UseRagSettingsProps {
   t: any
   toast: any
   confirm: (message: string, title?: string) => Promise<boolean>
-  prompt: (message: string, defaultValue?: string, title?: string, required?: boolean) => Promise<string | null>
+  prompt: (
+    message: string,
+    defaultValue?: string,
+    title?: string,
+    required?: boolean
+  ) => Promise<string | null>
   alert: (message: string, title?: string) => Promise<void>
 }
 
-export function useRagSettings({ settings, t, toast, confirm, prompt, alert }: UseRagSettingsProps) {
+export function useRagSettings({
+  settings,
+  t,
+  toast,
+  confirm,
+  prompt,
+  alert
+}: UseRagSettingsProps) {
   const [ragStats, setRagStats] = useState<any>({
     totalCount: 0,
     currentDimension: 0,

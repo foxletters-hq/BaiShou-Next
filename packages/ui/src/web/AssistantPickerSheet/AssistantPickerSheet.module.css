@@ -1,6 +1,9 @@
 .overlay {
   position: fixed;
-  top: 48px; left: 0; right: 0; bottom: 0;
+  top: 48px;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: var(--bg-overlay);
   backdrop-filter: var(--blur-overlay);
   -webkit-backdrop-filter: var(--blur-overlay);
@@ -14,7 +17,9 @@
 .dialog {
   background: var(--bg-surface);
   border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(var(--color-outline-variant-rgb), 0.4) inset;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(var(--color-outline-variant-rgb), 0.4) inset;
   border-radius: 28px;
   width: 85vw;
   max-width: 900px;
@@ -339,7 +344,11 @@
   width: 60px;
   height: 60px;
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.15), rgba(var(--color-tertiary-rgb), 0.15));
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-primary-rgb), 0.15),
+    rgba(var(--color-tertiary-rgb), 0.15)
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -495,12 +504,22 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes scaleUp {
-  from { opacity: 0; transform: scale(0.95) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 .sliderInput {
   flex: 1;
@@ -528,7 +547,6 @@
   transform: scale(1.2);
 }
 
-
 .toggleSwitch {
   position: relative;
   display: inline-block;
@@ -545,9 +563,12 @@
 .toggleSlider {
   position: absolute;
   cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: rgba(var(--color-outline-variant-rgb), 0.5);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 24px;
 }
 .toggleSlider:before {
@@ -558,9 +579,9 @@
   left: 3px;
   bottom: 3px;
   background-color: var(--bg-surface);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .toggleSwitch input:checked + .toggleSlider {
   background-color: var(--color-primary);

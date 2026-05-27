@@ -573,17 +573,18 @@ export const DiaryScreen: React.FC = () => {
                     style={[
                       styles.filterWeatherButton,
                       {
-                        backgroundColor:
-                          filterWeathers.includes(weather)
-                            ? colors.primary + '20'
-                            : colors.bgSurfaceHighest,
-                        borderColor: filterWeathers.includes(weather) ? colors.primary : 'transparent'
+                        backgroundColor: filterWeathers.includes(weather)
+                          ? colors.primary + '20'
+                          : colors.bgSurfaceHighest,
+                        borderColor: filterWeathers.includes(weather)
+                          ? colors.primary
+                          : 'transparent'
                       }
                     ]}
                     onPress={() => {
-                      setFilterWeathers(prev =>
+                      setFilterWeathers((prev) =>
                         prev.includes(weather)
-                          ? prev.filter(w => w !== weather)
+                          ? prev.filter((w) => w !== weather)
                           : [...prev, weather]
                       )
                     }}
@@ -606,7 +607,7 @@ export const DiaryScreen: React.FC = () => {
               titlePlaceholder={t('diary.all', '全部')}
             />
             <View style={styles.pageSizeSelector}>
-              {[50, 100, 200].map(size => (
+              {[50, 100, 200].map((size) => (
                 <TouchableOpacity
                   key={size}
                   style={[
@@ -618,10 +619,12 @@ export const DiaryScreen: React.FC = () => {
                   ]}
                   onPress={() => setPageSize(size)}
                 >
-                  <Text style={[
-                    styles.pageSizeButtonText,
-                    { color: pageSize === size ? colors.bgSurface : colors.textSecondary }
-                  ]}>
+                  <Text
+                    style={[
+                      styles.pageSizeButtonText,
+                      { color: pageSize === size ? colors.bgSurface : colors.textSecondary }
+                    ]}
+                  >
                     {size}
                   </Text>
                 </TouchableOpacity>
@@ -652,7 +655,7 @@ export const DiaryScreen: React.FC = () => {
             <ScrollView
               style={styles.contentContainer}
               contentContainerStyle={styles.timelinePadding}
-              indicatorStyle={isDark ? "white" : "default"}
+              indicatorStyle={isDark ? 'white' : 'default'}
             >
               {viewMode === 'timeline' ? (
                 filteredEntries.map((entry, index) => renderDiaryCard(entry, index))

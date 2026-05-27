@@ -83,7 +83,7 @@
   margin: 0;
 }
 
-[data-theme="dark"] .markdown-snippet-mask p {
+[data-theme='dark'] .markdown-snippet-mask p {
   color: #f1f5f9 !important;
 }
 
@@ -139,8 +139,12 @@
   gap: 4px;
 }
 
-.edit-btn { color: var(--text-secondary); }
-.delete-btn { color: #EF4444; } /* Red for delete */
+.edit-btn {
+  color: var(--text-secondary);
+}
+.delete-btn {
+  color: #ef4444;
+} /* Red for delete */
 
 /* 媒体指示器样式 */
 .diary-card-media-indicator {

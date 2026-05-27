@@ -10,9 +10,9 @@
   gap: 8px;
   padding: 6px 12px;
   border-radius: 10px;
-  background: var(--color-surface, #FFFFFF);
+  background: var(--color-surface, #ffffff);
   border: 1px solid rgba(208, 208, 208, 0.4);
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface, #1a1a1a);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -26,7 +26,7 @@
 }
 
 .placeholderText {
-  color: var(--color-on-surface-variant, #64748B);
+  color: var(--color-on-surface-variant, #64748b);
   font-weight: 400;
 }
 
@@ -35,7 +35,7 @@
 }
 
 .monthText {
-  color: var(--color-on-surface-variant, #64748B);
+  color: var(--color-on-surface-variant, #64748b);
 }
 
 .icon {
@@ -64,7 +64,7 @@
 
 .modalContent {
   width: 420px;
-  background: var(--color-surface, #FFFFFF);
+  background: var(--color-surface, #ffffff);
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   padding: 24px;
@@ -111,7 +111,7 @@
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface, #1a1a1a);
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
@@ -119,17 +119,17 @@
 
 .paneItem:hover {
   background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .paneItemActive {
   background: rgba(91, 168, 245, 0.15);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
   font-weight: 600;
 }
 
 .paneItemSelected {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
   font-weight: 600;
 }
 
@@ -140,27 +140,27 @@
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface, #1a1a1a);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .monthBtn:hover {
   background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .monthBtnSelected {
-  background: var(--color-primary, #5BA8F5) !important;
-  color: #FFFFFF !important;
+  background: var(--color-primary, #5ba8f5) !important;
+  color: #ffffff !important;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
 }
 
 .monthBtnCurrent {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
   font-weight: 600;
-  border: 1px solid var(--color-primary, #5BA8F5);
+  border: 1px solid var(--color-primary, #5ba8f5);
 }
 
 .divider {
@@ -189,17 +189,17 @@
 
 .actionBtnSecondary {
   background: rgba(0, 0, 0, 0.04);
-  color: var(--color-on-surface-variant, #64748B);
+  color: var(--color-on-surface-variant, #64748b);
 }
 
 .actionBtnSecondary:hover {
   background: rgba(0, 0, 0, 0.08);
-  color: var(--color-on-surface, #1A1A1A);
+  color: var(--color-on-surface, #1a1a1a);
 }
 
 .actionBtnPrimary {
   background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .actionBtnPrimary:hover {
@@ -207,37 +207,39 @@
 }
 
 /* Dark mode adjustments */
-[data-theme="dark"] .triggerBtn {
+[data-theme='dark'] .triggerBtn {
   background: var(--color-surface-dark, #121212);
   border-color: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.9);
 }
-[data-theme="dark"] .triggerBtn:hover {
+[data-theme='dark'] .triggerBtn:hover {
   background: rgba(255, 255, 255, 0.05);
 }
-[data-theme="dark"] .modalContent {
-  background: var(--color-surface-dark, #1A1A1A);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+[data-theme='dark'] .modalContent {
+  background: var(--color-surface-dark, #1a1a1a);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
 }
-[data-theme="dark"] .yearPane {
+[data-theme='dark'] .yearPane {
   border-color: rgba(255, 255, 255, 0.1);
 }
-[data-theme="dark"] .paneItem,
-[data-theme="dark"] .monthBtn {
+[data-theme='dark'] .paneItem,
+[data-theme='dark'] .monthBtn {
   color: rgba(255, 255, 255, 0.9);
 }
-[data-theme="dark"] .paneItem:hover,
-[data-theme="dark"] .monthBtn:hover {
+[data-theme='dark'] .paneItem:hover,
+[data-theme='dark'] .monthBtn:hover {
   background: rgba(255, 255, 255, 0.1);
 }
-[data-theme="dark"] .actionBtnSecondary {
+[data-theme='dark'] .actionBtnSecondary {
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.7);
 }
-[data-theme="dark"] .actionBtnSecondary:hover {
+[data-theme='dark'] .actionBtnSecondary:hover {
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.9);
 }
-[data-theme="dark"] .divider {
+[data-theme='dark'] .divider {
   background: rgba(255, 255, 255, 0.1);
 }

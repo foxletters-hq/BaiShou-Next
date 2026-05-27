@@ -17,134 +17,140 @@ import {
 } from './ai-model-services.constants'
 
 export function useAIModelServicesView(props: AIModelServicesViewProps) {
-  const { providers, onUpdateProvider, onDeleteProvider, onReorderProviders, onTestConnection, onFetchModels } =
-    props
+  const {
+    providers,
+    onUpdateProvider,
+    onDeleteProvider,
+    onReorderProviders,
+    onTestConnection,
+    onFetchModels
+  } = props
   const { t } = useTranslation()
   const dialog = useDialog()
   const toast = useToast()
   const { isDark } = useTheme()
 
   const BASE_KNOWN_PROVIDERS = BASE_KNOWN_PROVIDERS_CONFIG.map((p) => ({
-  ...p,
-  name: PROVIDER_NAME_I18N_MAP[p.id] ? t(PROVIDER_NAME_I18N_MAP[p.id], p.name) : p.name,
-  iconUrl: getProviderIcon(p.id, isDark)
-}))
-
-const getCombinedProviders = Object.keys(providers).filter(
-  (id) => !BASE_KNOWN_PROVIDERS.find((b) => b.id === id)
-)
-
-const allProvidersList = [
-  ...BASE_KNOWN_PROVIDERS,
-  ...getCombinedProviders.map((id) => ({
-    id,
-    name: providers[id]?.name || id.toUpperCase(),
-    iconUrl: getProviderIcon(id, isDark),
-    defaultBase: providers[id]?.apiBaseUrl || '',
-    isSystem: false,
-    sortOrder: providers[id]?.sortOrder ?? 999
-  }))
-]
-
-const sortedProvidersList = [...allProvidersList]
-  .map((p) => ({
     ...p,
-    sortOrder: providers[p.id]?.sortOrder ?? (p as any).sortOrder ?? 999,
-    enabled: providers[p.id]?.enabled ?? false
+    name: PROVIDER_NAME_I18N_MAP[p.id] ? t(PROVIDER_NAME_I18N_MAP[p.id], p.name) : p.name,
+    iconUrl: getProviderIcon(p.id, isDark)
   }))
-  .sort((a, b) => {
-    // 已启用的排在前面，未启用的排在后面
-    if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
-    return a.sortOrder - b.sortOrder
+
+  const getCombinedProviders = Object.keys(providers).filter(
+    (id) => !BASE_KNOWN_PROVIDERS.find((b) => b.id === id)
+  )
+
+  const allProvidersList = [
+    ...BASE_KNOWN_PROVIDERS,
+    ...getCombinedProviders.map((id) => ({
+      id,
+      name: providers[id]?.name || id.toUpperCase(),
+      iconUrl: getProviderIcon(id, isDark),
+      defaultBase: providers[id]?.apiBaseUrl || '',
+      isSystem: false,
+      sortOrder: providers[id]?.sortOrder ?? 999
+    }))
+  ]
+
+  const sortedProvidersList = [...allProvidersList]
+    .map((p) => ({
+      ...p,
+      sortOrder: providers[p.id]?.sortOrder ?? (p as any).sortOrder ?? 999,
+      enabled: providers[p.id]?.enabled ?? false
+    }))
+    .sort((a, b) => {
+      // 已启用的排在前面，未启用的排在后面
+      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
+      return a.sortOrder - b.sortOrder
+    })
+
+  const firstProviderId = sortedProvidersList[0]?.id
+  const [selectedProviderId, setSelectedProviderId] = useState<string>(firstProviderId || '')
+
+  const [localFormData, setLocalFormData] = useState<{
+    baseUrl: string
+    apiKey: string
+  }>({
+    baseUrl: '',
+    apiKey: ''
   })
 
-const firstProviderId = sortedProvidersList[0]?.id
-const [selectedProviderId, setSelectedProviderId] = useState<string>(firstProviderId || '')
+  const [isObscure, setIsObscure] = useState(true)
+  const [isTesting, setIsTesting] = useState(false)
+  const [isFetchingModels, setIsFetchingModels] = useState(false)
 
-const [localFormData, setLocalFormData] = useState<{
-  baseUrl: string
-  apiKey: string
-}>({
-  baseUrl: '',
-  apiKey: ''
-})
+  const [localProvidersList, setLocalProvidersList] = useState(sortedProvidersList)
+  useEffect(() => {
+    setLocalProvidersList(sortedProvidersList)
+  }, [providers])
 
-const [isObscure, setIsObscure] = useState(true)
-const [isTesting, setIsTesting] = useState(false)
-const [isFetchingModels, setIsFetchingModels] = useState(false)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8
+      }
+    })
+  )
 
-const [localProvidersList, setLocalProvidersList] = useState(sortedProvidersList)
-useEffect(() => {
-  setLocalProvidersList(sortedProvidersList)
-}, [providers])
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
-const sensors = useSensors(
-  useSensor(PointerSensor, {
-    activationConstraint: {
-      distance: 8
-    }
-  })
-)
+  const handleDragStart = (event: any) => {
+    console.log('[Drag Tracking] dnd-kit DragStart:', event.active.id)
+    setActiveDragId(event.active.id as string)
+  }
 
-const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const handleDragEnd = (event: any) => {
+    setActiveDragId(null)
+    const { active, over } = event
+    console.log('[Drag Tracking] dnd-kit DragEnd result:', event)
+    if (over && active.id !== over.id) {
+      const oldIndex = localProvidersList.findIndex((p) => p.id === active.id)
+      const newIndex = localProvidersList.findIndex((p) => p.id === over.id)
+      const updatedList = arrayMove(localProvidersList, oldIndex, newIndex)
+      setLocalProvidersList(updatedList)
 
-const handleDragStart = (event: any) => {
-  console.log('[Drag Tracking] dnd-kit DragStart:', event.active.id)
-  setActiveDragId(event.active.id as string)
-}
-
-const handleDragEnd = (event: any) => {
-  setActiveDragId(null)
-  const { active, over } = event
-  console.log('[Drag Tracking] dnd-kit DragEnd result:', event)
-  if (over && active.id !== over.id) {
-    const oldIndex = localProvidersList.findIndex((p) => p.id === active.id)
-    const newIndex = localProvidersList.findIndex((p) => p.id === over.id)
-    const updatedList = arrayMove(localProvidersList, oldIndex, newIndex)
-    setLocalProvidersList(updatedList)
-
-    if (onReorderProviders) {
-      console.log(`[Drag Tracking] dnd-kit invoking onReorderProviders with current ordered IDs`)
-      onReorderProviders(updatedList.map((x) => x.id))
+      if (onReorderProviders) {
+        console.log(`[Drag Tracking] dnd-kit invoking onReorderProviders with current ordered IDs`)
+        onReorderProviders(updatedList.map((x) => x.id))
+      }
     }
   }
-}
 
-const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false)
-const [addModalData, setAddModalData] = useState({
-  name: '',
-  type: 'openai',
-  baseUrl: ''
-})
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false)
+  const [addModalData, setAddModalData] = useState({
+    name: '',
+    type: 'openai',
+    baseUrl: ''
+  })
 
-const [isTestModalOpen, setIsTestModalOpen] = useState(false)
-const [testModelId, setTestModelId] = useState('')
-const [testModelOptions, setTestModelOptions] = useState<string[]>([])
-const [isTestModelDropdownOpen, setIsTestModelDropdownOpen] = useState(false)
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false)
+  const [testModelId, setTestModelId] = useState('')
+  const [testModelOptions, setTestModelOptions] = useState<string[]>([])
+  const [isTestModelDropdownOpen, setIsTestModelDropdownOpen] = useState(false)
 
-const activeProviderMeta =
-  allProvidersList.find((p) => p.id === selectedProviderId) || allProvidersList[0]
-const activeConfig = providers[selectedProviderId] || {
-  providerId: selectedProviderId,
-  enabled: false,
-  apiKey: '',
-  apiBaseUrl: ''
-}
+  const activeProviderMeta =
+    allProvidersList.find((p) => p.id === selectedProviderId) || allProvidersList[0]
+  const activeConfig = providers[selectedProviderId] || {
+    providerId: selectedProviderId,
+    enabled: false,
+    apiKey: '',
+    apiBaseUrl: ''
+  }
 
-const [delayedEnabledModels, setDelayedEnabledModels] = useState<string[]>(
-  activeConfig.enabledModels || []
-)
+  const [delayedEnabledModels, setDelayedEnabledModels] = useState<string[]>(
+    activeConfig.enabledModels || []
+  )
 
-useEffect(() => {
-  // 立即在一开始同步，但如果是用户点击引发的变化，则延迟 350ms 排序，让打钩动画飞一会
-  const t = setTimeout(() => {
-    setDelayedEnabledModels(activeConfig.enabledModels || [])
-  }, 350)
-  return () => clearTimeout(t)
-}, [activeConfig.enabledModels, selectedProviderId])
+  useEffect(() => {
+    // 立即在一开始同步，但如果是用户点击引发的变化，则延迟 350ms 排序，让打钩动画飞一会
+    const t = setTimeout(() => {
+      setDelayedEnabledModels(activeConfig.enabledModels || [])
+    }, 350)
+    return () => clearTimeout(t)
+  }, [activeConfig.enabledModels, selectedProviderId])
 
-const [prevSelectedProviderId, setPrevSelectedProviderId] = useState<string>(selectedProviderId)
+  const [prevSelectedProviderId, setPrevSelectedProviderId] = useState<string>(selectedProviderId)
 
   const actions = useAIModelProviderActions({
     t,
@@ -233,7 +239,7 @@ const [prevSelectedProviderId, setPrevSelectedProviderId] = useState<string>(sel
     activeConfig,
     delayedEnabledModels,
     setDelayedEnabledModels,
-    ...actions,
+    ...actions
   }
 }
 

@@ -42,7 +42,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @baishou/desktop exec eslint . --cache --quiet
+      - run: pnpm --filter @baishou/desktop exec eslint -c ../../eslint.desktop.ci.mjs . --cache --quiet
 
   lint-mobile:
     name: Lint (mobile)
@@ -59,6 +59,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @baishou/mobile exec eslint . --cache --quiet
+        env:
+          BAISHOU_ESLINT_PROFILE: mobile
 
   format:
     name: Prettier

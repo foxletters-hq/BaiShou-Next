@@ -12,15 +12,8 @@ export interface CloudSyncConfigFormProps {
 }
 
 export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) => {
-  const {
-    t,
-    config,
-    showPassword,
-    setShowPassword,
-    setShowConfig,
-    updateField,
-    handleSaveConfig
-  } = vm
+  const { t, config, showPassword, setShowPassword, setShowConfig, updateField, handleSaveConfig } =
+    vm
 
   const sectionTitle =
     config.target === 'local'
@@ -62,7 +55,11 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
     >
       <div className={styles.configPageWrapper}>
         <div className={styles.configAppBar}>
-          <button type="button" className={styles.configBackButton} onClick={() => setShowConfig(false)}>
+          <button
+            type="button"
+            className={styles.configBackButton}
+            onClick={() => setShowConfig(false)}
+          >
             <ArrowLeft size={24} />
           </button>
           <div className={styles.configAppTitle}>{t('data_sync.config_title', '数据备份配置')}</div>
@@ -117,7 +114,9 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
             {config.target === 'webdav' && (
               <div className={styles.configGrid}>
                 <div className={styles.formField}>
-                  <label style={labelStyle}>{t('data_sync.webdav_url_label', 'WebDAV URL 地址')}</label>
+                  <label style={labelStyle}>
+                    {t('data_sync.webdav_url_label', 'WebDAV URL 地址')}
+                  </label>
                   <input
                     style={inputStyle}
                     value={config.webdavUrl}
@@ -125,7 +124,9 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                   />
                 </div>
                 <div className={styles.formField}>
-                  <label style={labelStyle}>{t('data_sync.webdav_path_label', 'Base Path 子路径')}</label>
+                  <label style={labelStyle}>
+                    {t('data_sync.webdav_path_label', 'Base Path 子路径')}
+                  </label>
                   <input
                     style={inputStyle}
                     value={config.webdavPath}
@@ -133,7 +134,9 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                   />
                 </div>
                 <div className={styles.formField}>
-                  <label style={labelStyle}>{t('data_sync.webdav_user_label', 'Username 用户名')}</label>
+                  <label style={labelStyle}>
+                    {t('data_sync.webdav_user_label', 'Username 用户名')}
+                  </label>
                   <input
                     style={inputStyle}
                     value={config.webdavUsername}
@@ -155,7 +158,9 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
             {config.target === 's3' && (
               <div className={styles.configGrid}>
                 <div className={styles.formField}>
-                  <label style={labelStyle}>{t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}</label>
+                  <label style={labelStyle}>
+                    {t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}
+                  </label>
                   <input
                     style={inputStyle}
                     value={config.s3Endpoint}
@@ -163,7 +168,9 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                   />
                 </div>
                 <div className={styles.formField}>
-                  <label style={labelStyle}>{t('data_sync.s3_region_label', 'Region 区域名')}</label>
+                  <label style={labelStyle}>
+                    {t('data_sync.s3_region_label', 'Region 区域名')}
+                  </label>
                   <input
                     style={inputStyle}
                     value={config.s3Region}
@@ -171,7 +178,9 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                   />
                 </div>
                 <div className={styles.formField}>
-                  <label style={labelStyle}>{t('data_sync.s3_bucket_label', 'Bucket 存储桶')}</label>
+                  <label style={labelStyle}>
+                    {t('data_sync.s3_bucket_label', 'Bucket 存储桶')}
+                  </label>
                   <input
                     style={inputStyle}
                     value={config.s3Bucket}

@@ -1,10 +1,7 @@
 import { useEffect, type RefObject } from 'react'
 import type { EditorView } from '@codemirror/view'
 import type { TFunction } from 'i18next'
-import {
-  setImageActionCallback,
-  setUpdateImageWidthCallback
-} from './codeMirrorDecorations'
+import { setImageActionCallback, setUpdateImageWidthCallback } from './codeMirrorDecorations'
 import { parseImageMarkdown, buildImageMarkdown } from './image-utils'
 import type { useDialog } from '../Dialog'
 import type { useToast } from '../Toast/useToast'

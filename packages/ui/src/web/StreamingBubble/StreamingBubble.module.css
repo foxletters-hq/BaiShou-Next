@@ -143,8 +143,12 @@
 }
 
 @keyframes pulseOpacity {
-  0% { opacity: 0.4; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .spinner {
@@ -157,7 +161,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Bouncing Dots */
@@ -185,8 +191,12 @@
 }
 
 @keyframes bounce {
-  from { transform: translateY(0); }
-  to { transform: translateY(-6px); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-6px);
+  }
 }
 
 /* --- Added for B1.2 Streaming Status Effects --- */
@@ -194,7 +204,12 @@
   margin-top: 4px;
   padding: 10px 16px;
   border-radius: 8px;
-  background: linear-gradient(90deg, rgba(128,128,128,0.05) 25%, rgba(128,128,128,0.15) 50%, rgba(128,128,128,0.05) 75%);
+  background: linear-gradient(
+    90deg,
+    rgba(128, 128, 128, 0.05) 25%,
+    rgba(128, 128, 128, 0.15) 50%,
+    rgba(128, 128, 128, 0.05) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite linear;
   color: var(--text-secondary);
@@ -205,8 +220,12 @@
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .errorBox {
@@ -250,7 +269,7 @@
 .stopBtnWrap {
   margin-top: 12px;
   display: flex;
-  justify-content: flex-start; 
+  justify-content: flex-start;
   width: 100%;
 }
 

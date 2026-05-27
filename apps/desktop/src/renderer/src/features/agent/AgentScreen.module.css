@@ -34,13 +34,13 @@
 .modelIcon {
   font-size: 16px;
   margin-right: 8px;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .modelName {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   margin-right: 4px;
 }
 
@@ -116,7 +116,8 @@
   justify-content: center;
   cursor: pointer;
   color: var(--text-secondary, #64748b);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   pointer-events: auto;
 }

@@ -96,7 +96,11 @@ export const SessionAttachmentPane: React.FC<SessionAttachmentPaneProps> = ({ vm
             </button>
           )}
           {displayList.length > 0 && (
-            <button type="button" className={`${styles.actionBtn} ${styles.btnOutlined}`} onClick={handleSelectAll}>
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${styles.btnOutlined}`}
+              onClick={handleSelectAll}
+            >
               <CheckSquare size={16} />
               {selectedIds.size === pagedSessionList.length
                 ? t('settings.attachment_deselect_all', '取消全选')

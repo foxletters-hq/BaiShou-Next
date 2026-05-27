@@ -40,7 +40,7 @@ export function registerDiaryAttachmentIPC() {
         const results = await Promise.all(
           args.attachments.map(async (att) => {
             try {
-              let fileName = att.fileName || 'unknown'
+              const fileName = att.fileName || 'unknown'
               let filePath: string
 
               if (att.filePath) {

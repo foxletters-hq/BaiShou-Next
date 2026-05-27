@@ -1,12 +1,5 @@
 import React, { useState } from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  type ViewProps,
-} from 'react-native'
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
@@ -69,8 +62,8 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
           styles.assistantCard,
           {
             backgroundColor: colors.bgSurfaceNormal,
-            borderColor: isExpanded ? colors.primary : colors.borderSubtle,
-          },
+            borderColor: isExpanded ? colors.primary : colors.borderSubtle
+          }
         ]}
       >
         <TouchableOpacity
@@ -78,9 +71,7 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
           activeOpacity={0.7}
           style={styles.assistantHeader}
         >
-          <Text style={[styles.assistantName, { color: colors.textPrimary }]}>
-            {item.name}
-          </Text>
+          <Text style={[styles.assistantName, { color: colors.textPrimary }]}>{item.name}</Text>
           <View style={styles.assistantHeaderRight}>
             <View style={[styles.countBadge, { backgroundColor: colors.primaryLight + '30' }]}>
               <Text style={[styles.countBadgeText, { color: colors.primary }]}>
@@ -110,8 +101,8 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
                     style={[
                       styles.modelRow,
                       {
-                        backgroundColor: isChecked ? colors.primaryLight + '20' : 'transparent',
-                      },
+                        backgroundColor: isChecked ? colors.primaryLight + '20' : 'transparent'
+                      }
                     ]}
                   >
                     <View
@@ -119,8 +110,8 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
                         styles.checkbox,
                         {
                           borderColor: isChecked ? colors.primary : colors.borderSubtle,
-                          backgroundColor: isChecked ? colors.primary : 'transparent',
-                        },
+                          backgroundColor: isChecked ? colors.primary : 'transparent'
+                        }
                       ]}
                     >
                       {isChecked && <Text style={styles.checkmark}>✓</Text>}
@@ -128,7 +119,7 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
                     <Text
                       style={[
                         styles.modelName,
-                        { color: isChecked ? colors.primary : colors.textSecondary },
+                        { color: isChecked ? colors.primary : colors.textSecondary }
                       ]}
                     >
                       {model.name}
@@ -175,39 +166,39 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   subtitle: {
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 4
   },
   listContent: {
-    padding: 12,
+    padding: 12
   },
   assistantCard: {
     borderRadius: 10,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   assistantHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    padding: 14
   },
   assistantName: {
     fontSize: 15,
     fontWeight: '600',
-    flex: 1,
+    flex: 1
   },
   assistantHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 8
   },
   countBadge: {
     minWidth: 24,
@@ -215,27 +206,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 6
   },
   countBadgeText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   expandIcon: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   modelList: {
     borderTopWidth: 1,
     paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 8
   },
   modelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 8,
-    borderRadius: 8,
+    borderRadius: 8
   },
   checkbox: {
     width: 20,
@@ -244,27 +235,27 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 10
   },
   checkmark: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   modelName: {
-    fontSize: 14,
+    fontSize: 14
   },
   noModels: {
     textAlign: 'center',
     paddingVertical: 12,
-    fontSize: 13,
+    fontSize: 13
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 40
   },
   emptyText: {
-    fontSize: 14,
-  },
+    fontSize: 14
+  }
 })

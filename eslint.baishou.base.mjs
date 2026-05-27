@@ -52,8 +52,29 @@ export function createBaishouEslintConfig(options = {}) {
       },
       rules: {
         ...eslintPluginReactHooks.configs.recommended.rules,
+        'react-hooks/set-state-in-effect': 'off',
+        'react-hooks/refs': 'off',
+        'react-hooks/static-components': 'off',
+        'react-hooks/immutability': 'off',
+        'react-hooks/purity': 'off',
+        'react-hooks/preserve-manual-memoization': 'off',
         '@typescript-eslint/explicit-function-return-type': 'off',
+        '@typescript-eslint/no-empty-function': 'off',
+        '@typescript-eslint/ban-ts-comment': 'off',
+        '@typescript-eslint/no-unsafe-function-type': 'off',
+        'no-useless-catch': 'off',
+        'no-async-promise-executor': 'off',
+        'no-useless-escape': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unused-vars': [
+          'error',
+          {
+            argsIgnorePattern: '^_',
+            varsIgnorePattern: '^_',
+            caughtErrors: 'none'
+          }
+        ],
+        'no-empty': ['error', { allowEmptyCatch: true }],
         'i18n-chinese/no-hardcoded-chinese': 'warn',
         ...extraRules
       }

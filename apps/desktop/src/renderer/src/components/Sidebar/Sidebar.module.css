@@ -33,8 +33,6 @@
   object-fit: cover;
 }
 
-
-
 .brandText {
   display: flex;
   flex-direction: column;
@@ -71,7 +69,7 @@
 }
 
 .dragging {
-  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
   background-color: var(--bg-surface);
   border-radius: 8px;
   z-index: 10;

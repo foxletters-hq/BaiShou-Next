@@ -51,10 +51,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         onUpdateField={panel.updateField}
       />
 
-      <CloudSyncMaxBackupField
-        localConfig={panel.localConfig}
-        onUpdateField={panel.updateField}
-      />
+      <CloudSyncMaxBackupField localConfig={panel.localConfig} onUpdateField={panel.updateField} />
 
       <TouchableOpacity
         style={[

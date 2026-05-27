@@ -38,7 +38,10 @@ export const SessionManagementAppBar: React.FC<SessionManagementAppBarProps> = (
 
         {isMultiSelect ? (
           <>
-            <button className={`${styles.actionBtn} ${styles.actionBtnPrimary}`} onClick={onSelectAll}>
+            <button
+              className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+              onClick={onSelectAll}
+            >
               {t('agent.chat.select_all', '全选')}
             </button>
             <button

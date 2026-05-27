@@ -43,7 +43,12 @@ export function buildContextChainTabs(
   return [
     { key: 'context', label: t('agent.chat.tab_context', '上下文') },
     ...(compressedContent
-      ? [{ key: 'compressed' as ContextChainTab, label: t('agent.chat.tab_compressed', '压缩内容') }]
+      ? [
+          {
+            key: 'compressed' as ContextChainTab,
+            label: t('agent.chat.tab_compressed', '压缩内容')
+          }
+        ]
       : []),
     ...(originalContent
       ? [{ key: 'original' as ContextChainTab, label: t('agent.chat.tab_original', '原文') }]

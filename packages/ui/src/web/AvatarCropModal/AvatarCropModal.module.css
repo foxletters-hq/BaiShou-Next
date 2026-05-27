@@ -52,7 +52,7 @@
   font-weight: 500;
 }
 
-.sliderGroup input[type="range"] {
+.sliderGroup input[type='range'] {
   flex: 1;
   margin: 0;
   accent-color: var(--color-primary);
@@ -94,6 +94,12 @@
 }
 
 @keyframes cropFadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

@@ -26,7 +26,7 @@
 .settingLabel {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
 }
 
 .settingHint {
@@ -47,8 +47,8 @@
   flex-shrink: 0;
 }
 
-.switch[data-on="true"] {
-  background-color: var(--color-primary, #5BA8F5);
+.switch[data-on='true'] {
+  background-color: var(--color-primary, #5ba8f5);
 }
 
 .switchHandle {
@@ -60,10 +60,10 @@
   top: 2px;
   left: 2px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.switch[data-on="true"] .switchHandle {
+.switch[data-on='true'] .switchHandle {
   transform: translateX(20px);
 }
 
@@ -78,7 +78,7 @@
 .valueDisplay {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
   font-variant-numeric: tabular-nums;
   min-width: 36px;
   text-align: right;
@@ -86,7 +86,7 @@
 
 .rangeInput {
   flex: 1;
-  accent-color: var(--color-primary, #5BA8F5);
+  accent-color: var(--color-primary, #5ba8f5);
   height: 6px;
   cursor: pointer;
 }

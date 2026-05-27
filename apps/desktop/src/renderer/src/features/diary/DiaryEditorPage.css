@@ -5,7 +5,7 @@
 .diary-editor-page-container {
   height: 100%;
   position: relative;
-  background-color: var(--bg-surface-lowest, #F8FAFC);
+  background-color: var(--bg-surface-lowest, #f8fafc);
   display: flex;
   flex-direction: column;
 }
@@ -23,13 +23,15 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) inset;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) inset;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-primary, #1E293B);
+  color: var(--text-primary, #1e293b);
 }
 
 .toast-icon {
@@ -40,16 +42,20 @@
 
 .toast-spin {
   animation: spin 1s linear infinite;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .toast-success {
-  color: var(--color-secondary, #10B981);
+  color: var(--color-secondary, #10b981);
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .dd-btn-confirm-danger {

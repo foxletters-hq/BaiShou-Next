@@ -197,7 +197,9 @@ export class DesktopArchiveService implements IArchiveService {
           const actualDbPath =
             getAppDbPath() || path.join(app.getPath('userData'), 'baishou_agent.db')
           await fsp.copyFile(extractedDbPath, actualDbPath)
-          await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {})
+          await fsp
+            .rm(path.join(rootDir, 'database'), { recursive: true, force: true })
+            .catch(() => {})
         }
       } catch (e: any) {
         logger.error('Failed to restore database from archive', e)
@@ -233,7 +235,9 @@ export class DesktopArchiveService implements IArchiveService {
         }
 
         await installDatabaseSchema(restoredDb)
-        logger.info('[ArchiveService] Next Database connection successfully reconnected and schema migrated.')
+        logger.info(
+          '[ArchiveService] Next Database connection successfully reconnected and schema migrated.'
+        )
       } catch (dbErr: any) {
         logger.error('[ArchiveService] Failed to reconnect database for Next:', dbErr)
         throw dbErr

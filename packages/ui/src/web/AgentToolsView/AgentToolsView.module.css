@@ -1,16 +1,16 @@
 .container {
   /* Adapting to BaiShou-Next's global theme variables, defaulting to light mode (dark text) */
   --theme-primary: var(--color-primary);
-  --theme-on-primary: var(--color-on-primary, #FFFFFF);
+  --theme-on-primary: var(--color-on-primary, #ffffff);
   --theme-primary-container-50: rgba(91, 168, 245, 0.15);
-  
+
   --theme-on-surface: var(--text-primary);
   --theme-on-surface-variant: var(--text-secondary);
-  
+
   --theme-surface-container-low: var(--bg-surface);
   --theme-surface-container-low-40: var(--bg-surface-high);
   --theme-surface-container-highest: var(--bg-surface-highest);
-  
+
   --theme-outline: var(--border-strong);
   --theme-outline-variant-50: var(--border-subtle);
   --theme-outline-30: var(--border-subtle);
@@ -400,19 +400,19 @@
   right: 0;
   bottom: 0;
   background-color: var(--theme-surface-variant);
-  transition: .2s;
+  transition: 0.2s;
   border-radius: 32px;
   border: 2px solid var(--theme-outline);
 }
 .slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 16px;
   width: 16px;
   left: 6px;
   bottom: 6px;
   background-color: var(--theme-outline);
-  transition: .2s;
+  transition: 0.2s;
   border-radius: 50%;
 }
 input:checked + .slider {
@@ -435,10 +435,9 @@ input:checked + .slider:before {
   .slider:before {
     background-color: rgba(148, 163, 184, 0.4);
   }
-  
+
   .toolCard.disabled {
     background-color: rgba(255, 255, 255, 0.05);
     opacity: 0.8;
   }
 }
-

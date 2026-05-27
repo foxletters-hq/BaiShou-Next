@@ -78,7 +78,13 @@ export class ShadowIndexUpsertOps {
       throw new Error('[ShadowIndex] upsert 返回了空 ID')
     }
 
-    await syncFtsRowAsync(this.database, rowId, rawContent, tags, '[ShadowIndex] FTS 同步失败 (非阻塞)')
+    await syncFtsRowAsync(
+      this.database,
+      rowId,
+      rawContent,
+      tags,
+      '[ShadowIndex] FTS 同步失败 (非阻塞)'
+    )
     return rowId
   }
 
@@ -127,7 +133,13 @@ export class ShadowIndexUpsertOps {
           const rowId = result[0]?.id
           if (rowId != null) {
             rowIds.push(rowId)
-            await syncFtsRowAsync(tx, rowId, rawContent, tags, `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]`)
+            await syncFtsRowAsync(
+              tx,
+              rowId,
+              rawContent,
+              tags,
+              `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]`
+            )
           }
         }
       })

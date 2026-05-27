@@ -91,7 +91,10 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
               </div>
               <div className={styles.folderInfo}>
                 <div className={styles.folderTitleRow}>
-                  <span className={styles.folderTitle} title={group.sessionTitle || group.sessionId}>
+                  <span
+                    className={styles.folderTitle}
+                    title={group.sessionTitle || group.sessionId}
+                  >
                     {group.sessionTitle ||
                       t('settings.attachment_orphan_session', '已删除的会话残留')}
                   </span>

@@ -11,7 +11,13 @@ export function persistTtsConfigs(configs: Record<string, ProviderLocalState>): 
 
 function mergeProviderEntry(
   configs: Record<string, ProviderLocalState>,
-  prov: { id: string; baseUrl?: string; apiKey?: string; defaultDialogueModel?: string; models?: string[] }
+  prov: {
+    id: string
+    baseUrl?: string
+    apiKey?: string
+    defaultDialogueModel?: string
+    models?: string[]
+  }
 ): void {
   if (!isTtsProviderId(prov.id)) return
   const id = prov.id
@@ -21,7 +27,9 @@ function mergeProviderEntry(
     apiKey: prov.apiKey || configs[id].apiKey,
     modelId: prov.defaultDialogueModel || (prov.models && prov.models[0]) || configs[id].modelId,
     availableModels:
-      Array.isArray(prov.models) && prov.models.length > 0 ? prov.models : configs[id].availableModels
+      Array.isArray(prov.models) && prov.models.length > 0
+        ? prov.models
+        : configs[id].availableModels
   }
 }
 
@@ -63,13 +71,18 @@ export function buildInitializedConfigs(
   const newConfigs = { ...configs }
 
   if (Array.isArray(providersList)) {
-    providersList.forEach((prov) => mergeProviderEntry(newConfigs, prov as Parameters<typeof mergeProviderEntry>[1]))
+    providersList.forEach((prov) =>
+      mergeProviderEntry(newConfigs, prov as Parameters<typeof mergeProviderEntry>[1])
+    )
   }
 
   let providerType = 'openai-tts'
   if (initialConfig?.id) {
     providerType = initialConfig.id
-    mergeInitialConfigEntry(newConfigs, initialConfig as Partial<TtsProviderConfig> & { id: string })
+    mergeInitialConfigEntry(
+      newConfigs,
+      initialConfig as Partial<TtsProviderConfig> & { id: string }
+    )
   }
 
   return { configs: newConfigs, providerType }

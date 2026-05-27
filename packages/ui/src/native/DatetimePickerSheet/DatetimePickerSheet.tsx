@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  StyleSheet,
-  type ViewProps,
-} from 'react-native'
+import { View, Text, TouchableOpacity, Modal, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
@@ -45,7 +38,7 @@ const Stepper: React.FC<StepperProps> = ({
   displayValue,
   onIncrement,
   onDecrement,
-  colors,
+  colors
 }) => (
   <View style={styles.stepperColumn}>
     <TouchableOpacity
@@ -56,9 +49,7 @@ const Stepper: React.FC<StepperProps> = ({
       <Text style={[styles.stepperBtnText, { color: colors.primary }]}>+</Text>
     </TouchableOpacity>
     <View style={[styles.stepperValue, { backgroundColor: colors.primaryLight + '20' }]}>
-      <Text style={[styles.stepperValueText, { color: colors.textPrimary }]}>
-        {displayValue}
-      </Text>
+      <Text style={[styles.stepperValueText, { color: colors.textPrimary }]}>{displayValue}</Text>
     </View>
     <TouchableOpacity
       onPress={onDecrement}
@@ -129,7 +120,7 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
     textPrimary: colors.textPrimary,
     textTertiary: colors.textTertiary,
     bgSurface: colors.bgSurface,
-    borderSubtle: colors.borderSubtle,
+    borderSubtle: colors.borderSubtle
   }
 
   return (
@@ -142,8 +133,8 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
             {
               backgroundColor: colors.bgSurface,
               borderTopLeftRadius: tokens.radius.lg,
-              borderTopRightRadius: tokens.radius.lg,
-            },
+              borderTopRightRadius: tokens.radius.lg
+            }
           ]}
         >
           <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
@@ -225,14 +216,14 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-end'
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.4)'
   },
   sheet: {
-    paddingBottom: 34,
+    paddingBottom: 34
   },
   header: {
     flexDirection: 'row',
@@ -240,58 +231,58 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1
   },
   cancelText: {
-    fontSize: 15,
+    fontSize: 15
   },
   title: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   confirmText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   pickerContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingVertical: 20
   },
   stepperRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
+    gap: 12
   },
   stepperColumn: {
     alignItems: 'center',
     gap: 6,
     flex: 1,
-    maxWidth: 80,
+    maxWidth: 80
   },
   stepperBtn: {
     width: 44,
     height: 36,
     borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   stepperBtnText: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   stepperValue: {
     width: 56,
     height: 40,
     borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   stepperValueText: {
     fontSize: 18,
     fontWeight: '700',
-    fontVariant: ['tabular-nums'],
+    fontVariant: ['tabular-nums']
   },
   stepperLabel: {
-    fontSize: 11,
-  },
+    fontSize: 11
+  }
 })

@@ -71,7 +71,7 @@ export function useAgentSessions(resolvedAssistantId: string | undefined): Agent
     const handler = () => loadSessions(true, assistantIdRef.current)
     const removeListener = window.electron.ipcRenderer.on('session:file-changed', handler)
     return () => removeListener()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleRenameSession = (id: string, currentSessions: SessionData[]) => {

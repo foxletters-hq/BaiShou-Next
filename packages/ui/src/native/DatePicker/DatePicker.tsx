@@ -10,12 +10,7 @@ export interface DatePickerProps {
   maxDate?: Date
 }
 
-export const DatePicker: React.FC<DatePickerProps> = ({
-  value,
-  onChange,
-  minDate,
-  maxDate
-}) => {
+export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate, maxDate }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
@@ -34,19 +29,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     return result
   }, [startYear, endYear])
 
-  const months = useMemo(
-    () => Array.from({ length: 12 }, (_, i) => i),
-    []
-  )
+  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => i), [])
 
   const daysInMonth = useMemo(() => {
     return new Date(currentYear, currentMonth + 1, 0).getDate()
   }, [currentYear, currentMonth])
 
-  const days = useMemo(
-    () => Array.from({ length: daysInMonth }, (_, i) => i + 1),
-    [daysInMonth]
-  )
+  const days = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth])
 
   const isDayDisabled = useCallback(
     (day: number) => {
@@ -133,8 +122,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             style={[
               styles.pickerItem,
               {
-                backgroundColor:
-                  year === currentYear ? colors.primary : colors.bgSurfaceNormal,
+                backgroundColor: year === currentYear ? colors.primary : colors.bgSurfaceNormal,
                 borderRadius: 8
               }
             ]}
@@ -167,8 +155,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               style={[
                 styles.gridItem,
                 {
-                  backgroundColor:
-                    month === currentMonth ? colors.primary : colors.bgSurfaceNormal,
+                  backgroundColor: month === currentMonth ? colors.primary : colors.bgSurfaceNormal,
                   opacity: disabled ? 0.3 : 1,
                   borderRadius: 8
                 }
@@ -180,8 +167,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 style={[
                   styles.gridItemText,
                   {
-                    color:
-                      month === currentMonth ? colors.onPrimary : colors.textPrimary
+                    color: month === currentMonth ? colors.onPrimary : colors.textPrimary
                   }
                 ]}
               >
@@ -205,8 +191,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               style={[
                 styles.gridItem,
                 {
-                  backgroundColor:
-                    day === currentDay ? colors.primary : colors.bgSurfaceNormal,
+                  backgroundColor: day === currentDay ? colors.primary : colors.bgSurfaceNormal,
                   opacity: disabled ? 0.3 : 1,
                   borderRadius: 8
                 }

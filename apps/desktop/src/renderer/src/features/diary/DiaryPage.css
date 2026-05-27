@@ -225,8 +225,9 @@
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-outline-variant);
-  transition: background-color var(--duration-fast) var(--ease-in-out),
-              border-color var(--duration-fast) var(--ease-in-out);
+  transition:
+    background-color var(--duration-fast) var(--ease-in-out),
+    border-color var(--duration-fast) var(--ease-in-out);
   box-shadow: inset 0 1px 0 rgba(var(--bg-surface-lowest-rgb), 0.1);
   padding: 24px;
   padding-bottom: 20px;
@@ -272,7 +273,7 @@
   font-size: 32px;
   font-weight: 800;
   color: var(--text-primary);
-  line-height: 1.0;
+  line-height: 1;
 }
 
 .diary-card-weekday-col {
@@ -418,11 +419,7 @@
   left: 0;
   right: 0;
   padding: 10px 24px;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(128, 128, 128, 0.08) 100%
-  );
+  background: linear-gradient(to bottom, transparent, rgba(128, 128, 128, 0.08) 100%);
   border-bottom-left-radius: var(--radius-xl);
   border-bottom-right-radius: var(--radius-xl);
   display: flex;
@@ -503,7 +500,10 @@
 /* ── 删除确认弹窗 ── */
 .diary-delete-modal-overlay {
   position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background-color: var(--bg-overlay);
   backdrop-filter: var(--blur-overlay);
   -webkit-backdrop-filter: var(--blur-overlay);
@@ -576,12 +576,22 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes scaleUp {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* ── 筛选功能 ── */

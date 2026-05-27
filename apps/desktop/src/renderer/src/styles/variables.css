@@ -1,37 +1,37 @@
 :root {
   /* Colors from Flutter AppTheme.dart */
-  --color-primary: #5BA8F5;
-  --color-on-primary: #FFFFFF;
-  --color-background-light: #F6F7F8;
+  --color-primary: #5ba8f5;
+  --color-on-primary: #ffffff;
+  --color-background-light: #f6f7f8;
   --color-background-dark: #101922;
   --color-surface-dark: #192633;
   --color-surface-highlight: #233648;
-  
-  --color-text-primary: #1A1A1A;
-  --color-text-secondary: #92ADC9;
-  --color-text-secondary-light: #475569;
-  --color-text-secondary-dark: #94A3B8;
 
-  --color-primary-container: #5BA8F5; /* Seed color */
-  --color-on-primary-container: #1565C0;
-  
-  --color-secondary: #78909C;
-  --color-tertiary: #4CAF50;
-  --color-on-tertiary: #FFFFFF;
-  --color-tertiary-container: #E8F5E9;
-  
-  --color-surface: #FFFFFF;
-  --color-on-surface: #1A1A1A;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #92adc9;
+  --color-text-secondary-light: #475569;
+  --color-text-secondary-dark: #94a3b8;
+
+  --color-primary-container: #5ba8f5; /* Seed color */
+  --color-on-primary-container: #1565c0;
+
+  --color-secondary: #78909c;
+  --color-tertiary: #4caf50;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #e8f5e9;
+
+  --color-surface: #ffffff;
+  --color-on-surface: #1a1a1a;
   --color-on-surface-variant: #475569;
-  
-  --color-surface-container-highest: #E8E8E8;
-  --color-surface-container-high: #EEEEEE;
-  --color-surface-container: #F2F2F2;
-  --color-surface-container-low: #F6F7F8;
-  --color-surface-container-lowest: #FFFFFF;
-  
-  --color-outline: #9E9E9E;
-  --color-outline-variant: #D0D0D0;
+
+  --color-surface-container-highest: #e8e8e8;
+  --color-surface-container-high: #eeeeee;
+  --color-surface-container: #f2f2f2;
+  --color-surface-container-low: #f6f7f8;
+  --color-surface-container-lowest: #ffffff;
+
+  --color-outline: #9e9e9e;
+  --color-outline-variant: #d0d0d0;
 
   /* RGB Channels (Light) */
   --color-primary-rgb: 91, 168, 245;
@@ -47,35 +47,35 @@
   --font-family-main: 'Manrope', 'Microsoft YaHei', 'Noto Sans SC', 'PingFang SC', sans-serif;
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Brand Colors - Adjusted for dark mode contrast */
-  --color-primary: #5BA8F5;
-  --color-on-primary: #FFFFFF;
+  --color-primary: #5ba8f5;
+  --color-on-primary: #ffffff;
   --color-primary-container: rgba(91, 168, 245, 0.2);
-  --color-on-primary-container: #89C3FF;
-  
+  --color-on-primary-container: #89c3ff;
+
   /* Dark theme background & surface (From Flutter AppTheme.dart) */
   --color-background-dark: #101922;
   --color-surface-dark: #192633;
   --color-surface-highlight: #233648;
-  
-  --color-surface: #192633;
-  --color-on-surface: #F8FAFC;
-  --color-on-surface-variant: #94A3B8;
 
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #94A3B8;
-  --color-text-secondary-light: #94A3B8;
-  --color-text-secondary-dark: #94A3B8;
+  --color-surface: #192633;
+  --color-on-surface: #f8fafc;
+  --color-on-surface-variant: #94a3b8;
+
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-secondary-light: #94a3b8;
+  --color-text-secondary-dark: #94a3b8;
 
   --color-surface-container-lowest: #101922;
-  --color-surface-container-low: #141F2B;
+  --color-surface-container-low: #141f2b;
   --color-surface-container: #192633;
-  --color-surface-container-high: #1E2F3F;
+  --color-surface-container-high: #1e2f3f;
   --color-surface-container-highest: #233648;
 
-  --color-outline: #3A4B5C;
-  --color-outline-variant: #2D3B48;
+  --color-outline: #3a4b5c;
+  --color-outline-variant: #2d3b48;
 
   /* RGB Channels (Dark) */
   --text-primary-rgb: 248, 250, 252;
@@ -84,21 +84,21 @@
   /* Glassmorphism Overlays (Dark) */
   --color-glass-bg: rgba(25, 38, 51, 0.65);
   --color-glass-border: rgba(255, 255, 255, 0.1);
-  
+
   /* Override Core UI global variables to seamlessly blend UI package components */
   --bg-app: #101922;
   --bg-surface: #192633;
-  --bg-surface-raised: #1D2C3B;
-  --bg-surface-highest: #2D3E4F;
+  --bg-surface-raised: #1d2c3b;
+  --bg-surface-highest: #2d3e4f;
   --bg-surface-high: #233648;
-  --bg-surface-normal: #141F2B;
+  --bg-surface-normal: #141f2b;
   --bg-surface-lowest: #101922;
-  --bg-surface-low: #141F2B;
-  
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-tertiary: #64748B;
+  --bg-surface-low: #141f2b;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-muted: rgba(255, 255, 255, 0.12);
-  --border-strong: rgba(255, 255, 255, 0.20);
+  --border-strong: rgba(255, 255, 255, 0.2);
 }

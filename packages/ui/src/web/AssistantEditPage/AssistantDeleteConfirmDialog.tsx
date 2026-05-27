@@ -34,16 +34,10 @@ export const AssistantDeleteConfirmDialog: React.FC<AssistantDeleteConfirmDialog
           )}
         </div>
         <div className={styles.dialogActions}>
-          <button
-            className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`}
-            onClick={onCancel}
-          >
+          <button className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`} onClick={onCancel}>
             {t('common.cancel', '取消')}
           </button>
-          <button
-            className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`}
-            onClick={onConfirm}
-          >
+          <button className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`} onClick={onConfirm}>
             {t('common.delete', '确认删除')}
           </button>
         </div>

@@ -26,7 +26,9 @@ export const DiaryPage: React.FC = () => {
       try {
         const d = new Date(saved)
         if (!isNaN(d.getTime())) return d
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -43,7 +45,9 @@ export const DiaryPage: React.FC = () => {
         .map((w) => normalizeWeatherId(String(w)))
         .filter((w): w is WeatherId => (WEATHER_IDS as readonly string[]).includes(w))
       return [...new Set(ids)]
-    } catch { return [] }
+    } catch {
+      return []
+    }
   })
   const [filterFavorite, setFilterFavorite] = useState(
     () => sessionStorage.getItem('diary_filterFavorite') === 'true'
@@ -64,20 +68,42 @@ export const DiaryPage: React.FC = () => {
   const [attachmentBasePath, setAttachmentBasePath] = useState<string>('')
 
   // sessionStorage 同步
-  useEffect(() => { sessionStorage.setItem('diary_searchQuery', searchQuery) }, [searchQuery])
   useEffect(() => {
-    sessionStorage.setItem('diary_selectedMonth', selectedMonth ? selectedMonth.toISOString() : 'all')
+    sessionStorage.setItem('diary_searchQuery', searchQuery)
+  }, [searchQuery])
+  useEffect(() => {
+    sessionStorage.setItem(
+      'diary_selectedMonth',
+      selectedMonth ? selectedMonth.toISOString() : 'all'
+    )
   }, [selectedMonth])
-  useEffect(() => { sessionStorage.setItem('diary_filterWeathers', JSON.stringify(filterWeathers)) }, [filterWeathers])
-  useEffect(() => { sessionStorage.setItem('diary_filterFavorite', String(filterFavorite)) }, [filterFavorite])
-  useEffect(() => { sessionStorage.setItem('diary_currentPage', String(currentPage)) }, [currentPage])
-  useEffect(() => { sessionStorage.setItem('diary_pageSize', String(pageSize)) }, [pageSize])
+  useEffect(() => {
+    sessionStorage.setItem('diary_filterWeathers', JSON.stringify(filterWeathers))
+  }, [filterWeathers])
+  useEffect(() => {
+    sessionStorage.setItem('diary_filterFavorite', String(filterFavorite))
+  }, [filterFavorite])
+  useEffect(() => {
+    sessionStorage.setItem('diary_currentPage', String(currentPage))
+  }, [currentPage])
+  useEffect(() => {
+    sessionStorage.setItem('diary_pageSize', String(pageSize))
+  }, [pageSize])
 
   // 筛选条件变化时重置到第一页
-  useEffect(() => { setCurrentPage(1) }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
 
   const diaryQuery = useMemo(
-    () => ({ selectedMonth, searchQuery, filterWeathers, filterFavorite, page: currentPage, pageSize }),
+    () => ({
+      selectedMonth,
+      searchQuery,
+      filterWeathers,
+      filterFavorite,
+      page: currentPage,
+      pageSize
+    }),
     [selectedMonth, searchQuery, filterWeathers, filterFavorite, currentPage, pageSize]
   )
   const { entries, totalCount, loading, loadEntries } = useDiaryData(diaryQuery)
@@ -92,10 +118,20 @@ export const DiaryPage: React.FC = () => {
   useEffect(() => {
     const today = new Date()
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    ;(window as any).api?.diary?.findByDate?.(dateStr)
+    ;(window as any).api?.diary
+      ?.findByDate?.(dateStr)
       ?.then((entry: any) => {
-        if (!entry) { setTodayEntry(null); return }
-        setTodayEntry({ id: entry.id, date: entry.date ? new Date(entry.date) : today, content: entry.content || '', tags: [], preview: entry.content?.substring(0, 500) || '' })
+        if (!entry) {
+          setTodayEntry(null)
+          return
+        }
+        setTodayEntry({
+          id: entry.id,
+          date: entry.date ? new Date(entry.date) : today,
+          content: entry.content || '',
+          tags: [],
+          preview: entry.content?.substring(0, 500) || ''
+        })
       })
       .catch(() => setTodayEntry(null))
   }, [loadEntries])
@@ -104,8 +140,11 @@ export const DiaryPage: React.FC = () => {
   useEffect(() => {
     if (!selectedMonth) return
     const dateStr = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`
-    ;(window as any).api?.diary?.getAttachmentDir?.(dateStr)
-      ?.then((res: any) => { if (res?.success && res.path) setAttachmentBasePath(res.path) })
+    ;(window as any).api?.diary
+      ?.getAttachmentDir?.(dateStr)
+      ?.then((res: any) => {
+        if (res?.success && res.path) setAttachmentBasePath(res.path)
+      })
       .catch(() => {})
   }, [selectedMonth])
 
@@ -143,18 +182,21 @@ export const DiaryPage: React.FC = () => {
 
   const displayEntries = useMemo(() => {
     if (!entries || entries.length === 0) return []
-    return entries.map((e) => ({
-      id: e.id,
-      date: e.date ? new Date(e.date) : new Date(),
-      content: e.content || '',
-      tags: e.tags || [],
-      preview: e.preview || e.content?.substring(0, 500) || '',
-      weather: e.weather,
-      mood: e.mood,
-      location: e.location,
-      isFavorite: e.isFavorite,
-      hasMedia: e.hasMedia || false
-    } as DiaryEntry))
+    return entries.map(
+      (e) =>
+        ({
+          id: e.id,
+          date: e.date ? new Date(e.date) : new Date(),
+          content: e.content || '',
+          tags: e.tags || [],
+          preview: e.preview || e.content?.substring(0, 500) || '',
+          weather: e.weather,
+          mood: e.mood,
+          location: e.location,
+          isFavorite: e.isFavorite,
+          hasMedia: e.hasMedia || false
+        }) as DiaryEntry
+    )
   }, [entries])
 
   return (

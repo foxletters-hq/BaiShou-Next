@@ -201,7 +201,10 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
       <div className={styles.appBar}>
         <div style={{ flex: 1 }} />
         <HelpTooltip
-          content={t('lan_transfer.usage_tooltip', '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。')}
+          content={t(
+            'lan_transfer.usage_tooltip',
+            '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。'
+          )}
           size={20}
           className={styles.helpBtn}
         />

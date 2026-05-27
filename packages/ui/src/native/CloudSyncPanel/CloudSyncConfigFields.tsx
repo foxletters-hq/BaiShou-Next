@@ -148,9 +148,7 @@ export const CloudSyncMaxBackupField: React.FC<{
           }
         ]}
         value={String(localConfig.maxBackupCount)}
-        onChangeText={(v) =>
-          onUpdateField('maxBackupCount', Math.max(1, Number(v) || 1))
-        }
+        onChangeText={(v) => onUpdateField('maxBackupCount', Math.max(1, Number(v) || 1))}
         placeholder="10"
         placeholderTextColor={colors.textTertiary}
         keyboardType="numeric"

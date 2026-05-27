@@ -41,10 +41,7 @@ const TEMPLATES: TemplateItem[] = [
   { key: 'yearlyTemplate', title: '年结', icon: '📈' }
 ]
 
-export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
-  config,
-  onChange
-}) => {
+export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config, onChange }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [editingKey, setEditingKey] = useState<keyof SummarySettingsViewProps['config'] | null>(
@@ -64,17 +61,14 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     setEditingKey(null)
   }
 
-  const editingTemplate = editingKey
-    ? TEMPLATES.find((t) => t.key === editingKey)
-    : null
+  const editingTemplate = editingKey ? TEMPLATES.find((t) => t.key === editingKey) : null
 
   return (
     <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
       <SettingsSection title={t('summary.templates', 'AI 总结指令模板')}>
         {TEMPLATES.map((item) => {
           const preview = config[item.key]
-          const previewText =
-            preview.length > 80 ? preview.substring(0, 80) + '...' : preview
+          const previewText = preview.length > 80 ? preview.substring(0, 80) + '...' : preview
 
           return (
             <View
@@ -104,12 +98,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
 
       <Modal visible={editingKey !== null} transparent animationType="fade">
         <View style={[styles.modalOverlay, { backgroundColor: colors.bgOverlay }]}>
-          <View
-            style={[
-              styles.modalBox,
-              { backgroundColor: colors.bgSurface }
-            ]}
-          >
+          <View style={[styles.modalBox, { backgroundColor: colors.bgSurface }]}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
               {editingTemplate
                 ? `${editingTemplate.icon} ${t('summary.edit_template', '编辑')}${editingTemplate.title}${t('summary.template', '模板')}`
@@ -134,20 +123,14 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
             />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={() => setEditingKey(null)}
-                style={styles.modalBtn}
-              >
+              <TouchableOpacity onPress={() => setEditingKey(null)} style={styles.modalBtn}>
                 <Text style={[styles.modalBtnTextGray, { color: colors.textSecondary }]}>
                   {t('common.cancel', '取消')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={saveEditor}
-                style={[
-                  styles.modalBtn,
-                  { backgroundColor: colors.primary }
-                ]}
+                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
               >
                 <Text style={[styles.modalBtnTextWhite, { color: colors.textOnPrimary }]}>
                   {t('common.save', '保存')}

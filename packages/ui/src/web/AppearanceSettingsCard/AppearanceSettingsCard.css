@@ -21,7 +21,7 @@
 }
 
 .settings-expansion-summary:hover {
-  background-color: rgba(var(--text-primary-rgb, 0,0,0), 0.02);
+  background-color: rgba(var(--text-primary-rgb, 0, 0, 0), 0.02);
 }
 
 .settings-leading-icon {
@@ -41,7 +41,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 500;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
 }
 
 .settings-subtitle {
@@ -72,7 +72,7 @@
 .settings-label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   margin-bottom: 8px;
 }
 
@@ -86,7 +86,6 @@
   font-size: 14px;
   font-weight: bold;
 }
-
 
 .theme-toggle-group {
   display: flex;
@@ -116,7 +115,7 @@
 
 .theme-btn.active {
   background: var(--bg-surface);
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -200,7 +199,7 @@
 
 .lang-chip.active {
   background: rgba(154, 212, 234, 0.15);
-  border-color: #9AD4EA;
-  color: #9AD4EA;
+  border-color: #9ad4ea;
+  color: #9ad4ea;
   font-weight: 500;
 }

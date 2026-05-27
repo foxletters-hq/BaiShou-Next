@@ -288,7 +288,13 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       })
       mockShadowSync.syncJournal.mockResolvedValue({
         isChanged: true,
-        meta: { id: 10, date: inputDate, preview: 'Original text\n\nAdditional text', tags: ['tag1', 'tag2'], updatedAt: new Date() }
+        meta: {
+          id: 10,
+          date: inputDate,
+          preview: 'Original text\n\nAdditional text',
+          tags: ['tag1', 'tag2'],
+          updatedAt: new Date()
+        }
       })
 
       const result = await service.save(null, input)
@@ -330,7 +336,13 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       })
       mockShadowSync.syncJournal.mockResolvedValue({
         isChanged: true,
-        meta: { id: 20, date: inputDate, preview: 'Updated content', tags: [], updatedAt: new Date() }
+        meta: {
+          id: 20,
+          date: inputDate,
+          preview: 'Updated content',
+          tags: [],
+          updatedAt: new Date()
+        }
       })
 
       const result = await service.save(20, input)

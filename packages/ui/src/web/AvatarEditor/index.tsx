@@ -50,12 +50,18 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
       // Inject i18n translations using t() function
       picker.i18n = {
         categoriesLabel: t('emoji.categories', 'Categories'),
-        emojiUnsupportedMessage: t('emoji.no_native_support', 'Your browser does not support color emoji'),
+        emojiUnsupportedMessage: t(
+          'emoji.no_native_support',
+          'Your browser does not support color emoji'
+        ),
         favoritesLabel: t('emoji.favorites', 'Favorites'),
         loadingMessage: t('emoji.loading', 'Loading…'),
         networkErrorMessage: t('emoji.error_load', 'Unable to load emoji'),
         regionLabel: t('emoji.picker_title', 'Emoji Picker'),
-        searchDescription: t('emoji.keyboard_hint', 'When there are search results, use keyboard to select.'),
+        searchDescription: t(
+          'emoji.keyboard_hint',
+          'When there are search results, use keyboard to select.'
+        ),
         searchLabel: t('emoji.search', 'Search'),
         searchResultsLabel: t('emoji.search_results', 'Search Results'),
         skinToneDescription: t('emoji.skin_tone_hint', 'Select skin tone when expanded.'),

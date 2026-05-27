@@ -257,9 +257,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               }))
             }
 
-            const embeddingProviderConfig = providers.find(
-              (p: any) => p.id === embeddingProviderId
-            )
+            const embeddingProviderConfig = providers.find((p: any) => p.id === embeddingProviderId)
             if (!embeddingProviderConfig) {
               logger.warn('[MemorySearch] 嵌入供应商配置未找到，降级为 FTS 搜索')
               const ftsResults = await hsRepo.queryFTS(query, options?.topK ?? 20)
@@ -271,11 +269,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             }
 
             const embeddingProvider = registry.getOrUpdateProvider(embeddingProviderConfig)
-            const embAdapter = new EmbeddingAdapter(
-              embeddingProvider,
-              embeddingModelId,
-              hsRepo
-            )
+            const embAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
 
             // 生成查询向量
             const queryVector = await embAdapter.embedQuery(query)

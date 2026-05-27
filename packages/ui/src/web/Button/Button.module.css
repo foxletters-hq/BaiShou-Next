@@ -19,7 +19,7 @@
 }
 
 .elevated {
-  background-color: var(--color-primary, #5BA8F5);
+  background-color: var(--color-primary, #5ba8f5);
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
 }
@@ -60,5 +60,7 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

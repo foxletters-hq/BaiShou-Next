@@ -5,12 +5,10 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import {
   MdTimeline,
   MdAutoStories,
-  MdSync,
   MdSettings,
   MdDragIndicator,
   MdWifiFind,
-  MdHistory,
-  MdCloudUpload
+  MdHistory
 } from 'react-icons/md'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
@@ -75,7 +73,11 @@ export const Sidebar: React.FC = () => {
       label: t('settings.lan_transfer', 'LAN Transfer'),
       path: '/lan-transfer'
     },
-    sync: { icon: <FolderArchive size={20} />, label: t('common.data_sync', 'Data Sync'), path: '/data-sync' },
+    sync: {
+      icon: <FolderArchive size={20} />,
+      label: t('common.data_sync', 'Data Sync'),
+      path: '/data-sync'
+    },
     'incr-sync': {
       icon: <RefreshCw size={20} />,
       label: t('settings.incremental_sync', 'File Sync'),

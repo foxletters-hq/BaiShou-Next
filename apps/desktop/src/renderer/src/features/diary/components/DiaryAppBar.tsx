@@ -1,13 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, Plus, Edit3, CalendarCheck, Filter, X, Heart } from 'lucide-react'
-import {
-  WEATHER_IDS,
-  getWeatherEmoji,
-  normalizeWeatherId,
-  weatherI18nKey,
-  type WeatherId
-} from '@baishou/shared'
+import { WEATHER_IDS, getWeatherEmoji, weatherI18nKey, type WeatherId } from '@baishou/shared'
 import { YearMonthPicker } from '@baishou/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 

@@ -58,4 +58,3 @@ export interface GitManagementPageProps {
   onRollbackFile: (filePath: string, commitHash: string) => Promise<{ success: boolean }>
   onRollbackAll: (commitHash: string) => Promise<{ success: boolean }>
 }
-

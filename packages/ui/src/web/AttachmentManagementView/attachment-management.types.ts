@@ -16,12 +16,12 @@ export interface SessionAttachmentGroup {
 
 export interface DiaryAttachmentFileItem {
   name: string
-  path: string         // 绝对物理路径 (用于打开位置/删除)
-  relativePath: string   // 相对 Journals 目录的路径 (如: 2026/05/attachment/pasted_123.png)
+  path: string // 绝对物理路径 (用于打开位置/删除)
+  relativePath: string // 相对 Journals 目录的路径 (如: 2026/05/attachment/pasted_123.png)
   sizeMB: number
   birthtime: string
-  yearMonth: string    // 格式: YYYY-MM
-  isOrphan: boolean    // 是否是孤立附件 (在同年月的所有日记中都没有被引用)
+  yearMonth: string // 格式: YYYY-MM
+  isOrphan: boolean // 是否是孤立附件 (在同年月的所有日记中都没有被引用)
 }
 
 export interface AttachmentManagementViewProps {
@@ -34,4 +34,3 @@ export interface AttachmentManagementViewProps {
   diaryAttachments?: DiaryAttachmentFileItem[]
   onDeleteDiaryAttachment?: (filePath: string) => Promise<void>
 }
-

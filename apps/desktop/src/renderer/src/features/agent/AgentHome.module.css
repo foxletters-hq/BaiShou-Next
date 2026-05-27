@@ -44,13 +44,13 @@
 .emptyTitle {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text-primary, #1E293B);
+  color: var(--text-primary, #1e293b);
   margin: 0;
 }
 
 .emptySubtitle {
   font-size: 14px;
-  color: var(--text-secondary, #64748B);
+  color: var(--text-secondary, #64748b);
   opacity: 0.6;
   max-width: 280px;
   line-height: 1.5;

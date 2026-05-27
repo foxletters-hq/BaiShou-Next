@@ -57,7 +57,10 @@ export class MessageAdapter {
                 contentParts.push({ type: 'image', image: base64Data })
               }
             } else if (att.isPdf === true) {
-              const nativePdfSupported = supportsNativePdf(activeModelId || '', activeProviderType || '')
+              const nativePdfSupported = supportsNativePdf(
+                activeModelId || '',
+                activeProviderType || ''
+              )
               if (nativePdfSupported) {
                 let fileData: string = ''
                 try {
@@ -65,7 +68,12 @@ export class MessageAdapter {
                   if (!filePath && att.url?.startsWith('file:///')) {
                     filePath = decodeURIComponent((att.url || '').replace('file:///', ''))
                   }
-                  if (filePath && typeof process !== 'undefined' && process.versions && process.versions.node) {
+                  if (
+                    filePath &&
+                    typeof process !== 'undefined' &&
+                    process.versions &&
+                    process.versions.node
+                  ) {
                     const fs = require('fs')
                     fileData = fs.readFileSync(filePath).toString('base64')
                   }
@@ -86,7 +94,12 @@ export class MessageAdapter {
                     if (!filePath && att.url?.startsWith('file:///')) {
                       filePath = decodeURIComponent((att.url || '').replace('file:///', ''))
                     }
-                    if (filePath && typeof process !== 'undefined' && process.versions && process.versions.node) {
+                    if (
+                      filePath &&
+                      typeof process !== 'undefined' &&
+                      process.versions &&
+                      process.versions.node
+                    ) {
                       const fs = require('fs')
                       const pdfParse = require('pdf-parse')
                       const dataBuffer = fs.readFileSync(filePath)

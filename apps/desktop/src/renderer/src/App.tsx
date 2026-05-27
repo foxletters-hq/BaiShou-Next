@@ -13,7 +13,13 @@ import { AgentLayout } from './features/agent/AgentLayout'
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { SummaryDetailPage } from './features/summary/SummaryDetailPage'
-import { useToast, useDialog, DialogProvider, ToastProvider, GlobalInputContextMenu } from '@baishou/ui'
+import {
+  useToast,
+  useDialog,
+  DialogProvider,
+  ToastProvider,
+  GlobalInputContextMenu
+} from '@baishou/ui'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
@@ -120,9 +126,6 @@ const AppRoutes = () => {
 }
 
 const AppShell: React.FC = () => {
-  const location = useLocation()
-  const isOnboarding = location.pathname.startsWith('/welcome')
-
   return (
     <div className={shellStyles.shell}>
       <TitleBar />

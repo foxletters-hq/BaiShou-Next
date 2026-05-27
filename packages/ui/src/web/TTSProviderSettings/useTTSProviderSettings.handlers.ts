@@ -131,7 +131,16 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
     } finally {
       setIsSaving(false)
     }
-  }, [providerType, configs, onSaveConfig, getProviderName, defaultMimoVoice, t, toast, setIsSaving])
+  }, [
+    providerType,
+    configs,
+    onSaveConfig,
+    getProviderName,
+    defaultMimoVoice,
+    t,
+    toast,
+    setIsSaving
+  ])
 
   const handleTest = useCallback(async () => {
     if (!testText.trim()) {

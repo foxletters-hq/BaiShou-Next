@@ -125,16 +125,16 @@ export class MigrationService {
           `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_messages_fts'`
         )
         if (ftsTable.rows.length > 0) {
-      for (const triggerName of [
-        'agent_parts_fts_insert',
-        'agent_parts_fts_update',
-        'agent_parts_fts_delete'
-      ]) {
-        await this._executeSql(`DROP TRIGGER IF EXISTS ${triggerName}`)
-      }
-      for (const statement of FTS_SYNC_TRIGGER_STATEMENTS) {
-        await this._executeSql(statement)
-      }
+          for (const triggerName of [
+            'agent_parts_fts_insert',
+            'agent_parts_fts_update',
+            'agent_parts_fts_delete'
+          ]) {
+            await this._executeSql(`DROP TRIGGER IF EXISTS ${triggerName}`)
+          }
+          for (const statement of FTS_SYNC_TRIGGER_STATEMENTS) {
+            await this._executeSql(statement)
+          }
 
           await this._executeSql(`
             INSERT OR IGNORE INTO agent_messages_fts(part_id, message_id, session_id, content)

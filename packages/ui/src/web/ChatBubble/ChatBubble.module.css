@@ -104,7 +104,7 @@
 
 .editingBubbleCard {
   background-color: var(--bg-surface);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   width: 800px !important;
   max-width: 100% !important;
   align-self: stretch !important;
@@ -210,13 +210,16 @@
 }
 
 .contextBtn:hover {
-  background-color: rgba(0,0,0,0.05);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 /* --- Added for Context Menu --- */
 .contextMenuOverlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1000;
 }
 .contextMenu {
@@ -234,9 +237,12 @@
   z-index: 1001;
 }
 .contextMenu button {
-  background: none; border: none;
-  padding: 6px 12px; text-align: left;
-  cursor: pointer; font-size: 12px;
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
   border-radius: 6px;
@@ -250,10 +256,10 @@
 /* --- Added for Reasoning --- */
 .reasoningDetails {
   margin-bottom: 8px;
-  background: rgba(0,0,0,0.02);
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 8px;
   padding: 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 224,224,224), 0.5);
+  border: 1px solid rgba(var(--color-outline-variant-rgb, 224, 224, 224), 0.5);
 }
 .reasoningSummary {
   cursor: pointer;

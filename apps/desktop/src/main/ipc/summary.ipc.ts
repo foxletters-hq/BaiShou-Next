@@ -95,7 +95,14 @@ export function registerSummaryIPC() {
 
   ipcMain.handle(
     'summary:update',
-    async (_, id: number, type: SummaryType, startDate: Date, endDate: Date, update: UpdateSummaryInput) => {
+    async (
+      _,
+      id: number,
+      type: SummaryType,
+      startDate: Date,
+      endDate: Date,
+      update: UpdateSummaryInput
+    ) => {
       return await ensureManager().update(id, type, new Date(startDate), new Date(endDate), update)
     }
   )
@@ -141,7 +148,13 @@ export function registerSummaryIPC() {
       }
     } catch (err: any) {
       logger.error('Failed to calculate summary stats:', err)
-      return { totalDiaryCount: 0, weeklyCount: 0, monthlyCount: 0, quarterlyCount: 0, yearlyCount: 0 }
+      return {
+        totalDiaryCount: 0,
+        weeklyCount: 0,
+        monthlyCount: 0,
+        quarterlyCount: 0,
+        yearlyCount: 0
+      }
     }
   })
 

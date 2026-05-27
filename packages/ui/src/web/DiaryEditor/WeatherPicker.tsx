@@ -113,37 +113,39 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
 
       {open && (
         <div className={`wp-dropdown${closing ? ' wp-dropdown-closing' : ''}`} role="listbox">
-          {options.filter((option) => option.value !== '').map((option) => {
-            const isSelected = option.value === value
-            return (
-              <button
-                key={option.value}
-                className={`wp-option${isSelected ? ' wp-option-selected' : ''}`}
-                onClick={handleOptionClick(option)}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-              >
-                <span className="wp-option-label">{option.label}</span>
-                {isSelected && (
-                  <span className="wp-check">
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </span>
-                )}
-              </button>
-            )
-          })}
+          {options
+            .filter((option) => option.value !== '')
+            .map((option) => {
+              const isSelected = option.value === value
+              return (
+                <button
+                  key={option.value}
+                  className={`wp-option${isSelected ? ' wp-option-selected' : ''}`}
+                  onClick={handleOptionClick(option)}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                >
+                  <span className="wp-option-label">{option.label}</span>
+                  {isSelected && (
+                    <span className="wp-check">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
+                  )}
+                </button>
+              )
+            })}
         </div>
       )}
     </div>

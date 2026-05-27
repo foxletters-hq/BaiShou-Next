@@ -20,10 +20,7 @@ import { attachmentUrlPlugin } from './codeMirrorAttachmentPlugin'
 import type { CodeMirrorEditorProps, TextContextMenuState } from './codeMirrorEditor.types'
 
 export function useCodeMirrorEditorView(
-  props: Pick<
-    CodeMirrorEditorProps,
-    'content' | 'placeholder' | 'basePath' | 'onChange'
-  >,
+  props: Pick<CodeMirrorEditorProps, 'content' | 'placeholder' | 'basePath' | 'onChange'>,
   setPreviewSrc: (src: string | null) => void,
   setTextContextMenu: (menu: TextContextMenuState | null) => void
 ) {

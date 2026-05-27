@@ -1,10 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { SyncManifest, ManifestEntry, S3SyncConfig } from '@baishou/shared'
-import {
-  MANIFEST_FILENAME_V2,
-  REMOTE_SNAPSHOT_FILENAME
-} from './three-way-sync.constants'
+import { MANIFEST_FILENAME_V2, REMOTE_SNAPSHOT_FILENAME } from './three-way-sync.constants'
 import { ThreeWaySyncCore } from './three-way-sync.core'
 
 export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {

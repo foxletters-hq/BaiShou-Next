@@ -49,10 +49,7 @@ export function AssistantPickerDetailPane({
                 }
               }}
             >
-              <div
-                className={styles.detailAvatar}
-                title={t('common.edit_avatar', '点击修改头像')}
-              >
+              <div className={styles.detailAvatar} title={t('common.edit_avatar', '点击修改头像')}>
                 {activeAssistant.avatarPath ? (
                   <img
                     src={activeAssistant.avatarPath}

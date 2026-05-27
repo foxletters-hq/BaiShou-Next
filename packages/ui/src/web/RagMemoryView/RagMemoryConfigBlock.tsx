@@ -9,10 +9,7 @@ interface RagMemoryConfigBlockProps {
   onChange: (config: RagConfig) => void
 }
 
-export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({
-  config,
-  onChange
-}) => {
+export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ config, onChange }) => {
   const { t } = useTranslation()
 
   return (

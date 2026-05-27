@@ -126,9 +126,11 @@ export function supportsNativePdf(modelId: string, providerType?: string): boole
 
   // 必须是原生的提供商类型才可能支持原生 PDF (如官方 Gemini SDK 或 Anthropic SDK 渠道)
   // 如果是 openai 兼容端中转，即便模型叫 gemini-3-flash，它通过 openai 协议传输也无法识别 type: 'file' 的 Part 变体
-  const isGoogleOrGeminiProvider = lowerProvider.includes('google') || lowerProvider.includes('gemini')
+  const isGoogleOrGeminiProvider =
+    lowerProvider.includes('google') || lowerProvider.includes('gemini')
   const isAnthropicProvider = lowerProvider.includes('anthropic')
-  const isDashscopeProvider = lowerProvider.includes('dashscope') || lowerProvider.includes('alibaba')
+  const isDashscopeProvider =
+    lowerProvider.includes('dashscope') || lowerProvider.includes('alibaba')
 
   if (!isGoogleOrGeminiProvider && !isAnthropicProvider && !isDashscopeProvider) {
     return false

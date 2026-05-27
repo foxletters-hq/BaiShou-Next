@@ -9,10 +9,7 @@ import { ContextChainTabBar } from './ContextChainTabBar'
 import { ContextChainList, ContextChainTextContent } from './ContextChainList'
 import { ContextChainMessageDetail } from './ContextChainMessageDetail'
 
-export type {
-  MockChatMessage,
-  NativeContextChainDialogProps
-} from './context-chain-dialog.types'
+export type { MockChatMessage, NativeContextChainDialogProps } from './context-chain-dialog.types'
 
 export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
   isOpen,
@@ -35,10 +32,7 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
   const renderContent = () => {
     if (activeTab === 'context') {
       return (
-        <ContextChainList
-          contextMessages={contextMessages}
-          onSelectMessage={setSelectedMsgIndex}
-        />
+        <ContextChainList contextMessages={contextMessages} onSelectMessage={setSelectedMsgIndex} />
       )
     }
 

@@ -96,7 +96,9 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
         >
           {[5, 10, 15, 20].map((v) => (
             <option key={v} value={v}>
-              {t('data_sync.chunk_concurrency_option', '{{count}} chunks in parallel', { count: v })}
+              {t('data_sync.chunk_concurrency_option', '{{count}} chunks in parallel', {
+                count: v
+              })}
             </option>
           ))}
         </select>

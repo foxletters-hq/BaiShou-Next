@@ -46,8 +46,7 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
     onSaveConfig
   })
 
-  const totalSizeMb =
-    fetchState.records.reduce((sum, r) => sum + r.sizeInBytes, 0) / (1024 * 1024)
+  const totalSizeMb = fetchState.records.reduce((sum, r) => sum + r.sizeInBytes, 0) / (1024 * 1024)
   const sizeString = totalSizeMb > 0 ? totalSizeMb.toFixed(2) + ' MB' : '0 MB'
 
   return {

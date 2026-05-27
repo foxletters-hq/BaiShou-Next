@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MdAutoAwesome, MdUnfoldMore, MdAdd, MdSettings } from 'react-icons/md'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
-import appIcon from '@baishou/shared/assets/images/icon.png'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 
@@ -31,7 +30,13 @@ const AssistantAvatar: React.FC<AssistantAvatarProps> = ({ assistant, size }) =>
         <img
           src={assistant.avatarPath}
           alt={assistant.name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block' }}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            display: 'block'
+          }}
         />
       </div>
     )
@@ -95,7 +100,11 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
           <button
             className={styles.toggleBtn}
             onClick={isCollapsed ? onExpand : onCollapse}
-            title={isCollapsed ? t('agent.sidebar.expand', '展开侧边栏') : t('agent.sidebar.collapse', '折叠侧边栏')}
+            title={
+              isCollapsed
+                ? t('agent.sidebar.expand', '展开侧边栏')
+                : t('agent.sidebar.collapse', '折叠侧边栏')
+            }
           >
             {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
           </button>
@@ -106,7 +115,10 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
       <div className={styles.currentAssistantWrapper}>
         <div
           className={styles.currentAssistantCard}
-          onClick={() => { if (onShowPicker) onShowPicker(); else if (currentAssistant) onAssistantSwitched(currentAssistant) }}
+          onClick={() => {
+            if (onShowPicker) onShowPicker()
+            else if (currentAssistant) onAssistantSwitched(currentAssistant)
+          }}
         >
           {currentAssistant ? (
             <>
@@ -136,7 +148,16 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
       {/* ─── 置顶助手行 ─── */}
       <div className={styles.pinnedRow}>
         {pinnedAssistants.length === 0 && (
-          <div style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--text-secondary, #94a3b8)',
+              flex: 1,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
             {t('agent.sidebar.pin_hint', '这里可以置顶伙伴')}
           </div>
         )}
@@ -147,7 +168,9 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
               key={assistant.id}
               className={`${styles.pinnedAvatarWrapper} ${isSelected ? styles.selected : ''}`}
               title={assistant.name}
-              onClick={() => { if (!isSelected) onAssistantSwitched(assistant) }}
+              onClick={() => {
+                if (!isSelected) onAssistantSwitched(assistant)
+              }}
             >
               <AssistantAvatar assistant={assistant} size={40} />
             </div>
@@ -182,7 +205,14 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
             onClick={onToggleMultiSelect}
             title={t('common.multi_select', '多选')}
           >
-            <span style={{ fontSize: 16, color: isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)' }}>
+            <span
+              style={{
+                fontSize: 16,
+                color: isMultiSelect
+                  ? 'var(--color-error, #ef4444)'
+                  : 'var(--text-secondary, #94a3b8)'
+              }}
+            >
               ☑
             </span>
           </button>
@@ -199,7 +229,9 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
           onChange={(e) => onSearchQueryChanged(e.target.value)}
         />
         {searchQuery && (
-          <button className={styles.searchClearBtn} onClick={() => onSearchQueryChanged('')}>✕</button>
+          <button className={styles.searchClearBtn} onClick={() => onSearchQueryChanged('')}>
+            ✕
+          </button>
         )}
       </div>
     </>

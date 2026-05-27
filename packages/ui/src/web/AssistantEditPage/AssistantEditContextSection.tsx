@@ -54,10 +54,7 @@ export const AssistantEditContextSection: React.FC<AssistantEditContextSectionPr
       )}
       <div className={styles.descText}>
         {isUnlimitedContext
-          ? t(
-              'agent.assistant.context_unlimited_desc',
-              '发送所有历史消息（可能消耗大量 Token）'
-            )
+          ? t('agent.assistant.context_unlimited_desc', '发送所有历史消息（可能消耗大量 Token）')
           : t(
               'agent.assistant.context_window_desc',
               'How many recent conversation turns are sent to the model. One turn starts with your message and includes the assistant reply and any tool calls in that turn.'

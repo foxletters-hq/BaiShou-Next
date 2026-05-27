@@ -6,7 +6,7 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  type ViewProps,
+  type ViewProps
 } from 'react-native'
 import { useNativeTheme } from '../theme'
 
@@ -53,9 +53,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               borderRadius: tokens.radius.md,
               left: anchorPosition.x,
               top: anchorPosition.y,
-              ...(tokens.shadow as any),
+              ...(tokens.shadow as any)
             },
-            style,
+            style
           ]}
           {...props}
         >
@@ -68,19 +68,24 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 styles.menuItem,
                 index < items.length - 1 && {
                   borderBottomWidth: 1,
-                  borderBottomColor: colors.borderSubtle,
-                },
+                  borderBottomColor: colors.borderSubtle
+                }
               ]}
             >
               {item.icon ? (
-                <Text style={[styles.menuIcon, { color: item.destructive ? colors.error : colors.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.menuIcon,
+                    { color: item.destructive ? colors.error : colors.textSecondary }
+                  ]}
+                >
                   {item.icon}
                 </Text>
               ) : null}
               <Text
                 style={[
                   styles.menuLabel,
-                  { color: item.destructive ? colors.error : colors.textPrimary },
+                  { color: item.destructive ? colors.error : colors.textPrimary }
                 ]}
               >
                 {item.label}
@@ -95,28 +100,28 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1,
+    flex: 1
   },
   menu: {
     position: 'absolute',
     minWidth: 160,
     maxWidth: 240,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 13,
-    gap: 10,
+    gap: 10
   },
   menuIcon: {
     fontSize: 16,
     width: 22,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   menuLabel: {
-    fontSize: 15,
-  },
+    fontSize: 15
+  }
 })

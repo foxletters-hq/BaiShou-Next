@@ -11,25 +11,49 @@ export interface ColorPickerProps {
 }
 
 const presetColors = [
-  '#9AD4EA', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE',
-  '#FF8C42', '#5BA8F5', '#34D399', '#F472B6', '#A78BFA',
-  '#6EE7B7', '#FCA5A5', '#93C5FD', '#C4B5FD', '#FCD34D',
-  '#67E8F9', '#D8B4FE', '#FDBA74', '#86EFAC', '#F9A8D4'
+  '#9AD4EA',
+  '#FF6B6B',
+  '#4ECDC4',
+  '#45B7D1',
+  '#96CEB4',
+  '#FFEAA7',
+  '#DDA0DD',
+  '#98D8C8',
+  '#F7DC6F',
+  '#BB8FCE',
+  '#FF8C42',
+  '#5BA8F5',
+  '#34D399',
+  '#F472B6',
+  '#A78BFA',
+  '#6EE7B7',
+  '#FCA5A5',
+  '#93C5FD',
+  '#C4B5FD',
+  '#FCD34D',
+  '#67E8F9',
+  '#D8B4FE',
+  '#FDBA74',
+  '#86EFAC',
+  '#F9A8D4'
 ]
 
 const hueBarColors = [
-  '#FF0000', '#FF9900', '#FFFF00', '#99FF00', '#00FF00',
-  '#00FF99', '#00FFFF', '#0099FF', '#0000FF', '#9900FF',
-  '#FF00FF', '#FF0099'
+  '#FF0000',
+  '#FF9900',
+  '#FFFF00',
+  '#99FF00',
+  '#00FF00',
+  '#00FF99',
+  '#00FFFF',
+  '#0099FF',
+  '#0000FF',
+  '#9900FF',
+  '#FF00FF',
+  '#FF0099'
 ]
 
-export const ColorPicker: React.FC<ColorPickerProps> = ({
-  value,
-  onChange,
-  visible,
-  onClose
-}) => {
+export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, visible, onClose }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
   const [huePosition, setHuePosition] = useState(0.5)
@@ -45,10 +69,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        style={[styles.overlay, { backgroundColor: colors.overlay }]}
-        onPress={onClose}
-      >
+      <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
         <SafeAreaView style={styles.safeArea}>
           <Pressable
             style={[
@@ -98,9 +119,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                   ]}
                   onPress={() => onChange(color)}
                 >
-                  {value === color && (
-                    <Text style={styles.checkMark}>✓</Text>
-                  )}
+                  {value === color && <Text style={styles.checkMark}>✓</Text>}
                 </Pressable>
               ))}
             </View>

@@ -127,7 +127,9 @@
   background: var(--color-primary);
   cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.1s ease, background-color 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    background-color 0.1s ease;
 }
 
 .rangeInput::-webkit-slider-thumb:hover {
@@ -223,7 +225,9 @@
   justify-content: center;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: transform var(--duration-fast) ease, color var(--duration-fast) ease;
+  transition:
+    transform var(--duration-fast) ease,
+    color var(--duration-fast) ease;
   z-index: 2;
   width: 20px;
   height: 20px;
@@ -302,7 +306,7 @@
   font-weight: 500;
 }
 
-[data-theme="dark"] .selected {
+[data-theme='dark'] .selected {
   background-color: rgba(91, 168, 245, 0.15);
   color: var(--color-primary);
 }
@@ -327,7 +331,7 @@
   .form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
+
   .fullWidthSection {
     grid-column: span 2;
   }
@@ -388,4 +392,3 @@
 .passwordToggle:hover {
   color: var(--text-primary);
 }
-

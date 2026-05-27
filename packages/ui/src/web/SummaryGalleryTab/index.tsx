@@ -41,7 +41,9 @@ export const SummaryGalleryTab: React.FC<SummaryGalleryTabProps> = ({ assets, on
       {months.length === 0 ? (
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>🖼️</div>
-          <p>{t('gallery.empty_desc', 'No records yet. Add more photos in chats or diary entries!')}</p>
+          <p>
+            {t('gallery.empty_desc', 'No records yet. Add more photos in chats or diary entries!')}
+          </p>
         </div>
       ) : (
         months.map((month) => (

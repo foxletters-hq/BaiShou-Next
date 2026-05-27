@@ -178,11 +178,18 @@ export const SyncConfigForm: React.FC = () => {
       setMessage(
         ok
           ? t('data_sync.connection_success', 'Connection successful')
-          : t('data_sync.connection_failed_check', 'Connection failed, please check your configuration')
+          : t(
+              'data_sync.connection_failed_check',
+              'Connection failed, please check your configuration'
+            )
       )
       setStatus(ok ? 'success' : 'error')
     } catch (e: any) {
-      setMessage(friendlyTestConnectionError(e?.message || t('data_sync.connection_failed', 'Connection failed')))
+      setMessage(
+        friendlyTestConnectionError(
+          e?.message || t('data_sync.connection_failed', 'Connection failed')
+        )
+      )
       setStatus('error')
     }
   }
@@ -222,7 +229,8 @@ export const SyncConfigForm: React.FC = () => {
                 padding: '8px 16px',
                 borderRadius: '6px',
                 border: `1px solid ${config.target === item ? 'var(--color-primary)' : 'var(--border-muted)'}`,
-                background: config.target === item ? 'rgba(91, 168, 245, 0.08)' : 'var(--bg-surface-low)',
+                background:
+                  config.target === item ? 'rgba(91, 168, 245, 0.08)' : 'var(--bg-surface-low)',
                 color: config.target === item ? 'var(--color-primary)' : 'var(--text-secondary)',
                 fontSize: '13px',
                 cursor: 'pointer',

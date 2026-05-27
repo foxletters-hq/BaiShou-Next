@@ -102,7 +102,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   toolConfig,
   pricingLastUpdated,
   handleRefreshPricing,
-  currentAssistant,
+  currentAssistant: _currentAssistant,
   providers,
   inputBarRef
 }) => {

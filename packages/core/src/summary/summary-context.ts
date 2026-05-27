@@ -158,18 +158,24 @@ export async function buildSharedContextText(
   const tDict = LOCALE_TRANSLATIONS[resolveLocaleKey(locale || 'zh')] ?? LOCALE_TRANSLATIONS['zh']!
 
   const allItems: { date: Date; data: any; prefix: string }[] = []
-  for (const i of yList) allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.yearly })
-  for (const i of qList) allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.quarterly })
-  for (const i of visibleMonths) allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.monthly })
-  for (const i of visibleWeeks) allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.weekly })
-  for (const d of visibleDiaries) allItems.push({ date: parseDateStr(d.date), data: d, prefix: tDict.diary })
+  for (const i of yList)
+    allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.yearly })
+  for (const i of qList)
+    allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.quarterly })
+  for (const i of visibleMonths)
+    allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.monthly })
+  for (const i of visibleWeeks)
+    allItems.push({ date: new Date(i.startDate), data: i, prefix: tDict.weekly })
+  for (const d of visibleDiaries)
+    allItems.push({ date: parseDateStr(d.date), data: d, prefix: tDict.diary })
 
   allItems.sort((a, b) => a.date.getTime() - b.date.getTime())
   if (allItems.length === 0) return ''
 
   const formattedParts = allItems.map((item) => {
     const dateStr = formatDate(item.date)
-    const content = item.prefix === tDict.diary ? item.data.rawContent || '' : item.data.content || ''
+    const content =
+      item.prefix === tDict.diary ? item.data.rawContent || '' : item.data.content || ''
     return `## ${item.prefix} ${dateStr}\n\n${content}`
   })
 

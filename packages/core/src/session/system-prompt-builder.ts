@@ -43,7 +43,11 @@ export function buildSystemPrompt(config: SystemPromptConfig): string {
   const day = String(now.getDate()).padStart(2, '0')
   const hour = String(now.getHours()).padStart(2, '0')
   const minute = String(now.getMinutes()).padStart(2, '0')
-  parts.push('<system_context>\n' + `Time: ${year}-${month}-${day} ${hour}:${minute}\nVault: ${config.vaultName}` + '\n</system_context>')
+  parts.push(
+    '<system_context>\n' +
+      `Time: ${year}-${month}-${day} ${hour}:${minute}\nVault: ${config.vaultName}` +
+      '\n</system_context>'
+  )
 
   // 可用工具说明
   if (config.tools.length > 0) {
@@ -55,7 +59,8 @@ export function buildSystemPrompt(config: SystemPromptConfig): string {
     const hasMemoryStore = config.tools.some((t) => t.id === 'memory_store')
     const hasVectorSearch = config.tools.some((t) => t.id === 'vector_search')
     if (!hasMemoryStore || !hasVectorSearch) {
-      toolSection += '\n\n' +
+      toolSection +=
+        '\n\n' +
         'Note: Memory/RAG tools are currently disabled by the user. ' +
         'For storing and retrieving information, use the diary/summary tools instead. ' +
         'Do NOT attempt to call memory_store or vector_search.'

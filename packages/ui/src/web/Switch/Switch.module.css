@@ -29,7 +29,9 @@
   height: 24px;
   background-color: var(--text-secondary);
   border-radius: 50%;
-  transition: transform var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1), background-color var(--duration-fast) ease;
+  transition:
+    transform var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1),
+    background-color var(--duration-fast) ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -46,18 +48,29 @@
   background-color: var(--bg-surface);
 }
 
-.labelOn, .labelOff {
+.labelOn,
+.labelOff {
   font-size: 10px;
   font-family: var(--font-family);
   position: absolute;
   transition: opacity var(--duration-fast) ease;
 }
 
-.labelOn { opacity: 0; color: var(--color-primary); }
-.labelOff { opacity: 1; color: var(--bg-surface-normal); }
+.labelOn {
+  opacity: 0;
+  color: var(--color-primary);
+}
+.labelOff {
+  opacity: 1;
+  color: var(--bg-surface-normal);
+}
 
-.input:checked + .track .thumb .labelOn { opacity: 1; }
-.input:checked + .track .thumb .labelOff { opacity: 0; }
+.input:checked + .track .thumb .labelOn {
+  opacity: 1;
+}
+.input:checked + .track .thumb .labelOff {
+  opacity: 0;
+}
 
 .input:disabled + .track {
   opacity: 0.5;

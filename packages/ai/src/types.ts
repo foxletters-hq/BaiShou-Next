@@ -3,4 +3,3 @@ export interface AIProviderConfig {
   baseURL?: string
   customHeaders?: Record<string, string>
 }
-

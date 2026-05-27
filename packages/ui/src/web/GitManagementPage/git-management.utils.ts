@@ -10,4 +10,3 @@ export function getFileStatusIcon(status: string) {
       return 'M'
   }
 }
-

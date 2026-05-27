@@ -14,12 +14,66 @@ const commonEmojis = ['😊', '👋', '👍', '❤️', '🎉', '🔥', '⭐', '
 
 const allEmojis = [
   ...commonEmojis,
-  '😀', '😂', '🤣', '😍', '😎', '🤩', '😇', '🙏', '💪', '✨',
-  '🌟', '💫', '🎊', '🎁', '🏆', '🥇', '🍀', '🌺', '🌸', '🌻',
-  '☀️', '🌙', '⚡', '💧', '🌊', '🌍', '🏠', '✈️', '🚀', '🎯',
-  '📌', '✂️', '🔑', '💎', '🔔', '🎵', '🎶', '📚', '✏️', '💻',
-  '📱', '🖥️', '⌨️', '🖱️', '📷', '🎬', '🎤', '🎧', '🎮', '🧩',
-  '🍕', '🍔', '☕', '🍰', '🧠', '💬', '🗨️', '💭', '🔍', '📊'
+  '😀',
+  '😂',
+  '🤣',
+  '😍',
+  '😎',
+  '🤩',
+  '😇',
+  '🙏',
+  '💪',
+  '✨',
+  '🌟',
+  '💫',
+  '🎊',
+  '🎁',
+  '🏆',
+  '🥇',
+  '🍀',
+  '🌺',
+  '🌸',
+  '🌻',
+  '☀️',
+  '🌙',
+  '⚡',
+  '💧',
+  '🌊',
+  '🌍',
+  '🏠',
+  '✈️',
+  '🚀',
+  '🎯',
+  '📌',
+  '✂️',
+  '🔑',
+  '💎',
+  '🔔',
+  '🎵',
+  '🎶',
+  '📚',
+  '✏️',
+  '💻',
+  '📱',
+  '🖥️',
+  '⌨️',
+  '🖱️',
+  '📷',
+  '🎬',
+  '🎤',
+  '🎧',
+  '🎮',
+  '🧩',
+  '🍕',
+  '🍔',
+  '☕',
+  '🍰',
+  '🧠',
+  '💬',
+  '🗨️',
+  '💭',
+  '🔍',
+  '📊'
 ]
 
 export const EmojiPicker: React.FC<EmojiPickerProps> = ({
@@ -61,10 +115,7 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        style={[styles.overlay, { backgroundColor: colors.overlay }]}
-        onPress={onClose}
-      >
+      <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
         <SafeAreaView style={styles.safeArea}>
           <Pressable
             style={[

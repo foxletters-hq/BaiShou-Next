@@ -103,28 +103,27 @@ describe('Agent 4: 设置 UI 验证', () => {
   })
 
   it('任务33: 快捷指令分页选项包含 5/10/15/20/25/30', () => {
-    const shortcutManagerPath = resolve(
+    const shortcutHookPath = resolve(
       __dirname,
-      '../../../ui/src/web/PromptShortcutSheet/ShortcutManagerDialog.tsx'
+      '../../../ui/src/web/PromptShortcutSheet/useShortcutManagerDialog.ts'
     )
-    const content = readFileSync(shortcutManagerPath, 'utf-8')
+    const content = readFileSync(shortcutHookPath, 'utf-8')
 
-    expect(content).toContain('[5, 10, 15, 20, 25, 30]')
+    expect(content).toContain('PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 30]')
   })
 })
 
 describe('Agent 5: TTS 功能验证', () => {
   it('任务27: ChatBubble 接受 isTtsPlaying prop 并传递给 MessageActionBar', () => {
-    const chatBubblePath = resolve(__dirname, '../../../ui/src/web/ChatBubble/index.tsx')
-    const content = readFileSync(chatBubblePath, 'utf-8')
+    const typesPath = resolve(__dirname, '../../../ui/src/web/ChatBubble/chat-bubble.types.ts')
+    const bubblePath = resolve(__dirname, '../../../ui/src/web/ChatBubble/ChatBubble.tsx')
+    const typesContent = readFileSync(typesPath, 'utf-8')
+    const bubbleContent = readFileSync(bubblePath, 'utf-8')
 
-    // 确认 prop 声明存在
-    expect(content).toContain('isTtsPlaying?: boolean')
-    // 确认 prop 解构存在
-    expect(content).toContain('isTtsPlaying = false')
+    expect(typesContent).toContain('isTtsPlaying?: boolean')
+    expect(bubbleContent).toContain('isTtsPlaying = false')
 
-    // 确认 isTtsPlaying 被传递给 MessageActionBar
-    expect(content).toContain('isTtsPlaying')
+    expect(bubbleContent).toContain('isTtsPlaying')
 
     // 确认 MessageActionBar 有对应的视觉反馈
     const actionBarPath = resolve(__dirname, '../../../ui/src/web/MessageActionBar/index.tsx')
@@ -144,7 +143,7 @@ describe('Agent 5: TTS 功能验证', () => {
     // 确认 useTts hook 内使用了 ref 来跟踪 ttsMode（避免 stale closure）
     expect(hookContent).toContain('ttsModeRef')
     // 确认 auto-play 使用 ref 访问而非直接依赖 state（避免 stale closure）
-    expect(hookContent).toContain("ttsModeRef.current")
+    expect(hookContent).toContain('ttsModeRef.current')
     // 确认 handleTtsReadAloud 回调存在
     expect(hookContent).toContain('handleTtsReadAloud')
 

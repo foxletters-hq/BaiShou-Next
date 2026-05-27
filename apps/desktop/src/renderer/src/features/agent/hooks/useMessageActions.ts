@@ -39,7 +39,10 @@ export function useMessageActions({
     const msgIndex = chat.messages.findIndex((m: any) => m.id === msg.id)
     let userMsgId: string | null = null
     for (let i = msgIndex - 1; i >= 0; i--) {
-      if (chat.messages[i].role === 'user') { userMsgId = chat.messages[i].id; break }
+      if (chat.messages[i].role === 'user') {
+        userMsgId = chat.messages[i].id
+        break
+      }
     }
     if (!userMsgId) return
     const userMsgIndex = chat.messages.findIndex((m: any) => m.id === userMsgId)
@@ -47,7 +50,13 @@ export function useMessageActions({
       chat.setMessages((prev: any[]) => prev.slice(0, userMsgIndex + 1))
     }
     chat.setStreamSessionId(sessionId)
-    stream.resendChat(sessionId, userMsgId, searchMode, model.currentProviderId, model.currentModelId)
+    stream.resendChat(
+      sessionId,
+      userMsgId,
+      searchMode,
+      model.currentProviderId,
+      model.currentModelId
+    )
   }
 
   /** 保存编辑（不重发）：调用 IPC 更新消息内容后刷新 */
@@ -55,8 +64,14 @@ export function useMessageActions({
     if (!sessionId || !newContent.trim()) return
     if (typeof window !== 'undefined' && window.electron) {
       await window.electron.ipcRenderer.invoke(
-        'agent:edit-message', sessionId, msg.id, newContent,
-        model.currentProviderId, model.currentModelId, undefined, searchMode
+        'agent:edit-message',
+        sessionId,
+        msg.id,
+        newContent,
+        model.currentProviderId,
+        model.currentModelId,
+        undefined,
+        searchMode
       )
       await chat.refreshMessages()
     }
@@ -68,7 +83,15 @@ export function useMessageActions({
     const msgIndex = chat.messages.findIndex((m: any) => m.id === msg.id)
     if (msgIndex !== -1) chat.setMessages((prev: any[]) => prev.slice(0, msgIndex + 1))
     chat.setStreamSessionId(sessionId)
-    await stream.editChat(sessionId, msg.id, newContent, model.currentProviderId, model.currentModelId, undefined, searchMode)
+    await stream.editChat(
+      sessionId,
+      msg.id,
+      newContent,
+      model.currentProviderId,
+      model.currentModelId,
+      undefined,
+      searchMode
+    )
   }
 
   /** 重发用户消息（不修改内容） */
@@ -102,7 +125,9 @@ export function useMessageActions({
       const originalTitle = currentSession?.title || currentAssistant?.name || '对话'
       const title = `${originalTitle} (${t('agent.chat.branch', '分支')})`
       const newSessionId = await window.electron.ipcRenderer.invoke('agent:branch-session', {
-        sessionId, messageId: msg.id, title
+        sessionId,
+        messageId: msg.id,
+        title
       })
       if (newSessionId) {
         toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'))
@@ -122,5 +147,13 @@ export function useMessageActions({
     tts.handleTtsReadAloud(content, msgId)
   }
 
-  return { handleRegenerate, handleSaveEdit, handleResendEdit, handleResend, handleDelete, handleBranch, handleReadAloud }
+  return {
+    handleRegenerate,
+    handleSaveEdit,
+    handleResendEdit,
+    handleResend,
+    handleDelete,
+    handleBranch,
+    handleReadAloud
+  }
 }

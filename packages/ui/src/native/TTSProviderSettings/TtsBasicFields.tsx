@@ -206,8 +206,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
                 style={[
                   styles.chipText,
                   {
-                    color:
-                      config.responseFormat === fmt.id ? colors.primary : colors.textSecondary
+                    color: config.responseFormat === fmt.id ? colors.primary : colors.textSecondary
                   }
                 ]}
               >

@@ -4,13 +4,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-background, #FFFFFF);
+  background-color: var(--bg-background, #ffffff);
 }
 
 .logoWrapper {
   width: 80px;
   height: 80px;
-  background-color: var(--color-primary-container, #E3F2FD);
+  background-color: var(--color-primary-container, #e3f2fd);
   border-radius: 20px;
   display: flex;
   align-items: center;
@@ -20,13 +20,13 @@
 
 .logo {
   font-size: 40px;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .title {
   font-size: 24px;
   font-weight: 700;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   margin: 0 0 12px 0;
 }
 

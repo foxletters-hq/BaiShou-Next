@@ -56,12 +56,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
           onClose()
         }}
       >
-        <View
-          style={[
-            styles.avatar,
-            { backgroundColor: colors.bgSurfaceNormal }
-          ]}
-        >
+        <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceNormal }]}>
           {item.avatar ? (
             <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
           ) : (
@@ -81,19 +76,14 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
             {item.providerId}
           </Text>
         </View>
-        {isSelected && (
-          <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>
-        )}
+        {isSelected && <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>}
       </Pressable>
     )
   }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable
-        style={[styles.overlay, { backgroundColor: colors.overlay }]}
-        onPress={onClose}
-      >
+      <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
         <SafeAreaView style={styles.safeArea}>
           <Pressable
             style={[
@@ -110,12 +100,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
             onPress={(e) => e.stopPropagation()}
           >
             <View style={styles.handle}>
-              <View
-                style={[
-                  styles.handleBar,
-                  { backgroundColor: colors.borderSubtle }
-                ]}
-              />
+              <View style={[styles.handleBar, { backgroundColor: colors.borderSubtle }]} />
             </View>
 
             <View style={styles.header}>

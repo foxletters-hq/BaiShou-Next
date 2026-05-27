@@ -109,8 +109,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                   <Text
                     style={{
                       fontSize: 14,
-                      color:
-                        dialog.activeTab === tab ? colors.onPrimary : colors.textSecondary,
+                      color: dialog.activeTab === tab ? colors.onPrimary : colors.textSecondary,
                       fontWeight: dialog.activeTab === tab ? '600' : '400'
                     }}
                   >
@@ -211,8 +210,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                   style={{
                     fontSize: 14,
                     fontWeight: '600',
-                    color:
-                      dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary
+                    color: dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary
                   }}
                 >
                   {t('recall.inject', '提取至当前上下文对话')}

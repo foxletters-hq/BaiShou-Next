@@ -98,26 +98,26 @@
 }
 
 /* 深色模式适配 */
-[data-theme="dark"] .pageBtn {
+[data-theme='dark'] .pageBtn {
   background: var(--bg-surface);
   border-color: var(--border-subtle);
   color: var(--text-primary);
 }
 
-[data-theme="dark"] .pageBtn:hover:not(:disabled):not(.pageBtnActive) {
+[data-theme='dark'] .pageBtn:hover:not(:disabled):not(.pageBtnActive) {
   background: rgba(255, 255, 255, 0.08);
 }
 
-[data-theme="dark"] .pageBtnActive {
+[data-theme='dark'] .pageBtnActive {
   box-shadow: 0 2px 8px rgba(91, 168, 245, 0.2);
 }
 
-[data-theme="dark"] .jumperInput {
+[data-theme='dark'] .jumperInput {
   background: var(--bg-surface);
   border-color: var(--border-subtle);
   color: var(--text-primary);
 }
 
-[data-theme="dark"] .jumperInput:focus {
+[data-theme='dark'] .jumperInput:focus {
   box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
 }

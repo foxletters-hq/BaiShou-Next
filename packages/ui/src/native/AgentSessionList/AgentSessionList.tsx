@@ -56,7 +56,9 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
         renderItem={({ item: group }) => (
           <View>
             <View style={[styles.groupHeader, { backgroundColor: colors.bgApp }]}>
-              <Text style={[styles.groupLabel, { color: colors.textSecondary }]}>{group.label}</Text>
+              <Text style={[styles.groupLabel, { color: colors.textSecondary }]}>
+                {group.label}
+              </Text>
             </View>
             {group.items.map((session) => (
               <AgentSessionListItem

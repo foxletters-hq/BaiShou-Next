@@ -41,7 +41,6 @@
   border: 1px solid transparent;
 }
 
-
 .statIconWrapper {
   width: 40px;
   height: 40px;
@@ -66,14 +65,12 @@
   margin-bottom: 3px;
 }
 
-
 .statValue {
   font-size: 17px;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
 }
-
 
 /* Header & Actions */
 .headerRow {
@@ -91,8 +88,6 @@
   padding: 8px 0 16px 0;
   border-bottom: 1px solid var(--color-outline-variant);
 }
-
-
 
 .titleArea {
   display: flex;
@@ -112,7 +107,6 @@
   color: var(--text-primary);
 }
 
-
 .targetBadge {
   padding: 2px 8px;
   border-radius: 12px;
@@ -122,7 +116,6 @@
   border: 1px solid var(--color-primary);
   color: var(--color-primary);
 }
-
 
 .refreshBtn {
   background: transparent;
@@ -137,10 +130,9 @@
   transition: all 0.2s;
 }
 .refreshBtn:hover:not(:disabled) {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
   color: var(--text-primary);
 }
-
 
 .refreshBtn:disabled {
   opacity: 0.5;
@@ -151,7 +143,6 @@
   font-size: 12px;
   color: var(--text-primary);
 }
-
 
 /* Actions Group */
 .actionsGroup {
@@ -184,7 +175,6 @@
   background: var(--color-primary-container-hover);
 }
 
-
 .btnFilled {
   background: var(--color-primary);
   border: 1px solid var(--color-primary);
@@ -216,9 +206,8 @@
 }
 
 .textBtn:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
-
 
 .actionBtn:disabled {
   opacity: 0.5;
@@ -249,7 +238,6 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-
 .configBackButton {
   background: transparent;
   border: none;
@@ -265,10 +253,8 @@
   transition: background 0.2s;
 }
 .configBackButton:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
-
-
 
 .configAppTitle {
   font-size: 16px;
@@ -277,7 +263,6 @@
   text-align: center;
   flex: 1;
 }
-
 
 .configContent {
   padding: 24px 32px;
@@ -292,7 +277,6 @@
   color: var(--text-primary);
   margin-bottom: 16px;
 }
-
 
 .targetCardsLayout {
   display: flex;
@@ -331,11 +315,9 @@
   align-items: center;
 }
 
-
 .targetCardBig:hover {
   background: var(--color-surface-variant);
 }
-
 
 .targetCardSelected {
   border-color: var(--color-primary);
@@ -346,7 +328,6 @@
   color: var(--color-primary);
 }
 
-
 .targetCardIcon {
   display: flex;
   align-items: center;
@@ -354,21 +335,17 @@
   color: var(--text-primary);
 }
 
-
 .targetCardTitle {
   font-size: 15px;
   font-weight: bold;
   color: var(--text-primary);
 }
 
-
 .targetCardDesc {
   font-size: 12px;
   color: var(--text-primary);
   line-height: 1.4;
 }
-
-
 
 .configSectionHeader {
   display: flex;
@@ -383,7 +360,6 @@
   margin-bottom: 24px;
 }
 
-
 .btnSave {
   background: var(--color-primary-container);
   border: none;
@@ -396,7 +372,6 @@
 .btnSave:hover {
   background: var(--color-primary-light);
 }
-
 
 .configSectionTitle {
   font-size: 18px;
@@ -422,7 +397,6 @@
   color: var(--text-primary);
 }
 
-
 .inputPill {
   display: flex;
   align-items: center;
@@ -435,12 +409,10 @@
   color: var(--text-primary);
 }
 
-
 .inputPill:focus-within {
   border-color: var(--color-primary);
   background: var(--bg-surface);
 }
-
 
 .inputPill input {
   flex: 1;
@@ -452,7 +424,6 @@
   font-size: 14px;
   height: 100%;
 }
-
 
 .eyeBtn {
   background: transparent;
@@ -468,7 +439,6 @@
   color: var(--text-primary);
 }
 
-
 .emptyLocalState {
   padding: 64px 0;
   display: flex;
@@ -477,7 +447,6 @@
   gap: 16px;
   color: var(--text-primary);
 }
-
 
 /* Records List */
 .recordList {
@@ -490,7 +459,6 @@
   overflow-x: hidden;
   max-height: 400px;
 }
-
 
 .recordItem {
   display: flex;
@@ -542,7 +510,7 @@
 }
 
 .customCheck::after {
-  content: "";
+  content: '';
   width: 4px;
   height: 8px;
   border: solid transparent;
@@ -570,7 +538,6 @@
   font-size: 20px;
 }
 
-
 .recordInfo {
   flex: 1;
   display: flex;
@@ -597,12 +564,10 @@
   border: 1px solid var(--border-subtle);
 }
 
-
 .recordMeta {
   font-size: 12px;
   color: var(--text-primary);
 }
-
 
 .recordActions {
   display: flex;
@@ -610,12 +575,15 @@
   opacity: 0;
   transition: opacity 0.2s;
 }
-.recordItem:hover .recordActions, .itemSelected .recordActions {
+.recordItem:hover .recordActions,
+.itemSelected .recordActions {
   opacity: 1;
 }
 /* Touch devices always show actions */
 @media (hover: none) {
-  .recordActions { opacity: 1; }
+  .recordActions {
+    opacity: 1;
+  }
 }
 
 .iconBtn {
@@ -634,17 +602,48 @@
 }
 
 .iconBtn:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
   color: var(--text-primary);
 }
 
-.iconBtnRestore { color: var(--color-warning); }
-.iconBtnDelete { color: var(--color-error); }
+.iconBtnRestore {
+  color: var(--color-warning);
+}
+.iconBtnDelete {
+  color: var(--color-error);
+}
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
-.modalOverlay { position: fixed; inset: 0; background: transparent; z-index: 100000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out; }
-.countModal { background: var(--bg-surface); border-radius: 16px; padding: 24px; width: 90%; max-width: 400px; box-shadow: 0 12px 32px rgba(0,0,0,0.15); animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; gap: 16px; }
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+.countModal {
+  background: var(--bg-surface);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
 .targetCardsLayout {
   display: flex;
@@ -848,7 +847,8 @@
   background: var(--bg-surface);
 }
 
-.tabButtonActive, .tabButtonActive:hover {
+.tabButtonActive,
+.tabButtonActive:hover {
   color: var(--color-primary) !important;
   background: var(--bg-surface) !important;
   box-shadow: var(--shadow-sm) !important;
@@ -923,5 +923,3 @@
 .helpIconWrapper:hover {
   color: var(--color-primary);
 }
-
-

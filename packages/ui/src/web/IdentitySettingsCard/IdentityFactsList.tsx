@@ -40,10 +40,7 @@ export const IdentityFactsList: React.FC<IdentityFactsListProps> = ({
         <div className={styles.emptyContainer}>
           <MdOutlinePersonAddAlt1 size={32} />
           <span>
-            {t(
-              'settings.identity_card_empty_hint',
-              '当前身份为空白，不妨添加一些基本特征描述吧。'
-            )}
+            {t('settings.identity_card_empty_hint', '当前身份为空白，不妨添加一些基本特征描述吧。')}
           </span>
         </div>
       ) : (

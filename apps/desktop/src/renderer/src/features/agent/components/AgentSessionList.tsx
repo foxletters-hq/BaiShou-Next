@@ -85,10 +85,25 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
               />
             ))}
             {hasMore && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0', marginTop: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  padding: '16px 0',
+                  marginTop: '8px'
+                }}
+              >
                 <button
                   onClick={onLoadMore}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: 0.8 }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--color-primary)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    opacity: 0.8
+                  }}
                 >
                   {t('agent.sidebar.load_more', '加载更多对话')}
                 </button>

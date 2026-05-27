@@ -12,9 +12,10 @@ export async function runRegenerateAction(
 ): Promise<boolean> {
   const repo = deps.realSessionRepo as {
     getMessageById(id: string): Promise<{ role: string; orderIndex: number } | null>
-    getMessagesBySession(sessionId: string, limit: number): Promise<
-      Array<{ id: string; role: string; orderIndex: number; parts?: unknown[] }>
-    >
+    getMessagesBySession(
+      sessionId: string,
+      limit: number
+    ): Promise<Array<{ id: string; role: string; orderIndex: number; parts?: unknown[] }>>
     deleteMessagesAfter(sessionId: string, orderIndex: number): Promise<void>
   }
 
@@ -49,7 +50,9 @@ export async function runRegenerateAction(
 
   return runStreamWithPersistence(deps, {
     ...config,
-    userText: extractTextFromUserMessage(userMessage as Parameters<typeof extractTextFromUserMessage>[0]),
+    userText: extractTextFromUserMessage(
+      userMessage as Parameters<typeof extractTextFromUserMessage>[0]
+    ),
     skipUserMessageRecording: true
   })
 }

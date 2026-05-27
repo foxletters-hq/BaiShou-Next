@@ -23,7 +23,10 @@ export const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) =
   }, [settings.providers])
 
   return (
-    <div className="settings-pane settings-pane-full" style={{ height: '100%', display: 'flex', width: '100%' }}>
+    <div
+      className="settings-pane settings-pane-full"
+      style={{ height: '100%', display: 'flex', width: '100%' }}
+    >
       <div style={{ height: '100%', display: 'flex', width: '100%' }}>
         <AIModelServicesView
           providers={providerRecord}

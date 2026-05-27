@@ -56,19 +56,19 @@ export const AgentBehaviorSection: React.FC = () => {
     try {
       await services.settingsManager.set('agent_behavior', config)
       setDirty(false)
-      Alert.alert(t('common.success', '成功'), t('settings.agent_behavior_saved', 'Agent 行为配置已保存'))
+      Alert.alert(
+        t('common.success', '成功'),
+        t('settings.agent_behavior_saved', 'Agent 行为配置已保存')
+      )
     } catch (e) {
       Alert.alert(t('common.error', '错误'), t('settings.save_failed', '保存失败'))
     }
   }, [services, dbReady, config, t])
 
-  const updateConfig = useCallback(
-    (partial: Partial<AgentBehaviorConfig>) => {
-      setConfig((prev) => ({ ...prev, ...partial }))
-      setDirty(true)
-    },
-    []
-  )
+  const updateConfig = useCallback((partial: Partial<AgentBehaviorConfig>) => {
+    setConfig((prev) => ({ ...prev, ...partial }))
+    setDirty(true)
+  }, [])
 
   const handleResetDefaults = useCallback(() => {
     Alert.alert(
@@ -87,14 +87,17 @@ export const AgentBehaviorSection: React.FC = () => {
     )
   }, [t])
 
-  const handlePinnedIdsChange = useCallback((text: string) => {
-    const ids = text
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .slice(0, 3) // 限制最多 3 个
-    updateConfig({ pinnedAssistantIds: ids })
-  }, [updateConfig])
+  const handlePinnedIdsChange = useCallback(
+    (text: string) => {
+      const ids = text
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 3) // 限制最多 3 个
+      updateConfig({ pinnedAssistantIds: ids })
+    },
+    [updateConfig]
+  )
 
   return (
     <View style={styles.section}>
@@ -115,7 +118,11 @@ export const AgentBehaviorSection: React.FC = () => {
               borderColor: colors.borderSubtle
             }
           ]}
-          value={isEditingContextWindowSize ? editingContextWindowSize : String(config.agentContextWindowSize)}
+          value={
+            isEditingContextWindowSize
+              ? editingContextWindowSize
+              : String(config.agentContextWindowSize)
+          }
           onChangeText={(text) => {
             setEditingContextWindowSize(text)
             setIsEditingContextWindowSize(true)
@@ -160,7 +167,9 @@ export const AgentBehaviorSection: React.FC = () => {
               borderColor: colors.borderSubtle
             }
           ]}
-          value={isEditingCompressTokens ? editingCompressTokens : String(config.companionCompressTokens)}
+          value={
+            isEditingCompressTokens ? editingCompressTokens : String(config.companionCompressTokens)
+          }
           onChangeText={(text) => {
             setEditingCompressTokens(text)
             setIsEditingCompressTokens(true)
@@ -205,7 +214,9 @@ export const AgentBehaviorSection: React.FC = () => {
               borderColor: colors.borderSubtle
             }
           ]}
-          value={isEditingTruncateTokens ? editingTruncateTokens : String(config.companionTruncateTokens)}
+          value={
+            isEditingTruncateTokens ? editingTruncateTokens : String(config.companionTruncateTokens)
+          }
           onChangeText={(text) => {
             setEditingTruncateTokens(text)
             setIsEditingTruncateTokens(true)
@@ -309,7 +320,10 @@ export const AgentBehaviorSection: React.FC = () => {
           ]}
           value={config.pinnedAssistantIds.join(', ')}
           onChangeText={handlePinnedIdsChange}
-          placeholder={t('settings.pinned_assistant_ids_placeholder', '例如：assistant-1, assistant-2')}
+          placeholder={t(
+            'settings.pinned_assistant_ids_placeholder',
+            '例如：assistant-1, assistant-2'
+          )}
           placeholderTextColor={colors.textTertiary}
         />
       </View>

@@ -140,7 +140,10 @@ export const TTSSettingsSection: React.FC = () => {
 
   const handleTest = async () => {
     if (!testText.trim()) {
-      Alert.alert(t('common.notice', '提示'), t('tts.settings.test_text_required', '请输入测试文本'))
+      Alert.alert(
+        t('common.notice', '提示'),
+        t('tts.settings.test_text_required', '请输入测试文本')
+      )
       return
     }
     if (!services) return
@@ -148,7 +151,10 @@ export const TTSSettingsSection: React.FC = () => {
     try {
       Alert.alert(
         t('common.notice', '提示'),
-        t('tts.settings.test_mobile_hint', 'TTS 语音测试功能将在后续版本中开放，请先保存配置后在对话中使用')
+        t(
+          'tts.settings.test_mobile_hint',
+          'TTS 语音测试功能将在后续版本中开放，请先保存配置后在对话中使用'
+        )
       )
     } finally {
       setIsTesting(false)
@@ -162,7 +168,12 @@ export const TTSSettingsSection: React.FC = () => {
     marginBottom: 12
   }
 
-  const labelStyle = { fontSize: 13, fontWeight: '500' as const, color: colors.textSecondary, marginBottom: 6 }
+  const labelStyle = {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: colors.textSecondary,
+    marginBottom: 6
+  }
 
   const inputStyle = {
     backgroundColor: colors.bgSurfaceNormal,
@@ -190,7 +201,10 @@ export const TTSSettingsSection: React.FC = () => {
               style={[
                 styles.chip,
                 { borderColor: colors.borderSubtle },
-                providerType === opt.id && { backgroundColor: colors.primary, borderColor: colors.primary }
+                providerType === opt.id && {
+                  backgroundColor: colors.primary,
+                  borderColor: colors.primary
+                }
               ]}
               onPress={() => setProviderType(opt.id)}
             >
@@ -296,7 +310,10 @@ export const TTSSettingsSection: React.FC = () => {
                   style={[
                     styles.chip,
                     { borderColor: colors.borderSubtle },
-                    current.promptLang === lang && { backgroundColor: colors.primary, borderColor: colors.primary }
+                    current.promptLang === lang && {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary
+                    }
                   ]}
                   onPress={() => updateCurrent({ promptLang: lang })}
                 >
@@ -322,7 +339,10 @@ export const TTSSettingsSection: React.FC = () => {
                   style={[
                     styles.chip,
                     { borderColor: colors.borderSubtle },
-                    current.textLang === lang && { backgroundColor: colors.primary, borderColor: colors.primary }
+                    current.textLang === lang && {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary
+                    }
                   ]}
                   onPress={() => updateCurrent({ textLang: lang })}
                 >
@@ -343,13 +363,22 @@ export const TTSSettingsSection: React.FC = () => {
       )}
 
       <View style={sectionStyle}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 6
+          }}
+        >
           <Text style={labelStyle}>{t('tts.settings.speed_label', '语速')}</Text>
           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
             {current.speed.toFixed(1)}x
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        >
           <Text style={{ fontSize: 11, color: colors.textTertiary }}>0.5x</Text>
           {/* Speed stepper buttons */}
           <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -359,7 +388,10 @@ export const TTSSettingsSection: React.FC = () => {
                 style={[
                   styles.speedChip,
                   { borderColor: colors.borderSubtle },
-                  current.speed === val && { backgroundColor: colors.primary, borderColor: colors.primary }
+                  current.speed === val && {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.primary
+                  }
                 ]}
                 onPress={() => updateCurrent({ speed: val })}
               >
@@ -387,7 +419,10 @@ export const TTSSettingsSection: React.FC = () => {
               style={[
                 styles.chip,
                 { borderColor: colors.borderSubtle },
-                current.responseFormat === fmt && { backgroundColor: colors.primary, borderColor: colors.primary }
+                current.responseFormat === fmt && {
+                  backgroundColor: colors.primary,
+                  borderColor: colors.primary
+                }
               ]}
               onPress={() => updateCurrent({ responseFormat: fmt })}
             >
@@ -425,13 +460,19 @@ export const TTSSettingsSection: React.FC = () => {
           disabled={isTesting}
         >
           <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
-            {isTesting ? t('tts.settings.testing', '测试中...') : t('tts.settings.test_button', '测试')}
+            {isTesting
+              ? t('tts.settings.testing', '测试中...')
+              : t('tts.settings.test_button', '测试')}
           </Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, { backgroundColor: colors.primary }, isSaving && { opacity: 0.6 }]}
+        style={[
+          styles.saveButton,
+          { backgroundColor: colors.primary },
+          isSaving && { opacity: 0.6 }
+        ]}
         onPress={handleSave}
         disabled={isSaving}
       >
@@ -445,7 +486,13 @@ export const TTSSettingsSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 14, fontWeight: '800', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1
+  },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,

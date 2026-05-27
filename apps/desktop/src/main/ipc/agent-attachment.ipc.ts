@@ -66,7 +66,8 @@ export function registerAttachmentIPC() {
                           const buffer = Buffer.alloc(MAX_SIZE)
                           await fd.read(buffer, 0, MAX_SIZE, 0)
                           await fd.close()
-                          att.textContent = buffer.toString('utf8') + '\n\n[Content truncated due to size limit]'
+                          att.textContent =
+                            buffer.toString('utf8') + '\n\n[Content truncated due to size limit]'
                         } else {
                           att.textContent = await fs.readFile(destPath, 'utf8')
                         }
@@ -77,7 +78,10 @@ export function registerAttachmentIPC() {
                         })
                       }
                     } else if (isPdf) {
-                      const nativePdfSupported = supportsNativePdf(activeModelId, activeProviderType)
+                      const nativePdfSupported = supportsNativePdf(
+                        activeModelId,
+                        activeProviderType
+                      )
                       if (!nativePdfSupported) {
                         try {
                           const pdfParse = require('pdf-parse')

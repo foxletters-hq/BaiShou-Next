@@ -1,11 +1,5 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  ScrollView
-} from 'react-native'
+import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { ChatBubbleMessage } from './chat-bubble.types'
 

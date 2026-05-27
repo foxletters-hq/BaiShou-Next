@@ -30,7 +30,11 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
       t('session.deleteMessage', '确定要删除该会话吗？此操作不可撤销。'),
       [
         { text: t('common.cancel', '取消'), style: 'cancel' },
-        { text: t('common.delete', '删除'), style: 'destructive', onPress: () => onDelete?.(item.id) }
+        {
+          text: t('common.delete', '删除'),
+          style: 'destructive',
+          onPress: () => onDelete?.(item.id)
+        }
       ]
     )
   }, [item.id, onDelete, t])

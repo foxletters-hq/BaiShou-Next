@@ -37,4 +37,3 @@ export interface ProviderLocalState {
   promptLang?: string
   textLang?: string
 }
-

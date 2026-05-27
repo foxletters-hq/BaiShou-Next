@@ -14,7 +14,6 @@ export const DEFAULT_MONTHLY_PROMPT = DEFAULT_SUMMARY_TEMPLATES.monthly
 export const DEFAULT_QUARTERLY_PROMPT = DEFAULT_SUMMARY_TEMPLATES.quarterly
 export const DEFAULT_YEARLY_PROMPT = DEFAULT_SUMMARY_TEMPLATES.yearly
 
-
 // ─── 模板构建函数 ──────────────────────────────────────────
 
 /** 按类型获取默认模板 */

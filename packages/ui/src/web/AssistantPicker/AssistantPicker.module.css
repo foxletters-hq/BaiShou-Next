@@ -15,7 +15,7 @@
   height: 85vh;
   max-height: 800px;
   min-height: 400px;
-  background-color: var(--bg-surface, #FFFFFF);
+  background-color: var(--bg-surface, #ffffff);
   border-radius: 20px;
   display: flex;
   overflow: hidden;
@@ -25,7 +25,7 @@
 /* Sidebar */
 .sidebar {
   width: 200px;
-  background-color: var(--bg-surface-low, #FAFAFA);
+  background-color: var(--bg-surface-low, #fafafa);
   border-right: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
   display: flex;
   flex-direction: column;
@@ -38,7 +38,7 @@
 }
 
 .sidebarTitleIcon {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
   font-size: 18px;
   margin-right: 8px;
 }
@@ -46,7 +46,7 @@
 .sidebarTitle {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
 }
 
 .searchWrapper {
@@ -70,7 +70,7 @@
   background: transparent;
   outline: none;
   font-size: 12px;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
 }
 
 .searchInput::placeholder {
@@ -122,7 +122,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: var(--color-primary-container, #E3F2FD);
+  background-color: var(--color-primary-container, #e3f2fd);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,7 +145,7 @@
 .sidebarItemName {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -153,14 +153,14 @@
 
 .sidebarItemSelected .sidebarItemName {
   font-weight: 700;
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .currentDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: var(--color-primary, #5BA8F5);
+  background-color: var(--color-primary, #5ba8f5);
   margin-left: 4px;
 }
 
@@ -186,7 +186,7 @@
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
   border-radius: 10px;
   cursor: pointer;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   transition: background-color 0.2s;
 }
 
@@ -207,7 +207,7 @@
 /* Detail Panel */
 .detailPanel {
   flex: 1;
-  background-color: var(--bg-surface, #FFFFFF);
+  background-color: var(--bg-surface, #ffffff);
   display: flex;
   flex-direction: column;
 }
@@ -241,7 +241,7 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background-color: var(--color-primary-container, #E3F2FD);
+  background-color: var(--color-primary-container, #e3f2fd);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -264,12 +264,12 @@
 .detailName {
   font-size: 16px;
   font-weight: 700;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
 }
 
 .detailCurrentTag {
-  background-color: var(--color-primary-container, #E3F2FD);
-  color: var(--color-primary, #5BA8F5);
+  background-color: var(--color-primary-container, #e3f2fd);
+  color: var(--color-primary, #5ba8f5);
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -297,7 +297,7 @@
 }
 
 .tabSelected {
-  color: var(--color-primary, #5BA8F5);
+  color: var(--color-primary, #5ba8f5);
 }
 
 .tabSelected::after {
@@ -307,7 +307,7 @@
   left: 16px;
   right: 16px;
   height: 2px;
-  background-color: var(--color-primary, #5BA8F5);
+  background-color: var(--color-primary, #5ba8f5);
 }
 
 .tabContentArea {
@@ -319,7 +319,7 @@
 .panelTitle {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   margin-top: 0;
   margin-bottom: 12px;
 }
@@ -330,10 +330,10 @@
   padding: 12px;
   border-radius: 8px;
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  background-color: var(--bg-surface-low, #FAFAFA);
+  background-color: var(--bg-surface-low, #fafafa);
   font-family: inherit;
   font-size: 13px;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
   resize: vertical;
   margin-bottom: 24px;
   box-sizing: border-box;
@@ -343,7 +343,7 @@
   padding: 12px;
   border-radius: 8px;
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  background-color: var(--bg-surface-highlight, #F2F2F2);
+  background-color: var(--bg-surface-highlight, #f2f2f2);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -355,11 +355,11 @@
   display: flex;
   justify-content: space-between;
   padding: 12px 16px;
-  background-color: var(--bg-surface-highlight, #F2F2F2);
+  background-color: var(--bg-surface-highlight, #f2f2f2);
   border-radius: 8px;
   margin-bottom: 8px;
   font-size: 13px;
-  color: var(--text-primary, #1A1A1A);
+  color: var(--text-primary, #1a1a1a);
 }
 
 .detailFooter {
@@ -371,8 +371,8 @@
   width: 100%;
   height: 40px;
   border-radius: 10px;
-  background-color: var(--color-primary, #5BA8F5);
-  color: var(--color-on-primary, #FFFFFF);
+  background-color: var(--color-primary, #5ba8f5);
+  color: var(--color-on-primary, #ffffff);
   font-size: 14px;
   font-weight: 500;
   border: none;
@@ -383,7 +383,7 @@
 }
 
 .selectBtnCurrent {
-  background-color: var(--bg-surface-highest, #E0E0E0);
+  background-color: var(--bg-surface-highest, #e0e0e0);
   color: var(--text-secondary, #475569);
 }
 

@@ -39,10 +39,7 @@ export const formatDateRange = (
   return ''
 }
 
-export const getTitle = (
-  s: SummaryItem,
-  t: (key: string, fallback: string) => string
-): string => {
+export const getTitle = (s: SummaryItem, t: (key: string, fallback: string) => string): string => {
   if (!s.startDate) return t('gallery.summary', 'Summary')
   const dateObj = new Date(s.startDate)
 

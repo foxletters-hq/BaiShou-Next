@@ -78,10 +78,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
               textAlign: 'center'
             }}
           >
-            {t(
-              'settings.identity_card_empty_hint',
-              '当前身份为空白，不妨添加一些基本特征描述吧。'
-            )}
+            {t('settings.identity_card_empty_hint', '当前身份为空白，不妨添加一些基本特征描述吧。')}
           </Text>
         </View>
       ) : (

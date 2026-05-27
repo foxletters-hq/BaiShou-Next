@@ -182,7 +182,6 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   const unstagedCount = (gitStatus?.unstaged.length ?? 0) + (gitStatus?.untracked.length ?? 0)
   const canCommit = stagedCount > 0 || unstagedCount > 0
 
-
   const { handleManualCommit, handleCommitAndPush } = useGitManagementCommit({
     t,
     commitMessage,

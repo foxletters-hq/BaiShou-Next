@@ -48,7 +48,8 @@ export const InputBar: React.FC<InputBarProps> = ({
               /\.(png|jpe?g|gif|webp|bmp)$/i.test(asset.name) ||
               (asset.mimeType?.startsWith('image/') ?? false)
             const isPdf = /\.pdf$/i.test(asset.name) || asset.mimeType === 'application/pdf'
-            const isText = /\.(txt|md)$/i.test(asset.name) || (asset.mimeType?.startsWith('text/') ?? false)
+            const isText =
+              /\.(txt|md)$/i.test(asset.name) || (asset.mimeType?.startsWith('text/') ?? false)
             return {
               id: Math.random().toString(36).substring(7),
               fileName: asset.name,
@@ -61,7 +62,10 @@ export const InputBar: React.FC<InputBarProps> = ({
           })
           .filter((att) => {
             if (att.isText && att.fileSize && att.fileSize > 512 * 1024) {
-              Alert.alert(t('common.error', '错误'), t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
+              Alert.alert(
+                t('common.error', '错误'),
+                t('input.file_too_large', '文件大小超过限制 (最大 512KB)')
+              )
               return false
             }
             return true

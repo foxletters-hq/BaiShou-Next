@@ -8,7 +8,11 @@ interface ConcurrencyDropdownProps {
   disabled: boolean
 }
 
-export const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({ value, onChange, disabled }) => {
+export const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({
+  value,
+  onChange,
+  disabled
+}) => {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
 

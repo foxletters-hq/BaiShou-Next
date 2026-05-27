@@ -44,7 +44,9 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
         }}
       >
         <View style={styles.itemContent}>
-          <Text style={[styles.providerLabel, { color: colors.textTertiary }]}>{item.providerId}</Text>
+          <Text style={[styles.providerLabel, { color: colors.textTertiary }]}>
+            {item.providerId}
+          </Text>
           <Text
             style={[
               styles.modelName,
@@ -54,19 +56,14 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
             {item.name}
           </Text>
         </View>
-        {isSelected && (
-          <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>
-        )}
+        {isSelected && <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>}
       </Pressable>
     )
   }
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        style={[styles.overlay, { backgroundColor: colors.overlay }]}
-        onPress={onClose}
-      >
+      <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
         <SafeAreaView style={styles.safeArea}>
           <Pressable
             style={[

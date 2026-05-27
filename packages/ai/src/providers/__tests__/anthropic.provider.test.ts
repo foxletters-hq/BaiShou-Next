@@ -1,13 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { generateText } from 'ai'
 import { AnthropicAdaptedProvider } from '../anthropic.provider'
 
-globalThis.fetch = vi.fn()
+vi.mock('ai', () => ({
+  generateText: vi.fn()
+}))
+
+vi.mock('@ai-sdk/anthropic', () => {
+  const dummyModel = {}
+  return {
+    createAnthropic: vi.fn().mockReturnValue(vi.fn().mockReturnValue(dummyModel))
+  }
+})
 
 describe('AnthropicAdaptedProvider', () => {
   let provider: AnthropicAdaptedProvider
 
   beforeEach(() => {
-    vi.resetAllMocks()
+    vi.clearAllMocks()
     provider = new AnthropicAdaptedProvider({
       id: 'test_anthropic',
       name: 'Anthropic',
@@ -33,34 +43,29 @@ describe('AnthropicAdaptedProvider', () => {
         type: 'anthropic',
         apiKey: ''
       } as any)
-      await expect(provider.testConnection()).rejects.toThrow('Anthropic API Key is required')
+
+      vi.mocked(generateText).mockRejectedValueOnce(new Error('API key is required'))
+
+      await expect(provider.testConnection()).rejects.toThrow('Connection test failed')
+      expect(generateText).toHaveBeenCalled()
     })
 
-    it('should throw error if fetch returns not ok', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        statusText: 'Unauthorized'
-      } as Response)
+    it('should throw error when generateText fails', async () => {
+      vi.mocked(generateText).mockRejectedValueOnce(new Error('Unauthorized'))
 
       await expect(provider.testConnection()).rejects.toThrow(
-        'Anthropic connection test failed: Unauthorized'
+        'Connection test failed: Unauthorized'
       )
     })
 
-    it('should resolve if fetch indicates success', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true
-      } as Response)
+    it('should resolve when generateText succeeds', async () => {
+      vi.mocked(generateText).mockResolvedValueOnce({ text: 'ok' } as any)
 
       await expect(provider.testConnection()).resolves.toBeUndefined()
-
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.anthropic.com/v1/messages',
+      expect(generateText).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'x-api-key': 'test-key'
-          })
+          prompt: 'test',
+          maxOutputTokens: 1
         })
       )
     })

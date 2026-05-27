@@ -1,12 +1,5 @@
 import React from 'react'
-import {
-  File,
-  FileImage,
-  FileVideo,
-  FileText,
-  FileAudio,
-  FileCode
-} from 'lucide-react'
+import { File, FileImage, FileVideo, FileText, FileAudio, FileCode } from 'lucide-react'
 import styles from './AttachmentManagementView.module.css'
 
 export function formatSize(mb: number | undefined | null) {
@@ -44,4 +37,3 @@ export function isImageFile(fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || ''
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)
 }
-

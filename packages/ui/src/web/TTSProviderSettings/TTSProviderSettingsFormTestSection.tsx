@@ -4,11 +4,7 @@ import { Input } from '../Input/Input'
 import styles from './TTSProviderSettings.module.css'
 import type { TTSProviderSettingsViewModel } from './useTTSProviderSettings'
 
-export function TTSProviderSettingsFormTestSection({
-  vm
-}: {
-  vm: TTSProviderSettingsViewModel
-}) {
+export function TTSProviderSettingsFormTestSection({ vm }: { vm: TTSProviderSettingsViewModel }) {
   const { t, testText, setTestText, handleTest, isTesting, handleSave, isSaving } = vm
 
   return (

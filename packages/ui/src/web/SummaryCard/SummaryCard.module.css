@@ -4,14 +4,14 @@
   border-radius: 16px;
   padding: 24px;
   font-family: var(--font-family-main);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
   transition: all var(--animation-micro);
   max-width: 800px;
   margin-bottom: 20px;
 }
 
-[data-theme="dark"] .card {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+[data-theme='dark'] .card {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .highlighted {
@@ -38,7 +38,7 @@
   border-radius: 8px;
 }
 
-[data-theme="dark"] .dateBadge {
+[data-theme='dark'] .dateBadge {
   background: var(--color-surface-highest-dark);
 }
 

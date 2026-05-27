@@ -1,11 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MdMemory,
-  MdStorage,
-  MdCheckCircleOutline,
-  MdRefresh
-} from 'react-icons/md'
+import { MdMemory, MdStorage, MdCheckCircleOutline, MdRefresh } from 'react-icons/md'
 import type { RagStats } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
 
@@ -77,9 +72,7 @@ export const RagMemoryStatsChips: React.FC<RagMemoryStatsChipsProps> = ({
         <span className={styles.chipIcon}>
           <MdCheckCircleOutline size={14} />
         </span>
-        <span className={styles.chipStrong}>
-          {t('settings.rag_detect_dimension', '检测维度')}
-        </span>
+        <span className={styles.chipStrong}>{t('settings.rag_detect_dimension', '检测维度')}</span>
         <span className={styles.chipActionIcon}>
           <MdRefresh size={14} />
         </span>

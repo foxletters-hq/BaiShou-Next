@@ -78,17 +78,10 @@ export const TagInput: React.FC<TagInputProps> = ({
         {tags.map((tag, index) => (
           <View
             key={`${tag}-${index}`}
-            style={[
-              styles.tag,
-              { backgroundColor: colors.primaryLight }
-            ]}
+            style={[styles.tag, { backgroundColor: colors.primaryLight }]}
           >
             <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
-            <Pressable
-              onPress={() => removeTag(index)}
-              style={styles.tagRemove}
-              hitSlop={8}
-            >
+            <Pressable onPress={() => removeTag(index)} style={styles.tagRemove} hitSlop={8}>
               <Text style={[styles.tagRemoveText, { color: colors.primary }]}>×</Text>
             </Pressable>
           </View>
@@ -102,9 +95,7 @@ export const TagInput: React.FC<TagInputProps> = ({
           onChangeText={setInputText}
           onSubmitEditing={handleSubmit}
           onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key)}
-          placeholder={
-            placeholder ?? t('tagInput.placeholder', '输入标签，回车或逗号分隔')
-          }
+          placeholder={placeholder ?? t('tagInput.placeholder', '输入标签，回车或逗号分隔')}
           placeholderTextColor={colors.textTertiary}
           style={[styles.input, { color: colors.textPrimary }]}
           returnKeyType="done"

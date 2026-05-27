@@ -67,7 +67,10 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({ 
                 }
               ]}
             >
-              {t(mode === 'semantic' ? 'rag.semantic' : 'rag.text', mode === 'semantic' ? '语义' : '文本')}
+              {t(
+                mode === 'semantic' ? 'rag.semantic' : 'rag.text',
+                mode === 'semantic' ? '语义' : '文本'
+              )}
             </Text>
           </TouchableOpacity>
         ))}

@@ -7,7 +7,20 @@ export interface ActivityHeatmapProps {
   year?: number
 }
 
-const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+const MONTH_LABELS = [
+  '1月',
+  '2月',
+  '3月',
+  '4月',
+  '5月',
+  '6月',
+  '7月',
+  '8月',
+  '9月',
+  '10月',
+  '11月',
+  '12月'
+]
 const DAY_LABELS = ['一', '三', '五']
 
 const getISOWeek = (date: Date): number => {
@@ -83,24 +96,16 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
     return indices
   }, [year])
 
-  const maxCount = useMemo(
-    () => Math.max(...data.map((d) => d.count), 1),
-    [data]
-  )
+  const maxCount = useMemo(() => Math.max(...data.map((d) => d.count), 1), [data])
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
-        {year} 年活动热力图
-      </Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{year} 年活动热力图</Text>
 
       <View style={styles.chartArea}>
         <View style={styles.dayLabels}>
           {[0, 2, 4].map((idx) => (
-            <Text
-              key={idx}
-              style={[styles.dayLabel, { color: colors.textTertiary }]}
-            >
+            <Text key={idx} style={[styles.dayLabel, { color: colors.textTertiary }]}>
               {DAY_LABELS[idx / 2]}
             </Text>
           ))}
@@ -151,10 +156,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
         {[0, 2, 5, 10].map((level, i) => (
           <View
             key={i}
-            style={[
-              styles.legendCell,
-              { backgroundColor: getColorForCount(level, colors) }
-            ]}
+            style={[styles.legendCell, { backgroundColor: getColorForCount(level, colors) }]}
           />
         ))}
         <Text style={[styles.legendText, { color: colors.textTertiary }]}>多</Text>

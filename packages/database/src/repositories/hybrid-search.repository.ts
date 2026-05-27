@@ -60,7 +60,9 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.embeddingStore.insertEmbedding(...args)
   }
 
-  deleteEmbeddingsBySource(...args: Parameters<HybridSearchEmbeddingStore['deleteEmbeddingsBySource']>) {
+  deleteEmbeddingsBySource(
+    ...args: Parameters<HybridSearchEmbeddingStore['deleteEmbeddingsBySource']>
+  ) {
     return this.embeddingStore.deleteEmbeddingsBySource(...args)
   }
 
@@ -68,7 +70,9 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.embeddingStore.clearEmbeddings(...args)
   }
 
-  clearAndReinitEmbeddings(...args: Parameters<HybridSearchEmbeddingStore['clearAndReinitEmbeddings']>) {
+  clearAndReinitEmbeddings(
+    ...args: Parameters<HybridSearchEmbeddingStore['clearAndReinitEmbeddings']>
+  ) {
     return this.embeddingStore.clearAndReinitEmbeddings(...args)
   }
 
@@ -76,7 +80,9 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.migrationStore.hasPendingMigration(...args)
   }
 
-  countHeterogeneousEmbeddings(...args: Parameters<HybridSearchMigrationStore['countHeterogeneousEmbeddings']>) {
+  countHeterogeneousEmbeddings(
+    ...args: Parameters<HybridSearchMigrationStore['countHeterogeneousEmbeddings']>
+  ) {
     return this.migrationStore.countHeterogeneousEmbeddings(...args)
   }
 
@@ -92,15 +98,21 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.migrationStore.getUnmigratedCount(...args)
   }
 
-  getUnmigratedBackupChunks(...args: Parameters<HybridSearchMigrationStore['getUnmigratedBackupChunks']>) {
+  getUnmigratedBackupChunks(
+    ...args: Parameters<HybridSearchMigrationStore['getUnmigratedBackupChunks']>
+  ) {
     return this.migrationStore.getUnmigratedBackupChunks(...args)
   }
 
-  markBackupChunkMigrated(...args: Parameters<HybridSearchMigrationStore['markBackupChunkMigrated']>) {
+  markBackupChunkMigrated(
+    ...args: Parameters<HybridSearchMigrationStore['markBackupChunkMigrated']>
+  ) {
     return this.migrationStore.markBackupChunkMigrated(...args)
   }
 
-  verifyMigrationComplete(...args: Parameters<HybridSearchMigrationStore['verifyMigrationComplete']>) {
+  verifyMigrationComplete(
+    ...args: Parameters<HybridSearchMigrationStore['verifyMigrationComplete']>
+  ) {
     return this.migrationStore.verifyMigrationComplete(...args)
   }
 
@@ -112,7 +124,9 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.vectorQuery.queryFTS(...args)
   }
 
-  queryNativeVector(...args: Parameters<HybridSearchVectorQuery['queryNativeVector']>): Promise<ISearchResult[]> {
+  queryNativeVector(
+    ...args: Parameters<HybridSearchVectorQuery['queryNativeVector']>
+  ): Promise<ISearchResult[]> {
     return this.vectorQuery.queryNativeVector(...args)
   }
 

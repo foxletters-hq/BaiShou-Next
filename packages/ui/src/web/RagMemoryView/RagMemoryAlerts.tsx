@@ -9,10 +9,7 @@ interface RagMemoryAlertsProps {
   hasMismatchModel: boolean
 }
 
-export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
-  ragState,
-  hasMismatchModel
-}) => {
+export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({ ragState, hasMismatchModel }) => {
   const { t } = useTranslation()
   const isMigrating = ragState.isRunning && ragState.type === 'migration'
 

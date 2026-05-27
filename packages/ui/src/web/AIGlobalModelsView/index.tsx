@@ -135,13 +135,22 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     const getTooltipContent = () => {
       switch (key) {
         case 'summary':
-          return t('settings.tooltip_summary_model', '这个模型是用来生成周记、月报、季报、年鉴的模型，推荐用户选择最好的模型，这样生成出来的质量也会更好。')
+          return t(
+            'settings.tooltip_summary_model',
+            '这个模型是用来生成周记、月报、季报、年鉴的模型，推荐用户选择最好的模型，这样生成出来的质量也会更好。'
+          )
         case 'dialogue':
           return t('settings.tooltip_chat_model', '这是用来聊天的模型。')
         case 'naming':
-          return t('settings.tooltip_naming_model', '分配一个小体积轻量级模型，专门负责为你的每次对话写个标题以节约主力模型资源。')
+          return t(
+            'settings.tooltip_naming_model',
+            '分配一个小体积轻量级模型，专门负责为你的每次对话写个标题以节约主力模型资源。'
+          )
         case 'embedding':
-          return t('settings.tooltip_embedding_model', '它会在 AI 执行记忆存储（存储到 RAG 记忆中）的时候使用的模型。一旦日记发生变动，AI 也会用这个模型帮我们保存向量记忆。向量记忆相比于直接搜索的优点就是，它可以根据语义来进行近似搜索。')
+          return t(
+            'settings.tooltip_embedding_model',
+            '它会在 AI 执行记忆存储（存储到 RAG 记忆中）的时候使用的模型。一旦日记发生变动，AI 也会用这个模型帮我们保存向量记忆。向量记忆相比于直接搜索的优点就是，它可以根据语义来进行近似搜索。'
+          )
         default:
           return ''
       }
@@ -154,11 +163,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           <span className={`${styles.routeName} ${isDanger ? styles.dangerName : ''}`}>
             {title}
           </span>
-          <HelpTooltip
-            content={getTooltipContent()}
-            className={styles.titleTooltip}
-            size={16}
-          />
+          <HelpTooltip content={getTooltipContent()} className={styles.titleTooltip} size={16} />
         </div>
 
         <div
@@ -184,9 +189,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   return (
     <div className={styles.container}>
       <div className={styles.headerRow}>
-        <h2 className={styles.title}>
-          {t('ai_config.global_models_title', '全局默认模型分配')}
-        </h2>
+        <h2 className={styles.title}>{t('ai_config.global_models_title', '全局默认模型分配')}</h2>
       </div>
 
       <div className={styles.scrollArea}>

@@ -8,7 +8,9 @@
   -webkit-backdrop-filter: var(--blur-glass);
   border: 1px solid var(--border-muted);
   border-radius: 8px;
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
   padding: 6px;
   animation: context-menu-appear 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }

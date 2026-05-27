@@ -1,9 +1,4 @@
-import {
-  ViewPlugin,
-  type DecorationSet,
-  type EditorView,
-  type ViewUpdate
-} from '@codemirror/view'
+import { ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view'
 import { forceImageRefresh } from './codeMirrorDecorations.effects'
 import { buildMarkerHidingDecorations } from './codeMirrorDecorations.build'
 

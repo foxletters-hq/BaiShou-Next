@@ -49,8 +49,8 @@ export function useTtsProviderSettings({
       const result = await onTestTts(config, testText)
       setTestResult(
         result.success
-          ? result.message ?? t('tts.test_success', 'TTS 测试成功')
-          : result.message ?? t('tts.test_failed', 'TTS 测试失败')
+          ? (result.message ?? t('tts.test_success', 'TTS 测试成功'))
+          : (result.message ?? t('tts.test_failed', 'TTS 测试失败'))
       )
     } catch {
       setTestResult(t('tts.test_failed', 'TTS 测试失败'))

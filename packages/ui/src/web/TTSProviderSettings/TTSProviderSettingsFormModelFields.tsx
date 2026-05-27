@@ -3,11 +3,7 @@ import { Button } from '../Button/Button'
 import styles from './TTSProviderSettings.module.css'
 import type { TTSProviderSettingsViewModel } from './useTTSProviderSettings'
 
-export function TTSProviderSettingsFormModelFields({
-  vm
-}: {
-  vm: TTSProviderSettingsViewModel
-}) {
+export function TTSProviderSettingsFormModelFields({ vm }: { vm: TTSProviderSettingsViewModel }) {
   const {
     t,
     providerType,

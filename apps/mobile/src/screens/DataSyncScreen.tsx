@@ -117,7 +117,10 @@ export const DataSyncScreen: React.FC = () => {
         setCloudRecords(records)
       } catch (e) {
         logger.error('加载云端记录失败', e instanceof Error ? e : String(e))
-        Alert.alert(t('common.error', '错误'), t('data_sync.load_records_failed', '加载云端记录失败'))
+        Alert.alert(
+          t('common.error', '错误'),
+          t('data_sync.load_records_failed', '加载云端记录失败')
+        )
       } finally {
         setRecordsLoading(false)
       }
@@ -171,7 +174,9 @@ export const DataSyncScreen: React.FC = () => {
     (targetId: string, filename: string) => {
       Alert.alert(
         t('data_sync.confirm_delete_record', '确认删除'),
-        t('data_sync.delete_record_warning', '确定要删除备份记录 "{{name}}" 吗？', { name: filename }),
+        t('data_sync.delete_record_warning', '确定要删除备份记录 "{{name}}" 吗？', {
+          name: filename
+        }),
         [
           { text: t('common.cancel', '取消'), style: 'cancel' },
           {
@@ -185,10 +190,16 @@ export const DataSyncScreen: React.FC = () => {
                 const config = buildSyncConfig(target)
                 await cloudSyncService.deleteRecord(config, filename)
                 setCloudRecords((prev) => prev.filter((r) => r.filename !== filename))
-                Alert.alert(t('common.success', '成功'), t('data_sync.record_deleted', '记录已删除'))
+                Alert.alert(
+                  t('common.success', '成功'),
+                  t('data_sync.record_deleted', '记录已删除')
+                )
               } catch (e) {
                 logger.error('删除云端记录失败', e instanceof Error ? e : String(e))
-                Alert.alert(t('common.error', '错误'), t('data_sync.delete_record_failed', '删除失败'))
+                Alert.alert(
+                  t('common.error', '错误'),
+                  t('data_sync.delete_record_failed', '删除失败')
+                )
               }
             }
           }
@@ -206,7 +217,9 @@ export const DataSyncScreen: React.FC = () => {
 
       Alert.alert(
         t('data_sync.confirm_batch_delete', '确认批量删除'),
-        t('data_sync.batch_delete_warning', '确定要删除选中的 {{count}} 条记录吗？', { count: filenames.length }),
+        t('data_sync.batch_delete_warning', '确定要删除选中的 {{count}} 条记录吗？', {
+          count: filenames.length
+        }),
         [
           { text: t('common.cancel', '取消'), style: 'cancel' },
           {
@@ -228,7 +241,10 @@ export const DataSyncScreen: React.FC = () => {
                 )
               } catch (e) {
                 logger.error('批量删除云端记录失败', e instanceof Error ? e : String(e))
-                Alert.alert(t('common.error', '错误'), t('data_sync.batch_delete_failed', '批量删除失败'))
+                Alert.alert(
+                  t('common.error', '错误'),
+                  t('data_sync.batch_delete_failed', '批量删除失败')
+                )
               }
             }
           }
@@ -294,7 +310,10 @@ export const DataSyncScreen: React.FC = () => {
     // S3 类型需要校验必填字段
     if (newTarget.type === 's3') {
       if (!newTarget.s3Bucket.trim()) {
-        Alert.alert(t('common.error', '错误'), t('data_sync.s3_bucket_required', 'S3 Bucket 不能为空'))
+        Alert.alert(
+          t('common.error', '错误'),
+          t('data_sync.s3_bucket_required', 'S3 Bucket 不能为空')
+        )
         return
       }
     }
@@ -992,7 +1011,9 @@ export const DataSyncScreen: React.FC = () => {
                               style={[styles.renameConfirm, { backgroundColor: colors.primary }]}
                               onPress={() => handleRenameRecord(activeTargetId, record.filename)}
                             >
-                               <Text style={[styles.renameConfirmText, { color: colors.textOnPrimary }]}>
+                              <Text
+                                style={[styles.renameConfirmText, { color: colors.textOnPrimary }]}
+                              >
                                 {t('common.confirm', '确认')}
                               </Text>
                             </TouchableOpacity>
@@ -1003,7 +1024,9 @@ export const DataSyncScreen: React.FC = () => {
                                 setNewRecordName('')
                               }}
                             >
-                              <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>
+                              <Text
+                                style={[styles.renameCancelText, { color: colors.textSecondary }]}
+                              >
                                 {t('common.cancel', '取消')}
                               </Text>
                             </TouchableOpacity>
@@ -1071,9 +1094,7 @@ export const DataSyncScreen: React.FC = () => {
                                     handleDeleteCloudRecord(activeTargetId, record.filename)
                                   }
                                 >
-                                  <Text
-                                    style={[styles.recordActionText, { color: colors.error }]}
-                                  >
+                                  <Text style={[styles.recordActionText, { color: colors.error }]}>
                                     {t('common.delete', '删除')}
                                   </Text>
                                 </TouchableOpacity>

@@ -141,11 +141,15 @@ export const VersionManager: React.FC<VersionManagerProps> = ({ version, onOpenG
 
       <div className="version-panel">
         <div className="version-meta-row">
-          <span className="version-meta-label">{t('updater.current_version', 'Current version')}</span>
+          <span className="version-meta-label">
+            {t('updater.current_version', 'Current version')}
+          </span>
           <span className="version-meta-value">{displayVersion}</span>
         </div>
         <div className="version-meta-row">
-          <span className="version-meta-label">{t('updater.latest_version', 'Latest version')}</span>
+          <span className="version-meta-label">
+            {t('updater.latest_version', 'Latest version')}
+          </span>
           <span
             className={`version-meta-value ${!updateInfo?.version && !hasCheckedOnce ? 'version-meta-muted' : ''}`}
           >

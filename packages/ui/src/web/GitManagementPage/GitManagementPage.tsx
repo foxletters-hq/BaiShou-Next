@@ -39,4 +39,3 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = (props) => {
     </div>
   )
 }
-

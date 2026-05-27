@@ -3,11 +3,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import archiver from 'archiver'
-import {
-  SettingsRepository,
-  UserProfileRepository,
-  executeRawSql
-} from '@baishou/database'
+import { SettingsRepository, UserProfileRepository, executeRawSql } from '@baishou/database'
 import { logger } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { DesktopStoragePathService } from './path.service'

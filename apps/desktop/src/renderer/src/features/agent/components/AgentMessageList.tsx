@@ -175,24 +175,14 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 }
                 isTtsPlaying={tts.ttsPlayingMsgId === msg.id}
                 onRegenerate={
-                  msg.role === 'assistant'
-                    ? () => actions.handleRegenerate(msg)
-                    : undefined
+                  msg.role === 'assistant' ? () => actions.handleRegenerate(msg) : undefined
                 }
                 onEdit={() => {}}
                 onSaveEdit={(newContent) => actions.handleSaveEdit(msg, newContent)}
                 onResendEdit={(newContent) => actions.handleResendEdit(msg, newContent)}
-                onResend={
-                  msg.role === 'user'
-                    ? () => actions.handleResend(msg)
-                    : undefined
-                }
+                onResend={msg.role === 'user' ? () => actions.handleResend(msg) : undefined}
                 onDelete={() => actions.handleDelete(msg)}
-                onBranch={
-                  msg.role === 'assistant'
-                    ? () => actions.handleBranch(msg)
-                    : undefined
-                }
+                onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
               />
             )
           })}

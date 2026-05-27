@@ -1,6 +1,13 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineHub, MdOutlineLan, MdExpandMore, MdExpandLess, MdBuild, MdChevronRight } from 'react-icons/md'
+import {
+  MdOutlineHub,
+  MdOutlineLan,
+  MdExpandMore,
+  MdExpandLess,
+  MdBuild,
+  MdChevronRight
+} from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import styles from './McpSettingsCard.module.css'
 import { HelpTooltip } from '../HelpTooltip'
@@ -25,7 +32,10 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
     try {
       const tools = await (window as any).api?.settings?.getMcpTools()
       if (!tools || tools.length === 0) {
-        dialog.alert(t('settings.mcp_no_tools', '未检测到任何暴露的工具'), t('settings.mcp_tools_list', 'MCP 工具列表'))
+        dialog.alert(
+          t('settings.mcp_no_tools', '未检测到任何暴露的工具'),
+          t('settings.mcp_tools_list', 'MCP 工具列表')
+        )
         return
       }
 
@@ -47,7 +57,14 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
                     border: '1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08))'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: '4px'
+                    }}
+                  >
                     <span
                       style={{
                         fontFamily: 'monospace',
@@ -79,7 +96,14 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
                       ({localizedTitle})
                     </span>
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--color-on-surface-variant, var(--color-text-secondary))', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--color-on-surface-variant, var(--color-text-secondary))',
+                      lineHeight: '1.4',
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
                     {localizedDesc}
                   </div>
                 </div>
@@ -108,7 +132,10 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           <MdOutlineHub size={24} />
         </div>
         <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title" style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <span
+            className="settings-list-tile-title"
+            style={{ display: 'inline-flex', alignItems: 'center' }}
+          >
             {t('settings.mcp_title', 'MCP Server')}
             <HelpTooltip
               content={t(
@@ -179,13 +206,13 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
                 {t('settings.mcp_view_tools', '查看已暴露的工具列表')}
               </span>
               <span className="settings-list-tile-subtitle">
-                {t('settings.mcp_view_tools_desc', '查看当前 MCP 服务对外提供的日记与记忆管理等内置工具清单')}
+                {t(
+                  'settings.mcp_view_tools_desc',
+                  '查看当前 MCP 服务对外提供的日记与记忆管理等内置工具清单'
+                )}
               </span>
             </div>
-            <MdChevronRight
-              size={20}
-              style={{ color: 'var(--color-on-surface-variant)' }}
-            />
+            <MdChevronRight size={20} style={{ color: 'var(--color-on-surface-variant)' }} />
           </div>
 
           {config.mcpEnabled && (

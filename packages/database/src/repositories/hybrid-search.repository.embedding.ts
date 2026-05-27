@@ -129,9 +129,7 @@ export class HybridSearchMigrationStore {
     await this.db.execute(
       `CREATE INDEX IF NOT EXISTS idx_mig_backup_migrated ON ${HYBRID_SEARCH_BACKUP_TABLE}(is_migrated)`
     )
-    const count = await this.db.execute(
-      `SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE}`
-    )
+    const count = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE}`)
     return Number(count.rows[0]?.c ?? 0)
   }
 

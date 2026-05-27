@@ -7,6 +7,7 @@ import { systemSettingsTable, agentSessionsTable, agentMessagesTable } from '@ba
 import { eq } from 'drizzle-orm'
 import { LegacyMigrationService } from '../legacy-migration.service'
 import { installDatabaseSchema } from '@baishou/database'
+import { isBetterSqlite3Available } from './better-sqlite3-available'
 
 const TEST_WORKSPACE = 'd:/Projects/test'
 const MOCK_DATA_DIR = path.join(TEST_WORKSPACE, 'cases')
@@ -24,7 +25,7 @@ vi.mock('../db', () => ({
   getAppDb: vi.fn(() => realDbInstance)
 }))
 
-describe('LegacyMigrationService Integration Tests', () => {
+describe.skipIf(!isBetterSqlite3Available())('LegacyMigrationService Integration Tests', () => {
   let legacyService: LegacyMigrationService
 
   const prepareEnv = async (testName: string) => {

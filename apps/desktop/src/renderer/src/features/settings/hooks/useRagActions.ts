@@ -26,8 +26,7 @@ export function useRagActions(
   }
 
   const handleDeleteEntry = async (id: string) => {
-    if (!(await confirm(t('common.delete', '删除') + '?', t('common.warning', '警告'))))
-      return
+    if (!(await confirm(t('common.delete', '删除') + '?', t('common.warning', '警告')))) return
     setIsProcessing(true)
     try {
       await (window as any).api?.rag?.deleteEntry(id)
@@ -112,10 +111,7 @@ export function useRagActions(
           '\n\n' +
           backupList +
           '\n\n' +
-          t(
-            'settings.rag_backup_actions',
-            '输入序号恢复备份，或输入 "delete:序号" 删除备份：'
-          ),
+          t('settings.rag_backup_actions', '输入序号恢复备份，或输入 "delete:序号" 删除备份：'),
         '',
         t('settings.rag_manage_backups', '备份管理'),
         true

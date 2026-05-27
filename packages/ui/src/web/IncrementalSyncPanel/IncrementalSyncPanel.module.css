@@ -16,7 +16,9 @@
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .syncButton:hover:not(.disabled) {
@@ -48,8 +50,12 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .syncLabel {
@@ -90,7 +96,9 @@
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .historyBtn:hover {
@@ -137,7 +145,9 @@
   background: none;
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .closeBtn:hover {
@@ -197,7 +207,11 @@
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 10px 12px;
-  box-shadow: var(--shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08));
+  box-shadow: var(
+    --shadow-lg,
+    0 10px 25px -5px rgba(0, 0, 0, 0.08),
+    0 8px 10px -6px rgba(0, 0, 0, 0.08)
+  );
   z-index: 10000;
   display: flex;
   flex-direction: column;

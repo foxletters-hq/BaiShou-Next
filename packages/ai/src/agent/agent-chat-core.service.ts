@@ -59,14 +59,12 @@ export class AgentChatCoreService {
       } as Parameters<typeof agentService.streamChat>[0],
       {
         onTextDelta: (chunk) => params.emitter.sendChunk(params.sessionId, chunk),
-        onReasoningDelta: (chunk) =>
-          params.emitter.sendReasoningChunk(params.sessionId, chunk),
+        onReasoningDelta: (chunk) => params.emitter.sendReasoningChunk(params.sessionId, chunk),
         onToolCallStart: (name, argsObj) =>
           params.emitter.sendToolStart(params.sessionId, name, argsObj),
         onToolCallResult: (name, result) =>
           params.emitter.sendToolResult(params.sessionId, name, result),
-        onError: (err) =>
-          params.emitter.sendFinish(params.sessionId, { error: err.message }),
+        onError: (err) => params.emitter.sendFinish(params.sessionId, { error: err.message }),
         onFinish: () => params.emitter.sendFinish(params.sessionId, { success: true })
       }
     )

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { AssistantManagementPage, AssistantEditPage } from '@baishou/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -14,8 +13,6 @@ export const AssistantManagementScreen: React.FC = () => {
   const [assistants, setAssistants] = useState<any[]>([])
   const [editingAssistantId, setEditingAssistantId] = useState<string | null>(null)
   const [isCreatingNew, setIsCreatingNew] = useState(false)
-  const navigate = useNavigate()
-
   const loadAssistants = async () => {
     if (typeof window !== 'undefined' && window.electron) {
       const data = await window.electron.ipcRenderer.invoke('agent:get-assistants')
@@ -26,13 +23,6 @@ export const AssistantManagementScreen: React.FC = () => {
   useEffect(() => {
     loadAssistants()
   }, [])
-
-  // Determine current view key for AnimatePresence
-  const viewKey = isCreatingNew
-    ? 'create'
-    : editingAssistantId
-      ? `edit-${editingAssistantId}`
-      : 'list'
 
   return (
     <div style={{ flex: 1, height: '100%', position: 'relative', overflow: 'hidden' }}>

@@ -13,7 +13,10 @@ export { limitExecute } from './three-way-sync.utils'
  * 与旧版 IncrementalSyncServiceImpl 独立共存。
  * 采用三向合并算法（本地 vs 远程 vs 祖先），支持删除传播。
  */
-export class ThreeWaySyncService extends ThreeWaySyncManifestMixin implements IIncrementalSyncService {
+export class ThreeWaySyncService
+  extends ThreeWaySyncManifestMixin
+  implements IIncrementalSyncService
+{
   async sync(onProgress?: SyncProgressCallback): Promise<IncrementalSyncResult> {
     await this.loadConfig()
     if (!this.config.enabled) throw new S3NotConfiguredError()

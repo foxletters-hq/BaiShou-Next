@@ -20,20 +20,19 @@ export const GitVersionTab: React.FC<GitVersionTabProps> = ({ vm }) => {
   }, [vm.page, vm.pageSize])
 
   return (
-  <motion.div
-    key="version"
-    className="gmp-content"
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-  >
-    <GitVersionCommitBar vm={vm} />
-    <GitStagedSection vm={vm} />
-    <GitChangesSection vm={vm} />
-    <GitCommitsSection vm={vm} />
-    <GitRecentPullsSection vm={vm} />
-    <GitConflictSection vm={vm} style={{ marginTop: 16 }} />
-  </motion.div>
+    <motion.div
+      key="version"
+      className="gmp-content"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+    >
+      <GitVersionCommitBar vm={vm} />
+      <GitStagedSection vm={vm} />
+      <GitChangesSection vm={vm} />
+      <GitCommitsSection vm={vm} />
+      <GitRecentPullsSection vm={vm} />
+      <GitConflictSection vm={vm} style={{ marginTop: 16 }} />
+    </motion.div>
   )
 }
-

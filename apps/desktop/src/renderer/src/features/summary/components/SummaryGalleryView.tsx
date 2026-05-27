@@ -52,7 +52,10 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
         .replace('$year', String(start.getFullYear()))
         .replace('$q', String(Math.ceil((start.getMonth() + 1) / 3)))
     }
-    return t('summary.missing_label_yearly', 'Year $year').replace('$year', String(start.getFullYear()))
+    return t('summary.missing_label_yearly', 'Year $year').replace(
+      '$year',
+      String(start.getFullYear())
+    )
   }
 
   const handleSave = async (id: string, content: string) => {

@@ -70,10 +70,16 @@
   -webkit-text-fill-color: transparent;
 }
 
-.colorOnSurface { color: var(--text-primary); }
+.colorOnSurface {
+  color: var(--text-primary);
+}
 
-.colorError { color: var(--color-error); }
-:global(body[data-theme='dark']) .colorError { color: var(--color-error); }
+.colorError {
+  color: var(--color-error);
+}
+:global(body[data-theme='dark']) .colorError {
+  color: var(--color-error);
+}
 
 .statDivider {
   width: 1px;
@@ -157,7 +163,6 @@
   box-shadow: none;
 }
 
-
 /* List Area */
 .listArea {
   display: flex;
@@ -208,7 +213,7 @@
   background: var(--bg-surface-high);
 }
 :global(body[data-theme='dark']) .folderItem {
-  border-bottom-color: rgba(255,255,255,0.05);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 .folderItem:last-child {
   border-bottom: none;
@@ -258,7 +263,7 @@
 }
 
 .customCheck::after {
-  content: "";
+  content: '';
   width: 4px;
   height: 8px;
   border: solid transparent;
@@ -278,7 +283,11 @@
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) 0%, rgba(var(--color-primary-rgb, 91, 168, 245), 0.03) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) 0%,
+    rgba(var(--color-primary-rgb, 91, 168, 245), 0.03) 100%
+  );
   color: var(--color-primary);
   display: flex;
   align-items: center;
@@ -288,18 +297,30 @@
   transition: all 0.25s ease;
 }
 :global(body[data-theme='dark']) .folderIconBox {
-  background: linear-gradient(135deg, rgba(var(--color-primary-rgb, 91, 168, 245), 0.15) 0%, rgba(var(--color-primary-rgb, 91, 168, 245), 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-primary-rgb, 91, 168, 245), 0.15) 0%,
+    rgba(var(--color-primary-rgb, 91, 168, 245), 0.05) 100%
+  );
   color: var(--color-primary);
   box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
 }
 
 .folderIconBoxOrphan {
-  background: linear-gradient(135deg, rgba(var(--color-error-rgb, 239, 68, 68), 0.1) 0%, rgba(var(--color-error-rgb, 239, 68, 68), 0.03) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-error-rgb, 239, 68, 68), 0.1) 0%,
+    rgba(var(--color-error-rgb, 239, 68, 68), 0.03) 100%
+  ) !important;
   color: var(--color-error) !important;
   box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb, 239, 68, 68), 0.15) !important;
 }
 :global(body[data-theme='dark']) .folderIconBoxOrphan {
-  background: linear-gradient(135deg, rgba(var(--color-error-rgb, 239, 68, 68), 0.15) 0%, rgba(var(--color-error-rgb, 239, 68, 68), 0.05) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-error-rgb, 239, 68, 68), 0.15) 0%,
+    rgba(var(--color-error-rgb, 239, 68, 68), 0.05) 100%
+  ) !important;
   color: var(--color-error) !important;
   box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb, 239, 68, 68), 0.25) !important;
 }
@@ -393,7 +414,9 @@
 .fileListContainer {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  transition:
+    grid-template-rows 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.3s ease;
   opacity: 0;
   overflow: hidden;
   background: var(--bg-surface-normal);
@@ -489,12 +512,24 @@
 }
 
 /* File type specific icon colors */
-.iconImage { color: #2ecc71 !important; }
-.iconVideo { color: #9b59b6 !important; }
-.iconPdf { color: #e74c3c !important; }
-.iconText { color: #3498db !important; }
-.iconArchive { color: #f1c40f !important; }
-.iconAudio { color: #e67e22 !important; }
+.iconImage {
+  color: #2ecc71 !important;
+}
+.iconVideo {
+  color: #9b59b6 !important;
+}
+.iconPdf {
+  color: #e74c3c !important;
+}
+.iconText {
+  color: #3498db !important;
+}
+.iconArchive {
+  color: #f1c40f !important;
+}
+.iconAudio {
+  color: #e67e22 !important;
+}
 
 /* 主 Tabs 导航 (对标版本控制：磨砂玻璃置顶 Banner 按钮组) */
 .mainTabNav {
@@ -734,14 +769,18 @@
 .diaryHoverActionBtn:hover {
   color: var(--color-primary);
   background: var(--bg-surface);
-  box-shadow: inset 0 0 0 100px rgba(var(--color-primary-rgb, 91, 168, 245), 0.12), 0 2px 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  box-shadow:
+    inset 0 0 0 100px rgba(var(--color-primary-rgb, 91, 168, 245), 0.12),
+    0 2px 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
   border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
 }
 
 .diaryHoverActionBtnDanger:hover {
   color: var(--color-error);
   background: var(--bg-surface);
-  box-shadow: inset 0 0 0 100px rgba(var(--color-error-rgb, 239, 68, 68), 0.12), 0 2px 8px rgba(var(--color-error-rgb, 239, 68, 68), 0.15);
+  box-shadow:
+    inset 0 0 0 100px rgba(var(--color-error-rgb, 239, 68, 68), 0.12),
+    0 2px 8px rgba(var(--color-error-rgb, 239, 68, 68), 0.15);
   border-color: rgba(var(--color-error-rgb, 239, 68, 68), 0.4);
 }
 
@@ -992,36 +1031,36 @@
 }
 
 /* Dark Mode Support for Modal */
-:global(body[data-theme="dark"]) .yearModalContent {
+:global(body[data-theme='dark']) .yearModalContent {
   background: var(--bg-surface-raised, #1a1a1a);
   border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
-:global(body[data-theme="dark"]) .yearModalStickyHeader {
+:global(body[data-theme='dark']) .yearModalStickyHeader {
   background: var(--bg-surface-raised, #1a1a1a);
 }
 
-:global(body[data-theme="dark"]) .yearModalAllBtn,
-:global(body[data-theme="dark"]) .yearModalGridItem {
+:global(body[data-theme='dark']) .yearModalAllBtn,
+:global(body[data-theme='dark']) .yearModalGridItem {
   background: var(--bg-surface-lowest, #121212);
   border-color: var(--border-subtle, rgba(255, 255, 255, 0.05));
   color: var(--text-secondary);
 }
 
-:global(body[data-theme="dark"]) .yearModalAllBtn:hover,
-:global(body[data-theme="dark"]) .yearModalGridItem:hover {
+:global(body[data-theme='dark']) .yearModalAllBtn:hover,
+:global(body[data-theme='dark']) .yearModalGridItem:hover {
   background: var(--bg-surface-high, #262626);
   color: var(--text-primary);
 }
 
-:global(body[data-theme="dark"]) .yearModalAllBtn.active,
-:global(body[data-theme="dark"]) .yearModalGridItem.active {
+:global(body[data-theme='dark']) .yearModalAllBtn.active,
+:global(body[data-theme='dark']) .yearModalGridItem.active {
   background: var(--color-primary) !important;
   color: var(--text-on-primary) !important;
 }
 
-:global(body[data-theme="dark"]) .yearSelectTrigger {
+:global(body[data-theme='dark']) .yearSelectTrigger {
   background: var(--bg-surface);
   border-color: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
@@ -1130,27 +1169,27 @@
 }
 
 /* 暗黑模式适配 */
-:global(body[data-theme="dark"]) .dropdownMenu {
+:global(body[data-theme='dark']) .dropdownMenu {
   background: var(--bg-surface-raised, #1a1a1a);
   border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
-:global(body[data-theme="dark"]) .dropdownItem {
+:global(body[data-theme='dark']) .dropdownItem {
   color: var(--text-secondary);
 }
 
-:global(body[data-theme="dark"]) .dropdownItem:hover {
+:global(body[data-theme='dark']) .dropdownItem:hover {
   background: var(--bg-surface-high, #262626);
   color: var(--text-primary);
 }
 
-:global(body[data-theme="dark"]) .dropdownItem.active {
+:global(body[data-theme='dark']) .dropdownItem.active {
   background: var(--color-primary) !important;
   color: var(--text-on-primary) !important;
 }
 
-:global(body[data-theme="dark"]) .dropdownTrigger {
+:global(body[data-theme='dark']) .dropdownTrigger {
   background: var(--bg-surface);
   border-color: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
@@ -1175,5 +1214,3 @@
   margin-top: 16px;
   padding-bottom: 24px;
 }
-
-

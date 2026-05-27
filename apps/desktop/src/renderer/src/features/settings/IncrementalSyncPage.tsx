@@ -1,9 +1,4 @@
-import {
-  RefreshCw,
-  FileText,
-  Cloud,
-  HelpCircle
-} from 'lucide-react'
+import { RefreshCw, FileText, Cloud, HelpCircle } from 'lucide-react'
 import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { Tooltip, formatSyncProgressStatus } from '@baishou/ui'
@@ -37,7 +32,10 @@ export const IncrementalSyncPage: React.FC = () => {
       )
     }
     if (cleanMsg.includes('S3NotConfiguredError')) {
-      return t('data_sync.error_not_configured', 'Sync is not enabled or configuration is incomplete.')
+      return t(
+        'data_sync.error_not_configured',
+        'Sync is not enabled or configuration is incomplete.'
+      )
     }
     if (cleanMsg.includes('InvalidAccessKeyId')) {
       return t(
@@ -49,19 +47,31 @@ export const IncrementalSyncPage: React.FC = () => {
       cleanMsg.includes('SignatureDoesNotMatch') ||
       (cleanMsg.includes('signature') && cleanMsg.includes('does not match'))
     ) {
-      return t('data_sync.error_invalid_secret', 'Secret Key is invalid. Please update your credentials.')
+      return t(
+        'data_sync.error_invalid_secret',
+        'Secret Key is invalid. Please update your credentials.'
+      )
     }
     if (cleanMsg.includes('AccessDenied')) {
-      return t('data_sync.error_access_denied', 'Access denied. Please check bucket permissions or credentials.')
+      return t(
+        'data_sync.error_access_denied',
+        'Access denied. Please check bucket permissions or credentials.'
+      )
     }
     if (cleanMsg.includes('NoSuchBucket')) {
       return t('data_sync.error_no_bucket', 'Bucket does not exist. Please check the bucket name.')
     }
     if (cleanMsg.includes('ENOTFOUND') || cleanMsg.includes('getaddrinfo')) {
-      return t('data_sync.error_dns', 'Unable to resolve hostname. Please check the endpoint and network.')
+      return t(
+        'data_sync.error_dns',
+        'Unable to resolve hostname. Please check the endpoint and network.'
+      )
     }
     if (cleanMsg.includes('ECONNREFUSED')) {
-      return t('data_sync.error_conn_refused', 'Connection refused. Please check the endpoint and service status.')
+      return t(
+        'data_sync.error_conn_refused',
+        'Connection refused. Please check the endpoint and service status.'
+      )
     }
     return t('data_sync.error_sync_failed_with_msg', 'Sync failed: {{msg}}', { msg: cleanMsg })
   }
@@ -78,7 +88,9 @@ export const IncrementalSyncPage: React.FC = () => {
       setMessage(t('data_sync.sync_completed', 'Sync Completed'))
       setStatus('success')
     } catch (e: any) {
-      setMessage(friendlySyncError(e?.message || t('data_sync.sync_unknown_error', 'Unknown error')))
+      setMessage(
+        friendlySyncError(e?.message || t('data_sync.sync_unknown_error', 'Unknown error'))
+      )
       setStatus('error')
       setProgress(null)
     }
@@ -96,7 +108,16 @@ export const IncrementalSyncPage: React.FC = () => {
         color: 'var(--text-primary)'
       }}
     >
-      <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 24px 0', fontSize: '18px', fontWeight: 600 }}>
+      <h2
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          margin: '0 0 24px 0',
+          fontSize: '18px',
+          fontWeight: 600
+        }}
+      >
         <FileText size={18} style={{ marginRight: 2 }} />
         <span>{t('data_sync.incremental_sync', 'File Sync')}</span>
         <Tooltip

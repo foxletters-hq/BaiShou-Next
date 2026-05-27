@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { MessageAdapter, type MessageWithParts } from '../agent/message.adapter'
-import { makeAssistantMsg, makeTextPart, makeToolPart, makeUserMsg } from './message.adapter.test.fixtures'
+import {
+  makeAssistantMsg,
+  makeTextPart,
+  makeToolPart,
+  makeUserMsg
+} from './message.adapter.test.fixtures'
 
 describe('MessageAdapter.toVercelMessages edge cases', () => {
   describe('助理消息中的工具调用 (tool parts in assistant messages)', () => {
@@ -40,7 +45,7 @@ describe('MessageAdapter.toVercelMessages edge cases', () => {
         (p) => p.type === 'tool-result'
       )
       expect(toolResults).toHaveLength(1)
-      expect(toolResults[0].output).toEqual({ type: 'text', value: '已有结果' })
+      expect(toolResults[0]!.output).toEqual({ type: 'text', value: '已有结果' })
     })
 
     it('should skip assistant messages with no parts', async () => {
@@ -80,7 +85,7 @@ describe('MessageAdapter.toVercelMessages edge cases', () => {
       const contentArr = result[1]!.content as Array<{ type: string }>
       expect(contentArr.filter((p) => p.type === 'tool-call')).toHaveLength(0)
       expect(contentArr).toHaveLength(1)
-      expect(contentArr[0].type).toBe('text')
+      expect(contentArr[0]!.type).toBe('text')
     })
 
     it('should pass Vercel SDK validation: tool-call count matches tool-result count', async () => {

@@ -71,16 +71,10 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
       disabled={!onNavigateToDetail}
     >
       <View style={styles.summaryItemLeft}>
-        <Text style={styles.summaryItemIcon}>
-          {item.type === 'weekly' ? '📅' : '📆'}
-        </Text>
+        <Text style={styles.summaryItemIcon}>{item.type === 'weekly' ? '📅' : '📆'}</Text>
         <View>
-          <Text style={[styles.summaryItemTitle, { color: colors.textPrimary }]}>
-            {item.title}
-          </Text>
-          <Text style={[styles.summaryItemDate, { color: colors.textTertiary }]}>
-            {item.date}
-          </Text>
+          <Text style={[styles.summaryItemTitle, { color: colors.textPrimary }]}>{item.title}</Text>
+          <Text style={[styles.summaryItemDate, { color: colors.textTertiary }]}>{item.date}</Text>
         </View>
       </View>
       <Text style={[styles.summaryArrow, { color: colors.textTertiary }]}>→</Text>

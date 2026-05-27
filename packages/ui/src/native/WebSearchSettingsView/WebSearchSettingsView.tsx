@@ -64,13 +64,9 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
                   styles.chip,
                   {
                     borderColor:
-                      config.searchEngine === engine.id
-                        ? colors.primary
-                        : colors.borderMuted,
+                      config.searchEngine === engine.id ? colors.primary : colors.borderMuted,
                     backgroundColor:
-                      config.searchEngine === engine.id
-                        ? colors.primaryLight
-                        : 'transparent'
+                      config.searchEngine === engine.id ? colors.primaryLight : 'transparent'
                   }
                 ]}
                 onPress={() => onChange({ ...config, searchEngine: engine.id })}
@@ -80,9 +76,7 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
                     styles.chipText,
                     {
                       color:
-                        config.searchEngine === engine.id
-                          ? colors.primary
-                          : colors.textSecondary
+                        config.searchEngine === engine.id ? colors.primary : colors.textSecondary
                     }
                   ]}
                 >
@@ -146,9 +140,7 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
             maximumValue={30}
             step={1}
             value={config.maxResults}
-            onValueChange={(v) =>
-              onChange({ ...config, maxResults: Math.round(v) })
-            }
+            onValueChange={(v) => onChange({ ...config, maxResults: Math.round(v) })}
             minimumTrackTintColor={colors.primary}
             maximumTrackTintColor={colors.borderMuted}
             thumbTintColor={colors.primary}

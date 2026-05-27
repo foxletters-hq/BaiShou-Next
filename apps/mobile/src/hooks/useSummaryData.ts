@@ -434,9 +434,12 @@ export function useSummaryData() {
           if (filteredDiaries && filteredDiaries.length > 0) {
             contextData = filteredDiaries
               .map((d) => {
-                const dateStr = d.date instanceof Date ? d.date.toISOString().split('T')[0] : String(d.date).split('T')[0]
+                const dateStr =
+                  d.date instanceof Date
+                    ? d.date.toISOString().split('T')[0]
+                    : String(d.date).split('T')[0]
                 const preview = d.preview || '（无内容）'
-                const tags = Array.isArray(d.tags) ? d.tags.join(', ') : (d.tags || '无标签')
+                const tags = Array.isArray(d.tags) ? d.tags.join(', ') : d.tags || '无标签'
                 return `#### ${dateStr}\n${preview}\n标签: ${tags}`
               })
               .join('\n\n')
@@ -528,61 +531,58 @@ export function useSummaryData() {
   )
 
   // 调度下一个任务
-  const scheduleNext = useCallback(
-    async () => {
-      // 使用标志位防止并发调度
-      if (isSchedulingRef.current) return
-      isSchedulingRef.current = true
+  const scheduleNext = useCallback(async () => {
+    // 使用标志位防止并发调度
+    if (isSchedulingRef.current) return
+    isSchedulingRef.current = true
 
-      try {
-        while (
-          activeCountRef.current < concurrencyLimitRef.current &&
-          queueRef.current.some((q) => q.status === 'pending')
-        ) {
-          const next = queueRef.current.find((q) => q.status === 'pending')
-          if (!next) break
+    try {
+      while (
+        activeCountRef.current < concurrencyLimitRef.current &&
+        queueRef.current.some((q) => q.status === 'pending')
+      ) {
+        const next = queueRef.current.find((q) => q.status === 'pending')
+        if (!next) break
 
-          next.status = 'running'
-          next.progress = 5
-          activeCountRef.current++
+        next.status = 'running'
+        next.progress = 5
+        activeCountRef.current++
+        broadcastState()
+
+        // 异步处理任务
+        processTask(next).finally(() => {
+          activeCountRef.current--
           broadcastState()
 
-          // 异步处理任务
-          processTask(next).finally(() => {
-            activeCountRef.current--
-            broadcastState()
+          // 继续调度下一个
+          if (!abortControllerRef.current?.signal.aborted) {
+            scheduleNext()
+          }
 
-            // 继续调度下一个
-            if (!abortControllerRef.current?.signal.aborted) {
-              scheduleNext()
-            }
+          // 所有任务完成时清理
+          if (activeCountRef.current === 0) {
+            abortControllerRef.current = null
+            setIsGenerating(false)
 
-            // 所有任务完成时清理
-            if (activeCountRef.current === 0) {
-              abortControllerRef.current = null
-              setIsGenerating(false)
-
-              // 延迟清理已完成的任务
-              setTimeout(() => {
-                const hasFinished = queueRef.current.some(
-                  (q) => q.status === 'completed' || q.status === 'error'
+            // 延迟清理已完成的任务
+            setTimeout(() => {
+              const hasFinished = queueRef.current.some(
+                (q) => q.status === 'completed' || q.status === 'error'
+              )
+              if (hasFinished) {
+                queueRef.current = queueRef.current.filter(
+                  (q) => q.status === 'pending' || q.status === 'running'
                 )
-                if (hasFinished) {
-                  queueRef.current = queueRef.current.filter(
-                    (q) => q.status === 'pending' || q.status === 'running'
-                  )
-                  broadcastState()
-                }
-              }, 3000)
-            }
-          })
-        }
-      } finally {
-        isSchedulingRef.current = false
+                broadcastState()
+              }
+            }, 3000)
+          }
+        })
       }
-    },
-    [broadcastState, processTask]
-  )
+    } finally {
+      isSchedulingRef.current = false
+    }
+  }, [broadcastState, processTask])
 
   const queueGeneration = async (items: MissingSummary[], concurrency?: number) => {
     if (!dbReady || !services) return

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import { TTSProviderSettings } from '@baishou/ui'
 

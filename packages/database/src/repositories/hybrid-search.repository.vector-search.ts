@@ -48,11 +48,7 @@ export class HybridSearchVectorQuery {
 
     if (this.runtime.vecDistanceCosineAvailable !== false) {
       try {
-        const results = await this.queryWithVecDistanceCosine(
-          vectorBuffer,
-          limit,
-          threshold
-        )
+        const results = await this.queryWithVecDistanceCosine(vectorBuffer, limit, threshold)
         this.runtime.vecDistanceCosineAvailable = true
         return results
       } catch (e: any) {

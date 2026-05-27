@@ -52,10 +52,23 @@
 }
 
 @keyframes sparkle-pulse {
-  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
-  25% { transform: scale(1.15) rotate(8deg); opacity: 0.85; }
-  50% { transform: scale(0.95) rotate(-5deg); opacity: 1; }
-  75% { transform: scale(1.08) rotate(3deg); opacity: 0.9; }
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1.15) rotate(8deg);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(0.95) rotate(-5deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.08) rotate(3deg);
+    opacity: 0.9;
+  }
 }
 
 /* 中间文本区域 - 弹性宽度 */
@@ -194,8 +207,13 @@
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 /* Responsive */
@@ -224,10 +242,20 @@
   line-height: 1.4;
 }
 
-.content h1 { font-size: 1.15em; }
-.content h2 { font-size: 1.1em; }
-.content h3 { font-size: 1.05em; }
-.content h4, .content h5, .content h6 { font-size: 1em; }
+.content h1 {
+  font-size: 1.15em;
+}
+.content h2 {
+  font-size: 1.1em;
+}
+.content h3 {
+  font-size: 1.05em;
+}
+.content h4,
+.content h5,
+.content h6 {
+  font-size: 1em;
+}
 
 .content p {
   margin: 6px 0;

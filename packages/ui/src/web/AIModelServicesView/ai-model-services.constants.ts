@@ -156,4 +156,3 @@ export const PROVIDER_TYPES = [
   'vercel',
   'xiaomimimo'
 ]
-

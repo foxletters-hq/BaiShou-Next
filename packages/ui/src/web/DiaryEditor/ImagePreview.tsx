@@ -164,7 +164,11 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
 
           <div className="image-preview-toolbar" onClick={(e) => e.stopPropagation()}>
             <div className="image-preview-controls">
-              <button type="button" onClick={handleZoomIn} title={t('image_preview.zoom_in', 'Zoom in')}>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                title={t('image_preview.zoom_in', 'Zoom in')}
+              >
                 <svg
                   viewBox="0 0 24 24"
                   width="20"
@@ -179,7 +183,11 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
                   <line x1="8" y1="11" x2="14" y2="11" />
                 </svg>
               </button>
-              <button type="button" onClick={handleZoomOut} title={t('image_preview.zoom_out', 'Zoom out')}>
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                title={t('image_preview.zoom_out', 'Zoom out')}
+              >
                 <svg
                   viewBox="0 0 24 24"
                   width="20"
@@ -193,7 +201,11 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
                   <line x1="8" y1="11" x2="14" y2="11" />
                 </svg>
               </button>
-              <button type="button" onClick={handleRotate} title={t('image_preview.rotate', 'Rotate')}>
+              <button
+                type="button"
+                onClick={handleRotate}
+                title={t('image_preview.rotate', 'Rotate')}
+              >
                 <svg
                   viewBox="0 0 24 24"
                   width="20"
@@ -206,7 +218,11 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
                   <polyline points="21 3 21 9 15 9" />
                 </svg>
               </button>
-              <button type="button" onClick={handleResetZoom} title={t('image_preview.reset', 'Reset')}>
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                title={t('image_preview.reset', 'Reset')}
+              >
                 <svg
                   viewBox="0 0 24 24"
                   width="20"
