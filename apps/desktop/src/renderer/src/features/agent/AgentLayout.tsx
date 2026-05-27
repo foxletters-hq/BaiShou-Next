@@ -113,8 +113,7 @@ export const AgentLayout: React.FC = () => {
     ? {
         id: String(currentAssistant.id),
         name: currentAssistant.name,
-        description:
-          currentAssistant.description || t('agent.default_assistant_desc', ''),
+        description: currentAssistant.description || t('agent.default_assistant_desc', ''),
         emoji: currentAssistant.emoji,
         avatarPath: (currentAssistant as any).avatarPath
       }

@@ -11,7 +11,13 @@ export function registerSessionIPC() {
   // ==========================================
   ipcMain.handle(
     'agent:get-sessions',
-    async (_, limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) => {
+    async (
+      _,
+      limit: number = 20,
+      offset: number = 0,
+      assistantId?: string,
+      searchQuery?: string
+    ) => {
       const { sessionManager } = getAgentManagers()
       logger.info(
         `[IPC] agent:get-sessions - astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`

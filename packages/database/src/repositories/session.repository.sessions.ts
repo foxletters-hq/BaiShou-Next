@@ -76,7 +76,10 @@ export class SessionCrudOps {
                 FROM agent_messages_fts
                 WHERE agent_messages_fts MATCH ${`"${cleaned}"`}
               `)
-              ftsRows.map((r: any) => r.sessionId).filter(Boolean).forEach((id: string) => sessionIdsSet.add(id))
+              ftsRows
+                .map((r: any) => r.sessionId)
+                .filter(Boolean)
+                .forEach((id: string) => sessionIdsSet.add(id))
             } catch (e) {
               console.warn('[SessionRepo] FTS search failed:', e)
             }
@@ -103,7 +106,10 @@ export class SessionCrudOps {
                   sql`json_extract(${partsTbl.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
                 )
               )
-            likeRows.map((r: any) => r.sessionId).filter(Boolean).forEach((id: string) => sessionIdsSet.add(id))
+            likeRows
+              .map((r: any) => r.sessionId)
+              .filter(Boolean)
+              .forEach((id: string) => sessionIdsSet.add(id))
           } catch (e) {
             console.error('[SessionRepo] LIKE message search failed:', e)
           }
@@ -144,8 +150,10 @@ export class SessionCrudOps {
       }
     }
 
-    let finalQuery: any = q
-      .orderBy(desc(agentSessionsTable.isPinned), desc(agentSessionsTable.updatedAt))
+    let finalQuery: any = q.orderBy(
+      desc(agentSessionsTable.isPinned),
+      desc(agentSessionsTable.updatedAt)
+    )
 
     if (limit > 0) {
       finalQuery = finalQuery.limit(limit).offset(offset)

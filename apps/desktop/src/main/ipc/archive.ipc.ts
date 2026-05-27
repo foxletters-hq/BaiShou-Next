@@ -21,7 +21,11 @@ export function registerArchiveIPC() {
   ipcMain.handle('archive:pick-zip', async (event, locale?: string) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     const result = await dialog.showOpenDialog((win || undefined) as any, {
-      title: translateMain(locale, 'settings.archive_pick_zip_title', 'Select BaiShou backup (ZIP)'),
+      title: translateMain(
+        locale,
+        'settings.archive_pick_zip_title',
+        'Select BaiShou backup (ZIP)'
+      ),
       filters: [
         {
           name: translateMain(locale, 'settings.archive_zip_filter_name', 'ZIP Archives'),

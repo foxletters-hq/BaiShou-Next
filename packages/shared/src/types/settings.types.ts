@@ -74,10 +74,7 @@ export interface WebSearchConfig {
   webSearchPlainSnippetLength: number // 未配置 Embedding 时的纯文本截取上限 (默认 3000)
 }
 
-import type {
-  SummaryPromptLocale,
-  SummaryTemplatesMap
-} from './summary-prompt.types'
+import type { SummaryPromptLocale, SummaryTemplatesMap } from './summary-prompt.types'
 
 /**
  * 总结模块自定义指令配置

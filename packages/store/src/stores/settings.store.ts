@@ -92,9 +92,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           set({ locale })
           const resolvedUi =
             locale === 'system' ? navigator.language : locale === 'zh-TW' ? 'zh-TW' : locale
-          i18n.changeLanguage(
-            locale === 'system' ? navigator.language.split('-')[0] : locale
-          )
+          i18n.changeLanguage(locale === 'system' ? navigator.language.split('-')[0] : locale)
           const summaryConfig = get().summaryConfig
           if (summaryConfig) {
             const promptLocale = resolveSummaryPromptLocale(resolvedUi)

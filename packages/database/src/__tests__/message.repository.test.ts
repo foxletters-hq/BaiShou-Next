@@ -134,7 +134,9 @@ describe('MessageRepository - searchMessagesByKeyword', () => {
     console.log('agent_messages_fts rows:', JSON.stringify(ftsRows, null, 2))
 
     // 检查 SQLite json_extract 对 isReasoning 的解析
-    const jsonTest = sqlite.prepare(`
+    const jsonTest = sqlite
+      .prepare(
+        `
       SELECT 
         json_extract(data, '$.isReasoning') as val,
         json_type(data, '$.isReasoning') as type,
@@ -143,7 +145,9 @@ describe('MessageRepository - searchMessagesByKeyword', () => {
         (json_extract(data, '$.isReasoning') = false) as eq_false,
         COALESCE(json_extract(data, '$.isReasoning'), 0) as coalesced
       FROM agent_parts WHERE id = 'part-2'
-    `).all()
+    `
+      )
+      .all()
     console.log('jsonTest:', JSON.stringify(jsonTest, null, 2))
 
     // 4. 测试搜索 "我想了想"（应该搜索不到，因为它是思考消息）

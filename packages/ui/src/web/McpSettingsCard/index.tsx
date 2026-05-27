@@ -179,9 +179,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
         <div className={styles.collapseInner}>
           {/* 开关行 */}
           <div className="settings-list-divider indent" />
-          <div
-            className={`settings-list-tile settings-list-tile-noclick ${styles.indentedTile}`}
-          >
+          <div className={`settings-list-tile settings-list-tile-noclick ${styles.indentedTile}`}>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
                 {t('settings.mcp_enable', 'Enable MCP Server')}

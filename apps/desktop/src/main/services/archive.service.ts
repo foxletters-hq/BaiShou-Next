@@ -38,19 +38,20 @@ export class DesktopArchiveService implements IArchiveService {
     const ts = `${dt.getFullYear()}${(dt.getMonth() + 1).toString().padStart(2, '0')}${dt.getDate().toString().padStart(2, '0')}_${dt.getHours().toString().padStart(2, '0')}${dt.getMinutes().toString().padStart(2, '0')}`
     const defaultName = `BaiShou_Vault_Backup_${ts}.zip`
 
-    const { canceled, filePath } = await dialog.showSaveDialog(
-      (parentWindow || undefined) as any,
-      {
-        title: translateMain(locale, 'settings.archive_export_save_title', 'Export BaiShou data backup'),
-        defaultPath: defaultName,
-        filters: [
-          {
-            name: translateMain(locale, 'settings.archive_zip_filter_name', 'ZIP Archives'),
-            extensions: ['zip']
-          }
-        ]
-      }
-    )
+    const { canceled, filePath } = await dialog.showSaveDialog((parentWindow || undefined) as any, {
+      title: translateMain(
+        locale,
+        'settings.archive_export_save_title',
+        'Export BaiShou data backup'
+      ),
+      defaultPath: defaultName,
+      filters: [
+        {
+          name: translateMain(locale, 'settings.archive_zip_filter_name', 'ZIP Archives'),
+          extensions: ['zip']
+        }
+      ]
+    })
 
     if (canceled || !filePath) return null
 

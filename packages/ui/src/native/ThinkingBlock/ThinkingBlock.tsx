@@ -29,7 +29,10 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
 
   const getStatusText = (): string => {
     if (isThinking) {
-      return t('agent.chat.thinking_time', '思考中 {{time}}', { time: '...' }).replace(' {{time}}', '...')
+      return t('agent.chat.thinking_time', '思考中 {{time}}', { time: '...' }).replace(
+        ' {{time}}',
+        '...'
+      )
     }
     if (thinkingTimeMs !== undefined) {
       const seconds = (thinkingTimeMs / 1000).toFixed(1)

@@ -159,16 +159,15 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
             className={`${styles.segBtn} ${config.monthlySummarySource === 'diaries' ? styles.active : ''}`}
             onClick={() => onChange({ ...config, monthlySummarySource: 'diaries' })}
           >
-            <span>📄</span> {t('settings.read_all_diaries', 'Read all diary entries (higher fidelity)')}
+            <span>📄</span>{' '}
+            {t('settings.read_all_diaries', 'Read all diary entries (higher fidelity)')}
           </button>
         </div>
 
         <div className={styles.divider} />
 
         <div className={styles.cardTitleLine}>
-          <span>
-            📝 {t('settings.summary_ai_prompt_title', 'AI summary prompt templates')}
-          </span>
+          <span>📝 {t('settings.summary_ai_prompt_title', 'AI summary prompt templates')}</span>
         </div>
         <p className={styles.cardDesc}>
           {t(

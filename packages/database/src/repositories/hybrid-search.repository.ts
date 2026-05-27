@@ -47,7 +47,11 @@ function wrapSqlExecutor(db: any): ISqlExecutor {
       }
 
       // 2. Expo-SQLite (RN Mobile)
-      if (client && typeof client.getAllAsync === 'function' && typeof client.runAsync === 'function') {
+      if (
+        client &&
+        typeof client.getAllAsync === 'function' &&
+        typeof client.runAsync === 'function'
+      ) {
         if (isQuery) {
           const rows = await client.getAllAsync(sqlStr, sqlArgs)
           return { rows }

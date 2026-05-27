@@ -90,7 +90,9 @@ export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({ invoca
         activeOpacity={0.7}
       >
         <Text style={[styles.groupTitle, { color: colors.textPrimary }]}>
-          {t('agent.tools.tool_call_results', '工具调用 · {{count}} 个结果', { count: invocations.length })}
+          {t('agent.tools.tool_call_results', '工具调用 · {{count}} 个结果', {
+            count: invocations.length
+          })}
         </Text>
         <Text style={[styles.groupArrow, { color: colors.textTertiary }]}>
           {expanded ? '▼' : '▶'}

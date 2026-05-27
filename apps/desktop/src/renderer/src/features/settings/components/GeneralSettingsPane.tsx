@@ -17,8 +17,7 @@ import baishouHeroImg from '../../../assets/images/BaiShou-v0.0.1.jpeg'
 
 export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const { t, i18n } = useTranslation()
-  const archiveLocale =
-    settings.locale === 'system' ? i18n.language : settings.locale
+  const archiveLocale = settings.locale === 'system' ? i18n.language : settings.locale
   const { profile, loadProfile } = useUserProfileStore() as any
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)

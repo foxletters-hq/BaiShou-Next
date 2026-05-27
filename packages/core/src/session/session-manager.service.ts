@@ -74,7 +74,12 @@ export class SessionManagerService {
     return this.sessionRepo.getMessagesBySession(sessionId, limit)
   }
 
-  async findAllSessions(limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) {
+  async findAllSessions(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
+    searchQuery?: string
+  ) {
     return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery)
   }
 
