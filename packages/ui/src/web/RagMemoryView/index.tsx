@@ -15,12 +15,12 @@ import {
   MdSearch,
   MdClose,
   MdMoreVert,
-  MdWarning,
-  MdHelpOutline
+  MdWarning
 } from 'react-icons/md'
 import { Switch } from '../Switch/Switch'
 import { Pagination } from '../Pagination/index'
-import { Tooltip } from '../Tooltip/Tooltip'
+import { HelpTooltip } from '../HelpTooltip'
+import { RagEmbeddedFilesTable } from './RagEmbeddedFilesTable'
 import styles from './RagMemoryView.module.css'
 
 export interface RagConfig {
@@ -174,15 +174,14 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
       <div className={styles.headerRow}>
         <div className={styles.titleInfo}>
           <h2 className={styles.title}>{t('agent.rag.title', 'RAG 记忆管理')}</h2>
-          <Tooltip
+          <HelpTooltip
             content={t(
               'settings.tooltip_rag_management',
               '这是用以支持 AI 检索过去日记等上下文的本地 RAG（检索增强生成）知识库。它可以根据您的输入或日记变更自动更新，以实现长短期记忆的近似语义召回。'
             )}
             className={styles.titleTooltip}
-          >
-            <MdHelpOutline size={16} className={styles.helpIcon} />
-          </Tooltip>
+            size={16}
+          />
           <Switch
             checked={config.ragEnabled}
             onChange={(e) => onChange({ ...config, ragEnabled: e.target.checked })}
@@ -396,14 +395,14 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             className={`${styles.segmentBtn} ${searchMode === 'semantic' ? styles.segmentBtnActive : ''}`}
             onClick={() => searchMode !== 'semantic' && toggleSearchMode()}
           >
-            {t('settings.rag_search_semantic_label', '语义搜索')}
+            {t('settings.rag_search_semantic', '语义搜索')}
           </button>
           <button
             type="button"
             className={`${styles.segmentBtn} ${searchMode === 'text' ? styles.segmentBtnActive : ''}`}
             onClick={() => searchMode !== 'text' && toggleSearchMode()}
           >
-            {t('settings.rag_search_text_label', '文本搜索')}
+            {t('settings.rag_search_text', '文本搜索')}
           </button>
         </div>
         {searchQuery && (
@@ -415,133 +414,15 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
 
       {/* 6. List */}
       <div className={styles.entriesListContainer}>
-        {entries.length === 0 ? (
-          <div className={styles.emptyStateContainer}>
-            <div className={styles.emptyIconBig}>
-              <MdAutoStories size={64} />
-            </div>
-            <div className={styles.emptyTitleLarge}>
-              {searchQuery
-                ? t('common.no_search_result', '没有找到相关结果')
-                : t('common.no_content', '暂无内容')}
-            </div>
-            <div className={styles.emptyDescSub}>
-              {t(
-                'settings.rag_empty_desc',
-                '当 AI 阅读日记或生成内容时，底层向量数据将在这里自动生成并被管理。'
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.entriesWaterfall}>
-            {entries.map((e) => (
-              <div key={e.embeddingId} className={styles.memoryEntryCard}>
-                <div className={styles.memoryEntryIconBlock}>
-                  <span className={styles.memoryEntryBraces}>{`{}`}</span>
-                </div>
-                <div className={styles.memoryEntryContentBlock}>
-                  <div className={styles.memoryEntryText}>{e.text}</div>
-                  {/* Assuming tags aren't perfectly parsed yet, but if they are inside text we can leave it. */}
-                  <div className={styles.memoryEntryFooter}>
-                    <span>{e.modelId}</span>
-                    <span>·</span>
-                    <span>{formatDate(e.createdAt)}</span>
-                    {e.similarity !== undefined && (
-                      <>
-                        <span>·</span>
-                        <span className={styles.similarityTag}>
-                          {t('recall.similarity', '相似度')}: {Math.round(e.similarity * 100)}%
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className={styles.memoryEntryActionsBlock} style={{ position: 'relative' }}>
-                  <button
-                    className={styles.memoryMoreBtn}
-                    onClick={() =>
-                      setActiveMenuId(activeMenuId === e.embeddingId ? null : e.embeddingId)
-                    }
-                  >
-                    <MdMoreVert size={20} />
-                  </button>
-                  {activeMenuId === e.embeddingId && (
-                    <>
-                      <div
-                        style={{ position: 'fixed', inset: 0, zIndex: 9 }}
-                        onClick={(ev) => {
-                          ev.stopPropagation()
-                          setActiveMenuId(null)
-                        }}
-                      />
-                      <div
-                        style={{
-                          position: 'absolute',
-                          right: 0,
-                          top: 32,
-                          background: 'var(--bg-color-primary, #fff)',
-                          border: '1px solid var(--border-color, #eee)',
-                          borderRadius: 6,
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                          zIndex: 10,
-                          minWidth: 100,
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <div
-                          style={{
-                            padding: '8px 16px',
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            color: 'var(--text-color, #333)',
-                            transition: 'background 0.2s',
-                            whiteSpace: 'nowrap',
-                            position: 'relative',
-                            zIndex: 11
-                          }}
-                          onMouseEnter={(ev) =>
-                            (ev.currentTarget.style.background =
-                              'var(--bg-color-secondary, #f5f5f5)')
-                          }
-                          onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
-                          onClick={() => {
-                            setActiveMenuId(null)
-                            onEditEntry && onEditEntry(e)
-                          }}
-                        >
-                          {t('common.edit', '编辑片段')}
-                        </div>
-                        <div
-                          style={{
-                            padding: '8px 16px',
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            color: '#ef4444',
-                            transition: 'background 0.2s',
-                            whiteSpace: 'nowrap',
-                            position: 'relative',
-                            zIndex: 11
-                          }}
-                          onMouseEnter={(ev) =>
-                            (ev.currentTarget.style.background =
-                              'var(--bg-color-secondary, #f5f5f5)')
-                          }
-                          onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
-                          onClick={() => {
-                            setActiveMenuId(null)
-                            onDeleteEntry && onDeleteEntry(e.embeddingId)
-                          }}
-                        >
-                          {t('common.delete', '删除片段')}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <RagEmbeddedFilesTable
+          entries={entries}
+          searchQuery={searchQuery}
+          activeMenuId={activeMenuId}
+          setActiveMenuId={setActiveMenuId}
+          onEditEntry={onEditEntry}
+          onDeleteEntry={onDeleteEntry}
+          formatDate={formatDate}
+        />
         {showPagination && (
           <div className={styles.paginationRow}>
             <div className={styles.paginationInfo}>
