@@ -26,7 +26,8 @@ vi.mock('electron', () => ({
       if (name === 'userData') return mockUserData
       if (name === 'temp') return mockTempDir
       return mockTempDir
-    })
+    }),
+    getVersion: vi.fn(() => '4.0.0-test')
   },
   dialog: { showSaveDialog: vi.fn(), showOpenDialog: vi.fn() }
 }))

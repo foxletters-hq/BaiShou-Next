@@ -49,7 +49,7 @@ pnpm ci:check
 | 现象                                   | 处理                                                                                            |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `NODE_MODULE_VERSION` / better-sqlite3 | 在仓库根执行：`pnpm rebuild better-sqlite3`                                                     |
-| 本机 `archive-export-real-db` 被 skip | 见 `better-sqlite3-available.ts`（Node 与 better-sqlite3 二进制不一致）；GitHub CI（Linux）会跑 |
+| 本机 `archive-export-real-db` 被 skip  | 见 `better-sqlite3-available.ts`（Node 与 better-sqlite3 二进制不一致）；GitHub CI（Linux）会跑 |
 | `format:check` 失败                    | 在仓库根执行 `pnpm format`，仅将格式化相关文件纳入 commit                                       |
 | 不在 Git 仓库里执行                    | 先 `git clone` 你的 Fork，再在克隆目录内运行 `pnpm ci:check`                                    |
 
@@ -99,11 +99,11 @@ docs: 规范目录与文件改为单层序号命名
 
 本仓库 **未** 在 GitHub 设置 Rulesets / 分支保护来「CI 未过则禁止创建 PR」。你可以先开 PR，便于讨论与迭代。
 
-| 阶段 | 要求 |
-|------|------|
-| **创建 PR** | 不强制 GitHub CI 已绿；仍强烈建议先本地 `pnpm ci:check` 通过再开 PR，减少来回修改。 |
-| **合并进 `main`** | **必须** GitHub Actions CI 全部通过；维护者合入前会核对 PR 上的 CI 状态。 |
-| **CI 未通过时** | 维护者会在 PR 中说明需修复项（或请你自行查看 Actions 日志），修好并 push 后等待 CI 重新变绿再请求合并。 |
+| 阶段              | 要求                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| **创建 PR**       | 不强制 GitHub CI 已绿；仍强烈建议先本地 `pnpm ci:check` 通过再开 PR，减少来回修改。                     |
+| **合并进 `main`** | **必须** GitHub Actions CI 全部通过；维护者合入前会核对 PR 上的 CI 状态。                               |
+| **CI 未通过时**   | 维护者会在 PR 中说明需修复项（或请你自行查看 Actions 日志），修好并 push 后等待 CI 重新变绿再请求合并。 |
 
 **贡献者**：CI 红了也可以提交 PR，但请主动跟进修复，不要假设「能开 PR 就能合并」。
 
