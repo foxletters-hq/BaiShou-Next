@@ -6,9 +6,9 @@ import {
   connectionManager,
   shadowConnectionManager,
   ShadowIndexRepository,
-  UserProfileRepository
+  UserProfileRepository,
+  SnapshotRepository
 } from '@baishou/database'
-import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
 import {
   SessionFileService,
   SessionSyncService,
@@ -21,13 +21,7 @@ import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import { AIProviderConfig, GlobalModelsConfig, logger } from '@baishou/shared'
 import { searchService } from '../services/search.service'
-
-// @ts-ignore
-import { AgentSessionService } from '@baishou/ai/src/agent/agent-session.service'
-// @ts-ignore
-import { ToolRegistry } from '@baishou/ai/src/tools/tool-registry'
-// @ts-ignore
-import { AIProviderRegistry } from '@baishou/ai/src/providers/provider.registry'
+import { AgentSessionService, ToolRegistry, AIProviderRegistry } from '@baishou/ai'
 
 export const toolRegistry = new ToolRegistry()
 export const agentService = new AgentSessionService()

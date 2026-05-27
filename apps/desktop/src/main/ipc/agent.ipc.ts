@@ -1,8 +1,11 @@
 import { registerAssistantIPC } from './agent-assistant.ipc'
 import { registerSessionIPC } from './agent-session.ipc'
 import { registerChatIPC } from './agent-chat.ipc'
+import { registerMessageIPC } from './agent-message.ipc'
+import { registerAttachmentIPC } from './agent-attachment.ipc'
+import { registerPricingIPC } from './pricing.ipc'
 import { registerTtsIPC } from './tts.ipc'
-import { TitleGeneratorService } from '@baishou/ai/src/agent/title-generator.service'
+import { TitleGeneratorService } from '@baishou/ai'
 import { getAgentManagers } from './agent-helpers'
 import { BrowserWindow } from 'electron'
 import { logger } from '@baishou/shared'
@@ -13,6 +16,9 @@ export function registerAgentIPC() {
   registerAssistantIPC()
   registerSessionIPC()
   registerChatIPC()
+  registerMessageIPC()
+  registerAttachmentIPC()
+  registerPricingIPC()
   registerTtsIPC()
 
   // 绑定自动命名成功后的回调，同步到磁盘并通知前端刷新
