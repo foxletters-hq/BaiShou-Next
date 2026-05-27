@@ -1,7 +1,7 @@
 import { Summary, CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
 import { SummarySyncService } from './summary-sync.service'
 import { SummaryFileService } from '../vault/summary-file.service'
-import { SummaryRepository } from '@baishou/database/src/repositories/summary.repository'
+import { SummaryRepository } from '@baishou/database'
 
 export class SummaryManagerService {
   constructor(

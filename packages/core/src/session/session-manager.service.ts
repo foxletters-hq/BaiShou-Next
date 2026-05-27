@@ -3,7 +3,7 @@ import {
   InsertSessionInput,
   InsertMessageInput,
   InsertPartInput
-} from '@baishou/database/src/repositories/session.repository'
+} from '@baishou/database'
 import { SessionSyncService } from './session-sync.service'
 import { SessionFileService } from './session-file.service'
 

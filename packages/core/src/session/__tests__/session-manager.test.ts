@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SessionManagerService } from '../session-manager.service'
 import { SessionSyncService } from '../session-sync.service'
 import { SessionFileService } from '../session-file.service'
-import { SessionRepository } from '@baishou/database/src/repositories/session.repository'
+import { SessionRepository } from '@baishou/database'
 
 describe('SessionManagerService (Ghost memory interceptor)', () => {
   let mockFileService: import('vitest').Mocked<SessionFileService>

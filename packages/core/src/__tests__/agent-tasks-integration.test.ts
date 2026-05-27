@@ -1,11 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { resolve } from 'path'
 
 const PROJECT_ROOT = resolve(__dirname, '../../../..')
 
 const readFile = (relativePath: string) =>
   readFileSync(resolve(PROJECT_ROOT, relativePath), 'utf-8')
+
+/** 读取 UI 模块目录下所有源码（拆分后断言不再依赖薄 index） */
+const readUiModule = (relativeDir: string) => {
+  const dir = resolve(PROJECT_ROOT, relativeDir)
+  return readdirSync(dir)
+    .filter((name) => /\.(tsx?|jsx?)$/.test(name))
+    .map((name) => readFileSync(resolve(dir, name), 'utf-8'))
+    .join('\n')
+}
 
 describe('Agent 1: 日记与筛选功能验证', () => {
   it('任务2: DiaryPage 使用透明 overlay 而非灰色遮罩', () => {
@@ -62,7 +71,7 @@ describe('Agent 2: 伙伴管理 UI 验证', () => {
   })
 
   it('任务7: AssistantEditPage 正确显示供应商图标', () => {
-    const tsx = readFile('packages/ui/src/web/AssistantEditPage/index.tsx')
+    const tsx = readUiModule('packages/ui/src/web/AssistantEditPage')
     expect(tsx).toContain('getProviderIcon')
     expect(tsx).toContain('modelIcon')
   })
@@ -95,13 +104,13 @@ describe('Agent 3: RAG 记忆管理验证', () => {
   })
 
   it('任务11: RAG 分页默认10条，可选 20/30/50/100', () => {
-    const tsx = readFile('packages/ui/src/web/RagMemoryView/index.tsx')
+    const tsx = readUiModule('packages/ui/src/web/RagMemoryView')
     expect(tsx).toContain('[10, 20, 30, 50, 100]')
     expect(tsx).toContain('pageSize')
   })
 
   it('任务13: "清空当前维度记忆"按钮已删除', () => {
-    const tsx = readFile('packages/ui/src/web/RagMemoryView/index.tsx')
+    const tsx = readUiModule('packages/ui/src/web/RagMemoryView')
     // onClearDimension 应该不在 JSX 中被调用 (仅在 interface 声明)
     const lines = tsx.split('\n')
     const jsxUsageLines = lines.filter(
@@ -115,10 +124,10 @@ describe('Agent 3: RAG 记忆管理验证', () => {
   })
 
   it('任务14: 搜索支持语义/文本切换，默认语义', () => {
-    const tsx = readFile('packages/ui/src/web/RagMemoryView/index.tsx')
+    const tsx = readUiModule('packages/ui/src/web/RagMemoryView')
     expect(tsx).toMatch(/searchMode.*semantic/)
     expect(tsx).toContain('toggleSearchMode')
-    expect(tsx).toContain('searchModeToggle')
+    expect(tsx).toContain('segmentedControl')
   })
 
   it('任务15: EmbeddingService 有 migrateEmbeddings 方法', () => {
@@ -184,7 +193,7 @@ describe('Agent 5: TTS 语音功能验证', () => {
 
 describe('Agent 6: 伙伴聊天上下文验证', () => {
   it('任务28: 上下文轮数设置端到端流程完整', () => {
-    const editPage = readFile('packages/ui/src/web/AssistantEditPage/index.tsx')
+    const editPage = readUiModule('packages/ui/src/web/AssistantEditPage')
     expect(editPage).toContain('contextWindow')
 
     const schema = readFile('packages/database/src/schema/agent-assistants.ts')
@@ -237,7 +246,7 @@ describe('Agent 7: 回忆生成页面验证', () => {
 
 describe('Agent 8: 记忆画廊验证', () => {
   it('任务19: 侧边栏点击仅切换，不进入编辑', () => {
-    const tsx = readFile('packages/ui/src/web/GalleryPanel/GalleryPanel.tsx')
+    const tsx = readUiModule('packages/ui/src/web/GalleryPanel')
     // handleItemClick 应该只设置 selectedId
     expect(tsx).toContain('handleItemClick')
     expect(tsx).toContain('setSelectedId')
@@ -255,22 +264,24 @@ describe('Agent 8: 记忆画廊验证', () => {
 
 describe('Agent 9: 文件附件系统验证', () => {
   it('任务18-1: 附件上传组件支持图片/视频/音频', () => {
-    const tsx = readFile('packages/ui/src/web/DiaryEditor/AttachmentUploader.tsx')
-    expect(tsx).toContain('image/*')
-    expect(tsx).toContain('video/*')
-    expect(tsx).toContain('audio/*')
+    const entry = readFile('packages/ui/src/web/DiaryEditor/AttachmentUploader.tsx')
+    const hook = readFile('packages/ui/src/web/DiaryEditor/useAttachmentUploader.tsx')
+    expect(entry).toContain('image/*')
+    expect(entry).toContain('video/*')
+    expect(entry).toContain('audio/*')
+    expect(hook).toContain('uploadAttachments')
   })
 
   it('任务18-1: 支持粘贴上传', () => {
-    const tsx = readFile('packages/ui/src/web/DiaryEditor/AttachmentUploader.tsx')
-    expect(tsx).toContain('handlePaste')
-    expect(tsx).toContain('clipboardData')
+    const hook = readFile('packages/ui/src/web/DiaryEditor/useAttachmentUploader.tsx')
+    expect(hook).toContain('handlePaste')
+    expect(hook).toContain('clipboardData')
   })
 
   it('任务18-2: 右键菜单包含打开文件夹和复制', () => {
-    const tsx = readFile('packages/ui/src/web/DiaryEditor/AttachmentUploader.tsx')
-    expect(tsx).toContain('openAttachmentFolder')
-    expect(tsx).toContain('copyAttachment')
+    const hook = readFile('packages/ui/src/web/DiaryEditor/useAttachmentUploader.tsx')
+    expect(hook).toContain('openAttachmentFolder')
+    expect(hook).toContain('copyAttachment')
   })
 
   it('任务18-4: 编辑器渲染附件引用', () => {
@@ -281,11 +292,9 @@ describe('Agent 9: 文件附件系统验证', () => {
 
   it('任务18-3: ImagePreview 组件已集成到 CodeMirrorEditor', () => {
     const editor = readFile('packages/ui/src/web/DiaryEditor/CodeMirrorEditor.tsx')
-    // 导入存在
+    const hook = readFile('packages/ui/src/web/DiaryEditor/useCodeMirrorEditor.ts')
     expect(editor).toContain('import { ImagePreview }')
-    // 确认有 previewSrc 状态管理
-    expect(editor).toContain('previewSrc')
-    // 确认 ImagePreview 在 JSX 中使用
+    expect(hook).toContain('previewSrc')
     expect(editor).toContain('<ImagePreview')
   })
 

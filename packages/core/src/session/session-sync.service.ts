@@ -1,4 +1,4 @@
-import { SessionRepository } from '@baishou/database/src/repositories/session.repository'
+import { SessionRepository } from '@baishou/database'
 import { SessionFileService } from './session-file.service'
 
 export class SessionSyncService {

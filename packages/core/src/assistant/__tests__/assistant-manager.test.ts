@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AssistantManagerService } from '../assistant-manager.service'
-import { AssistantRepository } from '@baishou/database/src/repositories/assistant.repository'
+import { AssistantRepository } from '@baishou/database'
 import { AssistantFileService } from '../assistant-file.service'
 
 describe('AssistantManagerService (SSOT Enforcer)', () => {

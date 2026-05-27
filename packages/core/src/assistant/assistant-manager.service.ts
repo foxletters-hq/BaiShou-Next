@@ -2,7 +2,7 @@ import {
   AssistantRepository,
   InsertAssistantInput,
   UpdateAssistantInput
-} from '@baishou/database/src/repositories/assistant.repository'
+} from '@baishou/database'
 import { AssistantFileService } from './assistant-file.service'
 import { IAttachmentManager } from '../attachments/attachment-manager.types'
 

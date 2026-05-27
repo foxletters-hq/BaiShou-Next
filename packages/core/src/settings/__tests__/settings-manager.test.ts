@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SettingsManagerService } from '../settings-manager.service'
-import { SettingsRepository } from '@baishou/database/src/repositories/settings.repository'
+import { SettingsRepository } from '@baishou/database'
 import { SettingsFileService } from '../settings-file.service'
 
 describe('SettingsManagerService (Global Vault KV SSOT)', () => {

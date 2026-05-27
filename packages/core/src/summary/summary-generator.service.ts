@@ -1,6 +1,5 @@
 import { MissingSummary, SummaryType, logger } from '@baishou/shared'
-import { DiaryRepository } from '@baishou/database/src/repositories/diary.repository'
-import { SummaryRepository } from '@baishou/database/src/repositories/summary.repository'
+import { DiaryRepository, SummaryRepository } from '@baishou/database'
 import {
   buildWeeklyPrompt,
   buildMonthlyPrompt,

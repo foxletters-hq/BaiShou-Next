@@ -1,6 +1,5 @@
 import { Diary, Summary, SummaryType, MissingSummary } from '@baishou/shared'
-import type { DiaryRepository } from '@baishou/database/src/repositories/diary.repository'
-import type { SummaryRepository } from '@baishou/database/src/repositories/summary.repository'
+import type { DiaryRepository, SummaryRepository } from '@baishou/database'
 
 export class MissingSummaryDetector {
   constructor(

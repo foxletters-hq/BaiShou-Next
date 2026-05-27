@@ -1,4 +1,4 @@
-import { SettingsRepository } from '@baishou/database/src/repositories/settings.repository'
+import { SettingsRepository } from '@baishou/database'
 import { SettingsFileService } from './settings-file.service'
 
 /**

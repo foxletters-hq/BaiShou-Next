@@ -1,6 +1,6 @@
 import { MissingSummaryDetector } from './missing-summary-detector.service'
 import { SummaryGeneratorService } from './summary-generator.service'
-import { SummaryRepository } from '@baishou/database/src/repositories/summary.repository'
+import { SummaryRepository } from '@baishou/database'
 import { MissingSummary, SummaryType } from '@baishou/shared'
 import { SummaryFileService } from '../vault/summary-file.service'
 
