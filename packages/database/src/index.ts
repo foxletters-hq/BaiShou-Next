@@ -21,6 +21,7 @@ export * from './repositories/settings.defaults'
 export * from './repositories/user-profile.repository'
 export * from './repositories/prompt-shortcut.repository'
 export * from './repositories/shadow-index.repository'
+export * from './repositories/summary.repository'
 export * from './repositories/summary.repository.impl'
 
 export * from './drivers/vec-capability'
