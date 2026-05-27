@@ -14,7 +14,7 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import { logger, supportsNativePdf } from '@baishou/shared'
+import { logger, supportsNativePdf, type ISqlExecutor } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -156,7 +156,7 @@ export class AgentSessionService {
       const { EmbeddingAdapter } = await import('../tools/adapters/embedding.adapter')
 
       const drizzleDb = (sessionRepo as any).db || (sessionRepo as any).database
-      const rawClient = drizzleDb?.session?.client || drizzleDb
+      const rawClient = (drizzleDb?.session?.client || drizzleDb) as ISqlExecutor
       const hsRepo = new SqliteHybridSearchRepository(rawClient)
       const msgRepo = new MessageRepository(drizzleDb)
 

@@ -2,7 +2,14 @@
 
 export * from './types'
 export * from './errors'
-export * from './provider-registry'
+export * from './providers/provider.registry'
+export * from './providers/provider.interface'
+export * from './tools/adapters/embedding.adapter'
+export * from './rag/hybrid-search.service'
+export * from './rag/embedding.service'
+export * from './rag/embedding.types'
+export * from './rag/hybrid-search.types'
+export * from './rag/memory-deduplication.service'
 
 // Providers
 export * from './providers/openai.provider'

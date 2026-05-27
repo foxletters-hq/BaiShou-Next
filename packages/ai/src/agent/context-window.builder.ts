@@ -4,7 +4,10 @@ import { MessageWithParts } from './message.adapter'
 import { SnapshotRepository } from '@baishou/database/src/repositories/snapshot.repository'
 
 export interface ContextWindowConfig {
-  /** 提取最近的对话轮数，包含 user、assistant 等，0 表示尽量不截断（除了走 Snapshot 之外） */
+  /**
+   * 保留最近的对话轮数（≤0 表示不截断，除 Snapshot 摘要外）。
+   * 一轮：从用户消息开始，到下一轮用户消息之前的全部内容（含 assistant 回复及该轮内的 tool 调用/结果）。
+   */
   recentCount: number
 }
 
@@ -66,8 +69,8 @@ export class ContextWindowBuilder {
       effectiveMessages = [...rawMessages]
     }
 
-    // 2. 滑动窗口：按“对话轮数”截断
-    // 0 表示尽量不截断（除了走 Snapshot 之外）
+    // 2. 滑动窗口：按“对话轮数”截断（一轮 = 用户消息 + 该轮 AI 回复与工具调用）
+    // recentCount <= 0 表示不截断（除 Snapshot 外）
     if (config.recentCount <= 0) {
       return effectiveMessages
     }
