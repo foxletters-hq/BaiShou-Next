@@ -106,15 +106,15 @@ export function AssistantPickerDetailPane({
 
           <div className={styles.actionRow}>
             <button
-              className={`${styles.applyBtn} ${activeAssistant.id === currentAssistantId ? styles.applyBtnCurrent : ''}`}
-              disabled={activeAssistant.id === currentAssistantId}
+              className={`${styles.applyBtn} ${String(activeAssistant.id) === String(currentAssistantId) ? styles.applyBtnCurrent : ''}`}
+              disabled={String(activeAssistant.id) === String(currentAssistantId)}
               onClick={() => {
                 onSelect(activeAssistant)
                 onClose()
               }}
             >
               <CheckSquare size={18} />{' '}
-              {activeAssistant.id === currentAssistantId
+              {String(activeAssistant.id) === String(currentAssistantId)
                 ? t('agent.assistant.current_partner', 'Current Companion')
                 : t('agent.chat.select_partner', 'Select Companion')}
             </button>

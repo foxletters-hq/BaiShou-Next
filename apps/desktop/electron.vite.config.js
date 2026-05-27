@@ -7,7 +7,7 @@ const workspaceAliases = {
   '@baishou/database': resolve('../../packages/database'),
   '@baishou/shared': resolve('../../packages/shared'),
   '@baishou/store': resolve('../../packages/store'),
-  '@baishou/ui': resolve('../../packages/ui')
+  '@baishou/ui': resolve('../../packages/ui/src')
 }
 const workspaceExcludes = [
   '@baishou/ai',

@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useOutletContext } from 'react-router-dom'
 import {
   ChatCostDialog,
   AssistantPickerSheet,
@@ -68,6 +68,16 @@ interface AgentDialogsProps {
   inputBarRef: React.RefObject<any>
 }
 
+type AgentOutletContext = {
+  onAssistantSwitched?: (assistant: {
+    id: string
+    name: string
+    emoji?: string
+    description?: string
+    avatarPath?: string
+  }) => void | Promise<void>
+}
+
 /**
  * 集中管理和渲染 Agent 聊天界面的所有 Dialog/Sheet 弹出面板组件。
  */
@@ -106,7 +116,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   providers,
   inputBarRef
 }) => {
-  const navigate = useNavigate()
+  const { onAssistantSwitched } = useOutletContext<AgentOutletContext>()
 
   return (
     <>
@@ -132,8 +142,13 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
       <AssistantPickerSheet
         isOpen={showAssistantPicker}
         onClose={() => setShowAssistantPicker(false)}
+        currentAssistantId={
+          _currentAssistant?.id != null ? String(_currentAssistant.id) : undefined
+        }
+        onRefreshAssistants={fetchAssistants}
         assistants={(assistants || []).map((a) => ({
           ...a,
+          id: String(a.id),
           emoji: a.emoji || '✨',
           systemPrompt: a.systemPrompt || ''
         }))}
@@ -146,21 +161,12 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         }}
         onSelect={(ast) => {
           setShowAssistantPicker(false)
-          if (typeof window !== 'undefined' && window.electron) {
-            window.electron.ipcRenderer
-              .invoke('agent:list-sessions-by-assistant', ast.id)
-              .then((sessionsList: any[]) => {
-                if (sessionsList && sessionsList.length > 0) {
-                  const sorted = sessionsList.sort(
-                    (a: any, b: any) =>
-                      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-                  )
-                  navigate(`/chat/${sorted[0].id}?assistantId=${ast.id}`)
-                } else {
-                  navigate(`/chat?assistantId=${ast.id}`)
-                }
-              })
-              .catch(console.error)
+          if (onAssistantSwitched) {
+            void onAssistantSwitched({
+              id: String(ast.id),
+              name: ast.name,
+              emoji: ast.emoji || '✨'
+            })
           }
         }}
       />

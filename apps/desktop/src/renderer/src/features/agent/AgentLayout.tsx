@@ -24,6 +24,22 @@ export const AgentLayout: React.FC = () => {
   const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
   const resolvedAssistantIdRef = useRef<string | undefined>(undefined)
 
+  const sanitizeAssistantId = (raw: unknown): string | undefined => {
+    if (typeof raw === 'string' && raw.length > 0) return raw
+    if (typeof raw === 'number') return String(raw)
+    return undefined
+  }
+
+  const urlAssistantId = sanitizeAssistantId(searchParams.get('assistantId'))
+  const defaultAssistantId = assistants.find((a) => a.isDefault)?.id ?? assistants[0]?.id
+  const resolvedAssistantId =
+    urlAssistantId ||
+    (sessionId && standaloneSessionDoc?.id === sessionId
+      ? sanitizeAssistantId(standaloneSessionDoc.assistantId)
+      : undefined) ||
+    resolvedAssistantIdRef.current ||
+    (defaultAssistantId != null ? String(defaultAssistantId) : undefined)
+
   const toast = useToast()
   const dialog = useDialog()
   const { t } = useTranslation()
@@ -38,7 +54,7 @@ export const AgentLayout: React.FC = () => {
     setRenameTarget,
     handleRenameSession,
     commitRename
-  } = useAgentSessions(resolvedAssistantIdRef.current)
+  } = useAgentSessions(resolvedAssistantId)
 
   // 加载独立会话文档（通过 URL 直接访问时使用）
   useEffect(() => {
@@ -74,7 +90,6 @@ export const AgentLayout: React.FC = () => {
               finalStore.assistants.find((a: any) => a.isDefault) || finalStore.assistants[0]
             if (ast) {
               resolvedAssistantIdRef.current = String(ast.id)
-              loadSessions(true, String(ast.id))
             }
           })
           .catch(console.error)
@@ -82,7 +97,6 @@ export const AgentLayout: React.FC = () => {
         const ast = store.assistants.find((a: any) => a.isDefault) || store.assistants[0]
         if (ast) {
           resolvedAssistantIdRef.current = String(ast.id)
-          loadSessions(true, String(ast.id))
         }
       }
     })
@@ -90,28 +104,8 @@ export const AgentLayout: React.FC = () => {
     loadProfile()
   }, [fetchAssistants, loadConfig, loadProfile])
 
-  const sanitizeAssistantId = (raw: unknown): string | undefined => {
-    if (typeof raw === 'string' && raw.length > 0) return raw
-    if (typeof raw === 'number') return String(raw)
-    return undefined
-  }
-
-  const currentSession = sessions.find((s) => s.id === sessionId)
-  let activeAssistantId: string | undefined
-  if (!sessionId) {
-    activeAssistantId = sanitizeAssistantId(searchParams.get('assistantId'))
-  } else if (currentSession) {
-    activeAssistantId = sanitizeAssistantId((currentSession as any).assistantId)
-  } else if (standaloneSessionDoc?.id === sessionId) {
-    activeAssistantId = sanitizeAssistantId(standaloneSessionDoc.assistantId)
-  }
-  if (!activeAssistantId && sessionId) {
-    activeAssistantId =
-      sanitizeAssistantId(searchParams.get('assistantId')) || resolvedAssistantIdRef.current
-  }
-
-  const currentAssistant = activeAssistantId
-    ? assistants.find((a) => String(a.id) === String(activeAssistantId)) ||
+  const currentAssistant = resolvedAssistantId
+    ? assistants.find((a) => String(a.id) === String(resolvedAssistantId)) ||
       assistants.find((a) => a.isDefault)
     : assistants.find((a) => a.isDefault) || (assistants.length > 0 ? assistants[0] : undefined)
 
@@ -134,9 +128,8 @@ export const AgentLayout: React.FC = () => {
       : undefined
 
   useEffect(() => {
-    if (mappedAssistant?.id && resolvedAssistantIdRef.current !== mappedAssistant.id) {
+    if (mappedAssistant?.id) {
       resolvedAssistantIdRef.current = mappedAssistant.id
-      loadSessions(true, mappedAssistant.id)
     }
   }, [mappedAssistant?.id])
 
@@ -163,6 +156,10 @@ export const AgentLayout: React.FC = () => {
   }
 
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
+    const astId = String(assistant.id)
+    resolvedAssistantIdRef.current = astId
+    void loadSessions(true, astId)
+
     if (typeof window !== 'undefined' && window.electron) {
       try {
         const sessionsList = await window.electron.ipcRenderer.invoke(
@@ -249,7 +246,7 @@ export const AgentLayout: React.FC = () => {
       />
 
       <div className={styles.chatArea}>
-        <Outlet context={{ sessions, loadSessions }} />
+        <Outlet context={{ sessions, loadSessions, onAssistantSwitched: handleAssistantSwitched }} />
       </div>
 
       {/* ─── 内联重命名 Modal ─── */}
@@ -356,7 +353,7 @@ export const AgentLayout: React.FC = () => {
       {/* ─── Assistant Picker Sheet ─── */}
       <AssistantPickerSheet
         isOpen={isPickerOpen}
-        assistants={assistants as any}
+        assistants={assistants.map((a) => ({ ...a, id: String(a.id) })) as any}
         currentAssistantId={mappedAssistant?.id}
         onSelect={(ast) => {
           setIsPickerOpen(false)

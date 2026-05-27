@@ -76,6 +76,14 @@ export function createBaishouEslintConfig(options = {}) {
         ],
         'no-empty': ['error', { allowEmptyCatch: true }],
         'i18n-chinese/no-hardcoded-chinese': 'warn',
+        'max-lines': [
+          'warn',
+          {
+            max: 500,
+            skipBlankLines: true,
+            skipComments: true
+          }
+        ],
         ...extraRules
       }
     },

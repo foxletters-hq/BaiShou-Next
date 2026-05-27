@@ -172,13 +172,16 @@ export class AgentSessionService {
       const { EmbeddingAdapter } = await import('../tools/adapters/embedding.adapter')
 
       const drizzleDb = (sessionRepo as any).db || (sessionRepo as any).database
+      if (!drizzleDb) {
+        throw new Error('Agent database connection is unavailable')
+      }
       const rawClient = (drizzleDb?.session?.client || drizzleDb) as ISqlExecutor
       const hsRepo = new SqliteHybridSearchRepository(rawClient)
       const msgRepo = new MessageRepository(drizzleDb)
 
       // memory_embeddings 表由 Drizzle ORM 迁移统一管理，不再在此处建表
 
-      const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo)
+      const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)
       let embAdapter: any = undefined
       if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
         embAdapter = new EmbeddingAdapter(

@@ -1,10 +1,11 @@
 import { ToolVectorStore, ToolMessageSearcher, VectorSearchResult } from '../agent.tool'
-import { SqliteHybridSearchRepository, MessageRepository } from '@baishou/database'
+import { SqliteHybridSearchRepository, MessageRepository, type AppDatabase } from '@baishou/database'
 
 export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   constructor(
     private hybridRepo: SqliteHybridSearchRepository,
-    private messageRepo: MessageRepository
+    private messageRepo: MessageRepository,
+    private db: AppDatabase
   ) {}
 
   // --- ToolVectorStore 实现 ---
@@ -77,10 +78,9 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   } | null> {
     const { eq, and } = await import('drizzle-orm')
     const { summariesTable } = await import('@baishou/database')
-    const db = (this.messageRepo as any).db // 通过隐式取出底层连接
 
     const targetDate = new Date(startDateIso)
-    const rows = await db
+    const rows = await this.db
       .select()
       .from(summariesTable)
       .where(
@@ -100,9 +100,8 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   async getAvailableSummaries(type: string, limit: number = 5): Promise<string[]> {
     const { eq, desc } = await import('drizzle-orm')
     const { summariesTable } = await import('@baishou/database')
-    const db = (this.messageRepo as any).db
 
-    const rows = await db
+    const rows = await this.db
       .select({ start: summariesTable.startDate, end: summariesTable.endDate })
       .from(summariesTable)
       .where(eq(summariesTable.type as any, type as any))

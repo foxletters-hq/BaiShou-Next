@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import { DiaryPage } from '../features/diary/DiaryPage'
 import { SummaryPage } from '../features/summary/SummaryPage'
@@ -33,26 +33,38 @@ const CachedPageLayer: React.FC<{
   Component: React.ComponentType
 }> = ({ cacheKey, isActive, Component }) => {
   const controls = useAnimation()
-  const hasEnteredRef = useRef(false)
 
   useEffect(() => {
     if (!isActive) return
 
-    if (cacheKey === '/diary' && consumeDiaryReturnReveal()) {
-      controls.set({ opacity: 0, y: 22 })
-      void controls.start({
-        opacity: 1,
-        y: 0,
-        transition: DIARY_RETURN_REVEAL_TRANSITION
-      })
-      hasEnteredRef.current = true
-      return
+    let cancelled = false
+
+    const reveal = async () => {
+      if (cacheKey === '/diary' && consumeDiaryReturnReveal()) {
+        controls.set({ opacity: 0, y: 22 })
+        if (!cancelled) {
+          await controls.start({
+            opacity: 1,
+            y: 0,
+            transition: DIARY_RETURN_REVEAL_TRANSITION
+          })
+        }
+        return
+      }
+
+      if (!cancelled) {
+        await controls.start({
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.35, ease: 'easeOut' }
+        })
+      }
     }
 
-    if (!hasEnteredRef.current) {
-      hasEnteredRef.current = true
-      controls.set({ opacity: 0 })
-      void controls.start({ opacity: 1, transition: { duration: 0.35, ease: 'easeOut' } })
+    void reveal()
+
+    return () => {
+      cancelled = true
     }
   }, [isActive, cacheKey, controls])
 

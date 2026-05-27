@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { SessionData } from '@baishou/ui'
 
 const SESSION_LIMIT = 10
@@ -18,27 +18,30 @@ export interface AgentSessionsManager {
 /**
  * 封装 AgentLayout 中的会话列表管理逻辑。
  * 包含加载/分页/竞态保护/file-changed 监听/内联重命名状态。
- *
- * @param resolvedAssistantId - 当前已解析的助手 ID（可能晚于初始渲染）
  */
-export function useAgentSessions(resolvedAssistantId: string | undefined): AgentSessionsManager {
+export function useAgentSessions(activeAssistantId: string | undefined): AgentSessionsManager {
   const [sessions, setSessions] = useState<SessionData[]>([])
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
   const [sidebarScrollKey, setSidebarScrollKey] = useState(0)
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
-  const lastLoadRequestId = useRef<number>(0)
-  const assistantIdRef = useRef<string | undefined>(resolvedAssistantId)
+  const lastLoadRequestId = useRef(0)
+  const assistantIdRef = useRef<string | undefined>(activeAssistantId)
+  const sessionsLengthRef = useRef(0)
 
   useEffect(() => {
-    assistantIdRef.current = resolvedAssistantId
-  }, [resolvedAssistantId])
+    assistantIdRef.current = activeAssistantId
+  }, [activeAssistantId])
 
-  const loadSessions = async (resetOffset = false, overrideAssistantId?: string) => {
+  useEffect(() => {
+    sessionsLengthRef.current = sessions.length
+  }, [sessions.length])
+
+  const loadSessions = useCallback(async (resetOffset = false, overrideAssistantId?: string) => {
     try {
       if (typeof window === 'undefined' || !window.electron) return
       const reqId = ++lastLoadRequestId.current
-      const offset = resetOffset ? 0 : sessions.length
+      const offset = resetOffset ? 0 : sessionsLengthRef.current
       const targetAst = overrideAssistantId || assistantIdRef.current
       if (!targetAst) return
 
@@ -49,7 +52,6 @@ export function useAgentSessions(resolvedAssistantId: string | undefined): Agent
         targetAst
       )
 
-      // 竞态保护：如果已有更新的请求，丢弃当前响应
       if (reqId !== lastLoadRequestId.current) return
 
       if (data && data.length > 0) {
@@ -63,16 +65,28 @@ export function useAgentSessions(resolvedAssistantId: string | undefined): Agent
     } catch (e) {
       console.error('[useAgentSessions] Failed to load sessions:', e)
     }
-  }
+  }, [])
 
-  // 监听主进程 session:file-changed，实时更新侧边栏标题
+  // 当前助手变化时立即清空旧列表并重新加载
+  useEffect(() => {
+    if (!activeAssistantId) {
+      setSessions([])
+      setHasMoreSessions(false)
+      return
+    }
+
+    lastLoadRequestId.current += 1
+    setSessions([])
+    setHasMoreSessions(false)
+    void loadSessions(true, activeAssistantId)
+  }, [activeAssistantId, loadSessions])
+
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electron) return undefined
     const handler = () => loadSessions(true, assistantIdRef.current)
     const removeListener = window.electron.ipcRenderer.on('session:file-changed', handler)
     return () => removeListener()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loadSessions])
 
   const handleRenameSession = (id: string, currentSessions: SessionData[]) => {
     const s = currentSessions.find((s) => s.id === id)

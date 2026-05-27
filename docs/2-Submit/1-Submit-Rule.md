@@ -78,7 +78,7 @@ pnpm ci:check
 ```
 fix(ai): 修正 provider 单测与 generateText mock
 
-refactor(ui-web): 拆分 CloudSyncPanel 以符合 300 行规范
+refactor(ui-web): 按职责拆分 CloudSyncPanel，消除重复状态逻辑
 
 docs: 规范目录与文件改为单层序号命名
 ```

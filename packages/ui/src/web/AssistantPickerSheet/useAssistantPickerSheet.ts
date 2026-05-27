@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import type { AssistantInfo, AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 
+const normalizeAssistantId = (id: unknown): string | null =>
+  id == null || id === '' ? null : String(id)
+
 export function useAssistantPickerSheet({
   isOpen,
   assistants,
@@ -14,9 +17,11 @@ export function useAssistantPickerSheet({
   const { t } = useTranslation()
   const { prompt } = useDialog()
   const [searchQuery] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(
-    currentAssistantId || (assistants.length > 0 ? assistants[0].id : null)
-  )
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    const currentId = normalizeAssistantId(currentAssistantId)
+    if (currentId) return currentId
+    return assistants.length > 0 ? normalizeAssistantId(assistants[0].id) : null
+  })
   const [activeTab, setActiveTab] = useState<'prompt' | 'memory'>('prompt')
   const [editingPrompt, setEditingPrompt] = useState('')
   const [editingContextWindow, setEditingContextWindow] = useState(-1)
@@ -29,8 +34,11 @@ export function useAssistantPickerSheet({
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   React.useEffect(() => {
-    if (isOpen && currentAssistantId) {
-      setSelectedId(currentAssistantId)
+    if (isOpen) {
+      const currentId = normalizeAssistantId(currentAssistantId)
+      if (currentId) {
+        setSelectedId(currentId)
+      }
     }
   }, [isOpen, currentAssistantId])
 
@@ -53,7 +61,7 @@ export function useAssistantPickerSheet({
   }, [assistants, searchQuery])
 
   const activeAssistant = useMemo(() => {
-    let item = filteredAssistants.find((a) => a.id === selectedId)
+    let item = filteredAssistants.find((a) => String(a.id) === String(selectedId))
     if (!item && filteredAssistants.length > 0) {
       item = filteredAssistants[0]
     }

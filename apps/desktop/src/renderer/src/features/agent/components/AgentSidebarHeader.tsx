@@ -1,8 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MdAutoAwesome, MdUnfoldMore, MdAdd, MdSettings } from 'react-icons/md'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { MdUnfoldMore, MdAdd, MdSettings, MdChecklist } from 'react-icons/md'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 
@@ -52,35 +51,29 @@ interface AgentSidebarHeaderProps {
   currentAssistant?: AgentAssistant
   pinnedAssistants: AgentAssistant[]
   searchQuery: string
-  isCollapsed: boolean
   hasSessions: boolean
   isMultiSelect: boolean
   onSearchQueryChanged: (q: string) => void
   onNewSession: (assistantId?: string) => void
   onAssistantSwitched: (assistant: AgentAssistant) => void
   onShowPicker?: () => void
-  onCollapse?: () => void
-  onExpand?: () => void
   onToggleMultiSelect: () => void
 }
 
 /**
  * 侧边栏顶部固定区域。
- * 包含：品牌行、助手卡片、置顶助手行、新对话按钮、设置入口、历史标题、搜索框。
+ * 包含：助手卡片、置顶助手行、新对话按钮、设置入口、历史标题、搜索框。
  */
 export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
   currentAssistant,
   pinnedAssistants,
   searchQuery,
-  isCollapsed,
   hasSessions,
   isMultiSelect,
   onSearchQueryChanged,
   onNewSession,
   onAssistantSwitched,
   onShowPicker,
-  onCollapse,
-  onExpand,
   onToggleMultiSelect
 }) => {
   const navigate = useNavigate()
@@ -88,29 +81,6 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
 
   return (
     <>
-      {/* ─── 顶部品牌行 ─── */}
-      <div className={styles.brandRow}>
-        <div className={styles.brandInfo}>
-          <div className={styles.brandIconBox}>
-            <MdAutoAwesome className={styles.brandIcon} />
-          </div>
-          <span className={styles.brandText}>{t('agent.partner_label', '伙伴')}</span>
-        </div>
-        {onCollapse && onExpand && (
-          <button
-            className={styles.toggleBtn}
-            onClick={isCollapsed ? onExpand : onCollapse}
-            title={
-              isCollapsed
-                ? t('agent.sidebar.expand', '展开侧边栏')
-                : t('agent.sidebar.collapse', '折叠侧边栏')
-            }
-          >
-            {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
-          </button>
-        )}
-      </div>
-
       {/* ─── 当前助手槽位 ─── */}
       <div className={styles.currentAssistantWrapper}>
         <div
@@ -205,16 +175,12 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
             onClick={onToggleMultiSelect}
             title={t('common.multi_select', '多选')}
           >
-            <span
-              style={{
-                fontSize: 16,
-                color: isMultiSelect
-                  ? 'var(--color-error, #ef4444)'
-                  : 'var(--text-secondary, #94a3b8)'
-              }}
-            >
-              ☑
-            </span>
+            <MdChecklist
+              size={16}
+              color={
+                isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)'
+              }
+            />
           </button>
         )}
       </div>

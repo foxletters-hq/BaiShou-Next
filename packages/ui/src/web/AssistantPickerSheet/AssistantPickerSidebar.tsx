@@ -38,9 +38,9 @@ export function AssistantPickerSidebar({
           </div>
         ) : (
           filteredAssistants.map((ast) => {
-            const isSelected = activeAssistant?.id === ast.id
-            const isCurrent = ast.id === currentAssistantId
-            const isPinned = pinnedIds?.has(ast.id) || false
+            const isSelected = String(activeAssistant?.id) === String(ast.id)
+            const isCurrent = String(ast.id) === String(currentAssistantId)
+            const isPinned = pinnedIds?.has(String(ast.id)) || false
 
             return (
               <div

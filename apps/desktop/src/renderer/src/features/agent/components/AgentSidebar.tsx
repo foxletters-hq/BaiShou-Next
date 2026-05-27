@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
-import type { SessionData } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
+import { MdAutoAwesome } from 'react-icons/md'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import type { SessionData } from '@baishou/ui'
 import { AgentSidebarHeader } from './AgentSidebarHeader'
 import { AgentSessionList } from './AgentSessionList'
 import styles from './AgentSidebar.module.css'
@@ -86,6 +88,29 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
 
   return (
     <div className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
+      {/* 品牌行独立于 sidebarContent，折叠时仍可见 */}
+      <div className={styles.brandRow}>
+        <div className={styles.brandInfo}>
+          <div className={styles.brandIconBox}>
+            <MdAutoAwesome className={styles.brandIcon} />
+          </div>
+          <span className={styles.brandText}>{t('agent.partner_label', '伙伴')}</span>
+        </div>
+        {onCollapse && onExpand && (
+          <button
+            className={styles.toggleBtn}
+            onClick={isCollapsed ? onExpand : onCollapse}
+            title={
+              isCollapsed
+                ? t('agent.sidebar.expand', '展开侧边栏')
+                : t('agent.sidebar.collapse', '折叠侧边栏')
+            }
+          >
+            {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+          </button>
+        )}
+      </div>
+
       <div className={styles.sidebarContent}>
         {/* 顶部固定交互区 */}
         <div className={styles.fixedHeaderArea}>
@@ -93,15 +118,12 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
             currentAssistant={currentAssistant}
             pinnedAssistants={pinnedAssistants}
             searchQuery={searchQuery}
-            isCollapsed={isCollapsed}
             hasSessions={sessions.length > 0}
             isMultiSelect={isMultiSelect}
             onSearchQueryChanged={onSearchQueryChanged}
             onNewSession={onNewSession}
             onAssistantSwitched={onAssistantSwitched}
             onShowPicker={onShowPicker}
-            onCollapse={onCollapse}
-            onExpand={onExpand}
             onToggleMultiSelect={toggleMultiSelect}
           />
         </div>
