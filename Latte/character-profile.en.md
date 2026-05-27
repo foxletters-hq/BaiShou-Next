@@ -43,6 +43,6 @@
 
 > High-quality Japanese anime-style character illustration, clean pure white background, full body. A petite 152 cm vampire elf girl. Light gray shoulder-length hair with a single long golden braid on one side draped over the chest, small black bat hair clip. Prominent pointed elf ears. Noble amber-gold eyes, lazy and composed gaze, faint smirk showing one vampire fang. White ruffled collar on the neck. High-quality white off-shoulder long-sleeve blouse with clear ruffle detail on the chest. Deep dark gray pleated skirt, deep brown belt at the waist with a vintage gold pocket watch and trailing gold chains on one side. Legs in stacked white bubble socks, deep brown lace-up short Martin boots. Exquisite anime illustration style, elegant proportions, premium design, fine linework, masterpiece, 4k.
 
-![Latte turnaround](./assets/Latte角色设计图（三视图）.jpeg)
+![Latte turnaround](./assets/latte-design-turnaround.jpeg)
 
-![Latte front view](./assets/Latte角色设计图（主视图）.jpeg)
+![Latte front view](./assets/latte-design-front.jpeg)

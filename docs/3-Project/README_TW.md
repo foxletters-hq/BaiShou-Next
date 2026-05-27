@@ -1,6 +1,6 @@
 # 白守 Next (BaiShou Next)
 
-[简体中文](../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
+[简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
 > 以純白誓約，守護彼此一生。
 
@@ -16,9 +16,9 @@
 
 **「時光流逝，記憶消散。而我，已在此守候了很久很久。」**
 
-![Latte-Banner-01](../Latte/assets/Latte-Banner-01.png)
+![Latte-Banner-01](../../Latte/assets/Latte-Banner-01.png)
 
-關於 Latte 的設定：[简体中文](../Latte/角色设定.md) · [繁體中文](../Latte/角色設定.md) · [English](../Latte/character-profile.en.md) · [日本語](../Latte/character-profile.ja.md)。
+關於 Latte 的設定：[简体中文](../../Latte/角色设定.md) · [繁體中文](../../Latte/角色設定.md) · [English](../../Latte/character-profile.en.md) · [日本語](../../Latte/character-profile.ja.md)。
 
 ---
 
@@ -78,7 +78,7 @@ cd BaiShou-Next
 pnpm install
 ```
 
-若 Electron 下載失敗，可參考 [pnpm-electron-setup.md](<../docs(AI编码规范，提交规范等)/pnpm-electron-setup.md>)（簡體中文）。
+若 Electron 下載失敗，可參考 [pnpm-electron-setup.md](../pnpm-electron-setup.md)（簡體中文）。
 
 ##### 3. 開發
 
@@ -96,15 +96,15 @@ pnpm dev:mobile
 pnpm ci:check
 ```
 
-詳見 [提交規範](<../docs(AI编码规范，提交规范等)/2-Submit/1-Submit-Rule.md>)（簡體中文）。
+詳見 [提交規範](../2-Submit/1-Submit-Rule.md)（簡體中文）。
 
 ---
 
 #### 貢獻指南
 
 1. 在 GitHub **Fork** 本倉庫，在功能分支上開發（勿直接向上游 `main` 推送）。
-2. 編碼與目錄規範見 [AI 編碼規範](<../docs(AI编码规范，提交规范等)/1-AI-Code/1-AI-Code-Rule.md>)（簡體中文）。
-3. 開 PR 前執行 **`pnpm ci:check`**，並遵循 [提交規範](<../docs(AI编码规范，提交规范等)/2-Submit/1-Submit-Rule.md>) 中的 Commit Message 約定。
+2. 編碼與目錄規範見 [AI 編碼規範](../1-AI-Code/1-AI-Code-Rule.md)（簡體中文）。
+3. 開 PR 前執行 **`pnpm ci:check`**，並遵循 [提交規範](../2-Submit/1-Submit-Rule.md) 中的 Commit Message 約定。
 
 我們非常歡迎 Issue 與 PR。若有想法或疑問，歡迎在 Issues 中討論。
 
@@ -144,4 +144,4 @@ pnpm ci:check
 - 客戶端程式碼完全開源，鼓勵社群參與改進。
 - 請遵守 AGPLv3 協議：若您修改了本專案的程式碼並在網路上提供服務，您的修改版本也必須開源。
 
-完整條文見 [LICENSE](../LICENSE)。
+完整條文見 [LICENSE](../../LICENSE)。

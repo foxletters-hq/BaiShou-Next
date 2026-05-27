@@ -1,6 +1,6 @@
 # 白守 Next (BaiShou Next)
 
-[简体中文](README.md) | [繁體中文](docs/README_TW.md) | [English](docs/README_EN.md) | [日本語](docs/README_JA.md)
+[简体中文](README.md) | [繁體中文](docs/3-Project/README_TW.md) | [English](docs/3-Project/README_EN.md) | [日本語](docs/3-Project/README_JA.md)
 
 > 以纯白誓约，守护彼此一生。
 
@@ -78,7 +78,7 @@ cd BaiShou-Next
 pnpm install
 ```
 
-国内网络若 Electron 下载失败，可参考 [docs(AI编码规范，提交规范等)/pnpm-electron-setup.md](<./docs(AI编码规范，提交规范等)/pnpm-electron-setup.md>)。
+国内网络若 Electron 下载失败，可参考 [docs/pnpm-electron-setup.md](./docs/pnpm-electron-setup.md)。
 
 ##### 3. 开发
 
@@ -96,15 +96,15 @@ pnpm dev:mobile
 pnpm ci:check
 ```
 
-详见 [提交规范](<./docs(AI编码规范，提交规范等)/2-Submit/1-Submit-Rule.md>)。更多文档见 [docs/README.md](./docs/README.md)。
+详见 [提交规范](./docs/2-Submit/1-Submit-Rule.md)。更多文档见 [docs/0-README.md](./docs/0-README.md)。
 
 ---
 
 #### 贡献指南
 
 1. 在 GitHub **Fork** 本仓库，在功能分支上开发（勿直接向上游 `main` 推送）。
-2. 编码与目录规范见 [AI 编码规范](<./docs(AI编码规范，提交规范等)/1-AI-Code/1-AI-Code-Rule.md>)。
-3. 开 PR 前运行 **`pnpm ci:check`**，并遵循 [提交规范](<./docs(AI编码规范，提交规范等)/2-Submit/1-Submit-Rule.md>) 中的 Commit Message 约定。
+2. 编码与目录规范见 [AI 编码规范](./docs/1-AI-Code/1-AI-Code-Rule.md)。
+3. 开 PR 前运行 **`pnpm ci:check`**，并遵循 [提交规范](./docs/2-Submit/1-Submit-Rule.md) 中的 Commit Message 约定。
 
 我们非常欢迎 Issue 与 PR。若有想法或疑问，欢迎在 Issues 中讨论。
 

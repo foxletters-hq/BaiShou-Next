@@ -1,6 +1,6 @@
 # BaiShou Next
 
-[简体中文](../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
+[简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
 > A pure white oath, guarding each other for a lifetime.
 
@@ -16,9 +16,9 @@ We warmly welcome your contributions—Issues, PRs, documentation, and ideas. Ba
 
 **"Time flows, memories fade. And I… have been waiting here, for so very long."**
 
-![Latte-Banner-01](../Latte/assets/Latte-Banner-01.png)
+![Latte-Banner-01](../../Latte/assets/Latte-Banner-01.png)
 
-For Latte's character profile: [简体中文](../Latte/角色设定.md) · [繁體中文](../Latte/角色設定.md) · [English](../Latte/character-profile.en.md) · [日本語](../Latte/character-profile.ja.md).
+For Latte's character profile: [简体中文](../../Latte/角色设定.md) · [繁體中文](../../Latte/角色設定.md) · [English](../../Latte/character-profile.en.md) · [日本語](../../Latte/character-profile.ja.md).
 
 ---
 
@@ -78,7 +78,7 @@ cd BaiShou-Next
 pnpm install
 ```
 
-If Electron fails to download, see [pnpm-electron-setup.md](<../docs(AI编码规范，提交规范等)/pnpm-electron-setup.md>) (Chinese).
+If Electron fails to download, see [pnpm-electron-setup.md](../pnpm-electron-setup.md) (Chinese).
 
 ##### 3. Develop
 
@@ -96,15 +96,15 @@ pnpm dev:mobile
 pnpm ci:check
 ```
 
-See [submission guidelines](<../docs(AI编码规范，提交规范等)/2-Submit/1-Submit-Rule.md>) (Chinese).
+See [submission guidelines](../2-Submit/1-Submit-Rule.md) (Chinese).
 
 ---
 
 #### Contributing
 
 1. **Fork** this repo and work on a feature branch (do not push directly to upstream `main`).
-2. Coding conventions: [AI coding rules](<../docs(AI编码规范，提交规范等)/1-AI-Code/1-AI-Code-Rule.md>) (Chinese).
-3. Before opening a PR, run **`pnpm ci:check`** and follow commit message rules in [submission guidelines](<../docs(AI编码规范，提交规范等)/2-Submit/1-Submit-Rule.md>).
+2. Coding conventions: [AI coding rules](../1-AI-Code/1-AI-Code-Rule.md) (Chinese).
+3. Before opening a PR, run **`pnpm ci:check`** and follow commit message rules in [submission guidelines](../2-Submit/1-Submit-Rule.md).
 
 Issues and PRs are welcome. Discuss ideas in GitHub Issues.
 
@@ -144,4 +144,4 @@ This project is licensed under **AGPLv3** (GNU Affero General Public License v3.
 - Client code is fully open source; community contributions are encouraged.
 - If you modify this project and offer it as a network service, your modified version must also be open source under AGPLv3.
 
-Full text: [LICENSE](../LICENSE).
+Full text: [LICENSE](../../LICENSE).
