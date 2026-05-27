@@ -25,7 +25,7 @@ export default {
   },
 
   create(context) {
-    const sourceCode = context.getSourceCode();
+    const sourceCode = context.sourceCode ?? context.getSourceCode()
     
     // 检查是否在t()函数调用内部
     function isInsideTCall(node) {

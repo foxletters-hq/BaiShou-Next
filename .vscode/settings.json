@@ -1,0 +1,12 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "files.eol": "\n",
+  "eslint.workingDirectories": [
+    { "directory": "apps/desktop", "changeProcessCWD": true },
+    { "directory": "apps/mobile", "changeProcessCWD": true }
+  ]
+}

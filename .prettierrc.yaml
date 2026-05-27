@@ -2,3 +2,5 @@ singleQuote: true
 semi: false
 printWidth: 100
 trailingComma: none
+# 统一 LF，避免 Windows 与 CI/Linux 行尾不一致导致 VS Code / Prettier 反复报 diff
+endOfLine: lf

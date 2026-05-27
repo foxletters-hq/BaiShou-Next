@@ -70,7 +70,10 @@ apps/mobile/ios/*.xcodeproj/xcuserdata/
 *.sublime-workspace
 *.sublime-project
 
-.vscode/
+# VS Code：仅提交团队共享配置，其余（launch、个人任务等）仍忽略
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
 
 # ─── 操作系统 ──────────────────────────────────────────────
 .DS_Store

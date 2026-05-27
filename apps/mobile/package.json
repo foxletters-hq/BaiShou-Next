@@ -9,7 +9,7 @@
     "android": "expo run:android",
     "android:clean": "expo run:android -c",
     "ios": "expo run:ios",
-    "lint": "expo lint"
+    "lint": "eslint . --cache"
   },
   "dependencies": {
     "@baishou/ai": "workspace:^",
@@ -57,9 +57,12 @@
     "react-native-zip-archive": "^7.0.2"
   },
   "devDependencies": {
+    "@electron-toolkit/eslint-config-prettier": "^3.0.0",
+    "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@types/react": "~19.2.14",
     "eslint": "^10.2.0",
-    "eslint-config-expo": "~55.0.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   },
   "private": true
