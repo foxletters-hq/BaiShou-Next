@@ -33,6 +33,7 @@ export interface GlobalModelsConfig {
   globalSummaryModelId: string
   globalEmbeddingProviderId: string
   globalEmbeddingModelId: string
+  globalEmbeddingDimension?: number
   globalTtsProviderId: string
   globalTtsModelId: string
   globalTtsSettings?: TtsSettings
@@ -73,13 +74,21 @@ export interface WebSearchConfig {
   webSearchPlainSnippetLength: number // 未配置 Embedding 时的纯文本截取上限 (默认 3000)
 }
 
+import type {
+  SummaryPromptLocale,
+  SummaryTemplatesMap
+} from './summary-prompt.types'
+
 /**
  * 总结模块自定义指令配置
- * key 为总结类型（如 daily, weekly, monthly, annual）
- * value 为针对该类型的 prompt instruction 字符串
+ * - instructionsByLocale: 按界面语言分别保存周/月/季/年模板
+ * - instructions: 旧版扁平结构（等价于 instructionsByLocale.zh）
  */
 export interface SummaryConfig {
-  instructions: Record<string, string>
+  /** 生成总结时使用的提示词语言 */
+  promptLocale?: SummaryPromptLocale
+  instructionsByLocale?: Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>>
+  instructions?: SummaryTemplatesMap
 }
 
 /**

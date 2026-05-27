@@ -39,10 +39,7 @@ export function resolveWebSearchLimits(userConfig?: Record<string, unknown>): We
       userConfig?.web_search_rag_chunks_per_source,
       DEFAULT_WEB_SEARCH_LIMITS.ragChunksPerSource
     ),
-    maxResults: readNumber(
-      userConfig?.web_search_max_results,
-      DEFAULT_WEB_SEARCH_LIMITS.maxResults
-    )
+    maxResults: readNumber(userConfig?.web_search_max_results, DEFAULT_WEB_SEARCH_LIMITS.maxResults)
   }
 }
 
@@ -59,8 +56,7 @@ export function webSearchConfigToUserConfig(
     web_search_rag_max_chunks:
       webSearchConfig?.webSearchRagMaxChunks ?? DEFAULT_WEB_SEARCH_LIMITS.ragMaxChunks,
     web_search_rag_chunks_per_source:
-      webSearchConfig?.webSearchRagChunksPerSource ??
-      DEFAULT_WEB_SEARCH_LIMITS.ragChunksPerSource,
+      webSearchConfig?.webSearchRagChunksPerSource ?? DEFAULT_WEB_SEARCH_LIMITS.ragChunksPerSource,
     web_search_plain_snippet_length:
       webSearchConfig?.webSearchPlainSnippetLength ?? DEFAULT_WEB_SEARCH_LIMITS.plainSnippetLength
   }

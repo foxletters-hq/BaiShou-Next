@@ -63,7 +63,22 @@ export interface MigrationProgress {
   total: number
   completed: number
   failed?: number
-  status: string
+  statusKey: string
+  statusParams?: Record<string, string | number>
+  aborted?: boolean
+  rollbackApplied?: boolean
+}
+
+export interface EmbeddingMigrationRollbackConfig {
+  globalEmbeddingProviderId: string
+  globalEmbeddingModelId: string
+  globalEmbeddingDimension: number
+}
+
+export interface EmbeddingSnapshotMeta {
+  modelId: string
+  dimension: number
+  count: number
 }
 
 /**
@@ -94,6 +109,11 @@ export interface IEmbeddingStorage {
   countHeterogeneousEmbeddings(currentModelId: string): Promise<number>
   createMigrationBackup(): Promise<number>
   dropMigrationBackup(): Promise<void>
+  createRollbackSnapshot(): Promise<number>
+  restoreRollbackSnapshot(): Promise<number>
+  dropRollbackSnapshot(): Promise<void>
+  hasRollbackSnapshot(): Promise<boolean>
+  getCurrentEmbeddingMeta(): Promise<EmbeddingSnapshotMeta | null>
   clearAndReinitEmbeddings(dimension: number): Promise<void>
   getUnmigratedCount(): Promise<number>
   getUnmigratedBackupChunks(): Promise<any[]>
@@ -111,6 +131,7 @@ export interface IEmbeddingConfig {
   getGlobalEmbeddingDimension(): number
   setGlobalEmbeddingDimension(dimension: number): Promise<void>
   getProviderInstance(): Promise<any>
+  restoreEmbeddingModelConfig?(config: EmbeddingMigrationRollbackConfig): Promise<void>
 }
 
 /**
