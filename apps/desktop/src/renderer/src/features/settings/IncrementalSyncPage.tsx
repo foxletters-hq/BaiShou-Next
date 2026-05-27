@@ -6,12 +6,11 @@ import {
 } from 'lucide-react'
 import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
-import { Tooltip, useDialog } from '@baishou/ui'
+import { Tooltip, formatSyncProgressStatus } from '@baishou/ui'
 import { SyncConfigForm } from './components/sync/SyncConfigForm'
 
 export const IncrementalSyncPage: React.FC = () => {
   const { t } = useTranslation()
-  const dialog = useDialog()
   const {
     status,
     message,
@@ -24,56 +23,62 @@ export const IncrementalSyncPage: React.FC = () => {
   } = useSyncStore()
 
   const friendlySyncError = (msg: string): string => {
-    if (!msg) return '同步失败'
+    if (!msg) return t('data_sync.sync_failed_generic', 'Sync failed')
     let cleanMsg = msg.replace(/^Error:\s*/i, '')
     cleanMsg = cleanMsg.replace(/^Error invoking remote method '.*?':\s*/i, '')
 
     if (cleanMsg.includes('SyncInProgressError') || cleanMsg.includes('already in progress')) {
-      return '同步操作正在进行中，请勿重复操作'
+      return t('data_sync.error_in_progress', 'Sync is already in progress. Please wait.')
     }
     if (cleanMsg.includes('not initialized') || cleanMsg.includes('Please update config first')) {
-      return '同步服务尚未初始化，请先配置并保存您的连接信息'
+      return t(
+        'data_sync.error_not_initialized',
+        'Sync service is not initialized. Please save your connection settings first.'
+      )
     }
     if (cleanMsg.includes('S3NotConfiguredError')) {
-      return '同步服务尚未启用或配置不完整'
+      return t('data_sync.error_not_configured', 'Sync is not enabled or configuration is incomplete.')
     }
     if (cleanMsg.includes('InvalidAccessKeyId')) {
-      return 'Access Key 无效或已过期，请在设置中更新您的密钥'
+      return t(
+        'data_sync.error_invalid_access_key',
+        'Access Key is invalid or expired. Please update your credentials.'
+      )
     }
     if (
       cleanMsg.includes('SignatureDoesNotMatch') ||
       (cleanMsg.includes('signature') && cleanMsg.includes('does not match'))
     ) {
-      return 'Secret Key 无效，请在设置中更新您的密钥'
+      return t('data_sync.error_invalid_secret', 'Secret Key is invalid. Please update your credentials.')
     }
     if (cleanMsg.includes('AccessDenied')) {
-      return '访问被拒绝，请检查 Bucket 权限或密钥配置'
+      return t('data_sync.error_access_denied', 'Access denied. Please check bucket permissions or credentials.')
     }
     if (cleanMsg.includes('NoSuchBucket')) {
-      return 'Bucket 不存在，请检查 Bucket 名称配置'
+      return t('data_sync.error_no_bucket', 'Bucket does not exist. Please check the bucket name.')
     }
     if (cleanMsg.includes('ENOTFOUND') || cleanMsg.includes('getaddrinfo')) {
-      return '无法解析域名，请检查 Endpoint 地址和网络连接'
+      return t('data_sync.error_dns', 'Unable to resolve hostname. Please check the endpoint and network.')
     }
     if (cleanMsg.includes('ECONNREFUSED')) {
-      return '连接被拒绝，请检查 Endpoint 地址和服务是否在线'
+      return t('data_sync.error_conn_refused', 'Connection refused. Please check the endpoint and service status.')
     }
-    return `同步失败: ${cleanMsg}`
+    return t('data_sync.error_sync_failed_with_msg', 'Sync failed: {{msg}}', { msg: cleanMsg })
   }
 
   const handleSync = async () => {
     setStatus('syncing')
-    setMessage('正在同步...')
+    setMessage(t('data_sync.syncing', 'Syncing...'))
     setSyncResult(null)
     setProgress(null)
     try {
       const result = await (window as any).api?.incrementalSync?.orchestratedSync()
       setSyncResult(result)
       setProgress(null)
-      setMessage('同步完成')
+      setMessage(t('data_sync.sync_completed', 'Sync Completed'))
       setStatus('success')
     } catch (e: any) {
-      setMessage(friendlySyncError(e?.message || '未知错误'))
+      setMessage(friendlySyncError(e?.message || t('data_sync.sync_unknown_error', 'Unknown error')))
       setStatus('error')
       setProgress(null)
     }
@@ -93,11 +98,11 @@ export const IncrementalSyncPage: React.FC = () => {
     >
       <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 24px 0', fontSize: '18px', fontWeight: 600 }}>
         <FileText size={18} style={{ marginRight: 2 }} />
-        <span>{t('common.incremental_sync', '文件同步')}</span>
+        <span>{t('data_sync.incremental_sync', 'File Sync')}</span>
         <Tooltip
           content={t(
             'data_sync.incremental_sync_tooltip',
-            '文件同步采用双向增量同步机制，会自动对比本地与云端文件的修改时间及哈希值，仅传输发生变更的文件，并在两端同步应用删除操作。同步的范围包含您的日记内容、历史总结以及 AI 聊天伙伴等核心数据。'
+            'File sync uses a two-way incremental sync mechanism. It automatically compares modification times and hash values between local and cloud files, transfers only changed files, and propagates deletions in both directions. The sync scope covers core data including your diaries, historical summaries, and AI chat partners.'
           )}
         >
           <span
@@ -118,10 +123,8 @@ export const IncrementalSyncPage: React.FC = () => {
         </Tooltip>
       </h2>
 
-      {/* 引入拆分后的配置表单 */}
       <SyncConfigForm />
 
-      {/* 同步操作 */}
       <div
         style={{
           background: 'var(--bg-surface)',
@@ -132,7 +135,7 @@ export const IncrementalSyncPage: React.FC = () => {
       >
         <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600 }}>
           <Cloud size={14} style={{ marginRight: 6 }} />
-          同步操作
+          {t('data_sync.sync_actions', 'Sync Actions')}
         </h3>
 
         <button
@@ -157,7 +160,9 @@ export const IncrementalSyncPage: React.FC = () => {
             size={16}
             style={status === 'syncing' ? { animation: 'spin 1s linear infinite' } : undefined}
           />
-          {status === 'syncing' ? '同步中...' : '立即同步'}
+          {status === 'syncing'
+            ? t('data_sync.syncing', 'Syncing...')
+            : t('data_sync.sync_now', 'Sync')}
         </button>
 
         {status === 'syncing' && progress && progress.total > 0 && (
@@ -183,7 +188,10 @@ export const IncrementalSyncPage: React.FC = () => {
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
               {progress.current}/{progress.total}
-              {progress.statusText && ` · ${progress.statusText}`}
+              {(() => {
+                const line = formatSyncProgressStatus(progress, t)
+                return line ? ` · ${line}` : ''
+              })()}
             </div>
           </div>
         )}
@@ -193,34 +201,34 @@ export const IncrementalSyncPage: React.FC = () => {
             style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}
           >
             <StatCard
-              label="上传"
+              label={t('data_sync.stat_uploaded', 'Uploaded')}
               value={syncResult.uploaded?.length || 0}
               color="var(--color-primary)"
             />
             <StatCard
-              label="下载"
+              label={t('data_sync.stat_downloaded', 'Downloaded')}
               value={syncResult.downloaded?.length || 0}
               color="var(--color-success)"
             />
             <StatCard
-              label="删除"
+              label={t('data_sync.stat_deleted', 'Deleted')}
               value={
                 (syncResult.deletedRemote?.length || 0) + (syncResult.deletedLocal?.length || 0)
               }
               color="var(--color-error)"
             />
             <StatCard
-              label="冲突"
+              label={t('data_sync.stat_conflicts', 'Conflicts')}
               value={syncResult.conflicted?.length || 0}
               color="var(--color-warning)"
             />
             <StatCard
-              label="跳过"
+              label={t('data_sync.stat_skipped', 'Skipped')}
               value={syncResult.skipped?.length || 0}
               color="var(--text-tertiary)"
             />
             <StatCard
-              label="耗时"
+              label={t('data_sync.stat_duration', 'Duration')}
               value={syncResult.duration ? formatDuration(syncResult.duration) : '-'}
               color="var(--text-secondary)"
               isText

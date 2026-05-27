@@ -1,59 +1,46 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Save,
-  TestTube,
-  Cloud,
-  Eye,
-  EyeOff,
-  Globe,
-  Settings
-} from 'lucide-react'
+import { Save, TestTube, Cloud, Globe, Settings } from 'lucide-react'
 import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
+import { S3SyncForm } from './S3SyncForm'
+import { WebDavSyncForm } from './WebDavSyncForm'
 
 type SyncTarget = 's3' | 'webdav'
 
 export const SyncConfigForm: React.FC = () => {
   const { t } = useTranslation()
-  const [target, setTarget] = useState<SyncTarget>('s3')
-  const [endpoint, setEndpoint] = useState('')
-  const [region, setRegion] = useState('')
-  const [bucket, setBucket] = useState('')
-  const [webdavUrl, setWebdavUrl] = useState('')
+  const { status, message, setStatus, setMessage } = useSyncStore()
 
-  // 隔离的特定凭据与前缀状态，防止 S3 与 WebDAV 相互污染
-  const [s3AccessKey, setS3AccessKey] = useState('')
-  const [s3SecretKey, setS3SecretKey] = useState('')
-  const [s3Path, setS3Path] = useState('backup_sync')
-  const [webdavUsername, setWebdavUsername] = useState('')
-  const [webdavPassword, setWebdavPassword] = useState('')
-  const [webdavPath, setWebdavPath] = useState('backup_sync')
-
-  // 并行度配置
-  const [chunkConcurrency, setChunkConcurrency] = useState(5)
-  const [fileConcurrency, setFileConcurrency] = useState(5)
-
-  const [showAccessKey, setShowAccessKey] = useState(false)
-  const [showSecretKey, setShowSecretKey] = useState(false)
-  
-  const {
-    status,
-    message,
-    setStatus,
-    setMessage
-  } = useSyncStore()
+  const [config, setConfig] = useState<any>({
+    target: 's3',
+    endpoint: '',
+    region: '',
+    bucket: '',
+    s3AccessKey: '',
+    s3SecretKey: '',
+    s3Path: 'backup_sync',
+    webdavUrl: '',
+    webdavUsername: '',
+    webdavPassword: '',
+    webdavPath: 'backup_sync',
+    fileConcurrency: 5,
+    chunkConcurrency: 5
+  })
 
   useEffect(() => {
     loadConfig()
   }, [])
 
   const friendlyTestConnectionError = (msg: string): string => {
-    if (!msg) return '连接失败'
+    if (!msg) return t('data_sync.connection_failed', 'Connection failed')
     let cleanMsg = msg.replace(/^Error:\s*/i, '')
     cleanMsg = cleanMsg.replace(/^Error invoking remote method '.*?':\s*/i, '')
 
     if (cleanMsg.includes('not initialized')) {
-      return '连接失败：同步服务未初始化，请输入配置'
+      return t(
+        'data_sync.error_test_not_initialized',
+        'Connection failed: sync service is not initialized. Please enter configuration first.'
+      )
     }
     if (
       cleanMsg.includes('401') ||
@@ -63,15 +50,26 @@ export const SyncConfigForm: React.FC = () => {
       cleanMsg.includes('AccessDenied') ||
       cleanMsg.includes('InvalidAccessKeyId')
     ) {
-      return '连接失败：凭据错误，请检查用户名/密码或 Access/Secret Key 是否正确'
+      return t(
+        'data_sync.error_test_credentials',
+        'Connection failed: invalid credentials. Please check username/password or Access/Secret Key.'
+      )
     }
     if (cleanMsg.includes('ENOTFOUND') || cleanMsg.includes('getaddrinfo')) {
-      return '连接失败：域名解析失败，请检查网络和 Endpoint/URL'
+      return t(
+        'data_sync.error_test_dns',
+        'Connection failed: hostname resolution failed. Please check network and endpoint/URL.'
+      )
     }
     if (cleanMsg.includes('ECONNREFUSED')) {
-      return '连接失败：连接被拒绝，请确认端点端口是否正确以及服务是否在线'
+      return t(
+        'data_sync.error_test_conn_refused',
+        'Connection failed: connection refused. Please verify port and service availability.'
+      )
     }
-    return `连接失败: ${cleanMsg}`
+    return t('data_sync.error_connection_failed_with_msg', 'Connection failed: {{msg}}', {
+      msg: cleanMsg
+    })
   }
 
   const loadConfig = async () => {
@@ -79,24 +77,13 @@ export const SyncConfigForm: React.FC = () => {
       const cfg = await (window as any).api?.incrementalSync?.getConfig()
       if (cfg) {
         const curTarget = cfg.target === 'webdav' ? 'webdav' : 's3'
-        setTarget(curTarget)
-        setEndpoint(cfg.endpoint || '')
-        setRegion(cfg.region || '')
-        setBucket(cfg.bucket || '')
-        setWebdavUrl(cfg.webdavUrl || '')
-
-        // 恢复 S3 的专属变量（兼容老版本未独立字段时降级使用主字段）
         const loadedS3AccessKey =
           cfg.s3AccessKey !== undefined ? cfg.s3AccessKey : curTarget === 's3' ? cfg.accessKey : ''
         const loadedS3SecretKey =
           cfg.s3SecretKey !== undefined ? cfg.s3SecretKey : curTarget === 's3' ? cfg.secretKey : ''
         const loadedS3Path =
           cfg.s3Path !== undefined ? cfg.s3Path : curTarget === 's3' ? cfg.path : 'backup_sync'
-        setS3AccessKey(loadedS3AccessKey || '')
-        setS3SecretKey(loadedS3SecretKey || '')
-        setS3Path(loadedS3Path || 'backup_sync')
 
-        // 恢复 WebDAV 的专属变量
         const loadedWebdavUsername =
           cfg.webdavUsername !== undefined
             ? cfg.webdavUsername
@@ -115,73 +102,87 @@ export const SyncConfigForm: React.FC = () => {
             : curTarget === 'webdav'
               ? cfg.path
               : 'backup_sync'
-        setWebdavUsername(loadedWebdavUsername || '')
-        setWebdavPassword(loadedWebdavPassword || '')
-        setWebdavPath(loadedWebdavPath || 'backup_sync')
 
-        // 恢复并发度设置
-        setChunkConcurrency(cfg.chunkConcurrency !== undefined ? cfg.chunkConcurrency : 5)
-        setFileConcurrency(cfg.fileConcurrency !== undefined ? cfg.fileConcurrency : 5)
+        setConfig({
+          target: curTarget,
+          endpoint: cfg.endpoint || '',
+          region: cfg.region || '',
+          bucket: cfg.bucket || '',
+          webdavUrl: cfg.webdavUrl || '',
+          s3AccessKey: loadedS3AccessKey || '',
+          s3SecretKey: loadedS3SecretKey || '',
+          s3Path: loadedS3Path || 'backup_sync',
+          webdavUsername: loadedWebdavUsername || '',
+          webdavPassword: loadedWebdavPassword || '',
+          webdavPath: loadedWebdavPath || 'backup_sync',
+          chunkConcurrency: cfg.chunkConcurrency !== undefined ? cfg.chunkConcurrency : 5,
+          fileConcurrency: cfg.fileConcurrency !== undefined ? cfg.fileConcurrency : 5
+        })
       }
     } catch {}
+  }
+
+  const handleConfigChange = (updated: Partial<any>) => {
+    setConfig((prev: any) => ({ ...prev, ...updated }))
   }
 
   const handleSaveConfig = async () => {
     try {
       await (window as any).api?.incrementalSync?.updateConfig({
         enabled: true,
-        target,
-        endpoint,
-        region,
-        bucket,
-        webdavUrl,
-        // 后端核心消费字段根据 target 动态映射
-        path: target === 'webdav' ? webdavPath : s3Path,
-        accessKey: target === 'webdav' ? webdavUsername : s3AccessKey,
-        secretKey: target === 'webdav' ? webdavPassword : s3SecretKey,
-        // 保存两套各自隔离的字段以备下次无损恢复
-        s3AccessKey,
-        s3SecretKey,
-        s3Path,
-        webdavUsername,
-        webdavPassword,
-        webdavPath,
-        // 并行度
-        chunkConcurrency,
-        fileConcurrency
+        target: config.target,
+        endpoint: config.endpoint,
+        region: config.region,
+        bucket: config.bucket,
+        webdavUrl: config.webdavUrl,
+        path: config.target === 'webdav' ? config.webdavPath : config.s3Path,
+        accessKey: config.target === 'webdav' ? config.webdavUsername : config.s3AccessKey,
+        secretKey: config.target === 'webdav' ? config.webdavPassword : config.s3SecretKey,
+        s3AccessKey: config.s3AccessKey,
+        s3SecretKey: config.s3SecretKey,
+        s3Path: config.s3Path,
+        webdavUsername: config.webdavUsername,
+        webdavPassword: config.webdavPassword,
+        webdavPath: config.webdavPath,
+        chunkConcurrency: config.chunkConcurrency,
+        fileConcurrency: config.fileConcurrency
       })
-      setMessage('配置已保存')
+      setMessage(t('data_sync.config_saved', 'Configuration saved'))
       setStatus('success')
       setTimeout(() => {
         setStatus('idle')
         setMessage('')
       }, 2000)
     } catch (e: any) {
-      setMessage(e?.message || '保存失败')
+      setMessage(e?.message || t('data_sync.save_failed', 'Save failed'))
       setStatus('error')
     }
   }
 
   const handleTestConnection = async () => {
     setStatus('connecting')
-    setMessage('正在测试连接...')
+    setMessage(t('data_sync.testing_connection', 'Testing connection...'))
     try {
       const ok = await (window as any).api?.incrementalSync?.testConnection({
-        target,
-        endpoint,
-        region,
-        bucket,
-        webdavUrl,
-        path: target === 'webdav' ? webdavPath : s3Path,
-        accessKey: target === 'webdav' ? webdavUsername : s3AccessKey,
-        secretKey: target === 'webdav' ? webdavPassword : s3SecretKey,
-        chunkConcurrency,
-        fileConcurrency
+        target: config.target,
+        endpoint: config.endpoint,
+        region: config.region,
+        bucket: config.bucket,
+        webdavUrl: config.webdavUrl,
+        path: config.target === 'webdav' ? config.webdavPath : config.s3Path,
+        accessKey: config.target === 'webdav' ? config.webdavUsername : config.s3AccessKey,
+        secretKey: config.target === 'webdav' ? config.webdavPassword : config.s3SecretKey,
+        chunkConcurrency: config.chunkConcurrency,
+        fileConcurrency: config.fileConcurrency
       })
-      setMessage(ok ? '连接成功' : '连接失败，请检查配置')
+      setMessage(
+        ok
+          ? t('data_sync.connection_success', 'Connection successful')
+          : t('data_sync.connection_failed_check', 'Connection failed, please check your configuration')
+      )
       setStatus(ok ? 'success' : 'error')
     } catch (e: any) {
-      setMessage(friendlyTestConnectionError(e?.message || '连接失败'))
+      setMessage(friendlyTestConnectionError(e?.message || t('data_sync.connection_failed', 'Connection failed')))
       setStatus('error')
     }
   }
@@ -198,10 +199,9 @@ export const SyncConfigForm: React.FC = () => {
     >
       <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600 }}>
         <Settings size={14} style={{ marginRight: 6 }} />
-        配置
+        {t('data_sync.config_section', 'Configuration')}
       </h3>
 
-      {/* 目标选择 */}
       <div style={{ marginBottom: 16 }}>
         <label
           style={{
@@ -211,226 +211,51 @@ export const SyncConfigForm: React.FC = () => {
             marginBottom: 6
           }}
         >
-          目标类型
+          {t('data_sync.target_type', 'Target Type')}
         </label>
         <div style={{ display: 'flex', gap: 8 }}>
-          {(['s3', 'webdav'] as SyncTarget[]).map((t) => (
+          {(['s3', 'webdav'] as SyncTarget[]).map((item) => (
             <button
-              key={t}
-              onClick={() => setTarget(t)}
+              key={item}
+              onClick={() => handleConfigChange({ target: item })}
               style={{
                 padding: '8px 16px',
                 borderRadius: '6px',
-                border: `1px solid ${target === t ? 'var(--color-primary)' : 'var(--border-muted)'}`,
-                background: target === t ? 'rgba(91, 168, 245, 0.08)' : 'var(--bg-surface-low)',
-                color: target === t ? 'var(--color-primary)' : 'var(--text-secondary)',
+                border: `1px solid ${config.target === item ? 'var(--color-primary)' : 'var(--border-muted)'}`,
+                background: config.target === item ? 'rgba(91, 168, 245, 0.08)' : 'var(--bg-surface-low)',
+                color: config.target === item ? 'var(--color-primary)' : 'var(--text-secondary)',
                 fontSize: '13px',
                 cursor: 'pointer',
-                fontWeight: target === t ? 600 : 400
+                fontWeight: config.target === item ? 600 : 400
               }}
             >
-              {t === 's3' ? (
+              {item === 's3' ? (
                 <Cloud size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
               ) : (
                 <Globe size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
               )}
-              {t === 's3' ? 'S3' : 'WebDAV'}
+              {item === 's3' ? 'S3' : 'WebDAV'}
             </button>
           ))}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        {target === 'webdav' ? (
-          <div style={{ gridColumn: 'span 2' }}>
-            <label
-              style={{
-                fontSize: '12px',
-                color: 'var(--text-secondary)',
-                display: 'block',
-                marginBottom: 4
-              }}
-            >
-              WebDAV URL
-            </label>
-            <input
-              type="text"
-              value={webdavUrl}
-              onChange={(e) => setWebdavUrl(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-        ) : (
-          <>
-            <div>
-              <label style={labelStyle}>Endpoint</label>
-              <input
-                type="text"
-                value={endpoint}
-                onChange={(e) => setEndpoint(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Bucket</label>
-              <input
-                type="text"
-                value={bucket}
-                onChange={(e) => setBucket(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Region</label>
-              <input
-                type="text"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-          </>
-        )}
-        <div>
-          <label style={labelStyle}>路径前缀</label>
-          <input
-            type="text"
-            value={target === 'webdav' ? webdavPath : s3Path}
-            onChange={(e) =>
-              target === 'webdav' ? setWebdavPath(e.target.value) : setS3Path(e.target.value)
-            }
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>{target === 'webdav' ? '用户名' : 'Access Key'}</label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type={showAccessKey ? 'text' : 'password'}
-              value={target === 'webdav' ? webdavUsername : s3AccessKey}
-              onChange={(e) =>
-                target === 'webdav'
-                  ? setWebdavUsername(e.target.value)
-                  : setS3AccessKey(e.target.value)
-              }
-              style={{ ...inputStyle, paddingRight: 36 }}
-            />
-            <button
-              onClick={() => setShowAccessKey(!showAccessKey)}
-              style={{
-                position: 'absolute',
-                right: 8,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                border: 'none',
-                background: 'none',
-                color: 'var(--text-tertiary)',
-                cursor: 'pointer',
-                padding: 2
-              }}
-            >
-              {showAccessKey ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>{target === 'webdav' ? '密码' : 'Secret Key'}</label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type={showSecretKey ? 'text' : 'password'}
-              value={target === 'webdav' ? webdavPassword : s3SecretKey}
-              onChange={(e) =>
-                target === 'webdav'
-                  ? setWebdavPassword(e.target.value)
-                  : setS3SecretKey(e.target.value)
-              }
-              style={{ ...inputStyle, paddingRight: 36 }}
-            />
-            <button
-              onClick={() => setShowSecretKey(!showSecretKey)}
-              style={{
-                position: 'absolute',
-                right: 8,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                border: 'none',
-                background: 'none',
-                color: 'var(--text-tertiary)',
-                cursor: 'pointer',
-                padding: 2
-              }}
-            >
-              {showSecretKey ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>文件并行度</label>
-          <select
-            value={fileConcurrency}
-            onChange={(e) => setFileConcurrency(parseInt(e.target.value))}
-            style={selectStyle}
-          >
-            {[1, 2, 3, 5, 10, 15, 20].map((v) => (
-              <option key={v} value={v}>
-                {v} 个文件并发
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label style={labelStyle}>分块并行度（对象存储大文件）</label>
-          <select
-            value={chunkConcurrency}
-            onChange={(e) => setChunkConcurrency(parseInt(e.target.value))}
-            disabled={target !== 's3'}
-            style={{ ...selectStyle, opacity: target !== 's3' ? 0.5 : 1 }}
-          >
-            {[5, 10, 15, 20].map((v) => (
-              <option key={v} value={v}>
-                {v} 个分块并发
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {config.target === 'webdav' ? (
+        <WebDavSyncForm config={config} onChange={handleConfigChange} />
+      ) : (
+        <S3SyncForm config={config} onChange={handleConfigChange} />
+      )}
 
       <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-        <button
-          onClick={handleSaveConfig}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 16px',
-            border: '1px solid var(--border-muted)',
-            borderRadius: '6px',
-            background: 'var(--bg-surface)',
-            color: 'var(--text-primary)',
-            fontSize: '13px',
-            cursor: 'pointer'
-          }}
-        >
-          <Save size={14} /> 保存配置
+        <button onClick={handleSaveConfig} style={actionButtonStyle}>
+          <Save size={14} /> {t('data_sync.save_config', 'Save Config')}
         </button>
         <button
           onClick={handleTestConnection}
           disabled={status === 'connecting'}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 16px',
-            border: '1px solid var(--border-muted)',
-            borderRadius: '6px',
-            background: 'var(--bg-surface)',
-            color: 'var(--text-primary)',
-            fontSize: '13px',
-            cursor: 'pointer',
-            opacity: status === 'connecting' ? 0.5 : 1
-          }}
+          style={{ ...actionButtonStyle, opacity: status === 'connecting' ? 0.5 : 1 }}
         >
-          <TestTube size={14} /> 测试连接
+          <TestTube size={14} /> {t('data_sync.test_connection', 'Test Connection')}
         </button>
       </div>
 
@@ -463,30 +288,15 @@ export const SyncConfigForm: React.FC = () => {
   )
 }
 
-const labelStyle: React.CSSProperties = {
-  fontSize: '12px',
-  color: 'var(--text-secondary)',
-  display: 'block',
-  marginBottom: 4
-}
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
+const actionButtonStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 16px',
   border: '1px solid var(--border-muted)',
   borderRadius: '6px',
-  background: 'var(--bg-surface-low)',
+  background: 'var(--bg-surface)',
   color: 'var(--text-primary)',
   fontSize: '13px',
-  boxSizing: 'border-box'
-}
-const selectStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  border: '1px solid var(--border-muted)',
-  borderRadius: '6px',
-  background: 'var(--bg-surface-low)',
-  color: 'var(--text-primary)',
-  fontSize: '13px',
-  boxSizing: 'border-box',
-  outline: 'none'
+  cursor: 'pointer'
 }

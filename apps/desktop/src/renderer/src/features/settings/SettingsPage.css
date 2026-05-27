@@ -215,6 +215,22 @@
   margin: 0;
   padding-bottom: 0;
   background-color: var(--bg-app);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Scrollable settings tabs: pane height = content height (do not shrink to viewport) */
+.settings-content-scroll > .settings-pane,
+.settings-content-scroll > .settings-pane-full {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+/* Full-bleed tabs (RAG, models, …): pane fills area and scrolls internally */
+.settings-content-area > .settings-pane-full {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Glass panel equivalent to Flutter cards (Card with elevation 0 or 1) */
