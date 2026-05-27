@@ -34,6 +34,10 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onBatchEmbed,
   onAddManualMemory,
   onClearAll,
+  onCancelMigration,
+  onRestoreMigration,
+  onResumeMigration,
+  migrationState,
   onSearch,
   onDeleteEntry,
   onEditEntry,
@@ -68,7 +72,14 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
 
         <RagMemoryConfigBlock config={config} onChange={onChange} />
 
-        <RagMemoryAlerts ragState={ragState} hasMismatchModel={hasMismatchModel} />
+        <RagMemoryAlerts
+          ragState={ragState}
+          hasMismatchModel={hasMismatchModel}
+          migrationState={migrationState}
+          onCancelMigration={onCancelMigration}
+          onRestoreMigration={onRestoreMigration}
+          onResumeMigration={onResumeMigration}
+        />
 
         <RagMemoryActionButtons
           ragState={ragState}

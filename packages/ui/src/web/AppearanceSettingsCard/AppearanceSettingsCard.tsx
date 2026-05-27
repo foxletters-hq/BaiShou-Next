@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
 import './AppearanceSettingsCard.css'
 import { useTranslation } from 'react-i18next'
 import { MdOutlinePalette, MdDevices, MdWbSunny, MdDarkMode } from 'react-icons/md'
@@ -36,10 +37,17 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
   const LANGS = [
     { val: 'system', label: t('settings.language_system', '跟随系统') },
-    { val: 'zh', label: '简体中文' },
-    { val: 'zh-TW', label: '繁體中文' },
-    { val: 'en', label: 'English' },
-    { val: 'ja', label: '日本語' }
+    ...APP_UI_LANGUAGE_ORDER.map((val) => ({
+      val,
+      label:
+        val === 'zh'
+          ? '简体中文'
+          : val === 'zh-TW'
+            ? '繁體中文'
+            : val === 'en'
+              ? 'English'
+              : '日本語'
+    }))
   ]
 
   const getThemeText = () => {

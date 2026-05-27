@@ -1,3 +1,5 @@
+import type { EmbeddingMigrationStateView } from '@baishou/shared'
+
 export interface RagConfig {
   ragTopK: number
   ragSimilarityThreshold: number
@@ -16,6 +18,8 @@ export interface RagState {
   progress: number
   total: number
   statusText: string
+  aborted?: boolean
+  rollbackApplied?: boolean
 }
 
 export interface RagEntry {
@@ -41,6 +45,10 @@ export interface RagMemoryViewProps {
   onBatchEmbed?: () => Promise<void>
   onAddManualMemory?: () => Promise<void>
   onTriggerMigration?: () => Promise<void>
+  onCancelMigration?: () => Promise<void>
+  onRestoreMigration?: () => Promise<void>
+  onResumeMigration?: () => Promise<void>
+  migrationState?: EmbeddingMigrationStateView | null
   onClearAll?: () => Promise<void>
   onSearch?: (query: string, mode: 'semantic' | 'text') => void
   onDeleteEntry?: (id: string) => Promise<void>

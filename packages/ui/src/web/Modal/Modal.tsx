@@ -7,6 +7,8 @@ export interface ModalProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
   onClose: () => void
   title?: React.ReactNode
   closeOnOverlayClick?: boolean
+  /** Stack above other overlays (e.g. ModelSwitcherPopup). Default 1000. */
+  zIndex?: number
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -16,6 +18,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   className = '',
   closeOnOverlayClick = false,
+  zIndex = 1000,
   ...props
 }) => {
   useEffect(() => {
@@ -32,9 +35,14 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen || typeof document === 'undefined') return null
 
   return createPortal(
-    <div className={styles.overlay} onClick={closeOnOverlayClick ? onClose : undefined}>
+    <div
+      className={styles.overlay}
+      style={{ zIndex }}
+      onClick={closeOnOverlayClick ? onClose : undefined}
+    >
       <div
         className={`${styles.modal} ${className}`.trim()}
+        style={{ zIndex: zIndex + 1 }}
         onClick={(e) => e.stopPropagation()}
         {...props}
       >

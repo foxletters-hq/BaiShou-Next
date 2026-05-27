@@ -115,6 +115,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           isOpen={state.isOpen}
           onClose={() => closeDialog(state.type === 'prompt' ? null : false)}
           title={state.title}
+          zIndex={1100}
         >
           <div className={styles.dialogContent}>
             <div className={styles.message}>{state.message}</div>

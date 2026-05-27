@@ -1,17 +1,35 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdWarning } from 'react-icons/md'
+import type { EmbeddingMigrationStateView } from '@baishou/shared'
 import type { RagState } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
 
 interface RagMemoryAlertsProps {
   ragState: RagState
   hasMismatchModel: boolean
+  migrationState?: EmbeddingMigrationStateView | null
+  onCancelMigration?: () => Promise<void>
+  onRestoreMigration?: () => Promise<void>
+  onResumeMigration?: () => Promise<void>
 }
 
-export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({ ragState, hasMismatchModel }) => {
+export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
+  ragState,
+  hasMismatchModel,
+  migrationState,
+  onCancelMigration,
+  onRestoreMigration,
+  onResumeMigration
+}) => {
   const { t } = useTranslation()
   const isMigrating = ragState.isRunning && ragState.type === 'migration'
+  const showInterrupted =
+    !isMigrating &&
+    migrationState &&
+    (migrationState.status === 'interrupted' ||
+      migrationState.canRestore ||
+      migrationState.canResume)
 
   return (
     <>
@@ -22,6 +40,15 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({ ragState, hasM
             <span className={styles.migTitle}>
               {t('settings.rag_migrating', '知识库正在迁移中...')}
             </span>
+            {onCancelMigration && (
+              <button
+                type="button"
+                className={styles.migrationCancelBtn}
+                onClick={() => void onCancelMigration()}
+              >
+                {t('settings.rag_migration_cancel', '取消迁移')}
+              </button>
+            )}
           </div>
           <p className={styles.migDesc}>{ragState.statusText}</p>
           <div className={styles.progressBar}>
@@ -35,7 +62,49 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({ ragState, hasM
         </div>
       )}
 
-      {!ragState.isRunning && hasMismatchModel && (
+      {showInterrupted && (
+        <div className={styles.dangerAlert}>
+          <div className={styles.dangerRow}>
+            <MdWarning size={18} color="#ef4444" />
+            <span className={styles.dangerTitle}>
+              {t('settings.rag_migration_interrupted_title', '检测到未完成的嵌入迁移')}
+            </span>
+          </div>
+          <p className={styles.dangerDesc}>
+            {migrationState?.canRestore
+              ? t(
+                  'settings.rag_migration_interrupted_restore_desc',
+                  '迁移尚未完成。已保留迁移前完整备份，您可一键恢复原有向量数据与嵌入模型。'
+                )
+              : t(
+                  'settings.rag_migration_interrupted_resume_desc',
+                  '迁移尚未完成。您可以从上次进度继续迁移，或先恢复备份数据。'
+                )}
+          </p>
+          <div className={styles.migrationActionRow}>
+            {migrationState?.canRestore && onRestoreMigration && (
+              <button
+                type="button"
+                className={styles.migrationRestoreBtn}
+                onClick={() => void onRestoreMigration()}
+              >
+                {t('settings.rag_migration_restore_backup', '一键恢复备份数据')}
+              </button>
+            )}
+            {migrationState?.canResume && onResumeMigration && (
+              <button
+                type="button"
+                className={styles.migrationResumeBtn}
+                onClick={() => void onResumeMigration()}
+              >
+                {t('settings.rag_migration_resume', '继续迁移')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!isMigrating && !showInterrupted && hasMismatchModel && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
             <MdWarning size={18} color="#ef4444" />

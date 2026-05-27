@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 
@@ -18,6 +19,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   defaultOpen = false,
   autoCollapse = false
 }) => {
+  const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const [expanded, setExpanded] = useState(autoCollapse ? false : defaultOpen)
 
@@ -26,12 +28,16 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   }
 
   const getStatusText = (): string => {
-    if (isThinking) return '思考中...'
+    if (isThinking) {
+      return t('agent.chat.thinking_time', '思考中 {{time}}', { time: '...' }).replace(' {{time}}', '...')
+    }
     if (thinkingTimeMs !== undefined) {
       const seconds = (thinkingTimeMs / 1000).toFixed(1)
-      return `思考耗时 ${seconds}s`
+      return t('agent.chat.thought_time', '思考耗时 {{time}}', {
+        time: `${seconds}s`
+      })
     }
-    return '思考过程'
+    return t('agent.chat.thought_process', '思考过程')
   }
 
   const getLastLines = (text: string, lines: number): string => {

@@ -73,7 +73,9 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
                 {hasReasoning && (
                   <View style={styles.reasoningBox}>
                     <Text style={styles.reasoningTitle}>
-                      {isReasoning ? '💭 思考中...' : '💭 思考过程'}
+                      {isReasoning 
+                        ? t('agent.chat.thinking', '💭 思考中...') 
+                        : t('agent.chat.thought_process_prefix', '💭 思考过程')}
                     </Text>
                     <Text style={styles.reasoningText}>{reasoning}</Text>
                   </View>

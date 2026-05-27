@@ -571,6 +571,43 @@ input:checked + .slider:before {
   gap: 12px;
   margin-bottom: 8px;
 }
+.migrationCancelBtn {
+  margin-left: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  cursor: pointer;
+}
+.migrationCancelBtn:hover {
+  background: rgba(239, 68, 68, 0.14);
+}
+.migrationActionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.migrationRestoreBtn,
+.migrationResumeBtn {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.migrationRestoreBtn {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+.migrationResumeBtn {
+  background: rgba(91, 168, 245, 0.12);
+  border-color: rgba(91, 168, 245, 0.35);
+  color: var(--color-primary);
+}
 .migTitle {
   font-size: 14px;
   font-weight: 600;

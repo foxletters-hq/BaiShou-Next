@@ -93,6 +93,54 @@
   box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
 }
 
+.localeHint {
+  margin: 0 0 10px 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.langBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.langChip {
+  border: 1px solid var(--color-outline-variant);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.langChip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.langChipActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-on-primary, #fff);
+  font-weight: 600;
+}
+
+.langChip.langChipActive:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-on-primary, #fff);
+}
+
+.langChipGeneration:not(.langChipActive) {
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb, 91, 168, 245), 0.35);
+}
+
 .tabBar {
   display: flex;
   gap: 4px;

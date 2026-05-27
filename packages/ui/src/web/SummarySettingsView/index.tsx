@@ -1,24 +1,27 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import styles from './SummarySettingsView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
 import { CodeMirrorEditor } from '../DiaryEditor/CodeMirrorEditor'
 import '../DiaryEditor/DiaryEditor.css'
+import {
+  getSummaryTemplateForEdit,
+  SUMMARY_PROMPT_LOCALE_OPTIONS,
+  type SummaryPromptLocale,
+  type SummaryTemplateKey,
+  type SummaryTemplatesMap
+} from '@baishou/shared'
 
 export interface SummaryInstructionsConfig {
   monthlySummarySource: 'weeklies' | 'diaries'
-  templates: {
-    weekly: string
-    monthly: string
-    quarterly: string
-    yearly: string
-  }
+  promptLocale: SummaryPromptLocale
+  instructionsByLocale: Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>>
 }
 
 export interface SummarySettingsViewProps {
   config: SummaryInstructionsConfig
   onChange: (config: SummaryInstructionsConfig) => void
-  onResetTemplate?: (type: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => string
+  onResetTemplate?: (type: SummaryTemplateKey, locale: SummaryPromptLocale) => string
 }
 
 export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
@@ -28,73 +31,119 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
-  const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>(
-    'weekly'
+  const [activeTab, setActiveTab] = useState<SummaryTemplateKey>('weekly')
+  const [activePromptLocale, setActivePromptLocale] = useState<SummaryPromptLocale>(
+    config.promptLocale
   )
-
-  // Local state for actively edited text before saving
-  const [localText, setLocalText] = useState(config.templates[activeTab] || '')
+  const [localText, setLocalText] = useState(() =>
+    getSummaryTemplateForEdit(config.instructionsByLocale, config.promptLocale, activeTab)
+  )
   const [resetKey, setResetKey] = useState(0)
 
-  // Handle tab switch
-  const handleTabChange = (tab: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
+  const readTemplate = useCallback(
+    (locale: SummaryPromptLocale, type: SummaryTemplateKey) =>
+      getSummaryTemplateForEdit(config.instructionsByLocale, locale, type),
+    [config.instructionsByLocale]
+  )
+
+  const patchLocaleTemplates = useCallback(
+    (
+      locale: SummaryPromptLocale,
+      type: SummaryTemplateKey,
+      text: string
+    ): Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>> => ({
+      ...config.instructionsByLocale,
+      [locale]: {
+        ...config.instructionsByLocale[locale],
+        [type]: text
+      }
+    }),
+    [config.instructionsByLocale]
+  )
+
+  const flushLocalToConfig = useCallback(
+    (locale: SummaryPromptLocale, type: SummaryTemplateKey, text: string) => {
+      onChange({
+        ...config,
+        instructionsByLocale: patchLocaleTemplates(locale, type, text)
+      })
+    },
+    [config, onChange, patchLocaleTemplates]
+  )
+
+  const handleTabChange = (tab: SummaryTemplateKey) => {
+    flushLocalToConfig(activePromptLocale, activeTab, localText)
     setActiveTab(tab)
-    setLocalText(config.templates[tab] || '')
+    setLocalText(readTemplate(activePromptLocale, tab))
+    setResetKey((prev) => prev + 1)
   }
 
+  const handlePromptLocaleChange = (locale: SummaryPromptLocale) => {
+    const instructionsByLocale = patchLocaleTemplates(activePromptLocale, activeTab, localText)
+    setActivePromptLocale(locale)
+    setLocalText(getSummaryTemplateForEdit(instructionsByLocale, locale, activeTab))
+    setResetKey((prev) => prev + 1)
+    onChange({
+      ...config,
+      instructionsByLocale
+    })
+  }
+
+  /** Follow general-settings language → auto-select matching prompt locale. */
+  useEffect(() => {
+    setActivePromptLocale(config.promptLocale)
+    setLocalText(
+      getSummaryTemplateForEdit(config.instructionsByLocale, config.promptLocale, activeTab)
+    )
+    setResetKey((prev) => prev + 1)
+  }, [config.promptLocale])
+
   const handleSave = () => {
-    const nextTemplates = { ...config.templates, [activeTab]: localText }
-    onChange({ ...config, templates: nextTemplates })
-    toast.showSuccess(t('settings.saved', '已保存'))
+    const instructionsByLocale = patchLocaleTemplates(activePromptLocale, activeTab, localText)
+    onChange({
+      ...config,
+      instructionsByLocale
+    })
+    toast.showSuccess(t('settings.saved', 'Saved'))
   }
 
   const handleReset = () => {
-    if (onResetTemplate) {
-      const defaultText = onResetTemplate(activeTab)
-      setLocalText(defaultText)
-      setResetKey((prev) => prev + 1)
-      // Auto save on reset? Yes, to keep it simple.
-      const nextTemplates = { ...config.templates, [activeTab]: defaultText }
-      onChange({ ...config, templates: nextTemplates })
-      toast.show(t('summary.reset_template_success', '已恢复默认模板'))
-    }
+    if (!onResetTemplate) return
+    const defaultText = onResetTemplate(activeTab, activePromptLocale)
+    setLocalText(defaultText)
+    setResetKey((prev) => prev + 1)
+    onChange({
+      ...config,
+      instructionsByLocale: patchLocaleTemplates(activePromptLocale, activeTab, defaultText)
+    })
+    toast.show(t('summary.reset_template_success', 'Default template restored'))
   }
 
-  const tabs = [
-    {
-      id: 'weekly' as const,
-      icon: '🌱',
-      label: t('summary.tab_weekly', '周结')
-    },
-    {
-      id: 'monthly' as const,
-      icon: '☘️',
-      label: t('summary.tab_monthly', '月结')
-    },
-    {
-      id: 'quarterly' as const,
-      icon: '🪴',
-      label: t('summary.tab_quarterly', '季结')
-    },
-    {
-      id: 'yearly' as const,
-      icon: '🌳',
-      label: t('summary.tab_yearly', '年结')
-    }
-  ]
+  const tabs = useMemo(
+    () =>
+      [
+        { id: 'weekly' as const, icon: '🌱', label: t('summary.tab_weekly', 'Weekly') },
+        { id: 'monthly' as const, icon: '☘️', label: t('summary.tab_monthly', 'Monthly') },
+        { id: 'quarterly' as const, icon: '🪴', label: t('summary.tab_quarterly', 'Quarterly') },
+        { id: 'yearly' as const, icon: '🌳', label: t('summary.tab_yearly', 'Yearly') }
+      ] as const,
+    [t]
+  )
+
+  const activeLocaleLabel =
+    SUMMARY_PROMPT_LOCALE_OPTIONS.find((l) => l.id === activePromptLocale)?.fallback ??
+    activePromptLocale
 
   return (
     <div className={styles.container}>
-      {/* 合并后的卡片区域 */}
       <div className={styles.cardSection}>
-        {/* 数据源选择 */}
         <div className={styles.cardTitleLine}>
-          <span>📥 {t('settings.monthly_summary_data_source', '月结数据收拢源')}</span>
+          <span>📥 {t('settings.monthly_summary_data_source', 'Monthly summary data source')}</span>
         </div>
         <p className={styles.cardDesc}>
           {t(
             'settings.monthly_summary_data_source_desc',
-            '选择在进行 AI 大周期总结时，如何提取底层事实材料。'
+            'Choose how underlying facts are gathered for long-cycle AI summaries.'
           )}
         </p>
 
@@ -103,30 +152,62 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
             className={`${styles.segBtn} ${config.monthlySummarySource === 'weeklies' ? styles.active : ''}`}
             onClick={() => onChange({ ...config, monthlySummarySource: 'weeklies' })}
           >
-            <span>📅</span> {t('settings.read_only_weeklies', '仅综合每周总结 (速度快)')}
+            <span>📅</span>{' '}
+            {t('settings.read_only_weeklies', 'Aggregate weekly summaries only (faster)')}
           </button>
           <button
             className={`${styles.segBtn} ${config.monthlySummarySource === 'diaries' ? styles.active : ''}`}
             onClick={() => onChange({ ...config, monthlySummarySource: 'diaries' })}
           >
-            <span>📄</span> {t('settings.read_all_diaries', '直读所有日记条目 (精度高)')}
+            <span>📄</span> {t('settings.read_all_diaries', 'Read all diary entries (higher fidelity)')}
           </button>
         </div>
 
         <div className={styles.divider} />
 
-        {/* AI 提示词模板 */}
         <div className={styles.cardTitleLine}>
           <span>
-            📝 {t('settings.summary_ai_prompt_title', 'AI 总结指令模板与格式规范 (Prompting)')}
+            📝 {t('settings.summary_ai_prompt_title', 'AI summary prompt templates')}
           </span>
         </div>
         <p className={styles.cardDesc}>
           {t(
             'settings.summary_ai_prompt_desc',
-            '这些咒语模板将在白守运行自动化周期总结任务时，作为系统级指令(System Prompt)直接干预 AI 输出结果的形式。'
+            'System prompts used when BaiShou runs automated weekly, monthly, quarterly and yearly summaries. Customize per language below.'
           )}
         </p>
+
+        <p className={styles.localeHint}>
+          {t('settings.summary_prompt_locale_hint', 'Prompt language for generation')}:{' '}
+          <strong>
+            {SUMMARY_PROMPT_LOCALE_OPTIONS.find((l) => l.id === config.promptLocale)?.fallback ??
+              config.promptLocale}
+          </strong>
+          {activePromptLocale !== config.promptLocale && (
+            <>
+              {' · '}
+              {t('settings.summary_prompt_editing_locale', 'Editing')}: {activeLocaleLabel}
+            </>
+          )}
+          {' · '}
+          {t(
+            'settings.summary_prompt_generation_locale',
+            'Summaries use templates under “Generation language” unless you change it when saving.'
+          )}
+        </p>
+
+        <div className={styles.langBar}>
+          {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
+            <button
+              key={lang.id}
+              type="button"
+              className={`${styles.langChip} ${activePromptLocale === lang.id ? styles.langChipActive : ''} ${config.promptLocale === lang.id ? styles.langChipGeneration : ''}`}
+              onClick={() => handlePromptLocaleChange(lang.id)}
+            >
+              {t(lang.labelKey, lang.fallback)}
+            </button>
+          ))}
+        </div>
 
         <div className={styles.tabBar}>
           {tabs.map((tab) => (
@@ -143,18 +224,21 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
         <div className={styles.textAreaWrapper}>
           <div className={styles.milkdownContainer}>
             <CodeMirrorEditor
-              key={`${activeTab}-${resetKey}`}
+              key={`${activePromptLocale}-${activeTab}-${resetKey}`}
               content={localText}
               onChange={(val) => setLocalText(val || '')}
-              placeholder={t('settings.summary_ai_prompt_hint', '请输入用于引导生成的 Prompt...')}
+              placeholder={t(
+                'settings.summary_ai_prompt_hint',
+                'Write guidelines for AI when extracting and generating summaries...'
+              )}
             />
           </div>
           <div className={styles.actionsRow}>
-            <button className={styles.resetBtn} onClick={handleReset}>
-              {t('settings.restore_default', '恢复默认出厂设定')}
+            <button type="button" className={styles.resetBtn} onClick={handleReset}>
+              {t('settings.restore_default', 'Restore default')}
             </button>
-            <button className={styles.saveBtn} onClick={handleSave}>
-              {t('common.save', '保存当前模板')}
+            <button type="button" className={styles.saveBtn} onClick={handleSave}>
+              {t('common.save', 'Save')}
             </button>
           </div>
         </div>

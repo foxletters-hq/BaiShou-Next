@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
 interface ToolInvocation {
@@ -66,6 +67,7 @@ const ToolResultItem: React.FC<{
 }
 
 export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({ invocations }) => {
+  const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const [expanded, setExpanded] = useState(true)
 
@@ -88,7 +90,7 @@ export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({ invoca
         activeOpacity={0.7}
       >
         <Text style={[styles.groupTitle, { color: colors.textPrimary }]}>
-          工具调用结果 ({invocations.length})
+          {t('agent.tools.tool_call_results', '工具调用 · {{count}} 个结果', { count: invocations.length })}
         </Text>
         <Text style={[styles.groupArrow, { color: colors.textTertiary }]}>
           {expanded ? '▼' : '▶'}

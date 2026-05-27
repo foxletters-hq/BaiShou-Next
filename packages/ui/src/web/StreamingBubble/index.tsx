@@ -203,6 +203,7 @@ const BouncingDotsIndicator: React.FC = () => {
 }
 
 const ActiveToolItem: React.FC<{ name: string }> = ({ name }) => {
+  const { t } = useTranslation()
   const [dots, setDots] = React.useState('.')
 
   React.useEffect(() => {
@@ -220,7 +221,7 @@ const ActiveToolItem: React.FC<{ name: string }> = ({ name }) => {
     <div className={`${styles.toolItem} ${styles.pulsing}`}>
       <div className={styles.spinner}></div>
       <span className={styles.activeToolName}>
-        {name} {dots}
+        {t(`agent.tools.${name}`, name)} {dots}
       </span>
     </div>
   )

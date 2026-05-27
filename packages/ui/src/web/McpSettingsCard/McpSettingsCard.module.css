@@ -44,3 +44,86 @@
 .collapseInner {
   overflow: hidden;
 }
+
+/* 与 .settings-list-divider.indent 左缘对齐 (margin-left: 56px) */
+.indentedTile {
+  padding-left: 56px !important;
+  padding-right: 16px;
+  align-items: center;
+}
+
+.indentedTileTall {
+  min-height: 54px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  align-items: center;
+}
+
+.indentedTile .settings-list-tile-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Port + MCP URL 共用缩进区块，与下方 indent 分割线起点一致 */
+.connectionSection {
+  padding: 10px 16px 14px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.portRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.portLabel {
+  font-size: 14px;
+  color: var(--color-on-surface);
+  flex-shrink: 0;
+}
+
+.endpointRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 0;
+}
+
+.endpointUrl {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--color-on-surface-variant);
+}
+
+.copyBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.copyBtn:hover {
+  background: var(--color-surface-container-high, rgba(0, 0, 0, 0.06));
+  color: var(--color-primary, #5ba8f5);
+}
+
+.copyBtn:active {
+  transform: scale(0.96);
+}

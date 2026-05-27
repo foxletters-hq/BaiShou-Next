@@ -1,17 +1,11 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MdOutlineHub,
-  MdOutlineLan,
-  MdExpandMore,
-  MdExpandLess,
-  MdBuild,
-  MdChevronRight
-} from 'react-icons/md'
+import { MdOutlineHub, MdExpandMore, MdChevronRight, MdContentCopy } from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import styles from './McpSettingsCard.module.css'
 import { HelpTooltip } from '../HelpTooltip'
 import { useDialog } from '../Dialog'
+import { useToast } from '../Toast/useToast'
 
 export interface McpServerConfig {
   mcpEnabled: boolean
@@ -27,6 +21,19 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = React.useState(true)
   const dialog = useDialog()
+  const toast = useToast()
+
+  const mcpEndpointUrl = `http://localhost:${config.mcpPort}/mcp`
+
+  const handleCopyEndpoint = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(mcpEndpointUrl)
+      toast.showSuccess(t('common.copied', 'Copied to clipboard'))
+    } catch {
+      toast.showError(t('common.copy_failed', 'Copy failed'))
+    }
+  }
 
   const showToolsDialog = async () => {
     try {
@@ -149,11 +156,11 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           </span>
           <span className="settings-list-tile-subtitle">
             {config.mcpEnabled
-              ? t('settings.mcp_running', 'MCP 服务运行中，端口: $port').replace(
+              ? t('settings.mcp_running', 'Running · Port $port').replace(
                   '$port',
                   config.mcpPort.toString()
                 )
-              : t('settings.mcp_desc', '将数据以 MCP 协议提供给外部 IDE 或智能应用')}
+              : t('settings.mcp_desc', 'Allow external AI to call BaiShou tools via MCP protocol')}
           </span>
         </div>
         <MdExpandMore
@@ -172,13 +179,12 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
         <div className={styles.collapseInner}>
           {/* 开关行 */}
           <div className="settings-list-divider indent" />
-          <div className="settings-list-tile settings-list-tile-noclick">
-            <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }}>
-              <MdOutlineHub size={20} />
-            </div>
+          <div
+            className={`settings-list-tile settings-list-tile-noclick ${styles.indentedTile}`}
+          >
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
-                {t('settings.mcp_enable', '启用 MCP 服务')}
+                {t('settings.mcp_enable', 'Enable MCP Server')}
               </span>
             </div>
             <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
@@ -194,21 +200,18 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           <div className="settings-list-divider indent" />
           {/* 查看暴露工具行 */}
           <div
-            className="settings-list-tile"
+            className={`settings-list-tile ${styles.indentedTile} ${styles.indentedTileTall}`}
             onClick={showToolsDialog}
             style={{ cursor: 'pointer' }}
           >
-            <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }}>
-              <MdBuild size={20} />
-            </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
-                {t('settings.mcp_view_tools', '查看已暴露的工具列表')}
+                {t('settings.mcp_view_tools', 'View Exposed Tools')}
               </span>
               <span className="settings-list-tile-subtitle">
                 {t(
                   'settings.mcp_view_tools_desc',
-                  '查看当前 MCP 服务对外提供的日记与记忆管理等内置工具清单'
+                  'View the list of built-in tools (such as diary and memory management) exposed by the MCP server'
                 )}
               </span>
             </div>
@@ -218,38 +221,35 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           {config.mcpEnabled && (
             <>
               <div className="settings-list-divider indent" />
-              {/* 端口配置行 */}
-              <div className="settings-list-tile settings-list-tile-noclick">
-                <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }}>
-                  <MdOutlineLan size={20} />
+              <div className={styles.connectionSection}>
+                <div className={styles.portRow}>
+                  <span className={styles.portLabel}>{t('settings.mcp_port', 'Port')}</span>
+                  <input
+                    type="number"
+                    className="settings-number-input"
+                    value={config.mcpPort}
+                    min={1000}
+                    max={65535}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value)
+                      if (!isNaN(val)) onChange({ ...config, mcpPort: val })
+                    }}
+                  />
                 </div>
-                <div className="settings-list-tile-content">
-                  <span className="settings-list-tile-title">
-                    {t('settings.mcp_port', '监听端口')}
+                <div className={styles.endpointRow}>
+                  <span className={`settings-monospace ${styles.endpointUrl}`}>
+                    {mcpEndpointUrl}
                   </span>
+                  <button
+                    type="button"
+                    className={styles.copyBtn}
+                    onClick={handleCopyEndpoint}
+                    aria-label={t('settings.mcp_copy_url', 'Copy MCP URL')}
+                    title={t('common.copy', 'Copy')}
+                  >
+                    <MdContentCopy size={18} />
+                  </button>
                 </div>
-                <input
-                  type="number"
-                  className="settings-number-input"
-                  value={config.mcpPort}
-                  min={1000}
-                  max={65535}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value)
-                    if (!isNaN(val)) onChange({ ...config, mcpPort: val })
-                  }}
-                />
-              </div>
-              <div className="settings-list-divider indent" />
-              {/* 状态行 */}
-              <div
-                className="settings-list-tile settings-list-tile-noclick"
-                style={{ paddingBottom: 12 }}
-              >
-                <div className="settings-list-tile-leading" style={{ paddingLeft: 24 }} />
-                <span className="settings-list-tile-subtitle settings-monospace">
-                  http://localhost:{config.mcpPort}/mcp
-                </span>
               </div>
             </>
           )}

@@ -20,8 +20,16 @@ export interface AIProviderConfigInfo {
 export interface AIGlobalModelsViewProps {
   config: SharedGlobalModelsConfig
   availableProviders: Record<string, AIProviderConfigInfo>
-  onChange: (config: SharedGlobalModelsConfig) => void
-  onEmbeddingMigrationRequest?: (oldModel: string, newModel: string) => Promise<boolean>
+  onChange: (config: SharedGlobalModelsConfig) => void | Promise<void>
+  onEmbeddingMigrationRequest?: (context: {
+    oldModel: string
+    newModel: string
+    rollbackConfig: {
+      globalEmbeddingProviderId: string
+      globalEmbeddingModelId: string
+      globalEmbeddingDimension: number
+    }
+  }) => Promise<boolean>
 }
 
 export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
@@ -80,32 +88,40 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         (currentProvider !== providerId || currentModel !== modelId)
 
       if (isSwitching) {
+        setActiveSelector(null)
+
         const confirmed = await dialog.confirm(
-          t('agent.rag.migration_switch_warning_title', '【警告】变更嵌入引擎\n'),
           t(
             'agent.rag.migration_switch_warning_content',
-            '您正试图切换底层的向量嵌入(Embedding)引擎。\n因为不同模型产生的向量维度极大概率互不兼容，这可能需要使应用对已有的所有文件重新进行特征映射计算（完全重新建立知识库）。这是极耗资源的操作。您确定仍要继续吗？'
-          )
+            '新模型可能与现有向量不兼容，更换后将在后台重新嵌入日记数据。是否继续？'
+          ),
+          t('agent.rag.migration_switch_warning_title', '更换嵌入模型？')
         )
         if (!confirmed) {
-          setActiveSelector(null)
+          setActiveSelector('embedding')
           return
-        }
-
-        if (onEmbeddingMigrationRequest) {
-          const allowed = await onEmbeddingMigrationRequest(
-            `${currentProvider}:${currentModel}`,
-            `${providerId}:${modelId}`
-          )
-          if (!allowed) {
-            setActiveSelector(null)
-            return
-          }
         }
       }
 
       newConfig.globalEmbeddingProviderId = providerId
       newConfig.globalEmbeddingModelId = modelId
+
+      await Promise.resolve(onChange(newConfig))
+
+      if (isSwitching && onEmbeddingMigrationRequest) {
+        await onEmbeddingMigrationRequest({
+          oldModel: `${currentProvider}:${currentModel}`,
+          newModel: `${providerId}:${modelId}`,
+          rollbackConfig: {
+            globalEmbeddingProviderId: currentProvider,
+            globalEmbeddingModelId: currentModel,
+            globalEmbeddingDimension: config.globalEmbeddingDimension ?? 0
+          }
+        })
+      }
+
+      setActiveSelector(null)
+      return
     } else if (activeSelector === 'dialogue') {
       newConfig.globalDialogueProviderId = providerId
       newConfig.globalDialogueModelId = modelId
@@ -117,7 +133,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
       newConfig.globalSummaryModelId = modelId
     }
 
-    onChange(newConfig)
+    await Promise.resolve(onChange(newConfig))
     setActiveSelector(null)
   }
 

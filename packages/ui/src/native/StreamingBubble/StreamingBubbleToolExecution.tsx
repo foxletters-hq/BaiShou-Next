@@ -72,7 +72,9 @@ export function StreamingBubbleToolExecution({
             }}
           >
             <Text style={{ fontSize: 14 }}>✅</Text>
-            <Text style={{ fontSize: 14, color: colors.textPrimary, flex: 1 }}>{tool.name}</Text>
+            <Text style={{ fontSize: 14, color: colors.textPrimary, flex: 1 }}>
+              {t(`agent.tools.${tool.name}`, tool.name)}
+            </Text>
             <Text style={{ fontSize: 12, color: colors.textSecondary }}>{durationText}</Text>
           </View>
         )
@@ -88,7 +90,9 @@ export function StreamingBubbleToolExecution({
           }}
         >
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={{ fontSize: 14, color: colors.primary }}>{activeToolName} ...</Text>
+          <Text style={{ fontSize: 14, color: colors.primary }}>
+            {t(`agent.tools.${activeToolName}`, activeToolName)} ...
+          </Text>
         </View>
       )}
     </View>
