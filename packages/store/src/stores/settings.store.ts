@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, devtools } from 'zustand/middleware'
-import { i18n } from '@baishou/shared'
+import { i18n, resolveSummaryPromptLocale } from '@baishou/shared'
 import type {
   AIProviderConfig,
   GlobalModelsConfig,
@@ -90,8 +90,18 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         setThemeColor: (themeColor) => set({ themeColor }),
         setLocale: (locale) => {
           set({ locale })
-          // 同步更新 i18next 语言，确保所有使用 useTranslation() 的组件立即重渲染
-          i18n.changeLanguage(locale === 'system' ? navigator.language.split('-')[0] : locale)
+          const resolvedUi =
+            locale === 'system' ? navigator.language : locale === 'zh-TW' ? 'zh-TW' : locale
+          i18n.changeLanguage(
+            locale === 'system' ? navigator.language.split('-')[0] : locale
+          )
+          const summaryConfig = get().summaryConfig
+          if (summaryConfig) {
+            const promptLocale = resolveSummaryPromptLocale(resolvedUi)
+            if (summaryConfig.promptLocale !== promptLocale) {
+              void get().setSummaryConfig({ ...summaryConfig, promptLocale })
+            }
+          }
         },
 
         loadConfig: async () => {
