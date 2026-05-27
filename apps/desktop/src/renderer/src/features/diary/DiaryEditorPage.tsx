@@ -83,13 +83,18 @@ export const DiaryEditorPage: React.FC = () => {
 
           if (diary) {
             setDiaryId(diary.id || null)
-            setTags(diary.tags || [])
-            setWeather(normalizeWeatherId(diary.weather || '') || '')
+            const parsedTags =
+              typeof diary.tags === 'string'
+                ? diary.tags.split(',').filter(Boolean)
+                : diary.tags || []
+            const parsedWeather = normalizeWeatherId(diary.weather || '') || ''
+            setTags(parsedTags)
+            setWeather(parsedWeather)
             setIsFavorite(diary.isFavorite || false)
             setMediaPaths(diary.mediaPaths || [])
 
-            initialTags = diary.tags || []
-            initialWeather = normalizeWeatherId(diary.weather || '') || ''
+            initialTags = parsedTags
+            initialWeather = parsedWeather
             initialFavorite = diary.isFavorite || false
             initialMedia = diary.mediaPaths || []
 
