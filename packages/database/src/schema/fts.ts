@@ -47,3 +47,31 @@ END;
 
 -- 只保留 Agent 聊天消息的 FTS 表
 `
+
+/** 单条可执行的触发器语句（避免按分号拆分破坏 BEGIN…END 块） */
+export const FTS_SYNC_TRIGGER_STATEMENTS = [
+  `CREATE TRIGGER IF NOT EXISTS agent_parts_fts_insert
+AFTER INSERT ON agent_parts
+WHEN NEW.type = 'text'
+  AND COALESCE(json_extract(NEW.data, '$.isReasoning'), 0) IN (0, false)
+  AND LENGTH(TRIM(COALESCE(json_extract(NEW.data, '$.text'), ''))) > 0
+BEGIN
+  INSERT INTO agent_messages_fts(part_id, message_id, session_id, content)
+  VALUES (NEW.id, NEW.message_id, NEW.session_id, json_extract(NEW.data, '$.text'));
+END`,
+  `CREATE TRIGGER IF NOT EXISTS agent_parts_fts_update
+AFTER UPDATE OF data ON agent_parts
+WHEN NEW.type = 'text'
+  AND COALESCE(json_extract(NEW.data, '$.isReasoning'), 0) IN (0, false)
+BEGIN
+  UPDATE agent_messages_fts
+  SET content = json_extract(NEW.data, '$.text')
+  WHERE part_id = NEW.id;
+END`,
+  `CREATE TRIGGER IF NOT EXISTS agent_parts_fts_delete
+AFTER DELETE ON agent_parts
+WHEN OLD.type = 'text'
+BEGIN
+  DELETE FROM agent_messages_fts WHERE part_id = OLD.id;
+END`
+] as const

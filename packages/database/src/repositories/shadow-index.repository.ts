@@ -1,3 +1,4 @@
+import { expandWeatherFilterValues } from '@baishou/shared'
 import { eq, sql, like, and, inArray, desc, asc, gte, lte } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import { AppDatabase } from '../types'
@@ -373,7 +374,8 @@ export class ShadowIndexRepository {
     }
 
     if (options.weathers && options.weathers.length > 0) {
-      conditions.push(inArray(shadowJournalIndexTable.weather, options.weathers))
+      const expanded = expandWeatherFilterValues(options.weathers)
+      conditions.push(inArray(shadowJournalIndexTable.weather, expanded))
     }
 
     return conditions.length > 0 ? and(...conditions) : undefined

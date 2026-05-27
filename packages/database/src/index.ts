@@ -29,6 +29,7 @@ export * from './connection.manager.types'
 export * from './connection.manager'
 export * from './migration.service'
 export * from './raw-sql.executor'
+export * from './types'
 
 // 影子索引独立连接管理器（per-vault shadow_index.db）
 export * from './shadow-index.connection.manager'

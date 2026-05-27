@@ -1,7 +1,10 @@
-import { Client } from '@libsql/client'
-import { IHybridSearchStorage, ISearchResult } from '@baishou/ai/src/rag/hybrid-search.types'
-import { IEmbeddingStorage } from '@baishou/ai/src/rag/embedding.types'
-import { logger } from '@baishou/shared'
+import {
+  IHybridSearchStorage,
+  ISearchResult,
+  IEmbeddingStorage,
+  ISqlExecutor,
+  logger
+} from '@baishou/shared'
 
 /**
  * SQLite + libsql 混合搜索仓库
@@ -41,7 +44,7 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
   /** vector_top_k 是否可用 */
   private _vectorTopKAvailable: boolean | null = null
 
-  constructor(private readonly db: Client) {}
+  constructor(private readonly db: ISqlExecutor) {}
 
   // ── IEmbeddingStorage 核心 ─────────────────────────────
 

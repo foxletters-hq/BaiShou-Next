@@ -4,6 +4,7 @@ import * as path from 'path'
 import { migrationsTable } from './schema/migration-table'
 import { logger } from '@baishou/shared'
 import { executeRawSql } from './raw-sql.executor'
+import { FTS_SYNC_TRIGGER_STATEMENTS } from './schema/fts'
 
 export interface MigrationJournal {
   version: string
@@ -116,6 +117,46 @@ export class MigrationService {
         `)
       } catch (ftsError: any) {
         logger.warn('[MigrationService] FTS5 不支持，跳过 Agent FTS 表:', ftsError.message)
+      }
+
+      logger.info('[MigrationService] 确保 Agent 消息 FTS 触发器与索引回填完成...')
+      try {
+        const ftsTable = await this._executeSql(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_messages_fts'`
+        )
+        if (ftsTable.rows.length > 0) {
+      for (const triggerName of [
+        'agent_parts_fts_insert',
+        'agent_parts_fts_update',
+        'agent_parts_fts_delete'
+      ]) {
+        await this._executeSql(`DROP TRIGGER IF EXISTS ${triggerName}`)
+      }
+      for (const statement of FTS_SYNC_TRIGGER_STATEMENTS) {
+        await this._executeSql(statement)
+      }
+
+          await this._executeSql(`
+            INSERT OR IGNORE INTO agent_messages_fts(part_id, message_id, session_id, content)
+            SELECT
+              p.id,
+              p.message_id,
+              p.session_id,
+              json_extract(p.data, '$.text')
+            FROM agent_parts p
+            WHERE p.type = 'text'
+              AND COALESCE(json_extract(p.data, '$.isReasoning'), 0) IN (0, false)
+              AND json_extract(p.data, '$.text') IS NOT NULL
+              AND LENGTH(TRIM(json_extract(p.data, '$.text'))) > 0
+              AND NOT EXISTS (
+                SELECT 1 FROM agent_messages_fts f WHERE f.part_id = p.id
+              )
+          `)
+
+          logger.info('[MigrationService] Agent 消息 FTS 触发器与索引回填完成。')
+        }
+      } catch (e: any) {
+        logger.warn('[MigrationService] Agent FTS 基础设施初始化失败（非阻塞）:', e.message)
       }
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')

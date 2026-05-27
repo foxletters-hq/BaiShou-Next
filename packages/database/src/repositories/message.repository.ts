@@ -1,4 +1,4 @@
-import { eq, desc, asc } from 'drizzle-orm'
+import { eq, desc, asc, and, or, sql } from 'drizzle-orm'
 import { AgentMessageRepository } from './agent.repository'
 import { AgentMessage, AgentPart } from '@baishou/shared'
 import { AppDatabase } from '../types'
@@ -103,25 +103,137 @@ export class MessageRepository implements AgentMessageRepository {
   }
 
   async searchMessagesByKeyword(keyword: string, limit: number = 10): Promise<any[]> {
-    const { sql } = await import('drizzle-orm')
+    const trimmed = keyword.trim()
+    if (!trimmed) return []
+
+    const ftsResults = await this.searchMessagesViaFts(trimmed, limit)
+    if (ftsResults.length > 0) return ftsResults
+
+    return this.searchMessagesViaLike(trimmed, limit)
+  }
+
+  private escapeLikePattern(value: string): string {
+    return `%${value.replace(/[%_\\]/g, '\\$&')}%`
+  }
+
+  private isNonReasoningTextPart() {
+    return and(
+      eq(agentPartsTable.type, 'text'),
+      or(
+        sql`json_extract(${agentPartsTable.data}, '$.isReasoning') IS NULL`,
+        sql`json_extract(${agentPartsTable.data}, '$.isReasoning') = 0`,
+        sql`json_extract(${agentPartsTable.data}, '$.isReasoning') = false`
+      ),
+      sql`LENGTH(TRIM(COALESCE(json_extract(${agentPartsTable.data}, '$.text'), ''))) > 0`
+    )
+  }
+
+  private async searchMessagesViaFts(keyword: string, limit: number): Promise<any[]> {
+    const cleanedQuery = keyword.replace(/"/g, ' ').trim()
+    if (!cleanedQuery) return []
+
+    try {
+      const ftsMatch = sql`
+        SELECT
+          fts.message_id as message_id,
+          snippet(agent_messages_fts, 3, '', '', '...', 160) as snippet
+        FROM agent_messages_fts fts
+        WHERE agent_messages_fts MATCH ${`"${cleanedQuery}"`}
+        ORDER BY rank
+        LIMIT ${limit * 3}
+      `
+      const ftsRows = (await this.db.all(ftsMatch)) as Array<{
+        message_id: string
+        snippet: string
+      }>
+      if (ftsRows.length === 0) return []
+
+      const seen = new Set<string>()
+      const results: any[] = []
+
+      for (const row of ftsRows) {
+        if (seen.has(row.message_id)) continue
+        seen.add(row.message_id)
+
+        const [messageRow] = await this.db
+          .select({
+            role: agentMessagesTable.role,
+            createdAt: agentMessagesTable.createdAt,
+            sessionTitle: sql<string>`(SELECT title FROM agent_sessions WHERE id = ${agentMessagesTable.sessionId})`
+          })
+          .from(agentMessagesTable)
+          .where(eq(agentMessagesTable.id, row.message_id))
+          .limit(1)
+
+        if (!messageRow) continue
+
+        results.push({
+          role: messageRow.role,
+          content: row.snippet?.replace(/<\/?b>/g, '') || '',
+          sessionTitle: messageRow.sessionTitle,
+          createdAt: messageRow.createdAt
+        })
+
+        if (results.length >= limit) break
+      }
+
+      return results
+    } catch {
+      return []
+    }
+  }
+
+  private async searchMessagesViaLike(keyword: string, limit: number): Promise<any[]> {
+    const pattern = this.escapeLikePattern(keyword)
     const rows = await this.db
       .select({
+        messageId: agentMessagesTable.id,
         role: agentMessagesTable.role,
         content: agentPartsTable.data,
+        partType: agentPartsTable.type,
         createdAt: agentMessagesTable.createdAt,
         sessionTitle: sql<string>`(SELECT title FROM agent_sessions WHERE id = ${agentMessagesTable.sessionId})`
       })
       .from(agentMessagesTable)
       .innerJoin(agentPartsTable, eq(agentMessagesTable.id, agentPartsTable.messageId))
-      .where(sql`json_extract(${agentPartsTable.data}, '$.text') LIKE ${'%' + keyword + '%'}`)
+      .where(
+        or(
+          and(
+            this.isNonReasoningTextPart(),
+            sql`json_extract(${agentPartsTable.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
+          ),
+          and(
+            eq(agentPartsTable.type, 'attachment'),
+            sql`json_extract(${agentPartsTable.data}, '$.textContent') LIKE ${pattern} ESCAPE '\\'`
+          )
+        )
+      )
       .orderBy(desc(agentMessagesTable.createdAt))
-      .limit(limit)
+      .limit(limit * 4)
 
-    return rows.map((r) => ({
-      role: r.role,
-      content: (r.content as any)?.text || '',
-      sessionTitle: r.sessionTitle,
-      createdAt: r.createdAt
-    }))
+    const seen = new Set<string>()
+    const results: any[] = []
+
+    for (const r of rows) {
+      if (seen.has(r.messageId)) continue
+      seen.add(r.messageId)
+
+      const data = r.content as any
+      const snippet =
+        r.partType === 'attachment'
+          ? (data?.textContent as string) || ''
+          : (data?.text as string) || ''
+
+      results.push({
+        role: r.role,
+        content: snippet,
+        sessionTitle: r.sessionTitle,
+        createdAt: r.createdAt
+      })
+
+      if (results.length >= limit) break
+    }
+
+    return results
   }
 }
