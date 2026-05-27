@@ -3,7 +3,7 @@ import { StorageSettingsCard, DataManagementCard } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
 
 export const StoragePage: React.FC = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return (
     <div
@@ -12,15 +12,20 @@ export const StoragePage: React.FC = () => {
     >
       <h1>{t('storage.title', '物理硬盘隔离项')}</h1>
       <DataManagementCard
-        onExport={() => {
+        onExportZip={async () => {
           if (typeof window !== 'undefined' && window.electron) {
-            window.electron.ipcRenderer.invoke('archive:export')
+            await window.electron.ipcRenderer.invoke('archive:export', i18n.language)
           }
         }}
-        onImport={async () => {
+        onPickFile={async () => {
           if (typeof window !== 'undefined' && window.electron) {
-            const zipPath = await window.electron.ipcRenderer.invoke('archive:pick-zip')
-            if (zipPath) await window.electron.ipcRenderer.invoke('archive:import', zipPath, true)
+            return window.electron.ipcRenderer.invoke('archive:pick-zip', i18n.language)
+          }
+          return null
+        }}
+        onImportZip={async (zipPath: string) => {
+          if (typeof window !== 'undefined' && window.electron) {
+            await window.electron.ipcRenderer.invoke('archive:import', zipPath, true)
           }
         }}
       />

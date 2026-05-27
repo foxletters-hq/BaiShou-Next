@@ -19,7 +19,10 @@ export interface AgentSessionsManager {
  * 封装 AgentLayout 中的会话列表管理逻辑。
  * 包含加载/分页/竞态保护/file-changed 监听/内联重命名状态。
  */
-export function useAgentSessions(activeAssistantId: string | undefined): AgentSessionsManager {
+export function useAgentSessions(
+  activeAssistantId: string | undefined,
+  searchQuery: string
+): AgentSessionsManager {
   const [sessions, setSessions] = useState<SessionData[]>([])
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
   const [sidebarScrollKey, setSidebarScrollKey] = useState(0)
@@ -27,11 +30,16 @@ export function useAgentSessions(activeAssistantId: string | undefined): AgentSe
   const renameInputRef = useRef<HTMLInputElement>(null)
   const lastLoadRequestId = useRef(0)
   const assistantIdRef = useRef<string | undefined>(activeAssistantId)
+  const searchQueryRef = useRef<string>(searchQuery)
   const sessionsLengthRef = useRef(0)
 
   useEffect(() => {
     assistantIdRef.current = activeAssistantId
   }, [activeAssistantId])
+
+  useEffect(() => {
+    searchQueryRef.current = searchQuery
+  }, [searchQuery])
 
   useEffect(() => {
     sessionsLengthRef.current = sessions.length
@@ -49,7 +57,8 @@ export function useAgentSessions(activeAssistantId: string | undefined): AgentSe
         'agent:get-sessions',
         SESSION_LIMIT,
         offset,
-        targetAst
+        targetAst,
+        searchQueryRef.current
       )
 
       if (reqId !== lastLoadRequestId.current) return
@@ -67,19 +76,33 @@ export function useAgentSessions(activeAssistantId: string | undefined): AgentSe
     }
   }, [])
 
-  // 当前助手变化时立即清空旧列表并重新加载
+  // 当助手或搜索词变化时，触发加载（对搜索词使用防抖，对助手直接触发）
+  const lastActiveAssistantId = useRef<string | undefined>(activeAssistantId)
   useEffect(() => {
+    const isAssistantChanged = lastActiveAssistantId.current !== activeAssistantId
+    lastActiveAssistantId.current = activeAssistantId
+
     if (!activeAssistantId) {
       setSessions([])
       setHasMoreSessions(false)
       return
     }
 
-    lastLoadRequestId.current += 1
-    setSessions([])
-    setHasMoreSessions(false)
-    void loadSessions(true, activeAssistantId)
-  }, [activeAssistantId, loadSessions])
+    if (isAssistantChanged) {
+      // 助手切换，立刻执行，不防抖并清空旧会话
+      lastLoadRequestId.current += 1
+      setSessions([])
+      setHasMoreSessions(false)
+      void loadSessions(true, activeAssistantId)
+    } else {
+      // 搜索词变化，防抖 300ms
+      const timer = setTimeout(() => {
+        void loadSessions(true, activeAssistantId)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+    return undefined
+  }, [activeAssistantId, searchQuery, loadSessions])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electron) return undefined

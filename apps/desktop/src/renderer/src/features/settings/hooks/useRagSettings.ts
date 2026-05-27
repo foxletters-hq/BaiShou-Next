@@ -107,13 +107,17 @@ export function useRagSettings({
     setIsProcessing,
     activeRagState,
     hasMismatchModel,
+    migrationState,
     checkMigrationStatus,
     handleDetectDimension,
     handleClearDimension,
     handleBatchEmbed,
     handleTriggerMigration,
+    handleCancelMigration,
+    handleRestoreMigration,
+    handleResumeMigration,
     handleClearAll
-  } = useRagSystem(t, toast, confirm, alert, fetchRagInfo)
+  } = useRagSystem(t, toast, confirm, alert, fetchRagInfo, settings.loadConfig)
 
   const {
     handleAddManualMemory,
@@ -125,6 +129,7 @@ export function useRagSettings({
 
   useEffect(() => {
     loadRagData(searchQuery, searchMode, currentPage, pageSize)
+    void checkMigrationStatus()
   }, [])
 
   const handleSearch = (q: string, mode: 'semantic' | 'text') => {
@@ -143,6 +148,7 @@ export function useRagSettings({
     isProcessing,
     activeRagState,
     hasMismatchModel,
+    migrationState,
     searchQuery,
     searchMode,
     setCurrentPage,
@@ -153,6 +159,9 @@ export function useRagSettings({
     handleBatchEmbed,
     handleAddManualMemory,
     handleTriggerMigration,
+    handleCancelMigration,
+    handleRestoreMigration,
+    handleResumeMigration,
     handleClearAll: () => handleClearAll(prompt),
     handleSearch,
     handleDeleteEntry,

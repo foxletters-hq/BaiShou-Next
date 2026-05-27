@@ -29,12 +29,16 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
     handleBatchEmbed,
     handleAddManualMemory,
     handleTriggerMigration,
+    handleCancelMigration,
+    handleRestoreMigration,
+    handleResumeMigration,
     handleClearAll,
     handleSearch,
     handleDeleteEntry,
     handleEditEntry,
     handleExportEmbeddings,
-    handleManageBackups
+    handleManageBackups,
+    migrationState
   } = useRagSettings({ settings, t, toast, confirm, prompt, alert })
 
   if (!settings.ragConfig) return <div />
@@ -49,6 +53,7 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
             : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }
         }
         hasMismatchModel={hasMismatchModel}
+        migrationState={migrationState}
         embeddingModelId={settings.globalModels?.globalEmbeddingModelId}
         entries={ragEntries}
         totalCount={ragTotalCount}
@@ -66,6 +71,9 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
         onBatchEmbed={handleBatchEmbed}
         onAddManualMemory={handleAddManualMemory}
         onTriggerMigration={handleTriggerMigration}
+        onCancelMigration={handleCancelMigration}
+        onRestoreMigration={handleRestoreMigration}
+        onResumeMigration={handleResumeMigration}
         onClearAll={handleClearAll}
         onSearch={handleSearch}
         onDeleteEntry={handleDeleteEntry}

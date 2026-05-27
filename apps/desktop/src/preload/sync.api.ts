@@ -32,9 +32,9 @@ export const syncApi = {
   },
 
   archive: {
-    exportZip: () => ipcRenderer.invoke('archive:export'),
+    exportZip: (locale?: string) => ipcRenderer.invoke('archive:export', locale),
     importZip: (filePath: string) => ipcRenderer.invoke('archive:import', filePath),
-    pickZip: () => ipcRenderer.invoke('archive:pick-zip'),
+    pickZip: (locale?: string) => ipcRenderer.invoke('archive:pick-zip', locale),
     listSnapshots: () => ipcRenderer.invoke('archive:list-snapshots'),
     deleteSnapshot: (filename: string) => ipcRenderer.invoke('archive:delete-snapshot', filename),
     restoreSnapshot: (filename: string) => ipcRenderer.invoke('archive:restore-snapshot', filename),

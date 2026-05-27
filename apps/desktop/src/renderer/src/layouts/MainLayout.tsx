@@ -21,7 +21,7 @@ export const MainLayout: React.FC = () => {
           <AnimatePresence mode="wait">
             {showOutlet && (
               <motion.div
-                key={location.pathname}
+                key={location.pathname.startsWith('/chat') ? '/chat' : location.pathname}
                 initial={{ opacity: 0, y: isDiaryEditorRoute ? 12 : 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: isDiaryEditorRoute ? 20 : 0 }}

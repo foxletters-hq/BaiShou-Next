@@ -54,7 +54,7 @@ export const AgentLayout: React.FC = () => {
     setRenameTarget,
     handleRenameSession,
     commitRename
-  } = useAgentSessions(resolvedAssistantId)
+  } = useAgentSessions(resolvedAssistantId, searchQuery)
 
   // 加载独立会话文档（通过 URL 直接访问时使用）
   useEffect(() => {
@@ -114,7 +114,7 @@ export const AgentLayout: React.FC = () => {
         id: String(currentAssistant.id),
         name: currentAssistant.name,
         description:
-          currentAssistant.description || t('agent.default_assistant_desc', '通用 AI 伙伴'),
+          currentAssistant.description || t('agent.default_assistant_desc', ''),
         emoji: currentAssistant.emoji,
         avatarPath: (currentAssistant as any).avatarPath
       }
@@ -122,7 +122,7 @@ export const AgentLayout: React.FC = () => {
       ? {
           id: 'default',
           name: t('agent.default_assistant_name', '默认伙伴'),
-          description: t('agent.default_assistant_desc', '通用 AI 伙伴'),
+          description: t('agent.default_assistant_desc', ''),
           emoji: '🍵'
         }
       : undefined
@@ -246,7 +246,9 @@ export const AgentLayout: React.FC = () => {
       />
 
       <div className={styles.chatArea}>
-        <Outlet context={{ sessions, loadSessions, onAssistantSwitched: handleAssistantSwitched }} />
+        <Outlet
+          context={{ sessions, loadSessions, onAssistantSwitched: handleAssistantSwitched }}
+        />
       </div>
 
       {/* ─── 内联重命名 Modal ─── */}

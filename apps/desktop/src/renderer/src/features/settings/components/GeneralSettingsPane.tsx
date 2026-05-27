@@ -16,7 +16,9 @@ import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from '@baishou/shared'
 import baishouHeroImg from '../../../assets/images/BaiShou-v0.0.1.jpeg'
 
 export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const archiveLocale =
+    settings.locale === 'system' ? i18n.language : settings.locale
   const { profile, loadProfile } = useUserProfileStore() as any
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
@@ -187,16 +189,13 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
 
         <DataManagementCard
           onExportZip={async () => {
-            await (window as any).api?.archive?.exportZip()
+            await (window as any).api?.archive?.exportZip(archiveLocale)
           }}
-          onImportZip={async () => {
-            const file = await (window as any).api?.archive?.pickZip()
-            if (file) {
-              await (window as any).api?.archive?.importZip(file)
-            }
+          onImportZip={async (filePath: string) => {
+            await (window as any).api?.archive?.importZip(filePath)
           }}
           onPickFile={async () => {
-            return await (window as any).api?.archive?.pickZip()
+            return await (window as any).api?.archive?.pickZip(archiveLocale)
           }}
         />
         <div className="settings-item-divider" />

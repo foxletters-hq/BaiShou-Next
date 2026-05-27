@@ -230,11 +230,11 @@
     border-color var(--duration-fast) var(--ease-in-out);
   box-shadow: inset 0 1px 0 rgba(var(--bg-surface-lowest-rgb), 0.1);
   padding: 24px;
-  padding-bottom: 20px;
+  padding-bottom: 56px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  height: 280px;
+  height: 320px;
 }
 
 /* 玻璃高光反射效果 */
@@ -349,12 +349,56 @@
   word-break: break-word;
 }
 
+.diary-card-content-text p,
+.diary-card-content-text h1,
+.diary-card-content-text h2,
+.diary-card-content-text h3,
+.diary-card-content-text h4,
+.diary-card-content-text h5,
+.diary-card-content-text h6,
+.diary-card-content-text li,
+.diary-card-content-text blockquote {
+  white-space: pre-wrap;
+}
+
+/* 缩减标题与段落的默认边距，避免产生不必要的空行 */
+.diary-card-content-text p,
+.diary-card-content-text h1,
+.diary-card-content-text h2,
+.diary-card-content-text h3,
+.diary-card-content-text h4,
+.diary-card-content-text h5,
+.diary-card-content-text h6,
+.diary-card-content-text blockquote {
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+.diary-card-content-text p:first-child,
+.diary-card-content-text h1:first-child,
+.diary-card-content-text h2:first-child,
+.diary-card-content-text h3:first-child,
+.diary-card-content-text h4:first-child,
+.diary-card-content-text h5:first-child,
+.diary-card-content-text h6:first-child,
+.diary-card-content-text blockquote:first-child {
+  margin-top: 0;
+}
+
+.diary-card-content-text ul,
+.diary-card-content-text ol {
+  margin-top: 4px;
+  margin-bottom: 6px;
+  padding-left: 20px;
+}
+
 /* 标签区域 */
 .diary-card-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+  padding-right: 0;
 }
 
 .diary-card-tag {
@@ -415,13 +459,8 @@
 /* 悬浮操作按钮 — 绝对定位在卡片底部，不占用布局高度 */
 .diary-card-actions {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 10px 24px;
-  background: linear-gradient(to bottom, transparent, rgba(128, 128, 128, 0.08) 100%);
-  border-bottom-left-radius: var(--radius-xl);
-  border-bottom-right-radius: var(--radius-xl);
+  bottom: 12px;
+  right: 24px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -453,7 +492,8 @@
 }
 
 .diary-card-action-btn.edit-btn:hover {
-  background-color: var(--bg-surface-high);
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
 }
 
 .diary-card-action-btn.delete-btn {

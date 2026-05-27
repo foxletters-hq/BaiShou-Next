@@ -47,7 +47,12 @@ export const agentApi = {
     triggerBatchEmbed: () => ipcRenderer.invoke('rag:trigger-batch-embed'),
     addManualMemory: (text: string) => ipcRenderer.invoke('rag:add-manual-memory', text),
     clearAll: () => ipcRenderer.invoke('rag:clear-all'),
-    triggerMigration: () => ipcRenderer.invoke('rag:trigger-migration'),
+    triggerMigration: (options?: { rollbackConfig?: any }) =>
+      ipcRenderer.invoke('rag:trigger-migration', options),
+    cancelMigration: () => ipcRenderer.invoke('rag:cancel-migration'),
+    getMigrationState: () => ipcRenderer.invoke('rag:get-migration-state'),
+    restoreMigrationBackup: () => ipcRenderer.invoke('rag:restore-migration-backup'),
+    resumeMigration: () => ipcRenderer.invoke('rag:resume-migration'),
     queryEntries: (params: any) => ipcRenderer.invoke('rag:query-entries', params),
     deleteEntry: (id: string) => ipcRenderer.invoke('rag:delete-entry', id),
     editEntry: (params: { embeddingId: string; newText: string }) =>

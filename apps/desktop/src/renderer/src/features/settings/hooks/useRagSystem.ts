@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { resolveMigrationStatusText, type EmbeddingMigrationStateView } from '@baishou/shared'
 
-export function useRagSystem(t: any, toast: any, confirm: any, alert: any, fetchRagInfo: any) {
+export function useRagSystem(
+  t: any,
+  toast: any,
+  confirm: any,
+  alert: any,
+  fetchRagInfo: any,
+  reloadSettings?: () => Promise<void>
+) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [activeRagState, setActiveRagState] = useState<any>({
     isRunning: false,
@@ -10,24 +18,43 @@ export function useRagSystem(t: any, toast: any, confirm: any, alert: any, fetch
     statusText: ''
   })
   const [hasMismatchModel, setHasMismatchModel] = useState(false)
+  const [migrationState, setMigrationState] = useState<EmbeddingMigrationStateView | null>(null)
+
+  const refreshMigrationState = useCallback(async () => {
+    try {
+      const state = await (window as any).api?.rag?.getMigrationState?.()
+      if (state) setMigrationState(state)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    void refreshMigrationState()
+  }, [refreshMigrationState])
 
   useEffect(() => {
     let cleanup: any
     if ((window as any).api?.rag?.onRagProgress) {
       cleanup = (window as any).api.rag.onRagProgress((state: any) => {
-        setActiveRagState(state)
+        const statusText = state.statusKey
+          ? resolveMigrationStatusText(t, state.statusKey, state.statusParams)
+          : state.statusText || ''
+        setActiveRagState({ ...state, statusText })
+        if (!state.isRunning) {
+          void refreshMigrationState()
+        }
       })
     }
     return () => {
       if (cleanup) cleanup()
     }
-  }, [])
+  }, [t, refreshMigrationState])
 
   const checkMigrationStatus = async () => {
     try {
       const pending = await (window as any).api?.rag?.hasPendingMigration?.()
       const mismatch = await (window as any).api?.rag?.hasModelMismatch?.()
       setHasMismatchModel(!!pending || !!mismatch)
+      await refreshMigrationState()
     } catch {}
   }
 
@@ -103,11 +130,88 @@ export function useRagSystem(t: any, toast: any, confirm: any, alert: any, fetch
       return
     setIsProcessing(true)
     try {
-      await (window as any).api?.rag?.triggerMigration()
+      const result = await (window as any).api?.rag?.triggerMigration()
       await fetchRagInfo()
+      if (result?.aborted) {
+        await reloadSettings?.()
+        toast.showWarning(
+          t(
+            'settings.rag_migration_aborted_restored',
+            '迁移已中止，已恢复迁移前的向量数据与嵌入模型配置。'
+          )
+        )
+      }
+      await refreshMigrationState()
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const handleRestoreMigration = async () => {
+    if (
+      !(await confirm(
+        t(
+          'settings.rag_migration_restore_confirm',
+          '确定要恢复迁移前的向量数据与嵌入模型吗？当前未完成的迁移进度将被放弃。'
+        ),
+        t('common.warning', '警告')
+      ))
+    ) {
+      return
+    }
+    setIsProcessing(true)
+    try {
+      await (window as any).api?.rag?.restoreMigrationBackup()
+      await fetchRagInfo()
+      await reloadSettings?.()
+      await refreshMigrationState()
+      toast.showSuccess(
+        t('settings.rag_migration_restore_success', '已恢复迁移前的向量数据与嵌入模型。')
+      )
+    } catch (e: any) {
+      toast.showError(
+        t('settings.rag_migration_restore_failed', '恢复失败：{{message}}', {
+          message: e?.message || String(e)
+        })
+      )
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleResumeMigration = async () => {
+    setIsProcessing(true)
+    try {
+      const result = await (window as any).api?.rag?.resumeMigration()
+      await fetchRagInfo()
+      if (result?.aborted) {
+        await reloadSettings?.()
+        toast.showWarning(
+          t(
+            'settings.rag_migration_aborted_restored',
+            '迁移已中止，已恢复迁移前的向量数据与嵌入模型配置。'
+          )
+        )
+      }
+      await refreshMigrationState()
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleCancelMigration = async () => {
+    if (
+      !(await confirm(
+        t(
+          'settings.rag_migration_cancel_confirm',
+          '确定要取消迁移并恢复迁移前的向量数据与嵌入模型吗？'
+        ),
+        t('common.warning', '警告')
+      ))
+    ) {
+      return
+    }
+    await (window as any).api?.rag?.cancelMigration()
   }
 
   const handleClearAll = async (prompt: any) => {
@@ -143,11 +247,16 @@ export function useRagSystem(t: any, toast: any, confirm: any, alert: any, fetch
     setIsProcessing,
     activeRagState,
     hasMismatchModel,
+    migrationState,
     checkMigrationStatus,
+    refreshMigrationState,
     handleDetectDimension,
     handleClearDimension,
     handleBatchEmbed,
     handleTriggerMigration,
+    handleCancelMigration,
+    handleRestoreMigration,
+    handleResumeMigration,
     handleClearAll
   }
 }

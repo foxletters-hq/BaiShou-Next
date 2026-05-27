@@ -49,9 +49,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
     }
   }, [scrollKey])
 
-  const filteredSessions = sessions.filter(
-    (session) => !searchQuery || session.title?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredSessions = sessions
 
   return (
     <div className={styles.historyScroller} ref={scrollerRef}>
