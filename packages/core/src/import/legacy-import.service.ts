@@ -206,8 +206,12 @@ export class LegacyImportService {
       }
     }
 
+    if (!summary.instructions) {
+      summary.instructions = {}
+    }
+
     if (config['summary_prompt_instructions'] && !config['all_summary_instructions']) {
-      summary.instructions['legacy'] = config['summary_prompt_instructions']
+      ;(summary.instructions as any)['legacy'] = config['summary_prompt_instructions']
     } else if (config['all_summary_instructions']) {
       summary.instructions = {
         ...summary.instructions,

@@ -7,27 +7,31 @@
  * 原始实现：lib/agent/prompts/prompt_templates.dart (243 行)
  */
 
-import { DEFAULT_SUMMARY_TEMPLATES, SummaryType } from '@baishou/shared'
+import {
+  DEFAULT_SUMMARY_TEMPLATES,
+  SummaryType,
+  getDefaultSummaryTemplate,
+  type SummaryPromptLocale,
+  type SummaryTemplateKey
+} from '@baishou/shared'
 
 export const DEFAULT_WEEKLY_PROMPT = DEFAULT_SUMMARY_TEMPLATES.weekly
 export const DEFAULT_MONTHLY_PROMPT = DEFAULT_SUMMARY_TEMPLATES.monthly
 export const DEFAULT_QUARTERLY_PROMPT = DEFAULT_SUMMARY_TEMPLATES.quarterly
 export const DEFAULT_YEARLY_PROMPT = DEFAULT_SUMMARY_TEMPLATES.yearly
 
+const TYPE_TO_KEY: Record<SummaryType, SummaryTemplateKey> = {
+  [SummaryType.weekly]: 'weekly',
+  [SummaryType.monthly]: 'monthly',
+  [SummaryType.quarterly]: 'quarterly',
+  [SummaryType.yearly]: 'yearly'
+}
+
 // ─── 模板构建函数 ──────────────────────────────────────────
 
-/** 按类型获取默认模板 */
-export function getDefaultTemplate(type: SummaryType): string {
-  switch (type) {
-    case SummaryType.weekly:
-      return DEFAULT_WEEKLY_PROMPT
-    case SummaryType.monthly:
-      return DEFAULT_MONTHLY_PROMPT
-    case SummaryType.quarterly:
-      return DEFAULT_QUARTERLY_PROMPT
-    case SummaryType.yearly:
-      return DEFAULT_YEARLY_PROMPT
-  }
+/** 按类型与语言获取默认模板 */
+export function getDefaultTemplate(type: SummaryType, locale?: SummaryPromptLocale): string {
+  return getDefaultSummaryTemplate(TYPE_TO_KEY[type], locale ?? 'zh')
 }
 
 /** 构建周报 prompt */
@@ -38,8 +42,9 @@ export function buildWeeklyPrompt(options: {
   start: string
   end: string
   customTemplate?: string
+  locale?: SummaryPromptLocale
 }): string {
-  const template = options.customTemplate ?? DEFAULT_WEEKLY_PROMPT
+  const template = options.customTemplate ?? getDefaultTemplate(SummaryType.weekly, options.locale)
   return template
     .replaceAll('{year}', String(options.year))
     .replaceAll('{month}', String(options.month))
@@ -55,8 +60,9 @@ export function buildMonthlyPrompt(options: {
   start: string
   end: string
   customTemplate?: string
+  locale?: SummaryPromptLocale
 }): string {
-  const template = options.customTemplate ?? DEFAULT_MONTHLY_PROMPT
+  const template = options.customTemplate ?? getDefaultTemplate(SummaryType.monthly, options.locale)
   return template
     .replaceAll('{year}', String(options.year))
     .replaceAll('{month}', String(options.month))
@@ -71,8 +77,10 @@ export function buildQuarterlyPrompt(options: {
   start: string
   end: string
   customTemplate?: string
+  locale?: SummaryPromptLocale
 }): string {
-  const template = options.customTemplate ?? DEFAULT_QUARTERLY_PROMPT
+  const template =
+    options.customTemplate ?? getDefaultTemplate(SummaryType.quarterly, options.locale)
   return template
     .replaceAll('{year}', String(options.year))
     .replaceAll('{quarter}', String(options.quarter))
@@ -86,8 +94,9 @@ export function buildYearlyPrompt(options: {
   start: string
   end: string
   customTemplate?: string
+  locale?: SummaryPromptLocale
 }): string {
-  const template = options.customTemplate ?? DEFAULT_YEARLY_PROMPT
+  const template = options.customTemplate ?? getDefaultTemplate(SummaryType.yearly, options.locale)
   return template
     .replaceAll('{year}', String(options.year))
     .replaceAll('{start}', options.start)
