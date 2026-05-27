@@ -1,0 +1,16 @@
+.helpTooltip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.helpIcon {
+  color: var(--text-tertiary);
+  transition: color 0.2s;
+}
+
+.helpIcon:hover {
+  color: var(--color-primary);
+}

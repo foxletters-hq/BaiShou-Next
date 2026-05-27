@@ -1,6 +1,7 @@
 export * from './theme'
 export * from './hooks'
 export * from './utils/heatmap-matrix'
+export * from './utils/formatSyncProgress'
 
 export * from './web/Button/Button'
 export * from './web/Card/Card'
@@ -13,6 +14,7 @@ export * from './web/Switch/Switch'
 export * from './web/Select/Select'
 export * from './web/Badge/Badge'
 export * from './web/Tooltip/Tooltip'
+export * from './web/HelpTooltip/index'
 
 export * from './web/DiaryCard/index'
 export * from './web/DiaryMetaCard/index'

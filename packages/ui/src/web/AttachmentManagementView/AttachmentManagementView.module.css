@@ -215,17 +215,63 @@
 }
 
 .itemSelected {
-  background: var(--color-primary-container) !important;
+  border-color: var(--color-primary) !important;
+  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.08) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb, 14, 165, 233), 0.08);
 }
 :global(body[data-theme='dark']) .itemSelected {
-  background: rgba(91, 168, 245, 0.1) !important;
+  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.12) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .customCheck {
+  -webkit-appearance: none;
+  appearance: none;
   width: 18px;
   height: 18px;
-  accent-color: var(--color-primary);
+  border-radius: 4px;
+  border: 1px solid rgba(var(--text-primary-rgb, 15, 23, 42), 0.15);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.customCheck:hover {
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.customCheck:checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 14, 165, 233), 0.4);
+}
+
+.customCheck::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  transition: border-color 0.15s ease;
+}
+
+.customCheck:checked::after {
+  border-color: var(--text-on-primary, #fff);
 }
 
 .folderIconBox {
@@ -449,4 +495,685 @@
 .iconText { color: #3498db !important; }
 .iconArchive { color: #f1c40f !important; }
 .iconAudio { color: #e67e22 !important; }
+
+/* 主 Tabs 导航 (对标版本控制：磨砂玻璃置顶 Banner 按钮组) */
+.mainTabNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 32px;
+  margin: -32px -32px 24px -32px;
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  border-bottom: 1px solid var(--border-muted);
+  position: sticky;
+  top: -32px;
+  z-index: 50;
+}
+
+.mainTabs {
+  display: flex;
+  gap: 8px;
+  background: var(--bg-surface-normal);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.mainTabItem {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s var(--ease-in-out);
+  font-size: 13px;
+  font-weight: 700;
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.mainTabItem:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+.mainTabItemActive {
+  color: var(--color-primary) !important;
+  background: var(--bg-surface) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 联合筛选 */
+.filtersGroup {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filterField {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--color-outline-variant);
+  background: var(--bg-surface);
+  height: 32px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.filterIcon {
+  color: var(--text-secondary);
+}
+
+.filterSelect {
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: 500;
+  outline: none;
+  padding-right: 18px; /* 留出空间给 Chevron */
+  appearance: none;
+  -webkit-appearance: none;
+  z-index: 1;
+}
+
+.selectArrow {
+  margin-left: -12px;
+  pointer-events: none; /* 让点击穿透 */
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+  z-index: 2;
+}
+
+/* 日记附件卡片网格 */
+.diaryContentArea {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.diaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.diaryCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.015);
+}
+
+.diaryCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.2);
+}
+
+.diaryCardSelected {
+  border-color: var(--color-primary) !important;
+  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.08) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb, 14, 165, 233), 0.08);
+}
+:global(body[data-theme='dark']) .diaryCardSelected {
+  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.12) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.diaryCardPreview {
+  height: 120px;
+  background: var(--bg-surface-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.diaryPreviewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.diaryCard:hover .diaryPreviewImg {
+  transform: scale(1.05);
+}
+
+.diaryPreviewFallback {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.diaryCardCheckbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diaryCard:hover .diaryCardCheckbox,
+.diaryCardSelected .diaryCardCheckbox {
+  opacity: 1;
+}
+
+.diaryBadgeOrphan {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--color-error);
+  color: var(--text-on-primary);
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(var(--color-error-rgb, 239, 68, 68), 0.3);
+}
+
+.diaryCardHoverActions {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+
+.diaryCard:hover .diaryCardHoverActions {
+  opacity: 1;
+}
+
+.diaryHoverActionBtn {
+  background: var(--bg-surface-highest);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.diaryHoverActionBtn:hover {
+  color: var(--color-primary);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 100px rgba(var(--color-primary-rgb, 91, 168, 245), 0.12), 0 2px 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+}
+
+.diaryHoverActionBtnDanger:hover {
+  color: var(--color-error);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 100px rgba(var(--color-error-rgb, 239, 68, 68), 0.12), 0 2px 8px rgba(var(--color-error-rgb, 239, 68, 68), 0.15);
+  border-color: rgba(var(--color-error-rgb, 239, 68, 68), 0.4);
+}
+
+.diaryCardInfo {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.diaryCardTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diaryCardMeta {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* 分页器 */
+.diaryPagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+
+.paginationInfo {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 60px;
+  text-align: center;
+}
+
+/* 年份筛选下拉选择器 (对齐记忆画廊风格) */
+.filterFieldYear {
+  position: relative;
+}
+
+.yearSelectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--color-outline-variant);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 105px;
+  height: 32px;
+  box-sizing: border-box;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.yearSelectTrigger:hover {
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.06);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  color: var(--color-primary);
+}
+
+.yearSelectTrigger.open {
+  border-color: var(--color-primary);
+  box-sizing: border-box;
+}
+
+.yearSelectChevron {
+  transition: transform var(--duration-fast) var(--ease-out-cubic);
+  color: var(--text-secondary);
+}
+
+.yearSelectTrigger.open .yearSelectChevron {
+  transform: rotate(180deg);
+}
+
+.filterSelectEmpty {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* 年份选择弹窗 Overlay */
+.yearModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+/* 弹窗卡片 Content */
+.yearModalContent {
+  width: 420px;
+  max-width: 90vw;
+  background: var(--bg-surface);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  overflow: hidden;
+  color: var(--text-primary);
+}
+
+.yearModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.yearModalHeader h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.yearModalClose {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.yearModalClose:hover {
+  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
+  color: var(--text-primary);
+}
+
+.yearModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.yearModalBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.yearModalBody::-webkit-scrollbar-thumb {
+  background: var(--border-subtle, rgba(200, 200, 200, 0.4));
+  border-radius: 3px;
+}
+
+/* 全部年份 独立大按钮 */
+.yearModalAllBtn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-lowest);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.yearModalAllBtn:hover {
+  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
+  color: var(--color-primary);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+}
+
+.yearModalAllBtn.active {
+  background: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+}
+
+/* 粘性置顶容器 */
+.yearModalStickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-surface);
+  padding-bottom: 8px;
+  margin-top: -4px;
+}
+
+/* 网格布局 */
+.yearModalGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.yearModalGridItem {
+  padding: 10px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-lowest);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.yearModalGridItem:hover {
+  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
+  color: var(--text-primary);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+}
+
+/* 激活的年份 */
+.yearModalGridItem.active {
+  background: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
+  border-color: var(--color-primary) !important;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+}
+
+/* Dark Mode Support for Modal */
+:global(body[data-theme="dark"]) .yearModalContent {
+  background: var(--bg-surface-raised, #1a1a1a);
+  border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+:global(body[data-theme="dark"]) .yearModalStickyHeader {
+  background: var(--bg-surface-raised, #1a1a1a);
+}
+
+:global(body[data-theme="dark"]) .yearModalAllBtn,
+:global(body[data-theme="dark"]) .yearModalGridItem {
+  background: var(--bg-surface-lowest, #121212);
+  border-color: var(--border-subtle, rgba(255, 255, 255, 0.05));
+  color: var(--text-secondary);
+}
+
+:global(body[data-theme="dark"]) .yearModalAllBtn:hover,
+:global(body[data-theme="dark"]) .yearModalGridItem:hover {
+  background: var(--bg-surface-high, #262626);
+  color: var(--text-primary);
+}
+
+:global(body[data-theme="dark"]) .yearModalAllBtn.active,
+:global(body[data-theme="dark"]) .yearModalGridItem.active {
+  background: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
+}
+
+:global(body[data-theme="dark"]) .yearSelectTrigger {
+  background: var(--bg-surface);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+/* 自定义局部下拉菜单 (对标 beautiful 设计) */
+.filterFieldDropdown {
+  position: relative;
+}
+
+.dropdownTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--color-outline-variant);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 105px;
+  height: 32px;
+  box-sizing: border-box;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.dropdownTrigger:hover {
+  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.06);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  color: var(--color-primary);
+}
+
+.dropdownTrigger.open {
+  border-color: var(--color-primary);
+  box-sizing: border-box;
+}
+
+.dropdownChevron {
+  transition: transform var(--duration-fast) var(--ease-out-cubic);
+  color: var(--text-secondary);
+}
+
+.dropdownTrigger.open .dropdownChevron {
+  transform: rotate(180deg);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 130px;
+  background: var(--bg-surface);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.dropdownList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.dropdownList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dropdownList::-webkit-scrollbar-thumb {
+  background: var(--border-subtle, rgba(200, 200, 200, 0.4));
+  border-radius: 2px;
+}
+
+.dropdownItem {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dropdownItem:hover {
+  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
+  color: var(--text-primary);
+}
+
+.dropdownItem.active {
+  background: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
+  font-weight: 600;
+}
+
+/* 暗黑模式适配 */
+:global(body[data-theme="dark"]) .dropdownMenu {
+  background: var(--bg-surface-raised, #1a1a1a);
+  border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+:global(body[data-theme="dark"]) .dropdownItem {
+  color: var(--text-secondary);
+}
+
+:global(body[data-theme="dark"]) .dropdownItem:hover {
+  background: var(--bg-surface-high, #262626);
+  color: var(--text-primary);
+}
+
+:global(body[data-theme="dark"]) .dropdownItem.active {
+  background: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
+}
+
+:global(body[data-theme="dark"]) .dropdownTrigger {
+  background: var(--bg-surface);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.diaryPagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+  margin-top: 16px;
+  padding-bottom: 24px;
+}
+
 
