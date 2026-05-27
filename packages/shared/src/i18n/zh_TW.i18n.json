@@ -1577,7 +1577,7 @@
     "trace_title": "調用追踪 [{{modelId}}]",
     "default_assistant_name": "默認夥伴",
     "default_assistant_prompt": "你是一個友善且有創意的AI助手。",
-    "default_assistant_desc": "通用 AI 夥伴",
+    "default_assistant_desc": "",
     "delete_session_confirm": "您確定要永久刪除這篇對話嗎？此操作不可逆轉。",
     "batch_delete_confirm": "您確定要刪除選中的 {{count}} 篇對話嗎？此操作不可逆轉。",
     "renamed_toast": "已重命名為「{{title}}」",
