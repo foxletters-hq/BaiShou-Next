@@ -10,9 +10,9 @@ import {
   AppearanceSettingsCard,
   IdentitySettingsCard,
   WorkspaceSettingsCard,
-  StorageSettingsCard
+  StorageSettingsCard,
+  type UserProfileConfig
 } from '@baishou/ui/src/native'
-import type { UserProfileConfig } from '@baishou/ui/src/native/IdentitySettingsCard/IdentitySettingsCard'
 import type { VaultInfo } from '@baishou/ui/src/native/WorkspaceSettingsCard/WorkspaceSettingsCard'
 
 export interface GeneralSettingsSectionProps {
