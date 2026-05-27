@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import * as fsp from 'fs/promises'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import { initNodeDatabase } from '@baishou/database'
 import { systemSettingsTable, agentSessionsTable, agentMessagesTable } from '@baishou/database'
@@ -8,9 +9,14 @@ import { eq } from 'drizzle-orm'
 import { LegacyMigrationService } from '../legacy-migration.service'
 import { installDatabaseSchema } from '@baishou/database'
 import { isBetterSqlite3Available } from './better-sqlite3-available'
+import {
+  getLegacyMigrationFixturesRoot,
+  hasLegacyMigrationFixtures
+} from './legacy-migration-fixtures'
 
-const TEST_WORKSPACE = 'd:/Projects/test'
-const MOCK_DATA_DIR = path.join(TEST_WORKSPACE, 'cases')
+const FIXTURES_ROOT = getLegacyMigrationFixturesRoot()
+const MOCK_DATA_DIR = path.join(FIXTURES_ROOT, 'cases')
+const TEST_WORKSPACE = path.join(os.tmpdir(), 'baishou-legacy-migration-test')
 
 let currentMockUserData = ''
 let realDbInstance: any
@@ -25,7 +31,9 @@ vi.mock('../db', () => ({
   getAppDb: vi.fn(() => realDbInstance)
 }))
 
-describe.skipIf(!isBetterSqlite3Available())('LegacyMigrationService Integration Tests', () => {
+describe.skipIf(!isBetterSqlite3Available() || !hasLegacyMigrationFixtures())(
+  'LegacyMigrationService Integration Tests',
+  () => {
   let legacyService: LegacyMigrationService
 
   const prepareEnv = async (testName: string) => {
@@ -120,7 +128,7 @@ describe.skipIf(!isBetterSqlite3Available())('LegacyMigrationService Integration
     expect(sessions.length).toBe(0)
   })
 
-  const MASSIVE_DATA_DIR = path.join(TEST_WORKSPACE, 'massive_cases')
+  const MASSIVE_DATA_DIR = path.join(FIXTURES_ROOT, 'massive_cases')
 
   it('Case 6 [STRESS TEST]: 30MB+ Database Single Vault Migration', async () => {
     await prepareEnv('case6')
@@ -152,4 +160,5 @@ describe.skipIf(!isBetterSqlite3Available())('LegacyMigrationService Integration
       `[STRESS TEST] Case 7 successfully migrated ${messages.length} mega-messages from multi-vaults.`
     )
   }, 60000) // 60 seconds timeout
-})
+  }
+)

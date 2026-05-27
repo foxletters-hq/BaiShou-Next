@@ -3,14 +3,23 @@ import * as fsp from 'fs/promises'
 import * as fs from 'fs'
 import * as path from 'path'
 import extract from 'extract-zip'
-import { initNodeDatabase } from '@baishou/database'
+import {
+  initNodeDatabase,
+  installDatabaseSchema,
+  systemSettingsTable,
+  agentAssistantsTable,
+  agentSessionsTable,
+  agentMessagesTable,
+  agentPartsTable,
+  summariesTable,
+  executeRawSql
+} from '@baishou/database'
 import { isBetterSqlite3Available } from './better-sqlite3-available'
 
 const mockTempDir = path.join(__dirname, '.temp-full-archive-test')
 const mockUserData = path.join(mockTempDir, 'userData')
 const mockVaultRoot = path.join(mockTempDir, 'vault')
 
-// Provide mocked module resolution BEFORE importing the service
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn((name) => {
@@ -24,7 +33,6 @@ vi.mock('electron', () => ({
 
 let realDbInstance: any
 
-// Mock db.ts globally to return the REAL instance we create below
 vi.mock('../db', () => ({
   getAppDb: vi.fn(() => realDbInstance)
 }))
@@ -46,57 +54,58 @@ describe.skipIf(!isBetterSqlite3Available())('Real Database Full Data Export Ext
     await fsp.mkdir(mockUserData, { recursive: true })
     await fsp.mkdir(mockVaultRoot, { recursive: true })
 
-    // --- 1. SPIN UP REAL DATABASE IN USERDATA ---
     const agentDbPath = path.join(mockUserData, 'baishou_agent.db')
     realDbInstance = initNodeDatabase(agentDbPath)
+    await installDatabaseSchema(realDbInstance)
 
-    // Populate data inside the actual Database
-    // Note: Drizzle ORM requires us to push schema. Because SQL is empty, we must manually create tables since drizzle push isn't running
-    // Wait... initNodeDatabase typically doesn't auto-migrate unless we run migrate(). But that might be too complex.
-    // Actually, we can just execute the DDL directly here or use `connectionManager` if it auto-migrates.
-    // Let's create tables manually via raw execute to simulate existing data.
+    await realDbInstance.insert(systemSettingsTable).values({
+      key: 'user_profile_data',
+      value: JSON.stringify({ nickname: '超级白守测试员' }),
+      updatedAt: new Date('2023-01-01')
+    })
 
-    const client = (realDbInstance as any).$client
-    // Settings Profile
-    await client.execute(
-      `CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT);`
-    )
-    await client.execute(
-      `INSERT INTO system_settings (key, value, updated_at) VALUES ('user_profile_data', '{"nickname":"超级白守测试员"}', '2023-01-01');`
-    )
+    await realDbInstance.insert(agentAssistantsTable).values({
+      id: 'assistant-123',
+      name: '超级专属秘书',
+      createdAt: new Date('2023-01-01'),
+      updatedAt: new Date('2023-01-01')
+    })
 
-    // Assistants
-    await client.execute(
-      `CREATE TABLE IF NOT EXISTS agent_assistants (id TEXT PRIMARY KEY, name TEXT, updated_at TEXT);`
-    )
-    await client.execute(
-      `INSERT INTO agent_assistants (id, name, updated_at) VALUES ('assistant-123', '超级专属秘书', '2023-01-01');`
-    )
+    await realDbInstance.insert(agentSessionsTable).values({
+      id: 'session-1',
+      assistantId: 'assistant-123',
+      vaultName: 'default',
+      providerId: 'openai',
+      modelId: 'gpt-4',
+      createdAt: new Date('2023-01-01'),
+      updatedAt: new Date('2023-01-01')
+    })
 
-    // Sessions and Messages
-    await client.execute(
-      `CREATE TABLE IF NOT EXISTS agent_sessions (id TEXT PRIMARY KEY, assistant_id TEXT NOT NULL, created_at TEXT);`
-    )
-    await client.execute(
-      `INSERT INTO agent_sessions (id, assistant_id, created_at) VALUES ('session-1', 'assistant-123', '2023-01-01');`
-    )
+    await realDbInstance.insert(agentMessagesTable).values({
+      id: 'msg-1',
+      sessionId: 'session-1',
+      role: 'user',
+      orderIndex: 0,
+      createdAt: new Date('2023-01-01')
+    })
 
-    await client.execute(
-      `CREATE TABLE IF NOT EXISTS agent_messages (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, text TEXT);`
-    )
-    await client.execute(
-      `INSERT INTO agent_messages (id, session_id, text) VALUES ('msg-1', 'session-1', '你好，我是白守，我会把你打包走');`
-    )
+    await realDbInstance.insert(agentPartsTable).values({
+      id: 'part-1',
+      messageId: 'msg-1',
+      sessionId: 'session-1',
+      type: 'text',
+      data: '你好，我是白守，我会把你打包走',
+      createdAt: new Date('2023-01-01')
+    })
 
-    // Summaries (Memories)
-    await client.execute(
-      `CREATE TABLE IF NOT EXISTS summaries (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, content TEXT);`
-    )
-    await client.execute(
-      `INSERT INTO summaries (id, type, content) VALUES (1, 'weekly', '这是一条测试回忆录');`
-    )
+    await realDbInstance.insert(summariesTable).values({
+      type: 'weekly',
+      startDate: new Date('2023-01-01'),
+      endDate: new Date('2023-01-07'),
+      content: '这是一条测试回忆录',
+      generatedAt: new Date('2023-01-01')
+    })
 
-    // --- 2. CREATE FILES IN VAULT ---
     await fsp.mkdir(path.join(mockVaultRoot, 'avatars'), { recursive: true })
     await fsp.writeFile(
       path.join(mockVaultRoot, 'avatars', 'avatar.png'),
@@ -124,42 +133,33 @@ describe.skipIf(!isBetterSqlite3Available())('Real Database Full Data Export Ext
   })
 
   it('should physically export the SQLite database and allow raw extraction and query', async () => {
-    // RUN EXPORT
     const zipPath = await service.exportToTempFile()
     expect(zipPath).toBeTruthy()
 
     const extractDir = path.join(mockTempDir, 'extracted')
     await fsp.mkdir(extractDir, { recursive: true })
 
-    // UNZIP
     await extract(zipPath!, { dir: extractDir })
 
-    // ASSERT FILES EXIST
     expect(fs.existsSync(path.join(extractDir, 'avatars', 'avatar.png'))).toBe(true)
     expect(fs.readFileSync(path.join(extractDir, '2026-04-12.md'), 'utf-8')).toContain('日记内容')
 
-    // ASSERT DB EXTRACTED
     const extractedDbPath = path.join(extractDir, 'database', 'baishou_agent.db')
     expect(fs.existsSync(extractedDbPath)).toBe(true)
 
-    // OPEN EXTRACTED DATABASE IN MEMORY AND QUERY IT
     const extractedDb = initNodeDatabase(extractedDbPath)
-    const extractedClient = (extractedDb as any).session.client
+    const client = (extractedDb as any).session.client
 
-    const settingsRes = await extractedClient.execute('SELECT * FROM system_settings')
-    console.log('[PROVE] Extracted System Settings (Profiles):', settingsRes.rows)
+    const settingsRes = await executeRawSql(client, 'SELECT * FROM system_settings')
     expect(settingsRes.rows[0].value).toContain('超级白守测试员')
 
-    const assistantsRes = await extractedClient.execute('SELECT * FROM agent_assistants')
-    console.log('[PROVE] Extracted Assistants:', assistantsRes.rows)
+    const assistantsRes = await executeRawSql(client, 'SELECT * FROM agent_assistants')
     expect(assistantsRes.rows[0].name).toBe('超级专属秘书')
 
-    const msgRes = await extractedClient.execute('SELECT * FROM agent_messages')
-    console.log('[PROVE] Extracted Chat History:', msgRes.rows)
-    expect(msgRes.rows[0].text).toContain('我会把你打包走')
+    const msgRes = await executeRawSql(client, 'SELECT data FROM agent_parts')
+    expect(String(msgRes.rows[0].data)).toContain('我会把你打包走')
 
-    const memRes = await extractedClient.execute('SELECT * FROM summaries')
-    console.log('[PROVE] Extracted Memories:', memRes.rows)
+    const memRes = await executeRawSql(client, 'SELECT * FROM summaries')
     expect(memRes.rows[0].content).toContain('这是一条测试回忆录')
   })
 })

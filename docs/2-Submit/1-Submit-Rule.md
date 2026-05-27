@@ -49,7 +49,9 @@ pnpm ci:check
 | 现象                                   | 处理                                                                                            |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `NODE_MODULE_VERSION` / better-sqlite3 | 在仓库根执行：`pnpm rebuild better-sqlite3`                                                     |
-| 本机集成测被 skip                      | 见 `apps/desktop/.../better-sqlite3-available.ts`；GitHub CI（Linux + Node 22）仍会跑完整集成测 |
+| 本机集成测被 skip                      | 见 `better-sqlite3-available.ts`（Node 与 better-sqlite3 二进制不一致） |
+| `legacy-migration.integration` 被 skip | 需本机 `d:/Projects/test/cases` 或设置 `LEGACY_MIGRATION_FIXTURES_ROOT`；GitHub CI 默认跳过 |
+| GitHub CI 集成测                       | Linux + Node 22 会跑 `archive-export-real-db` 等；legacy 迁移大 fixture 测仅在本地有数据时运行 |
 | `format:check` 失败                    | 在仓库根执行 `pnpm format`，仅将格式化相关文件纳入 commit                                       |
 | 不在 Git 仓库里执行                    | 先 `git clone` 你的 Fork，再在克隆目录内运行 `pnpm ci:check`                                    |
 
@@ -93,6 +95,20 @@ docs: 规范目录与文件改为单层序号命名
 2. 克隆 **你的 Fork**，创建功能分支，按 [1-AI-Code-Rule](../1-AI-Code/1-AI-Code-Rule.md) 开发。
 3. 完成 **§0** 清单并运行 **`pnpm ci:check`**。
 4. 推送到 **你的 Fork**（例如 `git push origin feature/xxx`）。
-5. 在 GitHub 向上游 **创建 Pull Request**，说明改动与本地检查结果。
+5. 在 GitHub 向上游 **创建 Pull Request**，说明改动与本地检查结果（建议注明已本地跑过 `pnpm ci:check`）。
 
-本地检查通过可减少 PR 上等待 CI 失败的时间，但不保证一定合并。
+### 3.1 GitHub CI 与合并（宽松提交、严格合并）
+
+本仓库 **未** 在 GitHub 设置 Rulesets / 分支保护来「CI 未过则禁止创建 PR」。你可以先开 PR，便于讨论与迭代。
+
+| 阶段 | 要求 |
+|------|------|
+| **创建 PR** | 不强制 GitHub CI 已绿；仍强烈建议先本地 `pnpm ci:check` 通过再开 PR，减少来回修改。 |
+| **合并进 `main`** | **必须** GitHub Actions CI 全部通过；维护者合入前会核对 PR 上的 CI 状态。 |
+| **CI 未通过时** | 维护者会在 PR 中说明需修复项（或请你自行查看 Actions 日志），修好并 push 后等待 CI 重新变绿再请求合并。 |
+
+**贡献者**：CI 红了也可以提交 PR，但请主动跟进修复，不要假设「能开 PR 就能合并」。
+
+**维护者 / Reviewer**：合入前确认 [Actions](https://github.com/Anson-Trio/BaiShou-Next/actions) 中与本 PR 相关的 workflow 已全部成功；未通过时留言说明，暂不合入。
+
+本地检查通过可减少 PR 上等待 CI 失败的时间；是否合并由维护者根据 CI 与代码审查决定。
