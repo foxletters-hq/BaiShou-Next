@@ -340,7 +340,10 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                   'agent.assistant.context_unlimited_desc',
                   '发送所有历史消息（可能消耗大量 Token）'
                 )
-              : t('agent.assistant.context_window_desc', '每次对话携带的历史消息上下文轮数')}
+              : t(
+                  'agent.assistant.context_window_desc',
+                  'How many recent conversation turns are sent to the model. One turn starts with your message and includes the assistant reply and any tool calls in that turn.'
+                )}
           </div>
 
           <div className={styles.spacer24} />

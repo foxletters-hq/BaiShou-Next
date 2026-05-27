@@ -226,7 +226,8 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
         </h3>
         <div className={styles.selectors}>
           <button className={styles.yearBtn} onClick={() => setShowYearPicker(true)}>
-            {year}年 ▾
+            {year}
+            {t('common.year_suffix', '')} ▾
           </button>
           <span className={styles.totalBadge}>
             {totalCount} {t('activity.interactions', '篇日记')}

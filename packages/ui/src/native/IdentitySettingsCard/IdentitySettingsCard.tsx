@@ -133,12 +133,12 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
     const k = editKeyInput.trim()
     const v = editValInput.trim()
     if (!k || !v) {
-      toast.showToast(t('settings.empty_fact_error', '键名和键值不能为空'), 'error')
+      toast.showToast(t('settings.empty_identity_entry_error', '标签和内容不能为空'), 'error')
       return
     }
 
     if (k !== editingKey && currentFacts[k]) {
-      toast.showToast(t('settings.duplicate_fact_error', '该特征键名已存在'), 'error')
+      toast.showToast(t('settings.duplicate_identity_entry_error', '该标签已存在'), 'error')
       return
     }
 
@@ -226,7 +226,8 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
               color: colors.onPrimaryContainer
             }}
           >
-            {Object.keys(currentFacts).length} {t('settings.items', '条')}
+            {Object.keys(currentFacts).length}{' '}
+            {t('settings.identity_entry_count_suffix', '条')}
           </Text>
         </View>
         <Text style={{ fontSize: 16, color: colors.textSecondary }}>{collapsed ? '▼' : '▲'}</Text>
@@ -347,7 +348,7 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
                   color: colors.textPrimary
                 }}
               >
-                {t('settings.identity_facts_title', '属性设置')}
+                {t('settings.identity_facts_title', '身份条目')}
               </Text>
               <Pressable
                 onPress={handleAddFact}
@@ -360,7 +361,7 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
               >
                 <Text style={{ fontSize: 14, color: colors.primary }}>+</Text>
                 <Text style={{ fontSize: 14, color: colors.primary }}>
-                  {t('settings.add_identity_entry_btn', '添加属性')}
+                  {t('settings.add_identity_entry', '添加条目')}
                 </Text>
               </Pressable>
             </View>
@@ -467,8 +468,8 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
               }}
             >
               {editingKey
-                ? t('settings.edit_fact', '编辑特征')
-                : t('settings.new_fact', '新增特征')}
+                ? t('settings.edit_identity_entry', '编辑条目')
+                : t('settings.add_identity_entry', '添加条目')}
             </Text>
 
             <Text
@@ -478,12 +479,12 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
                 marginBottom: tokens.spacing.xs
               }}
             >
-              {t('settings.fact_key', '特征名')}
+              {t('settings.identity_key', '标签')}
             </Text>
             <TextInput
               value={editKeyInput}
               onChangeText={setEditKeyInput}
-              placeholder={t('settings.fact_key_placeholder', '如：年龄、性格、身份')}
+              placeholder={t('settings.identity_key_hint', '如：生日、职业')}
               placeholderTextColor={colors.textTertiary}
               style={{
                 borderWidth: 1,
@@ -504,12 +505,12 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
                 marginBottom: tokens.spacing.xs
               }}
             >
-              {t('settings.fact_value', '特征值')}
+              {t('settings.identity_value', '内容')}
             </Text>
             <TextInput
               value={editValInput}
               onChangeText={setEditValInput}
-              placeholder={t('settings.fact_value_placeholder', '如：25岁、傲娇、魔法使')}
+              placeholder={t('settings.identity_value_hint', '如：2000-05-20')}
               placeholderTextColor={colors.textTertiary}
               style={{
                 borderWidth: 1,

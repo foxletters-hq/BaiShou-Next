@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   MdOutlineInfo,
   MdOutlinePrivacyTip,
-  MdOutlineBugReport,
+  MdOutlineFeedback,
   MdChevronRight,
   MdOpenInNew,
   MdArrowBack
@@ -13,19 +13,21 @@ import '../shared/SettingsListTile.css'
 import './AboutSettingsCard.css'
 import { useToast } from '../Toast/useToast'
 import { DeveloperOptionsView } from '../DeveloperOptionsView'
+import { formatAppVersion } from '@baishou/shared'
 import { VersionManager } from '../VersionManager/index'
 
 export interface AboutSettingsCardProps {
   version: string
   heroImageSrc?: string
-  onOpenPrivacyPolicy?: () => void
-  onOpenGithubHost: () => void
+  onOpenGithubRepo?: () => void
+  onOpenFeedback?: () => void
 }
 
 export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
   version,
   heroImageSrc,
-  onOpenGithubHost
+  onOpenGithubRepo,
+  onOpenFeedback
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -144,7 +146,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
         </div>
 
         <div className="about-app-name">{t('about.app_name', '白守 (BaiShou)')}</div>
-        <div className="about-version">v{version}</div>
+        <div className="about-version">{formatAppVersion(version)}</div>
 
         <div className="about-section-title" style={{ marginTop: 24 }}>
           {t('about.developer_label', '开发者')}
@@ -184,7 +186,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
         </div>
 
         <div style={{ marginTop: 24 }}>
-          <VersionManager version={version} onOpenGithubHost={onOpenGithubHost} />
+          <VersionManager version={version} onOpenGithubRepo={onOpenGithubRepo} />
         </div>
       </div>
     </div>
@@ -281,12 +283,20 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
 
         <div className="settings-list-divider" />
 
-        <button className="settings-list-tile" onClick={onOpenGithubHost}>
+        <button
+          type="button"
+          className="settings-list-tile"
+          onClick={() => {
+            void onOpenFeedback?.()
+          }}
+        >
           <div className="settings-list-tile-leading">
-            <MdOutlineBugReport size={24} />
+            <MdOutlineFeedback size={24} />
           </div>
           <div className="settings-list-tile-content">
-            <span className="settings-list-tile-title">{t('settings.feedback', '问题反馈')}</span>
+            <span className="settings-list-tile-title">
+              {t('settings.feedback', 'Report an issue')}
+            </span>
           </div>
           <MdOpenInNew
             size={20}

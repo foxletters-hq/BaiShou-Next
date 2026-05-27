@@ -17,35 +17,35 @@ describe('Pagination', () => {
   describe('基本渲染', () => {
     it('should render pagination buttons', () => {
       render(<Pagination {...defaultProps} />)
-      expect(screen.getByRole('button', { name: '上一页' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: '下一页' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
     })
 
     it('should render first and last buttons by default', () => {
       render(<Pagination {...defaultProps} />)
-      expect(screen.getByRole('button', { name: '首页' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: '末页' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'First page' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Last page' })).toBeInTheDocument()
     })
 
     it('should hide first and last buttons when showFirstLast is false', () => {
       render(<Pagination {...defaultProps} showFirstLast={false} />)
-      expect(screen.queryByRole('button', { name: '首页' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: '末页' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'First page' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Last page' })).not.toBeInTheDocument()
     })
 
     it('should show jumper input when total > 1', () => {
       render(<Pagination {...defaultProps} />)
-      expect(screen.getByRole('textbox', { name: '跳转到指定页' })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Go to page' })).toBeInTheDocument()
     })
 
     it('should hide jumper input when showJumper is false', () => {
       render(<Pagination {...defaultProps} showJumper={false} />)
-      expect(screen.queryByRole('textbox', { name: '跳转到指定页' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox', { name: 'Go to page' })).not.toBeInTheDocument()
     })
 
     it('should hide jumper input when total is 1', () => {
       render(<Pagination current={1} total={1} onChange={vi.fn()} />)
-      expect(screen.queryByRole('textbox', { name: '跳转到指定页' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox', { name: 'Go to page' })).not.toBeInTheDocument()
     })
   })
 
@@ -101,28 +101,28 @@ describe('Pagination', () => {
     it('should call onChange when clicking next page', async () => {
       const onChange = vi.fn()
       render(<Pagination current={5} total={10} onChange={onChange} />)
-      await userEvent.click(screen.getByRole('button', { name: '下一页' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Next page' }))
       expect(onChange).toHaveBeenCalledWith(6)
     })
 
     it('should call onChange when clicking previous page', async () => {
       const onChange = vi.fn()
       render(<Pagination current={5} total={10} onChange={onChange} />)
-      await userEvent.click(screen.getByRole('button', { name: '上一页' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Previous page' }))
       expect(onChange).toHaveBeenCalledWith(4)
     })
 
     it('should call onChange when clicking first page', async () => {
       const onChange = vi.fn()
       render(<Pagination current={5} total={10} onChange={onChange} />)
-      await userEvent.click(screen.getByRole('button', { name: '首页' }))
+      await userEvent.click(screen.getByRole('button', { name: 'First page' }))
       expect(onChange).toHaveBeenCalledWith(1)
     })
 
     it('should call onChange when clicking last page', async () => {
       const onChange = vi.fn()
       render(<Pagination current={5} total={10} onChange={onChange} />)
-      await userEvent.click(screen.getByRole('button', { name: '末页' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Last page' }))
       expect(onChange).toHaveBeenCalledWith(10)
     })
 
@@ -137,22 +137,22 @@ describe('Pagination', () => {
   describe('按钮禁用状态', () => {
     it('should disable previous and first buttons when current is 1', () => {
       render(<Pagination current={1} total={10} onChange={vi.fn()} />)
-      expect(screen.getByRole('button', { name: '上一页' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: '首页' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'First page' })).toBeDisabled()
     })
 
     it('should disable next and last buttons when current is last page', () => {
       render(<Pagination current={10} total={10} onChange={vi.fn()} />)
-      expect(screen.getByRole('button', { name: '下一页' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: '末页' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Last page' })).toBeDisabled()
     })
 
     it('should disable all buttons when disabled prop is true', () => {
       render(<Pagination current={5} total={10} onChange={vi.fn()} disabled />)
-      expect(screen.getByRole('button', { name: '上一页' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: '下一页' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: '首页' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: '末页' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'First page' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Last page' })).toBeDisabled()
     })
   })
 
@@ -160,7 +160,7 @@ describe('Pagination', () => {
     it('should jump to page on Enter key', async () => {
       const onChange = vi.fn()
       render(<Pagination current={1} total={10} onChange={onChange} />)
-      const input = screen.getByRole('textbox', { name: '跳转到指定页' })
+      const input = screen.getByRole('textbox', { name: 'Go to page' })
       await userEvent.type(input, '5{Enter}')
       expect(onChange).toHaveBeenCalledWith(5)
     })
@@ -168,7 +168,7 @@ describe('Pagination', () => {
     it('should jump to page on blur', async () => {
       const onChange = vi.fn()
       render(<Pagination current={1} total={10} onChange={onChange} />)
-      const input = screen.getByRole('textbox', { name: '跳转到指定页' })
+      const input = screen.getByRole('textbox', { name: 'Go to page' })
       await userEvent.type(input, '7')
       fireEvent.blur(input)
       expect(onChange).toHaveBeenCalledWith(7)
@@ -177,7 +177,7 @@ describe('Pagination', () => {
     it('should not jump when input is empty', async () => {
       const onChange = vi.fn()
       render(<Pagination current={1} total={10} onChange={onChange} />)
-      const input = screen.getByRole('textbox', { name: '跳转到指定页' })
+      const input = screen.getByRole('textbox', { name: 'Go to page' })
       fireEvent.blur(input)
       expect(onChange).not.toHaveBeenCalled()
     })
@@ -185,7 +185,7 @@ describe('Pagination', () => {
     it('should not jump when input is out of range', async () => {
       const onChange = vi.fn()
       render(<Pagination current={1} total={10} onChange={onChange} />)
-      const input = screen.getByRole('textbox', { name: '跳转到指定页' })
+      const input = screen.getByRole('textbox', { name: 'Go to page' })
       await userEvent.type(input, '15{Enter}')
       expect(onChange).not.toHaveBeenCalled()
     })
@@ -193,7 +193,7 @@ describe('Pagination', () => {
     it('should not jump when input is 0', async () => {
       const onChange = vi.fn()
       render(<Pagination current={1} total={10} onChange={onChange} />)
-      const input = screen.getByRole('textbox', { name: '跳转到指定页' })
+      const input = screen.getByRole('textbox', { name: 'Go to page' })
       await userEvent.type(input, '0{Enter}')
       expect(onChange).not.toHaveBeenCalled()
     })
@@ -202,7 +202,7 @@ describe('Pagination', () => {
       const onChange = vi.fn()
       render(<Pagination current={1} total={10} onChange={onChange} />)
       const input = screen.getByRole('textbox', {
-        name: '跳转到指定页'
+        name: 'Go to page'
       }) as HTMLInputElement
       await userEvent.type(input, 'abc123')
       expect(input.value).toBe('123')
@@ -212,7 +212,7 @@ describe('Pagination', () => {
       const onChange = vi.fn()
       render(<Pagination current={1} total={10} onChange={onChange} />)
       const input = screen.getByRole('textbox', {
-        name: '跳转到指定页'
+        name: 'Go to page'
       }) as HTMLInputElement
       await userEvent.type(input, '5{Enter}')
       expect(input.value).toBe('')
@@ -223,8 +223,8 @@ describe('Pagination', () => {
     it('should handle total of 1', () => {
       render(<Pagination current={1} total={1} onChange={vi.fn()} />)
       expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: '上一页' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: '下一页' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
     })
 
     it('should handle total of 2', () => {

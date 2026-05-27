@@ -9,6 +9,18 @@
   position: relative;
 }
 
+.headerTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .headerRow {
   position: absolute;
   top: 0;
@@ -16,7 +28,7 @@
   right: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 20px 32px 16px;
   background-color: var(--bg-glass-surface);
   backdrop-filter: blur(16px);

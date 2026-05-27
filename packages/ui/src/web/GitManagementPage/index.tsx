@@ -839,7 +839,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                                 <pre className="gmp-diff-content">
                                   {workingFileDiff.hunks.length === 0 ? (
                                     <div className="gmp-diff-normal" style={{ opacity: 0.5 }}>
-                                      无差异
+                                      {t('version_control.no_diff', 'No diff')}
                                     </div>
                                   ) : (
                                     workingFileDiff.hunks.map((hunk, i) => (
@@ -956,7 +956,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                                   <pre className="gmp-diff-content">
                                     {workingFileDiff.hunks.length === 0 ? (
                                       <div className="gmp-diff-normal" style={{ opacity: 0.5 }}>
-                                        无差异
+                                        {t('version_control.no_diff', 'No diff')}
                                       </div>
                                     ) : (
                                       workingFileDiff.hunks.map((hunk, i) => (
@@ -1109,7 +1109,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = ({
                                                 className="gmp-diff-normal"
                                                 style={{ opacity: 0.5 }}
                                               >
-                                                无差异
+                                                {t('version_control.no_diff', 'No diff')}
                                               </div>
                                             ) : (
                                               selectedFileDiff.hunks.map((hunk, i) => (

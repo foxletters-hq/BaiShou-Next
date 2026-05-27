@@ -7,28 +7,23 @@ import {
   MdCheckCircle,
   MdError,
   MdHourglassEmpty,
-  MdUpdate,
-  MdHistory,
-  MdInfoOutline
+  MdUpdate
 } from 'react-icons/md'
 import { useUpdaterStore, UpdateStatus } from '@baishou/store'
+import { formatAppVersion } from '@baishou/shared'
+import { useToast } from '../Toast/useToast'
+import '../AboutSettingsCard/AboutSettingsCard.css'
 import './VersionManager.css'
 
 export interface VersionManagerProps {
-  /** 版本号 */
   version: string
-  /** 英雄图片 */
-  heroImageSrc?: string
-  /** 打开 GitHub 仓库 */
-  onOpenGithubHost?: () => void
+  onOpenGithubRepo?: () => void | Promise<void>
 }
 
-export const VersionManager: React.FC<VersionManagerProps> = ({
-  version,
-  heroImageSrc,
-  onOpenGithubHost
-}) => {
+export const VersionManager: React.FC<VersionManagerProps> = ({ version, onOpenGithubRepo }) => {
   const { t } = useTranslation()
+  const toast = useToast()
+  const displayVersion = formatAppVersion(version)
   const {
     status,
     currentVersion,
@@ -45,7 +40,7 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
   } = useUpdaterStore()
 
   const [isChecking, setIsChecking] = useState(false)
-  const [showReleaseNotes, setShowReleaseNotes] = useState(false)
+  const [hasCheckedOnce, setHasCheckedOnce] = useState(false)
 
   useEffect(() => {
     loadAutoCheck()
@@ -55,234 +50,146 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
   const handleCheckUpdate = async () => {
     setIsChecking(true)
     try {
-      await checkForUpdates()
+      const outcome = await checkForUpdates()
+      setHasCheckedOnce(true)
+      if (outcome?.skipped) {
+        toast.showSuccess(t('updater.not_released_toast', 'No published release yet.'), {
+          duration: 4000
+        })
+      }
     } finally {
       setIsChecking(false)
     }
   }
 
-  const handleDownload = async () => {
-    await downloadUpdate()
-  }
-
-  const handleInstall = () => {
-    quitAndInstall()
-  }
-
-  const handleOpenReleasePage = () => {
-    if (updateInfo?.releaseUrl) {
-      window.open(updateInfo.releaseUrl, '_blank')
+  const latestVersionLabel = () => {
+    if (updateInfo?.version) return formatAppVersion(updateInfo.version)
+    if (hasCheckedOnce && status === UpdateStatus.NOT_AVAILABLE && currentVersion) {
+      return formatAppVersion(currentVersion)
     }
+    return t('updater.latest_unreleased', 'Not released yet')
   }
 
-  const getStatusIcon = () => {
+  const statusMessage = () => {
     switch (status) {
       case UpdateStatus.CHECKING:
-        return <MdHourglassEmpty size={24} className="version-status-icon spinning" />
+        return t('updater.checking', 'Checking for updates…')
       case UpdateStatus.AVAILABLE:
-        return <MdOutlineSystemUpdate size={24} className="version-status-icon available" />
-      case UpdateStatus.DOWNLOADING:
-        return <MdDownload size={24} className="version-status-icon downloading" />
-      case UpdateStatus.DOWNLOADED:
-        return <MdCheckCircle size={24} className="version-status-icon downloaded" />
-      case UpdateStatus.ERROR:
-        return <MdError size={24} className="version-status-icon error" />
-      case UpdateStatus.NOT_AVAILABLE:
-        return <MdCheckCircle size={24} className="version-status-icon success" />
-      default:
-        return <MdUpdate size={24} className="version-status-icon" />
-    }
-  }
-
-  const getStatusText = () => {
-    switch (status) {
-      case UpdateStatus.CHECKING:
-        return t('updater.checking', '检查更新中...')
-      case UpdateStatus.AVAILABLE:
-        return t('updater.available', '发现新版本 v{{version}}', {
+        return t('updater.available', 'New version v{{version}} available', {
           version: updateInfo?.version
         })
       case UpdateStatus.DOWNLOADING:
-        return t('updater.downloading', '下载中 {{progress}}%', {
+        return t('updater.downloading', 'Downloading {{progress}}%', {
           progress: Math.round(downloadProgress)
         })
       case UpdateStatus.DOWNLOADED:
-        return t('updater.downloaded', '下载完成，准备安装')
+        return t('updater.downloaded', 'Ready to install')
       case UpdateStatus.NOT_AVAILABLE:
-        return t('updater.not_available', '已是最新版本')
+        return t('updater.not_available', 'You are on the latest version')
       case UpdateStatus.ERROR:
-        return error || t('updater.error', '检查更新失败')
+        return error || t('updater.error', 'Update check failed')
       default:
-        return t('updater.idle', '检查应用更新')
+        return t('updater.idle', 'Check whether a newer build is available')
     }
   }
 
-  const getStatusColor = () => {
-    switch (status) {
-      case UpdateStatus.AVAILABLE:
-        return 'var(--color-primary)'
-      case UpdateStatus.DOWNLOADING:
-        return 'var(--color-primary)'
-      case UpdateStatus.DOWNLOADED:
-        return 'var(--color-success, #4caf50)'
-      case UpdateStatus.NOT_AVAILABLE:
-        return 'var(--color-success, #4caf50)'
-      case UpdateStatus.ERROR:
-        return 'var(--color-error, #f44336)'
-      default:
-        return 'var(--text-secondary)'
+  const renderPrimaryAction = () => {
+    if (status === UpdateStatus.AVAILABLE) {
+      return (
+        <button type="button" className="version-primary-btn" onClick={() => downloadUpdate()}>
+          <MdDownload size={18} />
+          {t('updater.download', 'Download update')}
+        </button>
+      )
     }
-  }
-
-  const renderActionButton = () => {
-    switch (status) {
-      case UpdateStatus.CHECKING:
-        return (
-          <button className="version-action-btn" disabled>
-            <MdHourglassEmpty size={16} className="spinning" />
-            {t('updater.checking', '检查中...')}
-          </button>
-        )
-      case UpdateStatus.AVAILABLE:
-        return (
-          <div className="version-action-group">
-            <button className="version-action-btn secondary" onClick={handleOpenReleasePage}>
-              <MdOpenInNew size={16} />
-              {t('updater.view_release', '发布页')}
-            </button>
-            <button className="version-action-btn primary" onClick={handleDownload}>
-              <MdDownload size={16} />
-              {t('updater.download', '下载更新')}
-            </button>
-          </div>
-        )
-      case UpdateStatus.DOWNLOADING:
-        return (
-          <div className="version-progress-container">
-            <div className="version-progress-bar">
-              <div className="version-progress-fill" style={{ width: `${downloadProgress}%` }} />
-            </div>
-            <span className="version-progress-text">{Math.round(downloadProgress)}%</span>
-          </div>
-        )
-      case UpdateStatus.DOWNLOADED:
-        return (
-          <button className="version-action-btn primary" onClick={handleInstall}>
-            <MdCheckCircle size={16} />
-            {t('updater.install', '立即安装')}
-          </button>
-        )
-      case UpdateStatus.NOT_AVAILABLE:
-        return (
-          <button className="version-action-btn" onClick={handleCheckUpdate} disabled={isChecking}>
-            <MdUpdate size={16} />
-            {t('updater.check_again', '再次检查')}
-          </button>
-        )
-      case UpdateStatus.ERROR:
-        return (
-          <button className="version-action-btn" onClick={handleCheckUpdate} disabled={isChecking}>
-            <MdUpdate size={16} />
-            {t('updater.retry', '重试')}
-          </button>
-        )
-      default:
-        return (
-          <button className="version-action-btn" onClick={handleCheckUpdate} disabled={isChecking}>
-            <MdUpdate size={16} />
-            {t('updater.check', '检查更新')}
-          </button>
-        )
+    if (status === UpdateStatus.DOWNLOADED) {
+      return (
+        <button type="button" className="version-primary-btn" onClick={() => quitAndInstall()}>
+          <MdCheckCircle size={18} />
+          {t('updater.install', 'Install now')}
+        </button>
+      )
     }
-  }
-
-  const renderReleaseNotes = () => {
-    if (!updateInfo?.releaseNotes) return null
-
     return (
-      <div className="version-release-notes">
-        <div className="version-release-notes-header">
-          <MdHistory size={16} />
-          <span>{t('updater.release_notes', '更新日志')}</span>
-          <button
-            className="version-release-notes-toggle"
-            onClick={() => setShowReleaseNotes(!showReleaseNotes)}
-          >
-            {showReleaseNotes ? t('common.collapse', '收起') : t('common.expand', '展开')}
-          </button>
-        </div>
-        {showReleaseNotes && (
-          <div className="version-release-notes-content">{updateInfo.releaseNotes}</div>
+      <button
+        type="button"
+        className="version-outline-btn"
+        onClick={handleCheckUpdate}
+        disabled={isChecking || status === UpdateStatus.CHECKING}
+      >
+        {isChecking || status === UpdateStatus.CHECKING ? (
+          <MdHourglassEmpty size={18} className="version-spin" />
+        ) : (
+          <MdUpdate size={18} />
         )}
-      </div>
+        {isChecking || status === UpdateStatus.CHECKING
+          ? t('updater.checking_short', 'Checking…')
+          : hasCheckedOnce
+            ? t('updater.check_again', 'Check again')
+            : t('updater.check', 'Check for updates')}
+      </button>
     )
   }
 
+  const openGithub = () => {
+    void onOpenGithubRepo?.()
+  }
+
   return (
-    <div className="version-manager-wrapper">
-      {/* 版本信息头部 */}
-      <div className="version-header">
-        <div className="version-info">
-          <div className="version-current">
-            <span className="version-label">{t('updater.current_version', '当前版本')}</span>
-            <span className="version-number">v{version}</span>
-          </div>
-          {currentVersion && currentVersion !== version && (
-            <div className="version-latest">
-              <span className="version-label">{t('updater.latest_version', '最新版本')}</span>
-              <span className="version-number">v{currentVersion}</span>
-            </div>
-          )}
-        </div>
-        {heroImageSrc && (
-          <div className="version-hero-image">
-            <img src={heroImageSrc} alt="BaiShou" draggable={false} />
-          </div>
-        )}
-      </div>
+    <div className="version-manager">
+      <div className="about-section-title">{t('updater.section_title', 'App updates')}</div>
 
-      {/* 更新状态区域 */}
-      <div className="version-status-section">
-        <div className="version-status-row">
-          <div className="version-status-info">
-            {getStatusIcon()}
-            <span className="version-status-text" style={{ color: getStatusColor() }}>
-              {getStatusText()}
-            </span>
-          </div>
-          <div className="version-actions">{renderActionButton()}</div>
+      <div className="version-panel">
+        <div className="version-meta-row">
+          <span className="version-meta-label">{t('updater.current_version', 'Current version')}</span>
+          <span className="version-meta-value">{displayVersion}</span>
+        </div>
+        <div className="version-meta-row">
+          <span className="version-meta-label">{t('updater.latest_version', 'Latest version')}</span>
+          <span
+            className={`version-meta-value ${!updateInfo?.version && !hasCheckedOnce ? 'version-meta-muted' : ''}`}
+          >
+            {latestVersionLabel()}
+          </span>
         </div>
 
-        {/* 进度条（下载时显示） */}
+        <div className="version-panel-divider" />
+
+        <div className="version-status-block">
+          <div className="version-status-line">
+            {status === UpdateStatus.ERROR ? (
+              <MdError size={18} className="version-status-icon error" />
+            ) : status === UpdateStatus.NOT_AVAILABLE ? (
+              <MdCheckCircle size={18} className="version-status-icon ok" />
+            ) : status === UpdateStatus.CHECKING || isChecking ? (
+              <MdHourglassEmpty size={18} className="version-status-icon version-spin" />
+            ) : (
+              <MdOutlineSystemUpdate size={18} className="version-status-icon" />
+            )}
+            <p className="version-status-message">{statusMessage()}</p>
+          </div>
+          {renderPrimaryAction()}
+        </div>
+
         {status === UpdateStatus.DOWNLOADING && (
-          <div className="version-progress-section">
-            <div className="version-progress-bar-large">
-              <div
-                className="version-progress-fill-large"
-                style={{ width: `${downloadProgress}%` }}
-              />
+          <div className="version-progress-wrap">
+            <div className="version-progress-track">
+              <div className="version-progress-fill" style={{ width: `${downloadProgress}%` }} />
             </div>
-            <span className="version-progress-percentage">{Math.round(downloadProgress)}%</span>
+            <span className="version-progress-label">{Math.round(downloadProgress)}%</span>
           </div>
         )}
 
-        {/* 更新日志 */}
-        {renderReleaseNotes()}
-      </div>
+        <div className="version-panel-divider" />
 
-      {/* 设置区域 */}
-      <div className="version-settings-section">
-        <div className="version-setting-item">
-          <div className="version-setting-info">
-            <MdOutlineSystemUpdate size={20} />
-            <div className="version-setting-text">
-              <span className="version-setting-title">
-                {t('updater.auto_check', '自动检查更新')}
-              </span>
-              <span className="version-setting-desc">
-                {t('updater.auto_check_desc', '启动时自动检查是否有新版本')}
-              </span>
-            </div>
+        <div className="version-auto-row">
+          <div className="version-auto-text">
+            <span className="version-auto-title">
+              {t('updater.auto_check', 'Check for updates automatically')}
+            </span>
+            <span className="version-auto-desc">
+              {t('updater.auto_check_desc', 'Check when the app starts')}
+            </span>
           </div>
           <label className="version-toggle-switch">
             <input
@@ -295,13 +202,12 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
         </div>
       </div>
 
-      {/* 链接区域 */}
-      <div className="version-links-section">
-        <button className="version-link-item" onClick={onOpenGithubHost}>
-          <MdOpenInNew size={16} />
-          <span>{t('updater.view_github', '查看 GitHub 仓库')}</span>
+      {onOpenGithubRepo && (
+        <button type="button" className="about-github-btn" onClick={openGithub}>
+          <MdOpenInNew size={18} />
+          {t('updater.view_github', 'View GitHub repository')}
         </button>
-      </div>
+      )}
     </div>
   )
 }

@@ -679,9 +679,6 @@ export const AIModelServicesView: React.FC<AIModelServicesViewProps> = ({
                 <div className={styles.hugeIconBox}>{renderIcon(activeProviderMeta.iconUrl)}</div>
                 <div className={styles.headerTextCol}>
                   <h2 className={styles.headerTitle}>{activeProviderMeta.name}</h2>
-                  <p className={styles.headerSub}>
-                    {t('ai_config.manage_services_desc', '配置并管理大语言模型服务')}
-                  </p>
                 </div>
               </div>
               <div className={styles.headerActions}>

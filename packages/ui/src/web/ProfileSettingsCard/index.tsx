@@ -69,7 +69,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
             <img className={styles.avatarImg} src={profile.avatarPath} alt="avatar" />
           ) : (
             <div className={styles.avatarFallback}>
-              {(profile.nickname || t('profile.defaultChar', '白')).charAt(0).toUpperCase()}
+              {(profile.nickname || t('profile.default_nickname', 'User')).charAt(0).toUpperCase()}
             </div>
           )}
           <div className={styles.avatarHover}>📷</div>
@@ -84,16 +84,17 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
 
         <div className={styles.infoZone}>
           <div className={styles.nameRow}>
+            <h2 className={styles.nickname}>
+              {profile.nickname || t('profile.default_nickname', '白守用户')}
+            </h2>
             <button
               className={styles.editBtn}
               onClick={handleEditNickname}
               title={t('profile.edit_nickname', '修改昵称')}
+              aria-label={t('profile.edit_nickname', '修改昵称')}
             >
               ✎
             </button>
-            <h2 className={styles.nickname}>
-              {profile.nickname || t('profile.default_nickname', '白守用户')}
-            </h2>
           </div>
         </div>
       </div>

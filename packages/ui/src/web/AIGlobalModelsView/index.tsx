@@ -5,8 +5,8 @@ import { useDialog } from '../Dialog'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared'
 import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
-import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdVolumeUp, MdHelpOutline } from 'react-icons/md'
-import { Tooltip } from '../Tooltip/Tooltip'
+import { MdChatBubbleOutline, MdCompress, MdEdit, MdHub, MdVolumeUp } from 'react-icons/md'
+import { HelpTooltip } from '../HelpTooltip'
 
 export interface AIProviderConfigInfo {
   providerId: string
@@ -124,7 +124,6 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   const renderSection = (
     key: 'dialogue' | 'naming' | 'summary' | 'embedding',
     title: string,
-    desc: string,
     icon: React.ReactNode,
     currentProvider: string,
     currentModel: string,
@@ -155,9 +154,11 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           <span className={`${styles.routeName} ${isDanger ? styles.dangerName : ''}`}>
             {title}
           </span>
-          <Tooltip content={getTooltipContent()} className={styles.titleTooltip}>
-            <MdHelpOutline size={16} className={styles.helpIcon} />
-          </Tooltip>
+          <HelpTooltip
+            content={getTooltipContent()}
+            className={styles.titleTooltip}
+            size={16}
+          />
         </div>
 
         <div
@@ -176,63 +177,53 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           )}
           <span className={styles.dropdownIcon}>▼</span>
         </div>
-
-        <div className={styles.routeDesc}>{desc}</div>
       </div>
     )
   }
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.headerTitle}>
-        {t('ai_config.global_models_title', '全局默认模型分配')}
-      </h2>
-      <p className={styles.headerSubtitle}>
-        {t('models.routing_desc', '允许为您日常面对的不同维度的复杂任务，挂载不同的专长模型。')}
-      </p>
+      <div className={styles.headerRow}>
+        <h2 className={styles.title}>
+          {t('ai_config.global_models_title', '全局默认模型分配')}
+        </h2>
+      </div>
 
-      <div className={styles.grid}>
-        {renderSection(
-          'summary',
-          t('ai_config.summary_model_title', '长文推演总结'),
-          t('ai_config.summary_model_desc', '处理文章和报告时优先调用的默认模型。'),
-          <MdCompress size={22} />,
-          config.globalSummaryProviderId,
-          config.globalSummaryModelId
-        )}
+      <div className={styles.scrollArea}>
+        <div className={styles.grid}>
+          {renderSection(
+            'summary',
+            t('ai_config.summary_model_title', '长文推演总结'),
+            <MdCompress size={22} />,
+            config.globalSummaryProviderId,
+            config.globalSummaryModelId
+          )}
 
-        {renderSection(
-          'dialogue',
-          t('ai_config.dialogue_model_title', '默认闲聊接管'),
-          t('ai_config.dialogue_model_desc', '当没有指派特殊模型时，默认与您进行对答的灵魂引擎。'),
-          <MdChatBubbleOutline size={22} />,
-          config.globalDialogueProviderId,
-          config.globalDialogueModelId
-        )}
+          {renderSection(
+            'dialogue',
+            t('ai_config.dialogue_model_title', '默认闲聊接管'),
+            <MdChatBubbleOutline size={22} />,
+            config.globalDialogueProviderId,
+            config.globalDialogueModelId
+          )}
 
-        {renderSection(
-          'naming',
-          t('ai_config.naming_model_title', '对话提炼与命名'),
-          t(
-            'ai_config.naming_model_desc',
-            '为了节约主力模型的计算资源，可以分配一个小体积轻量级模型专门负责为你的每次对话写个标题。'
-          ),
-          <MdEdit size={22} />,
-          config.globalNamingProviderId,
-          config.globalNamingModelId
-        )}
+          {renderSection(
+            'naming',
+            t('ai_config.naming_model_title', '对话提炼与命名'),
+            <MdEdit size={22} />,
+            config.globalNamingProviderId,
+            config.globalNamingModelId
+          )}
 
-        {renderSection(
-          'embedding',
-          t('ai_config.embedding_model_title', 'RAG 向量映射层 (Embeddings)'),
-          t(
-            'ai_config.embedding_model_desc',
-            '为你的本地文件建立向量空间映射的核心引擎。替换模型可能导致之前的所有知识库瘫痪并需要重新挂载索引运算！'
-          ),
-          <MdHub size={22} />,
-          config.globalEmbeddingProviderId,
-          config.globalEmbeddingModelId
-        )}
+          {renderSection(
+            'embedding',
+            t('ai_config.embedding_model_title', 'RAG 向量映射层 (Embeddings)'),
+            <MdHub size={22} />,
+            config.globalEmbeddingProviderId,
+            config.globalEmbeddingModelId,
+            true
+          )}
+        </div>
       </div>
 
       {activeSelector && (

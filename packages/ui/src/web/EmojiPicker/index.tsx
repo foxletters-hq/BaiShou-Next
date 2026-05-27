@@ -70,9 +70,9 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({ isOpen, onClose, onSel
       <div className={styles.container} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.titleWrapper}>
-            <span className={styles.title}>{t('common.emoji_title', '特派情绪粒子')}</span>
+            <span className={styles.title}>{t('common.emoji_title', 'Pick an icon')}</span>
             <span className={styles.subtitle}>
-              {t('common.emoji_subtitle', '选择该心智的外发特征图标')}
+              {t('common.emoji_subtitle', 'Choose a visual identity for this companion')}
             </span>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>

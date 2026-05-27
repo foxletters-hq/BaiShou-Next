@@ -14,6 +14,7 @@ import {
   MdKey
 } from 'react-icons/md'
 import { Switch } from '../Switch/Switch'
+import { HelpTooltip } from '../HelpTooltip'
 
 export interface WebSearchConfig {
   webSearchEngine: string
@@ -53,7 +54,15 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
       {/* Engine Selection */}
       <div className={styles.cardSection}>
         <div className={styles.cardHeader}>
-          <h3 className={styles.cardTitle}>{t('agent.tools.param_search_engine', '搜索引擎')}</h3>
+          <div className={styles.cardTitleRow}>
+            <h3 className={styles.cardTitle}>{t('agent.tools.param_search_engine', '搜索引擎')}</h3>
+            <HelpTooltip
+              content={t(
+                'settings.web_search_engines_tooltip',
+                'Choose how the partner searches the public web. Local browser engines need no API key; Tavily requires a key but is optimized for AI workflows.'
+              )}
+            />
+          </div>
         </div>
         <div className={styles.cardBody}>
           <label
@@ -75,15 +84,17 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
               </div>
             </div>
             <div className={styles.radioContent}>
-              <span className={styles.radioTitle}>
-                {t('settings.web_search_engine_local_bing', 'Bing 本地搜索')}
-              </span>
-              <span className={styles.radioSubtitle}>
-                {t(
-                  'settings.web_search_engine_local_bing_desc',
-                  '使用本地浏览器搜索 Bing，无需 API 密钥'
-                )}
-              </span>
+              <div className={styles.radioTitleRow}>
+                <span className={styles.radioTitle}>
+                  {t('settings.web_search_engine_local_bing', 'Bing 本地搜索')}
+                </span>
+                <HelpTooltip
+                  content={t(
+                    'settings.web_search_engine_local_bing_desc',
+                    '使用本地浏览器搜索 Bing，无需 API 密钥'
+                  )}
+                />
+              </div>
             </div>
           </label>
 
@@ -106,15 +117,17 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
               </div>
             </div>
             <div className={styles.radioContent}>
-              <span className={styles.radioTitle}>
-                {t('settings.web_search_engine_local_google', 'Google 本地搜索')}
-              </span>
-              <span className={styles.radioSubtitle}>
-                {t(
-                  'settings.web_search_engine_local_google_desc',
-                  '使用本地浏览器搜索 Google，无需 API 密钥'
-                )}
-              </span>
+              <div className={styles.radioTitleRow}>
+                <span className={styles.radioTitle}>
+                  {t('settings.web_search_engine_local_google', 'Google 本地搜索')}
+                </span>
+                <HelpTooltip
+                  content={t(
+                    'settings.web_search_engine_local_google_desc',
+                    '使用本地浏览器搜索 Google，无需 API 密钥'
+                  )}
+                />
+              </div>
             </div>
           </label>
 
@@ -137,12 +150,17 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
               </div>
             </div>
             <div className={styles.radioContent}>
-              <span className={styles.radioTitle}>
-                {t('settings.web_search_engine_duckduckgo', 'DuckDuckGo')}
-              </span>
-              <span className={styles.radioSubtitle}>
-                {t('settings.web_search_engine_duckduckgo_desc', '免费通用型查询')}
-              </span>
+              <div className={styles.radioTitleRow}>
+                <span className={styles.radioTitle}>
+                  {t('settings.web_search_engine_duckduckgo', 'DuckDuckGo')}
+                </span>
+                <HelpTooltip
+                  content={t(
+                    'settings.web_search_engine_duckduckgo_desc',
+                    '完全免费的 HTML 爬虫搜索，无需 API Key。'
+                  )}
+                />
+              </div>
             </div>
           </label>
 
@@ -165,12 +183,17 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
               </div>
             </div>
             <div className={styles.radioContent}>
-              <span className={styles.radioTitle}>
-                {t('settings.web_search_engine_tavily', 'Tavily API')}
-              </span>
-              <span className={styles.radioSubtitle}>
-                {t('settings.web_search_engine_tavily_desc', '高速智能搜索引擎（需配置密钥）')}
-              </span>
+              <div className={styles.radioTitleRow}>
+                <span className={styles.radioTitle}>
+                  {t('settings.web_search_engine_tavily', 'Tavily API')}
+                </span>
+                <HelpTooltip
+                  content={t(
+                    'settings.web_search_engine_tavily_desc',
+                    '需要配置 API Key，专为大模型打造的搜索引擎，响应快、稳定性高。'
+                  )}
+                />
+              </div>
             </div>
           </label>
         </div>
@@ -180,12 +203,17 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
       {searchConfig.webSearchEngine === 'tavily' && (
         <div className={styles.cardSection}>
           <div className={styles.apiConfigBody}>
-            <h3 className={styles.cardTitle}>
-              {t('agent.tools.param_tavily_api_key', 'Tavily API Key')}
-            </h3>
-            <span className={styles.cardDesc}>
-              {t('agent.tools.param_tavily_api_key_desc', '请前往 tvly 官网申请您的私人密钥')}
-            </span>
+            <div className={styles.cardTitleRow}>
+              <h3 className={styles.cardTitle}>
+                {t('agent.tools.param_tavily_api_key', 'Tavily API Key')}
+              </h3>
+              <HelpTooltip
+                content={t(
+                  'agent.tools.param_tavily_api_key_desc',
+                  '请前往 tvly 官网申请您的私人密钥'
+                )}
+              />
+            </div>
 
             <div className={styles.textFieldWrapper}>
               <MdKey size={20} className={styles.textFieldIcon} />

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import styles from './Pagination.module.css'
 
@@ -86,10 +87,20 @@ export const Pagination: React.FC<PaginationProps> = ({
   siblingCount = 1,
   showFirstLast = true,
   showJumper = true,
-  jumperPlaceholder = '跳转',
+  jumperPlaceholder,
   disabled = false,
   className = ''
 }) => {
+  const { t } = useTranslation()
+  const resolvedJumperPlaceholder =
+    jumperPlaceholder ?? t('common.pagination_jump_placeholder', 'Go to')
+  const firstPageLabel = t('common.pagination_first_page', 'First page')
+  const prevPageLabel = t('common.pagination_previous_page', 'Previous page')
+  const nextPageLabel = t('common.pagination_next_page', 'Next page')
+  const lastPageLabel = t('common.pagination_last_page', 'Last page')
+  const jumpToPageLabel = t('common.pagination_go_to_page', 'Go to page')
+  const pageUnitLabel = t('common.pagination_page_unit', 'Page')
+
   const [jumperValue, setJumperValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -137,8 +148,8 @@ export const Pagination: React.FC<PaginationProps> = ({
           className={styles.pageBtn}
           disabled={disabled || current <= 1}
           onClick={() => handlePageChange(1)}
-          aria-label="首页"
-          title="首页"
+          aria-label={firstPageLabel}
+          title={firstPageLabel}
         >
           <ChevronsLeft size={14} />
         </button>
@@ -149,8 +160,8 @@ export const Pagination: React.FC<PaginationProps> = ({
         className={styles.pageBtn}
         disabled={disabled || current <= 1}
         onClick={() => handlePageChange(current - 1)}
-        aria-label="上一页"
-        title="上一页"
+        aria-label={prevPageLabel}
+        title={prevPageLabel}
       >
         <ChevronLeft size={14} />
       </button>
@@ -178,8 +189,8 @@ export const Pagination: React.FC<PaginationProps> = ({
         className={styles.pageBtn}
         disabled={disabled || current >= total}
         onClick={() => handlePageChange(current + 1)}
-        aria-label="下一页"
-        title="下一页"
+        aria-label={nextPageLabel}
+        title={nextPageLabel}
       >
         <ChevronRight size={14} />
       </button>
@@ -190,8 +201,8 @@ export const Pagination: React.FC<PaginationProps> = ({
           className={styles.pageBtn}
           disabled={disabled || current >= total}
           onClick={() => handlePageChange(total)}
-          aria-label="末页"
-          title="末页"
+          aria-label={lastPageLabel}
+          title={lastPageLabel}
         >
           <ChevronsRight size={14} />
         </button>
@@ -208,7 +219,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             pattern="[0-9]*"
             value={jumperValue}
             disabled={disabled}
-            placeholder={jumperPlaceholder}
+            placeholder={resolvedJumperPlaceholder}
             onChange={(e) => {
               // 只允许输入数字
               const val = e.target.value.replace(/[^0-9]/g, '')
@@ -216,9 +227,9 @@ export const Pagination: React.FC<PaginationProps> = ({
             }}
             onKeyDown={handleJumperKeyDown}
             onBlur={handleJumperSubmit}
-            aria-label="跳转到指定页"
+            aria-label={jumpToPageLabel}
           />
-          <span className={styles.jumperSuffix}>页</span>
+          <span className={styles.jumperSuffix}>{pageUnitLabel}</span>
         </div>
       )}
     </div>

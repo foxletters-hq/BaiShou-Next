@@ -135,6 +135,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
   onRenameSnapshot
 }) => {
   const { t } = useTranslation()
+  const noLimitLabel = t('data_sync.no_limit', 'No Limit')
   const toast = useToast()
   const dialog = useDialog()
   const [config, setConfig] = useState<SyncConfig>({
@@ -283,9 +284,14 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
       activeTab === 'snapshot'
         ? t(
             'sync.restore_snapshot_confirm_msg',
-            `确定要从本地快照 ${filename} 恢复吗？\n当前本地数据将被覆盖。`
+            'Restore from local snapshot "{{filename}}"?\nYour current local data will be overwritten.',
+            { filename }
           )
-        : t('sync.restore_confirm_msg', `确定要恢复备份 ${filename} 吗？\n当前本地数据将被覆盖。`)
+        : t(
+            'sync.restore_confirm_msg',
+            'Restore backup "{{filename}}"?\nYour current local data will be overwritten.',
+            { filename }
+          )
     )
     if (!confirmed) return
     setIsSyncing(true)
@@ -294,7 +300,10 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         activeTab === 'snapshot'
           ? onRestoreSnapshot
             ? await onRestoreSnapshot(filename)
-            : { success: false, message: '未实现快照还原' }
+            : {
+                success: false,
+                message: t('sync.snapshot_restore_not_implemented', 'Snapshot restore is not available')
+              }
           : await onRestore(config, filename)
       if (res.success) toast.showSuccess(res.message)
       else toast.showError(res.message)
@@ -324,9 +333,19 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
     const confirmed =
       activeTab === 'snapshot'
         ? await dialog.confirm(
-            t('sync.delete_snapshot_confirm', `真的要删除本地快照 "${filename}" 吗？`)
+            t(
+              'sync.delete_snapshot_confirm',
+              'Permanently delete local snapshot "{{filename}}"?',
+              { filename }
+            )
           )
-        : await dialog.confirm(t('sync.delete_confirm', `真的要删除云端备份 "${filename}" 吗？`))
+        : await dialog.confirm(
+            t(
+              'sync.delete_confirm',
+              'Permanently delete cloud backup "{{filename}}"?',
+              { filename }
+            )
+          )
     if (!confirmed) return
     try {
       if (activeTab === 'snapshot') {
@@ -348,13 +367,15 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
         ? await dialog.confirm(
             t(
               'sync.bulk_delete_snapshot_confirm',
-              `是否彻底删除选定的 ${selected.size} 个本地快照？此操作不可逆。`
+              'Permanently delete {{count}} selected local snapshot(s)? This cannot be undone.',
+              { count: selected.size }
             )
           )
         : await dialog.confirm(
             t(
               'sync.bulk_delete_confirm',
-              `是否彻底删除选定的 ${selected.size} 个备份档案？此操作不可逆。`
+              'Permanently delete {{count}} selected backup(s)? This cannot be undone.',
+              { count: selected.size }
             )
           )
     if (!confirmed) return
@@ -1191,11 +1212,13 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
                         background: 'var(--bg-surface-lowest, #f8fafc)',
                         outline: 'none'
                       }}
-                      value={tempCount === -1 ? t('data_sync.no_limit', '不限制') : tempCount}
+                      value={tempCount === -1 ? noLimitLabel : tempCount}
                       onChange={(e) => {
                         const val = e.target.value.trim()
                         if (
                           val === '' ||
+                          val === noLimitLabel ||
+                          val === t('data_sync.no_limit', 'No Limit') ||
                           val === '不限制' ||
                           val === '不限制数量' ||
                           val === '∞' ||

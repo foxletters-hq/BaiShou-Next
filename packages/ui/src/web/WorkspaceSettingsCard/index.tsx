@@ -100,7 +100,15 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
               />
             ) : (
               <div style={{ display: 'flex', gap: 4 }}>
-                <button className="settings-text-btn" onClick={() => onSwitch(vault.name)}>
+                <button
+                  className="settings-text-btn"
+                  onMouseEnter={() => {
+                    if (typeof window !== 'undefined' && (window as any).api?.vault?.preload) {
+                      void (window as any).api.vault.preload(vault.name)
+                    }
+                  }}
+                  onClick={() => onSwitch(vault.name)}
+                >
                   {t('workspace.switch', '切换')}
                 </button>
                 <button

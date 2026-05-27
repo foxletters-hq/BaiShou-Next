@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { SyncProgressEvent } from '@baishou/shared'
+import { formatSyncProgressStatus } from '../../utils/formatSyncProgress'
 import { useToast } from '../Toast/useToast'
 import styles from './IncrementalSyncPanel.module.css'
 
@@ -138,7 +139,10 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
               </div>
               <div className={styles.progressText}>
                 {progress.current}/{progress.total}
-                {progress.statusText && ` · ${progress.statusText}`}
+                {(() => {
+                  const line = formatSyncProgressStatus(progress, t)
+                  return line ? ` · ${line}` : ''
+                })()}
               </div>
             </motion.div>
           )}

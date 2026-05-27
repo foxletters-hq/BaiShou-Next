@@ -48,12 +48,14 @@ export const ToolResultGroup: React.FC<ToolResultGroupProps> = ({ invocations })
 }
 
 const ToolResultItem: React.FC<{ invocation: MockToolInvocation }> = ({ invocation }) => {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
 
   const getToolName = () => {
-    if (invocation.toolName) return invocation.toolName
+    const rawName = invocation.toolName
+    if (rawName) return t(`agent.tools.${rawName}`, rawName)
     const callId = invocation.toolCallId
-    if (!callId) return 'tool_invocation'
+    if (!callId) return t('agent.tools.tool_invocation', 'tool_invocation')
     return callId
   }
 

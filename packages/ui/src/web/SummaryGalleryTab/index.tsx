@@ -15,7 +15,13 @@ interface SummaryGalleryTabProps {
 }
 
 export const SummaryGalleryTab: React.FC<SummaryGalleryTabProps> = ({ assets, onAssetClick }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+
+  const formatMonthHeader = (monthKey: string) => {
+    const date = new Date(`${monthKey}-01T00:00:00`)
+    if (Number.isNaN(date.getTime())) return monthKey
+    return date.toLocaleDateString(i18n.language, { year: 'numeric', month: 'long' })
+  }
   // Group assets by Month/Year for section headers
   const grouped = assets.reduce(
     (group, asset) => {
@@ -35,18 +41,15 @@ export const SummaryGalleryTab: React.FC<SummaryGalleryTabProps> = ({ assets, on
       {months.length === 0 ? (
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>🖼️</div>
-          <p>{t('gallery.empty_desc', '当前记录为空。多在对话或日记中添加些相片吧！')}</p>
+          <p>{t('gallery.empty_desc', 'No records yet. Add more photos in chats or diary entries!')}</p>
         </div>
       ) : (
         months.map((month) => (
           <div key={month} className={styles.monthSection}>
             <div className={styles.monthHeader}>
-              <h3>
-                {month.replace('-', ` ${t('common.year_unit', '年')} `)}{' '}
-                {t('common.month_unit', '月')}
-              </h3>
+              <h3>{formatMonthHeader(month)}</h3>
               <span className={styles.countBadge}>
-                {grouped[month].length} {t('gallery.record_unit', '条记录')}
+                {grouped[month].length} {t('gallery.record_unit', 'records')}
               </span>
             </div>
 

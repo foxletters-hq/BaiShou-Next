@@ -48,13 +48,13 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
       <p className="sm-desc">
         {t(
           'summary.shared_memory_desc',
-          '调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。'
+          'Adjust the lookback months to export recent summary context for RAG or LLMs.'
         )}
       </p>
 
       <div className="sm-controls">
         <div className="sm-label-row">
-          <span className="sm-label">{t('summary.lookback_label', '回溯范围 (月)')}</span>
+          <span className="sm-label">{t('summary.lookback_label', 'Lookback (months)')}</span>
           <input
             type="number"
             min="1"

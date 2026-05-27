@@ -24,6 +24,7 @@ import {
   Plus
 } from 'lucide-react'
 import { Switch } from '../Switch/Switch'
+import { HelpTooltip } from '../HelpTooltip'
 
 export interface ToolManagementConfig {
   disabledToolIds: string[]
@@ -50,6 +51,7 @@ interface AgentToolDef {
   category: string
   name: string
   icon: React.ReactNode
+  tooltipKey: string
   configurableParams?: ToolConfigParam[]
 }
 
@@ -62,31 +64,36 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
       id: 'diary_read',
       category: 'diary',
       name: t('agent.tools.diary_read', '日记读取'),
-      icon: <BookOpen size={20} />
+      icon: <BookOpen size={20} />,
+      tooltipKey: 'agent.tools.diary_read_tooltip'
     },
     {
       id: 'diary_edit',
       category: 'diary',
       name: t('agent.tools.diary_edit', '日记编辑'),
-      icon: <PenSquare size={20} />
+      icon: <PenSquare size={20} />,
+      tooltipKey: 'agent.tools.diary_edit_tooltip'
     },
     {
       id: 'diary_delete',
       category: 'diary',
       name: t('agent.tools.diary_delete', '日记删除'),
-      icon: <Trash2 size={20} />
+      icon: <Trash2 size={20} />,
+      tooltipKey: 'agent.tools.diary_delete_tooltip'
     },
     {
       id: 'diary_list',
       category: 'diary',
       name: t('agent.tools.diary_list', '日记列表'),
-      icon: <List size={20} />
+      icon: <List size={20} />,
+      tooltipKey: 'agent.tools.diary_list_tooltip'
     },
     {
       id: 'diary_search',
       category: 'diary',
       name: t('agent.tools.diary_search', '日记搜索'),
       icon: <Search size={20} />,
+      tooltipKey: 'agent.tools.diary_search_tooltip',
       configurableParams: [
         {
           key: 'max_results',
@@ -103,25 +110,29 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
       id: 'summary_read',
       category: 'summary',
       name: t('agent.tools.summary_read', '总结读取'),
-      icon: <FileText size={20} />
+      icon: <FileText size={20} />,
+      tooltipKey: 'agent.tools.summary_read_tooltip'
     },
     {
       id: 'message_search',
       category: 'memory',
       name: t('agent.tools.message_search', '消息搜索'),
-      icon: <MessageSquare size={20} />
+      icon: <MessageSquare size={20} />,
+      tooltipKey: 'agent.tools.message_search_tooltip'
     },
     {
       id: 'memory_store',
       category: 'memory',
       name: t('agent.tools.memory_store', '记忆存储'),
-      icon: <Database size={20} />
+      icon: <Database size={20} />,
+      tooltipKey: 'agent.tools.memory_store_tooltip'
     },
     {
       id: 'memory_delete',
       category: 'memory',
       name: t('agent.tools.memory_delete', '记忆删除'),
-      icon: <DatabaseZap size={20} />
+      icon: <DatabaseZap size={20} />,
+      tooltipKey: 'agent.tools.memory_delete_tooltip'
     }
   ]
 
@@ -194,14 +205,15 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Puzzle size={28} className={styles.headerIcon} />
         <h3 className={styles.title}>{t('settings.agent_tools_title', '工具管理')}</h3>
       </div>
-      <p className={styles.subtitle}>
-        {t('settings.agent_tools_desc', '管理伙伴可使用的工具，开关或配置工具参数')}
-      </p>
+      
+      <div className={styles.scrollArea}>
+        <p className={styles.subtitle}>
+          {t('settings.agent_tools_desc', '管理伙伴可使用的工具，开关或配置工具参数')}
+        </p>
 
-      <div className={styles.tabSwitcherWrapper}>
+        <div className={styles.tabSwitcherWrapper}>
         <div className={styles.tabSwitcher}>
           <div
             className={`${styles.tabBtn} ${!showCommunity ? styles.tabActive : ''}`}
@@ -252,6 +264,12 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
                             <div className={styles.toolInfo}>
                               <div className={styles.toolNameRow}>
                                 <span className={styles.toolName}>{tool.name}</span>
+                                <HelpTooltip
+                                  content={t(
+                                    tool.tooltipKey,
+                                    t(`agent.tools.${tool.id}_desc`, '')
+                                  )}
+                                />
                                 <span className={styles.toolIdTag}>{tool.id}</span>
                               </div>
                             </div>
@@ -273,6 +291,12 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
                                             <ListOrdered size={16} className={styles.paramIcon} />
                                           )}
                                           <span className={styles.paramLabel}>{param.label}</span>
+                                          <HelpTooltip
+                                            content={t(
+                                              'agent.tools.param_max_results_tooltip',
+                                              t('agent.tools.param_max_results_desc', '')
+                                            )}
+                                          />
                                         </div>
                                         <div className={styles.stepperContainer}>
                                           <button
@@ -339,6 +363,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
             </p>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

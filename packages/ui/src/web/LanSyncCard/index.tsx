@@ -3,8 +3,8 @@ import styles from './LanSyncCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend, MdQrCode, MdHelpOutline } from 'react-icons/md'
-import { Tooltip } from '../Tooltip/Tooltip'
+import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend, MdQrCode } from 'react-icons/md'
+import { HelpTooltip } from '../HelpTooltip'
 import { QRCodeSVG } from 'qrcode.react'
 
 export interface DiscoveredDevice {
@@ -200,11 +200,11 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     <div className={styles.container}>
       <div className={styles.appBar}>
         <div style={{ flex: 1 }} />
-        <Tooltip content={t('lan_transfer.usage_tooltip', '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。')}>
-          <button className={styles.helpBtn} type="button" title={t('common.help', '帮助')}>
-            <MdHelpOutline size={20} />
-          </button>
-        </Tooltip>
+        <HelpTooltip
+          content={t('lan_transfer.usage_tooltip', '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。')}
+          size={20}
+          className={styles.helpBtn}
+        />
         {localConnection && (
           <button
             className={styles.qrFixedBtn}

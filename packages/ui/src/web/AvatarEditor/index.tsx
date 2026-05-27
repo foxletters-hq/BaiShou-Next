@@ -49,40 +49,37 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
 
       // Inject i18n translations using t() function
       picker.i18n = {
-        categoriesLabel: t('avatarEditor.categoriesLabel', '类别'),
-        emojiUnsupportedMessage: t(
-          'avatarEditor.emojiUnsupportedMessage',
-          '你的浏览器不支持彩色表情符号'
-        ),
-        favoritesLabel: t('avatarEditor.favoritesLabel', '收藏'),
-        loadingMessage: t('avatarEditor.loadingMessage', '加载中…'),
-        networkErrorMessage: t('avatarEditor.networkErrorMessage', '无法加载表情符号'),
-        regionLabel: t('avatarEditor.regionLabel', '表情符号选择器'),
-        searchDescription: t('avatarEditor.searchDescription', '有搜索结果时，按键盘选择。'),
-        searchLabel: t('avatarEditor.searchLabel', '搜索'),
-        searchResultsLabel: t('avatarEditor.searchResultsLabel', '搜索结果'),
-        skinToneDescription: t('avatarEditor.skinToneDescription', '展开时选择肤色。'),
-        skinToneLabel: t('avatarEditor.skinToneLabel', '选择肤色（当前肤色：{skinTone}）'),
-        skinTonesLabel: t('avatarEditor.skinTonesLabel', '肤色'),
+        categoriesLabel: t('emoji.categories', 'Categories'),
+        emojiUnsupportedMessage: t('emoji.no_native_support', 'Your browser does not support color emoji'),
+        favoritesLabel: t('emoji.favorites', 'Favorites'),
+        loadingMessage: t('emoji.loading', 'Loading…'),
+        networkErrorMessage: t('emoji.error_load', 'Unable to load emoji'),
+        regionLabel: t('emoji.picker_title', 'Emoji Picker'),
+        searchDescription: t('emoji.keyboard_hint', 'When there are search results, use keyboard to select.'),
+        searchLabel: t('emoji.search', 'Search'),
+        searchResultsLabel: t('emoji.search_results', 'Search Results'),
+        skinToneDescription: t('emoji.skin_tone_hint', 'Select skin tone when expanded.'),
+        skinToneLabel: t('emoji.select_skin_tone', 'Select skin tone (current: {{skinTone}})'),
+        skinTonesLabel: t('emoji.skin_tone', 'Skin Tone'),
         skinTones: [
-          t('avatarEditor.skinTones.default', '默认'),
-          t('avatarEditor.skinTones.light', '浅色'),
-          t('avatarEditor.skinTones.mediumLight', '中浅色'),
-          t('avatarEditor.skinTones.medium', '中等'),
-          t('avatarEditor.skinTones.mediumDark', '中深色'),
-          t('avatarEditor.skinTones.dark', '深色')
+          t('emoji.skin_default', 'Default'),
+          t('emoji.skin_light', 'Light'),
+          t('emoji.skin_medium_light', 'Medium Light'),
+          t('emoji.skin_medium', 'Medium'),
+          t('emoji.skin_medium_dark', 'Medium Dark'),
+          t('emoji.skin_dark', 'Dark')
         ],
         categories: {
-          custom: t('avatarEditor.categories.custom', '自定义'),
-          'smileys-emotion': t('avatarEditor.categories.smileysEmotion', '表情与情感'),
-          'people-body': t('avatarEditor.categories.peopleBody', '人物与身体'),
-          'animals-nature': t('avatarEditor.categories.animalsNature', '动物与自然'),
-          'food-drink': t('avatarEditor.categories.foodDrink', '食物与饮料'),
-          'travel-places': t('avatarEditor.categories.travelPlaces', '旅行与地点'),
-          activities: t('avatarEditor.categories.activities', '活动'),
-          objects: t('avatarEditor.categories.objects', '物品'),
-          symbols: t('avatarEditor.categories.symbols', '符号'),
-          flags: t('avatarEditor.categories.flags', '旗帜')
+          custom: t('emoji.category_custom', 'Custom'),
+          'smileys-emotion': t('emoji.category_smileys', 'Smileys & Emotion'),
+          'people-body': t('emoji.category_people', 'People & Body'),
+          'animals-nature': t('emoji.category_animals', 'Animals & Nature'),
+          'food-drink': t('emoji.category_food', 'Food & Drink'),
+          'travel-places': t('emoji.category_travel', 'Travel & Places'),
+          activities: t('emoji.category_activities', 'Activities'),
+          objects: t('emoji.category_objects', 'Objects'),
+          symbols: t('emoji.category_symbols', 'Symbols'),
+          flags: t('emoji.category_flags', 'Flags')
         }
       }
 
@@ -173,12 +170,12 @@ export const AvatarEditor: React.FC<AvatarEditorProps> = ({ onChange, children }
           <div className={styles.popover} onClick={(e) => e.stopPropagation()}>
             <div className={styles.popoverHeader}>
               <span className={styles.popoverTitle}>
-                {t('avatarEditor.personalizeIcon', '个性化图标')}
+                {t('emoji.personalize_avatar', 'Personalize Avatar')}
               </span>
               <button
                 className={styles.uploadBtnIcon}
                 onClick={triggerImageInput}
-                title={t('avatarEditor.uploadImageAsAvatar', '从本地上传图片作为头像')}
+                title={t('emoji.upload_avatar_hint', 'Upload an image from your device as avatar')}
               >
                 <ImagePlus size={16} />
               </button>

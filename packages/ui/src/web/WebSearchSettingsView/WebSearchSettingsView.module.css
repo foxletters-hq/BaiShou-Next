@@ -5,24 +5,31 @@
   padding: 24px 32px;
   padding-bottom: 32px;
   background: var(--bg-app);
-  min-height: 100%;
-  overflow: visible;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Flutter Card with Elevation 0 + Border */
 .cardSection {
   background: var(--bg-surface);
-  border: 1px solid transparent; /* outlineVariant */
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 
 
 .cardHeader {
   padding: 16px 16px 8px 16px;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .cardTitle {
@@ -45,6 +52,7 @@
 .cardBody {
   display: flex;
   flex-direction: column;
+  padding-bottom: 4px;
 }
 
 /* Radio List Tile */
@@ -117,6 +125,12 @@
   flex-direction: column;
   justify-content: center;
   flex: 1;
+}
+
+.radioTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .radioTitle {

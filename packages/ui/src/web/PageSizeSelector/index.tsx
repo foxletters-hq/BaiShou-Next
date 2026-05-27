@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Rows3 } from 'lucide-react'
 import styles from './PageSizeSelector.module.css'
@@ -14,8 +15,10 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
   value,
   options,
   onChange,
-  label = '条/页'
+  label
 }) => {
+  const { t } = useTranslation()
+  const resolvedLabel = label ?? t('common.per_page_suffix', '/ page')
   const [isOpen, setIsOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
@@ -40,7 +43,7 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
     <div className={styles.wrapper} ref={wrapperRef}>
       <button className={styles.triggerBtn} onClick={() => setIsOpen(!isOpen)}>
         <span className={styles.pageSizeValue}>{value}</span>
-        <span className={styles.pageSizeUnit}>{label}</span>
+        <span className={styles.pageSizeUnit}>{resolvedLabel}</span>
         <Rows3 size={14} className={styles.icon} />
       </button>
 
@@ -57,11 +60,11 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
             />
             <motion.div
               className={styles.dropdownContent}
-              initial={{ opacity: 0, y: -8, scale: 0.96 }}
+              initial={{ opacity: 0, y: 8, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{
                 opacity: 0,
-                y: -6,
+                y: 6,
                 scale: 0.96,
                 transition: { duration: 0.12 }
               }}
@@ -80,7 +83,7 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
               </div>
               <div className={styles.divider} />
               <div className={styles.footer}>
-                <span className={styles.footerText}>{label}</span>
+                <span className={styles.footerText}>{resolvedLabel}</span>
               </div>
             </motion.div>
           </>

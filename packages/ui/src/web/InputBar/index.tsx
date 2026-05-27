@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useImperativeHandle } from 'react'
+import React, { useState, useRef, useEffect, useImperativeHandle, useCallback } from 'react'
 import styles from './InputBar.module.css'
 import type { MockChatAttachment } from '@baishou/shared'
 
@@ -19,7 +19,9 @@ import {
   Square,
   Volume2,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { MdSend, MdStop, MdApps } from 'react-icons/md'
 
@@ -73,7 +75,58 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(
       return false
     })
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const toolbarViewportRef = useRef<HTMLDivElement>(null)
     const toast = useToast()
+    const [toolbarOverflow, setToolbarOverflow] = useState(false)
+    const [toolbarCanScrollLeft, setToolbarCanScrollLeft] = useState(false)
+    const [toolbarCanScrollRight, setToolbarCanScrollRight] = useState(false)
+
+    const updateToolbarScrollState = useCallback(() => {
+      const el = toolbarViewportRef.current
+      if (!el) {
+        setToolbarOverflow(false)
+        setToolbarCanScrollLeft(false)
+        setToolbarCanScrollRight(false)
+        return
+      }
+      const { scrollLeft, scrollWidth, clientWidth } = el
+      const overflow = scrollWidth - clientWidth > 4
+      setToolbarOverflow(overflow)
+      setToolbarCanScrollLeft(overflow && scrollLeft > 4)
+      setToolbarCanScrollRight(overflow && scrollLeft < scrollWidth - clientWidth - 4)
+    }, [])
+
+    const scrollToolbar = (direction: -1 | 1) => {
+      toolbarViewportRef.current?.scrollBy({ left: direction * 180, behavior: 'smooth' })
+    }
+
+    useEffect(() => {
+      if (!showToolbar) return
+
+      const sync = () => updateToolbarScrollState()
+      let disposed = false
+      let resizeObserver: ResizeObserver | undefined
+      let viewportEl: HTMLDivElement | null = null
+
+      const attach = () => {
+        viewportEl = toolbarViewportRef.current
+        if (!viewportEl || disposed) return
+        sync()
+        viewportEl.addEventListener('scroll', sync, { passive: true })
+        resizeObserver = new ResizeObserver(sync)
+        resizeObserver.observe(viewportEl)
+      }
+
+      attach()
+      const retryId = window.setTimeout(attach, 240)
+
+      return () => {
+        disposed = true
+        window.clearTimeout(retryId)
+        if (viewportEl) viewportEl.removeEventListener('scroll', sync)
+        resizeObserver?.disconnect()
+      }
+    }, [showToolbar, updateToolbarScrollState])
 
     useImperativeHandle(ref, () => ({
       insertText: (newText) => {
@@ -418,8 +471,27 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(
                 animate={{ height: 'auto', opacity: 1, marginBottom: 2 }}
                 exit={{ height: 0, opacity: 0, marginBottom: 0 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
+                onAnimationComplete={updateToolbarScrollState}
               >
-                <div className={styles.toolbarScroll}>
+                <div className={styles.toolbarRow}>
+                  {toolbarOverflow && (
+                    <button
+                      type="button"
+                      className={styles.toolbarScrollBtn}
+                      onClick={() => scrollToolbar(-1)}
+                      disabled={!toolbarCanScrollLeft}
+                      aria-label={t('input.toolbar_scroll_left', '向左滚动工具栏')}
+                      title={t('input.toolbar_scroll_left', '向左滚动')}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                  )}
+                  <div
+                    ref={toolbarViewportRef}
+                    className={styles.toolbarViewport}
+                    onScroll={updateToolbarScrollState}
+                  >
+                    <div className={styles.toolbarScroll}>
                   <QuickActionChip
                     icon={<Paperclip size={14} />}
                     label={t('input.upload_attachment', '上传附件')}
@@ -467,6 +539,20 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(
                       onClick={onToggleTtsMode}
                     />
                   )}
+                    </div>
+                  </div>
+                  {toolbarOverflow && (
+                    <button
+                      type="button"
+                      className={styles.toolbarScrollBtn}
+                      onClick={() => scrollToolbar(1)}
+                      disabled={!toolbarCanScrollRight}
+                      aria-label={t('input.toolbar_scroll_right', '向右滚动工具栏')}
+                      title={t('input.toolbar_scroll_right', '向右滚动')}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -481,7 +567,7 @@ export const InputBar = React.forwardRef<InputBarRef, InputBarProps>(
                 <textarea
                   ref={textareaRef}
                   className={`${styles.textarea} ${isExpanded ? styles.textareaExpanded : ''}`}
-                  placeholder={t('agent.chat.input_hint')}
+                  placeholder={t('agent.chat.input_hint', 'Type a message...')}
                   value={text}
                   onChange={handleTextChange}
                   onKeyDown={handleKeyDown}

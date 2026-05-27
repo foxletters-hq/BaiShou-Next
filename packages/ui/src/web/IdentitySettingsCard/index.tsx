@@ -112,12 +112,12 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
     const k = editKeyInput.trim()
     const v = editValInput.trim()
     if (!k || !v) {
-      toast.showError(t('settings.empty_fact_error', '键名和键值不能为空'))
+      toast.showError(t('settings.empty_identity_entry_error', '标签和内容不能为空'))
       return
     }
 
     if (k !== editingKey && currentFacts[k]) {
-      toast.showError(t('settings.duplicate_fact_error', '该特征键名已存在'))
+      toast.showError(t('settings.duplicate_identity_entry_error', '该标签已存在'))
       return
     }
 
@@ -197,7 +197,8 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
             <MdOutlineBadge size={20} className={styles.primaryIcon} />
             <span className={styles.headerText}>{t('settings.identity_card', '身份卡')}</span>
             <span className={styles.headerFactCount}>
-              {Object.keys(currentFacts).length} {t('settings.items', '条')}
+              {Object.keys(currentFacts).length}{' '}
+              {t('settings.identity_entry_count_suffix', '条')}
             </span>
           </div>
 
@@ -256,11 +257,11 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
           <div className={styles.factsContainer}>
             <div className={styles.factsHeader}>
               <span className={styles.factsHeaderTitle}>
-                {t('settings.identity_facts_title', '属性设置')}
+                {t('settings.identity_facts_title', '身份条目')}
               </span>
               <button className={styles.addFactButton} onClick={handleAddFact}>
                 <MdAdd size={16} />
-                {t('settings.add_identity_entry_btn', '添加属性')}
+                {t('settings.add_identity_entry', '添加条目')}
               </button>
             </div>
 
@@ -312,25 +313,27 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
         isOpen={isFactModalOpen}
         onClose={() => setIsFactModalOpen(false)}
         title={
-          editingKey ? t('settings.edit_fact', '编辑特征') : t('settings.new_fact', '新增特征')
+          editingKey
+            ? t('settings.edit_identity_entry', '编辑条目')
+            : t('settings.add_identity_entry', '添加条目')
         }
       >
         <div className={styles.modalBody}>
           <div className={styles.modalField}>
-            <label>{t('settings.fact_key', '特征名')}</label>
+            <label>{t('settings.identity_key', '标签')}</label>
             <Input
               value={editKeyInput}
               onChange={(e) => setEditKeyInput(e.target.value)}
-              placeholder={t('settings.fact_key_placeholder', '如：年龄、性格、身份')}
+              placeholder={t('settings.identity_key_hint', '如：生日、职业')}
               autoFocus
             />
           </div>
           <div className={styles.modalField}>
-            <label>{t('settings.fact_value', '特征值')}</label>
+            <label>{t('settings.identity_value', '内容')}</label>
             <Input
               value={editValInput}
               onChange={(e) => setEditValInput(e.target.value)}
-              placeholder={t('settings.fact_value_placeholder', '如：25岁、傲娇、魔法使')}
+              placeholder={t('settings.identity_value_hint', '如：2000-05-20')}
               onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === 'Enter') saveEdit()
               }}

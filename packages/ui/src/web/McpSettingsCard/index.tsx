@@ -1,9 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdOutlineHub, MdOutlineLan, MdExpandMore, MdExpandLess, MdHelpOutline, MdBuild, MdChevronRight } from 'react-icons/md'
+import { MdOutlineHub, MdOutlineLan, MdExpandMore, MdExpandLess, MdBuild, MdChevronRight } from 'react-icons/md'
 import '../shared/SettingsListTile.css'
 import styles from './McpSettingsCard.module.css'
-import { Tooltip } from '../Tooltip/Tooltip'
+import { HelpTooltip } from '../HelpTooltip'
 import { useDialog } from '../Dialog'
 
 export interface McpServerConfig {
@@ -34,8 +34,8 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {tools.map((tItem: any) => {
               const cleanName = tItem.displayName || tItem.name.replace(/^baishou_/, '')
-              const localizedTitle = t(`agent.tools.${cleanName}`, cleanName)
-              const localizedDesc = t(`agent.tools.${cleanName}_desc`, tItem.description)
+              const localizedTitle = t(`agent.tools.${cleanName}`, cleanName) as string
+              const localizedDesc = t(`agent.tools.${cleanName}_desc`, tItem.description) as string
 
               return (
                 <div
@@ -110,28 +110,14 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title" style={{ display: 'inline-flex', alignItems: 'center' }}>
             {t('settings.mcp_title', 'MCP Server')}
-            <Tooltip
+            <HelpTooltip
               content={t(
                 'settings.tooltip_mcp_server',
                 '允许外部 AI 客户端（如 Cursor、Windsurf、VS Code Claude Dev 插件等）通过 MCP 协议调用白守的数据与工具。'
               )}
-            >
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--color-on-surface-variant)',
-                  cursor: 'pointer',
-                  transition: 'color 0.2s ease',
-                  marginLeft: '4px'
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-on-surface-variant)')}
-              >
-                <MdHelpOutline size={16} />
-              </span>
-            </Tooltip>
+              size={16}
+              style={{ marginLeft: '4px' }}
+            />
             {config.mcpEnabled && <div className={styles.statusIndicator} />}
           </span>
           <span className="settings-list-tile-subtitle">

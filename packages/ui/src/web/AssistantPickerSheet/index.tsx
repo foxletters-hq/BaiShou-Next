@@ -20,6 +20,7 @@ import { CodeMirrorEditor } from '../DiaryEditor/CodeMirrorEditor'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import { useDialog } from '../Dialog'
 import { AvatarEditor } from '../AvatarEditor'
+import { HelpTooltip } from '../HelpTooltip'
 import styles from './AssistantPickerSheet.module.css'
 
 // 使用与管理页一致的核心 Contract
@@ -192,12 +193,16 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
         {/* ─── 左侧机能筛选屏 ─── */}
         <div className={styles.sidebar}>
           <div className={styles.sidebarHeader}>
-            <span className={styles.headerTitle}>{t('assistant.select_title', '选择伙伴')}</span>
+            <span className={styles.headerTitle}>
+              {t('agent.assistant.select_title', 'Select Companion')}
+            </span>
           </div>
 
           <div className={styles.listArea}>
             {filteredAssistants.length === 0 ? (
-              <div className={styles.emptyText}>{t('assistant.no_assistant', '无伙伴')}</div>
+              <div className={styles.emptyText}>
+                {t('agent.assistant.no_assistant', 'No Companion')}
+              </div>
             ) : (
               filteredAssistants.map((ast) => {
                 const isSelected = activeAssistant?.id === ast.id
@@ -233,11 +238,10 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                         <span className={styles.itemName}>{ast.name}</span>
                         {isCurrent && (
                           <span className={styles.currentBadge}>
-                            {t('agent.assistant.current', '当前')}
+                            {t('agent.assistant.current', 'Current')}
                           </span>
                         )}
                       </div>
-                      <div className={styles.itemDesc}>{ast.description}</div>
                     </div>
 
                     <div className={styles.actionsWrapper}>
@@ -296,7 +300,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                 if (onCreateNew) onCreateNew()
               }}
             >
-              <Plus size={16} /> {t('assistant.create_title', '创建伙伴')}
+              <Plus size={16} /> {t('agent.assistant.create_title', 'Create Companion')}
             </button>
           </div>
         </div>
@@ -310,7 +314,9 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
           {!activeAssistant ? (
             <div className={styles.emptyDetail}>
               <Star size={48} opacity={0.3} />
-              <span>{t('assistant.picker_no_selection', '选择一个伙伴查看详情')}</span>
+              <span>
+                {t('agent.assistant.picker_no_selection', 'Select a companion to view details')}
+              </span>
             </div>
           ) : (
             <div className={styles.detailContent}>
@@ -353,7 +359,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                 <div className={styles.detailTitles}>
                   <h2
                     onClick={handleEditName}
-                    title={t('assistant.clickToRename', '点击修改名称')}
+                    title={t('agent.assistant.click_to_rename', 'Click to rename')}
                     style={{
                       cursor: 'pointer',
                       display: 'inline-flex',
@@ -363,7 +369,6 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                   >
                     {activeAssistant.name} <Edit2 size={16} color="var(--text-secondary)" />
                   </h2>
-                  <p>{activeAssistant.description}</p>
                 </div>
               </div>
 
@@ -379,7 +384,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                   className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
                   onClick={() => setActiveTab('memory')}
                 >
-                  {t('agent.assistant.memory_label', '记忆')}
+                  {t('agent.assistant.memory_label', 'Memory')}
                 </div>
               </div>
 
@@ -519,8 +524,14 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                         className={styles.sectionTitle}
                         style={{ margin: 0, fontSize: 14, fontWeight: 600 }}
                       >
-                        {t('agent.assistant.context_window_label', '上下文窗口')}
+                        {t('agent.assistant.context_window_label', 'Context Turns')}
                       </h3>
+                      <HelpTooltip
+                        content={t(
+                          'agent.assistant.context_window_desc',
+                          'How many recent conversation turns are sent to the model. One turn starts with your message and includes the assistant reply and any tool calls in that turn. More turns mean longer memory but higher token usage.'
+                        )}
+                      />
                     </div>
 
                     {/* Context Window */}
@@ -615,8 +626,14 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                         className={styles.sectionTitle}
                         style={{ margin: 0, fontSize: 14, fontWeight: 600 }}
                       >
-                        {t('agent.assistant.compress_label', '自动压缩')}
+                        {t('agent.assistant.compress_label', 'Auto Compress')}
                       </h3>
+                      <HelpTooltip
+                        content={t(
+                          'agent.assistant.compress_tooltip',
+                          'When conversation context exceeds the set Token threshold, the system will automatically compress early conversation content, keeping recent conversation rounds.'
+                        )}
+                      />
                     </div>
                     <div
                       style={{
@@ -713,7 +730,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                                 color: 'var(--text-secondary)'
                               }}
                             >
-                              {t('agent.assistant.compress_keep_turns_label', '保留最后交互轮数')}
+                              {t('agent.assistant.compress_keep_turns_label', 'Keep Recent Turns')}
                             </span>
                             <div style={{ flex: 1 }}></div>
                             <span
@@ -723,7 +740,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                                 color: 'var(--color-primary)'
                               }}
                             >
-                              {t('agent.assistant.compress_keep_turns_unit', '$count 轮').replace(
+                              {t('agent.assistant.compress_keep_turns_unit', '$count turns').replace(
                                 '$count',
                                 String(editingCompressKeepTurns)
                               )}
@@ -758,8 +775,8 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                 >
                   <CheckSquare size={18} />{' '}
                   {activeAssistant.id === currentAssistantId
-                    ? t('agent.assistant.current_partner', '当前伙伴')
-                    : t('agent.chat.select_partner', '选择伙伴')}
+                    ? t('agent.assistant.current_partner', 'Current Companion')
+                    : t('agent.chat.select_partner', 'Select Companion')}
                 </button>
               </div>
             </div>
@@ -848,7 +865,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
                   color: 'var(--text-primary)'
                 }}
               >
-                {t('agent.assistant.delete_confirm', '是否确认删除该伙伴？')}
+                {t('agent.assistant.delete_confirm_title', 'Delete Companion?')}
               </h3>
               <p
                 style={{

@@ -74,7 +74,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
         {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerTitle}>
-            <h2>{t('models.switch_model', '切换计算模型')}</h2>
+            <h2>{t('models.switch_model', 'Switch Model')}</h2>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>
             ✕
@@ -125,7 +125,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
                           {modelId}
                           {isVisionModel(modelId) && (
                             <MdVisibility
-                              title={t('models.vision_supported', '支持视觉多模态')}
+                              title={t('models.vision_supported', 'Supports vision / multimodal')}
                               style={{
                                 marginLeft: 6,
                                 fontSize: 13,
