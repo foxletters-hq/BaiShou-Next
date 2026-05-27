@@ -118,15 +118,19 @@ _agent/
 .antigravitycli/
 opencode.json
 AGENTS.md
+SCOPE.md
 
 # ─── 临时文件 ──────────────────────────────────────────────
 tmp/
 temp/
+**/.temp-*
 *.tmp
 *.bak
 *.orig
 *.txt
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 scratch_*
 code-review-worktree/
