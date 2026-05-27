@@ -120,12 +120,7 @@ export class WebSearchService {
       return this.searchDuckDuckGo(query, maxResults)
     }
     if (engine === 'local-bing') {
-      return this.searchLocalBing(
-        query,
-        maxResults,
-        webSearchResultFetcher,
-        plainSnippetLength
-      )
+      return this.searchLocalBing(query, maxResults, webSearchResultFetcher, plainSnippetLength)
     }
     if (engine === 'local-google') {
       return this.searchLocalGoogle(

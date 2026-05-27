@@ -1,5 +1,9 @@
 import { ToolVectorStore, ToolMessageSearcher, VectorSearchResult } from '../agent.tool'
-import { SqliteHybridSearchRepository, MessageRepository, type AppDatabase } from '@baishou/database'
+import {
+  SqliteHybridSearchRepository,
+  MessageRepository,
+  type AppDatabase
+} from '@baishou/database'
 
 export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   constructor(
@@ -89,11 +93,11 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       .limit(1)
 
     if (rows.length === 0) return null
-    const s = rows[0]
+    const s = rows[0]!
     return {
       content: s.content,
-      generatedAt: s.generatedAt.toISOString().split('T')[0],
-      endDateIso: s.endDate.toISOString().split('T')[0]
+      generatedAt: s.generatedAt.toISOString().split('T')[0]!,
+      endDateIso: s.endDate.toISOString().split('T')[0]!
     }
   }
 

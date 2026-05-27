@@ -182,8 +182,41 @@ export class AgentSessionService {
       if (!drizzleDb) {
         throw new Error('Agent database connection is unavailable')
       }
-      const rawClient = (drizzleDb?.session?.client || drizzleDb) as ISqlExecutor
-      const hsRepo = new SqliteHybridSearchRepository(rawClient)
+      const rawClient = (drizzleDb?.session?.client || drizzleDb) as any
+      const clientExecutor: ISqlExecutor =
+        typeof rawClient.execute === 'function'
+          ? rawClient
+          : {
+              execute: async (statement: string | { sql: string; args?: any[] }, args?: any[]) => {
+                let sqlStr = ''
+                let sqlArgs: any[] = []
+                if (typeof statement === 'string') {
+                  sqlStr = statement
+                  sqlArgs = args || []
+                } else {
+                  sqlStr = statement.sql
+                  sqlArgs = statement.args || []
+                }
+
+                if (typeof rawClient.prepare !== 'function') {
+                  throw new Error('Database client lacks both execute and prepare methods')
+                }
+
+                const stmt = rawClient.prepare(sqlStr)
+                if (
+                  sqlStr.trim().toUpperCase().startsWith('SELECT') ||
+                  sqlStr.trim().toUpperCase().startsWith('PRAGMA')
+                ) {
+                  const rows = stmt.all(...sqlArgs)
+                  return { rows }
+                } else {
+                  const res = stmt.run(...sqlArgs)
+                  return { rows: [], ...res }
+                }
+              }
+            }
+
+      const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
       const msgRepo = new MessageRepository(drizzleDb)
 
       // memory_embeddings 表由 Drizzle ORM 迁移统一管理，不再在此处建表

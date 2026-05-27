@@ -23,7 +23,12 @@ const mockStorage: IEmbeddingStorage = {
   getUnmigratedCount: vi.fn(),
   getUnmigratedBackupChunks: vi.fn(),
   markBackupChunkMigrated: vi.fn(),
-  verifyMigrationComplete: vi.fn()
+  verifyMigrationComplete: vi.fn(),
+  createRollbackSnapshot: vi.fn(),
+  restoreRollbackSnapshot: vi.fn(),
+  dropRollbackSnapshot: vi.fn(),
+  hasRollbackSnapshot: vi.fn().mockResolvedValue(false),
+  getCurrentEmbeddingMeta: vi.fn()
 }
 
 describe('EmbeddingService', () => {

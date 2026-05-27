@@ -13,13 +13,18 @@ import { splitTextIntoChunks, normalizeEmbeddingVector } from './embedding-chunk
 import {
   migrateEmbeddings as runMigrateEmbeddings,
   continueMigration as runContinueMigration,
-  type EmbeddingMigrationDeps
+  type EmbeddingMigrationDeps,
+  type MigrationLifecycle
 } from './embedding-migration'
+import { migrationControl, type MigrationControl } from './migration-control'
+import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 
 /** Migration path uses createMigrationBackup, clearAndReinitEmbeddings, doReEmbedFromBackup (embedding-migration.ts). */
 
 export class EmbeddingService {
   private readonly migrationRef = { current: false }
+  private rollbackConfig?: EmbeddingMigrationRollbackConfig
+  private migrationLifecycle?: MigrationLifecycle
 
   constructor(
     private readonly config: IEmbeddingConfig,
@@ -262,12 +267,32 @@ export class EmbeddingService {
     await this.config.setGlobalEmbeddingDimension(0)
   }
 
-  public async *migrateEmbeddings(): AsyncGenerator<MigrationProgress, void, unknown> {
-    yield* runMigrateEmbeddings(this.migrationDeps(), this.migrationRef)
+  public setMigrationLifecycle(lifecycle: MigrationLifecycle): void {
+    this.migrationLifecycle = lifecycle
   }
 
-  public async *continueMigration(): AsyncGenerator<MigrationProgress, void, unknown> {
-    yield* runContinueMigration(this.migrationDeps(), this.migrationRef)
+  public async *migrateEmbeddings(
+    rollbackConfig?: EmbeddingMigrationRollbackConfig
+  ): AsyncGenerator<MigrationProgress, void, unknown> {
+    this.rollbackConfig = rollbackConfig
+    yield* runMigrateEmbeddings(this.migrationDeps(), this.migrationRef, migrationControl)
+  }
+
+  public async *continueMigration(
+    rollbackConfig?: EmbeddingMigrationRollbackConfig
+  ): AsyncGenerator<MigrationProgress, void, unknown> {
+    if (rollbackConfig) {
+      this.rollbackConfig = rollbackConfig
+    }
+    yield* runContinueMigration(this.migrationDeps(), this.migrationRef, migrationControl)
+  }
+
+  public requestMigrationAbort(): void {
+    migrationControl.requestAbort()
+  }
+
+  public getMigrationControl(): MigrationControl {
+    return migrationControl
   }
 
   public splitIntoChunks(text: string): ChunkResult[] {
@@ -283,7 +308,9 @@ export class EmbeddingService {
       config: this.config,
       db: this.db,
       isConfigured: this.isConfigured,
-      retryEmbed: (action, label) => this.retryEmbed(action, label)
+      retryEmbed: (action, label) => this.retryEmbed(action, label),
+      rollbackConfig: this.rollbackConfig,
+      lifecycle: this.migrationLifecycle
     }
   }
 

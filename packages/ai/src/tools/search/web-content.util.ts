@@ -23,11 +23,7 @@ export async function limitWebPlainText(
   const limit = options.limit ?? DEFAULT_WEB_SEARCH_LIMITS.plainSnippetLength
   if (plainText.length <= limit) return plainText
 
-  if (
-    options.ragEnabled !== false &&
-    options.query &&
-    options.embeddingService?.isConfigured
-  ) {
+  if (options.ragEnabled !== false && options.query && options.embeddingService?.isConfigured) {
     return SearchRagService.extractRelevantChunks(
       options.embeddingService,
       plainText,

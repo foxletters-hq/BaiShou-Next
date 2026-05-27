@@ -1,47 +1,83 @@
 import { embed } from 'ai'
-import { logger } from '@baishou/shared'
+import {
+  logger,
+  RAG_MIGRATION_STATUS,
+  mapMigrationBackupRow,
+  assertMigrationBackupRow,
+  type EmbeddingMigrationRollbackConfig
+} from '@baishou/shared'
 import type { IEmbeddingConfig, IEmbeddingStorage, MigrationProgress } from './embedding.types'
 import { normalizeEmbeddingVector } from './embedding-chunk'
+import { MigrationControl, MIGRATION_CONSECUTIVE_FAILURE_LIMIT } from './migration-control'
 
 export type EmbeddingMigrationDeps = {
   config: IEmbeddingConfig
   db: IEmbeddingStorage
   isConfigured: boolean
   retryEmbed: (action: () => Promise<void>, label?: string) => Promise<void>
+  rollbackConfig?: EmbeddingMigrationRollbackConfig
+  lifecycle?: MigrationLifecycle
+}
+
+export type MigrationLifecycle = {
+  markInProgress: (rollbackConfig?: EmbeddingMigrationRollbackConfig) => Promise<void>
+  markCompleted: () => Promise<void>
+  markInterrupted: () => Promise<void>
+  markIdle: () => Promise<void>
+}
+
+type BackupChunkRow = Record<string, unknown>
+
+function normalizeBackupChunk(chunk: BackupChunkRow) {
+  return assertMigrationBackupRow(mapMigrationBackupRow(chunk))
 }
 
 export async function* migrateEmbeddings(
   deps: EmbeddingMigrationDeps,
-  isMigratingRef: { current: boolean }
+  isMigratingRef: { current: boolean },
+  control: MigrationControl
 ): AsyncGenerator<MigrationProgress, void, unknown> {
   if (isMigratingRef.current) {
-    yield { total: 0, completed: 0, status: '已经有迁移任务在运行' }
+    yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.alreadyRunning }
     return
   }
   isMigratingRef.current = true
+  control.reset()
   try {
     if (!deps.isConfigured) {
-      yield { total: 0, completed: 0, status: '嵌入模型未配置' }
+      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.modelNotConfigured }
       return
     }
     const modelId = deps.config.getGlobalEmbeddingModelId()
     const provider = await deps.config.getProviderInstance()
     if (!provider) {
-      yield { total: 0, completed: 0, status: '供应商未找到' }
+      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.providerNotFound }
       return
     }
 
     const clientModel = provider.getEmbeddingModel(modelId)
-    yield { total: 0, completed: 0, status: '正在备份元数据...' }
-    const total = await deps.db.createMigrationBackup()
 
-    if (total === 0) {
-      await deps.db.dropMigrationBackup()
-      yield { total: 0, completed: 0, status: '没有需要迁移的数据' }
+    yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.backingUp }
+    const rollbackCount = await deps.db.createRollbackSnapshot()
+    if (rollbackCount === 0) {
+      await deps.db.dropRollbackSnapshot()
+      await deps.lifecycle?.markIdle()
+      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.noData }
       return
     }
 
-    yield { total, completed: 0, status: '正在检测新模型维度...' }
+    const total = await deps.db.createMigrationBackup()
+    if (total === 0) {
+      await deps.db.dropMigrationBackup()
+      await deps.db.dropRollbackSnapshot()
+      await deps.lifecycle?.markIdle()
+      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.noData }
+      return
+    }
+
+    await deps.lifecycle?.markInProgress(deps.rollbackConfig)
+
+    yield { total, completed: 0, statusKey: RAG_MIGRATION_STATUS.detectingDimension }
     let newDimension = 0
     try {
       const { embedding } = await embed({ model: clientModel, value: 'hi' })
@@ -51,14 +87,17 @@ export async function* migrateEmbeddings(
     }
 
     if (newDimension <= 0) {
-      yield { total, completed: 0, status: '新模型维度检测失败，迁移中止' }
+      await deps.db.dropMigrationBackup()
+      await deps.db.dropRollbackSnapshot()
+      await deps.lifecycle?.markIdle()
+      yield { total, completed: 0, statusKey: RAG_MIGRATION_STATUS.dimensionCheckFailed }
       return
     }
 
     await deps.db.clearAndReinitEmbeddings(newDimension)
     await deps.config.setGlobalEmbeddingDimension(newDimension)
 
-    yield* reEmbedFromBackup(deps, clientModel, modelId, total)
+    yield* reEmbedFromBackup(deps, clientModel, modelId, total, control)
   } finally {
     isMigratingRef.current = false
   }
@@ -66,22 +105,24 @@ export async function* migrateEmbeddings(
 
 export async function* continueMigration(
   deps: EmbeddingMigrationDeps,
-  isMigratingRef: { current: boolean }
+  isMigratingRef: { current: boolean },
+  control: MigrationControl
 ): AsyncGenerator<MigrationProgress, void, unknown> {
   if (isMigratingRef.current) {
-    yield { total: 0, completed: 0, status: '已经有迁移任务在运行' }
+    yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.alreadyRunning }
     return
   }
   isMigratingRef.current = true
+  control.reset()
   try {
     if (!deps.isConfigured) {
-      yield { total: 0, completed: 0, status: '嵌入模型未配置' }
+      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.modelNotConfigured }
       return
     }
     const modelId = deps.config.getGlobalEmbeddingModelId()
     const provider = await deps.config.getProviderInstance()
     if (!provider) {
-      yield { total: 0, completed: 0, status: '供应商未找到' }
+      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.providerNotFound }
       return
     }
 
@@ -90,13 +131,57 @@ export async function* continueMigration(
 
     if (remaining === 0) {
       await deps.db.dropMigrationBackup()
-      yield { total: 0, completed: 0, status: '迁移已完成' }
+      await deps.db.dropRollbackSnapshot()
+      await deps.lifecycle?.markCompleted()
+      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.finished }
       return
     }
 
-    yield* reEmbedFromBackup(deps, clientModel, modelId, remaining)
+    await deps.lifecycle?.markInProgress(deps.rollbackConfig)
+
+    yield* reEmbedFromBackup(deps, clientModel, modelId, remaining, control)
   } finally {
     isMigratingRef.current = false
+  }
+}
+
+async function* abortMigration(
+  deps: EmbeddingMigrationDeps,
+  total: number,
+  completed: number,
+  failed: number,
+  statusKey: string,
+  statusParams?: Record<string, string | number>
+): AsyncGenerator<MigrationProgress, void, unknown> {
+  yield {
+    total,
+    completed,
+    failed,
+    statusKey: RAG_MIGRATION_STATUS.aborting
+  }
+
+  try {
+    await deps.db.restoreRollbackSnapshot()
+    if (deps.rollbackConfig && deps.config.restoreEmbeddingModelConfig) {
+      await deps.config.restoreEmbeddingModelConfig(deps.rollbackConfig)
+    }
+    await deps.db.dropMigrationBackup()
+    await deps.db.dropRollbackSnapshot()
+  } catch (e) {
+    logger.error('Failed to restore embedding migration rollback snapshot', { error: e })
+    throw e
+  }
+
+  await deps.lifecycle?.markIdle()
+
+  yield {
+    total,
+    completed,
+    failed,
+    statusKey,
+    statusParams,
+    aborted: true,
+    rollbackApplied: true
   }
 }
 
@@ -104,48 +189,95 @@ async function* reEmbedFromBackup(
   deps: EmbeddingMigrationDeps,
   aiModel: any,
   modelId: string,
-  total: number
+  total: number,
+  control: MigrationControl
 ): AsyncGenerator<MigrationProgress, void, unknown> {
-  yield { total, completed: 0, status: '开始重嵌入...' }
+  yield { total, completed: 0, statusKey: RAG_MIGRATION_STATUS.reembedding }
 
-  const chunks = await deps.db.getUnmigratedBackupChunks()
   let completed = 0
   let failed = 0
+  let consecutiveFailures = 0
 
-  for (const chunk of chunks) {
-    try {
-      await deps.retryEmbed(async () => {
-        const { embedding } = await embed({
-          model: aiModel,
-          value: chunk.chunk_text
-        })
-
-        await deps.db.insertEmbedding({
-          id: chunk.embedding_id,
-          sourceType: chunk.source_type,
-          sourceId: chunk.source_id,
-          groupId: chunk.group_id,
-          chunkIndex: chunk.chunk_index,
-          chunkText: chunk.chunk_text,
-          metadataJson: chunk.metadata_json,
-          embedding: normalizeEmbeddingVector(embedding),
-          modelId,
-          sourceCreatedAt: chunk.source_created_at
-        })
-
-        await deps.db.markBackupChunkMigrated(chunk.embedding_id)
-      }, `migrate chunk ${chunk.embedding_id}`)
-      completed++
-    } catch (e) {
-      failed++
-      logger.error(`Migration failed for chunk ${chunk.embedding_id}`, { error: e })
+  while (true) {
+    if (control.isAborted) {
+      yield* abortMigration(deps, total, completed, failed, RAG_MIGRATION_STATUS.cancelled)
+      return
     }
 
-    yield {
-      total,
-      completed,
-      failed,
-      status: `迁移中 ${completed}/${total}${failed > 0 ? ` (失败 ${failed})` : ''}`
+    const chunks = await deps.db.getUnmigratedBackupChunks()
+    if (chunks.length === 0) break
+
+    for (const rawChunk of chunks) {
+      if (control.isAborted) {
+        yield* abortMigration(deps, total, completed, failed, RAG_MIGRATION_STATUS.cancelled)
+        return
+      }
+
+      let chunk
+      try {
+        chunk = normalizeBackupChunk(rawChunk)
+      } catch (e) {
+        failed++
+        consecutiveFailures++
+        logger.error('Skipping invalid backup chunk during migration', { error: e, rawChunk })
+        yield buildProgressState(total, completed, failed)
+        if (consecutiveFailures >= MIGRATION_CONSECUTIVE_FAILURE_LIMIT) {
+          yield* abortMigration(
+            deps,
+            total,
+            completed,
+            failed,
+            RAG_MIGRATION_STATUS.abortedConsecutiveFailures,
+            { limit: MIGRATION_CONSECUTIVE_FAILURE_LIMIT }
+          )
+          return
+        }
+        continue
+      }
+
+      try {
+        await deps.retryEmbed(async () => {
+          const { embedding } = await embed({
+            model: aiModel,
+            value: chunk.chunkText
+          })
+
+          await deps.db.insertEmbedding({
+            id: chunk.embeddingId,
+            sourceType: chunk.sourceType,
+            sourceId: chunk.sourceId,
+            groupId: chunk.groupId,
+            chunkIndex: chunk.chunkIndex,
+            chunkText: chunk.chunkText,
+            metadataJson: chunk.metadataJson,
+            embedding: normalizeEmbeddingVector(embedding),
+            modelId,
+            sourceCreatedAt: chunk.sourceCreatedAt
+          })
+
+          await deps.db.markBackupChunkMigrated(chunk.embeddingId)
+        }, `migrate chunk ${chunk.embeddingId}`)
+        completed++
+        consecutiveFailures = 0
+      } catch (e) {
+        failed++
+        consecutiveFailures++
+        logger.error(`Migration failed for chunk ${chunk.embeddingId}`, { error: e })
+        if (consecutiveFailures >= MIGRATION_CONSECUTIVE_FAILURE_LIMIT) {
+          yield buildProgressState(total, completed, failed)
+          yield* abortMigration(
+            deps,
+            total,
+            completed,
+            failed,
+            RAG_MIGRATION_STATUS.abortedConsecutiveFailures,
+            { limit: MIGRATION_CONSECUTIVE_FAILURE_LIMIT }
+          )
+          return
+        }
+      }
+
+      yield buildProgressState(total, completed, failed)
     }
   }
 
@@ -153,18 +285,49 @@ async function* reEmbedFromBackup(
 
   if (allMigrated && noStale) {
     await deps.db.dropMigrationBackup()
+    await deps.db.dropRollbackSnapshot()
+    await deps.lifecycle?.markCompleted()
     yield {
       total,
       completed,
       failed,
-      status: `迁移完成 ✅ ${completed}/${total}`
+      statusKey: RAG_MIGRATION_STATUS.complete,
+      statusParams: { completed, total }
     }
   } else {
+    await deps.lifecycle?.markInterrupted()
+    const statusKey = !allMigrated
+      ? !noStale
+        ? RAG_MIGRATION_STATUS.verifyBoth
+        : RAG_MIGRATION_STATUS.verifyPartial
+      : RAG_MIGRATION_STATUS.verifyStale
     yield {
       total,
       completed,
       failed,
-      status: `迁移完成但校验未通过 ⚠️${!allMigrated ? ' (部分 chunk 未迁移)' : ''}${!noStale ? ' (存在旧模型数据)' : ''}`
+      statusKey,
+      statusParams: { completed, total }
     }
   }
 }
+
+function buildProgressState(total: number, completed: number, failed: number): MigrationProgress {
+  if (failed > 0) {
+    return {
+      total,
+      completed,
+      failed,
+      statusKey: RAG_MIGRATION_STATUS.inProgressWithFailures,
+      statusParams: { completed, total, failed }
+    }
+  }
+  return {
+    total,
+    completed,
+    failed,
+    statusKey: RAG_MIGRATION_STATUS.inProgress,
+    statusParams: { completed, total }
+  }
+}
+
+export { normalizeBackupChunk }
