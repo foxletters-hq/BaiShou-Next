@@ -57,8 +57,8 @@ export class SessionManagerService {
   /**
    * 获取所有会话列表（findAllSessions 的便捷别名）
    */
-  async list(limit: number = 20, offset: number = 0, assistantId?: string) {
-    return this.findAllSessions(limit, offset, assistantId)
+  async list(limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) {
+    return this.findAllSessions(limit, offset, assistantId, searchQuery)
   }
 
   async deleteSessions(ids: string[]): Promise<void> {
@@ -74,8 +74,8 @@ export class SessionManagerService {
     return this.sessionRepo.getMessagesBySession(sessionId, limit)
   }
 
-  async findAllSessions(limit: number = 20, offset: number = 0, assistantId?: string) {
-    return this.sessionRepo.findAllSessions(limit, offset, assistantId)
+  async findAllSessions(limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) {
+    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery)
   }
 
   // ========== Internal Engine ==========

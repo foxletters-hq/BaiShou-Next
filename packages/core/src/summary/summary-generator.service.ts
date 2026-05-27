@@ -1,4 +1,10 @@
-import { MissingSummary, SummaryType, logger } from '@baishou/shared'
+import {
+  MissingSummary,
+  SummaryType,
+  logger,
+  getSummaryRawDataPrefix,
+  type SummaryPromptLocale
+} from '@baishou/shared'
 import { DiaryRepository, SummaryRepository } from '@baishou/database'
 import {
   buildWeeklyPrompt,
@@ -16,7 +22,8 @@ export class SummaryGeneratorService {
     private readonly diaryRepo: DiaryRepository,
     private readonly summaryRepo: SummaryRepository,
     private readonly aiClient: SummaryAiClient,
-    private readonly customTemplates?: Record<string, string>
+    private readonly customTemplates?: Record<string, string>,
+    private readonly promptLocale: SummaryPromptLocale = 'zh'
   ) {}
 
   async *generate(target: MissingSummary, modelId: string = 'gpt-4'): AsyncGenerator<string> {
@@ -48,7 +55,8 @@ export class SummaryGeneratorService {
             week: weekNum,
             start: startStr,
             end: endStr,
-            customTemplate: this.customTemplates?.weekly
+            customTemplate: this.customTemplates?.weekly,
+            locale: this.promptLocale
           })
           break
         case SummaryType.monthly:
@@ -58,7 +66,8 @@ export class SummaryGeneratorService {
             month,
             start: startStr,
             end: endStr,
-            customTemplate: this.customTemplates?.monthly
+            customTemplate: this.customTemplates?.monthly,
+            locale: this.promptLocale
           })
           break
         case SummaryType.quarterly:
@@ -69,7 +78,8 @@ export class SummaryGeneratorService {
             quarter,
             start: startStr,
             end: endStr,
-            customTemplate: this.customTemplates?.quarterly
+            customTemplate: this.customTemplates?.quarterly,
+            locale: this.promptLocale
           })
           break
         case SummaryType.yearly:
@@ -78,7 +88,8 @@ export class SummaryGeneratorService {
             year,
             start: startStr,
             end: endStr,
-            customTemplate: this.customTemplates?.yearly
+            customTemplate: this.customTemplates?.yearly,
+            locale: this.promptLocale
           })
           break
       }
@@ -96,7 +107,8 @@ export class SummaryGeneratorService {
       )
       yield `STATUS:thinking_via_${modelId}`
 
-      const combinedPrompt = `${promptTemplate}\n\n---\n\n以下是需要总结的原始数据：\n\n${contextData}`
+      const dataPrefix = getSummaryRawDataPrefix(this.promptLocale)
+      const combinedPrompt = `${promptTemplate}\n\n---\n\n${dataPrefix}\n\n${contextData}`
       logger.info(
         `[SummaryGeneratorService] Dispatching prompt to AI client (Model: ${modelId})...`
       )

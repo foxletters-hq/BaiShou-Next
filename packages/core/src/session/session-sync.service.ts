@@ -29,7 +29,7 @@ export class SessionSyncService {
    */
   async fullScanArchives(): Promise<void> {
     const allFiles = await this.fileService.listAllSessions()
-    const allDbSessions = await this.sessionRepo.findAllSessions()
+    const allDbSessions = await this.sessionRepo.findAllSessions(-1)
 
     // 逆向覆写：将存在于 File 系统的数据全部更新倒入 SQLite 中
     for (const f of allFiles) {
