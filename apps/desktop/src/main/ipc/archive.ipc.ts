@@ -1,12 +1,14 @@
-import { ipcMain } from 'electron'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { translateMain } from '@baishou/shared'
 import { DesktopArchiveService } from '../services/archive.service'
 import { vaultService, pathService } from './vault.ipc'
 
 export const archiveService = new DesktopArchiveService(pathService, vaultService)
 
 export function registerArchiveIPC() {
-  ipcMain.handle('archive:export', async () => {
-    return await archiveService.exportToUserDevice()
+  ipcMain.handle('archive:export', async (event, locale?: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return await archiveService.exportToUserDevice(locale, win)
   })
 
   ipcMain.handle(
@@ -16,12 +18,16 @@ export function registerArchiveIPC() {
     }
   )
 
-  ipcMain.handle('archive:pick-zip', async (event) => {
-    const { dialog, BrowserWindow } = require('electron')
+  ipcMain.handle('archive:pick-zip', async (event, locale?: string) => {
     const win = BrowserWindow.fromWebContents(event.sender)
-    const result = await dialog.showOpenDialog(win, {
-      title: '选择白守备份文件 (ZIP)',
-      filters: [{ name: 'ZIP Archives', extensions: ['zip'] }],
+    const result = await dialog.showOpenDialog((win || undefined) as any, {
+      title: translateMain(locale, 'settings.archive_pick_zip_title', 'Select BaiShou backup (ZIP)'),
+      filters: [
+        {
+          name: translateMain(locale, 'settings.archive_zip_filter_name', 'ZIP Archives'),
+          extensions: ['zip']
+        }
+      ],
       properties: ['openFile']
     })
     return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]

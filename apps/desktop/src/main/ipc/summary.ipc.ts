@@ -14,7 +14,12 @@ import {
   handleBuildSharedContext
 } from '@baishou/core'
 import { settingsManager } from './settings.ipc'
-import { logger, parseDateStr, formatLocalDate } from '@baishou/shared'
+import {
+  logger,
+  parseDateStr,
+  formatLocalDate,
+  resolveSummaryTemplatesForGeneration
+} from '@baishou/shared'
 import { SummaryQueueService } from '../services/summary-queue.service'
 import { pathService } from './vault.ipc'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
@@ -76,13 +81,15 @@ function ensureQueueReady(): void {
     } as any
 
     const summaryConfig = await settingsManager.get<any>('summary_config')
-    const customTemplates = summaryConfig?.instructions
+    const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig)
+    const promptLocale = summaryConfig?.promptLocale ?? 'zh'
 
     return new SummaryGeneratorService(
       diaryRepoAdapter,
       summaryRepo,
       buildSummaryAiClient(),
-      customTemplates
+      customTemplates as Record<string, string>,
+      promptLocale
     )
   })
   _queueInitialized = true

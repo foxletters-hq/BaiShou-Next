@@ -1,4 +1,5 @@
-import { app, dialog } from 'electron'
+import { app, dialog, type BrowserWindow } from 'electron'
+import { translateMain } from '@baishou/shared'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
@@ -29,23 +30,31 @@ export class DesktopArchiveService implements IArchiveService {
     return new ZipExporter(this.pathService).exportToTempFile()
   }
 
-  public async exportToUserDevice(): Promise<string | null> {
-    const zipPath = await this.exportToTempFile()
-    if (!zipPath) return null
-
+  public async exportToUserDevice(
+    locale?: string,
+    parentWindow?: BrowserWindow | null
+  ): Promise<string | null> {
     const dt = new Date()
     const ts = `${dt.getFullYear()}${(dt.getMonth() + 1).toString().padStart(2, '0')}${dt.getDate().toString().padStart(2, '0')}_${dt.getHours().toString().padStart(2, '0')}${dt.getMinutes().toString().padStart(2, '0')}`
     const defaultName = `BaiShou_Vault_Backup_${ts}.zip`
 
-    const { canceled, filePath } = await dialog.showSaveDialog({
-      title: '导出白守数据备份',
-      defaultPath: defaultName,
-      filters: [{ name: 'ZIP Archives', extensions: ['zip'] }]
-    })
+    const { canceled, filePath } = await dialog.showSaveDialog(
+      (parentWindow || undefined) as any,
+      {
+        title: translateMain(locale, 'settings.archive_export_save_title', 'Export BaiShou data backup'),
+        defaultPath: defaultName,
+        filters: [
+          {
+            name: translateMain(locale, 'settings.archive_zip_filter_name', 'ZIP Archives'),
+            extensions: ['zip']
+          }
+        ]
+      }
+    )
 
     if (canceled || !filePath) return null
 
-    await fsp.copyFile(zipPath, filePath)
+    await new ZipExporter(this.pathService).exportToPath(filePath)
     return filePath
   }
 

@@ -1,11 +1,13 @@
 import { IEmbeddingStorage } from '@baishou/ai'
-import { getAppDb } from '../db'
 import { memoryEmbeddingsTable } from '@baishou/database'
+import { getAppDb } from '../db'
+import { mapMigrationBackupRow, logger } from '@baishou/shared'
 import { eq, and, sql } from 'drizzle-orm'
-import { logger } from '@baishou/shared'
 
 /** 嵌入迁移备份表名 */
 const BACKUP_TABLE = 'memory_embeddings_backup'
+/** 迁移失败回滚快照表（含完整向量） */
+const ROLLBACK_TABLE = 'memory_embeddings_rollback'
 /** 清空前自动备份表名 */
 const SAFETY_BACKUP_TABLE = 'memory_embeddings_safety_backup'
 
@@ -240,6 +242,95 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     return Number((countRows[0] as any)?.c ?? 0)
   }
 
+  async getCurrentEmbeddingMeta(): Promise<{
+    modelId: string
+    dimension: number
+    count: number
+  } | null> {
+    const db = getAppDb()
+    const countRows = await db.all(sql`SELECT count(*) as c FROM memory_embeddings`)
+    const count = Number((countRows[0] as any)?.c ?? 0)
+    if (count === 0) return null
+
+    const metaRows = await db.all(sql`
+      SELECT model_id as modelId, dimension, count(*) as c
+      FROM memory_embeddings
+      GROUP BY model_id, dimension
+      ORDER BY c DESC
+      LIMIT 1
+    `)
+    const row = metaRows[0] as any
+    if (!row?.modelId) return null
+
+    return {
+      modelId: String(row.modelId),
+      dimension: Number(row.dimension ?? 0),
+      count
+    }
+  }
+
+  async createRollbackSnapshot(): Promise<number> {
+    const db = getAppDb()
+    const countRows = await db.all(sql`SELECT count(*) as c FROM memory_embeddings`)
+    const count = Number((countRows[0] as any)?.c ?? 0)
+    if (count === 0) return 0
+
+    await db.run(sql.raw(`DROP TABLE IF EXISTS ${ROLLBACK_TABLE}`))
+    await db.run(
+      sql.raw(`
+      CREATE TABLE ${ROLLBACK_TABLE} AS
+      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+             metadata_json, embedding, dimension, model_id, created_at, source_created_at
+      FROM memory_embeddings
+    `)
+    )
+    logger.info(`[RAG] Migration rollback snapshot created: ${count} rows`)
+    return count
+  }
+
+  async restoreRollbackSnapshot(): Promise<number> {
+    const db = getAppDb()
+    const checkTable = await db.all(
+      sql`SELECT name FROM sqlite_master WHERE type='table' AND name=${ROLLBACK_TABLE}`
+    )
+    if (checkTable.length === 0) {
+      throw new Error(`Rollback snapshot table ${ROLLBACK_TABLE} does not exist`)
+    }
+
+    await db.delete(memoryEmbeddingsTable)
+    await db.run(
+      sql.raw(`
+      INSERT INTO memory_embeddings (embedding_id, source_type, source_id, group_id, chunk_index,
+                                     chunk_text, metadata_json, embedding, dimension, model_id,
+                                     created_at, source_created_at)
+      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+             metadata_json, embedding, dimension, model_id, created_at, source_created_at
+      FROM ${ROLLBACK_TABLE}
+    `)
+    )
+
+    const restoredRows = await db.all(sql`SELECT count(*) as c FROM memory_embeddings`)
+    const count = Number((restoredRows[0] as any)?.c ?? 0)
+    logger.info(`[RAG] Migration rollback snapshot restored: ${count} rows`)
+    return count
+  }
+
+  async dropRollbackSnapshot(): Promise<void> {
+    const db = getAppDb()
+    await db.run(sql.raw(`DROP TABLE IF EXISTS ${ROLLBACK_TABLE}`))
+  }
+
+  async hasRollbackSnapshot(): Promise<boolean> {
+    const db = getAppDb()
+    const checkTable = await db.all(
+      sql`SELECT name FROM sqlite_master WHERE type='table' AND name=${ROLLBACK_TABLE}`
+    )
+    if (checkTable.length === 0) return false
+
+    const countRows = await db.all(sql.raw(`SELECT count(*) as c FROM ${ROLLBACK_TABLE}`))
+    return Number((countRows[0] as any)?.c ?? 0) > 0
+  }
+
   async createMigrationBackup(): Promise<number> {
     const db = getAppDb()
     await db.run(sql.raw(`DROP TABLE IF EXISTS ${BACKUP_TABLE}`))
@@ -292,7 +383,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
         LIMIT 50
       `)
       )
-      return rows as any[]
+      return (rows as Record<string, unknown>[]).map(mapMigrationBackupRow)
     } catch {
       return []
     }

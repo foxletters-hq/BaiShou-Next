@@ -14,7 +14,7 @@ export function registerAttachmentIPC() {
     const sessionRepo = new SessionRepository(db)
     // 尽量拉取所有的会话以供标题映射
     const sessions = await sessionRepo.findAllSessions(5000)
-    const activeSessionIds = new Set(sessions.map((s) => s.id))
+    const activeSessionIds = new Set<string>(sessions.map((s) => s.id))
 
     const groups = await attachmentManager.listSessionGroups(activeSessionIds)
 

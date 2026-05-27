@@ -1,13 +1,93 @@
-import { ipcMain } from 'electron'
+import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database'
+import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { eq, sql } from 'drizzle-orm'
 import { getDiaryManager } from './diary.ipc'
 import { getEmbeddingService, getEmbeddingConfig, filterUnindexedDiaries } from './rag.ipc'
+import { DesktopEmbeddingStorage } from './rag.storage'
+import { settingsManager } from './settings.ipc'
+import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
+
+async function restoreInterruptedMigration(): Promise<number> {
+  const config = getEmbeddingConfig()
+  const storage = new DesktopEmbeddingStorage()
+  const stateService = getEmbeddingMigrationStateService()
+  const state = await stateService.getState()
+
+  if (!state.canRestore) {
+    throw new Error('No migration rollback snapshot available')
+  }
+
+  await config.load()
+  const count = await storage.restoreRollbackSnapshot()
+  if (state.rollbackConfig && config.restoreEmbeddingModelConfig) {
+    await config.restoreEmbeddingModelConfig(state.rollbackConfig)
+  }
+  await storage.dropMigrationBackup()
+  await storage.dropRollbackSnapshot()
+  await stateService.markIdle()
+  await config.load()
+  return count
+}
+
+async function runMigrationStream(
+  event: IpcMainInvokeEvent,
+  generator: AsyncGenerator<any, void, unknown>
+): Promise<{ aborted: boolean }> {
+  const config = getEmbeddingConfig()
+  let aborted = false
+  for await (const state of generator) {
+    if (state.aborted) aborted = true
+    event.sender.send('agent:rag-progress', {
+      isRunning: !state.aborted,
+      type: state.aborted ? 'idle' : 'migration',
+      progress: state.completed,
+      total: state.total,
+      statusKey: state.statusKey,
+      statusParams: state.statusParams,
+      aborted: state.aborted,
+      rollbackApplied: state.rollbackApplied
+    })
+  }
+  event.sender.send('agent:rag-progress', {
+    isRunning: false,
+    progress: 0,
+    total: 0,
+    type: 'idle'
+  })
+  await config.load()
+  return { aborted }
+}
+
+async function resolveRollbackConfig(
+  explicit?: EmbeddingMigrationRollbackConfig
+): Promise<EmbeddingMigrationRollbackConfig | undefined> {
+  if (explicit?.globalEmbeddingModelId) return explicit
+
+  const storage = new DesktopEmbeddingStorage()
+  const meta = await storage.getCurrentEmbeddingMeta()
+  if (!meta?.modelId) return undefined
+
+  const globalModels = (await settingsManager.get<any>('global_models')) || {}
+  return {
+    globalEmbeddingProviderId: globalModels.globalEmbeddingProviderId || '',
+    globalEmbeddingModelId: meta.modelId,
+    globalEmbeddingDimension: meta.dimension || globalModels.globalEmbeddingDimension || 0
+  }
+}
 
 export function registerRagBuildIPC() {
   const config = getEmbeddingConfig()
   const embeddingService = getEmbeddingService()
+  const migrationStateService = getEmbeddingMigrationStateService()
+
+  embeddingService.setMigrationLifecycle({
+    markInProgress: (rollbackConfig) => migrationStateService.markInProgress(rollbackConfig),
+    markCompleted: () => migrationStateService.markCompleted(),
+    markInterrupted: () => migrationStateService.markInterrupted(),
+    markIdle: () => migrationStateService.markIdle()
+  })
 
   ipcMain.handle('rag:get-stats', async () => {
     await config.load()
@@ -51,7 +131,6 @@ export function registerRagBuildIPC() {
       const db = getAppDb()
       const diaries = await getDiaryManager().listAll({ limit: 10000 })
 
-      // 查询 memory_embeddings 中已有的日记嵌入记录，读取 metadataJson 提取已有的更新时间
       const existingRows = await db
         .select({
           sourceId: memoryEmbeddingsTable.sourceId,
@@ -76,7 +155,6 @@ export function registerRagBuildIPC() {
         } catch {}
       }
 
-      // 过滤：仅嵌入从未被索引过，或者已被索引但又发生修改的日记
       const diariesToEmbed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
 
       let progress = 0
@@ -94,7 +172,6 @@ export function registerRagBuildIPC() {
         const diary = await getDiaryManager().findById(meta.id)
         if (!diary || !diary.id || !diary.content || !diary.content.trim()) continue
 
-        // 构建 chunkPrefix：标签 + 日期上下文，与原版白守对齐
         const d = meta.date
         const dateLabel = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         const tagPrefix = meta.tags.length > 0 ? `[标签: ${meta.tags.join(', ')}] ` : ''
@@ -138,31 +215,66 @@ export function registerRagBuildIPC() {
     return true
   })
 
-  ipcMain.handle('rag:trigger-migration', async (event) => {
-    await config.load()
-    try {
-      const generator = embeddingService.migrateEmbeddings()
-      for await (const state of generator) {
-        event.sender.send('agent:rag-progress', {
-          isRunning: true,
-          type: 'migration',
-          progress: state.completed,
-          total: state.total,
-          statusText: state.status
-        })
+  ipcMain.handle(
+    'rag:trigger-migration',
+    async (event, options?: { rollbackConfig?: EmbeddingMigrationRollbackConfig }) => {
+      await config.load()
+      await migrationStateService.reconcile()
+      const rollbackConfig = await resolveRollbackConfig(options?.rollbackConfig)
+      try {
+        const result = await runMigrationStream(
+          event,
+          embeddingService.migrateEmbeddings(rollbackConfig)
+        )
+        return result
+      } catch (e: any) {
+        console.error('Migration failed:', e)
+        await migrationStateService.markInterrupted()
+        event.sender.send('agent:rag-progress', { isRunning: false, type: 'idle' })
+        throw e
       }
-      event.sender.send('agent:rag-progress', {
-        isRunning: false,
-        progress: 0,
-        total: 0,
-        type: 'idle'
-      })
-      return true
+    }
+  )
+
+  ipcMain.handle('rag:resume-migration', async (event) => {
+    await config.load()
+    const state = await migrationStateService.getState()
+    if (!state.canResume) {
+      throw new Error('No resumable migration session found')
+    }
+    embeddingService.setMigrationLifecycle({
+      markInProgress: (rollbackConfig) =>
+        migrationStateService.markInProgress(rollbackConfig ?? state.rollbackConfig),
+      markCompleted: () => migrationStateService.markCompleted(),
+      markInterrupted: () => migrationStateService.markInterrupted(),
+      markIdle: () => migrationStateService.markIdle()
+    })
+    try {
+      return await runMigrationStream(
+        event,
+        embeddingService.continueMigration(state.rollbackConfig)
+      )
     } catch (e: any) {
-      console.error('Migration failed:', e)
+      console.error('Migration resume failed:', e)
+      await migrationStateService.markInterrupted()
       event.sender.send('agent:rag-progress', { isRunning: false, type: 'idle' })
       throw e
     }
+  })
+
+  ipcMain.handle('rag:cancel-migration', async () => {
+    embeddingService.requestMigrationAbort()
+    return true
+  })
+
+  ipcMain.handle('rag:get-migration-state', async () => {
+    await config.load()
+    return await migrationStateService.getState()
+  })
+
+  ipcMain.handle('rag:restore-migration-backup', async () => {
+    const count = await restoreInterruptedMigration()
+    return { restoredCount: count }
   })
 
   ipcMain.handle('rag:has-pending-migration', async () => {

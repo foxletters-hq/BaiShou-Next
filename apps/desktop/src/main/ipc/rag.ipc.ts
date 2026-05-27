@@ -4,6 +4,7 @@ import { DesktopEmbeddingStorage } from './rag.storage'
 import { AIProviderConfig } from '@baishou/shared'
 import { registerRagBuildIPC } from './rag-build.ipc'
 import { registerRagQueryIPC } from './rag-query.ipc'
+import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
 
 class DesktopEmbeddingConfig implements IEmbeddingConfig {
   private _cachedConfig: any = {}
@@ -26,6 +27,21 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
     config.globalEmbeddingDimension = dimension
     await settingsManager.set('global_models', config)
     this._cachedConfig = config
+  }
+  async restoreEmbeddingModelConfig(config: {
+    globalEmbeddingProviderId: string
+    globalEmbeddingModelId: string
+    globalEmbeddingDimension: number
+  }): Promise<void> {
+    const current = (await settingsManager.get<any>('global_models')) || {}
+    const next = {
+      ...current,
+      globalEmbeddingProviderId: config.globalEmbeddingProviderId,
+      globalEmbeddingModelId: config.globalEmbeddingModelId,
+      globalEmbeddingDimension: config.globalEmbeddingDimension
+    }
+    await settingsManager.set('global_models', next)
+    this._cachedConfig = next
   }
   async getProviderInstance(): Promise<any> {
     const providerId = this.getGlobalEmbeddingProviderId()
@@ -80,6 +96,7 @@ export function getEmbeddingService(): EmbeddingService {
 }
 
 export function registerRagIPC() {
+  void getEmbeddingMigrationStateService().reconcile()
   registerRagBuildIPC()
   registerRagQueryIPC()
 }

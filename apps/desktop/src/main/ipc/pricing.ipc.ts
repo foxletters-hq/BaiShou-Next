@@ -18,7 +18,7 @@ export function registerPricingIPC() {
     const pricingService = ModelPricingService.getInstance()
     try {
       await pricingService.ensureLoaded()
-    } catch (err) {
+    } catch (err: any) {
       logger.warn('[ModelPricingService] ensureLoaded failed in pricing:get-status:', err)
     }
 
