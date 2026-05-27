@@ -1,4 +1,4 @@
-import { IEmbeddingStorage } from '@baishou/ai/src/rag/embedding.types'
+import { IEmbeddingStorage } from '@baishou/ai'
 import { getAppDb } from '../db'
 import { memoryEmbeddingsTable } from '@baishou/database'
 import { eq, and, sql } from 'drizzle-orm'

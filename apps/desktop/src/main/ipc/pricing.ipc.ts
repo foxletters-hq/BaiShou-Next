@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { logger } from '@baishou/shared'
-import { ModelPricingService } from '@baishou/ai/src/pricing/model-pricing.service'
+import { ModelPricingService } from '@baishou/ai'
 
 export function registerPricingIPC() {
   // ==========================================

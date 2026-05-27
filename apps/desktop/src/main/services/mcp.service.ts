@@ -6,7 +6,7 @@ import type { SettingsRepository } from '@baishou/database'
 // @ts-ignore
 import { Server as HttpServer } from 'http'
 
-import { ToolRegistry } from '@baishou/ai/src/tools/tool-registry'
+import { ToolRegistry } from '@baishou/ai'
 import { logger } from '@baishou/shared'
 // @ts-ignore
 import { zodToJsonSchema } from 'zod-to-json-schema'

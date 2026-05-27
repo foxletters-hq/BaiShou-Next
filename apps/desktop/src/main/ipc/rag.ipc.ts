@@ -1,5 +1,4 @@
-import { EmbeddingService } from '@baishou/ai/src/rag/embedding.service'
-import { IEmbeddingConfig } from '@baishou/ai/src/rag/embedding.types'
+import { EmbeddingService, IEmbeddingConfig, AIProviderRegistry } from '@baishou/ai'
 import { settingsManager } from './settings.ipc'
 import { DesktopEmbeddingStorage } from './rag.storage'
 import { AIProviderConfig } from '@baishou/shared'
@@ -36,7 +35,6 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
     const pConfig = providers.find((p) => p.id === providerId)
     if (!pConfig) return null
 
-    const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry')
     return AIProviderRegistry.getInstance().getOrUpdateProvider(pConfig)
   }
 }

@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { AIProviderConfig, GlobalModelsConfig, logger } from '@baishou/shared'
+import { AIProviderRegistry } from '@baishou/ai'
 import { settingsManager } from './settings.ipc'
 
 /**
@@ -193,7 +194,6 @@ export function registerSettingsModelsIPC() {
       if (tempUrl !== undefined) clone.baseUrl = tempUrl
 
       // @ts-ignore
-      const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry')
       const registry = AIProviderRegistry.getInstance()
       const provider = registry.createProviderInstance(clone)
       if (!provider) throw new Error('Provider instance creation failed')
@@ -277,7 +277,6 @@ export function registerSettingsModelsIPC() {
       if (tempUrl !== undefined) clone.baseUrl = tempUrl
 
       // @ts-ignore
-      const { AIProviderRegistry } = await import('@baishou/ai/src/providers/provider.registry')
       const registry = AIProviderRegistry.getInstance()
       const provider = registry.createProviderInstance(clone)
       if (!provider) throw new Error('Provider instance creation failed')
