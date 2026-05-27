@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizeWeatherId } from '../constants/weather.constants'
 
 /** 天气值到 emoji 的映射表（同时支持中文键和英文键） */
 export const WEATHER_EMOJI: Record<string, string> = {
@@ -25,7 +26,8 @@ export const WEATHER_EMOJI: Record<string, string> = {
 /** 根据天气值获取对应 emoji，无匹配时返回默认 🌤️ */
 export function getWeatherEmoji(weather?: string): string {
   if (!weather) return ''
-  return WEATHER_EMOJI[weather] || '🌤️'
+  const key = normalizeWeatherId(weather)
+  return WEATHER_EMOJI[key] || WEATHER_EMOJI[weather] || '🌤️'
 }
 
 export const DiarySchema = z.object({

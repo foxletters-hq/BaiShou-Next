@@ -134,18 +134,28 @@ describe('Agent 5: TTS 功能验证', () => {
   })
 
   it('任务27: AgentScreen auto-play 使用 ref 避免 stale closure', () => {
+    // AgentScreen 已重构为纯容器，TTS 逻辑下沉至 useTts hook，需检查实际逻辑所在的文件
+    const ttshookPath = resolve(
+      __dirname,
+      '../../../../apps/desktop/src/renderer/src/features/agent/hooks/useTts.ts'
+    )
+    const hookContent = readFileSync(ttshookPath, 'utf-8')
+
+    // 确认 useTts hook 内使用了 ref 来跟踪 ttsMode（避免 stale closure）
+    expect(hookContent).toContain('ttsModeRef')
+    // 确认 auto-play 使用 ref 访问而非直接依赖 state（避免 stale closure）
+    expect(hookContent).toContain("ttsModeRef.current")
+    // 确认 handleTtsReadAloud 回调存在
+    expect(hookContent).toContain('handleTtsReadAloud')
+
+    // 确认 AgentScreen 通过 flow.tts 委托 TTS 逻辑（容器组件的正确模式）
     const agentScreenPath = resolve(
       __dirname,
       '../../../../apps/desktop/src/renderer/src/features/agent/AgentScreen.tsx'
     )
-    const content = readFileSync(agentScreenPath, 'utf-8')
-
-    // 确认使用了 ref 来跟踪 ttsMode（避免 stale closure）
-    expect(content).toContain('ttsModeRef')
-    // 确认 auto-play useEffect 存在（通过 ref 访问）
-    expect(content).toContain("ttsModeRef.current === 'always'")
-    // 确认 handleTtsReadAloud 在依赖中或通过 ref 访问
-    expect(content).toContain('handleTtsReadAloud')
+    const screenContent = readFileSync(agentScreenPath, 'utf-8')
+    expect(screenContent).toContain('flow.tts')
+    expect(screenContent).toContain('useAgentChatFlow')
   })
 })
 
