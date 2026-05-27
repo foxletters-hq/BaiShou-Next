@@ -3,42 +3,19 @@ import React, { useState } from 'react'
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   Platform,
   UIManager,
-  LayoutAnimation,
-  Modal
+  LayoutAnimation
 } from 'react-native'
-import Slider from '@react-native-community/slider'
-import { useNativeTheme } from '../../native/theme'
+import { useNativeTheme } from '../theme'
+import type { AppearanceSettingsProps } from './appearance-settings.types'
+import { hslToHex } from './appearance-color.utils'
+import { appearanceSettingsStyles as styles } from './appearance-settings.styles'
+import { AppearanceSettingsColorModal } from './AppearanceSettingsColorModal'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
-}
-
-interface AppearanceSettingsProps {
-  themeMode: 'system' | 'light' | 'dark'
-  seedColor: string
-  language: 'system' | 'zh' | 'en' | 'ja' | 'zh-TW'
-  onThemeModeChange: (mode: 'system' | 'light' | 'dark') => void
-  onSeedColorChange: (color: string) => void
-  onLanguageChange: (lang: 'system' | 'zh' | 'en' | 'ja' | 'zh-TW') => void
-}
-
-// TODO: [Agent1-Dependency] 替换
-
-function hslToHex(h: number, s: number, l: number) {
-  l /= 100
-  const a = (s * Math.min(l, 1 - l)) / 100
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, '0')
-  }
-  return `#${f(0)}${f(8)}${f(4)}`
 }
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
@@ -52,7 +29,6 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [expanded, setExpanded] = useState(false)
-
   const [showColorModal, setShowColorModal] = useState(false)
   const [hue, setHue] = useState(0)
   const [sat, setSat] = useState(100)
@@ -226,199 +202,18 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
         </View>
       )}
 
-      {/* 完整一比一复刻自定义 HSL Modal 弹窗逻辑隔离，本身保留纯 UI 特性 */}
-      <Modal visible={showColorModal} transparent animationType="fade">
-        <View style={[styles.modalOverlay, { backgroundColor: colors.bgOverlay }]}>
-          <View style={[styles.modalBox, { backgroundColor: colors.bgSurface }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {t('settings.custom_color', '自定义颜色')}
-            </Text>
-
-            <View
-              style={[
-                styles.colorPreview,
-                { backgroundColor: previewColor, shadowColor: previewColor }
-              ]}
-            />
-
-            <View style={styles.sliderRow}>
-              <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>
-                {t('settings.theme_hue', '色相')}
-              </Text>
-              <Slider
-                style={{ flex: 1, height: 40 }}
-                minimumValue={0}
-                maximumValue={360}
-                value={hue}
-                onValueChange={setHue}
-                minimumTrackTintColor={previewColor}
-                thumbTintColor={previewColor}
-              />
-            </View>
-            <View style={styles.sliderRow}>
-              <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>
-                {t('settings.theme_saturation', '饱和')}
-              </Text>
-              <Slider
-                style={{ flex: 1, height: 40 }}
-                minimumValue={0}
-                maximumValue={100}
-                value={sat}
-                onValueChange={setSat}
-                minimumTrackTintColor={previewColor}
-                thumbTintColor={previewColor}
-              />
-            </View>
-            <View style={styles.sliderRow}>
-              <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>
-                {t('settings.theme_lightness', '明度')}
-              </Text>
-              <Slider
-                style={{ flex: 1, height: 40 }}
-                minimumValue={20}
-                maximumValue={90}
-                value={lit}
-                onValueChange={setLit}
-                minimumTrackTintColor={previewColor}
-                thumbTintColor={previewColor}
-              />
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setShowColorModal(false)} style={styles.modalBtn}>
-                <Text style={[styles.modalBtnTextGray, { color: colors.textSecondary }]}>
-                  {t('common.cancel', '取消')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={saveColor}
-                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
-              >
-                <Text style={[styles.modalBtnTextWhite, { color: colors.textOnPrimary }]}>
-                  {t('common.save', '保存')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <AppearanceSettingsColorModal
+        visible={showColorModal}
+        previewColor={previewColor}
+        hue={hue}
+        sat={sat}
+        lit={lit}
+        onHueChange={setHue}
+        onSatChange={setSat}
+        onLitChange={setLit}
+        onClose={() => setShowColorModal(false)}
+        onSave={saveColor}
+      />
     </View>
   )
 }
-
-// ... 原有的 styles.create
-const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderRadius: 16,
-    marginBottom: 16,
-    marginHorizontal: 16,
-    overflow: 'hidden'
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16
-  },
-  icon: { fontSize: 24, marginRight: 16 },
-  headerBody: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '500' },
-  subtitle: { fontSize: 14, marginTop: 4 },
-  arrow: { fontSize: 12 },
-  content: { paddingHorizontal: 16, paddingBottom: 16 },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
-  segmentedControl: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderRadius: 20,
-    overflow: 'hidden'
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRightWidth: 1
-  },
-  segmentText: { fontSize: 14 },
-  colorWrap: { flexDirection: 'row', gap: 12 },
-  colorOption: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  checkIcon: { fontSize: 20 },
-  customColorBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1
-  },
-  addIcon: { fontSize: 20 },
-  divider: { height: 1, marginVertical: 16 },
-  langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  langChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1
-  },
-  langText: { fontSize: 14 },
-
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  modalBox: {
-    width: '85%',
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center'
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20
-  },
-  colorPreview: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginBottom: 20,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8
-  },
-  sliderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 12
-  },
-  sliderLabel: {
-    width: 40,
-    fontSize: 14,
-    fontWeight: 'bold'
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    width: '100%',
-    marginTop: 24,
-    gap: 12
-  },
-  modalBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  modalBtnTextGray: { fontWeight: 'bold' },
-  modalBtnTextWhite: { fontWeight: 'bold' }
-})

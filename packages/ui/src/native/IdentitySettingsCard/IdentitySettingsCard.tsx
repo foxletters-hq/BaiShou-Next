@@ -1,186 +1,17 @@
-import React, { useState } from 'react'
-import { View, Text, Pressable, ScrollView, TextInput, Modal, Alert } from 'react-native'
+import React from 'react'
+import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { useNativeToast } from '../Toast'
-import { Button } from '../Button/Button'
+import type { NativeIdentitySettingsCardProps } from './identity-settings.types'
+import { useIdentitySettings } from './useIdentitySettings'
+import { IdentitySettingsPersonaSection } from './IdentitySettingsPersonaSection'
+import { IdentitySettingsFactsSection } from './IdentitySettingsFactsSection'
+import { IdentitySettingsFactModal } from './IdentitySettingsFactModal'
 
-export interface UserProfileConfig {
-  nickname: string
-  avatarPath?: string
-  activePersonaId: string
-  personas: Record<string, { id: string; facts: Record<string, string> }>
-}
-
-export interface NativeIdentitySettingsCardProps {
-  profile: UserProfileConfig
-  onChange: (profile: UserProfileConfig) => void
-}
-
-export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = ({
-  profile,
-  onChange
-}) => {
+export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (props) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
-  const toast = useNativeToast()
-  const [collapsed, setCollapsed] = useState(true)
-  const [isFactModalOpen, setIsFactModalOpen] = useState(false)
-  const [editingKey, setEditingKey] = useState<string | null>(null)
-  const [editKeyInput, setEditKeyInput] = useState('')
-  const [editValInput, setEditValInput] = useState('')
-
-  const activeId = profile.activePersonaId || 'Default'
-  const allPersonas = profile.personas || {
-    Default: { id: 'Default', facts: {} }
-  }
-
-  if (!allPersonas[activeId]) {
-    allPersonas[activeId] = { id: activeId, facts: {} }
-  }
-
-  const currentFacts = allPersonas[activeId].facts || {}
-
-  const handleSwitch = (pid: string) => {
-    if (pid !== activeId) {
-      onChange({ ...profile, activePersonaId: pid })
-    } else {
-      Alert.prompt(
-        t('settings.rename_identity_card', '重命名身份卡'),
-        undefined,
-        (newName) => {
-          if (newName && newName !== pid && !allPersonas[newName]) {
-            const nextPersonas = { ...allPersonas }
-            nextPersonas[newName] = { ...nextPersonas[pid], id: newName }
-            delete nextPersonas[pid]
-            onChange({
-              ...profile,
-              personas: nextPersonas,
-              activePersonaId: newName
-            })
-          }
-        },
-        'plain-text',
-        pid
-      )
-    }
-  }
-
-  const handleAddPersona = () => {
-    Alert.prompt(
-      t('settings.new_identity_card', '新建身份卡'),
-      undefined,
-      (newName) => {
-        if (newName && !allPersonas[newName]) {
-          const nextPersonas = {
-            ...allPersonas,
-            [newName]: { id: newName, facts: {} }
-          }
-          onChange({
-            ...profile,
-            personas: nextPersonas,
-            activePersonaId: newName
-          })
-        }
-      },
-      'plain-text'
-    )
-  }
-
-  const handleDeletePersona = (pid: string) => {
-    if (Object.keys(allPersonas).length <= 1) {
-      toast.showToast(t('settings.identity_min_one', '至少保留一张身份卡！'), 'error')
-      return
-    }
-    Alert.alert(
-      t('common.confirm', '确认'),
-      t('settings.delete_identity_card', '确定删除身份卡: $personaId').replace('$personaId', pid),
-      [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
-        {
-          text: t('common.confirm', '确定'),
-          style: 'destructive',
-          onPress: () => {
-            const nextPersonas = { ...allPersonas }
-            delete nextPersonas[pid]
-            const remainingIds = Object.keys(nextPersonas)
-            onChange({
-              ...profile,
-              personas: nextPersonas,
-              activePersonaId: remainingIds[0]
-            })
-          }
-        }
-      ]
-    )
-  }
-
-  const startEdit = (k: string, v: string) => {
-    setEditingKey(k)
-    setEditKeyInput(k)
-    setEditValInput(v)
-    setIsFactModalOpen(true)
-  }
-
-  const handleAddFact = () => {
-    setEditingKey(null)
-    setEditKeyInput('')
-    setEditValInput('')
-    setIsFactModalOpen(true)
-  }
-
-  const saveEdit = () => {
-    const k = editKeyInput.trim()
-    const v = editValInput.trim()
-    if (!k || !v) {
-      toast.showToast(t('settings.empty_identity_entry_error', '标签和内容不能为空'), 'error')
-      return
-    }
-
-    if (k !== editingKey && currentFacts[k]) {
-      toast.showToast(t('settings.duplicate_identity_entry_error', '该标签已存在'), 'error')
-      return
-    }
-
-    const nextFacts = { ...currentFacts }
-    if (editingKey && editingKey !== k) {
-      delete nextFacts[editingKey]
-    }
-    nextFacts[k] = v
-    onChange({
-      ...profile,
-      personas: {
-        ...allPersonas,
-        [activeId]: { ...allPersonas[activeId], facts: nextFacts }
-      }
-    })
-    setIsFactModalOpen(false)
-  }
-
-  const handleDeleteFact = (k: string) => {
-    Alert.alert(
-      t('common.confirm', '确认'),
-      t('settings.delete_identity_confirm', '确认删除「$key」？').replace('$key', k),
-      [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
-        {
-          text: t('common.confirm', '确定'),
-          style: 'destructive',
-          onPress: () => {
-            const nextFacts = { ...currentFacts }
-            delete nextFacts[k]
-            onChange({
-              ...profile,
-              personas: {
-                ...allPersonas,
-                [activeId]: { ...allPersonas[activeId], facts: nextFacts }
-              }
-            })
-          }
-        }
-      ]
-    )
-  }
+  const settings = useIdentitySettings(props)
 
   return (
     <View
@@ -190,9 +21,8 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
         overflow: 'hidden'
       }}
     >
-      {/* 头部 */}
       <Pressable
-        onPress={() => setCollapsed(!collapsed)}
+        onPress={() => settings.setCollapsed(!settings.collapsed)}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
@@ -226,321 +56,48 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
               color: colors.onPrimaryContainer
             }}
           >
-            {Object.keys(currentFacts).length}{' '}
+            {Object.keys(settings.currentFacts).length}{' '}
             {t('settings.identity_entry_count_suffix', '条')}
           </Text>
         </View>
-        <Text style={{ fontSize: 16, color: colors.textSecondary }}>{collapsed ? '▼' : '▲'}</Text>
+        <Text style={{ fontSize: 16, color: colors.textSecondary }}>
+          {settings.collapsed ? '▼' : '▲'}
+        </Text>
       </Pressable>
 
-      {/* 可折叠内容 */}
-      {!collapsed && (
+      {!settings.collapsed && (
         <View
           style={{
             paddingHorizontal: tokens.spacing.lg,
             paddingBottom: tokens.spacing.lg
           }}
         >
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors.textSecondary,
-              marginBottom: tokens.spacing.md
-            }}
-          >
-            {t('settings.identity_card_desc', '助手将自动结合这些核心词条构筑角色认知与您对话。')}
-          </Text>
-
-          {/* 身份卡 Chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: tokens.spacing.md }}
-          >
-            <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
-              {Object.keys(allPersonas).map((pid) => {
-                const isActive = pid === activeId
-                return (
-                  <Pressable
-                    key={pid}
-                    onPress={() => handleSwitch(pid)}
-                    onLongPress={() => handleDeletePersona(pid)}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingHorizontal: tokens.spacing.md,
-                      paddingVertical: tokens.spacing.sm,
-                      borderRadius: tokens.radius.full,
-                      backgroundColor: isActive ? colors.primary : colors.bgSurfaceNormal,
-                      opacity: pressed ? 0.7 : 1,
-                      gap: tokens.spacing.xs
-                    })}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: isActive ? colors.onPrimary : colors.textPrimary,
-                        fontWeight: isActive ? '600' : '400'
-                      }}
-                    >
-                      {pid}
-                    </Text>
-                    {isActive && Object.keys(allPersonas).length > 1 && (
-                      <Pressable onPress={() => handleDeletePersona(pid)}>
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            color: isActive ? colors.onPrimary : colors.textSecondary
-                          }}
-                        >
-                          ×
-                        </Text>
-                      </Pressable>
-                    )}
-                  </Pressable>
-                )
-              })}
-              <Pressable
-                onPress={handleAddPersona}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: tokens.spacing.md,
-                  paddingVertical: tokens.spacing.sm,
-                  borderRadius: tokens.radius.full,
-                  borderWidth: 1,
-                  borderColor: colors.primary,
-                  borderStyle: 'dashed',
-                  opacity: pressed ? 0.7 : 1,
-                  gap: tokens.spacing.xs
-                })}
-              >
-                <Text style={{ fontSize: 14, color: colors.primary }}>+</Text>
-                <Text style={{ fontSize: 14, color: colors.primary }}>
-                  {t('settings.new_identity', '新身份')}
-                </Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-
-          {/* 属性列表 */}
-          <View
-            style={{
-              backgroundColor: colors.bgSurfaceNormal,
-              borderRadius: tokens.radius.md,
-              overflow: 'hidden'
-            }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: tokens.spacing.sm,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.borderSubtle
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: colors.textPrimary
-                }}
-              >
-                {t('settings.identity_facts_title', '身份条目')}
-              </Text>
-              <Pressable
-                onPress={handleAddFact}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                  opacity: pressed ? 0.7 : 1
-                })}
-              >
-                <Text style={{ fontSize: 14, color: colors.primary }}>+</Text>
-                <Text style={{ fontSize: 14, color: colors.primary }}>
-                  {t('settings.add_identity_entry', '添加条目')}
-                </Text>
-              </Pressable>
-            </View>
-
-            {Object.keys(currentFacts).length === 0 ? (
-              <View
-                style={{
-                  padding: tokens.spacing.lg,
-                  alignItems: 'center',
-                  gap: tokens.spacing.sm
-                }}
-              >
-                <Text style={{ fontSize: 32, opacity: 0.3 }}>👤</Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: colors.textSecondary,
-                    textAlign: 'center'
-                  }}
-                >
-                  {t(
-                    'settings.identity_card_empty_hint',
-                    '当前身份为空白，不妨添加一些基本特征描述吧。'
-                  )}
-                </Text>
-              </View>
-            ) : (
-              Object.entries(currentFacts).map(([k, v]) => (
-                <View
-                  key={k}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    padding: tokens.spacing.sm,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.borderSubtle,
-                    gap: tokens.spacing.sm
-                  }}
-                >
-                  <Text style={{ fontSize: 14 }}>🏷️</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: '600',
-                        color: colors.textPrimary
-                      }}
-                    >
-                      {k}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: colors.textSecondary
-                      }}
-                    >
-                      {v}
-                    </Text>
-                  </View>
-                  <Pressable onPress={() => startEdit(k, v)} style={{ padding: 4 }}>
-                    <Text style={{ fontSize: 14, color: colors.primary }}>✎</Text>
-                  </Pressable>
-                  <Pressable onPress={() => handleDeleteFact(k)} style={{ padding: 4 }}>
-                    <Text style={{ fontSize: 14, color: colors.error }}>🗑️</Text>
-                  </Pressable>
-                </View>
-              ))
-            )}
-          </View>
+          <IdentitySettingsPersonaSection
+            activeId={settings.activeId}
+            allPersonas={settings.allPersonas}
+            onSwitch={settings.handleSwitch}
+            onAddPersona={settings.handleAddPersona}
+            onDeletePersona={settings.handleDeletePersona}
+          />
+          <IdentitySettingsFactsSection
+            currentFacts={settings.currentFacts}
+            onAddFact={settings.handleAddFact}
+            onStartEdit={settings.startEdit}
+            onDeleteFact={settings.handleDeleteFact}
+          />
         </View>
       )}
 
-      {/* 编辑弹窗 */}
-      <Modal
-        visible={isFactModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsFactModalOpen(false)}
-      >
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-          onPress={() => setIsFactModalOpen(false)}
-        >
-          <Pressable
-            style={{
-              width: '85%',
-              backgroundColor: colors.bgSurface,
-              borderRadius: tokens.radius.xl,
-              padding: tokens.spacing.lg
-            }}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: '600',
-                color: colors.textPrimary,
-                marginBottom: tokens.spacing.md
-              }}
-            >
-              {editingKey
-                ? t('settings.edit_identity_entry', '编辑条目')
-                : t('settings.add_identity_entry', '添加条目')}
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginBottom: tokens.spacing.xs
-              }}
-            >
-              {t('settings.identity_key', '标签')}
-            </Text>
-            <TextInput
-              value={editKeyInput}
-              onChangeText={setEditKeyInput}
-              placeholder={t('settings.identity_key_hint', '如：生日、职业')}
-              placeholderTextColor={colors.textTertiary}
-              style={{
-                borderWidth: 1,
-                borderColor: colors.outlineVariant,
-                borderRadius: tokens.radius.md,
-                padding: tokens.spacing.sm,
-                fontSize: 16,
-                color: colors.textPrimary,
-                backgroundColor: colors.bgSurfaceNormal,
-                marginBottom: tokens.spacing.md
-              }}
-            />
-
-            <Text
-              style={{
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginBottom: tokens.spacing.xs
-              }}
-            >
-              {t('settings.identity_value', '内容')}
-            </Text>
-            <TextInput
-              value={editValInput}
-              onChangeText={setEditValInput}
-              placeholder={t('settings.identity_value_hint', '如：2000-05-20')}
-              placeholderTextColor={colors.textTertiary}
-              style={{
-                borderWidth: 1,
-                borderColor: colors.outlineVariant,
-                borderRadius: tokens.radius.md,
-                padding: tokens.spacing.sm,
-                fontSize: 16,
-                color: colors.textPrimary,
-                backgroundColor: colors.bgSurfaceNormal,
-                marginBottom: tokens.spacing.lg
-              }}
-            />
-
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-                gap: tokens.spacing.sm
-              }}
-            >
-              <Button variant="text" onPress={() => setIsFactModalOpen(false)}>
-                {t('common.cancel', '取消')}
-              </Button>
-              <Button variant="elevated" onPress={saveEdit}>
-                {t('common.save', '保存')}
-              </Button>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <IdentitySettingsFactModal
+        visible={settings.isFactModalOpen}
+        editingKey={settings.editingKey}
+        editKeyInput={settings.editKeyInput}
+        editValInput={settings.editValInput}
+        onEditKeyChange={settings.setEditKeyInput}
+        onEditValChange={settings.setEditValInput}
+        onClose={() => settings.setIsFactModalOpen(false)}
+        onSave={settings.saveEdit}
+      />
     </View>
   )
 }
