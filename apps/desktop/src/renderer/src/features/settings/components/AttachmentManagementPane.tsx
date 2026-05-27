@@ -3,6 +3,7 @@ import { AttachmentManagementView } from '@baishou/ui'
 
 export const AttachmentManagementPane: React.FC = () => {
   const [attachments, setAttachments] = useState<any[]>([])
+  const [diaryAttachments, setDiaryAttachments] = useState<any[]>([])
 
   const fetchData = async () => {
     try {
@@ -11,14 +12,23 @@ export const AttachmentManagementPane: React.FC = () => {
     } catch (e) {}
   }
 
+  const fetchDiaryData = async () => {
+    try {
+      const att = await (window as any).api?.attachment?.listDiaryAttachments()
+      if (att) setDiaryAttachments(att)
+    } catch (e) {}
+  }
+
   useEffect(() => {
     fetchData()
+    fetchDiaryData()
   }, [])
 
   return (
     <div className="settings-pane settings-pane-full">
       <AttachmentManagementView
         attachments={attachments}
+        diaryAttachments={diaryAttachments}
         onDeleteSelected={async (ids) => {
           await (window as any).api?.attachment?.deleteBatch(ids)
           await fetchData()
@@ -30,7 +40,12 @@ export const AttachmentManagementPane: React.FC = () => {
         onOpenFileLocation={async (absolutePath) => {
           await (window as any).api?.attachment?.openInFolder(absolutePath)
         }}
+        onDeleteDiaryAttachment={async (filePath) => {
+          await (window as any).api?.attachment?.deleteDiaryAttachment(filePath)
+          await fetchDiaryData()
+        }}
       />
     </div>
   )
 }
+

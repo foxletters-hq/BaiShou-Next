@@ -12,6 +12,7 @@ import {
   IdentitySettingsCard,
   AboutSettingsCard
 } from '@baishou/ui'
+import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from '@baishou/shared'
 import baishouHeroImg from '../../../assets/images/BaiShou-v0.0.1.jpeg'
 
 export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
@@ -19,6 +20,7 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
   const { profile, loadProfile } = useUserProfileStore() as any
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
+  const [appVersion, setAppVersion] = useState('4.0.0')
 
   const [storageStats, setStorageStats] = useState({
     storageRootPath: 'Loading...',
@@ -47,8 +49,18 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
       } catch (e) {}
     }
 
+    const fetchVersion = async () => {
+      try {
+        const v = await (window as any).api?.updater?.getVersion?.()
+        if (v) setAppVersion(String(v).replace(/^v+/i, ''))
+      } catch {
+        /* keep default */
+      }
+    }
+
     fetchVaults()
     fetchStorage()
+    fetchVersion()
   }, [loadProfile])
 
   return (
@@ -122,9 +134,8 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
           }
           activeVault={activeVault || vaults[0] || null}
           onSwitch={async (id) => {
+            if (id === activeVault?.name) return
             await (window as any).api?.vault?.switchActive(id)
-            const active = await (window as any).api?.vault?.getActive()
-            if (active) setActiveVault(active)
             window.location.reload()
           }}
           onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
@@ -191,16 +202,10 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
         <div className="settings-item-divider" />
 
         <AboutSettingsCard
-          version="v2.0.0-Next-Canary"
+          version={appVersion}
           heroImageSrc={baishouHeroImg}
-          onOpenPrivacyPolicy={async () =>
-            await (window as any).api?.shell?.openExternal('https://github.com')
-          }
-          onOpenGithubHost={async () =>
-            await (window as any).api?.shell?.openExternal(
-              'https://github.com/Anson-Trio/BaiShou-Next/issues'
-            )
-          }
+          onOpenGithubRepo={() => window.api.shell.openExternal(GITHUB_REPO_URL)}
+          onOpenFeedback={() => window.api.shell.openExternal(GITHUB_ISSUES_URL)}
         />
       </div>
     </div>
