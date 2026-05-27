@@ -1,34 +1,40 @@
 import React from 'react'
 import { Edit3, Trash2, Heart } from 'lucide-react'
 import { MarkdownRenderer } from '@baishou/ui'
-import { getWeatherEmoji } from '@baishou/shared'
+import {
+  getWeatherEmoji,
+  normalizeWeatherId,
+  weatherI18nKey,
+  WEATHER_IDS,
+  type WeatherId
+} from '@baishou/shared'
 
 /** 星期几名称 */
 const WEEKDAY_NAMES_KEYS = [
-  'diary.weekday.sun',
-  'diary.weekday.mon',
-  'diary.weekday.tue',
-  'diary.weekday.wed',
-  'diary.weekday.thu',
-  'diary.weekday.fri',
-  'diary.weekday.sat'
+  'diary.weekday_sun',
+  'diary.weekday_mon',
+  'diary.weekday_tue',
+  'diary.weekday_wed',
+  'diary.weekday_thu',
+  'diary.weekday_fri',
+  'diary.weekday_sat'
 ]
 const WEEKDAY_NAMES_DEFAULT = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
 /** 月份名称 */
 const MONTH_NAMES_KEYS = [
-  'diary.month.jan',
-  'diary.month.feb',
-  'diary.month.mar',
-  'diary.month.apr',
-  'diary.month.may',
-  'diary.month.jun',
-  'diary.month.jul',
-  'diary.month.aug',
-  'diary.month.sep',
-  'diary.month.oct',
-  'diary.month.nov',
-  'diary.month.dec'
+  'diary.month_jan',
+  'diary.month_feb',
+  'diary.month_mar',
+  'diary.month_apr',
+  'diary.month_may',
+  'diary.month_jun',
+  'diary.month_jul',
+  'diary.month_aug',
+  'diary.month_sep',
+  'diary.month_oct',
+  'diary.month_nov',
+  'diary.month_dec'
 ]
 const MONTH_NAMES_DEFAULT = [
   '一月',
@@ -115,6 +121,31 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`
   const visibleTags = entry.tags.filter((t) => t.trim().length > 0)
 
+  const weatherLabelFallback: Record<WeatherId, string> = {
+    sunny: '晴',
+    cloudy: '多云',
+    overcast: '阴',
+    light_rain: '小雨',
+    heavy_rain: '大雨',
+    snow: '雪',
+    fog: '雾',
+    windy: '风'
+  }
+
+  const weatherLabel = (() => {
+    if (!entry.weather) return ''
+    const id = normalizeWeatherId(entry.weather)
+    if ((WEATHER_IDS as readonly string[]).includes(id)) {
+      return t(
+        `diary.weather.${weatherI18nKey(id as WeatherId)}`,
+        weatherLabelFallback[id as WeatherId]
+      )
+    }
+    return entry.weather
+  })()
+
+  const weatherEmoji = getWeatherEmoji(normalizeWeatherId(entry.weather) || entry.weather)
+
   return (
     <div className="diary-card" onClick={onClick}>
       {/* 头部：日期 + 星期 + 收藏 */}
@@ -138,7 +169,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
         <div className="diary-card-meta-row">
           {entry.weather && (
             <span className="diary-card-meta-badge">
-              {getWeatherEmoji(entry.weather)} {entry.weather}
+              {weatherEmoji} {weatherLabel}
             </span>
           )}
           {entry.mood && <span className="diary-card-meta-badge">{entry.mood}</span>}

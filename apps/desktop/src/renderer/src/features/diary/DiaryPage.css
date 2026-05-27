@@ -716,7 +716,7 @@
 
 .diary-filter-option.active {
   background-color: var(--color-primary-light);
-  color: var(--color-primary);
+  color: var(--text-primary);
 }
 
 .diary-filter-weather-grid {
@@ -742,13 +742,16 @@
 .diary-filter-weather-btn:hover {
   background-color: var(--bg-surface-high);
   border-color: var(--color-primary);
-  color: var(--color-primary);
 }
 
 .diary-filter-weather-btn.active {
   background-color: var(--color-primary-light);
   border-color: var(--color-primary);
-  color: var(--color-primary);
+}
+
+.diary-filter-weather-emoji {
+  font-size: 18px;
+  line-height: 1;
 }
 
 /* ── 顶部分页栏 ── */

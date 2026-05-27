@@ -39,19 +39,36 @@ function buildCountFilter(query: DiaryPageQuery): Omit<DiaryListFilter, 'limit' 
   return rest
 }
 
+function patchEntriesWithSaved(prev: any[], saved: any): any[] {
+  if (!saved?.id) return prev
+  const idx = prev.findIndex((e) => e.id === saved.id)
+  if (idx >= 0) {
+    const next = [...prev]
+    next[idx] = { ...next[idx], ...saved }
+    return next
+  }
+  return prev
+}
+
 export function useDiaryData(query: DiaryPageQuery) {
   const [entries, setEntries] = useState<any[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const queryRef = useRef(query)
   queryRef.current = query
+  const entriesRef = useRef<any[]>([])
+  entriesRef.current = entries
 
   const listFilter = useMemo(() => buildListFilter(query), [query])
   const countFilter = useMemo(() => buildCountFilter(query), [query])
   const searchTerm = query.searchQuery.trim()
 
-  const loadEntries = useCallback(async () => {
-    setLoading(true)
+  const loadEntries = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false
+    const hasCachedRows = entriesRef.current.length > 0
+    if (!silent || !hasCachedRows) {
+      setLoading(true)
+    }
     try {
       const api = (window as any).api
       const current = queryRef.current
@@ -98,9 +115,16 @@ export function useDiaryData(query: DiaryPageQuery) {
     let unsubscribe: (() => void) | undefined
 
     if (api?.diary?.onSyncEvent) {
-      unsubscribe = api.diary.onSyncEvent(() => {
+      unsubscribe = api.diary.onSyncEvent((event: { type?: string; entry?: any }) => {
+        const hasCachedRows = entriesRef.current.length > 0
+        if (event?.type === 'saved' && event.entry) {
+          logger.info('[useDiaryData] 收到 diary 保存事件，静默刷新列表')
+          setEntries((prev) => patchEntriesWithSaved(prev, event.entry))
+          void loadEntries({ silent: true })
+          return
+        }
         logger.info('[useDiaryData] 收到 diary:sync-event，刷新当前页')
-        loadEntries()
+        void loadEntries({ silent: hasCachedRows })
       })
     }
 
@@ -111,3 +135,4 @@ export function useDiaryData(query: DiaryPageQuery) {
 
   return { entries, totalCount, loading, loadEntries }
 }
+

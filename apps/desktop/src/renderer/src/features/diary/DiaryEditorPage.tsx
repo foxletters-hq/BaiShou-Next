@@ -5,7 +5,11 @@ import './DiaryEditorPage.css'
 import { useTranslation } from 'react-i18next'
 import { format } from 'date-fns'
 import { motion } from 'framer-motion'
-import { formatLocalDate, safeParseDate } from '@baishou/shared'
+import { formatLocalDate, normalizeWeatherId, safeParseDate } from '@baishou/shared'
+import {
+  DIARY_EDITOR_SAVE_EXIT_TRANSITION,
+  markDiaryReturnReveal
+} from './diary-navigation'
 
 export const DiaryEditorPage: React.FC = () => {
   const { t } = useTranslation()
@@ -80,12 +84,12 @@ export const DiaryEditorPage: React.FC = () => {
           if (diary) {
             setDiaryId(diary.id || null)
             setTags(diary.tags || [])
-            setWeather(diary.weather || '')
+            setWeather(normalizeWeatherId(diary.weather || '') || '')
             setIsFavorite(diary.isFavorite || false)
             setMediaPaths(diary.mediaPaths || [])
 
             initialTags = diary.tags || []
-            initialWeather = diary.weather || ''
+            initialWeather = normalizeWeatherId(diary.weather || '') || ''
             initialFavorite = diary.isFavorite || false
             initialMedia = diary.mediaPaths || []
 
@@ -153,32 +157,12 @@ export const DiaryEditorPage: React.FC = () => {
             mediaPaths
           }
 
-          if (diaryId) {
-            // 编辑已有日记：直接使用 update，payload.date 已化为用户选择的新日期
-            const updated = await (window as any).api.diary.update(diaryId, payload)
-            // 如果日期跳转导致后端返回了新 ID（合并场景），同步更新前端的 diaryId
-            if (updated && updated.id && updated.id !== diaryId) {
-              setDiaryId(updated.id)
-            }
-          } else {
-            // 新建模式：查询用户当前选择的新日期
-            const existing = await (window as any).api.diary.findByDate(selectedDateStr)
-            if (existing && existing.id) {
-              // 当天已有日记：合并内容
-              const oldContent = (existing.content || '').trimEnd()
-              const mergedContent = oldContent ? `${oldContent}\n\n${newContent}` : newContent
-              const mergedTags = [...new Set([...(existing.tags || []), ...tagsRef.current])]
-              await (window as any).api.diary.update(existing.id, {
-                ...payload,
-                content: mergedContent,
-                tags: mergedTags
-              })
-              setDiaryId(existing.id)
-            } else {
-              const created = await (window as any).api.diary.create(payload)
-              if (created && created.id) setDiaryId(created.id)
-            }
+          // 统一使用下沉到 DiaryService 中的 save 接口，自动处理新建、更新与冲突自动合并
+          const saved = await (window as any).api.diary.save(diaryId, payload)
+          if (saved && saved.id && saved.id !== diaryId) {
+            setDiaryId(saved.id)
           }
+          return saved
         }
         setIsDirty(false)
         initialStateRef.current = {
@@ -224,6 +208,8 @@ export const DiaryEditorPage: React.FC = () => {
 
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLeavingAfterSave, setIsLeavingAfterSave] = useState(false)
+  const leavingAfterSaveRef = useRef(false)
 
   const handleBack = () => {
     if (checkIsReallyDirty()) {
@@ -233,13 +219,25 @@ export const DiaryEditorPage: React.FC = () => {
     }
   }
 
-  const goBackToSidebar = () => {
+  const goBackToSidebar = useCallback(() => {
     const lastNav = sessionStorage.getItem('desktop_last_nav')
     if (lastNav && lastNav !== '/diary') {
       navigate(lastNav)
     } else {
       navigate('/diary')
     }
+  }, [navigate])
+
+  const playSaveExitAndGoBack = useCallback(() => {
+    markDiaryReturnReveal()
+    leavingAfterSaveRef.current = true
+    setIsLeavingAfterSave(true)
+  }, [])
+
+  const handleSaveExitComplete = () => {
+    if (!leavingAfterSaveRef.current) return
+    leavingAfterSaveRef.current = false
+    goBackToSidebar()
   }
 
   const handleSave = async () => {
@@ -249,7 +247,9 @@ export const DiaryEditorPage: React.FC = () => {
     setTimeout(async () => {
       try {
         await autoSave(content)
-        goBackToSidebar()
+        // 等待列表页处理 diary:sync-event，再播放退出动画并返回
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
+        playSaveExitAndGoBack()
       } catch (e: any) {
         toast.showError(
           e?.message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误')
@@ -274,9 +274,17 @@ export const DiaryEditorPage: React.FC = () => {
     <motion.div
       className="diary-editor-page-container"
       initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      animate={
+        isLeavingAfterSave
+          ? { opacity: 0, y: 28, scale: 0.97 }
+          : { opacity: 1, y: 0, scale: 1 }
+      }
+      transition={
+        isLeavingAfterSave
+          ? DIARY_EDITOR_SAVE_EXIT_TRANSITION
+          : { type: 'spring', damping: 25, stiffness: 200 }
+      }
+      onAnimationComplete={handleSaveExitComplete}
     >
       <DiaryEditor
         content={content}
