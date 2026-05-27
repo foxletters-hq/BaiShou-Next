@@ -64,24 +64,24 @@ export const Sidebar: React.FC = () => {
   })
 
   const allItems = {
-    diary: { icon: <MdTimeline />, label: t('diary.title', '日记'), path: '/diary' },
+    diary: { icon: <MdTimeline />, label: t('diary.title', 'Diary'), path: '/diary' },
     summary: {
       icon: <MdAutoStories />,
-      label: t('summary.dashboard_title', '全域仪表盘'),
+      label: t('summary.dashboard_title', 'Memories'),
       path: '/summary'
     },
     lan: {
       icon: <MdWifiFind />,
-      label: t('settings.lan_transfer', '局域网快传'),
+      label: t('settings.lan_transfer', 'LAN Transfer'),
       path: '/lan-transfer'
     },
-    sync: { icon: <FolderArchive size={20} />, label: t('common.data_sync', '数据备份'), path: '/data-sync' },
+    sync: { icon: <FolderArchive size={20} />, label: t('common.data_sync', 'Data Sync'), path: '/data-sync' },
     'incr-sync': {
       icon: <RefreshCw size={20} />,
-      label: t('common.incremental_sync', '文件同步'),
+      label: t('settings.incremental_sync', 'File Sync'),
       path: '/incremental-sync'
     },
-    git: { icon: <MdHistory />, label: t('version_control.title', '版本控制'), path: '/git' }
+    git: { icon: <MdHistory />, label: t('version_control.title', 'Version Control'), path: '/git' }
   }
 
   useEffect(() => {

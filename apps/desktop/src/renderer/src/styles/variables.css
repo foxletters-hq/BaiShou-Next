@@ -33,6 +33,72 @@
   --color-outline: #9E9E9E;
   --color-outline-variant: #D0D0D0;
 
+  /* RGB Channels (Light) */
+  --color-primary-rgb: 91, 168, 245;
+  --text-primary-rgb: 26, 26, 26;
+  --text-secondary-rgb: 146, 173, 201;
+
+  /* Glassmorphism Overlays (Light) */
+  --color-glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-blur: 24px;
+  --color-glass-border: rgba(0, 0, 0, 0.08);
+
   /* Fonts */
   --font-family-main: 'Manrope', 'Microsoft YaHei', 'Noto Sans SC', 'PingFang SC', sans-serif;
+}
+
+[data-theme="dark"] {
+  /* Brand Colors - Adjusted for dark mode contrast */
+  --color-primary: #5BA8F5;
+  --color-on-primary: #FFFFFF;
+  --color-primary-container: rgba(91, 168, 245, 0.2);
+  --color-on-primary-container: #89C3FF;
+  
+  /* Dark theme background & surface (From Flutter AppTheme.dart) */
+  --color-background-dark: #101922;
+  --color-surface-dark: #192633;
+  --color-surface-highlight: #233648;
+  
+  --color-surface: #192633;
+  --color-on-surface: #F8FAFC;
+  --color-on-surface-variant: #94A3B8;
+
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #94A3B8;
+  --color-text-secondary-light: #94A3B8;
+  --color-text-secondary-dark: #94A3B8;
+
+  --color-surface-container-lowest: #101922;
+  --color-surface-container-low: #141F2B;
+  --color-surface-container: #192633;
+  --color-surface-container-high: #1E2F3F;
+  --color-surface-container-highest: #233648;
+
+  --color-outline: #3A4B5C;
+  --color-outline-variant: #2D3B48;
+
+  /* RGB Channels (Dark) */
+  --text-primary-rgb: 248, 250, 252;
+  --text-secondary-rgb: 148, 163, 184;
+
+  /* Glassmorphism Overlays (Dark) */
+  --color-glass-bg: rgba(25, 38, 51, 0.65);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  
+  /* Override Core UI global variables to seamlessly blend UI package components */
+  --bg-app: #101922;
+  --bg-surface: #192633;
+  --bg-surface-raised: #1D2C3B;
+  --bg-surface-highest: #2D3E4F;
+  --bg-surface-high: #233648;
+  --bg-surface-normal: #141F2B;
+  --bg-surface-lowest: #101922;
+  --bg-surface-low: #141F2B;
+  
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-tertiary: #64748B;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-muted: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.20);
 }

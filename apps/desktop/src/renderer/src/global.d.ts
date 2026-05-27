@@ -24,6 +24,10 @@ interface WindowAPI {
   close(): void
 }
 
+interface ShellAPI {
+  openExternal(url: string): Promise<boolean>
+}
+
 interface DiaryAPI {
   create(input: unknown): Promise<unknown>
   update(id: number, input: unknown): Promise<unknown>
@@ -50,7 +54,13 @@ interface ZoomAPI {
 }
 
 interface UpdaterAPI {
-  check(): Promise<{ hasUpdate: boolean; currentVersion: string; updateInfo: any }>
+  check(): Promise<{
+    hasUpdate: boolean
+    currentVersion: string
+    updateInfo: any
+    skipped?: boolean
+    skipReason?: 'development' | 'unconfigured'
+  }>
   download(): Promise<{ success: boolean }>
   install(): void
   getVersion(): Promise<string>
@@ -63,6 +73,7 @@ interface UpdaterAPI {
 interface AppAPI {
   onboarding: OnboardingAPI
   window: WindowAPI
+  shell: ShellAPI
   diary: DiaryAPI
   summary: SummaryAPI
   zoom: ZoomAPI

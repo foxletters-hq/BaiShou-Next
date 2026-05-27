@@ -26,7 +26,9 @@ export const TitleBar: React.FC = () => {
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [showVaultMenu, setShowVaultMenu] = useState(false)
+  const [isSwitchingVault, setIsSwitchingVault] = useState(false)
   const vaultMenuRef = useRef<HTMLDivElement>(null)
+  const preloadedVaultsRef = useRef<Set<string>>(new Set())
   const [s3Configured, setS3Configured] = useState(false)
 
   useEffect(() => {
@@ -130,16 +132,25 @@ export const TitleBar: React.FC = () => {
     }
   }
 
+  const preloadVault = (vaultName: string) => {
+    if (!vaultName || vaultName === activeVault?.name) return
+    if (preloadedVaultsRef.current.has(vaultName)) return
+    preloadedVaultsRef.current.add(vaultName)
+    void (window as any).api?.vault?.preload?.(vaultName)?.catch?.(() => {
+      preloadedVaultsRef.current.delete(vaultName)
+    })
+  }
+
   const handleSwitchVault = async (vaultName: string) => {
+    if (isSwitchingVault || vaultName === activeVault?.name) return
+    setIsSwitchingVault(true)
     try {
       await (window as any).api?.vault?.switchActive(vaultName)
-      const active = await (window as any).api?.vault?.getActive()
-      if (active) setActiveVault(active)
       setShowVaultMenu(false)
-      // Usually need to reload the whole app when switching workspace drastically
       window.location.reload()
     } catch (e) {
       console.error(e)
+      setIsSwitchingVault(false)
     }
   }
 
@@ -213,10 +224,15 @@ export const TitleBar: React.FC = () => {
             >
               <div
                 className={styles.vaultSwitcher}
-                onClick={() => setShowVaultMenu(!showVaultMenu)}
+                onClick={() => !isSwitchingVault && setShowVaultMenu(!showVaultMenu)}
+                style={{ opacity: isSwitchingVault ? 0.65 : 1 }}
               >
                 <MdFolderShared className={styles.actionIconSm} />
-                <span className={styles.vaultName}>{activeVault?.name || ''}</span>
+                <span className={styles.vaultName}>
+                  {isSwitchingVault
+                    ? t('workspace.switching', 'Switching…')
+                    : activeVault?.name || ''}
+                </span>
                 <MdArrowDropDown className={styles.actionIconSm} />
               </div>
               {showVaultMenu && vaults.length > 0 && (
@@ -239,6 +255,7 @@ export const TitleBar: React.FC = () => {
                   {vaults.map((v, i) => (
                     <div
                       key={i}
+                      onMouseEnter={() => preloadVault(v.name)}
                       onClick={() => handleSwitchVault(v.name)}
                       style={{
                         padding: '8px 12px',

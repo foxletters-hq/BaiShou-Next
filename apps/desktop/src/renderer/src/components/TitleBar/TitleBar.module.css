@@ -46,7 +46,7 @@
 }
 
 .tab:hover:not(.activeTab) {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(var(--text-primary-rgb), 0.04);
 }
 
 .activeTab {
@@ -82,7 +82,7 @@
 }
 
 .vaultSwitcher:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(var(--text-primary-rgb), 0.05);
 }
 
 .actionIconSm {
@@ -112,7 +112,7 @@
 }
 
 .actionBtn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(var(--text-primary-rgb), 0.05);
 }
 
 .actionIcon {
@@ -147,7 +147,7 @@
 }
 
 .winBtn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(var(--text-primary-rgb), 0.05);
 }
 
 .winCloseBtn:hover {
@@ -178,20 +178,4 @@
   opacity: 1;
 }
 
-[data-theme='dark'] .tab:hover:not(.activeTab) {
-  background-color: rgba(255, 255, 255, 0.06);
-}
 
-[data-theme='dark'] .activeTab {
-  background: rgba(91, 168, 245, 0.15);
-}
-
-[data-theme='dark'] .activeTab:hover {
-  background: rgba(91, 168, 245, 0.15);
-}
-
-[data-theme='dark'] .vaultSwitcher:hover,
-[data-theme='dark'] .actionBtn:hover,
-[data-theme='dark'] .winBtn:hover {
-  background-color: rgba(255, 255, 255, 0.07);
-}
