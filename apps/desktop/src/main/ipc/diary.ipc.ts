@@ -67,6 +67,16 @@ export function registerDiaryIPC() {
     return await getDiaryManager().update(id, input)
   })
 
+  ipcMain.handle('diary:save', async (event, id: number | null, input: CreateDiaryInput & { id?: number }) => {
+    if (input.date) input.date = parseInputDate(String(input.date)) as Date
+    const saved = await getDiaryManager().save(id, input)
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win && saved) {
+      win.webContents.send('diary:sync-event', { type: 'saved', entry: saved })
+    }
+    return saved
+  })
+
   ipcMain.handle('diary:delete', async (_, id: number) => {
     return await getDiaryManager().delete(id)
   })
