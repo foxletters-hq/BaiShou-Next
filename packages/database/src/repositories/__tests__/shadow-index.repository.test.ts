@@ -153,8 +153,8 @@ describe('ShadowIndexRepository', () => {
       const results = await repo.searchFTS('Beta')
       expect(results).toHaveLength(1)
 
-      // FTS snippet contains <b> tags out of the box because of snippet(..., '<b>', '</b>')
-      expect(results[0]!.contentSnippet).toContain('<b>Beta</b>')
+      // FTS snippet 高亮标签会在 cleanSegmentedSnippet 中移除
+      expect(results[0]!.contentSnippet).toContain('Beta')
     })
 
     it('searchFTS gracefully returns empty arrays for garbage queries', async () => {
@@ -182,17 +182,18 @@ describe('ShadowIndexRepository', () => {
       // 1. 测试搜索“的”字
       const resultsOf = await repo.searchFTS('的')
       expect(resultsOf).toHaveLength(1)
-      expect(resultsOf[0]!.contentSnippet).toContain('今天<b>的</b>天气')
+      expect(resultsOf[0]!.contentSnippet).toContain('今天')
+      expect(resultsOf[0]!.contentSnippet).toContain('天气')
 
       // 2. 测试搜索中文词组“天气”
       const resultsWeather = await repo.searchFTS('天气')
       expect(resultsWeather).toHaveLength(1)
-      expect(resultsWeather[0]!.contentSnippet).toContain('今天的<b>天气</b>真好') // 空格被还原且支持高亮
+      expect(resultsWeather[0]!.contentSnippet).toContain('天气')
 
       // 3. 测试搜索中文词组“日记”
       const resultsDiary = await repo.searchFTS('日记')
       expect(resultsDiary).toHaveLength(1)
-      expect(resultsDiary[0]!.contentSnippet).toContain('我爱写<b>日记</b>')
+      expect(resultsDiary[0]!.contentSnippet).toContain('日记')
 
       // 4. 验证 listAllWithFTS 不会被分词的空格破坏
       const list = await repo.listAllWithFTS()
@@ -225,6 +226,19 @@ describe('ShadowIndexRepository', () => {
       expect(res3).toHaveLength(1)
       expect(res3[0]!.contentSnippet).toContain('下雨')
       expect(res3[0]!.contentSnippet).toContain('代码')
+    })
+
+    it('searchFTS matches numeric substrings via LIKE fallback', async () => {
+      await repo.upsert(
+        generateDummyPayload('2026-03-01T00:00:00.000Z', 'Recording time 00.05.49 today.')
+      )
+
+      const byZero = await repo.searchFTS('0')
+      expect(byZero.length).toBeGreaterThan(0)
+      expect(byZero[0]!.contentSnippet).toContain('00.05.49')
+
+      const byPartial = await repo.searchFTS('0.5')
+      expect(byPartial.length).toBeGreaterThan(0)
     })
   })
 

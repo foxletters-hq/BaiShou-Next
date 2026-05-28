@@ -2,7 +2,12 @@ import { expandWeatherFilterValues } from '@baishou/shared'
 import { eq, sql, like, and, inArray, desc, asc, gte, lte } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
-import { cleanSegmentedSnippet, segmentChinese } from './shadow-index.repository.text'
+import {
+  cleanSegmentedSnippet,
+  segmentChinese,
+  normalizeSearchQuery,
+  isNumericLikeQuery
+} from './shadow-index.repository.text'
 import type {
   DiaryListFilterOptions,
   ShadowFTSResult,
@@ -56,7 +61,7 @@ export class ShadowIndexQueryOps {
     offset: number = 0
   ): Promise<ShadowFTSResult[]> {
     if (!query || query.trim().length === 0) return []
-    const cleanedQuery = query.replace(/"/g, ' ').trim()
+    const cleanedQuery = normalizeSearchQuery(query)
     if (!cleanedQuery) return []
 
     // 按照空白切分多 Term 逻辑

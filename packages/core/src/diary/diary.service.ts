@@ -10,7 +10,8 @@ import {
   DiaryListFilter,
   formatLocalDate,
   parseDateStr,
-  weatherMatchesFilter
+  weatherMatchesFilter,
+  formatDiaryPreviewText
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
 
@@ -331,7 +332,9 @@ export class DiaryService {
     return {
       id: s.id,
       date: parseDateStr(s.date.split('T')[0]!),
-      preview: previewOverride || (rawContent ? rawContent.substring(0, 500) : ''),
+      preview: formatDiaryPreviewText(
+        previewOverride || (rawContent ? rawContent.substring(0, 500) : '')
+      ),
       tags: parsedTags,
       updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
       weather: s.weather || undefined,

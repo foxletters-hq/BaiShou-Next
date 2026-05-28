@@ -4,6 +4,12 @@ export interface ImportResult {
   snapshotPath?: string
 }
 
+export interface SnapshotMeta {
+  filename: string
+  createdAt: number
+  size: number
+}
+
 export interface IArchiveService {
   /**
    * 导出为临时 ZIP 文件。内部需要主动过滤 `-wal`, `-shm`，并且热注入 `config/device_preferences.json`。
@@ -30,4 +36,13 @@ export interface IArchiveService {
    * 系统主动生成隐式快照供后悔药回滚。
    */
   createSnapshot(): Promise<string | null>
+
+  /** 列出本地快照（按创建时间倒序） */
+  listSnapshots(): Promise<SnapshotMeta[]>
+
+  /** 从本地快照恢复（不再创建前置快照） */
+  restoreFromSnapshot(filename: string): Promise<ImportResult>
+
+  /** 删除指定本地快照 */
+  deleteSnapshot(filename: string): Promise<void>
 }

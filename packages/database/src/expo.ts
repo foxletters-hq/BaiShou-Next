@@ -29,17 +29,28 @@ export * from './drivers/vec-capability'
 
 import { AppDatabase } from './types'
 import { ExpoSqliteDriver, ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
+import { MigrationService } from './migration.service'
+import { EMBEDDED_AGENT_MIGRATIONS } from './embedded-agent-migrations'
+import { ensureExpoShadowIndexSchema } from './expo-shadow-schema'
 
 // 特别为 Expo 环境提供的原生依赖解耦
 export function initExpoDatabase(expoDb: ExpoSqliteDatabase): {
   drizzleDb: AppDatabase
   driver: ExpoSqliteDriver
 } {
-  // 注入 drizzle 适配器
-  // For Expo, we don't pass the schema object because Drizzle handles queries generically,
-  // but if needed we can combain schemas.
   const drizzleDb = drizzle(expoDb as any) as unknown as AppDatabase
   const driver = new ExpoSqliteDriver(expoDb)
+  return { drizzleDb, driver }
+}
 
+/** 初始化 Expo SQLite：执行 Agent 迁移 + 影子索引建表 */
+export async function installExpoDatabaseSchema(expoDb: ExpoSqliteDatabase): Promise<{
+  drizzleDb: AppDatabase
+  driver: ExpoSqliteDriver
+}> {
+  const { drizzleDb, driver } = initExpoDatabase(expoDb)
+  const migrationService = new MigrationService(drizzleDb, expoDb, '', EMBEDDED_AGENT_MIGRATIONS)
+  await migrationService.runMigrations()
+  await ensureExpoShadowIndexSchema(expoDb)
   return { drizzleDb, driver }
 }

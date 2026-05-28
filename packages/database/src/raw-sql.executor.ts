@@ -17,15 +17,40 @@ export async function executeRawSql(
     throw new Error('[executeRawSql] No database client available.')
   }
 
+  const trimmedStatement = statement.trim().toUpperCase()
+  const isReadQuery =
+    trimmedStatement.startsWith('SELECT') ||
+    trimmedStatement.startsWith('PRAGMA') ||
+    trimmedStatement.includes('TABLE_INFO')
+
+  // Expo SQLite (React Native)
+  if (typeof client.getAllAsync === 'function' && typeof client.runAsync === 'function') {
+    if (args.length > 0) {
+      if (isReadQuery) {
+        const rows = await client.getAllAsync(statement, args)
+        return { rows }
+      }
+      const res = await client.runAsync(statement, args)
+      return {
+        rows: [],
+        rowsAffected: res.changes,
+        lastInsertRowid: res.lastInsertRowId
+      }
+    }
+    if (isReadQuery) {
+      const rows = await client.getAllAsync(statement)
+      return { rows }
+    }
+    await client.runAsync(statement)
+    return { rows: [] }
+  }
+
   if (typeof client.execute === 'function') {
     if (args.length > 0) {
       return await client.execute({ sql: statement, args })
     }
     return await client.execute(statement)
   }
-
-  const trimmed = statement.trim().toUpperCase()
-  const isReadQuery = trimmed.startsWith('SELECT') || trimmed.includes('TABLE_INFO')
 
   if (args.length > 0) {
     const stmt = client.prepare(statement)

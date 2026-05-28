@@ -24,15 +24,22 @@ export interface MigrationJournal {
  * 仅负责 Agent 数据库（baishou_agent.db）的 schema 迁移。
  * 影子索引（shadow_index.db）的建表由 ShadowIndexConnectionManager 独立管理。
  */
+export interface EmbeddedMigrations {
+  journal: MigrationJournal
+  sqlByTag: Record<string, string>
+}
+
 export class MigrationService {
   private db: AppDatabase
-  private client: any // 兼容 LibSQL.Client 和 Better-SQLite3.Database
+  private client: any // 兼容 LibSQL.Client、Better-SQLite3、expo-sqlite
   private migrationDir: string
+  private embedded?: EmbeddedMigrations
 
-  constructor(db: AppDatabase, client: any, migrationDir: string) {
+  constructor(db: AppDatabase, client: any, migrationDir: string, embedded?: EmbeddedMigrations) {
     this.db = db
     this.client = client
     this.migrationDir = migrationDir
+    this.embedded = embedded
   }
 
   private async _executeSql(statement: string, args: any[] = []): Promise<any> {
@@ -279,6 +286,10 @@ export class MigrationService {
   }
 
   private async readMigrationJournal(): Promise<MigrationJournal> {
+    if (this.embedded) {
+      return this.embedded.journal
+    }
+
     const journalPath = path.join(this.migrationDir, 'meta', '_journal.json')
 
     if (!fs.existsSync(journalPath)) {
@@ -305,18 +316,21 @@ export class MigrationService {
   }
 
   private async executeMigration(migration: MigrationJournal['entries'][0]): Promise<void> {
-    const sqlFilePath = path.join(this.migrationDir, `${migration.tag}.sql`)
-
-    if (!fs.existsSync(sqlFilePath)) {
-      throw new Error(`[MigrationService] 缺失迁移 SQL 文件: ${sqlFilePath}`)
+    const sqlContent = this.embedded?.sqlByTag[migration.tag]
+    if (!sqlContent) {
+      const sqlFilePath = path.join(this.migrationDir, `${migration.tag}.sql`)
+      if (!fs.existsSync(sqlFilePath)) {
+        throw new Error(`[MigrationService] 缺失迁移 SQL 文件: ${sqlFilePath}`)
+      }
     }
 
     try {
       logger.info(`[MigrationService] -> 执行迁移: ${migration.tag}.sql (v${migration.idx})`)
       const startTime = Date.now()
 
-      const sqlContent = fs.readFileSync(sqlFilePath, 'utf-8')
-      const statements = sqlContent
+      const resolvedSql =
+        sqlContent ?? fs.readFileSync(path.join(this.migrationDir, `${migration.tag}.sql`), 'utf-8')
+      const statements = resolvedSql
         .split('--> statement-breakpoint')
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0)

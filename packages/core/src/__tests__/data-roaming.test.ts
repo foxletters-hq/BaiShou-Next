@@ -20,7 +20,10 @@ describe('IArchiveService 接口契约', () => {
       exportToTempFile: async () => '/tmp/archive.zip',
       exportToUserDevice: async () => '/Downloads/archive.zip',
       importFromZip: async () => ({ fileCount: 10, profileRestored: true }),
-      createSnapshot: async () => '/tmp/snapshot.zip'
+      createSnapshot: async () => '/tmp/snapshot.zip',
+      listSnapshots: async () => [],
+      restoreFromSnapshot: async () => ({ fileCount: 10, profileRestored: true }),
+      deleteSnapshot: async () => {}
     }
     expect(mock.exportToTempFile).toBeDefined()
     expect(mock.exportToUserDevice).toBeDefined()
@@ -37,7 +40,10 @@ describe('IArchiveService 接口契约', () => {
         profileRestored: true,
         snapshotPath: '/tmp/pre-import-snapshot.zip'
       }),
-      createSnapshot: async () => null
+      createSnapshot: async () => null,
+      listSnapshots: async () => [],
+      restoreFromSnapshot: async () => ({ fileCount: 0, profileRestored: false }),
+      deleteSnapshot: async () => {}
     }
 
     const result: ImportResult = await mock.importFromZip('/fake.zip')
