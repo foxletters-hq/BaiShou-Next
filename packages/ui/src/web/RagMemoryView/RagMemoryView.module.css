@@ -578,13 +578,13 @@ input:checked + .slider:before {
   padding: 4px 10px;
   font-size: 12px;
   border-radius: 8px;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
+  border: 1px solid rgba(var(--color-error-rgb, 239, 68, 68), 0.45);
+  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.12);
+  color: var(--color-error);
   cursor: pointer;
 }
 .migrationCancelBtn:hover {
-  background: rgba(239, 68, 68, 0.14);
+  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.2);
 }
 .migrationActionRow {
   display: flex;
