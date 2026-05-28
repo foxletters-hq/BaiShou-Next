@@ -35,16 +35,16 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('nav.diary', '日记'),
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons name="timeline" size={24} color={color} />
-          )
+          title: t('nav.diary'),
+          headerShown: false,
+          tabBarIcon: ({ color }) => <MaterialIcons name="timeline" size={24} color={color} />
         }}
       />
       <Tabs.Screen
         name="agent"
         options={{
-          title: t('nav.agent', '伙伴'),
+          title: t('nav.agent'),
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <MaterialIcons name="auto-awesome" size={24} color={color} />
           )
@@ -53,7 +53,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="summary"
         options={{
-          title: t('nav.summary', '归档'),
+          title: t('nav.summary'),
           tabBarIcon: ({ color, focused }) => (
             <MaterialIcons name="menu-book" size={24} color={color} />
           )
@@ -62,10 +62,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: t('nav.settings', '设置'),
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons name="settings" size={24} color={color} />
-          )
+          title: t('nav.settings'),
+          headerTitle: t('settings.title'),
+          tabBarIcon: ({ color }) => <MaterialIcons name="settings" size={24} color={color} />
         }}
       />
     </Tabs>

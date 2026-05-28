@@ -8,7 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { Platform, NativeModules } from 'react-native'
 import i18n from 'i18next'
 
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, DialogProvider, ToastProvider } from '@baishou/ui/native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 
@@ -66,6 +67,13 @@ function AppContent() {
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
+          name="settings"
+          options={{
+            headerShown: false,
+            animation: 'slide_from_right'
+          }}
+        />
+        <Stack.Screen
           name="diary-editor"
           options={{
             presentation: 'modal',
@@ -73,34 +81,18 @@ function AppContent() {
             headerShown: false
           }}
         />
-        <Stack.Screen
-          name="sessions"
-          options={{
-            title: t('agent.sessions.title', '会话管理')
-          }}
-        />
-        <Stack.Screen
-          name="assistants"
-          options={{
-            title: t('agent.assistants.title', '伙伴管理')
-          }}
-        />
-        <Stack.Screen
-          name="assistant-edit"
-          options={{
-            title: t('agent.assistant_edit.title', '编辑助手')
-          }}
-        />
+        <Stack.Screen name="assistants" options={{ headerShown: false }} />
+        <Stack.Screen name="assistant-edit" options={{ headerShown: false }} />
         <Stack.Screen
           name="lan-transfer"
           options={{
-            title: t('lan_transfer.title', '局域网传输')
+            headerShown: false
           }}
         />
         <Stack.Screen
           name="data-sync"
           options={{
-            title: t('data_sync.title', '数据同步')
+            headerShown: false
           }}
         />
         <Stack.Screen
@@ -110,18 +102,8 @@ function AppContent() {
             headerShown: false
           }}
         />
-        <Stack.Screen
-          name="storage"
-          options={{
-            title: t('storage.title', '存储管理')
-          }}
-        />
-        <Stack.Screen
-          name="incremental-sync"
-          options={{
-            title: t('incremental_sync.title', '增量同步')
-          }}
-        />
+        <Stack.Screen name="storage" options={{ headerShown: false }} />
+        <Stack.Screen name="incremental-sync" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
@@ -134,10 +116,16 @@ export default function RootLayout() {
   }, [])
 
   return (
-    <BaishouProvider>
-      <NativeAppThemeBridge>
-        <AppContent />
-      </NativeAppThemeBridge>
-    </BaishouProvider>
+    <SafeAreaProvider>
+      <BaishouProvider>
+        <NativeAppThemeBridge>
+          <DialogProvider>
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
+          </DialogProvider>
+        </NativeAppThemeBridge>
+      </BaishouProvider>
+    </SafeAreaProvider>
   )
 }
