@@ -1,6 +1,14 @@
 package expo.modules.baishouserver
 
+import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import fi.iki.elonen.NanoHTTPD
@@ -197,6 +205,98 @@ class ExpoBaishouServerModule : Module() {
                 pending.latch.countDown()
             }
             pendingMcpRequests.clear()
+        }
+
+        /** Android 11+ 全文件访问；较低版本检查 WRITE_EXTERNAL_STORAGE */
+        Function("hasAllFilesAccess") {
+            val context = appContext.reactContext ?: return@Function false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Environment.isExternalStorageManager()
+            } else {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+
+        /** 打开系统「允许管理所有文件」或应用详情页 */
+        Function("openAllFilesAccessSettings") {
+            val context = appContext.currentActivity ?: appContext.reactContext ?: return@Function false
+            try {
+                val intent =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                    } else {
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                    }
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
+            }
+        }
+
+        /** 使用 java.io.File 探测外部 BaiShou_Root 可写（绕过 expo-file-system 的 Scoped Storage 限制） */
+        Function("probeExternalStorageWritable") {
+            val context = appContext.reactContext ?: return@Function false
+            ExternalStorageFiles.probeWritable(context)
+        }
+
+        Function("externalGetInfo") { path: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.getInfo(context, path)
+        }
+
+        Function("externalMakeDirectory") { path: String, intermediates: Boolean ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.makeDirectory(context, path, intermediates)
+        }
+
+        Function("externalWriteString") { path: String, content: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.writeString(context, path, content)
+        }
+
+        Function("externalWriteBase64") { path: String, base64: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.writeBase64(context, path, base64)
+        }
+
+        Function("externalReadString") { path: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.readString(context, path)
+        }
+
+        Function("externalReadBase64") { path: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.readBase64(context, path)
+        }
+
+        Function("externalDelete") { path: String, idempotent: Boolean ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.deletePath(context, path, idempotent)
+        }
+
+        Function("externalReadDirectory") { path: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.readDirectory(context, path)
+        }
+
+        Function("externalMove") { fromPath: String, toPath: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.movePath(context, fromPath, toPath)
+        }
+
+        Function("externalCopy") { fromPath: String, toPath: String ->
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            ExternalStorageFiles.copyPath(context, fromPath, toPath)
         }
     }
 }
