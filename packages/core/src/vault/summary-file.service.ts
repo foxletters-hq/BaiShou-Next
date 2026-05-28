@@ -1,16 +1,19 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
+import type { IFileSystem } from '../fs'
+import * as path from '../fs/path.util'
 import { IStoragePathService } from './storage-path.types'
 import { SummaryType, formatLocalDate } from '@baishou/shared'
 
 export class SummaryFileService {
-  constructor(private readonly pathProvider: IStoragePathService) {}
+  constructor(
+    private readonly pathProvider: IStoragePathService,
+    private readonly fileSystem: IFileSystem
+  ) {}
 
   private async getCategoryDir(type: SummaryType): Promise<string> {
     const base = await this.pathProvider.getSummariesBaseDirectory()
     const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
     const targetDir = path.join(base, typeDirName)
-    await fs.mkdir(targetDir, { recursive: true })
+    await this.fileSystem.mkdir(targetDir, { recursive: true })
     return targetDir
   }
 
@@ -65,7 +68,7 @@ export class SummaryFileService {
     const fileName = this.buildFileName(type, startDate)
     const fullPath = path.join(dir, fileName)
 
-    await fs.writeFile(fullPath, content.trim(), 'utf8')
+    await this.fileSystem.writeFile(fullPath, content.trim(), 'utf8')
     return fullPath
   }
 
@@ -92,7 +95,7 @@ export class SummaryFileService {
     for (const baseDir of searchDirs) {
       const fullPath = path.join(baseDir, typeDirName, standardFileName)
       try {
-        const content = await fs.readFile(fullPath, 'utf8')
+        const content = await this.fileSystem.readFile(fullPath, 'utf8')
         return this.cleanMarkdownContent(content)
       } catch (e: any) {
         if (e.code !== 'ENOENT') throw e
@@ -104,7 +107,7 @@ export class SummaryFileService {
       for (const baseDir of searchDirs) {
         const fullPath = path.join(baseDir, typeDirName, transitionFileName)
         try {
-          const content = await fs.readFile(fullPath, 'utf8')
+          const content = await this.fileSystem.readFile(fullPath, 'utf8')
           return this.cleanMarkdownContent(content)
         } catch (e: any) {
           if (e.code !== 'ENOENT') throw e
@@ -147,14 +150,14 @@ export class SummaryFileService {
     for (const baseDir of searchDirs) {
       // 删标准格式
       try {
-        await fs.unlink(path.join(baseDir, typeDirName, standardFileName))
+        await this.fileSystem.unlink(path.join(baseDir, typeDirName, standardFileName))
       } catch (e: any) {
         if (e.code !== 'ENOENT') throw e
       }
       // 删过渡期格式（若不同）
       if (standardFileName !== transitionFileName) {
         try {
-          await fs.unlink(path.join(baseDir, typeDirName, transitionFileName))
+          await this.fileSystem.unlink(path.join(baseDir, typeDirName, transitionFileName))
         } catch (e: any) {
           if (e.code !== 'ENOENT') throw e
         }
@@ -206,7 +209,7 @@ export class SummaryFileService {
       const typeDir = path.join(baseDir, typeDirName)
       let files: string[] = []
       try {
-        files = await fs.readdir(typeDir)
+        files = await this.fileSystem.readdir(typeDir)
       } catch (e: any) {
         if (e.code !== 'ENOENT') throw e
         continue

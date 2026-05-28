@@ -3,22 +3,33 @@
   "version": "1.0.0",
   "private": true,
   "main": "src/index.ts",
+  "react-native": "src/index.native.ts",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.native.ts",
+      "default": "./src/index.ts"
+    },
+    "./shared": "./src/index.shared.ts",
+    "./desktop": "./src/index.desktop.ts",
+    "./mobile": "./src/index.native.ts",
+    "./sync/three-way-merge": "./src/sync/three-way-merge.ts",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node ../../node_modules/vitest/vitest.mjs run"
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
   },
   "dependencies": {
     "@baishou/ai": "workspace:*",
     "@baishou/database": "workspace:*",
     "@baishou/shared": "workspace:*",
     "ai": "^6.0.146",
-    "chokidar": "^5.0.0",
     "drizzle-orm": "^0.45.2",
-    "simple-git": "^3.28.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/uuid": "^11.0.0",
+    "simple-git": "^3.28.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   }

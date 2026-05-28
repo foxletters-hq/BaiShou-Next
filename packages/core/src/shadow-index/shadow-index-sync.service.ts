@@ -1,10 +1,9 @@
-import * as fsp from 'node:fs/promises'
-import * as path from 'node:path'
-import * as crypto from 'node:crypto'
-
 import { ShadowIndexRepository, UpsertShadowIndexPayload } from '@baishou/database'
 import { parseDateStr, DiaryMeta, logger } from '@baishou/shared'
 
+import type { IFileSystem } from '../fs/file-system.types'
+import { md5Hex } from '../fs/md5'
+import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
 import { IVaultService } from '../vault/vault.types'
 import {
@@ -49,6 +48,7 @@ export class ShadowIndexSyncService {
     private readonly shadowRepo: ShadowIndexRepository,
     private readonly pathService: IStoragePathService,
     private readonly vaultService: IVaultService,
+    private readonly fileSystem: IFileSystem,
     private readonly embeddingCallback?: IEmbeddingCallback
   ) {}
 
@@ -121,11 +121,7 @@ export class ShadowIndexSyncService {
           const dateKey = dateStr
 
           // ── 1. 孤立检测 ──
-          let fileExists = false
-          try {
-            await fsp.access(filePath)
-            fileExists = true
-          } catch {}
+          const fileExists = await this.fileSystem.exists(filePath)
 
           if (!fileExists) {
             const existingRows = await this.shadowRepo.findByDatePrefix(dateStr)
@@ -154,7 +150,7 @@ export class ShadowIndexSyncService {
           }
 
           // ── 3. 解析落盘 ──
-          const rawContent = await fsp.readFile(filePath, 'utf8')
+          const rawContent = await this.fileSystem.readFile(filePath, 'utf8')
           const diary = parseJournalMarkdown(rawContent, dateStr)
           if (!diary) {
             results.push({ meta: null, isChanged: false })
@@ -273,11 +269,7 @@ export class ShadowIndexSyncService {
       const dateFileRegex = /^(\d{4}-\d{2}-\d{2})\.md$/
       const targetDates: string[] = []
 
-      let journalsDirExists = false
-      try {
-        await fsp.access(journalsDir)
-        journalsDirExists = true
-      } catch {}
+      const journalsDirExists = await this.fileSystem.exists(journalsDir)
 
       if (journalsDirExists) {
         await this._walkDir(journalsDir, (filePath) => {
@@ -334,8 +326,8 @@ export class ShadowIndexSyncService {
    * 对标原版 `_computeFileHash()`
    */
   private async _computeFileHash(filePath: string): Promise<string> {
-    const content = await fsp.readFile(filePath)
-    return crypto.createHash('md5').update(content).digest('hex')
+    const content = await this.fileSystem.readFile(filePath, 'utf8')
+    return md5Hex(content)
   }
 
   /**
@@ -387,12 +379,19 @@ export class ShadowIndexSyncService {
    * 递归遍历目录树
    */
   private async _walkDir(dir: string, callback: (filePath: string) => void): Promise<void> {
-    const entries = await fsp.readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name)
-      if (entry.isDirectory()) {
+    let entries: string[] = []
+    try {
+      entries = await this.fileSystem.readdir(dir)
+    } catch (e: any) {
+      if (e.code === 'ENOENT') return
+      throw e
+    }
+    for (const name of entries) {
+      const fullPath = path.join(dir, name)
+      const stat = await this.fileSystem.stat(fullPath)
+      if (stat.isDirectory) {
         await this._walkDir(fullPath, callback)
-      } else if (entry.isFile()) {
+      } else if (stat.isFile) {
         callback(fullPath)
       }
     }

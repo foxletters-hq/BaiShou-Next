@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "main": "src/index.ts",
+  "react-native": "src/index.native.ts",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.native.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

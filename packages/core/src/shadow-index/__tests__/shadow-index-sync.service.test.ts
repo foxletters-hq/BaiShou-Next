@@ -3,6 +3,7 @@ import * as fsp from 'node:fs/promises'
 import * as path from 'node:path'
 import * as os from 'node:os'
 
+import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import { ShadowIndexSyncService, IEmbeddingCallback } from '../shadow-index-sync.service'
 import { IStoragePathService } from '../../vault/storage-path.types'
 import { IVaultService, VaultInfo } from '../../vault/vault.types'
@@ -119,6 +120,7 @@ describe('ShadowIndexSyncService', () => {
       mockRepo as any,
       mockPathService,
       mockVaultService,
+      createNodeFileSystem(),
       mockEmbeddingCb
     )
   })
