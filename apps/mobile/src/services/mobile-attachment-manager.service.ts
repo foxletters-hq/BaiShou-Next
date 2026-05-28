@@ -1,19 +1,23 @@
-import * as FileSystem from 'expo-file-system'
 import * as ImagePicker from 'expo-image-picker'
 import type {
   IAttachmentManager,
   AttachmentItem,
   SessionAttachmentGroup,
-  DiaryAttachmentFileItem
+  DiaryAttachmentFileItem,
+  IFileSystem,
+  IStoragePathService
 } from '@baishou/core-mobile'
-import type { IStoragePathService } from '@baishou/core-mobile'
 import { joinPath } from '@baishou/core-mobile'
+import { importUriToPath } from './mobile-uri-import'
 
 /**
- * 移动端附件管理（expo-file-system），满足 AssistantManager 与设置页扫描需求。
+ * 移动端附件管理，所有 vault 读写经 IFileSystem。
  */
 export class MobileAttachmentManagerService implements IAttachmentManager {
-  constructor(private readonly pathService: IStoragePathService) {}
+  constructor(
+    private readonly pathService: IStoragePathService,
+    private readonly fileSystem: IFileSystem
+  ) {}
 
   private async vaultSystemDir(): Promise<string> {
     return this.pathService.getVaultSystemDirectory('default')
@@ -22,11 +26,11 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   async importAvatar(absoluteSourcePath: string, prefix = 'agent'): Promise<string> {
     const sysDir = await this.vaultSystemDir()
     const avatarsDir = joinPath(sysDir, 'avatars')
-    await FileSystem.makeDirectoryAsync(avatarsDir, { intermediates: true })
+    await this.fileSystem.mkdir(avatarsDir, { recursive: true })
     const ext = absoluteSourcePath.includes('.') ? absoluteSourcePath.split('.').pop() : 'jpg'
     const name = `${prefix}_${Date.now()}.${ext}`
     const dest = joinPath(avatarsDir, name)
-    await FileSystem.copyAsync({ from: absoluteSourcePath, to: dest })
+    await importUriToPath(absoluteSourcePath, dest, this.fileSystem)
     return `avatars/${name}`
   }
 
@@ -52,23 +56,22 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   async listSessionGroups(activeSessionIds: Set<string>): Promise<SessionAttachmentGroup[]> {
     const sysDir = await this.vaultSystemDir()
     const attDir = joinPath(sysDir, 'attachments')
-    const info = await FileSystem.getInfoAsync(attDir)
-    if (!info.exists) return []
+    if (!(await this.fileSystem.exists(attDir))) return []
 
-    const sessionIds = await FileSystem.readDirectoryAsync(attDir)
+    const sessionIds = await this.fileSystem.readdir(attDir)
     const out: SessionAttachmentGroup[] = []
 
     for (const sessionId of sessionIds) {
       const sessionDir = joinPath(attDir, sessionId)
-      const dirInfo = await FileSystem.getInfoAsync(sessionDir)
-      if (!dirInfo.isDirectory) continue
-      const files = await FileSystem.readDirectoryAsync(sessionDir)
+      const dirStat = await this.fileSystem.stat(sessionDir).catch(() => null)
+      if (!dirStat?.isDirectory) continue
+      const files = await this.fileSystem.readdir(sessionDir)
       let total = 0
       const items = []
       for (const name of files) {
         const fp = joinPath(sessionDir, name)
-        const st = await FileSystem.getInfoAsync(fp)
-        if (!st.exists || st.isDirectory) continue
+        const st = await this.fileSystem.stat(fp).catch(() => null)
+        if (!st?.isFile) continue
         const sizeMB = (st.size ?? 0) / (1024 * 1024)
         total += sizeMB
         items.push({
@@ -92,21 +95,20 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   async deleteFile(sessionId: string, fileName: string): Promise<void> {
     const sysDir = await this.vaultSystemDir()
     const fp = joinPath(sysDir, 'attachments', sessionId, fileName)
-    await FileSystem.deleteAsync(fp, { idempotent: true })
+    await this.fileSystem.unlink(fp)
   }
 
   async deleteBatch(ids: string[]): Promise<void> {
     const sysDir = await this.vaultSystemDir()
     for (const id of ids) {
       const fp = joinPath(sysDir, 'attachments', id)
-      await FileSystem.deleteAsync(fp, { idempotent: true })
+      await this.fileSystem.rm(fp, { recursive: true, force: true })
     }
   }
 
   async listDiaryAttachments(): Promise<DiaryAttachmentFileItem[]> {
     const journalsDir = await this.pathService.getJournalsBaseDirectory()
-    const info = await FileSystem.getInfoAsync(journalsDir)
-    if (!info.exists) return []
+    if (!(await this.fileSystem.exists(journalsDir))) return []
     return this.walkDiaryAttachments(journalsDir, journalsDir)
   }
 
@@ -115,20 +117,19 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     dir: string,
     acc: DiaryAttachmentFileItem[] = []
   ): Promise<DiaryAttachmentFileItem[]> {
-    const entries = await FileSystem.readDirectoryAsync(dir)
+    const entries = await this.fileSystem.readdir(dir)
     for (const name of entries) {
       const full = joinPath(dir, name)
-      const st = await FileSystem.getInfoAsync(full)
-      if (st.isDirectory) {
+      const st = await this.fileSystem.stat(full).catch(() => null)
+      if (st?.isDirectory) {
         await this.walkDiaryAttachments(root, full, acc)
-      } else if (st.exists && !st.isDirectory && name.match(/\.(png|jpe?g|gif|webp|pdf)$/i)) {
+      } else if (st?.isFile && name.match(/\.(png|jpe?g|gif|webp|pdf)$/i)) {
         const rel = full.replace(root + '/', '')
-        const bytes = 'size' in st && typeof st.size === 'number' ? st.size : 0
         acc.push({
           name,
           path: full,
           relativePath: rel,
-          sizeMB: bytes / (1024 * 1024),
+          sizeMB: (st.size ?? 0) / (1024 * 1024),
           birthtime: new Date().toISOString(),
           yearMonth: rel.slice(0, 7),
           isOrphan: false
@@ -139,7 +140,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   }
 
   async deleteDiaryAttachment(filePath: string): Promise<void> {
-    await FileSystem.deleteAsync(filePath, { idempotent: true })
+    await this.fileSystem.unlink(filePath)
   }
 
   /** 从相册选取头像并导入 */

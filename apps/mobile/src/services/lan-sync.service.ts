@@ -1,6 +1,7 @@
 import * as Network from 'expo-network'
 import Zeroconf from 'react-native-zeroconf'
-import * as FileSystem from 'expo-file-system/legacy'
+import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
+import type { IFileSystem } from '@baishou/core-mobile'
 import { IArchiveService, ILanSyncService, DiscoveredDevice } from '@baishou/core-mobile'
 
 // We import our custom internal module!
@@ -16,7 +17,10 @@ export class MobileLanSyncService implements ILanSyncService {
   private deviceLostCb?: (d: string) => void
   private serverEventSub: any
 
-  constructor(private archiveService: IArchiveService) {
+  constructor(
+    private archiveService: IArchiveService,
+    private readonly fileSystem: IFileSystem
+  ) {
     this.zeroconf = new Zeroconf()
 
     this.zeroconf.on('resolved', (service: any) => {
@@ -131,13 +135,12 @@ export class MobileLanSyncService implements ILanSyncService {
       // In React Native Expo, we use FileSystem.uploadAsync for multipart or raw POST!
       const url = `http://${ip}:${port}/upload`
 
-      const response = await FileSystem.uploadAsync(url, zipPath, {
+      const response = await uploadAsync(url, zipPath, {
         httpMethod: 'POST',
-        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT
+        uploadType: FileSystemUploadType.BINARY_CONTENT
       })
 
-      // Cleanup
-      await FileSystem.deleteAsync(zipPath, { idempotent: true }).catch(() => {})
+      await this.fileSystem.unlink(zipPath).catch(() => {})
 
       return response.status === 200
     } catch (e) {

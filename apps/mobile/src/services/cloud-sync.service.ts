@@ -1,5 +1,12 @@
-import * as FileSystem from 'expo-file-system'
-import { ICloudSyncClient, SyncConfig, SyncRecord, IArchiveService } from '@baishou/core-mobile'
+import { FileSystemUploadType, downloadAsync, uploadAsync } from './mobile-http-transfer'
+import { getAppCacheDirectory } from './mobile-app-paths'
+import {
+  ICloudSyncClient,
+  SyncConfig,
+  SyncRecord,
+  IArchiveService,
+  type IFileSystem
+} from '@baishou/core-mobile'
 import { signS3Request } from '@baishou/shared'
 
 /**
@@ -47,13 +54,13 @@ class MobileWebDavClient implements ICloudSyncClient {
     await this.ensureDirExists(this.basePath)
 
     // 使用 expo-file-system 的 uploadAsync 方法
-    const response = await FileSystem.uploadAsync(`${this.baseUrl}${remotePath}`, localFilePath, {
+    const response = await uploadAsync(`${this.baseUrl}${remotePath}`, localFilePath, {
       httpMethod: 'PUT',
       headers: {
         Authorization: this.auth,
         'Content-Type': 'application/zip'
       },
-      uploadType: 1 // FileSystem.FileSystemUploadType.BINARY_CONTENT
+      uploadType: FileSystemUploadType.BINARY_CONTENT
     })
 
     if (response.status < 200 || response.status >= 300) {
@@ -65,7 +72,7 @@ class MobileWebDavClient implements ICloudSyncClient {
     const remotePath = this.getRemotePath(remoteFilename)
     const url = `${this.baseUrl}${remotePath}`
 
-    const response = await FileSystem.downloadAsync(url, localDestPath, {
+    const response = await downloadAsync(url, localDestPath, {
       headers: {
         Authorization: this.auth
       }
@@ -223,13 +230,13 @@ class MobileS3Client implements ICloudSyncClient {
 
     const headers = await this.signRequest('PUT', url)
 
-    const response = await FileSystem.uploadAsync(url, localFilePath, {
+    const response = await uploadAsync(url, localFilePath, {
       httpMethod: 'PUT',
       headers: {
         ...headers,
         'Content-Type': 'application/zip'
       },
-      uploadType: 1 // FileSystem.FileSystemUploadType.BINARY_CONTENT
+      uploadType: FileSystemUploadType.BINARY_CONTENT
     })
 
     if (response.status < 200 || response.status >= 300) {
@@ -243,7 +250,7 @@ class MobileS3Client implements ICloudSyncClient {
 
     const headers = await this.signRequest('GET', url)
 
-    const response = await FileSystem.downloadAsync(url, localDestPath, {
+    const response = await downloadAsync(url, localDestPath, {
       headers
     })
 
@@ -356,7 +363,10 @@ class MobileS3Client implements ICloudSyncClient {
  * 基于 Desktop 端实现，使用 React Native 兼容的 API
  */
 export class MobileCloudSyncService {
-  constructor(private archiveService: IArchiveService) {}
+  constructor(
+    private archiveService: IArchiveService,
+    private readonly fileSystem: IFileSystem
+  ) {}
 
   private createClient(config: SyncConfig): ICloudSyncClient {
     if (config.target === 'webdav') {
@@ -398,7 +408,7 @@ export class MobileCloudSyncService {
 
       // 3. 清除临时文件
       try {
-        await FileSystem.deleteAsync(zipPath, { idempotent: true })
+        await this.fileSystem.unlink(zipPath)
       } catch (e) {
         // 忽略清理错误
       }
@@ -424,7 +434,7 @@ export class MobileCloudSyncService {
   ): Promise<{ success: boolean; message: string }> {
     try {
       const client = this.createClient(config)
-      const tempPath = `${(FileSystem as any).cacheDirectory}restore_${Date.now()}.zip`
+      const tempPath = `${getAppCacheDirectory()}restore_${Date.now()}.zip`
 
       await client.downloadFile(remoteFilename, tempPath)
 
@@ -433,7 +443,7 @@ export class MobileCloudSyncService {
 
       // 清理临时文件
       try {
-        await FileSystem.deleteAsync(tempPath, { idempotent: true })
+        await this.fileSystem.unlink(tempPath)
       } catch (e) {
         // 忽略清理错误
       }

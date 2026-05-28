@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy'
+import type { IFileSystem } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
 
 let extractModule: {
@@ -21,7 +21,7 @@ async function loadExtractor() {
 }
 
 /** 从本地 PDF 提取文本（对齐桌面 pdf-parse 回退路径） */
-export async function extractPdfText(filePath: string): Promise<string> {
+export async function extractPdfText(filePath: string, fileSystem: IFileSystem): Promise<string> {
   const normalized = filePath.startsWith('file://') ? filePath : `file://${filePath}`
   const mod = await loadExtractor()
   if (mod?.isAvailable?.()) {
@@ -34,8 +34,8 @@ export async function extractPdfText(filePath: string): Promise<string> {
   }
 
   // 开发构建未链接原生模块时，至少确认文件可读
-  const info = await FileSystem.getInfoAsync(normalized)
-  if (!info.exists) {
+  const path = normalized.replace(/^file:\/\//, '')
+  if (!(await fileSystem.exists(path))) {
     throw new Error('PDF file not found')
   }
   throw new Error(

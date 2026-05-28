@@ -1,44 +1,48 @@
-import * as FileSystem from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
-import * as DocumentPicker from 'expo-document-picker'
-import { zip, unzip } from 'react-native-zip-archive'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { zip, unzip } from 'react-native-zip-archive'
 
-import { IArchiveService, ImportResult, VaultService } from '@baishou/core-mobile'
-import { MobileStoragePathService } from './path.service'
+import {
+  IArchiveService,
+  ImportResult,
+  VaultService,
+  type IFileSystem,
+  type IStoragePathService
+} from '@baishou/core-mobile'
+import { getAppCacheDirectory, getAppDocumentDirectory } from './mobile-app-paths'
 
 export class MobileArchiveService implements IArchiveService {
   constructor(
-    private pathService: MobileStoragePathService,
-    private vaultService: VaultService
+    private pathService: IStoragePathService,
+    private vaultService: VaultService,
+    private readonly fileSystem: IFileSystem
   ) {}
 
   public async exportToTempFile(): Promise<string | null> {
     const rootDir = await this.pathService.getRootDirectory()
-    const cacheDir = `${FileSystem.cacheDirectory}baishou_archive_prep_${Date.now()}`
-    await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true })
+    const cacheDir = `${getAppCacheDirectory()}baishou_archive_prep_${Date.now()}`
+    await this.fileSystem.mkdir(cacheDir, { recursive: true })
 
-    // Step 1: Copy files from Root to Cache, intentionally ignoring -wal, -shm etc.
-    const rootInfo = await FileSystem.getInfoAsync(rootDir)
-    if (rootInfo.exists && rootInfo.isDirectory) {
-      await this.selectiveCopy(rootDir, cacheDir)
+    if (await this.fileSystem.exists(rootDir)) {
+      const rootStat = await this.fileSystem.stat(rootDir)
+      if (rootStat.isDirectory) {
+        await this.selectiveCopy(rootDir, cacheDir)
+      }
     }
 
-    // Step 2: Inject Global Preferences natively from AsyncStorage
     try {
       const configDir = `${cacheDir}/config`
-      await FileSystem.makeDirectoryAsync(configDir, { intermediates: true })
+      await this.fileSystem.mkdir(configDir, { recursive: true })
 
-      const prefs: Record<string, any> = {}
+      const prefs: Record<string, unknown> = {}
       const keys = await AsyncStorage.getAllKeys()
-      // Collect anything relevant to backup config if Agent A implemented it via AsyncStorage
       for (const k of keys) {
         if (k.startsWith('@settings:')) {
           prefs[k] = await AsyncStorage.getItem(k)
         }
       }
 
-      await FileSystem.writeAsStringAsync(
+      await this.fileSystem.writeFile(
         `${configDir}/device_preferences.json`,
         JSON.stringify(prefs, null, 2)
       )
@@ -46,12 +50,10 @@ export class MobileArchiveService implements IArchiveService {
       console.warn('[MobileArchive] Failed to dump device preferences', e)
     }
 
-    // Step 3: Zip the prepared folder
-    const targetZip = `${FileSystem.cacheDirectory}BaiShou_Backup_${Date.now()}.zip`
+    const targetZip = `${getAppCacheDirectory()}BaiShou_Backup_${Date.now()}.zip`
     try {
-      await zip(cacheDir, targetZip)
-      // Clean up the prep folder once zipped
-      await FileSystem.deleteAsync(cacheDir, { idempotent: true })
+      await zip(cacheDir.replace('file://', ''), targetZip.replace('file://', ''))
+      await this.fileSystem.rm(cacheDir, { recursive: true, force: true })
       return targetZip
     } catch (err) {
       console.error('[MobileArchive] ZIP operation failed', err)
@@ -84,18 +86,15 @@ export class MobileArchiveService implements IArchiveService {
       if (snap) snapshotPath = snap
     }
 
-    // 1. Erase existing Vault Workspace Root (MANAGE_EXTERNAL_STORAGE handles it well)
     const rootDir = await this.pathService.getRootDirectory()
     try {
-      await FileSystem.deleteAsync(rootDir, { idempotent: true })
+      await this.fileSystem.rm(rootDir, { recursive: true, force: true })
     } catch (e) {
       console.warn('[MobileArchive] Wipe root warning', e)
     }
-    await FileSystem.makeDirectoryAsync(rootDir, { intermediates: true })
+    await this.fileSystem.mkdir(rootDir, { recursive: true })
 
-    // 3. Extract Archive directly into the Root Directory
     try {
-      // Clean the file:// prefix if it exists for react-native-zip-archive
       const sourceZip = zipFilePath.replace('file://', '')
       const targetDir = rootDir.replace('file://', '')
       await unzip(sourceZip, targetDir)
@@ -104,14 +103,11 @@ export class MobileArchiveService implements IArchiveService {
       throw new Error('导入解压失败，请检查文件格式或存储权限')
     }
 
-    // 4. Remap cross-device paths in vault_registry.json
     try {
       const registryFile = `${rootDir}/.baishou/vault_registry.json`
-      const regStat = await FileSystem.getInfoAsync(registryFile)
-
-      if (regStat.exists) {
-        const raw = await FileSystem.readAsStringAsync(registryFile)
-        const vaults: any[] = JSON.parse(raw)
+      if (await this.fileSystem.exists(registryFile)) {
+        const raw = await this.fileSystem.readFile(registryFile)
+        const vaults: Array<{ name: string; path: string }> = JSON.parse(raw)
         let modified = false
 
         for (const v of vaults) {
@@ -122,34 +118,30 @@ export class MobileArchiveService implements IArchiveService {
           }
         }
         if (modified) {
-          await FileSystem.writeAsStringAsync(registryFile, JSON.stringify(vaults, null, 2))
+          await this.fileSystem.writeFile(registryFile, JSON.stringify(vaults, null, 2))
         }
       }
     } catch (e) {
       console.warn('[MobileArchive] Failed to remap vault paths', e)
     }
 
-    // 5. Restore Global configurations from config/
     try {
       const configPath = `${rootDir}/config/device_preferences.json`
-      const configStat = await FileSystem.getInfoAsync(configPath)
-      if (configStat.exists) {
-        const raw = await FileSystem.readAsStringAsync(configPath)
-        const prefs = JSON.parse(raw)
+      if (await this.fileSystem.exists(configPath)) {
+        const raw = await this.fileSystem.readFile(configPath)
+        const prefs = JSON.parse(raw) as Record<string, string>
 
-        // Inject back into AsyncStorage
         for (const [k, v] of Object.entries(prefs)) {
           if (typeof v === 'string') {
             await AsyncStorage.setItem(k, v)
           }
         }
-        await FileSystem.deleteAsync(`${rootDir}/config`, { idempotent: true })
+        await this.fileSystem.rm(`${rootDir}/config`, { recursive: true, force: true })
       }
     } catch (e) {
       console.warn('[MobileArchive] Failed to restore device preferences', e)
     }
 
-    // 6. Regenerate and reload system registry completely
     await this.vaultService.initRegistry()
 
     return {
@@ -159,25 +151,76 @@ export class MobileArchiveService implements IArchiveService {
     }
   }
 
+  private getSnapshotDir(): string {
+    return `${getAppDocumentDirectory()}snapshots`
+  }
+
   public async createSnapshot(): Promise<string | null> {
     const zipPath = await this.exportToTempFile()
     if (!zipPath) return null
 
-    const snapshotDir = `${FileSystem.documentDirectory}snapshots`
-    await FileSystem.makeDirectoryAsync(snapshotDir, { intermediates: true })
+    const snapshotDir = this.getSnapshotDir()
+    await this.fileSystem.mkdir(snapshotDir, { recursive: true })
 
     const dt = new Date()
     const ts = `${dt.getFullYear()}${(dt.getMonth() + 1).toString().padStart(2, '0')}${dt.getDate().toString().padStart(2, '0')}_${dt.getHours().toString().padStart(2, '0')}${dt.getMinutes().toString().padStart(2, '0')}`
     const finalSnapPath = `${snapshotDir}/snapshot_${ts}.zip`
 
-    await FileSystem.copyAsync({ from: zipPath, to: finalSnapPath })
-    await FileSystem.deleteAsync(zipPath, { idempotent: true })
+    await this.fileSystem.copyFile(zipPath, finalSnapPath)
+    await this.fileSystem.unlink(zipPath)
+    await this.pruneSnapshots(5)
     return finalSnapPath
   }
 
-  // --- Helpers ---
+  public async listSnapshots(): Promise<import('@baishou/core-mobile').SnapshotMeta[]> {
+    const snapshotDir = this.getSnapshotDir()
+    if (!(await this.fileSystem.exists(snapshotDir))) return []
+
+    const files = await this.fileSystem.readdir(snapshotDir)
+    const results: import('@baishou/core-mobile').SnapshotMeta[] = []
+    for (const filename of files) {
+      if (!filename.endsWith('.zip')) continue
+      const fullPath = `${snapshotDir}/${filename}`
+      try {
+        const stat = await this.fileSystem.stat(fullPath)
+        if (!stat.isFile) continue
+        results.push({
+          filename,
+          createdAt: stat.mtimeMs ?? Date.now(),
+          size: stat.size ?? 0
+        })
+      } catch {
+        // skip
+      }
+    }
+    return results.sort((a, b) => b.createdAt - a.createdAt)
+  }
+
+  public async restoreFromSnapshot(filename: string): Promise<ImportResult> {
+    const fullPath = `${this.getSnapshotDir()}/${filename}`
+    if (!(await this.fileSystem.exists(fullPath))) {
+      throw new Error('Snapshot not found')
+    }
+    return this.importFromZip(fullPath, false)
+  }
+
+  public async deleteSnapshot(filename: string): Promise<void> {
+    const fullPath = `${this.getSnapshotDir()}/${filename}`
+    await this.fileSystem.unlink(fullPath)
+  }
+
+  private async pruneSnapshots(maxCount: number): Promise<void> {
+    if (maxCount < 0) return
+    const list = await this.listSnapshots()
+    if (list.length <= maxCount) return
+    const toDelete = list.slice(maxCount)
+    for (const item of toDelete) {
+      await this.deleteSnapshot(item.filename).catch(() => {})
+    }
+  }
+
   private async selectiveCopy(sourceDirPath: string, targetDirPath: string) {
-    const dirContent = await FileSystem.readDirectoryAsync(sourceDirPath)
+    const dirContent = await this.fileSystem.readdir(sourceDirPath)
 
     for (const itemName of dirContent) {
       if (itemName === 'snapshots' || itemName === 'temp') continue
@@ -187,17 +230,12 @@ export class MobileArchiveService implements IArchiveService {
       const fullSourcePath = `${sourceDirPath}/${itemName}`
       const fullTargetPath = `${targetDirPath}/${itemName}`
 
-      const stat = await FileSystem.getInfoAsync(fullSourcePath)
+      const stat = await this.fileSystem.stat(fullSourcePath)
       if (stat.isDirectory) {
-        await FileSystem.makeDirectoryAsync(fullTargetPath, {
-          intermediates: true
-        })
+        await this.fileSystem.mkdir(fullTargetPath, { recursive: true })
         await this.selectiveCopy(fullSourcePath, fullTargetPath)
       } else {
-        await FileSystem.copyAsync({
-          from: fullSourcePath,
-          to: fullTargetPath
-        })
+        await this.fileSystem.copyFile(fullSourcePath, fullTargetPath)
       }
     }
   }

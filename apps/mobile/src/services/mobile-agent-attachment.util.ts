@@ -1,10 +1,10 @@
-import * as FileSystem from 'expo-file-system/legacy'
 import { supportsNativePdf } from '@baishou/shared'
 import { logger } from '@baishou/shared'
-import type { MobileStoragePathService } from './path.service'
+import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import { extractPdfText } from '../utils/mobile-pdf.util'
+import { importUriToPath } from './mobile-uri-import'
 
-type AttachmentInput = {
+export type AttachmentInput = {
   filePath?: string
   fileName?: string
   name?: string
@@ -21,7 +21,8 @@ type AttachmentInput = {
  * 将聊天附件复制到 vault 会话目录（对齐桌面 agent-attachment.ipc）。
  */
 export async function processAgentAttachments(
-  pathService: MobileStoragePathService,
+  pathService: IStoragePathService,
+  fileSystem: IFileSystem,
   sessionId: string,
   attachments: AttachmentInput[] | undefined,
   modelId: string,
@@ -32,7 +33,7 @@ export async function processAgentAttachments(
   const base = await pathService.getAttachmentsBaseDirectory()
   const safeSessionId = sessionId.replace(/[\\/]/g, '')
   const sessionDir = `${base}/${safeSessionId}`
-  await FileSystem.makeDirectoryAsync(sessionDir, { intermediates: true })
+  await fileSystem.mkdir(sessionDir, { recursive: true })
 
   return Promise.all(
     attachments.map(async (att) => {
@@ -46,22 +47,23 @@ export async function processAgentAttachments(
         const newFileName = `${baseName}_${Date.now()}${ext || ''}`
         const dest = `${sessionDir}/${newFileName}`
         try {
-          await FileSystem.copyAsync({
-            from: source.startsWith('file://') ? source : `file://${source}`,
-            to: dest
-          })
+          await importUriToPath(
+            source.startsWith('file://') ? source : `file://${source}`,
+            dest,
+            fileSystem
+          )
           out.url = dest
           out.filePath = dest
 
           if (/\.(txt|md)$/i.test(newFileName)) {
             try {
-              const info = await FileSystem.getInfoAsync(dest)
+              const st = await fileSystem.stat(dest)
               const max = 512 * 1024
-              if (info.exists && 'size' in info && (info.size ?? 0) > max) {
-                const partial = await FileSystem.readAsStringAsync(dest, { length: max })
+              if ((st.size ?? 0) > max) {
+                const partial = await fileSystem.readFile(dest).then((t) => t.slice(0, max))
                 out.textContent = partial + '\n\n[Content truncated due to size limit]'
               } else {
-                out.textContent = await FileSystem.readAsStringAsync(dest)
+                out.textContent = await fileSystem.readFile(dest)
               }
               out.isText = true
             } catch {
@@ -72,7 +74,7 @@ export async function processAgentAttachments(
             const nativePdf = supportsNativePdf(modelId, providerType)
             if (!nativePdf) {
               try {
-                const text = await extractPdfText(dest)
+                const text = await extractPdfText(dest, fileSystem)
                 out.textContent = text
                 out.isText = true
               } catch (e) {
@@ -88,9 +90,7 @@ export async function processAgentAttachments(
         const dest = `${sessionDir}/${newFileName}`
         try {
           const b64 = att.data.replace(/^data:image\/\w+;base64,/, '')
-          await FileSystem.writeAsStringAsync(dest, b64, {
-            encoding: FileSystem.EncodingType.Base64
-          })
+          await fileSystem.writeFile(dest, b64, 'base64')
           out.url = dest
           out.filePath = dest
           out.isImage = true

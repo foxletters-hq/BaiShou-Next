@@ -1,7 +1,7 @@
-import * as FileSystem from 'expo-file-system/legacy'
 import { signS3Request, type S3SyncConfig } from '@baishou/shared'
-import type { SettingsManagerService, IArchiveService } from '@baishou/core-mobile'
-import type { MobileStoragePathService } from './path.service'
+import type { IFileSystem, IArchiveService, SettingsManagerService } from '@baishou/core-mobile'
+import type { IStoragePathService } from '@baishou/core-mobile'
+import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
 import { MobileIncrementalEngine } from './mobile-incremental-engine'
 
 export type IncrementalSyncProgress = {
@@ -90,13 +90,13 @@ async function uploadWebDav(
   const remotePath = `${basePath}${remoteName}`
   const auth = `Basic ${btoa(`${config.accessKey}:${config.secretKey}`)}`
 
-  const response = await FileSystem.uploadAsync(`${baseUrl}${remotePath}`, localZipPath, {
+  const response = await uploadAsync(`${baseUrl}${remotePath}`, localZipPath, {
     httpMethod: 'PUT',
     headers: {
       Authorization: auth,
       'Content-Type': 'application/zip'
     },
-    uploadType: 1
+    uploadType: FileSystemUploadType.BINARY_CONTENT
   })
 
   if (response.status < 200 || response.status >= 300) {
@@ -127,13 +127,13 @@ async function uploadS3(
     null
   )
 
-  const response = await FileSystem.uploadAsync(url, localZipPath, {
+  const response = await uploadAsync(url, localZipPath, {
     httpMethod: 'PUT',
     headers: {
       ...headers,
       'Content-Type': 'application/zip'
     },
-    uploadType: 1
+    uploadType: FileSystemUploadType.BINARY_CONTENT
   })
 
   if (response.status < 200 || response.status >= 300) {
@@ -147,10 +147,11 @@ export class MobileIncrementalSyncService {
   constructor(
     private readonly settingsManager: SettingsManagerService,
     private readonly archiveService: IArchiveService,
-    private readonly pathService: MobileStoragePathService,
+    private readonly pathService: IStoragePathService,
+    private readonly fileSystem: IFileSystem,
     deviceId: string = `mobile-${Date.now()}`
   ) {
-    this.engine = new MobileIncrementalEngine(pathService, deviceId)
+    this.engine = new MobileIncrementalEngine(pathService, fileSystem, deviceId)
   }
 
   private async vaultConfigPath(): Promise<string | null> {
@@ -165,9 +166,8 @@ export class MobileIncrementalSyncService {
     const vaultPath = await this.vaultConfigPath()
     if (vaultPath) {
       try {
-        const info = await FileSystem.getInfoAsync(vaultPath)
-        if (info.exists) {
-          const raw = await FileSystem.readAsStringAsync(vaultPath)
+        if (await this.fileSystem.exists(vaultPath)) {
+          const raw = await this.fileSystem.readFile(vaultPath)
           const fromVault = JSON.parse(raw) as Partial<S3SyncConfig>
           return mergeConfig({ ...fromVault, ...fromSettings })
         }
@@ -183,7 +183,7 @@ export class MobileIncrementalSyncService {
     await this.settingsManager.set('incremental_sync_config', merged)
     const vaultPath = await this.vaultConfigPath()
     if (vaultPath) {
-      await FileSystem.writeAsStringAsync(vaultPath, JSON.stringify(merged, null, 2))
+      await this.fileSystem.writeFile(vaultPath, JSON.stringify(merged, null, 2))
     }
   }
 
@@ -292,7 +292,7 @@ export class MobileIncrementalSyncService {
       }
     } finally {
       try {
-        await FileSystem.deleteAsync(zipPath, { idempotent: true })
+        await this.fileSystem.unlink(zipPath)
       } catch {
         // ignore cleanup errors
       }

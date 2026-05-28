@@ -1,8 +1,8 @@
-import * as FileSystem from 'expo-file-system/legacy'
 import * as Crypto from 'expo-crypto'
+import type { IFileSystem } from '@baishou/core-mobile'
 import type { SyncManifest, S3SyncConfig } from '@baishou/shared'
 import { threeWayMerge } from '../lib/three-way-merge'
-import type { MobileStoragePathService } from './path.service'
+import type { IStoragePathService } from '@baishou/core-mobile'
 import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
 
 /** 与桌面 three-way-sync.constants 一致 */
@@ -28,10 +28,8 @@ function joinPath(...parts: string[]): string {
     .join('/')
 }
 
-async function md5File(uri: string): Promise<string> {
-  const b64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64
-  })
+async function md5File(fileSystem: IFileSystem, filePath: string): Promise<string> {
+  const b64 = await fileSystem.readFile(filePath, 'base64')
   return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.MD5, b64, {
     encoding: Crypto.CryptoEncoding.BASE64
   })
@@ -41,7 +39,8 @@ export class MobileIncrementalEngine {
   private lastConflicts: string[] = []
 
   constructor(
-    private readonly pathService: MobileStoragePathService,
+    private readonly pathService: IStoragePathService,
+    private readonly fileSystem: IFileSystem,
     private readonly deviceId: string
   ) {}
 
@@ -68,15 +67,15 @@ export class MobileIncrementalEngine {
     const files: string[] = []
 
     const scan = async (dir: string, rel: string) => {
-      const names = await FileSystem.readDirectoryAsync(dir)
+      const names = await this.fileSystem.readdir(dir)
       for (const name of names) {
         if (name.startsWith('.')) continue
         const full = joinPath(dir, name)
         const relPath = rel ? joinPath(rel, name) : name
-        const info = await FileSystem.getInfoAsync(full)
-        if (info.isDirectory) {
+        const info = await this.fileSystem.stat(full).catch(() => null)
+        if (info?.isDirectory) {
           if (name !== 'node_modules') await scan(full, relPath)
-        } else {
+        } else if (info?.isFile) {
           files.push(relPath)
         }
       }
@@ -93,15 +92,12 @@ export class MobileIncrementalEngine {
     for (const relPath of files) {
       const full = joinPath(vault, relPath)
       try {
-        const info = await FileSystem.getInfoAsync(full)
-        const hash = await md5File(full)
+        const info = await this.fileSystem.stat(full)
+        const hash = await md5File(this.fileSystem, full)
         manifest.files[relPath] = {
           hash,
-          size: info.exists && 'size' in info ? (info.size ?? 0) : 0,
-          lastModified:
-            info.exists && 'modificationTime' in info
-              ? (info.modificationTime ?? 0) * 1000
-              : Date.now()
+          size: info.size ?? 0,
+          lastModified: info.mtimeMs ?? Date.now()
         }
       } catch {
         // skip unreadable
@@ -114,20 +110,20 @@ export class MobileIncrementalEngine {
     const vault = await this.vaultPath()
     const mp = this.manifestPath(vault)
     const dir = mp.replace(/\/[^/]+$/, '')
-    const di = await FileSystem.getInfoAsync(dir)
-    if (!di.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
-    await FileSystem.writeAsStringAsync(mp, JSON.stringify(manifest, null, 2))
+    if (!(await this.fileSystem.exists(dir))) {
+      await this.fileSystem.mkdir(dir, { recursive: true })
+    }
+    await this.fileSystem.writeFile(mp, JSON.stringify(manifest, null, 2))
   }
 
   async loadRemoteSnapshot(): Promise<SyncManifest> {
     const vault = await this.vaultPath()
     const sp = this.snapshotPath(vault)
-    const info = await FileSystem.getInfoAsync(sp)
-    if (!info.exists) {
+    if (!(await this.fileSystem.exists(sp))) {
       return { version: 2, updatedAt: 0, deviceId: '', files: {} }
     }
     try {
-      return JSON.parse(await FileSystem.readAsStringAsync(sp)) as SyncManifest
+      return JSON.parse(await this.fileSystem.readFile(sp)) as SyncManifest
     } catch {
       return { version: 2, updatedAt: 0, deviceId: '', files: {} }
     }
@@ -137,9 +133,10 @@ export class MobileIncrementalEngine {
     const vault = await this.vaultPath()
     const sp = this.snapshotPath(vault)
     const dir = sp.replace(/\/[^/]+$/, '')
-    const di = await FileSystem.getInfoAsync(dir)
-    if (!di.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
-    await FileSystem.writeAsStringAsync(sp, JSON.stringify(manifest, null, 2))
+    if (!(await this.fileSystem.exists(dir))) {
+      await this.fileSystem.mkdir(dir, { recursive: true })
+    }
+    await this.fileSystem.writeFile(sp, JSON.stringify(manifest, null, 2))
   }
 
   async getRemoteManifest(client: MobileIncrementalCloudClient): Promise<SyncManifest> {
@@ -156,20 +153,20 @@ export class MobileIncrementalEngine {
     const vault = await this.vaultPath()
     const temp = joinPath(vault, '.baishou', `temp-remote-${Date.now()}.json`)
     await client.downloadFile(hit.filename, temp)
-    const raw = await FileSystem.readAsStringAsync(temp)
-    await FileSystem.deleteAsync(temp, { idempotent: true })
+    const raw = await this.fileSystem.readFile(temp)
+    await this.fileSystem.unlink(temp)
     return JSON.parse(raw) as SyncManifest
   }
 
   private async backupLocalFile(vault: string, relPath: string): Promise<void> {
     const src = joinPath(vault, relPath)
-    const info = await FileSystem.getInfoAsync(src)
-    if (!info.exists) return
+    if (!(await this.fileSystem.exists(src))) return
     const backupFile = joinPath(vault, '.versions', relPath, `${Date.now()}.bak`)
     const bdir = backupFile.replace(/\/[^/]+$/, '')
-    const bi = await FileSystem.getInfoAsync(bdir)
-    if (!bi.exists) await FileSystem.makeDirectoryAsync(bdir, { intermediates: true })
-    await FileSystem.copyAsync({ from: src, to: backupFile })
+    if (!(await this.fileSystem.exists(bdir))) {
+      await this.fileSystem.mkdir(bdir, { recursive: true })
+    }
+    await this.fileSystem.copyFile(src, backupFile)
   }
 
   /**
@@ -180,7 +177,7 @@ export class MobileIncrementalEngine {
     onProgress?: (current: number, total: number, text: string) => void
   ): Promise<MobileIncrementalSyncOutcome> {
     const vault = await this.vaultPath()
-    const client = new MobileIncrementalCloudClient(config)
+    const client = new MobileIncrementalCloudClient(config, this.fileSystem)
     client.setVaultPath(vault)
 
     const localManifest = await this.buildLocalManifest()
@@ -216,7 +213,7 @@ export class MobileIncrementalEngine {
             break
           case 'delete-local': {
             const fp = joinPath(vault, d.filePath)
-            await FileSystem.deleteAsync(fp, { idempotent: true })
+            await this.fileSystem.unlink(fp)
             deletedLocal++
             break
           }
@@ -263,7 +260,7 @@ export class MobileIncrementalEngine {
     onProgress?: (current: number, total: number, text: string) => void
   ): Promise<MobileIncrementalSyncOutcome> {
     const vault = await this.vaultPath()
-    const client = new MobileIncrementalCloudClient(config)
+    const client = new MobileIncrementalCloudClient(config, this.fileSystem)
     client.setVaultPath(vault)
 
     const localManifest = await this.buildLocalManifest()
@@ -305,7 +302,7 @@ export class MobileIncrementalEngine {
     onProgress?: (current: number, total: number, text: string) => void
   ): Promise<MobileIncrementalSyncOutcome> {
     const vault = await this.vaultPath()
-    const client = new MobileIncrementalCloudClient(config)
+    const client = new MobileIncrementalCloudClient(config, this.fileSystem)
     client.setVaultPath(vault)
 
     const localManifest = await this.buildLocalManifest()

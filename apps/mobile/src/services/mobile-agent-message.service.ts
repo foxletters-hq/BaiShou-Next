@@ -1,7 +1,7 @@
 import type { SessionManagerService } from '@baishou/core-mobile'
 import type { SessionRepository, InsertPartInput } from '@baishou/database'
-import type { MobileStoragePathService } from './path.service'
-import { processAgentAttachments } from './mobile-agent-attachment.util'
+import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
+import { processAgentAttachments, type AttachmentInput } from './mobile-agent-attachment.util'
 
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -21,7 +21,8 @@ export type SaveUserMessageResult =
 export async function saveUserMessage(
   sessionRepo: SessionRepository,
   sessionManager: SessionManagerService,
-  pathService: MobileStoragePathService | null,
+  pathService: IStoragePathService | null,
+  fileSystem: IFileSystem | null,
   args: {
     sessionId: string
     text: string
@@ -36,10 +37,11 @@ export async function saveUserMessage(
       return { error: `Session ${args.sessionId} not found` }
     }
 
-    let attachments = args.attachments as Parameters<typeof processAgentAttachments>[2]
-    if (pathService && attachments?.length) {
+    let attachments = args.attachments as AttachmentInput[] | undefined
+    if (pathService && fileSystem && attachments?.length) {
       attachments = await processAgentAttachments(
         pathService,
+        fileSystem,
         args.sessionId,
         attachments,
         args.modelId || existing.modelId || '',

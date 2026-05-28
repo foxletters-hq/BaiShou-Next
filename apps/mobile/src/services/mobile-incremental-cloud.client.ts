@@ -1,5 +1,10 @@
-import * as FileSystem from 'expo-file-system/legacy'
+import type { IFileSystem } from '@baishou/core-mobile'
 import { signS3Request, type S3SyncConfig } from '@baishou/shared'
+import {
+  FileSystemUploadType,
+  downloadAsync,
+  uploadAsync
+} from './mobile-http-transfer'
 
 export type IncrementalSyncRecord = {
   filename: string
@@ -12,7 +17,10 @@ export type IncrementalSyncRecord = {
 export class MobileIncrementalCloudClient {
   private vaultPath: string | null = null
 
-  constructor(private config: S3SyncConfig) {}
+  constructor(
+    private config: S3SyncConfig,
+    private readonly fileSystem: IFileSystem
+  ) {}
 
   setVaultPath(vaultPath: string) {
     this.vaultPath = vaultPath
@@ -55,9 +63,8 @@ export class MobileIncrementalCloudClient {
 
   async downloadFile(remoteFilename: string, localDestPath: string): Promise<void> {
     const parent = localDestPath.replace(/\/[^/]+$/, '')
-    const info = await FileSystem.getInfoAsync(parent)
-    if (!info.exists) {
-      await FileSystem.makeDirectoryAsync(parent, { intermediates: true })
+    if (!(await this.fileSystem.exists(parent))) {
+      await this.fileSystem.mkdir(parent, { recursive: true })
     }
     if (this.config.target === 'webdav') {
       await this.downloadWebDav(remoteFilename, localDestPath)
@@ -201,10 +208,10 @@ export class MobileIncrementalCloudClient {
       this.config.secretKey || '',
       null
     )
-    const response = await FileSystem.uploadAsync(url, localFilePath, {
+    const response = await uploadAsync(url, localFilePath, {
       httpMethod: 'PUT',
       headers: { ...headers, 'Content-Type': 'application/octet-stream' },
-      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT
+      uploadType: FileSystemUploadType.BINARY_CONTENT
     })
     if (response.status < 200 || response.status >= 300) {
       throw new Error(`S3 upload failed: ${response.status}`)
@@ -215,13 +222,13 @@ export class MobileIncrementalCloudClient {
     const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
     const remotePath = this.basePath() + rel
     const auth = `Basic ${btoa(`${this.config.accessKey}:${this.config.secretKey}`)}`
-    const response = await FileSystem.uploadAsync(
+    const response = await uploadAsync(
       `${baseUrl}/${remotePath.replace(/^\//, '')}`,
       localFilePath,
       {
         httpMethod: 'PUT',
         headers: { Authorization: auth },
-        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT
+        uploadType: FileSystemUploadType.BINARY_CONTENT
       }
     )
     if (response.status < 200 || response.status >= 300) {
@@ -244,7 +251,7 @@ export class MobileIncrementalCloudClient {
       this.config.secretKey || '',
       null
     )
-    const res = await FileSystem.downloadAsync(url, localDestPath, { headers })
+    const res = await downloadAsync(url, localDestPath, { headers })
     if (res.status < 200 || res.status >= 300) {
       throw new Error(`S3 download failed: ${res.status}`)
     }
@@ -254,7 +261,7 @@ export class MobileIncrementalCloudClient {
     const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
     const remotePath = this.basePath() + rel
     const auth = `Basic ${btoa(`${this.config.accessKey}:${this.config.secretKey}`)}`
-    const res = await FileSystem.downloadAsync(
+    const res = await downloadAsync(
       `${baseUrl}/${remotePath.replace(/^\//, '')}`,
       localDestPath,
       { headers: { Authorization: auth } }

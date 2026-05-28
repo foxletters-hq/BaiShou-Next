@@ -21,8 +21,19 @@ export interface MobileBootstrapperDeps {
  */
 export class MobileDataBootstrapper {
   private running = false
+  private registeredDeps: MobileBootstrapperDeps | null = null
+
+  registerDeps(deps: MobileBootstrapperDeps): void {
+    this.registeredDeps = deps
+  }
+
+  async resyncFromDisk(): Promise<void> {
+    if (!this.registeredDeps) return
+    await this.runWhenVaultReady(this.registeredDeps)
+  }
 
   async runWhenVaultReady(deps: MobileBootstrapperDeps): Promise<void> {
+    this.registeredDeps = deps
     if (this.running) {
       logger.info('[MobileBootstrapper] Already running, skip duplicate call')
       return

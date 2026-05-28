@@ -1,5 +1,6 @@
-import * as FileSystem from 'expo-file-system'
 import * as SQLite from 'expo-sqlite'
+import { deleteAsync } from './mobile-sandbox-fs'
+import { getAppDocumentDirectory } from './mobile-app-paths'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { DiaryService, VaultService } from '@baishou/core-mobile'
 import type { IFileSystem } from '@baishou/core-mobile'
@@ -73,13 +74,12 @@ export class MobileDeveloperService {
         logger.warn('[Developer] deleteDatabase failed:', e as Error)
       }
 
-      const docDir = (FileSystem as any).documentDirectory as string | undefined
-      if (docDir) {
-        const dbUri = `${docDir}SQLite/${MOBILE_DB_NAME}`
-        const info = await FileSystem.getInfoAsync(dbUri)
-        if (info.exists) {
-          await FileSystem.deleteAsync(dbUri, { idempotent: true })
-        }
+      const docDir = getAppDocumentDirectory()
+      const dbUri = `${docDir}SQLite/${MOBILE_DB_NAME}`
+      try {
+        await deleteAsync(dbUri, { idempotent: true })
+      } catch {
+        // ignore
       }
 
       const keys = await AsyncStorage.getAllKeys()
