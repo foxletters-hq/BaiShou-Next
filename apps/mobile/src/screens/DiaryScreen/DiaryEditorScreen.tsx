@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { DiaryEditor, useNativeTheme } from '@baishou/ui/native'
 import { format } from 'date-fns'
 import { useBaishou } from '../../providers/BaishouProvider'
+import {
+  getDiaryInsertMarkdown,
+  pickDiaryImagesFromLibrary,
+  uploadDiaryAttachments
+} from '../../services/mobile-diary-attachment.service'
+import { useStoragePermission } from '../../hooks/useStoragePermission'
+import { FullFileAccessGate } from '../../components/FullFileAccessGate'
+import { assertExternalStorageReady, isExternalStorageRequiredError } from '../../services/storage-permission.service'
 
 export const DiaryEditorScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -16,6 +25,7 @@ export const DiaryEditorScreen: React.FC = () => {
   }>()
   const router = useRouter()
   const { services, dbReady } = useBaishou()
+  const { granted: storageGranted, request: requestStorage } = useStoragePermission()
 
   const [content, setContent] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -26,6 +36,7 @@ export const DiaryEditorScreen: React.FC = () => {
   const [originalContent, setOriginalContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [isDirty, setIsDirty] = useState(false)
+  const [pickingImages, setPickingImages] = useState(false)
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -90,6 +101,7 @@ export const DiaryEditorScreen: React.FC = () => {
     if (!services) return
 
     try {
+      await assertExternalStorageReady()
       const input = {
         content,
         tags: tags.join(','),
@@ -103,7 +115,26 @@ export const DiaryEditorScreen: React.FC = () => {
       setIsDirty(false)
       router.back()
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (isExternalStorageRequiredError(e) || msg.includes('expo-file-system') || msg.includes('原生存储')) {
+        Alert.alert(
+          t('storage.all_files_access_title'),
+          msg.includes('pnpm mobile:android:clean')
+            ? msg
+            : t('storage.all_files_access_settings_hint'),
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('settings.check_storage_permission'), onPress: () => void requestStorage() }
+          ]
+        )
+        return
+      }
+      if (msg.includes('BaiShou_Root') && msg.includes('externalMakeDirectory')) {
+        Alert.alert(t('common.error'), msg)
+        return
+      }
       console.error('Failed to save diary:', e)
+      Alert.alert(t('common.error'), msg || t('diary.save_failed'))
     }
   }
 
@@ -127,20 +158,43 @@ export const DiaryEditorScreen: React.FC = () => {
     setIsDirty(true)
   }
 
+  const handlePickImages = useCallback(async (): Promise<string[]> => {
+    if (!services?.pathService) return []
+    setPickingImages(true)
+    try {
+      const assets = await pickDiaryImagesFromLibrary()
+      if (!assets?.length) return []
+
+      const results = await uploadDiaryAttachments(
+        services.pathService,
+        services.fileSystem,
+        selectedDate,
+        assets
+      )
+      const markdowns = results
+        .filter((r) => r.success && r.fileName)
+        .map((r) => getDiaryInsertMarkdown(r.fileName!))
+
+      if (markdowns.length) setIsDirty(true)
+      return markdowns
+    } catch (e) {
+      console.error('Failed to upload diary images:', e)
+      return []
+    } finally {
+      setPickingImages(false)
+    }
+  }, [services?.pathService, selectedDate])
+
   const handleBack = () => {
     if (isDirty) {
-      Alert.alert(
-        t('diary.editor_leave_confirm', '有未保存的修改'),
-        t('diary.editor_leave_message', '离开后修改将丢失，确定要离开吗？'),
-        [
-          { text: t('common.cancel', '取消'), style: 'cancel' },
-          {
-            text: t('common.leave', '离开'),
-            style: 'destructive',
-            onPress: () => router.back()
-          }
-        ]
-      )
+      Alert.alert(t('diary.exit_without_saving'), t('diary.exit_confirmation_hint'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('diary.exit_without_saving_confirm'),
+          style: 'destructive',
+          onPress: () => router.back()
+        }
+      ])
     } else {
       router.back()
     }
@@ -148,32 +202,38 @@ export const DiaryEditorScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.accentGreen} />
-      </View>
+      <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgApp }}>
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator size="large" color={colors.accentGreen} />
+        </View>
+      </ScreenSafeArea>
     )
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
-      <DiaryEditor
-        content={content}
-        tags={tags}
-        selectedDate={selectedDate}
-        weather={weather || ''}
-        isFavorite={isFavorite}
-        onContentChange={handleContentChange}
-        onTagsChange={handleTagsChange}
-        onDateChange={setSelectedDate}
-        onWeatherChange={handleWeatherChange}
-        onFavoriteChange={handleFavoriteChange}
-        onSave={handleSave}
-        onCancel={handleBack}
-      />
-    </View>
+    <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgSurface }}>
+      <FullFileAccessGate granted={storageGranted} onRequest={() => void requestStorage()}>
+        <DiaryEditor
+          content={content}
+          tags={tags}
+          selectedDate={selectedDate}
+          weather={weather || ''}
+          isFavorite={isFavorite}
+          onContentChange={handleContentChange}
+          onTagsChange={handleTagsChange}
+          onDateChange={setSelectedDate}
+          onWeatherChange={handleWeatherChange}
+          onFavoriteChange={handleFavoriteChange}
+          onPickImages={handlePickImages}
+          pickingImages={pickingImages}
+          onSave={handleSave}
+          onCancel={handleBack}
+        />
+      </FullFileAccessGate>
+    </ScreenSafeArea>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }
+  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 })
