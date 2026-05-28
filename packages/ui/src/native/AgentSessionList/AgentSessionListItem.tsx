@@ -26,8 +26,8 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
 
   const handleDelete = useCallback(() => {
     Alert.alert(
-      t('session.deleteConfirm', '确认删除'),
-      t('session.deleteMessage', '确定要删除该会话吗？此操作不可撤销。'),
+      t('agent.sessions.delete_title', '删除对话'),
+      t('agent.delete_session_confirm', '您确定要永久删除这篇对话吗？此操作不可逆转。'),
       [
         { text: t('common.cancel', '取消'), style: 'cancel' },
         {
@@ -41,8 +41,8 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
 
   const handleRename = useCallback(() => {
     Alert.prompt(
-      t('session.rename', '重命名'),
-      t('session.renameHint', '请输入新的会话名称'),
+      t('agent.sessions.rename', '重命名'),
+      t('agent.sessions.rename_hint', '输入新会话名称'),
       [
         { text: t('common.cancel', '取消'), style: 'cancel' },
         {
@@ -71,12 +71,14 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
         const buttons: Array<{ text: string; onPress?: () => void }> = []
         if (onPin) {
           buttons.push({
-            text: item.isPinned ? t('session.unpin', '取消置顶') : t('session.pin', '置顶'),
+            text: item.isPinned
+              ? t('agent.sessions.unpin', '取消置顶')
+              : t('agent.sessions.pin', '置顶对话'),
             onPress: () => onPin(item.id)
           })
         }
         if (onRename) {
-          buttons.push({ text: t('session.rename', '重命名'), onPress: handleRename })
+          buttons.push({ text: t('agent.sessions.rename', '重命名'), onPress: handleRename })
         }
         if (onDelete) {
           buttons.push({ text: t('common.delete', '删除'), onPress: handleDelete })
@@ -89,15 +91,12 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
         <View style={styles.itemHeader}>
           {item.isPinned && <Text style={styles.pinIcon}>📌</Text>}
           <Text style={[styles.itemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-            {item.title || t('session.newSession', '新对话')}
+            {item.title || t('agent.sessions.default_title', '新对话')}
           </Text>
         </View>
         <View style={styles.itemMeta}>
           <Text style={[styles.itemTime, { color: colors.textTertiary }]}>
             {formatSessionTime(item.lastMessageAt)}
-          </Text>
-          <Text style={[styles.itemCount, { color: colors.textTertiary }]}>
-            {item.messageCount} {t('session.messages', '条消息')}
           </Text>
         </View>
       </View>

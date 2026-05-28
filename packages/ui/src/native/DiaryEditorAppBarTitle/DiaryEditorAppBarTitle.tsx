@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '../../native/theme'
+import { useNativeTheme } from '../theme'
+import { DatePickerFloatingModal } from '../DatePicker/DatePickerFloatingModal'
 
 interface DiaryEditorAppBarTitleProps {
   isSummaryMode: boolean
@@ -16,49 +17,66 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const [pickerOpen, setPickerOpen] = useState(false)
+
   const month = selectedDate.getMonth() + 1
   const day = selectedDate.getDate()
-  const days = [
-    t('common.sunday', '周日'),
-    t('common.monday', '周一'),
-    t('common.tuesday', '周二'),
-    t('common.wednesday', '周三'),
-    t('common.thursday', '周四'),
-    t('common.friday', '周五'),
-    t('common.saturday', '周六')
-  ]
-  const weekDay = days[selectedDate.getDay()]
+  const weekdayKeys = [
+    'diary.weekday_sun',
+    'diary.weekday_mon',
+    'diary.weekday_tue',
+    'diary.weekday_wed',
+    'diary.weekday_thu',
+    'diary.weekday_fri',
+    'diary.weekday_sat'
+  ] as const
+  const weekDay = t(weekdayKeys[selectedDate.getDay()])
 
-  const formattedDate = `${month}${t('common.month_unit', '月')}${day}${t('common.day_unit', '日')} ${weekDay}`
+  const formattedDate = `${month}${t('diary.month_suffix')}${day}${t('common.day_unit')} ${weekDay}`
+
+  const openPicker = () => {
+    if (isSummaryMode || !onDateChanged) return
+    setPickerOpen(true)
+  }
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      activeOpacity={0.6}
-      onPress={() => {
-        // Native would show DateTimePicker here, mocking log for now
-        console.log('Would open native date picker')
-        if (onDateChanged) onDateChanged(new Date())
-      }}
-    >
-      <View style={styles.titleContent}>
-        <Text style={[styles.titleText, { color: colors.textPrimary }]}>
-          {isSummaryMode ? t('diary.edit_summary', '编辑总结') : formattedDate}
-        </Text>
-        {!isSummaryMode && (
-          <Text style={[styles.titleIcon, { color: colors.textSecondary }]}>▼</Text>
-        )}
-      </View>
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        style={styles.container}
+        activeOpacity={0.6}
+        onPress={openPicker}
+        disabled={isSummaryMode || !onDateChanged}
+      >
+        <View style={styles.titleContent}>
+          <Text style={[styles.titleText, { color: colors.textPrimary }]}>
+            {isSummaryMode ? t('diary.edit_summary') : formattedDate}
+          </Text>
+          {!isSummaryMode && onDateChanged && (
+            <Text style={[styles.titleIcon, { color: colors.textSecondary }]}>▼</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <DatePickerFloatingModal
+        visible={pickerOpen}
+        value={selectedDate}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(date) => {
+          onDateChanged?.(date)
+          setPickerOpen(false)
+        }}
+      />
+    </>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     borderRadius: 20,
-    backgroundColor: 'transparent'
+    backgroundColor: 'transparent',
+    maxWidth: '100%'
   },
   titleContent: {
     flexDirection: 'row',
@@ -67,7 +85,7 @@ const styles = StyleSheet.create({
     gap: 6
   },
   titleText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold'
   },
   titleIcon: {

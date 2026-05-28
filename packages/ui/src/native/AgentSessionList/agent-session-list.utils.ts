@@ -4,14 +4,6 @@ export type TimeGroup = 'pinned' | 'today' | 'yesterday' | 'thisWeek' | 'earlier
 
 export const groupOrder: TimeGroup[] = ['pinned', 'today', 'yesterday', 'thisWeek', 'earlier']
 
-export const groupLabels: Record<TimeGroup, string> = {
-  pinned: '置顶',
-  today: '今天',
-  yesterday: '昨天',
-  thisWeek: '本周',
-  earlier: '更早'
-}
-
 export const getTimeGroup = (timestamp: number, isPinned: boolean): TimeGroup => {
   if (isPinned) return 'pinned'
   const now = new Date()
@@ -26,16 +18,10 @@ export const getTimeGroup = (timestamp: number, isPinned: boolean): TimeGroup =>
   return 'earlier'
 }
 
-export const formatSessionTime = (timestamp: number): string => {
-  const date = new Date(timestamp)
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
-  return `${month}-${day} ${hours}:${minutes}`
-}
-
-export function groupSessionsByTime(sessions: AgentSession[]) {
+export function groupSessionsByTime(
+  sessions: AgentSession[],
+  getGroupLabel: (group: TimeGroup) => string
+) {
   const groups: Record<TimeGroup, AgentSession[]> = {
     pinned: [],
     today: [],
@@ -48,5 +34,14 @@ export function groupSessionsByTime(sessions: AgentSession[]) {
   }
   return groupOrder
     .filter((g) => groups[g].length > 0)
-    .map((g) => ({ group: g, label: groupLabels[g], items: groups[g]! }))
+    .map((g) => ({ group: g, label: getGroupLabel(g), items: groups[g]! }))
+}
+
+export const formatSessionTime = (timestamp: number): string => {
+  const date = new Date(timestamp)
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  return `${month}-${day} ${hours}:${minutes}`
 }

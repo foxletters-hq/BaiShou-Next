@@ -1,16 +1,17 @@
-export const MONTH_NAMES = [
-  '1月',
-  '2月',
-  '3月',
-  '4月',
-  '5月',
-  '6月',
-  '7月',
-  '8月',
-  '9月',
-  '10月',
-  '11月',
-  '12月'
+/** 月份 i18n 键后缀（对应 diary.month_*） */
+export const MONTH_I18N_KEYS = [
+  'month_jan',
+  'month_feb',
+  'month_mar',
+  'month_apr',
+  'month_may',
+  'month_jun',
+  'month_jul',
+  'month_aug',
+  'month_sep',
+  'month_oct',
+  'month_nov',
+  'month_dec'
 ] as const
 
 /** 从 2000 年到当前年份 +30 年 */

@@ -8,13 +8,16 @@ import {
   Text,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Pressable
 } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
+import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
-// import { TagInput } from '../TagInput';
+import type { DiaryEditorViewMode } from './diary-editor.types'
 
 interface DiaryEditorProps {
   content: string
@@ -30,19 +33,10 @@ interface DiaryEditorProps {
   onFavoriteChange?: (isFavorite: boolean) => void
   onSave?: (content: string, tags: string[], date: Date) => void
   onCancel?: () => void
+  /** 从相册选取并上传图片，返回要插入的 Markdown 片段 */
+  onPickImages?: () => Promise<string[]>
+  pickingImages?: boolean
 }
-
-const WEATHER_OPTIONS = [
-  { value: '', icon: '🌡️' },
-  { value: 'sunny', icon: '☀️' },
-  { value: 'cloudy', icon: '⛅' },
-  { value: 'overcast', icon: '☁️' },
-  { value: 'light_rain', icon: '🌦️' },
-  { value: 'heavy_rain', icon: '🌧️' },
-  { value: 'snow', icon: '❄️' },
-  { value: 'fog', icon: '🌫️' },
-  { value: 'windy', icon: '💨' }
-]
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
@@ -57,26 +51,40 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onWeatherChange,
   onFavoriteChange,
   onSave,
-  onCancel
+  onCancel,
+  onPickImages,
+  pickingImages = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const [isPreview, setIsPreview] = useState(false)
+  const [viewMode, setViewMode] = useState<DiaryEditorViewMode>('edit')
   const [selection, setSelection] = useState({ start: 0, end: 0 })
+  const [editorHeight, setEditorHeight] = useState(200)
   const textInputRef = useRef<TextInput>(null)
 
-  const handleInsertText = (prefix: string, suffix: string = '') => {
-    const val = content
+  const insertAtSelection = (snippet: string) => {
     const start = selection.start
     const end = selection.end
-    const selectedText = val.substring(start, end)
-
-    const newText = val.substring(0, start) + prefix + selectedText + suffix + val.substring(end)
+    const newText = content.substring(0, start) + snippet + content.substring(end)
     onContentChange(newText)
+    const cursor = start + snippet.length
+    setSelection({ start: cursor, end: cursor })
+    setTimeout(() => textInputRef.current?.focus(), 100)
+  }
 
-    setTimeout(() => {
-      textInputRef.current?.focus()
-    }, 100)
+  const handleInsertText = (prefix: string, suffix: string = '') => {
+    const start = selection.start
+    const end = selection.end
+    const selectedText = content.substring(start, end)
+    insertAtSelection(prefix + selectedText + suffix)
+  }
+
+  const handlePickImages = async () => {
+    if (!onPickImages) return
+    const markdowns = await onPickImages()
+    if (!markdowns.length) return
+    const block = (markdowns.length > 1 ? '\n\n' : '') + markdowns.join('\n\n') + '\n'
+    insertAtSelection(block)
   }
 
   return (
@@ -84,9 +92,9 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       style={[styles.container, { backgroundColor: colors.bgSurface }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.appBar, { borderBottomColor: colors.textSecondary + '33' }]}>
+      <View style={[styles.appBar, { borderBottomColor: colors.borderSubtle }]}>
         <TouchableOpacity style={styles.iconBtn} onPress={onCancel}>
-          <Text style={[styles.iconText, { color: colors.textPrimary }]}>←</Text>
+          <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
         <View style={styles.appBarCenter}>
@@ -101,72 +109,52 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           style={[styles.saveBtn, { backgroundColor: colors.primary }]}
           onPress={() => onSave?.(content, tags, selectedDate)}
         >
-          <Text style={[styles.saveBtnText, { color: colors.bgSurface }]}>
-            {t('common.save', '保存')}
-          </Text>
+          <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>{t('common.save')}</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-        {!isSummaryMode && (
-          <View style={styles.tagsSection}>
-            {/* <TagInput tags={tags} onChange={onTagsChange} /> */}
-          </View>
-        )}
-
-        {/* 元数据栏：天气、收藏 */}
-        {!isSummaryMode && (
-          <View style={[styles.metaBar, { borderBottomColor: colors.textSecondary + '20' }]}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.weatherScroll}
-            >
-              {WEATHER_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.weatherChip,
-                    {
-                      backgroundColor:
-                        weather === opt.value ? colors.primary + '20' : colors.bgSurfaceHighest,
-                      borderColor: weather === opt.value ? colors.primary : 'transparent'
-                    }
-                  ]}
-                  onPress={() => onWeatherChange?.(opt.value === weather ? '' : opt.value)}
-                >
-                  <Text style={styles.weatherIcon}>{opt.icon}</Text>
-                  {opt.value && (
-                    <Text style={[styles.weatherLabel, { color: colors.textSecondary }]}>
-                      {t(`diary.weather.${opt.value}`, opt.value)}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
-              style={[
+        {!isSummaryMode && onWeatherChange && viewMode === 'edit' && (
+          <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
+            <WeatherPicker value={weather} onChange={onWeatherChange} />
+            <Pressable
+              style={({ pressed }) => [
                 styles.favBtn,
                 {
-                  backgroundColor: isFavorite ? colors.primary + '20' : colors.bgSurfaceHighest
+                  opacity: pressed ? 0.85 : 1,
+                  backgroundColor: isFavorite ? colors.primaryLight : colors.bgSurface,
+                  borderColor: isFavorite ? colors.warning : colors.borderSubtle
                 }
               ]}
               onPress={() => onFavoriteChange?.(!isFavorite)}
+              accessibilityLabel={isFavorite ? t('diary.unfavorite') : t('diary.favorite')}
             >
-              <Text style={styles.favIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
-            </TouchableOpacity>
+              <MaterialIcons
+                name={isFavorite ? 'favorite' : 'favorite-border'}
+                size={20}
+                color={isFavorite ? colors.warning : colors.textTertiary}
+              />
+            </Pressable>
           </View>
         )}
 
-        {!isPreview ? (
+        {viewMode === 'edit' ? (
           <TextInput
             ref={textInputRef}
-            style={[styles.textArea, { color: colors.textPrimary }]}
+            style={[
+              styles.textArea,
+              { color: colors.textPrimary, minHeight: Math.max(280, editorHeight) }
+            ]}
             multiline
-            placeholder={t('diary.editor_hint', '记录下这一刻...')}
-            placeholderTextColor={colors.textSecondary}
+            scrollEnabled={false}
+            placeholder={t('diary.editor_hint')}
+            placeholderTextColor={colors.textTertiary}
             value={content}
             onChangeText={onContentChange}
+            onContentSizeChange={(e) => {
+              const h = e.nativeEvent.contentSize.height
+              if (h > 0) setEditorHeight(h)
+            }}
             onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
           />
         ) : (
@@ -177,10 +165,12 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       </ScrollView>
 
       <MarkdownToolbar
-        isPreview={isPreview}
-        onTogglePreview={() => setIsPreview(!isPreview)}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         onHideKeyboard={() => textInputRef.current?.blur()}
         onInsertText={handleInsertText}
+        onPickImages={onPickImages ? handlePickImages : undefined}
+        pickingImages={pickingImages}
       />
     </KeyboardAvoidingView>
   )
@@ -191,51 +181,39 @@ const styles = StyleSheet.create({
   appBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 48,
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'ios' ? 52 : 40,
     paddingBottom: 12,
     borderBottomWidth: 1
   },
-  iconBtn: { width: 40, height: 40, justifyContent: 'center' },
-  iconText: { fontSize: 24 },
-  appBarCenter: { flex: 1, alignItems: 'center' },
-  saveBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  saveBtnText: { fontWeight: 'bold', fontSize: 14 },
+  iconBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  appBarCenter: { flex: 1, alignItems: 'center', minWidth: 0 },
+  saveBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20 },
+  saveBtnText: { fontWeight: '600', fontSize: 14 },
   body: { flex: 1 },
-  bodyContent: { padding: 24 },
-  tagsSection: { marginBottom: 16 },
+  bodyContent: { padding: 16, paddingBottom: 32 },
   metaBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1
   },
-  weatherScroll: { flex: 1 },
-  weatherChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    borderWidth: 1
-  },
-  weatherIcon: { fontSize: 16 },
-  weatherLabel: { fontSize: 12, marginLeft: 4 },
   favBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    flexShrink: 0
   },
-  favIcon: { fontSize: 18 },
   textArea: {
     fontSize: 16,
     lineHeight: 24,
-    minHeight: 300,
     textAlignVertical: 'top'
   },
-  previewArea: { minHeight: 300 }
+  previewArea: { minHeight: 280, paddingBottom: 16 }
 })

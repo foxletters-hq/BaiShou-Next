@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@baishou/shared": "workspace:*",
+    "@expo/vector-icons": "^15.1.1",
     "@codemirror/commands": "^6.8.0",
     "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/language": "^6.11.0",

@@ -1,8 +1,17 @@
-import React, { useState, useMemo } from 'react'
-import { View, Text, Pressable, ScrollView, TextInput, Modal, SafeAreaView } from 'react-native'
+import React, { useEffect, useRef } from 'react'
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  Modal,
+  Animated,
+  StyleSheet,
+  TouchableOpacity
+} from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { Button } from '../Button/Button'
 
 export interface MockAgentAssistant {
   id: string
@@ -22,6 +31,8 @@ interface NativeAssistantPickerProps {
   assistants: MockAgentAssistant[]
   currentAssistantId?: string | null
   onSelect: (assistant: MockAgentAssistant) => void
+  onSettingsPress?: () => void
+  onCreatePress?: () => void
 }
 
 export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
@@ -29,275 +40,285 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
   onClose,
   assistants,
   currentAssistantId,
-  onSelect
+  onSelect,
+  onSettingsPress,
+  onCreatePress
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens, maxModalWidth } = useNativeTheme()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(currentAssistantId || null)
+  const { colors, tokens } = useNativeTheme()
+  const slideAnim = useRef(new Animated.Value(400)).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const [mounted, setMounted] = React.useState(false)
 
-  const filteredAssistants = useMemo(() => {
-    return assistants.filter(
-      (a) =>
-        a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.description.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [assistants, searchQuery])
-
-  const activeAssistant = useMemo(() => {
-    let item = filteredAssistants.find((a) => a.id === selectedId)
-    if (!item && filteredAssistants.length > 0) {
-      item = filteredAssistants[0]
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true)
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true
+        })
+      ]).start()
+      return
     }
-    return item
-  }, [filteredAssistants, selectedId])
 
-  if (!isOpen) return null
+    if (!mounted) return
+
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 400,
+        duration: 220,
+        useNativeDriver: true
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true
+      })
+    ]).start(({ finished }) => {
+      if (finished) setMounted(false)
+    })
+  }, [isOpen, mounted, slideAnim, fadeAnim])
+
+  if (!mounted) return null
+
+  const handleSelect = (assistant: MockAgentAssistant) => {
+    onSelect(assistant)
+    onClose()
+  }
 
   return (
-    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        style={{
-          flex: 1,
-          backgroundColor: colors.overlay,
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}
-        onPress={onClose}
-      >
-        <SafeAreaView style={{ width: '100%', alignItems: 'center' }}>
-          <Pressable
-            style={{
-              width: '90%',
-              maxWidth: maxModalWidth,
-              maxHeight: '85%',
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
               backgroundColor: colors.bgSurface,
-              borderRadius: tokens.radius.xl,
-              padding: tokens.spacing.lg
-            }}
-            onPress={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: tokens.spacing.md
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: tokens.spacing.sm
+              borderTopLeftRadius: tokens.radius.xl,
+              borderTopRightRadius: tokens.radius.xl,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.handleWrap}>
+            <View style={[styles.handle, { backgroundColor: colors.borderSubtle }]} />
+          </View>
+
+          <View style={styles.header}>
+            <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+              {t('agent.assistant.select_title', '选择伙伴')}
+            </Text>
+            <View style={styles.headerSpacer} />
+            {onSettingsPress && (
+              <TouchableOpacity
+                onPress={() => {
+                  onClose()
+                  onSettingsPress()
                 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel={t('agent.assistant.settings_entry', '伙伴管理')}
               >
-                <Text style={{ fontSize: 20 }}>✨</Text>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    color: colors.textPrimary
-                  }}
-                >
-                  {t('agent.selectAssistant', '选择助手')}
+                <MaterialIcons name="settings" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+            {assistants.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  {t('agent.assistant.empty_hint', '还没有伙伴，创建一个吧')}
                 </Text>
-              </View>
-              <Pressable onPress={onClose}>
-                <Text style={{ fontSize: 24, color: colors.textSecondary }}>×</Text>
-              </Pressable>
-            </View>
-
-            {/* Search */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: colors.bgSurfaceNormal,
-                borderRadius: tokens.radius.md,
-                paddingHorizontal: tokens.spacing.sm,
-                marginBottom: tokens.spacing.md
-              }}
-            >
-              <Text style={{ fontSize: 16, marginRight: tokens.spacing.xs }}>🔍</Text>
-              <TextInput
-                placeholder={t('common.search', '搜索...')}
-                placeholderTextColor={colors.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                style={{
-                  flex: 1,
-                  paddingVertical: tokens.spacing.sm,
-                  color: colors.textPrimary,
-                  fontSize: 16
-                }}
-              />
-            </View>
-
-            {/* Assistant List */}
-            <ScrollView style={{ maxHeight: 300 }}>
-              {filteredAssistants.length === 0 ? (
-                <View
-                  style={{
-                    padding: tokens.spacing.lg,
-                    alignItems: 'center'
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      color: colors.textSecondary
+                {onCreatePress && (
+                  <TouchableOpacity
+                    style={[styles.createBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => {
+                      onClose()
+                      onCreatePress()
                     }}
                   >
-                    {t('agent.noAssistant', '暂无助手')}
-                  </Text>
-                </View>
-              ) : (
-                filteredAssistants.map((a) => {
-                  const isSelected = activeAssistant?.id === a.id
-                  const isCurrent = a.id === currentAssistantId
-                  return (
-                    <Pressable
-                      key={a.id}
-                      onPress={() => setSelectedId(a.id)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        padding: tokens.spacing.sm,
-                        borderRadius: tokens.radius.md,
-                        backgroundColor: isSelected ? colors.primaryContainer : 'transparent',
-                        gap: tokens.spacing.sm,
-                        marginBottom: tokens.spacing.xs
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 20,
-                          backgroundColor: colors.bgSurfaceNormal,
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <Text style={{ fontSize: 20 }}>{a.emoji || '✨'}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: tokens.spacing.xs
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 16,
-                              fontWeight: '600',
-                              color: isSelected ? colors.onPrimaryContainer : colors.textPrimary
-                            }}
-                          >
-                            {a.name}
-                          </Text>
-                          {isCurrent && (
-                            <View
-                              style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: 4,
-                                backgroundColor: colors.primary
-                              }}
-                            />
-                          )}
-                        </View>
-                        {a.description ? (
-                          <Text
-                            style={{
-                              fontSize: 14,
-                              color: colors.textSecondary
-                            }}
-                            numberOfLines={1}
-                          >
-                            {a.description}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </Pressable>
-                  )
-                })
-              )}
-            </ScrollView>
-
-            {/* Create Button */}
-            <View
-              style={{
-                paddingTop: tokens.spacing.sm,
-                borderTopWidth: 1,
-                borderTopColor: colors.borderSubtle,
-                alignItems: 'center'
-              }}
-            >
-              <Pressable
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: tokens.spacing.xs,
-                  paddingVertical: tokens.spacing.sm
-                }}
-              >
-                <Text style={{ fontSize: 18, color: colors.primary }}>+</Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: colors.primary,
-                    fontWeight: '600'
-                  }}
-                >
-                  {t('agent.createAssistant', '创建助手')}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Detail & Select Button */}
-            {activeAssistant && (
-              <View
-                style={{
-                  paddingTop: tokens.spacing.sm
-                }}
-              >
-                <Button
-                  variant={activeAssistant.id === currentAssistantId ? 'outlined' : 'elevated'}
-                  onPress={() => {
-                    onSelect(activeAssistant)
-                    onClose()
-                  }}
-                >
-                  {activeAssistant.id === currentAssistantId ? (
-                    <Text
-                      style={{
-                        color: colors.primary,
-                        fontWeight: '600'
-                      }}
-                    >
-                      ✅ {t('agent.currentAssistant', '当前助手')}
+                    <MaterialIcons name="add" size={18} color={colors.textOnPrimary} />
+                    <Text style={[styles.createBtnText, { color: colors.textOnPrimary }]}>
+                      {t('agent.assistant.create_first', '创建第一个伙伴')}
                     </Text>
-                  ) : (
-                    <Text
-                      style={{
-                        color: colors.onPrimary,
-                        fontWeight: '600'
-                      }}
-                    >
-                      ⇄ {t('agent.selectThis', '选择此助手')}
-                    </Text>
-                  )}
-                </Button>
+                  </TouchableOpacity>
+                )}
               </View>
+            ) : (
+              assistants.map((assistant) => {
+                const isSelected = assistant.id === currentAssistantId
+                return (
+                  <TouchableOpacity
+                    key={assistant.id}
+                    style={[
+                      styles.card,
+                      {
+                        backgroundColor: isSelected
+                          ? colors.primaryContainer
+                          : colors.bgSurfaceNormal,
+                        borderColor: isSelected ? colors.primary : colors.borderSubtle
+                      }
+                    ]}
+                    onPress={() => handleSelect(assistant)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.avatar,
+                        { backgroundColor: colors.bgSurfaceHighest }
+                      ]}
+                    >
+                      {assistant.emoji ? (
+                        <Text style={styles.avatarEmoji}>{assistant.emoji}</Text>
+                      ) : (
+                        <MaterialIcons
+                          name="auto-awesome"
+                          size={20}
+                          color={colors.textSecondary}
+                        />
+                      )}
+                    </View>
+                    <View style={styles.cardBody}>
+                      <Text
+                        style={[
+                          styles.cardTitle,
+                          {
+                            color: isSelected ? colors.onPrimaryContainer : colors.textPrimary
+                          }
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {assistant.name}
+                      </Text>
+                      {assistant.description ? (
+                        <Text
+                          style={[styles.cardDesc, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          {assistant.description}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {isSelected && (
+                      <MaterialIcons name="check-circle" size={22} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                )
+              })
             )}
-          </Pressable>
-        </SafeAreaView>
-      </Pressable>
+          </ScrollView>
+        </Animated.View>
+      </View>
     </Modal>
   )
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end'
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)'
+  },
+  sheet: {
+    maxHeight: '75%',
+    paddingBottom: 24
+  },
+  handleWrap: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 16
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700'
+  },
+  headerSpacer: {
+    flex: 1
+  },
+  list: {
+    maxHeight: 420
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 16
+  },
+  emptyText: {
+    fontSize: 15,
+    textAlign: 'center'
+  },
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10
+  },
+  createBtnText: {
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  avatarEmoji: {
+    fontSize: 20
+  },
+  cardBody: {
+    flex: 1
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  cardDesc: {
+    fontSize: 13,
+    marginTop: 2
+  }
+})

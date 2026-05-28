@@ -27,7 +27,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
     <>
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.ref_audio_path', '参考音频路径')}
+          {t('tts.settings.ref_audio_path_label')}
         </Text>
         <TextInput
           style={inputStyle}
@@ -42,7 +42,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.prompt_text', '提示文本')}
+          {t('tts.settings.prompt_text_label')}
         </Text>
         <TextInput
           style={inputStyle}
@@ -55,7 +55,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.prompt_lang', '提示语言')}
+          {t('tts.settings.prompt_lang_label')}
         </Text>
         <TextInput
           style={inputStyle}
@@ -70,7 +70,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.text_lang', '文本语言')}
+          {t('tts.settings.text_lang_label')}
         </Text>
         <TextInput
           style={inputStyle}
@@ -103,7 +103,7 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
   return (
     <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
       <Text style={[styles.label, { color: colors.textPrimary }]}>
-        {t('tts.test_text', '测试文本')}
+        {t('tts.settings.test_label')}
       </Text>
       <TextInput
         style={[

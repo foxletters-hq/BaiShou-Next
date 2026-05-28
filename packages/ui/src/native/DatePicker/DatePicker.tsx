@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react'
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { MONTH_I18N_KEYS } from '../YearMonthPicker/year-month-picker.utils'
 
 export interface DatePickerProps {
   value: Date
@@ -108,7 +109,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
 
       {/* Year Picker */}
       <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-        {t('datePicker.year', '年份')}
+        {t('diary.select_year')}
       </Text>
       <ScrollView
         horizontal
@@ -144,7 +145,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
 
       {/* Month Picker */}
       <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-        {t('datePicker.month', '月份')}
+        {t('diary.select_month')}
       </Text>
       <View style={styles.gridRow}>
         {months.map((month) => {
@@ -171,7 +172,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
                   }
                 ]}
               >
-                {month + 1}月
+                {t(`diary.${MONTH_I18N_KEYS[month]}`)}
               </Text>
             </Pressable>
           )
@@ -180,7 +181,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
 
       {/* Day Picker */}
       <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-        {t('datePicker.day', '日期')}
+        {t('common.date')}
       </Text>
       <View style={styles.gridRow}>
         {days.map((day) => {

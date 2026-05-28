@@ -1,20 +1,28 @@
 import React from 'react'
-import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native'
+import { View, TouchableOpacity, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
+import type { DiaryEditorViewMode } from '../DiaryEditor/diary-editor.types'
 
 interface MarkdownToolbarProps {
-  isPreview: boolean
-  onTogglePreview: () => void
+  viewMode: DiaryEditorViewMode
+  onViewModeChange: (mode: DiaryEditorViewMode) => void
   onHideKeyboard: () => void
   onInsertText: (prefix: string, suffix?: string) => void
+  onPickImages?: () => void
+  pickingImages?: boolean
 }
 
 export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
-  isPreview,
-  onTogglePreview,
+  viewMode,
+  onViewModeChange,
   onHideKeyboard,
-  onInsertText
+  onInsertText,
+  onPickImages,
+  pickingImages = false
 }) => {
+  const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
   return (
@@ -56,28 +64,47 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           <View style={[styles.divider, { backgroundColor: colors.borderMuted }]} />
 
           <TouchableOpacity style={styles.btn} onPress={() => onInsertText('[', '](url)')}>
-            <Text style={[styles.btnText, { color: colors.textSecondary }]}>🔗</Text>
+            <MaterialIcons name="link" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btn} onPress={() => onInsertText('![', '](image_url)')}>
-            <Text style={[styles.btnText, { color: colors.textSecondary }]}>🖼️</Text>
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={onPickImages}
+            disabled={!onPickImages || pickingImages}
+          >
+            {pickingImages ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <MaterialIcons name="image" size={20} color={colors.textSecondary} />
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
 
       <View style={[styles.actions, { borderLeftColor: colors.borderSubtle }]}>
-        <TouchableOpacity style={styles.actionBtn} onPress={onTogglePreview}>
-          <Text
-            style={[
-              styles.actionBtnText,
-              { color: colors.textSecondary },
-              isPreview && { color: colors.primary }
-            ]}
-          >
-            {isPreview ? '✎' : '👁️'}
-          </Text>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => onViewModeChange('edit')}
+          accessibilityLabel={t('diary.mode_edit')}
+        >
+          <MaterialIcons
+            name="edit"
+            size={22}
+            color={viewMode === 'edit' ? colors.primary : colors.textSecondary}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => onViewModeChange('preview')}
+          accessibilityLabel={t('diary.mode_preview')}
+        >
+          <MaterialIcons
+            name="menu-book"
+            size={22}
+            color={viewMode === 'preview' ? colors.primary : colors.textSecondary}
+          />
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionBtn} onPress={onHideKeyboard}>
-          <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>⌨️↓</Text>
+          <MaterialIcons name="keyboard-hide" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -123,8 +150,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderLeftWidth: 1,
-    paddingLeft: 8,
-    gap: 4
+    paddingLeft: 4,
+    gap: 0
   },
   actionBtn: {
     width: 40,
@@ -132,8 +159,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center'
-  },
-  actionBtnText: {
-    fontSize: 18
   }
 })

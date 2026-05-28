@@ -1,6 +1,18 @@
-import React, { useState, useMemo } from 'react'
-import { View, Text, Pressable, ScrollView, TextInput, Modal, SafeAreaView } from 'react-native'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  TextInput,
+  Modal,
+  Animated,
+  StyleSheet,
+  TouchableOpacity
+} from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '../theme'
 
 export interface MockAiProviderModel {
@@ -30,13 +42,16 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
   onManageProviders
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
+  const insets = useSafeAreaInsets()
   const [searchQuery, setSearchQuery] = useState('')
+  const [mounted, setMounted] = useState(false)
+  const slideAnim = useRef(new Animated.Value(480)).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
 
   const { filteredProviders, filteredModels } = useMemo(() => {
     const pList: MockAiProviderModel[] = []
     const mDict: Record<string, string[]> = {}
-
     const query = searchQuery.toLowerCase()
 
     for (const provider of providers) {
@@ -56,259 +71,334 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
     return { filteredProviders: pList, filteredModels: mDict }
   }, [providers, searchQuery])
 
-  if (!isOpen) return null
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true)
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true
+        })
+      ]).start()
+      return
+    }
+
+    if (!mounted) return
+
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 480,
+        duration: 220,
+        useNativeDriver: true
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true
+      })
+    ]).start(({ finished }) => {
+      if (finished) {
+        setMounted(false)
+        setSearchQuery('')
+      }
+    })
+  }, [isOpen, mounted, slideAnim, fadeAnim])
+
+  if (!mounted) return null
 
   return (
-    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        style={{
-          flex: 1,
-          backgroundColor: colors.overlay,
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}
-        onPress={onClose}
-      >
-        <SafeAreaView style={{ width: '100%', alignItems: 'center' }}>
-          <Pressable
-            style={{
-              width: '90%',
-              maxWidth: maxModalWidth,
-              maxHeight: '85%',
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
               backgroundColor: colors.bgSurface,
-              borderRadius: tokens.radius.xl,
-              padding: tokens.spacing.lg
-            }}
-            onPress={(e) => e.stopPropagation()}
+              borderTopLeftRadius: tokens.radius.xl,
+              borderTopRightRadius: tokens.radius.xl,
+              paddingBottom: Math.max(insets.bottom, 16),
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.handleWrap}>
+            <View style={[styles.handle, { backgroundColor: colors.borderSubtle }]} />
+          </View>
+
+          <View style={styles.header}>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+              {t('models.switch_model', '切换模型')}
+            </Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MaterialIcons name="close" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View
+            style={[
+              styles.searchBar,
+              { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderSubtle }
+            ]}
           >
-            {/* Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: tokens.spacing.md
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: tokens.spacing.sm
-                }}
-              >
-                <Text style={{ fontSize: 20 }}>⇄</Text>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    color: colors.textPrimary
-                  }}
-                >
-                  {t('agent.switchModel', '切换心智核心')}
+            <MaterialIcons name="search" size={18} color={colors.textTertiary} />
+            <TextInput
+              placeholder={t('common.search_model', '搜索模型...')}
+              placeholderTextColor={colors.textTertiary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={[styles.searchInput, { color: colors.textPrimary }]}
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+            {filteredProviders.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  {t('common.no_match_model', '没有匹配的可用模型')}
                 </Text>
-              </View>
-            </View>
-
-            {/* Search */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: colors.bgSurfaceNormal,
-                borderRadius: tokens.radius.md,
-                paddingHorizontal: tokens.spacing.sm,
-                marginBottom: tokens.spacing.md
-              }}
-            >
-              <Text style={{ fontSize: 16, marginRight: tokens.spacing.xs }}>🔍</Text>
-              <TextInput
-                placeholder={t('common.search', '搜索模型 ...')}
-                placeholderTextColor={colors.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                style={{
-                  flex: 1,
-                  paddingVertical: tokens.spacing.sm,
-                  color: colors.textPrimary,
-                  fontSize: 16
-                }}
-              />
-            </View>
-
-            {/* List */}
-            <ScrollView style={{ maxHeight: 400 }}>
-              {filteredProviders.length === 0 ? (
-                <View
-                  style={{
-                    padding: tokens.spacing.lg,
-                    alignItems: 'center',
-                    gap: tokens.spacing.sm
-                  }}
-                >
-                  <Text style={{ fontSize: 32, opacity: 0.3 }}>✨</Text>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      color: colors.textSecondary
+                {onManageProviders && (
+                  <TouchableOpacity
+                    style={[styles.manageBtn, { backgroundColor: colors.primaryContainer }]}
+                    onPress={() => {
+                      onManageProviders()
+                      onClose()
                     }}
                   >
-                    {t('agent.noMatchModel', '未发现可搭载的模型')}
-                  </Text>
-                  {onManageProviders && (
-                    <Pressable
-                      onPress={() => {
-                        onManageProviders()
-                        onClose()
-                      }}
-                      style={{
-                        backgroundColor: colors.primaryContainer,
-                        borderRadius: tokens.radius.full,
-                        paddingHorizontal: tokens.spacing.md,
-                        paddingVertical: tokens.spacing.sm,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: tokens.spacing.xs
-                      }}
-                    >
-                      <Text style={{ fontSize: 14 }}>⚙️</Text>
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: colors.onPrimaryContainer,
-                          fontWeight: '600'
-                        }}
-                      >
-                        {t('models.goto_settings', '配置供应商')}
+                    <MaterialIcons name="settings" size={16} color={colors.onPrimaryContainer} />
+                    <Text style={[styles.manageBtnText, { color: colors.onPrimaryContainer }]}>
+                      {t('agent.manageProviders', '管理模型与供应商')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              filteredProviders.map((provider) => {
+                const models = filteredModels[provider.id] || []
+                const isCurrentProvider = provider.id === currentProviderId
+
+                return (
+                  <View key={provider.id} style={styles.providerGroup}>
+                    <View style={styles.providerHeader}>
+                      <MaterialIcons name="cloud" size={16} color={colors.textSecondary} />
+                      <Text style={[styles.providerName, { color: colors.textPrimary }]}>
+                        {provider.name}
                       </Text>
-                    </Pressable>
-                  )}
-                </View>
-              ) : (
-                filteredProviders.map((provider) => {
-                  const models = filteredModels[provider.id] || []
-                  const isCurrentProvider = provider.id === currentProviderId
-
-                  return (
-                    <View key={provider.id} style={{ marginBottom: tokens.spacing.md }}>
                       <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: tokens.spacing.sm,
-                          marginBottom: tokens.spacing.sm
-                        }}
+                        style={[styles.countBadge, { backgroundColor: colors.bgSurfaceNormal }]}
                       >
-                        <Text style={{ fontSize: 14 }}>📦</Text>
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: '600',
-                            color: colors.textPrimary
-                          }}
-                        >
-                          {provider.name}
+                        <Text style={[styles.countText, { color: colors.textSecondary }]}>
+                          {models.length}
                         </Text>
-                        <View
-                          style={{
-                            backgroundColor: colors.bgSurfaceNormal,
-                            borderRadius: tokens.radius.full,
-                            paddingHorizontal: 8,
-                            paddingVertical: 2
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              color: colors.textSecondary
-                            }}
-                          >
-                            {models.length}
-                          </Text>
-                        </View>
                       </View>
+                    </View>
 
-                      {models.map((modelId) => {
-                        const isSelected = isCurrentProvider && modelId === currentModelId
-
-                        return (
-                          <Pressable
-                            key={modelId}
-                            onPress={() => {
-                              onSelect(provider.id, modelId)
-                              onClose()
-                            }}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              padding: tokens.spacing.sm,
-                              borderRadius: tokens.radius.md,
-                              backgroundColor: isSelected ? colors.primaryContainer : 'transparent',
-                              marginLeft: tokens.spacing.md,
-                              gap: tokens.spacing.sm
-                            }}
-                          >
-                            <Text style={{ fontSize: 16 }}>💻</Text>
-                            <Text
-                              style={{
-                                flex: 1,
-                                fontSize: 14,
+                    {models.map((modelId) => {
+                      const isSelected = isCurrentProvider && modelId === currentModelId
+                      return (
+                        <Pressable
+                          key={modelId}
+                          onPress={() => {
+                            onSelect(provider.id, modelId)
+                            onClose()
+                          }}
+                          style={[
+                            styles.modelRow,
+                            {
+                              backgroundColor: isSelected
+                                ? colors.primaryContainer
+                                : 'transparent'
+                            }
+                          ]}
+                        >
+                          <MaterialIcons
+                            name="memory"
+                            size={16}
+                            color={isSelected ? colors.primary : colors.textTertiary}
+                          />
+                          <Text
+                            style={[
+                              styles.modelName,
+                              {
                                 color: isSelected ? colors.onPrimaryContainer : colors.textPrimary,
                                 fontWeight: isSelected ? '600' : '400'
-                              }}
-                            >
-                              {modelId}
-                            </Text>
-                            {isSelected && (
-                              <Text style={{ fontSize: 16, color: colors.primary }}>✓</Text>
-                            )}
-                          </Pressable>
-                        )
-                      })}
-                    </View>
-                  )
-                })
-              )}
-            </ScrollView>
-
-            {/* Footer */}
-            {onManageProviders && filteredProviders.length > 0 && (
-              <View
-                style={{
-                  paddingTop: tokens.spacing.sm,
-                  borderTopWidth: 1,
-                  borderTopColor: colors.borderSubtle,
-                  alignItems: 'center'
-                }}
-              >
-                <Pressable
-                  onPress={() => {
-                    onManageProviders()
-                    onClose()
-                  }}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: tokens.spacing.xs,
-                    paddingVertical: tokens.spacing.sm
-                  }}
-                >
-                  <Text style={{ fontSize: 14 }}>⚙️</Text>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: colors.primary,
-                      fontWeight: '600'
-                    }}
-                  >
-                    {t('agent.manageProviders', '管理模型与供应商')}
-                  </Text>
-                </Pressable>
-              </View>
+                              }
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {modelId}
+                          </Text>
+                          {isSelected && (
+                            <MaterialIcons name="check" size={18} color={colors.primary} />
+                          )}
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                )
+              })
             )}
-          </Pressable>
-        </SafeAreaView>
-      </Pressable>
+          </ScrollView>
+
+          {onManageProviders && filteredProviders.length > 0 && (
+            <TouchableOpacity
+              style={[styles.footerBtn, { borderTopColor: colors.borderSubtle }]}
+              onPress={() => {
+                onManageProviders()
+                onClose()
+              }}
+            >
+              <MaterialIcons name="settings" size={18} color={colors.primary} />
+              <Text style={[styles.footerBtnText, { color: colors.primary }]}>
+                {t('agent.manageProviders', '管理模型与供应商')}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+      </View>
     </Modal>
   )
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end'
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)'
+  },
+  sheet: {
+    maxHeight: '82%'
+  },
+  handleWrap: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700'
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 2
+  },
+  list: {
+    maxHeight: 420
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 8
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 16
+  },
+  emptyText: {
+    fontSize: 15,
+    textAlign: 'center'
+  },
+  manageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20
+  },
+  manageBtnText: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  providerGroup: {
+    marginBottom: 14
+  },
+  providerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6
+  },
+  providerName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  countBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  modelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginLeft: 8
+  },
+  modelName: {
+    flex: 1,
+    fontSize: 14
+  },
+  footerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderTopWidth: 1
+  },
+  footerBtnText: {
+    fontSize: 14,
+    fontWeight: '600'
+  }
+})

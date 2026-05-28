@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { ChatBubbleMessage } from './chat-bubble.types'
+import { chatBubbleStyles as styles } from './chat-bubble.styles'
 
 interface ThemeColors {
   bgSurface: string
@@ -10,7 +11,6 @@ interface ThemeColors {
   borderSubtle: string
   error?: string
 }
-import { chatBubbleStyles as styles } from './chat-bubble.styles'
 
 interface NativeChatBubbleActionSheetProps {
   visible: boolean
@@ -47,99 +47,56 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
 }) => {
   const { t } = useTranslation()
 
+  const renderItem = (label: string, onPress: () => void, destructive = false) => (
+    <TouchableOpacity
+      onPress={() => {
+        onPress()
+        onClose()
+      }}
+      style={styles.actionItem}
+    >
+      <Text
+        style={[
+          styles.actionItemText,
+          { color: destructive ? colors.error : colors.textPrimary }
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  )
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={onClose}>
         <View style={[styles.actionSheet, { backgroundColor: colors.bgSurface }]}>
           <Text style={[styles.actionSheetTitle, { color: colors.textPrimary }]}>
             {t('agent.chat.message_actions', '消息操作')}
           </Text>
           <ScrollView>
-            {isUser && onResend && (
-              <TouchableOpacity
-                onPress={() => {
-                  onResend()
-                  onClose()
-                }}
-                style={styles.actionItem}
-              >
-                <Text style={[styles.actionItemText, { color: colors.textPrimary }]}>
-                  🔄 {t('agent.chat.resend', '重新发送')}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {(isUser || isAssistant) && (
-              <TouchableOpacity onPress={onStartEdit} style={styles.actionItem}>
-                <Text style={[styles.actionItemText, { color: colors.textPrimary }]}>
-                  ✏️ {t('common.edit', '编辑')}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {isAssistant && onReadAloud && (
-              <TouchableOpacity
-                onPress={() => {
-                  onReadAloud(message.content)
-                  onClose()
-                }}
-                style={styles.actionItem}
-              >
-                <Text style={[styles.actionItemText, { color: colors.textPrimary }]}>
-                  🔈 {t('agent.chat.read_aloud', '朗读')}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {isAssistant && hasContext && onShowContext && (
-              <TouchableOpacity
-                onPress={() => {
-                  onShowContext(message)
-                  onClose()
-                }}
-                style={styles.actionItem}
-              >
-                <Text style={[styles.actionItemText, { color: colors.textPrimary }]}>
-                  🌿 {t('agent.chat.context_chain', '上下文链')}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {isAssistant && onRegenerate && (
-              <TouchableOpacity
-                onPress={() => {
-                  onRegenerate()
-                  onClose()
-                }}
-                style={styles.actionItem}
-              >
-                <Text style={[styles.actionItemText, { color: colors.textPrimary }]}>
-                  🔄 {t('agent.chat.regenerate', '重新生成')}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {isAssistant && onBranch && (
-              <TouchableOpacity
-                onPress={() => {
-                  onBranch()
-                  onClose()
-                }}
-                style={styles.actionItem}
-              >
-                <Text style={[styles.actionItemText, { color: colors.textPrimary }]}>
-                  🔀 {t('agent.chat.branch', '创建分支')}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {onDelete && (
-              <TouchableOpacity
-                onPress={() => {
-                  onDelete()
-                  onClose()
-                }}
-                style={styles.actionItem}
-              >
-                <Text style={[styles.actionItemText, { color: colors.error }]}>
-                  🗑️ {t('common.delete', '删除')}
-                </Text>
-              </TouchableOpacity>
-            )}
+            {isUser && onResend && renderItem(t('agent.chat.resend', '重新发送'), onResend)}
+            {(isUser || isAssistant) &&
+              renderItem(
+                t(isAssistant ? 'agent.chat.edit_ai' : 'agent.chat.edit', '编辑'),
+                onStartEdit
+              )}
+            {isAssistant &&
+              onReadAloud &&
+              renderItem(t('agent.chat.readAloud', '语音朗读'), () => onReadAloud(message.content))}
+            {isAssistant &&
+              hasContext &&
+              onShowContext &&
+              renderItem(t('agent.chat.context_chain', '上下文链'), () =>
+                onShowContext(message)
+              )}
+            {isAssistant &&
+              onRegenerate &&
+              renderItem(t('agent.chat.regenerate', '重新生成'), onRegenerate)}
+            {isAssistant &&
+              onBranch &&
+              renderItem(t('agent.chat.branch', '从此处创建分支'), onBranch)}
+            {onDelete &&
+              renderItem(t('common.delete', '删除'), onDelete, true)}
           </ScrollView>
           <TouchableOpacity
             onPress={onClose}

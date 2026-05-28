@@ -1,6 +1,8 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { MessageActionBar } from '../MessageActionBar/MessageActionBar'
+import { NativeIconButton } from '../icons/NativeIconButton'
 import type { ChatBubbleMessage } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
 
@@ -21,7 +23,7 @@ interface NativeChatBubbleActionsRowProps {
   hasContext: boolean
   message: ChatBubbleMessage
   isTtsPlaying: boolean
-  onEdit?: () => void
+  onCopy: () => void
   onStartEdit: () => void
   onResend?: () => void
   onReadAloud?: (content: string) => void
@@ -33,13 +35,12 @@ interface NativeChatBubbleActionsRowProps {
 }
 
 export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProps> = ({
-  colors,
   isUser,
   isAssistant,
   hasContext,
   message,
   isTtsPlaying,
-  onEdit,
+  onCopy,
   onStartEdit,
   onResend,
   onReadAloud,
@@ -50,69 +51,28 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
   onDelete
 }) => {
   const { t } = useTranslation()
+  const canEdit = isUser || Boolean(onSaveEdit)
 
   return (
     <View style={styles.actionsRow}>
-      {isUser && onResend && (
-        <TouchableOpacity onPress={onResend} style={styles.actionChip}>
-          <Text style={[styles.actionChipText, { color: colors.textTertiary }]}>
-            🔄 {t('agent.chat.resend', '重发')}
-          </Text>
-        </TouchableOpacity>
-      )}
-      {isUser && onEdit && (
-        <TouchableOpacity onPress={onStartEdit} style={styles.actionChip}>
-          <Text style={[styles.actionChipText, { color: colors.textTertiary }]}>
-            ✏️ {t('common.edit', '编辑')}
-          </Text>
-        </TouchableOpacity>
-      )}
-      {isAssistant && onReadAloud && (
-        <TouchableOpacity onPress={() => onReadAloud(message.content)} style={styles.actionChip}>
-          <Text
-            style={[
-              styles.actionChipText,
-              { color: isTtsPlaying ? colors.primary : colors.textTertiary }
-            ]}
-          >
-            {isTtsPlaying ? '🔊' : '🔈'} {t('agent.chat.read_aloud', '朗读')}
-          </Text>
-        </TouchableOpacity>
-      )}
+      <MessageActionBar
+        onCopy={onCopy}
+        onEdit={canEdit ? onStartEdit : undefined}
+        onRetry={isUser ? onResend : onRegenerate}
+        onReadAloud={
+          isAssistant && onReadAloud ? () => onReadAloud(message.content) : undefined
+        }
+        onBranch={isAssistant ? onBranch : undefined}
+        onDelete={onDelete}
+        isAI={isAssistant}
+        isTtsPlaying={isTtsPlaying}
+      />
       {isAssistant && hasContext && onShowContext && (
-        <TouchableOpacity onPress={() => onShowContext(message)} style={styles.actionChip}>
-          <Text style={[styles.actionChipText, { color: colors.textTertiary }]}>
-            🌿 {t('agent.chat.context_chain', '上下文')}
-          </Text>
-        </TouchableOpacity>
-      )}
-      {isAssistant && onRegenerate && (
-        <TouchableOpacity onPress={onRegenerate} style={styles.actionChip}>
-          <Text style={[styles.actionChipText, { color: colors.textTertiary }]}>
-            🔄 {t('agent.chat.regenerate', '重新生成')}
-          </Text>
-        </TouchableOpacity>
-      )}
-      {isAssistant && onBranch && (
-        <TouchableOpacity onPress={onBranch} style={styles.actionChip}>
-          <Text style={[styles.actionChipText, { color: colors.textTertiary }]}>
-            🔀 {t('agent.chat.branch', '分支')}
-          </Text>
-        </TouchableOpacity>
-      )}
-      {isAssistant && onSaveEdit && (
-        <TouchableOpacity onPress={onStartEdit} style={styles.actionChip}>
-          <Text style={[styles.actionChipText, { color: colors.textTertiary }]}>
-            ✏️ {t('common.edit', '编辑')}
-          </Text>
-        </TouchableOpacity>
-      )}
-      {onDelete && (
-        <TouchableOpacity onPress={onDelete} style={styles.actionChip}>
-          <Text style={[styles.actionChipText, { color: colors.error }]}>
-            🗑️ {t('common.delete', '删除')}
-          </Text>
-        </TouchableOpacity>
+        <NativeIconButton
+          name="account-tree"
+          onPress={() => onShowContext(message)}
+          accessibilityLabel={t('agent.chat.context_chain', '上下文链')}
+        />
       )}
     </View>
   )

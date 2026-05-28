@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { StoragePermissionPrompt } from '../StoragePermissionPrompt/StoragePermissionPrompt'
 
 export interface NativeStorageSettingsCardProps {
   storageRootPath?: string
@@ -10,9 +11,14 @@ export interface NativeStorageSettingsCardProps {
   mediaCacheStats: string
   totalLimit?: string
   onChangeRoot?: () => Promise<void>
+  /** 覆盖默认「更换根目录」文案（移动端为启用固定外部路径，非选择目录） */
+  changeRootLabel?: string
   onNavigateToAttachments?: () => void
   onClearCache?: () => void
   onVacuumDb?: () => void
+  /** Android：是否已具备全文件访问（undefined 表示未检测） */
+  allFilesAccessGranted?: boolean
+  onRequestAllFilesAccess?: () => void | Promise<void>
 }
 
 export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
@@ -21,9 +27,12 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
   vectorDbStats,
   mediaCacheStats,
   onChangeRoot,
+  changeRootLabel,
   onNavigateToAttachments,
   onClearCache,
-  onVacuumDb
+  onVacuumDb,
+  allFilesAccessGranted,
+  onRequestAllFilesAccess
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -88,7 +97,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               color: colors.textPrimary
             }}
           >
-            {t('settings.storage_manager', '存储管理')}
+            {t('settings.storage_manager')}
           </Text>
           <Text
             style={{
@@ -96,10 +105,14 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               color: colors.textSecondary
             }}
           >
-            {t('settings.storage_root_desc', '管理数据存储路径与附件')}
+            {t('settings.storage_root_desc')}
           </Text>
         </View>
       </View>
+
+      {onRequestAllFilesAccess && allFilesAccessGranted === false && (
+        <StoragePermissionPrompt onRequest={onRequestAllFilesAccess} mode="required" />
+      )}
 
       {/* 数据根目录 */}
       <View
@@ -121,7 +134,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
               color: colors.textSecondary
             }}
           >
-            {t('settings.storage_root', '数据根目录')}
+            {t('settings.storage_root')}
           </Text>
           <Text
             style={{
@@ -151,24 +164,16 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
                 fontWeight: '600'
               }}
             >
-              {t('settings.change_storage_root', '更换目录')}
+              {changeRootLabel ?? t('settings.change_storage_root')}
             </Text>
           </Pressable>
         )}
       </View>
 
       {/* 存储统计 */}
-      {renderStatItem(t('settings.sqlite_size', 'SQLite 大小'), sqliteSizeStats || '0 MB', '🗄️')}
-      {renderStatItem(
-        t('settings.vector_db_size', '向量数据库大小'),
-        vectorDbStats || '0 MB',
-        '🔍'
-      )}
-      {renderStatItem(
-        t('settings.media_cache_size', '媒体缓存大小'),
-        mediaCacheStats || '0 MB',
-        '🖼️'
-      )}
+      {renderStatItem(t('settings.sqlite_size'), sqliteSizeStats || '0 MB', '🗄️')}
+      {renderStatItem(t('settings.vector_db_size'), vectorDbStats || '0 MB', '🔍')}
+      {renderStatItem(t('settings.media_cache_size'), mediaCacheStats || '0 MB', '🖼️')}
 
       {/* 操作按钮 */}
       <View
@@ -199,7 +204,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
                 color: colors.textPrimary
               }}
             >
-              📎 {t('settings.manage_attachments', '管理附件')}
+              📎 {t('settings.manage_attachments')}
             </Text>
           </Pressable>
         )}
@@ -221,7 +226,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
                 color: colors.textPrimary
               }}
             >
-              🧹 {t('settings.clear_cache', '清理缓存')}
+              🧹 {t('settings.clear_cache')}
             </Text>
           </Pressable>
         )}
@@ -243,7 +248,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
                 color: colors.textPrimary
               }}
             >
-              ⚡ {t('settings.vacuum_db', '压缩数据库')}
+              ⚡ {t('settings.vacuum_db')}
             </Text>
           </Pressable>
         )}

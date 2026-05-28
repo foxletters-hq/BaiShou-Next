@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import type { ChatBubbleProps } from './chat-bubble.types'
@@ -15,9 +16,9 @@ import { NativeChatBubbleActionSheet } from './NativeChatBubbleActionSheet'
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
   message,
   aiProfile,
-  onEdit,
   onRegenerate,
   onResend,
+  onCopy,
   onDelete,
   onBranch,
   onSaveEdit,
@@ -39,7 +40,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
       {isAssistant && aiProfile && (
         <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }]}>
-          <Text style={styles.avatarText}>{aiProfile.emoji || '🤖'}</Text>
+          {aiProfile.emoji ? (
+            <Text style={styles.avatarText}>{aiProfile.emoji}</Text>
+          ) : (
+            <MaterialIcons name="auto-awesome" size={16} color={colors.textSecondary} />
+          )}
         </View>
       )}
 
@@ -108,7 +113,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             hasContext={hasContext}
             message={message}
             isTtsPlaying={Boolean(isTtsPlaying)}
-            onEdit={onEdit}
+            onCopy={onCopy ?? (() => {})}
             onStartEdit={edit.handleStartEdit}
             onResend={onResend}
             onReadAloud={onReadAloud}

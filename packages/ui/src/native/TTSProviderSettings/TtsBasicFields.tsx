@@ -5,6 +5,13 @@ import Slider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
 import type { TtsProviderConfig } from './tts-provider-settings.types'
 import { TTS_PROVIDERS, TTS_FORMATS } from './tts-provider-settings.constants'
+
+const PROVIDER_I18N: Record<string, string> = {
+  'openai-tts': 'tts.settings.provider_openai',
+  'mimo-tts': 'tts.settings.provider_mimo',
+  'clone-tts': 'tts.settings.provider_clone',
+  'gpt-sovits': 'tts.settings.provider_gpt_sovits'
+}
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
 
 interface TtsBasicFieldsProps {
@@ -31,7 +38,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
     <>
       <View style={styles.fieldGroup}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.provider', 'TTS 供应商')}
+          {t('tts.settings.provider_label')}
         </Text>
         <View style={styles.chipRow}>
           {TTS_PROVIDERS.map((p) => (
@@ -53,7 +60,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
                   { color: config.id === p.id ? colors.primary : colors.textSecondary }
                 ]}
               >
-                {p.label}
+                {t(PROVIDER_I18N[p.id] ?? 'tts.settings.provider_openai')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -62,7 +69,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.base_url', 'Base URL')}
+          {t('tts.settings.base_url_label')}
         </Text>
         <TextInput
           style={[
@@ -84,7 +91,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.api_key', 'API Key')}
+          {t('tts.settings.api_key_label')}
         </Text>
         <View style={styles.apiKeyRow}>
           <TextInput
@@ -111,7 +118,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
             onPress={onToggleApiKey}
           >
             <Text style={[styles.toggleBtnText, { color: colors.textSecondary }]}>
-              {showApiKey ? t('common.hide', '隐藏') : t('common.show', '显示')}
+              {showApiKey ? t('common.hide') : t('common.show')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -119,7 +126,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.model_id', '模型 ID')}
+          {t('tts.settings.model_id_label')}
         </Text>
         <TextInput
           style={[
@@ -141,7 +148,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.voice', '发音人 / Voice ID')}
+          {t('tts.settings.voice_label')}
         </Text>
         <TextInput
           style={[
@@ -163,7 +170,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.speed', '语速')} ({speedPercent}%)
+          {t('tts.settings.speed_label')} ({speedPercent}%)
         </Text>
         <Slider
           style={styles.slider}
@@ -184,7 +191,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.response_format', '音频格式')}
+          {t('tts.settings.format_label')}
         </Text>
         <View style={styles.chipRow}>
           {TTS_FORMATS.map((fmt) => (

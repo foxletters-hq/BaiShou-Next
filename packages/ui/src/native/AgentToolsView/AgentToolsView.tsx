@@ -18,23 +18,23 @@ export interface AgentToolsViewProps {
 
 interface ToolDef {
   id: string
-  name: string
-  category: string
+  nameKey: string
+  categoryKey: string
 }
 
 const DIARY_TOOLS: ToolDef[] = [
-  { id: 'diary_read', name: '读取日记', category: 'diary' },
-  { id: 'diary_edit', name: '编辑日记', category: 'diary' },
-  { id: 'diary_delete', name: '删除日记', category: 'diary' },
-  { id: 'diary_list', name: '列出日记', category: 'diary' },
-  { id: 'diary_search', name: '搜索日记', category: 'diary' }
+  { id: 'diary_read', nameKey: 'agent.tools.diary_read', categoryKey: 'settings.agent_tools_category_diary' },
+  { id: 'diary_edit', nameKey: 'agent.tools.diary_edit', categoryKey: 'settings.agent_tools_category_diary' },
+  { id: 'diary_delete', nameKey: 'agent.tools.diary_delete', categoryKey: 'settings.agent_tools_category_diary' },
+  { id: 'diary_list', nameKey: 'agent.tools.diary_list', categoryKey: 'settings.agent_tools_category_diary' },
+  { id: 'diary_search', nameKey: 'agent.tools.diary_search', categoryKey: 'settings.agent_tools_category_diary' }
 ]
 
 const SUMMARY_TOOLS: ToolDef[] = [
-  { id: 'summary_read', name: '读取总结', category: 'summary' },
-  { id: 'message_search', name: '搜索消息', category: 'summary' },
-  { id: 'memory_store', name: '存储记忆', category: 'memory' },
-  { id: 'memory_delete', name: '删除记忆', category: 'memory' }
+  { id: 'summary_read', nameKey: 'agent.tools.summary_read', categoryKey: 'settings.agent_tools_category_summary' },
+  { id: 'message_search', nameKey: 'agent.tools.message_search', categoryKey: 'settings.agent_tools_category_summary' },
+  { id: 'memory_store', nameKey: 'agent.tools.memory_store', categoryKey: 'settings.agent_tools_category_memory' },
+  { id: 'memory_delete', nameKey: 'agent.tools.memory_delete', categoryKey: 'settings.agent_tools_category_memory' }
 ]
 
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange }) => {
@@ -53,7 +53,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
   const renderTool = (tool: ToolDef) => (
     <View key={tool.id} style={[styles.toolRow, { borderBottomColor: colors.borderSubtle }]}>
       <View style={styles.toolInfo}>
-        <Text style={[styles.toolName, { color: colors.textPrimary }]}>{tool.name}</Text>
+        <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t(tool.nameKey)}</Text>
         <Text style={[styles.toolId, { color: colors.textTertiary }]}>{tool.id}</Text>
       </View>
       <Switch value={!isDisabled(tool.id)} onValueChange={() => toggleTool(tool.id)} />
@@ -62,12 +62,20 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
 
   return (
     <ScrollView style={styles.scroll}>
-      <SettingsSection title={t('tools.diary', '日记工具')}>
+      <SettingsSection title={t('settings.agent_tools_category_diary', '日记工具')}>
         {DIARY_TOOLS.map(renderTool)}
       </SettingsSection>
 
-      <SettingsSection title={t('tools.summary_memory', '总结 / 记忆')}>
-        {SUMMARY_TOOLS.map(renderTool)}
+      <SettingsSection title={t('settings.agent_tools_category_summary', '总结工具')}>
+        {SUMMARY_TOOLS.filter((tool) => tool.id === 'summary_read' || tool.id === 'message_search').map(
+          renderTool
+        )}
+      </SettingsSection>
+
+      <SettingsSection title={t('settings.agent_tools_category_memory', '记忆工具')}>
+        {SUMMARY_TOOLS.filter((tool) => tool.id === 'memory_store' || tool.id === 'memory_delete').map(
+          renderTool
+        )}
       </SettingsSection>
 
       <View style={styles.bottomSpacer} />
@@ -80,12 +88,13 @@ const styles = StyleSheet.create({
   toolRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
   toolInfo: { flex: 1, marginRight: 12 },
-  toolName: { fontSize: 15, fontWeight: '500' },
+  toolName: { fontSize: 15, fontWeight: '600' },
   toolId: { fontSize: 12, marginTop: 2 },
-  bottomSpacer: { height: 40 }
+  bottomSpacer: { height: 24 }
 })

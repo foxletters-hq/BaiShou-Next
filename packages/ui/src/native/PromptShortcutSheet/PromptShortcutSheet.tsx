@@ -73,7 +73,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
               <View style={[styles.headerTitleRow, { gap: tokens.spacing.sm }]}>
                 <Text style={styles.headerIcon}>⚡</Text>
                 <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-                  {t('prompt.shortcuts', '提示词快捷指令')}
+                  {t('shortcut.title', '快捷控制指令 (Shortcut)')}
                 </Text>
               </View>
               <Pressable onPress={onClose}>
@@ -90,7 +90,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
               ListEmptyComponent={
                 <View style={[styles.emptyContainer, { padding: tokens.spacing.lg }]}>
                   <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {t('prompt.noShortcuts', '暂无快捷指令')}
+                    {t('shortcut.no_match', '找不到任何匹配的快捷指令...')}
                   </Text>
                 </View>
               }

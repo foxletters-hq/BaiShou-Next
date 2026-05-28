@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   View,
   TextInput,
@@ -7,38 +7,88 @@ import {
   Text,
   Image,
   ScrollView,
-  Alert
+  Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager
 } from 'react-native'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { MaterialIcons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
 import type { MockChatAttachment } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 
-interface InputBarProps {
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
+
+const TOOLBAR_ANIM_MS = 200
+
+export interface InputBarProps {
   isLoading: boolean
   onSend: (text: string, attachments?: MockChatAttachment[]) => void
   onStop?: () => void
   assistantName?: string
   onAssistantTap?: () => void
   onRecall?: () => void
+  onTriggerShortcut?: () => void
+  onManageShortcuts?: () => void
+  onOpenTools?: () => void
+  searchMode?: boolean
+  onToggleSearchMode?: () => void
+  ttsMode?: 'off' | 'always' | 'manual'
+  onToggleTtsMode?: () => void
 }
 
 export const InputBar: React.FC<InputBarProps> = ({
   onSend,
   isLoading,
   onStop,
-  assistantName = 'Assistant'
+  assistantName = 'Assistant',
+  onAssistantTap,
+  onRecall,
+  onTriggerShortcut,
+  onManageShortcuts,
+  onOpenTools,
+  searchMode = false,
+  onToggleSearchMode,
+  ttsMode = 'manual',
+  onToggleTtsMode
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
+  const [showToolbar, setShowToolbar] = useState(true)
+  const toolbarProgress = useSharedValue(1)
+
+  const toggleToolbar = useCallback(() => {
+    LayoutAnimation.configureNext({
+      duration: TOOLBAR_ANIM_MS,
+      update: { type: LayoutAnimation.Types.easeInEaseOut },
+      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity }
+    })
+    setShowToolbar((prev) => {
+      const next = !prev
+      toolbarProgress.value = withTiming(next ? 1 : 0, { duration: TOOLBAR_ANIM_MS })
+      return next
+    })
+  }, [toolbarProgress])
+
+  const toolbarAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: toolbarProgress.value,
+    maxHeight: toolbarProgress.value * 44,
+    marginBottom: toolbarProgress.value * 8,
+    overflow: 'hidden' as const
+  }))
 
   const handlePickFiles = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         multiple: true,
-        type: '*/*' // Allow all, can be restricted later
+        type: '*/*'
       })
 
       if (!result.canceled && result.assets) {
@@ -85,6 +135,53 @@ export const InputBar: React.FC<InputBarProps> = ({
       setText('')
       setAttachments([])
     }
+  }
+
+  const handleShortcutPress = () => {
+    if (onTriggerShortcut) {
+      onTriggerShortcut()
+      return
+    }
+    onManageShortcuts?.()
+  }
+
+  const renderToolbarChip = (
+    label: string,
+    onPress?: () => void,
+    options?: { active?: boolean; icon?: keyof typeof MaterialIcons.glyphMap }
+  ) => {
+    if (!onPress) return null
+    const active = options?.active ?? false
+    return (
+      <TouchableOpacity
+        key={label}
+        style={[
+          styles.chip,
+          {
+            backgroundColor: active ? colors.primary : colors.bgSurfaceHigh,
+            borderColor: colors.borderMuted
+          }
+        ]}
+        onPress={onPress}
+      >
+        {options?.icon ? (
+          <MaterialIcons
+            name={options.icon}
+            size={14}
+            color={active ? colors.textOnPrimary : colors.textSecondary}
+          />
+        ) : null}
+        <Text
+          style={[
+            styles.chipLabel,
+            { color: active ? colors.textOnPrimary : colors.textSecondary }
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </TouchableOpacity>
+    )
   }
 
   return (
@@ -134,13 +231,62 @@ export const InputBar: React.FC<InputBarProps> = ({
         </ScrollView>
       )}
 
+      <Animated.View style={toolbarAnimatedStyle}>
+        {showToolbar && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.toolbarContent}
+          >
+            {renderToolbarChip(t('input.upload_attachment', '上传附件'), handlePickFiles, {
+              icon: 'attach-file'
+            })}
+            {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
+              icon: 'bolt'
+            })}
+            {renderToolbarChip(
+              searchMode
+                ? t('settings.web_search_mode_tool', '外部工具搜索')
+                : t('settings.web_search_mode_off', '关闭搜索'),
+              onToggleSearchMode,
+              { active: searchMode, icon: 'public' }
+            )}
+            {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, { icon: 'menu-book' })}
+            {renderToolbarChip(
+              ttsMode === 'always'
+                ? t('agent.chat.tts_always', '始终朗读')
+                : ttsMode === 'off'
+                  ? t('agent.chat.tts_off', '语音关闭')
+                  : t('agent.chat.tts_manual', '手动朗读'),
+              onToggleTtsMode,
+              { active: ttsMode === 'always', icon: 'volume-up' }
+            )}
+            {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, { icon: 'build' })}
+          </ScrollView>
+        )}
+      </Animated.View>
+
       <View style={styles.toolbarRow}>
         <TouchableOpacity
           style={[styles.toolBtn, { backgroundColor: colors.bgSurfaceHigh }]}
-          onPress={handlePickFiles}
+          onPress={toggleToolbar}
         >
-          <Text style={styles.toolIcon}>📎</Text>
+          <MaterialIcons
+            name={showToolbar ? 'expand-more' : 'chevron-right'}
+            size={18}
+            color={colors.textSecondary}
+          />
         </TouchableOpacity>
+        {onAssistantTap && (
+          <TouchableOpacity
+            style={[styles.assistantChip, { backgroundColor: colors.bgSurfaceHigh }]}
+            onPress={onAssistantTap}
+          >
+            <Text style={[styles.assistantChipText, { color: colors.textSecondary }]} numberOfLines={1}>
+              {assistantName}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={[styles.inputWrapper, { backgroundColor: colors.bgSurfaceHigh }]}>
@@ -148,9 +294,7 @@ export const InputBar: React.FC<InputBarProps> = ({
           style={[styles.input, { color: colors.textPrimary }]}
           value={text}
           onChangeText={setText}
-          placeholder={t('chat.send_to', '发给 {{name}}...', {
-            name: assistantName
-          })}
+          placeholder={t('agent.chat.input_hint', '输入消息...')}
           placeholderTextColor={colors.textTertiary}
           multiline
           maxLength={4000}
@@ -159,6 +303,7 @@ export const InputBar: React.FC<InputBarProps> = ({
           <TouchableOpacity
             style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
             onPress={onStop}
+            accessibilityLabel={t('common.stop', '停止')}
           >
             <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
           </TouchableOpacity>
@@ -167,12 +312,13 @@ export const InputBar: React.FC<InputBarProps> = ({
             style={[
               styles.sendBtn,
               { backgroundColor: colors.primary },
-              !text.trim() && { backgroundColor: colors.textTertiary }
+              !text.trim() && attachments.length === 0 && { backgroundColor: colors.textTertiary }
             ]}
             onPress={handleSend}
-            disabled={!text.trim()}
+            disabled={!text.trim() && attachments.length === 0}
+            accessibilityLabel={t('common.send', '发送')}
           >
-            <Text style={[styles.sendIcon, { color: colors.textOnPrimary }]}>↑</Text>
+            <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
           </TouchableOpacity>
         )}
       </View>
@@ -184,6 +330,28 @@ const styles = StyleSheet.create({
   container: {
     padding: 12,
     borderTopWidth: 1
+  },
+  toolbarContent: {
+    gap: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center'
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1
+  },
+  chipIcon: {
+    fontSize: 13
+  },
+  chipLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: 120
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -208,7 +376,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 8
   },
-  sendBtnDisabled: {},
   sendIcon: {
     fontSize: 18,
     fontWeight: 'bold'
@@ -230,14 +397,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    paddingHorizontal: 4
+    paddingHorizontal: 4,
+    gap: 8
   },
   toolBtn: {
-    padding: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: 8
   },
   toolIcon: {
-    fontSize: 16
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  assistantChip: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8
+  },
+  assistantChipText: {
+    fontSize: 12,
+    fontWeight: '600'
   },
   attachmentList: {
     flexDirection: 'row',

@@ -22,13 +22,13 @@ export const yearMonthPickerStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20
+    padding: 16
   },
   modalContent: {
-    width: '100%',
-    maxWidth: 360,
     borderRadius: 16,
-    overflow: 'hidden'
+    overflow: 'hidden',
+    alignSelf: 'center',
+    maxHeight: '85%'
   },
   header: {
     flexDirection: 'row',
@@ -78,16 +78,19 @@ export const yearMonthPickerStyles = StyleSheet.create({
     gap: 8
   },
   monthItem: {
-    width: '30%',
-    height: 44,
+    width: '31%',
+    minHeight: 44,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1
   },
   monthText: {
-    fontSize: 14,
-    fontWeight: '600'
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center'
   },
   footer: {
     flexDirection: 'row',
@@ -98,12 +101,15 @@ export const yearMonthPickerStyles = StyleSheet.create({
   },
   footerBtn: {
     flex: 1,
-    paddingVertical: 10,
+    minWidth: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 8,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   footerBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600'
   }
 })

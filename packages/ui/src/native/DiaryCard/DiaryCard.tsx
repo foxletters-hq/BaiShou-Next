@@ -1,8 +1,16 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState } from 'react'
+import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../../native/theme'
-import { getWeatherEmoji } from '@baishou/shared'
+import {
+  getWeatherEmoji,
+  normalizeWeatherId,
+  weatherI18nKey,
+  WEATHER_IDS,
+  formatDiaryPreviewText
+} from '@baishou/shared'
+import type { WeatherId } from '@baishou/shared'
 
 interface DiaryCardProps {
   id: number
@@ -17,8 +25,6 @@ interface DiaryCardProps {
   onEdit?: () => void
   onDelete?: () => void
 }
-
-// TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
 
 export const DiaryCard: React.FC<DiaryCardProps> = ({
   id,
@@ -38,15 +44,25 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
   const day = createdAt.getDate().toString().padStart(2, '0')
   const month = createdAt.getMonth() + 1
   const year = createdAt.getFullYear()
-  const weekday = [
-    t('common.sunday', '周日'),
-    t('common.monday', '周一'),
-    t('common.tuesday', '周二'),
-    t('common.wednesday', '周三'),
-    t('common.thursday', '周四'),
-    t('common.friday', '周五'),
-    t('common.saturday', '周六')
-  ][createdAt.getDay()]
+  const weekdayKeys = [
+    'diary.weekday_sun',
+    'diary.weekday_mon',
+    'diary.weekday_tue',
+    'diary.weekday_wed',
+    'diary.weekday_thu',
+    'diary.weekday_fri',
+    'diary.weekday_sat'
+  ] as const
+  const weekday = t(weekdayKeys[createdAt.getDay()])
+
+  const weatherLabel = (() => {
+    if (!weather) return ''
+    const id = normalizeWeatherId(weather)
+    if ((WEATHER_IDS as readonly string[]).includes(id)) {
+      return t(`diary.weather.${weatherI18nKey(id as WeatherId)}`)
+    }
+    return weather
+  })()
 
   const getTagColor = (tag: string) => {
     // 使用主题颜色，确保深浅模式下对比度一致
@@ -60,6 +76,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
     for (let i = 0; i < tag.length; i++) sum += tag.charCodeAt(i)
     return tagColors[sum % tagColors.length]!
   }
+
+  const previewText = formatDiaryPreviewText(contentSnippet)
 
   return (
     <TouchableOpacity
@@ -83,21 +101,25 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
             >
               <Text style={[styles.badgeText, { color: colors.primary }]}>
                 {year} · {month}
-                {t('common.month_unit', '月')}
+                {t('diary.month_suffix')}
               </Text>
             </View>
           </View>
         </View>
-        <Text style={styles.icon}>📑</Text>
+        {isFavorite ? (
+          <MaterialIcons name="favorite" size={22} color={colors.warning} />
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
       </View>
 
-      {/* 元数据行：天气、心情、位置、收藏 */}
-      {(weather || mood || location || isFavorite) && (
+      {/* 元数据行：天气、心情、位置 */}
+      {(weather || mood || location) && (
         <View style={styles.metaRow}>
           {weather && (
             <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
               <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                {getWeatherEmoji(weather)} {t(`diary.weather.${weather}`, weather)}
+                {getWeatherEmoji(weather)} {weatherLabel}
               </Text>
             </View>
           )}
@@ -111,17 +133,12 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
               <Text style={[styles.metaText, { color: colors.textSecondary }]}>📍 {location}</Text>
             </View>
           )}
-          {isFavorite && (
-            <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>❤️</Text>
-            </View>
-          )}
         </View>
       )}
 
       <View style={styles.contentContainer}>
         <Text style={[styles.snippet, { color: colors.textPrimary }]} numberOfLines={5}>
-          {contentSnippet}
+          {previewText}
         </Text>
         {/* RN LinearGradient mask typically requires react-native-linear-gradient, mock with simple overlap or fade */}
       </View>
@@ -144,12 +161,12 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       <View style={styles.actionsBox}>
         <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
           <Text style={[styles.editText, { color: colors.textSecondary }]}>
-            ✏️ {t('common.edit', '编辑')}
+            {t('common.edit')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onDelete} style={styles.actionBtn}>
           <Text style={[styles.deleteText, { color: colors.error }]}>
-            🗑️ {t('common.delete', '删除')}
+            {t('common.delete')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -192,7 +209,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5
   },
   badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
-  icon: { fontSize: 20, opacity: 0.3 },
+  headerSpacer: { width: 22 },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

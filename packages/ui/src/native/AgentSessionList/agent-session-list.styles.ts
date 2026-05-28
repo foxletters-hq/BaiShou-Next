@@ -10,7 +10,7 @@ export const agentSessionListStyles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1
   },
-  searchIcon: { fontSize: 16, marginRight: 8 },
+  searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 15 },
   clearIcon: { fontSize: 18, paddingHorizontal: 6 },
   groupHeader: { paddingHorizontal: 16, paddingVertical: 8 },

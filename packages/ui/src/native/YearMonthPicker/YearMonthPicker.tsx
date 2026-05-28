@@ -1,25 +1,28 @@
 import React, { useState, useMemo } from 'react'
 import { Text, TouchableOpacity } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import type { YearMonthPickerProps } from './year-month-picker.types'
-import { MONTH_NAMES } from './year-month-picker.utils'
+import { MONTH_I18N_KEYS } from './year-month-picker.utils'
 import { yearMonthPickerStyles as styles } from './year-month-picker.styles'
 import { YearMonthPickerModal } from './YearMonthPickerModal'
 
 export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
   selectedMonth,
   onChange,
-  titlePlaceholder = '全部日期'
+  titlePlaceholder
 }) => {
+  const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [isOpen, setIsOpen] = useState(false)
+  const placeholder = titlePlaceholder ?? t('diary.all_diaries')
 
   const displayText = useMemo(() => {
-    if (!selectedMonth) return titlePlaceholder
+    if (!selectedMonth) return placeholder
     const y = selectedMonth.getFullYear()
-    const m = MONTH_NAMES[selectedMonth.getMonth()]
-    return `${y}年${m}`
-  }, [selectedMonth, titlePlaceholder])
+    const monthKey = MONTH_I18N_KEYS[selectedMonth.getMonth()]
+    return `${y}${t('common.year_suffix')}${t(`diary.${monthKey}`)}`
+  }, [selectedMonth, placeholder, t])
 
   return (
     <>

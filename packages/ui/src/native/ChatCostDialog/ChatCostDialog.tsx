@@ -54,7 +54,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
               <View style={[styles.headerTitleRow, { gap: tokens.spacing.sm }]}>
                 <Text style={styles.headerIcon}>💰</Text>
                 <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-                  {t('cost.dialogTitle', '费用明细')}
+                  {t('agent.chat.cost_detail_title', '当前计费')}
                 </Text>
               </View>
               <Pressable onPress={onClose}>
@@ -74,11 +74,11 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
             >
               {/* Session Stats */}
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                {t('cost.currentSession', '本次会话')}
+                {t('agent.chat.cost_context_title', '当前上下文')}
               </Text>
               <View style={styles.row}>
                 <Text style={[styles.label, { color: colors.textTertiary }]}>
-                  {t('cost.tokens', 'Token 用量')}
+                  {t('agent.chat.cost_context_size', '上下文大小')}
                 </Text>
                 <Text style={[styles.value, { color: colors.textPrimary }]}>
                   {formatTokens(sessionTokens)}
@@ -86,7 +86,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
               </View>
               <View style={styles.row}>
                 <Text style={[styles.label, { color: colors.textTertiary }]}>
-                  {t('cost.cost', '费用')}
+                  {t('agent.chat.round_cost', '本轮')}
                 </Text>
                 <Text style={[styles.value, { color: colors.primary, fontWeight: '700' }]}>
                   {formatCost(sessionCost)}
@@ -97,11 +97,11 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
 
               {/* Total Stats */}
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                {t('cost.total', '累计统计')}
+                {t('agent.chat.cost_cumulative_title', '累计 API 消耗')}
               </Text>
               <View style={styles.row}>
                 <Text style={[styles.label, { color: colors.textTertiary }]}>
-                  {t('cost.tokens', 'Token 用量')}
+                  {t('agent.chat.tokens_unit', 'tokens')}
                 </Text>
                 <Text style={[styles.value, { color: colors.textPrimary }]}>
                   {formatTokens(totalTokens)}
@@ -109,7 +109,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
               </View>
               <View style={styles.row}>
                 <Text style={[styles.label, { color: colors.textTertiary }]}>
-                  {t('cost.cost', '费用')}
+                  {t('agent.chat.round_cost', '本轮')}
                 </Text>
                 <Text style={[styles.value, { color: colors.primary, fontWeight: '700' }]}>
                   {formatCost(totalCost)}

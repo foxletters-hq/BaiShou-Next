@@ -17,7 +17,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
 
   return (
     <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
-      <SettingsSection title={t('tts.title', 'TTS 语音合成设置')}>
+      <SettingsSection title={t('tts.settings.title')}>
         <TtsBasicFields
           config={vm.config}
           showApiKey={vm.showApiKey}
@@ -44,7 +44,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
           disabled={!props.onTestTts}
           style={styles.actionBtn}
         >
-          {t('tts.test', '测试 TTS')}
+          {t('tts.settings.test_button')}
         </Button>
         <Button
           onPress={vm.handleSave}
@@ -52,7 +52,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
           disabled={!props.onSaveConfig}
           style={styles.actionBtn}
         >
-          {t('common.save', '保存')}
+          {t('common.save')}
         </Button>
       </View>
 

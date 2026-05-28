@@ -33,9 +33,9 @@ export function useTtsProviderSettings({
     setSaving(true)
     try {
       await onSaveConfig(config)
-      setTestResult(t('common.save_success', '保存成功'))
+      setTestResult(t('common.save_success'))
     } catch {
-      setTestResult(t('common.save_failed', '保存失败'))
+      setTestResult(t('tts.settings.save_failed'))
     } finally {
       setSaving(false)
     }
@@ -49,11 +49,11 @@ export function useTtsProviderSettings({
       const result = await onTestTts(config, testText)
       setTestResult(
         result.success
-          ? (result.message ?? t('tts.test_success', 'TTS 测试成功'))
-          : (result.message ?? t('tts.test_failed', 'TTS 测试失败'))
+          ? (result.message ?? t('tts.settings.test_success'))
+          : (result.message ?? t('tts.settings.test_failed'))
       )
     } catch {
-      setTestResult(t('tts.test_failed', 'TTS 测试失败'))
+      setTestResult(t('tts.settings.test_failed'))
     } finally {
       setTesting(false)
     }
