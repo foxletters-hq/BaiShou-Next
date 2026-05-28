@@ -462,9 +462,10 @@ export function useSummaryData() {
         if (!config) throw new Error('未配置 AI Provider')
 
         // 获取 AI Provider（通过 ProviderFactory 直接从配置创建实例）
-        const { ProviderFactory } = await import('@baishou/ai/src/providers/provider.factory')
-        const provider = ProviderFactory.createProviderFromConfig(config)
-        if (!provider) throw new Error(`未找到 AI Provider: ${config.id || config.type}`)
+        const { AIProviderRegistry } = await import('@baishou/ai')
+        const registry = AIProviderRegistry.getInstance()
+        registry.initializeDefaultProviders()
+        const provider = registry.getOrUpdateProvider(config)
 
         // 构建提示词
         const prompt = buildSummaryPrompt(task.target, contextData)

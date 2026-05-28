@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import * as SQLite from 'expo-sqlite'
-import { initExpoDatabase } from '@baishou/database/src/expo'
+import { initExpoDatabase } from '@baishou/database/expo'
 import {
   SessionManagerService,
   DiaryService,
@@ -18,8 +18,11 @@ import {
   SummaryFileService,
   SummarySyncService,
   ShadowIndexSyncService,
-  VaultService
-} from '@baishou/core'
+  VaultService,
+  MissingSummaryDetector,
+  SummaryGeneratorService
+} from '@baishou/core-mobile'
+import { resolveSummaryTemplatesForGeneration } from '@baishou/shared'
 
 import {
   SessionRepository,
@@ -28,7 +31,7 @@ import {
   SettingsRepository,
   SummaryRepositoryImpl,
   SnapshotRepository
-} from '@baishou/database/src/expo'
+} from '@baishou/database'
 
 import {
   AIProviderRegistry,
@@ -36,17 +39,35 @@ import {
   AgentSessionService,
   StreamChatCallbacks,
   htmlToPlainText,
-  webSearchConfigToUserConfig
+  webSearchConfigToUserConfig,
+  EmbeddingAdapter,
+  HybridSearchService
 } from '@baishou/ai'
-import { EmbeddingAdapter } from '@baishou/ai/src/tools/adapters/embedding.adapter'
-import { HybridSearchService } from '@baishou/ai/src/rag/hybrid-search.service'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 
 import { MobileStoragePathService } from '../services/path.service'
+import { ExpoFileSystem } from '../services/expo-file-system'
 import { MobileArchiveService } from '../services/archive.service'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
+import { createMobileRagService, type MobileRagService } from '../services/mobile-rag.service'
+import { MobileIncrementalSyncService } from '../services/mobile-incremental-sync.service'
+import { MobileMcpService } from '../services/mobile-mcp.service'
+import { mobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
+import { vaultFileWatcher } from '../services/vault-file-watcher.service'
+import { mobileDeveloperService, type MobileDeveloperService } from '../services/developer.service'
+import { MobileUpdaterService } from '../services/mobile-updater.service'
+import { mobilePricingService, type MobilePricingService } from '../services/mobile-pricing.service'
+import type { VaultFileWatcherService } from '../services/vault-file-watcher.service'
+import type { MobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
+import type { IFileSystem } from '@baishou/core-mobile'
+import { createShadowDiaryRepoAdapter } from '../services/shadow-diary-adapter'
+import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client'
+import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
+import { sessionFileWatcher } from '../services/session-file-watcher.service'
+import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import { logger } from '@baishou/shared'
+import type { SessionRepository as SessionRepositoryType } from '@baishou/database'
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
 interface BaishouContextValue {
@@ -54,6 +75,8 @@ interface BaishouContextValue {
   services: {
     agentService: AgentSessionService
     sessionManager: SessionManagerService
+    sessionRepo: SessionRepositoryType
+    assistantManager: AssistantManagerService
     diaryService: DiaryService
     settingsManager: SettingsManagerService
     summaryManager: SummaryManagerService
@@ -62,16 +85,34 @@ interface BaishouContextValue {
     cloudSyncService: MobileCloudSyncService
     vaultService: VaultService
     pathService: MobileStoragePathService
+    fileSystem: IFileSystem
+    developerService: MobileDeveloperService
+    updaterService: MobileUpdaterService
+    pricingService: MobilePricingService
+    bootstrapper: MobileDataBootstrapper
+    vaultFileWatcher: VaultFileWatcherService
     memorySearch: (
       query: string,
       options?: { topK?: number; minScore?: number }
     ) => Promise<Array<{ chunkText: string; score: number; createdAt?: number }>>
+    mobileMcpService: MobileMcpService
+    ragService: MobileRagService
+    incrementalSyncService: MobileIncrementalSyncService
+    attachmentManager: MobileAttachmentManagerService
   } | null
   startAgentChat?: (
     sessionId: string,
     userText: string,
     callbacks: StreamChatCallbacks,
-    overrides?: { providerId?: string; modelId?: string; searchMode?: boolean }
+    overrides?: {
+      providerId?: string
+      modelId?: string
+      searchMode?: boolean
+      abortSignal?: AbortSignal
+      userMessageId?: string
+      skipUserMessageRecording?: boolean
+      attachments?: unknown[]
+    }
   ) => Promise<void>
 }
 
@@ -119,6 +160,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true
+    let mobileMcpService: MobileMcpService | null = null
 
     async function init() {
       try {
@@ -137,6 +179,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         const pathService = new MobileStoragePathService() as any
         await pathService.getRootDirectory() // trigger initialize
+        const fileSystem = new ExpoFileSystem()
 
         // 3. 构建 Repositories
         const sessionRepo = new SessionRepository(drizzleDb)
@@ -148,7 +191,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const snapshotRepo = new SnapshotRepository(drizzleDb)
 
         // 4. 构建 Core Services并进行依赖注入
-        const sessionFileService = new SessionFileService(pathService)
+        const sessionFileService = new SessionFileService(pathService, fileSystem)
         const sessionSyncService = new SessionSyncService(sessionRepo, sessionFileService)
         const sessionManager = new SessionManagerService(
           sessionRepo,
@@ -156,17 +199,23 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           sessionSyncService
         )
 
-        const assistantFileService = new AssistantFileService(pathService)
-        const assistantManager = new AssistantManagerService(assistantRepo, assistantFileService)
+        const assistantFileService = new AssistantFileService(pathService, fileSystem)
+        const attachmentManager = new MobileAttachmentManagerService(pathService)
+        const assistantManager = new AssistantManagerService(
+          assistantRepo,
+          assistantFileService,
+          attachmentManager
+        )
 
-        const fileSyncService = new FileSyncServiceImpl(pathService)
+        const fileSyncService = new FileSyncServiceImpl(pathService, fileSystem)
         const vaultIndexService = new VaultIndexServiceImpl()
-        const vaultService = new VaultService(pathService)
+        const vaultService = new VaultService(pathService, fileSystem)
         await vaultService.initRegistry()
         const shadowIndexSyncService = new ShadowIndexSyncService(
           shadowRepo,
           pathService,
-          vaultService
+          vaultService,
+          fileSystem
         )
         const diaryService = new DiaryService(
           shadowRepo,
@@ -175,13 +224,29 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           vaultIndexService
         )
 
-        const settingsFileService = new SettingsFileService(pathService)
+        const settingsFileService = new SettingsFileService(pathService, fileSystem)
         const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
 
-        const summaryFileService = new SummaryFileService(pathService)
+        const summaryFileService = new SummaryFileService(pathService, fileSystem)
+        const diaryRepoAdapter = createShadowDiaryRepoAdapter(shadowRepo)
+        const summaryConfig = (await settingsManager.get<any>('summary_config')) || {}
+        const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig)
+        const promptLocale = summaryConfig?.promptLocale ?? 'zh'
+        const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
+        const missingSummaryDetector = new MissingSummaryDetector(
+          diaryRepoAdapter as any,
+          summaryRepo as any
+        )
+        const summaryGenerator = new SummaryGeneratorService(
+          diaryRepoAdapter as any,
+          summaryRepo as any,
+          summaryAiClient,
+          customTemplates as Record<string, string>,
+          promptLocale
+        )
         const summarySyncService = new SummarySyncService(
-          null as any,
-          null as any,
+          missingSummaryDetector,
+          summaryGenerator,
           summaryRepo,
           summaryFileService
         )
@@ -197,8 +262,26 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const archiveService = new MobileArchiveService(pathService, vaultService)
         const lanSyncService = new MobileLanSyncService(archiveService)
         const cloudSyncService = new MobileCloudSyncService(archiveService)
+        const incrementalSyncService = new MobileIncrementalSyncService(
+          settingsManager,
+          archiveService,
+          pathService
+        )
+
+        const updaterService = new MobileUpdaterService(settingsManager)
+        const pricingService = mobilePricingService
+
+        void pricingService.ensureLoaded()
+        void updaterService.checkOnBootIfEnabled().catch((e) => {
+          logger.warn('[MobileUpdater] boot check failed:', e)
+        })
 
         const toolRegistry = new ToolRegistry()
+        mobileMcpService = new MobileMcpService(
+          settingsManager,
+          toolRegistry,
+          () => pathService.getActiveVaultNameForContext()
+        )
         const registry = AIProviderRegistry.getInstance()
         registry.initializeDefaultProviders()
 
@@ -221,6 +304,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const rawClient = (drizzleDb as any)?.session?.client || (drizzleDb as any)
         const hsRepo = new SqliteHybridSearchRepository(rawClient)
         const hybridSearchService = new HybridSearchService(hsRepo)
+        const ragService = createMobileRagService({
+          settingsManager,
+          diaryService,
+          hsRepo,
+          hybridSearchService,
+          registry,
+          rawSqlClient: rawClient
+        })
 
         /**
          * RAG 语义记忆搜索
@@ -309,6 +400,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             providerId?: string
             modelId?: string
             searchMode?: boolean
+            abortSignal?: AbortSignal
+            userMessageId?: string
+            skipUserMessageRecording?: boolean
+            attachments?: unknown[]
           }
         ) => {
           try {
@@ -353,7 +448,11 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 userConfig,
                 diarySearcher,
                 webSearchResultFetcher: webFetchContent,
-                fetchSearchPage: fetchDuckDuckGoSearch
+                fetchSearchPage: fetchDuckDuckGoSearch,
+                abortSignal: overrides?.abortSignal,
+                userMessageId: overrides?.userMessageId,
+                skipUserMessageRecording: overrides?.skipUserMessageRecording,
+                attachments: overrides?.attachments as any
               },
               callbacks
             )
@@ -363,7 +462,38 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        try {
+          await mobileMcpService.start()
+        } catch (mcpErr) {
+          logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr)
+        }
+
         logger.info('Mobile DB and DI Container Ready!')
+
+        const activeVault = await vaultService.getActiveVault()
+        if (activeVault?.path) {
+          await mobileDataBootstrapper.runWhenVaultReady({
+            shadowIndexSyncService,
+            sessionManager,
+            assistantManager,
+            settingsManager,
+            summarySyncService
+          })
+          vaultFileWatcher.start(activeVault.path, {
+            shadowIndexSyncService,
+            fileSystem
+          })
+          const sessionsDir = await pathService.getSessionsBaseDirectory()
+          sessionFileWatcher.start(sessionsDir, {
+            sessionFileService,
+            sessionSyncService,
+            sessionManager,
+            fileSystem
+          })
+          summaryFileWatcher.start(summarySyncService)
+        } else {
+          logger.warn('[BaishouProvider] No active vault; skipped bootstrap and file watcher')
+        }
 
         if (isMounted) {
           setValue({
@@ -371,6 +501,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             services: {
               agentService,
               sessionManager,
+              sessionRepo,
+              assistantManager,
               diaryService,
               settingsManager,
               summaryManager,
@@ -379,7 +511,17 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               cloudSyncService,
               vaultService,
               pathService,
-              memorySearch
+              fileSystem,
+              developerService: mobileDeveloperService,
+              updaterService,
+              pricingService,
+              bootstrapper: mobileDataBootstrapper,
+              vaultFileWatcher,
+              memorySearch,
+              mobileMcpService,
+              ragService,
+              incrementalSyncService,
+              attachmentManager
             },
             startAgentChat
           })
@@ -393,6 +535,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false
+      vaultFileWatcher.stop()
+      sessionFileWatcher.stop()
+      summaryFileWatcher.stop()
+      void mobileMcpService?.stop()
     }
   }, [])
 

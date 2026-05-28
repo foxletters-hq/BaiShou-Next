@@ -197,7 +197,7 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
                         style={styles.shortcutActionButton}
                         onPress={() => handleDelete(shortcut)}
                       >
-                        <Text style={[styles.shortcutActionText, { color: '#EF4444' }]}>删除</Text>
+                        <Text style={[styles.shortcutActionText, { color: colors.error }]}>删除</Text>
                       </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
@@ -294,7 +294,7 @@ export const ShortcutManager: React.FC<ShortcutManagerProps> = ({
                 style={[styles.editSaveButton, { backgroundColor: colors.primary }]}
                 onPress={handleSave}
               >
-                <Text style={styles.editSaveButtonText}>确认</Text>
+                <Text style={[styles.editSaveButtonText, { color: colors.textOnPrimary }]}>确认</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -470,7 +470,6 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   editSaveButtonText: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '600'
   }
