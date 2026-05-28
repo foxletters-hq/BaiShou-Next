@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, Switch, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
 
 const ALL_TOOL_DEFS = [
   { id: 'write_diary', category: '日记', label: '写日记' },
@@ -11,10 +11,13 @@ const ALL_TOOL_DEFS = [
   { id: 'web_search', category: '网络与RAG', label: '网页搜索' },
   { id: 'rag_recall', category: '网络与RAG', label: 'RAG 召回' },
   { id: 'rag_memorize', category: '网络与RAG', label: 'RAG 记忆' },
-  { id: 'summary_generate', category: '系统与数据', label: '生成总结' },
-  { id: 'git_commit', category: '系统与数据', label: 'Git 提交' },
-  { id: 'git_rollback', category: '系统与数据', label: 'Git 回滚' }
+  { id: 'summary_generate', category: '系统与数据', label: '生成总结' }
 ]
+
+/** 移动端不展示 Git 相关工具 */
+const MOBILE_HIDDEN_TOOL_IDS = new Set(['git_commit', 'git_rollback'])
+
+const VISIBLE_TOOL_DEFS = ALL_TOOL_DEFS.filter((tool) => !MOBILE_HIDDEN_TOOL_IDS.has(tool.id))
 
 export const AgentToolsSection: React.FC = () => {
   const { t } = useTranslation()
@@ -55,7 +58,7 @@ export const AgentToolsSection: React.FC = () => {
     await handleSaveToolConfig({ disabledToolIds: newDisabled })
   }
 
-  const categories = [...new Set(ALL_TOOL_DEFS.map((t) => t.category))]
+  const categories = [...new Set(VISIBLE_TOOL_DEFS.map((t) => t.category))]
 
   return (
     <View style={styles.section}>
@@ -63,7 +66,7 @@ export const AgentToolsSection: React.FC = () => {
         {t('settings.tools_title', '工具管理')}
       </Text>
       <Text style={[styles.sectionValue, { color: colors.textSecondary }]}>
-        {t('settings.disabled_tools', '已禁用')}: {disabledIds.length}/{ALL_TOOL_DEFS.length}
+        {t('settings.disabled_tools', '已禁用')}: {disabledIds.length}/{VISIBLE_TOOL_DEFS.length}
       </Text>
 
       {categories.map((category) => (
@@ -71,7 +74,7 @@ export const AgentToolsSection: React.FC = () => {
           <Text style={[styles.toolCategoryTitle, { color: colors.textSecondary }]}>
             {category}
           </Text>
-          {ALL_TOOL_DEFS.filter((t) => t.category === category).map((tool) => (
+          {VISIBLE_TOOL_DEFS.filter((t) => t.category === category).map((tool) => (
             <View
               key={tool.id}
               style={[styles.toolItem, { backgroundColor: colors.bgSurfaceHighest }]}

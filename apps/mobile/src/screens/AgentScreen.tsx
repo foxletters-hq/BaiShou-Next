@@ -14,7 +14,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ChatBubble, InputBar, TokenBadge, StreamingBubble, RecallDialog } from '@baishou/ui/native'
 import { useNativeTheme } from '@baishou/ui/native'
-import { useAgentStore } from '@baishou/store/stores/agent.store.ts'
+import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 
 import { SessionList } from '../components/SessionList'
@@ -574,7 +574,7 @@ export const AgentScreen = () => {
                     color:
                       ttsMode !== 'off'
                         ? ttsMode === 'always'
-                          ? colors.textOnPrimary || '#FFF'
+                          ? colors.textOnPrimary
                           : colors.textSecondary
                         : colors.textSecondary
                   }

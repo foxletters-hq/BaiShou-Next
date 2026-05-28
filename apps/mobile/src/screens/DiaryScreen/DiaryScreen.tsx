@@ -20,6 +20,7 @@ import { useBaishou } from '../../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { exportDiariesToShare } from '../../services/mobile-diary-export.service'
 
 interface DiaryEntry {
   id: number
@@ -343,9 +344,21 @@ export const DiaryScreen: React.FC = () => {
     const d = String(today.getDate()).padStart(2, '0')
     const dateStr = `${y}-${m}-${d}`
     if (todayEntry) {
-      router.push(`/(tabs)/diary-editor?date=${dateStr}&append=1`)
+      router.push({ pathname: '/diary-editor', params: { date: dateStr, append: '1' } })
     } else {
-      router.push(`/(tabs)/diary-editor?date=${dateStr}`)
+      router.push({ pathname: '/diary-editor', params: { date: dateStr } })
+    }
+  }
+
+  const handleExportDiaries = async () => {
+    if (!services) return
+    try {
+      await exportDiariesToShare(services.diaryService, 'md')
+    } catch (e) {
+      Alert.alert(
+        t('common.error', '错误'),
+        e instanceof Error ? e.message : t('diary.export_failed', '导出失败')
+      )
     }
   }
 
@@ -356,7 +369,7 @@ export const DiaryScreen: React.FC = () => {
     const m = String(today.getMonth() + 1).padStart(2, '0')
     const d = String(today.getDate()).padStart(2, '0')
     const dateStr = `${y}-${m}-${d}`
-    router.push(`/(tabs)/diary-editor?date=${dateStr}`)
+    router.push({ pathname: '/diary-editor', params: { date: dateStr } })
   }
 
   // 执行删除操作
@@ -390,8 +403,8 @@ export const DiaryScreen: React.FC = () => {
             mood={entry.mood}
             location={entry.location}
             isFavorite={entry.isFavorite}
-            onClick={() => router.push(`/(tabs)/diary-editor?id=${entry.id}`)}
-            onEdit={() => router.push(`/(tabs)/diary-editor?id=${entry.id}`)}
+            onClick={() => router.push({ pathname: '/diary-editor', params: { id: entry.id } })}
+            onEdit={() => router.push({ pathname: '/diary-editor', params: { id: entry.id } })}
             onDelete={() => setDeletingId(entry.id)}
           />
           {/* 叠加光晕掩码进行降噪隔离 */}
@@ -459,6 +472,12 @@ export const DiaryScreen: React.FC = () => {
                 <Text style={[styles.todayButtonText, { color: colors.textSecondary }]}>
                   {todayEntry ? '✍️' : '📅'}
                 </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.todayButton, { backgroundColor: colors.bgSurfaceHighest }]}
+                onPress={handleExportDiaries}
+              >
+                <Text style={[styles.todayButtonText, { color: colors.textSecondary }]}>📤</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[

@@ -13,12 +13,12 @@ import {
   RefreshControl
 } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { SyncConfig, SyncRecord } from '@baishou/core'
+import { SyncConfig, SyncRecord } from '@baishou/core-mobile'
 
 interface SyncTarget {
   id: string
@@ -552,7 +552,7 @@ export const DataSyncScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.content} indicatorStyle="white">
+          <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
             {/* 快捷操作 */}
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>

@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { DiaryEditor, useNativeTheme } from '@baishou/ui/native'
 import { format } from 'date-fns'
+import { useBaishou } from '../../providers/BaishouProvider'
 
 export const DiaryEditorScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -39,13 +42,13 @@ export const DiaryEditorScreen: React.FC = () => {
             setSelectedDate(diary.date)
             setWeather(diary.weather || null)
             setIsFavorite(diary.isFavorite || false)
-            setExistingId(diary.id)
+            setExistingId(diary.id ?? null)
           }
         } else if (date) {
           // 按日期查询已有日记
           const existing = await services.diaryService.findByDate(new Date(date))
           if (existing) {
-            setExistingId(existing.id)
+            setExistingId(existing.id ?? null)
             setTags(
               typeof existing.tags === 'string' ? existing.tags.split(',') : existing.tags || []
             )

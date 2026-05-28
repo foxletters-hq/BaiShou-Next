@@ -10,7 +10,7 @@ import {
   Alert,
   TextInput
 } from 'react-native'
-import { useNativeTheme, MarkdownRenderer } from '@baishou/ui/native'
+import { useNativeTheme, scrollIndicatorStyle, MarkdownRenderer } from '@baishou/ui/native'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import * as Clipboard from 'expo-clipboard'
@@ -275,7 +275,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         </View>
       </View>
 
-      <ScrollView style={styles.content} indicatorStyle="white">
+      <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
         <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
           <Text style={[styles.typeBadgeText, { color: colors.primary }]}>
             {getTypeLabel(summary.type)}

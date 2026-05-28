@@ -20,7 +20,8 @@ import {
   DashboardSharedMemoryCard,
   ActivityHeatmap,
   GalleryPanel,
-  useNativeTheme
+  useNativeTheme,
+  scrollIndicatorStyle
 } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
@@ -317,7 +318,7 @@ export const SummaryScreen: React.FC = () => {
           </View>
 
           {activeTab === 'panel' ? (
-            <ScrollView contentContainerStyle={styles.panelContent} indicatorStyle="white">
+            <ScrollView contentContainerStyle={styles.panelContent} indicatorStyle={scrollIndicatorStyle(isDark)}>
               <View style={styles.moduleWrapper}>
                 <DashboardHeroBanner />
               </View>

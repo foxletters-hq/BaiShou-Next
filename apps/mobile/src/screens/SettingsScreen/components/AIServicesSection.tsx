@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Switch, TextInput, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
 import { AIProviderConfig } from '@baishou/shared'
 
 export const AIServicesSection: React.FC = () => {
@@ -279,7 +279,7 @@ export const AIServicesSection: React.FC = () => {
         style={[styles.actionButton, { backgroundColor: colors.primary, marginTop: 12 }]}
         onPress={handleAddProvider}
       >
-        <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
           + {t('settings.add_provider', '添加供应商')}
         </Text>
       </TouchableOpacity>

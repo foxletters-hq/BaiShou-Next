@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useLocalSearchParams } from 'expo-router'
 import {
   View,
   Text,
@@ -8,7 +9,7 @@ import {
   SafeAreaView,
   StatusBar
 } from 'react-native'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
+import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
 import { useTranslation } from 'react-i18next'
 import { GeneralSettingsSection } from './components/GeneralSettingsSection'
 import { AIServicesSection } from './components/AIServicesSection'
@@ -20,7 +21,10 @@ import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { TTSSettingsSection } from './components/TTSSettingsSection'
 import { AgentBehaviorSection } from './components/AgentBehaviorSection'
+import { McpSettingsSection } from './components/McpSettingsSection'
 import { AssistantsSection, LanTransferSection, DataSyncSection } from './components/SimpleSections'
+import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
+import { UpdateSettingsSection } from './components/UpdateSettingsSection'
 
 interface SettingsTab {
   id: string
@@ -74,6 +78,12 @@ const SETTINGS_TABS: SettingsTab[] = [
     icon: '🔧'
   },
   {
+    id: 'mcp',
+    titleKey: 'settings.mcp_title',
+    defaultTitle: 'MCP',
+    icon: '🔌'
+  },
+  {
     id: 'summary',
     titleKey: 'settings.summary',
     defaultTitle: '回忆生成',
@@ -102,13 +112,34 @@ const SETTINGS_TABS: SettingsTab[] = [
     titleKey: 'settings.tts',
     defaultTitle: '语音合成',
     icon: '🔊'
+  },
+  {
+    id: 'updates',
+    titleKey: 'settings.updates',
+    defaultTitle: '应用更新',
+    icon: '⬆️'
+  },
+  {
+    id: 'developer',
+    titleKey: 'settings.developer',
+    defaultTitle: '开发者',
+    icon: '🛠️'
   }
 ]
+
+const VALID_SETTINGS_TABS = new Set(SETTINGS_TABS.map((tab) => tab.id))
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
+  const { tab } = useLocalSearchParams<{ tab?: string }>()
   const [activeTab, setActiveTab] = useState('general')
+
+  useEffect(() => {
+    if (typeof tab === 'string' && VALID_SETTINGS_TABS.has(tab)) {
+      setActiveTab(tab)
+    }
+  }, [tab])
 
   const renderContent = () => {
     switch (activeTab) {
@@ -130,6 +161,8 @@ export const SettingsScreen: React.FC = () => {
         return <WebSearchSection />
       case 'agent-tools':
         return <AgentToolsSection />
+      case 'mcp':
+        return <McpSettingsSection />
       case 'summary':
         return <SummarySettingsSection />
       case 'lan-transfer':
@@ -140,6 +173,10 @@ export const SettingsScreen: React.FC = () => {
         return <AttachmentManagementSection />
       case 'tts':
         return <TTSSettingsSection />
+      case 'updates':
+        return <UpdateSettingsSection />
+      case 'developer':
+        return <DeveloperSettingsSection />
       default:
         return null
     }
@@ -188,7 +225,7 @@ export const SettingsScreen: React.FC = () => {
                     style={[
                       styles.tabTitle,
                       { color: colors.textSecondary },
-                      activeTab === tab.id && { color: '#FFF' }
+                      activeTab === tab.id && { color: colors.textOnPrimary }
                     ]}
                   >
                     {t(tab.titleKey, tab.defaultTitle)}
@@ -199,7 +236,7 @@ export const SettingsScreen: React.FC = () => {
 
             <ScrollView
               style={styles.settingsContent}
-              indicatorStyle="white"
+              indicatorStyle={scrollIndicatorStyle(isDark)}
               keyboardShouldPersistTaps="handled"
             >
               {renderContent()}

@@ -10,7 +10,7 @@ import {
   Alert,
   TextInput
 } from 'react-native'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -155,7 +155,7 @@ export const LanTransferScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.content} indicatorStyle="white">
+          <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
             {/* 服务器状态 */}
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -213,7 +213,7 @@ export const LanTransferScreen: React.FC = () => {
                   ]}
                   onPress={serverRunning ? stopServer : startServer}
                 >
-                  <Text style={[styles.serverButtonText, { color: '#FFF' }]}>
+                  <Text style={[styles.serverButtonText, { color: colors.textOnPrimary }]}>
                     {serverRunning
                       ? t('lan_transfer.stop_server', '停止服务器')
                       : t('lan_transfer.start_server', '启动服务器')}

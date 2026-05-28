@@ -11,7 +11,7 @@ import {
   Alert,
   Switch
 } from 'react-native'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -204,7 +204,7 @@ export const AssistantEditScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} indicatorStyle="white">
+      <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
         {/* 基本信息 */}
         <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>基本信息</Text>
@@ -346,10 +346,10 @@ export const AssistantEditScreen: React.FC = () => {
         {/* 删除按钮 */}
         {!isNew && !isDefault && (
           <TouchableOpacity
-            style={[styles.deleteButton, { backgroundColor: '#EF4444' + '10' }]}
+            style={[styles.deleteButton, { backgroundColor: colors.error + '10' }]}
             onPress={handleDelete}
           >
-            <Text style={[styles.deleteText, { color: '#EF4444' }]}>删除助手</Text>
+            <Text style={[styles.deleteText, { color: colors.error }]}>删除助手</Text>
           </TouchableOpacity>
         )}
 

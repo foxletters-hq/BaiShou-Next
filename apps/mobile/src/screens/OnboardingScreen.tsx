@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   View,
   Text,
@@ -7,11 +7,16 @@ import {
   SafeAreaView,
   ScrollView,
   Dimensions,
-  Animated
+  TextInput
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useNativeTheme } from '@baishou/ui/native'
+import { ProviderType, type AiProviderModel } from '@baishou/shared'
 import { CompressionChart } from '../components/CompressionChart'
+import { ONBOARDING_STORAGE_KEY } from '../constants/storage'
+import { useBaishou } from '../providers/BaishouProvider'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -20,14 +25,83 @@ interface OnboardingPage {
   title: string
   subtitle: string
   content?: React.ReactNode
+  isAiSetup?: boolean
 }
+
+const GEMINI_PROVIDER_ID = 'gemini_default'
 
 export const OnboardingScreen = () => {
   const router = useRouter()
-  const { colors, isDark } = useNativeTheme()
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+  const { services, dbReady } = useBaishou()
   const [currentPage, setCurrentPage] = useState(0)
+  const [apiKey, setApiKey] = useState('')
   const scrollViewRef = useRef<ScrollView>(null)
-  const fadeAnim = useRef(new Animated.Value(1)).current
+
+  const saveApiKeyToProviders = async (key: string) => {
+    if (!services?.settingsManager || !dbReady) return
+
+    const existing =
+      (await services.settingsManager.get<AiProviderModel[]>('ai_providers')) || []
+    const providers: AiProviderModel[] = existing.length > 0 ? [...existing] : []
+
+    const geminiIndex = providers.findIndex((p) => p.id === GEMINI_PROVIDER_ID)
+    const geminiTemplate = providers[geminiIndex]
+
+    const updatedGemini: AiProviderModel = {
+      ...(geminiTemplate ?? {
+        id: GEMINI_PROVIDER_ID,
+        name: 'Google Gemini',
+        type: ProviderType.Gemini,
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+        models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+        defaultDialogueModel: 'gemini-2.5-flash',
+        defaultNamingModel: 'gemini-2.5-flash',
+        enabledModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+        isSystem: true,
+        sortOrder: 2
+      }),
+      apiKey: key,
+      isEnabled: true
+    }
+
+    if (geminiIndex >= 0) {
+      providers[geminiIndex] = updatedGemini
+    } else {
+      providers.push(updatedGemini)
+    }
+
+    await services.settingsManager.set('ai_providers', providers)
+
+    const globalModels = (await services.settingsManager.get<Record<string, string>>('global_models')) || {}
+    if (!globalModels.globalDialogueProviderId) {
+      globalModels.globalDialogueProviderId = GEMINI_PROVIDER_ID
+      globalModels.globalDialogueModelId =
+        globalModels.globalDialogueModelId || updatedGemini.defaultDialogueModel || 'gemini-2.5-flash'
+      await services.settingsManager.set('global_models', globalModels)
+    }
+  }
+
+  const finishOnboarding = async (destination: '/(tabs)/agent' | '/(tabs)/settings') => {
+    await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
+    if (apiKey.trim()) {
+      try {
+        await saveApiKeyToProviders(apiKey.trim())
+      } catch (e) {
+        console.warn('[Onboarding] save api key to settings failed', e)
+        await AsyncStorage.setItem('@baishou/mobile_onboarding_api_key', apiKey.trim())
+      }
+    }
+    if (destination === '/(tabs)/settings') {
+      router.replace({
+        pathname: '/(tabs)/settings',
+        params: { tab: 'ai-services' }
+      })
+    } else {
+      router.replace('/(tabs)/agent')
+    }
+  }
 
   const pages: OnboardingPage[] = [
     {
@@ -90,6 +164,50 @@ export const OnboardingScreen = () => {
     },
     {
       id: 4,
+      title: t('onboarding.ai_setup_title', '配置你的 AI 智慧'),
+      subtitle: t('onboarding.api_guide_title', '获取 API Key'),
+      isAiSetup: true,
+      content: (
+        <View style={styles.aiSetupContainer}>
+          <Text style={[styles.chartDescription, { color: colors.textSecondary }]}>
+            {t(
+              'onboarding.ai_setup_desc',
+              '白守本身不存储你的 AI 密钥。请配置标准的 OpenAI 兼容协议，开启你们的灵魂对话。'
+            )}
+          </Text>
+          <Text style={[styles.apiKeyLabel, { color: colors.textPrimary }]}>
+            {t('onboarding.api_key_label', 'Gemini API Key')}
+          </Text>
+          <TextInput
+            style={[
+              styles.apiKeyInput,
+              {
+                color: colors.textPrimary,
+                borderColor: colors.borderSubtle,
+                backgroundColor: colors.bgSurfaceHighest
+              }
+            ]}
+            value={apiKey}
+            onChangeText={setApiKey}
+            placeholder={t('onboarding.api_key_hint', '可选，稍后在设置中配置')}
+            placeholderTextColor={colors.textTertiary}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={[styles.secondaryButton, { borderColor: colors.primary }]}
+            onPress={() => finishOnboarding('/(tabs)/settings')}
+          >
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
+              {t('onboarding.go_to_config', '去配置')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )
+    },
+    {
+      id: 5,
       title: '数据安全',
       subtitle: '本地优先',
       content: (
@@ -129,12 +247,12 @@ export const OnboardingScreen = () => {
         animated: true
       })
     } else {
-      router.replace('/(tabs)/agent')
+      finishOnboarding('/(tabs)/agent')
     }
   }
 
   const handleSkip = () => {
-    router.replace('/(tabs)/agent')
+    finishOnboarding('/(tabs)/agent')
   }
 
   const handleScroll = (event: any) => {
@@ -197,7 +315,7 @@ export const OnboardingScreen = () => {
           style={[styles.nextButton, { backgroundColor: colors.primary }]}
           onPress={handleNext}
         >
-          <Text style={styles.nextButtonText}>
+          <Text style={[styles.nextButtonText, { color: colors.textOnPrimary }]}>
             {currentPage === pages.length - 1 ? '开始体验' : '下一步'}
           </Text>
         </TouchableOpacity>
@@ -338,8 +456,31 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   nextButtonText: {
-    color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold'
+  },
+  aiSetupContainer: {
+    gap: 16
+  },
+  apiKeyLabel: {
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  apiKeyInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16
+  },
+  secondaryButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center'
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600'
   }
 })

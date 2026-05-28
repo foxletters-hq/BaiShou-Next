@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
+import { notifyThemeRefresh } from '../../../lib/theme-events'
 import i18n from 'i18next'
 import {
   ProfileSettingsCard,
@@ -11,9 +12,9 @@ import {
   IdentitySettingsCard,
   WorkspaceSettingsCard,
   StorageSettingsCard,
-  type UserProfileConfig
-} from '@baishou/ui/src/native'
-import type { VaultInfo } from '@baishou/ui/src/native/WorkspaceSettingsCard/WorkspaceSettingsCard'
+  type UserProfileConfig,
+  type VaultInfo
+} from '@baishou/ui/native'
 
 export interface GeneralSettingsSectionProps {
   onNavigateToAttachments: () => void
@@ -133,6 +134,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
       const settings = (await services.settingsManager.get<any>('settings')) || {}
       settings.themeMode = mode
       await services.settingsManager.set('settings', settings)
+      notifyThemeRefresh()
     } catch (e) {
       console.error('Save theme failed', e)
     }
@@ -145,6 +147,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
       const settings = (await services.settingsManager.get<any>('settings')) || {}
       settings.seedColor = color
       await services.settingsManager.set('settings', settings)
+      notifyThemeRefresh()
     } catch (e) {
       console.error('Save seed color failed', e)
     }
@@ -288,7 +291,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
         style={[styles.actionButton, { backgroundColor: colors.primary }]}
         onPress={handleExportData}
       >
-        <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
           {t('settings.export_data', '导出数据')}
         </Text>
       </TouchableOpacity>

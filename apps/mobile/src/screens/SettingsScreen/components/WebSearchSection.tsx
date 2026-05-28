@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const WebSearchSection: React.FC = () => {
   const { t } = useTranslation()
@@ -84,7 +84,7 @@ export const WebSearchSection: React.FC = () => {
                   {
                     color:
                       (webSearchConfig.provider || 'duckduckgo') === engine
-                        ? '#FFF'
+                        ? colors.textOnPrimary
                         : colors.textSecondary
                   }
                 ]}
@@ -127,7 +127,9 @@ export const WebSearchSection: React.FC = () => {
                       styles.stepDotText,
                       {
                         color:
-                          (webSearchConfig.maxResults || 5) === n ? '#FFF' : colors.textSecondary
+                          (webSearchConfig.maxResults || 5) === n
+                            ? colors.textOnPrimary
+                            : colors.textSecondary
                       }
                     ]}
                   >

@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   Switch,
   ActivityIndicator,
-  Alert
+  Alert,
+  TextInput
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const RAGMemorySection: React.FC = () => {
   const { t } = useTranslation()
@@ -24,26 +25,40 @@ export const RAGMemorySection: React.FC = () => {
   })
   const [isRagLoading, setIsRagLoading] = useState(false)
   const [ragProgress, setRagProgress] = useState<any>(null)
+  const [ragEntries, setRagEntries] = useState<Array<{ embeddingId: string; text: string }>>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [manualMemoryText, setManualMemoryText] = useState('')
 
   const loadRagStats = useCallback(async () => {
-    if (!services || !dbReady) return
+    if (!services?.ragService || !dbReady) return
     try {
       setIsRagLoading(true)
-      const globalModelsConfig = (await services.settingsManager.get<any>('global_models')) || {}
+      const stats = await services.ragService.getStats()
       const ragConfigData = (await services.settingsManager.get<any>('rag_config')) || {}
-
-      const dimension = globalModelsConfig.globalEmbeddingDimension || 0
       setRagStats({
-        totalCount: ragConfigData.totalEmbeddings || 0,
-        currentDimension: dimension,
-        totalSizeText: ragConfigData.totalSizeText || '0 KB'
+        totalCount: stats.totalCount,
+        currentDimension: stats.currentDimension,
+        totalSizeText: ragConfigData.totalSizeText || `${(stats.totalCount * 2.5).toFixed(1)} KB`
       })
+      const res = await services.ragService.queryEntries({
+        keyword: searchQuery || undefined,
+        limit: 20,
+        offset: 0,
+        mode: searchQuery ? 'semantic' : 'text',
+        withTotal: true
+      })
+      setRagEntries(
+        res.entries.map((e) => ({
+          embeddingId: String(e.embeddingId ?? ''),
+          text: String(e.text ?? '').slice(0, 200)
+        }))
+      )
     } catch (e) {
       console.warn('Load RAG stats failed', e)
     } finally {
       setIsRagLoading(false)
     }
-  }, [services, dbReady])
+  }, [services, dbReady, searchQuery])
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -71,23 +86,20 @@ export const RAGMemorySection: React.FC = () => {
   }
 
   const handleDetectDimension = async () => {
-    if (!services || !dbReady) return
+    if (!services?.ragService || !dbReady) return
     try {
       setIsRagLoading(true)
       const globalModelsConfig = (await services.settingsManager.get<any>('global_models')) || {}
-      const embeddingProviderId = globalModelsConfig.globalEmbeddingProviderId
-      const embeddingModelId = globalModelsConfig.globalEmbeddingModelId
-
-      if (!embeddingProviderId || !embeddingModelId) {
+      if (
+        !globalModelsConfig.globalEmbeddingProviderId ||
+        !globalModelsConfig.globalEmbeddingModelId
+      ) {
         Alert.alert(t('common.hint', '提示'), t('settings.no_embedding_model', '请先配置嵌入模型'))
         return
       }
 
-      const dimension = 1536 // 默认维度
-      globalModelsConfig.globalEmbeddingDimension = dimension
-      await services.settingsManager.set('global_models', globalModelsConfig)
-
-      setRagStats((prev) => ({ ...prev, currentDimension: dimension }))
+      const dimension = await services.ragService.detectDimension()
+      setRagStats((prev: any) => ({ ...prev, currentDimension: dimension }))
       Alert.alert(
         t('common.success', '成功'),
         t('settings.dimension_detected', '维度检测完成: {dimension}').replace(
@@ -95,61 +107,59 @@ export const RAGMemorySection: React.FC = () => {
           dimension.toString()
         )
       )
-    } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('settings.detect_failed', '维度检测失败'))
+    } catch (e: any) {
+      Alert.alert(
+        t('common.error', '错误'),
+        e?.message || t('settings.detect_failed', '维度检测失败')
+      )
     } finally {
       setIsRagLoading(false)
     }
   }
 
   const handleBatchEmbed = async () => {
-    if (!services || !dbReady) return
+    if (!services?.ragService || !dbReady) return
     try {
       setIsRagLoading(true)
       setRagProgress({ current: 0, total: 0, status: 'starting' })
 
-      const diaryService = services.diaryService
-      const diaries = await diaryService.listAll({ limit: 10000 })
-      const total = diaries?.length || 0
+      const count = await services.ragService.batchEmbed((p) => {
+        setRagProgress({
+          current: p.current,
+          total: p.total,
+          status: p.status
+        })
+      })
 
-      if (total === 0) {
+      if (count === 0) {
         Alert.alert(t('common.hint', '提示'), t('settings.no_diaries_to_embed', '没有可嵌入的日记'))
         setRagProgress(null)
         return
       }
 
-      for (let i = 0; i < total; i++) {
-        setRagProgress({
-          current: i + 1,
-          total,
-          status: `处理日记: ${diaries[i]?.date || ''}`
-        })
-        await new Promise((resolve) => setTimeout(resolve, 50))
-      }
-
-      const ragConfigData = (await services.settingsManager.get<any>('rag_config')) || {}
-      ragConfigData.totalEmbeddings = total
-      await services.settingsManager.set('rag_config', ragConfigData)
-
-      setRagStats((prev) => ({ ...prev, totalCount: total }))
+      setRagStats((prev: any) => ({ ...prev, totalCount: count }))
       setRagProgress(null)
       Alert.alert(
         t('common.success', '成功'),
         t('settings.batch_embed_completed', '批量嵌入完成: {count} 条').replace(
           '{count}',
-          total.toString()
+          count.toString()
         )
       )
-    } catch (e) {
+      await loadRagStats()
+    } catch (e: any) {
       setRagProgress(null)
-      Alert.alert(t('common.error', '错误'), t('settings.batch_embed_failed', '批量嵌入失败'))
+      Alert.alert(
+        t('common.error', '错误'),
+        e?.message || t('settings.batch_embed_failed', '批量嵌入失败')
+      )
     } finally {
       setIsRagLoading(false)
     }
   }
 
   const handleClearMemory = async () => {
-    if (!services || !dbReady) return
+    if (!services?.ragService || !dbReady) return
     Alert.alert(
       t('settings.clear_memory_confirm_title', '确认清空'),
       t(
@@ -164,15 +174,7 @@ export const RAGMemorySection: React.FC = () => {
           onPress: async () => {
             try {
               setIsRagLoading(true)
-              const ragConfigData = (await services.settingsManager.get<any>('rag_config')) || {}
-              ragConfigData.totalEmbeddings = 0
-              await services.settingsManager.set('rag_config', ragConfigData)
-
-              const globalModelsConfig =
-                (await services.settingsManager.get<any>('global_models')) || {}
-              globalModelsConfig.globalEmbeddingDimension = 0
-              await services.settingsManager.set('global_models', globalModelsConfig)
-
+              await services.ragService.clearAll()
               setRagStats({ totalCount: 0, currentDimension: 0 })
               Alert.alert(
                 t('common.success', '成功'),
@@ -251,15 +253,48 @@ export const RAGMemorySection: React.FC = () => {
         </View>
       )}
 
+      <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
+        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+          {t('settings.add_manual_memory', '手动添加记忆')}
+        </Text>
+        <TextInput
+          style={[styles.memoryInput, { color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+          placeholder={t('settings.manual_memory_placeholder', '输入要记住的内容...')}
+          placeholderTextColor={colors.textSecondary}
+          value={manualMemoryText}
+          onChangeText={setManualMemoryText}
+          multiline
+        />
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: colors.bgSurface, marginBottom: 0 }]}
+          onPress={async () => {
+            if (!manualMemoryText.trim() || !services?.ragService) return
+            try {
+              await services.ragService.addManualMemory(manualMemoryText.trim())
+              setManualMemoryText('')
+              await loadRagStats()
+              Alert.alert(t('common.success', '成功'), t('settings.memory_added', '已添加记忆'))
+            } catch (e: unknown) {
+              Alert.alert(
+                t('common.error', '错误'),
+                e instanceof Error ? e.message : t('settings.memory_add_failed', '添加失败')
+              )
+            }
+          }}
+        >
+          <Text style={{ color: colors.textPrimary }}>{t('settings.add_memory', '添加')}</Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: colors.primary }]}
         onPress={handleDetectDimension}
         disabled={isRagLoading}
       >
         {isRagLoading ? (
-          <ActivityIndicator size="small" color="#FFF" />
+          <ActivityIndicator size="small" color={colors.textOnPrimary} />
         ) : (
-          <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+          <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
             {t('settings.detect_dimension', '检测维度')}
           </Text>
         )}
@@ -280,14 +315,39 @@ export const RAGMemorySection: React.FC = () => {
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: colors.error || '#FF4444' }]}
+        style={[styles.actionButton, { backgroundColor: colors.error }]}
         onPress={handleClearMemory}
         disabled={isRagLoading}
       >
-        <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
           {t('settings.clear_memory', '清空记忆')}
         </Text>
       </TouchableOpacity>
+
+      {ragEntries.length > 0 && (
+        <View style={[styles.entryList, { backgroundColor: colors.bgSurfaceHighest }]}>
+          <Text style={[styles.entryListTitle, { color: colors.textSecondary }]}>
+            {t('settings.rag_entries', '记忆条目')} ({ragEntries.length})
+          </Text>
+          {ragEntries.slice(0, 10).map((entry) => (
+            <View key={entry.embeddingId} style={styles.entryRow}>
+              <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={3}>
+                {entry.text || entry.embeddingId}
+              </Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  await services?.ragService.deleteEntry(entry.embeddingId)
+                  await loadRagStats()
+                }}
+              >
+                <Text style={{ color: colors.error, fontSize: 13 }}>
+                  {t('common.delete', '删除')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   )
 }
@@ -348,5 +408,38 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 4
+  },
+  entryList: {
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8
+  },
+  entryListTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+    textTransform: 'uppercase'
+  },
+  entryRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(128,128,128,0.2)'
+  },
+  entryText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18
+  },
+  memoryInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    minHeight: 72,
+    marginBottom: 10,
+    fontSize: 14
   }
 })
