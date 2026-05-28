@@ -155,3 +155,14 @@
   background-color: var(--bg-surface-low);
   border-color: var(--color-outline-variant);
 }
+
+.sizeSmall .trigger {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.sizeSmall .optionItem {
+  padding: 6px 10px;
+  font-size: 13px;
+}

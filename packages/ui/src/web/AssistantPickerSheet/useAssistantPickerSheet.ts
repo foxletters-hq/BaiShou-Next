@@ -52,13 +52,28 @@ export function useAssistantPickerSheet({
 
   const filteredAssistants = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    if (!q) return assistants
-    return assistants.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        (a.description && a.description.toLowerCase().includes(q))
-    )
-  }, [assistants, searchQuery])
+    const list = q
+      ? assistants.filter(
+          (a) =>
+            a.name.toLowerCase().includes(q) ||
+            (a.description && a.description.toLowerCase().includes(q))
+        )
+      : [...assistants]
+
+    const currentId = normalizeAssistantId(currentAssistantId)
+
+    return list.sort((a, b) => {
+      const aPinned = pinnedIds?.has(String(a.id)) ?? false
+      const bPinned = pinnedIds?.has(String(b.id)) ?? false
+      if (aPinned !== bPinned) return aPinned ? -1 : 1
+
+      const aCurrent = currentId != null && String(a.id) === currentId
+      const bCurrent = currentId != null && String(b.id) === currentId
+      if (aCurrent !== bCurrent) return aCurrent ? -1 : 1
+
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    })
+  }, [assistants, searchQuery, pinnedIds, currentAssistantId])
 
   const activeAssistant = useMemo(() => {
     let item = filteredAssistants.find((a) => String(a.id) === String(selectedId))

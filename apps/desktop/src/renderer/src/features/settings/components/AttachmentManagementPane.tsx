@@ -20,8 +20,19 @@ export const AttachmentManagementPane: React.FC = () => {
   }
 
   useEffect(() => {
-    fetchData()
-    fetchDiaryData()
+    void fetchDiaryData()
+    // 默认展示日记附件；会话列表较重，延后加载以免阻塞首屏
+    let idleId: number | undefined
+    let timeoutId: number | undefined
+    if (typeof requestIdleCallback === 'function') {
+      idleId = requestIdleCallback(() => void fetchData())
+    } else {
+      timeoutId = window.setTimeout(() => void fetchData(), 200)
+    }
+    return () => {
+      if (idleId !== undefined) cancelIdleCallback(idleId)
+      if (timeoutId !== undefined) clearTimeout(timeoutId)
+    }
   }, [])
 
   return (

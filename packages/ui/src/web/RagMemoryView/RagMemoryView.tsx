@@ -34,6 +34,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onBatchEmbed,
   onAddManualMemory,
   onClearAll,
+  onTriggerMigration,
   onCancelMigration,
   onRestoreMigration,
   onResumeMigration,
@@ -76,6 +77,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           ragState={ragState}
           hasMismatchModel={hasMismatchModel}
           migrationState={migrationState}
+          onTriggerMigration={onTriggerMigration}
           onCancelMigration={onCancelMigration}
           onRestoreMigration={onRestoreMigration}
           onResumeMigration={onResumeMigration}

@@ -71,6 +71,17 @@
   align-items: center;
 }
 
+.vaultSwitcherWrapper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 4px;
+}
+
+.vaultHelpIcon {
+  flex-shrink: 0;
+}
+
 .vaultSwitcher {
   height: 36px;
   padding: 0 12px;

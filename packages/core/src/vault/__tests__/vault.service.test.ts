@@ -19,6 +19,8 @@ describe('VaultService Integration', () => {
       getVaultDirectory: vi
         .fn()
         .mockImplementation(async (name: string) => path.join(tempDir, name)),
+      getUserAvatarsDirectory: vi.fn().mockResolvedValue('/tmp/user-avatars'),
+      getAvatarsDirectory: vi.fn().mockResolvedValue('/tmp/avatars'),
       getVaultSystemDirectory: vi
         .fn()
         .mockImplementation(async (name: string) => path.join(tempDir, name, '.baishou'))

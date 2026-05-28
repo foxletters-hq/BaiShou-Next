@@ -99,6 +99,14 @@ describe('ShadowIndexRepository', () => {
       expect(res).toHaveLength(0)
     })
 
+    it('searchFTS matches alphanumeric prefixes correctly (e.g. searching 1 matches 10)', async () => {
+      await repo.upsert(generateDummyPayload('2026-01-04T00:00:00.000Z', 'Time is 10:35:30.'))
+
+      const res = await repo.searchFTS('1')
+      expect(res).toHaveLength(1)
+      expect(res[0]!.contentSnippet).toContain('<b>10</b>:35:30')
+    })
+
     it('searchFTS handles Chinese token matching and snippet cleanup correctly', async () => {
       await repo.upsert(
         generateDummyPayload('2026-01-10T00:00:00.000Z', '今天的天气真好，我爱写日记。')
@@ -125,6 +133,32 @@ describe('ShadowIndexRepository', () => {
       const match = list.find((item) => item.date === '2026-01-10T00:00:00.000Z')
       expect(match).toBeDefined()
       expect(match!.rawContent).toBe('今天的天气真好，我爱写日记。') // 无多余空格
+    })
+
+    it('searchFTS handles multi-word AND search and LIKE substring fallback correctly', async () => {
+      await repo.upsert(
+        generateDummyPayload('2026-02-01T00:00:00.000Z', '今天天气晴朗，Marcus 决定去打篮球。')
+      )
+      await repo.upsert(
+        generateDummyPayload('2026-02-02T00:00:00.000Z', '明天可能要下雨，我们在家写代码。')
+      )
+
+      // 1. 多词非连续 AND 搜索："天气 篮球"
+      const res1 = await repo.searchFTS('天气 篮球')
+      expect(res1).toHaveLength(1)
+      expect(res1[0]!.contentSnippet).toContain('天气')
+      expect(res1[0]!.contentSnippet).toContain('篮球')
+
+      // 2. 混合子串 LIKE 兜底匹配："rcu" (匹配 "Marcus" 子串，FTS 通常不支持纯子串，需要 LIKE 兜底)
+      const res2 = await repo.searchFTS('rcu')
+      expect(res2).toHaveLength(1)
+      expect(res2[0]!.contentSnippet).toContain('Ma<b>rcu</b>s')
+
+      // 3. 多词混合："代码 下雨"
+      const res3 = await repo.searchFTS('代码 下雨')
+      expect(res3).toHaveLength(1)
+      expect(res3[0]!.contentSnippet).toContain('下雨')
+      expect(res3[0]!.contentSnippet).toContain('代码')
     })
   })
 

@@ -1,10 +1,13 @@
 import React, { useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AIGlobalModelsView, AgentBehaviorSettingsCard, useToast } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
+import { showMigrationResultToast } from '../hooks/migration-result-toast'
 
 export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const { t } = useTranslation()
   const toast = useToast()
+  const navigate = useNavigate()
 
   const providerRecord = React.useMemo(() => {
     const rec: Record<string, any> = {}
@@ -33,24 +36,24 @@ export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) =>
         globalEmbeddingDimension: number
       }
     }) => {
+      navigate('/settings/rag')
+      // Let RAG settings mount so it can subscribe to migration progress events.
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve())
+      })
+
       try {
         const result = await (window as any).api?.rag?.triggerMigration({ rollbackConfig })
+        await settings.loadConfig?.()
+
         if (result?.aborted) {
-          toast.showWarning(
-            t(
-              'settings.rag_migration_aborted_restored',
-              '迁移已中止，已恢复迁移前的向量数据与嵌入模型配置。'
-            )
-          )
           await settings.loadConfig?.()
-          return false
         }
-        toast.showSuccess(
-          t('settings.rag_migration_complete', '向量库迁移已完成，日记记忆已用新模型重新嵌入。')
-        )
-        return true
+        showMigrationResultToast(result, t, toast)
+        return result?.outcome === 'completed' || result?.completed === true
       } catch (e: any) {
         console.error('Embedding migration failed:', e)
+        await settings.loadConfig?.()
         toast.showError(
           t('settings.rag_migration_failed', '向量库迁移失败：{{message}}', {
             message: e?.message || String(e)
@@ -59,7 +62,7 @@ export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) =>
         return false
       }
     },
-    [t, toast, settings]
+    [t, toast, settings, navigate]
   )
 
   return (

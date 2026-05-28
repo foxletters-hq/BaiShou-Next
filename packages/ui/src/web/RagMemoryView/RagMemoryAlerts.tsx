@@ -9,6 +9,7 @@ interface RagMemoryAlertsProps {
   ragState: RagState
   hasMismatchModel: boolean
   migrationState?: EmbeddingMigrationStateView | null
+  onTriggerMigration?: () => Promise<void>
   onCancelMigration?: () => Promise<void>
   onRestoreMigration?: () => Promise<void>
   onResumeMigration?: () => Promise<void>
@@ -18,6 +19,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   ragState,
   hasMismatchModel,
   migrationState,
+  onTriggerMigration,
   onCancelMigration,
   onRestoreMigration,
   onResumeMigration
@@ -118,6 +120,17 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
               '系统检测到当前的向量库由不同的嵌入模型(Embedding)生成。必须执行数据迁移，否则搜索功能将无法正确工作或引发错误。'
             )}
           </p>
+          {onTriggerMigration && (
+            <div className={styles.migrationActionRow}>
+              <button
+                type="button"
+                className={styles.migrationResumeBtn}
+                onClick={() => void onTriggerMigration()}
+              >
+                {t('settings.rag_trigger_migration', '执行向量库迁移')}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>

@@ -4,12 +4,15 @@ import styles from './Tooltip.module.css'
 
 export interface TooltipProps extends Omit<HTMLAttributes<HTMLDivElement>, 'content'> {
   content: React.ReactNode
+  /** Extra class names on the portaled tooltip panel (e.g. wider max-width). */
+  tooltipClassName?: string
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({
   content,
   children,
   className = '',
+  tooltipClassName = '',
   ...props
 }) => {
   const [isVisible, setIsVisible] = useState(false)
@@ -98,7 +101,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         ReactDOM.createPortal(
           <div
             ref={tooltipRef}
-            className={`${styles.tooltip} ${styles[placement]}`}
+            className={`${styles.tooltip} ${styles[placement]} ${tooltipClassName}`.trim()}
             style={stylesState}
           >
             {content}

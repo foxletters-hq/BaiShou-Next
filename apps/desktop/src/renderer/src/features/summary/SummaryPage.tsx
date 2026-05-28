@@ -82,9 +82,19 @@ export const SummaryPage: React.FC = () => {
       const cur = generationStates[uKey]
       const prev = prevStatesRef.current[uKey]
       if (cur.status === 'error' && (!prev || prev.status !== 'error')) {
-        const errText = cur.error?.includes('active provider')
-          ? t('summary.model_not_configured', '模型未配置')
-          : cur.error || t('common.error', '错误')
+        let errText = cur.error || t('common.error', '错误')
+        if (cur.error?.includes('active provider')) {
+          errText = t('summary.model_not_configured', '模型未配置')
+        } else if (
+          cur.error?.includes('timed out') ||
+          cur.error?.includes('AbortError') ||
+          cur.error?.includes('timeout')
+        ) {
+          errText = t(
+            'summary.generation_timeout',
+            'AI 总结超时。这通常是由于网络连接慢或 AI 服务响应慢导致的，建议您在设置中切换为其它更稳定的 AI 模型后重试。'
+          )
+        }
         toast.showError(`${t('summary.generation_failed', '生成失败')}: ${errText}`)
       }
     })

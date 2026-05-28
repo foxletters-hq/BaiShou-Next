@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Pin, PinOff, Trash2, Copy, Plus, Activity, Sparkles } from 'lucide-react'
 import styles from './AssistantManagementPage.module.css'
@@ -57,6 +58,15 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
       setDeleteTargetId(null)
     }
   }
+
+  useEffect(() => {
+    if (deleteTargetId === null || typeof document === 'undefined') return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+    }
+  }, [deleteTargetId])
 
   const formatContextWindow = (n: number) => {
     if (n < 0) return '∞'
@@ -196,39 +206,42 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
         )}
       </div>
 
-      {/* Delete Confirm Modal */}
-      {deleteTargetId !== null && (
-        <div className={styles.dialogOverlay} onClick={() => setDeleteTargetId(null)}>
-          <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.dialogHeaderIcon}>
-              <Trash2 size={32} color="var(--color-error, #F44336)" />
+      {/* Delete Confirm Modal — portaled so fixed positioning is viewport-relative */}
+      {deleteTargetId !== null &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className={styles.dialogOverlay} onClick={() => setDeleteTargetId(null)}>
+            <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.dialogHeaderIcon}>
+                <Trash2 size={32} color="var(--color-error, #F44336)" />
+              </div>
+              <div className={styles.dialogTitle}>
+                {t('agent.assistant.delete_confirm_title', '特级警告：抹除心智模式？')}
+              </div>
+              <div className={styles.dialogText}>
+                {t(
+                  'agent.assistant.delete_confirm_content',
+                  '确认要永久销毁此智能体的全部数据吗？一旦抹除将不可撤销。'
+                )}
+              </div>
+              <div className={styles.dialogActions}>
+                <button
+                  className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`}
+                  onClick={() => setDeleteTargetId(null)}
+                >
+                  {t('common.cancel', '暂缓')}
+                </button>
+                <button
+                  className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`}
+                  onClick={handleConfirmDelete}
+                >
+                  {t('common.delete', '授权粉碎')}
+                </button>
+              </div>
             </div>
-            <div className={styles.dialogTitle}>
-              {t('agent.assistant.delete_confirm_title', '特级警告：抹除心智模式？')}
-            </div>
-            <div className={styles.dialogText}>
-              {t(
-                'agent.assistant.delete_confirm_content',
-                '确认要永久销毁此智能体的全部数据吗？一旦抹除将不可撤销。'
-              )}
-            </div>
-            <div className={styles.dialogActions}>
-              <button
-                className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`}
-                onClick={() => setDeleteTargetId(null)}
-              >
-                {t('common.cancel', '暂缓')}
-              </button>
-              <button
-                className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`}
-                onClick={handleConfirmDelete}
-              >
-                {t('common.delete', '授权粉碎')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

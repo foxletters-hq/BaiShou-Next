@@ -46,7 +46,7 @@ export function AssistantPickerSidebar({
               <div
                 key={ast.id}
                 onClick={() => setSelectedId(ast.id)}
-                className={`${styles.listItem} ${isSelected ? styles.selectedItem : ''}`}
+                className={`${styles.listItem} ${isPinned ? styles.pinnedItem : ''} ${isSelected ? styles.selectedItem : ''}`}
               >
                 <div className={styles.itemAvatar}>
                   {ast.avatarPath ? (

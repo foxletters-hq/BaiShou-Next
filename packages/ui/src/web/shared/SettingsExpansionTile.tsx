@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { MdExpandMore } from 'react-icons/md'
+import { isSettingsInlineHelpTarget, settingsInlineHelpHostProps } from './settingsInlineHelpBlock'
 import './SettingsListTile.css'
 
 export interface SettingsExpansionTileProps {
   icon?: React.ReactNode
   title: string
   subtitle?: string
+  /** Shown beside the title (e.g. help icon). */
+  titleAddon?: React.ReactNode
   nested?: boolean
   children: React.ReactNode
 }
@@ -14,6 +17,7 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
   icon,
   title,
   subtitle,
+  titleAddon,
   nested = false,
   children
 }) => {
@@ -36,14 +40,31 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
     <div
       className={`settings-expansion-tile ${nested ? 'settings-nested' : ''} ${open ? 'settings-open' : ''}`}
     >
-      <button className="settings-expansion-summary" onClick={() => setOpen(!open)}>
+      <div
+        className="settings-expansion-summary"
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          if (isSettingsInlineHelpTarget(e.target)) return
+          setOpen((v) => !v)
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return
+          if (isSettingsInlineHelpTarget(e.target)) return
+          e.preventDefault()
+          setOpen((v) => !v)
+        }}
+      >
         {icon && <div className="settings-list-tile-leading">{icon}</div>}
         <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">{title}</span>
+          <span className="settings-list-tile-title settings-list-tile-title-row">
+            {title}
+            {titleAddon ? <span {...settingsInlineHelpHostProps}>{titleAddon}</span> : null}
+          </span>
           {subtitle && <span className="settings-list-tile-subtitle">{subtitle}</span>}
         </div>
         <MdExpandMore className="settings-expansion-arrow" size={24} />
-      </button>
+      </div>
 
       {/* Uses modern CSS Grid transition for bidirectional smooth height animation + delayed unmount */}
       <div className={`settings-expansion-grid-wrapper ${open ? 'expanded' : ''}`}>

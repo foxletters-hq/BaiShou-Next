@@ -49,7 +49,29 @@ export async function* migrateEmbeddings(
       return
     }
     const modelId = deps.config.getGlobalEmbeddingModelId()
-    const provider = await deps.config.getProviderInstance()
+    let provider: Awaited<ReturnType<typeof deps.config.getProviderInstance>>
+    try {
+      provider = await deps.config.getProviderInstance()
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code
+      if (code === 'api_key_missing') {
+        yield {
+          total: 0,
+          completed: 0,
+          statusKey: RAG_MIGRATION_STATUS.apiKeyMissing,
+          statusParams: {
+            providerId: deps.config.getGlobalEmbeddingProviderId(),
+            modelId
+          }
+        }
+        return
+      }
+      if (code === 'provider_not_found') {
+        yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.providerNotFound }
+        return
+      }
+      throw e
+    }
     if (!provider) {
       yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.providerNotFound }
       return
@@ -83,14 +105,30 @@ export async function* migrateEmbeddings(
       const { embedding } = await embed({ model: clientModel, value: 'hi' })
       newDimension = embedding.length
     } catch (e) {
-      logger.error('Dimension check failed during migration', { error: e })
+      const message = e instanceof Error ? e.message : String(e)
+      logger.error('Dimension check failed during migration', { error: e, message })
+      await deps.db.dropMigrationBackup()
+      await deps.db.dropRollbackSnapshot()
+      await deps.lifecycle?.markIdle()
+      yield {
+        total,
+        completed: 0,
+        statusKey: RAG_MIGRATION_STATUS.dimensionCheckFailed,
+        statusParams: { message }
+      }
+      return
     }
 
     if (newDimension <= 0) {
       await deps.db.dropMigrationBackup()
       await deps.db.dropRollbackSnapshot()
       await deps.lifecycle?.markIdle()
-      yield { total, completed: 0, statusKey: RAG_MIGRATION_STATUS.dimensionCheckFailed }
+      yield {
+        total,
+        completed: 0,
+        statusKey: RAG_MIGRATION_STATUS.dimensionCheckFailed,
+        statusParams: { message: 'empty embedding response' }
+      }
       return
     }
 
@@ -120,7 +158,29 @@ export async function* continueMigration(
       return
     }
     const modelId = deps.config.getGlobalEmbeddingModelId()
-    const provider = await deps.config.getProviderInstance()
+    let provider: Awaited<ReturnType<typeof deps.config.getProviderInstance>>
+    try {
+      provider = await deps.config.getProviderInstance()
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code
+      if (code === 'api_key_missing') {
+        yield {
+          total: 0,
+          completed: 0,
+          statusKey: RAG_MIGRATION_STATUS.apiKeyMissing,
+          statusParams: {
+            providerId: deps.config.getGlobalEmbeddingProviderId(),
+            modelId
+          }
+        }
+        return
+      }
+      if (code === 'provider_not_found') {
+        yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.providerNotFound }
+        return
+      }
+      throw e
+    }
     if (!provider) {
       yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.providerNotFound }
       return

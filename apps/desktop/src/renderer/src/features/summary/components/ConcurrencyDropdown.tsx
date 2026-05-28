@@ -15,10 +15,26 @@ export const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null)
+  const [direction, setDirection] = React.useState<'up' | 'down'>('down')
+
+  React.useEffect(() => {
+    if (open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      // 菜单高度大概 180px，若下方剩余空间不足 200px 则往上弹出
+      if (spaceBelow < 200) {
+        setDirection('up')
+      } else {
+        setDirection('down')
+      }
+    }
+  }, [open])
 
   return (
     <div className="concurrency-dropdown">
       <button
+        ref={triggerRef}
         className="concurrency-trigger"
         disabled={disabled}
         onClick={() => !disabled && setOpen(!open)}
@@ -31,7 +47,14 @@ export const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setOpen(false)} />
-          <div className="concurrency-menu">
+          <div
+            className="concurrency-menu"
+            style={
+              direction === 'up'
+                ? { top: 'auto', bottom: '100%', marginTop: 0, marginBottom: '4px' }
+                : {}
+            }
+          >
             {[1, 2, 3, 4, 5].map((n) => (
               <div
                 key={n}

@@ -4,6 +4,7 @@ import { DesktopStoragePathService } from '../services/path.service'
 import { SessionRepository, connectionManager } from '@baishou/database'
 import path from 'node:path'
 import { existsSync } from 'node:fs'
+import { getAttachmentAllowedRoots, isPathUnderAllowedRoots } from './attachment-path-cache'
 
 export function registerAttachmentIPC() {
   const pathService = new DesktopStoragePathService()
@@ -36,12 +37,11 @@ export function registerAttachmentIPC() {
 
   ipcMain.handle('attachment:openInFolder', async (_, absolutePath: string) => {
     try {
-      const attachmentsBase = await pathService.getAttachmentsBaseDirectory()
-      const journalsBase = await pathService.getJournalsBaseDirectory()
+      const roots = await getAttachmentAllowedRoots(pathService)
       const resolvedPath = path.resolve(absolutePath)
 
       // 严格的安全限制：防止目录穿越攻击
-      if (!resolvedPath.startsWith(attachmentsBase) && !resolvedPath.startsWith(journalsBase)) {
+      if (!isPathUnderAllowedRoots(resolvedPath, roots)) {
         throw new Error('Access denied: target path is outside allowed directories.')
       }
 
@@ -88,11 +88,8 @@ export function registerAttachmentIPC() {
   ipcMain.handle('attachment:getThumbnail', async (_, filePath: string, maxSize: number = 200) => {
     try {
       const resolvedPath = path.resolve(filePath)
-
-      // 安全检查：只允许从附件目录加载
-      const attachmentsBase = await pathService.getAttachmentsBaseDirectory()
-      const journalsBase = await pathService.getJournalsBaseDirectory()
-      if (!resolvedPath.startsWith(attachmentsBase) && !resolvedPath.startsWith(journalsBase)) {
+      const roots = await getAttachmentAllowedRoots(pathService)
+      if (!isPathUnderAllowedRoots(resolvedPath, roots)) {
         throw new Error('Access denied: target path is outside allowed directories.')
       }
 
@@ -130,10 +127,8 @@ export function registerAttachmentIPC() {
   ipcMain.handle('attachment:getFullImage', async (_, filePath: string) => {
     try {
       const resolvedPath = path.resolve(filePath)
-
-      const attachmentsBase = await pathService.getAttachmentsBaseDirectory()
-      const journalsBase = await pathService.getJournalsBaseDirectory()
-      if (!resolvedPath.startsWith(attachmentsBase) && !resolvedPath.startsWith(journalsBase)) {
+      const roots = await getAttachmentAllowedRoots(pathService)
+      if (!isPathUnderAllowedRoots(resolvedPath, roots)) {
         throw new Error('Access denied: target path is outside allowed directories.')
       }
 
@@ -147,7 +142,7 @@ export function registerAttachmentIPC() {
       }
 
       const size = image.getSize()
-      const maxDimension = 4096
+      const maxDimension = 1920
       let finalImage = image
       if (size.width > maxDimension || size.height > maxDimension) {
         const ratio = Math.min(maxDimension / size.width, maxDimension / size.height)
@@ -162,7 +157,7 @@ export function registerAttachmentIPC() {
         return `data:image/png;base64,${finalImage.toPNG().toString('base64')}`
       }
 
-      return `data:image/jpeg;base64,${finalImage.toJPEG(92).toString('base64')}`
+      return `data:image/jpeg;base64,${finalImage.toJPEG(85).toString('base64')}`
     } catch (e) {
       console.error('[AttachmentIPC] Error in getFullImage:', e)
       return null

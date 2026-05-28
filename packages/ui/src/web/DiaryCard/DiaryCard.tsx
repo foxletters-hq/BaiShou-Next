@@ -14,6 +14,21 @@ interface DiaryCardProps {
 
 // TODO: [Agent1-Dependency] 合并后替换为 import { useTranslation } from 'react-i18next'
 
+const renderHighlight = (text: string | null | undefined): React.ReactNode => {
+  if (!text) return ''
+  const parts = text.split(/(<b>.*?<\/b>)/g)
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.startsWith('<b>') && part.endsWith('</b>')) {
+          return <b key={index}>{part.substring(3, part.length - 4)}</b>
+        }
+        return part
+      })}
+    </>
+  )
+}
+
 export const DiaryCard: React.FC<DiaryCardProps> = ({
   contentSnippet,
   tags,
@@ -89,7 +104,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
 
       <div className="diary-card-v2-content">
         <div className="markdown-snippet-mask">
-          <p>{contentSnippet}</p>
+          <p>{renderHighlight(contentSnippet)}</p>
         </div>
       </div>
 

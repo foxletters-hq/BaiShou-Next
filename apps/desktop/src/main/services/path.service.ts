@@ -171,6 +171,13 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
+  /** User profile avatars — shared across workspaces (not under active vault). */
+  public async getUserAvatarsDirectory(): Promise<string> {
+    const dir = path.join(app.getPath('userData'), 'UserAvatars')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
   /**
    * 获取日记附件目录
    * 路径结构: Vault/Journals/{year}/{month}/attachment/

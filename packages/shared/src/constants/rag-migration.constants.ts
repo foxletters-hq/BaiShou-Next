@@ -2,6 +2,7 @@ export const RAG_MIGRATION_STATUS = {
   alreadyRunning: 'settings.rag_migration_already_running',
   modelNotConfigured: 'settings.rag_migration_model_not_configured',
   providerNotFound: 'settings.rag_migration_provider_not_found',
+  apiKeyMissing: 'settings.rag_migration_api_key_missing',
   backingUp: 'settings.rag_migration_backing_up',
   noData: 'settings.rag_migration_no_data',
   detectingDimension: 'settings.rag_migration_detecting_dimension',

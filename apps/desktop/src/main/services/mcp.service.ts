@@ -1,17 +1,23 @@
 import express from 'express'
+import { randomUUID } from 'node:crypto'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
-import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import {
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+  ToolSchema,
+  isInitializeRequest
+} from '@modelcontextprotocol/sdk/types.js'
 import type { SettingsRepository } from '@baishou/database'
 // @ts-ignore
 import { Server as HttpServer } from 'http'
 
+import { z } from 'zod'
 import { ToolRegistry } from '@baishou/ai'
 import { logger } from '@baishou/shared'
-// @ts-ignore
-import { zodToJsonSchema } from 'zod-to-json-schema'
 
-interface McpSession {
+interface SseMcpSession {
   server: Server
   transport: SSEServerTransport
 }
@@ -20,9 +26,13 @@ export class McpService {
   private readonly app = express()
   private httpServer: HttpServer | null = null
   private isRunning = false
-  private readonly connections = new Map<string, McpSession>()
+  private readonly sseSessions = new Map<string, SseMcpSession>()
+  private readonly streamableTransports = new Map<string, StreamableHTTPServerTransport>()
 
-  // 这里为了解耦架构传入 repository（具体实例化将在主入口或者测试里发生）
+  get running(): boolean {
+    return this.isRunning
+  }
+
   constructor(
     private readonly settingsRepo: SettingsRepository,
     private readonly toolRegistry?: ToolRegistry
@@ -34,8 +44,11 @@ export class McpService {
 
   private corsMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
     res.header('Access-Control-Allow-Origin', '*')
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id')
+    res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, mcp-session-id, Mcp-Session-Id, Last-Event-ID, mcp-protocol-version, MCP-Protocol-Version'
+    )
     if (req.method === 'OPTIONS') {
       res.sendStatus(200)
       return
@@ -43,91 +56,46 @@ export class McpService {
     next()
   }
 
-  /**
-   * 建立 Express 路由
-   */
+  private createMcpServer(): Server {
+    const server = new Server(
+      { name: 'BaiShou MCP Server', version: '1.0.0' },
+      { capabilities: { tools: { listChanged: false } } }
+    )
+    this.registerServerHandlers(server)
+    return server
+  }
+
   private setupRoutes() {
-    this.app.get('/mcp', (_req, res) => {
-      res.json({
-        name: 'BaiShou MCP Server',
-        version: '1.0.0',
-        protocolVersion: '2024-11-05',
-        description: 'BaiShou AI Companion Diary - MCP Interface'
-      })
-    })
-
-    // 遗留同步旧版 JSON RPC 端点 (仅供老客户端过渡)
+    // Streamable HTTP (Cursor / modern MCP clients) — primary endpoint
     this.app.post('/mcp', async (req, res) => {
-      try {
-        const payload = req.body
-        const method = payload.method
-        if (method === 'notifications/initialized' || method === 'notifications/cancelled') {
-          res.send('')
-          return
-        }
-
-        const id = payload.id
-        const params = payload.params || {}
-
-        let result
-        if (method === 'initialize') {
-          result = {
-            protocolVersion: '2024-11-05',
-            capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: 'BaiShou MCP Server', version: '1.0.0' },
-            instructions:
-              'BaiShou is an AI companion diary app. Use the tools below to read/edit diaries, search memories, and manage stored knowledge.'
-          }
-        } else if (method === 'tools/list') {
-          result = { tools: this.getAgentToolsMcp() }
-        } else if (method === 'tools/call') {
-          result = await this.executeAgentTool(params)
-        } else if (method === 'ping') {
-          result = {}
-        } else {
-          res
-            .status(400)
-            .json({ jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } })
-          return
-        }
-
-        res.json({ jsonrpc: '2.0', id, result })
-      } catch (e: any) {
-        res.json({
-          jsonrpc: '2.0',
-          id: req.body?.id,
-          error: { code: -32700, message: `Error: ${e.message}` }
-        })
-      }
+      await this.handleStreamablePost(req, res)
+    })
+    this.app.get('/mcp', async (req, res) => {
+      await this.handleStreamableGet(req, res)
+    })
+    this.app.delete('/mcp', async (req, res) => {
+      await this.handleStreamableDelete(req, res)
     })
 
-    // --- 标准 MCP SSE 协议实现 ---
-
+    // Legacy SSE transport (optional; session id must match SDK transport.sessionId)
     this.app.get('/sse', async (_req, res) => {
-      const sessionId = Date.now().toString()
-
-      const transport = new SSEServerTransport(`/message?sessionId=${sessionId}`, res)
-      const server = new Server(
-        { name: 'BaiShou MCP Server', version: '1.0.0' },
-        { capabilities: { tools: { listChanged: false } } }
-      )
-
-      this.registerServerHandlers(server)
+      const transport = new SSEServerTransport('/message', res)
+      const server = this.createMcpServer()
 
       await server.connect(transport)
-      this.connections.set(sessionId, { server, transport })
+      this.sseSessions.set(transport.sessionId, { server, transport })
 
       res.on('close', () => {
-        this.connections.delete(sessionId)
+        this.sseSessions.delete(transport.sessionId)
       })
     })
 
     this.app.post('/message', async (req, res) => {
-      // 官方 SDK 的 Transport 可以接管 JSON RPC post 的逻辑
       const sessionId = req.query.sessionId as string
-      const session = this.connections.get(sessionId)
+      const session = sessionId ? this.sseSessions.get(sessionId) : undefined
 
       if (!session) {
+        logger.warn(`[McpService] SSE session not found: ${sessionId ?? '(missing)'}`)
         res.status(404).send('Session not found')
         return
       }
@@ -136,9 +104,109 @@ export class McpService {
     })
   }
 
-  /**
-   * 将所有的 Tool 路由与处理逻辑挂载至 MCP 标准 Server 上
-   */
+  private getStreamableSessionId(req: express.Request): string | undefined {
+    const headerSessionId = req.headers['mcp-session-id']
+    const raw = Array.isArray(headerSessionId) ? headerSessionId[0] : headerSessionId
+    return typeof raw === 'string' && raw.length > 0 ? raw : undefined
+  }
+
+  private async handleStreamablePost(req: express.Request, res: express.Response) {
+    const sessionId = this.getStreamableSessionId(req)
+
+    try {
+      if (sessionId) {
+        const transport = this.streamableTransports.get(sessionId)
+        if (!transport) {
+          res.status(404).json({
+            jsonrpc: '2.0',
+            error: { code: -32001, message: `Session not found: ${sessionId}` },
+            id: null
+          })
+          return
+        }
+        await transport.handleRequest(req, res, req.body)
+        return
+      }
+
+      if (!isInitializeRequest(req.body)) {
+        res.status(400).json({
+          jsonrpc: '2.0',
+          error: { code: -32000, message: 'Bad Request: No valid session ID provided' },
+          id: null
+        })
+        return
+      }
+
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => {
+          this.streamableTransports.set(sid, transport)
+          logger.info(`[McpService] Streamable session initialized: ${sid}`)
+        },
+        onsessionclosed: (sid) => {
+          this.streamableTransports.delete(sid)
+          logger.info(`[McpService] Streamable session closed: ${sid}`)
+        }
+      })
+
+      const server = this.createMcpServer()
+      await server.connect(transport)
+      if (transport.sessionId) {
+        this.streamableTransports.set(transport.sessionId, transport)
+      }
+
+      await transport.handleRequest(req, res, req.body)
+    } catch (e: any) {
+      logger.error('[McpService] Streamable POST failed:', e)
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: { code: -32603, message: 'Internal server error' },
+          id: null
+        })
+      }
+    }
+  }
+
+  private async handleStreamableGet(req: express.Request, res: express.Response) {
+    const sessionId = this.getStreamableSessionId(req)
+    if (!sessionId) {
+      res.status(400).send('Invalid or missing session ID')
+      return
+    }
+
+    const transport = this.streamableTransports.get(sessionId)
+    if (!transport) {
+      res.status(404).send('Session not found')
+      return
+    }
+
+    await transport.handleRequest(req, res)
+  }
+
+  private async handleStreamableDelete(req: express.Request, res: express.Response) {
+    const sessionId = this.getStreamableSessionId(req)
+    if (!sessionId) {
+      res.status(400).send('Invalid or missing session ID')
+      return
+    }
+
+    const transport = this.streamableTransports.get(sessionId)
+    if (!transport) {
+      res.status(404).send('Session not found')
+      return
+    }
+
+    try {
+      await transport.handleRequest(req, res)
+    } catch (e: any) {
+      logger.error('[McpService] Streamable DELETE failed:', e)
+      if (!res.headersSent) {
+        res.status(500).send('Error processing session termination')
+      }
+    }
+  }
+
   private registerServerHandlers(server: Server) {
     server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
@@ -162,20 +230,17 @@ export class McpService {
     })
   }
 
-  // --- 外部控制与生命周期 ---
-
   async start(): Promise<void> {
     if (this.isRunning) return
 
-    // 从 Settings 系统拿到动态端口
     const config = await this.settingsRepo.getMcpServerConfig()
     const port = config.mcpPort || 31004
 
     return new Promise((resolve, reject) => {
       try {
-        this.httpServer = this.app.listen(port, () => {
+        this.httpServer = this.app.listen(port, '127.0.0.1', () => {
           this.isRunning = true
-          logger.info(`[McpService] Server started on http://localhost:${port}/sse`)
+          logger.info(`[McpService] Server started on http://127.0.0.1:${port}/mcp`)
           resolve()
         })
       } catch (e) {
@@ -188,15 +253,24 @@ export class McpService {
   async stop(): Promise<void> {
     if (!this.isRunning || !this.httpServer) return
 
-    for (const [_id, session] of this.connections.entries()) {
+    for (const [_id, session] of this.sseSessions.entries()) {
       try {
         await session.server.close()
       } catch (e) {}
     }
-    this.connections.clear()
+    this.sseSessions.clear()
 
+    for (const transport of this.streamableTransports.values()) {
+      try {
+        await transport.close()
+      } catch (e) {}
+    }
+    this.streamableTransports.clear()
+
+    const server = this.httpServer
     return new Promise((resolve) => {
-      this.httpServer!.close(() => {
+      server.closeAllConnections?.()
+      server.close(() => {
         this.isRunning = false
         this.httpServer = null
         logger.info(`[McpService] Server stopped`)
@@ -210,15 +284,49 @@ export class McpService {
     await this.start()
   }
 
+  /**
+***REMOVED***
+   * MCP SDK 要求 inputSchema.type === "object"，且包含 properties 与 required。
+   */
+  private toMcpInputSchema(parameters: z.ZodType) {
+    const raw = z.toJSONSchema(parameters) as Record<string, unknown>
+    return {
+      type: 'object' as const,
+      properties: (raw.properties as Record<string, unknown>) ?? {},
+      required: Array.isArray(raw.required) ? raw.required : []
+    }
+  }
+
   private getAgentToolsMcp() {
     if (!this.toolRegistry) return []
 
     const tools = this.toolRegistry.getAllRaw()
-    return tools.map((tool: any) => ({
-      name: `baishou_${tool.name}`,
-      description: tool.description,
-      inputSchema: zodToJsonSchema(tool.parameters, { target: 'jsonSchema7' })
-    }))
+    const mcpTools: Array<{
+      name: string
+      description: string
+      inputSchema: { type: 'object'; properties: Record<string, unknown>; required: string[] }
+    }> = []
+
+    for (const tool of tools) {
+      const name = `baishou_${tool.name}`
+      const inputSchema = this.toMcpInputSchema(tool.parameters)
+      try {
+        const parsed = ToolSchema.parse({
+          name,
+          description: tool.description || name,
+          inputSchema
+        })
+        mcpTools.push({
+          name: parsed.name,
+          description: parsed.description ?? name,
+          inputSchema
+        })
+      } catch (e) {
+        logger.error(`[McpService] Skipping invalid MCP tool "${name}":`, e as any)
+      }
+    }
+
+    return mcpTools
   }
 
   private async executeAgentTool(params: Record<string, any>) {
@@ -232,7 +340,7 @@ export class McpService {
 
     const context: any = {
       sessionId: 'mcp-external',
-      vaultName: 'default', // TODO: 从 Vault Service 获取活跃 vault
+      vaultName: 'default',
       userConfig: {}
     }
 

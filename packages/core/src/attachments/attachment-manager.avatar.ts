@@ -4,8 +4,36 @@ import path from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import type { IStoragePathService } from '../vault/storage-path.types'
 
+function isUserAvatarRelativePath(relativePath: string): boolean {
+  const filename = relativePath.split(/[/\\]/).pop() || relativePath
+  return filename.startsWith('user_avatar')
+}
+
 export class AttachmentAvatarOps {
   constructor(private readonly pathProvider: IStoragePathService) {}
+
+  private isUserAvatarPrefix(prefix: string): boolean {
+    return prefix === 'user_avatar' || prefix.startsWith('user_avatar')
+  }
+
+  private async getAvatarsDirectoriesForImport(prefix: string): Promise<string> {
+    if (this.isUserAvatarPrefix(prefix)) {
+      return await this.pathProvider.getUserAvatarsDirectory()
+    }
+    return await this.pathProvider.getAvatarsDirectory()
+  }
+
+  private async getAvatarsDirectoriesForResolve(relativePath: string): Promise<string[]> {
+    if (!relativePath.startsWith('avatars/')) {
+      return []
+    }
+    if (isUserAvatarRelativePath(relativePath)) {
+      const userDir = await this.pathProvider.getUserAvatarsDirectory()
+      const vaultDir = await this.pathProvider.getAvatarsDirectory()
+      return [userDir, vaultDir]
+    }
+    return [await this.pathProvider.getAvatarsDirectory()]
+  }
 
   async importAvatar(absoluteSourcePath: string, prefix: string = 'avatar'): Promise<string> {
     if (!absoluteSourcePath || absoluteSourcePath.trim() === '') {
@@ -30,7 +58,7 @@ export class AttachmentAvatarOps {
     }
 
     try {
-      const avatarsDir = await this.pathProvider.getAvatarsDirectory()
+      const avatarsDir = await this.getAvatarsDirectoriesForImport(prefix)
 
       if (absoluteSourcePath.startsWith('data:image/')) {
         const matches = absoluteSourcePath.match(/^data:image\/([^;]+);base64,(.+)$/)
@@ -63,27 +91,39 @@ export class AttachmentAvatarOps {
   }
 
   async resolveAvatarPath(relativePath: string): Promise<string> {
-    if (relativePath && relativePath.startsWith('avatars/')) {
-      try {
-        const avatarsDir = await this.pathProvider.getAvatarsDirectory()
-        const filename = relativePath.split(/[/\\]/).pop() || relativePath
-        const absPath = path.join(avatarsDir, filename)
-
-        if (!existsSync(absPath)) {
-          console.warn(`[AttachmentManager] Avatar file not found: ${absPath}`)
-          throw new Error('AVATAR_FILE_NOT_FOUND')
-        }
-
-        return pathToFileURL(absPath)
-          .toString()
-          .replace(/^file:/i, 'local:')
-      } catch (e) {
-        if (e instanceof Error && e.message === 'AVATAR_FILE_NOT_FOUND') {
-          throw e
-        }
-        console.error('[AttachmentManager] Failed to resolve avatar path:', e)
-      }
+    if (!relativePath || !relativePath.startsWith('avatars/')) {
+      return relativePath
     }
-    return relativePath
+
+    const filename = relativePath.split(/[/\\]/).pop() || relativePath
+    const directories = await this.getAvatarsDirectoriesForResolve(relativePath)
+
+    for (let i = 0; i < directories.length; i++) {
+      const avatarsDir = directories[i]!
+      const absPath = path.join(avatarsDir, filename)
+      if (!existsSync(absPath)) {
+        continue
+      }
+
+      // Migrate legacy per-vault user avatars into the global folder
+      if (isUserAvatarRelativePath(relativePath) && i > 0) {
+        try {
+          const globalDir = directories[0]!
+          const globalPath = path.join(globalDir, filename)
+          if (!existsSync(globalPath)) {
+            await fs.copyFile(absPath, globalPath)
+          }
+        } catch (e) {
+          console.warn('[AttachmentManager] Failed to migrate user avatar to global dir:', e)
+        }
+      }
+
+      return pathToFileURL(absPath)
+        .toString()
+        .replace(/^file:/i, 'local:')
+    }
+
+    console.warn(`[AttachmentManager] Avatar file not found: ${relativePath}`)
+    throw new Error('AVATAR_FILE_NOT_FOUND')
   }
 }

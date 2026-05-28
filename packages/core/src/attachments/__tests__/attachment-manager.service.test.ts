@@ -17,6 +17,7 @@ describe('AttachmentManagerService', () => {
     mockPathService = {
       getAttachmentsBaseDirectory: vi.fn().mockResolvedValue(tempDir),
       getAvatarsDirectory: vi.fn().mockResolvedValue(path.join(tempDir, 'avatars')),
+      getUserAvatarsDirectory: vi.fn().mockResolvedValue(path.join(tempDir, 'user-avatars')),
       getJournalsBaseDirectory: vi.fn().mockResolvedValue(path.join(tempDir, 'Journals'))
     }
 
@@ -277,5 +278,26 @@ date: 2026-10-01
 
     expect(item).toBeDefined()
     expect(item!.isOrphan).toBe(false) // 因为做了解码比对，所以不应该是孤立附件
+  })
+
+  it('resolves user avatars from global storage and migrates legacy vault copies', async () => {
+    const globalDir = path.join(tempDir, 'user-avatars')
+    const vaultDir = path.join(tempDir, 'avatars')
+    await fs.mkdir(globalDir, { recursive: true })
+    await fs.mkdir(vaultDir, { recursive: true })
+
+    const filename = 'user_avatar_legacy.png'
+    await fs.writeFile(path.join(vaultDir, filename), 'avatar-bytes')
+
+    mockPathService.getUserAvatarsDirectory.mockResolvedValue(globalDir)
+    mockPathService.getAvatarsDirectory.mockResolvedValue(vaultDir)
+
+    const resolved = await service.resolveAvatarPath(`avatars/${filename}`)
+    expect(resolved).toContain(filename)
+    expect(existsSync(path.join(globalDir, filename))).toBe(true)
+
+    await fs.rm(path.join(vaultDir, filename))
+    const fromGlobal = await service.resolveAvatarPath(`avatars/${filename}`)
+    expect(fromGlobal).toMatch(/user-avatars/i)
   })
 })

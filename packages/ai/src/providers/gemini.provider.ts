@@ -3,6 +3,7 @@ import { LanguageModel, EmbeddingModel, generateText } from 'ai'
 import { AiProviderModel } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
+import { assertAsciiApiKey, createSanitizedFetch, sanitizeApiKeyForHttp } from './fetch-header.util'
 
 export class GeminiAdaptedProvider implements IAIProvider {
   public config: AiProviderModel
@@ -11,10 +12,11 @@ export class GeminiAdaptedProvider implements IAIProvider {
   }
 
   private _getSdk() {
-    const rotatedKey = getRotatedApiKey(this.config)
+    const rotatedKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
     return createGoogleGenerativeAI({
-      apiKey: rotatedKey || this.config.apiKey,
-      baseURL: this.config.baseUrl || undefined
+      apiKey: rotatedKey,
+      baseURL: this.config.baseUrl || undefined,
+      fetch: createSanitizedFetch()
     })
   }
 
@@ -69,6 +71,8 @@ export class GeminiAdaptedProvider implements IAIProvider {
         : null) ||
       (this.config.models && this.config.models.length > 0 ? this.config.models[0] : null) ||
       'gemini-2.0-flash' // Gemini 最新稳定保底
+
+    assertAsciiApiKey(getRotatedApiKey(this.config) || this.config.apiKey)
 
     try {
       const abortController = new AbortController()

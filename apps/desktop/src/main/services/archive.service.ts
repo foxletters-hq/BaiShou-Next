@@ -330,7 +330,7 @@ export class DesktopArchiveService implements IArchiveService {
   public async restoreFromSnapshot(filename: string): Promise<ImportResult> {
     const p = path.join(app.getPath('userData'), 'snapshots', filename)
     if (!fs.existsSync(p)) throw new Error('Snapshot not found')
-    return this.importFromZip(p, false)
+    return this.importFromZip(p, true)
   }
 
   public async renameSnapshot(oldName: string, newName: string): Promise<void> {

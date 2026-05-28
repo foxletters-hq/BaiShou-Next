@@ -58,35 +58,156 @@ export class ShadowIndexQueryOps {
     if (!query || query.trim().length === 0) return []
     const cleanedQuery = query.replace(/"/g, ' ').trim()
     if (!cleanedQuery) return []
-    const segmentedQuery = segmentChinese(cleanedQuery)
-    if (!segmentedQuery) return []
 
-    try {
-      const rawResults = (await this.database.all(
-        sql`
-          SELECT 
-            rowid,
-            snippet(journals_fts, 0, '<b>', '</b>', '...', 64) as content_snippet,
-            tags,
-            rank as fts_rank
-          FROM journals_fts 
-          WHERE journals_fts MATCH '"' || ${segmentedQuery} || '"'
-          ORDER BY fts_rank ASC
-          LIMIT ${limit}
-          OFFSET ${offset}
-        `
-      )) as any[]
+    // 按照空白切分多 Term 逻辑
+    const rawTerms = cleanedQuery.split(/\s+/).filter(Boolean)
+    if (rawTerms.length === 0) return []
 
-      return rawResults.map((row) => ({
-        rowid: row.rowid,
-        contentSnippet: cleanSegmentedSnippet(row.content_snippet),
-        tags: cleanSegmentedSnippet(row.tags),
-        rankScore: row.fts_rank
-      }))
-    } catch (e: any) {
-      console.warn('[ShadowIndex] FTS 搜索失败:', e.message)
-      return []
+    // 1. 构造 FTS Match 表达式 (AND 逻辑)
+    const ftsTokens: string[] = []
+    for (const term of rawTerms) {
+      const containsChinese = /[\u4e00-\u9fa5]/.test(term)
+      if (containsChinese) {
+        const segmented = segmentChinese(term)
+        if (segmented) {
+          ftsTokens.push(`"${segmented}"`)
+        }
+      } else {
+        const cleaned = term.replace(/[^a-zA-Z0-9]/g, '').trim()
+        if (cleaned) {
+          ftsTokens.push(`${cleaned}*`)
+        }
+      }
     }
+
+    let ftsResults: ShadowFTSResult[] = []
+    if (ftsTokens.length > 0) {
+      const ftsMatchExpr = ftsTokens.join(' ')
+      try {
+        const rawResults = (await this.database.all(
+          sql`
+            SELECT 
+              rowid,
+              snippet(journals_fts, 0, '<b>', '</b>', '...', 64) as content_snippet,
+              tags,
+              rank as fts_rank
+            FROM journals_fts 
+            WHERE journals_fts MATCH ${ftsMatchExpr}
+            ORDER BY fts_rank ASC
+            LIMIT ${limit + offset}
+          `
+        )) as any[]
+
+        ftsResults = rawResults.map((row) => ({
+          rowid: row.rowid,
+          contentSnippet: cleanSegmentedSnippet(row.content_snippet),
+          tags: cleanSegmentedSnippet(row.tags),
+          rankScore: row.fts_rank
+        }))
+      } catch (e: any) {
+        console.warn('[ShadowIndex] FTS 搜索失败 (非阻塞):', e.message)
+      }
+    }
+
+    // 2. 并行执行 LIKE 兜底检索
+    let likeRows: Array<{ rowid: number; rawContent: string | null; tags: string | null }> = []
+    try {
+      const likeQueries = rawTerms.map((term) => {
+        const escaped = `%${term.replace(/[%_\\]/g, '\\$&')}%`
+        return sql`(raw_content LIKE ${escaped} ESCAPE '\\' OR tags LIKE ${escaped} ESCAPE '\\')`
+      })
+
+      // 查询 journals_index 表
+      const rows = (await this.database
+        .select({
+          rowid: shadowJournalIndexTable.id,
+          rawContent: shadowJournalIndexTable.rawContent,
+          tags: shadowJournalIndexTable.tags
+        })
+        .from(shadowJournalIndexTable)
+        .where(and(...likeQueries))
+        .limit(limit + offset)) as any[]
+
+      if (rows) {
+        likeRows = rows
+      }
+    } catch (e: any) {
+      console.warn('[ShadowIndex] LIKE 搜索失败 (非阻塞):', e.message)
+    }
+
+    // 3. 合并与去重
+    const mergedResults: ShadowFTSResult[] = [...ftsResults]
+    const seenIds = new Set(ftsResults.map((r) => r.rowid))
+
+    // 辅助函数，为 LIKE 结果生成 snippet 高亮
+    const generateLikeSnippet = (content: string, terms: string[]): string => {
+      if (!content) return ''
+      const lowerContent = content.toLowerCase()
+      let matchIndex = -1
+      let matchTerm = ''
+
+      for (const term of terms) {
+        const lowerTerm = term.toLowerCase()
+        const idx = lowerContent.indexOf(lowerTerm)
+        if (idx !== -1) {
+          if (matchIndex === -1 || idx < matchIndex) {
+            matchIndex = idx
+            matchTerm = term
+          }
+        }
+      }
+
+      if (matchIndex === -1) {
+        return content.length > 64 ? content.substring(0, 64) + '...' : content
+      }
+
+      const start = Math.max(0, matchIndex - 30)
+      const end = Math.min(content.length, matchIndex + matchTerm.length + 30)
+      const snippet = content.substring(start, end)
+      const prefix = start > 0 ? '...' : ''
+      const suffix = end < content.length ? '...' : ''
+
+      const offsetVal = start
+      const snippetMatchIndex = matchIndex - offsetVal
+      const termLen = matchTerm.length
+
+      const partBefore = snippet.substring(0, snippetMatchIndex)
+      const partMatched = snippet.substring(snippetMatchIndex, snippetMatchIndex + termLen)
+      const partAfter = snippet.substring(snippetMatchIndex + termLen)
+
+      return prefix + partBefore + '<b>' + partMatched + '</b>' + partAfter + suffix
+    }
+
+    const generateLikeTagsSnippet = (tagsStr: string, terms: string[]): string => {
+      if (!tagsStr) return ''
+      let highlighted = tagsStr
+      for (const term of terms) {
+        try {
+          const regex = new RegExp(`(${term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi')
+          highlighted = highlighted.replace(regex, '<b>$1</b>')
+        } catch {
+          // ignore invalid regex
+        }
+      }
+      return highlighted
+    }
+
+    for (const row of likeRows) {
+      if (seenIds.has(row.rowid)) continue
+      seenIds.add(row.rowid)
+
+      const snippet = generateLikeSnippet(row.rawContent || '', rawTerms)
+      const tagsSnippet = generateLikeTagsSnippet(row.tags || '', rawTerms)
+
+      mergedResults.push({
+        rowid: row.rowid,
+        contentSnippet: snippet,
+        tags: tagsSnippet,
+        rankScore: 9999
+      })
+    }
+
+    return mergedResults.slice(offset, offset + limit)
   }
 
   private buildListFilterWhere(options: DiaryListFilterOptions) {

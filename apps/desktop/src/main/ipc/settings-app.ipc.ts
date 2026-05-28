@@ -74,6 +74,8 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-mcp-server-config', async (_, config: any) => {
     await settingsManager.set('mcp_server_config', config)
+    const { applyMcpServerConfig } = await import('../services/mcp-runtime')
+    await applyMcpServerConfig(config)
     return true
   })
 

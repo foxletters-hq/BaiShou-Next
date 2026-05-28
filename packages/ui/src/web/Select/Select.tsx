@@ -6,12 +6,16 @@ export interface SelectOption {
   label: string
 }
 
-export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
+export interface SelectProps extends Omit<
+  SelectHTMLAttributes<HTMLSelectElement>,
+  'onChange' | 'size'
+> {
   options: SelectOption[]
   value?: string
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
   error?: string
   placeholder?: string
+  size?: 'medium' | 'small'
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -22,6 +26,7 @@ export const Select: React.FC<SelectProps> = ({
   className = '',
   disabled,
   placeholder,
+  size = 'medium',
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -64,7 +69,7 @@ export const Select: React.FC<SelectProps> = ({
 
   return (
     <div
-      className={`${styles.container} ${className} ${disabled ? styles.disabled : ''}`.trim()}
+      className={`${styles.container} ${className} ${disabled ? styles.disabled : ''} ${size === 'small' ? styles.sizeSmall : ''}`.trim()}
       ref={containerRef}
     >
       <div className={styles.wrapper}>

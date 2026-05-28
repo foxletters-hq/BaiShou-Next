@@ -25,17 +25,14 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: var(--bg-surface-low);
-  border-radius: 16px;
-  padding: 24px 20px;
+  background: var(--bg-surface);
+  border-radius: 11px;
+  padding: 14px 18px;
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
 }
 .overviewCard:hover {
-  box-shadow: 0 12px 40px rgba(var(--color-primary-rgb), 0.06);
-  border-color: rgba(var(--color-primary-rgb), 0.15);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
 }
 
 .statColumn {

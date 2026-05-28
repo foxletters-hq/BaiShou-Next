@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { resolveMigrationStatusText, type EmbeddingMigrationStateView } from '@baishou/shared'
+import { showMigrationResultToast } from './migration-result-toast'
 
 export function useRagSystem(
   t: any,
@@ -19,6 +20,10 @@ export function useRagSystem(
   })
   const [hasMismatchModel, setHasMismatchModel] = useState(false)
   const [migrationState, setMigrationState] = useState<EmbeddingMigrationStateView | null>(null)
+  const migrationWaitRef = useRef<{
+    resolve: () => void
+    reject: (error: Error) => void
+  } | null>(null)
 
   const refreshMigrationState = useCallback(async () => {
     try {
@@ -41,6 +46,8 @@ export function useRagSystem(
         setActiveRagState({ ...state, statusText })
         if (!state.isRunning) {
           void refreshMigrationState()
+          migrationWaitRef.current?.resolve()
+          migrationWaitRef.current = null
         }
       })
     }
@@ -134,13 +141,8 @@ export function useRagSystem(
       await fetchRagInfo()
       if (result?.aborted) {
         await reloadSettings?.()
-        toast.showWarning(
-          t(
-            'settings.rag_migration_aborted_restored',
-            '迁移已中止，已恢复迁移前的向量数据与嵌入模型配置。'
-          )
-        )
       }
+      showMigrationResultToast(result, t, toast)
       await refreshMigrationState()
     } finally {
       setIsProcessing(false)
@@ -186,18 +188,24 @@ export function useRagSystem(
       await fetchRagInfo()
       if (result?.aborted) {
         await reloadSettings?.()
-        toast.showWarning(
-          t(
-            'settings.rag_migration_aborted_restored',
-            '迁移已中止，已恢复迁移前的向量数据与嵌入模型配置。'
-          )
-        )
       }
+      showMigrationResultToast(result, t, toast)
       await refreshMigrationState()
     } finally {
       setIsProcessing(false)
     }
   }
+
+  const waitForMigrationIdle = () =>
+    new Promise<void>((resolve, reject) => {
+      migrationWaitRef.current = { resolve, reject }
+      setTimeout(() => {
+        if (migrationWaitRef.current) {
+          migrationWaitRef.current = null
+          reject(new Error('Migration cancel timed out'))
+        }
+      }, 120_000)
+    })
 
   const handleCancelMigration = async () => {
     if (
@@ -211,7 +219,30 @@ export function useRagSystem(
     ) {
       return
     }
-    await (window as any).api?.rag?.cancelMigration()
+    setIsProcessing(true)
+    try {
+      await (window as any).api?.rag?.cancelMigration()
+      if (activeRagState.isRunning && activeRagState.type === 'migration') {
+        await Promise.race([waitForMigrationIdle(), new Promise((r) => setTimeout(r, 120_000))])
+      }
+      await fetchRagInfo()
+      await reloadSettings?.()
+      await refreshMigrationState()
+      toast.showWarning(
+        t(
+          'settings.rag_migration_aborted_restored',
+          '迁移已中止，已恢复迁移前的向量数据与嵌入模型配置。'
+        )
+      )
+    } catch (e: any) {
+      toast.showError(
+        t('settings.rag_migration_failed', '向量库迁移失败：{{message}}', {
+          message: e?.message || String(e)
+        })
+      )
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleClearAll = async (prompt: any) => {

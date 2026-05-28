@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { DiaryAttachmentFileItem } from './attachment-manager.types'
-import { extractReferencedFileNames, safeDecodeURIComponent } from './attachment-manager.utils'
+import { extractReferencedFileNames } from './attachment-manager.utils'
 
 export class AttachmentDiaryOps {
   constructor(private readonly pathProvider: IStoragePathService) {}
@@ -49,26 +49,28 @@ export class AttachmentDiaryOps {
           }
 
           const referencedNames = new Set<string>()
-          const diaryContents: string[] = []
+          const diaryPlainTexts: string[] = []
           const siblingFiles = await fs.readdir(monthPath, { withFileTypes: true })
           const diaryFiles = siblingFiles.filter(
             (f) => f.isFile() && /^\d{4}-\d{2}-\d{2}\.md$/.test(f.name)
           )
 
-          for (const df of diaryFiles) {
-            try {
-              const diaryPath = path.join(monthPath, df.name)
-              const content = await fs.readFile(diaryPath, 'utf8')
-              diaryContents.push(safeDecodeURIComponent(content).toLowerCase())
+          await Promise.all(
+            diaryFiles.map(async (df) => {
+              try {
+                const diaryPath = path.join(monthPath, df.name)
+                const content = await fs.readFile(diaryPath, 'utf8')
+                diaryPlainTexts.push(content)
 
-              const refs = extractReferencedFileNames(content)
-              for (const r of refs) {
-                referencedNames.add(r)
+                const refs = extractReferencedFileNames(content)
+                for (const r of refs) {
+                  referencedNames.add(r)
+                }
+              } catch (err) {
+                console.warn(`[AttachmentManager] Failed to read diary ${df.name}:`, err)
               }
-            } catch (err) {
-              console.warn(`[AttachmentManager] Failed to read diary ${df.name}:`, err)
-            }
-          }
+            })
+          )
 
           for (const mf of monthFiles) {
             const fullFilePath = path.join(attachDir, mf.name)
@@ -79,8 +81,10 @@ export class AttachmentDiaryOps {
               const lowerFileName = mf.name.toLowerCase()
               let isOrphan = !referencedNames.has(lowerFileName)
 
-              if (isOrphan && diaryContents.length > 0) {
-                const isMentioned = diaryContents.some((content) => content.includes(lowerFileName))
+              if (isOrphan && diaryPlainTexts.length > 0) {
+                const isMentioned = diaryPlainTexts.some((content) =>
+                  content.toLowerCase().includes(lowerFileName)
+                )
                 if (isMentioned) {
                   isOrphan = false
                 }

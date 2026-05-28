@@ -70,6 +70,9 @@ export class SettingsRepository {
    */
   async set<T>(key: string, value: T): Promise<void> {
     const jsonStr = JSON.stringify(value)
+    if (jsonStr === undefined) {
+      throw new Error(`[SettingsRepository] Cannot persist undefined value for key: ${key}`)
+    }
 
     await this.db
       .insert(systemSettingsTable)

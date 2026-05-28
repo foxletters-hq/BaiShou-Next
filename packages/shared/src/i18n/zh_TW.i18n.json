@@ -470,6 +470,22 @@
     "mcp_stopped": "已停止",
     "mcp_port": "連接埠",
     "mcp_restart": "重新啟動服務",
+    "mcp_enable": "啟用 MCP 服務",
+    "mcp_desc": "允許外部 AI 透過 MCP 協議呼叫白守工具",
+    "tooltip_mcp_server": "允許 Cursor 透過 MCP 協議呼叫白守的資料與工具。",
+    "mcp_help_aria": "MCP 連線說明",
+    "mcp_help_modal_title": "MCP 連線說明",
+    "mcp_help_intro": "啟用 MCP 後，白守會在本機啟動 MCP 服務，供 Cursor 呼叫日記、記憶等工具。",
+    "mcp_url_label": "連線位址",
+    "mcp_sse_label": "連線位址（SSE，舊版）",
+    "mcp_help_json_title": "JSON 配置客户端",
+    "mcp_help_json_1": "開啟 設定 → MCP → 編輯 JSON，在 mcpServers 中新增伺服器。",
+    "mcp_help_json_2": "type 設為 streamableHttp，baseUrl 設為上方連線位址（必須以 /mcp 結尾）。",
+    "mcp_help_cursor_title": "Cursor",
+    "mcp_help_cursor_1": "開啟 Cursor 設定 → Features → MCP（或編輯專案/全域 mcp.json）。",
+    "mcp_help_cursor_2": "新增伺服器，將 url 設為上方連線位址，儲存後重新啟動 Cursor 或重新整理 MCP 列表。",
+    "mcp_help_note": "請使用上方 /mcp 位址（不要用 /sse）。啟用後需保持白守桌面端執行。",
+    "mcp_copy_url": "複製 MCP 位址",
     "web_search_mode_title": "網路搜尋模式",
     "web_search_mode_desc": "選擇此供應商進行網路搜尋時使用的方式",
     "web_search_mode_off": "關閉搜尋",
@@ -629,8 +645,8 @@
   },
   "data_sync": {
     "title": "資料同步",
-    "backup_tooltip": "全量打包所有日記和設置，保存到本地或備份到綁定的雲端存儲（如 S3 或 WebDAV），適用於防丟失和全量恢復。",
-    "snapshot_tooltip": "在還原備份等重大變動前，系統自動在本地生成的完整數據快照，方便您隨時撤銷並回滾數據。",
+    "backup_tooltip": "全量打包所有日記與設置，備份至綁定的雲存儲中以防丟失。重命名雲端備份文件後，該記錄將被標記為「手動」；當雲端備份超出數量限制觸發自動清理時，系統將僅清理未標記的普通備份，確保被標記的「手動」備份始終安全保留。",
+    "snapshot_tooltip": "本地快照是系統在以下兩種情況下自動創建的本地狀態備份：1. 還原/導入全量備份前；2. 恢復/應用本地快照前。恢復快照將使您的所有數據、設置和數據庫還原到該快照觸發生成時刻的狀態。",
     "incremental_sync_tooltip": "文件同步採用雙向增量同步機制，會自動對比本地與雲端文件的修改時間及哈希值，僅傳輸發生變更的文件，並在兩端同步應用刪除操作。同步的範圍包含您的日記內容、歷史總結以及 AI 聊天夥伴等核心數據。",
     "desc": "將你的記憶同步至雲端（S3 或 WebDAV），實現多裝置備份與同步。",
     "sync_target": "同步目標",
@@ -1122,8 +1138,12 @@
     "no_models_fetch_first": "没有可用的模型，请先获取模型列表或确保有默认模型",
     "test_model_empty": "测试模型 ID 不能为空",
     "api_key_placeholder": "API Key",
-    "test_connection_title": "选择测试模型",
-    "test_connection_desc": "请选择要用来测试连接的模型。建议使用该供应商提供的体积小、速度快的免费模型进行测试。",
+    "test_connection_title": "選擇測試模型",
+    "test_connection_desc": "請選擇要用來測試連線的大語言模型（對話模型）。不要選擇 Embedding、Rerank 或 TTS 模型。",
+    "test_connection_help": "連線測試會呼叫對話介面。請在彈窗中選擇大語言模型（對話模型），不要選擇 Embedding、Rerank 或 TTS 模型。若列表為空，請先取得模型並啟用對話模型。",
+    "no_chat_models_for_test": "沒有可用於測試連線的大語言模型。請先取得模型列表，並啟用對話模型（非 Embedding/TTS）。",
+    "test_model_not_chat": "請選擇大語言模型進行連線測試，Embedding/TTS 模型不支援此測試。",
+    "save_failed": "儲存失敗: {{message}}",
     "model_id": "Model ID",
     "start_test": "开始测试",
     "error_no_model": "检测失败：可能是未配置有效的 Embedding 模型或服务未连通。"
@@ -1631,6 +1651,7 @@
     }
   },
   "version_control": {
+    "title": "版本控制",
     "git_status_tooltip": "Git 用於本地數據版本控制，支持記錄修改歷史、推送到遠程 Git 倉庫（如 GitHub/Gitee）進行備份，以及多設備間同步。如果您在操作同步或備份恢復功能時誤恢復了錯誤版本，可通過版本控制進行回滾或撤銷變更，防止數據丟失。本功能僅在桌面端提供，移動端出於性能與平台限制未予支持。",
     "git_settings": "Git 设置",
     "version_control": "版本控制",
@@ -1772,7 +1793,12 @@
     "inject": "提取至当前上下文对话"
   },
   "sidebar": {
-    "tagline": "AI 终端伴侣"
+    "tagline": "AI 終端伴侶",
+    "manage": "側邊欄管理",
+    "at_least_one_visible": "必須至少保留一個可見的側邊欄",
+    "hidden_items": "{{count}} 項已隱藏",
+    "expand_hidden": "展開已隱藏項",
+    "collapse_hidden": "收起已隱藏項"
   },
   "workspace": {
     "new_name": "空间名称",
@@ -1783,7 +1809,20 @@
     "last_accessed": "上次訪問: {{time}}",
     "switch": "切換",
     "delete": "刪除",
-    "create_new": "創建新空間"
+    "create_new": "創建新空間",
+    "help_aria": "工作空間作用範圍說明",
+    "help_modal_title": "工作空間說明",
+    "help_intro": "每個工作空間是獨立的本地資料區。切換後會刷新頁面，並載入該空間內的內容。",
+    "help_per_vault_title": "切換工作空間後會變",
+    "help_per_vault_diary": "日記與日記附件",
+    "help_per_vault_summary": "階段總結與歸檔",
+    "help_per_vault_agent": "夥伴配置與聊天記錄",
+    "help_per_vault_attachments": "附件庫與回憶畫廊",
+    "help_global_title": "切換工作空間後不變",
+    "help_global_ui": "主題、語言等介面設定",
+    "help_global_ai": "AI 服務商、模型與 RAG 等設定",
+    "help_global_profile": "暱稱、身份卡與使用者頭像",
+    "help_global_registry": "工作空間列表與儲存位置"
   },
   "error": {
     "crash_title": "应用崩溃 / Rendering Crashed",

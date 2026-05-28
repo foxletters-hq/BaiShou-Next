@@ -1,4 +1,7 @@
 {
+  "summary": {
+    "generation_timeout": "AI 总结超时。这通常是由于网络连接慢或 AI 服务响应慢导致的，建议您在设置中切换为其它更稳定的 AI 模型后重试。"
+  },
   "ai_prompt": {
     "context_title": "共同的回忆 (过去 $months 个月 - 白守算法已折叠)",
     "prefix_yearly": "👑 年度",
@@ -486,7 +489,22 @@
     "mcp_stopped": "已停止",
     "mcp_port": "端口",
     "mcp_restart": "重启服务",
-    "tooltip_mcp_server": "允许外部 AI 客户端（如 Cursor、Windsurf、VS Code Claude Dev 插件等）通过 MCP 协议调用白守的数据与工具。",
+    "tooltip_mcp_server": "允许 Cursor 通过 MCP 协议调用白守的数据与工具。",
+    "mcp_help_aria": "MCP 连接说明",
+    "mcp_help_modal_title": "MCP 连接说明",
+    "mcp_help_intro": "启用 MCP 后，白守会在本机启动 MCP 服务，供 Cursor 调用日记、记忆等工具。",
+    "mcp_url_label": "连接地址",
+    "mcp_sse_label": "连接地址（SSE，旧版）",
+    "mcp_help_json_title": "JSON 配置客户端",
+    "mcp_help_json_1": "打开 设置 → MCP → 编辑 JSON，在 mcpServers 中新增服务器。",
+    "mcp_help_json_2": "type 设为 streamableHttp，baseUrl 设为上方连接地址（必须以 /mcp 结尾）。",
+    "mcp_help_cursor_title": "Cursor",
+    "mcp_help_cursor_1": "打开 Cursor 设置 → Features → MCP（或编辑项目/全局 mcp.json）。",
+    "mcp_help_cursor_2": "添加服务器，将 url 设为上方连接地址，保存后重启 Cursor 或刷新 MCP 列表。",
+    "mcp_help_vscode_title": "VS Code",
+    "mcp_help_vscode_1": "在已安装 MCP 支持的扩展（如 Claude / Copilot MCP）设置中，添加远程 MCP 服务器。",
+    "mcp_help_vscode_2": "将服务器 URL 填写为上方连接地址，保存后重载窗口或重连 MCP。",
+    "mcp_help_note": "请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守桌面端运行。",
     "mcp_view_tools": "查看已暴露的工具列表",
     "mcp_view_tools_desc": "查看当前 MCP 服务对外提供的日记与记忆管理等内置工具清单",
     "mcp_tools_list": "MCP 暴露工具列表",
@@ -547,10 +565,12 @@
     "rag_migration_already_running": "已有迁移任务在运行。",
     "rag_migration_model_not_configured": "嵌入模型未配置。",
     "rag_migration_provider_not_found": "未找到嵌入模型供应商。",
+    "rag_migration_api_key_missing": "嵌入供应商「{{providerId}}」未配置 API Key（当前模型 {{modelId}}）。请在「供应商管理」中打开该供应商，填写 API Key 并点击「保存修改」后再迁移。",
     "rag_migration_backing_up": "正在备份元数据...",
     "rag_migration_no_data": "没有需要迁移的数据。",
     "rag_migration_detecting_dimension": "正在检测新模型维度...",
-    "rag_migration_dimension_failed": "新模型维度检测失败，迁移已中止。",
+    "rag_migration_dimension_failed": "新模型维度检测失败，迁移已中止。{{message}}",
+    "rag_migration_no_data_toast": "当前没有需要迁移的向量数据。",
     "rag_migration_reembedding": "开始重嵌入...",
     "rag_migration_in_progress": "迁移中 {{completed}}/{{total}}",
     "rag_migration_in_progress_with_failures": "迁移中 {{completed}}/{{total}}（失败 {{failed}}）",
@@ -574,6 +594,7 @@
     "rag_migration_restore_failed": "恢复失败：{{message}}",
     "rag_migration_resume": "继续迁移",
     "rag_migration_complete": "向量库迁移已完成，日记记忆已用新模型重新嵌入。",
+    "rag_migration_interrupted_toast": "向量迁移未完成，已保留备份。请在 RAG 记忆管理中继续迁移或恢复备份。",
     "rag_migration_failed": "向量库迁移失败：{{message}}",
     "rag_model_mismatch": "模型版本不匹配",
     "rag_model_mismatch_desc": "系统检测到当前的向量库由不同的嵌入模型(Embedding)生成。必须执行数据迁移，否则搜索功能将无法正确工作或引发错误。",
@@ -683,8 +704,8 @@
   },
   "data_sync": {
     "title": "数据备份",
-    "backup_tooltip": "全量打包所有日记和设置，保存到本地或备份到绑定的云端存储（如 S3 或 WebDAV），适用于防丢失和全量恢复。",
-    "snapshot_tooltip": "在还原备份等重大变动前，系统自动在本地生成的完整数据快照，方便您随时撤销并回滚数据。",
+    "backup_tooltip": "全量打包所有日记与设置，备份至绑定的云存储中以防丢失。重命名云端备份文件后，该记录将被标记为「手动」；当云端备份超出数量限制触发自动清理时，系统将仅清理未标记的普通备份，确保被标记的「手动」备份始终安全保留。",
+    "snapshot_tooltip": "本地快照是系统在以下两种情况下自动创建的本地状态备份：1. 还原/导入全量备份前；2. 恢复/应用本地快照前。恢复快照将使您的所有数据、设置和数据库还原到该快照触发生成时刻的状态。",
     "incremental_sync_tooltip": "文件同步采用双向增量同步机制，会自动对比本地与云端文件的修改时间及哈希值，仅传输发生变更的文件，并在两端同步应用删除操作。同步的范围包含您的日记内容、历史总结以及 AI 聊天伙伴等核心数据。",
     "desc": "将你的记忆备份至云端（S3 或 WebDAV），实现多端安全备份。",
     "sync_target": "备份目标",
@@ -813,7 +834,6 @@
     "restore_warning": "恢复将覆盖当前数据，是否继续？",
     "restore_success": "恢复成功",
     "restore_failed": "恢复失败",
-    "syncing": "备份中...",
     "idle": "空闲",
     "quick_actions": "快捷操作",
     "backup": "备份数据",
@@ -1220,7 +1240,11 @@
     "test_model_empty": "测试模型 ID 不能为空",
     "api_key_placeholder": "API Key",
     "test_connection_title": "选择测试模型",
-    "test_connection_desc": "请选择要用来测试连接的模型。建议使用该供应商提供的体积小、速度快的免费模型进行测试。",
+    "test_connection_desc": "请选择要用来测试连接的大语言模型（对话模型）。不要选择 Embedding、Rerank 或 TTS 模型。",
+    "test_connection_help": "连接测试会调用对话接口。请在弹窗中选择大语言模型（对话模型），不要选择 Embedding、Rerank 或 TTS 模型。若列表为空，请先获取模型并启用对话模型。",
+    "no_chat_models_for_test": "没有可用于测试连接的大语言模型。请先获取模型列表，并启用对话模型（非 Embedding/TTS）。",
+    "test_model_not_chat": "请选择大语言模型进行连接测试，Embedding/TTS 模型不支持此测试。",
+    "save_failed": "保存失败: {{message}}",
     "model_id": "Model ID",
     "start_test": "开始测试",
     "error_no_model": "检测失败：可能是未配置有效的 Embedding 模型或服务未连通。"
@@ -1811,7 +1835,12 @@
     "inject": "提取至当前上下文对话"
   },
   "sidebar": {
-    "tagline": "AI 终端伴侣"
+    "tagline": "AI 终端伴侣",
+    "manage": "侧边栏管理",
+    "at_least_one_visible": "必须至少保留一个可见的侧边栏",
+    "hidden_items": "{{count}} 项已隐藏",
+    "expand_hidden": "展开已隐藏项",
+    "collapse_hidden": "收起已隐藏项"
   },
   "workspace": {
     "new_name": "空间名称",
@@ -1824,7 +1853,20 @@
     "switch": "切换",
     "switching": "切换中…",
     "delete": "删除",
-    "create_new": "创建新空间"
+    "create_new": "创建新空间",
+    "help_aria": "工作空间作用范围说明",
+    "help_modal_title": "工作空间说明",
+    "help_intro": "每个工作空间是独立的本地数据区。切换后会刷新页面，并加载该空间内的内容。",
+    "help_per_vault_title": "切换工作空间后会变",
+    "help_per_vault_diary": "日记与日记附件",
+    "help_per_vault_summary": "阶段总结与归档",
+    "help_per_vault_agent": "伙伴配置与聊天记录",
+    "help_per_vault_attachments": "附件库与回忆画廊",
+    "help_global_title": "切换工作空间后不变",
+    "help_global_ui": "主题、语言等界面设置",
+    "help_global_ai": "AI 服务商、模型与 RAG 等配置",
+    "help_global_profile": "昵称、身份卡与用户头像",
+    "help_global_registry": "工作空间列表与存储位置"
   },
   "error": {
     "crash_title": "应用崩溃 / Rendering Crashed",
@@ -1908,6 +1950,7 @@
     "unknown_program_error": "程序发生未知错误"
   },
   "version_control": {
+    "title": "版本控制",
     "git_status_tooltip": "Git 用于本地数据版本控制，支持记录修改历史、推送到远程 Git 仓库（如 GitHub/Gitee）进行备份，以及多设备间同步。如果您在操作同步或备份恢复功能时误恢复了错误版本，可通过版本控制进行回滚或撤销变更，防止数据丢失。本功能仅在桌面端提供，移动端出于性能与平台限制未予支持。",
     "git_settings": "Git 设置",
     "version_control": "版本控制",

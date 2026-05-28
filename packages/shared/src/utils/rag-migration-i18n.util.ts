@@ -1,19 +1,20 @@
+import type { TFunction } from 'i18next'
 import {
   RAG_MIGRATION_STATUS,
   type RagMigrationStatusKey
 } from '../constants/rag-migration.constants'
 
-type TranslateFn = (key: string, defaultValue?: string, options?: Record<string, unknown>) => string
-
 const MIGRATION_STATUS_DEFAULTS: Record<RagMigrationStatusKey, string> = {
   [RAG_MIGRATION_STATUS.alreadyRunning]: 'A migration task is already running.',
   [RAG_MIGRATION_STATUS.modelNotConfigured]: 'Embedding model is not configured.',
   [RAG_MIGRATION_STATUS.providerNotFound]: 'Embedding provider not found.',
+  [RAG_MIGRATION_STATUS.apiKeyMissing]:
+    'Provider "{{providerId}}" has no API key (model {{modelId}}). Open it under AI Providers, save an API key, then retry migration.',
   [RAG_MIGRATION_STATUS.backingUp]: 'Backing up metadata...',
   [RAG_MIGRATION_STATUS.noData]: 'No data to migrate.',
   [RAG_MIGRATION_STATUS.detectingDimension]: 'Detecting new model dimension...',
   [RAG_MIGRATION_STATUS.dimensionCheckFailed]:
-    'Failed to detect the new model dimension. Migration aborted.',
+    'Failed to detect the new model dimension. Migration aborted. {{message}}',
   [RAG_MIGRATION_STATUS.reembedding]: 'Re-embedding memories...',
   [RAG_MIGRATION_STATUS.inProgress]: '{{completed}}/{{total}} re-embedded',
   [RAG_MIGRATION_STATUS.inProgressWithFailures]:
@@ -35,7 +36,7 @@ const MIGRATION_STATUS_DEFAULTS: Record<RagMigrationStatusKey, string> = {
 }
 
 export function resolveMigrationStatusText(
-  t: TranslateFn,
+  t: TFunction,
   statusKey?: string,
   statusParams?: Record<string, string | number>
 ): string {

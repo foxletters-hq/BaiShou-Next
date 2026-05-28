@@ -8,6 +8,12 @@ import { getEmbeddingService, getEmbeddingConfig, filterUnindexedDiaries } from 
 import { DesktopEmbeddingStorage } from './rag.storage'
 import { settingsManager } from './settings.ipc'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
+import {
+  buildMigrationStreamResult,
+  logger,
+  type RagMigrationStatusKey,
+  type RagMigrationStreamResult
+} from '@baishou/shared'
 
 async function restoreInterruptedMigration(): Promise<number> {
   const config = getEmbeddingConfig()
@@ -34,10 +40,16 @@ async function restoreInterruptedMigration(): Promise<number> {
 async function runMigrationStream(
   event: IpcMainInvokeEvent,
   generator: AsyncGenerator<any, void, unknown>
-): Promise<{ aborted: boolean }> {
+): Promise<RagMigrationStreamResult> {
   const config = getEmbeddingConfig()
+  let lastStatusKey: RagMigrationStatusKey | undefined
+  let lastStatusParams: Record<string, string | number> | undefined
   let aborted = false
   for await (const state of generator) {
+    if (state.statusKey) {
+      lastStatusKey = state.statusKey as RagMigrationStatusKey
+      lastStatusParams = state.statusParams
+    }
     if (state.aborted) aborted = true
     event.sender.send('agent:rag-progress', {
       isRunning: !state.aborted,
@@ -57,7 +69,14 @@ async function runMigrationStream(
     type: 'idle'
   })
   await config.load()
-  return { aborted }
+
+  const result = buildMigrationStreamResult(aborted, lastStatusKey, lastStatusParams)
+  logger.info('[RAG] Migration stream finished', {
+    outcome: result.outcome,
+    statusKey: result.statusKey,
+    statusParams: result.statusParams
+  })
+  return result
 }
 
 async function resolveRollbackConfig(
@@ -81,6 +100,8 @@ export function registerRagBuildIPC() {
   const config = getEmbeddingConfig()
   const embeddingService = getEmbeddingService()
   const migrationStateService = getEmbeddingMigrationStateService()
+
+  migrationStateService.setMigrationActiveChecker(() => embeddingService.isMigrationRunning())
 
   embeddingService.setMigrationLifecycle({
     markInProgress: (rollbackConfig) => migrationStateService.markInProgress(rollbackConfig),
@@ -219,16 +240,19 @@ export function registerRagBuildIPC() {
     'rag:trigger-migration',
     async (event, options?: { rollbackConfig?: EmbeddingMigrationRollbackConfig }) => {
       await config.load()
-      await migrationStateService.reconcile()
-      const rollbackConfig = await resolveRollbackConfig(options?.rollbackConfig)
+      const migrationState = await migrationStateService.getState()
+      const rollbackConfig =
+        (await resolveRollbackConfig(options?.rollbackConfig)) ?? migrationState.rollbackConfig
+
       try {
-        const result = await runMigrationStream(
-          event,
-          embeddingService.migrateEmbeddings(rollbackConfig)
-        )
-        return result
+        if (migrationState.canResume) {
+          logger.info('[RAG] Resuming interrupted migration from backup')
+          return await runMigrationStream(event, embeddingService.continueMigration(rollbackConfig))
+        }
+
+        return await runMigrationStream(event, embeddingService.migrateEmbeddings(rollbackConfig))
       } catch (e: any) {
-        console.error('Migration failed:', e)
+        logger.error('[RAG] Migration failed with exception', { error: e })
         await migrationStateService.markInterrupted()
         event.sender.send('agent:rag-progress', { isRunning: false, type: 'idle' })
         throw e

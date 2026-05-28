@@ -12,10 +12,11 @@ import {
   MdSettings
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
-import { IncrementalSyncPanel } from '@baishou/ui'
+import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 import type { SyncProgress } from '@baishou/ui'
 
 import { useSyncStore } from '@baishou/store'
+import { resolveFirstVisibleSidebarPath } from '../Sidebar/sidebar-preferences'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -172,28 +173,7 @@ export const TitleBar: React.FC = () => {
           <div className={styles.tabsContainer}>
             <div
               className={`${styles.tab} ${!isAgent && !isSettings ? styles.activeTab : ''}`}
-              onClick={() => {
-                try {
-                  const saved = localStorage.getItem('desktop_sidebar_nav_order')
-                  if (saved) {
-                    const parsed = JSON.parse(saved)
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                      const paths: Record<string, string> = {
-                        diary: '/diary',
-                        summary: '/summary',
-                        lan: '/lan-transfer',
-                        sync: '/data-sync',
-                        git: '/git'
-                      }
-                      if (paths[parsed[0]]) {
-                        navigate(paths[parsed[0]])
-                        return
-                      }
-                    }
-                  }
-                } catch (e) {}
-                navigate('/diary')
-              }}
+              onClick={() => navigate(resolveFirstVisibleSidebarPath())}
             >
               <MdAutoStories className={styles.tabIcon} />
               <span>{t('nav.diary', '日记')}</span>
@@ -227,6 +207,7 @@ export const TitleBar: React.FC = () => {
               ref={vaultMenuRef}
               style={{ position: 'relative' }}
             >
+              <WorkspaceScopeHelpTooltip size={15} className={styles.vaultHelpIcon} />
               <div
                 className={styles.vaultSwitcher}
                 onClick={() => !isSwitchingVault && setShowVaultMenu(!showVaultMenu)}

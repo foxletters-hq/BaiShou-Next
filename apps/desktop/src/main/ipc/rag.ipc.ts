@@ -1,10 +1,18 @@
 import { EmbeddingService, IEmbeddingConfig, AIProviderRegistry } from '@baishou/ai'
 import { settingsManager } from './settings.ipc'
 import { DesktopEmbeddingStorage } from './rag.storage'
-import { AIProviderConfig } from '@baishou/shared'
 import { registerRagBuildIPC } from './rag-build.ipc'
 import { registerRagQueryIPC } from './rag-query.ipc'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
+import { getAutoFixedProviders } from './settings-models.ipc'
+import {
+  EmbeddingProviderConfigError,
+  readStoredApiKey,
+  resolveProviderConfig
+} from '../services/ai-provider-config.util'
+import { logger } from '@baishou/shared'
+
+export { EmbeddingProviderConfigError }
 
 class DesktopEmbeddingConfig implements IEmbeddingConfig {
   private _cachedConfig: any = {}
@@ -44,14 +52,36 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
     this._cachedConfig = next
   }
   async getProviderInstance(): Promise<any> {
+    await this.load()
     const providerId = this.getGlobalEmbeddingProviderId()
     if (!providerId) return null
 
-    const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-    const pConfig = providers.find((p) => p.id === providerId)
-    if (!pConfig) return null
+    const providers = await getAutoFixedProviders()
+    const raw = providers.find((p) => p.id === providerId)
+    const storedApiKey = raw ? readStoredApiKey(raw) : ''
+    logger.info('[RAG] Resolving embedding provider for migration', {
+      providerId,
+      modelId: this.getGlobalEmbeddingModelId(),
+      hasStoredApiKey: storedApiKey.length > 0
+    })
 
-    return AIProviderRegistry.getInstance().getOrUpdateProvider(pConfig)
+    let normalized
+    try {
+      normalized = resolveProviderConfig(providers, providerId)
+    } catch (e) {
+      if (e instanceof EmbeddingProviderConfigError) {
+        logger.warn('[RAG] Embedding provider config invalid', {
+          providerId,
+          code: e.code,
+          message: e.message
+        })
+      }
+      throw e
+    }
+
+    const registry = AIProviderRegistry.getInstance()
+    registry.removeProvider(providerId)
+    return registry.getOrUpdateProvider(normalized)
   }
 }
 

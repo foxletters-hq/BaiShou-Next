@@ -14,7 +14,7 @@ export interface AIProviderConfig {
 
 export interface AIModelServicesViewProps {
   providers: Record<string, AIProviderConfig>
-  onUpdateProvider: (providerId: string, updates: Partial<AIProviderConfig>) => void
+  onUpdateProvider: (providerId: string, updates: Partial<AIProviderConfig>) => void | Promise<void>
   onDeleteProvider?: (providerId: string) => void
   onReorderProviders?: (orderedIds: string[]) => void
   onTestConnection?: (

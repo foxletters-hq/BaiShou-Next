@@ -4,6 +4,8 @@ export const settingsApi = {
   settings: {
     getProviders: () => ipcRenderer.invoke('settings:get-providers'),
     setProviders: (providers: any[]) => ipcRenderer.invoke('settings:set-providers', providers),
+    patchProvider: (providerId: string, updates: Record<string, unknown>) =>
+      ipcRenderer.invoke('settings:patch-provider', providerId, updates),
     getGlobalModels: () => ipcRenderer.invoke('settings:get-global-models'),
     setGlobalModels: (config: any) => ipcRenderer.invoke('settings:set-global-models', config),
     getFeatures: () => ipcRenderer.invoke('settings:get-features'),

@@ -27,6 +27,21 @@
   display: none;
 }
 
+.settings-list-tile-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Wraps ? help icons so clicks do not toggle expansion tiles or list rows */
+.settings-inline-help-host {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
 .settings-expansion-summary:hover {
   background-color: rgba(0, 0, 0, 0.03);
 }

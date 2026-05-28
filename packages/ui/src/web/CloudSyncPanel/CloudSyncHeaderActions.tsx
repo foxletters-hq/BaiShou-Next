@@ -69,7 +69,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                 activeTab === 'snapshot'
                   ? t(
                       'data_sync.snapshot_tooltip',
-                      '本地快照是系统自动为您的核心配置文件所做的本地历史备份。在发生配置冲突或逻辑错乱时，您可将系统状态一键恢复至快照记录的时点。'
+                      '本地快照是系统在以下两种情况下自动创建的本地状态备份：1. 还原/导入全量备份前；2. 恢复/应用本地快照前。恢复快照将使您的所有数据、设置和数据库还原到该快照触发生成时刻的状态。'
                     )
                   : t(
                       'data_sync.backup_tooltip',

@@ -158,8 +158,8 @@ describe('DesktopArchiveService', () => {
     })
 
     // Mocking the full importFromZip is tricky because of external deps like extract-zip and sqlite.
-    // The main test is that it calls importFromZip with false correctly.
-    it('should call importFromZip without creating snapshot before', async () => {
+    // The main test is that it calls importFromZip with true correctly.
+    it('should call importFromZip with creating snapshot before', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true)
       const spy = vi
         .spyOn(service, 'importFromZip')
@@ -168,7 +168,7 @@ describe('DesktopArchiveService', () => {
       const res = await service.restoreFromSnapshot('real.zip')
       const expectedPath = path.join('/mock/userData', 'snapshots', 'real.zip')
 
-      expect(spy).toHaveBeenCalledWith(expectedPath, false)
+      expect(spy).toHaveBeenCalledWith(expectedPath, true)
       expect(res.profileRestored).toBe(true)
     })
   })

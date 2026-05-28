@@ -67,6 +67,8 @@ async function switchVaultFast(vaultName: string) {
   await connectShadowForActiveVault()
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.activateVaultRuntime()
+  const { resetAttachmentAllowedRootsCache } = await import('./attachment-path-cache')
+  resetAttachmentAllowedRootsCache()
   resetSyncService()
   resetGitService()
   const { scheduleVaultEcosystemResync } = await import('../services/vault-resync.service')

@@ -3,7 +3,30 @@ import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import type { DiaryAttachmentFileItem } from './attachment-management.types'
-import { isImageFile } from './attachment-management.utils'
+import {
+  isImageFile,
+  supportsLocalFileImagePreview,
+  toLocalFileUrl
+} from './attachment-management.utils'
+
+const THUMBNAIL_LOAD_CONCURRENCY = 4
+
+async function invokeGetThumbnail(filePath: string, maxSize: number): Promise<string | null> {
+  if (typeof window === 'undefined') return null
+  const w = window as Window & {
+    api?: { attachment?: { getThumbnail?: (p: string, s: number) => Promise<string | null> } }
+    electron?: { ipcRenderer?: { invoke: (c: string, ...a: unknown[]) => Promise<unknown> } }
+  }
+  if (w.api?.attachment?.getThumbnail) {
+    return w.api.attachment.getThumbnail(filePath, maxSize)
+  }
+  if (w.electron?.ipcRenderer?.invoke) {
+    return w.electron.ipcRenderer.invoke('attachment:getThumbnail', filePath, maxSize) as Promise<
+      string | null
+    >
+  }
+  return null
+}
 
 export interface UseAttachmentDiaryStateOptions {
   onDeleteDiaryAttachment?: (filePath: string) => Promise<void>
@@ -96,16 +119,10 @@ export function useAttachmentDiaryState(
     thumbnailLoadingRef.current.add(filePath)
 
     try {
-      if (typeof window !== 'undefined' && (window as any).electron) {
-        const thumbnail = await (window as any).electron.ipcRenderer.invoke(
-          'attachment:getThumbnail',
-          filePath,
-          200
-        )
-        if (thumbnail) {
-          setThumbnailCache((prev) => new Map(prev).set(filePath, thumbnail))
-          return thumbnail
-        }
+      const thumbnail = await invokeGetThumbnail(filePath, 200)
+      if (thumbnail) {
+        setThumbnailCache((prev) => new Map(prev).set(filePath, thumbnail))
+        return thumbnail
       }
     } catch (e) {
       console.error('Failed to load thumbnail:', e)
@@ -149,6 +166,19 @@ export function useAttachmentDiaryState(
       setImagePreview({ src: cachedFull, name: fileName })
       return
     }
+
+    if (supportsLocalFileImagePreview()) {
+      const localUrl = toLocalFileUrl(filePath)
+      fullImageCacheRef.current.set(filePath, localUrl)
+      setImagePreview({ src: thumb ?? localUrl, name: fileName })
+      if (thumb) {
+        requestAnimationFrame(() => {
+          setImagePreview({ src: localUrl, name: fileName })
+        })
+      }
+      return
+    }
+
     if (thumb) {
       setImagePreview({ src: thumb, name: fileName })
     }
@@ -158,7 +188,7 @@ export function useAttachmentDiaryState(
       const src = await getFullImage(filePath)
       if (src) {
         setImagePreview({ src, name: fileName })
-      } else if (!thumb && !cachedFull) {
+      } else if (!thumb) {
         setImagePreview(null)
         toast.showError(t('settings.attachment_preview_failed', '无法加载图片预览'))
       }
@@ -167,17 +197,34 @@ export function useAttachmentDiaryState(
     }
   }
 
-  // 加载当前页面的缩略图
+  // 并行加载当前页缩略图（限制并发，避免首次进入卡顿）
   React.useEffect(() => {
-    const loadThumbnails = async () => {
-      const items = activePane === 'diary' ? pagedDiaryAttachments : []
-      for (const item of items) {
-        if (isImageFile(item.name) && !thumbnailCache.has(item.path)) {
-          await getThumbnail(item.path)
-        }
+    if (activePane !== 'diary') return
+
+    const pending = pagedDiaryAttachments.filter(
+      (item) => isImageFile(item.name) && !thumbnailCache.has(item.path)
+    )
+    if (pending.length === 0) return
+
+    let cancelled = false
+    let cursor = 0
+
+    const worker = async () => {
+      while (!cancelled) {
+        const index = cursor++
+        if (index >= pending.length) return
+        await getThumbnail(pending[index]!.path)
       }
     }
-    loadThumbnails()
+
+    void Promise.all(
+      Array.from({ length: Math.min(THUMBNAIL_LOAD_CONCURRENCY, pending.length) }, () => worker())
+    )
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 分页切换时拉取缺失缩略图即可
   }, [activePane, pagedDiaryAttachments])
 
   // ======= 日记附件事件处理 =======

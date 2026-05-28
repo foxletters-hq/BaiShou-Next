@@ -5,6 +5,10 @@ import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
+import { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
+
+export { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
+export type { WorkspaceScopeHelpTooltipProps } from './WorkspaceScopeHelpTooltip'
 
 export interface VaultInfo {
   name: string
@@ -71,6 +75,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
     <SettingsExpansionTile
       icon={<MdWorkspacesOutline size={24} />}
       title={t('workspace.title', '工作空间')}
+      titleAddon={<WorkspaceScopeHelpTooltip />}
       subtitle={t('workspace.current', '当前空间: {{name}}', {
         name: activeVault?.name ?? '未知'
       })}

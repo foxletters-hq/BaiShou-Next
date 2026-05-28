@@ -3,6 +3,7 @@ import { LanguageModel, EmbeddingModel, generateText } from 'ai'
 import { AiProviderModel } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
+import { assertAsciiApiKey, createSanitizedFetch, sanitizeApiKeyForHttp } from './fetch-header.util'
 
 export class AnthropicAdaptedProvider implements IAIProvider {
   public config: AiProviderModel
@@ -11,10 +12,11 @@ export class AnthropicAdaptedProvider implements IAIProvider {
   }
 
   private _getSdk() {
-    const rotatedKey = getRotatedApiKey(this.config)
+    const rotatedKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
     return createAnthropic({
-      apiKey: rotatedKey || this.config.apiKey,
-      baseURL: this.config.baseUrl || undefined
+      apiKey: rotatedKey,
+      baseURL: this.config.baseUrl || undefined,
+      fetch: createSanitizedFetch()
     })
   }
 
@@ -39,6 +41,8 @@ export class AnthropicAdaptedProvider implements IAIProvider {
 
   async testConnection(testModelId?: string): Promise<void> {
     const modelToTest = testModelId || this.config.defaultDialogueModel || 'claude-3-haiku-20240307'
+
+    assertAsciiApiKey(getRotatedApiKey(this.config) || this.config.apiKey)
 
     try {
       const abortController = new AbortController()

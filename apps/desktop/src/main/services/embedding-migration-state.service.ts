@@ -14,6 +14,11 @@ const IDLE_STATE: EmbeddingMigrationStateRecord = {
 
 export class EmbeddingMigrationStateService {
   private readonly storage = new DesktopEmbeddingStorage()
+  private isMigrationActive: () => boolean = () => false
+
+  setMigrationActiveChecker(checker: () => boolean): void {
+    this.isMigrationActive = checker
+  }
 
   async getState(): Promise<EmbeddingMigrationStateView> {
     await this.reconcile()
@@ -56,7 +61,10 @@ export class EmbeddingMigrationStateService {
     const hasPending = await this.storage.hasPendingMigration()
 
     if (record.status === 'in_progress') {
-      await this.markInterrupted()
+      // Do not mark interrupted while the main-process migration generator is still running.
+      if (!this.isMigrationActive()) {
+        await this.markInterrupted()
+      }
       return
     }
 

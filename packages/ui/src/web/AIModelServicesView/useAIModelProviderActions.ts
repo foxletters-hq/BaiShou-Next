@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import type { TFunction } from 'i18next'
 import { renderProviderIcon, renderProviderTypeIcon } from './ai-model-services.icons'
+import { isChatModelForConnectionTest, resolveProviderBaseUrl } from '@baishou/shared'
 import type { AIProviderConfig, AIModelServicesViewProps } from './ai-model-services.types'
 
 export interface UseAIModelProviderActionsParams {
@@ -72,6 +73,14 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
     BASE_KNOWN_PROVIDERS
   } = params
 
+  const persistProviderUpdate = (providerId: string, updates: Partial<AIProviderConfig>) =>
+    Promise.resolve(onUpdateProvider(providerId, updates))
+
+  const providerType = () => activeConfig.type ?? selectedProviderId
+
+  const effectiveBaseUrl = () =>
+    resolveProviderBaseUrl(selectedProviderId, providerType(), localFormData.baseUrl)
+
   const populateControllers = (pid: string) => {
     const config: Partial<AIProviderConfig> = providers[pid] || {}
     setLocalFormData({
@@ -87,11 +96,17 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
   }
 
   const handleSaveCurrentProviderConfig = () => {
-    onUpdateProvider(selectedProviderId, {
-      apiBaseUrl: localFormData.baseUrl,
+    void persistProviderUpdate(selectedProviderId, {
+      apiBaseUrl: effectiveBaseUrl(),
       apiKey: localFormData.apiKey
     })
-    toast.showSuccess(t('ai_config.save_success', '$id 配置已保存', { id: selectedProviderId }))
+      .then(() => {
+        toast.showSuccess(t('ai_config.save_success', '$id 配置已保存', { id: selectedProviderId }))
+      })
+      .catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e)
+        toast.showError(t('ai_config.save_failed', '保存失败: {{message}}', { message }))
+      })
   }
 
   const handleResetCurrentProvider = () => {
@@ -123,21 +138,30 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
       return
     }
 
-    const available = activeConfig.enabledModels?.length
+    const listed = activeConfig.enabledModels?.length
       ? activeConfig.enabledModels
       : activeConfig.models
-    console.log('[TestConnection] available models:', available)
-    if (!available || available.length === 0) {
-      toast.showWarning(t('ai_config.no_models_fetch_first', '没有可用的模型，请先获取模型列表'))
+    const chatModels = (listed || []).filter((m) => isChatModelForConnectionTest(m))
+    console.log('[TestConnection] chat models for test:', chatModels)
+    if (!chatModels.length) {
+      toast.showWarning(
+        t(
+          'ai_config.no_chat_models_for_test',
+          '没有可用于测试连接的大语言模型。请先获取模型列表，并启用对话模型（非 Embedding/TTS）。'
+        )
+      )
       return
     }
 
-    setTestModelOptions(available)
-    setTestModelId(activeConfig.defaultDialogueModel || available?.[0] || '')
-    console.log(
-      '[TestConnection] opening modal with default:',
-      activeConfig.defaultDialogueModel || available?.[0] || ''
-    )
+    const defaultDialogue = activeConfig.defaultDialogueModel
+    const initialModel =
+      defaultDialogue && isChatModelForConnectionTest(defaultDialogue)
+        ? defaultDialogue
+        : chatModels[0]
+
+    setTestModelOptions(chatModels)
+    setTestModelId(initialModel || '')
+    console.log('[TestConnection] opening modal with default:', initialModel)
     setIsTestModalOpen(true)
   }
 
@@ -146,10 +170,19 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
       toast.showError(t('ai_config.test_model_empty', '测试模型 ID 不能为空'))
       return
     }
+    if (!isChatModelForConnectionTest(testModelId.trim())) {
+      toast.showError(
+        t(
+          'ai_config.test_model_not_chat',
+          '请选择大语言模型进行连接测试，Embedding/TTS 模型不支持此测试。'
+        )
+      )
+      return
+    }
     setIsTestModalOpen(false)
 
-    onUpdateProvider(selectedProviderId, {
-      apiBaseUrl: localFormData.baseUrl,
+    await persistProviderUpdate(selectedProviderId, {
+      apiBaseUrl: effectiveBaseUrl(),
       apiKey: localFormData.apiKey
     })
 
@@ -158,7 +191,7 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
       await onTestConnection(
         selectedProviderId,
         localFormData.apiKey,
-        localFormData.baseUrl,
+        effectiveBaseUrl(),
         testModelId.trim()
       )
       toast.showSuccess(t('ai_config.test_connection_success', '连接测试成功！🎉'))
@@ -180,8 +213,8 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
       return
     }
 
-    onUpdateProvider(selectedProviderId, {
-      apiBaseUrl: localFormData.baseUrl,
+    await persistProviderUpdate(selectedProviderId, {
+      apiBaseUrl: effectiveBaseUrl(),
       apiKey: localFormData.apiKey
     })
 
@@ -190,12 +223,12 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
       const RemoteModels = await onFetchModels(
         selectedProviderId,
         localFormData.apiKey,
-        localFormData.baseUrl
+        effectiveBaseUrl()
       )
       const oldEnabled = new Set(activeConfig.enabledModels || [])
       const newEnabled = RemoteModels.filter((rm) => oldEnabled.has(rm))
 
-      onUpdateProvider(selectedProviderId, {
+      await persistProviderUpdate(selectedProviderId, {
         models: RemoteModels,
         enabledModels: newEnabled
       })

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Select } from '@baishou/ui'
 
 interface S3SyncFormProps {
   config: any
@@ -14,6 +15,18 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
   const { t } = useTranslation()
   const [showAccessKey, setShowAccessKey] = useState(false)
   const [showSecretKey, setShowSecretKey] = useState(false)
+
+  const fileConcurrencyOptions = [1, 2, 3, 5, 10, 15, 20].map((v) => ({
+    value: String(v),
+    label: t('data_sync.file_concurrency_option', '{{count}} files in parallel', { count: v })
+  }))
+
+  const chunkConcurrencyOptions = [5, 10, 15, 20].map((v) => ({
+    value: String(v),
+    label: t('data_sync.chunk_concurrency_option', '{{count}} chunks in parallel', {
+      count: v
+    })
+  }))
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -91,35 +104,23 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
       </div>
       <div>
         <label style={labelStyle}>{t('data_sync.file_concurrency', 'File Concurrency')}</label>
-        <select
-          value={config.fileConcurrency || 5}
+        <Select
+          value={String(config.fileConcurrency || 5)}
           onChange={(e) => onChange({ fileConcurrency: parseInt(e.target.value) })}
-          style={selectStyle}
-        >
-          {[1, 2, 3, 5, 10, 15, 20].map((v) => (
-            <option key={v} value={v}>
-              {t('data_sync.file_concurrency_option', '{{count}} files in parallel', { count: v })}
-            </option>
-          ))}
-        </select>
+          options={fileConcurrencyOptions}
+          size="small"
+        />
       </div>
       <div>
         <label style={labelStyle}>
           {t('data_sync.chunk_concurrency', 'Chunk Concurrency (large object storage)')}
         </label>
-        <select
-          value={config.chunkConcurrency || 5}
+        <Select
+          value={String(config.chunkConcurrency || 5)}
           onChange={(e) => onChange({ chunkConcurrency: parseInt(e.target.value) })}
-          style={selectStyle}
-        >
-          {[5, 10, 15, 20].map((v) => (
-            <option key={v} value={v}>
-              {t('data_sync.chunk_concurrency_option', '{{count}} chunks in parallel', {
-                count: v
-              })}
-            </option>
-          ))}
-        </select>
+          options={chunkConcurrencyOptions}
+          size="small"
+        />
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import styles from './AssistantEditPage.module.css'
@@ -16,9 +17,18 @@ export const AssistantDeleteConfirmDialog: React.FC<AssistantDeleteConfirmDialog
 }) => {
   const { t } = useTranslation()
 
-  if (!isOpen) return null
+  useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+    }
+  }, [isOpen])
 
-  return (
+  if (!isOpen || typeof document === 'undefined') return null
+
+  return createPortal(
     <div className={styles.dialogOverlay} onClick={onCancel}>
       <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.dialogHeaderIcon}>
@@ -42,6 +52,7 @@ export const AssistantDeleteConfirmDialog: React.FC<AssistantDeleteConfirmDialog
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

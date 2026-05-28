@@ -1,49 +1,72 @@
 import { ipcMain } from 'electron'
-import { AIProviderConfig, GlobalModelsConfig, logger } from '@baishou/shared'
+import {
+  AIProviderConfig,
+  GlobalModelsConfig,
+  logger,
+  resolveProviderBaseUrl
+} from '@baishou/shared'
 import { AIProviderRegistry } from '@baishou/ai'
 import { settingsManager } from './settings.ipc'
+import {
+  patchProviderConfigInStore,
+  type ProviderConfigPatch
+} from '../services/ai-provider-config.util'
+
+const knownSystemIds = [
+  'openai',
+  'anthropic',
+  'gemini',
+  'deepseek',
+  'kimi',
+  'ollama',
+  'siliconflow',
+  'openrouter',
+  'dashscope',
+  'doubao',
+  'grok',
+  'mistral',
+  'lmstudio'
+]
+
+function withResolvedProviderBaseUrl(
+  config: AIProviderConfig,
+  tempKey?: string,
+  tempUrl?: string
+): AIProviderConfig {
+  const clone = { ...config }
+  if (tempKey !== undefined) {
+    clone.apiKey = tempKey
+  }
+  const urlInput = tempUrl !== undefined ? tempUrl : clone.baseUrl
+  clone.baseUrl = resolveProviderBaseUrl(clone.id, clone.type, urlInput)
+  return clone
+}
+
+export async function getAutoFixedProviders(): Promise<AIProviderConfig[]> {
+  const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+  let needsSave = false
+
+  for (const p of providers) {
+    const lowerId = p.id.toLowerCase()
+    if (knownSystemIds.includes(lowerId)) {
+      if (p.type === 'custom' || !p.type || p.type !== lowerId) {
+        p.type = lowerId as any
+        p.isSystem = true
+        needsSave = true
+      }
+    }
+  }
+
+  if (needsSave) {
+    await settingsManager.set('ai_providers', providers)
+  }
+  return providers
+}
 
 /**
  * 注册与模型提供商、AI模型选择及连接测试相关的 IPC 通道
  */
 export function registerSettingsModelsIPC() {
-  const knownSystemIds = [
-    'openai',
-    'anthropic',
-    'gemini',
-    'deepseek',
-    'kimi',
-    'ollama',
-    'siliconflow',
-    'openrouter',
-    'dashscope',
-    'doubao',
-    'grok',
-    'mistral',
-    'lmstudio'
-  ]
-
-  const getAutoFixedProviders = async () => {
-    const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-    let needsSave = false
-
-    for (const p of providers) {
-      const lowerId = p.id.toLowerCase()
-      if (knownSystemIds.includes(lowerId)) {
-        if (p.type === 'custom' || !p.type || p.type !== lowerId) {
-          p.type = lowerId as any
-          p.isSystem = true
-          needsSave = true
-        }
-      }
-    }
-
-    if (needsSave) {
-      await settingsManager.set('ai_providers', providers)
-    }
-    return providers
-  }
-
   ipcMain.handle('settings:get-providers', async () => {
     return await getAutoFixedProviders()
   })
@@ -97,6 +120,21 @@ export function registerSettingsModelsIPC() {
     await pruneGlobalModels(providers)
     return true
   })
+
+  ipcMain.handle(
+    'settings:patch-provider',
+    async (_, providerId: string, updates: ProviderConfigPatch) => {
+      const providers = await getAutoFixedProviders()
+      const { providers: nextProviders, provider } = patchProviderConfigInStore(
+        providers,
+        providerId,
+        updates
+      )
+      await settingsManager.set('ai_providers', nextProviders)
+      await pruneGlobalModels(nextProviders)
+      return provider
+    }
+  )
 
   ipcMain.handle('settings:get-global-models', async () => {
     return (await settingsManager.get<GlobalModelsConfig>('global_models')) || null
@@ -189,9 +227,7 @@ export function registerSettingsModelsIPC() {
         } as AIProviderConfig
       }
 
-      const clone = { ...config } as AIProviderConfig
-      if (tempKey !== undefined) clone.apiKey = tempKey
-      if (tempUrl !== undefined) clone.baseUrl = tempUrl
+      const clone = withResolvedProviderBaseUrl(config, tempKey, tempUrl)
 
       // @ts-ignore
       const registry = AIProviderRegistry.getInstance()
@@ -272,9 +308,7 @@ export function registerSettingsModelsIPC() {
         } as AIProviderConfig
       }
 
-      const clone = { ...config } as AIProviderConfig
-      if (tempKey !== undefined) clone.apiKey = tempKey
-      if (tempUrl !== undefined) clone.baseUrl = tempUrl
+      const clone = withResolvedProviderBaseUrl(config, tempKey, tempUrl)
 
       // @ts-ignore
       const registry = AIProviderRegistry.getInstance()

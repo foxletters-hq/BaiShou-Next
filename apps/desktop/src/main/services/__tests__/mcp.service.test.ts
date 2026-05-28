@@ -1,17 +1,20 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { z } from 'zod'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { ToolSchema } from '@modelcontextprotocol/sdk/types.js'
 import { McpService } from '../mcp.service'
 
-describe('McpService', () => {
+describe.sequential('McpService', () => {
   let mockSettingsRepo: any
   let service: McpService
-  // 避开系统常用端口进行测试
-  const TEST_PORT = 35688
+  let testPort: number
 
   beforeEach(() => {
+    testPort = 35700 + Math.floor(Math.random() * 1000)
     mockSettingsRepo = {
       getMcpServerConfig: vi.fn().mockResolvedValue({
-        mcpPort: TEST_PORT,
+        mcpPort: testPort,
         mcpEnabled: true
       })
     }
@@ -52,6 +55,145 @@ describe('McpService', () => {
     expect((service as any).httpServer).toBeDefined()
   })
 
+  it('handles Streamable HTTP initialize and tools/list on /mcp', async () => {
+    await service.start()
+    const port = testPort
+    const base = `http://127.0.0.1:${port}/mcp`
+    const mcpHeaders = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json, text/event-stream'
+    }
+
+    const initBody = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'test', version: '1.0.0' }
+      }
+    }
+
+    const initRes = await fetch(base, {
+      method: 'POST',
+      headers: mcpHeaders,
+      body: JSON.stringify(initBody)
+    })
+    expect(initRes.status).toBe(200)
+    await initRes.text()
+
+    const sessionId = initRes.headers.get('mcp-session-id')
+    expect(sessionId).toBeTruthy()
+
+    const listBody = {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/list',
+      params: {}
+    }
+
+    const listRes = await fetch(base, {
+      method: 'POST',
+      headers: { ...mcpHeaders, 'mcp-session-id': sessionId! },
+      body: JSON.stringify(listBody)
+    })
+    expect(listRes.status).toBe(200)
+    const listText = await listRes.text()
+    const dataLine = listText.split('\n').find((line) => line.startsWith('data: '))
+    expect(dataLine).toBeDefined()
+    const listJson = JSON.parse(dataLine!.slice('data: '.length)) as {
+      result?: { tools?: unknown[] }
+    }
+    expect(Array.isArray(listJson.result?.tools)).toBe(true)
+    for (const tool of listJson.result!.tools as Array<{ inputSchema?: { type?: string } }>) {
+      expect(tool.inputSchema?.type).toBe('object')
+    }
+  }, 15000)
+
+  it('connects via MCP SDK client (stdio transport pattern)', async () => {
+    const dummyRegistry = {
+      getAllRaw: () => [
+        {
+          name: 'test_tool',
+          description: 'A test tool',
+          parameters: z.object({ query: z.string() }),
+          execute: async () => 'ok'
+        }
+      ],
+      get: () => undefined
+    } as any
+
+    const server = new McpService(mockSettingsRepo, dummyRegistry)
+    await server.start()
+
+    const client = new Client({ name: 'BaiShou', version: '1.0.0' }, { capabilities: {} })
+    const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${testPort}/mcp`))
+
+    await client.connect(transport, { timeout: 60_000 })
+    const { tools } = await client.listTools()
+    expect(tools.length).toBeGreaterThan(0)
+    for (const tool of tools) {
+      expect(() => ToolSchema.parse(tool)).not.toThrow()
+      expect(tool.inputSchema.type).toBe('object')
+      expect(tool.inputSchema.properties).toBeDefined()
+      expect(tool.inputSchema.required).toBeDefined()
+    }
+    await client.close()
+    await server.stop()
+  }, 30_000)
+
+  it('maps SSE POST /message to transport.sessionId from SDK', async () => {
+    await service.start()
+    const port = testPort
+
+    const sseRes = await fetch(`http://127.0.0.1:${port}/sse`, {
+      headers: { Accept: 'text/event-stream' }
+    })
+    expect(sseRes.ok).toBe(true)
+
+    const reader = sseRes.body?.getReader()
+    expect(reader).toBeDefined()
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let endpointPath = ''
+    const deadline = Date.now() + 5000
+
+    while (Date.now() < deadline && !endpointPath) {
+      const { value, done } = await reader!.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const match = buffer.match(/data: (\/message\?sessionId=[^\s]+)/)
+      if (match?.[1]) {
+        endpointPath = match[1]
+        break
+      }
+    }
+
+    expect(endpointPath).toMatch(/^\/message\?sessionId=/)
+
+    const initBody = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'test', version: '1.0.0' }
+      }
+    }
+
+    const postRes = await fetch(`http://127.0.0.1:${port}${endpointPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(initBody)
+    })
+    expect(postRes.status).not.toBe(404)
+
+    await reader?.cancel()
+  }, 15000)
+
   it('should expose agent tools via real tool registry if provided', async () => {
     // Inject a dummy tool registry
     const dummyRegistry = {
@@ -81,6 +223,7 @@ describe('McpService', () => {
 
     expect(mcpTools).length(1)
     expect(mcpTools[0].name).toBe('baishou_test_tool')
+    expect(mcpTools[0].inputSchema.type).toBe('object')
 
     const executeResult = await (serviceWithTools as any).executeAgentTool({
       name: 'baishou_test_tool'

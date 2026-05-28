@@ -28,15 +28,15 @@ export class SummaryWatcherService {
 
   public start(vaultPath: string) {
     this.stop()
-    this.summariesPath = path.join(vaultPath, 'Summaries')
-    this.archivesPath = path.join(vaultPath, 'Archives')
+    this.summariesPath = path.join(vaultPath, 'Archives')
+    this.archivesPath = path.join(vaultPath, 'Summaries')
 
-    // 确保 Summaries 目录存在
+    // 确保 Archives 目录存在
     if (!fs.existsSync(this.summariesPath)) {
       try {
         fs.mkdirSync(this.summariesPath, { recursive: true })
       } catch (e: any) {
-        logger.error(`[SummaryWatcher] 无法创建 Summaries 目录:`, e)
+        logger.error(`[SummaryWatcher] 无法创建 Archives 目录:`, e)
       }
     }
 
@@ -149,18 +149,13 @@ export class SummaryWatcherService {
 
   /**
    * 从文件绝对路径解析出 SummaryType 和日期范围
-   * 路径格式: <vault>/Summaries/<Type>/<filename>.md 或 <vault>/Archives/<Type>/<filename>.md
-   * 文件名格式:
-   *   Weekly:  2026-W18.md
-   *   Monthly: 2026-05.md
-   *   Quarterly: 2026-Q2.md
-   *   Yearly:  2026.md
+   * 路径格式: <vault>/Archives/<Type>/<filename>.md 或 <vault>/Summaries/<Type>/<filename>.md
    */
   private parseSummaryPath(
     fullPath: string
   ): { type: SummaryType; startDate: Date; endDate: Date } | null {
     const dirName = path.basename(path.dirname(fullPath))
-    const fileName = path.basename(fullPath, '.md')
+    const fileName = path.basename(fullPath) // 保留扩展名，因为 parseFileNameToDateRange 需要含扩展名（如 .md）
 
     // 从目录名推断 type
     const typeMap: Record<string, SummaryType> = {
@@ -172,62 +167,15 @@ export class SummaryWatcherService {
     const type = typeMap[dirName]
     if (!type) return null
 
-    return this.parseFileName(type, fileName)
-  }
+    if (!this.summaryFileService) return null
+    const range = this.summaryFileService.parseFileNameToDateRange(type, fileName)
+    if (!range) return null
 
-  private parseFileName(
-    type: SummaryType,
-    name: string
-  ): { type: SummaryType; startDate: Date; endDate: Date } | null {
-    const parts = name.split('-')
-    const year = parseInt(parts[0] ?? '', 10)
-    if (isNaN(year)) return null
-
-    if (type === SummaryType.yearly) {
-      return {
-        type,
-        startDate: new Date(year, 0, 1),
-        endDate: new Date(year, 11, 31, 23, 59, 59)
-      }
+    return {
+      type,
+      startDate: range.startDate,
+      endDate: range.endDate
     }
-
-    if (type === SummaryType.monthly && parts.length === 2) {
-      const month = parseInt(parts[1] ?? '', 10) - 1
-      return {
-        type,
-        startDate: new Date(year, month, 1),
-        endDate: new Date(year, month + 1, 0, 23, 59, 59)
-      }
-    }
-
-    if (type === SummaryType.quarterly && parts.length === 2 && (parts[1] || '').startsWith('Q')) {
-      const q = parseInt((parts[1] ?? '').substring(1), 10)
-      const startMonth = (q - 1) * 3
-      return {
-        type,
-        startDate: new Date(year, startMonth, 1),
-        endDate: new Date(year, startMonth + 3, 0, 23, 59, 59)
-      }
-    }
-
-    if (type === SummaryType.weekly && parts.length === 2 && (parts[1] || '').startsWith('W')) {
-      const week = parseInt((parts[1] ?? '').substring(1), 10)
-      const simpleDate = new Date(year, 0, 4 + (week - 1) * 7)
-      const dayOfWeek = simpleDate.getDay()
-      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-      const start = new Date(
-        simpleDate.getFullYear(),
-        simpleDate.getMonth(),
-        simpleDate.getDate() - diff,
-        0,
-        0,
-        0
-      )
-      const end = new Date(start.getTime() + 6 * 86400000 + 23 * 3600000 + 59 * 60000 + 59000)
-      return { type, startDate: start, endDate: end }
-    }
-
-    return null
   }
 }
 

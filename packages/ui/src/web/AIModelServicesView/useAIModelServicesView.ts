@@ -150,8 +150,6 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
     return () => clearTimeout(t)
   }, [activeConfig.enabledModels, selectedProviderId])
 
-  const [prevSelectedProviderId, setPrevSelectedProviderId] = useState<string>(selectedProviderId)
-
   const actions = useAIModelProviderActions({
     t,
     toast,
@@ -183,11 +181,15 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
   })
 
   useEffect(() => {
-    if (selectedProviderId !== prevSelectedProviderId) {
-      setPrevSelectedProviderId(selectedProviderId)
-      actions.populateControllers(selectedProviderId)
+    if (!selectedProviderId && firstProviderId) {
+      setSelectedProviderId(firstProviderId)
     }
-  }, [selectedProviderId, providers, prevSelectedProviderId, actions])
+  }, [firstProviderId, selectedProviderId])
+
+  useEffect(() => {
+    if (!selectedProviderId) return
+    actions.populateControllers(selectedProviderId)
+  }, [selectedProviderId, providers])
 
   return {
     t,

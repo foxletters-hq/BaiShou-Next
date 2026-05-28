@@ -41,3 +41,9 @@ export function isTtsModel(modelId: string): boolean {
   if (!modelId) return false
   return ttsRegex.test(modelId)
 }
+
+/** 可用于供应商「测试连接」（走 chat/completions）的模型 */
+export function isChatModelForConnectionTest(modelId: string): boolean {
+  if (!modelId) return false
+  return !isEmbeddingModel(modelId) && !isRerankModel(modelId) && !isTtsModel(modelId)
+}

@@ -30,13 +30,18 @@
   animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* ───────── Left Sidebar ───────── */
+/* ───────── Left Sidebar (white tone) ───────── */
 .sidebar {
   width: 280px;
-  background-color: var(--bg-surface);
-  border-right: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
+}
+
+:global(body[data-theme='dark']) .sidebar {
+  background: var(--bg-surface);
+  border-right-color: var(--border-subtle);
 }
 
 .sidebarHeader {
@@ -113,20 +118,53 @@
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
   border: 1px solid transparent;
   position: relative;
 }
 
 .listItem:hover {
-  background-color: rgba(var(--color-primary-rgb), 0.05);
+  background: var(--bg-surface-high);
+  border-color: transparent;
+}
+
+.pinnedItem {
+  background: var(--bg-surface-low);
+  border-color: transparent;
+}
+
+.pinnedItem:hover {
+  background: var(--bg-surface-high);
+  border-color: transparent;
 }
 
 .selectedItem {
-  background-color: rgba(var(--color-primary-rgb), 0.15);
+  background: var(--bg-surface-high);
+  border-color: var(--border-subtle);
+  box-shadow: none;
+}
+
+.selectedItem.pinnedItem {
+  background: var(--bg-surface-high);
+}
+
+:global(body[data-theme='dark']) .listItem:hover {
+  background: var(--bg-surface-high);
+}
+
+:global(body[data-theme='dark']) .pinnedItem {
+  background: var(--bg-surface-low);
   border-color: transparent;
+}
+
+:global(body[data-theme='dark']) .selectedItem {
+  background: var(--bg-surface-high);
+  box-shadow: none;
 }
 
 .actionsWrapper {
@@ -247,7 +285,8 @@
 
 .bottomArea {
   padding: 16px 20px;
-  border-top: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
 }
 
 .createBtn {
@@ -258,9 +297,9 @@
   gap: 8px;
   padding: 10px;
   background: var(--bg-surface);
-  border: 1px dashed rgba(var(--color-primary-rgb), 0.4);
+  border: 1px dashed var(--border-subtle);
   border-radius: 12px;
-  color: var(--color-primary);
+  color: var(--text-secondary);
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
@@ -268,8 +307,9 @@
 }
 
 .createBtn:hover {
-  background: rgba(var(--color-primary-rgb), 0.05);
-  border-color: rgba(var(--color-primary-rgb), 0.8);
+  background: var(--bg-surface-high);
+  border-color: rgba(var(--color-outline-variant-rgb), 0.6);
+  color: var(--text-primary);
 }
 
 /* ───────── Right Detail Pane ───────── */

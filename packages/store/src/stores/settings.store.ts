@@ -49,6 +49,7 @@ export interface SettingsActions {
   // Provider Configs
   setProviders: (providers: AIProviderConfig[]) => Promise<void>
   updateProvider: (provider: AIProviderConfig) => Promise<void>
+  patchProvider: (providerId: string, updates: Partial<AIProviderConfig>) => Promise<void>
   toggleProvider: (id: string, isEnabled: boolean) => Promise<void>
 
   // Domain Config Actions
@@ -226,13 +227,37 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           }
         },
 
+        patchProvider: async (providerId, updates) => {
+          if (typeof window !== 'undefined' && (window as any).api?.settings?.patchProvider) {
+            const patch: Record<string, unknown> = {}
+            if (updates.name !== undefined) patch.name = updates.name
+            if (updates.type !== undefined) patch.type = updates.type
+            if (updates.isSystem !== undefined) patch.isSystem = updates.isSystem
+            if (updates.sortOrder !== undefined) patch.sortOrder = updates.sortOrder
+            if (updates.isEnabled !== undefined) patch.enabled = updates.isEnabled
+            if (updates.apiKey !== undefined) patch.apiKey = updates.apiKey
+            if (updates.baseUrl !== undefined) patch.apiBaseUrl = updates.baseUrl
+            if (updates.models !== undefined) patch.models = updates.models
+            if (updates.enabledModels !== undefined) patch.enabledModels = updates.enabledModels
+            if (updates.defaultDialogueModel !== undefined) {
+              patch.defaultDialogueModel = updates.defaultDialogueModel
+            }
+            if (updates.defaultNamingModel !== undefined) {
+              patch.defaultNamingModel = updates.defaultNamingModel
+            }
+
+            if (Object.keys(patch).length === 0) return
+
+            await (window as any).api.settings.patchProvider(providerId, patch)
+            const refreshed = await (window as any).api.settings.getProviders()
+            set({ providers: refreshed || [] })
+            const updatedGlobalModels = await (window as any).api.settings.getGlobalModels()
+            if (updatedGlobalModels) set({ globalModels: updatedGlobalModels })
+          }
+        },
+
         updateProvider: async (provider) => {
-          const { providers, setProviders } = get() as SettingsState & SettingsActions
-          const exists = providers.some((p) => p.id === provider.id)
-          const newProviders = exists
-            ? providers.map((p) => (p.id === provider.id ? provider : p))
-            : [...providers, provider]
-          await setProviders(newProviders)
+          await (get() as SettingsState & SettingsActions).patchProvider(provider.id, provider)
         },
 
         toggleProvider: async (id, isEnabled) => {

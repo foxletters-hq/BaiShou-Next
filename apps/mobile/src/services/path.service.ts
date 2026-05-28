@@ -152,4 +152,60 @@ export class MobileStoragePathService implements IStoragePathService {
   public async getAssistantsBaseDirectory(): Promise<string> {
     return this.getVaultSystemDirectory('default').then((p) => `${p}/assistants`)
   }
+
+  public async getAttachmentsBaseDirectory(): Promise<string> {
+    const vaultDir = await this.getVaultDirectory('default')
+    const dir = `${vaultDir}/Attachments`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    }
+    return dir
+  }
+
+  public async getAvatarsDirectory(): Promise<string> {
+    const attDir = await this.getAttachmentsBaseDirectory()
+    const dir = `${attDir}/avatars`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    }
+    return dir
+  }
+
+  public async getUserAvatarsDirectory(): Promise<string> {
+    const root = FileSystem.documentDirectory
+    if (!root) {
+      return this.getAvatarsDirectory()
+    }
+    const dir = `${root}UserAvatars`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    }
+    return dir
+  }
+
+  public async getDiaryAttachmentDirectory(date: Date): Promise<string> {
+    const journalsDir = await this.getJournalsBaseDirectory()
+    const year = String(date.getFullYear())
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const dir = `${journalsDir}/${year}/${month}/attachment`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    }
+    return dir
+  }
+
+  public async getDiaryAttachmentDirectoryByYearMonth(yearMonth: string): Promise<string> {
+    const [year, month] = yearMonth.split('-')
+    const journalsDir = await this.getJournalsBaseDirectory()
+    const dir = `${journalsDir}/${year}/${month}/attachment`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    }
+    return dir
+  }
 }

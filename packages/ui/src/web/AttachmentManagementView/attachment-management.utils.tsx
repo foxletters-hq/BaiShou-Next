@@ -37,3 +37,27 @@ export function isImageFile(fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || ''
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)
 }
+
+/** Electron 桌面端通过 local 协议直接加载磁盘图片，避免 IPC 传输 base64 */
+export function toLocalFileUrl(filePath: string): string {
+  if (!filePath) return ''
+  if (
+    filePath.startsWith('local://') ||
+    filePath.startsWith('data:') ||
+    filePath.startsWith('blob:') ||
+    filePath.startsWith('http://') ||
+    filePath.startsWith('https://')
+  ) {
+    return filePath
+  }
+  return `local:///${filePath.replace(/\\/g, '/')}`
+}
+
+export function supportsLocalFileImagePreview(): boolean {
+  if (typeof window === 'undefined') return false
+  const w = window as Window & {
+    api?: { attachment?: { getThumbnail?: unknown } }
+    electron?: { ipcRenderer?: { invoke?: unknown } }
+  }
+  return Boolean(w.api?.attachment?.getThumbnail ?? w.electron?.ipcRenderer?.invoke)
+}

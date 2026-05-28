@@ -1,8 +1,20 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { LanguageModel, EmbeddingModel, generateText } from 'ai'
-import { AiProviderModel } from '@baishou/shared'
+import {
+  AiProviderModel,
+  isChatModelForConnectionTest,
+  resolveProviderBaseUrl
+} from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
+import {
+  assertAsciiApiKey,
+  createSanitizedFetch,
+  sanitizeApiKeyForHttp,
+  sanitizeRequestHeaders,
+  sanitizeRequestInit
+} from './fetch-header.util'
+import { extractApiErrorMessage, formatModelNotAvailableMessage } from './provider-api-error.util'
 
 /**
  * DeepSeek thinking 模式的双向拦截器：
@@ -16,23 +28,28 @@ import { getRotatedApiKey } from './provider.utils'
  *
  * 同时缓存当次响应的 reasoning_content，供后续请求回传。
  */
-function createDeepSeekFetchInterceptor(baseURL?: string) {
+function createDeepSeekFetchInterceptor(
+  baseURL?: string,
+  fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)
+) {
   const isDeepSeek = baseURL?.includes('deepseek')
 
   return async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const safeInit = sanitizeRequestInit(init)
+
     if (!isDeepSeek) {
-      return fetch(url, init)
+      return fetchImpl(url, safeInit)
     }
 
     const urlStr = typeof url === 'string' ? url : url.toString()
     if (!urlStr.includes('/chat/completions')) {
-      return fetch(url, init)
+      return fetchImpl(url, safeInit)
     }
 
     // 请求方向：提取 <think> → reasoning_content
-    if (init?.body && typeof init.body === 'string') {
+    if (safeInit?.body && typeof safeInit.body === 'string') {
       try {
-        const body = JSON.parse(init.body)
+        const body = JSON.parse(safeInit.body)
         if (body.messages && Array.isArray(body.messages)) {
           for (const msg of body.messages) {
             if (msg.role !== 'assistant' || typeof msg.content !== 'string' || !msg.content) {
@@ -45,14 +62,14 @@ function createDeepSeekFetchInterceptor(baseURL?: string) {
               msg.reasoning_content = reasoningContent
             }
           }
-          init.body = JSON.stringify(body)
+          safeInit.body = JSON.stringify(body)
         }
       } catch {
         // 解析失败则不干预
       }
     }
 
-    const response = await fetch(url, init)
+    const response = await fetchImpl(url, safeInit)
 
     if (!response.ok || !response.body) {
       return response
@@ -154,13 +171,18 @@ export class OpenAIAdaptedProvider implements IAIProvider {
     this.config = config
   }
 
+  private resolvedBaseUrl(): string {
+    return resolveProviderBaseUrl(this.config.id, this.config.type, this.config.baseUrl)
+  }
+
   private _getSdk() {
-    const rotatedKey = getRotatedApiKey(this.config)
-    const baseURL = this.config.baseUrl || undefined
+    const rotatedKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
+    const baseURL = this.resolvedBaseUrl() || undefined
+    const sanitizedFetch = createSanitizedFetch()
     return createOpenAI({
-      apiKey: rotatedKey || this.config.apiKey,
+      apiKey: rotatedKey,
       baseURL,
-      fetch: createDeepSeekFetchInterceptor(baseURL)
+      fetch: createDeepSeekFetchInterceptor(baseURL, sanitizedFetch)
     })
   }
 
@@ -178,20 +200,19 @@ export class OpenAIAdaptedProvider implements IAIProvider {
   async fetchAvailableModels(): Promise<string[]> {
     // OpenAI 原生的模型拉取端点。
     // 这里因为 AI SDK 屏蔽了该接口，我们可以使用基础的 fetch 调用
-    const apiKey = getRotatedApiKey(this.config) || this.config.apiKey
+    const apiKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
     if (!apiKey && this.config.type !== 'ollama' && this.config.type !== 'lmstudio') {
       return []
     }
 
-    const endpoint = this.config.baseUrl
-      ? this.config.baseUrl.replace(/\/$/, '') + '/models'
-      : 'https://api.openai.com/v1/models'
+    const base = this.resolvedBaseUrl()
+    const endpoint = base ? base.replace(/\/$/, '') + '/models' : 'https://api.openai.com/v1/models'
 
     try {
-      const response = await fetch(endpoint, {
-        headers: {
+      const response = await createSanitizedFetch()(endpoint, {
+        headers: sanitizeRequestHeaders({
           Authorization: `Bearer ${apiKey}`
-        }
+        })
       })
       if (!response.ok) {
         throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`)
@@ -207,18 +228,40 @@ export class OpenAIAdaptedProvider implements IAIProvider {
     }
   }
 
-  async testConnection(testModelId?: string): Promise<void> {
-    const modelToTest =
-      testModelId ||
-      this.config.defaultDialogueModel ||
-      (this.config.enabledModels && this.config.enabledModels.length > 0
-        ? this.config.enabledModels[0]
-        : null) ||
-      (this.config.models && this.config.models.length > 0 ? this.config.models[0] : null)
+  private filterChatModels(modelIds: string[]): string[] {
+    return modelIds.filter((id) => isChatModelForConnectionTest(id))
+  }
 
-    if (!modelToTest) {
-      throw new Error('No usable model found. Please fetch models first.')
+  private async resolveTestModelId(testModelId?: string): Promise<string> {
+    const selected = testModelId?.trim()
+    if (!selected) {
+      throw new Error('No chat model selected for connection test.')
     }
+
+    if (!isChatModelForConnectionTest(selected)) {
+      throw new Error(
+        `Model "${selected}" is not a chat model (embedding/rerank/TTS cannot be used for connection test). Pick a dialogue model in the test dialog.`
+      )
+    }
+
+    let liveChatModels: string[] = []
+    try {
+      liveChatModels = this.filterChatModels(await this.fetchAvailableModels())
+    } catch (e) {
+      console.warn(`[OpenAIAdaptedProvider] Could not list models for ${this.config.id}:`, e)
+    }
+
+    if (liveChatModels.length > 0 && !liveChatModels.includes(selected)) {
+      throw new Error(formatModelNotAvailableMessage(this.config.name, selected, liveChatModels))
+    }
+
+    return selected
+  }
+
+  async testConnection(testModelId?: string): Promise<void> {
+    assertAsciiApiKey(getRotatedApiKey(this.config) || this.config.apiKey)
+
+    const modelToTest = await this.resolveTestModelId(testModelId)
 
     try {
       const abortController = new AbortController()
@@ -232,9 +275,23 @@ export class OpenAIAdaptedProvider implements IAIProvider {
       })
 
       clearTimeout(timeoutId)
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(`Test connection error for ${this.config.name}:`, e)
-      throw new Error(`Connection test failed: ${e.message || 'Unknown network error'}`)
+      const detail = extractApiErrorMessage(e)
+      const isModelError = /model does not exist|model not found|invalid model/i.test(detail)
+      if (isModelError) {
+        let suggestions: string[] = []
+        try {
+          suggestions = this.filterChatModels(await this.fetchAvailableModels())
+        } catch {
+          // ignore
+        }
+        throw new Error(
+          formatModelNotAvailableMessage(this.config.name, modelToTest, suggestions) +
+            (detail ? ` (${detail})` : '')
+        )
+      }
+      throw new Error(`Connection test failed: ${detail}`)
     }
   }
 }

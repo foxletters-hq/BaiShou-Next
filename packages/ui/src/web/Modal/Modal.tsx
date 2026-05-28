@@ -34,12 +34,15 @@ export const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen || typeof document === 'undefined') return null
 
+  const handleOverlayPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!closeOnOverlayClick || e.target !== e.currentTarget) return
+    e.preventDefault()
+    e.stopPropagation()
+    onClose()
+  }
+
   return createPortal(
-    <div
-      className={styles.overlay}
-      style={{ zIndex }}
-      onClick={closeOnOverlayClick ? onClose : undefined}
-    >
+    <div className={styles.overlay} style={{ zIndex }} onPointerDown={handleOverlayPointerDown}>
       <div
         className={`${styles.modal} ${className}`.trim()}
         style={{ zIndex: zIndex + 1 }}

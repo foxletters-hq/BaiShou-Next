@@ -56,22 +56,22 @@ export function buildSummaryAiClient(): SummaryAiClient {
       const startTime = Date.now()
       const abortController = new AbortController()
 
-      // 45秒 Promise 级别强制超时，绝对防止任何流挂起
+      // 120秒 Promise 级别强制超时，绝对防止任何流挂起
       let timeoutId: ReturnType<typeof setTimeout>
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           abortController.abort()
           const err = new Error(
-            'AI generation timed out after 45 seconds (Promise level force-abort).'
+            'AI generation timed out after 120 seconds (Promise level force-abort).'
           )
           err.name = 'AbortError'
           reject(err)
-        }, 45000)
+        }, 120000)
       })
 
       try {
         logger.info(
-          `[SummaryAI] Invoking Vercel AI SDK generateText with 45s Promise-race timeout...`
+          `[SummaryAI] Invoking Vercel AI SDK generateText with 120s Promise-race timeout...`
         )
 
         const generatePromise = (async () => {
@@ -107,7 +107,7 @@ export function buildSummaryAiClient(): SummaryAiClient {
           err.message?.includes('timeout')
         ) {
           logger.error(
-            `[SummaryAI] REQUEST TIMED OUT! AI generation request failed in ${duration}ms after exceeding the 45 seconds limit.`
+            `[SummaryAI] REQUEST TIMED OUT! AI generation request failed in ${duration}ms after exceeding the 120 seconds limit.`
           )
         } else {
           logger.error(

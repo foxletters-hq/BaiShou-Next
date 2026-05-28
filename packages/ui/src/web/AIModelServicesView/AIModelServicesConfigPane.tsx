@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import {
   MdApi,
   MdRestore,
@@ -8,10 +8,12 @@ import {
   MdVisibilityOff,
   MdViewList,
   MdSync,
-  MdDeleteOutline
+  MdDeleteOutline,
+  MdSearch
 } from 'react-icons/md'
 import styles from './AIModelServicesView.module.css'
 import { Switch } from '../Switch/Switch'
+import { HelpTooltip } from '../HelpTooltip'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 
 export interface AIModelServicesConfigPaneProps {
@@ -19,6 +21,8 @@ export interface AIModelServicesConfigPaneProps {
 }
 
 export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps> = ({ vm }) => {
+  const [modelSearchQuery, setModelSearchQuery] = useState('')
+
   const {
     t,
     activeProviderMeta,
@@ -40,6 +44,24 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
     handleModelToggle,
     handleSaveCurrentProviderConfig
   } = vm
+
+  useEffect(() => {
+    setModelSearchQuery('')
+  }, [activeProviderMeta?.id])
+
+  const sortedDisplayModels = useMemo(() => {
+    const models = activeConfig?.models
+    if (!models?.length) return []
+
+    const sortingSet = new Set(delayedEnabledModels)
+    const enabledModels = models.filter((m) => sortingSet.has(m))
+    const disabledModels = models.filter((m) => !sortingSet.has(m))
+    const sorted = [...enabledModels, ...disabledModels]
+
+    const query = modelSearchQuery.trim().toLowerCase()
+    if (!query) return sorted
+    return sorted.filter((m) => m.toLowerCase().includes(query))
+  }, [activeConfig?.models, delayedEnabledModels, modelSearchQuery])
 
   if (!activeProviderMeta) return null
 
@@ -76,6 +98,13 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                   <MdApi className={styles.apiIcon} />
                 </div>
                 <span>{t('settings.api_config', 'API 配置')}</span>
+                <HelpTooltip
+                  content={t(
+                    'ai_config.test_connection_help',
+                    '连接测试会调用对话接口。请在弹窗中选择大语言模型（对话模型），不要选择 Embedding、Rerank 或 TTS 模型。若列表为空，请先获取模型并启用对话模型。'
+                  )}
+                  size={16}
+                />
               </div>
               <button className={styles.resetBtnInline} onClick={handleResetCurrentProvider}>
                 <MdRestore size={16} />
@@ -163,40 +192,56 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             </div>
 
             {activeConfig.models && activeConfig.models.length > 0 ? (
-              <div className={styles.modelsCard}>
-                {(() => {
-                  const sortingSet = new Set(delayedEnabledModels)
-                  const enabledModels = activeConfig.models!.filter((m) => sortingSet.has(m))
-                  const disabledModels = activeConfig.models!.filter((m) => !sortingSet.has(m))
-                  const sortedModels = [...enabledModels, ...disabledModels]
+              <>
+                <div className={styles.modelSearchWrap}>
+                  <MdSearch className={styles.modelSearchIcon} size={20} aria-hidden />
+                  <input
+                    type="search"
+                    value={modelSearchQuery}
+                    onChange={(e) => setModelSearchQuery(e.target.value)}
+                    placeholder={t('common.search_model', '搜索模型...')}
+                    className={styles.modelSearchInput}
+                    aria-label={t('common.search_model', '搜索模型...')}
+                  />
+                </div>
 
-                  const actualEnabledSet = new Set(activeConfig.enabledModels || [])
+                {sortedDisplayModels.length > 0 ? (
+                  <div className={styles.modelsCard}>
+                    {(() => {
+                      const actualEnabledSet = new Set(activeConfig.enabledModels || [])
 
-                  return sortedModels.map((mdl, idx) => {
-                    const isChecked = actualEnabledSet.has(mdl)
-                    const isLast = idx === sortedModels.length - 1
-                    return (
-                      <div
-                        key={mdl}
-                        className={`${styles.modelLineItem} ${!isLast ? styles.modelLineItemDivider : ''}`}
-                      >
-                        <div className={styles.modelLineItemLeft}>
-                          {renderIcon(activeProviderMeta.iconUrl)}
-                          <span
-                            className={`${styles.modelNameText} ${isChecked ? styles.modelNameChecked : ''}`}
+                      return sortedDisplayModels.map((mdl, idx) => {
+                        const isChecked = actualEnabledSet.has(mdl)
+                        const isLast = idx === sortedDisplayModels.length - 1
+                        return (
+                          <div
+                            key={mdl}
+                            className={`${styles.modelLineItem} ${!isLast ? styles.modelLineItemDivider : ''}`}
                           >
-                            {mdl}
-                          </span>
-                        </div>
-                        <Switch
-                          checked={isChecked}
-                          onChange={(e) => handleModelToggle(mdl, e.target.checked)}
-                        />
-                      </div>
-                    )
-                  })
-                })()}
-              </div>
+                            <div className={styles.modelLineItemLeft}>
+                              {renderIcon(activeProviderMeta.iconUrl)}
+                              <span
+                                className={`${styles.modelNameText} ${isChecked ? styles.modelNameChecked : ''}`}
+                              >
+                                {mdl}
+                              </span>
+                            </div>
+                            <Switch
+                              checked={isChecked}
+                              onChange={(e) => handleModelToggle(mdl, e.target.checked)}
+                            />
+                          </div>
+                        )
+                      })
+                    })()}
+                  </div>
+                ) : (
+                  <div className={styles.emptyModelsCard}>
+                    <MdSearch size={32} className={styles.emptyModelsIcon} />
+                    <span>{t('common.no_match_model', '没有匹配的可用模型')}</span>
+                  </div>
+                )}
+              </>
             ) : (
               <div className={styles.emptyModelsCard}>
                 <MdViewList size={32} className={styles.emptyModelsIcon} />

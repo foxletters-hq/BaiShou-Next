@@ -287,6 +287,10 @@ export class EmbeddingService {
     yield* runContinueMigration(this.migrationDeps(), this.migrationRef, migrationControl)
   }
 
+  public isMigrationRunning(): boolean {
+    return this.migrationRef.current
+  }
+
   public requestMigrationAbort(): void {
     migrationControl.requestAbort()
   }

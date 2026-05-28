@@ -162,6 +162,9 @@ async function completeFullBootstrap() {
       hotkeyService.start()
       setHotkeyService(hotkeyService)
 
+      const { bootstrapMcpServer } = await import('./services/mcp-runtime')
+      await bootstrapMcpServer()
+
       // 通知渲染进程引导已就绪，可以跳转了
       mainWindow.webContents.send('onboarding:ready')
     }
@@ -327,6 +330,7 @@ app.whenReady().then(async () => {
 app.on('will-quit', () => {
   const { globalShortcut } = require('electron')
   globalShortcut.unregisterAll()
+  void import('./services/mcp-runtime').then(({ shutdownMcpServer }) => shutdownMcpServer())
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

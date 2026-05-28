@@ -8,8 +8,34 @@ import { logger } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { DesktopStoragePathService } from './path.service'
 
-/** Balance speed and size for full vault backups (level 9 is very slow on large trees). */
-const ZIP_COMPRESSION_LEVEL = 6
+/** Balance speed and size for full vault backups (level 9 is very slow on large trees). Level 1 is fastest. */
+const ZIP_COMPRESSION_LEVEL = 1
+
+const STORE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.mp3',
+  '.mp4',
+  '.mov',
+  '.wav',
+  '.avi',
+  '.mkv',
+  '.zip',
+  '.gz',
+  '.tar',
+  '.rar',
+  '.7z',
+  '.pdf',
+  '.epub'
+])
+
+function shouldStoreWithoutCompression(filename: string): boolean {
+  const ext = path.extname(filename).toLowerCase()
+  return STORE_EXTENSIONS.has(ext)
+}
 
 /**
  * 负责将数据打包为 ZIP 文件，并处理本地配置、元数据和 SQLite 数据库的导出。
@@ -61,7 +87,8 @@ export class ZipExporter {
             ) {
               continue
             }
-            archive.file(fullPath, { name: curRelative })
+            const store = shouldStoreWithoutCompression(dirent.name)
+            archive.file(fullPath, { name: curRelative, store } as any)
           }
         }
       } catch (e: any) {
@@ -86,7 +113,8 @@ export class ZipExporter {
           ) {
             continue
           }
-          archive.file(fullPath, { name: dirent.name })
+          const store = shouldStoreWithoutCompression(dirent.name)
+          archive.file(fullPath, { name: dirent.name, store } as any)
         }
       }
     }

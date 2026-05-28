@@ -84,6 +84,21 @@ interface DiaryCardProps {
   basePath?: string
 }
 
+const renderHighlight = (text: string | null | undefined): React.ReactNode => {
+  if (!text) return ''
+  const parts = text.split(/(<b>.*?<\/b>)/g)
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.startsWith('<b>') && part.endsWith('</b>')) {
+          return <b key={index}>{part.substring(3, part.length - 4)}</b>
+        }
+        return part
+      })}
+    </>
+  )
+}
+
 /** 日记卡片组件 */
 export const DiaryCard: React.FC<DiaryCardProps> = ({
   entry,
@@ -180,7 +195,11 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       {/* 内容预览 */}
       <div className="diary-card-content">
         <div className="diary-card-content-text">
-          <MarkdownRenderer content={entry.preview} basePath={basePath} />
+          {entry.preview.includes('<b>') && entry.preview.includes('</b>') ? (
+            <p>{renderHighlight(entry.preview)}</p>
+          ) : (
+            <MarkdownRenderer content={entry.preview} basePath={basePath} />
+          )}
         </div>
 
         {/* 媒体指示器 */}

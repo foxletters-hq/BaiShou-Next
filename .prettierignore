@@ -8,4 +8,5 @@ package-lock.json
 .turbo
 .vscode
 **/.temp-*/**
+apps/desktop/default/**
 
