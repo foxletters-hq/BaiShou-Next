@@ -13,7 +13,7 @@ import {
   agentPartsTable,
   summariesTable,
   executeRawSql
-} from '@baishou/database'
+} from '@baishou/database-desktop'
 import { isBetterSqlite3Available } from './better-sqlite3-available'
 
 const mockTempDir = path.join(__dirname, '.temp-full-archive-test')

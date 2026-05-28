@@ -8,7 +8,7 @@ import {
   ShadowIndexRepository,
   UserProfileRepository,
   SnapshotRepository
-} from '@baishou/database'
+} from '@baishou/database-desktop'
 import {
   SessionFileService,
   SessionSyncService,
@@ -16,8 +16,8 @@ import {
   AssistantFileService,
   AssistantManagerService,
   AttachmentManagerService
-} from '@baishou/core'
-import { pathService } from './vault.ipc'
+} from '@baishou/core-desktop'
+import { fileSystem, pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import { AIProviderConfig, GlobalModelsConfig, logger } from '@baishou/shared'
 import { searchService } from '../services/search.service'
@@ -39,7 +39,7 @@ export function getAgentManagers() {
   const db = connectionManager.getDb()
 
   const realSessionRepo = new SessionRepository(db)
-  const sessionFileService = new SessionFileService(pathService)
+  const sessionFileService = new SessionFileService(pathService, fileSystem)
   const sessionSyncService = new SessionSyncService(realSessionRepo, sessionFileService)
   const sessionManager = new SessionManagerService(
     realSessionRepo,
@@ -48,7 +48,7 @@ export function getAgentManagers() {
   )
 
   const realAssistantRepo = new AssistantRepository(db)
-  const assistantFileService = new AssistantFileService(pathService)
+  const assistantFileService = new AssistantFileService(pathService, fileSystem)
   const attachmentManager = new AttachmentManagerService(pathService)
   const assistantManager = new AssistantManagerService(
     realAssistantRepo,

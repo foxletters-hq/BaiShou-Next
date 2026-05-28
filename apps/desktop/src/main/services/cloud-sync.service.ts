@@ -2,7 +2,7 @@ import * as path from 'path'
 import * as fsp from 'fs/promises'
 import { app } from 'electron'
 
-import { SyncConfig, ICloudSyncClient, SyncRecord } from '@baishou/core'
+import { SyncConfig, ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 import { WebDavSyncClient } from './webdav-sync.client'
 import { S3SyncClient } from './s3-sync.client'
 import { DesktopArchiveService } from './archive.service'

@@ -1,5 +1,5 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
-import { memoryEmbeddingsTable } from '@baishou/database'
+import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { eq, sql } from 'drizzle-orm'

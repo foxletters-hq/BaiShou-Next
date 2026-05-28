@@ -4,7 +4,7 @@ import {
   connectionManager,
   shadowConnectionManager,
   ShadowIndexRepository
-} from '@baishou/database'
+} from '@baishou/database-desktop'
 import {
   SummaryManagerService,
   SummarySyncService,
@@ -12,7 +12,7 @@ import {
   MissingSummaryDetector,
   SummaryGeneratorService,
   handleBuildSharedContext
-} from '@baishou/core'
+} from '@baishou/core-desktop'
 import { settingsManager } from './settings.ipc'
 import {
   logger,
@@ -22,13 +22,14 @@ import {
 } from '@baishou/shared'
 import { SummaryQueueService } from '../services/summary-queue.service'
 import { pathService } from './vault.ipc'
+import { fileSystem } from '../services/node-file-system'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
 import { buildSummaryAiClient } from './summary-ai-client'
 
 export function getSummaryManager() {
   const db = connectionManager.getDb()
   const summaryRepo = new SummaryRepositoryImpl(db)
-  const fileSync = new SummaryFileService(pathService)
+  const fileSync = new SummaryFileService(pathService, fileSystem)
   const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync)
   return new SummaryManagerService(summaryRepo, fileSync, summarySync)
 }

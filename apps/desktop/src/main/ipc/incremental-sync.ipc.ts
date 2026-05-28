@@ -6,7 +6,7 @@ import {
   ThreeWaySyncService,
   SyncOrchestrator,
   OperationLogService
-} from '@baishou/core'
+} from '@baishou/core-desktop'
 import type { S3SyncConfig } from '@baishou/shared'
 import { IncrementalS3Client } from '../services/incremental-s3.client'
 import { IncrementalWebDavClient } from '../services/incremental-webdav.client'

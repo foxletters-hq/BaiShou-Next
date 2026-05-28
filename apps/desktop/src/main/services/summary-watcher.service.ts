@@ -3,10 +3,11 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { SummaryType, logger } from '@baishou/shared'
 import * as chokidar from 'chokidar'
-import { SummarySyncService } from '@baishou/core'
-import { SummaryFileService } from '@baishou/core'
-import { SummaryRepositoryImpl, connectionManager } from '@baishou/database'
+import { SummarySyncService } from '@baishou/core-desktop'
+import { SummaryFileService } from '@baishou/core-desktop'
+import { SummaryRepositoryImpl, connectionManager } from '@baishou/database-desktop'
 import { pathService } from '../ipc/vault.ipc'
+import { fileSystem } from './node-file-system'
 
 /**
  * 总结文件变动监听服务
@@ -43,7 +44,7 @@ export class SummaryWatcherService {
     // 初始化依赖
     const db = connectionManager.getDb()
     const summaryRepo = new SummaryRepositoryImpl(db)
-    this.summaryFileService = new SummaryFileService(pathService)
+    this.summaryFileService = new SummaryFileService(pathService, fileSystem)
     this.summarySync = new SummarySyncService(null, null, summaryRepo, this.summaryFileService)
 
     // 收集需要监听的目录（Summaries + 可选的 Archives）

@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import { logger } from '@baishou/shared'
 import { getAppDb } from '../db'
-import { SettingsRepository } from '@baishou/database'
+import { SettingsRepository } from '@baishou/database-desktop'
 
 export class SnapshotManager {
   private getSnapshotDir(): string {

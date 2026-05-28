@@ -23,8 +23,8 @@
   },
   "dependencies": {
     "@baishou/ai": "workspace:*",
-    "@baishou/core": "workspace:*",
-    "@baishou/database": "workspace:*",
+    "@baishou/core-desktop": "workspace:*",
+    "@baishou/database-desktop": "workspace:*",
     "@baishou/shared": "workspace:*",
     "@baishou/store": "workspace:*",
     "@baishou/ui": "workspace:*",

@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import { createClient, WebDAVClient } from 'webdav'
-import { ICloudSyncClient, SyncRecord } from '@baishou/core'
+import { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
 /**
  * WebDAV 云客户端服务

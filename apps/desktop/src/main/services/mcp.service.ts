@@ -2,7 +2,7 @@ import express from 'express'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
-import type { SettingsRepository } from '@baishou/database'
+import type { SettingsRepository } from '@baishou/database-desktop'
 // @ts-ignore
 import { Server as HttpServer } from 'http'
 

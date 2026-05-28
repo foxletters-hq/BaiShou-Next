@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as Minio from 'minio'
-import type { ICloudSyncClient, SyncRecord } from '@baishou/core'
+import type { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
 /**
  * 增量同步 S3 客户端
