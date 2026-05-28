@@ -95,5 +95,11 @@ export * from './FeatureSettingsView'
 export * from './DatetimePickerSheet'
 export * from './ContextMenu'
 
-// Hooks
-export { useNativeTheme } from './theme'
+// Theme
+export {
+  useNativeTheme,
+  scrollIndicatorStyle,
+  NativeThemeProvider,
+  useNativeThemeContext,
+  type ThemeModePreference
+} from './theme'

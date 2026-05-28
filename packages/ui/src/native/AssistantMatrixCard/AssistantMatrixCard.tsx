@@ -114,7 +114,9 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
                         }
                       ]}
                     >
-                      {isChecked && <Text style={styles.checkmark}>✓</Text>}
+                      {isChecked && (
+                        <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>
+                      )}
                     </View>
                     <Text
                       style={[
@@ -238,7 +240,6 @@ const styles = StyleSheet.create({
     marginRight: 10
   },
   checkmark: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700'
   },

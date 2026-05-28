@@ -51,7 +51,7 @@ export const Button: React.FC<NativeButtonProps> = ({
     return [base, typeof style === 'function' ? style({ pressed }) : style]
   }
 
-  const textColor = variant === 'elevated' ? colors.bgSurface : colors.primary
+  const textColor = variant === 'elevated' ? colors.textOnPrimary : colors.primary
 
   return (
     <Pressable
