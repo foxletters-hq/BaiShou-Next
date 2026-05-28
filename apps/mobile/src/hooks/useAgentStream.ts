@@ -72,7 +72,7 @@ export function useAgentStream(
           await services.sessionManager.upsertSession(
             buildInsertSessionInput({
               id: newSessionId,
-              title: text.substring(0, 20) || t('agent.sessions.newChat', '新对话'),
+              title: text.substring(0, 20) || t('agent.sessions.default_title', '新对话'),
               assistantId: currentAssistant?.id,
               providerId: currentProviderId || undefined,
               modelId: currentModelId || undefined
@@ -82,7 +82,10 @@ export function useAgentStream(
           onSessionCreated?.(newSessionId)
         } catch (e) {
           console.error('Failed to create session', e)
-          Alert.alert(t('common.error', '错误'), t('agent.sessions.createFailed', '创建会话失败'))
+          Alert.alert(
+            t('common.error', '错误'),
+            t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg: '' })
+          )
           return
         }
       }
@@ -91,6 +94,7 @@ export function useAgentStream(
         services.sessionRepo,
         services.sessionManager,
         services.pathService,
+        services.fileSystem,
         {
           sessionId,
           text,
@@ -339,7 +343,7 @@ export function useAgentStream(
       if (!currentSessionId || !services) return
       Alert.alert(
         t('common.confirm_delete', '确认删除'),
-        t('agent.messages.deleteConfirm', '您确定要删除这条消息历史吗？此操作不可逆转。'),
+        t('agent.chat.delete_msg_confirm', '您确定要删除这条消息历史吗？此操作不可逆转。'),
         [
           { text: t('common.cancel', '取消'), style: 'cancel' },
           {

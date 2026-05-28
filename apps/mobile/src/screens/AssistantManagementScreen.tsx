@@ -1,18 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Alert
-} from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
+import { StackScreenLayout } from '../components/StackScreenLayout'
+import { getStackScreenChrome } from '../components/stackScreenChrome'
 
 interface Assistant {
   id: string
@@ -28,7 +21,7 @@ interface Assistant {
 
 export const AssistantManagementScreen: React.FC = () => {
   const { t } = useTranslation()
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const { services, dbReady } = useBaishou()
   const router = useRouter()
 
@@ -117,7 +110,7 @@ export const AssistantManagementScreen: React.FC = () => {
       onPress={() => handleEditAssistant(item)}
       activeOpacity={0.7}
     >
-      <View style={[styles.assistantEmoji, { backgroundColor: colors.primary + '20' }]}>
+      <View style={[styles.assistantEmoji, { backgroundColor: colors.primaryLight }]}>
         <Text style={styles.emojiText}>{item.emoji}</Text>
       </View>
 
@@ -125,7 +118,7 @@ export const AssistantManagementScreen: React.FC = () => {
         <View style={styles.assistantHeader}>
           <Text style={[styles.assistantName, { color: colors.textPrimary }]}>{item.name}</Text>
           {item.isDefault && (
-            <View style={[styles.defaultBadge, { backgroundColor: colors.primary + '20' }]}>
+            <View style={[styles.defaultBadge, { backgroundColor: colors.primaryLight }]}>
               <Text style={[styles.defaultText, { color: colors.primary }]}>默认</Text>
             </View>
           )}
@@ -160,34 +153,16 @@ export const AssistantManagementScreen: React.FC = () => {
   )
 
   return (
-    <>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bgApp}
-      />
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
-        <View style={[styles.container, { backgroundColor: colors.bgApp }]}>
-          {/* 头部 */}
-          <View
-            style={[
-              styles.header,
-              {
-                backgroundColor: colors.bgSurface,
-                borderBottomColor: colors.borderSubtle
-              }
-            ]}
-          >
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Text style={[styles.backText, { color: colors.primary }]}>← 返回</Text>
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>伙伴管理</Text>
-            <TouchableOpacity onPress={handleCreateAssistant}>
-              <Text style={[styles.createButton, { color: colors.primary }]}>+ 新建</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* 助手列表 */}
-          {loading ? (
+    <StackScreenLayout
+      title={t('agent.assistant.management_title')}
+      {...getStackScreenChrome(colors)}
+      headerRight={{
+        label: `+ ${t('common.add')}`,
+        onPress: handleCreateAssistant
+      }}
+      contentStyle={styles.container}
+    >
+      {loading ? (
             <View style={styles.loadingContainer}>
               <Text style={[styles.loadingText, { color: colors.textSecondary }]}>加载中...</Text>
             </View>
@@ -216,40 +191,13 @@ export const AssistantManagementScreen: React.FC = () => {
               contentContainerStyle={styles.listContent}
             />
           )}
-        </View>
-      </SafeAreaView>
-    </>
+    </StackScreenLayout>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1
-  },
   container: {
     flex: 1
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1
-  },
-  backButton: {
-    padding: 8
-  },
-  backText: {
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700'
-  },
-  createButton: {
-    fontSize: 16,
-    fontWeight: '600'
   },
   loadingContainer: {
     flex: 1,

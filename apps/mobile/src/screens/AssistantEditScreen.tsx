@@ -5,8 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
   TextInput,
   Alert,
   Switch
@@ -15,6 +13,8 @@ import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
+import { StackScreenLayout } from '../components/StackScreenLayout'
+import { getStackScreenChrome } from '../components/stackScreenChrome'
 
 interface Assistant {
   id: string
@@ -158,52 +158,35 @@ export const AssistantEditScreen: React.FC = () => {
     ])
   }
 
+  const screenTitle = isNew
+    ? t('agent.assistant.create_title')
+    : t('agent.assistant.edit_title')
+
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
-        <StatusBar
-          barStyle={isDark ? 'light-content' : 'dark-content'}
-          backgroundColor={colors.bgApp}
-        />
-        <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>加载中...</Text>
-        </View>
-      </SafeAreaView>
+      <StackScreenLayout
+        title={screenTitle}
+        {...getStackScreenChrome(colors)}
+        contentStyle={styles.loadingContainer}
+      >
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          {t('common.loading')}
+        </Text>
+      </StackScreenLayout>
     )
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bgApp}
-      />
-
-      {/* 头部 */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: colors.bgSurface,
-            borderBottomColor: colors.borderSubtle
-          }
-        ]}
-      >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={[styles.backText, { color: colors.primary }]}>← 返回</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          {isNew ? '新建助手' : '编辑助手'}
-        </Text>
-        <TouchableOpacity onPress={handleSave} disabled={saving}>
-          <Text
-            style={[styles.saveButton, { color: saving ? colors.textSecondary : colors.primary }]}
-          >
-            {saving ? '保存中...' : '保存'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
+    <StackScreenLayout
+      title={screenTitle}
+      {...getStackScreenChrome(colors)}
+      headerRight={{
+        label: saving ? t('common.saving') : t('common.save'),
+        onPress: handleSave,
+        disabled: saving
+      }}
+      contentStyle={styles.layoutContent}
+    >
       <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
         {/* 基本信息 */}
         <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
@@ -359,14 +342,12 @@ export const AssistantEditScreen: React.FC = () => {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </StackScreenLayout>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1
-  },
+  layoutContent: { flex: 1 },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
@@ -374,28 +355,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1
-  },
-  backButton: {
-    padding: 8
-  },
-  backText: {
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700'
-  },
-  saveButton: {
-    fontSize: 16,
-    fontWeight: '600'
   },
   content: {
     flex: 1,

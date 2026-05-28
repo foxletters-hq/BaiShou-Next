@@ -7,8 +7,6 @@ export function useAgentUI() {
   const { t } = useTranslation()
   const { services } = useBaishou()
 
-  // UI 状态
-  const [showSessionList, setShowSessionList] = useState(false)
   const [showCostDialog, setShowCostDialog] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [showShortcutSheet, setShowShortcutSheet] = useState(false)
@@ -18,7 +16,6 @@ export function useAgentUI() {
   const [isSearchingRecall, setIsSearchingRecall] = useState(false)
   const isUserScrollingRef = useRef(false)
 
-  // 监听滚动
   const handleScroll = useCallback((event: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
     const isAtBottom = contentSize.height - contentOffset.y - layoutMeasurement.height < 150
@@ -26,7 +23,6 @@ export function useAgentUI() {
     setShowScrollButton(!isAtBottom)
   }, [])
 
-  // 滚动到底部
   const scrollToBottom = useCallback((flatListRef: any, force = false) => {
     if (flatListRef.current && (!isUserScrollingRef.current || force)) {
       flatListRef.current.scrollToEnd({ animated: true })
@@ -37,7 +33,6 @@ export function useAgentUI() {
     }
   }, [])
 
-  // 记忆召回搜索
   const handleRecallSearch = useCallback(
     async (query: string, tab: 'diary' | 'memory') => {
       if (!services) return
@@ -50,7 +45,7 @@ export function useAgentUI() {
               dbEntries.map((d: any) => ({
                 id: d.id.toString(),
                 type: 'diary',
-                title: d.title || t('agent.recall.noTitle', '无标题'),
+                title: d.title || t('common.untitled', '无标题'),
                 snippet: d.snippet || d.content?.substring(0, 100) || '',
                 date: new Date(d.createdAt).toISOString().split('T')[0]
               }))
@@ -59,14 +54,13 @@ export function useAgentUI() {
             setRecallItems([])
           }
         } else {
-          // RAG 记忆搜索：移动端通过 diaryService 的全文搜索作为回退方案
           const memoryEntries = await services.diaryService.search(query)
           if (memoryEntries) {
             setRecallItems(
               memoryEntries.map((d: any) => ({
                 id: d.id.toString(),
                 type: 'memory',
-                title: d.title || t('agent.recall.memory', '记忆'),
+                title: d.title || t('agent.chat.memory', 'AI 记忆'),
                 snippet: d.snippet || d.content?.substring(0, 150) || '',
                 date: new Date(d.createdAt).toISOString().split('T')[0],
                 similarity: d.rankScore
@@ -86,14 +80,11 @@ export function useAgentUI() {
     [services, t]
   )
 
-  // 注入记忆
   const handleInjectRecall = useCallback((items: RecallItem[]) => {
     setShowRecallSheet(false)
   }, [])
 
   return {
-    // 状态
-    showSessionList,
     showCostDialog,
     showScrollButton,
     showShortcutSheet,
@@ -101,8 +92,6 @@ export function useAgentUI() {
     showToolManager,
     recallItems,
     isSearchingRecall,
-    // 方法
-    setShowSessionList,
     setShowCostDialog,
     setShowScrollButton,
     setShowShortcutSheet,

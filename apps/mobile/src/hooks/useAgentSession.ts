@@ -100,7 +100,7 @@ export function useAgentSession() {
       await services.sessionManager.upsertSession(
         buildInsertSessionInput({
           id: newId,
-          title: t('agent.sessions.newChat', '新对话')
+          title: t('agent.sessions.default_title', '新对话')
         })
       )
       setCurrentSessionId(newId)
@@ -108,7 +108,11 @@ export function useAgentSession() {
       return newId
     } catch (e) {
       console.error('Failed to create session', e)
-      Alert.alert(t('common.error', '错误'), t('agent.sessions.createFailed', '创建会话失败'))
+      const msg = e instanceof Error ? e.message : String(e)
+      Alert.alert(
+        t('common.error', '错误'),
+        t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg })
+      )
       return null
     }
   }, [services, t, clearSession])
@@ -125,7 +129,7 @@ export function useAgentSession() {
         }
       } catch (e) {
         console.error('Failed to delete session', e)
-        Alert.alert(t('common.error', '错误'), t('agent.sessions.deleteFailed', '删除会话失败'))
+        Alert.alert(t('common.error', '错误'), t('agent.sessions.delete_session', '删除对话'))
       }
     },
     [services, t, currentSessionId, clearSession]
@@ -144,6 +148,18 @@ export function useAgentSession() {
     [services]
   )
 
+  const handleRenameSession = useCallback(
+    async (sessionId: string, newTitle: string) => {
+      if (!services || !newTitle.trim()) return
+      try {
+        await services.sessionManager.updateTitle(sessionId, newTitle.trim())
+      } catch (e) {
+        console.error('Failed to rename session', e)
+      }
+    },
+    [services]
+  )
+
   return {
     // 状态
     currentSessionId,
@@ -156,6 +172,7 @@ export function useAgentSession() {
     handleSelectSession,
     handleCreateSession,
     handleDeleteSession,
-    handlePinSession
+    handlePinSession,
+    handleRenameSession
   }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'expo-router'
 import { AssistantPicker as SharedAssistantPicker } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import type { MockAgentAssistant } from '@baishou/ui/native'
@@ -11,6 +12,7 @@ interface AssistantPickerProps {
 }
 
 export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
+  const router = useRouter()
   const { services, dbReady } = useBaishou()
   const [assistants, setAssistants] = useState<any[]>([])
 
@@ -21,6 +23,10 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
       .then((a) => setAssistants(a || []))
       .catch(() => setAssistants([]))
   }, [props.isVisible, dbReady, services])
+
+  const openAssistants = () => {
+    router.push('/assistants')
+  }
 
   return (
     <SharedAssistantPicker
@@ -42,6 +48,8 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
         const full = assistants.find((a) => a.id === selected.id)
         props.onSelect(full || selected)
       }}
+      onSettingsPress={openAssistants}
+      onCreatePress={openAssistants}
     />
   )
 }

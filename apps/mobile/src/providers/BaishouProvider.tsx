@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
+import { Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
-import { initExpoDatabase } from '@baishou/database/expo'
+import { installExpoDatabaseSchema } from '@baishou/database/expo'
 import {
   SessionManagerService,
   DiaryService,
@@ -46,7 +47,7 @@ import {
 import { SqliteHybridSearchRepository } from '@baishou/database'
 
 import { MobileStoragePathService } from '../services/path.service'
-import { ExpoFileSystem } from '../services/expo-file-system'
+import { createMobileFileSystem } from '../services/create-mobile-file-system'
 import { MobileArchiveService } from '../services/archive.service'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
@@ -71,10 +72,16 @@ import type {
   SessionRepository as SessionRepositoryType,
   SnapshotRepository as SnapshotRepositoryType
 } from '@baishou/database'
+import { isExternalStorageRequiredError } from '../services/storage-permission.service'
+import { isExternalStorageNativeAvailable } from 'expo-baishou-server'
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
 interface BaishouContextValue {
   dbReady: boolean
+  /** Android：是否已成功挂载外部 BaiShou_Root（无权限时为 false） */
+  storageReady: boolean
+  /** Android：授权后重试挂载 BaiShou_Root 并同步磁盘 */
+  retryStorageSetup: () => Promise<boolean>
   services: {
     agentService: AgentSessionService
     sessionManager: SessionManagerService
@@ -122,6 +129,8 @@ interface BaishouContextValue {
 
 const BaishouContext = createContext<BaishouContextValue>({
   dbReady: false,
+  storageReady: Platform.OS !== 'android',
+  retryStorageSetup: async () => Platform.OS !== 'android',
   services: null
 })
 
@@ -157,8 +166,11 @@ async function fetchDuckDuckGoSearch(query: string): Promise<string> {
 }
 
 export function BaishouProvider({ children }: { children: ReactNode }) {
+  const retryStorageSetupRef = useRef<() => Promise<boolean>>(async () => false)
   const [value, setValue] = useState<BaishouContextValue>({
     dbReady: false,
+    storageReady: Platform.OS !== 'android',
+    retryStorageSetup: () => retryStorageSetupRef.current(),
     services: null
   })
 
@@ -179,11 +191,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         }
 
         // 2. 注入 Drizzle 层
-        const { drizzleDb, driver } = initExpoDatabase(expoDb as any)
+        const { drizzleDb, driver } = await installExpoDatabaseSchema(expoDb as any)
 
-        const pathService = new MobileStoragePathService() as any
-        await pathService.getRootDirectory() // trigger initialize
-        const fileSystem = new ExpoFileSystem()
+        const fileSystem = createMobileFileSystem()
+        const pathService = new MobileStoragePathService(fileSystem) as any
 
         // 3. 构建 Repositories
         const sessionRepo = new SessionRepository(drizzleDb)
@@ -204,7 +215,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         )
 
         const assistantFileService = new AssistantFileService(pathService, fileSystem)
-        const attachmentManager = new MobileAttachmentManagerService(pathService)
+        const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
         const assistantManager = new AssistantManagerService(
           assistantRepo,
           assistantFileService,
@@ -214,7 +225,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const fileSyncService = new FileSyncServiceImpl(pathService, fileSystem)
         const vaultIndexService = new VaultIndexServiceImpl()
         const vaultService = new VaultService(pathService, fileSystem)
-        await vaultService.initRegistry()
         const shadowIndexSyncService = new ShadowIndexSyncService(
           shadowRepo,
           pathService,
@@ -263,13 +273,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const agentService = new AgentSessionService()
 
         // 创建归档服务和局域网同步服务
-        const archiveService = new MobileArchiveService(pathService, vaultService)
-        const lanSyncService = new MobileLanSyncService(archiveService)
-        const cloudSyncService = new MobileCloudSyncService(archiveService)
+        const archiveService = new MobileArchiveService(pathService, vaultService, fileSystem)
+        const lanSyncService = new MobileLanSyncService(archiveService, fileSystem)
+        const cloudSyncService = new MobileCloudSyncService(archiveService, fileSystem)
         const incrementalSyncService = new MobileIncrementalSyncService(
           settingsManager,
           archiveService,
-          pathService
+          pathService,
+          fileSystem
         )
 
         const updaterService = new MobileUpdaterService(settingsManager)
@@ -471,35 +482,84 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         }
 
         logger.info('Mobile DB and DI Container Ready!')
+        if (Platform.OS === 'android') {
+          logger.info(
+            `[BaishouProvider] External storage native API: ${isExternalStorageNativeAvailable() ? 'available' : 'MISSING — run pnpm mobile:android:clean'}`
+          )
+        }
 
-        const activeVault = await vaultService.getActiveVault()
-        if (activeVault?.path) {
-          await mobileDataBootstrapper.runWhenVaultReady({
-            shadowIndexSyncService,
-            sessionManager,
-            assistantManager,
-            settingsManager,
-            summarySyncService
-          })
-          vaultFileWatcher.start(activeVault.path, {
-            shadowIndexSyncService,
-            fileSystem
-          })
-          const sessionsDir = await pathService.getSessionsBaseDirectory()
-          sessionFileWatcher.start(sessionsDir, {
-            sessionFileService,
-            sessionSyncService,
-            sessionManager,
-            fileSystem
-          })
-          summaryFileWatcher.start(summarySyncService)
+        const bootstrapDeps = {
+          shadowIndexSyncService,
+          sessionManager,
+          assistantManager,
+          settingsManager,
+          summarySyncService
+        }
+
+        const runStorageBootstrap = async () => {
+          await pathService.getRootDirectory()
+          await vaultService.initRegistry()
+          mobileDataBootstrapper.registerDeps(bootstrapDeps)
+          const activeVault = await vaultService.getActiveVault()
+          if (activeVault?.path) {
+            await mobileDataBootstrapper.runWhenVaultReady(bootstrapDeps)
+            vaultFileWatcher.start(activeVault.path, {
+              shadowIndexSyncService,
+              fileSystem
+            })
+            const sessionsDir = await pathService.getSessionsBaseDirectory()
+            sessionFileWatcher.start(sessionsDir, {
+              sessionFileService,
+              sessionSyncService,
+              sessionManager,
+              fileSystem
+            })
+            summaryFileWatcher.start(summarySyncService)
+          } else {
+            logger.warn('[BaishouProvider] No active vault; skipped bootstrap and file watcher')
+          }
+        }
+
+        let storageReady = Platform.OS !== 'android'
+        if (Platform.OS === 'android') {
+          try {
+            await runStorageBootstrap()
+            storageReady = true
+          } catch (e) {
+            if (isExternalStorageRequiredError(e)) {
+              logger.info(
+                '[BaishouProvider] Waiting for MANAGE_EXTERNAL_STORAGE; diary UI will prompt user'
+              )
+              storageReady = false
+            } else {
+              throw e
+            }
+          }
         } else {
-          logger.warn('[BaishouProvider] No active vault; skipped bootstrap and file watcher')
+          await runStorageBootstrap()
+          storageReady = true
+        }
+
+        retryStorageSetupRef.current = async () => {
+          try {
+            await runStorageBootstrap()
+            if (isMounted) {
+              setValue((prev) => ({ ...prev, storageReady: true }))
+            }
+            return true
+          } catch (e) {
+            if (!isExternalStorageRequiredError(e)) {
+              logger.error('[BaishouProvider] retryStorageSetup failed:', e as Error)
+            }
+            return false
+          }
         }
 
         if (isMounted) {
           setValue({
             dbReady: true,
+            storageReady,
+            retryStorageSetup: () => retryStorageSetupRef.current(),
             services: {
               agentService,
               sessionManager,

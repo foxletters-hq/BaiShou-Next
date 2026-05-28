@@ -1,30 +1,41 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react'
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import {
   View,
   StyleSheet,
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StatusBar,
   TouchableOpacity,
   Text,
-  Alert
+  Alert,
+  Modal,
+  Pressable
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { ChatBubble, InputBar, TokenBadge, StreamingBubble, RecallDialog } from '@baishou/ui/native'
+import * as Clipboard from 'expo-clipboard'
+import { MaterialIcons } from '@expo/vector-icons'
+import {
+  ChatBubble,
+  InputBar,
+  StreamingBubble,
+  RecallDialog,
+  ChatCostDialog,
+  PromptShortcutSheet,
+  AgentToolsView
+} from '@baishou/ui/native'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 
 import { partDataAsRecord } from '../utils/agent-part.util'
-import { SessionList } from '../components/SessionList'
+import { AgentChatAppBar } from '../components/AgentChatAppBar'
+import { ScreenSafeArea } from '../components/ScreenSafeArea'
+import { AgentDrawer, type AssistantSummary } from '../components/AgentDrawer'
 import { AssistantPicker } from '../components/AssistantPicker'
 import { ModelSwitcher } from '../components/ModelSwitcher'
-import { ShortcutManager } from '../components/ShortcutManager'
-import { TokenUsageDialog } from '../components/TokenUsageDialog'
-import { ToolManagerDialog } from '../components/ToolManagerDialog'
 import { ContextChainDialog } from '../components/ContextChainDialog'
+import { useBaishou } from '../providers/BaishouProvider'
 import { useAgentSession } from '../hooks/useAgentSession'
 import { useAgentStream } from '../hooks/useAgentStream'
 import { useAgentModel } from '../hooks/useAgentModel'
@@ -37,9 +48,21 @@ export const AgentScreen = () => {
   const { t } = useTranslation()
   const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
+  const { services, dbReady } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
 
-  // 使用会话管理 hook
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [assistants, setAssistants] = useState<
+    Array<AssistantSummary & { isPinned?: boolean }>
+  >([])
+  const [shortcuts, setShortcuts] = useState<
+    Array<{ id: string; icon: string; name: string; content: string }>
+  >([])
+  const [toolConfig, setToolConfig] = useState<{
+    disabledToolIds: string[]
+    customConfigs: Record<string, Record<string, unknown>>
+  }>({ disabledToolIds: [], customConfigs: {} })
+
   const {
     currentSessionId,
     setCurrentSessionId,
@@ -49,10 +72,10 @@ export const AgentScreen = () => {
     handleSelectSession,
     handleCreateSession,
     handleDeleteSession,
-    handlePinSession
+    handlePinSession,
+    handleRenameSession
   } = useAgentSession()
 
-  // 使用模型管理 hook
   const {
     currentAssistant,
     currentProviderId,
@@ -65,7 +88,6 @@ export const AgentScreen = () => {
     handleSelectModel
   } = useAgentModel()
 
-  // 使用流式对话 hook
   const {
     isStreaming,
     streamingText,
@@ -87,9 +109,7 @@ export const AgentScreen = () => {
     searchMode
   )
 
-  // 使用 UI 状态 hook
   const {
-    showSessionList,
     showCostDialog,
     showScrollButton,
     showShortcutSheet,
@@ -97,7 +117,6 @@ export const AgentScreen = () => {
     showToolManager,
     recallItems,
     isSearchingRecall,
-    setShowSessionList,
     setShowCostDialog,
     setShowShortcutSheet,
     setShowRecallSheet,
@@ -108,16 +127,96 @@ export const AgentScreen = () => {
     handleInjectRecall
   } = useAgentUI()
 
-  // 使用 TTS hook
-  const { ttsPlayingMsgId, handleTtsReadAloud, stopTTS } = useTTS()
-
-  // 使用分支会话 hook
+  const { ttsPlayingMsgId, handleTtsReadAloud } = useTTS()
   const { branchSession } = useBranchSession()
-
-  // 错误处理
   useStreamError(null, isStreaming)
 
-  // TTS 模式切换 (off / manual / always)
+  useEffect(() => {
+    if (!showShortcutSheet || !dbReady || !services) return
+    services.settingsManager
+      .get<Array<{ id: string; icon: string; name: string; content: string }>>('prompt_shortcuts')
+      .then((items) => setShortcuts(items || []))
+      .catch(() => setShortcuts([]))
+  }, [showShortcutSheet, dbReady, services])
+
+  const loadAssistants = useCallback(async () => {
+    if (!dbReady || !services) return
+    try {
+      const list =
+        (await services.settingsManager.get<
+          Array<{
+            id: string
+            name: string
+            description?: string
+            emoji?: string
+            isPinned?: boolean
+          }>
+        >('assistants')) || []
+      setAssistants(
+        list.map((a) => ({
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          emoji: a.emoji,
+          isPinned: Boolean(a.isPinned)
+        }))
+      )
+    } catch {
+      setAssistants([])
+    }
+  }, [dbReady, services])
+
+  useEffect(() => {
+    loadAssistants()
+  }, [loadAssistants, drawerOpen, showAssistantPicker])
+
+  const pinnedAssistants = useMemo(
+    () =>
+      assistants
+        .filter((a) => a.isPinned)
+        .slice(0, 3)
+        .map(({ id, name, description, emoji }) => ({ id, name, description, emoji })),
+    [assistants]
+  )
+
+  useEffect(() => {
+    if (!showToolManager || !dbReady || !services) return
+    services.settingsManager
+      .get<{ disabledToolIds?: string[]; customConfigs?: Record<string, Record<string, unknown>> }>(
+        'tool_config'
+      )
+      .then((config) =>
+        setToolConfig({
+          disabledToolIds: config?.disabledToolIds || [],
+          customConfigs: config?.customConfigs || {}
+        })
+      )
+      .catch(() => setToolConfig({ disabledToolIds: [], customConfigs: {} }))
+  }, [showToolManager, dbReady, services])
+
+  const handleToolConfigChange = useCallback(
+    async (next: { disabledToolIds: string[]; customConfigs: Record<string, Record<string, unknown>> }) => {
+      setToolConfig(next)
+      if (!services) return
+      try {
+        await services.settingsManager.set('tool_config', next)
+      } catch (e) {
+        console.warn('Failed to save tool config', e)
+      }
+    },
+    [services]
+  )
+
+  const handleShortcutSelect = useCallback(
+    (shortcut: { content: string }) => {
+      setShowShortcutSheet(false)
+      if (shortcut.content.trim()) {
+        void handleSend(shortcut.content.trim())
+      }
+    },
+    [handleSend, setShowShortcutSheet]
+  )
+
   const [ttsMode, setTtsMode] = useState<'off' | 'manual' | 'always'>(() => 'manual')
   const ttsModeRef = useRef(ttsMode)
   ttsModeRef.current = ttsMode
@@ -135,7 +234,6 @@ export const AgentScreen = () => {
     })
   }, [])
 
-  // 恢复 TTS 模式
   useEffect(() => {
     AsyncStorage.getItem('baishou_tts_mode')
       .then((v) => {
@@ -146,7 +244,6 @@ export const AgentScreen = () => {
       .catch(() => {})
   }, [])
 
-  // 搜索模式持久化
   const searchModeLoadedRef = useRef(false)
   useEffect(() => {
     AsyncStorage.getItem('baishou_search_mode')
@@ -166,7 +263,6 @@ export const AgentScreen = () => {
     AsyncStorage.setItem('baishou_search_mode', String(searchMode)).catch(() => {})
   }, [searchMode])
 
-  // 流结束时自动 TTS
   const chatMessagesRef = useRef<any[]>([])
   chatMessagesRef.current = messages
   const prevIsStreamingRef = useRef(isStreaming)
@@ -182,7 +278,6 @@ export const AgentScreen = () => {
     prevIsStreamingRef.current = isStreaming
   }, [isStreaming, handleTtsReadAloud])
 
-  // 上下文链对话框状态
   const [contextDialogState, setContextDialogState] = useState<{
     visible: boolean
     message: any
@@ -196,7 +291,6 @@ export const AgentScreen = () => {
     contextMessages: []
   })
 
-  // 处理分支创建
   const handleBranch = useCallback(
     async (messageId: string) => {
       if (!currentSessionId) return
@@ -207,32 +301,24 @@ export const AgentScreen = () => {
           currentAssistant?.name
         )
         if (newSessionId) {
-          Alert.alert(
-            t('agent.chat.branch_success', '分支创建成功'),
-            t('agent.chat.branch_success_hint', '已创建新的分支会话')
-          )
-          // 刷新会话列表或导航到新会话
+          Alert.alert(t('agent.chat.branch_success', '分支创建成功'))
         }
       } catch (e: any) {
         Alert.alert(
           t('agent.chat.branch_failed', '分支创建失败'),
-          e.message || t('common.unknown_error', '未知错误')
+          e.message || t('app.unknown_error', '未知网络或系统错误')
         )
       }
     },
     [currentSessionId, branchSession, currentAssistant?.name, t]
   )
 
-  // 处理显示上下文链
   const handleShowContext = useCallback(
     (message: any) => {
-      // 解析上下文消息
       let decodedContext: any[] = []
       let compressedContent: string | undefined
-      let originalContent: string | undefined
       let systemPrompt: string | undefined
 
-      // 查找前一条用户消息中的上下文快照
       const msgIndex = messages.findIndex((m: any) => m.id === message.id)
       if (msgIndex > 0) {
         const prevMsg = messages[msgIndex - 1]
@@ -255,7 +341,6 @@ export const AgentScreen = () => {
           }
         }
 
-        // 获取系统提示词
         if (msgIndex === 1 || (msgIndex === 2 && messages[0]?.role === 'system')) {
           const sysMsg = messages.find((m: any) => m.role === 'system')
           if (sysMsg?.content) {
@@ -276,7 +361,6 @@ export const AgentScreen = () => {
     [messages]
   )
 
-  // 自动滚动到底部
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100)
@@ -285,7 +369,29 @@ export const AgentScreen = () => {
 
   const totalInputTokens = tokenUsage?.inputTokens || 0
   const totalOutputTokens = tokenUsage?.outputTokens || 0
-  const estimatedCost = (tokenUsage?.totalCostMicros || 0) / 1000000
+  const estimatedCost = (tokenUsage?.totalCostMicros || 0) / 1_000_000
+  const totalCostMicros = tokenUsage?.totalCostMicros || 0
+  const assistantDisplayName =
+    currentAssistant?.name || t('agent.assistant.default_assistant_name', '默认伙伴')
+
+  const renderEmptyState = () => (
+    <View style={styles.empty}>
+      <View
+        style={[
+          styles.emptyIconCircle,
+          { backgroundColor: colors.primary + '26' }
+        ]}
+      >
+        <MaterialIcons name="auto-awesome" size={38} color={colors.primary} style={{ opacity: 0.7 }} />
+      </View>
+      <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
+        {t('agent.chat.start_chat', '开始和伙伴对话')}
+      </Text>
+      <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
+        {t('agent.chat.empty_hint', '试试问：「我这周写了什么日记？」')}
+      </Text>
+    </View>
+  )
 
   return (
     <>
@@ -293,156 +399,76 @@ export const AgentScreen = () => {
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.bgApp}
       />
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
+      <ScreenSafeArea preset="tab" style={{ backgroundColor: colors.bgApp }}>
         <KeyboardAvoidingView
           style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-          {/* 顶部栏 */}
-          <View
-            style={[
-              styles.header,
-              {
-                backgroundColor: colors.bgSurface,
-                borderBottomColor: colors.borderSubtle
-              }
-            ]}
-          >
-            <View style={styles.headerTitleWrap}>
-              <TouchableOpacity
-                style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }]}
-                onPress={() => setShowAssistantPicker(true)}
-              >
-                <Text style={{ fontSize: 16 }}>{currentAssistant?.emoji || '🤖'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowAssistantPicker(true)}>
-                <Text style={[styles.agentName, { color: colors.textPrimary }]}>
-                  {currentAssistant?.name || t('agent.default_name', 'BaiShou Core')}
-                </Text>
-                <Text style={[styles.agentStatus, { color: colors.accentGreen }]}>
-                  🟢 Neural Sync Active
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={[styles.modelBtn, { backgroundColor: colors.bgSurfaceHighest }]}
-                onPress={() => setShowModelSwitcher(true)}
-              >
-                <Text style={[styles.modelBtnText, { color: colors.textSecondary }]}>
-                  {currentModelId || t('agent.no_model_selected', '选择模型')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowCostDialog(true)}>
-                <TokenBadge
-                  tokenCount={totalInputTokens + totalOutputTokens}
-                  costEstimate={estimatedCost}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
+          <AgentChatAppBar
+            modelName={currentModelId || ''}
+            costMicros={totalCostMicros}
+            onMenuPress={() => setDrawerOpen(true)}
+            onModelPress={() => setShowModelSwitcher(true)}
+            onCostPress={() => setShowCostDialog(true)}
+          />
 
-          {/* 会话切换按钮 */}
-          <TouchableOpacity
-            style={[styles.sessionToggle, { backgroundColor: colors.bgSurfaceHighest }]}
-            onPress={() => setShowSessionList(true)}
-          >
-            <Text style={[styles.sessionToggleText, { color: colors.textSecondary }]}>
-              {currentSessionId
-                ? t('agent.sessions.switch', '切换会话')
-                : t('agent.sessions.new_session', '新建会话')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* 分页加载按钮 */}
           {hasMore && (
             <TouchableOpacity style={styles.loadMore} onPress={handleLoadMore}>
               <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
-                {t('agent.load_more', '点击加载更多记录')}
+                {t('common.load_more', '点击加载更多记录')}
               </Text>
             </TouchableOpacity>
           )}
 
-          {/* 聊天列表 */}
           <FlatList
             ref={flatListRef}
             style={styles.list}
             contentContainerStyle={styles.listContent}
             data={messages}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => {
-              // 解析上下文消息
-              let decodedContext: any[] | undefined
-              let compressedContent: string | undefined
-              let originalContent: string | undefined
-              let systemPrompt: string | undefined
-
-              if (item.role === 'assistant') {
-                const msgIndex = messages.findIndex((m: any) => m.id === item.id)
-                if (msgIndex > 0) {
-                  const prevMsg = messages[msgIndex - 1]
-                  if (prevMsg.role === 'user' && prevMsg.parts) {
-                    const ctxPart = prevMsg.parts.find((p) => p.type === 'context_snapshot')
-                    const ctxData = ctxPart ? partDataAsRecord(ctxPart.data) : undefined
-                    const snapshots = ctxData?.snapshots
-                    if (Array.isArray(snapshots)) {
-                      decodedContext = snapshots.map((s: Record<string, unknown>) => ({
-                        role: 'system',
-                        content: `${s.title ? '[' + String(s.title) + '] ' : ''}${String(s.content ?? '')}`,
-                        timestamp: item.createdAt || new Date()
-                      }))
-                    }
-
-                    const compPart = prevMsg.parts.find((p) => p.type === 'compaction')
-                    const compData = compPart ? partDataAsRecord(compPart.data) : undefined
-                    if (typeof compData?.summary === 'string') {
-                      compressedContent = compData.summary
-                    }
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            renderItem={({ item }) => (
+              <View style={styles.bubble}>
+                <ChatBubble
+                  message={{
+                    role: item.role as any,
+                    content: item.content,
+                    toolInvocations: item.toolInvocations,
+                    attachments: item.attachments,
+                    inputTokens: item.inputTokens,
+                    outputTokens: item.outputTokens,
+                    isReasoning: item.isReasoning,
+                    costMicros: item.costMicros
+                  }}
+                  onRegenerate={() => handleRegenerate(item.id)}
+                  onResend={
+                    item.role === 'user'
+                      ? () => handleEditMessage(item.id, item.content)
+                      : undefined
                   }
-
-                  // 获取系统提示词
-                  if (msgIndex === 1 || (msgIndex === 2 && messages[0]?.role === 'system')) {
-                    const sysMsg = messages.find((m: any) => m.role === 'system')
-                    if (sysMsg?.content) {
-                      systemPrompt = sysMsg.content
-                    }
+                  onResendEdit={
+                    item.role === 'user'
+                      ? (content) => handleEditMessage(item.id, content)
+                      : undefined
                   }
-                }
-              }
-
-              return (
-                <View style={styles.bubble}>
-                  <ChatBubble
-                    message={{
-                      role: item.role as any,
-                      content: item.content,
-                      toolInvocations: item.toolInvocations,
-                      attachments: item.attachments,
-                      inputTokens: item.inputTokens,
-                      outputTokens: item.outputTokens,
-                      isReasoning: item.isReasoning,
-                      costMicros: item.costMicros,
-                      contextMessages: decodedContext
-                    }}
-                    onRegenerate={() => handleRegenerate(item.id)}
-                    onEdit={() => handleEditMessage(item.id, item.content)}
-                    onDelete={() => handleDeleteMessage(item.id)}
-                    onReadAloud={
-                      item.role === 'assistant'
-                        ? (content) => handleTtsReadAloud(content, item.id)
-                        : undefined
-                    }
-                    isTtsPlaying={ttsPlayingMsgId === item.id}
-                    onShowContext={item.role === 'assistant' ? handleShowContext : undefined}
-                    onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
-                  />
-                </View>
-              )
-            }}
+                  onCopy={() => Clipboard.setStringAsync(item.content)}
+                  onDelete={() => handleDeleteMessage(item.id)}
+                  onReadAloud={
+                    item.role === 'assistant'
+                      ? (content) => handleTtsReadAloud(content, item.id)
+                      : undefined
+                  }
+                  isTtsPlaying={ttsPlayingMsgId === item.id}
+                  onShowContext={item.role === 'assistant' ? () => handleShowContext(item) : undefined}
+                  onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
+                />
+              </View>
+            )}
             ListFooterComponent={
               isStreaming ? (
                 <View>
-                  {/* 工具调用状态展示 */}
                   {(activeTool || completedTools.length > 0) && (
                     <View
                       style={[
@@ -452,9 +478,7 @@ export const AgentScreen = () => {
                     >
                       {completedTools.map((tool, index) => (
                         <View key={index} style={styles.toolItem}>
-                          <Text style={[styles.toolCheckmark, { color: colors.accentGreen }]}>
-                            ✓
-                          </Text>
+                          <MaterialIcons name="check" size={14} color={colors.accentGreen} />
                           <Text style={[styles.toolName, { color: colors.textSecondary }]}>
                             {tool.name}
                           </Text>
@@ -462,7 +486,7 @@ export const AgentScreen = () => {
                       ))}
                       {activeTool && (
                         <View style={styles.toolItem}>
-                          <Text style={[styles.toolSpinner, { color: colors.primary }]}>⟳</Text>
+                          <MaterialIcons name="sync" size={14} color={colors.primary} />
                           <Text style={[styles.toolNameActive, { color: colors.textPrimary }]}>
                             {activeTool.name}
                           </Text>
@@ -475,7 +499,7 @@ export const AgentScreen = () => {
                     reasoning={streamingReasoning}
                     isReasoning={isStreaming && !streamingText && !!streamingReasoning}
                     aiProfile={{
-                      name: currentAssistant?.name || 'AI',
+                      name: assistantDisplayName,
                       emoji: currentAssistant?.emoji
                     }}
                   />
@@ -487,145 +511,70 @@ export const AgentScreen = () => {
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            ListEmptyComponent={
-              <View style={styles.empty}>
-                <Text style={styles.emptyIcon}>🌌</Text>
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                  {t('agent.empty_title', '神经节完全空白')}
-                </Text>
-                <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
-                  {t('agent.empty_subtitle', '尝试敲入指令以焕发突触...')}
-                </Text>
-              </View>
-            }
+            ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
           />
 
-          {/* 滚动到底部按钮 */}
           {showScrollButton && (
             <TouchableOpacity
               style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
               onPress={() => scrollToBottom(flatListRef, true)}
+              accessibilityLabel={t('agent.chat.scroll_to_bottom', '回到最新消息')}
             >
-              <Text style={[styles.scrollBtnText, { color: colors.textSecondary }]}>↓</Text>
+              <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
 
-          {/* 底部功能条 */}
-          <View
-            style={[
-              styles.actionBar,
-              {
-                backgroundColor: colors.bgSurface,
-                borderTopColor: colors.borderSubtle
-              }
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.bgSurfaceHighest }]}
-              onPress={() => setShowShortcutSheet(true)}
-            >
-              <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>/</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.bgSurfaceHighest }]}
-              onPress={() => setShowRecallSheet(true)}
-            >
-              <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>📷</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.bgSurfaceHighest }]}
-              onPress={() => setShowToolManager(true)}
-            >
-              <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>📌</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.actionBtn,
-                {
-                  backgroundColor: searchMode ? colors.primary : colors.bgSurfaceHighest
-                }
-              ]}
-              onPress={toggleSearchMode}
-            >
-              <Text
-                style={[
-                  styles.actionBtnText,
-                  {
-                    color: searchMode ? colors.textOnPrimary : colors.textSecondary
-                  }
-                ]}
-              >
-                🔍
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.actionBtn,
-                {
-                  backgroundColor:
-                    ttsMode === 'always'
-                      ? colors.primary
-                      : ttsMode === 'manual'
-                        ? colors.bgSurfaceHighest
-                        : colors.bgSurfaceHighest
-                }
-              ]}
-              onPress={toggleTtsMode}
-            >
-              <Text
-                style={[
-                  styles.actionBtnText,
-                  {
-                    color:
-                      ttsMode !== 'off'
-                        ? ttsMode === 'always'
-                          ? colors.textOnPrimary
-                          : colors.textSecondary
-                        : colors.textSecondary
-                  }
-                ]}
-              >
-                {ttsMode === 'off' ? '🔇' : ttsMode === 'always' ? '🔊' : '🔉'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* 输入框 */}
-          <View style={[styles.inputWrap, { backgroundColor: colors.bgSurface }]}>
+          <View style={[styles.inputWrap, { backgroundColor: colors.bgApp }]}>
             <InputBar
               onSend={handleSend}
               isLoading={isLoading}
               onStop={handleStop}
-              assistantName={currentAssistant?.name || t('agent.default_name', 'BaiShou Core')}
+              assistantName={assistantDisplayName}
+              onAssistantTap={() => setShowAssistantPicker(true)}
+              onTriggerShortcut={() => setShowShortcutSheet(true)}
+              onManageShortcuts={() => setShowShortcutSheet(true)}
+              onRecall={() => setShowRecallSheet(true)}
+              onOpenTools={() => setShowToolManager(true)}
+              searchMode={searchMode}
+              onToggleSearchMode={toggleSearchMode}
+              ttsMode={ttsMode}
+              onToggleTtsMode={toggleTtsMode}
             />
           </View>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </ScreenSafeArea>
 
-      {/* 会话列表模态框 */}
-      {showSessionList && (
-        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-          <View style={[styles.modal, { backgroundColor: colors.bgSurface }]}>
-            <SessionList
-              selectedSessionId={currentSessionId || undefined}
-              onSelectSession={handleSelectSession}
-              onCreateSession={handleCreateSession}
-              onDeleteSession={handleDeleteSession}
-              onPinSession={handlePinSession}
-            />
-            <TouchableOpacity
-              style={[styles.closeBtn, { backgroundColor: colors.bgSurfaceHighest }]}
-              onPress={() => setShowSessionList(false)}
-            >
-              <Text style={[styles.closeBtnText, { color: colors.textSecondary }]}>
-                {t('common.close', '关闭')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      <AgentDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        currentAssistant={
+          currentAssistant
+            ? {
+                id: currentAssistant.id,
+                name: currentAssistant.name,
+                description: (currentAssistant as { description?: string }).description,
+                emoji: currentAssistant.emoji
+              }
+            : null
+        }
+        pinnedAssistants={pinnedAssistants}
+        selectedSessionId={currentSessionId || undefined}
+        onSelectSession={handleSelectSession}
+        onCreateSession={() => {
+          void handleCreateSession()
+        }}
+        onShowAssistantPicker={() => setShowAssistantPicker(true)}
+        onSelectAssistant={(assistant) => {
+          const full = assistants.find((a) => a.id === assistant.id)
+          if (full) {
+            handleSelectAssistant(full as any)
+          }
+        }}
+        onPinSession={handlePinSession}
+        onDeleteSession={handleDeleteSession}
+        onRenameSession={handleRenameSession}
+      />
 
-      {/* 助手选择器 */}
       <AssistantPicker
         isVisible={showAssistantPicker}
         onClose={() => setShowAssistantPicker(false)}
@@ -633,7 +582,6 @@ export const AgentScreen = () => {
         selectedAssistantId={currentAssistant?.id}
       />
 
-      {/* 模型切换器 */}
       <ModelSwitcher
         isVisible={showModelSwitcher}
         onClose={() => setShowModelSwitcher(false)}
@@ -642,24 +590,22 @@ export const AgentScreen = () => {
         currentModelId={currentModelId || undefined}
       />
 
-      {/* Token 使用统计对话框 */}
-      <TokenUsageDialog
+      <ChatCostDialog
         visible={showCostDialog}
         onClose={() => setShowCostDialog(false)}
-        currentModelId={currentModelId}
-        inputTokens={totalInputTokens}
-        outputTokens={totalOutputTokens}
-        estimatedCost={estimatedCost}
+        totalTokens={totalInputTokens + totalOutputTokens}
+        totalCost={estimatedCost}
+        sessionTokens={totalInputTokens + totalOutputTokens}
+        sessionCost={estimatedCost}
       />
 
-      {/* 快捷方式管理器 */}
-      <ShortcutManager
-        isVisible={showShortcutSheet}
+      <PromptShortcutSheet
+        visible={showShortcutSheet}
         onClose={() => setShowShortcutSheet(false)}
-        onSelect={() => {}}
+        shortcuts={shortcuts}
+        onSelect={handleShortcutSelect}
       />
 
-      {/* 记忆召回答框 */}
       <RecallDialog
         isOpen={showRecallSheet}
         onClose={() => setShowRecallSheet(false)}
@@ -669,10 +615,27 @@ export const AgentScreen = () => {
         onInject={handleInjectRecall}
       />
 
-      {/* 工具管理器 */}
-      <ToolManagerDialog visible={showToolManager} onClose={() => setShowToolManager(false)} />
+      <Modal
+        visible={showToolManager}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowToolManager(false)}
+      >
+        <ScreenSafeArea preset="modal" style={{ backgroundColor: colors.bgApp }}>
+          <View style={[styles.toolModalHeader, { borderBottomColor: colors.borderSubtle }]}>
+            <Text style={[styles.toolModalTitle, { color: colors.textPrimary }]}>
+              {t('settings.agent_tools_title', '工具管理')}
+            </Text>
+            <Pressable onPress={() => setShowToolManager(false)}>
+              <Text style={[styles.toolModalClose, { color: colors.textSecondary }]}>
+                {t('common.close', '关闭')}
+              </Text>
+            </Pressable>
+          </View>
+          <AgentToolsView config={toolConfig} onChange={handleToolConfigChange} />
+        </ScreenSafeArea>
+      </Modal>
 
-      {/* 上下文链对话框 */}
       <ContextChainDialog
         visible={contextDialogState.visible}
         onClose={() => setContextDialogState((prev) => ({ ...prev, visible: false }))}
@@ -689,36 +652,6 @@ export const AgentScreen = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1
-  },
-  headerTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  agentName: { fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
-  agentStatus: { fontSize: 11, fontWeight: '600' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  modelBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  modelBtnText: { fontSize: 12, fontWeight: '600' },
-  sessionToggle: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center'
-  },
-  sessionToggleText: { fontSize: 14, fontWeight: '600' },
   loadMore: { paddingVertical: 12, alignItems: 'center' },
   loadMoreText: {
     fontSize: 13,
@@ -760,58 +693,66 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: '30%',
-    opacity: 0.5
+    marginTop: '24%',
+    paddingHorizontal: 24
   },
-  emptyIcon: { fontSize: 56, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  emptySub: { fontSize: 14, fontWeight: '500' },
+  emptyIconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 10,
+    textAlign: 'center'
+  },
+  emptySub: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 20,
+    opacity: 0.7
+  },
   scrollBtn: {
     position: 'absolute',
-    bottom: 100,
-    right: 32,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    bottom: 120,
+    right: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 5
+    elevation: 4
   },
-  scrollBtnText: { fontSize: 18, fontWeight: '600' },
-  actionBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 12,
-    borderTopWidth: 1
-  },
-  actionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  actionBtnText: { fontSize: 15, fontWeight: '800' },
   inputWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16
+    paddingHorizontal: 0,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 4
   },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center'
+  toolModal: {
+    flex: 1
   },
-  modal: { width: '90%', height: '80%', borderRadius: 24, overflow: 'hidden' },
-  closeBtn: { padding: 16, alignItems: 'center', borderTopWidth: 1 },
-  closeBtnText: { fontSize: 16, fontWeight: '600' }
+  toolModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1
+  },
+  toolModalTitle: {
+    fontSize: 18,
+    fontWeight: '700'
+  },
+  toolModalClose: {
+    fontSize: 16,
+    fontWeight: '600'
+  }
 })
