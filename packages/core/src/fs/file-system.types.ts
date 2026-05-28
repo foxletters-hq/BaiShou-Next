@@ -1,7 +1,13 @@
 export interface FileStat {
   isFile: boolean
   isDirectory: boolean
+  /** File size in bytes when available */
+  size?: number
+  /** Last modification time (ms since epoch) when available */
+  mtimeMs?: number
 }
+
+export type FileEncoding = 'utf8' | 'base64'
 
 /**
  * Cross-platform file I/O abstraction for shared @baishou/core services.
@@ -16,9 +22,12 @@ export interface IFileSystem {
    * Read a UTF-8 text file.
    * @throws Error with `code: 'ENOENT'` when the file is missing (Node-compatible).
    */
-  readFile(path: string, encoding: 'utf8'): Promise<string>
+  readFile(path: string, encoding?: FileEncoding): Promise<string>
 
-  writeFile(path: string, data: string, encoding: 'utf8'): Promise<void>
+  writeFile(path: string, data: string, encoding?: FileEncoding): Promise<void>
+
+  /** Copy file or directory tree (recursive when source is a directory). */
+  copyFile(src: string, dest: string): Promise<void>
 
   /**
    * Remove a file. Matches Node: throws `ENOENT` when missing unless the caller catches it.

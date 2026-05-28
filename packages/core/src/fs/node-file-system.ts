@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import type { FileStat, IFileSystem } from './file-system.types'
+import type { FileEncoding, FileStat, IFileSystem } from './file-system.types'
 
 function enoentError(filePath: string, syscall: string): NodeJS.ErrnoException {
   const err = new Error(
@@ -19,17 +19,29 @@ export class NodeFileSystem implements IFileSystem {
     await fs.mkdir(dirPath, { recursive: options?.recursive ?? false })
   }
 
-  async readFile(filePath: string, encoding: 'utf8'): Promise<string> {
+  async readFile(filePath: string, encoding: FileEncoding = 'utf8'): Promise<string> {
     try {
-      return await fs.readFile(filePath, encoding)
+      if (encoding === 'base64') {
+        const buf = await fs.readFile(filePath)
+        return buf.toString('base64')
+      }
+      return await fs.readFile(filePath, 'utf8')
     } catch (e: any) {
       if (e?.code === 'ENOENT') throw enoentError(filePath, 'open')
       throw e
     }
   }
 
-  async writeFile(filePath: string, data: string, encoding: 'utf8'): Promise<void> {
-    await fs.writeFile(filePath, data, encoding)
+  async writeFile(filePath: string, data: string, encoding: FileEncoding = 'utf8'): Promise<void> {
+    if (encoding === 'base64') {
+      await fs.writeFile(filePath, Buffer.from(data, 'base64'))
+      return
+    }
+    await fs.writeFile(filePath, data, 'utf8')
+  }
+
+  async copyFile(src: string, dest: string): Promise<void> {
+    await fs.cp(src, dest, { recursive: true })
   }
 
   async unlink(filePath: string): Promise<void> {
@@ -52,7 +64,12 @@ export class NodeFileSystem implements IFileSystem {
   async stat(filePath: string): Promise<FileStat> {
     try {
       const s = await fs.stat(filePath)
-      return { isFile: s.isFile(), isDirectory: s.isDirectory() }
+      return {
+        isFile: s.isFile(),
+        isDirectory: s.isDirectory(),
+        size: s.size,
+        mtimeMs: s.mtimeMs
+      }
     } catch (e: any) {
       if (e?.code === 'ENOENT') throw enoentError(filePath, 'stat')
       throw e
