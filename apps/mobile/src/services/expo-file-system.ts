@@ -2,9 +2,9 @@ import * as FileSystem from 'expo-file-system'
 import type { FileStat, IFileSystem } from '@baishou/core-mobile'
 
 function enoentError(filePath: string, syscall: string): Error & { code: string } {
-  const err = new Error(
-    `${syscall}: no such file or directory, open '${filePath}'`
-  ) as Error & { code: string }
+  const err = new Error(`${syscall}: no such file or directory, open '${filePath}'`) as Error & {
+    code: string
+  }
   err.code = 'ENOENT'
   return err
 }

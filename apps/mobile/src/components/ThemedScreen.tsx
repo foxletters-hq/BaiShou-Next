@@ -30,7 +30,10 @@ export function ThemedScreen({ children, scroll = false, style, edges = true }: 
   if (!edges) {
     return (
       <>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgApp} />
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={colors.bgApp}
+        />
         {body}
       </>
     )
@@ -38,7 +41,10 @@ export function ThemedScreen({ children, scroll = false, style, edges = true }: 
 
   return (
     <>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgApp} />
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.bgApp}
+      />
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgApp }}>{body}</SafeAreaView>
     </>
   )

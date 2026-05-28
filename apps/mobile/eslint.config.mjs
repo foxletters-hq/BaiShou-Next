@@ -58,7 +58,8 @@ export default [
                 '@baishou/database/src/drivers/node-sqlite*',
                 '@baishou/database/src/connection.manager*'
               ],
-              message: '请使用 @baishou/database 或 @baishou/database/expo，不要引用桌面数据库入口。'
+              message:
+                '请使用 @baishou/database 或 @baishou/database/expo，不要引用桌面数据库入口。'
             },
             {
               group: ['@baishou/ui/src/web/**', '@baishou/ui/web/**'],

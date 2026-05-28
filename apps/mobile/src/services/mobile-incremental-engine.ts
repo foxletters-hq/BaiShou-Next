@@ -97,7 +97,7 @@ export class MobileIncrementalEngine {
         const hash = await md5File(full)
         manifest.files[relPath] = {
           hash,
-          size: info.exists && 'size' in info ? info.size ?? 0 : 0,
+          size: info.exists && 'size' in info ? (info.size ?? 0) : 0,
           lastModified:
             info.exists && 'modificationTime' in info
               ? (info.modificationTime ?? 0) * 1000
@@ -319,10 +319,7 @@ export class MobileIncrementalEngine {
     for (const d of decisions) {
       i++
       onProgress?.(i, decisions.length, d.filePath)
-      if (
-        d.type === 'download' ||
-        (d.type === 'conflict-resolved' && d.direction === 'download')
-      ) {
+      if (d.type === 'download' || (d.type === 'conflict-resolved' && d.direction === 'download')) {
         await client.downloadFile(d.filePath, joinPath(vault, d.filePath))
         downloaded++
       } else if (d.type === 'skip') {

@@ -23,7 +23,10 @@ export const UpdateSettingsSection: React.FC = () => {
 
   useEffect(() => {
     if (!dbReady || !services) return
-    services.updaterService.getAutoCheck().then(setAutoCheck).catch(() => {})
+    services.updaterService
+      .getAutoCheck()
+      .then(setAutoCheck)
+      .catch(() => {})
   }, [dbReady, services])
 
   const handleToggleAutoCheck = async (value: boolean) => {
@@ -40,21 +43,17 @@ export const UpdateSettingsSection: React.FC = () => {
       setLastResult(result)
 
       if (result.status === 'available' && result.releaseUrl) {
-        Alert.alert(
-          t('updater.available', '发现新版本'),
-          `v${result.latestVersion}`,
-          [
-            { text: t('common.cancel', '取消'), style: 'cancel' },
-            {
-              text: t('updater.view_release', '查看发布页'),
-              onPress: () => {
-                services.updaterService.openReleaseUrl(result.releaseUrl!).catch((e) => {
-                  Alert.alert(t('common.error', '错误'), e?.message || String(e))
-                })
-              }
+        Alert.alert(t('updater.available', '发现新版本'), `v${result.latestVersion}`, [
+          { text: t('common.cancel', '取消'), style: 'cancel' },
+          {
+            text: t('updater.view_release', '查看发布页'),
+            onPress: () => {
+              services.updaterService.openReleaseUrl(result.releaseUrl!).catch((e) => {
+                Alert.alert(t('common.error', '错误'), e?.message || String(e))
+              })
             }
-          ]
-        )
+          }
+        ])
       } else if (result.status === 'not_available') {
         Alert.alert(t('updater.not_available', '已是最新版本'))
       } else if (result.status === 'error') {

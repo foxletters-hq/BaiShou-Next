@@ -3,16 +3,10 @@ import * as Application from 'expo-application'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
 
-const GITHUB_LATEST_URL =
-  'https://api.github.com/repos/Anson-Trio/BaiShou-Next/releases/latest'
+const GITHUB_LATEST_URL = 'https://api.github.com/repos/Anson-Trio/BaiShou-Next/releases/latest'
 const SETTINGS_KEY_AUTO_CHECK = 'updater_auto_check'
 
-export type MobileUpdateStatus =
-  | 'idle'
-  | 'checking'
-  | 'available'
-  | 'not_available'
-  | 'error'
+export type MobileUpdateStatus = 'idle' | 'checking' | 'available' | 'not_available' | 'error'
 
 export interface MobileUpdateCheckResult {
   status: MobileUpdateStatus
@@ -79,12 +73,9 @@ export class MobileUpdaterService {
 
       const latestVersion = (data.tag_name || '').replace(/^v/i, '')
       const releaseUrl =
-        data.html_url ||
-        `https://github.com/Anson-Trio/BaiShou-Next/releases/tag/v${latestVersion}`
+        data.html_url || `https://github.com/Anson-Trio/BaiShou-Next/releases/tag/v${latestVersion}`
 
-      const hasUpdate = latestVersion
-        ? isVersionNewer(latestVersion, currentVersion)
-        : false
+      const hasUpdate = latestVersion ? isVersionNewer(latestVersion, currentVersion) : false
 
       return {
         status: hasUpdate ? 'available' : 'not_available',

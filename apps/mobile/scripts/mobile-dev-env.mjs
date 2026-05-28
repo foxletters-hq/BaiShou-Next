@@ -8,7 +8,7 @@ export const METRO_PORT = process.env.RCT_METRO_PORT || '8081'
 export function getLanIp() {
   try {
     const out = execSync(
-      "ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i==\"src\") print $(i+1)}'",
+      'ip route get 1.1.1.1 2>/dev/null | awk \'{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}\'',
       { encoding: 'utf8' }
     ).trim()
     if (out) return out

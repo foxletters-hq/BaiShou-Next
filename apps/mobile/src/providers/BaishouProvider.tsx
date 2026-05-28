@@ -277,10 +277,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         })
 
         const toolRegistry = new ToolRegistry()
-        mobileMcpService = new MobileMcpService(
-          settingsManager,
-          toolRegistry,
-          () => pathService.getActiveVaultNameForContext()
+        mobileMcpService = new MobileMcpService(settingsManager, toolRegistry, () =>
+          pathService.getActiveVaultNameForContext()
         )
         const registry = AIProviderRegistry.getInstance()
         registry.initializeDefaultProviders()
@@ -382,7 +380,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               createdAt: r.createdAt
             }))
           } catch (e) {
-            logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', e)
+            logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', e as Error)
             const ftsResults = await hsRepo.queryFTS(query, options?.topK ?? 20)
             return ftsResults.map((r) => ({
               chunkText: r.chunkText,
@@ -457,7 +455,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               callbacks
             )
           } catch (e) {
-            logger.error('Mobile Agent Chat Failed:', e)
+            logger.error('Mobile Agent Chat Failed:', e as Error)
             throw e
           }
         }
@@ -465,7 +463,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         try {
           await mobileMcpService.start()
         } catch (mcpErr) {
-          logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr)
+          logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
         }
 
         logger.info('Mobile DB and DI Container Ready!')
@@ -527,7 +525,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           })
         }
       } catch (e) {
-        logger.error('Failed to init Baishou DB:', e)
+        logger.error('Failed to init Baishou DB:', e as Error)
       }
     }
 

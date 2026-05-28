@@ -81,8 +81,7 @@ export class MobileIncrementalCloudClient {
       return
     }
     const uri = new URL(this.config.endpoint || 'http://localhost')
-    const usePathStyle =
-      uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
+    const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
     const objectName = this.basePath() + remoteFilename
     const url = usePathStyle
       ? `${uri.protocol}//${uri.hostname}${uri.port ? ':' + uri.port : ''}/${this.config.bucket}/${objectName}`
@@ -103,8 +102,7 @@ export class MobileIncrementalCloudClient {
 
   private async listS3(): Promise<IncrementalSyncRecord[]> {
     const uri = new URL(this.config.endpoint || 'http://localhost')
-    const usePathStyle =
-      uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
+    const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
     const prefix = this.basePath()
     const listUrl = usePathStyle
       ? `${uri.protocol}//${uri.hostname}${uri.port ? ':' + uri.port : ''}/${this.config.bucket}?list-type=2&prefix=${encodeURIComponent(prefix)}`
@@ -149,7 +147,9 @@ export class MobileIncrementalCloudClient {
 
   private async listWebDav(): Promise<IncrementalSyncRecord[]> {
     const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
-    const basePath = this.config.path?.startsWith('/') ? this.config.path : `/${this.config.path || ''}`
+    const basePath = this.config.path?.startsWith('/')
+      ? this.config.path
+      : `/${this.config.path || ''}`
     const auth = `Basic ${btoa(`${this.config.accessKey}:${this.config.secretKey}`)}`
     const response = await fetch(`${baseUrl}${basePath}`, {
       method: 'PROPFIND',
@@ -188,8 +188,7 @@ export class MobileIncrementalCloudClient {
 
   private async uploadS3(rel: string, localFilePath: string) {
     const uri = new URL(this.config.endpoint || 'http://localhost')
-    const usePathStyle =
-      uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
+    const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
     const objectName = this.basePath() + rel
     const url = usePathStyle
       ? `${uri.protocol}//${uri.hostname}${uri.port ? ':' + uri.port : ''}/${this.config.bucket}/${objectName}`
@@ -216,11 +215,15 @@ export class MobileIncrementalCloudClient {
     const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
     const remotePath = this.basePath() + rel
     const auth = `Basic ${btoa(`${this.config.accessKey}:${this.config.secretKey}`)}`
-    const response = await FileSystem.uploadAsync(`${baseUrl}/${remotePath.replace(/^\//, '')}`, localFilePath, {
-      httpMethod: 'PUT',
-      headers: { Authorization: auth },
-      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT
-    })
+    const response = await FileSystem.uploadAsync(
+      `${baseUrl}/${remotePath.replace(/^\//, '')}`,
+      localFilePath,
+      {
+        httpMethod: 'PUT',
+        headers: { Authorization: auth },
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT
+      }
+    )
     if (response.status < 200 || response.status >= 300) {
       throw new Error(`WebDAV upload failed: ${response.status}`)
     }
@@ -228,8 +231,7 @@ export class MobileIncrementalCloudClient {
 
   private async downloadS3(rel: string, localDestPath: string) {
     const uri = new URL(this.config.endpoint || 'http://localhost')
-    const usePathStyle =
-      uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
+    const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
     const objectName = this.basePath() + rel
     const url = usePathStyle
       ? `${uri.protocol}//${uri.hostname}${uri.port ? ':' + uri.port : ''}/${this.config.bucket}/${objectName}`

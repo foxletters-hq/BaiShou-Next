@@ -152,7 +152,11 @@ export function useAgentStream(
                 { name: toolName, startTime: Date.now(), endTime: Date.now(), result }
               ])
             },
-            onFinish: (result?: { inputTokens?: number; outputTokens?: number; costMicros?: number }) => {
+            onFinish: (result?: {
+              inputTokens?: number
+              outputTokens?: number
+              costMicros?: number
+            }) => {
               setLoading(false)
               setIsStreaming(false)
               abortControllerRef.current = null
@@ -281,7 +285,9 @@ export function useAgentStream(
               setLoading(false)
               setIsStreaming(false)
               abortControllerRef.current = null
-              updateMessage(assistantMessageId, { content: currentText + '\n\n[ERR] ' + err.message })
+              updateMessage(assistantMessageId, {
+                content: currentText + '\n\n[ERR] ' + err.message
+              })
             }
           },
           {

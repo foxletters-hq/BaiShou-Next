@@ -35,7 +35,7 @@ export class SummaryFileWatcherService {
     try {
       await this.summarySync.fullScanArchives()
     } catch (e) {
-      logger.warn('[SummaryFileWatcher] fullScanArchives failed:', e)
+      logger.warn('[SummaryFileWatcher] fullScanArchives failed:', e as Error)
     }
   }
 }

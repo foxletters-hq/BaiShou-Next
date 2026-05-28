@@ -8,9 +8,13 @@ export function mapSessionMessageFromDb(msg: {
   const parts = msg.parts || []
   const textParts = parts.filter((p) => p.type === 'text')
   const content = textParts
-    .filter((p) => !(typeof p.data === 'object' && p.data && (p.data as { isReasoning?: boolean }).isReasoning))
+    .filter(
+      (p) =>
+        !(typeof p.data === 'object' && p.data && (p.data as { isReasoning?: boolean }).isReasoning)
+    )
     .map((p) => {
-      if (typeof p.data === 'object' && p.data && 'text' in p.data) return String((p.data as { text?: string }).text ?? '')
+      if (typeof p.data === 'object' && p.data && 'text' in p.data)
+        return String((p.data as { text?: string }).text ?? '')
       return typeof p.data === 'string' ? p.data : ''
     })
     .join('\n')
@@ -36,6 +40,7 @@ export function mapSessionMessageFromDb(msg: {
     role: msg.role as 'user' | 'assistant' | 'system',
     content,
     timestamp: new Date(msg.createdAt ?? Date.now()),
-    attachments
+    attachments,
+    parts: parts.length > 0 ? parts : undefined
   }
 }

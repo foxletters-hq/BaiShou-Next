@@ -42,8 +42,7 @@ export const OnboardingScreen = () => {
   const saveApiKeyToProviders = async (key: string) => {
     if (!services?.settingsManager || !dbReady) return
 
-    const existing =
-      (await services.settingsManager.get<AiProviderModel[]>('ai_providers')) || []
+    const existing = (await services.settingsManager.get<AiProviderModel[]>('ai_providers')) || []
     const providers: AiProviderModel[] = existing.length > 0 ? [...existing] : []
 
     const geminiIndex = providers.findIndex((p) => p.id === GEMINI_PROVIDER_ID)
@@ -74,11 +73,14 @@ export const OnboardingScreen = () => {
 
     await services.settingsManager.set('ai_providers', providers)
 
-    const globalModels = (await services.settingsManager.get<Record<string, string>>('global_models')) || {}
+    const globalModels =
+      (await services.settingsManager.get<Record<string, string>>('global_models')) || {}
     if (!globalModels.globalDialogueProviderId) {
       globalModels.globalDialogueProviderId = GEMINI_PROVIDER_ID
       globalModels.globalDialogueModelId =
-        globalModels.globalDialogueModelId || updatedGemini.defaultDialogueModel || 'gemini-2.5-flash'
+        globalModels.globalDialogueModelId ||
+        updatedGemini.defaultDialogueModel ||
+        'gemini-2.5-flash'
       await services.settingsManager.set('global_models', globalModels)
     }
   }

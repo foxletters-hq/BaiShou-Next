@@ -29,8 +29,6 @@ export function onFileReceived(listener: (event: { path: string }) => void) {
   return emitter.addListener('onFileReceived', listener)
 }
 
-export function onMcpHttpRequest(
-  listener: (event: { requestId: string; body: string }) => void
-) {
+export function onMcpHttpRequest(listener: (event: { requestId: string; body: string }) => void) {
   return emitter.addListener('onMcpHttpRequest', listener)
 }

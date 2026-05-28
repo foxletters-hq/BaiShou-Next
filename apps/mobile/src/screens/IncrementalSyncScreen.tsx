@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, StyleSheet, SafeAreaView, StatusBar, Alert, TouchableOpacity, ScrollView } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
+  Alert,
+  TouchableOpacity,
+  ScrollView
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, scrollIndicatorStyle, IncrementalSyncPanel } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -27,10 +36,7 @@ const IncrementalSyncScreen: React.FC = () => {
   }, [refreshConfigured])
 
   const runSync = useCallback(
-    async (
-      mode: 'sync' | 'uploadOnly' | 'downloadOnly' | 'zipBackup',
-      title: string
-    ) => {
+    async (mode: 'sync' | 'uploadOnly' | 'downloadOnly' | 'zipBackup', title: string) => {
       if (!services?.incrementalSyncService) throw new Error('服务未就绪')
 
       setIsSyncing(true)
@@ -50,10 +56,7 @@ const IncrementalSyncScreen: React.FC = () => {
 
         Alert.alert(
           t('common.success', '成功'),
-          t(
-            'incremental_sync.done_detail',
-            '上传 {up} · 下载 {down} · 跳过 {skip} · 冲突 {conf}'
-          )
+          t('incremental_sync.done_detail', '上传 {up} · 下载 {down} · 跳过 {skip} · 冲突 {conf}')
             .replace('{up}', String(result.uploaded))
             .replace('{down}', String(result.downloaded))
             .replace('{skip}', String(result.skipped))
@@ -80,7 +83,10 @@ const IncrementalSyncScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgApp} />
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.bgApp}
+      />
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.bgApp }]}>
         <ScrollView
           style={[styles.container, { backgroundColor: colors.bgApp }]}

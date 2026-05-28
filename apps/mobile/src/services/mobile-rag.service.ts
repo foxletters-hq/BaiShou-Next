@@ -1,8 +1,4 @@
-import {
-  AIProviderRegistry,
-  EmbeddingAdapter,
-  HybridSearchService
-} from '@baishou/ai'
+import { AIProviderRegistry, EmbeddingAdapter, HybridSearchService } from '@baishou/ai'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 import type { SettingsManagerService, DiaryService } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
@@ -47,7 +43,9 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
       let totalCount = 0
       try {
-        const client = deps.rawSqlClient as { execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }> }
+        const client = deps.rawSqlClient as {
+          execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
+        }
         if (client?.execute) {
           const result = await client.execute({
             sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}`,
@@ -59,7 +57,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
           )
         }
       } catch (e) {
-        logger.warn('[MobileRag] count embeddings failed', e)
+        logger.warn('[MobileRag] count embeddings failed', e as Error)
         const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
         totalCount = ragConfig.totalEmbeddings || 0
       }
@@ -88,7 +86,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       try {
         await deps.hsRepo.initVectorIndex(dimension)
       } catch (e) {
-        logger.warn('[MobileRag] initVectorIndex failed', e)
+        logger.warn('[MobileRag] initVectorIndex failed', e as Error)
       }
 
       return dimension
@@ -159,15 +157,17 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         const adapter = await resolveEmbeddingAdapter(deps)
         if (adapter) {
           const vector = await adapter.embedQuery(params.keyword)
-          const results = await deps.hsRepo.queryNativeVector(vector, Math.max(limit, 50))
-          const entries = results.map((r) => ({
-            embeddingId: r.messageId,
-            text: r.chunkText,
-            createdAt: r.createdAt || Date.now(),
-            similarity: r.score
-          }))
-          const sliced = entries.slice(offset, offset + limit)
-          return { entries: sliced, total: entries.length }
+          if (vector?.length) {
+            const results = await deps.hsRepo.queryNativeVector(vector, Math.max(limit, 50))
+            const entries = results.map((r) => ({
+              embeddingId: r.messageId,
+              text: r.chunkText,
+              createdAt: r.createdAt || Date.now(),
+              similarity: r.score
+            }))
+            const sliced = entries.slice(offset, offset + limit)
+            return { entries: sliced, total: entries.length }
+          }
         }
       }
 

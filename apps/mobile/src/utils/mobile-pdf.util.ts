@@ -12,7 +12,10 @@ async function loadExtractor() {
     extractModule = await import('expo-pdf-text-extract')
     return extractModule
   } catch (e) {
-    logger.warn('[MobilePDF] expo-pdf-text-extract not linked; PDF text fallback unavailable', e)
+    logger.warn(
+      '[MobilePDF] expo-pdf-text-extract not linked; PDF text fallback unavailable',
+      e as Error
+    )
     return null
   }
 }
@@ -26,7 +29,7 @@ export async function extractPdfText(filePath: string): Promise<string> {
       const text = await mod.extractText(normalized)
       return text?.trim() || ''
     } catch (e) {
-      logger.warn('[MobilePDF] native extract failed:', e)
+      logger.warn('[MobilePDF] native extract failed:', e as Error)
     }
   }
 

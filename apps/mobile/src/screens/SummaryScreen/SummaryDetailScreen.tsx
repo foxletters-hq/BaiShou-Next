@@ -48,14 +48,16 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         const summaryList = await services.summaryManager.list()
         const found = summaryList.find((s) => String(s.id) === summaryId)
         if (found) {
+          const toIso = (v: Date | string | undefined) =>
+            v instanceof Date ? v.toISOString() : v != null ? String(v) : ''
           setSummary({
             id: found.id,
             type: found.type,
-            startDate: found.startDate,
-            endDate: found.endDate,
+            startDate: toIso(found.startDate),
+            endDate: toIso(found.endDate),
             content: found.content,
             sourceIds: found.sourceIds,
-            generatedAt: found.generatedAt
+            generatedAt: found.generatedAt != null ? toIso(found.generatedAt) : undefined
           })
         } else {
           Alert.alert(t('common.error', '错误'), t('summary.not_found', '总结未找到'))

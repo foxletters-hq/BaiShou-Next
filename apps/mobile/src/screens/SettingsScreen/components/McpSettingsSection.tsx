@@ -111,10 +111,7 @@ export const McpSettingsSection: React.FC = () => {
         {t('settings.mcp_title', 'MCP Server')}
       </Text>
       <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
-        {t(
-          'settings.tooltip_mcp_server',
-          '允许外部 AI 客户端通过 MCP 协议调用白守的数据与工具。'
-        )}
+        {t('settings.tooltip_mcp_server', '允许外部 AI 客户端通过 MCP 协议调用白守的数据与工具。')}
       </Text>
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
@@ -136,10 +133,7 @@ export const McpSettingsSection: React.FC = () => {
           {t('settings.mcp_view_tools', '查看暴露工具')}
         </Text>
         <Text style={[styles.settingSub, { color: colors.textSecondary }]}>
-          {t(
-            'settings.mcp_view_tools_desc',
-            '查看 MCP 服务器对外暴露的内置工具列表'
-          )}
+          {t('settings.mcp_view_tools_desc', '查看 MCP 服务器对外暴露的内置工具列表')}
         </Text>
       </TouchableOpacity>
 

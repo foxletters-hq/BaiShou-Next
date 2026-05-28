@@ -79,7 +79,11 @@ async function testS3(config: S3SyncConfig): Promise<void> {
   }
 }
 
-async function uploadWebDav(config: S3SyncConfig, localZipPath: string, remoteName: string): Promise<void> {
+async function uploadWebDav(
+  config: S3SyncConfig,
+  localZipPath: string,
+  remoteName: string
+): Promise<void> {
   const baseUrl = (config.webdavUrl || '').replace(/\/$/, '')
   let basePath = config.path?.startsWith('/') ? config.path : `/${config.path || ''}`
   if (!basePath.endsWith('/')) basePath += '/'
@@ -100,7 +104,11 @@ async function uploadWebDav(config: S3SyncConfig, localZipPath: string, remoteNa
   }
 }
 
-async function uploadS3(config: S3SyncConfig, localZipPath: string, remoteName: string): Promise<void> {
+async function uploadS3(
+  config: S3SyncConfig,
+  localZipPath: string,
+  remoteName: string
+): Promise<void> {
   const uri = new URL(config.endpoint)
   const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
   const basePath = config.path?.replace(/^\//, '') || ''
@@ -152,7 +160,8 @@ export class MobileIncrementalSyncService {
   }
 
   async getConfig(): Promise<S3SyncConfig> {
-    const fromSettings = await this.settingsManager.get<Partial<S3SyncConfig>>('incremental_sync_config')
+    const fromSettings =
+      await this.settingsManager.get<Partial<S3SyncConfig>>('incremental_sync_config')
     const vaultPath = await this.vaultConfigPath()
     if (vaultPath) {
       try {
@@ -195,7 +204,9 @@ export class MobileIncrementalSyncService {
   /**
    * 三向合并增量同步（对齐桌面 ThreeWaySyncService.sync）
    */
-  async sync(onProgress?: (progress: IncrementalSyncProgress) => void): Promise<IncrementalSyncResult> {
+  async sync(
+    onProgress?: (progress: IncrementalSyncProgress) => void
+  ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) {
       throw new Error('增量同步未配置或已禁用')
@@ -213,7 +224,9 @@ export class MobileIncrementalSyncService {
     }
   }
 
-  async uploadOnly(onProgress?: (progress: IncrementalSyncProgress) => void): Promise<IncrementalSyncResult> {
+  async uploadOnly(
+    onProgress?: (progress: IncrementalSyncProgress) => void
+  ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
     const result = await this.engine.uploadOnly(config, (c, t, s) =>
@@ -227,7 +240,9 @@ export class MobileIncrementalSyncService {
     }
   }
 
-  async downloadOnly(onProgress?: (progress: IncrementalSyncProgress) => void): Promise<IncrementalSyncResult> {
+  async downloadOnly(
+    onProgress?: (progress: IncrementalSyncProgress) => void
+  ): Promise<IncrementalSyncResult> {
     const config = await this.getConfig()
     if (!isConfigReady(config)) throw new Error('增量同步未配置或已禁用')
     const result = await this.engine.downloadOnly(config, (c, t, s) =>

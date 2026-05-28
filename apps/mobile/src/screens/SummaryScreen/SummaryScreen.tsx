@@ -318,7 +318,10 @@ export const SummaryScreen: React.FC = () => {
           </View>
 
           {activeTab === 'panel' ? (
-            <ScrollView contentContainerStyle={styles.panelContent} indicatorStyle={scrollIndicatorStyle(isDark)}>
+            <ScrollView
+              contentContainerStyle={styles.panelContent}
+              indicatorStyle={scrollIndicatorStyle(isDark)}
+            >
               <View style={styles.moduleWrapper}>
                 <DashboardHeroBanner />
               </View>

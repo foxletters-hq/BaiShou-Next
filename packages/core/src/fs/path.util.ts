@@ -9,7 +9,9 @@ function isAbsolute(p: string): boolean {
 }
 
 function splitSegments(p: string): string[] {
-  return normalizeSeparators(p).split(SEP).filter((s) => s.length > 0)
+  return normalizeSeparators(p)
+    .split(SEP)
+    .filter((s) => s.length > 0)
 }
 
 function resolveSegments(segments: string[], absolutePrefix?: string): string {

@@ -46,7 +46,10 @@ export async function processAgentAttachments(
         const newFileName = `${baseName}_${Date.now()}${ext || ''}`
         const dest = `${sessionDir}/${newFileName}`
         try {
-          await FileSystem.copyAsync({ from: source.startsWith('file://') ? source : `file://${source}`, to: dest })
+          await FileSystem.copyAsync({
+            from: source.startsWith('file://') ? source : `file://${source}`,
+            to: dest
+          })
           out.url = dest
           out.filePath = dest
 
@@ -73,7 +76,7 @@ export async function processAgentAttachments(
                 out.textContent = text
                 out.isText = true
               } catch (e) {
-                logger.warn('[AgentAttachment] PDF text extract failed:', e)
+                logger.warn('[AgentAttachment] PDF text extract failed:', e as Error)
               }
             }
           }

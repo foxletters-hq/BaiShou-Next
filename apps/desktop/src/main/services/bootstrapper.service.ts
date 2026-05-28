@@ -1,5 +1,9 @@
 import { BrowserWindow } from 'electron'
-import { ShadowIndexSyncService, SummarySyncService, SummaryFileService } from '@baishou/core-desktop'
+import {
+  ShadowIndexSyncService,
+  SummarySyncService,
+  SummaryFileService
+} from '@baishou/core-desktop'
 import {
   ShadowIndexRepository,
   SummaryRepositoryImpl,

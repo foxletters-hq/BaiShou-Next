@@ -10,16 +10,14 @@ export function buildMobileSummaryAiClient(
 ): SummaryAiClient {
   return {
     async generateContent(prompt: string, modelId: string): Promise<string> {
-      const providers =
-        (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-      const globalModels: GlobalModelsConfig =
-        (await settingsManager.get<GlobalModelsConfig>('global_models')) ?? {}
+      const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      const globalModels =
+        (await settingsManager.get<Partial<GlobalModelsConfig>>('global_models')) ?? {}
 
       const summaryProviderId =
         globalModels.globalSummaryProviderId || globalModels.globalDialogueProviderId
       const config =
-        providers.find((p) => p.id === summaryProviderId) ||
-        providers.find((p) => p.isEnabled)
+        providers.find((p) => p.id === summaryProviderId) || providers.find((p) => p.isEnabled)
 
       if (!config) {
         throw new Error('No active AI provider configured for summary generation')
@@ -29,7 +27,10 @@ export function buildMobileSummaryAiClient(
       registry.initializeDefaultProviders()
       const provider = registry.getOrUpdateProvider(config)
       const finalModelId =
-        globalModels.globalSummaryModelId || modelId || config.defaultDialogueModel || 'deepseek-chat'
+        globalModels.globalSummaryModelId ||
+        modelId ||
+        config.defaultDialogueModel ||
+        'deepseek-chat'
       const model = provider.getLanguageModel(finalModelId)
 
       const abortController = new AbortController()
@@ -44,7 +45,7 @@ export function buildMobileSummaryAiClient(
         } as any)
         return text
       } catch (e) {
-        logger.error('[MobileSummaryAI] generateText failed:', e)
+        logger.error('[MobileSummaryAI] generateText failed:', e as Error)
         throw e
       } finally {
         clearTimeout(timeoutId)

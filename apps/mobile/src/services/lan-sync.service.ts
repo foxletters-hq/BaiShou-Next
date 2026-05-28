@@ -47,7 +47,11 @@ export class MobileLanSyncService implements ILanSyncService {
     serviceId: string
   } | null> {
     if (this.isBroadcasting) {
-      return { ip: this.currentIp, port: this.currentPort, serviceId: `baishou-mobile-${this.currentPort}` }
+      return {
+        ip: this.currentIp,
+        port: this.currentPort,
+        serviceId: `baishou-mobile-${this.currentPort}`
+      }
     }
 
     const ip = await Network.getIpAddressAsync()

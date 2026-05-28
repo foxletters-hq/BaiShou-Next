@@ -4,11 +4,19 @@ export interface MessageId {
   id: string
 }
 
+export interface AgentMessagePart {
+  id?: string
+  type: string
+  data?: Record<string, unknown> | string
+}
+
 export interface AgentMessage extends MessageId {
   role: 'user' | 'assistant' | 'system' | 'data'
   content: string
   timestamp: Date
   metadata?: Record<string, any>
+  attachments?: unknown[]
+  parts?: AgentMessagePart[]
 }
 
 export interface AgentState {

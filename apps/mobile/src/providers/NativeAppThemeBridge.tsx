@@ -14,7 +14,8 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
   const loadThemeFromSettings = useCallback(async () => {
     if (!services) return
     try {
-      const settings = (await services.settingsManager.get<Record<string, unknown>>('settings')) || {}
+      const settings =
+        (await services.settingsManager.get<Record<string, unknown>>('settings')) || {}
       const mode = settings.themeMode as ThemeModePreference | undefined
       if (mode === 'light' || mode === 'dark' || mode === 'system') {
         setThemeMode(mode)

@@ -10,8 +10,7 @@ export interface DemoDiaryEntry {
 
 export const INITIAL_DIARIES: DemoDiaryEntry[] = [
   {
-    content:
-      '今天去听了一场小型音乐会。那把大提琴的音色像极了秋天被阳光晒过的落叶，沉稳又温暖。',
+    content: '今天去听了一场小型音乐会。那把大提琴的音色像极了秋天被阳光晒过的落叶，沉稳又温暖。',
     dateDaysOffset: 0,
     dateMinutesOffset: -5,
     tags: ['音乐会', '治愈', '秋天'],

@@ -202,7 +202,9 @@ export const AssistantManagementScreen: React.FC = () => {
                 style={[styles.createFirstButton, { backgroundColor: colors.primary }]}
                 onPress={handleCreateAssistant}
               >
-                <Text style={[styles.createFirstText, { color: colors.textOnPrimary }]}>创建助手</Text>
+                <Text style={[styles.createFirstText, { color: colors.textOnPrimary }]}>
+                  创建助手
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (

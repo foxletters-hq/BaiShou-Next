@@ -146,8 +146,7 @@ export const AttachmentManagementSection: React.FC = () => {
           style={[
             styles.actionButton,
             {
-              backgroundColor:
-                selectedAttachments.size > 0 ? colors.error : colors.bgSurfaceHighest
+              backgroundColor: selectedAttachments.size > 0 ? colors.error : colors.bgSurfaceHighest
             }
           ]}
           onPress={handleDeleteSelectedAttachments}
@@ -157,8 +156,7 @@ export const AttachmentManagementSection: React.FC = () => {
             style={[
               styles.actionButtonText,
               {
-                color:
-                  selectedAttachments.size > 0 ? colors.textOnPrimary : colors.textSecondary
+                color: selectedAttachments.size > 0 ? colors.textOnPrimary : colors.textSecondary
               }
             ]}
           >

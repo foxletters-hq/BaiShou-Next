@@ -1,6 +1,11 @@
 import * as FileSystem from 'expo-file-system'
 import * as ImagePicker from 'expo-image-picker'
-import type { IAttachmentManager, AttachmentItem, SessionAttachmentGroup, DiaryAttachmentFileItem } from '@baishou/core-mobile'
+import type {
+  IAttachmentManager,
+  AttachmentItem,
+  SessionAttachmentGroup,
+  DiaryAttachmentFileItem
+} from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { joinPath } from '@baishou/core-mobile'
 
@@ -116,13 +121,14 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
       const st = await FileSystem.getInfoAsync(full)
       if (st.isDirectory) {
         await this.walkDiaryAttachments(root, full, acc)
-      } else if (name.match(/\.(png|jpe?g|gif|webp|pdf)$/i)) {
+      } else if (st.exists && !st.isDirectory && name.match(/\.(png|jpe?g|gif|webp|pdf)$/i)) {
         const rel = full.replace(root + '/', '')
+        const bytes = 'size' in st && typeof st.size === 'number' ? st.size : 0
         acc.push({
           name,
           path: full,
           relativePath: rel,
-          sizeMB: (st.size ?? 0) / (1024 * 1024),
+          sizeMB: bytes / (1024 * 1024),
           birthtime: new Date().toISOString(),
           yearMonth: rel.slice(0, 7),
           isOrphan: false

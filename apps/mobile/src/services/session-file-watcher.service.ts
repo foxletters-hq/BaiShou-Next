@@ -1,5 +1,9 @@
 import { AppState, type AppStateStatus } from 'react-native'
-import type { SessionFileService, SessionSyncService, SessionManagerService } from '@baishou/core-mobile'
+import type {
+  SessionFileService,
+  SessionSyncService,
+  SessionManagerService
+} from '@baishou/core-mobile'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { joinPath } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
@@ -66,11 +70,11 @@ export class SessionFileWatcherService {
         try {
           await this.deps.sessionSyncService.syncSessionFile(sessionId)
         } catch (e) {
-          logger.warn(`[SessionFileWatcher] sync failed for ${name}:`, e)
+          logger.warn(`[SessionFileWatcher] sync failed for ${name}:`, e as Error)
         }
       }
     } catch (e) {
-      logger.warn('[SessionFileWatcher] tick error:', e)
+      logger.warn('[SessionFileWatcher] tick error:', e as Error)
     }
   }
 }

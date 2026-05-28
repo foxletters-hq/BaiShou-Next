@@ -258,7 +258,10 @@ export const RAGMemorySection: React.FC = () => {
           {t('settings.add_manual_memory', '手动添加记忆')}
         </Text>
         <TextInput
-          style={[styles.memoryInput, { color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+          style={[
+            styles.memoryInput,
+            { color: colors.textPrimary, borderColor: colors.borderSubtle }
+          ]}
           placeholder={t('settings.manual_memory_placeholder', '输入要记住的内容...')}
           placeholderTextColor={colors.textSecondary}
           value={manualMemoryText}
