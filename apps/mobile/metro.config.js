@@ -47,15 +47,17 @@ config.resolver.blockList = [
     `${path.resolve(workspaceRoot, 'packages/database/src/index.desktop.ts').replace(/[/\\]/g, '[/\\\\]')}`
   ),
   new RegExp(
-    `${path.resolve(workspaceRoot, 'packages/database/src/connection.manager').replace(/[/\\]/g, '[/\\\\]')}.*`
+    `${path.resolve(workspaceRoot, 'packages/database/src/connection.manager').replace(/[/\\]/g, '[/\\\\]')}`
   ),
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/database/src/shadow-index.connection.manager').replace(/[/\\]/g, '[/\\\\]')}`
   ),
   new RegExp(
-    `${path.resolve(workspaceRoot, 'packages/database/src/drivers/node-sqlite.driver').replace(/[/\\]/g, '[/\\\\]')}.*`
+    `${path.resolve(workspaceRoot, 'packages/database/src/drivers/node-sqlite.driver').replace(/[/\\]/g, '[/\\\\]')}`
   )
 ]
+
+const defaultResolveRequest = config.resolver.resolveRequest
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (
@@ -67,8 +69,9 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       type: 'sourceFile'
     }
   }
-  if (context.resolveRequest) {
-    return context.resolveRequest(context, moduleName, platform)
+
+  if (defaultResolveRequest) {
+    return defaultResolveRequest(context, moduleName, platform)
   }
   return null
 }

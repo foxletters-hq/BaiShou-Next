@@ -39,6 +39,12 @@ pnpm mobile:setup
 
 手机上请先 **卸载** 旧的 `com.anonymous.mobile`，再执行 setup。
 
+## UI 与文案（AI / 协作者必读）
+
+- **颜色**：禁止在组件里写死 `#hex`、`rgba(...)` 或 `colors.primary + '20'` 拼透明度；一律用 `useNativeTheme().colors` 语义 token（如 `bgApp`、`textPrimary`、`primaryLight`、`bgGlassSurface`）。详见仓库 [`docs/1-AI-Code/2-UI-Theme-Rule.md`](../../docs/1-AI-Code/2-UI-Theme-Rule.md)。
+- **文案**：`useTranslation` 只写 `t('i18n.key')`，不要加第二参数中文兜底；键定义在 `packages/shared/src/i18n`。
+- **栈内全屏页顶栏**：`StackScreenLayout` + `getStackScreenChrome(colors)`——内容区 `bgApp`，顶栏为 `bgSurface` 白色长条（小箭头 +「返回」+ 居中标题 + 右侧操作）。路由 `headerShown: false`。
+
 ## 其它
 
 | 命令                 | 说明                                       |
