@@ -1,7 +1,7 @@
 import * as Network from 'expo-network'
 import Zeroconf from 'react-native-zeroconf'
-import * as FileSystem from 'expo-file-system'
-import { IArchiveService, ILanSyncService, DiscoveredDevice } from '@baishou/core'
+import * as FileSystem from 'expo-file-system/legacy'
+import { IArchiveService, ILanSyncService, DiscoveredDevice } from '@baishou/core-mobile'
 
 // We import our custom internal module!
 import * as BaishouServer from '../../modules/expo-baishou-server'
@@ -44,8 +44,11 @@ export class MobileLanSyncService implements ILanSyncService {
   public async startBroadcasting(): Promise<{
     ip: string
     port: number
+    serviceId: string
   } | null> {
-    if (this.isBroadcasting) return { ip: this.currentIp, port: this.currentPort }
+    if (this.isBroadcasting) {
+      return { ip: this.currentIp, port: this.currentPort, serviceId: `baishou-mobile-${this.currentPort}` }
+    }
 
     const ip = await Network.getIpAddressAsync()
     if (!ip || ip === '0.0.0.0') throw new Error('No local IPv4 found')
@@ -79,7 +82,7 @@ export class MobileLanSyncService implements ILanSyncService {
     })
 
     this.isBroadcasting = true
-    return { ip, port: this.currentPort }
+    return { ip, port: this.currentPort, serviceId: serviceName }
   }
 
   public async stopBroadcasting(): Promise<void> {

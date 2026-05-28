@@ -1,8 +1,8 @@
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 import * as IntentLauncher from 'expo-intent-launcher'
 import * as Application from 'expo-application'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { IStoragePathService } from '@baishou/core'
+import { IStoragePathService } from '@baishou/core-mobile'
 
 export class MobileStoragePathService implements IStoragePathService {
   private customRootKey = 'baishou_custom_storage_root'
@@ -19,9 +19,6 @@ export class MobileStoragePathService implements IStoragePathService {
     await AsyncStorage.setItem(this.customRootKey, newPath)
   }
 
-  /**
-   * Triggers the Android MANAGE_EXTERNAL_STORAGE native settings page
-   */
   public async requestAllFilesAccess(): Promise<void> {
     if (Application.applicationId) {
       await IntentLauncher.startActivityAsync(
@@ -38,63 +35,84 @@ export class MobileStoragePathService implements IStoragePathService {
       try {
         const info = await FileSystem.getInfoAsync(customPath)
         if (!info.exists) {
-          await FileSystem.makeDirectoryAsync(customPath, {
-            intermediates: true
-          })
+          await FileSystem.makeDirectoryAsync(customPath, { intermediates: true })
         }
-
-        // Writeability test
         const testFile = `${customPath}/.write_test`
         await FileSystem.writeAsStringAsync(testFile, 'test')
         try {
           await FileSystem.deleteAsync(testFile, { idempotent: true })
-        } catch (e) {
+        } catch {
           // ignore
         }
         return customPath
       } catch (e) {
-        console.warn(`StoragePathService: Custom physical path ${customPath} is inaccessible.`, e)
-        // Fallback or trigger intent
+        console.warn(`StoragePathService: Custom path ${customPath} inaccessible.`, e)
         await this.requestAllFilesAccess()
       }
     }
 
-    // Default Fallback: Raw local emulated public storage fallback if not customized
     const fallbackPath = 'file:///storage/emulated/0/BaiShou_Root'
     try {
       const info = await FileSystem.getInfoAsync(fallbackPath)
       if (!info.exists) {
-        await FileSystem.makeDirectoryAsync(fallbackPath, {
-          intermediates: true
-        })
+        await FileSystem.makeDirectoryAsync(fallbackPath, { intermediates: true })
       }
       return fallbackPath
     } catch (e) {
-      console.warn('Fallback to App sandbox due to extreme permission denial', e)
-      // Extreme fallback to pure internal scoped storage if permission was denied and user hasn't granted it yet
-      const base =
-        (FileSystem as any).documentDirectory || 'file:///data/user/0/com.anonymous.mobile/files/'
+      console.warn('Fallback to app sandbox', e)
+      const base = FileSystem.documentDirectory || 'file:///data/user/0/com.anonymous.mobile/files/'
       const internalFallback = `${base}Vaults`
       const docInfo = await FileSystem.getInfoAsync(internalFallback)
       if (!docInfo.exists) {
-        await FileSystem.makeDirectoryAsync(internalFallback, {
-          intermediates: true
-        })
+        await FileSystem.makeDirectoryAsync(internalFallback, { intermediates: true })
       }
       return internalFallback
     }
   }
 
   public async getGlobalRegistryDirectory(): Promise<string> {
-    // Registry should safely always be in the internal document directory so it isn't accidentally formatted
-    const base =
-      (FileSystem as any).documentDirectory || 'file:///data/user/0/com.anonymous.mobile/files/'
-    return `${base}.baishou_global`
+    const base = FileSystem.documentDirectory || 'file:///data/user/0/com.anonymous.mobile/files/'
+    const dir = `${base}.baishou_global`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    }
+    return dir
+  }
+
+  private async getActiveVaultName(): Promise<string> {
+    try {
+      const rootDir = await this.getRootDirectory()
+      const registryFile = `${rootDir}/vault_registry.json`
+      const info = await FileSystem.getInfoAsync(registryFile)
+      if (!info.exists) return 'Personal'
+      const data = await FileSystem.readAsStringAsync(registryFile)
+      const vaults = JSON.parse(data) as Array<{ name: string; lastAccessedAt: string }>
+      if (!Array.isArray(vaults) || vaults.length === 0) return 'Personal'
+      const active = [...vaults].sort(
+        (a, b) => new Date(b.lastAccessedAt).getTime() - new Date(a.lastAccessedAt).getTime()
+      )[0]
+      return active?.name || 'Personal'
+    } catch {
+      return 'Personal'
+    }
+  }
+
+  public async getActiveVaultPath(): Promise<string | null> {
+    try {
+      return await this.getVaultDirectory(await this.getActiveVaultName())
+    } catch {
+      return null
+    }
+  }
+
+  /** 供 MCP / 工具上下文使用 */
+  public async getActiveVaultNameForContext(): Promise<string> {
+    return this.getActiveVaultName()
   }
 
   public async getVaultDirectory(vaultName: string): Promise<string> {
     const root = await this.getRootDirectory()
-    // sanitize
     const safeName = vaultName.replace(/[/\\]/g, '_')
     const vaultDir = `${root}/${safeName}`
     const info = await FileSystem.getInfoAsync(vaultDir)
@@ -114,42 +132,84 @@ export class MobileStoragePathService implements IStoragePathService {
     return vaultSysDir
   }
 
-  // --- IStoragePathService Specific Domain Folders ---
   public async getSnapshotsDirectory(): Promise<string> {
-    return this.getVaultSystemDirectory('default').then((p) => `${p}/snapshots`)
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultSystemDirectory(name)}/snapshots`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    return dir
   }
 
   public async getJournalsBaseDirectory(): Promise<string> {
-    return this.getVaultDirectory('default').then((p) => `${p}/Journals`)
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultDirectory(name)}/Journals`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    return dir
   }
 
   public async getSummariesBaseDirectory(): Promise<string> {
-    const vaultDir = await this.getVaultDirectory('default')
-    const dir = `${vaultDir}/Archives`
-    try {
-      const info = await FileSystem.getInfoAsync(dir)
-      if (!info.exists) {
-        await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
-      }
-    } catch {}
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultDirectory(name)}/Archives`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
     return dir
   }
 
   public async getLegacyArchivesDirectory(): Promise<string | null> {
-    const vaultDir = await this.getVaultDirectory('default')
-    const dir = `${vaultDir}/Archives`
+    const dir = await this.getSummariesBaseDirectory()
     try {
       const info = await FileSystem.getInfoAsync(dir)
       if (info.exists) return dir
-    } catch {}
+    } catch {
+      // ignore
+    }
     return null
   }
 
   public async getSessionsBaseDirectory(): Promise<string> {
-    return this.getVaultSystemDirectory('default').then((p) => `${p}/sessions`)
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultSystemDirectory(name)}/sessions`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    return dir
   }
 
   public async getAssistantsBaseDirectory(): Promise<string> {
-    return this.getVaultSystemDirectory('default').then((p) => `${p}/assistants`)
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultSystemDirectory(name)}/assistants`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    return dir
+  }
+
+  public async getAttachmentsBaseDirectory(): Promise<string> {
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultSystemDirectory(name)}/attachments`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    return dir
+  }
+
+  public async getAvatarsDirectory(): Promise<string> {
+    const att = await this.getAttachmentsBaseDirectory()
+    const dir = `${att}/avatars`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    return dir
+  }
+
+  public async getDiaryAttachmentDirectory(date: Date): Promise<string> {
+    const ym = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    return this.getDiaryAttachmentDirectoryByYearMonth(ym)
+  }
+
+  public async getDiaryAttachmentDirectoryByYearMonth(yearMonth: string): Promise<string> {
+    const journals = await this.getJournalsBaseDirectory()
+    const [y, m] = yearMonth.split('-')
+    const dir = `${journals}/${y}/${m}/attachment`
+    const info = await FileSystem.getInfoAsync(dir)
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    return dir
   }
 }

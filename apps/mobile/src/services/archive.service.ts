@@ -1,11 +1,10 @@
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
 import * as DocumentPicker from 'expo-document-picker'
 import { zip, unzip } from 'react-native-zip-archive'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-import { IArchiveService, ImportResult, StoragePathService, VaultService } from '@baishou/core'
-import { connectionManager } from '@baishou/database'
+import { IArchiveService, ImportResult, VaultService } from '@baishou/core-mobile'
 import { MobileStoragePathService } from './path.service'
 
 export class MobileArchiveService implements IArchiveService {
@@ -85,10 +84,7 @@ export class MobileArchiveService implements IArchiveService {
       if (snap) snapshotPath = snap
     }
 
-    // 1. Cut off SQLite bindings globally
-    await connectionManager.disconnect()
-
-    // 2. Erase existing Vault Workspace Root (MANAGE_EXTERNAL_STORAGE handles it well)
+    // 1. Erase existing Vault Workspace Root (MANAGE_EXTERNAL_STORAGE handles it well)
     const rootDir = await this.pathService.getRootDirectory()
     try {
       await FileSystem.deleteAsync(rootDir, { idempotent: true })

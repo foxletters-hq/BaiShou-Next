@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system'
-import { ICloudSyncClient, SyncConfig, SyncRecord, IArchiveService } from '@baishou/core'
+import { ICloudSyncClient, SyncConfig, SyncRecord, IArchiveService } from '@baishou/core-mobile'
 import { signS3Request } from '@baishou/shared'
 
 /**
