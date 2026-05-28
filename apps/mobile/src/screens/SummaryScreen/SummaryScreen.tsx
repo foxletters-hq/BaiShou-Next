@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   useWindowDimensions,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   Alert
@@ -245,7 +244,7 @@ export const SummaryScreen: React.FC = () => {
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.bgApp}
       />
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
+      <View style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
         <View style={[styles.container, { backgroundColor: colors.bgApp }]}>
           <View
             style={[
@@ -518,7 +517,7 @@ export const SummaryScreen: React.FC = () => {
             </View>
           )}
         </View>
-      </SafeAreaView>
+      </View>
     </>
   )
 }

@@ -5,57 +5,154 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native'
+import { useFocusEffect } from '@react-navigation/native'
 import { StorageSettingsCard } from '@baishou/ui/native'
 import { SettingsSection } from '@baishou/ui/native'
-import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
+import { useNativeTheme, scrollIndicatorStyle, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import * as DocumentPicker from 'expo-document-picker'
+import {
+  EXTERNAL_STORAGE_ROOT,
+  hasStoragePermission,
+  isExternalBaiShouRootPath,
+  isExternalStorageRequiredError,
+  requestStoragePermission
+} from '../services/storage-permission.service'
+import { StackScreenLayout } from '../components/StackScreenLayout'
+import { getStackScreenChrome } from '../components/stackScreenChrome'
+
+function displayPath(uri: string): string {
+  return uri.replace(/^file:\/\//, '')
+}
 
 export const StorageScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
   const { services } = useBaishou()
+  const toast = useNativeToast()
 
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [allFilesAccessGranted, setAllFilesAccessGranted] = useState<boolean | undefined>(
+    Platform.OS === 'android' ? undefined : true
+  )
 
   const [storageRootPath, setStorageRootPath] = useState('')
   const [sqliteSize, setSqliteSize] = useState('--')
   const [vectorDbSize, setVectorDbSize] = useState('--')
   const [mediaCacheSize, setMediaCacheSize] = useState('--')
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        if (services?.settingsManager) {
-          const userData = await services.settingsManager.get<any>('user_data')
-          if (userData?.storageRootPath) {
-            setStorageRootPath(String(userData.storageRootPath))
-          }
-        }
-      } catch (e) {
-        console.error('Failed to load storage stats:', e)
+  const refreshStorageInfo = useCallback(async () => {
+    if (!services?.pathService) return
+    try {
+      const root = await services.pathService.getRootDirectory()
+      setStorageRootPath(displayPath(root))
+
+      if (Platform.OS === 'android') {
+        const granted = await hasStoragePermission()
+        setAllFilesAccessGranted(granted)
       }
+    } catch (e) {
+      if (isExternalStorageRequiredError(e)) {
+        setStorageRootPath(displayPath(EXTERNAL_STORAGE_ROOT))
+        setAllFilesAccessGranted(false)
+        return
+      }
+      console.error('Failed to load storage info:', e)
     }
-    loadStats()
   }, [services])
 
-  const handleChangeRoot = useCallback(async () => {
+  useEffect(() => {
+    void refreshStorageInfo()
+  }, [refreshStorageInfo])
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshStorageInfo()
+    }, [refreshStorageInfo])
+  )
+
+  const ensureStoragePermission = useCallback(async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true
+    if (await hasStoragePermission()) {
+      setAllFilesAccessGranted(true)
+      return true
+    }
+    await requestStoragePermission()
     Alert.alert(
-      t('settings.change_storage_root', '更换根目录'),
+      t('storage.all_files_access_title', '需要「所有文件」访问权限'),
       t(
-        'storage.permission_not_available',
-        '移动端暂不支持手动更换存储根目录，数据默认保存在应用沙盒内。'
+        'storage.all_files_access_settings_hint',
+        '请在系统设置中为白守开启「允许管理所有文件」，然后返回应用。'
       ),
-      [{ text: t('common.ok', '好的'), style: 'default' }]
+      [{ text: t('common.ok', '好的') }]
     )
+    return false
   }, [t])
+
+  const handleRequestAllFilesAccess = useCallback(async () => {
+    const alreadyGranted = await hasStoragePermission()
+    if (alreadyGranted) {
+      setAllFilesAccessGranted(true)
+      toast.showToast(t('common.permission.storage_granted', '权限已获得'), 'success')
+      await refreshStorageInfo()
+      return
+    }
+    await requestStoragePermission()
+    Alert.alert(
+      t('storage.all_files_access_title', '需要「所有文件」访问权限'),
+      t(
+        'storage.all_files_access_settings_hint',
+        '请在系统设置中为白守开启「允许管理所有文件」，然后返回应用。'
+      ),
+      [{ text: t('common.ok', '好的') }]
+    )
+  }, [refreshStorageInfo, t, toast])
+
+  const handleEnableExternalRoot = useCallback(async () => {
+    if (!services?.pathService) {
+      Alert.alert(t('common.error', '错误'), t('storage.service_unavailable', '路径服务未就绪'))
+      return
+    }
+
+    if (Platform.OS === 'android') {
+      const granted = await hasStoragePermission()
+      if (!granted) {
+        const ok = await ensureStoragePermission()
+        if (!ok) return
+        const recheck = await hasStoragePermission()
+        if (!recheck) return
+      }
+    }
+
+    try {
+      const applied = await services.pathService.applyExternalRootWhenPermitted()
+      const root = await services.pathService.getRootDirectory()
+      if (!applied || !isExternalBaiShouRootPath(root)) {
+        Alert.alert(
+          t('storage.all_files_access_title', '需要「所有文件」访问权限'),
+          t(
+            'storage.all_files_access_settings_hint',
+            '请在系统设置中为白守开启「允许管理所有文件」，然后返回应用。'
+          )
+        )
+        await refreshStorageInfo()
+        return
+      }
+      await refreshStorageInfo()
+      toast.showToast(t('storage.external_root_applied', '已切换到外部 BaiShou_Root'), 'success')
+    } catch (e: any) {
+      Alert.alert(
+        t('common.error', '错误'),
+        e?.message || t('storage.external_access_error', '无法访问外部 BaiShou_Root 目录')
+      )
+    }
+  }, [ensureStoragePermission, refreshStorageInfo, services, t, toast])
 
   const handleExport = useCallback(async () => {
     if (!services?.archiveService) {
@@ -142,11 +239,11 @@ export const StorageScreen: React.FC = () => {
   }, [services, t])
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bgApp}
-      />
+    <StackScreenLayout
+      title={t('storage.title')}
+      {...getStackScreenChrome(colors)}
+      contentStyle={styles.layoutContent}
+    >
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -157,7 +254,16 @@ export const StorageScreen: React.FC = () => {
           sqliteSizeStats={sqliteSize}
           vectorDbStats={vectorDbSize}
           mediaCacheStats={mediaCacheSize}
-          onChangeRoot={handleChangeRoot}
+          onChangeRoot={
+            storageRootPath && isExternalBaiShouRootPath(`file://${storageRootPath}`)
+              ? undefined
+              : handleEnableExternalRoot
+          }
+          changeRootLabel={t('storage.enable_external_root', '启用外部 BaiShou_Root')}
+          allFilesAccessGranted={allFilesAccessGranted}
+          onRequestAllFilesAccess={
+            Platform.OS === 'android' ? handleRequestAllFilesAccess : undefined
+          }
         />
 
         <View style={styles.sectionGap} />
@@ -228,12 +334,12 @@ export const StorageScreen: React.FC = () => {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </StackScreenLayout>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
+  layoutContent: { flex: 1 },
   container: { flex: 1 },
   contentContainer: { padding: 16 },
   sectionGap: { height: 16 },

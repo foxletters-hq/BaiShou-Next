@@ -5,8 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
   Alert,
   TextInput,
   Switch,
@@ -16,9 +14,11 @@ import * as DocumentPicker from 'expo-document-picker'
 import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
-import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { SyncConfig, SyncRecord } from '@baishou/core-mobile'
+import { DataSyncSnapshotPanel } from './DataSyncSnapshotPanel'
+import { StackScreenLayout } from '../components/StackScreenLayout'
+import { getStackScreenChrome } from '../components/stackScreenChrome'
 
 interface SyncTarget {
   id: string
@@ -40,7 +40,6 @@ export const DataSyncScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
   const { services, dbReady } = useBaishou()
-  const router = useRouter()
 
   const [syncTargets, setSyncTargets] = useState<SyncTarget[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
@@ -64,6 +63,7 @@ export const DataSyncScreen: React.FC = () => {
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set())
   const [renamingRecord, setRenamingRecord] = useState<string | null>(null)
   const [newRecordName, setNewRecordName] = useState('')
+  const [backupTab, setBackupTab] = useState<'cloud' | 'snapshot'>('cloud')
 
   const archiveService = services?.archiveService
   const cloudSyncService = services?.cloudSyncService
@@ -118,8 +118,8 @@ export const DataSyncScreen: React.FC = () => {
       } catch (e) {
         logger.error('加载云端记录失败', e instanceof Error ? e : String(e))
         Alert.alert(
-          t('common.error', '错误'),
-          t('data_sync.load_records_failed', '加载云端记录失败')
+          t('common.error'),
+          t('data_sync.load_records_failed')
         )
       } finally {
         setRecordsLoading(false)
@@ -140,12 +140,12 @@ export const DataSyncScreen: React.FC = () => {
   const handleRestoreRecord = useCallback(
     (targetId: string, filename: string) => {
       Alert.alert(
-        t('data_sync.confirm_cloud_restore', '确认恢复'),
-        t('data_sync.cloud_restore_warning', '恢复将覆盖当前数据，是否继续？'),
+        t('data_sync.confirm_cloud_restore'),
+        t('data_sync.cloud_restore_warning'),
         [
-          { text: t('common.cancel', '取消'), style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: t('common.confirm', '确认'),
+            text: t('common.confirm'),
             onPress: async () => {
               if (!cloudSyncService) return
               const target = syncTargets.find((t) => t.id === targetId)
@@ -154,12 +154,12 @@ export const DataSyncScreen: React.FC = () => {
                 const config = buildSyncConfig(target)
                 const result = await cloudSyncService.restoreFromCloud(config, filename)
                 Alert.alert(
-                  result.success ? t('common.success', '成功') : t('common.error', '错误'),
+                  result.success ? t('common.success') : t('common.error'),
                   result.message
                 )
               } catch (e) {
                 logger.error('云端恢复失败', e instanceof Error ? e : String(e))
-                Alert.alert(t('common.error', '错误'), t('data_sync.restore_failed', '恢复失败'))
+                Alert.alert(t('common.error'), t('data_sync.restore_failed'))
               }
             }
           }
@@ -173,14 +173,14 @@ export const DataSyncScreen: React.FC = () => {
   const handleDeleteCloudRecord = useCallback(
     (targetId: string, filename: string) => {
       Alert.alert(
-        t('data_sync.confirm_delete_record', '确认删除'),
-        t('data_sync.delete_record_warning', '确定要删除备份记录 "{{name}}" 吗？', {
+        t('data_sync.confirm_delete_record'),
+        t('data_sync.delete_record_warning', {
           name: filename
         }),
         [
-          { text: t('common.cancel', '取消'), style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: t('common.delete', '删除'),
+            text: t('common.delete'),
             style: 'destructive',
             onPress: async () => {
               if (!cloudSyncService) return
@@ -191,14 +191,14 @@ export const DataSyncScreen: React.FC = () => {
                 await cloudSyncService.deleteRecord(config, filename)
                 setCloudRecords((prev) => prev.filter((r) => r.filename !== filename))
                 Alert.alert(
-                  t('common.success', '成功'),
-                  t('data_sync.record_deleted', '记录已删除')
+                  t('common.success'),
+                  t('data_sync.record_deleted')
                 )
               } catch (e) {
                 logger.error('删除云端记录失败', e instanceof Error ? e : String(e))
                 Alert.alert(
-                  t('common.error', '错误'),
-                  t('data_sync.delete_record_failed', '删除失败')
+                  t('common.error'),
+                  t('data_sync.delete_record_failed')
                 )
               }
             }
@@ -216,14 +216,14 @@ export const DataSyncScreen: React.FC = () => {
       if (filenames.length === 0) return
 
       Alert.alert(
-        t('data_sync.confirm_batch_delete', '确认批量删除'),
-        t('data_sync.batch_delete_warning', '确定要删除选中的 {{count}} 条记录吗？', {
+        t('data_sync.confirm_batch_delete'),
+        t('data_sync.batch_delete_warning', {
           count: filenames.length
         }),
         [
-          { text: t('common.cancel', '取消'), style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: t('common.delete', '删除'),
+            text: t('common.delete'),
             style: 'destructive',
             onPress: async () => {
               if (!cloudSyncService) return
@@ -236,14 +236,14 @@ export const DataSyncScreen: React.FC = () => {
                 setSelectedRecords(new Set())
                 setIsMultiSelectMode(false)
                 Alert.alert(
-                  t('common.success', '成功'),
-                  t('data_sync.batch_deleted', '已删除 {{count}} 条记录', { count: deleted })
+                  t('common.success'),
+                  t('data_sync.batch_deleted', { count: deleted })
                 )
               } catch (e) {
                 logger.error('批量删除云端记录失败', e instanceof Error ? e : String(e))
                 Alert.alert(
-                  t('common.error', '错误'),
-                  t('data_sync.batch_delete_failed', '批量删除失败')
+                  t('common.error'),
+                  t('data_sync.batch_delete_failed')
                 )
               }
             }
@@ -258,7 +258,7 @@ export const DataSyncScreen: React.FC = () => {
   const handleRenameRecord = useCallback(
     async (targetId: string, oldName: string) => {
       if (!newRecordName.trim()) {
-        Alert.alert(t('common.error', '错误'), t('data_sync.name_required', '名称不能为空'))
+        Alert.alert(t('common.error'), t('data_sync.name_required'))
         return
       }
       if (!cloudSyncService) return
@@ -272,10 +272,10 @@ export const DataSyncScreen: React.FC = () => {
         )
         setRenamingRecord(null)
         setNewRecordName('')
-        Alert.alert(t('common.success', '成功'), t('data_sync.record_renamed', '记录已重命名'))
+        Alert.alert(t('common.success'), t('data_sync.record_renamed'))
       } catch (e) {
         logger.error('重命名云端记录失败', e instanceof Error ? e : String(e))
-        Alert.alert(t('common.error', '错误'), t('data_sync.rename_failed', '重命名失败'))
+        Alert.alert(t('common.error'), t('data_sync.rename_failed'))
       }
     },
     [cloudSyncService, syncTargets, buildSyncConfig, newRecordName, t]
@@ -303,7 +303,7 @@ export const DataSyncScreen: React.FC = () => {
 
   const handleAddTarget = async () => {
     if (!newTarget.name.trim() || !newTarget.url.trim()) {
-      Alert.alert(t('common.error', '错误'), t('data_sync.name_url_required', '名称和URL不能为空'))
+      Alert.alert(t('common.error'), t('data_sync.name_url_required'))
       return
     }
 
@@ -311,8 +311,8 @@ export const DataSyncScreen: React.FC = () => {
     if (newTarget.type === 's3') {
       if (!newTarget.s3Bucket.trim()) {
         Alert.alert(
-          t('common.error', '错误'),
-          t('data_sync.s3_bucket_required', 'S3 Bucket 不能为空')
+          t('common.error'),
+          t('data_sync.s3_bucket_required')
         )
         return
       }
@@ -347,21 +347,21 @@ export const DataSyncScreen: React.FC = () => {
         s3Region: '',
         s3Path: ''
       })
-      Alert.alert(t('common.success', '成功'), t('data_sync.target_added', '同步目标已添加'))
+      Alert.alert(t('common.success'), t('data_sync.target_added'))
     } catch (e) {
       logger.error('添加同步目标失败', e instanceof Error ? e : String(e))
-      Alert.alert(t('common.error', '错误'), t('data_sync.add_failed', '添加失败'))
+      Alert.alert(t('common.error'), t('data_sync.add_failed'))
     }
   }
 
   const handleDeleteTarget = async (targetId: string) => {
     Alert.alert(
-      t('common.confirm', '确认删除'),
-      t('data_sync.delete_confirm', '确定要删除这个同步目标吗？'),
+      t('common.confirm'),
+      t('data_sync.delete_confirm'),
       [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: t('common.delete', '删除'),
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -425,7 +425,7 @@ export const DataSyncScreen: React.FC = () => {
 
       // 显示结果提示
       Alert.alert(
-        result.success ? t('common.success', '成功') : t('common.error', '错误'),
+        result.success ? t('common.success') : t('common.error'),
         result.message
       )
 
@@ -440,7 +440,7 @@ export const DataSyncScreen: React.FC = () => {
       setSyncTargets((prev) =>
         prev.map((item) => (item.id === targetId ? { ...item, status: 'error' as const } : item))
       )
-      Alert.alert(t('common.error', '错误'), t('data_sync.sync_failed', '同步失败'))
+      Alert.alert(t('common.error'), t('data_sync.sync_failed'))
     }
   }
 
@@ -449,11 +449,11 @@ export const DataSyncScreen: React.FC = () => {
     try {
       const zipPath = await archiveService.exportToUserDevice()
       if (zipPath) {
-        Alert.alert(t('common.success', '成功'), t('data_sync.backup_success', '备份已保存'))
+        Alert.alert(t('common.success'), t('data_sync.backup_success'))
       }
     } catch (e) {
       logger.error('备份失败', e instanceof Error ? e : String(e))
-      Alert.alert(t('common.error', '错误'), t('data_sync.backup_failed', '备份失败'))
+      Alert.alert(t('common.error'), t('data_sync.backup_failed'))
     }
   }
 
@@ -465,22 +465,22 @@ export const DataSyncScreen: React.FC = () => {
       })
       if (!result.canceled && result.assets[0]) {
         Alert.alert(
-          t('data_sync.confirm_restore', '确认恢复'),
-          t('data_sync.restore_warning', '恢复将覆盖当前数据，是否继续？'),
+          t('data_sync.confirm_restore'),
+          t('data_sync.restore_warning'),
           [
-            { text: t('common.cancel', '取消'), style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
-              text: t('common.confirm', '确认'),
+              text: t('common.confirm'),
               onPress: async () => {
                 try {
                   await archiveService.importFromZip(result.assets[0].uri)
                   Alert.alert(
-                    t('common.success', '成功'),
-                    t('data_sync.restore_success', '恢复成功')
+                    t('common.success'),
+                    t('data_sync.restore_success')
                   )
                 } catch (err) {
                   logger.error('恢复失败', err instanceof Error ? err : String(err))
-                  Alert.alert(t('common.error', '错误'), t('data_sync.restore_failed', '恢复失败'))
+                  Alert.alert(t('common.error'), t('data_sync.restore_failed'))
                 }
               }
             }
@@ -489,7 +489,7 @@ export const DataSyncScreen: React.FC = () => {
       }
     } catch (e) {
       logger.error('恢复失败', e instanceof Error ? e : String(e))
-      Alert.alert(t('common.error', '错误'), t('data_sync.restore_failed', '恢复失败'))
+      Alert.alert(t('common.error'), t('data_sync.restore_failed'))
     }
   }
 
@@ -509,84 +509,106 @@ export const DataSyncScreen: React.FC = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'syncing':
-        return t('data_sync.syncing', '同步中...')
+        return t('data_sync.syncing')
       case 'success':
-        return t('common.success', '成功')
+        return t('common.success')
       case 'error':
-        return t('common.error', '错误')
+        return t('common.error')
       default:
-        return t('data_sync.idle', '空闲')
+        return t('data_sync.idle')
     }
   }
 
   return (
-    <>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bgApp}
-      />
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
-        <View style={[styles.container, { backgroundColor: colors.bgApp }]}>
-          {/* 头部 */}
-          <View
-            style={[
-              styles.header,
-              {
-                backgroundColor: colors.bgSurface,
-                borderBottomColor: colors.borderSubtle
-              }
-            ]}
-          >
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Text style={[styles.backText, { color: colors.primary }]}>
-                ← {t('common.back', '返回')}
-              </Text>
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-              {t('data_sync.title', '数据同步')}
-            </Text>
-            <TouchableOpacity onPress={() => setShowAddForm(!showAddForm)}>
-              <Text style={[styles.addButton, { color: colors.primary }]}>
-                {showAddForm ? t('common.cancel', '取消') : `+ ${t('common.add', '添加')}`}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
+    <StackScreenLayout
+      title={t('data_sync.title')}
+      {...getStackScreenChrome(colors)}
+      headerRight={
+        backupTab === 'cloud'
+          ? {
+              label: showAddForm ? t('common.cancel') : `+ ${t('common.add')}`,
+              onPress: () => setShowAddForm(!showAddForm)
+            }
+          : undefined
+      }
+      contentStyle={styles.container}
+    >
+      <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
             {/* 快捷操作 */}
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                {t('data_sync.quick_actions', '快捷操作')}
+                {t('data_sync.quick_actions')}
               </Text>
 
               <View style={styles.quickActions}>
                 <TouchableOpacity
-                  style={[styles.quickActionButton, { backgroundColor: colors.primary + '20' }]}
+                  style={[styles.quickActionButton, { backgroundColor: colors.primaryLight }]}
                   onPress={handleBackup}
                 >
                   <Text style={styles.quickActionIcon}>📤</Text>
                   <Text style={[styles.quickActionText, { color: colors.primary }]}>
-                    {t('data_sync.backup', '备份数据')}
+                    {t('data_sync.backup')}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.quickActionButton, { backgroundColor: colors.primary + '20' }]}
+                  style={[styles.quickActionButton, { backgroundColor: colors.primaryLight }]}
                   onPress={handleRestore}
                 >
                   <Text style={styles.quickActionIcon}>📥</Text>
                   <Text style={[styles.quickActionText, { color: colors.primary }]}>
-                    {t('data_sync.restore', '恢复数据')}
+                    {t('data_sync.restore')}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
+            <View style={[styles.section, { backgroundColor: colors.bgSurface, paddingVertical: 12 }]}>
+              <View style={[styles.backupTabBar, { backgroundColor: colors.bgSurfaceHighest }]}>
+                <TouchableOpacity
+                  style={[
+                    styles.backupTab,
+                    backupTab === 'cloud' && { backgroundColor: colors.bgSurface }
+                  ]}
+                  onPress={() => setBackupTab('cloud')}
+                >
+                  <Text
+                    style={{
+                      color: backupTab === 'cloud' ? colors.primary : colors.textSecondary,
+                      fontWeight: backupTab === 'cloud' ? '600' : '400'
+                    }}
+                  >
+                    {t('data_sync.cloud_backups_tab')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.backupTab,
+                    backupTab === 'snapshot' && { backgroundColor: colors.bgSurface }
+                  ]}
+                  onPress={() => setBackupTab('snapshot')}
+                >
+                  <Text
+                    style={{
+                      color: backupTab === 'snapshot' ? colors.primary : colors.textSecondary,
+                      fontWeight: backupTab === 'snapshot' ? '600' : '400'
+                    }}
+                  >
+                    {t('data_sync.local_snapshots_tab')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {backupTab === 'snapshot' ? (
+              <DataSyncSnapshotPanel />
+            ) : null}
+
             {/* 添加同步目标表单 */}
-            {showAddForm && (
+            {backupTab === 'cloud' && showAddForm && (
               <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                  {t('data_sync.add_target', '添加同步目标')}
+                  {t('data_sync.add_target')}
                 </Text>
 
                 <View style={styles.formGroup}>
@@ -599,7 +621,7 @@ export const DataSyncScreen: React.FC = () => {
                           styles.typeButton,
                           { backgroundColor: colors.bgSurfaceHighest },
                           newTarget.type === type && {
-                            backgroundColor: colors.primary + '20'
+                            backgroundColor: colors.primaryLight
                           }
                         ]}
                         onPress={() => setNewTarget({ ...newTarget, type })}
@@ -633,7 +655,7 @@ export const DataSyncScreen: React.FC = () => {
                     ]}
                     value={newTarget.name}
                     onChangeText={(text) => setNewTarget({ ...newTarget, name: text })}
-                    placeholder={t('data_sync.target_name_placeholder', '同步目标名称')}
+                    placeholder={t('data_sync.target_name_placeholder')}
                     placeholderTextColor={colors.textSecondary}
                   />
                 </View>
@@ -679,8 +701,8 @@ export const DataSyncScreen: React.FC = () => {
                         onChangeText={(text) => setNewTarget({ ...newTarget, username: text })}
                         placeholder={
                           newTarget.type === 's3'
-                            ? t('data_sync.s3_access_key_placeholder', 'Access Key')
-                            : t('data_sync.username_placeholder', '用户名（可选）')
+                            ? t('data_sync.s3_access_key_placeholder')
+                            : t('data_sync.username_placeholder')
                         }
                         placeholderTextColor={colors.textSecondary}
                       />
@@ -703,8 +725,8 @@ export const DataSyncScreen: React.FC = () => {
                         onChangeText={(text) => setNewTarget({ ...newTarget, password: text })}
                         placeholder={
                           newTarget.type === 's3'
-                            ? t('data_sync.s3_secret_key_placeholder', 'Secret Key（可选）')
-                            : t('data_sync.password_placeholder', '密码（可选）')
+                            ? t('data_sync.s3_secret_key_placeholder')
+                            : t('data_sync.password_placeholder')
                         }
                         placeholderTextColor={colors.textSecondary}
                         secureTextEntry
@@ -729,7 +751,7 @@ export const DataSyncScreen: React.FC = () => {
                             ]}
                             value={newTarget.s3Bucket}
                             onChangeText={(text) => setNewTarget({ ...newTarget, s3Bucket: text })}
-                            placeholder={t('data_sync.s3_bucket_placeholder', 'S3 Bucket 名称')}
+                            placeholder={t('data_sync.s3_bucket_placeholder')}
                             placeholderTextColor={colors.textSecondary}
                           />
                         </View>
@@ -749,7 +771,7 @@ export const DataSyncScreen: React.FC = () => {
                             ]}
                             value={newTarget.s3Region}
                             onChangeText={(text) => setNewTarget({ ...newTarget, s3Region: text })}
-                            placeholder={t('data_sync.s3_region_placeholder', '例如: us-east-1')}
+                            placeholder={t('data_sync.s3_region_placeholder')}
                             placeholderTextColor={colors.textSecondary}
                           />
                         </View>
@@ -769,7 +791,7 @@ export const DataSyncScreen: React.FC = () => {
                             ]}
                             value={newTarget.s3Path}
                             onChangeText={(text) => setNewTarget({ ...newTarget, s3Path: text })}
-                            placeholder={t('data_sync.s3_path_placeholder', '例如: /backups/')}
+                            placeholder={t('data_sync.s3_path_placeholder')}
                             placeholderTextColor={colors.textSecondary}
                           />
                         </View>
@@ -783,26 +805,28 @@ export const DataSyncScreen: React.FC = () => {
                   onPress={handleAddTarget}
                 >
                   <Text style={[styles.saveButtonText, { color: colors.textOnPrimary }]}>
-                    {t('common.add', '添加')}
+                    {t('common.add')}
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
 
             {/* 同步目标列表 */}
+            {backupTab === 'cloud' && (
+            <>
             <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                {t('data_sync.targets', '同步目标')}
+                {t('data_sync.targets')}
               </Text>
 
               {syncTargets.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>☁️</Text>
                   <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {t('data_sync.no_targets', '暂无同步目标')}
+                    {t('data_sync.no_targets')}
                   </Text>
                   <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
-                    {t('data_sync.add_hint', '点击右上角添加按钮配置同步目标')}
+                    {t('data_sync.add_hint')}
                   </Text>
                 </View>
               ) : (
@@ -841,7 +865,7 @@ export const DataSyncScreen: React.FC = () => {
 
                       {target.lastSync && (
                         <Text style={[styles.lastSync, { color: colors.textSecondary }]}>
-                          {t('data_sync.last_sync', '上次同步')}:{' '}
+                          {t('data_sync.last_sync')}:{' '}
                           {new Date(target.lastSync).toLocaleString()}
                         </Text>
                       )}
@@ -853,17 +877,17 @@ export const DataSyncScreen: React.FC = () => {
                         onValueChange={() => handleToggleTarget(target.id)}
                         trackColor={{
                           false: colors.bgSurface,
-                          true: colors.primary + '80'
+                          true: colors.primaryLight
                         }}
                         thumbColor={target.isEnabled ? colors.primary : colors.textSecondary}
                       />
                       <TouchableOpacity
-                        style={[styles.syncButton, { backgroundColor: colors.primary + '20' }]}
+                        style={[styles.syncButton, { backgroundColor: colors.primaryLight }]}
                         onPress={() => handleSyncNow(target.id)}
                         disabled={!target.isEnabled || target.status === 'syncing'}
                       >
                         <Text style={[styles.syncButtonText, { color: colors.primary }]}>
-                          {t('data_sync.sync_now', '同步')}
+                          {t('data_sync.sync_now')}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -871,16 +895,16 @@ export const DataSyncScreen: React.FC = () => {
                         onPress={() => handleDeleteTarget(target.id)}
                       >
                         <Text style={[styles.deleteButtonText, { color: colors.error }]}>
-                          {t('common.delete', '删除')}
+                          {t('common.delete')}
                         </Text>
                       </TouchableOpacity>
                       {target.type !== 'local' && (
                         <TouchableOpacity
-                          style={[styles.recordsButton, { backgroundColor: colors.primary + '20' }]}
+                          style={[styles.recordsButton, { backgroundColor: colors.primaryLight }]}
                           onPress={() => loadCloudRecords(target.id)}
                         >
                           <Text style={[styles.recordsButtonText, { color: colors.primary }]}>
-                            {t('data_sync.cloud_records', '云端记录')}
+                            {t('data_sync.cloud_records')}
                           </Text>
                         </TouchableOpacity>
                       )}
@@ -895,7 +919,7 @@ export const DataSyncScreen: React.FC = () => {
               <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
                 <View style={styles.recordsHeader}>
                   <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                    {t('data_sync.cloud_backup_records', '云端备份记录')} ({cloudRecords.length})
+                    {t('data_sync.cloud_backup_records')} ({cloudRecords.length})
                   </Text>
                   <View style={styles.recordsHeaderActions}>
                     {cloudRecords.length > 0 && (
@@ -907,8 +931,8 @@ export const DataSyncScreen: React.FC = () => {
                       >
                         <Text style={[styles.multiSelectToggle, { color: colors.primary }]}>
                           {isMultiSelectMode
-                            ? t('common.cancel', '取消')
-                            : t('data_sync.multi_select', '多选')}
+                            ? t('common.cancel')
+                            : t('data_sync.multi_select')}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -923,11 +947,11 @@ export const DataSyncScreen: React.FC = () => {
                 {/* 批量删除操作栏 */}
                 {isMultiSelectMode && selectedRecords.size > 0 && (
                   <TouchableOpacity
-                    style={[styles.batchDeleteButton, { backgroundColor: colors.error + '20' }]}
+                    style={[styles.batchDeleteButton, { backgroundColor: colors.errorContainer }]}
                     onPress={() => handleBatchDeleteRecords(activeTargetId)}
                   >
                     <Text style={[styles.batchDeleteText, { color: colors.error }]}>
-                      {t('data_sync.batch_delete', '批量删除')} ({selectedRecords.size})
+                      {t('data_sync.batch_delete')} ({selectedRecords.size})
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -935,14 +959,14 @@ export const DataSyncScreen: React.FC = () => {
                 {recordsLoading ? (
                   <View style={styles.loadingContainer}>
                     <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                      {t('common.loading', '加载中...')}
+                      {t('common.loading')}
                     </Text>
                   </View>
                 ) : cloudRecords.length === 0 ? (
                   <View style={styles.emptyContainer}>
                     <Text style={styles.emptyIcon}>📭</Text>
                     <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                      {t('data_sync.no_cloud_records', '暂无云端备份记录')}
+                      {t('data_sync.no_cloud_records')}
                     </Text>
                   </View>
                 ) : (
@@ -1003,7 +1027,7 @@ export const DataSyncScreen: React.FC = () => {
                               ]}
                               value={newRecordName}
                               onChangeText={setNewRecordName}
-                              placeholder={t('data_sync.new_name_placeholder', '输入新名称')}
+                              placeholder={t('data_sync.new_name_placeholder')}
                               placeholderTextColor={colors.textSecondary}
                               autoFocus
                             />
@@ -1014,7 +1038,7 @@ export const DataSyncScreen: React.FC = () => {
                               <Text
                                 style={[styles.renameConfirmText, { color: colors.textOnPrimary }]}
                               >
-                                {t('common.confirm', '确认')}
+                                {t('common.confirm')}
                               </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
@@ -1027,7 +1051,7 @@ export const DataSyncScreen: React.FC = () => {
                               <Text
                                 style={[styles.renameCancelText, { color: colors.textSecondary }]}
                               >
-                                {t('common.cancel', '取消')}
+                                {t('common.cancel')}
                               </Text>
                             </TouchableOpacity>
                           </View>
@@ -1046,7 +1070,7 @@ export const DataSyncScreen: React.FC = () => {
                                 {record.managed && (
                                   <Text style={{ color: colors.primary }}>
                                     {' '}
-                                    · {t('data_sync.managed', '受管')}
+                                    · {t('data_sync.managed')}
                                   </Text>
                                 )}
                               </Text>
@@ -1057,7 +1081,7 @@ export const DataSyncScreen: React.FC = () => {
                                 <TouchableOpacity
                                   style={[
                                     styles.recordAction,
-                                    { backgroundColor: colors.primary + '20' }
+                                    { backgroundColor: colors.primaryLight }
                                   ]}
                                   onPress={() =>
                                     handleRestoreRecord(activeTargetId, record.filename)
@@ -1066,13 +1090,13 @@ export const DataSyncScreen: React.FC = () => {
                                   <Text
                                     style={[styles.recordActionText, { color: colors.primary }]}
                                   >
-                                    {t('data_sync.restore', '恢复')}
+                                    {t('data_sync.restore')}
                                   </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                   style={[
                                     styles.recordAction,
-                                    { backgroundColor: colors.warning + '20' }
+                                    { backgroundColor: colors.secondaryContainer }
                                   ]}
                                   onPress={() => {
                                     setRenamingRecord(record.filename)
@@ -1080,22 +1104,22 @@ export const DataSyncScreen: React.FC = () => {
                                   }}
                                 >
                                   <Text
-                                    style={[styles.recordActionText, { color: colors.warning }]}
+                                    style={[styles.recordActionText, { color: colors.onSecondaryContainer }]}
                                   >
-                                    {t('data_sync.rename', '重命名')}
+                                    {t('data_sync.rename')}
                                   </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                   style={[
                                     styles.recordAction,
-                                    { backgroundColor: colors.error + '20' }
+                                    { backgroundColor: colors.errorContainer }
                                   ]}
                                   onPress={() =>
                                     handleDeleteCloudRecord(activeTargetId, record.filename)
                                   }
                                 >
                                   <Text style={[styles.recordActionText, { color: colors.error }]}>
-                                    {t('common.delete', '删除')}
+                                    {t('common.delete')}
                                   </Text>
                                 </TouchableOpacity>
                               </View>
@@ -1108,41 +1132,16 @@ export const DataSyncScreen: React.FC = () => {
                 )}
               </View>
             )}
-          </ScrollView>
-        </View>
-      </SafeAreaView>
-    </>
+            </>
+            )}
+      </ScrollView>
+    </StackScreenLayout>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1
-  },
   container: {
     flex: 1
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1
-  },
-  backButton: {
-    padding: 8
-  },
-  backText: {
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700'
-  },
-  addButton: {
-    fontSize: 16,
-    fontWeight: '600'
   },
   content: {
     flex: 1,
@@ -1411,5 +1410,16 @@ const styles = StyleSheet.create({
   renameCancelText: {
     fontSize: 13,
     fontWeight: '600'
+  },
+  backupTabBar: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    padding: 4
+  },
+  backupTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8
   }
 })

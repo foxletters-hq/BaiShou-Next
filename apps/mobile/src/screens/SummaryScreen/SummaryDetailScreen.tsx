@@ -5,11 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Alert,
   TextInput
 } from 'react-native'
+import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import { useNativeTheme, scrollIndicatorStyle, MarkdownRenderer } from '@baishou/ui/native'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
@@ -187,7 +187,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
+      <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgApp }}>
         <StatusBar
           barStyle={isDark ? 'light-content' : 'dark-content'}
           backgroundColor={colors.bgApp}
@@ -197,14 +197,14 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
             {t('common.loading', '加载中...')}
           </Text>
         </View>
-      </SafeAreaView>
+      </ScreenSafeArea>
     )
   }
 
   if (!summary) return null
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgApp }]}>
+    <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgApp }}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.bgApp}
@@ -328,7 +328,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenSafeArea>
   )
 }
 
