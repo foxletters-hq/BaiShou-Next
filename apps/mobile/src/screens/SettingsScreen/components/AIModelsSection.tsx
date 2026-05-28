@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { AIProviderConfig } from '@baishou/shared'
 
-export interface AIModelsSectionProps {
-  setActiveTab: (tabId: string) => void
-}
-
-export const AIModelsSection: React.FC<AIModelsSectionProps> = ({ setActiveTab }) => {
+export const AIModelsSection: React.FC = () => {
+  const router = useRouter()
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const { services, dbReady } = useBaishou()
@@ -39,11 +37,11 @@ export const AIModelsSection: React.FC<AIModelsSectionProps> = ({ setActiveTab }
       await services.settingsManager.set('global_models', config)
       setGlobalModels(config)
       Alert.alert(
-        t('common.success', '成功'),
-        t('settings.global_models_saved', '全局模型配置已保存')
+        t('common.success'),
+        t('settings.global_models_saved')
       )
     } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('settings.save_failed', '保存失败'))
+      Alert.alert(t('common.error'), t('common.errors.save_failed'))
     }
   }
 
@@ -63,8 +61,8 @@ export const AIModelsSection: React.FC<AIModelsSectionProps> = ({ setActiveTab }
     const allModelOptions = allModels.map((m) => m.label)
     if (allModelOptions.length === 0) {
       Alert.alert(
-        t('common.hint', '提示'),
-        t('settings.no_models_available', '没有可用的模型，请先配置供应商')
+        t('common.hint'),
+        t('settings.no_models_available')
       )
       return
     }
@@ -83,29 +81,29 @@ export const AIModelsSection: React.FC<AIModelsSectionProps> = ({ setActiveTab }
         await handleSaveGlobalModels(newConfig)
       }
     }))
-    buttons.push({ text: t('common.cancel', '取消'), style: 'cancel' })
-    Alert.alert(t('settings.select_model', '选择模型'), '', buttons)
+    buttons.push({ text: t('common.cancel'), style: 'cancel' })
+    Alert.alert(t('settings.select_model_title'), '', buttons)
   }
 
   const modelFields = [
     {
       key: 'globalDialogue',
-      label: t('settings.dialogue_model', '对话模型'),
+      label: t('ai_config.dialogue_model_title'),
       icon: '💬'
     },
     {
       key: 'globalNaming',
-      label: t('settings.naming_model', '命名模型'),
+      label: t('ai_config.naming_model_title'),
       icon: '✏️'
     },
     {
       key: 'globalEmbedding',
-      label: t('settings.embedding_model', '嵌入模型'),
+      label: t('ai_config.embedding_model_title'),
       icon: '🧬'
     },
     {
       key: 'globalSummary',
-      label: t('settings.summary_model', '总结模型'),
+      label: t('ai_config.summary_model_title'),
       icon: '📊'
     }
   ]
@@ -117,7 +115,7 @@ export const AIModelsSection: React.FC<AIModelsSectionProps> = ({ setActiveTab }
       const prov = providers.find((p) => p.id === pid)
       return prov ? `${prov.name} / ${mid}` : mid
     }
-    return t('settings.not_set', '未设置')
+    return t('settings.not_set')
   }
 
   return (
@@ -151,10 +149,10 @@ export const AIModelsSection: React.FC<AIModelsSectionProps> = ({ setActiveTab }
 
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: colors.bgSurface }]}
-        onPress={() => setActiveTab('ai-services')}
+        onPress={() => router.push('/settings/ai-services')}
       >
         <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-          {t('settings.configure_providers', '配置供应商')}
+          {t('settings.configure_providers')}
         </Text>
       </TouchableOpacity>
     </View>

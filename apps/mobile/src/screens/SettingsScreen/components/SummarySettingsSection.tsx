@@ -1,248 +1,305 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ScrollView
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
+import {
+  getDefaultSummaryTemplate,
+  getSummaryTemplateForEdit,
+  resolveSummaryPromptLocale,
+  SUMMARY_PROMPT_LOCALE_OPTIONS,
+  type SummaryConfig,
+  type SummaryPromptLocale,
+  type SummaryTemplateKey
+} from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
+import { resolveAppUiLanguage } from '../../../lib/device-locale'
+
+const TEMPLATE_KEYS: SummaryTemplateKey[] = ['weekly', 'monthly', 'quarterly', 'yearly']
+
+const TAB_META: Record<SummaryTemplateKey, { icon: string; labelKey: string }> = {
+  weekly: { icon: '🌱', labelKey: 'summary.tab_weekly' },
+  monthly: { icon: '☘️', labelKey: 'summary.tab_monthly' },
+  quarterly: { icon: '🪴', labelKey: 'summary.tab_quarterly' },
+  yearly: { icon: '🌳', labelKey: 'summary.tab_yearly' }
+}
 
 export const SummarySettingsSection: React.FC = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { colors } = useNativeTheme()
   const { services, dbReady } = useBaishou()
 
-  const [summaryConfig, setSummaryConfig] = useState<any>({})
-  const [editingTemplate, setEditingTemplate] = useState<string | null>(null)
-  const [templateText, setTemplateText] = useState('')
+  const [summaryConfig, setSummaryConfig] = useState<SummaryConfig>({})
+  const [activeTab, setActiveTab] = useState<SummaryTemplateKey>('weekly')
+  const [activePromptLocale, setActivePromptLocale] = useState<SummaryPromptLocale>('zh')
+  const [localText, setLocalText] = useState('')
+  const [generationLocale, setGenerationLocale] = useState<SummaryPromptLocale>('zh')
+  const activeTabRef = useRef<SummaryTemplateKey>(activeTab)
+  activeTabRef.current = activeTab
 
   useEffect(() => {
     if (!dbReady || !services) return
-    const loadConfig = async () => {
-      try {
-        const summaryConfigData = (await services.settingsManager.get<any>('summary_config')) || {}
-        setSummaryConfig(summaryConfigData)
-      } catch (e) {
-        console.warn('Load summary config failed', e)
-      }
-    }
-    loadConfig()
+    void (async () => {
+      const saved = (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
+      const settings = (await services.settingsManager.get<{ language?: string }>('settings')) || {}
+      const uiLang = resolveAppUiLanguage(settings.language, i18n.language)
+      const autoLocale = resolveSummaryPromptLocale(uiLang)
+      setSummaryConfig(saved)
+      setGenerationLocale(autoLocale)
+      setActivePromptLocale(autoLocale)
+      setLocalText(
+        getSummaryTemplateForEdit(saved.instructionsByLocale ?? {}, autoLocale, 'weekly')
+      )
+    })()
   }, [dbReady, services])
 
-  const handleSaveSummaryConfig = async (config: any) => {
+  useEffect(() => {
+    if (!dbReady || !services) return
+    void (async () => {
+      const saved = (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
+      const settings = (await services.settingsManager.get<{ language?: string }>('settings')) || {}
+      const uiLang = resolveAppUiLanguage(settings.language, i18n.language)
+      const autoLocale = resolveSummaryPromptLocale(uiLang)
+      setGenerationLocale(autoLocale)
+      setActivePromptLocale(autoLocale)
+      setLocalText(
+        getSummaryTemplateForEdit(
+          saved.instructionsByLocale ?? {},
+          autoLocale,
+          activeTabRef.current
+        )
+      )
+    })()
+  }, [dbReady, i18n.language, services])
+
+  const readTemplate = useCallback(
+    (locale: SummaryPromptLocale, type: SummaryTemplateKey) =>
+      getSummaryTemplateForEdit(summaryConfig.instructionsByLocale ?? {}, locale, type),
+    [summaryConfig.instructionsByLocale]
+  )
+
+  const patchLocaleTemplates = useCallback(
+    (locale: SummaryPromptLocale, type: SummaryTemplateKey, text: string) => ({
+      ...(summaryConfig.instructionsByLocale || {}),
+      [locale]: {
+        ...(summaryConfig.instructionsByLocale?.[locale] || {}),
+        [type]: text
+      }
+    }),
+    [summaryConfig.instructionsByLocale]
+  )
+
+  const persistConfig = async (next: SummaryConfig) => {
     if (!services || !dbReady) return
-    try {
-      await services.settingsManager.set('summary_config', config)
-      setSummaryConfig(config)
-      Alert.alert(t('common.success', '成功'), t('settings.summary_saved', '总结配置已保存'))
-    } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('settings.save_failed', '保存失败'))
-    }
+    await services.settingsManager.set('summary_config', next)
+    setSummaryConfig(next)
   }
 
-  const handleEditTemplate = (templateType: string) => {
-    const templateKey = `${templateType}Template`
-    const defaultTemplates: Record<string, string> = {
-      weekly:
-        '## 📋 本周回顾\n\n### 🎯 主要事件\n> 请按时间顺序列出本周发生的重要事件和经历。\n\n### 😊 情绪变化\n> 记录本周的情绪起伏，包括情绪触发因素 and 个人反思。\n\n### 💡 重要领悟\n> 总结本周获得的新见解、学到的经验或成长。\n\n### 📌 下周展望\n> 为下周设定目标或需要关注的事项。',
-      monthly:
-        '## 📅 本月总结\n\n### 🏆 重要里程碑\n> 回顾这个月达成的重要目标 and 成就。\n\n### 📈 成长轨迹\n> 分析个人成长 and 变化，包括技能提升、习惯养成等。\n\n### 🔄 关键转折\n> 记录本月发生的重大变化或决策节点。\n\n### 🎯 下月计划\n> 为下个月设定具体目标 and 行动方案。',
-      quarterly:
-        '## 📊 季度复盘\n\n### 🎯 目标达成情况\n> 对照季度初设定的目标，评估完成度。\n\n### 📉 数据分析\n> 基于日记数据，分析趋势 and 模式。\n\n### 🔍 深度反思\n> 对这段时间的经历进行深度思考 and 总结。\n\n### 🗺️ 下季度规划\n> 制定下个季度的战略方向 and 具体计划。',
-      yearly:
-        '## 🎊 年度回顾\n\n### 🏅 年度成就\n> 列出本年最重要的成就 and 突破。\n\n### 📚 年度学习\n> 总结今年学到的最重要的几件事。\n\n### 🌟 高光时刻\n> 回顾今年的闪光点 and 最值得纪念的时刻。\n\n### 🔮 新年愿景\n> 为新的一年设定主题 and 核心目标。'
-    }
-    setEditingTemplate(templateType)
-    setTemplateText(summaryConfig[templateKey] || defaultTemplates[templateType] || '')
+  const flushLocal = (locale: SummaryPromptLocale, type: SummaryTemplateKey, text: string) => ({
+    ...summaryConfig,
+    promptLocale: generationLocale,
+    instructionsByLocale: patchLocaleTemplates(locale, type, text)
+  })
+
+  const handleTabChange = (tab: SummaryTemplateKey) => {
+    const merged = flushLocal(activePromptLocale, activeTab, localText)
+    setSummaryConfig(merged)
+    setActiveTab(tab)
+    setLocalText(readTemplate(activePromptLocale, tab))
   }
 
-  const handleResetTemplate = async (templateType: string) => {
-    if (!services || !dbReady) return
-    const defaultTemplates: Record<string, string> = {
-      weekly:
-        '## 📋 本周回顾\n\n### 🎯 主要事件\n> 请按时间顺序列出本周发生的重要事件和经历。\n\n### 😊 情绪变化\n> 记录本周的情绪起伏，包括情绪触发因素 and 个人反思。\n\n### 💡 重要领悟\n> 总结本周获得的新见解、学到的经验或成长。\n\n### 📌 下周展望\n> 为下周设定目标或需要关注的事项。',
-      monthly:
-        '## 📅 本月总结\n\n### 🏆 重要里程碑\n> 回顾这个月达成的重要目标 and 成就。\n\n### 📈 成长轨迹\n> 分析个人成长 and 变化，包括技能提升、习惯养成等。\n\n### 🔄 关键转折\n> 记录本月发生的重大变化或决策节点。\n\n### 🎯 下月计划\n> 为下个月设定具体目标 and 行动方案。',
-      quarterly:
-        '## 📊 季度复盘\n\n### 🎯 目标达成情况\n> 对照季度初设定的目标，评估完成度。\n\n### 📉 数据分析\n> 基于日记数据，分析趋势 and 模式。\n\n### 🔍 深度反思\n> 对这段时间的经历进行深度思考 and 总结。\n\n### 🗺️ 下季度规划\n> 制定下个季度的战略方向 and 具体计划。',
-      yearly:
-        '## 🎊 年度回顾\n\n### 🏅 年度成就\n> 列出本年最重要的成就 and 突破。\n\n### 📚 年度学习\n> 总结今年学到的最重要的几件事。\n\n### 🌟 高光时刻\n> 回顾今年的闪光点 and 最值得纪念的时刻。\n\n### 🔮 新年愿景\n> 为新的一年设定主题 and 核心目标。'
-    }
-    const templateKey = `${templateType}Template`
-    const newConfig = { ...summaryConfig }
-    newConfig[templateKey] = defaultTemplates[templateType] || ''
-    await handleSaveSummaryConfig(newConfig)
-    Alert.alert(t('common.success', '成功'), t('settings.template_reset', '模板已重置为默认'))
+  const handlePromptLocaleChange = (locale: SummaryPromptLocale) => {
+    const merged = flushLocal(activePromptLocale, activeTab, localText)
+    setSummaryConfig(merged)
+    setActivePromptLocale(locale)
+    setLocalText(getSummaryTemplateForEdit(merged.instructionsByLocale, locale, activeTab))
   }
 
-  const handleSaveTemplate = async () => {
-    if (!editingTemplate || !services || !dbReady) return
-    try {
-      const templateKey = `${editingTemplate}Template`
-      const newConfig = { ...summaryConfig, [templateKey]: templateText }
-      await handleSaveSummaryConfig(newConfig)
-      setEditingTemplate(null)
-      setTemplateText('')
-    } catch (e) {
-      console.error('Save template failed', e)
+  const handleSave = async () => {
+    const settings = (await services?.settingsManager.get<{ language?: string }>('settings')) || {}
+    const uiLang = resolveAppUiLanguage(settings.language, i18n.language)
+    const autoLocale = resolveSummaryPromptLocale(uiLang)
+    const next: SummaryConfig = {
+      ...flushLocal(activePromptLocale, activeTab, localText),
+      promptLocale: autoLocale
     }
+    await persistConfig(next)
+    setGenerationLocale(autoLocale)
+    Alert.alert(t('common.success'), t('settings.saved'))
   }
+
+  const handleReset = async () => {
+    const defaultText = getDefaultSummaryTemplate(activeTab, activePromptLocale)
+    setLocalText(defaultText)
+    const next = flushLocal(activePromptLocale, activeTab, defaultText)
+    await persistConfig(next)
+    Alert.alert(t('common.success'), t('summary.reset_template_success'))
+  }
+
+  const tabs = useMemo(
+    () =>
+      TEMPLATE_KEYS.map((id) => ({
+        id,
+        icon: TAB_META[id].icon,
+        label: t(TAB_META[id].labelKey)
+      })),
+    [t]
+  )
+
+  const generationLabel =
+    SUMMARY_PROMPT_LOCALE_OPTIONS.find((l) => l.id === generationLocale)?.fallback ??
+    generationLocale
 
   return (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('settings.summary_title', '回忆生成设置')}
-      </Text>
-      <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-        {t('settings.summary_desc', '配置周/月/季/年总结模板')}
+    <ScrollView keyboardShouldPersistTaps="handled">
+      <Text style={[styles.desc, { color: colors.textSecondary }]}>
+        {t('settings.summary_ai_prompt_desc')}
       </Text>
 
-      {editingTemplate && (
-        <View style={[styles.templateEditor, { backgroundColor: colors.bgSurfaceHighest }]}>
-          <Text style={[styles.templateEditorTitle, { color: colors.textPrimary }]}>
-            {t('settings.edit_template', '编辑模板')} -{' '}
-            {t(`settings.${editingTemplate}_template`, editingTemplate)}
-          </Text>
-          <TextInput
+      <Text style={[styles.localeHint, { color: colors.textSecondary }]}>
+        {t('settings.summary_prompt_locale_hint')}:{' '}
+        <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{generationLabel}</Text>
+      </Text>
+
+      <View style={styles.langBar}>
+        {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
+          <TouchableOpacity
+            key={lang.id}
             style={[
-              styles.templateInput,
+              styles.langChip,
               {
-                backgroundColor: colors.bgSurface,
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle
+                borderColor: activePromptLocale === lang.id ? colors.primary : colors.borderMuted,
+                backgroundColor:
+                  activePromptLocale === lang.id ? colors.primaryLight : 'transparent'
+              },
+              generationLocale === lang.id && styles.langChipGeneration
+            ]}
+            onPress={() => handlePromptLocaleChange(lang.id)}
+          >
+            <Text
+              style={{
+                color: activePromptLocale === lang.id ? colors.primary : colors.textSecondary,
+                fontSize: 13
+              }}
+            >
+              {t(lang.labelKey, lang.fallback)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.tabBar}>
+        {tabs.map((tab) => (
+          <TouchableOpacity
+            key={tab.id}
+            style={[
+              styles.tabBtn,
+              {
+                borderColor: activeTab === tab.id ? colors.primary : colors.borderMuted,
+                backgroundColor: activeTab === tab.id ? colors.primaryLight : colors.bgSurfaceHighest
               }
             ]}
-            value={templateText}
-            onChangeText={setTemplateText}
-            placeholder={t('settings.template_placeholder', '输入模板内容...')}
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-          />
-          <View style={styles.templateActions}>
-            <TouchableOpacity
-              style={[styles.templateButton, { backgroundColor: colors.primary }]}
-              onPress={handleSaveTemplate}
-            >
-              <Text style={[styles.templateButtonText, { color: colors.textOnPrimary }]}>
-                {t('common.save', '保存')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.templateButton, { backgroundColor: colors.bgSurface }]}
-              onPress={() => setEditingTemplate(null)}
-            >
-              <Text style={[styles.templateButtonText, { color: colors.textPrimary }]}>
-                {t('common.cancel', '取消')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {['weekly', 'monthly', 'quarterly', 'yearly'].map((type) => {
-        const templateKey = `${type}Template`
-        return (
-          <View
-            key={type}
-            style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}
+            onPress={() => handleTabChange(tab.id)}
           >
-            <View style={styles.templateHeader}>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                {t(`settings.${type}_template`, `${type}总结模板`)}
-              </Text>
-              <View style={styles.templateActions}>
-                <TouchableOpacity onPress={() => handleEditTemplate(type)}>
-                  <Text style={[styles.editButton, { color: colors.primary }]}>
-                    {t('common.edit', '编辑')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleResetTemplate(type)}>
-                  <Text style={[styles.editButton, { color: colors.textSecondary }]}>
-                    {t('settings.reset', '重置')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            <Text style={[styles.settingValue, { color: colors.textSecondary }]} numberOfLines={2}>
-              {summaryConfig[templateKey]?.substring(0, 50) ||
-                t('settings.default_template', '默认模板')}
-              ...
+            <Text style={styles.tabIcon}>{tab.icon}</Text>
+            <Text
+              style={{
+                color: activeTab === tab.id ? colors.primary : colors.textSecondary,
+                fontSize: 12,
+                fontWeight: activeTab === tab.id ? '600' : '400'
+              }}
+              numberOfLines={1}
+            >
+              {tab.label}
             </Text>
-          </View>
-        )
-      })}
-    </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TextInput
+        style={[
+          styles.editor,
+          {
+            backgroundColor: colors.bgSurfaceHighest,
+            color: colors.textPrimary,
+            borderColor: colors.borderMuted
+          }
+        ]}
+        value={localText}
+        onChangeText={setLocalText}
+        multiline
+        numberOfLines={14}
+        textAlignVertical="top"
+        placeholder={t('settings.summary_ai_prompt_hint')}
+        placeholderTextColor={colors.textTertiary}
+      />
+
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[styles.btn, { borderColor: colors.borderSubtle }]}
+          onPress={() => void handleReset()}
+        >
+          <Text style={{ color: colors.textSecondary }}>{t('settings.restore_default')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btn, styles.saveBtn, { backgroundColor: colors.primary }]}
+          onPress={() => void handleSave()}
+        >
+          <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>{t('common.save')}</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: 24
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1
-  },
-  sectionDescription: {
-    fontSize: 14,
-    marginBottom: 16
-  },
-  settingItem: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8
-  },
-  settingValue: {
-    fontSize: 14
-  },
-  templateEditor: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16
-  },
-  templateEditorTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12
-  },
-  templateInput: {
-    borderWidth: 1,
-    borderRadius: 8,
+  desc: { fontSize: 14, lineHeight: 20, marginBottom: 12 },
+  localeHint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
+  langBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  langChip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    fontSize: 14,
-    minHeight: 120,
-    marginBottom: 12
+    borderRadius: 20,
+    borderWidth: 1
   },
-  templateActions: {
+  langChipGeneration: {
+    borderStyle: 'dashed'
+  },
+  tabBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  tabBtn: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8
-  },
-  templateButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
-  },
-  templateButtonText: {
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  templateHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    maxWidth: '48%'
   },
-  editButton: {
+  tabIcon: { fontSize: 16 },
+  editor: {
+    minHeight: 220,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
     fontSize: 14,
-    fontWeight: '600'
-  }
+    lineHeight: 20,
+    marginBottom: 16
+  },
+  actions: { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  btn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center'
+  },
+  saveBtn: { borderWidth: 0 }
 })

@@ -12,17 +12,18 @@ export const DeveloperSettingsSection: React.FC = () => {
 
   const runAction = (title: string, message: string, action: () => Promise<void>) => {
     Alert.alert(title, message, [
-      { text: t('common.cancel', '取消'), style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: t('common.confirm', '确认'),
+        text: t('common.confirm'),
         style: 'destructive',
         onPress: async () => {
           if (!services || !dbReady) return
           setBusy(true)
           try {
             await action()
-          } catch (e: any) {
-            Alert.alert(t('common.error', '错误'), e?.message || String(e))
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e)
+            Alert.alert(t('common.error'), message)
           } finally {
             setBusy(false)
           }
@@ -32,69 +33,51 @@ export const DeveloperSettingsSection: React.FC = () => {
   }
 
   const handleLoadDemo = () => {
-    runAction(
-      t('settings.dev_load_demo', '加载演示数据'),
-      t('settings.dev_load_demo_confirm', '将写入若干示例日记（已存在日期的会追加内容）。'),
-      async () => {
-        await services!.developerService.loadDemoData(services!.diaryService)
-        Alert.alert(t('common.success', '成功'), t('settings.dev_load_demo_done', '演示数据已加载'))
-      }
-    )
+    runAction(t('developer.load_demo_data'), t('developer.load_demo_full_desc'), async () => {
+      await services!.developerService.loadDemoData(services!.diaryService)
+      Alert.alert(t('common.success'), t('developer.load_demo_success'))
+    })
   }
 
   const handleClearAll = () => {
-    runAction(
-      t('settings.dev_clear_all', '清空全部数据'),
-      t(
-        'settings.dev_clear_all_confirm',
-        '将删除本地存储与数据库，操作不可恢复。完成后需重启应用。'
-      ),
-      async () => {
-        services!.vaultFileWatcher.stop()
-        const result = await services!.developerService.clearAllData({
-          diaryService: services!.diaryService,
-          pathService: services!.pathService,
-          fileSystem: services!.fileSystem,
-          vaultService: services!.vaultService,
-          sessionManager: services!.sessionManager,
-          assistantManager: services!.assistantManager
-        })
-        Alert.alert(
-          result.success ? t('common.success', '成功') : t('common.error', '错误'),
-          result.message || ''
-        )
-      }
-    )
+    runAction(t('developer.clear_warning_title'), t('developer.clear_warning_content'), async () => {
+      services!.vaultFileWatcher.stop()
+      const result = await services!.developerService.clearAllData({
+        diaryService: services!.diaryService,
+        pathService: services!.pathService,
+        fileSystem: services!.fileSystem,
+        vaultService: services!.vaultService,
+        sessionManager: services!.sessionManager,
+        assistantManager: services!.assistantManager
+      })
+      Alert.alert(
+        result.success ? t('developer.clear_success_title') : t('common.error'),
+        result.message || t('developer.clear_success_content')
+      )
+    })
   }
 
   const handleClearAgent = () => {
-    runAction(
-      t('settings.dev_clear_agent', '清空 Agent 数据'),
-      t('settings.dev_clear_agent_confirm', '将删除所有会话与助手配置，操作不可恢复。'),
-      async () => {
-        const result = await services!.developerService.clearAgentData({
-          diaryService: services!.diaryService,
-          pathService: services!.pathService,
-          fileSystem: services!.fileSystem,
-          vaultService: services!.vaultService,
-          sessionManager: services!.sessionManager,
-          assistantManager: services!.assistantManager
-        })
-        Alert.alert(
-          result.success ? t('common.success', '成功') : t('common.error', '错误'),
-          result.message || ''
-        )
-      }
-    )
+    runAction(t('developer.clear_agent_db'), t('developer.clear_agent_db_desc'), async () => {
+      const result = await services!.developerService.clearAgentData({
+        diaryService: services!.diaryService,
+        pathService: services!.pathService,
+        fileSystem: services!.fileSystem,
+        vaultService: services!.vaultService,
+        sessionManager: services!.sessionManager,
+        assistantManager: services!.assistantManager
+      })
+      Alert.alert(
+        result.success ? t('developer.clear_success') : t('common.error'),
+        result.message || t('developer.clear_agent_success')
+      )
+    })
   }
 
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('settings.developer', '开发者')}
-      </Text>
       <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-        {t('settings.developer_desc', '演示数据与危险操作，仅供调试使用。')}
+        {t('developer.debug_title')}
       </Text>
 
       {busy && <ActivityIndicator color={colors.primary} style={styles.spinner} />}
@@ -105,7 +88,7 @@ export const DeveloperSettingsSection: React.FC = () => {
         disabled={busy || !dbReady}
       >
         <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-          {t('settings.dev_load_demo', '加载演示数据')}
+          {t('developer.load_demo_data')}
         </Text>
       </TouchableOpacity>
 
@@ -115,7 +98,7 @@ export const DeveloperSettingsSection: React.FC = () => {
         disabled={busy || !dbReady}
       >
         <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-          {t('settings.dev_clear_agent', '清空 Agent 数据')}
+          {t('developer.clear_agent_db')}
         </Text>
       </TouchableOpacity>
 
@@ -125,7 +108,7 @@ export const DeveloperSettingsSection: React.FC = () => {
         disabled={busy || !dbReady}
       >
         <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-          {t('settings.dev_clear_all', '清空全部数据')}
+          {t('developer.clear_all_data')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -136,16 +119,10 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1
-  },
   sectionDescription: {
     fontSize: 14,
-    marginBottom: 16
+    marginBottom: 16,
+    lineHeight: 20
   },
   spinner: {
     marginBottom: 12

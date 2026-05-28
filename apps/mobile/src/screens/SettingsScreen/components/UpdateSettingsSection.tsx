@@ -43,21 +43,21 @@ export const UpdateSettingsSection: React.FC = () => {
       setLastResult(result)
 
       if (result.status === 'available' && result.releaseUrl) {
-        Alert.alert(t('updater.available', '发现新版本'), `v${result.latestVersion}`, [
-          { text: t('common.cancel', '取消'), style: 'cancel' },
+        Alert.alert(t('updater.available'), `v${result.latestVersion}`, [
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: t('updater.view_release', '查看发布页'),
+            text: t('updater.view_release'),
             onPress: () => {
               services.updaterService.openReleaseUrl(result.releaseUrl!).catch((e) => {
-                Alert.alert(t('common.error', '错误'), e?.message || String(e))
+                Alert.alert(t('common.error'), e?.message || String(e))
               })
             }
           }
         ])
       } else if (result.status === 'not_available') {
-        Alert.alert(t('updater.not_available', '已是最新版本'))
+        Alert.alert(t('updater.not_available'))
       } else if (result.status === 'error') {
-        Alert.alert(t('updater.error', '检查更新失败'), result.error || '')
+        Alert.alert(t('updater.error'), result.error || '')
       }
     } finally {
       setChecking(false)
@@ -69,12 +69,12 @@ export const UpdateSettingsSection: React.FC = () => {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('updater.section_title', '应用更新')}
+        {t('updater.section_title')}
       </Text>
 
       <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('updater.current_version', '当前版本')}
+          {t('updater.current_version')}
         </Text>
         <Text style={[styles.value, { color: colors.textSecondary }]}>v{currentVersion}</Text>
       </View>
@@ -82,7 +82,7 @@ export const UpdateSettingsSection: React.FC = () => {
       {lastResult?.latestVersion && (
         <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {t('updater.latest_version', '最新版本')}
+            {t('updater.latest_version')}
           </Text>
           <Text style={[styles.value, { color: colors.textSecondary }]}>
             v{lastResult.latestVersion}
@@ -93,10 +93,10 @@ export const UpdateSettingsSection: React.FC = () => {
       <View style={[styles.switchRow, { borderColor: colors.borderSubtle }]}>
         <View style={styles.switchText}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {t('updater.auto_check', '自动检查更新')}
+            {t('updater.auto_check')}
           </Text>
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            {t('updater.auto_check_desc', '启动时检查是否有新版本')}
+            {t('updater.auto_check_desc')}
           </Text>
         </View>
         <Switch
@@ -116,7 +116,7 @@ export const UpdateSettingsSection: React.FC = () => {
           <ActivityIndicator color={colors.textOnPrimary} />
         ) : (
           <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-            {t('updater.check', '检查更新')}
+            {t('updater.check')}
           </Text>
         )}
       </TouchableOpacity>

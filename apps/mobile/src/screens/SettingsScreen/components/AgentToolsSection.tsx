@@ -1,130 +1,153 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, Switch, Alert } from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
+import { View, Text, StyleSheet, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import type { ToolManagementConfig } from '@baishou/shared'
+
+const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
+  disabledToolIds: [],
+  customConfigs: {}
+}
+import { SettingsSection, Switch, useNativeTheme } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
-const ALL_TOOL_DEFS = [
-  { id: 'write_diary', category: '日记', label: '写日记' },
-  { id: 'read_diary', category: '日记', label: '读日记' },
-  { id: 'search_diary', category: '日记', label: '搜索日记' },
-  { id: 'web_search', category: '网络与RAG', label: '网页搜索' },
-  { id: 'rag_recall', category: '网络与RAG', label: 'RAG 召回' },
-  { id: 'rag_memorize', category: '网络与RAG', label: 'RAG 记忆' },
-  { id: 'summary_generate', category: '系统与数据', label: '生成总结' }
-]
+const TOOL_IDS = [
+  'diary_read',
+  'diary_edit',
+  'diary_delete',
+  'diary_list',
+  'diary_search',
+  'summary_read',
+  'message_search',
+  'memory_store',
+  'memory_delete',
+  'web_search',
+  'current_time',
+  'url_read'
+] as const
 
-/** 移动端不展示 Git 相关工具 */
-const MOBILE_HIDDEN_TOOL_IDS = new Set(['git_commit', 'git_rollback'])
+const CATEGORY_ORDER = ['diary', 'summary', 'memory', 'search', 'general'] as const
 
-const VISIBLE_TOOL_DEFS = ALL_TOOL_DEFS.filter((tool) => !MOBILE_HIDDEN_TOOL_IDS.has(tool.id))
+const TOOL_NAME_KEY: Record<(typeof TOOL_IDS)[number], string> = {
+  diary_read: 'agent.tools.diary_read',
+  diary_edit: 'agent.tools.diary_edit',
+  diary_delete: 'agent.tools.diary_delete',
+  diary_list: 'agent.tools.diary_list',
+  diary_search: 'agent.tools.diary_search',
+  summary_read: 'agent.tools.summary_read',
+  message_search: 'agent.tools.message_search',
+  memory_store: 'agent.tools.memory_store',
+  memory_delete: 'agent.tools.memory_delete',
+  web_search: 'agent.tools.web_search',
+  current_time: 'agent.tools.current_time',
+  url_read: 'agent.tools.url_read'
+}
+
+const TOOL_CATEGORY: Record<(typeof TOOL_IDS)[number], (typeof CATEGORY_ORDER)[number]> = {
+  diary_read: 'diary',
+  diary_edit: 'diary',
+  diary_delete: 'diary',
+  diary_list: 'diary',
+  diary_search: 'diary',
+  summary_read: 'summary',
+  message_search: 'memory',
+  memory_store: 'memory',
+  memory_delete: 'memory',
+  web_search: 'search',
+  current_time: 'general',
+  url_read: 'search'
+}
+
+const CATEGORY_LABEL_KEY: Record<(typeof CATEGORY_ORDER)[number], string> = {
+  diary: 'settings.agent_tools_category_diary',
+  summary: 'settings.agent_tools_category_summary',
+  memory: 'settings.agent_tools_category_memory',
+  search: 'settings.agent_tools_category_search',
+  general: 'settings.agent_tools_category_general'
+}
 
 export const AgentToolsSection: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const { services, dbReady } = useBaishou()
-
-  const [toolConfig, setToolConfig] = useState<any>({})
+  const [config, setConfig] = useState<ToolManagementConfig>(DEFAULT_TOOL_MANAGEMENT_CONFIG)
 
   useEffect(() => {
     if (!dbReady || !services) return
-    const loadConfig = async () => {
-      try {
-        const toolConfigData = (await services.settingsManager.get<any>('tool_config')) || {}
-        setToolConfig(toolConfigData)
-      } catch (e) {
-        console.warn('Load tool config failed', e)
-      }
-    }
-    loadConfig()
+    void (async () => {
+      const saved =
+        (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
+        DEFAULT_TOOL_MANAGEMENT_CONFIG
+      setConfig({ ...DEFAULT_TOOL_MANAGEMENT_CONFIG, ...saved })
+    })()
   }, [dbReady, services])
 
-  const handleSaveToolConfig = async (config: any) => {
+  const persist = async (next: ToolManagementConfig) => {
     if (!services || !dbReady) return
-    try {
-      await services.settingsManager.set('tool_config', config)
-      setToolConfig(config)
-      Alert.alert(t('common.success', '成功'), t('settings.tool_saved', '工具配置已保存'))
-    } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('settings.save_failed', '保存失败'))
+    await services.settingsManager.set('tool_management_config', next)
+    setConfig(next)
+  }
+
+  const grouped = useMemo(() => {
+    const map: Record<string, Array<(typeof TOOL_IDS)[number]>> = {}
+    for (const id of TOOL_IDS) {
+      const cat = TOOL_CATEGORY[id]
+      if (!map[cat]) map[cat] = []
+      map[cat].push(id)
     }
-  }
+    return map
+  }, [])
 
-  const disabledIds: string[] = toolConfig.disabledToolIds || []
-  const toggleTool = async (toolId: string) => {
-    const newDisabled = disabledIds.includes(toolId)
-      ? disabledIds.filter((id) => id !== toolId)
-      : [...disabledIds, toolId]
-    await handleSaveToolConfig({ disabledToolIds: newDisabled })
+  const toggleTool = (toolId: string) => {
+    const disabled = new Set(config.disabledToolIds)
+    if (disabled.has(toolId)) disabled.delete(toolId)
+    else disabled.add(toolId)
+    void persist({ ...config, disabledToolIds: [...disabled] })
   }
-
-  const categories = [...new Set(VISIBLE_TOOL_DEFS.map((t) => t.category))]
 
   return (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('settings.tools_title', '工具管理')}
-      </Text>
-      <Text style={[styles.sectionValue, { color: colors.textSecondary }]}>
-        {t('settings.disabled_tools', '已禁用')}: {disabledIds.length}/{VISIBLE_TOOL_DEFS.length}
+    <ScrollView>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        {t('settings.agent_tools_desc')}
       </Text>
 
-      {categories.map((category) => (
-        <View key={category}>
-          <Text style={[styles.toolCategoryTitle, { color: colors.textSecondary }]}>
-            {category}
-          </Text>
-          {VISIBLE_TOOL_DEFS.filter((t) => t.category === category).map((tool) => (
-            <View
-              key={tool.id}
-              style={[styles.toolItem, { backgroundColor: colors.bgSurfaceHighest }]}
-            >
-              <Text style={[styles.toolLabel, { color: colors.textPrimary }]}>{tool.label}</Text>
-              <Switch
-                value={!disabledIds.includes(tool.id)}
-                onValueChange={() => toggleTool(tool.id)}
-              />
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
+      {CATEGORY_ORDER.map((category) => {
+        const tools = grouped[category]
+        if (!tools?.length) return null
+        return (
+          <SettingsSection key={category} title={t(CATEGORY_LABEL_KEY[category])}>
+            {tools.map((toolId) => {
+              const enabled = !config.disabledToolIds.includes(toolId)
+              return (
+                <View
+                  key={toolId}
+                  style={[styles.toolRow, { borderBottomColor: colors.borderSubtle }]}
+                >
+                  <View style={styles.toolText}>
+                    <Text style={[styles.toolName, { color: colors.textPrimary }]}>
+                      {t(TOOL_NAME_KEY[toolId])}
+                    </Text>
+                    <Text style={[styles.toolId, { color: colors.textTertiary }]}>{toolId}</Text>
+                  </View>
+                  <Switch value={enabled} onValueChange={() => toggleTool(toolId)} />
+                </View>
+              )
+            })}
+          </SettingsSection>
+        )
+      })}
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: 24
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1
-  },
-  sectionValue: {
-    fontSize: 12,
-    marginBottom: 12
-  },
-  toolCategoryTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5
-  },
-  toolItem: {
+  subtitle: { fontSize: 14, marginBottom: 12, lineHeight: 20 },
+  toolRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 4
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
-  toolLabel: {
-    fontSize: 14,
-    fontWeight: '500'
-  }
+  toolText: { flex: 1, marginRight: 12 },
+  toolName: { fontSize: 15, fontWeight: '500' },
+  toolId: { fontSize: 11, marginTop: 2 }
 })

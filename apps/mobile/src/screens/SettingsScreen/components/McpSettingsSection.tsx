@@ -59,10 +59,10 @@ export const McpSettingsSection: React.FC = () => {
       await services.settingsManager.set('mcp_server_config', next)
       setConfig(next)
       await services.mobileMcpService.applyConfig(next)
-      Alert.alert(t('common.success', '成功'), t('settings.mcp_saved', 'MCP 配置已保存'))
+      Alert.alert(t('common.success'), t('settings.mcp_saved'))
     } catch (e) {
       console.error(e)
-      Alert.alert(t('common.error', '错误'), t('settings.save_failed', '保存失败'))
+      Alert.alert(t('common.error'), t('common.errors.save_failed'))
     } finally {
       setApplying(false)
     }
@@ -71,9 +71,9 @@ export const McpSettingsSection: React.FC = () => {
   const handleCopyEndpoint = async () => {
     try {
       await Clipboard.setStringAsync(mcpEndpointUrl)
-      Alert.alert(t('common.success', '成功'), t('common.copied', '已复制到剪贴板'))
+      Alert.alert(t('common.success'), t('common.copied'))
     } catch {
-      Alert.alert(t('common.error', '错误'), t('common.copy_failed', '复制失败'))
+      Alert.alert(t('common.error'), t('common.copy_failed'))
     }
   }
 
@@ -81,8 +81,8 @@ export const McpSettingsSection: React.FC = () => {
     const tools = services?.mobileMcpService.getToolsList() || []
     if (tools.length === 0) {
       Alert.alert(
-        t('settings.mcp_tools_list', 'MCP 工具列表'),
-        t('settings.mcp_no_tools', '未检测到任何暴露的工具')
+        t('settings.mcp_tools_list'),
+        t('settings.mcp_no_tools')
       )
       return
     }
@@ -94,7 +94,7 @@ export const McpSettingsSection: React.FC = () => {
       return `• ${tool.name} (${localizedTitle})\n  ${localizedDesc}`
     })
 
-    Alert.alert(t('settings.mcp_tools_list', 'MCP 暴露工具列表'), lines.join('\n\n'))
+    Alert.alert(t('settings.mcp_tools_list'), lines.join('\n\n'))
   }
 
   if (loading) {
@@ -108,15 +108,15 @@ export const McpSettingsSection: React.FC = () => {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('settings.mcp_title', 'MCP Server')}
+        {t('settings.mcp_title')}
       </Text>
       <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
-        {t('settings.tooltip_mcp_server', '允许外部 AI 客户端通过 MCP 协议调用白守的数据与工具。')}
+        {t('settings.tooltip_mcp_server')}
       </Text>
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.mcp_enable', '启用 MCP Server')}
+          {t('settings.mcp_enable')}
         </Text>
         <Switch
           value={config.mcpEnabled}
@@ -130,10 +130,10 @@ export const McpSettingsSection: React.FC = () => {
         onPress={showToolsAlert}
       >
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.mcp_view_tools', '查看暴露工具')}
+          {t('settings.mcp_view_tools')}
         </Text>
         <Text style={[styles.settingSub, { color: colors.textSecondary }]}>
-          {t('settings.mcp_view_tools_desc', '查看 MCP 服务器对外暴露的内置工具列表')}
+          {t('settings.mcp_view_tools_desc')}
         </Text>
       </TouchableOpacity>
 
@@ -141,7 +141,7 @@ export const McpSettingsSection: React.FC = () => {
         <>
           <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
             <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-              {t('settings.mcp_port', '端口')}
+              {t('settings.mcp_port')}
             </Text>
             <TextInput
               style={[
@@ -167,7 +167,7 @@ export const McpSettingsSection: React.FC = () => {
 
           <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
             <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-              {t('settings.mcp_endpoint', 'MCP 端点')}
+              {t('settings.mcp_endpoint')}
             </Text>
             <Text style={[styles.endpointUrl, { color: colors.primary }]} selectable>
               {mcpEndpointUrl}
@@ -177,12 +177,12 @@ export const McpSettingsSection: React.FC = () => {
               onPress={() => void handleCopyEndpoint()}
             >
               <Text style={[styles.copyBtnText, { color: colors.textOnPrimary }]}>
-                {t('settings.mcp_copy_url', '复制 MCP URL')}
+                {t('settings.mcp_copy_url')}
               </Text>
             </TouchableOpacity>
             {services?.mobileMcpService.isServerRunning() && (
               <Text style={[styles.runningHint, { color: colors.textSecondary }]}>
-                {t('settings.mcp_running', '运行中 · 端口 $port').replace(
+                {t('settings.mcp_running').replace(
                   '$port',
                   String(services.mobileMcpService.getActivePort())
                 )}

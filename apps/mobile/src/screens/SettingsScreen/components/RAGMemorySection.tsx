@@ -85,10 +85,10 @@ export const RAGMemorySection: React.FC = () => {
       await services.settingsManager.set('rag_config', config)
       setRagConfig(config)
       if (!options?.silent) {
-        Alert.alert(t('common.success', '成功'), t('settings.rag_saved', 'RAG配置已保存'))
+        Alert.alert(t('common.success'), t('settings.rag_saved'))
       }
     } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('settings.save_failed', '保存失败'))
+      Alert.alert(t('common.error'), t('common.errors.save_failed'))
     }
   }
 
@@ -101,23 +101,22 @@ export const RAGMemorySection: React.FC = () => {
         !globalModelsConfig.globalEmbeddingProviderId ||
         !globalModelsConfig.globalEmbeddingModelId
       ) {
-        Alert.alert(t('common.hint', '提示'), t('settings.no_embedding_model', '请先配置嵌入模型'))
+        Alert.alert(t('common.hint'), t('agent.rag.embedding_not_configured'))
         return
       }
 
       const dimension = await services.ragService.detectDimension()
       setRagStats((prev: any) => ({ ...prev, currentDimension: dimension }))
       Alert.alert(
-        t('common.success', '成功'),
-        t('settings.dimension_detected', '维度检测完成: {dimension}').replace(
-          '{dimension}',
+        t('common.success'),
+        t('agent.rag.detect_success').replace('${dimension}',
           dimension.toString()
         )
       )
     } catch (e: any) {
       Alert.alert(
-        t('common.error', '错误'),
-        e?.message || t('settings.detect_failed', '维度检测失败')
+        t('common.error'),
+        e?.message || t('agent.rag.detect_failed')
       )
     } finally {
       setIsRagLoading(false)
@@ -139,7 +138,7 @@ export const RAGMemorySection: React.FC = () => {
       })
 
       if (count === 0) {
-        Alert.alert(t('common.hint', '提示'), t('settings.no_diaries_to_embed', '没有可嵌入的日记'))
+        Alert.alert(t('common.hint'), t('agent.rag.no_memories_yet'))
         setRagProgress(null)
         return
       }
@@ -147,9 +146,8 @@ export const RAGMemorySection: React.FC = () => {
       setRagStats((prev: any) => ({ ...prev, totalCount: count }))
       setRagProgress(null)
       Alert.alert(
-        t('common.success', '成功'),
-        t('settings.batch_embed_completed', '批量嵌入完成: {count} 条').replace(
-          '{count}',
+        t('common.success'),
+        t('agent.rag.batch_embed_success').replace('$count',
           count.toString()
         )
       )
@@ -157,8 +155,8 @@ export const RAGMemorySection: React.FC = () => {
     } catch (e: any) {
       setRagProgress(null)
       Alert.alert(
-        t('common.error', '错误'),
-        e?.message || t('settings.batch_embed_failed', '批量嵌入失败')
+        t('common.error'),
+        e?.message || t('agent.rag.batch_embed_error')
       )
     } finally {
       setIsRagLoading(false)
@@ -168,15 +166,12 @@ export const RAGMemorySection: React.FC = () => {
   const handleClearMemory = async () => {
     if (!services?.ragService || !dbReady) return
     Alert.alert(
-      t('settings.clear_memory_confirm_title', '确认清空'),
-      t(
-        'settings.clear_memory_confirm_message',
-        '此操作将清空所有RAG记忆数据，不可恢复。确定继续吗？'
-      ),
+      t('agent.rag.clear_all_title'),
+      t('agent.rag.clear_all_content'),
       [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: t('common.confirm', '确定'),
+          text: t('common.confirm'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -184,13 +179,13 @@ export const RAGMemorySection: React.FC = () => {
               await services.ragService.clearAll()
               setRagStats({ totalCount: 0, currentDimension: 0 })
               Alert.alert(
-                t('common.success', '成功'),
-                t('settings.memory_cleared', 'RAG记忆已清空')
+                t('common.success'),
+                t('agent.rag.clear_dim_success')
               )
             } catch (e) {
               Alert.alert(
-                t('common.error', '错误'),
-                t('settings.clear_memory_failed', '清空记忆失败')
+                t('common.error'),
+                t('agent.rag.batch_embed_error')
               )
             } finally {
               setIsRagLoading(false)
@@ -204,15 +199,15 @@ export const RAGMemorySection: React.FC = () => {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('settings.rag_title', 'RAG 记忆管理')}
+        {t('agent.rag.title')}
       </Text>
       <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-        {t('settings.rag_desc', '管理向量记忆和RAG配置')}
+        {t('settings.rag_subtitle')}
       </Text>
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.rag_enabled', '启用 RAG')}
+          {t('agent.features.rag_enable')}
         </Text>
         <Switch
           value={ragConfig.ragEnabled || false}
@@ -222,13 +217,10 @@ export const RAGMemorySection: React.FC = () => {
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.rag_batch_embed_concurrency', '批量嵌入并发')}
+          {t('settings.rag_batch_embed_concurrency')}
         </Text>
         <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
-          {t(
-            'settings.rag_batch_embed_concurrency_hint',
-            '同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；建议 2–3。'
-          )}
+          {t('settings.rag_batch_embed_concurrency_hint')}
         </Text>
         <View style={styles.concurrencyRow}>
           {Array.from(
@@ -267,19 +259,19 @@ export const RAGMemorySection: React.FC = () => {
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.embedding_count', '嵌入数量')}
+          {t('agent.rag.stat_total')}
         </Text>
         <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-          {ragStats.totalCount || 0} {t('settings.count_unit', '个')}
+          {ragStats.totalCount || 0} {t('common.items_count')}
         </Text>
       </View>
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.rag_dimension', '向量维度')}
+          {t('agent.rag.stat_dimension')}
         </Text>
         <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-          {ragStats.currentDimension || t('settings.not_detected', '未检测')}
+          {ragStats.currentDimension || t('agent.rag.dimension_not_configured')}
         </Text>
       </View>
 
@@ -307,14 +299,14 @@ export const RAGMemorySection: React.FC = () => {
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.add_manual_memory', '手动添加记忆')}
+          {t('agent.rag.action_add_memory')}
         </Text>
         <TextInput
           style={[
             styles.memoryInput,
             { color: colors.textPrimary, borderColor: colors.borderSubtle }
           ]}
-          placeholder={t('settings.manual_memory_placeholder', '输入要记住的内容...')}
+          placeholder={t('agent.rag.add_memory_hint')}
           placeholderTextColor={colors.textSecondary}
           value={manualMemoryText}
           onChangeText={setManualMemoryText}
@@ -328,16 +320,16 @@ export const RAGMemorySection: React.FC = () => {
               await services.ragService.addManualMemory(manualMemoryText.trim())
               setManualMemoryText('')
               await loadRagStats()
-              Alert.alert(t('common.success', '成功'), t('settings.memory_added', '已添加记忆'))
+              Alert.alert(t('common.success'), t('agent.rag.add_memory_success'))
             } catch (e: unknown) {
               Alert.alert(
-                t('common.error', '错误'),
-                e instanceof Error ? e.message : t('settings.memory_add_failed', '添加失败')
+                t('common.error'),
+                e instanceof Error ? e.message : t('agent.rag.add_manual_failed')
               )
             }
           }}
         >
-          <Text style={{ color: colors.textPrimary }}>{t('settings.add_memory', '添加')}</Text>
+          <Text style={{ color: colors.textPrimary }}>{t('common.add')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -350,7 +342,7 @@ export const RAGMemorySection: React.FC = () => {
           <ActivityIndicator size="small" color={colors.textOnPrimary} />
         ) : (
           <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-            {t('settings.detect_dimension', '检测维度')}
+            {t('agent.rag.dimension_click_detect')}
           </Text>
         )}
       </TouchableOpacity>
@@ -364,7 +356,7 @@ export const RAGMemorySection: React.FC = () => {
           <ActivityIndicator size="small" color={colors.textPrimary} />
         ) : (
           <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-            {t('settings.batch_embed', '批量嵌入')}
+            {t('agent.rag.action_batch_embed')}
           </Text>
         )}
       </TouchableOpacity>
@@ -375,17 +367,20 @@ export const RAGMemorySection: React.FC = () => {
         disabled={isRagLoading}
       >
         <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-          {t('settings.clear_memory', '清空记忆')}
+          {t('agent.rag.clear_all')}
         </Text>
       </TouchableOpacity>
 
       {ragEntries.length > 0 && (
         <View style={[styles.entryList, { backgroundColor: colors.bgSurfaceHighest }]}>
           <Text style={[styles.entryListTitle, { color: colors.textSecondary }]}>
-            {t('settings.rag_entries', '记忆条目')} ({ragEntries.length})
+            {t('agent.rag.stat_total')} ({ragEntries.length})
           </Text>
           {ragEntries.slice(0, 10).map((entry) => (
-            <View key={entry.embeddingId} style={styles.entryRow}>
+            <View
+              key={entry.embeddingId}
+              style={[styles.entryRow, { borderBottomColor: colors.borderSubtle }]}
+            >
               <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={3}>
                 {entry.text || entry.embeddingId}
               </Text>
@@ -396,7 +391,7 @@ export const RAGMemorySection: React.FC = () => {
                 }}
               >
                 <Text style={{ color: colors.error, fontSize: 13 }}>
-                  {t('common.delete', '删除')}
+                  {t('common.delete')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -499,8 +494,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
     paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(128,128,128,0.2)'
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
   entryText: {
     flex: 1,
