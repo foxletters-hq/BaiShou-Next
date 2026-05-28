@@ -8,13 +8,15 @@ import { useTranslation } from 'react-i18next'
 import { Platform, NativeModules } from 'react-native'
 import i18n from 'i18next'
 
-import { useColorScheme } from '@/hooks/use-color-scheme'
+import { useNativeTheme } from '@baishou/ui/native'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
+import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 
 SplashScreen.preventAutoHideAsync()
 
 export const unstable_settings = {
-  anchor: '(tabs)'
+  // 深链进入子页面时，栈底保留 tabs 而非引导页
+  initialRouteName: '(tabs)'
 }
 
 const getSystemLanguage = () => {
@@ -36,7 +38,7 @@ const getSystemLanguage = () => {
 }
 
 function AppContent() {
-  const colorScheme = useColorScheme()
+  const { isDark } = useNativeTheme()
   const { t } = useTranslation()
   const { dbReady, services } = useBaishou()
 
@@ -58,8 +60,10 @@ function AppContent() {
   }, [dbReady, services])
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="diary-editor"
@@ -118,13 +122,6 @@ function AppContent() {
             title: t('incremental_sync.title', '增量同步')
           }}
         />
-        <Stack.Screen
-          name="modal"
-          options={{
-            presentation: 'modal',
-            title: 'Modal'
-          }}
-        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
@@ -138,7 +135,9 @@ export default function RootLayout() {
 
   return (
     <BaishouProvider>
-      <AppContent />
+      <NativeAppThemeBridge>
+        <AppContent />
+      </NativeAppThemeBridge>
     </BaishouProvider>
   )
 }
