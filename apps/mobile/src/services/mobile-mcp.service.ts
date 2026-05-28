@@ -3,7 +3,7 @@ import type { SettingsManagerService } from '@baishou/core-mobile'
 import type { McpServerConfig } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import { zodToJsonSchema } from 'zod-to-json-schema'
-import * as BaishouServer from '../../modules/expo-baishou-server'
+import * as BaishouServer from 'expo-baishou-server'
 
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
@@ -81,6 +81,13 @@ export class MobileMcpService {
   }
 
   private async startOnPort(port: number): Promise<void> {
+    if (!BaishouServer.isBaishouServerAvailable()) {
+      logger.warn(
+        '[MobileMcpService] ExpoBaishouServer 未编入 APK，跳过 MCP。请 pnpm mobile:android:clean 重装开发版。'
+      )
+      return
+    }
+
     this.teardownListener()
 
     const boundPort = BaishouServer.startMcpServer(port)

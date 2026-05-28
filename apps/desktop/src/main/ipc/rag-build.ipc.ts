@@ -8,6 +8,7 @@ import { getEmbeddingService, getEmbeddingConfig, filterUnindexedDiaries } from 
 import { DesktopEmbeddingStorage } from './rag.storage'
 import { settingsManager } from './settings.ipc'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
+import { limitExecute, resolveBatchEmbedConcurrency, toSerializableAiError } from '@baishou/shared'
 
 async function restoreInterruptedMigration(): Promise<number> {
   const config = getEmbeddingConfig()
@@ -156,24 +157,39 @@ export function registerRagBuildIPC() {
       }
 
       const diariesToEmbed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
+      const total = diariesToEmbed.length
+      const ragConfig =
+        (await settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
+      const batchConcurrency = resolveBatchEmbedConcurrency(ragConfig.batchEmbedConcurrency)
 
-      let progress = 0
+      if (total > 0) {
+        await embeddingService.prepareEmbeddingIndex()
+      }
 
-      for (const meta of diariesToEmbed) {
-        progress++
+      let completed = 0
+      const reportProgress = (statusText: string) => {
         event.sender.send('agent:rag-progress', {
           isRunning: true,
           type: 'batchEmbed',
-          progress,
-          total: diariesToEmbed.length,
-          statusText: `处理日记: ${new Date(meta.date).toLocaleDateString()}`
+          progress: completed,
+          total,
+          statusText
         })
+      }
+
+      await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
+        const dateLabel = new Date(meta.date).toLocaleDateString()
+        reportProgress(`处理日记: ${dateLabel}`)
 
         const diary = await getDiaryManager().findById(meta.id)
-        if (!diary || !diary.id || !diary.content || !diary.content.trim()) continue
+        if (!diary?.id || !diary.content?.trim()) {
+          completed++
+          reportProgress(`处理日记: ${dateLabel}`)
+          return
+        }
 
         const d = meta.date
-        const dateLabel = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         const tagPrefix = meta.tags.length > 0 ? `[标签: ${meta.tags.join(', ')}] ` : ''
 
         await embeddingService.reEmbedText({
@@ -181,23 +197,34 @@ export function registerRagBuildIPC() {
           sourceType: 'diary',
           sourceId: diary.id.toString(),
           groupId: 'diary_batch',
-          chunkPrefix: `${tagPrefix}[${dateLabel} 日记:]\n`,
+          chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
           metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
-          sourceCreatedAt: diary.date.getTime()
+          sourceCreatedAt: diary.date.getTime(),
+          skipIndexPrep: true
         })
-      }
+
+        completed++
+        reportProgress(`处理日记: ${dateLabel}`)
+      })
 
       event.sender.send('agent:rag-progress', {
         isRunning: false,
-        progress: diariesToEmbed.length,
-        total: diariesToEmbed.length,
+        progress: total,
+        total,
         type: 'idle'
       })
       return true
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Batch Embed failed:', e)
-      event.sender.send('agent:rag-progress', { isRunning: false, type: 'idle' })
-      throw e
+      const err = toSerializableAiError(e, 'Batch embed failed')
+      event.sender.send('agent:rag-progress', {
+        isRunning: false,
+        type: 'idle',
+        progress: 0,
+        total: 0,
+        error: err.message
+      })
+      throw err
     }
   })
 
@@ -227,11 +254,18 @@ export function registerRagBuildIPC() {
           embeddingService.migrateEmbeddings(rollbackConfig)
         )
         return result
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('Migration failed:', e)
         await migrationStateService.markInterrupted()
-        event.sender.send('agent:rag-progress', { isRunning: false, type: 'idle' })
-        throw e
+        const err = toSerializableAiError(e, 'Migration failed')
+        event.sender.send('agent:rag-progress', {
+          isRunning: false,
+          type: 'idle',
+          progress: 0,
+          total: 0,
+          error: err.message
+        })
+        throw err
       }
     }
   )
@@ -254,11 +288,18 @@ export function registerRagBuildIPC() {
         event,
         embeddingService.continueMigration(state.rollbackConfig)
       )
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Migration resume failed:', e)
       await migrationStateService.markInterrupted()
-      event.sender.send('agent:rag-progress', { isRunning: false, type: 'idle' })
-      throw e
+      const err = toSerializableAiError(e, 'Migration resume failed')
+      event.sender.send('agent:rag-progress', {
+        isRunning: false,
+        type: 'idle',
+        progress: 0,
+        total: 0,
+        error: err.message
+      })
+      throw err
     }
   })
 

@@ -24,6 +24,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
 }) => {
   const { t } = useTranslation()
   const isMigrating = ragState.isRunning && ragState.type === 'migration'
+  const showEmbedError = !isMigrating && !!ragState.error
   const showInterrupted =
     !isMigrating &&
     migrationState &&
@@ -59,6 +60,18 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
               }}
             ></div>
           </div>
+        </div>
+      )}
+
+      {showEmbedError && (
+        <div className={styles.dangerAlert}>
+          <div className={styles.dangerRow}>
+            <MdWarning size={18} color="#ef4444" />
+            <span className={styles.dangerTitle}>
+              {t('settings.rag_operation_failed', '向量嵌入操作失败')}
+            </span>
+          </div>
+          <p className={styles.dangerDesc}>{ragState.error}</p>
         </div>
       )}
 

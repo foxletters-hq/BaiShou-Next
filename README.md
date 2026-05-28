@@ -78,6 +78,8 @@ cd BaiShou-Next
 pnpm install
 ```
 
+查看常用命令说明：`pnpm commands`（移动端：`pnpm commands:mobile`）。
+
 国内网络若 Electron 下载失败，可参考 [docs/pnpm-electron-setup.md](./docs/pnpm-electron-setup.md)。
 
 ##### 3. 开发
@@ -86,9 +88,12 @@ pnpm install
 # 桌面端
 pnpm dev:desktop
 
-# 移动端
-pnpm dev:mobile
+# 移动端（须先装开发版，不能用 Expo Go）
+pnpm mobile:android:clean   # 首次 / 升级 Expo 后
+pnpm dev:mobile             # 启动 Metro，手机同 Wi‑Fi 打开 App
 ```
+
+更多移动端命令见 [apps/mobile/README.md](./apps/mobile/README.md)。
 
 ##### 4. 提交 PR 前的本地 CI
 

@@ -1,5 +1,39 @@
 import { useState, useEffect, useCallback } from 'react'
-import { resolveMigrationStatusText, type EmbeddingMigrationStateView } from '@baishou/shared'
+import {
+  classifyAiApiCallError,
+  formatAiApiCallError,
+  resolveMigrationStatusText,
+  type EmbeddingMigrationStateView
+} from '@baishou/shared'
+
+function localizeRagEmbedError(raw: string, t: (key: string, fallback: string) => string): string {
+  const kind = classifyAiApiCallError({ message: raw, responseBody: raw })
+  switch (kind) {
+    case 'balance':
+      return t('agent.error.quota', '模型服务商提示账号额度不足。')
+    case 'auth':
+      return t(
+        'ai_config.error_no_model',
+        '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
+      )
+    case 'rate_limit':
+      return t('agent.error.rate_limit', '请求过于频繁或超出并发限制，请稍后再试。')
+    case 'network':
+      return t('agent.error.network', '网络连接失败，请检查您的网络连接或代理设置。')
+    default:
+      return raw
+  }
+}
+
+function extractIpcErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message.replace(
+      /^(Batch embed failed|Migration failed|Migration resume failed):\s*/i,
+      ''
+    )
+  }
+  return formatAiApiCallError(error)
+}
 
 export function useRagSystem(
   t: any,
@@ -15,7 +49,8 @@ export function useRagSystem(
     type: 'idle',
     progress: 0,
     total: 0,
-    statusText: ''
+    statusText: '',
+    error: undefined
   })
   const [hasMismatchModel, setHasMismatchModel] = useState(false)
   const [migrationState, setMigrationState] = useState<EmbeddingMigrationStateView | null>(null)
@@ -38,7 +73,11 @@ export function useRagSystem(
         const statusText = state.statusKey
           ? resolveMigrationStatusText(t, state.statusKey, state.statusParams)
           : state.statusText || ''
-        setActiveRagState({ ...state, statusText })
+        const errorText =
+          typeof state.error === 'string' && state.error.trim()
+            ? localizeRagEmbedError(extractIpcErrorMessage({ message: state.error.trim() }), t)
+            : undefined
+        setActiveRagState({ ...state, statusText, error: errorText })
         if (!state.isRunning) {
           void refreshMigrationState()
         }
@@ -112,9 +151,25 @@ export function useRagSystem(
     )
       return
     setIsProcessing(true)
+    setActiveRagState((prev: any) => ({ ...prev, error: undefined }))
     try {
       await (window as any).api?.rag?.triggerBatchEmbed()
+      setActiveRagState((prev: any) => ({ ...prev, error: undefined }))
       await fetchRagInfo()
+      toast.showSuccess(t('settings.rag_batch_embed_done', '批量嵌入已完成'))
+    } catch (e: unknown) {
+      const raw = extractIpcErrorMessage(e)
+      const detail = localizeRagEmbedError(raw, t)
+      setActiveRagState((prev: any) => ({
+        ...prev,
+        isRunning: false,
+        type: 'idle',
+        error: detail
+      }))
+      await alert(
+        t('settings.rag_batch_embed_failed', '批量嵌入失败：{{message}}', { message: detail }),
+        t('common.error', '错误')
+      )
     } finally {
       setIsProcessing(false)
     }
@@ -129,8 +184,10 @@ export function useRagSystem(
     )
       return
     setIsProcessing(true)
+    setActiveRagState((prev: any) => ({ ...prev, error: undefined }))
     try {
       const result = await (window as any).api?.rag?.triggerMigration()
+      setActiveRagState((prev: any) => ({ ...prev, error: undefined }))
       await fetchRagInfo()
       if (result?.aborted) {
         await reloadSettings?.()
@@ -142,6 +199,17 @@ export function useRagSystem(
         )
       }
       await refreshMigrationState()
+    } catch (e: unknown) {
+      const detail = localizeRagEmbedError(extractIpcErrorMessage(e), t)
+      setActiveRagState((prev: any) => ({
+        ...prev,
+        isRunning: false,
+        type: 'idle',
+        error: detail
+      }))
+      toast.showError(
+        t('settings.rag_migration_failed', '向量库迁移失败：{{message}}', { message: detail })
+      )
     } finally {
       setIsProcessing(false)
     }
@@ -181,8 +249,10 @@ export function useRagSystem(
 
   const handleResumeMigration = async () => {
     setIsProcessing(true)
+    setActiveRagState((prev: any) => ({ ...prev, error: undefined }))
     try {
       const result = await (window as any).api?.rag?.resumeMigration()
+      setActiveRagState((prev: any) => ({ ...prev, error: undefined }))
       await fetchRagInfo()
       if (result?.aborted) {
         await reloadSettings?.()
@@ -194,6 +264,17 @@ export function useRagSystem(
         )
       }
       await refreshMigrationState()
+    } catch (e: unknown) {
+      const detail = localizeRagEmbedError(extractIpcErrorMessage(e), t)
+      setActiveRagState((prev: any) => ({
+        ...prev,
+        isRunning: false,
+        type: 'idle',
+        error: detail
+      }))
+      toast.showError(
+        t('settings.rag_migration_failed', '向量库迁移失败：{{message}}', { message: detail })
+      )
     } finally {
       setIsProcessing(false)
     }

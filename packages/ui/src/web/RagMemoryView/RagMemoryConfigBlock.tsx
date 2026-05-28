@@ -1,6 +1,11 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdTune } from 'react-icons/md'
+import {
+  BATCH_EMBED_CONCURRENCY_MAX,
+  BATCH_EMBED_CONCURRENCY_MIN,
+  DEFAULT_BATCH_EMBED_CONCURRENCY
+} from '@baishou/shared'
 import type { RagConfig } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
 
@@ -58,6 +63,34 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
             {(config.ragSimilarityThreshold ?? 0.4).toFixed(2)}
           </span>
         </div>
+        <div className={styles.paramSliderRow}>
+          <span className={styles.paramLabel}>
+            {t('settings.rag_batch_embed_concurrency', '批量嵌入并发')}
+          </span>
+          <input
+            type="range"
+            className={styles.rangeInput}
+            min={BATCH_EMBED_CONCURRENCY_MIN}
+            max={BATCH_EMBED_CONCURRENCY_MAX}
+            step="1"
+            value={config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
+            onChange={(e) =>
+              onChange({
+                ...config,
+                batchEmbedConcurrency: parseInt(e.target.value, 10)
+              })
+            }
+          />
+          <span className={styles.paramValueBlue}>
+            {config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
+          </span>
+        </div>
+        <p className={styles.paramHint}>
+          {t(
+            'settings.rag_batch_embed_concurrency_hint',
+            '同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；建议 2–3。'
+          )}
+        </p>
       </div>
     </div>
   )

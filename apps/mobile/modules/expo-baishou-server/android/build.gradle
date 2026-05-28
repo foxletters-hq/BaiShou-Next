@@ -1,34 +1,44 @@
-buildscript {
-  ext.safeExtGet = {prop, fallback ->
-    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
-  }
-  repositories {
-    google()
-    mavenCentral()
-  }
-  dependencies {
-    classpath("com.android.tools.build:gradle:8.1.1")
-    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.10")
-  }
-}
-
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
+def expoModulesCorePlugin = new File(
+  project(':expo-modules-core').projectDir.absolutePath,
+  'ExpoModulesCorePlugin.gradle'
+)
+if (expoModulesCorePlugin.exists()) {
+  apply from: expoModulesCorePlugin
+  applyKotlinExpoModulesCorePlugin()
+  useCoreDependencies()
+  useDefaultAndroidSdkVersions()
+} else {
+  throw new GradleException(
+    "'expo-modules-core' could not be found. Run pnpm install in the monorepo root."
+  )
+}
+
 android {
-  compileSdkVersion safeExtGet("compileSdkVersion", 34)
+  namespace 'expo.modules.baishouserver'
+
   defaultConfig {
-    minSdkVersion safeExtGet("minSdkVersion", 23)
-    targetSdkVersion safeExtGet("targetSdkVersion", 34)
+    minSdkVersion safeExtGet('minSdkVersion', 24)
+    targetSdkVersion safeExtGet('targetSdkVersion', 35)
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+
+  kotlinOptions {
+    jvmTarget = '17'
   }
 }
 
-repositories {
-  mavenCentral()
+dependencies {
+  implementation project(':expo-modules-core')
+  implementation 'org.nanohttpd:nanohttpd:2.3.1'
 }
 
-dependencies {
-  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10"
-  implementation 'org.nanohttpd:nanohttpd:2.3.1'
-  implementation project(':expo-modules-core')
+def safeExtGet(String prop, Integer fallback) {
+  rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
 }

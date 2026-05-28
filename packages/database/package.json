@@ -16,7 +16,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push"
   },

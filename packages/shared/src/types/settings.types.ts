@@ -59,6 +59,8 @@ export interface RagConfig {
   ragEnabled: boolean // 是否启用全局记忆（RAG检索，默认 true）
   ragTopK: number // 检索返回的前 K 个最相似结果（默认 20）
   ragSimilarityThreshold: number // 相似度阈值过滤（默认 0.4）
+  /** 批量嵌入日记时的并行篇数（1–5，默认 3） */
+  batchEmbedConcurrency?: number
 }
 
 /**

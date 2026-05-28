@@ -4,6 +4,7 @@ export interface RagConfig {
   ragTopK: number
   ragSimilarityThreshold: number
   ragEnabled: boolean
+  batchEmbedConcurrency?: number
 }
 
 export interface RagStats {
@@ -18,6 +19,7 @@ export interface RagState {
   progress: number
   total: number
   statusText: string
+  error?: string
   aborted?: boolean
   rollbackApplied?: boolean
 }

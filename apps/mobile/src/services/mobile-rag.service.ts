@@ -1,4 +1,5 @@
 import { AIProviderRegistry, EmbeddingAdapter, HybridSearchService } from '@baishou/ai'
+import { limitExecute, resolveBatchEmbedConcurrency } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 import type { SettingsManagerService, DiaryService } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
@@ -106,26 +107,33 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
 
       const diaries = await deps.diaryService.listAll({ limit: 10000 })
       const total = diaries?.length || 0
+      const ragSettings =
+        (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
+      const batchConcurrency = resolveBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
       let embedded = 0
+      let completed = 0
 
-      for (let i = 0; i < total; i++) {
-        const meta = diaries[i]!
+      await limitExecute(diaries, batchConcurrency, async (meta) => {
+        const dateLabel = meta.date ? new Date(meta.date).toISOString().slice(0, 10) : ''
         onProgress?.({
-          current: i + 1,
+          current: completed,
           total,
-          status: `处理日记: ${meta.date ? new Date(meta.date).toISOString().slice(0, 10) : ''}`
+          status: `处理日记: ${dateLabel}`
         })
 
         const diary = await deps.diaryService.findById(meta.id)
-        if (!diary?.id || !diary.content?.trim()) continue
+        if (!diary?.id || !diary.content?.trim()) {
+          completed++
+          return
+        }
 
         await deps.hsRepo.deleteEmbeddingsBySource('diary', String(diary.id))
 
         const d = meta.date instanceof Date ? meta.date : new Date(meta.date)
-        const dateLabel = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         const tagPrefix = meta.tags?.length ? `[标签: ${meta.tags.join(', ')}] ` : ''
 
-        const prefixedText = `${tagPrefix}[${dateLabel} 日记:]\n${diary.content}`
+        const prefixedText = `${tagPrefix}[${label} 日记:]\n${diary.content}`
         await adapter.embedText({
           text: prefixedText,
           sourceType: 'diary',
@@ -134,7 +142,13 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         })
 
         embedded++
-      }
+        completed++
+        onProgress?.({
+          current: completed,
+          total,
+          status: `处理日记: ${dateLabel}`
+        })
+      })
 
       const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
       ragConfig.totalEmbeddings = embedded

@@ -226,7 +226,8 @@ export const DEFAULT_AGENT_BEHAVIOR: AgentBehaviorConfig = {
 export const DEFAULT_RAG_CONFIG: RagConfig = {
   ragEnabled: true,
   ragTopK: 20,
-  ragSimilarityThreshold: 0.4
+  ragSimilarityThreshold: 0.4,
+  batchEmbedConcurrency: 3
 }
 
 export const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {

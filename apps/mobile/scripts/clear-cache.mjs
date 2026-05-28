@@ -26,4 +26,4 @@ console.log('\n🧹 清理移动端构建缓存…\n')
 for (const target of targets) {
   rm(target)
 }
-console.log('\n完成。接下来会启动 Metro（-c 清 bundler 缓存）。\n')
+console.log('\n完成。\n')

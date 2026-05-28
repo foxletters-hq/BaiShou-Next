@@ -1,7 +1,7 @@
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid'
 import { embed } from 'ai'
-import { logger } from '@baishou/shared'
+import { formatAiApiCallError, logger } from '@baishou/shared'
 
 import {
   IEmbeddingConfig,
@@ -58,11 +58,11 @@ export class EmbeddingService {
       await this.config.setGlobalEmbeddingDimension(dimension)
       logger.debug(`EmbeddingService: Detected dimension ${dimension} (${modelId})`)
       return dimension
-    } catch (e: any) {
+    } catch (e: unknown) {
       logger.error('EmbeddingService: Dimension detection failed', {
         error: e
       })
-      throw new Error(`连接或鉴权失败: ${e.message || String(e)}`)
+      throw new Error(`连接或鉴权失败: ${formatAiApiCallError(e)}`)
     }
   }
 
@@ -160,6 +160,14 @@ export class EmbeddingService {
     }, `updateMemoryChunk ${params.entry.embedding_id}`)
   }
 
+  /** Call once before parallel batch embed to avoid per-item dimension probes. */
+  public async prepareEmbeddingIndex(): Promise<void> {
+    const currentDim = await this.detectDimension()
+    if (currentDim > 0) {
+      await this.db.initVectorIndex(currentDim)
+    }
+  }
+
   public async embedText(params: {
     text: string
     sourceType: string
@@ -168,6 +176,8 @@ export class EmbeddingService {
     metadataJson?: string
     sourceCreatedAt?: number
     chunkPrefix?: string
+    /** Skip dimension detect / index init when batch caller already ran prepareEmbeddingIndex(). */
+    skipIndexPrep?: boolean
   }): Promise<void> {
     if (!this.isConfigured || !params.text.trim()) return
 
@@ -178,9 +188,8 @@ export class EmbeddingService {
 
       const aiModel = provider.getEmbeddingModel(modelId)
 
-      const currentDim = await this.detectDimension()
-      if (currentDim > 0) {
-        await this.db.initVectorIndex(currentDim)
+      if (!params.skipIndexPrep) {
+        await this.prepareEmbeddingIndex()
       }
 
       const chunks = this.splitIntoChunks(params.text)
@@ -237,6 +246,7 @@ export class EmbeddingService {
     metadataJson?: string
     sourceCreatedAt?: number
     chunkPrefix?: string
+    skipIndexPrep?: boolean
   }): Promise<void> {
     await this.db.deleteEmbeddingsBySource(params.sourceType, params.sourceId)
     await this.embedText(params)

@@ -12,6 +12,11 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
+import {
+  BATCH_EMBED_CONCURRENCY_MAX,
+  BATCH_EMBED_CONCURRENCY_MIN,
+  DEFAULT_BATCH_EMBED_CONCURRENCY
+} from '@baishou/shared'
 
 export const RAGMemorySection: React.FC = () => {
   const { t } = useTranslation()
@@ -74,12 +79,14 @@ export const RAGMemorySection: React.FC = () => {
     loadRagStats()
   }, [dbReady, services, loadRagStats])
 
-  const handleSaveRagConfig = async (config: any) => {
+  const handleSaveRagConfig = async (config: any, options?: { silent?: boolean }) => {
     if (!services || !dbReady) return
     try {
       await services.settingsManager.set('rag_config', config)
       setRagConfig(config)
-      Alert.alert(t('common.success', '成功'), t('settings.rag_saved', 'RAG配置已保存'))
+      if (!options?.silent) {
+        Alert.alert(t('common.success', '成功'), t('settings.rag_saved', 'RAG配置已保存'))
+      }
     } catch (e) {
       Alert.alert(t('common.error', '错误'), t('settings.save_failed', '保存失败'))
     }
@@ -211,6 +218,51 @@ export const RAGMemorySection: React.FC = () => {
           value={ragConfig.ragEnabled || false}
           onValueChange={(value) => handleSaveRagConfig({ ...ragConfig, ragEnabled: value })}
         />
+      </View>
+
+      <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
+        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+          {t('settings.rag_batch_embed_concurrency', '批量嵌入并发')}
+        </Text>
+        <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+          {t(
+            'settings.rag_batch_embed_concurrency_hint',
+            '同时嵌入的日记篇数。数值越大越快，但更容易触发 API 限流；建议 2–3。'
+          )}
+        </Text>
+        <View style={styles.concurrencyRow}>
+          {Array.from(
+            { length: BATCH_EMBED_CONCURRENCY_MAX - BATCH_EMBED_CONCURRENCY_MIN + 1 },
+            (_, i) => BATCH_EMBED_CONCURRENCY_MIN + i
+          ).map((n) => {
+            const selected =
+              (ragConfig.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY) === n
+            return (
+              <TouchableOpacity
+                key={n}
+                style={[
+                  styles.concurrencyChip,
+                  {
+                    backgroundColor: selected ? colors.primary : colors.bgSurface,
+                    borderColor: selected ? colors.primary : colors.borderSubtle
+                  }
+                ]}
+                onPress={() =>
+                  handleSaveRagConfig({ ...ragConfig, batchEmbedConcurrency: n }, { silent: true })
+                }
+              >
+                <Text
+                  style={{
+                    color: selected ? colors.textOnPrimary : colors.textPrimary,
+                    fontWeight: selected ? '700' : '400'
+                  }}
+                >
+                  {n}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
       </View>
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
@@ -382,6 +434,24 @@ const styles = StyleSheet.create({
   },
   settingValue: {
     fontSize: 14
+  },
+  settingHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10
+  },
+  concurrencyRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap'
+  },
+  concurrencyChip: {
+    minWidth: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center'
   },
   actionButton: {
     paddingVertical: 14,

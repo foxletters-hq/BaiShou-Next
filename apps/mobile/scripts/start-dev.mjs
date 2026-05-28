@@ -7,7 +7,9 @@ import {
   devClientEnv,
   getLanIp,
   hasAdbDevice,
-  openDevClientOnDevice
+  openDevClientOnDevice,
+  printDevConnectionHelp,
+  setupAdbReverse
 } from './mobile-dev-env.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -17,12 +19,17 @@ const clearCache = process.argv.includes('--clear')
 const host = getLanIp()
 const env = devClientEnv()
 
-console.log(`\n🌐 Metro: http://${host}:${METRO_PORT}`)
-console.log('   请保持手机和电脑在同一 Wi‑Fi；首次请先执行: pnpm android:mobile\n')
+console.log(`\n🌐 Metro 局域网地址: http://${host}:${METRO_PORT}`)
+printDevConnectionHelp(host, METRO_PORT)
+console.log('   首次 / 升级 Expo 或原生依赖后请先: pnpm mobile:android:clean\n')
 
-const expoArgs = ['expo', 'start', '--dev-client', '--port', METRO_PORT]
+if (hasAdbDevice()) {
+  setupAdbReverse(METRO_PORT)
+}
+
+const expoArgs = ['expo', 'start', '--dev-client', '--lan', '--port', METRO_PORT]
 if (clearCache) {
-  expoArgs.push('-c')
+  expoArgs.push('--clear')
 }
 
 const child = spawn('npx', expoArgs, {
@@ -39,11 +46,15 @@ const tryOpenDevice = () => {
   try {
     openDevClientOnDevice(host, METRO_PORT)
   } catch (e) {
-    console.warn('⚠️  无法通过 adb 打开开发版，请手动点开手机上的 App:', e.message)
+    console.warn(
+      '⚠️  无法通过 adb 打开开发版，请手动点开 App，并在开发菜单里填 Metro 地址:',
+      e.message
+    )
+    printDevConnectionHelp(host, METRO_PORT)
   }
 }
 
-// Metro 就绪后再拉起 App，避免连到未启动的 bundler
-setTimeout(tryOpenDevice, clearCache ? 8000 : 5000)
+// Metro 就绪后再拉起 App
+setTimeout(tryOpenDevice, clearCache ? 10000 : 6000)
 
 child.on('exit', (code) => process.exit(code ?? 0))
