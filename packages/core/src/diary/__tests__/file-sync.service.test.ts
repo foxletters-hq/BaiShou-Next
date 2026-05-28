@@ -1,17 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { FileSyncServiceImpl } from '../file-sync.service'
 import { Diary } from '@baishou/shared'
-import * as fs from 'fs'
-import * as path from 'path'
+import { createNodeFileSystem } from '../../fs/create-node-file-system'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 
 describe('FileSyncService', () => {
   const rootPath = path.join(__dirname, '.test_diaries')
   let service: FileSyncServiceImpl
+  const fileSystem = createNodeFileSystem()
 
   beforeEach(() => {
-    service = new FileSyncServiceImpl({
-      getJournalsBaseDirectory: async () => rootPath
-    } as any)
+    service = new FileSyncServiceImpl(
+      {
+        getJournalsBaseDirectory: async () => rootPath
+      } as any,
+      fileSystem
+    )
     if (fs.existsSync(rootPath)) {
       fs.rmSync(rootPath, { recursive: true, force: true })
     }

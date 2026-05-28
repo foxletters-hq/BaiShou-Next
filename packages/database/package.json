@@ -3,22 +3,33 @@
   "version": "1.0.0",
   "private": true,
   "main": "src/index.ts",
+  "react-native": "src/index.native.ts",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.native.ts",
+      "default": "./src/index.ts"
+    },
+    "./shared": "./src/index.shared.ts",
+    "./desktop": "./src/index.desktop.ts",
+    "./expo": "./src/expo.ts",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@baishou/shared": "workspace:^",
-    "@libsql/client": "0.17.2",
-    "better-sqlite3": "^12.10.0",
-    "drizzle-orm": "^0.45.2",
-    "sqlite-vec": "^0.1.9"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
+    "@libsql/client": "0.17.2",
     "@types/node": "^22.0.0",
+    "better-sqlite3": "^12.10.0",
     "drizzle-kit": "^0.31.10",
+    "sqlite-vec": "^0.1.9",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   }

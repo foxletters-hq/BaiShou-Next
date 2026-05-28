@@ -3,9 +3,10 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { logger } from '@baishou/shared'
 import * as chokidar from 'chokidar'
-import { SessionSyncService, SessionFileService } from '@baishou/core'
-import { SessionRepository, connectionManager } from '@baishou/database'
+import { SessionSyncService, SessionFileService } from '@baishou/core-desktop'
+import { SessionRepository, connectionManager } from '@baishou/database-desktop'
 import { pathService } from '../ipc/vault.ipc'
+import { fileSystem } from './node-file-system'
 
 /**
  * 会话文件变动监听服务
@@ -40,7 +41,7 @@ export class SessionWatcherService {
     // 初始化依赖
     const db = connectionManager.getDb()
     const sessionRepo = new SessionRepository(db)
-    const sessionFileService = new SessionFileService(pathService)
+    const sessionFileService = new SessionFileService(pathService, fileSystem)
     this.sessionSync = new SessionSyncService(sessionRepo, sessionFileService)
 
     // 初始化 Chokidar 监听

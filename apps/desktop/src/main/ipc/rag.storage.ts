@@ -1,5 +1,5 @@
 import { IEmbeddingStorage } from '@baishou/ai'
-import { memoryEmbeddingsTable } from '@baishou/database'
+import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
 import { mapMigrationBackupRow, logger } from '@baishou/shared'
 import { eq, and, sql } from 'drizzle-orm'

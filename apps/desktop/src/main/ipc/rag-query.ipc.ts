@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { memoryEmbeddingsTable, SqliteHybridSearchRepository } from '@baishou/database'
+import { memoryEmbeddingsTable, SqliteHybridSearchRepository } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
 import { eq, desc, like, sql } from 'drizzle-orm'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'

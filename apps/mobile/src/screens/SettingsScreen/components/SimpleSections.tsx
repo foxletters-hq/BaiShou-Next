@@ -1,8 +1,8 @@
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 
 export const AssistantsSection: React.FC = () => {
@@ -22,7 +22,7 @@ export const AssistantsSection: React.FC = () => {
         style={[styles.actionButton, { backgroundColor: colors.primary }]}
         onPress={() => router.push('/assistants')}
       >
-        <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
           {t('settings.manage_assistants', '管理助手')}
         </Text>
       </TouchableOpacity>
@@ -48,7 +48,7 @@ export const LanTransferSection: React.FC = () => {
         style={[styles.actionButton, { backgroundColor: colors.primary }]}
         onPress={() => router.push('/lan-transfer')}
       >
-        <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
           {t('settings.start_transfer', '开始传输')}
         </Text>
       </TouchableOpacity>
@@ -60,6 +60,7 @@ export const DataSyncSection: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const { services, dbReady } = useBaishou()
+  const router = useRouter()
 
   const handleSyncNow = async () => {
     if (!services || !dbReady) return
@@ -85,16 +86,17 @@ export const DataSyncSection: React.FC = () => {
       const syncConfig = {
         target: enabledTarget.type,
         maxBackupCount: 5,
+        maxSnapshotCount: 5,
         webdavUrl: enabledTarget.url,
         webdavUsername: enabledTarget.username || '',
-        webdavPassword: '',
-        webdavPath: '/',
+        webdavPassword: enabledTarget.password || '',
+        webdavPath: enabledTarget.path || '/',
         s3Endpoint: enabledTarget.url,
-        sRegion: '',
-        s3Bucket: '',
-        s3Path: '',
+        s3Region: enabledTarget.s3Region || '',
+        s3Bucket: enabledTarget.bucket || '',
+        s3Path: enabledTarget.path || '',
         s3AccessKey: enabledTarget.username || '',
-        s3SecretKey: ''
+        s3SecretKey: enabledTarget.password || ''
       }
 
       Alert.alert(t('settings.syncing', '同步中'), t('settings.syncing_message', '正在同步数据...'))
@@ -123,8 +125,44 @@ export const DataSyncSection: React.FC = () => {
         style={[styles.actionButton, { backgroundColor: colors.primary }]}
         onPress={handleSyncNow}
       >
-        <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
           {t('settings.sync_now', '立即同步')}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: colors.bgSurfaceHighest }]}
+        onPress={() => router.push('/data-sync')}
+      >
+        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+          {t('settings.sync_config', '同步配置')}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: colors.bgSurfaceHighest }]}
+        onPress={() => router.push('/storage')}
+      >
+        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+          {t('settings.storage_manage', '存储管理')}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: colors.bgSurfaceHighest }]}
+        onPress={() => router.push('/incremental-sync')}
+      >
+        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+          {t('settings.incremental_sync', '增量同步')}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: colors.bgSurfaceHighest }]}
+        onPress={() => router.push('/sessions')}
+      >
+        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+          {t('settings.session_manage', '会话管理')}
         </Text>
       </TouchableOpacity>
     </View>

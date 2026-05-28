@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { UserProfileRepository } from '@baishou/database'
+import { UserProfileRepository } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
 import { profileService } from '../services/profile.service'
 export function registerProfileIPC() {

@@ -2,20 +2,23 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 import { createClient } from '@libsql/client'
-import { VaultService } from '@baishou/core'
-import { shadowConnectionManager } from '@baishou/database'
+import { VaultService } from '@baishou/core-desktop'
+import { shadowConnectionManager } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
 import { resetSyncService } from './incremental-sync.ipc'
 import { resetGitService } from './git-sync.ipc'
 
+import { fileSystem } from '../services/node-file-system'
+
 export const pathService = new DesktopStoragePathService()
+export { fileSystem }
 
 /**
  * VaultService 不再需要 connectionManager（Agent DB 全局共用，不随 Vault 切换）
  * Shadow DB 连接由此文件中的 initShadowForActiveVault() 驱动
  */
-export const vaultService = new VaultService(pathService)
+export const vaultService = new VaultService(pathService, fileSystem)
 
 /**
  * 连接活跃 Vault 对应的影子索引库

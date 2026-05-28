@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "peerDependencies": {
-    "expo": "*"
+    "expo": "*",
+    "expo-modules-core": "*"
   }
 }

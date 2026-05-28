@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { logger } from '@baishou/shared'
-import { GitSyncServiceImpl } from '@baishou/core'
-import { GitPullError, GitRemoteNotConfiguredError } from '@baishou/core'
+import { GitSyncServiceImpl } from '@baishou/core-desktop'
+import { GitPullError, GitRemoteNotConfiguredError } from '@baishou/core-desktop'
 import { pathService } from './vault.ipc'
 
 let gitService: GitSyncServiceImpl | null = null

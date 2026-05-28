@@ -1,21 +1,23 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
+import type { IFileSystem } from '../fs/file-system.types'
+import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
 
 export class SessionFileService {
-  constructor(private readonly pathProvider: IStoragePathService) {}
+  constructor(
+    private readonly pathProvider: IStoragePathService,
+    private readonly fileSystem: IFileSystem
+  ) {}
 
   private async getDirectory(): Promise<string> {
     const targetDir = await this.pathProvider.getSessionsBaseDirectory()
-    await fs.mkdir(targetDir, { recursive: true })
+    await this.fileSystem.mkdir(targetDir, { recursive: true })
     return targetDir
   }
 
   async writeSession(sessionId: string, sessionData: any): Promise<string> {
     const dir = await this.getDirectory()
     const fullPath = path.join(dir, `${sessionId}.json`)
-    // format with 2 spaces for human-readable diff potential in webdav
-    await fs.writeFile(fullPath, JSON.stringify(sessionData, null, 2), 'utf8')
+    await this.fileSystem.writeFile(fullPath, JSON.stringify(sessionData, null, 2), 'utf8')
     return fullPath
   }
 
@@ -23,7 +25,7 @@ export class SessionFileService {
     const dir = await this.getDirectory()
     const fullPath = path.join(dir, `${sessionId}.json`)
     try {
-      const content = await fs.readFile(fullPath, 'utf8')
+      const content = await this.fileSystem.readFile(fullPath, 'utf8')
       return JSON.parse(content)
     } catch (e: any) {
       if (e.code === 'ENOENT') return null
@@ -35,7 +37,7 @@ export class SessionFileService {
     const dir = await this.getDirectory()
     const fullPath = path.join(dir, `${sessionId}.json`)
     try {
-      await fs.unlink(fullPath)
+      await this.fileSystem.unlink(fullPath)
     } catch (e: any) {
       if (e.code !== 'ENOENT') throw e
     }
@@ -45,7 +47,7 @@ export class SessionFileService {
     const dir = await this.getDirectory()
     let files: string[] = []
     try {
-      files = await fs.readdir(dir)
+      files = await this.fileSystem.readdir(dir)
     } catch (e: any) {
       if (e.code !== 'ENOENT') return []
       throw e
@@ -54,7 +56,7 @@ export class SessionFileService {
     const results: { id: string; fullPath: string }[] = []
     for (const f of files) {
       if (!f.endsWith('.json')) continue
-      const id = f.slice(0, -5) // remove .json
+      const id = f.slice(0, -5)
       results.push({ id, fullPath: path.join(dir, f) })
     }
     return results

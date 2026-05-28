@@ -63,7 +63,7 @@ vi.mock('fs/promises', async (importOriginal) => {
 const mockGet = vi.fn().mockResolvedValue(null)
 const mockSet = vi.fn()
 
-vi.mock('@baishou/database', () => {
+vi.mock('@baishou/database-desktop', () => {
   class SettingsRepository {
     get = mockGet
     set = mockSet

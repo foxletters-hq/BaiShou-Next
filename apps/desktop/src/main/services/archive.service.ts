@@ -5,14 +5,14 @@ import * as fs from 'fs'
 import * as fsp from 'fs/promises'
 import extract from 'extract-zip'
 
-import { IArchiveService, ImportResult, VaultService } from '@baishou/core'
+import { IArchiveService, ImportResult, VaultService } from '@baishou/core-desktop'
 import {
   connectionManager,
   shadowConnectionManager,
   SettingsRepository,
   UserProfileRepository,
   installDatabaseSchema
-} from '@baishou/database'
+} from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { DesktopStoragePathService } from './path.service'

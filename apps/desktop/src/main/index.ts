@@ -23,7 +23,11 @@ import { registerDeveloperIPC } from './ipc/developer.ipc'
 import { registerSearchIPC } from './ipc/search.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
-import { installDatabaseSchema, SettingsRepository, connectionManager } from '@baishou/database'
+import {
+  installDatabaseSchema,
+  SettingsRepository,
+  connectionManager
+} from '@baishou/database-desktop'
 import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'

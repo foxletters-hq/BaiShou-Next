@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { SummaryFileService } from '../summary-file.service'
+import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import { SummaryType } from '@baishou/shared'
 import os from 'node:os'
 import path from 'node:path'
@@ -25,7 +26,7 @@ describe('SummaryFileService', () => {
       getActiveVaultPath: vi.fn().mockResolvedValue(tempDir)
     }
 
-    service = new SummaryFileService(mockPathService as any)
+    service = new SummaryFileService(mockPathService as any, createNodeFileSystem())
   })
 
   afterEach(async () => {
@@ -191,7 +192,7 @@ This is legacy markdown content.`
         getActiveVaultPath: vi.fn().mockResolvedValue(tempDir)
       }
 
-      sharedService = new SummaryFileService(mockPathService as any)
+      sharedService = new SummaryFileService(mockPathService as any, createNodeFileSystem())
     })
 
     it('should read legacy format file in the shared directory and strip frontmatter', async () => {

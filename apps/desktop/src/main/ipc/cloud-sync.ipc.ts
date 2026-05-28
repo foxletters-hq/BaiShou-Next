@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { SyncConfig } from '@baishou/core'
+import { SyncConfig } from '@baishou/core-desktop'
 import { DesktopCloudSyncService } from '../services/cloud-sync.service'
 import { archiveService } from './archive.ipc'
 

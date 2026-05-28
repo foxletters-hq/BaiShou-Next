@@ -109,7 +109,7 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
       )}
       {onDelete && (
         <TouchableOpacity onPress={onDelete} style={styles.actionChip}>
-          <Text style={[styles.actionChipText, { color: colors.error || '#ef4444' }]}>
+          <Text style={[styles.actionChipText, { color: colors.error }]}>
             🗑️ {t('common.delete', '删除')}
           </Text>
         </TouchableOpacity>

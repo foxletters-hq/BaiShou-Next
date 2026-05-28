@@ -1,15 +1,8 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import { CreateDiaryInput, Diary, formatLocalDate, parseDateStr } from '@baishou/shared'
+import type { IFileSystem } from '../fs/file-system.types'
+import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
 
-/**
- * 日记 Markdown 文件系统落盘与读取服务
- *
- * 时区约定（对齐原版 Flutter）：
- *   所有文件路径与文件名均以「本地时区日期」计算，格式 YYYY-MM-DD。
- *   使用来自 @baishou/shared 的 formatLocalDate / parseDateStr，禁止直接调用 toISOString()。
- */
 export interface FileSyncService {
   writeJournal(diary: CreateDiaryInput | Diary): Promise<void>
   readJournal(date: Date): Promise<Diary | null>
@@ -18,25 +11,23 @@ export interface FileSyncService {
 }
 
 export class FileSyncServiceImpl implements FileSyncService {
-  constructor(private readonly pathService: IStoragePathService) {}
-
-  // ── 内部辅助 ────────────────────────────────────────────────────────
+  constructor(
+    private readonly pathService: IStoragePathService,
+    private readonly fileSystem: IFileSystem
+  ) {}
 
   private async ensureDir(dirPath: string): Promise<void> {
-    if (!fs.existsSync(dirPath)) {
-      await fs.promises.mkdir(dirPath, { recursive: true })
+    if (!(await this.fileSystem.exists(dirPath))) {
+      await this.fileSystem.mkdir(dirPath, { recursive: true })
     }
   }
 
-  /** 根据本地时区日期，返回 YYYY/MM/YYYY-MM-DD.md 的完整路径 */
   private buildFilePath(rootPath: string, date: Date): string {
     const year = String(date.getFullYear())
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const dateStr = formatLocalDate(date)
     return path.join(rootPath, year, month, `${dateStr}.md`)
   }
-
-  // ── 公开 API ────────────────────────────────────────────────────────
 
   async writeJournal(diary: CreateDiaryInput | Diary): Promise<void> {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
@@ -71,16 +62,16 @@ export class FileSyncServiceImpl implements FileSyncService {
 
     lines.push('---', '', diary.content)
 
-    await fs.promises.writeFile(filePath, lines.join('\n'), 'utf8')
+    await this.fileSystem.writeFile(filePath, lines.join('\n'), 'utf8')
   }
 
   async readJournal(date: Date): Promise<Diary | null> {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
     const filePath = this.buildFilePath(rootPath, date)
 
-    if (!fs.existsSync(filePath)) return null
+    if (!(await this.fileSystem.exists(filePath))) return null
 
-    const raw = await fs.promises.readFile(filePath, 'utf8')
+    const raw = await this.fileSystem.readFile(filePath, 'utf8')
     return this._parseMarkdown(raw, date)
   }
 
@@ -88,33 +79,17 @@ export class FileSyncServiceImpl implements FileSyncService {
     const rootPath = await this.pathService.getJournalsBaseDirectory()
     const filePath = this.buildFilePath(rootPath, date)
 
-    if (fs.existsSync(filePath)) {
-      await fs.promises.unlink(filePath)
+    if (await this.fileSystem.exists(filePath)) {
+      await this.fileSystem.unlink(filePath)
     }
   }
 
-  async fullScanVault(): Promise<void> {
-    // 由 ShadowIndexSyncService.fullScanVault() 负责，此处留空
-  }
+  async fullScanVault(): Promise<void> {}
 
-  // ── 私有解析 ────────────────────────────────────────────────────────
-
-  /**
-   * 解析 Markdown 文件（含 Frontmatter）为 Diary 对象
-   * Frontmatter 格式示例：
-   * ---
-   * id: 42
-   * date: 2026-04-07
-   * tags: [日记, 生活]
-   * updated_at: 2026-04-07T10:00:00.000Z
-   * ---
-   * 正文内容...
-   */
   private _parseMarkdown(raw: string, fallbackDate: Date): Diary | null {
     const fmRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/
     const match = raw.match(fmRegex)
 
-    // 没有 Frontmatter — 整体视为正文
     if (!match) {
       return { date: fallbackDate, content: raw.trim() } as Diary
     }
@@ -126,7 +101,6 @@ export class FileSyncServiceImpl implements FileSyncService {
       content: body.trim()
     }
 
-    // 解析 key: value 行
     for (const line of rawMeta.split('\n')) {
       const colonIdx = line.indexOf(':')
       if (colonIdx === -1) continue

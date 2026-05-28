@@ -2,6 +2,7 @@ export interface RagConfig {
   ragTopK: number
   ragSimilarityThreshold: number
   ragEnabled: boolean
+  batchEmbedConcurrency?: number
 }
 
 export interface RagStats {

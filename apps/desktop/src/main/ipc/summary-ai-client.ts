@@ -3,7 +3,7 @@ import { settingsManager } from './settings.ipc'
 import { getActiveProvider } from './agent-helpers'
 import { GlobalModelsConfig, logger } from '@baishou/shared'
 import { pathService } from './vault.ipc'
-import type { SummaryAiClient } from '@baishou/core'
+import type { SummaryAiClient } from '@baishou/core-desktop'
 import path from 'path'
 import fs from 'fs'
 

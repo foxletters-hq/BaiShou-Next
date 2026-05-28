@@ -10,7 +10,7 @@ import {
   Alert,
   TextInput
 } from 'react-native'
-import { useNativeTheme, MarkdownRenderer } from '@baishou/ui/native'
+import { useNativeTheme, scrollIndicatorStyle, MarkdownRenderer } from '@baishou/ui/native'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import * as Clipboard from 'expo-clipboard'
@@ -48,14 +48,16 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         const summaryList = await services.summaryManager.list()
         const found = summaryList.find((s) => String(s.id) === summaryId)
         if (found) {
+          const toIso = (v: Date | string | undefined) =>
+            v instanceof Date ? v.toISOString() : v != null ? String(v) : ''
           setSummary({
             id: found.id,
             type: found.type,
-            startDate: found.startDate,
-            endDate: found.endDate,
+            startDate: toIso(found.startDate),
+            endDate: toIso(found.endDate),
             content: found.content,
             sourceIds: found.sourceIds,
-            generatedAt: found.generatedAt
+            generatedAt: found.generatedAt != null ? toIso(found.generatedAt) : undefined
           })
         } else {
           Alert.alert(t('common.error', '错误'), t('summary.not_found', '总结未找到'))
@@ -275,7 +277,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         </View>
       </View>
 
-      <ScrollView style={styles.content} indicatorStyle="white">
+      <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
         <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
           <Text style={[styles.typeBadgeText, { color: colors.primary }]}>
             {getTypeLabel(summary.type)}

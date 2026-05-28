@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react'
 import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useAgentStore } from '@baishou/store/stores/agent.store.ts'
+import { useAgentStore } from '@baishou/store'
 import { useBaishou } from '../providers/BaishouProvider'
+import { buildInsertSessionInput } from '../utils/session-input.util'
+import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
 
 // 会话消息接口
 interface SessionMessage {
@@ -28,28 +30,24 @@ export function useAgentSession() {
   const [hasMore, setHasMore] = useState(false)
 
   // 将数据库消息转换为 UI 消息格式
-  const mapDbMessageToUI = useCallback(
-    (msg: any): SessionMessage => ({
-      id: msg.id,
-      role: msg.role,
-      content: msg.content || '',
-      timestamp: new Date(msg.createdAt),
+  const mapDbMessageToUI = useCallback((msg: any): SessionMessage => {
+    const mapped = mapSessionMessageFromDb(msg)
+    return {
+      ...mapped,
       toolInvocations: msg.toolInvocations,
-      attachments: msg.attachments,
       inputTokens: msg.inputTokens,
       outputTokens: msg.outputTokens,
       isReasoning: msg.isReasoning,
       costMicros: msg.costMicros
-    }),
-    []
-  )
+    }
+  }, [])
 
   // 加载会话消息
   const loadMessages = useCallback(
     async (sessionId: string, limit = 20, offset = 0) => {
       if (!services) return
       try {
-        const msgs = await services.sessionManager.getMessagesBySession(sessionId, limit, offset)
+        const msgs = await services.sessionManager.getMessagesBySession(sessionId, limit + offset)
         if (msgs && msgs.length > 0) {
           if (offset === 0) {
             clearSession()
@@ -71,8 +69,7 @@ export function useAgentSession() {
       const currentCount = messages.length
       const msgs = await services.sessionManager.getMessagesBySession(
         currentSessionId,
-        20,
-        currentCount
+        20 + currentCount
       )
       if (msgs && msgs.length > 0) {
         msgs.forEach((msg: any) => addMessage(mapDbMessageToUI(msg)))
@@ -100,10 +97,12 @@ export function useAgentSession() {
     if (!services) return null
     try {
       const newId = Date.now().toString()
-      await services.sessionManager.upsertSession({
-        id: newId,
-        title: t('agent.sessions.newChat', '新对话')
-      })
+      await services.sessionManager.upsertSession(
+        buildInsertSessionInput({
+          id: newId,
+          title: t('agent.sessions.newChat', '新对话')
+        })
+      )
       setCurrentSessionId(newId)
       clearSession()
       return newId

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
+import { useNativeTheme } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
 interface TtsProviderConfig {
@@ -212,7 +212,7 @@ export const TTSSettingsSection: React.FC = () => {
                 style={[
                   styles.chipText,
                   { color: colors.textSecondary },
-                  providerType === opt.id && { color: '#FFF' }
+                  providerType === opt.id && { color: colors.textOnPrimary }
                 ]}
               >
                 {opt.label}
@@ -321,7 +321,7 @@ export const TTSSettingsSection: React.FC = () => {
                     style={[
                       styles.chipText,
                       { color: colors.textSecondary },
-                      current.promptLang === lang && { color: '#FFF' }
+                      current.promptLang === lang && { color: colors.textOnPrimary }
                     ]}
                   >
                     {lang}
@@ -350,7 +350,7 @@ export const TTSSettingsSection: React.FC = () => {
                     style={[
                       styles.chipText,
                       { color: colors.textSecondary },
-                      current.textLang === lang && { color: '#FFF' }
+                      current.textLang === lang && { color: colors.textOnPrimary }
                     ]}
                   >
                     {lang}
@@ -398,7 +398,7 @@ export const TTSSettingsSection: React.FC = () => {
                 <Text
                   style={[
                     { fontSize: 11, color: colors.textSecondary },
-                    current.speed === val && { color: '#FFF' }
+                    current.speed === val && { color: colors.textOnPrimary }
                   ]}
                 >
                   {val}
@@ -430,7 +430,7 @@ export const TTSSettingsSection: React.FC = () => {
                 style={[
                   styles.chipText,
                   { color: colors.textSecondary },
-                  current.responseFormat === fmt && { color: '#FFF' }
+                  current.responseFormat === fmt && { color: colors.textOnPrimary }
                 ]}
               >
                 {fmt.toUpperCase()}
@@ -459,7 +459,7 @@ export const TTSSettingsSection: React.FC = () => {
           onPress={handleTest}
           disabled={isTesting}
         >
-          <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+          <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
             {isTesting
               ? t('tts.settings.testing', '测试中...')
               : t('tts.settings.test_button', '测试')}
@@ -476,7 +476,7 @@ export const TTSSettingsSection: React.FC = () => {
         onPress={handleSave}
         disabled={isSaving}
       >
-        <Text style={[styles.saveButtonText, { color: '#FFF' }]}>
+        <Text style={[styles.saveButtonText, { color: colors.textOnPrimary }]}>
           {isSaving ? t('common.saving', '保存中...') : t('common.save', '保存配置')}
         </Text>
       </TouchableOpacity>

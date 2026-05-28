@@ -165,7 +165,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
               const defaultRagConfig: RagConfig = {
                 ragEnabled: true,
                 ragTopK: 20,
-                ragSimilarityThreshold: 0.4
+                ragSimilarityThreshold: 0.4,
+                batchEmbedConcurrency: 3
               }
 
               const defaultWebSearchConfig: WebSearchConfig = {

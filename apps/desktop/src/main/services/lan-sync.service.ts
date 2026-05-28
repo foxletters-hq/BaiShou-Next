@@ -8,7 +8,7 @@ import { app } from 'electron'
 import express from 'express'
 import { v4 as uuidv4 } from 'uuid'
 
-import { ILanSyncService, DiscoveredDevice, IArchiveService } from '@baishou/core'
+import { ILanSyncService, DiscoveredDevice, IArchiveService } from '@baishou/core-desktop'
 import { LanDiscovery } from './LanDiscovery'
 
 export class DesktopLanSyncService implements ILanSyncService {

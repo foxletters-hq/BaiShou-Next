@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
-import { connectionManager, installDatabaseSchema } from '@baishou/database'
+import { connectionManager, installDatabaseSchema } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 import { getAppDb } from '../db'
 

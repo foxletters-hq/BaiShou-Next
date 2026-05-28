@@ -14,9 +14,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ChatBubble, InputBar, TokenBadge, StreamingBubble, RecallDialog } from '@baishou/ui/native'
 import { useNativeTheme } from '@baishou/ui/native'
-import { useAgentStore } from '@baishou/store/stores/agent.store.ts'
+import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 
+import { partDataAsRecord } from '../utils/agent-part.util'
 import { SessionList } from '../components/SessionList'
 import { AssistantPicker } from '../components/AssistantPicker'
 import { ModelSwitcher } from '../components/ModelSwitcher'
@@ -236,19 +237,21 @@ export const AgentScreen = () => {
       if (msgIndex > 0) {
         const prevMsg = messages[msgIndex - 1]
         if (prevMsg.role === 'user' && prevMsg.parts) {
-          const ctxPart = prevMsg.parts.find((p: any) => p.type === 'context_snapshot')
-          if (ctxPart && ctxPart.data?.snapshots) {
-            decodedContext = ctxPart.data.snapshots.map((s: any) => ({
+          const ctxPart = prevMsg.parts.find((p) => p.type === 'context_snapshot')
+          const ctxData = ctxPart ? partDataAsRecord(ctxPart.data) : undefined
+          const snapshots = ctxData?.snapshots
+          if (Array.isArray(snapshots)) {
+            decodedContext = snapshots.map((s: Record<string, unknown>) => ({
               role: 'system',
-              content: `${s.title ? '[' + s.title + '] ' : ''}${s.content}`,
+              content: `${s.title ? '[' + String(s.title) + '] ' : ''}${String(s.content ?? '')}`,
               timestamp: message.createdAt || new Date()
             }))
           }
 
-          // 获取压缩内容
-          const compPart = prevMsg.parts.find((p: any) => p.type === 'compaction')
-          if (compPart && compPart.data?.summary) {
-            compressedContent = compPart.data.summary
+          const compPart = prevMsg.parts.find((p) => p.type === 'compaction')
+          const compData = compPart ? partDataAsRecord(compPart.data) : undefined
+          if (typeof compData?.summary === 'string') {
+            compressedContent = compData.summary
           }
         }
 
@@ -379,19 +382,21 @@ export const AgentScreen = () => {
                 if (msgIndex > 0) {
                   const prevMsg = messages[msgIndex - 1]
                   if (prevMsg.role === 'user' && prevMsg.parts) {
-                    const ctxPart = prevMsg.parts.find((p: any) => p.type === 'context_snapshot')
-                    if (ctxPart && ctxPart.data?.snapshots) {
-                      decodedContext = ctxPart.data.snapshots.map((s: any) => ({
+                    const ctxPart = prevMsg.parts.find((p) => p.type === 'context_snapshot')
+                    const ctxData = ctxPart ? partDataAsRecord(ctxPart.data) : undefined
+                    const snapshots = ctxData?.snapshots
+                    if (Array.isArray(snapshots)) {
+                      decodedContext = snapshots.map((s: Record<string, unknown>) => ({
                         role: 'system',
-                        content: `${s.title ? '[' + s.title + '] ' : ''}${s.content}`,
+                        content: `${s.title ? '[' + String(s.title) + '] ' : ''}${String(s.content ?? '')}`,
                         timestamp: item.createdAt || new Date()
                       }))
                     }
 
-                    // 获取压缩内容
-                    const compPart = prevMsg.parts.find((p: any) => p.type === 'compaction')
-                    if (compPart && compPart.data?.summary) {
-                      compressedContent = compPart.data.summary
+                    const compPart = prevMsg.parts.find((p) => p.type === 'compaction')
+                    const compData = compPart ? partDataAsRecord(compPart.data) : undefined
+                    if (typeof compData?.summary === 'string') {
+                      compressedContent = compData.summary
                     }
                   }
 
@@ -574,7 +579,7 @@ export const AgentScreen = () => {
                     color:
                       ttsMode !== 'off'
                         ? ttsMode === 'always'
-                          ? colors.textOnPrimary || '#FFF'
+                          ? colors.textOnPrimary
                           : colors.textSecondary
                         : colors.textSecondary
                   }

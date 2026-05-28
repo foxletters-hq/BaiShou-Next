@@ -1,10 +1,10 @@
 import * as Network from 'expo-network'
 import Zeroconf from 'react-native-zeroconf'
-import * as FileSystem from 'expo-file-system'
-import { IArchiveService, ILanSyncService, DiscoveredDevice } from '@baishou/core'
+import * as FileSystem from 'expo-file-system/legacy'
+import { IArchiveService, ILanSyncService, DiscoveredDevice } from '@baishou/core-mobile'
 
 // We import our custom internal module!
-import * as BaishouServer from '../../modules/expo-baishou-server'
+import * as BaishouServer from 'expo-baishou-server'
 
 export class MobileLanSyncService implements ILanSyncService {
   private zeroconf: Zeroconf
@@ -44,14 +44,25 @@ export class MobileLanSyncService implements ILanSyncService {
   public async startBroadcasting(): Promise<{
     ip: string
     port: number
+    serviceId: string
   } | null> {
-    if (this.isBroadcasting) return { ip: this.currentIp, port: this.currentPort }
+    if (this.isBroadcasting) {
+      return {
+        ip: this.currentIp,
+        port: this.currentPort,
+        serviceId: `baishou-mobile-${this.currentPort}`
+      }
+    }
 
     const ip = await Network.getIpAddressAsync()
     if (!ip || ip === '0.0.0.0') throw new Error('No local IPv4 found')
 
-    // Start Native Server on random port 0!
-    // The native module will bind and return the actual port
+    if (!BaishouServer.isBaishouServerAvailable()) {
+      throw new Error(
+        '局域网服务需要 ExpoBaishouServer 原生模块。请执行 pnpm mobile:android:clean 重新安装开发版。'
+      )
+    }
+
     this.currentPort = BaishouServer.startServer(0)
     if (this.currentPort <= 0) {
       throw new Error('Failed to start native NanoHTTPD server')
@@ -79,7 +90,7 @@ export class MobileLanSyncService implements ILanSyncService {
     })
 
     this.isBroadcasting = true
-    return { ip, port: this.currentPort }
+    return { ip, port: this.currentPort, serviceId: serviceName }
   }
 
   public async stopBroadcasting(): Promise<void> {

@@ -12,7 +12,7 @@ import {
 } from 'react-native'
 import { StorageSettingsCard } from '@baishou/ui/native'
 import { SettingsSection } from '@baishou/ui/native'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
+import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import * as DocumentPicker from 'expo-document-picker'
@@ -147,7 +147,11 @@ export const StorageScreen: React.FC = () => {
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.bgApp}
       />
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        indicatorStyle={scrollIndicatorStyle(isDark)}
+      >
         <StorageSettingsCard
           storageRootPath={storageRootPath || t('storage.default_path', '应用沙盒')}
           sqliteSizeStats={sqliteSize}

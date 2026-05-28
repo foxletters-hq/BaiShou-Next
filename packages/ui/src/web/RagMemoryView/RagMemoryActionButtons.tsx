@@ -25,7 +25,7 @@ export const RagMemoryActionButtons: React.FC<RagMemoryActionButtonsProps> = ({
     <div className={styles.actionButtonsRow}>
       <button
         className={`${styles.actionBtn} ${styles.btnBlueFlat}`}
-        onClick={onBatchEmbed}
+        onClick={() => void onBatchEmbed?.()}
         disabled={isBusy}
       >
         <MdAutoStories size={16} />{' '}
@@ -35,7 +35,7 @@ export const RagMemoryActionButtons: React.FC<RagMemoryActionButtonsProps> = ({
       </button>
       <button
         className={`${styles.actionBtn} ${styles.btnGreenOutlined}`}
-        onClick={onAddManualMemory}
+        onClick={() => void onAddManualMemory?.()}
         disabled={isBusy}
       >
         <MdAddComment size={16} /> {t('settings.rag_add_manual', '手动添加记忆')}

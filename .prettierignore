@@ -9,4 +9,5 @@ package-lock.json
 .vscode
 **/.temp-*/**
 apps/desktop/default/**
+apps/mobile/android/**
 

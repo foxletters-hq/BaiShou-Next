@@ -1,5 +1,5 @@
 {
-  "name": "expo-baishou-server",
+  "platforms": ["android"],
   "android": {
     "modules": ["expo.modules.baishouserver.ExpoBaishouServerModule"]
   }

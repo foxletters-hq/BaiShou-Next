@@ -135,7 +135,7 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
                 }}
                 style={styles.actionItem}
               >
-                <Text style={[styles.actionItemText, { color: colors.error || '#ef4444' }]}>
+                <Text style={[styles.actionItemText, { color: colors.error }]}>
                   🗑️ {t('common.delete', '删除')}
                 </Text>
               </TouchableOpacity>

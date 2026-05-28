@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs/promises'
-import { IStoragePathService } from '@baishou/core'
+import { IStoragePathService } from '@baishou/core-desktop'
 
 export class DesktopStoragePathService implements IStoragePathService {
   private getSettingsFile(): string {

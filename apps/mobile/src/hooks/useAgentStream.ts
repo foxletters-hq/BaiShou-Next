@@ -1,17 +1,18 @@
 import { useState, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useAgentStore } from '@baishou/store/stores/agent.store.ts'
+import { useAgentStore } from '@baishou/store'
 import { useBaishou } from '../providers/BaishouProvider'
+import { saveUserMessage } from '../services/mobile-agent-message.service'
+import { buildInsertSessionInput } from '../utils/session-input.util'
+import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
 
-// Token 统计接口
 interface TokenUsage {
   inputTokens: number
   outputTokens: number
   totalCostMicros: number
 }
 
-// 工具调用信息接口
 interface ToolCallInfo {
   name: string
   startTime: number
@@ -31,7 +32,6 @@ export function useAgentStream(
   const { addMessage, updateMessage, setLoading, clearSession, messages } = useAgentStore()
   const { startAgentChat, services } = useBaishou()
 
-  // 流式对话状态
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
@@ -40,35 +40,44 @@ export function useAgentStream(
     outputTokens: 0,
     totalCostMicros: 0
   })
-
-  // 工具调用追踪状态
   const [activeTool, setActiveTool] = useState<ToolCallInfo | null>(null)
   const [completedTools, setCompletedTools] = useState<ToolCallInfo[]>([])
 
-  // 保存 searchMode 引用用于 regenerate / edit 场景
   const searchModeRef = useRef(searchMode)
   searchModeRef.current = searchMode
-
-  // 用于中止请求的 AbortController
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // 发送消息
+  const reloadMessagesFromDb = useCallback(
+    async (sessionId: string) => {
+      if (!services) return
+      const rows = await services.sessionManager.getMessagesBySession(sessionId, 100)
+      clearSession()
+      for (const row of rows) {
+        addMessage(mapSessionMessageFromDb(row as any))
+      }
+    },
+    [services, clearSession, addMessage]
+  )
+
   const handleSend = useCallback(
-    async (text: string, attachments?: any[], sendSearchMode?: boolean) => {
-      if (!text.trim()) return
+    async (text: string, attachments?: unknown[], sendSearchMode?: boolean) => {
+      if (!text.trim() || !services) return
 
       const effectiveSearchMode = sendSearchMode ?? searchModeRef.current ?? false
-
-      // 如果没有当前会话，创建新会话
       let sessionId = currentSessionId
-      if (!sessionId && services) {
+
+      if (!sessionId) {
         try {
           const newSessionId = Date.now().toString()
-          await services.sessionManager.upsertSession({
-            id: newSessionId,
-            title: text.substring(0, 20) || t('agent.sessions.newChat', '新对话'),
-            assistantId: currentAssistant?.id
-          })
+          await services.sessionManager.upsertSession(
+            buildInsertSessionInput({
+              id: newSessionId,
+              title: text.substring(0, 20) || t('agent.sessions.newChat', '新对话'),
+              assistantId: currentAssistant?.id,
+              providerId: currentProviderId || undefined,
+              modelId: currentModelId || undefined
+            })
+          )
           sessionId = newSessionId
           onSessionCreated?.(newSessionId)
         } catch (e) {
@@ -78,29 +87,40 @@ export function useAgentStream(
         }
       }
 
-      if (!sessionId) return
+      const saveResult = await saveUserMessage(
+        services.sessionRepo,
+        services.sessionManager,
+        services.pathService,
+        {
+          sessionId,
+          text,
+          attachments,
+          modelId: currentModelId || undefined,
+          providerType: currentProviderId || undefined
+        }
+      )
+      if ('error' in saveResult) {
+        Alert.alert(t('common.error', '错误'), saveResult.error)
+        return
+      }
 
-      // 创建新的 AbortController
       abortControllerRef.current = new AbortController()
+      const assistantMessageId = `${saveResult.userMessageId}-assistant-pending`
 
-      // 添加用户消息
-      const userMessageId = Date.now().toString()
       addMessage({
-        id: userMessageId,
+        id: saveResult.userMessageId,
         role: 'user',
         content: text,
         timestamp: new Date(),
-        attachments
+        attachments: saveResult.attachments as any
       })
-
-      // 添加助手消息占位
-      const assistantMessageId = (Date.now() + 1).toString()
       addMessage({
         id: assistantMessageId,
         role: 'assistant',
         content: '',
         timestamp: new Date()
       })
+
       setLoading(true)
       setIsStreaming(true)
       setStreamingText('')
@@ -110,7 +130,6 @@ export function useAgentStream(
 
       try {
         let currentText = ''
-        // 传递助手级模型配置覆盖
         await startAgentChat?.(
           sessionId,
           text,
@@ -123,29 +142,24 @@ export function useAgentStream(
             onReasoningDelta: (chunk) => {
               setStreamingReasoning((prev) => prev + chunk)
             },
-            onToolCallStart: (toolName: string, args: unknown) => {
-              setActiveTool({
-                name: toolName,
-                startTime: Date.now()
-              })
+            onToolCallStart: (toolName: string) => {
+              setActiveTool({ name: toolName, startTime: Date.now() })
             },
             onToolCallResult: (toolName: string, result: unknown) => {
               setActiveTool(null)
               setCompletedTools((prev) => [
                 ...prev,
-                {
-                  name: toolName,
-                  startTime: Date.now(),
-                  endTime: Date.now(),
-                  result
-                }
+                { name: toolName, startTime: Date.now(), endTime: Date.now(), result }
               ])
             },
-            onFinish: (result?: any) => {
+            onFinish: (result?: {
+              inputTokens?: number
+              outputTokens?: number
+              costMicros?: number
+            }) => {
               setLoading(false)
               setIsStreaming(false)
               abortControllerRef.current = null
-              // 从回调结果中获取真实的 token 统计
               if (result) {
                 setTokenUsage((prev) => ({
                   inputTokens: prev.inputTokens + (result.inputTokens || 0),
@@ -153,6 +167,7 @@ export function useAgentStream(
                   totalCostMicros: prev.totalCostMicros + (result.costMicros || 0)
                 }))
               }
+              void reloadMessagesFromDb(sessionId!)
             },
             onError: (err) => {
               setLoading(false)
@@ -177,91 +192,148 @@ export function useAgentStream(
           {
             providerId: currentProviderId || undefined,
             modelId: currentModelId || undefined,
-            searchMode: effectiveSearchMode
+            searchMode: effectiveSearchMode,
+            abortSignal: abortControllerRef.current.signal,
+            userMessageId: saveResult.userMessageId,
+            skipUserMessageRecording: true,
+            attachments: saveResult.attachments
           }
         )
-      } catch (e: any) {
+      } catch (e: unknown) {
         setLoading(false)
         setIsStreaming(false)
         abortControllerRef.current = null
-        updateMessage(assistantMessageId, {
-          content: '[系统错误] ' + e.message
-        })
+        const msg = e instanceof Error ? e.message : String(e)
+        updateMessage(assistantMessageId, { content: '[系统错误] ' + msg })
       }
     },
     [
       currentSessionId,
       currentAssistant,
+      currentProviderId,
+      currentModelId,
       services,
       startAgentChat,
       t,
       addMessage,
       updateMessage,
       setLoading,
-      onSessionCreated
+      onSessionCreated,
+      reloadMessagesFromDb
     ]
   )
 
-  // 停止生成
   const handleStop = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-      abortControllerRef.current = null
-    }
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
     setLoading(false)
     setIsStreaming(false)
   }, [setLoading])
 
-  // 重新生成
   const handleRegenerate = useCallback(
     async (messageId: string) => {
       if (!currentSessionId || !services) return
       try {
-        // 找到该消息之前的用户消息
         const msgIndex = messages.findIndex((m) => m.id === messageId)
         if (msgIndex <= 0) return
-
         const userMessage = messages[msgIndex - 1]
         if (userMessage.role !== 'user') return
 
-        // 删除该消息及之后的所有消息
-        clearSession()
-        const messagesToKeep = messages.slice(0, msgIndex - 1)
-        messagesToKeep.forEach((msg) => addMessage(msg))
+        const dbUser = await services.sessionRepo.getMessageById(userMessage.id)
+        if (!dbUser) return
+        await services.sessionRepo.deleteMessagesAfter(currentSessionId, dbUser.orderIndex)
+        await reloadMessagesFromDb(currentSessionId)
 
-        // 重新发送
-        await handleSend(userMessage.content, userMessage.attachments)
+        abortControllerRef.current = new AbortController()
+        const assistantMessageId = `${userMessage.id}-assistant-pending`
+        addMessage({
+          id: assistantMessageId,
+          role: 'assistant',
+          content: '',
+          timestamp: new Date()
+        })
+        setLoading(true)
+        setIsStreaming(true)
+        setStreamingText('')
+
+        let currentText = ''
+        await startAgentChat?.(
+          currentSessionId,
+          userMessage.content,
+          {
+            onTextDelta: (chunk) => {
+              currentText += chunk
+              setStreamingText(currentText)
+              updateMessage(assistantMessageId, { content: currentText })
+            },
+            onReasoningDelta: (chunk) => setStreamingReasoning((prev) => prev + chunk),
+            onToolCallStart: (toolName) => setActiveTool({ name: toolName, startTime: Date.now() }),
+            onToolCallResult: (toolName, result) => {
+              setActiveTool(null)
+              setCompletedTools((prev) => [
+                ...prev,
+                { name: toolName, startTime: Date.now(), endTime: Date.now(), result }
+              ])
+            },
+            onFinish: () => {
+              setLoading(false)
+              setIsStreaming(false)
+              abortControllerRef.current = null
+              void reloadMessagesFromDb(currentSessionId)
+            },
+            onError: (err) => {
+              setLoading(false)
+              setIsStreaming(false)
+              abortControllerRef.current = null
+              updateMessage(assistantMessageId, {
+                content: currentText + '\n\n[ERR] ' + err.message
+              })
+            }
+          },
+          {
+            providerId: currentProviderId || undefined,
+            modelId: currentModelId || undefined,
+            searchMode: searchModeRef.current,
+            abortSignal: abortControllerRef.current.signal,
+            userMessageId: userMessage.id,
+            skipUserMessageRecording: true,
+            attachments: userMessage.attachments
+          }
+        )
       } catch (e) {
         console.error('Failed to regenerate', e)
       }
     },
-    [currentSessionId, services, messages, clearSession, addMessage, handleSend]
+    [
+      currentSessionId,
+      services,
+      messages,
+      startAgentChat,
+      currentProviderId,
+      currentModelId,
+      addMessage,
+      updateMessage,
+      setLoading,
+      reloadMessagesFromDb
+    ]
   )
 
-  // 编辑消息
   const handleEditMessage = useCallback(
     async (messageId: string, newContent: string) => {
       if (!currentSessionId || !services) return
       try {
-        // 找到该消息，删除之后的消息，重新发送
-        const msgIndex = messages.findIndex((m) => m.id === messageId)
-        if (msgIndex < 0) return
-
-        // 清除当前会话，保留编辑消息之前的消息
-        clearSession()
-        const messagesToKeep = messages.slice(0, msgIndex)
-        messagesToKeep.forEach((msg) => addMessage(msg))
-
-        // 重新发送编辑后的内容
+        const dbMsg = await services.sessionRepo.getMessageById(messageId)
+        if (!dbMsg) return
+        await services.sessionRepo.deleteMessagesAfter(currentSessionId, dbMsg.orderIndex - 1)
+        await reloadMessagesFromDb(currentSessionId)
         await handleSend(newContent)
       } catch (e) {
         console.error('Failed to edit message', e)
       }
     },
-    [currentSessionId, services, messages, clearSession, addMessage, handleSend]
+    [currentSessionId, services, handleSend, reloadMessagesFromDb]
   )
 
-  // 删除消息
   const handleDeleteMessage = useCallback(
     async (messageId: string) => {
       if (!currentSessionId || !services) return
@@ -275,10 +347,8 @@ export function useAgentStream(
             style: 'destructive',
             onPress: async () => {
               try {
-                // 重新加载会话消息（排除删除的消息）
-                clearSession()
-                const remainingMessages = messages.filter((m) => m.id !== messageId)
-                remainingMessages.forEach((msg) => addMessage(msg))
+                await services.sessionRepo.deleteMessageAndFollowing(currentSessionId, messageId)
+                await reloadMessagesFromDb(currentSessionId)
               } catch (e) {
                 console.error('Failed to delete message', e)
               }
@@ -287,26 +357,20 @@ export function useAgentStream(
         ]
       )
     },
-    [currentSessionId, services, t, messages, clearSession, addMessage]
+    [currentSessionId, services, t, reloadMessagesFromDb]
   )
 
-  // 更新 token 统计
   const updateTokenUsage = useCallback((usage: Partial<TokenUsage>) => {
-    setTokenUsage((prev) => ({
-      ...prev,
-      ...usage
-    }))
+    setTokenUsage((prev) => ({ ...prev, ...usage }))
   }, [])
 
   return {
-    // 状态
     isStreaming,
     streamingText,
     streamingReasoning,
     tokenUsage,
     activeTool,
     completedTools,
-    // 方法
     handleSend,
     handleStop,
     handleRegenerate,

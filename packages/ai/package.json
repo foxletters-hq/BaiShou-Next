@@ -3,9 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "main": "src/index.ts",
+  "react-native": "src/index.native.ts",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.native.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.66",
@@ -14,6 +21,7 @@
     "@baishou/database": "workspace:*",
     "@baishou/shared": "workspace:*",
     "ai": "^6.0.146",
+    "pdf-parse": "^1.1.1",
     "tiktoken": "^1.0.22",
     "zod": "^4.3.6"
   },

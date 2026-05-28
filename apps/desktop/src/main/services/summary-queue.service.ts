@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { MissingSummary, logger, GlobalModelsConfig } from '@baishou/shared'
-import { SummaryGeneratorService, SummaryManagerService } from '@baishou/core'
+import { SummaryGeneratorService, SummaryManagerService } from '@baishou/core-desktop'
 import { settingsManager } from '../ipc/settings.ipc'
 
 export interface QueueItem {

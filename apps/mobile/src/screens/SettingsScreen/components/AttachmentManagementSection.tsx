@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const AttachmentManagementSection: React.FC = () => {
   const { t } = useTranslation()
@@ -18,10 +18,22 @@ export const AttachmentManagementSection: React.FC = () => {
     if (!services || !dbReady) return
     try {
       setIsLoadingAttachments(true)
-      const storageStatsData = (await services.settingsManager.get<any>('storage_stats')) || {}
-      setStorageStats(storageStatsData)
-      const attachmentList = storageStatsData.attachments || []
+      const sessions = await services.sessionManager.findAllSessions(500, 0)
+      const activeIds = new Set<string>(sessions.map((s: { id: string }) => s.id))
+      const groups = await services.attachmentManager.listSessionGroups(activeIds)
+      const attachmentList = groups.map((g) => ({
+        id: g.sessionId,
+        name: g.sessionTitle || g.sessionId,
+        sizeMB: g.totalSizeMB,
+        fileCount: g.fileCount,
+        isOrphan: g.isOrphan
+      }))
+      const totalMB = attachmentList.reduce((sum, a) => sum + (a.sizeMB || 0), 0)
       setAttachments(attachmentList)
+      setStorageStats({
+        attachmentCount: attachmentList.length,
+        attachmentSize: `${totalMB.toFixed(2)} MB`
+      })
     } catch (e) {
       console.warn('Load attachments failed', e)
     } finally {
@@ -68,15 +80,11 @@ export const AttachmentManagementSection: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const remaining = attachments.filter((a) => !selectedAttachments.has(a.id))
-              setAttachments(remaining)
+              for (const id of selectedAttachments) {
+                await services?.attachmentManager.deleteBatch([id])
+              }
               setSelectedAttachments(new Set())
-
-              const storageStatsData =
-                (await services?.settingsManager.get<any>('storage_stats')) || {}
-              storageStatsData.attachments = remaining
-              storageStatsData.attachmentCount = remaining.length
-              await services?.settingsManager.set('storage_stats', storageStatsData)
+              await loadAttachments()
 
               Alert.alert(
                 t('common.success', '成功'),
@@ -127,7 +135,7 @@ export const AttachmentManagementSection: React.FC = () => {
           onPress={handleSelectAllAttachments}
           disabled={attachments.length === 0}
         >
-          <Text style={[styles.actionButtonText, { color: '#FFF' }]}>
+          <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
             {selectedAttachments.size === attachments.length
               ? t('settings.deselect_all', '取消全选')
               : t('settings.select_all', '全选')}
@@ -138,8 +146,7 @@ export const AttachmentManagementSection: React.FC = () => {
           style={[
             styles.actionButton,
             {
-              backgroundColor:
-                selectedAttachments.size > 0 ? colors.error || '#FF4444' : colors.bgSurfaceHighest
+              backgroundColor: selectedAttachments.size > 0 ? colors.error : colors.bgSurfaceHighest
             }
           ]}
           onPress={handleDeleteSelectedAttachments}
@@ -149,7 +156,7 @@ export const AttachmentManagementSection: React.FC = () => {
             style={[
               styles.actionButtonText,
               {
-                color: selectedAttachments.size > 0 ? '#FFF' : colors.textSecondary
+                color: selectedAttachments.size > 0 ? colors.textOnPrimary : colors.textSecondary
               }
             ]}
           >
@@ -193,7 +200,7 @@ export const AttachmentManagementSection: React.FC = () => {
                   ]}
                 >
                   {selectedAttachments.has(attachment.id) && (
-                    <Text style={styles.checkmark}>✓</Text>
+                    <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>
                   )}
                 </View>
               </View>
@@ -309,7 +316,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   checkmark: {
-    color: '#FFF',
     fontSize: 14,
     fontWeight: '700'
   },

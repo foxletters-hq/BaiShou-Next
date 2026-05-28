@@ -1,4 +1,4 @@
-import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
+import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database-desktop'
 import { logger, parseDateStr } from '@baishou/shared'
 
 /** 国际化字典类型 */

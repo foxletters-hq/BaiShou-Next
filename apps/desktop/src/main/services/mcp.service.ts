@@ -9,7 +9,7 @@ import {
   ToolSchema,
   isInitializeRequest
 } from '@modelcontextprotocol/sdk/types.js'
-import type { SettingsRepository } from '@baishou/database'
+import type { SettingsRepository } from '@baishou/database-desktop'
 // @ts-ignore
 import { Server as HttpServer } from 'http'
 

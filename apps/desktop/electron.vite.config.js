@@ -3,16 +3,16 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 const workspaceAliases = {
   '@baishou/ai': resolve('../../packages/ai'),
-  '@baishou/core': resolve('../../packages/core'),
-  '@baishou/database': resolve('../../packages/database'),
+  '@baishou/core-desktop': resolve('../../packages/core-desktop'),
+  '@baishou/database-desktop': resolve('../../packages/database-desktop'),
   '@baishou/shared': resolve('../../packages/shared'),
   '@baishou/store': resolve('../../packages/store'),
   '@baishou/ui': resolve('../../packages/ui/src')
 }
 const workspaceExcludes = [
   '@baishou/ai',
-  '@baishou/core',
-  '@baishou/database',
+  '@baishou/core-desktop',
+  '@baishou/database-desktop',
   '@baishou/shared',
   '@baishou/store',
   '@baishou/ui'

@@ -1,5 +1,5 @@
 import { globalShortcut, BrowserWindow } from 'electron'
-import type { SettingsRepository } from '@baishou/database'
+import type { SettingsRepository } from '@baishou/database-desktop'
 import type { HotkeyConfig } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 

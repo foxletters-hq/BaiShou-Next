@@ -4,6 +4,11 @@ import { useTranslation } from 'react-i18next'
 import Slider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
 import { SettingsSection } from '../SettingsSection'
+import {
+  BATCH_EMBED_CONCURRENCY_MAX,
+  BATCH_EMBED_CONCURRENCY_MIN,
+  DEFAULT_BATCH_EMBED_CONCURRENCY
+} from '@baishou/shared'
 import type { RagConfig } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -51,6 +56,24 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
           onValueChange={(v) =>
             onChange({ ...config, ragSimilarityThreshold: Math.round(v * 100) / 100 })
           }
+          minimumTrackTintColor={colors.primary}
+          maximumTrackTintColor={colors.borderMuted}
+          thumbTintColor={colors.primary}
+        />
+      </View>
+
+      <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>
+          {t('settings.rag_batch_embed_concurrency', '批量嵌入并发')}:{' '}
+          {config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
+        </Text>
+        <Slider
+          style={styles.slider}
+          minimumValue={BATCH_EMBED_CONCURRENCY_MIN}
+          maximumValue={BATCH_EMBED_CONCURRENCY_MAX}
+          step={1}
+          value={config.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY}
+          onValueChange={(v) => onChange({ ...config, batchEmbedConcurrency: Math.round(v) })}
           minimumTrackTintColor={colors.primary}
           maximumTrackTintColor={colors.borderMuted}
           thumbTintColor={colors.primary}

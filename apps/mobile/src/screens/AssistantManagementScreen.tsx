@@ -52,11 +52,11 @@ export const AssistantManagementScreen: React.FC = () => {
   }, [loadAssistants])
 
   const handleCreateAssistant = () => {
-    router.push('/assistants/new')
+    router.push({ pathname: '/assistant-edit', params: { id: 'new' } })
   }
 
   const handleEditAssistant = (assistant: Assistant) => {
-    router.push(`/assistants/${assistant.id}`)
+    router.push({ pathname: '/assistant-edit', params: { id: assistant.id } })
   }
 
   const handleDeleteAssistant = async (assistant: Assistant) => {
@@ -152,7 +152,7 @@ export const AssistantManagementScreen: React.FC = () => {
         </TouchableOpacity>
         {!item.isDefault && (
           <TouchableOpacity style={styles.actionButton} onPress={() => handleDeleteAssistant(item)}>
-            <Text style={[styles.actionText, { color: '#EF4444' }]}>删除</Text>
+            <Text style={[styles.actionText, { color: colors.error }]}>删除</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -202,7 +202,9 @@ export const AssistantManagementScreen: React.FC = () => {
                 style={[styles.createFirstButton, { backgroundColor: colors.primary }]}
                 onPress={handleCreateAssistant}
               >
-                <Text style={styles.createFirstText}>创建助手</Text>
+                <Text style={[styles.createFirstText, { color: colors.textOnPrimary }]}>
+                  创建助手
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -283,7 +285,6 @@ const styles = StyleSheet.create({
     borderRadius: 12
   },
   createFirstText: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: '600'
   },

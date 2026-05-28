@@ -24,6 +24,12 @@ import { SnapshotRepository } from '@baishou/database'
 
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
+import { resolveAttachmentFilePath } from '../platform/resolve-attachment-path'
+import {
+  canReadLocalPath,
+  readLocalFileAsBase64,
+  readPdfTextFromPath
+} from '../platform/read-local-file'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -105,18 +111,9 @@ export class AgentSessionService {
               if (nativePdfSupported) {
                 let fileData: string = ''
                 try {
-                  let filePath = att.filePath || ''
-                  if (!filePath && att.url?.startsWith('file:///')) {
-                    filePath = decodeURIComponent(att.url.replace('file:///', ''))
-                  }
-                  if (
-                    filePath &&
-                    typeof process !== 'undefined' &&
-                    process.versions &&
-                    process.versions.node
-                  ) {
-                    const fs = require('fs')
-                    fileData = fs.readFileSync(filePath).toString('base64')
+                  const filePath = resolveAttachmentFilePath(att)
+                  if (canReadLocalPath(filePath)) {
+                    fileData = readLocalFileAsBase64(filePath)
                   }
                 } catch (readErr) {
                   logger.warn('Failed to read local PDF file for model part, fallback', {
@@ -133,21 +130,9 @@ export class AgentSessionService {
                 let textContent = att.textContent || ''
                 if (!textContent) {
                   try {
-                    let filePath = att.filePath || ''
-                    if (!filePath && att.url?.startsWith('file:///')) {
-                      filePath = decodeURIComponent(att.url.replace('file:///', ''))
-                    }
-                    if (
-                      filePath &&
-                      typeof process !== 'undefined' &&
-                      process.versions &&
-                      process.versions.node
-                    ) {
-                      const fs = require('fs')
-                      const pdfParse = require('pdf-parse')
-                      const dataBuffer = fs.readFileSync(filePath)
-                      const pdfData = await pdfParse(dataBuffer)
-                      textContent = pdfData.text || ''
+                    const filePath = resolveAttachmentFilePath(att)
+                    if (canReadLocalPath(filePath)) {
+                      textContent = await readPdfTextFromPath(filePath)
                       att.textContent = textContent
                     }
                   } catch (pdfErr) {

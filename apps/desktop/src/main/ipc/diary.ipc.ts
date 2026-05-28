@@ -1,16 +1,16 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
+import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
 import {
   DiaryService,
   DiaryExportServiceImpl,
   FileSyncServiceImpl,
   ShadowIndexSyncService,
   VaultIndexServiceImpl
-} from '@baishou/core'
+} from '@baishou/core-desktop'
 import { parseDateStr } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
-import { pathService, vaultService } from './vault.ipc'
+import { fileSystem, pathService, vaultService } from './vault.ipc'
 import { CreateDiaryInput, UpdateDiaryInput, DiaryListFilter } from '@baishou/shared'
 
 /**
@@ -25,8 +25,8 @@ export function getDiaryManager() {
   const shadowDb = shadowConnectionManager.getDb()
 
   const shadowRepo = new ShadowIndexRepository(shadowDb)
-  const fileSync = new FileSyncServiceImpl(pathService)
-  const shadowSync = new ShadowIndexSyncService(shadowRepo, pathService, vaultService)
+  const fileSync = new FileSyncServiceImpl(pathService, fileSystem)
+  const shadowSync = new ShadowIndexSyncService(shadowRepo, pathService, vaultService, fileSystem)
   const vaultIndex = new VaultIndexServiceImpl()
 
   return new DiaryService(shadowRepo, fileSync, shadowSync, vaultIndex)
@@ -35,7 +35,7 @@ export function getDiaryManager() {
 export function getShadowSync() {
   const shadowDb = shadowConnectionManager.getDb()
   const shadowRepo = new ShadowIndexRepository(shadowDb)
-  return new ShadowIndexSyncService(shadowRepo, pathService, vaultService)
+  return new ShadowIndexSyncService(shadowRepo, pathService, vaultService, fileSystem)
 }
 
 /**

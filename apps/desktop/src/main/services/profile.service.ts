@@ -1,5 +1,5 @@
 import { dialog } from 'electron'
-import { AttachmentManagerService } from '@baishou/core'
+import { AttachmentManagerService } from '@baishou/core-desktop'
 import { DesktopStoragePathService } from './path.service'
 
 /**

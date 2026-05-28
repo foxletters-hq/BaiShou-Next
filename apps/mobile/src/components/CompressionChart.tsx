@@ -72,22 +72,22 @@ export const CompressionChart: React.FC<CompressionChartProps> = ({ delay = 0 })
     <View style={styles.container}>
       {/* 日 */}
       <Animated.View style={[styles.step, createStepStyle(anim1, 0.3, '#B3E5FC')]}>
-        <Text style={styles.stepText}>日</Text>
+        <Text style={[styles.stepText, { color: colors.textOnPrimary }]}>日</Text>
       </Animated.View>
 
       {/* 周 */}
       <Animated.View style={[styles.step, createStepStyle(anim2, 0.48, '#81D4FA')]}>
-        <Text style={styles.stepText}>周</Text>
+        <Text style={[styles.stepText, { color: colors.textOnPrimary }]}>周</Text>
       </Animated.View>
 
       {/* 月 */}
       <Animated.View style={[styles.step, createStepStyle(anim3, 0.66, '#4FC3F7')]}>
-        <Text style={styles.stepText}>月</Text>
+        <Text style={[styles.stepText, { color: colors.textOnPrimary }]}>月</Text>
       </Animated.View>
 
       {/* 季 */}
       <Animated.View style={[styles.step, createStepStyle(anim4, 0.82, '#29B6F6')]}>
-        <Text style={styles.stepText}>季</Text>
+        <Text style={[styles.stepText, { color: colors.textOnPrimary }]}>季</Text>
       </Animated.View>
 
       {/* 年基底 */}
@@ -108,7 +108,7 @@ export const CompressionChart: React.FC<CompressionChartProps> = ({ delay = 0 })
           }
         ]}
       >
-        <Text style={styles.baseBarText}>年</Text>
+        <Text style={[styles.baseBarText, { color: colors.textOnPrimary }]}>年</Text>
       </Animated.View>
     </View>
   )
@@ -131,7 +131,6 @@ const styles = StyleSheet.create({
     elevation: 4
   },
   stepText: {
-    color: '#FFF',
     fontWeight: '600',
     fontSize: 14,
     letterSpacing: 0.5
@@ -150,7 +149,6 @@ const styles = StyleSheet.create({
     elevation: 6
   },
   baseBarText: {
-    color: '#FFF',
     fontWeight: '700',
     fontSize: 17,
     letterSpacing: 3

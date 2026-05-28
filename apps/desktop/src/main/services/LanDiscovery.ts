@@ -1,5 +1,5 @@
 import { Bonjour, Browser } from 'bonjour-service'
-import { DiscoveredDevice } from '@baishou/core'
+import { DiscoveredDevice } from '@baishou/core-desktop'
 
 /**
  * 负责局域网 mDNS (Bonjour) 服务的广播发布与局域网伙伴嗅探发现。

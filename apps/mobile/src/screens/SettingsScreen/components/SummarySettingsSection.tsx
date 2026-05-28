@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/src/native/theme'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useNativeTheme } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const SummarySettingsSection: React.FC = () => {
   const { t } = useTranslation()
@@ -122,7 +122,7 @@ export const SummarySettingsSection: React.FC = () => {
               style={[styles.templateButton, { backgroundColor: colors.primary }]}
               onPress={handleSaveTemplate}
             >
-              <Text style={[styles.templateButtonText, { color: '#FFF' }]}>
+              <Text style={[styles.templateButtonText, { color: colors.textOnPrimary }]}>
                 {t('common.save', '保存')}
               </Text>
             </TouchableOpacity>

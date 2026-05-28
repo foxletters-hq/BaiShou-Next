@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { VaultService } from '../vault.service'
+import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import os from 'node:os'
 import path from 'node:path'
 import fs from 'node:fs/promises'
@@ -26,7 +27,7 @@ describe('VaultService Integration', () => {
         .mockImplementation(async (name: string) => path.join(tempDir, name, '.baishou'))
     }
 
-    service = new VaultService(mockPathService as any)
+    service = new VaultService(mockPathService as any, createNodeFileSystem())
   })
 
   afterEach(async () => {

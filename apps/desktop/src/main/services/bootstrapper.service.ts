@@ -1,14 +1,19 @@
 import { BrowserWindow } from 'electron'
-import { ShadowIndexSyncService, SummarySyncService, SummaryFileService } from '@baishou/core'
+import {
+  ShadowIndexSyncService,
+  SummarySyncService,
+  SummaryFileService
+} from '@baishou/core-desktop'
 import {
   ShadowIndexRepository,
   SummaryRepositoryImpl,
   connectionManager,
   shadowConnectionManager
-} from '@baishou/database'
+} from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 
 import { pathService, vaultService } from '../ipc/vault.ipc'
+import { fileSystem } from './node-file-system'
 import { getAgentManagers } from '../ipc/agent.ipc'
 import { settingsManager } from '../ipc/settings.ipc'
 import { getGitService } from '../ipc/git-sync.ipc'
@@ -31,7 +36,7 @@ export class GlobalDataBootstrapper {
   private tryGetSummaryBootstrapper() {
     const db = connectionManager.getDb()
     const summaryRepo = new SummaryRepositoryImpl(db)
-    const summaryFileService = new SummaryFileService(pathService)
+    const summaryFileService = new SummaryFileService(pathService, fileSystem)
     return new SummarySyncService(null, null, summaryRepo, summaryFileService)
   }
 
@@ -42,7 +47,7 @@ export class GlobalDataBootstrapper {
   private tryGetShadowBootstrapper() {
     const shadowDb = shadowConnectionManager.getDb() // per-vault shadow_index.db
     const shadowRepo = new ShadowIndexRepository(shadowDb)
-    return new ShadowIndexSyncService(shadowRepo, pathService, vaultService)
+    return new ShadowIndexSyncService(shadowRepo, pathService, vaultService, fileSystem)
   }
 
   /**
