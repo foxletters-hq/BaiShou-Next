@@ -29,14 +29,14 @@ export const AIServicesSection: React.FC = () => {
   const handleAddProvider = async () => {
     if (!services || !dbReady) return
     Alert.prompt(
-      t('settings.add_provider_title', '添加供应商'),
-      t('settings.add_provider_message', '请输入新供应商ID (如 provider-openai):'),
+      t('settings.add_provider'),
+      t('settings.provider_name'),
       async (newId) => {
         if (!newId?.trim()) return
         try {
           const providerList = (await services.settingsManager.get<any[]>('ai_providers')) || []
           if (providerList.some((p) => p.id === newId.trim())) {
-            Alert.alert(t('common.error', '错误'), t('settings.provider_exists', '供应商ID已存在'))
+            Alert.alert(t('common.error'), t('settings.provider_name'))
             return
           }
           const newProvider = {
@@ -54,9 +54,9 @@ export const AIServicesSection: React.FC = () => {
           providerList.push(newProvider)
           await services.settingsManager.set('ai_providers', providerList)
           setProviders([...providerList])
-          Alert.alert(t('common.success', '成功'), t('settings.provider_added', '供应商已添加'))
+          Alert.alert(t('common.success'), t('common.save_success'))
         } catch (e) {
-          Alert.alert(t('common.error', '错误'), t('settings.provider_add_failed', '添加失败'))
+          Alert.alert(t('common.error'), t('ai_config.fetch_models_failed'))
         }
       },
       'plain-text'
@@ -68,21 +68,18 @@ export const AIServicesSection: React.FC = () => {
     const provider = providers[index]
     if (provider.isSystem) {
       Alert.alert(
-        t('common.hint', '提示'),
-        t('settings.cannot_delete_system', '系统供应商不可删除')
+        t('common.hint'),
+        t('settings.provider_disabled')
       )
       return
     }
     Alert.alert(
-      t('settings.delete_provider_confirm_title', '确认删除'),
-      t('settings.delete_provider_confirm_message', '确定删除供应商 "{name}" 吗？').replace(
-        '{name}',
-        provider.name
-      ),
+      t('common.delete'),
+      t('agent.assistant.delete_confirm_content'),
       [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: t('common.delete', '删除'),
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             const newProviders = providers.filter((_, i) => i !== index)
@@ -98,29 +95,26 @@ export const AIServicesSection: React.FC = () => {
     if (!services || !dbReady) return
     const provider = providers[providerIndex]
     if (!provider.apiKey) {
-      Alert.alert(t('common.hint', '提示'), t('settings.need_api_key', '请先配置 API Key'))
+      Alert.alert(t('common.hint'), t('ai_config.fill_api_key_hint'))
       return
     }
     try {
-      Alert.alert(t('common.hint', '提示'), t('settings.testing_connection', '正在测试连接...'))
+      Alert.alert(t('common.hint'), t('settings.testing_connection'))
       const response = await fetch(`${provider.baseUrl}/models`, {
         headers: { Authorization: `Bearer ${provider.apiKey}` }
       })
       if (response.ok) {
-        Alert.alert(t('common.success', '成功'), t('settings.connection_ok', '连接成功'))
+        Alert.alert(t('common.success'), t('ai_config.test_connection_success'))
       } else {
         Alert.alert(
-          t('common.error', '错误'),
-          t('settings.connection_failed_with_status', '连接失败 ({status})').replace(
-            '{status}',
-            String(response.status)
-          )
+          t('common.error'),
+          t('ai_config.test_connection_failed', { e: String(response.status) })
         )
       }
     } catch (e: any) {
       Alert.alert(
-        t('common.error', '错误'),
-        t('settings.connection_failed', '连接失败: {message}').replace('{message}', e.message || '')
+        t('common.error'),
+        t('ai_config.test_connection_failed', { e: e.message || '' })
       )
     }
   }
@@ -129,11 +123,11 @@ export const AIServicesSection: React.FC = () => {
     if (!services || !dbReady) return
     const provider = providers[providerIndex]
     if (!provider.apiKey) {
-      Alert.alert(t('common.hint', '提示'), t('settings.need_api_key', '请先配置 API Key'))
+      Alert.alert(t('common.hint'), t('ai_config.fill_api_key_hint'))
       return
     }
     try {
-      Alert.alert(t('common.hint', '提示'), t('settings.testing_connection', '正在获取模型列表...'))
+      Alert.alert(t('common.hint'), t('settings.fetch_models'))
       const response = await fetch(`${provider.baseUrl}/models`, {
         headers: { Authorization: `Bearer ${provider.apiKey}` }
       })
@@ -148,25 +142,19 @@ export const AIServicesSection: React.FC = () => {
         await services.settingsManager.set('ai_providers', newProviders)
         setProviders(newProviders)
         Alert.alert(
-          t('common.success', '成功'),
-          t('settings.models_fetched', '获取到 {count} 个模型').replace(
-            '{count}',
-            String(models.length)
-          )
+          t('common.success'),
+          t('ai_config.fetch_models_success')
         )
       } else {
         Alert.alert(
-          t('common.error', '错误'),
-          t('settings.fetch_models_failed', '获取模型列表失败')
+          t('common.error'),
+          t('ai_config.fetch_models_failed')
         )
       }
     } catch (e: any) {
       Alert.alert(
-        t('common.error', '错误'),
-        t('settings.fetch_models_failed_msg', '获取失败: {message}').replace(
-          '{message}',
-          e.message || ''
-        )
+        t('common.error'),
+        t('ai_config.fetch_models_failed', { e: e.message || '' })
       )
     }
   }
@@ -260,7 +248,7 @@ export const AIServicesSection: React.FC = () => {
               onPress={() => handleTestConnection(index)}
             >
               <Text style={[styles.smallActionBtnText, { color: colors.textPrimary }]}>
-                {t('settings.test_connection', '测试连接')}
+                {t('settings.test_connection')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -268,7 +256,7 @@ export const AIServicesSection: React.FC = () => {
               onPress={() => handleFetchModels(index)}
             >
               <Text style={[styles.smallActionBtnText, { color: colors.textPrimary }]}>
-                {t('settings.fetch_models', '获取模型')}
+                {t('settings.fetch_models')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -280,7 +268,7 @@ export const AIServicesSection: React.FC = () => {
         onPress={handleAddProvider}
       >
         <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-          + {t('settings.add_provider', '添加供应商')}
+          + {t('settings.add_provider')}
         </Text>
       </TouchableOpacity>
     </View>

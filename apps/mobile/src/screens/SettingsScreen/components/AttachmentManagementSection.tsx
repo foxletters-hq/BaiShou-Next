@@ -68,15 +68,12 @@ export const AttachmentManagementSection: React.FC = () => {
   const handleDeleteSelectedAttachments = async () => {
     if (selectedAttachments.size === 0) return
     Alert.alert(
-      t('settings.delete_attachments_confirm_title', '确认删除'),
-      t('settings.delete_attachments_confirm_message', '确定删除选中的 {count} 个附件吗？').replace(
-        '{count}',
-        selectedAttachments.size.toString()
-      ),
+      t('settings.attachment_clear_confirm_title'),
+      t('settings.attachment_delete_selected_confirm', { count: selectedAttachments.size }),
       [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: t('common.delete', '删除'),
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -87,13 +84,13 @@ export const AttachmentManagementSection: React.FC = () => {
               await loadAttachments()
 
               Alert.alert(
-                t('common.success', '成功'),
-                t('settings.attachments_deleted', '附件已删除')
+                t('common.success'),
+                t('common.confirm_success')
               )
             } catch (e) {
               Alert.alert(
-                t('common.error', '错误'),
-                t('settings.delete_attachments_failed', '删除附件失败')
+                t('common.error'),
+                t('common.errors.save_failed')
               )
             }
           }
@@ -105,24 +102,24 @@ export const AttachmentManagementSection: React.FC = () => {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('settings.attachments_title', '附件管理')}
+        {t('settings.attachment_management')}
       </Text>
       <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-        {t('settings.attachments_desc', '管理附件和存储空间')}
+        {t('settings.attachment_management_desc')}
       </Text>
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.attachment_count', '附件数量')}
+          {t('settings.attachment_total_count')}
         </Text>
         <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-          {attachments.length || storageStats.attachmentCount || 0} {t('settings.count_unit', '个')}
+          {attachments.length || storageStats.attachmentCount || 0}
         </Text>
       </View>
 
       <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.attachment_size', '附件大小')}
+          {t('settings.attachment_total_size')}
         </Text>
         <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
           {storageStats.attachmentSize || '0 MB'}
@@ -137,8 +134,8 @@ export const AttachmentManagementSection: React.FC = () => {
         >
           <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
             {selectedAttachments.size === attachments.length
-              ? t('settings.deselect_all', '取消全选')
-              : t('settings.select_all', '全选')}
+              ? t('settings.attachment_deselect_all')
+              : t('settings.attachment_select_all')}
           </Text>
         </TouchableOpacity>
 
@@ -160,7 +157,7 @@ export const AttachmentManagementSection: React.FC = () => {
               }
             ]}
           >
-            {t('settings.delete_selected', '删除选中')} ({selectedAttachments.size})
+            {t('settings.attachment_delete_selected', { count: selectedAttachments.size })}
           </Text>
         </TouchableOpacity>
       </View>
@@ -169,7 +166,7 @@ export const AttachmentManagementSection: React.FC = () => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            {t('settings.loading_attachments', '加载附件中...')}
+            {t('common.loading')}
           </Text>
         </View>
       ) : attachments.length > 0 ? (
@@ -212,9 +209,8 @@ export const AttachmentManagementSection: React.FC = () => {
                   {attachment.name || attachment.id}
                 </Text>
                 <Text style={[styles.attachmentMeta, { color: colors.textSecondary }]}>
-                  {attachment.fileCount || 0} {t('settings.files', '文件')} •{' '}
-                  {attachment.sizeMB?.toFixed(2) || '0'} MB
-                  {attachment.isOrphan && ` • ${t('settings.orphan', '孤立')}`}
+                  {attachment.fileCount || 0} • {attachment.sizeMB?.toFixed(2) || '0'} MB
+                  {attachment.isOrphan && ` • ${t('settings.attachment_orphan_label')}`}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -223,7 +219,7 @@ export const AttachmentManagementSection: React.FC = () => {
       ) : (
         <View style={[styles.emptyContainer, { backgroundColor: colors.bgSurfaceHighest }]}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            {t('settings.no_attachments', '暂无附件')}
+            {t('settings.attachment_no_attachments')}
           </Text>
         </View>
       )}
@@ -233,7 +229,7 @@ export const AttachmentManagementSection: React.FC = () => {
         onPress={loadAttachments}
       >
         <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-          {t('settings.refresh_attachments', '刷新列表')}
+          {t('common.refresh')}
         </Text>
       </TouchableOpacity>
     </View>

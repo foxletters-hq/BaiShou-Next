@@ -57,11 +57,11 @@ export const AgentBehaviorSection: React.FC = () => {
       await services.settingsManager.set('agent_behavior', config)
       setDirty(false)
       Alert.alert(
-        t('common.success', '成功'),
-        t('settings.agent_behavior_saved', 'Agent 行为配置已保存')
+        t('common.success'),
+        t('settings.agent_behavior_saved')
       )
     } catch (e) {
-      Alert.alert(t('common.error', '错误'), t('settings.save_failed', '保存失败'))
+      Alert.alert(t('common.error'), t('common.errors.save_failed'))
     }
   }, [services, dbReady, config, t])
 
@@ -72,12 +72,12 @@ export const AgentBehaviorSection: React.FC = () => {
 
   const handleResetDefaults = useCallback(() => {
     Alert.alert(
-      t('settings.reset_defaults_title', '恢复默认'),
-      t('settings.reset_defaults_confirm', '确定恢复所有 Agent 行为配置为默认值吗？'),
+      t('settings.reset_defaults_title'),
+      t('settings.reset_defaults_confirm'),
       [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: t('common.confirm', '确定'),
+          text: t('common.confirm'),
           onPress: () => {
             setConfig(DEFAULT_AGENT_BEHAVIOR)
             setDirty(true)
@@ -104,10 +104,10 @@ export const AgentBehaviorSection: React.FC = () => {
       {/* 上下文窗口大小 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.context_window_size', 'Agent 上下文窗口大小')}
+          {t('settings.context_window_size')}
         </Text>
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t('settings.context_window_size_hint', '每次对话携带的历史消息条数（默认 20）')}
+          {t('settings.context_window_size_hint')}
         </Text>
         <TextInput
           style={[
@@ -150,13 +150,10 @@ export const AgentBehaviorSection: React.FC = () => {
       {/* 伙伴压缩 Token 阈值 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.compress_token_threshold', '伙伴压缩 Token 阈值')}
+          {t('settings.compress_token_threshold')}
         </Text>
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t(
-            'settings.compress_token_threshold_hint',
-            '深度陪伴模式触发压缩的 Token 数（默认 8000）'
-          )}
+          {t('settings.compress_token_threshold_hint')}
         </Text>
         <TextInput
           style={[
@@ -197,13 +194,10 @@ export const AgentBehaviorSection: React.FC = () => {
       {/* 伙伴截断 Token 阈值 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.truncate_token_threshold', '伙伴截断 Token 阈值')}
+          {t('settings.truncate_token_threshold')}
         </Text>
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t(
-            'settings.truncate_token_threshold_hint',
-            '压缩时截断多少 Token 以前的对话（默认 4000）'
-          )}
+          {t('settings.truncate_token_threshold_hint')}
         </Text>
         <TextInput
           style={[
@@ -244,10 +238,10 @@ export const AgentBehaviorSection: React.FC = () => {
       {/* Agent 人格设定 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.agent_persona', 'Agent 人格设定')}
+          {t('settings.agent_persona')}
         </Text>
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t('settings.agent_persona_hint', '描述 Agent 的角色身份与性格特征')}
+          {t('settings.agent_persona_hint')}
         </Text>
         <TextInput
           style={[
@@ -263,10 +257,7 @@ export const AgentBehaviorSection: React.FC = () => {
           multiline
           numberOfLines={4}
           textAlignVertical="top"
-          placeholder={t(
-            'settings.agent_persona_placeholder',
-            '例如：你是 AI 伙伴，帮助用户回顾日记和生活记录。'
-          )}
+          placeholder={t('settings.agent_persona_placeholder')}
           placeholderTextColor={colors.textTertiary}
         />
       </View>
@@ -274,10 +265,10 @@ export const AgentBehaviorSection: React.FC = () => {
       {/* Agent 指导方针 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.agent_guidelines', 'Agent 指导方针')}
+          {t('settings.agent_guidelines')}
         </Text>
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t('settings.agent_guidelines_hint', 'Agent 在对话中应遵循的行为准则')}
+          {t('settings.agent_guidelines_hint')}
         </Text>
         <TextInput
           style={[
@@ -293,10 +284,7 @@ export const AgentBehaviorSection: React.FC = () => {
           multiline
           numberOfLines={4}
           textAlignVertical="top"
-          placeholder={t(
-            'settings.agent_guidelines_placeholder',
-            '例如：请使用工具查阅日记内容，不要编造。引用时注明日期。'
-          )}
+          placeholder={t('settings.agent_guidelines_placeholder')}
           placeholderTextColor={colors.textTertiary}
         />
       </View>
@@ -304,10 +292,10 @@ export const AgentBehaviorSection: React.FC = () => {
       {/* 置顶助手 ID 列表 */}
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.pinned_assistant_ids', '置顶助手 ID 列表')}
+          {t('settings.pinned_assistant_ids')}
         </Text>
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t('settings.pinned_assistant_ids_hint', '用逗号分隔多个助手 ID（最多 3 个）')}
+          {t('settings.pinned_assistant_ids_hint')}
         </Text>
         <TextInput
           style={[
@@ -320,10 +308,7 @@ export const AgentBehaviorSection: React.FC = () => {
           ]}
           value={config.pinnedAssistantIds.join(', ')}
           onChangeText={handlePinnedIdsChange}
-          placeholder={t(
-            'settings.pinned_assistant_ids_placeholder',
-            '例如：assistant-1, assistant-2'
-          )}
+          placeholder={t('settings.pinned_assistant_ids_placeholder')}
           placeholderTextColor={colors.textTertiary}
         />
       </View>
@@ -335,7 +320,7 @@ export const AgentBehaviorSection: React.FC = () => {
           onPress={handleResetDefaults}
         >
           <Text style={[styles.buttonText, { color: colors.textSecondary }]}>
-            {t('settings.reset_defaults', '恢复默认')}
+            {t('settings.reset_defaults')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -348,7 +333,7 @@ export const AgentBehaviorSection: React.FC = () => {
           disabled={!dirty}
         >
           <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-            {t('common.save', '保存')}
+            {t('common.save')}
           </Text>
         </TouchableOpacity>
       </View>
