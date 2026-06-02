@@ -5,16 +5,18 @@ import {
   Pressable,
   Modal,
   StyleSheet,
-  useWindowDimensions
+  useWindowDimensions,
+  ScrollView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { MaterialIcons } from '@expo/vector-icons'
 import {
   WEATHER_IDS,
-  getWeatherEmoji,
   weatherI18nKey,
   type WeatherId
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { WeatherEmoji } from '../WeatherIcon'
 
 export interface NativeWeatherPickerProps {
   value: string
@@ -40,7 +42,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
 
   const selectedId = value && (WEATHER_IDS as readonly string[]).includes(value) ? value : ''
   const displayLabel = selectedId
-    ? `${getWeatherEmoji(selectedId)} ${t(`diary.weather.${weatherI18nKey(selectedId as WeatherId)}`, weatherLabelFallback[selectedId as WeatherId])}`
+    ? t(`diary.weather.${weatherI18nKey(selectedId as WeatherId)}`, weatherLabelFallback[selectedId as WeatherId])
     : t('diary.weather.default')
 
   const close = useCallback(() => setOpen(false), [])
@@ -50,8 +52,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
     close()
   }
 
-  const mosaicWidth = Math.min(screenWidth - 48, 340)
-  const cellSize = (mosaicWidth - 16 * 2 - 8 * 3) / 4
+  const panelWidth = Math.min(screenWidth - 48, 320)
 
   return (
     <>
@@ -76,73 +77,83 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
           }
         ]}
       >
-        <Text style={[styles.triggerLabel, { color: selectedId ? colors.textPrimary : colors.textSecondary }]} numberOfLines={1}>
-          {displayLabel}
-        </Text>
+        <View style={styles.triggerContent}>
+          {selectedId ? <WeatherEmoji weather={selectedId} size={18} /> : null}
+          <Text
+            style={[styles.triggerLabel, { color: selectedId ? colors.textPrimary : colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {displayLabel}
+          </Text>
+        </View>
         <Text style={[styles.chevron, { color: colors.textTertiary }]}>{open ? '▲' : '▼'}</Text>
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
-        <Pressable style={[styles.overlay, { backgroundColor: colors.bgOverlay }]} onPress={close}>
+        <View style={styles.overlay}>
           <Pressable
+            style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgOverlay }]}
+            onPress={close}
+          />
+          <View
             style={[
-              styles.mosaicPanel,
+              styles.dropdownPanel,
               {
-                width: mosaicWidth,
+                width: panelWidth,
                 backgroundColor: colors.bgSurface,
                 borderColor: colors.borderSubtle,
                 borderRadius: tokens.radius.lg
               }
             ]}
-            onPress={(e) => e.stopPropagation()}
           >
-            <Text style={[styles.panelTitle, { color: colors.textPrimary }]}>
-              {t('diary.weather_label')}
-            </Text>
-            <View style={styles.mosaicGrid}>
+            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
               {WEATHER_IDS.map((id) => {
                 const active = selectedId === id
+                const label = t(
+                  `diary.weather.${weatherI18nKey(id)}`,
+                  weatherLabelFallback[id]
+                )
                 return (
                   <Pressable
                     key={id}
                     onPress={() => handleSelect(active ? '' : id)}
                     style={({ pressed }) => [
-                      styles.mosaicCell,
+                      styles.optionRow,
                       {
-                        width: cellSize,
-                        height: cellSize,
                         opacity: pressed ? 0.85 : 1,
-                        backgroundColor: active ? colors.primaryLight : colors.bgSurfaceHighest,
-                        borderColor: active ? colors.primary : colors.borderSubtle
+                        backgroundColor: active ? colors.primaryLight : 'transparent'
                       }
                     ]}
-                    accessibilityLabel={t(
-                      `diary.weather.${weatherI18nKey(id)}`,
-                      weatherLabelFallback[id]
-                    )}
+                    accessibilityLabel={label}
+                    accessibilityState={{ selected: active }}
                   >
-                    <Text style={styles.mosaicEmoji}>{getWeatherEmoji(id)}</Text>
+                    <WeatherEmoji weather={id} size={22} />
                     <Text
                       style={[
-                        styles.mosaicLabel,
-                        { color: active ? colors.primary : colors.textSecondary }
+                        styles.optionLabel,
+                        { color: active ? colors.primary : colors.textPrimary }
                       ]}
                       numberOfLines={1}
                     >
-                      {t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])}
+                      {label}
                     </Text>
+                    {active ? (
+                      <MaterialIcons name="check" size={18} color={colors.primary} />
+                    ) : (
+                      <View style={styles.checkPlaceholder} />
+                    )}
                   </Pressable>
                 )
               })}
-            </View>
+            </ScrollView>
             <Pressable
               onPress={() => handleSelect('')}
-              style={[styles.clearBtn, { backgroundColor: colors.bgSurfaceHighest }]}
+              style={[styles.clearBtn, { backgroundColor: colors.bgSurfaceHighest, borderTopColor: colors.borderSubtle }]}
             >
               <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{t('diary.clear_filter')}</Text>
             </Pressable>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </>
   )
@@ -160,6 +171,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 6
   },
+  triggerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1
+  },
   triggerLabel: {
     fontSize: 13,
     fontWeight: '500',
@@ -174,41 +191,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24
   },
-  mosaicPanel: {
-    padding: 16,
+  dropdownPanel: {
     borderWidth: 1,
-    gap: 12
+    overflow: 'hidden',
+    zIndex: 1,
+    maxHeight: '70%'
   },
-  panelTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center'
-  },
-  mosaicGrid: {
+  optionRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'center'
-  },
-  mosaicCell: {
-    borderRadius: 10,
-    borderWidth: 1.5,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 4,
-    gap: 2
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12
   },
-  mosaicEmoji: {
-    fontSize: 22,
-    lineHeight: 26
+  optionLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500'
   },
-  mosaicLabel: {
-    fontSize: 10,
-    fontWeight: '600'
+  checkPlaceholder: {
+    width: 18
   },
   clearBtn: {
     alignItems: 'center',
     paddingVertical: 10,
-    borderRadius: 8
+    borderTopWidth: 1
   }
 })
