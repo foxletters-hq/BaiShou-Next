@@ -1,22 +1,39 @@
 import { useState, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
-import { Audio } from 'expo-av'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
+
+type AudioPlayer = {
+  play: () => void
+  pause: () => void
+  release: () => void
+  addListener: (
+    event: 'playbackStatusUpdate',
+    listener: (status: { didJustFinish?: boolean }) => void
+  ) => { remove: () => void }
+}
+
+async function loadExpoAudio() {
+  return import('expo-audio')
+}
 
 export function useTTS() {
   const { t } = useTranslation()
   const { services } = useBaishou()
   const [ttsPlayingMsgId, setTtsPlayingMsgId] = useState<string | null>(null)
-  const soundRef = useRef<Audio.Sound | null>(null)
+  const playerRef = useRef<AudioPlayer | null>(null)
+  const playbackListenerRef = useRef<{ remove: () => void } | null>(null)
 
   const stopTTS = useCallback(async () => {
-    if (soundRef.current) {
+    playbackListenerRef.current?.remove()
+    playbackListenerRef.current = null
+
+    if (playerRef.current) {
       try {
-        await soundRef.current.stopAsync()
-        await soundRef.current.unloadAsync()
+        playerRef.current.pause()
+        playerRef.current.release()
       } catch {}
-      soundRef.current = null
+      playerRef.current = null
     }
     setTtsPlayingMsgId(null)
   }, [])
@@ -139,22 +156,40 @@ export function useTTS() {
           base64 = btoa(binary)
         }
 
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
+        let createAudioPlayer: (typeof import('expo-audio'))['createAudioPlayer']
+        let setAudioModeAsync: (typeof import('expo-audio'))['setAudioModeAsync']
+        try {
+          const audio = await loadExpoAudio()
+          createAudioPlayer = audio.createAudioPlayer
+          setAudioModeAsync = audio.setAudioModeAsync
+        } catch (e) {
+          console.error('[TTS] expo-audio native module unavailable:', e)
+          Alert.alert(
+            t('agent.tts_failed', '语音合成失败'),
+            'ExpoAudio 原生模块未安装。请执行 pnpm dev:mobile:clear 重新编译 APK。'
+          )
+          return
+        }
+
+        await setAudioModeAsync({ playsInSilentMode: true })
         const audioFormat = isMimoTts ? ttsSettings?.responseFormat || 'wav' : 'mp3'
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: `data:audio/${audioFormat};base64,${base64}` },
-          { shouldPlay: true }
-        )
+        const player = createAudioPlayer({
+          uri: `data:audio/${audioFormat};base64,${base64}`
+        })
 
-        soundRef.current = sound
-        if (messageId) setTtsPlayingMsgId(messageId)
-
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
+        playbackListenerRef.current = player.addListener('playbackStatusUpdate', (status) => {
+          if (status.didJustFinish) {
+            playbackListenerRef.current?.remove()
+            playbackListenerRef.current = null
+            player.release()
+            playerRef.current = null
             setTtsPlayingMsgId(null)
-            soundRef.current = null
           }
         })
+
+        playerRef.current = player
+        if (messageId) setTtsPlayingMsgId(messageId)
+        player.play()
       } catch (e: any) {
         console.error('[TTS] Error:', e)
         Alert.alert(t('agent.tts_failed', '语音合成失败'), e.message || 'Unknown error')

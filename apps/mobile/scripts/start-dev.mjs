@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import {
   METRO_PORT,
   devClientEnv,
+  getDevServerHost,
   getLanIp,
   hasAdbDevice,
   openDevClientOnDevice,
@@ -16,12 +17,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
 const clearCache = process.argv.includes('--clear')
 
-const host = getLanIp()
+const lanHost = getLanIp()
+const devHost = getDevServerHost(lanHost)
 const env = devClientEnv()
 
-console.log(`\n🌐 Metro 局域网地址: http://${host}:${METRO_PORT}`)
-printDevConnectionHelp(host, METRO_PORT)
-console.log('   首次 / 升级 Expo 或原生依赖后请先: pnpm mobile:android:clean\n')
+console.log(`\n🌐 Metro 局域网地址: http://${lanHost}:${METRO_PORT}`)
+if (devHost !== lanHost) {
+  console.log(`🔌 Metro 真机地址 (adb reverse): http://${devHost}:${METRO_PORT}`)
+}
+printDevConnectionHelp(lanHost, METRO_PORT)
+console.log('   升级 Expo / 原生依赖 / 闪退后请先: pnpm dev:mobile:clear\n')
 
 if (hasAdbDevice()) {
   setupAdbReverse(METRO_PORT)
@@ -44,13 +49,13 @@ const tryOpenDevice = () => {
   if (openedOnDevice || !hasAdbDevice()) return
   openedOnDevice = true
   try {
-    openDevClientOnDevice(host, METRO_PORT)
+    openDevClientOnDevice(lanHost, METRO_PORT)
   } catch (e) {
     console.warn(
       '⚠️  无法通过 adb 打开开发版，请手动点开 App，并在开发菜单里填 Metro 地址:',
       e.message
     )
-    printDevConnectionHelp(host, METRO_PORT)
+    printDevConnectionHelp(lanHost, METRO_PORT)
   }
 }
 

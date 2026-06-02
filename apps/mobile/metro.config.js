@@ -70,10 +70,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
   }
 
-  if (defaultResolveRequest) {
+  // Expo SDK 55 默认 resolveRequest 为 null，必须回退到 context.resolveRequest（Metro 内置解析器）
+  if (typeof defaultResolveRequest === 'function') {
     return defaultResolveRequest(context, moduleName, platform)
   }
-  return null
+  return context.resolveRequest(context, moduleName, platform)
 }
 
 module.exports = config
