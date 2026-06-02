@@ -14,7 +14,7 @@ import {
 } from 'expo-baishou-server'
 
 export const EXTERNAL_STORAGE_REBUILD_HINT =
-  '无法写入外部 BaiShou_Root：当前 APK 未包含原生存储模块或版本过旧。请执行 pnpm mobile:android:clean 重新编译安装（勿用 Expo Go），并在系统设置中开启「管理所有文件」。'
+  '无法写入外部 BaiShou_Root：当前 APK 未包含原生存储模块或版本过旧。请执行 pnpm dev:mobile:clear 重新编译安装（勿用 Expo Go），并在系统设置中开启「管理所有文件」。'
 
 /** 去掉重复的 file:// 前缀 */
 export function stripFileScheme(uriOrPath: string): string {
@@ -25,8 +25,19 @@ export function stripFileScheme(uriOrPath: string): string {
   return s
 }
 
+/** 修正 Android Uri 解析导致的 /emulated/0 → /storage/emulated/0 */
+export function normalizeExternalStoragePath(uriOrPath: string): string {
+  let p = stripFileScheme(uriOrPath)
+  if (p.startsWith('/emulated/0')) {
+    p = `/storage${p}`
+  } else if (p.startsWith('emulated/0')) {
+    p = `/storage/${p}`
+  }
+  return p
+}
+
 export function toFileUri(uriOrPath: string): string {
-  const path = stripFileScheme(uriOrPath)
+  const path = normalizeExternalStoragePath(uriOrPath)
   if (path.startsWith('/')) return `file://${path}`
   if (uriOrPath.startsWith('file://')) return uriOrPath
   return `file://${uriOrPath}`

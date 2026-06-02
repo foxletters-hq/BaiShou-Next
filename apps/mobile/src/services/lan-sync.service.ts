@@ -63,7 +63,7 @@ export class MobileLanSyncService implements ILanSyncService {
 
     if (!BaishouServer.isBaishouServerAvailable()) {
       throw new Error(
-        '局域网服务需要 ExpoBaishouServer 原生模块。请执行 pnpm mobile:android:clean 重新安装开发版。'
+        '局域网服务需要 ExpoBaishouServer 原生模块。请执行 pnpm dev:mobile:clear 重新安装开发版。'
       )
     }
 

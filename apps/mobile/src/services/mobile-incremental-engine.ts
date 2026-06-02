@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto'
 import type { IFileSystem } from '@baishou/core-mobile'
 import type { SyncManifest, S3SyncConfig } from '@baishou/shared'
-import { threeWayMerge } from '../lib/three-way-merge'
+import { threeWayMerge } from '@baishou/shared'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
 

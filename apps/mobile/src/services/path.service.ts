@@ -23,7 +23,14 @@ export class MobileStoragePathService implements IStoragePathService {
 
   public async getCustomRootPath(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem(this.customRootKey)
+      const stored = await AsyncStorage.getItem(this.customRootKey)
+      if (!stored) return null
+      if (stored.includes('/emulated/0') && !stored.includes('/storage/emulated/0')) {
+        const fixed = stored.replace('/emulated/0', '/storage/emulated/0')
+        await AsyncStorage.setItem(this.customRootKey, fixed)
+        return fixed
+      }
+      return stored
     } catch {
       return null
     }
