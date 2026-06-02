@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
-import { installExpoDatabaseSchema } from '@baishou/database/expo'
+import { installExpoDatabaseSchema, detectVecSupport } from '@baishou/database/expo'
 import {
   SessionManagerService,
   DiaryService,
@@ -183,15 +183,17 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         // 1. 初始化 SQLite 环境
         const expoDb = await SQLite.openDatabaseAsync('baishou_next_mobile.db')
 
-        try {
-        } catch (e) {
+        const { drizzleDb, driver } = await installExpoDatabaseSchema(expoDb as any)
+
+        const vecCapability = await detectVecSupport(driver)
+        if (vecCapability.available) {
+          logger.info('[BaishouProvider] Native sqlite-vec extension detected on mobile.')
+        } else {
           logger.warn(
-            'Native sqlite-vec extension not detected on mobile. RAG will fallback to JS calculation.'
+            '[BaishouProvider] Native sqlite-vec extension not detected on mobile. RAG will fallback to JS calculation.',
+            vecCapability.reason
           )
         }
-
-        // 2. 注入 Drizzle 层
-        const { drizzleDb, driver } = await installExpoDatabaseSchema(expoDb as any)
 
         const fileSystem = createMobileFileSystem()
         const pathService = new MobileStoragePathService(fileSystem) as any
@@ -484,7 +486,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         logger.info('Mobile DB and DI Container Ready!')
         if (Platform.OS === 'android') {
           logger.info(
-            `[BaishouProvider] External storage native API: ${isExternalStorageNativeAvailable() ? 'available' : 'MISSING — run pnpm mobile:android:clean'}`
+            `[BaishouProvider] External storage native API: ${isExternalStorageNativeAvailable() ? 'available' : 'MISSING — run pnpm dev:mobile:clear'}`
           )
         }
 
