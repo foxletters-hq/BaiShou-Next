@@ -1,19 +1,31 @@
-/**
- * 与 packages/core/src/sync/three-way-merge.ts 保持同步（纯算法，无 Node 依赖，供 Metro 打包）
- */
-import type { SyncManifest, ManifestEntry } from '@baishou/shared'
+import type { ManifestEntry, SyncManifest } from '../types/version-control.types'
 
+/** 合并决策 */
 export interface MergeDecision {
+  /** 文件路径 */
   filePath: string
+  /** 操作类型 */
   type: 'upload' | 'download' | 'delete-local' | 'delete-remote' | 'skip' | 'conflict-resolved'
+  /** 冲突时的数据流向 */
   direction?: 'upload' | 'download'
+  /** 文件 hash */
   hash: string
+  /** 文件大小 */
   size: number
+  /** 本地条目 */
   localEntry: ManifestEntry | null
+  /** 远程条目 */
   remoteEntry: ManifestEntry | null
+  /** 祖先条目 */
   ancestorEntry: ManifestEntry | null
 }
 
+/**
+ * 三向合并算法
+ *
+ * 对比本地 manifest、远程 manifest、共同祖先（上次远程快照），
+ * 生成每个文件的合并决策。
+ */
 export function threeWayMerge(
   local: SyncManifest,
   remote: SyncManifest,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { SyncManifest, ManifestEntry } from '@baishou/shared'
+import type { SyncManifest, ManifestEntry } from '../../types/version-control.types'
 import { threeWayMerge } from '../three-way-merge'
 
 const makeEntry = (overrides: Partial<ManifestEntry> = {}): ManifestEntry => ({
@@ -142,7 +142,6 @@ describe('threeWayMerge', () => {
     const decisions = threeWayMerge(local, remote, ancestor)
     const decision = decisions.find((d) => d.filePath === filePath)
 
-    // 当祖先为空且数据不同时，应优先保护本地数据而非按 mtime 覆盖
     expect(decision?.type).toBe('conflict-resolved')
     expect(decision?.direction).toBe('upload')
     expect(decision?.hash).toBe('local-hash')
@@ -182,7 +181,6 @@ describe('threeWayMerge', () => {
     const decisions = threeWayMerge(local, remote, ancestor)
     const decision = decisions.find((d) => d.filePath === filePath)
 
-    // 即使远程 mtime 更新，只要内容相同就应跳过
     expect(decision?.type).toBe('skip')
   })
 
