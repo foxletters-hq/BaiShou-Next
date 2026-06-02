@@ -11,10 +11,13 @@ const sections = [
       ['pnpm dev:desktop', '启动 Electron 桌面端'],
       [
         'pnpm dev:mobile',
-        '启动 Metro（--lan）；USB 连手机会自动 adb reverse；勿用 VPN 假 IP 198.18.x'
+        '★ 日常开发：启动 Metro（只改 JS/TS；手机须已装开发版 APK）'
       ],
-      ['pnpm dev:mobile:clear', '清 Metro 缓存后启动'],
-      ['pnpm mobile:connect', '仅 USB：adb reverse + 打开 App（Metro 需已在 dev:mobile 跑着）']
+      [
+        'pnpm dev:mobile:clear',
+        '★ 全量重装：清 Metro/.expo/Gradle 缓存 + 重编安装 APK（升级 Expo、加原生模块、闪退时用；完成后 dev:mobile）'
+      ],
+      ['pnpm mobile:connect', 'adb reverse + 打开 App（Metro 需已在 dev:mobile 跑着）']
     ]
   },
   {
@@ -22,16 +25,10 @@ const sections = [
     title: '移动端 · Android（不能用 Expo Go，须开发版 APK）',
     commands: [
       [
-        'pnpm mobile:android:clean',
-        '★ 升级 Expo / 改原生依赖 / 启动闪退后：清 .expo/Gradle 缓存 + --no-build-cache 重编并安装 APK（请先卸载旧 App）'
-      ],
-      ['pnpm mobile:android', '日常增量编译安装（只改 JS 时不必跑，用 dev:mobile 即可）'],
-      [
         'pnpm mobile:setup',
-        '首次克隆或大幅升级后一条龙：install → 对齐 Expo 依赖 → android:clean 装包'
+        '首次克隆或大幅升级后一条龙：install → 对齐 Expo 依赖 → dev:mobile:clear 装包'
       ],
       ['pnpm mobile:fix', 'expo install --fix，把依赖版本对齐当前 Expo SDK'],
-      ['pnpm mobile:cache', '只清 Metro / .expo 缓存，不重编原生'],
       ['pnpm mobile:export', '导出 Android 离线包到 apps/mobile/dist']
     ]
   },

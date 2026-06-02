@@ -89,7 +89,7 @@ pnpm install
 pnpm dev:desktop
 
 # 移动端（须先装开发版，不能用 Expo Go）
-pnpm mobile:android:clean   # 首次 / 升级 Expo 后
+pnpm dev:mobile:clear   # 首次 / 升级 Expo / 加原生模块后
 pnpm dev:mobile             # 启动 Metro，手机同 Wi‑Fi 打开 App
 ```
 
