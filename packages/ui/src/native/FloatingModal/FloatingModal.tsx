@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   useWindowDimensions,
+  View,
   type ViewStyle
 } from 'react-native'
 import { useNativeTheme } from '../theme'
@@ -30,11 +31,12 @@ export const FloatingModal: React.FC<FloatingModalProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        style={[styles.overlay, { backgroundColor: colors.bgOverlay }]}
-        onPress={onClose}
-      >
+      <View style={styles.overlay}>
         <Pressable
+          style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgOverlay }]}
+          onPress={onClose}
+        />
+        <View
           style={[
             styles.card,
             {
@@ -45,11 +47,10 @@ export const FloatingModal: React.FC<FloatingModalProps> = ({
             },
             cardStyle
           ]}
-          onPress={(e) => e.stopPropagation()}
         >
           {children}
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   )
 }
@@ -64,6 +65,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
     borderWidth: 1,
-    overflow: 'hidden'
+    overflow: 'hidden',
+    zIndex: 1
   }
 })

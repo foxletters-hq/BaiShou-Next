@@ -3,7 +3,7 @@ import { Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import type { YearMonthPickerProps } from './year-month-picker.types'
-import { MONTH_I18N_KEYS } from './year-month-picker.utils'
+import { formatYearMonthLabel, getMonthWheelLabels } from './year-month-picker.utils'
 import { yearMonthPickerStyles as styles } from './year-month-picker.styles'
 import { YearMonthPickerModal } from './YearMonthPickerModal'
 
@@ -19,9 +19,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
 
   const displayText = useMemo(() => {
     if (!selectedMonth) return placeholder
-    const y = selectedMonth.getFullYear()
-    const monthKey = MONTH_I18N_KEYS[selectedMonth.getMonth()]
-    return `${y}${t('common.year_suffix')}${t(`diary.${monthKey}`)}`
+    return formatYearMonthLabel(selectedMonth.getFullYear(), selectedMonth.getMonth(), t)
   }, [selectedMonth, placeholder, t])
 
   return (

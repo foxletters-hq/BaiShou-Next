@@ -47,51 +47,6 @@ export const yearMonthPickerStyles = StyleSheet.create({
     fontWeight: '600',
     padding: 4
   },
-  pickerContainer: {
-    flexDirection: 'row',
-    height: 300
-  },
-  yearPane: {
-    width: 100,
-    borderRightWidth: 1
-  },
-  yearList: {
-    flex: 1
-  },
-  yearItem: {
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8
-  },
-  yearText: {
-    fontSize: 15
-  },
-  monthPane: {
-    flex: 1,
-    padding: 8
-  },
-  monthGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 8
-  },
-  monthItem: {
-    width: '31%',
-    minHeight: 44,
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1
-  },
-  monthText: {
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center'
-  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
