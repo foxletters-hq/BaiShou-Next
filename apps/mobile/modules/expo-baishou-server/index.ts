@@ -32,7 +32,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
 }
 
 const NATIVE_REBUILD_HINT =
-  'ExpoBaishouServer 原生模块未编入或版本过旧。请执行 pnpm mobile:android:clean 重新安装开发版（不可用 Expo Go）。'
+  'ExpoBaishouServer 原生模块未编入或版本过旧。请执行 pnpm dev:mobile:clear 重新安装开发版（不可用 Expo Go）。'
 
 let nativeModule: ExpoBaishouServerModule | null | undefined
 

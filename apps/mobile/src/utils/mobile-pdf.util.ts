@@ -39,7 +39,7 @@ export async function extractPdfText(filePath: string, fileSystem: IFileSystem):
     throw new Error('PDF file not found')
   }
   throw new Error(
-    'PDF 文本提取需要包含 expo-pdf-text-extract 的开发构建（pnpm mobile:android:clean 重编）'
+    'PDF 文本提取需要包含 expo-pdf-text-extract 的开发构建（pnpm dev:mobile:clear 重编）'
   )
 }
 

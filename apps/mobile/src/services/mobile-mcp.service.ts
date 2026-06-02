@@ -83,7 +83,7 @@ export class MobileMcpService {
   private async startOnPort(port: number): Promise<void> {
     if (!BaishouServer.isBaishouServerAvailable()) {
       logger.warn(
-        '[MobileMcpService] ExpoBaishouServer 未编入 APK，跳过 MCP。请 pnpm mobile:android:clean 重装开发版。'
+        '[MobileMcpService] ExpoBaishouServer 未编入 APK，跳过 MCP。请 pnpm dev:mobile:clear 重装开发版。'
       )
       return
     }

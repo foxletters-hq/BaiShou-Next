@@ -12,6 +12,7 @@ import {
   externalWriteTextSafe,
   isExternalStoragePath,
   stripFileScheme,
+  normalizeExternalStoragePath,
   toFileUri
 } from './android-external-fs'
 import * as SandboxFS from './mobile-sandbox-fs'
@@ -25,7 +26,7 @@ function enoentError(filePath: string, syscall: string): Error & { code: string 
 }
 
 function normalizePath(filePath: string): string {
-  return stripFileScheme(filePath)
+  return normalizeExternalStoragePath(filePath)
 }
 
 /**

@@ -13,9 +13,25 @@ import java.io.File
 object ExternalStorageFiles {
     fun uriToPath(uri: String): String {
         if (uri.startsWith("file://")) {
-            val parsed = Uri.parse(uri).path
-            if (!parsed.isNullOrEmpty()) return parsed
-            return uri.removePrefix("file://")
+            // 勿用 Uri.parse(uri).path：file:///storage/emulated/0/… 会把 storage 当成 host，path 变成 /emulated/0/…
+            val remainder = uri.removePrefix("file://")
+            if (remainder.startsWith("/")) {
+                return remainder
+            }
+            val parsed = Uri.parse(uri)
+            val path = parsed.path
+            if (!path.isNullOrEmpty()) {
+                val host = parsed.host
+                if (!host.isNullOrEmpty() && host != "localhost" && !path.startsWith("/$host")) {
+                    return "/$host$path"
+                }
+                return path
+            }
+            return remainder
+        }
+        // JS 层若传入已 strip 的路径，补全 /storage 前缀
+        if (uri.startsWith("/emulated/0")) {
+            return "/storage$uri"
         }
         return uri
     }
