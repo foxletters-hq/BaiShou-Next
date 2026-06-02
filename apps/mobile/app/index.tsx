@@ -28,5 +28,5 @@ export default function Index() {
     return <Redirect href="/onboarding" />
   }
 
-  return <Redirect href="/(tabs)/agent" />
+  return <Redirect href="/(tabs)" />
 }

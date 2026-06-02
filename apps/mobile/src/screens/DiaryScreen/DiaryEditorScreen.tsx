@@ -14,6 +14,7 @@ import {
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { FullFileAccessGate } from '../../components/FullFileAccessGate'
 import { assertExternalStorageReady, isExternalStorageRequiredError } from '../../services/storage-permission.service'
+import { toFileUri } from '../../services/android-external-fs'
 
 export const DiaryEditorScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -119,7 +120,7 @@ export const DiaryEditorScreen: React.FC = () => {
       if (isExternalStorageRequiredError(e) || msg.includes('expo-file-system') || msg.includes('原生存储')) {
         Alert.alert(
           t('storage.all_files_access_title'),
-          msg.includes('pnpm mobile:android:clean')
+          msg.includes('pnpm dev:mobile:clear')
             ? msg
             : t('storage.all_files_access_settings_hint'),
           [
@@ -157,6 +158,51 @@ export const DiaryEditorScreen: React.FC = () => {
     setIsFavorite(newIsFavorite)
     setIsDirty(true)
   }
+
+  const [attachmentUriMap, setAttachmentUriMap] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!services?.pathService) return
+    const re = /!\[[^\]]*\]\((attachment\/[^)|\s]+)/g
+    const srcs = new Set<string>()
+    let m: RegExpExecArray | null
+    while ((m = re.exec(content)) !== null) {
+      srcs.add(m[1]!)
+    }
+    if (srcs.size === 0) {
+      setAttachmentUriMap({})
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const dir = await services.pathService!.getDiaryAttachmentDirectory(selectedDate)
+        const map: Record<string, string> = {}
+        for (const src of srcs) {
+          const fileName = src.replace(/^attachment\//, '')
+          map[src] = toFileUri(`${dir}/${fileName}`)
+        }
+        if (!cancelled) setAttachmentUriMap(map)
+      } catch (e) {
+        console.error('Failed to resolve diary attachment URIs:', e)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [content, selectedDate, services?.pathService])
+
+  const resolveAttachmentUri = useCallback(
+    (src: string) => {
+      if (src.startsWith('attachment/')) {
+        return attachmentUriMap[src] ?? null
+      }
+      return src
+    },
+    [attachmentUriMap]
+  )
 
   const handlePickImages = useCallback(async (): Promise<string[]> => {
     if (!services?.pathService) return []
@@ -226,6 +272,7 @@ export const DiaryEditorScreen: React.FC = () => {
           onFavoriteChange={handleFavoriteChange}
           onPickImages={handlePickImages}
           pickingImages={pickingImages}
+          resolveAttachmentUri={resolveAttachmentUri}
           onSave={handleSave}
           onCancel={handleBack}
         />

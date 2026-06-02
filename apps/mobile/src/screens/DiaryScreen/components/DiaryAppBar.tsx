@@ -14,11 +14,10 @@ import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import {
   WEATHER_IDS,
-  getWeatherEmoji,
   weatherI18nKey,
   type WeatherId
 } from '@baishou/shared'
-import { YearMonthPicker, useNativeTheme } from '@baishou/ui/native'
+import { YearMonthPicker, useNativeTheme, WeatherEmoji } from '@baishou/ui/native'
 
 export interface DiaryAppBarProps {
   searchQuery: string
@@ -213,18 +212,16 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               <Text style={[styles.filterSectionLabel, { color: colors.textTertiary }]}>
                 {t('diary.filter_weather')}
               </Text>
-              <View style={styles.weatherGrid}>
+              <View style={styles.weatherList}>
                 {WEATHER_IDS.map((weather) => {
                   const active = filterWeathers.includes(weather)
+                  const label = getWeatherLabel(weather)
                   return (
                     <TouchableOpacity
                       key={weather}
                       style={[
-                        styles.weatherBtn,
-                        {
-                          borderColor: active ? colors.primary : colors.borderSubtle,
-                          backgroundColor: active ? colors.primaryLight : 'transparent'
-                        }
+                        styles.weatherOption,
+                        active && { backgroundColor: colors.primaryLight }
                       ]}
                       onPress={() =>
                         onFilterWeathersChange(
@@ -233,9 +230,23 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
                             : [...filterWeathers, weather]
                         )
                       }
-                      accessibilityLabel={getWeatherLabel(weather)}
+                      accessibilityLabel={label}
+                      accessibilityState={{ selected: active }}
                     >
-                      <Text style={styles.weatherEmoji}>{getWeatherEmoji(weather)}</Text>
+                      <WeatherEmoji weather={weather} size={22} />
+                      <Text
+                        style={[
+                          styles.weatherOptionLabel,
+                          { color: active ? colors.primary : colors.textPrimary }
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                      {active ? (
+                        <MaterialIcons name="check" size={18} color={colors.primary} />
+                      ) : (
+                        <View style={styles.weatherCheckPlaceholder} />
+                      )}
                     </TouchableOpacity>
                   )
                 })}
@@ -388,22 +399,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 8
   },
-  weatherGrid: {
+  weatherList: {
+    marginBottom: 16,
+    gap: 2
+  },
+  weatherOption: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16
-  },
-  weatherBtn: {
-    width: 40,
-    height: 40,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    borderWidth: 1
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8
   },
-  weatherEmoji: {
-    fontSize: 18
+  weatherOptionLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  weatherCheckPlaceholder: {
+    width: 18
   },
   filterDoneBtn: {
     marginHorizontal: 16,
