@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   TextInput,
@@ -7,9 +7,12 @@ import {
   TouchableOpacity,
   Text,
   ScrollView,
-  KeyboardAvoidingView,
+  Keyboard,
+  LayoutAnimation,
   Platform,
-  Pressable
+  Pressable,
+  UIManager,
+  useWindowDimensions
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
@@ -17,7 +20,14 @@ import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorApp
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
+import { NativeImagePreviewModal } from './NativeImagePreviewModal'
 import type { DiaryEditorViewMode } from './diary-editor.types'
+import {
+  adjustImageWidthInContent,
+  DIARY_IMAGE_SIZE,
+  findImageAtOffset,
+  type ParsedDiaryImage
+} from './diary-image-markdown.util'
 
 interface DiaryEditorProps {
   content: string
@@ -36,6 +46,8 @@ interface DiaryEditorProps {
   /** 从相册选取并上传图片，返回要插入的 Markdown 片段 */
   onPickImages?: () => Promise<string[]>
   pickingImages?: boolean
+  /** attachment/xxx → file:// 本地路径 */
+  resolveAttachmentUri?: (src: string) => string | null | undefined
 }
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
@@ -53,47 +65,256 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onSave,
   onCancel,
   onPickImages,
-  pickingImages = false
+  pickingImages = false,
+  resolveAttachmentUri
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const { height: windowHeight } = useWindowDimensions()
   const [viewMode, setViewMode] = useState<DiaryEditorViewMode>('edit')
   const [selection, setSelection] = useState({ start: 0, end: 0 })
   const [editorHeight, setEditorHeight] = useState(200)
+  const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
+  const [activeImage, setActiveImage] = useState<ParsedDiaryImage | null>(null)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [toolbarHeight, setToolbarHeight] = useState(52)
   const textInputRef = useRef<TextInput>(null)
+  const keyboardInsetLockedRef = useRef(false)
+  const contentRef = useRef(content)
+  const selectionRef = useRef({ start: 0, end: 0 })
+  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null)
+  const toolbarInsertingRef = useRef(false)
 
-  const insertAtSelection = (snippet: string) => {
-    const start = selection.start
-    const end = selection.end
-    const newText = content.substring(0, start) + snippet + content.substring(end)
-    onContentChange(newText)
-    const cursor = start + snippet.length
-    setSelection({ start: cursor, end: cursor })
-    setTimeout(() => textInputRef.current?.focus(), 100)
-  }
+  contentRef.current = content
 
-  const handleInsertText = (prefix: string, suffix: string = '') => {
-    const start = selection.start
-    const end = selection.end
-    const selectedText = content.substring(start, end)
-    insertAtSelection(prefix + selectedText + suffix)
-  }
+  const syncSelection = useCallback((sel: { start: number; end: number }) => {
+    selectionRef.current = sel
+    setSelection(sel)
+  }, [])
+
+  const prevContentLenRef = useRef(0)
+  useEffect(() => {
+    const grew = content.length > prevContentLenRef.current
+    prevContentLenRef.current = content.length
+    if (toolbarInsertingRef.current) return
+    if (
+      grew &&
+      content.length > 0 &&
+      selectionRef.current.start === 0 &&
+      selectionRef.current.end === 0
+    ) {
+      syncSelection({ start: content.length, end: content.length })
+    }
+  }, [content, syncSelection])
+
+  const syncKeyboardInsetFromMetrics = useCallback(() => {
+    const metrics = Keyboard.metrics()
+    if (metrics?.height) {
+      setKeyboardHeight(metrics.height)
+      return
+    }
+    if (metrics && metrics.screenY > 0 && windowHeight > metrics.screenY) {
+      setKeyboardHeight(windowHeight - metrics.screenY)
+    }
+  }, [windowHeight])
+
+  const refocusEditor = useCallback(
+    (sel: { start: number; end: number }) => {
+      requestAnimationFrame(() => {
+        textInputRef.current?.focus()
+        textInputRef.current?.setNativeProps?.({ selection: sel })
+        if (Platform.OS === 'android') {
+          requestAnimationFrame(syncKeyboardInsetFromMetrics)
+        }
+      })
+    },
+    [syncKeyboardInsetFromMetrics]
+  )
+
+  const insertAtPosition = useCallback(
+    (start: number, end: number, snippet: string) => {
+      const current = contentRef.current
+      const safeStart = Math.max(0, Math.min(start, current.length))
+      const safeEnd = Math.max(safeStart, Math.min(end, current.length))
+      const newText =
+        current.substring(0, safeStart) + snippet + current.substring(safeEnd)
+      const cursor = safeStart + snippet.length
+      const sel = { start: cursor, end: cursor }
+      toolbarInsertingRef.current = true
+      pendingSelectionRef.current = sel
+      onContentChange(newText)
+      syncSelection(sel)
+      refocusEditor(sel)
+      requestAnimationFrame(() => {
+        toolbarInsertingRef.current = false
+      })
+    },
+    [onContentChange, syncSelection, refocusEditor]
+  )
+
+  const insertAtSelection = useCallback(
+    (snippet: string) => {
+      const { start, end } = selectionRef.current
+      insertAtPosition(start, end, snippet)
+    },
+    [insertAtPosition]
+  )
+
+  const handleInsertText = useCallback(
+    (prefix: string, suffix: string = '') => {
+      const { start, end } = selectionRef.current
+      const current = contentRef.current
+      const selectedText = current.substring(start, end)
+      insertAtPosition(start, end, prefix + selectedText + suffix)
+    },
+    [insertAtPosition]
+  )
 
   const handlePickImages = async () => {
     if (!onPickImages) return
+    const anchor = { ...selectionRef.current }
     const markdowns = await onPickImages()
     if (!markdowns.length) return
     const block = (markdowns.length > 1 ? '\n\n' : '') + markdowns.join('\n\n') + '\n'
-    insertAtSelection(block)
+    insertAtPosition(anchor.start, anchor.end, block)
   }
 
+  const updateActiveImageFromSelection = useCallback(
+    (offset: number) => {
+      const img = findImageAtOffset(contentRef.current, offset)
+      setActiveImage(img)
+    },
+    []
+  )
+
+  const handleSelectionChange = useCallback(
+    (start: number, end: number) => {
+      if (toolbarInsertingRef.current) return
+      syncSelection({ start, end })
+      updateActiveImageFromSelection(end)
+    },
+    [syncSelection, updateActiveImageFromSelection]
+  )
+
+  useEffect(() => {
+    if (pendingSelectionRef.current) {
+      const sel = pendingSelectionRef.current
+      pendingSelectionRef.current = null
+      syncSelection(sel)
+      updateActiveImageFromSelection(sel.end)
+    }
+  }, [content, syncSelection, updateActiveImageFromSelection])
+
+  useEffect(() => {
+    if (viewMode === 'edit') {
+      updateActiveImageFromSelection(selectionRef.current.end)
+    }
+  }, [viewMode, updateActiveImageFromSelection])
+
+  const snapKeyboardChromeAway = useCallback(() => {
+    keyboardInsetLockedRef.current = true
+    if (
+      Platform.OS === 'android' &&
+      UIManager.setLayoutAnimationEnabledExperimental
+    ) {
+      UIManager.setLayoutAnimationEnabledExperimental(true)
+    }
+    LayoutAnimation.configureNext(LayoutAnimation.create(0, LayoutAnimation.Types.linear, 'opacity'))
+    setKeyboardHeight(0)
+    textInputRef.current?.blur()
+    Keyboard.dismiss()
+  }, [])
+
+  const resolveKeyboardInset = useCallback(
+    (end: { height: number; screenY: number }) => {
+      if (end.height > 0) return end.height
+      if (end.screenY > 0 && windowHeight > end.screenY) {
+        return windowHeight - end.screenY
+      }
+      const metrics = Keyboard.metrics()
+      return metrics?.height ?? 0
+    },
+    [windowHeight]
+  )
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (keyboardInsetLockedRef.current) return
+      setKeyboardHeight(resolveKeyboardInset(e.endCoordinates))
+    })
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (toolbarInsertingRef.current) return
+      keyboardInsetLockedRef.current = false
+      setKeyboardHeight(0)
+    })
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [resolveKeyboardInset])
+
+  const handleImageWidthDelta = useCallback(
+    (delta: number) => {
+      const img =
+        activeImage ?? findImageAtOffset(contentRef.current, selectionRef.current.end)
+      if (!img) return
+      const next = adjustImageWidthInContent(contentRef.current, img, delta)
+      onContentChange(next)
+      const updated = findImageAtOffset(next, img.from)
+      if (updated) {
+        syncSelection({ start: updated.to, end: updated.to })
+        setActiveImage(updated)
+      }
+    },
+    [activeImage, onContentChange, syncSelection]
+  )
+
+  const handlePreviewImagePress = useCallback(
+    (src: string, resolvedUri: string) => {
+      setPreviewImageUri(resolvedUri)
+      const idx = contentRef.current.indexOf(src)
+      if (idx < 0) return
+      const img = findImageAtOffset(contentRef.current, idx)
+      if (img) {
+        syncSelection({ start: img.from, end: img.to })
+        setActiveImage(img)
+      }
+    },
+    [syncSelection]
+  )
+
+  const handleSwitchToEdit = useCallback(() => {
+    setViewMode('edit')
+    requestAnimationFrame(() => {
+      textInputRef.current?.focus()
+      const sel = selectionRef.current
+      textInputRef.current?.setNativeProps?.({ selection: sel })
+      updateActiveImageFromSelection(sel.end)
+    })
+  }, [updateActiveImageFromSelection])
+
+  const resolveImageUri = useMemo(() => {
+    if (!resolveAttachmentUri) return undefined
+    return (src: string) => resolveAttachmentUri(src) ?? src
+  }, [resolveAttachmentUri])
+
+  const showImageTools = viewMode === 'edit' && activeImage != null
+
+  // Modal 等场景下 Android 往往不会 adjustResize，需用键盘高度把工具栏钉在输入法上方
+  const toolbarBottom = keyboardHeight
+
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.bgSurface }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
       <View style={[styles.appBar, { borderBottomColor: colors.borderSubtle }]}>
-        <TouchableOpacity style={styles.iconBtn} onPress={onCancel}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => {
+            snapKeyboardChromeAway()
+            onCancel?.()
+          }}
+        >
           <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
@@ -107,13 +328,28 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: colors.primary }]}
-          onPress={() => onSave?.(content, tags, selectedDate)}
+          onPress={() => {
+            snapKeyboardChromeAway()
+            onSave?.(content, tags, selectedDate)
+          }}
         >
           <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>{t('common.save')}</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+      <View style={styles.editorBody}>
+        <ScrollView
+          style={styles.body}
+          nestedScrollEnabled
+          contentContainerStyle={[
+            styles.bodyContent,
+            styles.bodyContentGrow,
+            { paddingBottom: toolbarBottom + 16 }
+          ]}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+        >
+        <View style={styles.editorMain}>
         {!isSummaryMode && onWeatherChange && viewMode === 'edit' && (
           <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
             <WeatherPicker value={weather} onChange={onWeatherChange} />
@@ -149,30 +385,64 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             scrollEnabled={false}
             placeholder={t('diary.editor_hint')}
             placeholderTextColor={colors.textTertiary}
+            selectionColor={colors.primary}
+            cursorColor={colors.primary}
             value={content}
+            selection={selection}
             onChangeText={onContentChange}
             onContentSizeChange={(e) => {
               const h = e.nativeEvent.contentSize.height
               if (h > 0) setEditorHeight(h)
             }}
-            onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+            onSelectionChange={(e) => {
+              const { start, end } = e.nativeEvent.selection
+              handleSelectionChange(start, end)
+            }}
+            onFocus={() => {
+              keyboardInsetLockedRef.current = false
+              updateActiveImageFromSelection(selectionRef.current.end)
+              if (Platform.OS === 'android') {
+                requestAnimationFrame(syncKeyboardInsetFromMetrics)
+              }
+            }}
           />
         ) : (
-          <View style={styles.previewArea}>
-            <MarkdownRenderer content={content} />
-          </View>
+          <Pressable onPress={handleSwitchToEdit} style={styles.previewArea}>
+            <MarkdownRenderer
+              content={content}
+              resolveImageUri={resolveImageUri}
+              onImagePress={handlePreviewImagePress}
+            />
+          </Pressable>
         )}
-      </ScrollView>
+        </View>
 
-      <MarkdownToolbar
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onHideKeyboard={() => textInputRef.current?.blur()}
-        onInsertText={handleInsertText}
-        onPickImages={onPickImages ? handlePickImages : undefined}
-        pickingImages={pickingImages}
-      />
-    </KeyboardAvoidingView>
+          <View
+            onLayout={(e) => {
+              const h = e.nativeEvent.layout.height
+              if (h > 0 && h !== toolbarHeight) setToolbarHeight(h)
+            }}
+          >
+            <MarkdownToolbar
+              viewMode={viewMode}
+              onViewModeChange={(mode) => {
+                if (mode === 'edit') handleSwitchToEdit()
+                else setViewMode('preview')
+              }}
+              onHideKeyboard={snapKeyboardChromeAway}
+              onInsertText={handleInsertText}
+              onPickImages={onPickImages ? handlePickImages : undefined}
+              pickingImages={pickingImages}
+              showImageTools={showImageTools}
+              onImageZoomIn={() => handleImageWidthDelta(DIARY_IMAGE_SIZE.step)}
+              onImageZoomOut={() => handleImageWidthDelta(-DIARY_IMAGE_SIZE.step)}
+            />
+          </View>
+        </ScrollView>
+      </View>
+
+      <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
+    </View>
   )
 }
 
@@ -182,7 +452,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingTop: Platform.OS === 'ios' ? 52 : 40,
+    paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: 1
   },
@@ -190,8 +460,14 @@ const styles = StyleSheet.create({
   appBarCenter: { flex: 1, alignItems: 'center', minWidth: 0 },
   saveBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20 },
   saveBtnText: { fontWeight: '600', fontSize: 14 },
+  editorBody: {
+    flex: 1,
+    position: 'relative'
+  },
   body: { flex: 1 },
-  bodyContent: { padding: 16, paddingBottom: 32 },
+  bodyContent: { padding: 16 },
+  bodyContentGrow: { flexGrow: 1 },
+  editorMain: { flexGrow: 1 },
   metaBar: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -4,13 +4,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../../native/theme'
 import {
-  getWeatherEmoji,
   normalizeWeatherId,
   weatherI18nKey,
   WEATHER_IDS,
   formatDiaryPreviewText
 } from '@baishou/shared'
 import type { WeatherId } from '@baishou/shared'
+import { WeatherEmoji } from '../WeatherIcon'
 
 interface DiaryCardProps {
   id: number
@@ -118,9 +118,10 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
         <View style={styles.metaRow}>
           {weather && (
             <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                {getWeatherEmoji(weather)} {weatherLabel}
-              </Text>
+              <View style={styles.metaWeatherRow}>
+                <WeatherEmoji weather={weather} size={16} />
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>{weatherLabel}</Text>
+              </View>
             </View>
           )}
           {mood && (
@@ -220,6 +221,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6
+  },
+  metaWeatherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
   },
   metaText: { fontSize: 12 },
   contentContainer: { maxHeight: 120, overflow: 'hidden' },
