@@ -48,6 +48,7 @@
     "error": "Error",
     "year_suffix": "",
     "month_suffix": "",
+    "year_month_label": "{{year}}/{{month}}",
     "day_suffix": "",
     "quarter_prefix": "Q",
     "add": "Add",

@@ -44,6 +44,7 @@
     "error": "錯誤",
     "year_suffix": "年",
     "month_suffix": "月",
+    "year_month_label": "{{year}}年{{month}}月",
     "day_suffix": "日",
     "quarter_prefix": "Q",
     "add": "新增",
