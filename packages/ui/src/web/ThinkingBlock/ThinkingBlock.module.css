@@ -1,49 +1,7 @@
-.container {
-  width: 100%;
-  min-width: 100%;
-  margin-bottom: 12px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1.5px solid var(--border-subtle);
-  background: var(--bg-surface);
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-  align-self: stretch;
-}
-
-.container:hover {
-  border-color: var(--border-strong);
-}
-
-/* Header - Flexbox 三栏布局 */
-.header {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  cursor: pointer;
-  user-select: none;
-  background: var(--bg-surface-normal);
-  transition: background 0.15s ease;
-  min-height: 42px;
-}
-
-.header:hover {
-  background: var(--bg-surface-normal);
-}
-
-/* 左侧图标区域 - 固定宽度 */
-.headerIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 100%;
-  flex-shrink: 0;
-}
-
 /* Sparkle animation */
 .sparkle {
-  font-size: 18px;
+  font-size: 14px;
+  line-height: 1;
   transition: transform 0.2s ease;
 }
 
@@ -69,72 +27,6 @@
     transform: scale(1.08) rotate(3deg);
     opacity: 0.9;
   }
-}
-
-/* 中间文本区域 - 弹性宽度 */
-.headerText {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
-  padding: 0 8px;
-}
-
-.statusText {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Inline preview text in header */
-.previewInline {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  opacity: 0.8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 4px;
-}
-
-/* 右侧箭头区域 - 固定宽度 */
-.arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 100%;
-  color: var(--text-tertiary);
-  transition: transform 0.25s ease;
-  flex-shrink: 0;
-}
-
-.arrowOpen {
-  transform: rotate(90deg);
-}
-
-/* Smooth expand/collapse via CSS grid trick */
-.contentWrap {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s ease;
-}
-
-.open .contentWrap {
-  grid-template-rows: 1fr;
-}
-
-.contentInner {
-  overflow: hidden;
 }
 
 /* Content */
@@ -218,10 +110,6 @@
 
 /* Responsive */
 @media (max-width: 640px) {
-  .header {
-    padding: 8px 12px;
-  }
-
   .content {
     padding: 8px 12px;
     font-size: 13px;

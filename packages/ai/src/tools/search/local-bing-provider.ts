@@ -6,8 +6,8 @@ import { LocalSearchProvider, type SearchItem } from './local-search-provider'
  * 使用隐藏的 BrowserWindow 加载 Bing 搜索页面并解析结果
  */
 export class LocalBingProvider extends LocalSearchProvider {
-  constructor() {
-    super('local-bing', 'https://cn.bing.com/search?q=%s&ensearch=1')
+  constructor(fetchSearchPageFn?: (url: string) => Promise<string>) {
+    super('local-bing', 'https://cn.bing.com/search?q=%s&ensearch=1', fetchSearchPageFn)
   }
 
   /**

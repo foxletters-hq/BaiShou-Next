@@ -26,6 +26,7 @@ describe('SnapshotRepository', () => {
         session_id TEXT NOT NULL,
         summary_text TEXT NOT NULL,
         covered_up_to_message_id TEXT NOT NULL,
+        tail_start_message_id TEXT,
         message_count INTEGER NOT NULL,
         token_count INTEGER,
         created_at INTEGER NOT NULL

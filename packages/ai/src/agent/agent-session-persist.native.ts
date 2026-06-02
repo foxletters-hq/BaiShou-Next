@@ -205,8 +205,19 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
         TitleGeneratorService.autoTitle(provider, modelId, sessionRepo, sessionId, rawUserText)
       }
 
-      // 并行起跳长文压缩归纳检测机
-      ContextCompressorService.compress(provider, modelId, sessionRepo, snapshotRepo, sessionId)
+      const { resolveSessionCompressionConfig } = await import('./context-compression.utils')
+      const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
+      const providerType =
+        (provider as { config?: { type?: string } }).config?.type ?? ''
+      void ContextCompressorService.tryCompress(
+        provider,
+        modelId,
+        sessionRepo,
+        snapshotRepo,
+        sessionId,
+        compressionConfig,
+        providerType
+      )
     }, 500)
   }
 }

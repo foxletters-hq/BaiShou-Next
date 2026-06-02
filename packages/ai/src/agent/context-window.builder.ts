@@ -2,6 +2,8 @@ import { SessionRepository } from '@baishou/database'
 import { MessageWithParts } from './message.adapter'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
+import { resolveSnapshotCutoffIndex } from './context-compression.utils'
+import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 
 export interface ContextWindowConfig {
   /**
@@ -9,6 +11,10 @@ export interface ContextWindowConfig {
    * 一轮：从用户消息开始，到下一轮用户消息之前的全部内容（含 assistant 回复及该轮内的 tool 调用/结果）。
    */
   recentCount: number
+  /**
+   * 仅保留 orderIndex ≤ 此值的消息，用于还原历史某轮发送给 AI 的上下文。
+   */
+  upToOrderIndex?: number
 }
 
 export class ContextWindowBuilder {
@@ -27,10 +33,15 @@ export class ContextWindowBuilder {
   ): Promise<MessageWithParts[]> {
     // 拿大范围或者拿全部。因历史库非常长可能卡顿我们用极值限制一下
     // 注意 getMessagesBySession 内部倒序取并 reverse 原样返还，所以它是从旧到新的
-    const rawMessages = (await sessionRepo.getMessagesBySession(
+    let rawMessages = (await sessionRepo.getMessagesBySession(
       sessionId,
-      500
+      COMPRESSION_MESSAGE_FETCH_LIMIT
     )) as MessageWithParts[]
+    if (rawMessages.length === 0) return []
+
+    if (config.upToOrderIndex !== undefined) {
+      rawMessages = rawMessages.filter((m) => m.orderIndex <= config.upToOrderIndex!)
+    }
     if (rawMessages.length === 0) return []
 
     let effectiveMessages: MessageWithParts[] = []
@@ -38,11 +49,17 @@ export class ContextWindowBuilder {
     // 1. 挂接记忆 Snapshot 快照
     const snapshot = await snapshotRepo.getLatestSnapshot(sessionId)
     if (snapshot) {
-      // coveredUpToMessageId 存储为 text，需要转为 number 与 orderIndex 比较
-      const coveredUpTo = Number(snapshot.coveredUpToMessageId)
-      const cutoffIndex = rawMessages.findIndex((m) => m.orderIndex === coveredUpTo)
+      // 优先使用显式保留区起点（tail_start_message_id）；缺失时回退到 coveredUpTo+1
+      let retainStartIndex = -1
+      if (snapshot.tailStartMessageId) {
+        retainStartIndex = rawMessages.findIndex((m) => m.id === snapshot.tailStartMessageId)
+      }
+      if (retainStartIndex < 0) {
+        const cutoffIndex = resolveSnapshotCutoffIndex(rawMessages, snapshot)
+        if (cutoffIndex >= 0) retainStartIndex = cutoffIndex + 1
+      }
 
-      if (cutoffIndex >= 0 && cutoffIndex < rawMessages.length - 1) {
+      if (retainStartIndex >= 1 && retainStartIndex <= rawMessages.length - 1) {
         // 创建一条伪善的系统快照信息
         const summaryMsg: MessageWithParts = {
           id: 'snapshot_' + snapshot.id,
@@ -61,7 +78,7 @@ export class ContextWindowBuilder {
             }
           ]
         }
-        effectiveMessages = [summaryMsg, ...rawMessages.slice(cutoffIndex + 1)]
+        effectiveMessages = [summaryMsg, ...rawMessages.slice(retainStartIndex)]
       } else {
         effectiveMessages = [...rawMessages]
       }

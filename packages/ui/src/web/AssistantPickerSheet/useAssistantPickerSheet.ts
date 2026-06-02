@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getDefaultCompressionSystemPrompt } from '@baishou/shared'
 import { useDialog } from '../Dialog'
 import type { AssistantInfo, AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 
@@ -14,7 +15,7 @@ export function useAssistantPickerSheet({
   pinnedIds,
   onTogglePin
 }: AssistantPickerSheetProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { prompt } = useDialog()
   const [searchQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(() => {
@@ -28,10 +29,12 @@ export function useAssistantPickerSheet({
   const [editingCompressEnabled, setEditingCompressEnabled] = useState(true)
   const [editingCompressThreshold, setEditingCompressThreshold] = useState(60000)
   const [editingCompressKeepTurns, setEditingCompressKeepTurns] = useState(3)
+  const [editingCompressSystemPrompt, setEditingCompressSystemPrompt] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
   const [providers, setProviders] = useState<any[]>([])
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const hydratedAssistantIdRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
     if (isOpen) {
@@ -84,16 +87,29 @@ export function useAssistantPickerSheet({
   }, [filteredAssistants, selectedId])
 
   React.useEffect(() => {
-    if (activeAssistant) {
-      setEditingPrompt(activeAssistant.systemPrompt || '')
-      setEditingContextWindow(activeAssistant.contextWindow ?? -1)
-      setEditingCompressEnabled(activeAssistant.compressTokenThreshold > 0)
-      setEditingCompressThreshold(
-        activeAssistant.compressTokenThreshold > 0 ? activeAssistant.compressTokenThreshold : 60000
-      )
-      setEditingCompressKeepTurns(activeAssistant.compressKeepTurns ?? 3)
+    if (!activeAssistant) return
+    const assistantId = String(activeAssistant.id)
+    if (hydratedAssistantIdRef.current === assistantId) return
+    hydratedAssistantIdRef.current = assistantId
+
+    setEditingPrompt(activeAssistant.systemPrompt || '')
+    setEditingContextWindow(activeAssistant.contextWindow ?? -1)
+    setEditingCompressEnabled(activeAssistant.compressTokenThreshold > 0)
+    setEditingCompressThreshold(
+      activeAssistant.compressTokenThreshold > 0 ? activeAssistant.compressTokenThreshold : 60000
+    )
+    setEditingCompressKeepTurns(activeAssistant.compressKeepTurns ?? 3)
+    const customPrompt = activeAssistant.compressSystemPrompt
+    setEditingCompressSystemPrompt(
+      customPrompt?.trim() ? customPrompt : getDefaultCompressionSystemPrompt(i18n.language)
+    )
+  }, [activeAssistant, i18n.language])
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      hydratedAssistantIdRef.current = null
     }
-  }, [activeAssistant])
+  }, [isOpen])
 
   const saveConfig = async (overrides: Partial<Record<string, unknown>> = {}) => {
     if (!activeAssistant) return
@@ -120,9 +136,17 @@ export function useAssistantPickerSheet({
               overrides.compressKeepTurns !== undefined
                 ? overrides.compressKeepTurns
                 : editingCompressKeepTurns,
-            ...overrides
+            compressSystemPrompt:
+              overrides.compressSystemPrompt !== undefined
+                ? overrides.compressSystemPrompt
+                : editingCompressEnabled
+                  ? editingCompressSystemPrompt.trim() || null
+                  : null
           }
         )
+      }
+      if (overrides.compressSystemPrompt !== undefined && typeof overrides.compressSystemPrompt === 'string') {
+        setEditingCompressSystemPrompt(overrides.compressSystemPrompt)
       }
       onRefreshAssistants?.()
     } finally {
@@ -180,6 +204,8 @@ export function useAssistantPickerSheet({
     setEditingCompressThreshold,
     editingCompressKeepTurns,
     setEditingCompressKeepTurns,
+    editingCompressSystemPrompt,
+    setEditingCompressSystemPrompt,
     isSaving,
     showModelSwitcher,
     setShowModelSwitcher,
@@ -192,7 +218,8 @@ export function useAssistantPickerSheet({
     confirmDelete,
     pinnedIds,
     onTogglePin,
-    assistants
+    assistants,
+    i18n
   }
 }
 

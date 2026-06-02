@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { normalizeWeatherId, type WeatherId } from '@baishou/shared'
 import { WEATHER_IDS } from '@baishou/shared'
@@ -66,6 +66,22 @@ export const DiaryPage: React.FC = () => {
   const [todayEntry, setTodayEntry] = useState<DiaryEntry | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [attachmentBasePath, setAttachmentBasePath] = useState<string>('')
+  const gridScrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const api = (window as any).api
+    if (!api?.diary?.onSyncEvent) return
+
+    const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
+      if (event?.type === 'saved') {
+        gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+      }
+    })
+
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
+  }, [])
 
   // sessionStorage 同步
   useEffect(() => {
@@ -90,10 +106,15 @@ export const DiaryPage: React.FC = () => {
     sessionStorage.setItem('diary_pageSize', String(pageSize))
   }, [pageSize])
 
-  // 筛选条件变化时重置到第一页
+  // 筛选条件变化时重置到第一页，并将列表滚回顶部
   useEffect(() => {
     setCurrentPage(1)
+    gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
   }, [selectedMonth, searchQuery, filterWeathers, filterFavorite])
+
+  useEffect(() => {
+    gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+  }, [currentPage])
 
   const diaryQuery = useMemo(
     () => ({
@@ -216,6 +237,7 @@ export const DiaryPage: React.FC = () => {
       />
 
       <DiaryGrid
+        scrollRef={gridScrollRef}
         entries={displayEntries}
         totalCount={totalCount}
         currentPage={currentPage}

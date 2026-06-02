@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import styles from './ToolResultGroupCard.module.css'
+import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import { MockToolInvocation } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, CheckCircle2, XCircle } from 'lucide-react'
@@ -16,25 +17,21 @@ export const ToolResultGroup: React.FC<ToolResultGroupProps> = ({ invocations })
 
   return (
     <div className={styles.groupContainer}>
-      <div className={`${styles.groupCard} ${expanded ? styles.open : ''}`}>
-        <div className={styles.headerRow} onClick={() => setExpanded(!expanded)}>
-          <div className={styles.iconBox}>🎧</div>
-          <div className={styles.titleArea}>
-            <span className={styles.titleText}>
-              {t('agent.tools.tool_call_results', {
-                count: invocations.length
-              })}
-            </span>
-            <span className={styles.countBadge}>{invocations.length}</span>
-          </div>
-
-          <div className={`${styles.expandBtn} ${expanded ? styles.expandBtnRotated : ''}`}>
-            <ChevronDown size={14} />
+      <div className={`${shared.shell} ${expanded ? shared.open : ''}`}>
+        <div className={shared.header} onClick={() => setExpanded(!expanded)}>
+          <div className={shared.headerIcon}>🎧</div>
+          <span className={shared.headerTitle}>
+            {t('agent.tools.tool_call_results', '工具调用 · {{count}} 个结果', {
+              count: invocations.length
+            })}
+          </span>
+          <div className={`${shared.headerChevron} ${expanded ? shared.headerChevronOpen : ''}`}>
+            <ChevronDown size={14} strokeWidth={2} />
           </div>
         </div>
 
-        <div className={styles.contentWrap}>
-          <div className={styles.contentInner}>
+        <div className={shared.contentWrap}>
+          <div className={shared.contentInner}>
             <div className={styles.childrenArea}>
               {invocations.map((inv, index) => (
                 <ToolResultItem key={inv.toolCallId || index} invocation={inv} />

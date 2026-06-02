@@ -70,6 +70,7 @@ export const AgentAssistantSchema = z.object({
   modelId: z.string(),
   compressTokenThreshold: z.number().int().positive().default(60000),
   compressKeepTurns: z.number().int().nonnegative().default(3),
+  compressSystemPrompt: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional()

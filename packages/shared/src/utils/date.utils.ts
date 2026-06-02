@@ -66,3 +66,25 @@ export function isSameLocalDay(a: Date, b: Date): boolean {
     a.getDate() === b.getDate()
   )
 }
+
+/**
+ * 将数据库中的 Unix 时间戳统一为毫秒。
+ * hybrid_search.source_created_at 等字段存的是「秒」；部分 IPC 路径为「毫秒」。
+ */
+export function timestampToMillis(ts: number | undefined | null): number | undefined {
+  if (ts == null || !Number.isFinite(ts) || ts <= 0) return undefined
+  return ts < 1_000_000_000_000 ? ts * 1000 : ts
+}
+
+/** 格式化为本地 YYYY-MM-DD HH:mm；无效时间戳返回 undefined */
+export function formatStoredTimestamp(ts: number | undefined | null): string | undefined {
+  const ms = timestampToMillis(ts)
+  if (ms == null || ms < Date.UTC(2000, 0, 1)) return undefined
+  const t = new Date(ms)
+  const y = t.getFullYear()
+  const m = String(t.getMonth() + 1).padStart(2, '0')
+  const d = String(t.getDate()).padStart(2, '0')
+  const hh = String(t.getHours()).padStart(2, '0')
+  const mm = String(t.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${d} ${hh}:${mm}`
+}

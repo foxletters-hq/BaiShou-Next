@@ -136,6 +136,10 @@ export interface ToolContext {
   webSearchResultFetcher?: (url: string) => Promise<string>
   /** 允许外部注入搜索页面获取函数（用于本地搜索引擎），如果没有则降级走 IPC */
   fetchSearchPage?: (url: string) => Promise<string>
+  /** 会话上下文压缩（上行/下行），供 compress_context_* 工具调用 */
+  contextCompressionRunner?: {
+    run(phase: 'upstream' | 'downstream', options?: { force?: boolean }): Promise<string>
+  }
 }
 
 /**

@@ -9,7 +9,6 @@ export const MainLayout: React.FC = () => {
   const location = useLocation()
   const cacheKey = getMainPageCacheKey(location.pathname)
   const showOutlet = cacheKey === null
-  const isDiaryEditorRoute = /^\/diary\/.+/.test(location.pathname)
 
   return (
     <div className={styles.appContainer}>
@@ -22,10 +21,10 @@ export const MainLayout: React.FC = () => {
             {showOutlet && (
               <motion.div
                 key={location.pathname.startsWith('/chat') ? '/chat' : location.pathname}
-                initial={{ opacity: 0, y: isDiaryEditorRoute ? 12 : 0 }}
+                initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: isDiaryEditorRoute ? 20 : 0 }}
-                transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                exit={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0 }}
                 style={{
                   position: 'absolute',
                   inset: 0,

@@ -150,7 +150,8 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
           ...a,
           id: String(a.id),
           emoji: a.emoji || '✨',
-          systemPrompt: a.systemPrompt || ''
+          systemPrompt: a.systemPrompt || '',
+          compressSystemPrompt: a.compressSystemPrompt ?? null
         }))}
         pinnedIds={new Set(assistants.filter((a: any) => a.isPinned).map((a) => String(a.id)))}
         onTogglePin={async (id, isPinned) => {

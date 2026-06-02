@@ -6,6 +6,8 @@ export const agentApi = {
   saveUserMessage: (params: { sessionId: string; text: string; attachments?: any[] }) =>
     ipcRenderer.invoke('agent:save-user-message', params),
   getMessages: (sessionId: string) => ipcRenderer.invoke('agent:get-messages', sessionId),
+  getContextAtMessage: (sessionId: string, messageId: string, searchMode?: boolean) =>
+    ipcRenderer.invoke('agent:get-context-at-message', sessionId, messageId, searchMode),
 
   onAgentStreamChunk: (callback: (chunk: string) => void) => {
     ipcRenderer.on('agent:stream-chunk', (_event, chunk) => callback(chunk))

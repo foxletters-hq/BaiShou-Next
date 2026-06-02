@@ -8,8 +8,21 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { formatStoredTimestamp } from '@baishou/shared'
 import { HybridSearchUtils } from '../rag/hybrid-search'
 import type { ISearchResult } from '../rag/hybrid-search.types'
+
+function resolveResultTimestamp(chunkText: string, createdAt?: number): string | undefined {
+  const fromStored = formatStoredTimestamp(createdAt)
+  if (fromStored) return fromStored
+
+  const diaryMatch = chunkText.match(/\[(\d{4}-\d{2}-\d{2})\s/)
+  if (diaryMatch?.[1]) {
+    return `${diaryMatch[1]} (日记日期)`
+  }
+
+  return undefined
+}
 
 const vectorSearchParams = z.object({
   query: z.string().describe('要搜索的语义查询，描述你想找的内容的含义'),
@@ -123,14 +136,9 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
         const r = results[i]!
         const sourceLabel = r.source === 'hybrid' ? '混合' : r.source === 'fts' ? 'FTS' : '向量'
         lines.push(`--- 结果 ${i + 1} [${sourceLabel}] ---`)
-        if (r.createdAt) {
-          const t = new Date(r.createdAt)
-          const y = t.getFullYear()
-          const m = String(t.getMonth() + 1).padStart(2, '0')
-          const d = String(t.getDate()).padStart(2, '0')
-          const hh = String(t.getHours()).padStart(2, '0')
-          const mm = String(t.getMinutes()).padStart(2, '0')
-          lines.push(`时间: ${y}-${m}-${d} ${hh}:${mm}`)
+        const timeLabel = resolveResultTimestamp(r.chunkText, r.createdAt)
+        if (timeLabel) {
+          lines.push(`时间: ${timeLabel}`)
         }
         lines.push(`内容: ${r.chunkText}`)
         lines.push(`相似度: ${r.score.toFixed(4)}`)

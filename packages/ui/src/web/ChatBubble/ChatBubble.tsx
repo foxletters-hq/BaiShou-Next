@@ -91,6 +91,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             onStartEdit={edit.handleStartEdit}
             onResend={onResend}
             onDelete={onDelete}
+            onShowContext={onShowContext}
             t={t}
           />
         ) : (

@@ -28,7 +28,13 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
-        external: ['electron', '@libsql/client', 'better-sqlite3']
+        external: [
+          'electron',
+          '@libsql/client',
+          'better-sqlite3',
+          // pdf-parse 运行时 require 内置 pdf.js；打进 out/main 后相对路径会失效
+          'pdf-parse'
+        ]
       }
     }
   },

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { format } from 'date-fns'
 import { formatLocalDate, normalizeWeatherId, safeParseDate, logger } from '@baishou/shared'
 import { useToast } from '@baishou/ui'
-import { markDiaryReturnReveal } from '../diary-navigation'
 
 type DiaryEditorInitialState = {
   content: string
@@ -202,8 +201,6 @@ export function useDiaryEditorPage() {
 
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isLeavingAfterSave, setIsLeavingAfterSave] = useState(false)
-  const leavingAfterSaveRef = useRef(false)
 
   const goBackToSidebar = useCallback(() => {
     const lastNav = sessionStorage.getItem('desktop_last_nav')
@@ -222,33 +219,18 @@ export function useDiaryEditorPage() {
     }
   }
 
-  const playSaveExitAndGoBack = useCallback(() => {
-    markDiaryReturnReveal()
-    leavingAfterSaveRef.current = true
-    setIsLeavingAfterSave(true)
-  }, [])
-
-  const handleSaveExitComplete = () => {
-    if (!leavingAfterSaveRef.current) return
-    leavingAfterSaveRef.current = false
-    goBackToSidebar()
-  }
-
   const handleSave = async () => {
     if (isSaving) return
     setIsSaving(true)
-    setTimeout(async () => {
-      try {
-        await autoSave(content)
-        await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
-        playSaveExitAndGoBack()
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : undefined
-        toast.showError(message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'))
-      } finally {
-        setIsSaving(false)
-      }
-    }, 100)
+    try {
+      await autoSave(content)
+      goBackToSidebar()
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : undefined
+      toast.showError(message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return {
@@ -262,13 +244,11 @@ export function useDiaryEditorPage() {
     mediaPaths,
     isDirty,
     isSaving,
-    isLeavingAfterSave,
     showExitConfirm,
     setShowExitConfirm,
     handleContentChange,
     handleBack,
     handleSave,
-    handleSaveExitComplete,
     goBackToSidebar,
     setTags,
     setSelectedDate,

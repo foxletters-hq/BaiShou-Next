@@ -1,6 +1,7 @@
 import React from 'react'
 import { History, Minimize2 } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
+import { getDefaultCompressionSystemPrompt } from '@baishou/shared'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
@@ -15,7 +16,10 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
     setEditingCompressThreshold,
     editingCompressKeepTurns,
     setEditingCompressKeepTurns,
-    saveConfig
+    editingCompressSystemPrompt,
+    setEditingCompressSystemPrompt,
+    saveConfig,
+    i18n
   } = vm
   return (
     <>
@@ -256,6 +260,65 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               onChange={(e) => setEditingCompressKeepTurns(Number(e.target.value))}
               onMouseUp={() => saveConfig()}
               onTouchEnd={() => saveConfig()}
+            />
+            <div
+              style={{
+                width: '100%',
+                height: 1,
+                background: 'rgba(200,200,200,0.15)',
+                margin: '16px 0'
+              }}
+            />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 8
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {t('agent.assistant.compress_system_prompt_label', '压缩提示词')}
+              </span>
+              <HelpTooltip
+                content={t(
+                  'agent.assistant.compress_system_prompt_desc',
+                  '生成对话压缩摘要时发给模型的系统指令。留空或使用「恢复默认」将按当前界面语言使用内置默认稿。'
+                )}
+              />
+              <div style={{ flex: 1 }} />
+              <button
+                type="button"
+                style={{
+                  fontSize: 12,
+                  color: 'var(--color-primary)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+                onClick={() => {
+                  const def = getDefaultCompressionSystemPrompt(i18n.language)
+                  setEditingCompressSystemPrompt(def)
+                  saveConfig({ compressSystemPrompt: def })
+                }}
+              >
+                {t('agent.assistant.compress_system_prompt_reset', '恢复默认')}
+              </button>
+            </div>
+            <textarea
+              className={styles.promptTextarea}
+              rows={8}
+              value={editingCompressSystemPrompt}
+              onChange={(e) => setEditingCompressSystemPrompt(e.target.value)}
+              onBlur={(e) => {
+                const next = e.target.value
+                setEditingCompressSystemPrompt(next)
+                void saveConfig({
+                  compressSystemPrompt: editingCompressEnabled ? next.trim() || null : null
+                })
+              }}
+              spellCheck={false}
             />
           </>
         )}

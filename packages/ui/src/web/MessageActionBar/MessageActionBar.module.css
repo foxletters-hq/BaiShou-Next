@@ -17,8 +17,9 @@
   justify-content: flex-end;
 }
 
-/* Let parent .chat-bubble-container control visibility since it wraps both */
-:global(.chat-bubble-container:hover) .actionBarContainer {
+/* 与消息底部其它操作按钮一致：默认隐藏，悬停或聚焦气泡时显示 */
+:global(.chat-bubble-container:hover) .actionBarContainer,
+:global(.chat-bubble-container:focus-within) .actionBarContainer {
   opacity: 1;
 }
 
@@ -67,4 +68,9 @@
 .ttsPlaying {
   color: var(--color-primary, #3b82f6);
   animation: ttsPulse 1s ease-in-out infinite;
+}
+
+.contextChainIcon {
+  font-size: 15px;
+  line-height: 1;
 }

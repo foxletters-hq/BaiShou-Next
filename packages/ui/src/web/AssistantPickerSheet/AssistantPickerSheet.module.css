@@ -473,6 +473,28 @@
   white-space: pre-wrap;
 }
 
+.promptTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-surface);
+  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.8);
+  border-radius: 12px;
+  padding: 16px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  min-height: 180px;
+  resize: vertical;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) inset;
+}
+
+.promptTextarea:focus {
+  outline: none;
+  border-color: rgba(var(--color-primary-rgb), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.12);
+}
+
 /* Metadata Grid inside Memory Tab */
 .metaGrid {
   display: grid;

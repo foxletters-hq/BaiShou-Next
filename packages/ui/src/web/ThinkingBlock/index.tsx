@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronDown } from 'lucide-react'
 import { MarkdownRenderer } from '../MarkdownRenderer'
+import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import styles from './ThinkingBlock.module.css'
 
 /**
@@ -152,35 +154,22 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
 
   return (
     <div
-      className={`${styles.container} ${isThinking ? styles.isThinking : ''} ${isOpen ? styles.open : ''}`}
+      className={`${shared.shell} ${isThinking ? styles.isThinking : ''} ${isOpen ? shared.open : ''}`}
     >
-      <div className={styles.header} onClick={handleToggle}>
-        <div className={styles.headerIcon}>
+      <div className={shared.header} onClick={handleToggle}>
+        <div className={shared.headerIcon}>
           <span className={styles.sparkle}>✨</span>
         </div>
 
-        <div className={styles.headerText}>
-          <span className={styles.statusText}>{statusText}</span>
-        </div>
+        <span className={shared.headerTitle}>{statusText}</span>
 
-        <div className={`${styles.arrow} ${isOpen ? styles.arrowOpen : ''}`}>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+        <div className={`${shared.headerChevron} ${isOpen ? shared.headerChevronOpen : ''}`}>
+          <ChevronDown size={14} strokeWidth={2} />
         </div>
       </div>
 
-      <div className={styles.contentWrap}>
-        <div className={styles.contentInner}>
+      <div className={shared.contentWrap}>
+        <div className={shared.contentInner}>
           <div className={styles.content}>
             {showCollapsedPreview ? (
               // 折叠态：显示预览行

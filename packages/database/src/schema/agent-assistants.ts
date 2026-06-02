@@ -26,6 +26,12 @@ export const agentAssistantsTable = sqliteTable('agent_assistants', {
   compressTokenThreshold: integer('compress_token_threshold').notNull().default(60000),
   /** 压缩后保留的最近轮数 */
   compressKeepTurns: integer('compress_keep_turns').notNull().default(3),
+  /** 覆盖模型上下文窗口（token）；null 则按 modelId 查表 */
+  compressModelContextWindow: integer('compress_model_context_window'),
+  /** 保留区 token 预算；null 则按窗口 25% 自动计算 */
+  compressPreserveRecentTokens: integer('compress_preserve_recent_tokens'),
+  /** 压缩时发给模型的系统提示词（null 则用当前语言默认） */
+  compressSystemPrompt: text('compress_system_prompt'),
   /** 拖动排序权重 */
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),

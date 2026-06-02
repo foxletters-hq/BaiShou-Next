@@ -1,8 +1,6 @@
 import React from 'react'
 import { DiaryEditor } from '@baishou/ui'
-import { motion } from 'framer-motion'
 import './DiaryEditorPage.css'
-import { DIARY_EDITOR_SAVE_EXIT_TRANSITION } from './diary-navigation'
 import { useDiaryEditorPage } from './hooks/useDiaryEditorPage'
 
 export const DiaryEditorPage: React.FC = () => {
@@ -19,21 +17,7 @@ export const DiaryEditorPage: React.FC = () => {
   }
 
   return (
-    <motion.div
-      className="diary-editor-page-container"
-      initial={{ opacity: 0, y: 30 }}
-      animate={
-        editor.isLeavingAfterSave
-          ? { opacity: 0, y: 28, scale: 0.97 }
-          : { opacity: 1, y: 0, scale: 1 }
-      }
-      transition={
-        editor.isLeavingAfterSave
-          ? DIARY_EDITOR_SAVE_EXIT_TRANSITION
-          : { type: 'spring', damping: 25, stiffness: 200 }
-      }
-      onAnimationComplete={editor.handleSaveExitComplete}
-    >
+    <div className="diary-editor-page-container">
       <DiaryEditor
         content={editor.content}
         tags={editor.tags}
@@ -96,6 +80,6 @@ export const DiaryEditorPage: React.FC = () => {
           </div>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }

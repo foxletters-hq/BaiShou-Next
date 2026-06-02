@@ -1,117 +1,331 @@
 import { generateText } from 'ai'
+import type { ModelMessage } from 'ai'
 import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
-// @ts-ignore (因为可能还没在 types 中对齐出它的 exports，如果 tsconfig 发现不了问题则忽略)
-import { SnapshotRepository } from '@baishou/database'
 // @ts-ignore
-import { MessageWithParts, MessageAdapter } from './message.adapter'
+import { SnapshotRepository } from '@baishou/database'
+import {
+  CompressionErrorCode,
+  compressionError,
+  getDefaultCompressionSystemPrompt,
+  buildAnchoredCompressionUserPrompt
+} from '@baishou/shared'
 import { logger } from '@baishou/shared'
+import { MessageAdapter, MessageWithParts } from './message.adapter'
+import {
+  estimateContextTokensForTrigger,
+  getMessagesAfterSnapshot,
+  resolveCompressionBatch,
+  hasEnoughMessagesForRecompress,
+  hasUserContentInCompressionBatch,
+  resolveSessionCompressionConfig,
+  resolveCompressionTrigger,
+  usableContextTokens,
+  computeTailStartMessageId,
+  preserveRecentTokenBudget,
+  extractMessageText,
+  cloneMessagesForCompressionModel,
+  type SessionCompressionConfig
+} from './context-compression.utils'
+import {
+  runCompressionWithSessionLock,
+  runRecompressWithSessionLock
+} from './compression-session-lock'
+import { CompressionPruneService } from './compression-prune.service'
+import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
+
+export type { SessionCompressionConfig } from './context-compression.utils'
+
+export type RecompressResult = {
+  ok: boolean
+  summaryText?: string
+  error?: string
+  errorCode?: string
+}
 
 export class ContextCompressorService {
-  /**
-   * 当历史记录过长（如超过 30 轮以上未压缩）时，
-   * 脱机调优主算力去总结这过往的闲聊并产生强记忆 Snapshot 留存。
-   */
+  /** 带会话锁的压缩入口（请求前 / 消息落库后共用） */
+  static async tryCompress(
+    provider: IAIProvider,
+    modelId: string,
+    sessionRepo: SessionRepository,
+    snapshotRepo: SnapshotRepository,
+    sessionId: string,
+    config?: SessionCompressionConfig,
+    providerType?: string
+  ): Promise<boolean> {
+    return runCompressionWithSessionLock(sessionId, () =>
+      ContextCompressorService.compress(
+        provider,
+        modelId,
+        sessionRepo,
+        snapshotRepo,
+        sessionId,
+        config,
+        providerType
+      )
+    )
+  }
+
+  static schedulePrune(
+    sessionRepo: SessionRepository,
+    sessionId: string,
+    allMessages?: MessageWithParts[]
+  ): void {
+    void CompressionPruneService.pruneSession(sessionRepo, sessionId, allMessages)
+  }
+
   static async compress(
     provider: IAIProvider,
     modelId: string,
     sessionRepo: SessionRepository,
     snapshotRepo: SnapshotRepository,
-    sessionId: string
-  ): Promise<void> {
+    sessionId: string,
+    config?: SessionCompressionConfig,
+    providerType = ''
+  ): Promise<boolean> {
     try {
-      const model = provider.getLanguageModel(modelId)
+      const compressionConfig =
+        config ?? (await resolveSessionCompressionConfig(sessionId, sessionRepo))
+
+      const usableWindow = usableContextTokens(
+        compressionConfig.modelContextWindow ?? 0,
+        compressionConfig.reservedTokens
+      )
+      if (
+        compressionConfig.threshold <= 0 &&
+        usableWindow <= 0 &&
+        !compressionConfig.force
+      ) {
+        return false
+      }
 
       const allMessages = (await sessionRepo.getMessagesBySession(
         sessionId,
-        500
+        COMPRESSION_MESSAGE_FETCH_LIMIT
       )) as MessageWithParts[]
-      if (allMessages.length < 10) return // 轮数太少不值得启动大作
+
+      if (allMessages.length < 4) return false
 
       const latestSnapshot = await snapshotRepo.getLatestSnapshot(sessionId)
+      const messagesAfterSnapshot = getMessagesAfterSnapshot(allMessages, latestSnapshot)
 
-      const startOrderIndex = latestSnapshot ? Number(latestSnapshot.coveredUpToMessageId) : -1
+      const contextTokens = estimateContextTokensForTrigger(
+        allMessages,
+        messagesAfterSnapshot,
+        latestSnapshot
+      )
+      if (!resolveCompressionTrigger(contextTokens, compressionConfig)) {
+        return false
+      }
 
-      // 我们提取从上次压缩点一直到现在的消息集合（不包括最后刚说的两句，留一些尾巴作为当前环境）
-      const safeBufferMessages = allMessages.slice(0, allMessages.length - 2)
-
-      const uncompressedChunk = safeBufferMessages.filter(
-        (m) => Number(m.orderIndex) > startOrderIndex
+      const preserveTokens = preserveRecentTokenBudget(compressionConfig)
+      const { toCompress, tailStartMessageId: splitTailStart } = resolveCompressionBatch(
+        allMessages,
+        {
+          priorSnapshot: latestSnapshot,
+          keepTurns: compressionConfig.keepTurns,
+          preserveRecentTokens: preserveTokens
+        }
       )
 
-      if (uncompressedChunk.length < 10) return // 新轮次积累不满 10 句话，省算力，下次再说！
+      if (toCompress.length < 2) {
+        logger.info(
+          `[ContextCompressor] Session(${sessionId}) context ~${contextTokens} but not enough history to compress.`
+        )
+        return false
+      }
 
-      const coreMessages = await MessageAdapter.toVercelMessages(uncompressedChunk)
+      if (!hasUserContentInCompressionBatch(toCompress)) {
+        logger.info(`[ContextCompressor] Session(${sessionId}) skip: no user text in batch.`)
+        return false
+      }
 
-      const oldSummary = latestSnapshot
-        ? `旧有的前情提要为：\n${latestSnapshot.summaryText}\n\n`
-        : ''
+      const generated = await ContextCompressorService.generateSummaryText(
+        provider,
+        modelId,
+        toCompress,
+        compressionConfig,
+        latestSnapshot?.summaryText ?? null,
+        providerType
+      )
+      if (!generated) return false
 
-      // 大工作量的重计算摘要 (耗时可达几十秒)，由 Vercel AI SDK 和主模型完成
-      const { text, usage } = await generateText({
-        model,
-        system: `你是一个记忆压缩与提纯大师。\n你的任务是仔细翻阅以下提供的大段对话历史脉络，并给出精简化、知识化的总结，提取重要的事实依据（比如对方提到的人名地名代码等），抛弃没有用的长篇废话。注意，提取的结果应该精炼紧凑，不能随意缩水重要的上下文环节，它将作为你长程记忆的新载体。\n\n${oldSummary}请输出总结后的合并内容。`,
-        messages: coreMessages,
-        temperature: 0.1
-      })
+      const coveredLastMsg = toCompress[toCompress.length - 1]!
+      const tailStartMessageId =
+        splitTailStart ?? computeTailStartMessageId(allMessages, coveredLastMsg.id)
 
-      if (!text) return
-
-      const coveredLastMsg = uncompressedChunk[uncompressedChunk.length - 1]!
+      const prevTokenCount = latestSnapshot?.tokenCount ?? 0
 
       await snapshotRepo.appendSnapshot({
-        sessionId: sessionId as any,
-        summaryText: text,
-        coveredUpToMessageId: String(coveredLastMsg.orderIndex),
+        sessionId: sessionId as string,
+        summaryText: generated.text,
+        coveredUpToMessageId: coveredLastMsg.id,
+        tailStartMessageId,
         messageCount: latestSnapshot
-          ? latestSnapshot.messageCount + uncompressedChunk.length
-          : uncompressedChunk.length,
-        tokenCount: latestSnapshot
-          ? latestSnapshot.tokenCount + ((usage as any).completionTokens ?? 0)
-          : ((usage as any).completionTokens ?? 0)
+          ? latestSnapshot.messageCount + toCompress.length
+          : toCompress.length,
+        tokenCount: prevTokenCount + generated.completionTokens
       })
 
-      // ============================================
-      // 物理级死重剥离 (Pruning Blade)
-      // 清空长达上万字的网页内容和历史长日志
-      // ============================================
-      const partsToPrune: string[] = []
-      const PRUNE_THRESHOLD = 800 // 字数超过这个界限的工具输出将被视为过期污染源
-
-      for (const msg of uncompressedChunk) {
-        if (msg.role === 'tool' && msg.parts) {
-          for (const p of msg.parts) {
-            if (p.type === 'tool') {
-              const data = p.data as any
-              if (typeof data?.result === 'string' && data.result.length > PRUNE_THRESHOLD) {
-                partsToPrune.push(p.id)
-              }
-            } else if (p.type === 'text') {
-              const data = p.data as any
-              if (typeof data?.text === 'string' && data.text.length > PRUNE_THRESHOLD) {
-                partsToPrune.push(p.id)
-              }
-            }
-          }
-        }
-      }
-
-      if (partsToPrune.length > 0) {
-        try {
-          await (sessionRepo as any).updatePartsDataFallback(partsToPrune, {
-            text: '[工具输出过长，已在后台压缩池中安全剥离]'
-          })
-          logger.info(
-            `[ContextCompressor] -> Physically pruned ${partsToPrune.length} heavy tool outputs.`
-          )
-        } catch (e) {}
-      }
-
       logger.info(
-        `[ContextCompressor] -> Silently generated deep memory snapshot for Session(${sessionId})! Token usage: ${usage.totalTokens}`
+        `[ContextCompressor] Snapshot Session(${sessionId}); context ~${contextTokens} tokens.`
       )
-    } catch (e: any) {
-      logger.error('[ContextCompressor] Compression job failed in background:', e.message)
+      return true
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.error('[ContextCompressor] Compression failed:', message)
+      return false
     }
+  }
+
+  static async recompressCurrentSnapshot(
+    provider: IAIProvider,
+    modelId: string,
+    sessionRepo: SessionRepository,
+    snapshotRepo: SnapshotRepository,
+    sessionId: string,
+    config?: SessionCompressionConfig,
+    providerType = ''
+  ): Promise<RecompressResult> {
+    const locked = await runRecompressWithSessionLock(sessionId, async () => {
+      try {
+        const compressionConfig =
+          config ?? (await resolveSessionCompressionConfig(sessionId, sessionRepo))
+
+        const snapshots = await snapshotRepo.listSnapshotsBySession(sessionId)
+        const latestSnapshot = snapshots[snapshots.length - 1]
+        if (!latestSnapshot?.summaryText?.trim()) {
+          return compressionError(CompressionErrorCode.NO_SNAPSHOT)
+        }
+
+        const previousSnapshot =
+          snapshots.length >= 2 ? snapshots[snapshots.length - 2]! : null
+
+        const allMessages = (await sessionRepo.getMessagesBySession(
+          sessionId,
+          COMPRESSION_MESSAGE_FETCH_LIMIT
+        )) as MessageWithParts[]
+
+        const preserveTokens = preserveRecentTokenBudget(compressionConfig)
+        const { toCompress, tailStartMessageId: splitTailStart } = resolveCompressionBatch(
+          allMessages,
+          {
+            priorSnapshot: previousSnapshot,
+            targetSnapshot: latestSnapshot,
+            keepTurns: compressionConfig.keepTurns,
+            preserveRecentTokens: preserveTokens
+          }
+        )
+
+        if (!hasEnoughMessagesForRecompress(toCompress)) {
+          return compressionError(CompressionErrorCode.NOT_ENOUGH_MESSAGES)
+        }
+
+        if (!hasUserContentInCompressionBatch(toCompress)) {
+          return compressionError(CompressionErrorCode.NO_USER_CONTENT)
+        }
+
+        const generated = await ContextCompressorService.generateSummaryText(
+          provider,
+          modelId,
+          toCompress,
+          compressionConfig,
+          previousSnapshot?.summaryText ?? null,
+          providerType
+        )
+
+        if (!generated?.text.trim()) {
+          return compressionError(CompressionErrorCode.EMPTY_SUMMARY)
+        }
+
+        const normalizedSummary = generated.text.trim()
+        const lastAssistant = [...toCompress].reverse().find((m) => m.role === 'assistant')
+        const lastAssistantText = lastAssistant ? extractMessageText(lastAssistant).trim() : ''
+        if (
+          lastAssistantText.length > 40 &&
+          normalizedSummary === lastAssistantText
+        ) {
+          return compressionError(CompressionErrorCode.VERBATIM_SUMMARY)
+        }
+
+        const coveredLastMsg = toCompress[toCompress.length - 1]!
+        const tailStartMessageId =
+          splitTailStart ?? computeTailStartMessageId(allMessages, coveredLastMsg.id)
+
+        await snapshotRepo.updateSnapshot(latestSnapshot.id, {
+          summaryText: normalizedSummary,
+          coveredUpToMessageId: coveredLastMsg.id,
+          tailStartMessageId,
+          messageCount: latestSnapshot.messageCount,
+          tokenCount: generated.completionTokens
+        })
+
+        logger.info(
+          `[ContextCompressor] Recompress updated snapshot #${latestSnapshot.id} Session(${sessionId}).`
+        )
+
+        return { ok: true, summaryText: normalizedSummary }
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e)
+        logger.error('[ContextCompressor] Manual recompress failed:', message)
+        return { ...compressionError(CompressionErrorCode.GENERIC, message), ok: false }
+      }
+    })
+
+    if (locked === undefined) {
+      return compressionError(CompressionErrorCode.ALREADY_RUNNING)
+    }
+    return locked
+  }
+
+  private static async generateSummaryText(
+    provider: IAIProvider,
+    modelId: string,
+    toCompress: MessageWithParts[],
+    compressionConfig: SessionCompressionConfig,
+    priorSummaryText: string | null,
+    providerType: string
+  ): Promise<{ text: string; completionTokens: number } | null> {
+    const model = provider.getLanguageModel(modelId)
+    const systemBase =
+      compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
+
+    const headForModel = cloneMessagesForCompressionModel(toCompress)
+    const headMessages = await MessageAdapter.toVercelMessages(
+      headForModel,
+      modelId,
+      providerType
+    )
+
+    const tailPrompt = buildAnchoredCompressionUserPrompt({
+      previousSummary: priorSummaryText?.trim() || undefined
+    })
+
+    const messages: ModelMessage[] = [
+      ...headMessages,
+      { role: 'user', content: tailPrompt }
+    ]
+
+    const { text, usage } = await generateText({
+      model,
+      system: systemBase,
+      messages,
+      temperature: 0.1
+    })
+
+    if (!text?.trim()) return null
+
+    const normalizedSummary = text.trim()
+    const lastAssistant = [...toCompress].reverse().find((m) => m.role === 'assistant')
+    const lastAssistantText = lastAssistant ? extractMessageText(lastAssistant).trim() : ''
+    if (lastAssistantText.length > 40 && normalizedSummary === lastAssistantText) {
+      return null
+    }
+
+    const completionTokens =
+      (usage as { completionTokens?: number } | undefined)?.completionTokens ?? 0
+
+    return { text: normalizedSummary, completionTokens }
   }
 }

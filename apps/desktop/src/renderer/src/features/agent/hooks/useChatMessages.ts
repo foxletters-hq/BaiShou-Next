@@ -25,6 +25,25 @@ export interface UseChatMessagesResult {
   setStreamSessionId: (id: string | null) => void
 }
 
+/** 首屏约 10 轮对话（按每轮约 4 条消息粗估，含工具调用） */
+export const CHAT_INITIAL_ROUND_BATCH = 10
+const CHAT_MSG_ESTIMATE_PER_ROUND = 4
+export const CHAT_INITIAL_MESSAGE_BATCH =
+  CHAT_INITIAL_ROUND_BATCH * CHAT_MSG_ESTIMATE_PER_ROUND
+const CHAT_LOAD_MORE_PAGE = 20
+
+function applyTailPage(
+  fetched: any[],
+  pageSize: number
+): { display: any[]; hasMore: boolean; loadedFromEnd: number } {
+  if (!fetched?.length) {
+    return { display: [], hasMore: false, loadedFromEnd: 0 }
+  }
+  const hasMore = fetched.length > pageSize
+  const display = hasMore ? fetched.slice(1) : fetched
+  return { display, hasMore, loadedFromEnd: fetched.length }
+}
+
 /**
  * 消息生命周期管理 Hook (去乐观化版本)
  * 所有的状态更新均建立在数据库真实数据之上。
@@ -37,13 +56,13 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   const [pendingAssistantMsg, setPendingAssistantMsg] = useState<PendingAssistantMsg | null>(null)
   const currentSessionIdRef = useRef<string | null>(null)
   const streamSessionIdRef = useRef<string | null>(null)
+  const loadedFromEndRef = useRef(0)
 
   const messagesRef = useRef<any[]>(messages)
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
 
-  // ── 核心：从数据库同步最新消息 ──
   const refreshMessages = useCallback(
     async (retryCount = 1, overrideSessionId?: string): Promise<boolean> => {
       const targetId = overrideSessionId || sessionId
@@ -51,22 +70,25 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
       for (let attempt = 0; attempt < retryCount; attempt++) {
         try {
-          // 实打实去数据库查当前会话的所有（或最近）消息
-          // 我们根据当前 state 长度决定拉多少，确保 UI 能够衔接上
-          const currentMsgCount = messagesRef.current.length
-          const fetchLimit = Math.max(50, currentMsgCount)
+          const wantCount = Math.max(
+            messagesRef.current.length,
+            loadedFromEndRef.current,
+            CHAT_INITIAL_MESSAGE_BATCH
+          )
+          const fetchLimit = wantCount + 1
 
-          const msgs = await window.electron.ipcRenderer.invoke(
+          const fetched = await window.electron.ipcRenderer.invoke(
             'agent:get-messages',
             targetId,
             fetchLimit,
             0
           )
 
-          if (msgs) {
-            // 直接使用数据库的最权威数据覆盖 state
-            setMessages(msgs)
-            setHasMore(msgs.length === fetchLimit)
+          if (fetched) {
+            const { display, hasMore: more, loadedFromEnd } = applyTailPage(fetched, wantCount)
+            setMessages(display)
+            setHasMore(more)
+            loadedFromEndRef.current = loadedFromEnd
             return true
           }
         } catch (e) {
@@ -81,11 +103,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     [sessionId]
   )
 
-  // ── Effect 1: 会话切换 → 始终从数据库加载历史 ──
   useEffect(() => {
     if (!sessionId) {
       setMessages([])
       setHasMore(false)
+      loadedFromEndRef.current = 0
       currentSessionIdRef.current = null
       setPendingAssistantMsg(null)
       return
@@ -93,34 +115,39 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
     if (sessionId !== currentSessionIdRef.current) {
       currentSessionIdRef.current = sessionId
+      loadedFromEndRef.current = 0
 
-      // 不管是不是新会话，不管 ID 是什么格式，一律从数据库加载
       const loadMessages = async () => {
         try {
-          const msgs = await window.electron.ipcRenderer.invoke(
+          const fetched = await window.electron.ipcRenderer.invoke(
             'agent:get-messages',
             sessionId,
-            50,
+            CHAT_INITIAL_MESSAGE_BATCH + 1,
             0
           )
-          if (msgs) {
-            setMessages(msgs)
-            setHasMore(msgs.length === 50)
+          if (fetched) {
+            const { display, hasMore: more, loadedFromEnd } = applyTailPage(
+              fetched,
+              CHAT_INITIAL_MESSAGE_BATCH
+            )
+            setMessages(display)
+            setHasMore(more)
+            loadedFromEndRef.current = loadedFromEnd
           }
         } catch (e) {
           console.error('[useChatMessages] DB fetch error:', e)
           setMessages([])
+          setHasMore(false)
+          loadedFromEndRef.current = 0
         }
       }
-      loadMessages()
+      void loadMessages()
     }
   }, [sessionId])
 
-  // ── Effect 2: AI 回复结束 → 同步数据库 ──
   const prevStreamingRef = useRef(isStreaming)
   useEffect(() => {
     if (prevStreamingRef.current && !isStreaming && sessionId) {
-      // 流结束瞬间，如果产生了内容，先放进 pending 气泡防止视觉闪烁
       if (streamSessionIdRef.current === sessionId && (streamingText || streamingReasoning)) {
         setPendingAssistantMsg({
           id: `pending-${Date.now()}`,
@@ -129,44 +156,43 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
         })
       }
 
-      // 然后实打实地同步数据库消息
       const sync = async () => {
-        await new Promise((r) => setTimeout(r, 100)) // 给主进程落盘留出极小间隙
-        const success = await refreshMessages(5) // 增加重试次数确保拿到刚落盘的数据
+        await new Promise((r) => setTimeout(r, 100))
+        const success = await refreshMessages(5)
         if (success) {
-          setPendingAssistantMsg(null) // 同步成功后，才撤掉 pending 气泡
+          setPendingAssistantMsg(null)
         } else {
-          // 如果多次重试都没拿到（可能 AI 没回复成功），也清除气泡
           setPendingAssistantMsg(null)
         }
       }
-      sync()
+      void sync()
     }
     prevStreamingRef.current = isStreaming
   }, [isStreaming, sessionId, streamingText, streamingReasoning, refreshMessages])
 
-  // ── 分页加载 ──
   const loadMore = useCallback(async () => {
     if (!sessionId) return
     try {
-      const msgs = await window.electron.ipcRenderer.invoke(
+      const fetched = await window.electron.ipcRenderer.invoke(
         'agent:get-messages',
         sessionId,
-        20,
-        messages.length
+        CHAT_LOAD_MORE_PAGE + 1,
+        loadedFromEndRef.current
       )
-      if (msgs && msgs.length > 0) {
-        setMessages((prev) => [...msgs, ...prev])
-        setHasMore(msgs.length === 20)
-      } else {
+      if (!fetched?.length) {
         setHasMore(false)
+        return
       }
-    } catch {
-      // 静默失败
+      const hasMorePage = fetched.length > CHAT_LOAD_MORE_PAGE
+      const page = hasMorePage ? fetched.slice(1) : fetched
+      loadedFromEndRef.current += fetched.length
+      setMessages((prev) => [...page, ...prev])
+      setHasMore(hasMorePage)
+    } catch (e) {
+      console.warn('[useChatMessages] loadMore failed:', e)
     }
-  }, [sessionId, messages.length])
+  }, [sessionId])
 
-  // ── 外部接口 ──
   const optimisticRemove = useCallback((id: string) => {
     setMessages((prev) => prev.filter((m) => m.id !== id))
   }, [])

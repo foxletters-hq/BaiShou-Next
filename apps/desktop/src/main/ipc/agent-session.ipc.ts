@@ -4,6 +4,7 @@ import { getAgentManagers } from './agent-helpers'
 import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import { GlobalModelsConfig, logger } from '@baishou/shared'
+import { copyBranchCompressionSnapshots } from '@baishou/ai'
 
 export function registerSessionIPC() {
   // ==========================================
@@ -138,7 +139,8 @@ export function registerSessionIPC() {
       _,
       { sessionId, messageId, title }: { sessionId: string; messageId: string; title?: string }
     ) => {
-      const { realSessionRepo, sessionManager, realMessageRepo } = getAgentManagers()
+      const { realSessionRepo, sessionManager, realMessageRepo, realSnapshotRepo } =
+        getAgentManagers()
 
       // 1. 获取原会话信息
       const originalSession = await realSessionRepo.getSessionById(sessionId)
@@ -180,10 +182,12 @@ export function registerSessionIPC() {
         title: branchTitle
       } as any)
 
-      // 6. 复制消息到新会话
+      // 6. 复制消息到新会话（保留 oldId -> newId 映射供压缩快照重锚）
+      const oldToNewMessageId = new Map<string, string>()
       for (let i = 0; i < messagesToCopy.length; i++) {
         const msg = messagesToCopy[i]
         const newMsgId = crypto.randomUUID()
+        oldToNewMessageId.set(msg.id, newMsgId)
 
         // 获取原始消息的 parts
         const originalParts = await realMessageRepo.getPartsByMessageId(msg.id)
@@ -211,10 +215,22 @@ export function registerSessionIPC() {
         )
       }
 
+      const copiedCompression = await copyBranchCompressionSnapshots(
+        realSnapshotRepo,
+        sessionId,
+        newSessionId,
+        oldToNewMessageId,
+        messagesToCopy.map((m: { id: string; orderIndex: number }) => ({
+          id: m.id,
+          orderIndex: m.orderIndex
+        }))
+      )
+
       await sessionManager.flushSessionToDisk(newSessionId)
 
       logger.info(
-        `[Branch] Created branch session ${newSessionId} from ${sessionId}, copied ${messagesToCopy.length} messages`
+        `[Branch] Created branch session ${newSessionId} from ${sessionId}, copied ${messagesToCopy.length} messages` +
+          (copiedCompression ? ', compression snapshot copied' : '')
       )
       return newSessionId
     }

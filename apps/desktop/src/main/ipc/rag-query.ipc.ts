@@ -72,7 +72,8 @@ export function registerRagQueryIPC() {
                   embeddingId: r.messageId, // ISearchResult では messageId に embeddingId が入っている
                   text: r.chunkText,
                   modelId: config.getGlobalEmbeddingModelId() || 'unknown',
-                  createdAt: r.createdAt || Date.now(),
+                  createdAt:
+                    typeof r.createdAt === 'number' && r.createdAt > 0 ? r.createdAt : Date.now(),
                   similarity: r.score // コサイン类似度が score に入っている
                 }))
 
@@ -107,7 +108,7 @@ export function registerRagQueryIPC() {
         embeddingId: r.embeddingId,
         text: r.chunkText,
         modelId: r.modelId,
-        createdAt: r.createdAt?.getTime() || 0
+        createdAt: r.createdAt?.getTime() || Date.now()
       }))
 
       if (params.withTotal) {

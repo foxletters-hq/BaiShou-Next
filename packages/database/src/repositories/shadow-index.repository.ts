@@ -1,6 +1,6 @@
 import type { AppDatabase } from '../types'
 import { ShadowIndexQueryOps } from './shadow-index.repository.queries'
-import { ShadowIndexUpsertOps } from './shadow-index.repository.upsert'
+import { ShadowIndexUpsertOps, normalizeShadowFilePath } from './shadow-index.repository.upsert'
 
 export type {
   ShadowJournalRecord,
@@ -8,6 +8,8 @@ export type {
   ShadowFTSResult,
   DiaryListFilterOptions
 } from './shadow-index.repository.types'
+
+export { normalizeShadowFilePath } from './shadow-index.repository.upsert'
 
 /**
  * Shadow Index Repository

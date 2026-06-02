@@ -60,54 +60,12 @@
   padding: 12px;
 }
 
-/* Tool Execution Group - 类似 ThinkingBlock 样式 */
-.toolGroupCard {
-  margin-bottom: 12px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1.5px solid var(--border-subtle);
-  box-shadow: none !important;
-  background: var(--bg-surface);
-}
-
-.toolHeader {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  background: var(--bg-surface-normal);
-}
-
-.toolIcon {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  margin-right: 8px;
-}
-
-.toolTitle {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  flex: 1;
-}
-
-.toolCountBadge {
-  padding: 2px 8px;
-  background-color: rgba(var(--color-primary-rgb), 0.1);
-  color: var(--color-primary);
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 700;
-}
-
 .toolList {
   display: flex;
   flex-direction: column;
-  padding: 8px 14px;
+  padding: 8px 14px 12px;
   gap: 6px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .toolItem {

@@ -1,5 +1,8 @@
-import { logger } from '@baishou/shared'
+import { logger, limitExecute } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_LIMITS } from './web-search-config.util'
+
+/** 与桌面端 SearchService 窗口池并发一致 */
+const LOCAL_SEARCH_CONTENT_CONCURRENCY = 4
 
 export interface SearchItem {
   title: string
@@ -65,28 +68,33 @@ export abstract class LocalSearchProvider {
       const limitedItems = searchItems.slice(0, maxResults)
       const snippetLimit = plainSnippetLength ?? DEFAULT_WEB_SEARCH_LIMITS.plainSnippetLength
 
-      // 获取每个搜索结果的详细内容
-      const results: SearchResult[] = []
-      for (const item of limitedItems) {
-        try {
-          let content = ''
-          if (webSearchResultFetcher) {
-            content = await webSearchResultFetcher(item.url)
-          } else {
-            content = await this.fetchPageContent(item.url)
-          }
+      // 并行抓取各结果页（主进程侧有并发上限）
+      const fetched = await limitExecute(
+        limitedItems,
+        LOCAL_SEARCH_CONTENT_CONCURRENCY,
+        async (item) => {
+          try {
+            const content = webSearchResultFetcher
+              ? await webSearchResultFetcher(item.url)
+              : await this.fetchPageContent(item.url)
 
-          if (content && !content.startsWith('Failed to read URL')) {
-            results.push({
+            if (!content || content.startsWith('Failed to read URL')) {
+              return null
+            }
+
+            return {
               title: item.title,
               url: item.url,
               content: this.truncateContent(content, snippetLimit)
-            })
+            } satisfies SearchResult
+          } catch (e: any) {
+            logger.warn(`[LocalSearchProvider] Failed to fetch content for ${item.url}:`, e)
+            return null
           }
-        } catch (e: any) {
-          logger.warn(`[LocalSearchProvider] Failed to fetch content for ${item.url}:`, e)
         }
-      }
+      )
+
+      const results = fetched.filter((r): r is SearchResult => r !== null)
 
       return {
         query,

@@ -84,10 +84,8 @@ export function registerAttachmentIPC() {
                       )
                       if (!nativePdfSupported) {
                         try {
-                          const pdfParse = require('pdf-parse')
-                          const dataBuffer = await fs.readFile(destPath)
-                          const pdfData = await pdfParse(dataBuffer)
-                          att.textContent = pdfData.text || ''
+                          const { readPdfTextFromPath } = await import('@baishou/ai')
+                          att.textContent = (await readPdfTextFromPath(destPath)) || ''
                           att.isText = true
                         } catch (pdfErr) {
                           logger.error('Failed to parse PDF file:', {

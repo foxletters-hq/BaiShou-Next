@@ -22,6 +22,7 @@ export interface AgentSidebarProps {
   selectedSessionId?: string
   searchQuery?: string
   hasMore?: boolean
+  isLoadingMore?: boolean
   scrollKey?: number
   pinnedAssistants?: AgentAssistant[]
   onSearchQueryChanged: (q: string) => void
@@ -57,6 +58,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
   onCollapse,
   onShowPicker,
   hasMore,
+  isLoadingMore = false,
   scrollKey,
   onLoadMore,
   isCollapsed = false,
@@ -137,6 +139,7 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
           searchQuery={searchQuery}
           selectedSessionId={selectedSessionId}
           hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
           scrollKey={scrollKey}
           isMultiSelect={isMultiSelect}
           selectedIds={selectedIds}

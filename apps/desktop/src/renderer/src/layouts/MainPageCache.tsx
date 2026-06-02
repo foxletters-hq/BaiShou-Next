@@ -6,12 +6,7 @@ import { LanTransferPage } from '../features/settings/LanTransferPage'
 import { CloudSyncPage } from '../features/settings/CloudSyncPage'
 import { IncrementalSyncPage } from '../features/settings/IncrementalSyncPage'
 import { GitManagementPage } from '../features/settings/GitManagementPage'
-import {
-  consumeDiaryReturnReveal,
-  DIARY_RETURN_REVEAL_TRANSITION
-} from '../features/diary/diary-navigation'
 import styles from './MainLayout.module.css'
-
 /** 侧边栏主页面：切换时保持挂载，避免重复加载数据 */
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/diary': DiaryPage,
@@ -40,27 +35,14 @@ const CachedPageLayer: React.FC<{
     let cancelled = false
 
     const reveal = async () => {
-      if (cacheKey === '/diary' && consumeDiaryReturnReveal()) {
-        controls.set({ opacity: 0, y: 22 })
-        if (!cancelled) {
-          await controls.start({
-            opacity: 1,
-            y: 0,
-            transition: DIARY_RETURN_REVEAL_TRANSITION
-          })
-        }
-        return
-      }
-
       if (!cancelled) {
         await controls.start({
           opacity: 1,
           y: 0,
-          transition: { duration: 0.35, ease: 'easeOut' }
+          transition: { duration: 0 }
         })
       }
     }
-
     void reveal()
 
     return () => {

@@ -10,6 +10,7 @@ export interface AssistantInfo {
   modelId?: string
   compressTokenThreshold: number
   compressKeepTurns?: number
+  compressSystemPrompt?: string | null
   ragSpaceId?: string
 }
 

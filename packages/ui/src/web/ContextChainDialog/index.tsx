@@ -28,6 +28,13 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
     'context' | 'compressed' | 'original' | 'prompt'
   >('context')
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelectedMsgIndex(null)
+      setActiveTab('context')
+    }
+  }, [isOpen, message.id])
+
   if (!isOpen) return null
 
   const totalInputTokens = message.inputTokens || 0
@@ -49,6 +56,12 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
     }
   }
 
+  const getMessageLabel = (msg: MockChatMessage) => msg.label || getRoleLabel(msg.role)
+
+  const systemPromptInChain = contextMessages.some(
+    (m) => m.role === 'system' && m.label === '系统提示词'
+  )
+
   const getRoleColorClass = (role: string) => {
     switch (role) {
       case 'user':
@@ -65,17 +78,21 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
   }
 
   const tabs = [
-    { key: 'context', label: t('agent.chat.tab_context', '上下文') },
+    { key: 'context', label: t('agent.chat.tab_call_chain', '调用链') },
     ...(compressedContent
       ? [
           {
             key: 'compressed',
-            label: t('agent.chat.tab_compressed', '压缩内容')
+            label: t('agent.chat.tab_compressed', '压缩摘要')
           }
         ]
       : []),
-    ...(originalContent ? [{ key: 'original', label: t('agent.chat.tab_original', '原文') }] : []),
-    ...(systemPrompt ? [{ key: 'prompt', label: t('agent.chat.tab_prompt', '提示词') }] : [])
+    ...(originalContent
+      ? [{ key: 'original', label: t('agent.chat.tab_original', '界面原文') }]
+      : []),
+    ...(systemPrompt && !systemPromptInChain
+      ? [{ key: 'prompt', label: t('agent.chat.tab_prompt', '系统提示词') }]
+      : [])
   ]
 
   return (
@@ -84,7 +101,9 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
         <div className={styles.header}>
           <div className={styles.titleRow}>
             <span className={styles.icon}>🌿</span>
-            <span className={styles.title}>{t('agent.chat.context_chain', '上下文调用链')}</span>
+            <span className={styles.title}>
+              {t('agent.chat.full_call_chain', '完整调用链')}
+            </span>
             <span className={styles.badge}>{contextMessages.length}</span>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>
@@ -135,25 +154,37 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
 
         {activeTab === 'context' && (
           <div className={styles.listContainer}>
-            {contextMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={styles.messageItem}
-                onClick={() => setSelectedMsgIndex(idx)}
-              >
-                <span className={styles.msgIndex}>{idx + 1}</span>
-                <span className={`${styles.msgRole} ${getRoleColorClass(msg.role)}`}>
-                  {getRoleLabel(msg.role)}
-                </span>
-                <div className={styles.msgPreview}>
-                  {msg.content ||
-                    (msg.toolInvocations
-                      ? '→ Toolbar interaction'
-                      : t('agent.chat.empty_content', '[空文本]'))}
-                </div>
-                <span className={styles.chevron}>›</span>
+            {contextMessages.length === 0 ? (
+              <div className={styles.emptyHint}>
+                {t('agent.chat.no_context_messages', '暂无发送给 AI 的上下文记录')}
               </div>
-            ))}
+            ) : (
+              contextMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={styles.messageItem}
+                  onClick={() => setSelectedMsgIndex(idx)}
+                >
+                  <span className={styles.msgIndex}>{idx + 1}</span>
+                  <span
+                    className={`${styles.msgRole} ${getRoleColorClass(msg.role)}`}
+                    title={msg.label ? getRoleLabel(msg.role) : undefined}
+                  >
+                    {getMessageLabel(msg)}
+                  </span>
+                  <div className={styles.msgPreview}>
+                    {msg.content
+                      ? msg.content.length > 200
+                        ? `${msg.content.slice(0, 200)}…`
+                        : msg.content
+                      : msg.toolInvocations
+                        ? '→ Toolbar interaction'
+                        : t('agent.chat.empty_content', '[空文本]')}
+                  </div>
+                  <span className={styles.chevron}>›</span>
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -190,7 +221,7 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
                 <span
                   className={`${styles.msgRole} ${getRoleColorClass(contextMessages[selectedMsgIndex].role)}`}
                 >
-                  {getRoleLabel(contextMessages[selectedMsgIndex].role)}
+                  {getMessageLabel(contextMessages[selectedMsgIndex])}
                 </span>
                 <span className={styles.detailIndex}>#{selectedMsgIndex + 1}</span>
               </div>

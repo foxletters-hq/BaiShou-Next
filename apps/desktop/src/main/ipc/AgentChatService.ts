@@ -9,10 +9,14 @@ import {
   createFetchSearchPage,
   buildStreamConfig
 } from './agent-helpers'
+import { searchService } from '../services/search.service'
 
 export class AgentChatService {
   public static stopStream() {
-    return AgentChatCoreService.stopStream()
+    const stopped = AgentChatCoreService.stopStream()
+    searchService.requestAbort()
+    void searchService.closeAllSearchWindows()
+    return stopped
   }
 
   public static resetAbortController() {

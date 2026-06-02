@@ -18,6 +18,7 @@
   --bg-surface-lowest: #f8fafc; /* Lightest surface, near-white */
   --bg-surface-lowest-rgb: 248, 250, 252;
   --bg-surface-low: #f8f9fa; /* Tertiary background */
+  --bg-surface-highlight: var(--bg-surface-high); /* Hover / inset panels, footers */
 
   /* Glassmorphism Overlays (Light) */
   --bg-overlay: rgba(0, 0, 0, 0.35);
@@ -116,6 +117,7 @@
   --bg-surface-lowest: #151518; /* Darkest surface, near-black */
   --bg-surface-lowest-rgb: 21, 21, 24;
   --bg-surface-low: #151518; /* Tertiary background */
+  --bg-surface-highlight: var(--bg-surface-high);
 
   /* Glassmorphism Overlays (Dark) */
   --bg-overlay: rgba(0, 0, 0, 0.55);

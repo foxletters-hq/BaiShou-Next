@@ -10,6 +10,7 @@ interface AgentSessionListProps {
   searchQuery: string
   selectedSessionId?: string
   hasMore?: boolean
+  isLoadingMore?: boolean
   scrollKey?: number
   isMultiSelect: boolean
   selectedIds: Set<string>
@@ -30,6 +31,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
   searchQuery,
   selectedSessionId,
   hasMore,
+  isLoadingMore = false,
   scrollKey,
   isMultiSelect,
   selectedIds,
@@ -92,18 +94,22 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
                 }}
               >
                 <button
-                  onClick={onLoadMore}
+                  type="button"
+                  disabled={isLoadingMore}
+                  onClick={() => onLoadMore?.()}
                   style={{
                     background: 'transparent',
                     border: 'none',
                     color: 'var(--color-primary)',
                     fontSize: 13,
                     fontWeight: 600,
-                    cursor: 'pointer',
-                    opacity: 0.8
+                    cursor: isLoadingMore ? 'wait' : 'pointer',
+                    opacity: isLoadingMore ? 0.5 : 0.9
                   }}
                 >
-                  {t('agent.sidebar.load_more', '加载更多对话')}
+                  {isLoadingMore
+                    ? t('common.loading', '加载中...')
+                    : t('agent.sidebar.load_more', '加载更多对话')}
                 </button>
               </div>
             )}

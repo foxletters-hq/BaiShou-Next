@@ -16,6 +16,9 @@ export interface InsertAssistantInput {
   modelId?: string | null
   compressTokenThreshold?: number
   compressKeepTurns?: number
+  compressModelContextWindow?: number | null
+  compressPreserveRecentTokens?: number | null
+  compressSystemPrompt?: string | null
   sortOrder?: number
 }
 
@@ -67,6 +70,9 @@ export class AssistantRepository {
         modelId: input.modelId,
         compressTokenThreshold: input.compressTokenThreshold ?? 60000,
         compressKeepTurns: input.compressKeepTurns ?? 3,
+        compressModelContextWindow: input.compressModelContextWindow ?? null,
+        compressPreserveRecentTokens: input.compressPreserveRecentTokens ?? null,
+        compressSystemPrompt: input.compressSystemPrompt ?? null,
         sortOrder: input.sortOrder ?? 0,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -96,6 +102,9 @@ export class AssistantRepository {
         modelId: input.modelId,
         compressTokenThreshold: input.compressTokenThreshold,
         compressKeepTurns: input.compressKeepTurns,
+        compressModelContextWindow: input.compressModelContextWindow,
+        compressPreserveRecentTokens: input.compressPreserveRecentTokens,
+        compressSystemPrompt: input.compressSystemPrompt,
         sortOrder: input.sortOrder,
         updatedAt: new Date()
       })

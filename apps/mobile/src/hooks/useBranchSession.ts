@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
+import { copyBranchCompressionSnapshots } from '@baishou/ai'
 
 export function useBranchSession() {
   const { t } = useTranslation()
@@ -19,7 +20,10 @@ export function useBranchSession() {
       }
 
       try {
-        const { sessionManager } = services
+        const { sessionManager, snapshotRepo } = services
+        if (!snapshotRepo) {
+          throw new Error(t('agent.service_not_ready', '服务未就绪'))
+        }
 
         // 1. 获取原会话信息
         const sessions = await sessionManager.findAllSessions(1000)
@@ -54,9 +58,11 @@ export function useBranchSession() {
         } as any)
 
         // 6. 复制消息到新会话
+        const oldToNewMessageId = new Map<string, string>()
         for (let i = 0; i < messagesToCopy.length; i++) {
           const msg = messagesToCopy[i] as any
           const newMsgId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+          oldToNewMessageId.set(msg.id, newMsgId)
 
           // 获取原始消息的 parts
           const originalParts = msg.parts || []
@@ -83,6 +89,17 @@ export function useBranchSession() {
             }))
           )
         }
+
+        await copyBranchCompressionSnapshots(
+          snapshotRepo,
+          sessionId,
+          newSessionId,
+          oldToNewMessageId,
+          messagesToCopy.map((m: { id: string; orderIndex: number }) => ({
+            id: m.id,
+            orderIndex: m.orderIndex
+          }))
+        )
 
         return newSessionId
       } catch (e: any) {

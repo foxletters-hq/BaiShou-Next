@@ -120,7 +120,13 @@ export class WebSearchService {
       return this.searchDuckDuckGo(query, maxResults)
     }
     if (engine === 'local-bing') {
-      return this.searchLocalBing(query, maxResults, webSearchResultFetcher, plainSnippetLength)
+      return this.searchLocalBing(
+        query,
+        maxResults,
+        webSearchResultFetcher,
+        fetchSearchPage,
+        plainSnippetLength
+      )
     }
     if (engine === 'local-google') {
       return this.searchLocalGoogle(
@@ -283,10 +289,11 @@ export class WebSearchService {
     query: string,
     maxResults: number,
     webSearchResultFetcher?: (url: string) => Promise<string>,
+    fetchSearchPage?: (url: string) => Promise<string>,
     plainSnippetLength?: number
   ): Promise<SearchResult[]> {
     try {
-      const provider = new LocalBingProvider()
+      const provider = new LocalBingProvider(fetchSearchPage)
       const response = await provider.search(
         query,
         maxResults,

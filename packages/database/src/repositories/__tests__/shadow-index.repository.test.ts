@@ -77,6 +77,72 @@ describe('ShadowIndexRepository', () => {
       const updated = await repo.findByDate(dateIso)
       expect(updated!.id).toBe(initialId)
     })
+
+    it('batchUpsert avoids primary key collision when two files share the same frontmatter id', async () => {
+      const sharedId = 1772890741147
+      const first = {
+        ...generateDummyPayload('2024-10-22T00:00:00.000Z', 'first diary'),
+        id: sharedId,
+        filePath: 'Journals/2024/10/2024-10-22.md'
+      }
+      const second = {
+        ...generateDummyPayload('2024-10-23T00:00:00.000Z', 'second diary'),
+        id: sharedId,
+        filePath: 'Journals/2024/10/2024-10-23.md'
+      }
+
+      const rowIds = await repo.batchUpsert([first, second])
+
+      expect(rowIds).toHaveLength(2)
+      expect(rowIds[0]).toBe(sharedId)
+      expect(rowIds[1]).not.toBe(sharedId)
+
+      const records = await repo.getAllRecords()
+      expect(records).toHaveLength(2)
+      expect(records.map((r) => r.filePath).sort()).toEqual([
+        'Journals/2024/10/2024-10-22.md',
+        'Journals/2024/10/2024-10-23.md'
+      ])
+    })
+
+    it('upsert updates by file_path when frontmatter id belongs to another row', async () => {
+      const sharedId = 1779839668027
+      await repo.upsert({
+        ...generateDummyPayload('2024-01-01T00:00:00.000Z', 'other diary'),
+        id: sharedId,
+        filePath: 'Journals/2024/01/other.md'
+      })
+
+      const rowId = await repo.upsert({
+        ...generateDummyPayload('2026-05-27T00:00:00.000Z', 'bbq diary'),
+        id: sharedId,
+        filePath: 'Journals/2026/05/2026-05-27.md'
+      })
+
+      expect(rowId).not.toBe(sharedId)
+      expect(await repo.count()).toBe(2)
+
+      const updated = await repo.findByDate('2026-05-27T00:00:00.000Z')
+      expect(updated?.rawContent).toBe('bbq diary')
+    })
+
+    it('upsert updates existing row when file_path already indexed with a different id', async () => {
+      const dateIso = '2026-05-27T00:00:00.000Z'
+      const indexedId = await repo.upsert({
+        ...generateDummyPayload(dateIso, 'original'),
+        filePath: 'Journals/2026/05/2026-05-27.md'
+      })
+
+      const rowId = await repo.upsert({
+        ...generateDummyPayload(dateIso, 'updated content'),
+        id: 1779839668027,
+        filePath: 'Journals/2026/05/2026-05-27.md'
+      })
+
+      expect(rowId).toBe(indexedId)
+      expect(await repo.count()).toBe(1)
+      expect((await repo.findByDate(dateIso))?.rawContent).toBe('updated content')
+    })
   })
 
   describe('Full Text Search (FTS5)', () => {

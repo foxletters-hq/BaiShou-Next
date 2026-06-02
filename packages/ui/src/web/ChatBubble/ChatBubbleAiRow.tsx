@@ -117,19 +117,8 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
               onBranch={onBranch}
               onReadAloud={onReadAloud ? () => onReadAloud(message.content || '') : undefined}
               isTtsPlaying={isTtsPlaying}
+              onShowContext={onShowContext ? () => onShowContext(message) : undefined}
             />
-            <div className={styles.footerRight}>
-              {message.contextMessages && message.contextMessages.length > 0 && (
-                <button
-                  type="button"
-                  className={styles.contextBtn}
-                  onClick={() => onShowContext?.(message)}
-                  title={t('chat.viewContextTree', '查看对话上下文树')}
-                >
-                  🌿
-                </button>
-              )}
-            </div>
           </div>
         </>
       )}

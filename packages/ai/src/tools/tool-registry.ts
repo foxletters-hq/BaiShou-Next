@@ -13,6 +13,7 @@ import { MemoryDeleteTool } from './memory-delete.tool'
 import { MessageSearchTool } from './message-search.tool'
 import { VectorSearchTool } from './vector-search.tool'
 import { CurrentTimeTool } from './current-time.tool'
+import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from './context-compress.tool'
 
 export class ToolRegistry {
   private readonly tools = new Map<string, AgentTool>()
@@ -32,7 +33,9 @@ export class ToolRegistry {
       new MemoryDeleteTool(),
       new MessageSearchTool(),
       new VectorSearchTool(),
-      new CurrentTimeTool()
+      new CurrentTimeTool(),
+      new ContextCompressUpstreamTool(),
+      new ContextCompressDownstreamTool()
     ])
   }
 

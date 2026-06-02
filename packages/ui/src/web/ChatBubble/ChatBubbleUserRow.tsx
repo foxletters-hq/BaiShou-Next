@@ -22,6 +22,7 @@ interface ChatBubbleUserRowProps {
   onStartEdit: () => void
   onResend?: () => void
   onDelete?: () => void
+  onShowContext?: (msg: MockChatMessage) => void
   t: (key: string, fallback: string) => string
 }
 
@@ -41,6 +42,7 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
   onStartEdit,
   onResend,
   onDelete,
+  onShowContext,
   t
 }) => (
   <div className={`${styles.bubbleRow} ${styles.userRow}`}>
@@ -76,13 +78,16 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
             )}
             {message.content && <div className={styles.textContentUser}>{message.content}</div>}
           </div>
-          <MessageActionBar
-            isAI={false}
-            onCopy={onCopy}
-            onRetry={onResend}
-            onEdit={onStartEdit}
-            onDelete={onDelete}
-          />
+          <div className={styles.userFooterRow}>
+            <MessageActionBar
+              isAI={false}
+              onCopy={onCopy}
+              onRetry={onResend}
+              onEdit={onStartEdit}
+              onDelete={onDelete}
+              onShowContext={onShowContext ? () => onShowContext(message) : undefined}
+            />
+          </div>
         </>
       )}
     </div>

@@ -89,6 +89,8 @@ $RECYCLE.BIN/
 # ─── 日志 ──────────────────────────────────────────────────
 logs/
 *.log
+**/detect-debug.log
+**/node_modules/.vite/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -10,6 +10,7 @@ export interface MessageActionBarProps {
   onReadAloud?: () => void
   onDelete?: () => void
   onBranch?: () => void
+  onShowContext?: () => void
   isAI?: boolean
   isTtsPlaying?: boolean
 }
@@ -21,6 +22,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
   onReadAloud,
   onDelete,
   onBranch,
+  onShowContext,
   isAI = true,
   isTtsPlaying = false
 }) => {
@@ -86,16 +88,28 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
         </button>
       )}
 
+      {onShowContext && (
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={onShowContext}
+          title={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
+          aria-label={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
+        >
+          <span className={styles.contextChainIcon} aria-hidden>
+            🌿
+          </span>
+        </button>
+      )}
+
       {onDelete && (
-        <>
-          <button
-            className={`${styles.iconBtn} ${styles.dangerBtn}`}
-            onClick={onDelete}
-            title={t('common.delete', '删除此条气泡')}
-          >
-            <Trash2 size={14} />
-          </button>
-        </>
+        <button
+          className={`${styles.iconBtn} ${styles.dangerBtn}`}
+          onClick={onDelete}
+          title={t('common.delete', '删除此条气泡')}
+        >
+          <Trash2 size={14} />
+        </button>
       )}
     </div>
   )

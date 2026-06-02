@@ -7,7 +7,8 @@ import {
   useAssistantStore,
   usePromptShortcutStore,
   useUserProfileStore,
-  useAgentStore
+  useAgentStore,
+  useContextCompressionStore
 } from '@baishou/store'
 import { useAgentStream } from './useAgentStream'
 import { useChatMessages } from './useChatMessages'
@@ -81,12 +82,20 @@ export function useAgentChatFlow() {
   const [recallLookbackMonths, setRecallLookbackMonths] = useState(1)
   const [contextDialogState, setContextDialogState] = useState<{
     isOpen: boolean
+    sessionId?: string
+    sourceMessageId?: string
     message?: any
-    contextMessages?: any[]
+    flatEntries?: any[]
+    meta?: any
     compressedContent?: string
-    originalContent?: string
     systemPrompt?: string
   }>({ isOpen: false })
+  const activeContextSessionId = contextDialogState.sessionId ?? sessionId
+  const contextRecompressJob = useContextCompressionStore((s) =>
+    activeContextSessionId ? s.jobs[activeContextSessionId] : undefined
+  )
+  const storeRunRecompress = useContextCompressionStore((s) => s.runRecompress)
+  const storeClearRecompressError = useContextCompressionStore((s) => s.clearError)
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
   const pricingBootWarnShownRef = useRef(false)
   const inputBarRef = useRef<InputBarRef>(null)
@@ -283,6 +292,31 @@ export function useAgentChatFlow() {
     }
   }
 
+  const runContextRecompress = useCallback(
+    async (targetSessionId: string) => {
+      if (!targetSessionId) return
+      const result = await storeRunRecompress(targetSessionId)
+      if (result?.ok && result.summaryText) {
+        // 面板仍挂载时即时刷新摘要；若已切走（组件卸载）此更新为 no-op，
+        // 重新进入会话重新拉取调用链时会从数据库读到最新快照。
+        setContextDialogState((prev) => ({
+          ...prev,
+          compressedContent: result.summaryText,
+          flatEntries: prev.flatEntries?.map((entry: { kind?: string; summaryText?: string }) =>
+            entry.kind === 'compression-summary'
+              ? { ...entry, summaryText: result.summaryText }
+              : entry
+          )
+        }))
+      }
+    },
+    [storeRunRecompress]
+  )
+
+  const dismissContextRecompressError = useCallback(() => {
+    if (activeContextSessionId) storeClearRecompressError(activeContextSessionId)
+  }, [activeContextSessionId, storeClearRecompressError])
+
   return {
     t,
     i18n,
@@ -323,6 +357,9 @@ export function useAgentChatFlow() {
     setRecallLookbackMonths,
     contextDialogState,
     setContextDialogState,
+    contextRecompressJob,
+    runContextRecompress,
+    dismissContextRecompressError,
     pricingLastUpdated,
     handleRefreshPricing,
     currentAssistant,

@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo } from 'react'
+import { ChevronDown } from 'lucide-react'
+import shared from '../shared/CollapsibleAncillaryBlock.module.css'
 import styles from './StreamingBubble.module.css'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock'
@@ -159,13 +161,20 @@ const ToolExecutionGroup: React.FC<{
   const { t } = useTranslation()
   const totalTools = completedTools.length + (activeToolName ? 1 : 0)
 
+  const title =
+    activeToolName && completedTools.length === 0
+      ? t('agent.tools.tool_call', '工具调用')
+      : t('agent.tools.tool_call_results', '工具调用 · {{count}} 个结果', {
+          count: totalTools
+        })
+
   return (
-    <div className={styles.toolGroupCard}>
-      <div className={styles.toolHeader}>
-        <div className={styles.toolIcon}>🎧</div>
-        <span className={styles.toolTitle}>{t('agent.tools.tool_call')}</span>
-        <div className={styles.toolCountBadge}>
-          {completedTools.length}/{totalTools}
+    <div className={shared.shell}>
+      <div className={shared.header}>
+        <div className={shared.headerIcon}>🎧</div>
+        <span className={shared.headerTitle}>{title}</span>
+        <div className={`${shared.headerChevron} ${shared.headerChevronOpen}`}>
+          <ChevronDown size={14} strokeWidth={2} />
         </div>
       </div>
 

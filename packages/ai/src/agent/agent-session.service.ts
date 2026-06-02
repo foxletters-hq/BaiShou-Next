@@ -19,6 +19,15 @@ import { logger, supportsNativePdf, type ISqlExecutor } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
+import { ContextCompressorService } from './context-compressor.service'
+import {
+  estimateContextTokensForTrigger,
+  getMessagesAfterSnapshot,
+  resolveSessionCompressionConfig,
+  resolveCompressionTrigger,
+  usableContextTokens
+} from './context-compression.utils'
+import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -68,7 +77,37 @@ export class AgentSessionService {
             })
           : baseModel
 
-      // 2. 加载历史并使用 Builder+Adapter 进行超长截断和压缩感知注入
+      // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
+      const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
+      {
+        const rawForEstimate = (await sessionRepo.getMessagesBySession(
+          sessionId,
+          COMPRESSION_MESSAGE_FETCH_LIMIT
+        )) as import('./message.adapter').MessageWithParts[]
+        const latestSnap = await snapshotRepo.getLatestSnapshot(sessionId)
+        const afterSnap = getMessagesAfterSnapshot(rawForEstimate, latestSnap)
+        const contextTokens = estimateContextTokensForTrigger(
+          rawForEstimate,
+          afterSnap,
+          latestSnap
+        )
+        if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
+          logger.info(
+            `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfig.threshold}, window=${compressionConfig.modelContextWindow ?? 0}), compressing before request.`
+          )
+          await ContextCompressorService.tryCompress(
+            provider,
+            modelId,
+            sessionRepo,
+            snapshotRepo,
+            sessionId,
+            compressionConfig,
+            provider.config?.type ?? ''
+          )
+        }
+      }
+
+      // 3. 加载历史并使用 Builder+Adapter 进行超长截断和压缩感知注入
       const configRecentCount =
         typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
 
@@ -233,6 +272,45 @@ export class AgentSessionService {
 
       const sessionObj = await sessionRepo.getSessionById?.(sessionId)
 
+      const contextCompressionRunner = {
+        run: async (phase: 'upstream' | 'downstream', opts?: { force?: boolean }) => {
+          const { resolveSessionCompressionConfig } = await import('./context-compression.utils')
+          const config = await resolveSessionCompressionConfig(sessionId, sessionRepo)
+          const merged = { ...config, force: opts?.force }
+          const usableWindow = usableContextTokens(
+            merged.modelContextWindow ?? 0,
+            merged.reservedTokens
+          )
+          if (merged.threshold <= 0 && usableWindow <= 0 && !merged.force) {
+            return 'Companion auto-compression is disabled (threshold 0). Enable it in Memory settings or use force=true.'
+          }
+          const ok = await ContextCompressorService.tryCompress(
+            provider,
+            modelId,
+            sessionRepo,
+            snapshotRepo,
+            sessionId,
+            merged,
+            provider.config?.type ?? ''
+          )
+          if (ok) {
+            const { COMPRESSION_MESSAGE_FETCH_LIMIT } = await import('./compression.constants')
+            const allForPrune = (await sessionRepo.getMessagesBySession(
+              sessionId,
+              COMPRESSION_MESSAGE_FETCH_LIMIT
+            )) as import('./message.adapter').MessageWithParts[]
+            ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
+          }
+          const phaseLabel =
+            phase === 'upstream'
+              ? 'upstream / before model request'
+              : 'downstream / after reply saved'
+          return ok
+            ? `Context compression (${phaseLabel}) completed. Rolling summary updated.`
+            : `No compression (${phaseLabel}): below threshold (use force=true) or not enough history.`
+        }
+      }
+
       const enabledTools = toolRegistry.getEnabledToolsAsVercel({
         userConfig: userConfig || {},
         sessionId,
@@ -244,7 +322,8 @@ export class AgentSessionService {
         deduplicationService: dedupService,
         diarySearcher: options.diarySearcher,
         webSearchResultFetcher: webSearchResultFetcher,
-        fetchSearchPage: options.fetchSearchPage
+        fetchSearchPage: options.fetchSearchPage,
+        contextCompressionRunner
       })
 
       // --- 灵魂注入 (如果有 Assistant 绑定) ---

@@ -1,12 +1,12 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Edit3 } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { DiaryCard } from '../DiaryCard'
 import type { DiaryEntry } from '../DiaryCard'
 import { PageSizeSelector, Pagination } from '@baishou/ui'
 
 interface DiaryGridProps {
+  scrollRef?: React.RefObject<HTMLDivElement | null>
   entries: DiaryEntry[]
   totalCount: number
   currentPage: number
@@ -31,6 +31,7 @@ const formatDateStr = (date: Date): string => {
 
 /** 日记卡片网格视图，包含顶部/底部分页控制栏 */
 export const DiaryGrid: React.FC<DiaryGridProps> = ({
+  scrollRef,
   entries,
   totalCount,
   currentPage,
@@ -109,7 +110,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
   }
 
   return (
-    <div className="diary-grid">
+    <div className="diary-grid" ref={scrollRef}>
       {/* 顶部分页控制栏 */}
       {showPagination && (
         <div className="diary-pagination-top">
@@ -119,12 +120,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
 
       <div className="diary-grid-inner">
         {entries.map((entry) => (
-          <motion.div
-            layout="position"
-            key={entry.id}
-            style={{ height: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          >
+          <div key={entry.id} style={{ height: '100%' }}>
             <DiaryCard
               entry={entry}
               onClick={() => onGoToEditor(formatDateStr(entry.date))}
@@ -133,7 +129,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
               t={t as any}
               basePath={attachmentBasePath}
             />
-          </motion.div>
+          </div>
         ))}
       </div>
 

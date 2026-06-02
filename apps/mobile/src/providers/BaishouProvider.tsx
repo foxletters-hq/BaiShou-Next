@@ -67,7 +67,10 @@ import { MobileAttachmentManagerService } from '../services/mobile-attachment-ma
 import { sessionFileWatcher } from '../services/session-file-watcher.service'
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
 import { logger } from '@baishou/shared'
-import type { SessionRepository as SessionRepositoryType } from '@baishou/database'
+import type {
+  SessionRepository as SessionRepositoryType,
+  SnapshotRepository as SnapshotRepositoryType
+} from '@baishou/database'
 
 // 采用类似于桌面端 db.ts 里的静态导出，但在 RN 里我们走 Context 更加 React 化
 interface BaishouContextValue {
@@ -76,6 +79,7 @@ interface BaishouContextValue {
     agentService: AgentSessionService
     sessionManager: SessionManagerService
     sessionRepo: SessionRepositoryType
+    snapshotRepo: SnapshotRepositoryType
     assistantManager: AssistantManagerService
     diaryService: DiaryService
     settingsManager: SettingsManagerService
@@ -500,6 +504,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               agentService,
               sessionManager,
               sessionRepo,
+              snapshotRepo,
               assistantManager,
               diaryService,
               settingsManager,

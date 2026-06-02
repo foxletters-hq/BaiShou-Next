@@ -65,7 +65,11 @@ export class DiaryService {
     this.vaultIndex.upsert(syncResult.meta)
 
     // 确保返回给前端的 ID 始终与数据库实际插入/更新的行 ID 保持强一致（防止脏数据与自增偏离）
+    const writtenId = finalDiary.id
     finalDiary.id = syncResult.meta.id
+    if (writtenId !== syncResult.meta.id) {
+      await this.fileSync.writeJournal(finalDiary)
+    }
 
     return finalDiary
   }
@@ -142,8 +146,13 @@ export class DiaryService {
 
     if (syncResult.meta) {
       this.vaultIndex.upsert(syncResult.meta)
-      // 同步最新真实 rowId
-      mergedDiaryToSave.id = syncResult.meta.id
+      const resolvedId = syncResult.meta.id
+      if (mergedDiaryToSave.id !== resolvedId) {
+        mergedDiaryToSave.id = resolvedId
+        await this.fileSync.writeJournal(mergedDiaryToSave)
+      } else {
+        mergedDiaryToSave.id = resolvedId
+      }
     } else {
       // 预防性清理防止鬼影
       this.vaultIndex.remove(id)

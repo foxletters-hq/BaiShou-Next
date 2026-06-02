@@ -159,6 +159,10 @@ export class MigrationService {
         logger.warn('[MigrationService] Agent FTS 基础设施初始化失败（非阻塞）:', e.message)
       }
 
+      await this._ensureAssistantCompressSystemPromptColumn()
+      await this._ensureAssistantCompressionWindowColumns()
+      await this._ensureSnapshotTailStartColumn()
+
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
     } catch (error: any) {
       logger.error('[MigrationService] 迁移执行过程中发生致命错误:', error)
@@ -169,6 +173,65 @@ export class MigrationService {
   /**
    * 确保 compression_snapshots 的 session_id / covered_up_to_message_id 是 TEXT 类型。
    */
+  private async _ensureAssistantCompressSystemPromptColumn(): Promise<void> {
+    try {
+      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_assistants)`)
+      const has = tableInfo.rows.some((c: { name?: string }) => c.name === 'compress_system_prompt')
+      if (!has) {
+        logger.info('[MigrationService] 添加 agent_assistants.compress_system_prompt 列...')
+        await this._executeSql(`ALTER TABLE agent_assistants ADD COLUMN compress_system_prompt TEXT`)
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] compress_system_prompt 列检查失败（非阻塞）:', message)
+    }
+  }
+
+  private async _ensureAssistantCompressionWindowColumns(): Promise<void> {
+    try {
+      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_assistants)`)
+      const names = new Set(
+        tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
+      )
+      if (!names.has('compress_model_context_window')) {
+        logger.info('[MigrationService] 添加 agent_assistants.compress_model_context_window...')
+        await this._executeSql(
+          `ALTER TABLE agent_assistants ADD COLUMN compress_model_context_window INTEGER`
+        )
+      }
+      if (!names.has('compress_preserve_recent_tokens')) {
+        logger.info('[MigrationService] 添加 agent_assistants.compress_preserve_recent_tokens...')
+        await this._executeSql(
+          `ALTER TABLE agent_assistants ADD COLUMN compress_preserve_recent_tokens INTEGER`
+        )
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] compression window 列检查失败（非阻塞）:', message)
+    }
+  }
+
+  /**
+   * 确保 compression_snapshots 有 tail_start_message_id 列（保留区起点标记）。
+   */
+  private async _ensureSnapshotTailStartColumn(): Promise<void> {
+    try {
+      const tableInfo = await this._executeSql(`PRAGMA table_info(compression_snapshots)`)
+      const has = tableInfo.rows.some(
+        (c: { name?: string }) => c.name === 'tail_start_message_id'
+      )
+      if (!has) {
+        logger.info('[MigrationService] 添加 compression_snapshots.tail_start_message_id 列...')
+        await this._executeSql(
+          `ALTER TABLE compression_snapshots ADD COLUMN tail_start_message_id TEXT`
+        )
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] tail_start_message_id 列检查失败（非阻塞）:', message)
+    }
+  }
+
   private async _ensureCompressionSnapshotsCompatibility(): Promise<void> {
     try {
       const tableInfo = await this._executeSql(`PRAGMA table_info(compression_snapshots)`)

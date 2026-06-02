@@ -1,5 +1,5 @@
 import React from 'react'
-import { TokenBadge, InputBar } from '@baishou/ui'
+import { TokenBadge, InputBar, ContextChainPanel } from '@baishou/ui'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
@@ -103,6 +103,60 @@ export const AgentScreen: React.FC = () => {
         providers={flow.providers}
         inputBarRef={flow.inputBarRef}
       />
+
+      {flow.contextDialogState.flatEntries && (
+        <ContextChainPanel
+          key={flow.contextDialogState.message?.id ?? 'context-chain'}
+          isOpen={flow.contextDialogState.isOpen}
+          onClose={() =>
+            flow.setContextDialogState((prev) => ({
+              ...prev,
+              isOpen: false
+            }))
+          }
+          message={
+            flow.contextDialogState.message ?? {
+              id: '',
+              sessionId: flow.sessionId || '',
+              role: 'assistant',
+              content: '',
+              timestamp: new Date()
+            }
+          }
+          flatEntries={flow.contextDialogState.flatEntries}
+          meta={flow.contextDialogState.meta}
+          compressedContent={flow.contextDialogState.compressedContent}
+          systemPrompt={flow.contextDialogState.systemPrompt}
+          sessionId={flow.contextDialogState.sessionId ?? flow.sessionId}
+          onCompressionSummaryUpdated={(summaryText) => {
+            flow.setContextDialogState((prev) => ({
+              ...prev,
+              compressedContent: summaryText,
+              flatEntries: prev.flatEntries?.map((entry) =>
+                entry.kind === 'compression-summary'
+                  ? { ...entry, summaryText }
+                  : entry
+              )
+            }))
+          }}
+          recompressBusy={flow.contextRecompressJob?.status === 'running'}
+          recompressStartedAt={
+            flow.contextRecompressJob?.status === 'running'
+              ? flow.contextRecompressJob.startedAt
+              : undefined
+          }
+          recompressError={
+            flow.contextRecompressJob?.status === 'error'
+              ? flow.contextRecompressJob.error
+              : null
+          }
+          onRecompress={() => {
+            const sid = flow.contextDialogState.sessionId ?? flow.sessionId
+            if (sid) void flow.runContextRecompress(sid)
+          }}
+          onRecompressDismissError={flow.dismissContextRecompressError}
+        />
+      )}
 
       {/* 底部输入区；回到底部为悬浮单按钮，不占布局、不挡内容 */}
       <div className={styles.inputFooter}>

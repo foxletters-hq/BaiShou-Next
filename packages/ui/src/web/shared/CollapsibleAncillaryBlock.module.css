@@ -1,0 +1,82 @@
+/* 聊天气泡内「思考过程 / 工具调用」等可折叠附属块 — 统一外壳与标题栏 */
+.shell {
+  width: 100%;
+  min-width: 100%;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--border-subtle);
+  background: var(--bg-surface);
+  box-sizing: border-box;
+  align-self: stretch;
+  transition: border-color 0.2s ease;
+}
+
+.shell:hover {
+  border-color: var(--border-strong);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  min-height: 42px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-surface-normal);
+  transition: background 0.15s ease;
+}
+
+.headerIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.headerTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerChevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--text-tertiary);
+  transform: rotate(-90deg);
+  transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.headerChevronOpen {
+  transform: rotate(0deg);
+}
+
+.contentWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.open .contentWrap {
+  grid-template-rows: 1fr;
+}
+
+.contentInner {
+  overflow: hidden;
+}

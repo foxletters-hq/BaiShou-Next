@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { SessionData } from '@baishou/ui'
 
-const SESSION_LIMIT = 10
+/** 每页 10 条会话；多取 1 条用于判断是否还有下一页 */
+export const SESSION_PAGE_SIZE = 10
 
 export interface AgentSessionsManager {
   sessions: SessionData[]
   hasMoreSessions: boolean
+  isLoadingMoreSessions: boolean
   sidebarScrollKey: number
   loadSessions: (resetOffset?: boolean, overrideAssistantId?: string) => Promise<void>
   renameTarget: { id: string; title: string } | null
@@ -25,13 +27,14 @@ export function useAgentSessions(
 ): AgentSessionsManager {
   const [sessions, setSessions] = useState<SessionData[]>([])
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
+  const [isLoadingMoreSessions, setIsLoadingMoreSessions] = useState(false)
   const [sidebarScrollKey, setSidebarScrollKey] = useState(0)
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const lastLoadRequestId = useRef(0)
   const assistantIdRef = useRef<string | undefined>(activeAssistantId)
   const searchQueryRef = useRef<string>(searchQuery)
-  const sessionsLengthRef = useRef(0)
+  const sessionsLoadedFromDbRef = useRef(0)
 
   useEffect(() => {
     assistantIdRef.current = activeAssistantId
@@ -41,21 +44,21 @@ export function useAgentSessions(
     searchQueryRef.current = searchQuery
   }, [searchQuery])
 
-  useEffect(() => {
-    sessionsLengthRef.current = sessions.length
-  }, [sessions.length])
-
   const loadSessions = useCallback(async (resetOffset = false, overrideAssistantId?: string) => {
     try {
       if (typeof window === 'undefined' || !window.electron) return
       const reqId = ++lastLoadRequestId.current
-      const offset = resetOffset ? 0 : sessionsLengthRef.current
+      const offset = resetOffset ? 0 : sessionsLoadedFromDbRef.current
       const targetAst = overrideAssistantId || assistantIdRef.current
       if (!targetAst) return
 
+      if (!resetOffset) {
+        setIsLoadingMoreSessions(true)
+      }
+
       const data = await window.electron.ipcRenderer.invoke(
         'agent:get-sessions',
-        SESSION_LIMIT,
+        SESSION_PAGE_SIZE + 1,
         offset,
         targetAst,
         searchQueryRef.current
@@ -64,19 +67,36 @@ export function useAgentSessions(
       if (reqId !== lastLoadRequestId.current) return
 
       if (data && data.length > 0) {
-        setSessions((prev) => (resetOffset ? data : [...prev, ...data]))
-        setHasMoreSessions(data.length === SESSION_LIMIT)
+        const hasMore = data.length > SESSION_PAGE_SIZE
+        const page = hasMore ? data.slice(0, SESSION_PAGE_SIZE) : data
+
+        if (resetOffset) {
+          setSessions(page)
+          sessionsLoadedFromDbRef.current = data.length
+          setSidebarScrollKey((prev) => prev + 1)
+        } else {
+          setSessions((prev) => {
+            const existing = new Set(prev.map((s) => s.id))
+            const merged = [...prev]
+            for (const row of page) {
+              if (!existing.has(row.id)) merged.push(row)
+            }
+            return merged
+          })
+          sessionsLoadedFromDbRef.current += data.length
+        }
+        setHasMoreSessions(hasMore)
       } else {
         if (resetOffset) setSessions([])
         setHasMoreSessions(false)
       }
-      if (resetOffset) setSidebarScrollKey((prev) => prev + 1)
     } catch (e) {
       console.error('[useAgentSessions] Failed to load sessions:', e)
+    } finally {
+      setIsLoadingMoreSessions(false)
     }
   }, [])
 
-  // 当助手或搜索词变化时，触发加载（对搜索词使用防抖，对助手直接触发）
   const lastActiveAssistantId = useRef<string | undefined>(activeAssistantId)
   useEffect(() => {
     const isAssistantChanged = lastActiveAssistantId.current !== activeAssistantId
@@ -85,18 +105,19 @@ export function useAgentSessions(
     if (!activeAssistantId) {
       setSessions([])
       setHasMoreSessions(false)
+      sessionsLoadedFromDbRef.current = 0
       return
     }
 
     if (isAssistantChanged) {
-      // 助手切换，立刻执行，不防抖并清空旧会话
       lastLoadRequestId.current += 1
+      sessionsLoadedFromDbRef.current = 0
       setSessions([])
       setHasMoreSessions(false)
       void loadSessions(true, activeAssistantId)
     } else {
-      // 搜索词变化，防抖 300ms
       const timer = setTimeout(() => {
+        sessionsLoadedFromDbRef.current = 0
         void loadSessions(true, activeAssistantId)
       }, 300)
       return () => clearTimeout(timer)
@@ -136,6 +157,7 @@ export function useAgentSessions(
   return {
     sessions,
     hasMoreSessions,
+    isLoadingMoreSessions,
     sidebarScrollKey,
     loadSessions,
     renameTarget,

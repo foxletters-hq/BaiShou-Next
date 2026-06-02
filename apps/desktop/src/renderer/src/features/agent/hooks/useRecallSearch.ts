@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatLocalDate, timestampToMillis } from '@baishou/shared'
 import type { RecallItem } from '@baishou/ui'
 
 export interface UseRecallSearchResult {
@@ -19,20 +20,10 @@ export interface UseRecallSearchResult {
  *
  * 职责：搜索日记和 RAG 记忆，返回可注入的回忆条目
  */
-const ensureMillis = (ts: any) => {
-  if (!ts) return Date.now()
-  let num = typeof ts === 'number' ? ts : new Date(ts).getTime()
-  if (isNaN(num)) return Date.now()
-
-  // 智能循环规整：确保时间戳落在 13 位毫秒级范围内（约 1e11 到 1e14）
-  // 1e11 毫秒是 1973 年，1e14 毫秒是 5138 年
-  while (num > 1e14) {
-    num = Math.floor(num / 1000)
-  }
-  while (num < 1e11 && num > 0) {
-    num = num * 1000
-  }
-  return num
+const formatRecallDate = (ts: unknown) => {
+  const raw = typeof ts === 'number' ? ts : new Date(ts as string | Date).getTime()
+  const ms = timestampToMillis(Number.isFinite(raw) ? raw : undefined) ?? Date.now()
+  return formatLocalDate(new Date(ms))
 }
 
 export function useRecallSearch(): UseRecallSearchResult {
@@ -58,10 +49,7 @@ export function useRecallSearch(): UseRecallSearchResult {
                 type: 'diary',
                 title: d.title || t('common.untitled', '无标题'),
                 snippet: d.snippet || d.content?.substring(0, 100) || '',
-                date: (() => {
-                  const dt = new Date(ensureMillis(d.createdAt))
-                  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
-                })()
+                date: formatRecallDate(d.createdAt)
               }))
             )
           } else {
@@ -81,10 +69,7 @@ export function useRecallSearch(): UseRecallSearchResult {
                 type: 'memory',
                 title: `[${r.modelId || t('common.system', '系统')}]`,
                 snippet: r.text,
-                date: (() => {
-                  const dt = new Date(ensureMillis(r.createdAt))
-                  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
-                })(),
+                date: formatRecallDate(r.createdAt),
                 similarity: r.similarity
               }))
             )

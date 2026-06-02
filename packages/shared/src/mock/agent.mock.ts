@@ -33,6 +33,8 @@ export type MockChatMessage = {
   contextMessages?: MockChatMessage[]
   isReasoning?: boolean
   toolInvocations?: MockToolInvocation[]
+  /** 调用链列表中的展示标签（如「系统提示词」「AI 输出」） */
+  label?: string
 }
 
 export const MOCK_MESSAGES: MockChatMessage[] = [

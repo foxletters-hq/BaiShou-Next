@@ -47,6 +47,7 @@ export const AgentLayout: React.FC = () => {
   const {
     sessions,
     hasMoreSessions,
+    isLoadingMoreSessions,
     sidebarScrollKey,
     loadSessions,
     renameTarget,
@@ -215,8 +216,9 @@ export const AgentLayout: React.FC = () => {
         currentAssistant={mappedAssistant}
         sessions={sessions}
         hasMore={hasMoreSessions}
+        isLoadingMore={isLoadingMoreSessions}
         scrollKey={sidebarScrollKey}
-        onLoadMore={() => loadSessions(false)}
+        onLoadMore={() => void loadSessions(false)}
         selectedSessionId={sessionId}
         searchQuery={searchQuery}
         pinnedAssistants={pinnedAssistants}
@@ -354,7 +356,13 @@ export const AgentLayout: React.FC = () => {
       {/* ─── Assistant Picker Sheet ─── */}
       <AssistantPickerSheet
         isOpen={isPickerOpen}
-        assistants={assistants.map((a) => ({ ...a, id: String(a.id) })) as any}
+        assistants={
+          assistants.map((a) => ({
+            ...a,
+            id: String(a.id),
+            compressSystemPrompt: a.compressSystemPrompt ?? null
+          })) as any
+        }
         currentAssistantId={mappedAssistant?.id}
         onSelect={(ast) => {
           setIsPickerOpen(false)

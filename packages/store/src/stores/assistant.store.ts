@@ -14,6 +14,7 @@ export interface Assistant {
   modelId: string
   compressTokenThreshold: number
   compressKeepTurns: number
+  compressSystemPrompt?: string | null
   sortOrder: number
   createdAt: Date
   updatedAt: Date

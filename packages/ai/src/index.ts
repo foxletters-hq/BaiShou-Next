@@ -50,8 +50,17 @@ export * from './agent/agent-session.service'
 
 // Memory & Context Engine
 export * from './agent/context-window.builder'
+export * from './agent/context-at-message.service'
+export * from './agent/call-chain-view-model.builder'
+export * from './agent/context-call-chain.builder'
+export * from './agent/model-message-display.formatter'
+export * from './agent/session-system-prompt.resolver'
+export * from './agent/system-prompt.builder'
 export * from './agent/title-generator.service'
 export * from './agent/context-compressor.service'
+export * from './agent/compression-round.utils'
+export * from './agent/session-branch.compression'
+export { readPdfTextFromPath, readLocalFileAsBase64, canReadLocalPath } from './platform/read-local-file'
 
 export type { IStreamEmitter } from './agent/stream-emitter.interface'
 export { AgentChatCoreService } from './agent/agent-chat-core.service'

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useCallback, useEffect, useRef } from 'react'
 import { ChatBubble, StreamingBubble } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
@@ -7,14 +7,14 @@ import styles from '../AgentScreen.module.css'
 interface AgentMessageListProps {
   t: any
   sessionId: string | undefined
-  chat: any // ReturnType<typeof useChatMessages>
-  stream: any // ReturnType<typeof useAgentStream>
-  scroll: any // ReturnType<typeof useChatScroll>
+  chat: any
+  stream: any
+  scroll: any
   currentAssistant: any
   userProfile: any
   searchMode: boolean
-  model: any // ReturnType<typeof useModelSelection>
-  tts: any // ReturnType<typeof useTts>
+  model: any
+  tts: any
   setContextDialogState: (state: any) => void
   sessions: any[]
   loadSessions?: (reset: boolean, assistantId?: string) => void
@@ -40,7 +40,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
 }) => {
   const settings = useSettingsStore()
 
-  // 气泡动作 hook
   const actions = useMessageActions({
     t,
     sessionId,
@@ -54,7 +53,111 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     loadSessions
   })
 
-  // ── 解析当前正在运行的工具名称（汉化及搜索引擎展示） ──
+  const handleShowContext = useCallback(
+    async (bubbleMessage: any, sourceMsg: any) => {
+      if (!sessionId) return
+      try {
+        const result = await window.electron.ipcRenderer.invoke(
+          'agent:get-context-at-message',
+          sessionId,
+          sourceMsg.id,
+          searchMode
+        )
+        const vm = result?.viewModel
+        const flatEntries = (vm?.flatEntries ?? []).map((entry: any, i: number) => {
+          if (entry.kind === 'round-header') {
+            return { kind: 'round-header' as const, roundIndex: entry.roundIndex }
+          }
+          if (entry.kind === 'compression-summary') {
+            return {
+              kind: 'compression-summary' as const,
+              summaryText: entry.summaryText ?? result?.compressedContent ?? ''
+            }
+          }
+          if (entry.kind === 'system-prompt') {
+            return {
+              kind: 'system-prompt' as const,
+              item: {
+                id: `ctx-sys-${sourceMsg.id}`,
+                sessionId,
+                role: 'system',
+                content: entry.item?.content ?? result?.systemPrompt,
+                label: '系统提示词',
+                timestamp: sourceMsg.createdAt || new Date()
+              }
+            }
+          }
+          return {
+            kind: 'message' as const,
+            roundIndex: entry.roundIndex,
+            item: {
+              id: `ctx-${sourceMsg.id}-${i}`,
+              sessionId,
+              role: entry.item?.role ?? 'user',
+              content: entry.item?.content,
+              label: entry.item?.label,
+              timestamp: sourceMsg.createdAt || new Date()
+            }
+          }
+        })
+
+        setContextDialogState({
+          isOpen: true,
+          sessionId,
+          sourceMessageId: sourceMsg.id,
+          message: {
+            ...bubbleMessage,
+            inputTokens: sourceMsg.inputTokens ?? bubbleMessage.inputTokens,
+            outputTokens: sourceMsg.outputTokens ?? bubbleMessage.outputTokens,
+            costMicros: sourceMsg.costMicros ?? bubbleMessage.costMicros
+          },
+          flatEntries,
+          meta: {
+            nextRequest: vm?.nextRequest,
+            roundUsage: vm?.roundUsage,
+            activeRoundIndex: vm?.activeRoundIndex
+          },
+          systemPrompt: result?.systemPrompt,
+          compressedContent: result?.compressedContent
+        })
+      } catch (e) {
+        console.error('[AgentMessageList] Failed to load context at message:', e)
+      }
+    },
+    [sessionId, searchMode, setContextDialogState]
+  )
+
+  const loadMoreLockRef = useRef(false)
+
+  const triggerLoadMore = useCallback(() => {
+    if (!chat.hasMore || loadMoreLockRef.current) return
+    const el = scroll.scrollRef.current
+    loadMoreLockRef.current = true
+    const prevHeight = el?.scrollHeight ?? 0
+    void chat.loadMore().finally(() => {
+      requestAnimationFrame(() => {
+        const pane = scroll.scrollRef.current
+        if (pane) {
+          pane.scrollTop = pane.scrollHeight - prevHeight
+        }
+        loadMoreLockRef.current = false
+      })
+    })
+  }, [chat.hasMore, chat.loadMore, scroll.scrollRef])
+
+  useEffect(() => {
+    const el = scroll.scrollRef.current
+    if (!el) return
+
+    const onScroll = () => {
+      if (el.scrollTop > 100 || !chat.hasMore || loadMoreLockRef.current) return
+      triggerLoadMore()
+    }
+
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [chat.hasMore, triggerLoadMore, scroll.scrollRef])
+
   const activeToolDisplayName = useMemo(() => {
     if (!stream.activeTool) return null
     if (stream.activeTool.name === 'web_search') {
@@ -72,83 +175,38 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
 
   return (
     <>
-      {/* 消息列表 */}
       <div className={styles.messageList} ref={scroll.scrollRef}>
         <div className={styles.messageContent}>
-          {/* 分页加载 */}
           {chat.hasMore && (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
-              <button
-                onClick={chat.loadMore}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  opacity: 0.8,
-                  textDecoration: 'underline'
-                }}
-              >
-                {t('common.load_more', '点击加载更多记录')}
-              </button>
-            </div>
+            <button
+              type="button"
+              className={styles.loadMoreBanner}
+              onClick={triggerLoadMore}
+            >
+              {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
+            </button>
           )}
 
-          {/* 历史消息 */}
-          {[...chat.messages].map((msg, index, arr) => {
-            let decodedContext: any[] | undefined
-            let compressedContent: string | undefined
-            let originalContent: string | undefined
-            let systemPrompt: string | undefined
-
-            if (msg.role === 'assistant' && index > 0) {
-              const prevMsg = arr[index - 1]
-              if (prevMsg.role === 'user' && prevMsg.parts) {
-                const ctxPart = prevMsg.parts.find((p: any) => p.type === 'context_snapshot')
-                if (ctxPart && ctxPart.data?.snapshots) {
-                  decodedContext = ctxPart.data.snapshots.map((s: any) => ({
-                    role: 'system',
-                    content: `${s.title ? '[' + s.title + '] ' : ''}${s.content}`,
-                    timestamp: msg.createdAt || new Date()
-                  }))
-                }
-
-                // 获取压缩内容
-                const compPart = prevMsg.parts.find((p: any) => p.type === 'compaction')
-                if (compPart && compPart.data?.summary) {
-                  compressedContent = compPart.data.summary
-                }
-              }
-
-              // 获取系统提示词（从会话的第一条消息或助手配置）
-              if (index === 1 || (index === 2 && arr[0]?.role === 'system')) {
-                const sysMsg = arr.find((m: any) => m.role === 'system')
-                if (sysMsg?.content) {
-                  systemPrompt = sysMsg.content
-                }
-              }
+          {[...chat.messages].map((msg) => {
+            const bubbleMessage = {
+              id: msg.id,
+              sessionId: sessionId || 'default-session',
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+              reasoning: msg.reasoning,
+              timestamp: msg.createdAt || new Date(),
+              toolInvocations: msg.toolInvocations,
+              attachments: msg.attachments,
+              inputTokens: msg.inputTokens,
+              outputTokens: msg.outputTokens,
+              isReasoning: msg.isReasoning,
+              costMicros: msg.costMicros
             }
 
             return (
               <ChatBubble
                 key={msg.id}
-                message={{
-                  id: msg.id,
-                  sessionId: sessionId || 'default-session',
-                  role: msg.role === 'user' ? 'user' : 'assistant',
-                  content: msg.content,
-                  reasoning: msg.reasoning,
-                  timestamp: msg.createdAt || new Date(),
-                  toolInvocations: msg.toolInvocations,
-                  attachments: msg.attachments,
-                  inputTokens: msg.inputTokens,
-                  outputTokens: msg.outputTokens,
-                  isReasoning: msg.isReasoning,
-                  costMicros: msg.costMicros,
-                  contextMessages: decodedContext
-                }}
+                message={bubbleMessage}
                 userProfile={{
                   nickname: userProfile?.nickname || 'User',
                   avatarPath: userProfile?.avatarPath
@@ -158,16 +216,11 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                   avatarPath: currentAssistant?.avatarPath,
                   emoji: currentAssistant?.emoji
                 }}
-                onShowContext={(m) => {
-                  setContextDialogState({
-                    isOpen: true,
-                    message: m,
-                    contextMessages: m.contextMessages || [],
-                    compressedContent,
-                    originalContent: m.content,
-                    systemPrompt
-                  })
-                }}
+                onShowContext={
+                  msg.role === 'user' || msg.role === 'assistant'
+                    ? (m) => handleShowContext(m, msg)
+                    : undefined
+                }
                 onReadAloud={
                   msg.role === 'assistant'
                     ? (content) => actions.handleReadAloud(content, msg.id)
@@ -187,7 +240,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             )
           })}
 
-          {/* 流式气泡 */}
           {stream.isStreaming && (
             <StreamingBubble
               text={stream.text}
@@ -203,7 +255,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             />
           )}
 
-          {/* 流式结束过渡态 */}
           {chat.pendingAssistantMsg && (
             <ChatBubble
               key={chat.pendingAssistantMsg.id}
@@ -226,7 +277,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             />
           )}
 
-          {/* 空状态：仅在既无消息也无流式传输时显示空白区域 */}
           {chat.messages.length === 0 && !stream.isStreaming && !chat.pendingAssistantMsg && (
             <div style={{ flex: 1 }} />
           )}

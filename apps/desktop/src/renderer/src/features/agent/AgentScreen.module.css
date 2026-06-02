@@ -74,6 +74,30 @@
   flex-direction: column;
 }
 
+.loadMoreBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 10px 16px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface-highlight);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.loadMoreBanner:hover {
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  background: rgba(var(--color-primary-rgb), 0.06);
+}
+
 .messageList::-webkit-scrollbar {
   width: 6px;
 }

@@ -127,13 +127,13 @@ export function createWebSearchResultFetcher() {
     try {
       let html = ''
       try {
-        html = await fetchUrlHtmlViaBrowserWindow(url)
-      } catch (browserErr: any) {
-        logger.warn(
-          `[createWebSearchResultFetcher] BrowserWindow fetch failed for ${url}, falling back to net.fetch:`,
-          browserErr
-        )
         html = await fetchUrlHtmlViaNet(url)
+      } catch (netErr: any) {
+        logger.warn(
+          `[createWebSearchResultFetcher] net.fetch failed for ${url}, falling back to hidden BrowserWindow:`,
+          netErr
+        )
+        html = await fetchUrlHtmlViaBrowserWindow(url)
       }
 
       const plainText = htmlToPlainText(html)

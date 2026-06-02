@@ -84,13 +84,19 @@ export function AssistantPickerDetailPane({
           <div className={styles.tabsRow} style={{ justifyContent: 'center', gap: 48 }}>
             <div
               className={`${styles.tab} ${activeTab === 'prompt' ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab('prompt')}
+              onClick={() => {
+                vm.setShowModelSwitcher(false)
+                setActiveTab('prompt')
+              }}
             >
               {t('agent.assistant.prompt_label', '提示词')}
             </div>
             <div
               className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab('memory')}
+              onClick={() => {
+                vm.setShowModelSwitcher(false)
+                setActiveTab('memory')
+              }}
             >
               {t('agent.assistant.memory_label', 'Memory')}
             </div>
@@ -106,10 +112,12 @@ export function AssistantPickerDetailPane({
 
           <div className={styles.actionRow}>
             <button
+              type="button"
               className={`${styles.applyBtn} ${String(activeAssistant.id) === String(currentAssistantId) ? styles.applyBtnCurrent : ''}`}
-              disabled={String(activeAssistant.id) === String(currentAssistantId)}
               onClick={() => {
-                onSelect(activeAssistant)
+                if (String(activeAssistant.id) !== String(currentAssistantId)) {
+                  onSelect(activeAssistant)
+                }
                 onClose()
               }}
             >
