@@ -53,7 +53,7 @@ export function useRagActions(
       })
       await fetchRagInfo()
     } catch (e: any) {
-      await alert(e.message, t('common.error', '错误'))
+      toast.showError(e.message)
     } finally {
       setIsProcessing(false)
     }
@@ -81,10 +81,7 @@ export function useRagActions(
         toast.showWarning(t('settings.rag_export_empty', '没有可导出的数据'))
       }
     } catch (e: any) {
-      await alert(
-        t('settings.rag_export_error', '导出失败: ') + e.message,
-        t('common.error', '错误')
-      )
+      toast.showError(t('settings.rag_export_error', '导出失败: ') + e.message)
     } finally {
       setIsProcessing(false)
     }
@@ -95,7 +92,7 @@ export function useRagActions(
     try {
       const backups = await (window as any).api?.rag?.listSafetyBackups()
       if (!backups || backups.length === 0) {
-        await alert(t('settings.rag_no_backups', '暂无备份'), t('common.info', '提示'))
+        toast.showInfo(t('settings.rag_no_backups', '暂无备份'))
         return
       }
 
@@ -152,10 +149,7 @@ export function useRagActions(
         }
       }
     } catch (e: any) {
-      await alert(
-        t('settings.rag_backup_error', '操作失败: ') + e.message,
-        t('common.error', '错误')
-      )
+      toast.showError(t('settings.rag_backup_error', '操作失败: ') + e.message)
     } finally {
       setIsProcessing(false)
     }

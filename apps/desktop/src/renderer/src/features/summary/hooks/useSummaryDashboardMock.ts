@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useToast } from '@baishou/ui'
 
 export function useSummaryDashboardMock() {
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
   const [lookbackMonths, setLookbackMonths] = useState(1)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
@@ -16,7 +18,7 @@ export function useSummaryDashboardMock() {
 
   const handleCopyContext = () => {
     // 调用剪贴板或 RAG 接口
-    alert('Context copied!')
+    toast.showSuccess('Context copied!')
   }
 
   const summaries = [
