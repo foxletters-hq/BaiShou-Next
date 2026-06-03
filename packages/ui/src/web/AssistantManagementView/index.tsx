@@ -1,6 +1,7 @@
 import React from 'react'
 import styles from './AssistantManagementView.module.css'
 import { useTranslation } from 'react-i18next'
+import { useDialog } from '../Dialog'
 import {
   MdAdd,
   MdDragIndicator,
@@ -41,6 +42,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
   onReorder
 }) => {
   const { t } = useTranslation()
+  const dialog = useDialog()
 
   return (
     <div className={styles.container}>
@@ -133,16 +135,16 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                     className={styles.actionBtn}
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (
-                        window.confirm(
+                      void (async () => {
+                        const confirmed = await dialog.confirm(
                           t(
                             'agent.assistant.delete_confirm_content',
                             '您确认要删除吗？该操作不可逆转！'
-                          )
+                          ),
+                          { confirmText: t('common.delete', '删除'), destructive: true }
                         )
-                      ) {
-                        onDelete(assistant)
-                      }
+                        if (confirmed) onDelete(assistant)
+                      })()
                     }}
                     title={t('common.delete', '删除')}
                     style={{ color: '#ef4444' }}

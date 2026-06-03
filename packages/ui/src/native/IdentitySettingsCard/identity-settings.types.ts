@@ -8,4 +8,7 @@ export interface UserProfileConfig {
 export interface NativeIdentitySettingsCardProps {
   profile: UserProfileConfig
   onChange: (profile: UserProfileConfig) => void
+  /** 嵌入设置枢纽分组，使用紧凑列表行样式 */
+  embedded?: boolean
+  isLast?: boolean
 }

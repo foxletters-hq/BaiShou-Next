@@ -46,10 +46,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
     try {
       const tools = await (window as any).api?.settings?.getMcpTools()
       if (!tools || tools.length === 0) {
-        dialog.alert(
-          t('settings.mcp_no_tools', '未检测到任何暴露的工具'),
-          t('settings.mcp_tools_list', 'MCP 工具列表')
-        )
+        toast.showWarning(t('settings.mcp_no_tools', '未检测到任何暴露的工具'))
         return
       }
 
@@ -130,7 +127,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({ config, onChan
       dialog.alert(content, t('settings.mcp_tools_list', 'MCP 暴露工具列表'))
     } catch (e) {
       console.error(e)
-      dialog.alert(t('settings.mcp_tools_fetch_failed', '获取工具列表失败'))
+      toast.showError(t('settings.mcp_tools_fetch_failed', '获取工具列表失败'))
     }
   }
 

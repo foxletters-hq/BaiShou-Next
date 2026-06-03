@@ -1,2 +1,5 @@
 export { AboutSettingsCard } from './AboutSettingsCard'
 export type { NativeAboutSettingsCardProps } from './about-settings.types'
+export { useAboutSettingsEasterEggs } from './useAboutSettingsEasterEggs'
+export { AboutSettingsAboutContent } from './AboutSettingsAboutContent'
+export { AboutSettingsPrivacyContent } from './AboutSettingsPrivacyContent'

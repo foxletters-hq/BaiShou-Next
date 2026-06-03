@@ -1,6 +1,6 @@
 export interface NativeAboutSettingsCardProps {
-  version: string
-  heroImageSrc?: string
-  onOpenPrivacyPolicy?: () => void
-  onOpenGithubHost: () => void
+  onNavigateAbout: () => void
+  onNavigatePrivacy: () => void
+  onOpenFeedback: () => void
+  embedded?: boolean
 }

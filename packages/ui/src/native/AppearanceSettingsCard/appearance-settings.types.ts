@@ -8,4 +8,7 @@ export interface AppearanceSettingsProps {
   onThemeModeChange: (mode: ThemeMode) => void
   onSeedColorChange: (color: string) => void
   onLanguageChange: (lang: AppLanguage) => void
+  /** 嵌入设置枢纽分组，使用紧凑列表行样式 */
+  embedded?: boolean
+  isLast?: boolean
 }
