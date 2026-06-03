@@ -70,6 +70,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
           items={panel.displayedSummaries}
           onItemClick={handleListItemPress}
           onScroll={panel.handleScroll}
+          activeTab={panel.activeTab}
         />
       ) : (
         <View
@@ -86,6 +87,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
             selectedSummary={panel.selectedSummary}
             onItemClick={handleListItemPress}
             onScroll={panel.handleScroll}
+            activeTab={panel.activeTab}
           />
           <GallerySummaryDetail
             summary={panel.selectedSummary}

@@ -12,6 +12,7 @@ interface GallerySummaryListProps {
   selectedSummary?: SummaryItem
   onItemClick: (id: string) => void
   onScroll: (e: any) => void
+  activeTab?: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 }
 
 export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
@@ -19,7 +20,8 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
   items,
   selectedSummary,
   onItemClick,
-  onScroll
+  onScroll,
+  activeTab
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -125,7 +127,9 @@ const styles = StyleSheet.create({
     width: '100%',
     minWidth: 0,
     maxWidth: '100%',
-    flex: 1
+    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1
   },
   listContent: {
     padding: 8,

@@ -47,6 +47,24 @@ export const SummaryScreen: React.FC = () => {
   const prevStatesRef = useRef<typeof generationStates>({})
   const isWide = width >= 860
 
+  const checkModelConfigured = async (): Promise<boolean> => {
+    if (!services) return false
+    try {
+      const globalModels = await services.settingsManager.get<any>('global_models')
+      const providers = (await services.settingsManager.get<any[]>('ai_providers')) || []
+      const modelId = globalModels?.globalSummaryModelId
+      const config = providers.find((p: any) => p.id === modelId) || providers[0]
+      if (!config) {
+        toast.showError(t('summary.model_not_configured'))
+        return false
+      }
+      return true
+    } catch (e) {
+      toast.showError(t('summary.model_not_configured'))
+      return false
+    }
+  }
+
   useEffect(() => {
     if (!dbReady || !services) return
 
@@ -154,6 +172,9 @@ export const SummaryScreen: React.FC = () => {
 
   const handleBatchGenerate = async () => {
     if (isBatchGenerating) return
+    const isConfigured = await checkModelConfigured()
+    if (!isConfigured) return
+
     setIsBatchGenerating(true)
 
     const pendingTasks = missingSummaries.filter((mp) => {
@@ -229,7 +250,12 @@ export const SummaryScreen: React.FC = () => {
                   onBatchGenerate={handleBatchGenerate}
                   onStopGeneration={handleStopGeneration}
                   onConcurrencyChange={handleConcurrencyChange}
-                  onQueueSingle={(item) => queueGeneration([item], concurrencyLimit)}
+                  onQueueSingle={async (item) => {
+                    const isConfigured = await checkModelConfigured()
+                    if (isConfigured) {
+                      queueGeneration([item], concurrencyLimit)
+                    }
+                  }}
                 />
               </ScrollView>
             ) : (
