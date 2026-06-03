@@ -32,7 +32,11 @@ export interface PersistResultParams {
  * 将流结果落盘到数据库。
  * 从 AgentSessionService 中拆出，职责更清晰。
  */
-export async function persistResult(params: PersistResultParams): Promise<void> {
+export async function persistResult(params: PersistResultParams): Promise<{
+  inputTokens: number
+  outputTokens: number
+  costMicros: number
+}> {
   const {
     sessionId,
     rawUserText,
@@ -196,20 +200,29 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
   // 触发闲置后台服务 (仅在无流错误时执行)
   // ==========================================
   if (!streamError) {
-    const { TitleGeneratorService } = await import('./title-generator.service')
-    const { ContextCompressorService } = await import('./context-compressor.service')
-
-    setTimeout(() => {
-      // 检测新对话
+    void (async () => {
+      await new Promise((r) => setTimeout(r, 500))
       if (userOrderIndex <= 2) {
-        TitleGeneratorService.autoTitle(provider, modelId, sessionRepo, sessionId, rawUserText)
+        const { TitleGeneratorService } = await import('./title-generator.service')
+        await TitleGeneratorService.autoTitle(
+          provider,
+          modelId,
+          sessionRepo,
+          sessionId,
+          rawUserText
+        )
       }
-
+      const { ContextCompressorService } = await import('./context-compressor.service')
       const { resolveSessionCompressionConfig } = await import('./context-compression.utils')
+      const { COMPRESSION_MESSAGE_FETCH_LIMIT } = await import('./compression.constants')
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
+      const allForPrune = (await sessionRepo.getMessagesBySession(
+        sessionId,
+        COMPRESSION_MESSAGE_FETCH_LIMIT
+      )) as import('./message.adapter').MessageWithParts[]
       const providerType =
         (provider as { config?: { type?: string } }).config?.type ?? ''
-      void ContextCompressorService.tryCompress(
+      await ContextCompressorService.tryCompress(
         provider,
         modelId,
         sessionRepo,
@@ -218,6 +231,13 @@ export async function persistResult(params: PersistResultParams): Promise<void> 
         compressionConfig,
         providerType
       )
-    }, 500)
+      ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
+    })()
+  }
+
+  return {
+    inputTokens: finalUsage.inputTokens,
+    outputTokens: finalUsage.outputTokens,
+    costMicros: costMicros
   }
 }

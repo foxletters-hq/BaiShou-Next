@@ -39,6 +39,11 @@ export * from './vault/summary-file.service'
 export * from './summary/summary-sync.service'
 export * from './summary/summary-manager.service'
 export * from './summary/missing-summary-detector.service'
+export {
+  buildSharedContextText,
+  handleBuildSharedContext,
+  type SharedContextDiaryRow
+} from './summary/summary-context'
 
 export * from './archive/archive.interface'
 
