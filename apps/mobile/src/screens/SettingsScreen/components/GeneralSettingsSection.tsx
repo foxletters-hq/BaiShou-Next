@@ -1,33 +1,59 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native'
+import React, { useEffect, useState, useCallback } from 'react'
+import { View, StyleSheet, Platform } from 'react-native'
+import { useRouter } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
+import * as WebBrowser from 'expo-web-browser'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { GITHUB_ISSUES_URL } from '@baishou/shared'
+import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useStoragePermission } from '../../../hooks/useStoragePermission'
 import {
   AboutSettingsCard,
   WorkspaceSettingsCard,
   StorageSettingsCard,
+  DataManagementCard,
+  SettingsGroupDivider,
   type VaultInfo
 } from '@baishou/ui/native'
+import {
+  EXTERNAL_STORAGE_ROOT,
+  isExternalStorageRequiredError
+} from '../../../services/storage-permission.service'
+import * as DocumentPicker from 'expo-document-picker'
 
-export interface GeneralSettingsSectionProps {
-  onNavigateToAttachments: () => void
+function displayPath(uri: string): string {
+  return uri.replace(/^file:\/\//, '')
 }
 
-export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
-  onNavigateToAttachments
-}) => {
+export const GeneralSettingsSection: React.FC = () => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
+  const router = useRouter()
   const { services, dbReady } = useBaishou()
   const { granted: storageGranted, request: requestStorageAccess } = useStoragePermission()
 
-  const [storageStats, setStorageStats] = useState<any>({})
+  const [storageRootPath, setStorageRootPath] = useState('...')
   const [vaults, setVaults] = useState<VaultInfo[]>([])
   const [activeVault, setActiveVault] = useState<VaultInfo | null>(null)
 
-  const loadVaults = async () => {
+  const refreshStorageRoot = useCallback(async () => {
+    if (!services?.pathService) return
+    try {
+      const root = await services.pathService.getRootDirectory()
+      setStorageRootPath(displayPath(root))
+    } catch (e) {
+      if (isExternalStorageRequiredError(e)) {
+        setStorageRootPath(displayPath(EXTERNAL_STORAGE_ROOT))
+      } else {
+        console.warn('Load storage root failed', e)
+      }
+    }
+  }, [services])
+
+  const loadVaults = useCallback(async () => {
     if (!services || !dbReady) return
     try {
       const allVaults = await services.vaultService.getAllVaults()
@@ -47,34 +73,35 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
           createdAt: active.createdAt,
           lastAccessedAt: active.lastAccessedAt
         })
+      } else {
+        setActiveVault(null)
       }
     } catch (e) {
       console.warn('Load vaults failed', e)
     }
-  }
+  }, [dbReady, services])
 
   useEffect(() => {
     if (!dbReady || !services) return
-    const loadSettings = async () => {
-      try {
-        const storageStatsData = (await services.settingsManager.get<any>('storage_stats')) || {}
-        setStorageStats(storageStatsData)
-      } catch (e) {
-        console.warn('Load general settings failed', e)
-      }
-    }
-    loadSettings()
-    loadVaults()
-  }, [dbReady, services])
+    void refreshStorageRoot()
+    void loadVaults()
+  }, [dbReady, services, refreshStorageRoot, loadVaults])
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshStorageRoot()
+      void loadVaults()
+    }, [refreshStorageRoot, loadVaults])
+  )
 
   const handleSwitchVault = async (name: string) => {
     if (!services || !dbReady) return
     try {
       await services.vaultService.switchVault(name)
       await loadVaults()
-      Alert.alert(t('common.success'), t('common.save_success'))
-    } catch (e) {
-      Alert.alert(t('common.error'), t('common.errors.save_failed'))
+      toast.showSuccess(t('common.save_success'))
+    } catch {
+      toast.showError(t('common.errors.save_failed'))
     }
   }
 
@@ -83,116 +110,93 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
     try {
       await services.vaultService.deleteVault(name)
       await loadVaults()
-    } catch (e) {
-      Alert.alert(t('common.error'), t('common.errors.save_failed'))
+    } catch {
+      toast.showError(t('common.errors.save_failed'))
     }
   }
 
   const handleCreateVault = async (name: string) => {
     if (!services || !dbReady) return
-    try {
-      await services.vaultService.switchVault(name)
-      await loadVaults()
-    } catch (e) {
-      throw e
-    }
+    await services.vaultService.switchVault(name)
+    await loadVaults()
   }
 
   const handleExportData = async () => {
     if (!services || !dbReady) return
-    try {
-      const zipPath = await services.archiveService.exportToUserDevice()
-      if (zipPath) {
-        Alert.alert(t('common.success'), t('settings.export_success_desc', { path: '' }))
-      }
-    } catch (e) {
-      Alert.alert(t('common.error'), t('settings.export_failed', { error: '' }))
+    const zipPath = await services.archiveService.exportToUserDevice()
+    if (zipPath) {
+      toast.showSuccess(t('settings.export_success_desc', { path: zipPath }))
     }
   }
 
   const handleImportData = async () => {
     if (!services || !dbReady) return
+    const confirmed = await dialog.confirm(t('settings.confirm_restore_desc'), {
+      confirmText: t('common.confirm'),
+      destructive: true
+    })
+    if (!confirmed) return
     try {
-      Alert.alert(
-        t('settings.confirm_restore'),
-        t('settings.confirm_restore_desc'),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          {
-            text: t('common.confirm'),
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const result = await services.archiveService.importFromZip('', true)
-                if (result && (result.fileCount > 0 || result.fileCount === -1)) {
-                  Alert.alert(
-                    t('common.success'),
-                    t('settings.restore_success_simple')
-                  )
-                } else {
-                  Alert.alert(
-                    t('common.hint'),
-                    t('common.no_data')
-                  )
-                }
-              } catch (e2: any) {
-                Alert.alert(
-                  t('common.error'),
-                  t('settings.import_failed_with_error', { error: e2.message || '' })
-                )
-              }
-            }
-          }
-        ]
-      )
-    } catch (e) {
-      console.error('Import failed', e)
+      const pick = await DocumentPicker.getDocumentAsync({
+        type: 'application/zip',
+        copyToCacheDirectory: true
+      })
+      if (pick.canceled || !pick.assets?.[0]?.uri) return
+      const result = await services.archiveService.importFromZip(pick.assets[0].uri, true)
+      if (result && (result.fileCount > 0 || result.fileCount === -1)) {
+        toast.showSuccess(t('settings.restore_success_simple'))
+      } else {
+        toast.showWarning(t('common.no_data'))
+      }
+    } catch (e: any) {
+      toast.showError(t('settings.import_failed_with_error', { error: e.message || '' }))
     }
   }
 
   return (
     <View style={styles.section}>
-      <WorkspaceSettingsCard
-        vaults={vaults}
-        activeVault={activeVault}
-        onSwitch={handleSwitchVault}
-        onDelete={handleDeleteVault}
-        onCreate={handleCreateVault}
-      />
-
-      <StorageSettingsCard
-        storageRootPath={storageStats.storageRootPath}
-        sqliteSizeStats={storageStats.sqliteSizeStats || '0 MB'}
-        vectorDbStats={storageStats.vectorDbStats || '0 MB'}
-        mediaCacheStats={storageStats.mediaCacheStats || '0 MB'}
-        onNavigateToAttachments={onNavigateToAttachments}
-        allFilesAccessGranted={Platform.OS === 'android' ? storageGranted : true}
-        onRequestAllFilesAccess={() => void requestStorageAccess()}
-      />
-
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 16 }]}>
-        {t('settings.data_management')}
-      </Text>
-
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: colors.primary }]}
-        onPress={handleExportData}
+      <View
+        style={[
+          styles.groupCard,
+          {
+            backgroundColor: colors.bgSurface,
+            borderRadius: tokens.radius.lg
+          }
+        ]}
       >
-        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-          {t('settings.export_data')}
-        </Text>
-      </TouchableOpacity>
+        <WorkspaceSettingsCard
+          embedded
+          vaults={vaults}
+          activeVault={activeVault}
+          onSwitch={handleSwitchVault}
+          onDelete={handleDeleteVault}
+          onCreate={handleCreateVault}
+          onManageWorkspace={() => router.push('/settings/workspaces')}
+        />
+        <SettingsGroupDivider />
 
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: colors.bgSurfaceHighest }]}
-        onPress={handleImportData}
-      >
-        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-          {t('settings.import_data')}
-        </Text>
-      </TouchableOpacity>
+        <StorageSettingsCard
+          embedded
+          storageRootPath={storageRootPath}
+          allFilesAccessGranted={Platform.OS === 'android' ? storageGranted : true}
+          onRequestAllFilesAccess={() => void requestStorageAccess()}
+        />
+        <SettingsGroupDivider />
 
-      <AboutSettingsCard version="2.0.0-Next-Canary" onOpenGithubHost={() => {}} />
+        <DataManagementCard
+          embedded
+          onExport={handleExportData}
+          onImport={handleImportData}
+        />
+        <SettingsGroupDivider />
+
+        <AboutSettingsCard
+          embedded
+          onNavigateAbout={() => router.push('/settings/about')}
+          onNavigatePrivacy={() => router.push('/settings/privacy')}
+          onOpenFeedback={() => void WebBrowser.openBrowserAsync(GITHUB_ISSUES_URL)}
+        />
+      </View>
     </View>
   )
 }
@@ -201,21 +205,7 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1
-  },
-  actionButton: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  actionButtonText: {
-    fontSize: 15,
-    fontWeight: '600'
+  groupCard: {
+    overflow: 'visible'
   }
 })

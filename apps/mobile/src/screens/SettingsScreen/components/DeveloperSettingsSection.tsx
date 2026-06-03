@@ -1,41 +1,41 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const DeveloperSettingsSection: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady } = useBaishou()
   const [busy, setBusy] = useState(false)
 
   const runAction = (title: string, message: string, action: () => Promise<void>) => {
-    Alert.alert(title, message, [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.confirm'),
-        style: 'destructive',
-        onPress: async () => {
-          if (!services || !dbReady) return
-          setBusy(true)
-          try {
-            await action()
-          } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e)
-            Alert.alert(t('common.error'), message)
-          } finally {
-            setBusy(false)
-          }
-        }
+    void (async () => {
+      const confirmed = await dialog.confirm(message, {
+        title,
+        confirmText: t('common.confirm'),
+        destructive: true
+      })
+      if (!confirmed || !services || !dbReady) return
+      setBusy(true)
+      try {
+        await action()
+      } catch (e: unknown) {
+        const errMsg = e instanceof Error ? e.message : String(e)
+        toast.showError(errMsg)
+      } finally {
+        setBusy(false)
       }
-    ])
+    })()
   }
 
   const handleLoadDemo = () => {
     runAction(t('developer.load_demo_data'), t('developer.load_demo_full_desc'), async () => {
       await services!.developerService.loadDemoData(services!.diaryService)
-      Alert.alert(t('common.success'), t('developer.load_demo_success'))
+      toast.showSuccess(t('developer.load_demo_success'))
     })
   }
 
@@ -50,10 +50,11 @@ export const DeveloperSettingsSection: React.FC = () => {
         sessionManager: services!.sessionManager,
         assistantManager: services!.assistantManager
       })
-      Alert.alert(
-        result.success ? t('developer.clear_success_title') : t('common.error'),
-        result.message || t('developer.clear_success_content')
-      )
+      if (result.success) {
+        toast.showSuccess(result.message || t('developer.clear_success_content'))
+      } else {
+        toast.showError(result.message || t('common.error'))
+      }
     })
   }
 
@@ -67,10 +68,11 @@ export const DeveloperSettingsSection: React.FC = () => {
         sessionManager: services!.sessionManager,
         assistantManager: services!.assistantManager
       })
-      Alert.alert(
-        result.success ? t('developer.clear_success') : t('common.error'),
-        result.message || t('developer.clear_agent_success')
-      )
+      if (result.success) {
+        toast.showSuccess(result.message || t('developer.clear_agent_success'))
+      } else {
+        toast.showError(result.message || t('common.error'))
+      }
     })
   }
 

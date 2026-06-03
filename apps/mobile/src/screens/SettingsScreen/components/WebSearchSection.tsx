@@ -1,10 +1,25 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native'
-import Slider from '@react-native-community/slider'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  LayoutAnimation,
+  Platform,
+  UIManager
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { WebSearchConfig } from '@baishou/shared'
-import { SettingsSection, Switch, useNativeTheme } from '@baishou/ui/native'
+import { Switch, useNativeTheme } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
+import { SettingsGroupCard } from './SettingsGroupCard'
+import { SettingsSliderRow } from './SettingsSliderRow'
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 
 const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
   webSearchEngine: 'duckduckgo',
@@ -21,82 +36,11 @@ const ENGINES: Array<{ id: WebSearchConfig['webSearchEngine']; labelKey: string 
   { id: 'tavily', labelKey: 'settings.web_search_engine_tavily' }
 ]
 
-interface SliderRowProps {
-  title: string
-  description?: string
-  value: number
-  min: number
-  max: number
-  step: number
-  onChange: (v: number) => void
-}
-
-const SliderRow: React.FC<SliderRowProps> = ({
-  title,
-  description,
-  value,
-  min,
-  max,
-  step,
-  onChange
-}) => {
-  const { colors } = useNativeTheme()
-  return (
-    <View style={sliderStyles.block}>
-      <View style={sliderStyles.header}>
-        <View style={sliderStyles.textGroup}>
-          <Text style={[sliderStyles.title, { color: colors.textPrimary }]}>{title}</Text>
-          {description ? (
-            <Text style={[sliderStyles.desc, { color: colors.textTertiary }]}>{description}</Text>
-          ) : null}
-        </View>
-        <Text style={[sliderStyles.value, { color: colors.primary }]}>{value}</Text>
-      </View>
-      <Slider
-        style={sliderStyles.slider}
-        minimumValue={min}
-        maximumValue={max}
-        step={step}
-        value={value}
-        onValueChange={(v) => onChange(Math.round(v))}
-        minimumTrackTintColor={colors.primary}
-        maximumTrackTintColor={colors.borderMuted}
-        thumbTintColor={colors.primary}
-      />
-    </View>
-  )
-}
-
-const sliderStyles = StyleSheet.create({
-  block: { marginBottom: 4 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 4
-  },
-  textGroup: { flex: 1 },
-  title: { fontSize: 15, fontWeight: '500' },
-  desc: { fontSize: 12, marginTop: 2, lineHeight: 17 },
-  value: { fontSize: 16, fontWeight: '700', minWidth: 40, textAlign: 'right' },
-  slider: { width: '100%', height: 36 }
-})
-
 export const WebSearchSection: React.FC = () => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const { services, dbReady } = useBaishou()
   const [config, setConfig] = useState<WebSearchConfig>(DEFAULT_WEB_SEARCH_CONFIG)
-
-  const persist = useCallback(
-    async (next: WebSearchConfig) => {
-      if (!services || !dbReady) return
-      await services.settingsManager.set('web_search_config', next)
-      setConfig(next)
-    },
-    [services, dbReady]
-  )
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -108,13 +52,32 @@ export const WebSearchSection: React.FC = () => {
     })()
   }, [dbReady, services])
 
-  const patch = (partial: Partial<WebSearchConfig>) => {
-    void persist({ ...config, ...partial })
+  const applyPatch = useCallback(
+    (partial: Partial<WebSearchConfig>) => {
+      setConfig((prev) => {
+        const next = { ...prev, ...partial }
+        if (services && dbReady) {
+          void services.settingsManager.set('web_search_config', next)
+        }
+        return next
+      })
+    },
+    [services, dbReady]
+  )
+
+  const handleRagToggle = (enabled: boolean) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    applyPatch({ webSearchRagEnabled: enabled })
   }
+
+  const ragOn = config.webSearchRagEnabled
 
   return (
     <ScrollView keyboardShouldPersistTaps="handled">
-      <SettingsSection title={t('settings.web_search_config_title')}>
+      <SettingsGroupCard>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+          {t('settings.web_search_config_title')}
+        </Text>
         <Text style={[styles.desc, { color: colors.textSecondary }]}>
           {t('settings.web_search_config_desc')}
         </Text>
@@ -123,30 +86,31 @@ export const WebSearchSection: React.FC = () => {
           {t('agent.tools.param_search_engine')}
         </Text>
         <View style={styles.chipRow}>
-          {ENGINES.map((engine) => (
-            <TouchableOpacity
-              key={engine.id}
-              style={[
-                styles.chip,
-                {
-                  borderColor:
-                    config.webSearchEngine === engine.id ? colors.primary : colors.borderMuted,
-                  backgroundColor:
-                    config.webSearchEngine === engine.id ? colors.primaryLight : 'transparent'
-                }
-              ]}
-              onPress={() => patch({ webSearchEngine: engine.id })}
-            >
-              <Text
-                style={{
-                  color:
-                    config.webSearchEngine === engine.id ? colors.primary : colors.textSecondary
-                }}
+          {ENGINES.map((engine) => {
+            const active = config.webSearchEngine === engine.id
+            return (
+              <TouchableOpacity
+                key={engine.id}
+                style={[
+                  styles.chip,
+                  {
+                    borderColor: active ? colors.primary : colors.borderMuted,
+                    backgroundColor: active ? colors.primaryLight : 'transparent'
+                  }
+                ]}
+                onPress={() => applyPatch({ webSearchEngine: engine.id })}
               >
-                {t(engine.labelKey)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={{
+                    color: active ? colors.primary : colors.textSecondary,
+                    fontWeight: active ? '600' : '400'
+                  }}
+                >
+                  {t(engine.labelKey)}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
 
         {config.webSearchEngine === 'tavily' && (
@@ -162,13 +126,13 @@ export const WebSearchSection: React.FC = () => {
               style={[
                 styles.apiInput,
                 {
-                  backgroundColor: colors.bgSurfaceHighest,
+                  backgroundColor: colors.bgSurface,
                   color: colors.textPrimary,
                   borderColor: colors.borderMuted
                 }
               ]}
               value={config.tavilyApiKey}
-              onChangeText={(v) => patch({ tavilyApiKey: v })}
+              onChangeText={(v) => applyPatch({ tavilyApiKey: v })}
               placeholder={t('agent.tools.param_tavily_api_key')}
               placeholderTextColor={colors.textTertiary}
               autoCapitalize="none"
@@ -180,14 +144,14 @@ export const WebSearchSection: React.FC = () => {
 
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
-        <SliderRow
+        <SettingsSliderRow
           title={t('agent.tools.param_max_results')}
           description={t('agent.tools.param_max_results_desc')}
           value={config.webSearchMaxResults}
           min={1}
           max={30}
           step={1}
-          onChange={(v) => patch({ webSearchMaxResults: v })}
+          onChange={(v) => applyPatch({ webSearchMaxResults: v })}
         />
 
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
@@ -201,57 +165,61 @@ export const WebSearchSection: React.FC = () => {
               {t('agent.tools.param_rag_enabled_desc')}
             </Text>
           </View>
-          <Switch
-            value={config.webSearchRagEnabled}
-            onValueChange={(v) => patch({ webSearchRagEnabled: v })}
+          <Switch value={ragOn} onValueChange={handleRagToggle} />
+        </View>
+
+        <View
+          style={ragOn ? undefined : styles.collapsed}
+          pointerEvents={ragOn ? 'auto' : 'none'}
+        >
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <SettingsSliderRow
+            title={t('agent.tools.param_rag_max_chunks')}
+            description={t('agent.tools.param_rag_max_chunks_desc')}
+            value={config.webSearchRagMaxChunks}
+            min={1}
+            max={50}
+            step={1}
+            onChange={(v) => applyPatch({ webSearchRagMaxChunks: v })}
+          />
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <SettingsSliderRow
+            title={t('agent.tools.param_rag_chunks_per_source')}
+            description={t('agent.tools.param_rag_chunks_per_source_desc')}
+            value={config.webSearchRagChunksPerSource}
+            min={1}
+            max={20}
+            step={1}
+            onChange={(v) => applyPatch({ webSearchRagChunksPerSource: v })}
           />
         </View>
 
-        {config.webSearchRagEnabled ? (
-          <>
-            <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-            <SliderRow
-              title={t('agent.tools.param_rag_max_chunks')}
-              description={t('agent.tools.param_rag_max_chunks_desc')}
-              value={config.webSearchRagMaxChunks}
-              min={1}
-              max={50}
-              step={1}
-              onChange={(v) => patch({ webSearchRagMaxChunks: v })}
-            />
-            <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-            <SliderRow
-              title={t('agent.tools.param_rag_chunks_per_source')}
-              description={t('agent.tools.param_rag_chunks_per_source_desc')}
-              value={config.webSearchRagChunksPerSource}
-              min={1}
-              max={20}
-              step={1}
-              onChange={(v) => patch({ webSearchRagChunksPerSource: v })}
-            />
-          </>
-        ) : (
-          <>
-            <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-            <SliderRow
-              title={t('agent.tools.param_plain_snippet_length')}
-              description={t('agent.tools.param_plain_snippet_length_desc')}
-              value={config.webSearchPlainSnippetLength}
-              min={500}
-              max={30000}
-              step={100}
-              onChange={(v) => patch({ webSearchPlainSnippetLength: v })}
-            />
-          </>
-        )}
-      </SettingsSection>
+        <View
+          style={ragOn ? styles.collapsed : undefined}
+          pointerEvents={ragOn ? 'none' : 'auto'}
+        >
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <SettingsSliderRow
+            title={t('agent.tools.param_plain_snippet_length')}
+            description={t('agent.tools.param_plain_snippet_length_desc')}
+            value={config.webSearchPlainSnippetLength}
+            min={500}
+            max={30000}
+            step={100}
+            onChange={(v) => applyPatch({ webSearchPlainSnippetLength: v })}
+          />
+        </View>
+
+        <View style={{ height: tokens.spacing.xs }} />
+      </SettingsGroupCard>
     </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  desc: { fontSize: 13, marginBottom: 12, lineHeight: 18 },
-  label: { fontSize: 15, fontWeight: '500' },
+  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  desc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: '600' },
   hint: { fontSize: 12, marginTop: 2, lineHeight: 17 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 4 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
@@ -265,5 +233,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14
+  },
+  collapsed: {
+    height: 0,
+    overflow: 'hidden',
+    opacity: 0
   }
 })

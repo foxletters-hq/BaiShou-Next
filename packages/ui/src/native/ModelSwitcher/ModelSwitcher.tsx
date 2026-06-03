@@ -12,7 +12,6 @@ import {
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '../theme'
 
 export interface MockAiProviderModel {
@@ -42,11 +41,10 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
   onManageProviders
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
-  const insets = useSafeAreaInsets()
+  const { colors, tokens, maxModalWidth } = useNativeTheme()
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
-  const slideAnim = useRef(new Animated.Value(480)).current
+  const scaleAnim = useRef(new Animated.Value(0.85)).current
   const fadeAnim = useRef(new Animated.Value(0)).current
 
   const { filteredProviders, filteredModels } = useMemo(() => {
@@ -75,14 +73,15 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
     if (isOpen) {
       setMounted(true)
       Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 280,
-          useNativeDriver: true
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 11
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 280,
+          duration: 200,
           useNativeDriver: true
         })
       ]).start()
@@ -92,14 +91,14 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
     if (!mounted) return
 
     Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 480,
-        duration: 220,
+      Animated.timing(scaleAnim, {
+        toValue: 0.85,
+        duration: 180,
         useNativeDriver: true
       }),
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 220,
+        duration: 180,
         useNativeDriver: true
       })
     ]).start(({ finished }) => {
@@ -108,7 +107,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
         setSearchQuery('')
       }
     })
-  }, [isOpen, mounted, slideAnim, fadeAnim])
+  }, [isOpen, mounted, scaleAnim, fadeAnim])
 
   if (!mounted) return null
 
@@ -121,19 +120,19 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
 
         <Animated.View
           style={[
-            styles.sheet,
+            styles.dialog,
             {
               backgroundColor: colors.bgSurface,
-              borderTopLeftRadius: tokens.radius.xl,
-              borderTopRightRadius: tokens.radius.xl,
-              paddingBottom: Math.max(insets.bottom, 16),
-              transform: [{ translateY: slideAnim }]
+              borderRadius: tokens.radius.xl,
+              width: '90%',
+              maxWidth: maxModalWidth,
+              maxHeight: '80%',
+              padding: tokens.spacing.lg,
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }]
             }
           ]}
         >
-          <View style={styles.handleWrap}>
-            <View style={[styles.handle, { backgroundColor: colors.borderSubtle }]} />
-          </View>
 
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
@@ -279,30 +278,18 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end'
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.45)'
   },
-  sheet: {
-    maxHeight: '82%'
-  },
-  handleWrap: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 4
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2
-  },
+  dialog: {},
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
     paddingBottom: 12
   },
   headerTitle: {
@@ -313,7 +300,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginHorizontal: 16,
     marginBottom: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -329,7 +315,6 @@ const styles = StyleSheet.create({
     maxHeight: 420
   },
   listContent: {
-    paddingHorizontal: 16,
     paddingBottom: 8
   },
   emptyWrap: {
@@ -382,8 +367,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    marginLeft: 8
+    borderRadius: 8
   },
   modelName: {
     flex: 1,

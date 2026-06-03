@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { TTSProviderSettings, type TtsProviderConfig } from '@baishou/ui/native'
+import { TTSProviderSettings, useNativeToast, type TtsProviderConfig } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
+import { synthesizeTtsForTest } from '../../../services/mobile-tts-synthesize'
 
 export const TTSSettingsSection: React.FC = () => {
   const { t } = useTranslation()
+  const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
   const [initialConfig, setInitialConfig] = useState<Partial<TtsProviderConfig> | undefined>()
 
@@ -23,14 +24,26 @@ export const TTSSettingsSection: React.FC = () => {
         id: savedProviderId,
         baseUrl:
           (providerConfig.baseUrl as string) ||
-          (savedProviderId === 'gpt-sovits' ? 'http://127.0.0.1:9880' : 'https://api.openai.com/v1'),
+          (savedProviderId === 'gpt-sovits'
+            ? 'http://127.0.0.1:9880'
+            : savedProviderId === 'mimo-tts'
+              ? ''
+              : 'https://api.openai.com/v1'),
         apiKey: (providerConfig.apiKey as string) || '',
         modelId:
           globalModels.globalTtsModelId ||
-          (savedProviderId === 'gpt-sovits' ? 'default' : 'tts-1'),
-        voice: ttsSettings.voice || 'alloy',
+          (savedProviderId === 'gpt-sovits'
+            ? 'default'
+            : savedProviderId === 'mimo-tts'
+              ? 'mimo-v2.5-tts'
+              : 'tts-1'),
+        voice:
+          ttsSettings.voice ||
+          (savedProviderId === 'mimo-tts' ? '冰糖' : savedProviderId === 'gpt-sovits' ? 'default' : 'alloy'),
         speed: ttsSettings.speed ?? 1,
-        responseFormat: ttsSettings.responseFormat || 'mp3',
+        responseFormat:
+          ttsSettings.responseFormat ||
+          (savedProviderId === 'mimo-tts' || savedProviderId === 'gpt-sovits' ? 'wav' : 'mp3'),
         refAudioPath: ttsSettings.refAudioPath || '',
         promptText: ttsSettings.promptText || '',
         promptLang: ttsSettings.promptLang || 'zh',
@@ -87,7 +100,7 @@ export const TTSSettingsSection: React.FC = () => {
       }
     })
 
-    Alert.alert(t('common.success'), t('tts.settings.save_success'))
+    toast.showSuccess(t('tts.settings.save_success'))
   }
 
   const configReady = useMemo(() => initialConfig !== undefined, [initialConfig])
@@ -98,10 +111,16 @@ export const TTSSettingsSection: React.FC = () => {
     <TTSProviderSettings
       initialConfig={initialConfig}
       onSaveConfig={handleSaveConfig}
-      onTestTts={async () => ({
-        success: false,
-        message: t('tts.settings.test_failed')
-      })}
+      onTestTts={async (config, text) => {
+        if (!config.apiKey?.trim()) {
+          return { success: false, message: t('ai_config.fill_api_key_hint') }
+        }
+        const result = await synthesizeTtsForTest(config, text)
+        if (result.success) {
+          return { success: true, message: t('tts.settings.test_success') }
+        }
+        return { success: false, message: result.error }
+      }}
     />
   )
 }

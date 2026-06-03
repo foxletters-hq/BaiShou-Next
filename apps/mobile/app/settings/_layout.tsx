@@ -13,6 +13,10 @@ export default function SettingsStackLayout() {
       }}
     >
       <Stack.Screen name="[section]" />
+      <Stack.Screen name="ai-provider/[id]" />
+      <Stack.Screen name="about" />
+      <Stack.Screen name="privacy" />
+      <Stack.Screen name="workspaces" />
     </Stack>
   )
 }

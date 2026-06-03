@@ -1,6 +1,5 @@
 import React from 'react'
-import { ScrollView, StyleSheet } from 'react-native'
-import { useRouter } from 'expo-router'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { scrollIndicatorStyle, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
@@ -15,7 +14,6 @@ import { AgentToolsSection } from './components/AgentToolsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { TTSSettingsSection } from './components/TTSSettingsSection'
-import { AgentBehaviorSection } from './components/AgentBehaviorSection'
 import { McpSettingsSection } from './components/McpSettingsSection'
 import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
 import { UpdateSettingsSection } from './components/UpdateSettingsSection'
@@ -28,7 +26,6 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
   const chrome = getStackScreenChrome(colors)
-  const router = useRouter()
 
   const titleKey = getHubItemTitleKey(section)
   const title = titleKey ? t(titleKey) : t('settings.title')
@@ -36,20 +33,11 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
   const renderContent = () => {
     switch (section) {
       case 'general':
-        return (
-          <GeneralSettingsSection
-            onNavigateToAttachments={() => router.push('/settings/attachments')}
-          />
-        )
+        return <GeneralSettingsSection />
       case 'ai-services':
         return <AIServicesSection />
       case 'ai-models':
-        return (
-          <>
-            <AIModelsSection />
-            <AgentBehaviorSection />
-          </>
-        )
+        return <AIModelsSection />
       case 'rag':
         return <RAGMemorySection />
       case 'web-search':
@@ -73,16 +61,22 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
     }
   }
 
+  const isSelfScrolling = section === 'rag' || section === 'ai-services'
+
   return (
     <StackScreenLayout title={title} {...chrome} contentStyle={styles.layoutContent}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        indicatorStyle={scrollIndicatorStyle(isDark)}
-        keyboardShouldPersistTaps="handled"
-      >
-        {renderContent()}
-      </ScrollView>
+      {isSelfScrolling ? (
+        <View style={[styles.scrollContent, styles.selfScrollHost]}>{renderContent()}</View>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          indicatorStyle={scrollIndicatorStyle(isDark)}
+          keyboardShouldPersistTaps="handled"
+        >
+          {renderContent()}
+        </ScrollView>
+      )}
     </StackScreenLayout>
   )
 }
@@ -93,5 +87,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 32
+  },
+  selfScrollHost: {
+    flex: 1,
+    paddingBottom: 16,
+    minHeight: 0
   }
 })

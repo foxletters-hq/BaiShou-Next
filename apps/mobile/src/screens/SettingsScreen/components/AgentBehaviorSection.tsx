@@ -5,11 +5,10 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ScrollView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { AgentBehaviorConfig } from '@baishou/shared'
@@ -18,6 +17,8 @@ import { DEFAULT_AGENT_BEHAVIOR } from '@baishou/database'
 export const AgentBehaviorSection: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady } = useBaishou()
 
   const [config, setConfig] = useState<AgentBehaviorConfig>(DEFAULT_AGENT_BEHAVIOR)
@@ -56,36 +57,25 @@ export const AgentBehaviorSection: React.FC = () => {
     try {
       await services.settingsManager.set('agent_behavior', config)
       setDirty(false)
-      Alert.alert(
-        t('common.success'),
-        t('settings.agent_behavior_saved')
-      )
+      toast.showSuccess(t('settings.agent_behavior_saved'))
     } catch (e) {
-      Alert.alert(t('common.error'), t('common.errors.save_failed'))
+      toast.showError(t('common.errors.save_failed'))
     }
-  }, [services, dbReady, config, t])
+  }, [services, dbReady, config, t, toast])
 
   const updateConfig = useCallback((partial: Partial<AgentBehaviorConfig>) => {
     setConfig((prev) => ({ ...prev, ...partial }))
     setDirty(true)
   }, [])
 
-  const handleResetDefaults = useCallback(() => {
-    Alert.alert(
-      t('settings.reset_defaults_title'),
-      t('settings.reset_defaults_confirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          onPress: () => {
-            setConfig(DEFAULT_AGENT_BEHAVIOR)
-            setDirty(true)
-          }
-        }
-      ]
-    )
-  }, [t])
+  const handleResetDefaults = useCallback(async () => {
+    const confirmed = await dialog.confirm(t('settings.reset_defaults_confirm'), {
+      title: t('settings.reset_defaults_title')
+    })
+    if (!confirmed) return
+    setConfig(DEFAULT_AGENT_BEHAVIOR)
+    setDirty(true)
+  }, [dialog, t])
 
   const handlePinnedIdsChange = useCallback(
     (text: string) => {

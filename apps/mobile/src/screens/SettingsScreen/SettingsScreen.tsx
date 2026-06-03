@@ -1,15 +1,15 @@
 import React from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
-import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
 import { useTranslation } from 'react-i18next'
+import { CompactTabHeader } from '../../components/CompactTabHeader'
 import {
   SETTINGS_HUB_GROUPS,
   type SettingsHubItem,
   type SettingsHubRoute
 } from './settingsHubItems'
-import { SettingsAccountPanel } from './components/SettingsAccountPanel'
+import { QuickSettingsGroup } from './components/SettingsAccountPanel'
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -34,41 +34,42 @@ export const SettingsScreen: React.FC = () => {
       onPress={() => navigate(item.route)}
       activeOpacity={0.65}
     >
-      <View style={[styles.iconWrap, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <MaterialIcons name={item.icon} size={22} color={colors.primary} />
-      </View>
       <Text style={[styles.listItemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
         {t(item.titleKey)}
       </Text>
-      <MaterialIcons name="chevron-right" size={22} color={colors.textTertiary} />
+      <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
     </TouchableOpacity>
   )
 
+  const groupCardStyle = {
+    backgroundColor: colors.bgSurface,
+    borderRadius: tokens.radius.lg
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bgApp }]}>
+      <CompactTabHeader title={t('settings.title')} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         indicatorStyle={scrollIndicatorStyle(isDark)}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <SettingsAccountPanel />
-
         <View style={styles.hub}>
+          <View style={styles.groupBlock}>
+            <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>
+              {t('settings.hub_group_quick', '快捷设置')}
+            </Text>
+            <QuickSettingsGroup groupCardStyle={groupCardStyle} />
+          </View>
+
           {SETTINGS_HUB_GROUPS.map((group) => (
             <View key={group.titleKey} style={styles.groupBlock}>
               <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>
                 {t(group.titleKey)}
               </Text>
-              <View
-                style={[
-                  styles.groupCard,
-                  {
-                    backgroundColor: colors.bgSurface,
-                    borderRadius: tokens.radius.lg
-                  }
-                ]}
-              >
+              <View style={[styles.groupCard, groupCardStyle]}>
                 {group.items.map((item, index) =>
                   renderItem(item, index === group.items.length - 1)
                 )}
@@ -92,7 +93,8 @@ const styles = StyleSheet.create({
     paddingBottom: 32
   },
   hub: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    paddingTop: 8,
     gap: 20
   },
   groupBlock: {
@@ -115,16 +117,13 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     gap: 12
   },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
   listItemTitle: {
     flex: 1,
     fontSize: 16,
     fontWeight: '500'
+  },
+  chevron: {
+    fontSize: 20,
+    lineHeight: 20
   }
 })

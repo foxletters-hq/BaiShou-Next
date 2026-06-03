@@ -18,29 +18,23 @@ export interface SettingsHubGroup {
 
 /** 与桌面端 SettingsPage / 旧版 BaiShou 移动枢纽分组对齐 */
 export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
-  {
-    titleKey: 'settings.hub_group_system',
-    items: [
       {
-        id: 'general',
-        titleKey: 'settings.general',
-        icon: 'tune',
-        route: { type: 'section', section: 'general' }
+        titleKey: 'settings.hub_group_system',
+        items: [
+          {
+            id: 'general',
+            titleKey: 'settings.general',
+            icon: 'tune',
+            route: { type: 'section', section: 'general' }
+          },
+          {
+            id: 'updates',
+            titleKey: 'updater.section_title',
+            icon: 'system-update',
+            route: { type: 'section', section: 'updates' }
+          }
+        ]
       },
-      {
-        id: 'updates',
-        titleKey: 'updater.section_title',
-        icon: 'system-update',
-        route: { type: 'section', section: 'updates' }
-      },
-      {
-        id: 'developer',
-        titleKey: 'developer.title',
-        icon: 'developer-mode',
-        route: { type: 'section', section: 'developer' }
-      }
-    ]
-  },
   {
     titleKey: 'settings.hub_group_ai',
     items: [
@@ -79,12 +73,6 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'settings.agent_tools_title',
         icon: 'extension',
         route: { type: 'section', section: 'agent-tools' }
-      },
-      {
-        id: 'mcp',
-        titleKey: 'settings.mcp_title',
-        icon: 'electrical-services',
-        route: { type: 'section', section: 'mcp' }
       },
       {
         id: 'summary',

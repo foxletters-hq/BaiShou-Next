@@ -1,7 +1,9 @@
+import 'react-native-gesture-handler'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import 'react-native-reanimated'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -98,7 +100,7 @@ function AppContent() {
         <Stack.Screen
           name="summary-detail"
           options={{
-            title: t('summary.detail_title', '总结详情'),
+            title: t('summary.dashboard_title'),
             headerShown: false
           }}
         />
@@ -116,16 +118,18 @@ export default function RootLayout() {
   }, [])
 
   return (
-    <SafeAreaProvider>
-      <BaishouProvider>
-        <NativeAppThemeBridge>
-          <DialogProvider>
-            <ToastProvider>
-              <AppContent />
-            </ToastProvider>
-          </DialogProvider>
-        </NativeAppThemeBridge>
-      </BaishouProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <BaishouProvider>
+          <NativeAppThemeBridge>
+            <DialogProvider>
+              <ToastProvider>
+                <AppContent />
+              </ToastProvider>
+            </DialogProvider>
+          </NativeAppThemeBridge>
+        </BaishouProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }

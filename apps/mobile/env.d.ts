@@ -9,7 +9,8 @@ declare module '*.module.css' {
 declare module '*.css'
 
 declare module '*.svg' {
-  const content: string
+  /** Metro 静态资源模块 id（与 PNG 相同，供 expo-asset / SvgUri 使用） */
+  const content: number
   export default content
 }
 

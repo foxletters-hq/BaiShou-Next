@@ -1,512 +1,412 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Switch,
-  ActivityIndicator,
-  Alert,
-  TextInput
-} from 'react-native'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { View, StyleSheet } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
-import { useBaishou } from '../../../providers/BaishouProvider'
 import {
-  BATCH_EMBED_CONCURRENCY_MAX,
-  BATCH_EMBED_CONCURRENCY_MIN,
-  DEFAULT_BATCH_EMBED_CONCURRENCY
+  RagMemoryView,
+  useNativeToast,
+  useDialog,
+  type RagConfig,
+  type RagEntry,
+  type RagState
+} from '@baishou/ui/native'
+import {
+  DEFAULT_BATCH_EMBED_CONCURRENCY,
+  type RagConfig as SharedRagConfig
 } from '@baishou/shared'
+import { useBaishou } from '../../../providers/BaishouProvider'
+import { useMobileRagSystem } from '../../../hooks/useMobileRagSystem'
+import { TextPromptModal } from './TextPromptModal'
+
+const DEFAULT_RAG_CONFIG: RagConfig = {
+  ragEnabled: true,
+  ragTopK: 20,
+  ragSimilarityThreshold: 0.4,
+  batchEmbedConcurrency: DEFAULT_BATCH_EMBED_CONCURRENCY
+}
+
+type PromptMode = 'manual' | 'edit' | 'clear' | null
 
 export const RAGMemorySection: React.FC = () => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const router = useRouter()
   const { services, dbReady } = useBaishou()
+  const toast = useNativeToast()
+  const dialog = useDialog()
 
-  const [ragConfig, setRagConfig] = useState<any>({})
-  const [ragStats, setRagStats] = useState<any>({
+  const [config, setConfig] = useState<RagConfig>(DEFAULT_RAG_CONFIG)
+  const [stats, setStats] = useState({
     totalCount: 0,
-    currentDimension: 0
+    currentDimension: 0,
+    totalSizeText: '0 KB'
   })
-  const [isRagLoading, setIsRagLoading] = useState(false)
-  const [ragProgress, setRagProgress] = useState<any>(null)
-  const [ragEntries, setRagEntries] = useState<Array<{ embeddingId: string; text: string }>>([])
+  const [entries, setEntries] = useState<RagEntry[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [searchQuery, setSearchQuery] = useState('')
-  const [manualMemoryText, setManualMemoryText] = useState('')
+  const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic')
+  const [embeddingModelId, setEmbeddingModelId] = useState<string>()
+  const {
+    hasMismatchModel,
+    ragState,
+    setRagState,
+    checkModelMismatch,
+    handleReembedAfterModelChange
+  } = useMobileRagSystem(services?.ragService)
 
-  const loadRagStats = useCallback(async () => {
-    if (!services?.ragService || !dbReady) return
-    try {
-      setIsRagLoading(true)
-      const stats = await services.ragService.getStats()
-      const ragConfigData = (await services.settingsManager.get<any>('rag_config')) || {}
-      setRagStats({
-        totalCount: stats.totalCount,
-        currentDimension: stats.currentDimension,
-        totalSizeText: ragConfigData.totalSizeText || `${(stats.totalCount * 2.5).toFixed(1)} KB`
+  const [promptMode, setPromptMode] = useState<PromptMode>(null)
+  const [promptDefault, setPromptDefault] = useState('')
+  const editEntryRef = useRef<RagEntry | null>(null)
+
+  const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
+  useEffect(() => {
+    stateRef.current = { searchQuery, searchMode, currentPage, pageSize }
+  }, [searchQuery, searchMode, currentPage, pageSize])
+
+  const mapEntry = (
+    raw: Record<string, unknown>,
+    fallbackModelId?: string
+  ): RagEntry => ({
+    embeddingId: String(raw.embeddingId ?? ''),
+    text: String(raw.text ?? ''),
+    modelId: String(raw.modelId ?? fallbackModelId ?? ''),
+    createdAt: Number(raw.createdAt ?? Date.now()),
+    similarity: typeof raw.similarity === 'number' ? raw.similarity : undefined
+  })
+
+  const loadRagData = useCallback(
+    async (
+      q: string = stateRef.current.searchQuery,
+      mode: 'semantic' | 'text' = stateRef.current.searchMode,
+      page: number = stateRef.current.currentPage,
+      size: number = stateRef.current.pageSize
+    ) => {
+      if (!services?.ragService || !dbReady) return
+
+      const ragStats = await services.ragService.getStats()
+      const globalModels =
+        (await services.settingsManager.get<{ globalEmbeddingModelId?: string }>(
+          'global_models'
+        )) || {}
+      setEmbeddingModelId(globalModels.globalEmbeddingModelId)
+      setStats({
+        totalCount: ragStats.totalCount,
+        currentDimension: ragStats.currentDimension,
+        totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`
       })
-      const res = await services.ragService.queryEntries({
-        keyword: searchQuery || undefined,
-        limit: 20,
-        offset: 0,
-        mode: searchQuery ? 'semantic' : 'text',
+
+      const limit = size
+      const offset = (page - 1) * size
+      const params: {
+        keyword?: string
+        limit: number
+        offset: number
+        mode: 'semantic' | 'text'
+        withTotal: boolean
+      } = {
+        limit,
+        offset,
+        mode,
         withTotal: true
-      })
-      setRagEntries(
-        res.entries.map((e) => ({
-          embeddingId: String(e.embeddingId ?? ''),
-          text: String(e.text ?? '').slice(0, 200)
-        }))
-      )
-    } catch (e) {
-      console.warn('Load RAG stats failed', e)
-    } finally {
-      setIsRagLoading(false)
-    }
-  }, [services, dbReady, searchQuery])
+      }
+
+      if (q.trim()) {
+        params.keyword = q.trim()
+        if (mode === 'semantic') {
+          params.limit = 50
+          params.offset = 0
+        }
+      }
+
+      const res = await services.ragService.queryEntries(params)
+      const fallbackModel = globalModels.globalEmbeddingModelId
+
+      if (q.trim() && mode === 'semantic') {
+        const sliced = res.entries.slice((page - 1) * size, page * size)
+        setEntries(sliced.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
+        setTotalCount(res.total)
+      } else {
+        if (res.total > 0 && offset >= res.total) {
+          const maxPage = Math.max(1, Math.ceil(res.total / size))
+          setCurrentPage(maxPage)
+          await loadRagData(q, mode, maxPage, size)
+          return
+        }
+        setEntries(res.entries.map((e) => mapEntry(e as Record<string, unknown>, fallbackModel)))
+        setTotalCount(res.total)
+      }
+
+      await checkModelMismatch()
+    },
+    [services, dbReady, checkModelMismatch]
+  )
 
   useEffect(() => {
     if (!dbReady || !services) return
-    const loadConfig = async () => {
-      try {
-        const ragConfigData = (await services.settingsManager.get<any>('rag_config')) || {}
-        setRagConfig(ragConfigData)
-      } catch (e) {
-        console.warn('Load RAG config failed', e)
-      }
+    const init = async () => {
+      const saved = (await services.settingsManager.get<SharedRagConfig>('rag_config')) ?? null
+      setConfig({
+        ragEnabled: saved?.ragEnabled ?? DEFAULT_RAG_CONFIG.ragEnabled,
+        ragTopK: saved?.ragTopK ?? DEFAULT_RAG_CONFIG.ragTopK,
+        ragSimilarityThreshold:
+          saved?.ragSimilarityThreshold ?? DEFAULT_RAG_CONFIG.ragSimilarityThreshold,
+        batchEmbedConcurrency:
+          saved?.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY
+      })
+      await loadRagData('', 'text', 1, 10)
     }
-    loadConfig()
-    loadRagStats()
-  }, [dbReady, services, loadRagStats])
+    void init()
+  }, [dbReady, services, loadRagData])
 
-  const handleSaveRagConfig = async (config: any, options?: { silent?: boolean }) => {
+  const saveConfig = async (next: RagConfig) => {
     if (!services || !dbReady) return
-    try {
-      await services.settingsManager.set('rag_config', config)
-      setRagConfig(config)
-      if (!options?.silent) {
-        Alert.alert(t('common.success'), t('settings.rag_saved'))
-      }
-    } catch (e) {
-      Alert.alert(t('common.error'), t('common.errors.save_failed'))
-    }
+    await services.settingsManager.set('rag_config', next)
+    setConfig(next)
+  }
+
+  const handleSearch = (query: string, mode: 'semantic' | 'text') => {
+    setSearchQuery(query)
+    setSearchMode(mode)
+    setCurrentPage(1)
+    void loadRagData(query, mode, 1, pageSize)
+  }
+
+  const handlePageChange = (page: number, size: number) => {
+    setCurrentPage(page)
+    setPageSize(size)
+    void loadRagData(searchQuery, searchMode, page, size)
   }
 
   const handleDetectDimension = async () => {
-    if (!services?.ragService || !dbReady) return
+    if (!services?.ragService) return
+    setRagState({
+      isRunning: true,
+      type: 'detect',
+      progress: 0,
+      total: 1,
+      statusText: t('settings.rag_detect_dimension')
+    })
     try {
-      setIsRagLoading(true)
-      const globalModelsConfig = (await services.settingsManager.get<any>('global_models')) || {}
-      if (
-        !globalModelsConfig.globalEmbeddingProviderId ||
-        !globalModelsConfig.globalEmbeddingModelId
-      ) {
-        Alert.alert(t('common.hint'), t('agent.rag.embedding_not_configured'))
+      const globalModels =
+        (await services.settingsManager.get<{
+          globalEmbeddingProviderId?: string
+          globalEmbeddingModelId?: string
+        }>('global_models')) || {}
+      if (!globalModels.globalEmbeddingProviderId || !globalModels.globalEmbeddingModelId) {
+        toast.showWarning(t('ai_config.error_no_model'))
         return
       }
-
       const dimension = await services.ragService.detectDimension()
-      setRagStats((prev: any) => ({ ...prev, currentDimension: dimension }))
-      Alert.alert(
-        t('common.success'),
-        t('agent.rag.detect_success').replace('${dimension}',
-          dimension.toString()
-        )
-      )
-    } catch (e: any) {
-      Alert.alert(
-        t('common.error'),
-        e?.message || t('agent.rag.detect_failed')
-      )
+      toast.showSuccess(t('settings.rag_detect_success', { dimension: String(dimension) }))
+      await loadRagData()
+    } catch (e: unknown) {
+      toast.showError(e instanceof Error ? e.message : t('settings.rag_detect_error'))
     } finally {
-      setIsRagLoading(false)
+      setRagState({
+        isRunning: false,
+        type: 'idle',
+        progress: 0,
+        total: 0,
+        statusText: ''
+      })
     }
   }
 
   const handleBatchEmbed = async () => {
-    if (!services?.ragService || !dbReady) return
+    if (!services?.ragService) return
+    setRagState({
+      isRunning: true,
+      type: 'batchEmbed',
+      progress: 0,
+      total: 0,
+      statusText: t('settings.rag_batch_embed')
+    })
     try {
-      setIsRagLoading(true)
-      setRagProgress({ current: 0, total: 0, status: 'starting' })
-
       const count = await services.ragService.batchEmbed((p) => {
-        setRagProgress({
-          current: p.current,
+        setRagState({
+          isRunning: true,
+          type: 'batchEmbed',
+          progress: p.current,
           total: p.total,
-          status: p.status
+          statusText: p.status || t('common.processing')
         })
       })
-
-      if (count === 0) {
-        Alert.alert(t('common.hint'), t('agent.rag.no_memories_yet'))
-        setRagProgress(null)
-        return
-      }
-
-      setRagStats((prev: any) => ({ ...prev, totalCount: count }))
-      setRagProgress(null)
-      Alert.alert(
-        t('common.success'),
-        t('agent.rag.batch_embed_success').replace('$count',
-          count.toString()
-        )
-      )
-      await loadRagStats()
-    } catch (e: any) {
-      setRagProgress(null)
-      Alert.alert(
-        t('common.error'),
-        e?.message || t('agent.rag.batch_embed_error')
-      )
+      toast.showSuccess(t('settings.rag_batch_embed_done', { count: String(count) }))
+      await loadRagData()
+    } catch (e: unknown) {
+      toast.showError(e instanceof Error ? e.message : t('settings.rag_batch_embed_failed'))
     } finally {
-      setIsRagLoading(false)
+      setRagState({
+        isRunning: false,
+        type: 'idle',
+        progress: 0,
+        total: 0,
+        statusText: ''
+      })
     }
   }
 
-  const handleClearMemory = async () => {
-    if (!services?.ragService || !dbReady) return
-    Alert.alert(
-      t('agent.rag.clear_all_title'),
-      t('agent.rag.clear_all_content'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsRagLoading(true)
-              await services.ragService.clearAll()
-              setRagStats({ totalCount: 0, currentDimension: 0 })
-              Alert.alert(
-                t('common.success'),
-                t('agent.rag.clear_dim_success')
-              )
-            } catch (e) {
-              Alert.alert(
-                t('common.error'),
-                t('agent.rag.batch_embed_error')
-              )
-            } finally {
-              setIsRagLoading(false)
-            }
-          }
-        }
-      ]
-    )
+  const handleClearAll = async () => {
+    setPromptMode('clear')
+    setPromptDefault('')
   }
 
+  const confirmClearAll = async (phrase: string) => {
+    if (!services?.ragService) return
+    const expected = t('settings.rag_clear_all_confirm_phrase')
+    if (phrase.trim() !== expected) {
+      toast.showError(t('settings.rag_clear_all_mismatch'))
+      return
+    }
+    try {
+      await services.ragService.clearAll()
+      setCurrentPage(1)
+      await loadRagData('', 'text', 1, pageSize)
+      toast.showSuccess(t('settings.rag_clear_all'))
+    } catch (e: unknown) {
+      toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+    }
+  }
+
+  const handleAddManualMemory = async () => {
+    setPromptMode('manual')
+    setPromptDefault('')
+  }
+
+  const handleEditEntry = async (entry: RagEntry) => {
+    editEntryRef.current = entry
+    setPromptMode('edit')
+    setPromptDefault(entry.text)
+  }
+
+  const handleDeleteEntry = async (id: string) => {
+    if (!services?.ragService) return
+    const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
+      title: t('common.delete'),
+      confirmText: t('common.delete'),
+      destructive: true
+    })
+    if (!confirmed) return
+    await services.ragService.deleteEntry(id)
+    await loadRagData()
+    toast.showSuccess(t('common.delete_success'))
+  }
+
+  const onPromptConfirm = async (value: string) => {
+    const mode = promptMode
+    setPromptMode(null)
+    if (!services?.ragService) return
+
+    if (mode === 'manual') {
+      const text = value.trim()
+      if (!text) return
+      try {
+        await services.ragService.addManualMemory(text)
+        toast.showSuccess(t('settings.rag_add_manual_success'))
+        await loadRagData()
+      } catch (e: unknown) {
+        toast.showError(e instanceof Error ? e.message : t('settings.rag_add_manual_failed'))
+      }
+      return
+    }
+
+    if (mode === 'edit' && editEntryRef.current) {
+      const text = value.trim()
+      if (!text) return
+      try {
+        await services.ragService.editEntry(editEntryRef.current.embeddingId, text)
+        toast.showSuccess(t('common.save_success'))
+        await loadRagData()
+      } catch (e: unknown) {
+        toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+      }
+      editEntryRef.current = null
+      return
+    }
+
+    if (mode === 'clear') {
+      await confirmClearAll(value)
+    }
+  }
+
+  const handleTriggerMigration = useCallback(async () => {
+    const ok = await handleReembedAfterModelChange()
+    if (ok) {
+      setCurrentPage(1)
+      await loadRagData('', 'text', 1, pageSize)
+    }
+  }, [handleReembedAfterModelChange, loadRagData, pageSize])
+
   return (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('agent.rag.title')}
-      </Text>
-      <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-        {t('settings.rag_subtitle')}
-      </Text>
+    <View style={styles.wrap}>
+      <RagMemoryView
+        config={config}
+        stats={stats}
+        ragState={ragState}
+        hasMismatchModel={hasMismatchModel}
+        embeddingModelId={embeddingModelId}
+        entries={entries}
+        totalCount={totalCount}
+        currentPage={currentPage}
+        pageSize={pageSize}
+        searchQuery={searchQuery}
+        onChange={saveConfig}
+        onDetectDimension={handleDetectDimension}
+        onBatchEmbed={handleBatchEmbed}
+        onTriggerMigration={handleTriggerMigration}
+        onAddManualMemory={handleAddManualMemory}
+        onClearAll={handleClearAll}
+        onSearch={handleSearch}
+        onDeleteEntry={handleDeleteEntry}
+        onEditEntry={handleEditEntry}
+        onNavigateToConfig={() => router.push('/settings/ai-models')}
+        onPageChange={handlePageChange}
+      />
 
-      <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('agent.features.rag_enable')}
-        </Text>
-        <Switch
-          value={ragConfig.ragEnabled || false}
-          onValueChange={(value) => handleSaveRagConfig({ ...ragConfig, ragEnabled: value })}
-        />
-      </View>
+      <TextPromptModal
+        visible={promptMode === 'manual'}
+        title={t('settings.rag_add_manual')}
+        placeholder={t('settings.rag_edit_manual')}
+        multiline
+        confirmLabel={t('common.confirm')}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setPromptMode(null)}
+        onConfirm={onPromptConfirm}
+      />
 
-      <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('settings.rag_batch_embed_concurrency')}
-        </Text>
-        <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
-          {t('settings.rag_batch_embed_concurrency_hint')}
-        </Text>
-        <View style={styles.concurrencyRow}>
-          {Array.from(
-            { length: BATCH_EMBED_CONCURRENCY_MAX - BATCH_EMBED_CONCURRENCY_MIN + 1 },
-            (_, i) => BATCH_EMBED_CONCURRENCY_MIN + i
-          ).map((n) => {
-            const selected =
-              (ragConfig.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY) === n
-            return (
-              <TouchableOpacity
-                key={n}
-                style={[
-                  styles.concurrencyChip,
-                  {
-                    backgroundColor: selected ? colors.primary : colors.bgSurface,
-                    borderColor: selected ? colors.primary : colors.borderSubtle
-                  }
-                ]}
-                onPress={() =>
-                  handleSaveRagConfig({ ...ragConfig, batchEmbedConcurrency: n }, { silent: true })
-                }
-              >
-                <Text
-                  style={{
-                    color: selected ? colors.textOnPrimary : colors.textPrimary,
-                    fontWeight: selected ? '700' : '400'
-                  }}
-                >
-                  {n}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
-      </View>
+      <TextPromptModal
+        visible={promptMode === 'edit'}
+        title={t('settings.rag_edit_manual')}
+        defaultValue={promptDefault}
+        multiline
+        confirmLabel={t('common.save')}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => {
+          setPromptMode(null)
+          editEntryRef.current = null
+        }}
+        onConfirm={onPromptConfirm}
+      />
 
-      <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('agent.rag.stat_total')}
-        </Text>
-        <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-          {ragStats.totalCount || 0} {t('common.items_count')}
-        </Text>
-      </View>
-
-      <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('agent.rag.stat_dimension')}
-        </Text>
-        <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
-          {ragStats.currentDimension || t('agent.rag.dimension_not_configured')}
-        </Text>
-      </View>
-
-      {ragProgress && (
-        <View style={[styles.progressContainer, { backgroundColor: colors.bgSurface }]}>
-          <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-            {ragProgress.status}
-          </Text>
-          <View style={[styles.progressBar, { backgroundColor: colors.borderSubtle }]}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  backgroundColor: colors.primary,
-                  width: `${ragProgress.total > 0 ? (ragProgress.current / ragProgress.total) * 100 : 0}%`
-                }
-              ]}
-            />
-          </View>
-          <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-            {ragProgress.current} / {ragProgress.total}
-          </Text>
-        </View>
-      )}
-
-      <View style={[styles.settingItem, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {t('agent.rag.action_add_memory')}
-        </Text>
-        <TextInput
-          style={[
-            styles.memoryInput,
-            { color: colors.textPrimary, borderColor: colors.borderSubtle }
-          ]}
-          placeholder={t('agent.rag.add_memory_hint')}
-          placeholderTextColor={colors.textSecondary}
-          value={manualMemoryText}
-          onChangeText={setManualMemoryText}
-          multiline
-        />
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: colors.bgSurface, marginBottom: 0 }]}
-          onPress={async () => {
-            if (!manualMemoryText.trim() || !services?.ragService) return
-            try {
-              await services.ragService.addManualMemory(manualMemoryText.trim())
-              setManualMemoryText('')
-              await loadRagStats()
-              Alert.alert(t('common.success'), t('agent.rag.add_memory_success'))
-            } catch (e: unknown) {
-              Alert.alert(
-                t('common.error'),
-                e instanceof Error ? e.message : t('agent.rag.add_manual_failed')
-              )
-            }
-          }}
-        >
-          <Text style={{ color: colors.textPrimary }}>{t('common.add')}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: colors.primary }]}
-        onPress={handleDetectDimension}
-        disabled={isRagLoading}
-      >
-        {isRagLoading ? (
-          <ActivityIndicator size="small" color={colors.textOnPrimary} />
-        ) : (
-          <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-            {t('agent.rag.dimension_click_detect')}
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: colors.bgSurfaceHighest }]}
-        onPress={handleBatchEmbed}
-        disabled={isRagLoading}
-      >
-        {isRagLoading ? (
-          <ActivityIndicator size="small" color={colors.textPrimary} />
-        ) : (
-          <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-            {t('agent.rag.action_batch_embed')}
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: colors.error }]}
-        onPress={handleClearMemory}
-        disabled={isRagLoading}
-      >
-        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-          {t('agent.rag.clear_all')}
-        </Text>
-      </TouchableOpacity>
-
-      {ragEntries.length > 0 && (
-        <View style={[styles.entryList, { backgroundColor: colors.bgSurfaceHighest }]}>
-          <Text style={[styles.entryListTitle, { color: colors.textSecondary }]}>
-            {t('agent.rag.stat_total')} ({ragEntries.length})
-          </Text>
-          {ragEntries.slice(0, 10).map((entry) => (
-            <View
-              key={entry.embeddingId}
-              style={[styles.entryRow, { borderBottomColor: colors.borderSubtle }]}
-            >
-              <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={3}>
-                {entry.text || entry.embeddingId}
-              </Text>
-              <TouchableOpacity
-                onPress={async () => {
-                  await services?.ragService.deleteEntry(entry.embeddingId)
-                  await loadRagStats()
-                }}
-              >
-                <Text style={{ color: colors.error, fontSize: 13 }}>
-                  {t('common.delete')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      )}
+      <TextPromptModal
+        visible={promptMode === 'clear'}
+        title={t('settings.rag_clear_all')}
+        message={t('settings.rag_clear_all_confirm')}
+        placeholder={t('settings.rag_clear_all_confirm_phrase')}
+        defaultValue={promptDefault}
+        confirmLabel={t('common.confirm')}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setPromptMode(null)}
+        onConfirm={onPromptConfirm}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: 24
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1
-  },
-  sectionDescription: {
-    fontSize: 14,
-    marginBottom: 16
-  },
-  settingItem: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8
-  },
-  settingValue: {
-    fontSize: 14
-  },
-  settingHint: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 10
-  },
-  concurrencyRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap'
-  },
-  concurrencyChip: {
-    minWidth: 40,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center'
-  },
-  actionButton: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  actionButtonText: {
-    fontSize: 15,
-    fontWeight: '600'
-  },
-  progressContainer: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12
-  },
-  progressText: {
-    fontSize: 14,
-    marginBottom: 8
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4
-  },
-  entryList: {
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8
-  },
-  entryListTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 8,
-    textTransform: 'uppercase'
-  },
-  entryRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth
-  },
-  entryText: {
+  wrap: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 18
-  },
-  memoryInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    minHeight: 72,
-    marginBottom: 10,
-    fontSize: 14
+    minHeight: 400
   }
 })

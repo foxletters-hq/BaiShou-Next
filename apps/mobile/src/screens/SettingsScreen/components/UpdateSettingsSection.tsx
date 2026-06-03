@@ -4,18 +4,20 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Switch,
-  Alert,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { formatAppVersion } from '@baishou/shared'
+import { useNativeTheme, useNativeToast, useDialog, Switch } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { MobileUpdateCheckResult } from '../../../services/mobile-updater.service'
+import { SettingsGroupCard } from './SettingsGroupCard'
 
 export const UpdateSettingsSection: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady } = useBaishou()
   const [autoCheck, setAutoCheck] = useState(true)
   const [checking, setChecking] = useState(false)
@@ -43,40 +45,35 @@ export const UpdateSettingsSection: React.FC = () => {
       setLastResult(result)
 
       if (result.status === 'available' && result.releaseUrl) {
-        Alert.alert(t('updater.available'), `v${result.latestVersion}`, [
-          { text: t('common.cancel'), style: 'cancel' },
-          {
-            text: t('updater.view_release'),
-            onPress: () => {
-              services.updaterService.openReleaseUrl(result.releaseUrl!).catch((e) => {
-                Alert.alert(t('common.error'), e?.message || String(e))
-              })
-            }
-          }
-        ])
+        const viewRelease = await dialog.confirm(formatAppVersion(result.latestVersion), {
+          title: t('updater.available'),
+          confirmText: t('updater.view_release')
+        })
+        if (viewRelease) {
+          services.updaterService.openReleaseUrl(result.releaseUrl).catch((e) => {
+            toast.showError(e?.message || String(e))
+          })
+        }
       } else if (result.status === 'not_available') {
-        Alert.alert(t('updater.not_available'))
+        toast.showInfo(t('updater.not_available'))
       } else if (result.status === 'error') {
-        Alert.alert(t('updater.error'), result.error || '')
+        toast.showError(result.error || '')
       }
     } finally {
       setChecking(false)
     }
   }
 
-  const currentVersion = services?.updaterService.getCurrentVersion() ?? '—'
+  const currentVersion = formatAppVersion(services?.updaterService.getCurrentVersion())
 
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('updater.section_title')}
-      </Text>
-
+      <SettingsGroupCard>
       <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('updater.current_version')}
         </Text>
-        <Text style={[styles.value, { color: colors.textSecondary }]}>v{currentVersion}</Text>
+        <Text style={[styles.value, { color: colors.textSecondary }]}>{currentVersion}</Text>
       </View>
 
       {lastResult?.latestVersion && (
@@ -85,7 +82,7 @@ export const UpdateSettingsSection: React.FC = () => {
             {t('updater.latest_version')}
           </Text>
           <Text style={[styles.value, { color: colors.textSecondary }]}>
-            v{lastResult.latestVersion}
+            {formatAppVersion(lastResult.latestVersion)}
           </Text>
         </View>
       )}
@@ -99,12 +96,7 @@ export const UpdateSettingsSection: React.FC = () => {
             {t('updater.auto_check_desc')}
           </Text>
         </View>
-        <Switch
-          value={autoCheck}
-          onValueChange={handleToggleAutoCheck}
-          disabled={!dbReady}
-          trackColor={{ false: colors.borderSubtle, true: colors.primary }}
-        />
+        <Switch value={autoCheck} onValueChange={handleToggleAutoCheck} disabled={!dbReady} />
       </View>
 
       <TouchableOpacity
@@ -120,6 +112,7 @@ export const UpdateSettingsSection: React.FC = () => {
           </Text>
         )}
       </TouchableOpacity>
+      </SettingsGroupCard>
     </View>
   )
 }

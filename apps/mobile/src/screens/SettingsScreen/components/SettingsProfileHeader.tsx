@@ -1,28 +1,33 @@
 import React from 'react'
-import { View, Text, Pressable, Image, StyleSheet, Alert } from 'react-native'
+import { View, Text, Pressable, Image, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { useNativeTheme, useDialog } from '@baishou/ui/native'
+import { useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
+
+const DEFAULT_AVATAR = require('@baishou/shared/assets/images/icon.png')
 
 export interface SettingsProfileHeaderProps {
   profile: { nickname: string; avatarPath?: string | null }
   onSave: (data: { nickname: string; avatarPath?: string | null }) => void
   /** 数据库未就绪时仍可展示，仅禁用保存 */
   disabled?: boolean
+  /** 嵌入快捷设置分组卡片内 */
+  embedded?: boolean
 }
 
 export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
   profile,
   onSave,
-  disabled = false
+  disabled = false,
+  embedded = false
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const dialog = useDialog()
+  const toast = useNativeToast()
 
   const displayName = profile.nickname?.trim() || t('profile.default_nickname', '白守用户')
-  const initial = (profile.nickname || t('profile.defaultChar', '白')).charAt(0).toUpperCase()
 
   const handlePickImage = async () => {
     if (disabled) return
@@ -37,7 +42,7 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
         onSave({ ...profile, avatarPath: result.assets[0].uri })
       }
     } catch {
-      Alert.alert(t('common.error', '错误'), t('profile.image_pick_error', '选择图片失败'))
+      toast.showError(t('profile.image_pick_error', '选择图片失败'))
     }
   }
 
@@ -55,34 +60,30 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
   return (
     <View
       style={[
-        styles.card,
-        {
-          backgroundColor: colors.bgSurface,
-          borderRadius: tokens.radius.lg
-        }
+        styles.row,
+        embedded && [
+          styles.rowDivider,
+          { borderBottomColor: colors.borderSubtle }
+        ],
+        embedded && { backgroundColor: 'transparent' }
       ]}
     >
       <Pressable
         onPress={handlePickImage}
         disabled={disabled}
         style={({ pressed }) => [styles.avatarBtn, pressed && !disabled && { opacity: 0.85 }]}
+        accessibilityRole="button"
+        accessibilityLabel={t('profile.change_avatar', '更换头像')}
       >
-        <View
-          style={[
-            styles.avatar,
-            { backgroundColor: colors.primaryContainer }
-          ]}
-        >
+        <View style={[styles.avatar, { backgroundColor: colors.primaryContainer }]}>
           {profile.avatarPath ? (
             <Image source={{ uri: profile.avatarPath }} style={styles.avatarImage} />
           ) : (
-            <Text style={[styles.avatarLetter, { color: colors.onPrimaryContainer }]}>
-              {initial}
-            </Text>
+            <Image source={DEFAULT_AVATAR} style={styles.avatarImage} />
           )}
         </View>
         <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
-          <MaterialIcons name="photo-camera" size={14} color={colors.textOnPrimary} />
+          <MaterialIcons name="photo-camera" size={12} color={colors.textOnPrimary} />
         </View>
       </Pressable>
 
@@ -90,68 +91,58 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
         style={({ pressed }) => [styles.meta, pressed && !disabled && { opacity: 0.75 }]}
         onPress={handleEditNickname}
         disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={t('profile.edit_nickname', '修改昵称')}
       >
         <Text style={[styles.nickname, { color: colors.textPrimary }]} numberOfLines={1}>
           {displayName}
         </Text>
-        <Text style={[styles.hint, { color: colors.textSecondary }]}>
-          {t('settings.tap_avatar_to_change', '点击头像更换图片')}
-          {' · '}
-          {t('profile.edit_nickname', '修改昵称')}
-        </Text>
       </Pressable>
-
-      <MaterialIcons name="chevron-right" size={22} color={colors.textTertiary} />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 14
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 12
+  },
+  rowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
   avatarBtn: {
     position: 'relative'
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
   },
   avatarImage: {
-    width: 72,
-    height: 72
-  },
-  avatarLetter: {
-    fontSize: 28,
-    fontWeight: '600'
+    width: 52,
+    height: 52
   },
   cameraBadge: {
     position: 'absolute',
     right: -2,
     bottom: -2,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center'
   },
   meta: {
-    flex: 1,
-    gap: 4
+    flex: 1
   },
   nickname: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '600'
-  },
-  hint: {
-    fontSize: 13
   }
 })
