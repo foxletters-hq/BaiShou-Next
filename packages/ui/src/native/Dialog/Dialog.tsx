@@ -186,7 +186,14 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       {children}
       {state.isOpen && (
         <Modal visible={state.isOpen} onClose={dismissDialog} title={state.title}>
-          <View style={styles.dialogBody}>
+          <View
+            style={[
+              styles.dialogBody,
+              typeof state.message !== 'string' && state.type === 'alert'
+                ? styles.dialogBodyScrollable
+                : null
+            ]}
+          >
             {renderMessage()}
 
             {state.type === 'choose' && state.chooseOptions && (
@@ -294,6 +301,10 @@ export const useDialog = (): DialogContextState => {
 const styles = StyleSheet.create({
   dialogBody: {
     paddingTop: 0
+  },
+  dialogBodyScrollable: {
+    flexShrink: 1,
+    minHeight: 0
   },
   chooseList: {
     maxHeight: 320,

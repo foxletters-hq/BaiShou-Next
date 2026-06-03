@@ -4,14 +4,17 @@ import {
   ModalProps as RNModalProps,
   View,
   Text,
-  TouchableWithoutFeedback,
-  useWindowDimensions
+  Pressable,
+  useWindowDimensions,
+  StyleSheet
 } from 'react-native'
 import { useNativeTheme } from '../theme'
 
 export interface NativeModalProps extends RNModalProps {
   title?: string
   onClose?: () => void
+  /** 限制弹窗内容区最大高度，便于内部 ScrollView 滚动 */
+  contentMaxHeight?: number
 }
 
 export const Modal: React.FC<NativeModalProps> = ({
@@ -20,13 +23,15 @@ export const Modal: React.FC<NativeModalProps> = ({
   children,
   transparent = true,
   animationType = 'fade',
+  contentMaxHeight,
   ...props
 }) => {
   const { colors, tokens } = useNativeTheme()
-  const { width: screenWidth } = useWindowDimensions()
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const horizontalMargin = Math.max(tokens.spacing.lg, 24)
-  const maxWidth = 320
+  const maxWidth = 360
   const modalWidth = Math.min(screenWidth - horizontalMargin * 2, maxWidth)
+  const resolvedMaxHeight = contentMaxHeight ?? Math.round(screenHeight * 0.72)
 
   return (
     <RNModal
@@ -35,43 +40,53 @@ export const Modal: React.FC<NativeModalProps> = ({
       onRequestClose={onClose}
       {...props}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
+      <View style={styles.backdrop}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        />
         <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0,0,0,0.5)'
-          }}
+          style={[
+            styles.card,
+            {
+              width: modalWidth,
+              maxHeight: resolvedMaxHeight,
+              backgroundColor: colors.bgSurface,
+              borderRadius: tokens.radius.xl,
+              padding: tokens.spacing.md
+            }
+          ]}
         >
-          <TouchableWithoutFeedback>
-            <View
+          {title ? (
+            <Text
               style={{
-                width: modalWidth,
-                backgroundColor: colors.bgSurface,
-                borderRadius: tokens.radius.xl,
-                padding: tokens.spacing.md,
-                elevation: 0,
-                shadowOpacity: 0
+                fontSize: 18,
+                fontWeight: '600',
+                color: colors.textPrimary,
+                marginBottom: tokens.spacing.md
               }}
             >
-              {title && (
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    color: colors.textPrimary,
-                    marginBottom: tokens.spacing.md
-                  }}
-                >
-                  {title}
-                </Text>
-              )}
-              {children}
-            </View>
-          </TouchableWithoutFeedback>
+              {title}
+            </Text>
+          ) : null}
+          {children}
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </RNModal>
   )
 }
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)'
+  },
+  card: {
+    elevation: 0,
+    shadowOpacity: 0
+  }
+})
