@@ -39,7 +39,11 @@ export const TTSSettingsSection: React.FC = () => {
               : 'tts-1'),
         voice:
           ttsSettings.voice ||
-          (savedProviderId === 'mimo-tts' ? '冰糖' : savedProviderId === 'gpt-sovits' ? 'default' : 'alloy'),
+          (savedProviderId === 'mimo-tts'
+            ? '冰糖'
+            : savedProviderId === 'gpt-sovits'
+              ? 'default'
+              : 'alloy'),
         speed: ttsSettings.speed ?? 1,
         responseFormat:
           ttsSettings.responseFormat ||

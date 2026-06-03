@@ -27,9 +27,7 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
   return (
     <SettingsSection title={t('settings.rag_config_params')}>
       <View style={styles.fieldGroup}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          Top K: {config.ragTopK}
-        </Text>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>Top K: {config.ragTopK}</Text>
         <Slider
           style={styles.slider}
           minimumValue={1}

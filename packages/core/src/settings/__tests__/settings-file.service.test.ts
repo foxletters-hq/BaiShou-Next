@@ -27,7 +27,8 @@ describe('SettingsFileService', () => {
       readdir: vi.fn(),
       stat: vi.fn(),
       rename: vi.fn().mockResolvedValue(undefined),
-      rm: vi.fn()
+      rm: vi.fn(),
+      copyFile: vi.fn()
     }
 
     const mockPathProvider = {

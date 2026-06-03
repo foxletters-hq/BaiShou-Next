@@ -40,22 +40,26 @@ export const DeveloperSettingsSection: React.FC = () => {
   }
 
   const handleClearAll = () => {
-    runAction(t('developer.clear_warning_title'), t('developer.clear_warning_content'), async () => {
-      services!.vaultFileWatcher.stop()
-      const result = await services!.developerService.clearAllData({
-        diaryService: services!.diaryService,
-        pathService: services!.pathService,
-        fileSystem: services!.fileSystem,
-        vaultService: services!.vaultService,
-        sessionManager: services!.sessionManager,
-        assistantManager: services!.assistantManager
-      })
-      if (result.success) {
-        toast.showSuccess(result.message || t('developer.clear_success_content'))
-      } else {
-        toast.showError(result.message || t('common.error'))
+    runAction(
+      t('developer.clear_warning_title'),
+      t('developer.clear_warning_content'),
+      async () => {
+        services!.vaultFileWatcher.stop()
+        const result = await services!.developerService.clearAllData({
+          diaryService: services!.diaryService,
+          pathService: services!.pathService,
+          fileSystem: services!.fileSystem,
+          vaultService: services!.vaultService,
+          sessionManager: services!.sessionManager,
+          assistantManager: services!.assistantManager
+        })
+        if (result.success) {
+          toast.showSuccess(result.message || t('developer.clear_success_content'))
+        } else {
+          toast.showError(result.message || t('common.error'))
+        }
       }
-    })
+    )
   }
 
   const handleClearAgent = () => {

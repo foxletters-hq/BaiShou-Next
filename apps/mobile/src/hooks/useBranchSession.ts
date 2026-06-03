@@ -96,9 +96,7 @@ export function useBranchSession() {
         return newSessionId
       } catch (e: any) {
         console.error('[Branch] Error:', e)
-        toast.showError(
-          e.message || t('app.unknown_error', '未知网络或系统错误')
-        )
+        toast.showError(e.message || t('app.unknown_error', '未知网络或系统错误'))
         return null
       }
     },

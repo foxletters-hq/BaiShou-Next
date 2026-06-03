@@ -145,7 +145,10 @@ export function useAssistantPickerSheet({
           }
         )
       }
-      if (overrides.compressSystemPrompt !== undefined && typeof overrides.compressSystemPrompt === 'string') {
+      if (
+        overrides.compressSystemPrompt !== undefined &&
+        typeof overrides.compressSystemPrompt === 'string'
+      ) {
         setEditingCompressSystemPrompt(overrides.compressSystemPrompt)
       }
       onRefreshAssistants?.()

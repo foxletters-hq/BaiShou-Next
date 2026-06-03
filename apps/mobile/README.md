@@ -6,9 +6,9 @@
 
 ## 两条主命令（根目录）
 
-| 命令 | 何时用 |
-|------|--------|
-| **`pnpm dev:mobile`** | 日常开发：只改 JS/TS，启动 Metro |
+| 命令                        | 何时用                                           |
+| --------------------------- | ------------------------------------------------ |
+| **`pnpm dev:mobile`**       | 日常开发：只改 JS/TS，启动 Metro                 |
 | **`pnpm dev:mobile:clear`** | 全量重装：清 Metro / Gradle 缓存，重编并安装 APK |
 
 升级 Expo、新增原生模块、闪退、连不上 bundler 时 → **`pnpm dev:mobile:clear`**，然后 **`pnpm dev:mobile`**。
@@ -35,11 +35,11 @@ pnpm mobile:setup
 
 ## 其它
 
-| 命令 | 说明 |
-|------|------|
+| 命令                  | 说明                                       |
+| --------------------- | ------------------------------------------ |
 | `pnpm mobile:connect` | adb reverse + 打开开发版（Metro 需已在跑） |
-| `pnpm mobile:fix` | 对齐 Expo SDK 依赖版本 |
-| `pnpm mobile:export` | 导出 Android 离线包 |
+| `pnpm mobile:fix`     | 对齐 Expo SDK 依赖版本                     |
+| `pnpm mobile:export`  | 导出 Android 离线包                        |
 
 ## UI 与文案（AI / 协作者必读）
 

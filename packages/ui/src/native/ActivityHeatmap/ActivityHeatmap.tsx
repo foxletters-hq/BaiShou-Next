@@ -1,12 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  ScrollView
-} from 'react-native'
+import { View, Text, StyleSheet, Pressable, Modal, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
@@ -228,7 +221,11 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
           ))}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.horizontalScroll}
+        >
           <View>
             <View style={styles.monthRow}>
               {monthIndices.map((m, i) => (

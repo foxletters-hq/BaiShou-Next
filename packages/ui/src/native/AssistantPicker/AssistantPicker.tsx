@@ -116,7 +116,6 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
             }
           ]}
         >
-
           <View style={styles.header}>
             <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
@@ -176,20 +175,11 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
                     onPress={() => handleSelect(assistant)}
                     activeOpacity={0.7}
                   >
-                    <View
-                      style={[
-                        styles.avatar,
-                        { backgroundColor: colors.bgSurfaceHighest }
-                      ]}
-                    >
+                    <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }]}>
                       {assistant.emoji ? (
                         <Text style={styles.avatarEmoji}>{assistant.emoji}</Text>
                       ) : (
-                        <MaterialIcons
-                          name="auto-awesome"
-                          size={20}
-                          color={colors.textSecondary}
-                        />
+                        <MaterialIcons name="auto-awesome" size={20} color={colors.textSecondary} />
                       )}
                     </View>
                     <View style={styles.cardBody}>

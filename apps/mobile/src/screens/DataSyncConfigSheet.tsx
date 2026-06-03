@@ -65,7 +65,11 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
         activeOpacity={0.8}
       >
         <View style={[styles.targetIcon, { backgroundColor: colors.bgSurface }]}>
-          <MaterialIcons name={icon} size={24} color={selected ? colors.primary : colors.textSecondary} />
+          <MaterialIcons
+            name={icon}
+            size={24}
+            color={selected ? colors.primary : colors.textSecondary}
+          />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.targetTitle, { color: colors.textPrimary }]}>{title}</Text>
@@ -96,7 +100,12 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
         : t('data_sync.webdav_config_title', 'WebDAV 存储配置')
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.bgApp }]}>
         <View style={[styles.appBar, { borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn} hitSlop={12}>
@@ -132,7 +141,9 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
             t('data_sync.webdav_storage_desc', '通用网络文件存储协议')
           )}
 
-          <Text style={[styles.configSectionTitle, { color: colors.textPrimary }]}>{sectionTitle}</Text>
+          <Text style={[styles.configSectionTitle, { color: colors.textPrimary }]}>
+            {sectionTitle}
+          </Text>
           <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
 
           {config.target === 'local' && (
@@ -268,7 +279,10 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
           )}
 
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: colors.primary, borderRadius: tokens.radius.md }]}
+            style={[
+              styles.saveBtn,
+              { backgroundColor: colors.primary, borderRadius: tokens.radius.md }
+            ]}
             onPress={onSave}
           >
             <Text style={{ color: colors.textOnPrimary, fontWeight: '700', fontSize: 16 }}>

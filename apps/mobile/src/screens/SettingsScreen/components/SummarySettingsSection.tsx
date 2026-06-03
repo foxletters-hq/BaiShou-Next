@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   getDefaultSummaryTemplate,
@@ -133,7 +126,8 @@ export const SummarySettingsSection: React.FC = () => {
 
   const persistMonthlySource = async (source: 'weeklies' | 'diaries') => {
     if (!services || !dbReady) return
-    const globalModels = (await services.settingsManager.get<Record<string, unknown>>('global_models')) || {}
+    const globalModels =
+      (await services.settingsManager.get<Record<string, unknown>>('global_models')) || {}
     await services.settingsManager.set('global_models', {
       ...globalModels,
       monthlySummarySource: source
@@ -194,10 +188,7 @@ export const SummarySettingsSection: React.FC = () => {
             return (
               <TouchableOpacity
                 key={source}
-                style={[
-                  styles.sourceBtn,
-                  active && { backgroundColor: colors.primary }
-                ]}
+                style={[styles.sourceBtn, active && { backgroundColor: colors.primary }]}
                 onPress={() => void persistMonthlySource(source)}
               >
                 <Text
@@ -224,97 +215,98 @@ export const SummarySettingsSection: React.FC = () => {
           {t('settings.summary_ai_prompt_desc')}
         </Text>
 
-      <Text style={[styles.localeHint, { color: colors.textSecondary }]}>
-        {t('settings.summary_prompt_locale_hint')}:{' '}
-        <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{generationLabel}</Text>
-      </Text>
+        <Text style={[styles.localeHint, { color: colors.textSecondary }]}>
+          {t('settings.summary_prompt_locale_hint')}:{' '}
+          <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{generationLabel}</Text>
+        </Text>
 
-      <View style={styles.langBar}>
-        {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
-          <TouchableOpacity
-            key={lang.id}
-            style={[
-              styles.langChip,
-              {
-                borderColor: activePromptLocale === lang.id ? colors.primary : colors.borderMuted,
-                backgroundColor:
-                  activePromptLocale === lang.id ? colors.primary : 'transparent'
-              },
-              generationLocale === lang.id && styles.langChipGeneration
-            ]}
-            onPress={() => handlePromptLocaleChange(lang.id)}
-          >
-            <Text
-              style={{
-                color:
-                  activePromptLocale === lang.id ? colors.textOnPrimary : colors.textSecondary,
-                fontSize: 13,
-                fontWeight: activePromptLocale === lang.id ? '600' : '400'
-              }}
-            >
-              {t(lang.labelKey, lang.fallback)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={[styles.tabBar, { backgroundColor: colors.bgApp }]}>
-        {tabs.map((tab) => {
-          const active = activeTab === tab.id
-          return (
+        <View style={styles.langBar}>
+          {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
             <TouchableOpacity
-              key={tab.id}
-              style={[styles.tabBtn, active && { backgroundColor: colors.primary }]}
-              onPress={() => handleTabChange(tab.id)}
+              key={lang.id}
+              style={[
+                styles.langChip,
+                {
+                  borderColor: activePromptLocale === lang.id ? colors.primary : colors.borderMuted,
+                  backgroundColor: activePromptLocale === lang.id ? colors.primary : 'transparent'
+                },
+                generationLocale === lang.id && styles.langChipGeneration
+              ]}
+              onPress={() => handlePromptLocaleChange(lang.id)}
             >
-              <Text style={styles.tabIcon}>{tab.icon}</Text>
               <Text
                 style={{
-                  color: active ? colors.textOnPrimary : colors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: active ? '600' : '400'
+                  color:
+                    activePromptLocale === lang.id ? colors.textOnPrimary : colors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: activePromptLocale === lang.id ? '600' : '400'
                 }}
-                numberOfLines={1}
               >
-                {tab.label}
+                {t(lang.labelKey, lang.fallback)}
               </Text>
             </TouchableOpacity>
-          )
-        })}
-      </View>
+          ))}
+        </View>
 
-      <TextInput
-        style={[
-          styles.editor,
-          {
-            backgroundColor: colors.bgSurface,
-            color: colors.textPrimary,
-            borderColor: colors.borderMuted
-          }
-        ]}
-        value={localText}
-        onChangeText={setLocalText}
-        multiline
-        numberOfLines={14}
-        textAlignVertical="top"
-        placeholder={t('settings.summary_ai_prompt_hint')}
-        placeholderTextColor={colors.textTertiary}
-      />
+        <View style={[styles.tabBar, { backgroundColor: colors.bgApp }]}>
+          {tabs.map((tab) => {
+            const active = activeTab === tab.id
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.tabBtn, active && { backgroundColor: colors.primary }]}
+                onPress={() => handleTabChange(tab.id)}
+              >
+                <Text style={styles.tabIcon}>{tab.icon}</Text>
+                <Text
+                  style={{
+                    color: active ? colors.textOnPrimary : colors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: active ? '600' : '400'
+                  }}
+                  numberOfLines={1}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.btn, { borderColor: colors.borderSubtle }]}
-          onPress={() => void handleReset()}
-        >
-          <Text style={{ color: colors.textSecondary }}>{t('settings.restore_default')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.btn, styles.saveBtn, { backgroundColor: colors.primary }]}
-          onPress={() => void handleSave()}
-        >
-          <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>{t('common.save')}</Text>
-        </TouchableOpacity>
-      </View>
+        <TextInput
+          style={[
+            styles.editor,
+            {
+              backgroundColor: colors.bgSurface,
+              color: colors.textPrimary,
+              borderColor: colors.borderMuted
+            }
+          ]}
+          value={localText}
+          onChangeText={setLocalText}
+          multiline
+          numberOfLines={14}
+          textAlignVertical="top"
+          placeholder={t('settings.summary_ai_prompt_hint')}
+          placeholderTextColor={colors.textTertiary}
+        />
+
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.btn, { borderColor: colors.borderSubtle }]}
+            onPress={() => void handleReset()}
+          >
+            <Text style={{ color: colors.textSecondary }}>{t('settings.restore_default')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.btn, styles.saveBtn, { backgroundColor: colors.primary }]}
+            onPress={() => void handleSave()}
+          >
+            <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
+              {t('common.save')}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </SettingsGroupCard>
     </ScrollView>
   )

@@ -40,10 +40,7 @@ export const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({
             {[1, 2, 3, 4, 5].map((n) => (
               <Pressable
                 key={n}
-                style={[
-                  styles.option,
-                  n === value && { backgroundColor: colors.primaryLight }
-                ]}
+                style={[styles.option, n === value && { backgroundColor: colors.primaryLight }]}
                 onPress={() => {
                   onChange(n)
                   setOpen(false)

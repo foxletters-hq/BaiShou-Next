@@ -41,10 +41,7 @@ export const DeveloperOptionsView: React.FC = () => {
       if (typeof window !== 'undefined' && (window as any).electron) {
         await (window as any).electron.ipcRenderer.invoke('developer:clear-all-data')
         toast.showSuccess(
-          t(
-            'developer.clear_all_success',
-            '所有核心数据与环境已抹除，应用即将重启。'
-          )
+          t('developer.clear_all_success', '所有核心数据与环境已抹除，应用即将重启。')
         )
         await (window as any).electron.ipcRenderer.invoke('app:relaunch')
       }
@@ -68,12 +65,7 @@ export const DeveloperOptionsView: React.FC = () => {
     try {
       if (typeof window !== 'undefined' && (window as any).electron) {
         await (window as any).electron.ipcRenderer.invoke('developer:clear-agent-data')
-        toast.showSuccess(
-          t(
-            'developer.clear_agent_success',
-            'Agent 数据库已清空，应用即将重启。'
-          )
-        )
+        toast.showSuccess(t('developer.clear_agent_success', 'Agent 数据库已清空，应用即将重启。'))
         await (window as any).electron.ipcRenderer.invoke('app:relaunch')
       }
     } catch (e: any) {

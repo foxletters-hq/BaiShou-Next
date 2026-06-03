@@ -10,17 +10,11 @@ interface ProviderBrandIconProps {
   size?: number
 }
 
-export const ProviderBrandIcon: React.FC<ProviderBrandIconProps> = ({
-  providerId,
-  size = 22
-}) => {
+export const ProviderBrandIcon: React.FC<ProviderBrandIconProps> = ({ providerId, size = 22 }) => {
   const { colors } = useNativeTheme()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
-  const iconModule = useMemo(
-    () => getProviderIconModule(providerId, isDark),
-    [providerId, isDark]
-  )
+  const iconModule = useMemo(() => getProviderIconModule(providerId, isDark), [providerId, isDark])
   const [uri, setUri] = useState<string | null>(null)
 
   useEffect(() => {

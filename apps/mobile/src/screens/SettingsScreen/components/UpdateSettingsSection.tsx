@@ -1,11 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { formatAppVersion } from '@baishou/shared'
 import { useNativeTheme, useNativeToast, useDialog, Switch } from '@baishou/ui/native'
@@ -69,49 +63,49 @@ export const UpdateSettingsSection: React.FC = () => {
   return (
     <View style={styles.section}>
       <SettingsGroupCard>
-      <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('updater.current_version')}
-        </Text>
-        <Text style={[styles.value, { color: colors.textSecondary }]}>{currentVersion}</Text>
-      </View>
-
-      {lastResult?.latestVersion && (
         <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {t('updater.latest_version')}
+            {t('updater.current_version')}
           </Text>
-          <Text style={[styles.value, { color: colors.textSecondary }]}>
-            {formatAppVersion(lastResult.latestVersion)}
-          </Text>
+          <Text style={[styles.value, { color: colors.textSecondary }]}>{currentVersion}</Text>
         </View>
-      )}
 
-      <View style={[styles.switchRow, { borderColor: colors.borderSubtle }]}>
-        <View style={styles.switchText}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {t('updater.auto_check')}
-          </Text>
-          <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            {t('updater.auto_check_desc')}
-          </Text>
-        </View>
-        <Switch value={autoCheck} onValueChange={handleToggleAutoCheck} disabled={!dbReady} />
-      </View>
-
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.primary }]}
-        onPress={handleCheckUpdate}
-        disabled={checking || !dbReady}
-      >
-        {checking ? (
-          <ActivityIndicator color={colors.textOnPrimary} />
-        ) : (
-          <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-            {t('updater.check')}
-          </Text>
+        {lastResult?.latestVersion && (
+          <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('updater.latest_version')}
+            </Text>
+            <Text style={[styles.value, { color: colors.textSecondary }]}>
+              {formatAppVersion(lastResult.latestVersion)}
+            </Text>
+          </View>
         )}
-      </TouchableOpacity>
+
+        <View style={[styles.switchRow, { borderColor: colors.borderSubtle }]}>
+          <View style={styles.switchText}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('updater.auto_check')}
+            </Text>
+            <Text style={[styles.hint, { color: colors.textSecondary }]}>
+              {t('updater.auto_check_desc')}
+            </Text>
+          </View>
+          <Switch value={autoCheck} onValueChange={handleToggleAutoCheck} disabled={!dbReady} />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.primary }]}
+          onPress={handleCheckUpdate}
+          disabled={checking || !dbReady}
+        >
+          {checking ? (
+            <ActivityIndicator color={colors.textOnPrimary} />
+          ) : (
+            <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
+              {t('updater.check')}
+            </Text>
+          )}
+        </TouchableOpacity>
       </SettingsGroupCard>
     </View>
   )

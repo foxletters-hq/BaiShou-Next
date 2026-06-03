@@ -27,8 +27,7 @@ export function useRoundRevealSequence(_roundGroups: CallChainRoundGroup[]) {
   )
 
   const getVisibleMessages = React.useCallback(
-    (group: CallChainRoundGroup) =>
-      isRoundExpanded(group.roundIndex) ? group.messages : [],
+    (group: CallChainRoundGroup) => (isRoundExpanded(group.roundIndex) ? group.messages : []),
     [isRoundExpanded]
   )
 

@@ -118,7 +118,9 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
             styles.yearTrigger,
             {
               backgroundColor: colors.bgSurface,
-              borderColor: isYearPickerOpen ? colors.primary : `rgba(${colors.primaryRgb ?? '91, 168, 245'}, 0.2)`
+              borderColor: isYearPickerOpen
+                ? colors.primary
+                : `rgba(${colors.primaryRgb ?? '91, 168, 245'}, 0.2)`
             }
           ]}
           onPress={onOpenYearPicker}

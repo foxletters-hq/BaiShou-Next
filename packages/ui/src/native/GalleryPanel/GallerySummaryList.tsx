@@ -25,11 +25,7 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
   const { colors } = useNativeTheme()
   return (
     <ScrollView
-      style={[
-        styles.list,
-        compact && styles.listCompact,
-        { backgroundColor: colors.bgSurface }
-      ]}
+      style={[styles.list, compact && styles.listCompact, { backgroundColor: colors.bgSurface }]}
       contentContainerStyle={[
         styles.listContent,
         compact && styles.listContentCompact,

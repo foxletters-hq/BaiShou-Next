@@ -55,9 +55,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
         }
       ]}
     >
-      {menuOpen && (
-        <Pressable style={styles.menuOverlay} onPress={() => setActiveMenuId(null)} />
-      )}
+      {menuOpen && <Pressable style={styles.menuOverlay} onPress={() => setActiveMenuId(null)} />}
       <View style={styles.entryHeader}>
         <Text style={[styles.entryModel, { color: colors.primary }]} numberOfLines={1}>
           {item.modelId || '—'}
@@ -152,9 +150,7 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
       {entries.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={[styles.paginationInfo, { color: colors.textSecondary }]}>
-            {searchQuery.trim()
-              ? t('common.no_search_result')
-              : t('common.no_content')}
+            {searchQuery.trim() ? t('common.no_search_result') : t('common.no_content')}
           </Text>
           <Text style={[styles.paginationInfo, { color: colors.textTertiary, marginTop: 8 }]}>
             {t('settings.rag_empty_desc')}

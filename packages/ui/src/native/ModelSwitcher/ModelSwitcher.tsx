@@ -133,7 +133,6 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
             }
           ]}
         >
-
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
               {t('models.switch_model', '切换模型')}
@@ -220,9 +219,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                           style={[
                             styles.modelRow,
                             {
-                              backgroundColor: isSelected
-                                ? colors.primaryContainer
-                                : 'transparent'
+                              backgroundColor: isSelected ? colors.primaryContainer : 'transparent'
                             }
                           ]}
                         >

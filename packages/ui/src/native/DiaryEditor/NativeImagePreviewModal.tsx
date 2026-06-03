@@ -1,13 +1,5 @@
 import React, { useCallback, useState } from 'react'
-import {
-  Modal,
-  View,
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  Pressable,
-  Platform
-} from 'react-native'
+import { Modal, View, Image, StyleSheet, TouchableOpacity, Pressable, Platform } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
@@ -54,7 +46,10 @@ export const NativeImagePreviewModal: React.FC<NativeImagePreviewModalProps> = (
           />
         </View>
 
-        <View style={[styles.toolbar, { backgroundColor: colors.bgSurface }]} pointerEvents="box-none">
+        <View
+          style={[styles.toolbar, { backgroundColor: colors.bgSurface }]}
+          pointerEvents="box-none"
+        >
           <View style={[styles.controls, { borderColor: colors.borderSubtle }]}>
             <TouchableOpacity
               style={styles.toolBtn}

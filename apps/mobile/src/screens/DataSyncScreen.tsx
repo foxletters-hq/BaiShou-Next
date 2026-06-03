@@ -93,8 +93,7 @@ export const DataSyncScreen: React.FC = () => {
   const loadConfig = useCallback(async () => {
     if (!dbReady || !services) return
     try {
-      let saved =
-        (await services.settingsManager.get<SyncConfig>('cloud_sync_config')) ?? undefined
+      let saved = (await services.settingsManager.get<SyncConfig>('cloud_sync_config')) ?? undefined
       if (!saved) {
         const legacy = await services.settingsManager.get<LegacySyncTarget[]>('sync_targets')
         if (legacy?.length) {
@@ -151,9 +150,7 @@ export const DataSyncScreen: React.FC = () => {
 
   const showHelp = () => {
     void dialog.alert(
-      backupTab === 'snapshot'
-        ? t('data_sync.snapshot_tooltip')
-        : t('data_sync.backup_tooltip'),
+      backupTab === 'snapshot' ? t('data_sync.snapshot_tooltip') : t('data_sync.backup_tooltip'),
       backupTab === 'snapshot'
         ? t('data_sync.local_snapshots_tab')
         : t('data_sync.sync_records', '云端备份')
@@ -162,9 +159,7 @@ export const DataSyncScreen: React.FC = () => {
 
   const openCountModal = () => {
     if (backupTab === 'snapshot') {
-      setTempCount(
-        syncConfig.maxSnapshotCount === -1 ? 5 : (syncConfig.maxSnapshotCount ?? 5)
-      )
+      setTempCount(syncConfig.maxSnapshotCount === -1 ? 5 : (syncConfig.maxSnapshotCount ?? 5))
     } else {
       setTempCount(syncConfig.maxBackupCount === -1 ? 20 : syncConfig.maxBackupCount)
     }
@@ -270,9 +265,7 @@ export const DataSyncScreen: React.FC = () => {
       try {
         await cloudSyncService.renameRecord(syncConfig, oldName, newRecordName.trim())
         setCloudRecords((prev) =>
-          prev.map((r) =>
-            r.filename === oldName ? { ...r, filename: newRecordName.trim() } : r
-          )
+          prev.map((r) => (r.filename === oldName ? { ...r, filename: newRecordName.trim() } : r))
         )
         setRenamingRecord(null)
         setNewRecordName('')
@@ -342,7 +335,11 @@ export const DataSyncScreen: React.FC = () => {
           )
 
   const renderHeaderActions = () => (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.headerActionsScroll}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.headerActionsScroll}
+    >
       <View style={styles.headerActionsGroup}>
         {backupTab === 'cloud' && (
           <>
@@ -367,10 +364,15 @@ export const DataSyncScreen: React.FC = () => {
                     setSelectedRecords(new Set())
                   }}
                 >
-                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('common.cancel')}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    {t('common.cancel')}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.headerActionBtn, { backgroundColor: colors.error, borderColor: colors.error }]}
+                  style={[
+                    styles.headerActionBtn,
+                    { backgroundColor: colors.error, borderColor: colors.error }
+                  ]}
                   onPress={handleBatchDeleteRecords}
                   disabled={selectedRecords.size === 0}
                 >
@@ -390,7 +392,11 @@ export const DataSyncScreen: React.FC = () => {
                 }}
                 disabled={cloudRecords.length === 0 || recordsLoading}
               >
-                <MaterialIcons name="check-box-outline-blank" size={14} color={colors.textSecondary} />
+                <MaterialIcons
+                  name="check-box-outline-blank"
+                  size={14}
+                  color={colors.textSecondary}
+                />
                 <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
                   {' '}
                   {t('data_sync.batch_manage', '批量管理')}
@@ -423,7 +429,10 @@ export const DataSyncScreen: React.FC = () => {
 
         {backupTab === 'cloud' && (
           <TouchableOpacity
-            style={[styles.headerActionBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+            style={[
+              styles.headerActionBtn,
+              { backgroundColor: colors.primary, borderColor: colors.primary }
+            ]}
             onPress={handleSyncNow}
             disabled={isSyncing || syncConfig.target === 'local'}
           >
@@ -468,7 +477,12 @@ export const DataSyncScreen: React.FC = () => {
     >
       <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
         {backupTab === 'cloud' && (
-          <View style={[styles.statCardsRow, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
+          <View
+            style={[
+              styles.statCardsRow,
+              { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+            ]}
+          >
             <View style={styles.statCard}>
               <View
                 style={[
@@ -499,7 +513,9 @@ export const DataSyncScreen: React.FC = () => {
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   {t('data_sync.total_backup_size', '总备份大小')}
                 </Text>
-                <Text style={[styles.statValue, { color: colors.textPrimary }]}>{totalSizeString}</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                  {totalSizeString}
+                </Text>
               </View>
             </View>
             <View style={styles.statCard}>
@@ -524,7 +540,10 @@ export const DataSyncScreen: React.FC = () => {
         <View style={[styles.section, { backgroundColor: colors.bgSurface, paddingVertical: 12 }]}>
           <View style={[styles.backupTabBar, { backgroundColor: colors.bgSurfaceHighest }]}>
             <TouchableOpacity
-              style={[styles.backupTab, backupTab === 'cloud' && { backgroundColor: colors.bgSurface }]}
+              style={[
+                styles.backupTab,
+                backupTab === 'cloud' && { backgroundColor: colors.bgSurface }
+              ]}
               onPress={() => setBackupTab('cloud')}
             >
               <Text
@@ -537,7 +556,10 @@ export const DataSyncScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.backupTab, backupTab === 'snapshot' && { backgroundColor: colors.bgSurface }]}
+              style={[
+                styles.backupTab,
+                backupTab === 'snapshot' && { backgroundColor: colors.bgSurface }
+              ]}
               onPress={() => setBackupTab('snapshot')}
             >
               <Text
@@ -596,7 +618,12 @@ export const DataSyncScreen: React.FC = () => {
               </View>
             ) : cloudRecords.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <MaterialIcons name="inventory-2" size={48} color={colors.textTertiary} style={{ opacity: 0.5 }} />
+                <MaterialIcons
+                  name="inventory-2"
+                  size={48}
+                  color={colors.textTertiary}
+                  style={{ opacity: 0.5 }}
+                />
                 {syncConfig.target === 'local' ? (
                   <>
                     <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
@@ -722,7 +749,10 @@ export const DataSyncScreen: React.FC = () => {
                         {!isMultiSelectMode && (
                           <View style={styles.recordActions}>
                             <TouchableOpacity
-                              style={[styles.recordAction, { backgroundColor: colors.primaryLight }]}
+                              style={[
+                                styles.recordAction,
+                                { backgroundColor: colors.primaryLight }
+                              ]}
                               onPress={() => handleRestoreRecord(record.filename)}
                             >
                               <Text style={[styles.recordActionText, { color: colors.primary }]}>
@@ -749,7 +779,10 @@ export const DataSyncScreen: React.FC = () => {
                               </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                              style={[styles.recordAction, { backgroundColor: colors.errorContainer }]}
+                              style={[
+                                styles.recordAction,
+                                { backgroundColor: colors.errorContainer }
+                              ]}
                               onPress={() => handleDeleteCloudRecord(record.filename)}
                             >
                               <Text style={[styles.recordActionText, { color: colors.error }]}>

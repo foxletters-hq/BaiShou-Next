@@ -1,12 +1,5 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  StyleSheet,
-  ActivityIndicator
-} from 'react-native'
+import { View, Text, Pressable, TextInput, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { McpServerConfig } from '@baishou/shared'
 import { useNativeTheme } from '../theme'

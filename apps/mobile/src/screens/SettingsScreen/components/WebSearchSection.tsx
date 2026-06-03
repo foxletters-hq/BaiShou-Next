@@ -168,10 +168,7 @@ export const WebSearchSection: React.FC = () => {
           <Switch value={ragOn} onValueChange={handleRagToggle} />
         </View>
 
-        <View
-          style={ragOn ? undefined : styles.collapsed}
-          pointerEvents={ragOn ? 'auto' : 'none'}
-        >
+        <View style={ragOn ? undefined : styles.collapsed} pointerEvents={ragOn ? 'auto' : 'none'}>
           <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
           <SettingsSliderRow
             title={t('agent.tools.param_rag_max_chunks')}
@@ -194,10 +191,7 @@ export const WebSearchSection: React.FC = () => {
           />
         </View>
 
-        <View
-          style={ragOn ? styles.collapsed : undefined}
-          pointerEvents={ragOn ? 'none' : 'auto'}
-        >
+        <View style={ragOn ? styles.collapsed : undefined} pointerEvents={ragOn ? 'none' : 'auto'}>
           <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
           <SettingsSliderRow
             title={t('agent.tools.param_plain_snippet_length')}

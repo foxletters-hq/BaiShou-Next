@@ -23,11 +23,41 @@ const STAT_TILES: Array<{
   countColor: string
   labelKey: string
 }> = [
-  { icon: 'menu-book', iconColor: '#4CAF50', bgClass: 'green', countColor: '#4caf50', labelKey: 'summary.stats_daily' },
-  { icon: 'view-week', iconColor: '#3F51B5', bgClass: 'indigo', countColor: '#3f51b5', labelKey: 'summary.stats_weekly' },
-  { icon: 'grid-view', iconColor: '#2196F3', bgClass: 'blue', countColor: '#2196f3', labelKey: 'summary.stats_monthly' },
-  { icon: 'date-range', iconColor: '#FBC02D', bgClass: 'amber', countColor: '#fbc02d', labelKey: 'summary.stats_quarterly' },
-  { icon: 'today', iconColor: '#FF9800', bgClass: 'orange', countColor: '#ff9800', labelKey: 'summary.stats_yearly' }
+  {
+    icon: 'menu-book',
+    iconColor: '#4CAF50',
+    bgClass: 'green',
+    countColor: '#4caf50',
+    labelKey: 'summary.stats_daily'
+  },
+  {
+    icon: 'view-week',
+    iconColor: '#3F51B5',
+    bgClass: 'indigo',
+    countColor: '#3f51b5',
+    labelKey: 'summary.stats_weekly'
+  },
+  {
+    icon: 'grid-view',
+    iconColor: '#2196F3',
+    bgClass: 'blue',
+    countColor: '#2196f3',
+    labelKey: 'summary.stats_monthly'
+  },
+  {
+    icon: 'date-range',
+    iconColor: '#FBC02D',
+    bgClass: 'amber',
+    countColor: '#fbc02d',
+    labelKey: 'summary.stats_quarterly'
+  },
+  {
+    icon: 'today',
+    iconColor: '#FF9800',
+    bgClass: 'orange',
+    countColor: '#ff9800',
+    labelKey: 'summary.stats_yearly'
+  }
 ]
 
 const TILE_BACKGROUNDS = {

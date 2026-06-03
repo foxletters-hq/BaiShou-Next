@@ -11,7 +11,7 @@ export interface AgentToolsContextParams {
     database?: unknown
   }
   assistantRepo?: {
-    findById: (id: string) => Promise<{ systemPrompt?: string } | null>
+    findById: (id: string) => Promise<{ systemPrompt?: string | null } | null>
   }
   userConfig: Record<string, unknown>
   provider: IAIProvider
@@ -91,7 +91,11 @@ export async function resolveEnabledToolsForSession(
   }
 
   let dedupService: any
-  if (embAdapter && params.systemModels?.embeddingProvider && params.systemModels?.embeddingModelId) {
+  if (
+    embAdapter &&
+    params.systemModels?.embeddingProvider &&
+    params.systemModels?.embeddingModelId
+  ) {
     const { MemoryDeduplicationServiceImpl } = await import('../rag/memory-deduplication.service')
     dedupService = new MemoryDeduplicationServiceImpl(
       embAdapter,

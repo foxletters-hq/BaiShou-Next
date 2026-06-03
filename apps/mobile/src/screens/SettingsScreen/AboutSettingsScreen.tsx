@@ -8,11 +8,9 @@ import { GITHUB_REPO_URL, formatAppVersion } from '@baishou/shared'
 import { scrollIndicatorStyle, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
-import {
-  AboutSettingsAboutContent,
-  useAboutSettingsEasterEggs
-} from '@baishou/ui/native'
+import { AboutSettingsAboutContent, useAboutSettingsEasterEggs } from '@baishou/ui/native'
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const HERO_IMAGE = require('@baishou/shared/assets/images/BaiShou-v0.0.1.jpeg')
 
 export const AboutSettingsScreen: React.FC = () => {
@@ -27,7 +25,11 @@ export const AboutSettingsScreen: React.FC = () => {
   const version = Constants.expoConfig?.version ?? '1.0.0'
 
   return (
-    <StackScreenLayout title={t('settings.about_baishou', '关于白守')} {...chrome} contentStyle={styles.layoutContent}>
+    <StackScreenLayout
+      title={t('settings.about_baishou', '关于白守')}
+      {...chrome}
+      contentStyle={styles.layoutContent}
+    >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}

@@ -27,12 +27,7 @@ interface ScreenSafeAreaProps {
   preset?: ScreenSafeAreaPreset
 }
 
-export function ScreenSafeArea({
-  children,
-  style,
-  edges,
-  preset = 'screen'
-}: ScreenSafeAreaProps) {
+export function ScreenSafeArea({ children, style, edges, preset = 'screen' }: ScreenSafeAreaProps) {
   return (
     <SafeAreaView style={[styles.flex, style]} edges={edges ?? PRESET_EDGES[preset]}>
       {children}

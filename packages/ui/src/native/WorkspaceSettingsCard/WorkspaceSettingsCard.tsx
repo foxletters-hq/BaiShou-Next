@@ -60,10 +60,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const recentVaults = useMemo(
-    () => pickRecentVaults(vaults, activeVault),
-    [vaults, activeVault]
-  )
+  const recentVaults = useMemo(() => pickRecentVaults(vaults, activeVault), [vaults, activeVault])
 
   const currentVault = activeVault
 
@@ -86,7 +83,9 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
             {t('workspace.current_space', '当前空间')}
           </Text>
-          <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{currentVault.name}</Text>
+          <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
+            {currentVault.name}
+          </Text>
           {currentVault.path ? (
             <Text style={[styles.pathText, { color: colors.textSecondary }]} numberOfLines={2}>
               {currentVault.path.replace(/^file:\/\//, '')}
@@ -119,7 +118,10 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
                   { opacity: pressed ? 0.7 : 1 }
                 ]}
               >
-                <Text style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]} numberOfLines={1}>
+                <Text
+                  style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]}
+                  numberOfLines={1}
+                >
                   {vault.name}
                 </Text>
                 <Text style={[styles.actionText, { color: colors.primary }]}>

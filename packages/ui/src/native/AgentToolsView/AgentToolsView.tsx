@@ -23,18 +23,54 @@ interface ToolDef {
 }
 
 const DIARY_TOOLS: ToolDef[] = [
-  { id: 'diary_read', nameKey: 'agent.tools.diary_read', categoryKey: 'settings.agent_tools_category_diary' },
-  { id: 'diary_edit', nameKey: 'agent.tools.diary_edit', categoryKey: 'settings.agent_tools_category_diary' },
-  { id: 'diary_delete', nameKey: 'agent.tools.diary_delete', categoryKey: 'settings.agent_tools_category_diary' },
-  { id: 'diary_list', nameKey: 'agent.tools.diary_list', categoryKey: 'settings.agent_tools_category_diary' },
-  { id: 'diary_search', nameKey: 'agent.tools.diary_search', categoryKey: 'settings.agent_tools_category_diary' }
+  {
+    id: 'diary_read',
+    nameKey: 'agent.tools.diary_read',
+    categoryKey: 'settings.agent_tools_category_diary'
+  },
+  {
+    id: 'diary_edit',
+    nameKey: 'agent.tools.diary_edit',
+    categoryKey: 'settings.agent_tools_category_diary'
+  },
+  {
+    id: 'diary_delete',
+    nameKey: 'agent.tools.diary_delete',
+    categoryKey: 'settings.agent_tools_category_diary'
+  },
+  {
+    id: 'diary_list',
+    nameKey: 'agent.tools.diary_list',
+    categoryKey: 'settings.agent_tools_category_diary'
+  },
+  {
+    id: 'diary_search',
+    nameKey: 'agent.tools.diary_search',
+    categoryKey: 'settings.agent_tools_category_diary'
+  }
 ]
 
 const SUMMARY_TOOLS: ToolDef[] = [
-  { id: 'summary_read', nameKey: 'agent.tools.summary_read', categoryKey: 'settings.agent_tools_category_summary' },
-  { id: 'message_search', nameKey: 'agent.tools.message_search', categoryKey: 'settings.agent_tools_category_summary' },
-  { id: 'memory_store', nameKey: 'agent.tools.memory_store', categoryKey: 'settings.agent_tools_category_memory' },
-  { id: 'memory_delete', nameKey: 'agent.tools.memory_delete', categoryKey: 'settings.agent_tools_category_memory' }
+  {
+    id: 'summary_read',
+    nameKey: 'agent.tools.summary_read',
+    categoryKey: 'settings.agent_tools_category_summary'
+  },
+  {
+    id: 'message_search',
+    nameKey: 'agent.tools.message_search',
+    categoryKey: 'settings.agent_tools_category_summary'
+  },
+  {
+    id: 'memory_store',
+    nameKey: 'agent.tools.memory_store',
+    categoryKey: 'settings.agent_tools_category_memory'
+  },
+  {
+    id: 'memory_delete',
+    nameKey: 'agent.tools.memory_delete',
+    categoryKey: 'settings.agent_tools_category_memory'
+  }
 ]
 
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange }) => {
@@ -67,15 +103,15 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
       </SettingsSection>
 
       <SettingsSection title={t('settings.agent_tools_category_summary', '总结工具')}>
-        {SUMMARY_TOOLS.filter((tool) => tool.id === 'summary_read' || tool.id === 'message_search').map(
-          renderTool
-        )}
+        {SUMMARY_TOOLS.filter(
+          (tool) => tool.id === 'summary_read' || tool.id === 'message_search'
+        ).map(renderTool)}
       </SettingsSection>
 
       <SettingsSection title={t('settings.agent_tools_category_memory', '记忆工具')}>
-        {SUMMARY_TOOLS.filter((tool) => tool.id === 'memory_store' || tool.id === 'memory_delete').map(
-          renderTool
-        )}
+        {SUMMARY_TOOLS.filter(
+          (tool) => tool.id === 'memory_store' || tool.id === 'memory_delete'
+        ).map(renderTool)}
       </SettingsSection>
 
       <View style={styles.bottomSpacer} />

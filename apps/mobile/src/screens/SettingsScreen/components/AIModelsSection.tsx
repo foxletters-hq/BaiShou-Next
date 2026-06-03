@@ -4,12 +4,7 @@ import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNativeTheme, useNativeToast, useDialog, ModelSwitcherPopup } from '@baishou/ui/native'
-import {
-  AIProviderConfig,
-  GlobalModelsConfig,
-  isEmbeddingModel,
-  isTtsModel
-} from '@baishou/shared'
+import { AIProviderConfig, GlobalModelsConfig, isEmbeddingModel, isTtsModel } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
 type ModelSelectorKey = 'globalDialogue' | 'globalNaming' | 'globalSummary' | 'globalEmbedding'
@@ -172,7 +167,10 @@ export const AIModelsSection: React.FC = () => {
     setActiveSelector(null)
   }
 
-  const getModelDisplay = (providerKey: keyof GlobalModelsConfig, modelKey: keyof GlobalModelsConfig) => {
+  const getModelDisplay = (
+    providerKey: keyof GlobalModelsConfig,
+    modelKey: keyof GlobalModelsConfig
+  ) => {
     const pid = globalModels[providerKey] as string | undefined
     const mid = globalModels[modelKey] as string | undefined
     if (pid && mid) {

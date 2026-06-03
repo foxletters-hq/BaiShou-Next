@@ -44,10 +44,7 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
   const { t } = useTranslation()
   const isSnapshot = activeTab === 'snapshot'
 
-  const displayValue =
-    tempCount === -1
-      ? noLimitLabel
-      : String(tempCount)
+  const displayValue = tempCount === -1 ? noLimitLabel : String(tempCount)
 
   const handleInputChange = (text: string) => {
     const val = text.trim()
@@ -173,7 +170,10 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.footerBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              style={[
+                styles.footerBtn,
+                { backgroundColor: colors.primary, borderColor: colors.primary }
+              ]}
               onPress={onConfirm}
             >
               <Text style={{ color: colors.textOnPrimary, fontWeight: '700' }}>

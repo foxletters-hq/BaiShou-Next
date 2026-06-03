@@ -115,10 +115,7 @@ export function useRagSystem(
         )
       } else {
         toast.showError(
-          t(
-            'ai_config.error_no_model',
-            '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
-          )
+          t('ai_config.error_no_model', '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。')
         )
       }
     } catch (e: any) {

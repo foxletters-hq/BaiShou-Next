@@ -38,10 +38,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
         onPress={() => setIsOpen(true)}
       >
         <Text
-          style={[
-            styles.triggerText,
-            { color: isActive ? colors.primary : colors.textPrimary }
-          ]}
+          style={[styles.triggerText, { color: isActive ? colors.primary : colors.textPrimary }]}
         >
           {displayText}
         </Text>

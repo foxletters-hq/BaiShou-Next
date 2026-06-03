@@ -13,7 +13,10 @@ import {
 } from '../../services/mobile-diary-attachment.service'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { FullFileAccessGate } from '../../components/FullFileAccessGate'
-import { assertExternalStorageReady, isExternalStorageRequiredError } from '../../services/storage-permission.service'
+import {
+  assertExternalStorageReady,
+  isExternalStorageRequiredError
+} from '../../services/storage-permission.service'
 import { toFileUri } from '../../services/android-external-fs'
 
 export const DiaryEditorScreen: React.FC = () => {
@@ -122,7 +125,11 @@ export const DiaryEditorScreen: React.FC = () => {
       router.back()
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      if (isExternalStorageRequiredError(e) || msg.includes('expo-file-system') || msg.includes('原生存储')) {
+      if (
+        isExternalStorageRequiredError(e) ||
+        msg.includes('expo-file-system') ||
+        msg.includes('原生存储')
+      ) {
         const openSettings = await dialog.confirm(
           msg.includes('pnpm dev:mobile:clear') ? msg : t('storage.all_files_access_settings_hint'),
           { confirmText: t('settings.check_storage_permission') }
@@ -237,13 +244,10 @@ export const DiaryEditorScreen: React.FC = () => {
 
   const handleBack = async () => {
     if (isDirty) {
-      const confirmed = await dialog.confirm(
-        t('diary.exit_confirmation_hint'),
-        {
-          confirmText: t('diary.exit_without_saving_confirm'),
-          destructive: true
-        }
-      )
+      const confirmed = await dialog.confirm(t('diary.exit_confirmation_hint'), {
+        confirmText: t('diary.exit_without_saving_confirm'),
+        destructive: true
+      })
       if (confirmed) {
         setIsDirty(false)
         isDirtyRef.current = false
@@ -261,13 +265,10 @@ export const DiaryEditorScreen: React.FC = () => {
 
       e.preventDefault()
       void (async () => {
-        const confirmed = await dialog.confirm(
-          t('diary.exit_confirmation_hint'),
-          {
-            confirmText: t('diary.exit_without_saving_confirm'),
-            destructive: true
-          }
-        )
+        const confirmed = await dialog.confirm(t('diary.exit_confirmation_hint'), {
+          confirmText: t('diary.exit_without_saving_confirm'),
+          destructive: true
+        })
         if (confirmed) {
           setIsDirty(false)
           isDirtyRef.current = false

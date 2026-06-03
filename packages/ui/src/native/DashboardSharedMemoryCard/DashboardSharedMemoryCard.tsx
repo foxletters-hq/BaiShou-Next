@@ -48,7 +48,12 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: cardBorder }]}>
       <View style={styles.header}>
-        <MaterialIcons name="format-quote" size={20} color={colors.primary} style={styles.headerIcon} />
+        <MaterialIcons
+          name="format-quote"
+          size={20}
+          color={colors.primary}
+          style={styles.headerIcon}
+        />
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           {t('summary.shared_memory')}
         </Text>

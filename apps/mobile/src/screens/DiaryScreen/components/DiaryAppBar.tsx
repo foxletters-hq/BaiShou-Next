@@ -12,11 +12,7 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
-import {
-  WEATHER_IDS,
-  weatherI18nKey,
-  type WeatherId
-} from '@baishou/shared'
+import { WEATHER_IDS, weatherI18nKey, type WeatherId } from '@baishou/shared'
 import { YearMonthPicker, useNativeTheme, WeatherEmoji } from '@baishou/ui/native'
 
 export interface DiaryAppBarProps {
@@ -55,8 +51,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
 
   const hasActiveFilters = filterWeathers.length > 0 || filterFavorite
 
-  const getWeatherLabel = (id: WeatherId) =>
-    t(`diary.weather.${weatherI18nKey(id)}`, id)
+  const getWeatherLabel = (id: WeatherId) => t(`diary.weather.${weatherI18nKey(id)}`, id)
 
   const clearFilters = () => {
     onFilterWeathersChange([])
@@ -166,11 +161,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               accessibilityRole="button"
               accessibilityLabel={t('settings.write_diary_button')}
             >
-              <MaterialIcons
-                name="add"
-                size={compactActions ? 22 : 18}
-                color={colors.primary}
-              />
+              <MaterialIcons name="add" size={compactActions ? 22 : 18} color={colors.primary} />
               {!compactActions && (
                 <Text style={[styles.addBtnText, { color: colors.primary }]}>
                   {t('settings.write_diary_button')}
@@ -181,7 +172,12 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
         </View>
       )}
 
-      <Modal visible={isFilterOpen} transparent animationType="fade" onRequestClose={() => setIsFilterOpen(false)}>
+      <Modal
+        visible={isFilterOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsFilterOpen(false)}
+      >
         <Pressable style={styles.modalOverlay} onPress={() => setIsFilterOpen(false)}>
           <Pressable
             style={[styles.filterPanel, { backgroundColor: colors.bgSurface }]}

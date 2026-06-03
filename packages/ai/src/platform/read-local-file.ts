@@ -17,9 +17,7 @@ export function readLocalFileAsBase64(filePath: string): string {
 
 export async function readPdfTextFromPath(filePath: string): Promise<string> {
   if (!filePath) return ''
-  const pdfParse = nodeRequire('pdf-parse') as (
-    buffer: Buffer
-  ) => Promise<{ text?: string }>
+  const pdfParse = nodeRequire('pdf-parse') as (buffer: Buffer) => Promise<{ text?: string }>
   const dataBuffer = fs.readFileSync(filePath)
   const pdfData = await pdfParse(dataBuffer)
   return pdfData.text || ''

@@ -21,10 +21,7 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
 
-  const heroSource =
-    typeof heroImageSrc === 'string'
-      ? { uri: heroImageSrc }
-      : heroImageSrc
+  const heroSource = typeof heroImageSrc === 'string' ? { uri: heroImageSrc } : heroImageSrc
 
   return (
     <View
@@ -48,7 +45,11 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
           }}
         >
           {heroSource ? (
-            <Image source={heroSource} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <Image
+              source={heroSource}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
           ) : null}
         </View>
       </Pressable>

@@ -28,16 +28,11 @@ export const NativeIconButton: React.FC<NativeIconButtonProps> = ({
 }) => {
   const { colors } = useNativeTheme()
   const iconColor =
-    color ??
-    (danger ? colors.error : active ? colors.primary : colors.textSecondary)
+    color ?? (danger ? colors.error : active ? colors.primary : colors.textSecondary)
 
   return (
     <TouchableOpacity
-      style={[
-        styles.btn,
-        active && { backgroundColor: colors.primaryLight },
-        style
-      ]}
+      style={[styles.btn, active && { backgroundColor: colors.primaryLight }, style]}
       onPress={onPress}
       disabled={!onPress}
       activeOpacity={0.6}

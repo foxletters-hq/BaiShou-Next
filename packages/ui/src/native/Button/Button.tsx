@@ -60,8 +60,12 @@ export const Button: React.FC<NativeButtonProps> = ({
 
   const textColor =
     variant === 'elevated'
-      ? (destructive ? colors.onError : colors.textOnPrimary)
-      : (destructive ? colors.error : colors.primary)
+      ? destructive
+        ? colors.onError
+        : colors.textOnPrimary
+      : destructive
+        ? colors.error
+        : colors.primary
 
   return (
     <Pressable

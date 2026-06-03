@@ -208,7 +208,12 @@ export const AssistantManagementScreen: React.FC = () => {
         </View>
       ) : assistants.length === 0 ? (
         <View style={styles.centered}>
-          <MaterialIcons name="auto-awesome" size={56} color={colors.primary} style={{ opacity: 0.65 }} />
+          <MaterialIcons
+            name="auto-awesome"
+            size={56}
+            color={colors.primary}
+            style={{ opacity: 0.65 }}
+          />
           <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
             {t('agent.assistant.empty_hint', '全列阵空爆：您的矩阵里还没有服役的心智')}
           </Text>

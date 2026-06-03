@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
@@ -45,8 +38,7 @@ export const AIServicesSection: React.FC = () => {
   const loadProviders = useCallback(async () => {
     if (!services || !dbReady) return
     try {
-      const list =
-        (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
       setSavedProviders(list)
     } catch (e) {
       console.warn('Load providers failed', e)
@@ -86,8 +78,7 @@ export const AIServicesSection: React.FC = () => {
       return
     }
     const id = `custom_${Date.now()}`
-    const baseUrl =
-      addForm.baseUrl.trim() || effectiveProviderBaseUrl(id, addForm.type, '', '')
+    const baseUrl = addForm.baseUrl.trim() || effectiveProviderBaseUrl(id, addForm.type, '', '')
     const newProvider: AIProviderConfig = {
       id,
       name,
@@ -173,8 +164,7 @@ export const AIServicesSection: React.FC = () => {
                   style={[
                     styles.typeChip,
                     {
-                      borderColor:
-                        addForm.type === type ? colors.primary : colors.borderSubtle,
+                      borderColor: addForm.type === type ? colors.primary : colors.borderSubtle,
                       backgroundColor:
                         addForm.type === type ? colors.primaryContainer : colors.bgApp
                     }

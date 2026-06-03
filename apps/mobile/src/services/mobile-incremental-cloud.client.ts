@@ -1,10 +1,6 @@
 import type { IFileSystem } from '@baishou/core-mobile'
 import { signS3Request, type S3SyncConfig } from '@baishou/shared'
-import {
-  FileSystemUploadType,
-  downloadAsync,
-  uploadAsync
-} from './mobile-http-transfer'
+import { FileSystemUploadType, downloadAsync, uploadAsync } from './mobile-http-transfer'
 
 export type IncrementalSyncRecord = {
   filename: string
@@ -261,11 +257,9 @@ export class MobileIncrementalCloudClient {
     const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
     const remotePath = this.basePath() + rel
     const auth = `Basic ${btoa(`${this.config.accessKey}:${this.config.secretKey}`)}`
-    const res = await downloadAsync(
-      `${baseUrl}/${remotePath.replace(/^\//, '')}`,
-      localDestPath,
-      { headers: { Authorization: auth } }
-    )
+    const res = await downloadAsync(`${baseUrl}/${remotePath.replace(/^\//, '')}`, localDestPath, {
+      headers: { Authorization: auth }
+    })
     if (res.status < 200 || res.status >= 300) {
       throw new Error(`WebDAV download failed: ${res.status}`)
     }

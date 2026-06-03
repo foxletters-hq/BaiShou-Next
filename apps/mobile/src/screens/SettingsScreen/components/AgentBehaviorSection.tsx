@@ -1,12 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView
-} from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'

@@ -117,9 +117,15 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
     try {
       const startDate = new Date(summary.startDate)
       const endDate = new Date(summary.endDate)
-      await services.summaryManager.update(summary.id, summary.type as SummaryType, startDate, endDate, {
-        content: editContent
-      })
+      await services.summaryManager.update(
+        summary.id,
+        summary.type as SummaryType,
+        startDate,
+        endDate,
+        {
+          content: editContent
+        }
+      )
       setSummary({ ...summary, content: editContent })
       setIsEditing(false)
       toast.showSuccess(t('common.save_success'))

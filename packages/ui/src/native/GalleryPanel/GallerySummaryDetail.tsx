@@ -1,5 +1,13 @@
 import React from 'react'
-import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, ActivityIndicator } from 'react-native'
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  TextInput,
+  StyleSheet,
+  ActivityIndicator
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
@@ -49,7 +57,12 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
   }
 
   return (
-    <View style={[styles.detail, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
+    <View
+      style={[
+        styles.detail,
+        { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+      ]}
+    >
       <View style={styles.detailHeader}>
         <View style={styles.metaRow}>
           <View style={[styles.typeBadge, { backgroundColor: colors.primaryLight }]}>

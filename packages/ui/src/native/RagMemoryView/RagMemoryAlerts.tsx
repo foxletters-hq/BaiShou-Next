@@ -47,7 +47,10 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           ) : null}
           {ragState.total > 0 ? (
             <View
-              style={[styles.progressBar, { backgroundColor: colors.bgSurfaceNormal, marginTop: 8 }]}
+              style={[
+                styles.progressBar,
+                { backgroundColor: colors.bgSurfaceNormal, marginTop: 8 }
+              ]}
             >
               <View
                 style={[

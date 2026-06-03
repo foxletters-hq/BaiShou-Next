@@ -18,23 +18,23 @@ export interface SettingsHubGroup {
 
 /** 与桌面端 SettingsPage / 旧版 BaiShou 移动枢纽分组对齐 */
 export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
+  {
+    titleKey: 'settings.hub_group_system',
+    items: [
       {
-        titleKey: 'settings.hub_group_system',
-        items: [
-          {
-            id: 'general',
-            titleKey: 'settings.general',
-            icon: 'tune',
-            route: { type: 'section', section: 'general' }
-          },
-          {
-            id: 'updates',
-            titleKey: 'updater.section_title',
-            icon: 'system-update',
-            route: { type: 'section', section: 'updates' }
-          }
-        ]
+        id: 'general',
+        titleKey: 'settings.general',
+        icon: 'tune',
+        route: { type: 'section', section: 'general' }
       },
+      {
+        id: 'updates',
+        titleKey: 'updater.section_title',
+        icon: 'system-update',
+        route: { type: 'section', section: 'updates' }
+      }
+    ]
+  },
   {
     titleKey: 'settings.hub_group_ai',
     items: [
@@ -116,8 +116,9 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
 export const SETTINGS_SECTION_IDS = new Set(
   SETTINGS_HUB_GROUPS.flatMap((g) =>
     g.items
-      .filter((item): item is SettingsHubItem & { route: { type: 'section' } } =>
-        item.route.type === 'section'
+      .filter(
+        (item): item is SettingsHubItem & { route: { type: 'section' } } =>
+          item.route.type === 'section'
       )
       .map((item) => item.route.section)
   )

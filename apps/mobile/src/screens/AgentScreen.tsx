@@ -53,9 +53,7 @@ export const AgentScreen = () => {
   const flatListRef = useRef<FlatList>(null)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [assistants, setAssistants] = useState<
-    Array<AssistantSummary & { isPinned?: boolean }>
-  >([])
+  const [assistants, setAssistants] = useState<Array<AssistantSummary & { isPinned?: boolean }>>([])
   const [shortcuts, setShortcuts] = useState<
     Array<{ id: string; icon: string; name: string; content: string }>
   >([])
@@ -196,7 +194,10 @@ export const AgentScreen = () => {
   }, [showToolManager, dbReady, services])
 
   const handleToolConfigChange = useCallback(
-    async (next: { disabledToolIds: string[]; customConfigs: Record<string, Record<string, unknown>> }) => {
+    async (next: {
+      disabledToolIds: string[]
+      customConfigs: Record<string, Record<string, unknown>>
+    }) => {
       setToolConfig(next)
       if (!services) return
       try {
@@ -305,9 +306,7 @@ export const AgentScreen = () => {
           toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'))
         }
       } catch (e: any) {
-        toast.showError(
-          e.message || t('app.unknown_error', '未知网络或系统错误')
-        )
+        toast.showError(e.message || t('app.unknown_error', '未知网络或系统错误'))
       }
     },
     [currentSessionId, branchSession, currentAssistant?.name, t]
@@ -376,13 +375,13 @@ export const AgentScreen = () => {
 
   const renderEmptyState = () => (
     <View style={styles.empty}>
-      <View
-        style={[
-          styles.emptyIconCircle,
-          { backgroundColor: colors.primary + '26' }
-        ]}
-      >
-        <MaterialIcons name="auto-awesome" size={38} color={colors.primary} style={{ opacity: 0.7 }} />
+      <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
+        <MaterialIcons
+          name="auto-awesome"
+          size={38}
+          color={colors.primary}
+          style={{ opacity: 0.7 }}
+        />
       </View>
       <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
         {t('agent.chat.start_chat', '开始和伙伴对话')}
@@ -461,7 +460,9 @@ export const AgentScreen = () => {
                       : undefined
                   }
                   isTtsPlaying={ttsPlayingMsgId === item.id}
-                  onShowContext={item.role === 'assistant' ? () => handleShowContext(item) : undefined}
+                  onShowContext={
+                    item.role === 'assistant' ? () => handleShowContext(item) : undefined
+                  }
                   onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
                 />
               </View>

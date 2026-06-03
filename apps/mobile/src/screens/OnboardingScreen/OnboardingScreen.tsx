@@ -86,7 +86,9 @@ export const OnboardingScreen: React.FC = () => {
     }
   }
 
-  const finishOnboarding = async (destination: '/(tabs)' | '/(tabs)/agent' | '/(tabs)/settings') => {
+  const finishOnboarding = async (
+    destination: '/(tabs)' | '/(tabs)/agent' | '/(tabs)/settings'
+  ) => {
     await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
     if (apiKey.trim()) {
       try {
@@ -222,7 +224,9 @@ export const OnboardingScreen: React.FC = () => {
     <ScreenSafeArea preset="screen" style={[styles.container, { backgroundColor: colors.bgApp }]}>
       {currentPage < pages.length - 1 && (
         <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={[styles.skipText, { color: colors.textSecondary }]}>{t('onboarding.skip')}</Text>
+          <Text style={[styles.skipText, { color: colors.textSecondary }]}>
+            {t('onboarding.skip')}
+          </Text>
         </TouchableOpacity>
       )}
 

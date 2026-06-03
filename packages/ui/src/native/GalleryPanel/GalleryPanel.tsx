@@ -120,5 +120,5 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     overflow: 'hidden'
-  },
+  }
 })

@@ -71,10 +71,7 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
       return
     }
     const confirmed = await dialog.confirm(
-      t('settings.delete_identity_card', '确定删除身份卡: $personaId').replace(
-        '$personaId',
-        pid
-      ),
+      t('settings.delete_identity_card', '确定删除身份卡: $personaId').replace('$personaId', pid),
       { confirmText: t('common.confirm', '确定'), destructive: true }
     )
     if (!confirmed) return

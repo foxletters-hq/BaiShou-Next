@@ -28,8 +28,7 @@ export interface UseChatMessagesResult {
 /** 首屏约 10 轮对话（按每轮约 4 条消息粗估，含工具调用） */
 export const CHAT_INITIAL_ROUND_BATCH = 10
 const CHAT_MSG_ESTIMATE_PER_ROUND = 4
-export const CHAT_INITIAL_MESSAGE_BATCH =
-  CHAT_INITIAL_ROUND_BATCH * CHAT_MSG_ESTIMATE_PER_ROUND
+export const CHAT_INITIAL_MESSAGE_BATCH = CHAT_INITIAL_ROUND_BATCH * CHAT_MSG_ESTIMATE_PER_ROUND
 const CHAT_LOAD_MORE_PAGE = 20
 
 function applyTailPage(
@@ -126,10 +125,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
             0
           )
           if (fetched) {
-            const { display, hasMore: more, loadedFromEnd } = applyTailPage(
-              fetched,
-              CHAT_INITIAL_MESSAGE_BATCH
-            )
+            const {
+              display,
+              hasMore: more,
+              loadedFromEnd
+            } = applyTailPage(fetched, CHAT_INITIAL_MESSAGE_BATCH)
             setMessages(display)
             setHasMore(more)
             loadedFromEndRef.current = loadedFromEnd

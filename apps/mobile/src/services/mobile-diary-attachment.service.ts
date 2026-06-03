@@ -43,9 +43,7 @@ export function getDiaryInsertMarkdown(fileName: string): string {
   return `[📎 ${fileName}](attachment/${fileName})`
 }
 
-export async function pickDiaryImagesFromLibrary(): Promise<
-  ImagePicker.ImagePickerAsset[] | null
-> {
+export async function pickDiaryImagesFromLibrary(): Promise<ImagePicker.ImagePickerAsset[] | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
   if (!perm.granted) return null
 
@@ -76,7 +74,9 @@ export async function uploadDiaryAttachments(
       try {
         const uri = asset.uri
         const origName = asset.fileName || uri.split('/').pop() || 'image.jpg'
-        const ext = origName.includes('.') ? origName.slice(origName.lastIndexOf('.')) : extFromMime(asset.mimeType)
+        const ext = origName.includes('.')
+          ? origName.slice(origName.lastIndexOf('.'))
+          : extFromMime(asset.mimeType)
         const baseName = origName.replace(/\.[^.]+$/, '') || 'image'
         const newFileName = `${baseName}_${Date.now()}${ext}`
         const dest = `${attachDir}/${newFileName}`

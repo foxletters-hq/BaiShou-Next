@@ -92,7 +92,8 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
       onPress={toggle}
       style={({ pressed }) => [
         hubStyles.row,
-        embedded && showRowDivider && [hubStyles.rowDivider, { borderBottomColor: colors.borderSubtle }],
+        embedded &&
+          showRowDivider && [hubStyles.rowDivider, { borderBottomColor: colors.borderSubtle }],
         !embedded && {
           paddingHorizontal: 14,
           paddingVertical: 13
@@ -103,12 +104,19 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
       <View style={{ flex: 1 }}>
         <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{title}</Text>
         {subtitle ? (
-          <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2, fontWeight: '400' }}>
+          <Text
+            style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2, fontWeight: '400' }}
+          >
             {subtitle}
           </Text>
         ) : null}
       </View>
-      <Text style={[styles.chevron, { color: colors.textTertiary, transform: [{ rotate: open ? '180deg' : '0deg' }] }]}>
+      <Text
+        style={[
+          styles.chevron,
+          { color: colors.textTertiary, transform: [{ rotate: open ? '180deg' : '0deg' }] }
+        ]}
+      >
         ▾
       </Text>
     </Pressable>

@@ -38,9 +38,7 @@ export default function TabLayout() {
         name="agent"
         options={{
           title: t('nav.agent'),
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="auto-awesome" size={24} color={color} />
-          )
+          tabBarIcon: ({ color }) => <MaterialIcons name="auto-awesome" size={24} color={color} />
         }}
       />
       <Tabs.Screen

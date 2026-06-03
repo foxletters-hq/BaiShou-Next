@@ -110,9 +110,7 @@ export function useAgentSession() {
     } catch (e) {
       console.error('Failed to create session', e)
       const msg = e instanceof Error ? e.message : String(e)
-      toast.showError(
-        t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg })
-      )
+      toast.showError(t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg }))
       return null
     }
   }, [services, t, clearSession])

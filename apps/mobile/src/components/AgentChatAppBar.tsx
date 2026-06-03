@@ -25,8 +25,7 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
   const { colors } = useNativeTheme()
   const showCost = costMicros > 0
   const costLabel = `$${(costMicros / 1_000_000).toFixed(4)}`
-  const displayModel =
-    modelName || t('agent.no_model_selected', '暂未选择模型')
+  const displayModel = modelName || t('agent.no_model_selected', '暂未选择模型')
 
   return (
     <View

@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import {
-  View,
-  StyleSheet,
-  StatusBar,
-  Modal,
-  Text,
-  TouchableOpacity
-} from 'react-native'
+import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'

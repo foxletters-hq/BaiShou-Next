@@ -143,9 +143,7 @@ export const AgentToolsSection: React.FC = () => {
                 const tooltipKey = TOOL_TOOLTIP_KEY[toolId]
                 return (
                   <View key={toolId}>
-                    <View
-                      style={[styles.toolRow, { borderBottomColor: colors.borderSubtle }]}
-                    >
+                    <View style={[styles.toolRow, { borderBottomColor: colors.borderSubtle }]}>
                       <View style={styles.toolText}>
                         <Text style={[styles.toolName, { color: colors.textPrimary }]}>
                           {t(TOOL_NAME_KEY[toolId])}

@@ -29,7 +29,10 @@ export const SettingsScreen: React.FC = () => {
       key={item.id}
       style={[
         styles.listItem,
-        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSubtle }
+        !isLast && {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.borderSubtle
+        }
       ]}
       onPress={() => navigate(item.route)}
       activeOpacity={0.65}

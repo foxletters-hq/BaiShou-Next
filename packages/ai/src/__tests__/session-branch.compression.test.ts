@@ -6,11 +6,7 @@ import {
 } from '../agent/session-branch.compression'
 import type { Snapshot } from '@baishou/database'
 
-function snap(
-  id: number,
-  coveredUpToMessageId: string,
-  createdAt: Date
-): Snapshot {
+function snap(id: number, coveredUpToMessageId: string, createdAt: Date): Snapshot {
   return {
     id,
     sessionId: 'src',

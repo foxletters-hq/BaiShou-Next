@@ -50,27 +50,18 @@ export const ProviderSortableList: React.FC<ProviderSortableListProps> = ({
               hitSlop={10}
               accessibilityLabel={t('settings.provider_drag_handle', '拖动排序')}
             >
-              <MaterialCommunityIcons
-                name="drag-vertical"
-                size={22}
-                color={colors.textTertiary}
-              />
+              <MaterialCommunityIcons name="drag-vertical" size={22} color={colors.textTertiary} />
             </Pressable>
             <Pressable style={styles.rowBody} onPress={() => onOpen(item.id)}>
               <ProviderBrandIcon providerId={item.id} size={22} />
-              <Text
-                style={[styles.rowName, { color: colors.textPrimary }]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.rowName, { color: colors.textPrimary }]} numberOfLines={1}>
                 {item.name}
               </Text>
               <View
                 style={[
                   styles.statusBadge,
                   {
-                    backgroundColor: item.isEnabled
-                      ? colors.primaryContainer
-                      : colors.bgApp
+                    backgroundColor: item.isEnabled ? colors.primaryContainer : colors.bgApp
                   }
                 ]}
               >
@@ -81,9 +72,7 @@ export const ProviderSortableList: React.FC<ProviderSortableListProps> = ({
                     color: item.isEnabled ? colors.primary : colors.textTertiary
                   }}
                 >
-                  {item.isEnabled
-                    ? t('settings.status_on', 'ON')
-                    : t('settings.status_off', 'OFF')}
+                  {item.isEnabled ? t('settings.status_on', 'ON') : t('settings.status_off', 'OFF')}
                 </Text>
               </View>
               {!item.isSystem && (

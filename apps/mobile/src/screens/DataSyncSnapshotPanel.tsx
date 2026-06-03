@@ -184,7 +184,13 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
   hint: { fontSize: 12, lineHeight: 17 },
-  createBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, minWidth: 88, alignItems: 'center' },
+  createBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 88,
+    alignItems: 'center'
+  },
   empty: { paddingVertical: 24, textAlign: 'center', fontSize: 14 },
   row: {
     flexDirection: 'row',

@@ -117,7 +117,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               ]}
             >
               <MaterialIcons name={ICON_BY_TYPE[toastData.type]} size={18} color={iconColor} />
-              <Text style={[styles.message, { color: colors.textPrimary }]}>{toastData.message}</Text>
+              <Text style={[styles.message, { color: colors.textPrimary }]}>
+                {toastData.message}
+              </Text>
             </View>
           </Pressable>
         </Animated.View>

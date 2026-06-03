@@ -23,10 +23,7 @@ export const ContextChainRecompressBar: React.FC<ContextChainRecompressBarProps>
         type="button"
         className={styles.recompressTrigger}
         disabled={busy}
-        title={t(
-          'agent.chat.recompress_hint',
-          '按上次压缩触发时的消息范围，重新生成对话摘要'
-        )}
+        title={t('agent.chat.recompress_hint', '按上次压缩触发时的消息范围，重新生成对话摘要')}
         onClick={onRecompress}
       >
         {busy

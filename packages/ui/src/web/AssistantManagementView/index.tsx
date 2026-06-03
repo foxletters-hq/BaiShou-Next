@@ -141,7 +141,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                             'agent.assistant.delete_confirm_content',
                             '您确认要删除吗？该操作不可逆转！'
                           ),
-                          { confirmText: t('common.delete', '删除'), destructive: true }
+                          { confirmText: t('common.delete', '删除'), destructive: true } as any
                         )
                         if (confirmed) onDelete(assistant)
                       })()

@@ -125,11 +125,16 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     (message: ReactNode, titleOrOptions?: string | ConfirmOptions): Promise<boolean> => {
       const isOptions = typeof titleOrOptions === 'object' && titleOrOptions !== null
       const options = isOptions ? (titleOrOptions as ConfirmOptions) : undefined
-      const title = isOptions
-        ? options?.title
-        : (titleOrOptions as string | undefined)
+      const title = isOptions ? options?.title : (titleOrOptions as string | undefined)
       return new Promise((resolve) => {
-        setState({ isOpen: true, type: 'confirm', message, title, confirmOptions: options, resolve })
+        setState({
+          isOpen: true,
+          type: 'confirm',
+          message,
+          title,
+          confirmOptions: options,
+          resolve
+        })
       })
     },
     []
@@ -180,11 +185,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     <DialogContext.Provider value={{ alert, confirm, prompt, choose, closeAll }}>
       {children}
       {state.isOpen && (
-        <Modal
-          visible={state.isOpen}
-          onClose={dismissDialog}
-          title={state.title}
-        >
+        <Modal visible={state.isOpen} onClose={dismissDialog} title={state.title}>
           <View style={styles.dialogBody}>
             {renderMessage()}
 

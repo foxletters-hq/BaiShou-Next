@@ -44,10 +44,13 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
 
   const handleClearChat = async () => {
     if (!onClearChat) return
-    const confirmed = await dialog.confirm(t('agent.chat.clear_confirm', '确定要清空聊天记录吗？'), {
-      confirmText: t('common.confirm', '确定'),
-      destructive: true
-    })
+    const confirmed = await dialog.confirm(
+      t('agent.chat.clear_confirm', '确定要清空聊天记录吗？'),
+      {
+        confirmText: t('common.confirm', '确定'),
+        destructive: true
+      }
+    )
     if (confirmed) onClearChat()
   }
 

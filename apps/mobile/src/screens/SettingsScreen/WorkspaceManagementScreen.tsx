@@ -150,7 +150,11 @@ export const WorkspaceManagementScreen: React.FC = () => {
   }
 
   return (
-    <StackScreenLayout title={t('workspace.manage', '管理工作区')} {...chrome} contentStyle={styles.layoutContent}>
+    <StackScreenLayout
+      title={t('workspace.manage', '管理工作区')}
+      {...chrome}
+      contentStyle={styles.layoutContent}
+    >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -208,7 +212,10 @@ export const WorkspaceManagementScreen: React.FC = () => {
                   <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{vault.name}</Text>
                   <Text style={[styles.sub, { color: colors.textSecondary }]}>
                     {t('workspace.last_accessed', '上次访问: {{time}}', {
-                      time: formatLastAccessed(vault.lastAccessedAt, t('common.unknown_time', '未知时间'))
+                      time: formatLastAccessed(
+                        vault.lastAccessedAt,
+                        t('common.unknown_time', '未知时间')
+                      )
                     })}
                   </Text>
                 </View>

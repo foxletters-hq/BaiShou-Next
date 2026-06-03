@@ -56,10 +56,7 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
       style={styles.actionItem}
     >
       <Text
-        style={[
-          styles.actionItemText,
-          { color: destructive ? colors.error : colors.textPrimary }
-        ]}
+        style={[styles.actionItemText, { color: destructive ? colors.error : colors.textPrimary }]}
       >
         {label}
       </Text>
@@ -86,17 +83,14 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
             {isAssistant &&
               hasContext &&
               onShowContext &&
-              renderItem(t('agent.chat.context_chain', '上下文链'), () =>
-                onShowContext(message)
-              )}
+              renderItem(t('agent.chat.context_chain', '上下文链'), () => onShowContext(message))}
             {isAssistant &&
               onRegenerate &&
               renderItem(t('agent.chat.regenerate', '重新生成'), onRegenerate)}
             {isAssistant &&
               onBranch &&
               renderItem(t('agent.chat.branch', '从此处创建分支'), onBranch)}
-            {onDelete &&
-              renderItem(t('common.delete', '删除'), onDelete, true)}
+            {onDelete && renderItem(t('common.delete', '删除'), onDelete, true)}
           </ScrollView>
           <TouchableOpacity
             onPress={onClose}

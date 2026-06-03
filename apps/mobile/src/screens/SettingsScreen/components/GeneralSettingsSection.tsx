@@ -183,11 +183,7 @@ export const GeneralSettingsSection: React.FC = () => {
         />
         <SettingsGroupDivider />
 
-        <DataManagementCard
-          embedded
-          onExport={handleExportData}
-          onImport={handleImportData}
-        />
+        <DataManagementCard embedded onExport={handleExportData} onImport={handleImportData} />
         <SettingsGroupDivider />
 
         <AboutSettingsCard

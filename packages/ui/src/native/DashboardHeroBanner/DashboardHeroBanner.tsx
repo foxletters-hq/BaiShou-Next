@@ -9,12 +9,7 @@ export const DashboardHeroBanner: React.FC = () => {
   const { colors } = useNativeTheme()
 
   return (
-    <View
-      style={[
-        styles.banner,
-        { backgroundColor: colors.primary }
-      ]}
-    >
+    <View style={[styles.banner, { backgroundColor: colors.primary }]}>
       <Text style={styles.title}>
         {t('common.app_title')} · {t('summary.collective_memories_title')}
       </Text>

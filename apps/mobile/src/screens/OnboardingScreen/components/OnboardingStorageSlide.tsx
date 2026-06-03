@@ -50,7 +50,9 @@ export const OnboardingStorageSlide: React.FC = () => {
       )}
 
       {granted === true && (
-        <Text style={[styles.hint, { color: colors.primary }]}>{t('common.permission.storage_granted')}</Text>
+        <Text style={[styles.hint, { color: colors.primary }]}>
+          {t('common.permission.storage_granted')}
+        </Text>
       )}
     </View>
   )

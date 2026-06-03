@@ -124,7 +124,9 @@ export const DiaryList: React.FC<DiaryListProps> = ({
         </Text>
         {selectedMonth && (
           <TouchableOpacity onPress={onViewAll}>
-            <Text style={[styles.viewAllBtn, { color: colors.primary }]}>{t('common.view_all')}</Text>
+            <Text style={[styles.viewAllBtn, { color: colors.primary }]}>
+              {t('common.view_all')}
+            </Text>
           </TouchableOpacity>
         )}
         {showStoragePermission && onRequestStoragePermission ? (

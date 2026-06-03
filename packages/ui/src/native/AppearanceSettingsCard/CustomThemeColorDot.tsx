@@ -30,10 +30,7 @@ export const CustomThemeColorDot: React.FC<CustomThemeColorDotProps> = ({
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        styles.wrap,
-        active && styles.wrapActive
-      ]}
+      style={[styles.wrap, active && styles.wrapActive]}
       accessibilityRole="button"
     >
       {isCustom ? (

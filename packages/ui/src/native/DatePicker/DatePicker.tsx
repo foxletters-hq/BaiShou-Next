@@ -180,9 +180,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
       </View>
 
       {/* Day Picker */}
-      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-        {t('common.date')}
-      </Text>
+      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('common.date')}</Text>
       <View style={styles.gridRow}>
         {days.map((day) => {
           const disabled = isDayDisabled(day)

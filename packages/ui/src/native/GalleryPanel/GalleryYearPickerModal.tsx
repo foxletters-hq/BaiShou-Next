@@ -42,7 +42,8 @@ export const GalleryYearPickerModal: React.FC<GalleryYearPickerModalProps> = ({
               style={[
                 styles.allBtn,
                 {
-                  backgroundColor: selectedYear === 'all' ? colors.primaryLight : colors.bgSurfaceHigh,
+                  backgroundColor:
+                    selectedYear === 'all' ? colors.primaryLight : colors.bgSurfaceHigh,
                   borderColor: selectedYear === 'all' ? colors.primary : colors.borderSubtle
                 }
               ]}

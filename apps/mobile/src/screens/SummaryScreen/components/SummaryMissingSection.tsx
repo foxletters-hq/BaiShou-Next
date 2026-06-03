@@ -195,8 +195,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
         {missingSummaries.map((mp) => {
           const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`
           const taskState = generationStates[uKey]
-          const isRunning =
-            taskState?.status === 'running' || taskState?.status === 'processing'
+          const isRunning = taskState?.status === 'running' || taskState?.status === 'processing'
           const isPending = taskState?.status === 'pending'
           const isCompleted = taskState?.status === 'completed'
           const progress = taskState?.progress || 0
@@ -222,18 +221,16 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                   }
                 ]}
               >
-                <View
-                  style={[styles.cardIconBox, { backgroundColor: colors.primaryLight }]}
-                >
-                <Text style={styles.cardEmoji}>
-                  {mp.type === 'weekly'
-                    ? '🌱'
-                    : mp.type === 'monthly'
-                      ? '☘️'
-                      : mp.type === 'quarterly'
-                        ? '🪴'
-                        : '🌳'}
-                </Text>
+                <View style={[styles.cardIconBox, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={styles.cardEmoji}>
+                    {mp.type === 'weekly'
+                      ? '🌱'
+                      : mp.type === 'monthly'
+                        ? '☘️'
+                        : mp.type === 'quarterly'
+                          ? '🪴'
+                          : '🌳'}
+                  </Text>
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>

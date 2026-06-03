@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-} from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native'
 import {
   useNativeTheme,
   useNativeToast,
@@ -130,7 +123,9 @@ export const AssistantEditScreen: React.FC = () => {
 
       await services.settingsManager.set('assistants', newAssistants)
       toast.showSuccess(
-        isNew ? t('agent.assistant.created', '助手已创建') : t('agent.assistant.updated', '助手已更新')
+        isNew
+          ? t('agent.assistant.created', '助手已创建')
+          : t('agent.assistant.updated', '助手已更新')
       )
       router.back()
     } catch (e) {
@@ -165,9 +160,7 @@ export const AssistantEditScreen: React.FC = () => {
     }
   }
 
-  const screenTitle = isNew
-    ? t('agent.assistant.create_title')
-    : t('agent.assistant.edit_title')
+  const screenTitle = isNew ? t('agent.assistant.create_title') : t('agent.assistant.edit_title')
 
   if (loading) {
     return (

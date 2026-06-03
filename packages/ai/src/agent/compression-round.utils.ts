@@ -33,7 +33,9 @@ export function buildCompressibleRounds(
     const userMsg = bucket.find((m) => m.role === 'user')
     const previewRaw = userMsg ? extractMessageText(userMsg) : extractMessageText(last)
     const preview =
-      previewRaw.length > 80 ? `${previewRaw.slice(0, 80)}…` : previewRaw || `轮次 ${rounds.length + 1}`
+      previewRaw.length > 80
+        ? `${previewRaw.slice(0, 80)}…`
+        : previewRaw || `轮次 ${rounds.length + 1}`
 
     rounds.push({
       roundIndex: rounds.length + 1,

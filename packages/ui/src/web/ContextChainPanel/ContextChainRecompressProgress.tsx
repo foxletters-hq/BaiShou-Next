@@ -42,9 +42,7 @@ export const ContextChainRecompressProgress: React.FC<ContextChainRecompressProg
         <span className={styles.recompressProgressTitle}>
           {t('agent.chat.recompress_running', '压缩中…')}
         </span>
-        {startedAt != null && (
-          <span className={styles.recompressProgressElapsed}>{elapsed}s</span>
-        )}
+        {startedAt != null && <span className={styles.recompressProgressElapsed}>{elapsed}s</span>}
       </div>
       <div className={styles.recompressProgressTrack} aria-hidden>
         <div className={styles.recompressProgressBar} />

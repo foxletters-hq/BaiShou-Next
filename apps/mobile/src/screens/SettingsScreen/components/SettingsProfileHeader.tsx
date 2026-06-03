@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const DEFAULT_AVATAR = require('@baishou/shared/assets/images/icon.png')
 
 export interface SettingsProfileHeaderProps {
@@ -61,10 +62,7 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
     <View
       style={[
         styles.row,
-        embedded && [
-          styles.rowDivider,
-          { borderBottomColor: colors.borderSubtle }
-        ],
+        embedded && [styles.rowDivider, { borderBottomColor: colors.borderSubtle }],
         embedded && { backgroundColor: 'transparent' }
       ]}
     >

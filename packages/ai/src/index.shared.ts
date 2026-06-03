@@ -60,7 +60,11 @@ export * from './agent/title-generator.service'
 export * from './agent/context-compressor.service'
 export * from './agent/compression-round.utils'
 export * from './agent/session-branch.compression'
-export { readPdfTextFromPath, readLocalFileAsBase64, canReadLocalPath } from './platform/read-local-file'
+export {
+  readPdfTextFromPath,
+  readLocalFileAsBase64,
+  canReadLocalPath
+} from './platform/read-local-file'
 
 export type { IStreamEmitter } from './agent/stream-emitter.interface'
 export { AgentChatCoreService } from './agent/agent-chat-core.service'

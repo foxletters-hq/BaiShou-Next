@@ -68,8 +68,14 @@ export const InputBar: React.FC<InputBarProps> = ({
     LayoutAnimation.configureNext({
       duration: TOOLBAR_ANIM_MS,
       update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity }
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity
+      }
     })
     setShowToolbar((prev) => {
       const next = !prev
@@ -249,7 +255,9 @@ export const InputBar: React.FC<InputBarProps> = ({
               onToggleSearchMode,
               { active: searchMode, icon: 'public' }
             )}
-            {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, { icon: 'menu-book' })}
+            {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
+              icon: 'menu-book'
+            })}
             {renderToolbarChip(
               ttsMode === 'always'
                 ? t('agent.chat.tts_always', '始终朗读')
@@ -259,7 +267,9 @@ export const InputBar: React.FC<InputBarProps> = ({
               onToggleTtsMode,
               { active: ttsMode === 'always', icon: 'volume-up' }
             )}
-            {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, { icon: 'build' })}
+            {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
+              icon: 'build'
+            })}
           </ScrollView>
         )}
       </Animated.View>

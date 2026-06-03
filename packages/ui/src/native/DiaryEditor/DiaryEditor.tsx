@@ -136,8 +136,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
       const current = contentRef.current
       const safeStart = Math.max(0, Math.min(start, current.length))
       const safeEnd = Math.max(safeStart, Math.min(end, current.length))
-      const newText =
-        current.substring(0, safeStart) + snippet + current.substring(safeEnd)
+      const newText = current.substring(0, safeStart) + snippet + current.substring(safeEnd)
       const cursor = safeStart + snippet.length
       const sel = { start: cursor, end: cursor }
       toolbarInsertingRef.current = true
@@ -179,13 +178,10 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     insertAtPosition(anchor.start, anchor.end, block)
   }
 
-  const updateActiveImageFromSelection = useCallback(
-    (offset: number) => {
-      const img = findImageAtOffset(contentRef.current, offset)
-      setActiveImage(img)
-    },
-    []
-  )
+  const updateActiveImageFromSelection = useCallback((offset: number) => {
+    const img = findImageAtOffset(contentRef.current, offset)
+    setActiveImage(img)
+  }, [])
 
   const handleSelectionChange = useCallback(
     (start: number, end: number) => {
@@ -213,13 +209,12 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const snapKeyboardChromeAway = useCallback(() => {
     keyboardInsetLockedRef.current = true
-    if (
-      Platform.OS === 'android' &&
-      UIManager.setLayoutAnimationEnabledExperimental
-    ) {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true)
     }
-    LayoutAnimation.configureNext(LayoutAnimation.create(0, LayoutAnimation.Types.linear, 'opacity'))
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(0, LayoutAnimation.Types.linear, 'opacity')
+    )
     setKeyboardHeight(0)
     textInputRef.current?.blur()
     Keyboard.dismiss()
@@ -257,8 +252,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const handleImageWidthDelta = useCallback(
     (delta: number) => {
-      const img =
-        activeImage ?? findImageAtOffset(contentRef.current, selectionRef.current.end)
+      const img = activeImage ?? findImageAtOffset(contentRef.current, selectionRef.current.end)
       if (!img) return
       const next = adjustImageWidthInContent(contentRef.current, img, delta)
       onContentChange(next)
@@ -333,7 +327,9 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             onSave?.(content, tags, selectedDate)
           }}
         >
-          <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>{t('common.save')}</Text>
+          <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>
+            {t('common.save')}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -349,73 +345,73 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           keyboardShouldPersistTaps="always"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
         >
-        <View style={styles.editorMain}>
-        {!isSummaryMode && onWeatherChange && viewMode === 'edit' && (
-          <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
-            <WeatherPicker value={weather} onChange={onWeatherChange} />
-            <Pressable
-              style={({ pressed }) => [
-                styles.favBtn,
-                {
-                  opacity: pressed ? 0.85 : 1,
-                  backgroundColor: isFavorite ? colors.primaryLight : colors.bgSurface,
-                  borderColor: isFavorite ? colors.warning : colors.borderSubtle
-                }
-              ]}
-              onPress={() => onFavoriteChange?.(!isFavorite)}
-              accessibilityLabel={isFavorite ? t('diary.unfavorite') : t('diary.favorite')}
-            >
-              <MaterialIcons
-                name={isFavorite ? 'favorite' : 'favorite-border'}
-                size={20}
-                color={isFavorite ? colors.warning : colors.textTertiary}
-              />
-            </Pressable>
-          </View>
-        )}
+          <View style={styles.editorMain}>
+            {!isSummaryMode && onWeatherChange && viewMode === 'edit' && (
+              <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
+                <WeatherPicker value={weather} onChange={onWeatherChange} />
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.favBtn,
+                    {
+                      opacity: pressed ? 0.85 : 1,
+                      backgroundColor: isFavorite ? colors.primaryLight : colors.bgSurface,
+                      borderColor: isFavorite ? colors.warning : colors.borderSubtle
+                    }
+                  ]}
+                  onPress={() => onFavoriteChange?.(!isFavorite)}
+                  accessibilityLabel={isFavorite ? t('diary.unfavorite') : t('diary.favorite')}
+                >
+                  <MaterialIcons
+                    name={isFavorite ? 'favorite' : 'favorite-border'}
+                    size={20}
+                    color={isFavorite ? colors.warning : colors.textTertiary}
+                  />
+                </Pressable>
+              </View>
+            )}
 
-        {viewMode === 'edit' ? (
-          <TextInput
-            ref={textInputRef}
-            style={[
-              styles.textArea,
-              { color: colors.textPrimary, minHeight: Math.max(280, editorHeight) }
-            ]}
-            multiline
-            scrollEnabled={false}
-            placeholder={t('diary.editor_hint')}
-            placeholderTextColor={colors.textTertiary}
-            selectionColor={colors.primary}
-            cursorColor={colors.primary}
-            value={content}
-            selection={selection}
-            onChangeText={onContentChange}
-            onContentSizeChange={(e) => {
-              const h = e.nativeEvent.contentSize.height
-              if (h > 0) setEditorHeight(h)
-            }}
-            onSelectionChange={(e) => {
-              const { start, end } = e.nativeEvent.selection
-              handleSelectionChange(start, end)
-            }}
-            onFocus={() => {
-              keyboardInsetLockedRef.current = false
-              updateActiveImageFromSelection(selectionRef.current.end)
-              if (Platform.OS === 'android') {
-                requestAnimationFrame(syncKeyboardInsetFromMetrics)
-              }
-            }}
-          />
-        ) : (
-          <Pressable onPress={handleSwitchToEdit} style={styles.previewArea}>
-            <MarkdownRenderer
-              content={content}
-              resolveImageUri={resolveImageUri}
-              onImagePress={handlePreviewImagePress}
-            />
-          </Pressable>
-        )}
-        </View>
+            {viewMode === 'edit' ? (
+              <TextInput
+                ref={textInputRef}
+                style={[
+                  styles.textArea,
+                  { color: colors.textPrimary, minHeight: Math.max(280, editorHeight) }
+                ]}
+                multiline
+                scrollEnabled={false}
+                placeholder={t('diary.editor_hint')}
+                placeholderTextColor={colors.textTertiary}
+                selectionColor={colors.primary}
+                cursorColor={colors.primary}
+                value={content}
+                selection={selection}
+                onChangeText={onContentChange}
+                onContentSizeChange={(e) => {
+                  const h = e.nativeEvent.contentSize.height
+                  if (h > 0) setEditorHeight(h)
+                }}
+                onSelectionChange={(e) => {
+                  const { start, end } = e.nativeEvent.selection
+                  handleSelectionChange(start, end)
+                }}
+                onFocus={() => {
+                  keyboardInsetLockedRef.current = false
+                  updateActiveImageFromSelection(selectionRef.current.end)
+                  if (Platform.OS === 'android') {
+                    requestAnimationFrame(syncKeyboardInsetFromMetrics)
+                  }
+                }}
+              />
+            ) : (
+              <Pressable onPress={handleSwitchToEdit} style={styles.previewArea}>
+                <MarkdownRenderer
+                  content={content}
+                  resolveImageUri={resolveImageUri}
+                  onImagePress={handlePreviewImagePress}
+                />
+              </Pressable>
+            )}
+          </View>
 
           <View
             onLayout={(e) => {

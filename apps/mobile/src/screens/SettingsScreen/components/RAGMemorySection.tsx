@@ -10,10 +10,7 @@ import {
   type RagEntry,
   type RagState
 } from '@baishou/ui/native'
-import {
-  DEFAULT_BATCH_EMBED_CONCURRENCY,
-  type RagConfig as SharedRagConfig
-} from '@baishou/shared'
+import { DEFAULT_BATCH_EMBED_CONCURRENCY, type RagConfig as SharedRagConfig } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useMobileRagSystem } from '../../../hooks/useMobileRagSystem'
 import { TextPromptModal } from './TextPromptModal'
@@ -64,10 +61,7 @@ export const RAGMemorySection: React.FC = () => {
     stateRef.current = { searchQuery, searchMode, currentPage, pageSize }
   }, [searchQuery, searchMode, currentPage, pageSize])
 
-  const mapEntry = (
-    raw: Record<string, unknown>,
-    fallbackModelId?: string
-  ): RagEntry => ({
+  const mapEntry = (raw: Record<string, unknown>, fallbackModelId?: string): RagEntry => ({
     embeddingId: String(raw.embeddingId ?? ''),
     text: String(raw.text ?? ''),
     modelId: String(raw.modelId ?? fallbackModelId ?? ''),
@@ -151,8 +145,7 @@ export const RAGMemorySection: React.FC = () => {
         ragTopK: saved?.ragTopK ?? DEFAULT_RAG_CONFIG.ragTopK,
         ragSimilarityThreshold:
           saved?.ragSimilarityThreshold ?? DEFAULT_RAG_CONFIG.ragSimilarityThreshold,
-        batchEmbedConcurrency:
-          saved?.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY
+        batchEmbedConcurrency: saved?.batchEmbedConcurrency ?? DEFAULT_BATCH_EMBED_CONCURRENCY
       })
       await loadRagData('', 'text', 1, 10)
     }

@@ -48,12 +48,9 @@ describe('ContextWindowBuilder with tailStartMessageId', () => {
       })
     }
 
-    const result = await ContextWindowBuilder.build(
-      's1',
-      sessionRepo as any,
-      snapshotRepo as any,
-      { recentCount: 0 }
-    )
+    const result = await ContextWindowBuilder.build('s1', sessionRepo as any, snapshotRepo as any, {
+      recentCount: 0
+    })
 
     expect(result[0]?.isSummary).toBe(true)
     expect(result.map((m) => m.id)).toEqual(['snapshot_9', '3', '4', '5'])

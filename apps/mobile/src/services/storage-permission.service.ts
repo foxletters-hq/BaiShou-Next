@@ -41,7 +41,10 @@ export async function assertExternalStorageReady(): Promise<void> {
   }
 }
 
-export { ExternalStorageRequiredError, isExternalStorageRequiredError } from './storage-required.error'
+export {
+  ExternalStorageRequiredError,
+  isExternalStorageRequiredError
+} from './storage-required.error'
 
 async function openAllFilesAccessSettingsFallback(): Promise<void> {
   if (!Application.applicationId) return

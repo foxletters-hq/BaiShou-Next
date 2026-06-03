@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  useWindowDimensions,
-  StatusBar
-} from 'react-native'
+import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 import {
   DashboardHeroBanner,

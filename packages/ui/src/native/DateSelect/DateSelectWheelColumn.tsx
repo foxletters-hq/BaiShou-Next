@@ -36,13 +36,16 @@ export const DateSelectWheelColumn: React.FC<DateSelectWheelColumnProps> = ({
   const dragEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSettledIndex = useRef(selectedIndex)
 
-  const scrollToIndex = useCallback((index: number) => {
-    const clamped = Math.max(0, Math.min(index, items.length - 1))
-    scrollRef.current?.scrollTo({
-      y: scrollIndexToOffset(clamped),
-      animated: false
-    })
-  }, [items.length])
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      const clamped = Math.max(0, Math.min(index, items.length - 1))
+      scrollRef.current?.scrollTo({
+        y: scrollIndexToOffset(clamped),
+        animated: false
+      })
+    },
+    [items.length]
+  )
 
   useEffect(() => {
     lastSettledIndex.current = selectedIndex

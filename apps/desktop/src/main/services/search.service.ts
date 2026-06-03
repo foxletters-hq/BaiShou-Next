@@ -147,9 +147,7 @@ export class SearchService {
     })
 
     if (typeof ses.setPermissionCheckHandler === 'function') {
-      ses.setPermissionCheckHandler((_webContents, permission) =>
-        isPermissionAllowed(permission)
-      )
+      ses.setPermissionCheckHandler((_webContents, permission) => isPermissionAllowed(permission))
     }
 
     return ses

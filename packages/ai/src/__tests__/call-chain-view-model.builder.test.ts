@@ -127,7 +127,15 @@ describe('buildCallChainViewModel', () => {
         isSummary: true,
         orderIndex: -1,
         createdAt: new Date(),
-        parts: [{ id: 'p0', messageId: 'snap', sessionId: 's1', type: 'text', data: { text: `${COMPACTION_SUMMARY_PREFIX}：\n历史摘要` } }]
+        parts: [
+          {
+            id: 'p0',
+            messageId: 'snap',
+            sessionId: 's1',
+            type: 'text',
+            data: { text: `${COMPACTION_SUMMARY_PREFIX}：\n历史摘要` }
+          }
+        ]
       },
       {
         id: 'm1',
@@ -136,7 +144,9 @@ describe('buildCallChainViewModel', () => {
         isSummary: false,
         orderIndex: 1,
         createdAt: new Date(),
-        parts: [{ id: 'p1', messageId: 'm1', sessionId: 's1', type: 'text', data: { text: 'old user' } }]
+        parts: [
+          { id: 'p1', messageId: 'm1', sessionId: 's1', type: 'text', data: { text: 'old user' } }
+        ]
       },
       {
         id: 'm2',
@@ -145,7 +155,9 @@ describe('buildCallChainViewModel', () => {
         isSummary: false,
         orderIndex: 2,
         createdAt: new Date(),
-        parts: [{ id: 'p2', messageId: 'm2', sessionId: 's1', type: 'text', data: { text: 'old ai' } }]
+        parts: [
+          { id: 'p2', messageId: 'm2', sessionId: 's1', type: 'text', data: { text: 'old ai' } }
+        ]
       },
       {
         id: 'm3',
@@ -232,7 +244,9 @@ describe('buildPostCompactionDisplayHistory', () => {
           isSummary: false,
           orderIndex: 1,
           createdAt: new Date(),
-          parts: [{ id: 'p1', messageId: 'm1', sessionId: 's1', type: 'text', data: { text: 'before' } }]
+          parts: [
+            { id: 'p1', messageId: 'm1', sessionId: 's1', type: 'text', data: { text: 'before' } }
+          ]
         },
         {
           id: 'm2',
@@ -241,7 +255,9 @@ describe('buildPostCompactionDisplayHistory', () => {
           isSummary: false,
           orderIndex: 3,
           createdAt: new Date(),
-          parts: [{ id: 'p2', messageId: 'm2', sessionId: 's1', type: 'text', data: { text: 'after' } }]
+          parts: [
+            { id: 'p2', messageId: 'm2', sessionId: 's1', type: 'text', data: { text: 'after' } }
+          ]
         }
       ] as MessageWithParts[],
       2

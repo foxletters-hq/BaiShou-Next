@@ -1,7 +1,4 @@
-import {
-  AIProviderRegistry,
-  type IAIProvider
-} from '@baishou/ai'
+import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import {
   AIProviderConfig,
   ProviderType,
@@ -30,20 +27,22 @@ export function buildProviderListItems(
 ): ProviderListItem[] {
   const savedById = new Map(savedProviders.map((p) => [p.id, p]))
 
-  const knownItems: ProviderListItem[] = BASE_KNOWN_PROVIDERS_CONFIG.map((meta: KnownProviderMeta, index: number) => {
-    const saved = savedById.get(meta.id)
-    const name = PROVIDER_NAME_I18N_MAP[meta.id]
-      ? t(PROVIDER_NAME_I18N_MAP[meta.id], meta.name)
-      : meta.name
-    return {
-      id: meta.id,
-      name: saved?.name || name,
-      defaultBase: meta.defaultBase,
-      isSystem: meta.isSystem ?? true,
-      sortOrder: saved?.sortOrder ?? index,
-      isEnabled: saved?.isEnabled ?? false
+  const knownItems: ProviderListItem[] = BASE_KNOWN_PROVIDERS_CONFIG.map(
+    (meta: KnownProviderMeta, index: number) => {
+      const saved = savedById.get(meta.id)
+      const name = PROVIDER_NAME_I18N_MAP[meta.id]
+        ? t(PROVIDER_NAME_I18N_MAP[meta.id], meta.name)
+        : meta.name
+      return {
+        id: meta.id,
+        name: saved?.name || name,
+        defaultBase: meta.defaultBase,
+        isSystem: meta.isSystem ?? true,
+        sortOrder: saved?.sortOrder ?? index,
+        isEnabled: saved?.isEnabled ?? false
+      }
     }
-  })
+  )
 
   const knownIds = new Set(knownItems.map((p) => p.id))
   const customItems: ProviderListItem[] = savedProviders
@@ -181,8 +180,6 @@ export async function testProviderConnectionViaRegistry(
 }
 
 export function getChatModelsForTest(config: AIProviderConfig): string[] {
-  const pool = config.enabledModels?.length
-    ? config.enabledModels
-    : config.models || []
+  const pool = config.enabledModels?.length ? config.enabledModels : config.models || []
   return pool.filter((m) => isChatModelForConnectionTest(m))
 }

@@ -11,14 +11,12 @@ export const CompressionErrorCode = {
   GENERIC: 'compress.generic'
 } as const
 
-export type CompressionErrorCode =
-  (typeof CompressionErrorCode)[keyof typeof CompressionErrorCode]
+export type CompressionErrorCode = (typeof CompressionErrorCode)[keyof typeof CompressionErrorCode]
 
 /** 默认中文文案（无 i18n 时回退） */
 export const COMPRESSION_ERROR_MESSAGES_ZH: Record<CompressionErrorCode, string> = {
   [CompressionErrorCode.NO_SNAPSHOT]: '当前会话没有可重新压缩的快照。',
-  [CompressionErrorCode.NOT_ENOUGH_MESSAGES]:
-    '压缩区间内消息不足，快照锚点可能已从历史中丢失。',
+  [CompressionErrorCode.NOT_ENOUGH_MESSAGES]: '压缩区间内消息不足，快照锚点可能已从历史中丢失。',
   [CompressionErrorCode.NO_USER_CONTENT]: '压缩区间内没有用户正文，无法生成对话摘要。',
   [CompressionErrorCode.EMPTY_SUMMARY]: '模型未返回有效摘要。',
   [CompressionErrorCode.VERBATIM_SUMMARY]:

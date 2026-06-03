@@ -81,10 +81,7 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
         ) : null}
       </View>
 
-      <Text
-        style={[styles.headerTitle, { color: colors.textPrimary }]}
-        numberOfLines={1}
-      >
+      <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
         {title}
       </Text>
 
