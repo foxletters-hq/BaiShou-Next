@@ -10,31 +10,30 @@ import { ragMemoryStyles as styles } from './rag-memory.styles'
 interface RagMemoryActionsSectionProps {
   ragState: RagState
   onBatchEmbed?: () => Promise<void>
-  onClearAll?: () => Promise<void>
-  onClearDimension?: () => Promise<void>
-  onDetectDimension?: () => Promise<void>
+  onAddManualMemory?: () => Promise<void>
 }
 
 export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = ({
   ragState,
   onBatchEmbed,
-  onClearAll,
-  onClearDimension,
-  onDetectDimension
+  onAddManualMemory
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
   const progressPercent =
     ragState.total > 0 ? Math.round((ragState.progress / ragState.total) * 100) : 0
+  const isBatchEmbedding = ragState.isRunning && ragState.type === 'batchEmbed'
+  const showInlineProgress =
+    ragState.isRunning && ragState.type !== 'reembed' && ragState.type !== 'migration'
 
   return (
     <>
-      {ragState.isRunning && (
-        <SettingsSection title={t('rag.progress', '任务进度')}>
+      {showInlineProgress && (
+        <SettingsSection title={t('settings.rag_migrating', '处理中')}>
           <View style={styles.progressBox}>
             <Text style={[styles.statusText, { color: colors.textPrimary }]}>
-              {ragState.statusText}
+              {ragState.statusText || t('common.processing')}
             </Text>
             <View style={[styles.progressBar, { backgroundColor: colors.bgSurfaceNormal }]}>
               <View
@@ -47,14 +46,16 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
                 ]}
               />
             </View>
-            <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-              {ragState.progress}/{ragState.total}
-            </Text>
+            {ragState.total > 0 ? (
+              <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
+                {ragState.progress}/{ragState.total}
+              </Text>
+            ) : null}
           </View>
         </SettingsSection>
       )}
 
-      <View style={styles.actionRow}>
+      <View style={[styles.actionRow, { paddingHorizontal: 16, marginBottom: 8 }]}>
         {onBatchEmbed && (
           <Button
             variant="outlined"
@@ -62,40 +63,19 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
             disabled={ragState.isRunning}
             style={styles.actionBtn}
           >
-            {t('rag.batch_embed', '全量嵌入')}
+            {isBatchEmbedding
+              ? `${t('common.processing')} ${ragState.progress}/${ragState.total}`
+              : t('settings.rag_batch_embed')}
           </Button>
         )}
-        {onClearAll && (
+        {onAddManualMemory && (
           <Button
             variant="outlined"
-            onPress={onClearAll}
+            onPress={onAddManualMemory}
             disabled={ragState.isRunning}
             style={styles.actionBtn}
           >
-            {t('rag.clear_all', '清空全部')}
-          </Button>
-        )}
-      </View>
-
-      <View style={styles.actionRow}>
-        {onClearDimension && (
-          <Button
-            variant="text"
-            onPress={onClearDimension}
-            disabled={ragState.isRunning}
-            style={styles.actionBtn}
-          >
-            {t('rag.clear_dimension', '清除维度')}
-          </Button>
-        )}
-        {onDetectDimension && (
-          <Button
-            variant="text"
-            onPress={onDetectDimension}
-            disabled={ragState.isRunning}
-            style={styles.actionBtn}
-          >
-            {t('rag.detect_dimension', '检测维度')}
+            {t('settings.rag_add_manual')}
           </Button>
         )}
       </View>

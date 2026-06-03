@@ -25,10 +25,10 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
   const { colors } = useNativeTheme()
 
   return (
-    <SettingsSection title={t('rag.retrieval', '检索参数')}>
+    <SettingsSection title={t('settings.rag_config_params')}>
       <View style={styles.fieldGroup}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('rag.top_k', 'Top-K')}: {config.ragTopK}
+          Top K: {config.ragTopK}
         </Text>
         <Slider
           style={styles.slider}
@@ -45,7 +45,7 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('rag.similarity_threshold', '相似度阈值')}: {config.ragSimilarityThreshold.toFixed(2)}
+          {t('settings.rag_similarity_threshold')}: {config.ragSimilarityThreshold.toFixed(2)}
         </Text>
         <Slider
           style={styles.slider}
@@ -78,6 +78,9 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
           maximumTrackTintColor={colors.borderMuted}
           thumbTintColor={colors.primary}
         />
+        <Text style={[styles.hint, { color: colors.textSecondary }]}>
+          {t('settings.rag_batch_embed_concurrency_hint')}
+        </Text>
       </View>
     </SettingsSection>
   )
