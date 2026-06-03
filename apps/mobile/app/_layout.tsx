@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler'
+import '../global.css'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -10,10 +11,11 @@ import { useTranslation } from 'react-i18next'
 import { Platform, NativeModules } from 'react-native'
 import i18n from 'i18next'
 
-import { useNativeTheme, DialogProvider, ToastProvider } from '@baishou/ui/native'
+import { useNativeTheme, DialogProvider } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
+import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
 
 SplashScreen.preventAutoHideAsync()
 
@@ -122,11 +124,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <BaishouProvider>
           <NativeAppThemeBridge>
-            <DialogProvider>
-              <ToastProvider>
+            <HeroUIThemeBridge>
+              <DialogProvider>
                 <AppContent />
-              </ToastProvider>
-            </DialogProvider>
+              </DialogProvider>
+            </HeroUIThemeBridge>
           </NativeAppThemeBridge>
         </BaishouProvider>
       </SafeAreaProvider>

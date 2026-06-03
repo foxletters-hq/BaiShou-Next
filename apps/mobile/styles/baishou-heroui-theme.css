@@ -1,0 +1,49 @@
+/**
+ * 白守语义色 → HeroUI Native / Uniwind
+ * 与 packages/ui/src/theme/light.ts、dark.ts 及 Flutter AppToast 对齐
+ */
+@layer theme {
+  :root {
+    @variant light {
+      --color-primary: #5ba8f5;
+      --color-primary-hover: #3a88d5;
+      --color-background: #f4f5f7;
+      --color-background-subtle: #f0f2f5;
+      --color-foreground: #1a1c23;
+      --color-foreground-secondary: #4a5568;
+      --color-foreground-muted: #a0aec0;
+      --color-card: #ffffff;
+      --color-popover: #ffffff;
+      --color-border: rgba(0, 0, 0, 0.08);
+      --color-border-hover: rgba(0, 0, 0, 0.12);
+      --color-muted: #eaecef;
+      --color-accent: #e0f0fe;
+      --color-secondary: #eaecef;
+      --color-ring: rgba(91, 168, 245, 0.4);
+      --color-destructive: #ef4444;
+      --color-success-base: #10b981;
+      --color-warning-base: #f59e0b;
+    }
+
+    @variant dark {
+      --color-primary: #5ba8f5;
+      --color-primary-hover: #3a88d5;
+      --color-background: #1a1a1e;
+      --color-background-subtle: #151518;
+      --color-foreground: #f8fafc;
+      --color-foreground-secondary: #a1a1aa;
+      --color-foreground-muted: #71717a;
+      --color-card: #262629;
+      --color-popover: #262629;
+      --color-border: rgba(255, 255, 255, 0.1);
+      --color-border-hover: rgba(255, 255, 255, 0.14);
+      --color-muted: #1e1e22;
+      --color-accent: rgba(91, 168, 245, 0.2);
+      --color-secondary: #323236;
+      --color-ring: rgba(91, 168, 245, 0.45);
+      --color-destructive: #ef4444;
+      --color-success-base: #10b981;
+      --color-warning-base: #f59e0b;
+    }
+  }
+}
