@@ -45,6 +45,9 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
     ) {
       return t('agent.error.quota', '模型服务商提示账号额度不足。')
     }
+    if (lower.includes('no active provider') || lower.includes('active provider configured')) {
+      return t('summary.model_not_configured', '模型未配置')
+    }
     return t('agent.error.unknown', '出错了：{{msg}}', { msg: rawErr })
   }
 

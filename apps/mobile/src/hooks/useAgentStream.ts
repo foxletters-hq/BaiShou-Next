@@ -48,6 +48,7 @@ export function useAgentStream(
   })
   const [activeTool, setActiveTool] = useState<ToolCallInfo | null>(null)
   const [completedTools, setCompletedTools] = useState<ToolCallInfo[]>([])
+  const [streamError, setStreamError] = useState<string | null>(null)
 
   const searchModeRef = useRef(searchMode)
   searchModeRef.current = searchMode
@@ -132,10 +133,19 @@ export function useAgentStream(
 
       setLoading(true)
       setIsStreaming(true)
+      setStreamError(null)
       setStreamingText('')
       setStreamingReasoning('')
       setActiveTool(null)
       setCompletedTools([])
+
+      const failStream = (errorMsg: string, sessionIdForReload: string) => {
+        setLoading(false)
+        setIsStreaming(false)
+        abortControllerRef.current = null
+        setStreamError(errorMsg)
+        void reloadMessagesFromDb(sessionIdForReload)
+      }
 
       try {
         let currentText = ''
@@ -179,23 +189,7 @@ export function useAgentStream(
               void reloadMessagesFromDb(sessionId!)
             },
             onError: (err) => {
-              setLoading(false)
-              setIsStreaming(false)
-              abortControllerRef.current = null
-              const errorMsg = err.message || ''
-              let displayMsg = errorMsg
-              if (errorMsg.includes('API key') || errorMsg.includes('apiKey')) {
-                displayMsg = t('agent.error.api_key', 'API Key 已过期或无效，请在设置中重新配置。')
-              } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
-                displayMsg = t('agent.error.rate_limit', '请求过于频繁，请稍后再试。')
-              } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
-                displayMsg = t('agent.error.network', '网络连接失败，请检查网络设置。')
-              } else if (errorMsg.includes('timeout')) {
-                displayMsg = t('agent.error.timeout', '请求响应超时，请稍后再试。')
-              }
-              updateMessage(assistantMessageId, {
-                content: currentText + '\n\n[ERR] ' + displayMsg
-              })
+              failStream(err.message || t('app.unknown_error', '未知网络或系统错误'), sessionId!)
             }
           },
           {
@@ -209,11 +203,8 @@ export function useAgentStream(
           }
         )
       } catch (e: unknown) {
-        setLoading(false)
-        setIsStreaming(false)
-        abortControllerRef.current = null
         const msg = e instanceof Error ? e.message : String(e)
-        updateMessage(assistantMessageId, { content: '[系统错误] ' + msg })
+        failStream(msg, sessionId!)
       }
     },
     [
@@ -242,6 +233,15 @@ export function useAgentStream(
   const handleRegenerate = useCallback(
     async (messageId: string) => {
       if (!currentSessionId || !services) return
+
+      const failRegenerate = (errorMsg: string) => {
+        setLoading(false)
+        setIsStreaming(false)
+        abortControllerRef.current = null
+        setStreamError(errorMsg)
+        void reloadMessagesFromDb(currentSessionId)
+      }
+
       try {
         const msgIndex = messages.findIndex((m) => m.id === messageId)
         if (msgIndex <= 0) return
@@ -268,6 +268,7 @@ export function useAgentStream(
         })
         setLoading(true)
         setIsStreaming(true)
+        setStreamError(null)
         setStreamingText('')
 
         let currentText = ''
@@ -296,12 +297,7 @@ export function useAgentStream(
               void reloadMessagesFromDb(currentSessionId)
             },
             onError: (err) => {
-              setLoading(false)
-              setIsStreaming(false)
-              abortControllerRef.current = null
-              updateMessage(assistantMessageId, {
-                content: currentText + '\n\n[ERR] ' + err.message
-              })
+              failRegenerate(err.message || t('app.unknown_error', '未知网络或系统错误'))
             }
           },
           {
@@ -315,7 +311,8 @@ export function useAgentStream(
           }
         )
       } catch (e) {
-        console.error('Failed to regenerate', e)
+        const msg = e instanceof Error ? e.message : String(e)
+        failRegenerate(msg)
       }
     },
     [
@@ -380,6 +377,7 @@ export function useAgentStream(
 
   return {
     isStreaming,
+    streamError,
     streamingText,
     streamingReasoning,
     tokenUsage,
