@@ -58,6 +58,7 @@ export const SettingsScreen: React.FC = () => {
         indicatorStyle={scrollIndicatorStyle(isDark)}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
       >
         <View style={styles.hub}>
           <View style={styles.groupBlock}>

@@ -5,9 +5,6 @@ import { MaterialIcons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const DEFAULT_AVATAR = require('@baishou/shared/assets/images/icon.png')
-
 export interface SettingsProfileHeaderProps {
   profile: { nickname: string; avatarPath?: string | null }
   onSave: (data: { nickname: string; avatarPath?: string | null }) => void
@@ -77,7 +74,7 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
           {profile.avatarPath ? (
             <Image source={{ uri: profile.avatarPath }} style={styles.avatarImage} />
           ) : (
-            <Image source={DEFAULT_AVATAR} style={styles.avatarImage} />
+            <MaterialIcons name="label" size={30} color={colors.primary} />
           )}
         </View>
         <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
@@ -105,8 +102,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12
+    paddingVertical: 20,
+    gap: 14
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth
@@ -115,16 +112,16 @@ const styles = StyleSheet.create({
     position: 'relative'
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
   },
   avatarImage: {
-    width: 52,
-    height: 52
+    width: 56,
+    height: 56
   },
   cameraBadge: {
     position: 'absolute',

@@ -187,7 +187,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
                 activePort={mcp.activePort}
                 onChange={(next) => void mcp.persistConfig(next)}
                 onCopyEndpoint={() => void handleCopyMcpEndpoint()}
-                onShowTools={mcp.showToolsAlert}
+                onShowTools={() => void mcp.showToolsDialog()}
               />
             </>
           ) : null}
