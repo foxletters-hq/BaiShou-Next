@@ -24,7 +24,7 @@ import {
   PromptShortcutSheet,
   AgentToolsView
 } from '@baishou/ui/native'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 
@@ -48,6 +48,7 @@ export const AgentScreen = () => {
   const { t } = useTranslation()
   const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
+  const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
 
@@ -301,11 +302,10 @@ export const AgentScreen = () => {
           currentAssistant?.name
         )
         if (newSessionId) {
-          Alert.alert(t('agent.chat.branch_success', '分支创建成功'))
+          toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'))
         }
       } catch (e: any) {
-        Alert.alert(
-          t('agent.chat.branch_failed', '分支创建失败'),
+        toast.showError(
           e.message || t('app.unknown_error', '未知网络或系统错误')
         )
       }
@@ -530,7 +530,6 @@ export const AgentScreen = () => {
               isLoading={isLoading}
               onStop={handleStop}
               assistantName={assistantDisplayName}
-              onAssistantTap={() => setShowAssistantPicker(true)}
               onTriggerShortcut={() => setShowShortcutSheet(true)}
               onManageShortcuts={() => setShowShortcutSheet(true)}
               onRecall={() => setShowRecallSheet(true)}

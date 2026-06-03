@@ -73,7 +73,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
       style={[
         styles.appBar,
         {
-          backgroundColor: colors.bgApp,
+          backgroundColor: colors.bgSurface,
           borderBottomColor: colors.borderSubtle
         }
       ]}
@@ -107,7 +107,11 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
             <TouchableOpacity
               style={[
                 styles.filterBtn,
-                hasActiveFilters && { backgroundColor: colors.primaryLight }
+                {
+                  borderWidth: 1,
+                  borderColor: hasActiveFilters ? colors.primary : colors.borderSubtle,
+                  backgroundColor: colors.bgSurface
+                }
               ]}
               onPress={() => setIsFilterOpen(true)}
               accessibilityRole="button"
@@ -151,7 +155,13 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               onPress={onAddNew}
               style={[
                 compactActions ? styles.iconBtn : styles.addBtn,
-                !compactActions && { backgroundColor: colors.primary }
+                compactActions
+                  ? undefined
+                  : {
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                      backgroundColor: colors.bgSurface
+                    }
               ]}
               accessibilityRole="button"
               accessibilityLabel={t('settings.write_diary_button')}
@@ -159,10 +169,10 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               <MaterialIcons
                 name="add"
                 size={compactActions ? 22 : 18}
-                color={compactActions ? colors.textPrimary : colors.textOnPrimary}
+                color={colors.primary}
               />
               {!compactActions && (
-                <Text style={[styles.addBtnText, { color: colors.textOnPrimary }]}>
+                <Text style={[styles.addBtnText, { color: colors.primary }]}>
                   {t('settings.write_diary_button')}
                 </Text>
               )}
@@ -271,9 +281,9 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
 const styles = StyleSheet.create({
   appBar: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 6,
     borderBottomWidth: 1,
-    gap: 8
+    gap: 6
   },
   mainRow: {
     flexDirection: 'row',

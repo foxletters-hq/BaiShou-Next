@@ -5,14 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Platform
 } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { StorageSettingsCard } from '@baishou/ui/native'
 import { SettingsSection } from '@baishou/ui/native'
-import { useNativeTheme, scrollIndicatorStyle, useNativeToast } from '@baishou/ui/native'
+import { useNativeTheme, scrollIndicatorStyle, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import * as DocumentPicker from 'expo-document-picker'
@@ -35,6 +34,7 @@ export const StorageScreen: React.FC = () => {
   const { colors, isDark } = useNativeTheme()
   const { services } = useBaishou()
   const toast = useNativeToast()
+  const dialog = useDialog()
 
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
@@ -84,16 +84,14 @@ export const StorageScreen: React.FC = () => {
       return true
     }
     await requestStoragePermission()
-    Alert.alert(
-      t('storage.all_files_access_title', '需要「所有文件」访问权限'),
+    toast.showWarning(
       t(
         'storage.all_files_access_settings_hint',
         '请在系统设置中为白守开启「允许管理所有文件」，然后返回应用。'
-      ),
-      [{ text: t('common.ok', '好的') }]
+      )
     )
     return false
-  }, [t])
+  }, [t, toast])
 
   const handleRequestAllFilesAccess = useCallback(async () => {
     const alreadyGranted = await hasStoragePermission()
@@ -104,19 +102,17 @@ export const StorageScreen: React.FC = () => {
       return
     }
     await requestStoragePermission()
-    Alert.alert(
-      t('storage.all_files_access_title', '需要「所有文件」访问权限'),
+    toast.showWarning(
       t(
         'storage.all_files_access_settings_hint',
         '请在系统设置中为白守开启「允许管理所有文件」，然后返回应用。'
-      ),
-      [{ text: t('common.ok', '好的') }]
+      )
     )
   }, [refreshStorageInfo, t, toast])
 
   const handleEnableExternalRoot = useCallback(async () => {
     if (!services?.pathService) {
-      Alert.alert(t('common.error', '错误'), t('storage.service_unavailable', '路径服务未就绪'))
+      toast.showError(t('storage.service_unavailable', '路径服务未就绪'))
       return
     }
 
@@ -134,8 +130,7 @@ export const StorageScreen: React.FC = () => {
       const applied = await services.pathService.applyExternalRootWhenPermitted()
       const root = await services.pathService.getRootDirectory()
       if (!applied || !isExternalBaiShouRootPath(root)) {
-        Alert.alert(
-          t('storage.all_files_access_title', '需要「所有文件」访问权限'),
+        toast.showWarning(
           t(
             'storage.all_files_access_settings_hint',
             '请在系统设置中为白守开启「允许管理所有文件」，然后返回应用。'
@@ -147,8 +142,7 @@ export const StorageScreen: React.FC = () => {
       await refreshStorageInfo()
       toast.showToast(t('storage.external_root_applied', '已切换到外部 BaiShou_Root'), 'success')
     } catch (e: any) {
-      Alert.alert(
-        t('common.error', '错误'),
+      toast.showError(
         e?.message || t('storage.external_access_error', '无法访问外部 BaiShou_Root 目录')
       )
     }
@@ -156,22 +150,21 @@ export const StorageScreen: React.FC = () => {
 
   const handleExport = useCallback(async () => {
     if (!services?.archiveService) {
-      Alert.alert(t('common.error', '错误'), t('storage.service_unavailable', '归档服务未就绪'))
+      toast.showError(t('storage.service_unavailable', '归档服务未就绪'))
       return
     }
     setIsExporting(true)
     try {
       const result = await services.archiveService.exportToUserDevice()
       if (result) {
-        Alert.alert(
-          t('settings.export_success', '导出成功'),
+        toast.showSuccess(
           t('settings.export_success_desc', '备份 ZIP 文件已保存。', {
             path: result
           })
         )
       }
     } catch (e: any) {
-      Alert.alert(t('settings.export_failed', '导出失败'), e.message)
+      toast.showError(`${t('settings.export_failed', '导出失败')}: ${e.message}`)
     } finally {
       setIsExporting(false)
     }
@@ -179,7 +172,7 @@ export const StorageScreen: React.FC = () => {
 
   const handleImport = useCallback(async () => {
     if (!services?.archiveService) {
-      Alert.alert(t('common.error', '错误'), t('storage.service_unavailable', '归档服务未就绪'))
+      toast.showError(t('storage.service_unavailable', '归档服务未就绪'))
       return
     }
 
@@ -191,36 +184,19 @@ export const StorageScreen: React.FC = () => {
 
       if (result.canceled) return
 
-      const confirmed = await new Promise<boolean>((resolve) => {
-        Alert.alert(
-          t('settings.confirm_restore', '确认恢复'),
-          t('settings.confirm_restore_desc', '恢复快照将覆盖当前所有数据。确认继续？'),
-          [
-            {
-              text: t('common.cancel', '取消'),
-              style: 'cancel',
-              onPress: () => resolve(false)
-            },
-            {
-              text: t('common.confirm', '确定'),
-              style: 'destructive',
-              onPress: () => resolve(true)
-            }
-          ]
-        )
-      })
+      const confirmed = await dialog.confirm(
+        t('settings.confirm_restore_desc', '恢复快照将覆盖当前所有数据。确认继续？'),
+        { confirmText: t('common.confirm', '确定'), destructive: true }
+      )
 
       if (!confirmed) return
 
       setIsImporting(true)
       const fileUri = result.assets[0].uri
       await services.archiveService.importFromZip(fileUri)
-      Alert.alert(
-        t('settings.restore_success_simple', '数据恢复成功'),
-        t('storage.restart_hint', '所有工作区数据和设备配置已还原，建议重启应用。')
-      )
+      toast.showSuccess(t('storage.restart_hint', '所有工作区数据和设备配置已还原，建议重启应用。'))
     } catch (e: any) {
-      Alert.alert(t('settings.restore_failed', '恢复失败'), e.message)
+      toast.showError(`${t('settings.restore_failed', '恢复失败')}: ${e.message}`)
     } finally {
       setIsImporting(false)
     }
@@ -231,10 +207,10 @@ export const StorageScreen: React.FC = () => {
     try {
       const snapshotPath = await services.archiveService.createSnapshot()
       if (snapshotPath) {
-        Alert.alert(t('common.success', '成功'), t('storage.snapshot_created', '快照已创建'))
+        toast.showSuccess(t('storage.snapshot_created', '快照已创建'))
       }
     } catch (e: any) {
-      Alert.alert(t('common.error', '错误'), e.message)
+      toast.showError(e.message)
     }
   }, [services, t])
 
@@ -251,9 +227,6 @@ export const StorageScreen: React.FC = () => {
       >
         <StorageSettingsCard
           storageRootPath={storageRootPath || t('storage.default_path', '应用沙盒')}
-          sqliteSizeStats={sqliteSize}
-          vectorDbStats={vectorDbSize}
-          mediaCacheStats={mediaCacheSize}
           onChangeRoot={
             storageRootPath && isExternalBaiShouRootPath(`file://${storageRootPath}`)
               ? undefined

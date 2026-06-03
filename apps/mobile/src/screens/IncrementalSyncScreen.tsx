@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, Alert, TouchableOpacity, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { scrollIndicatorStyle, IncrementalSyncPanel, useNativeTheme } from '@baishou/ui/native'
+import {
+  scrollIndicatorStyle,
+  IncrementalSyncPanel,
+  useNativeTheme,
+  useNativeToast
+} from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
@@ -9,6 +14,7 @@ import { getStackScreenChrome } from '../components/stackScreenChrome'
 const IncrementalSyncScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
+  const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
 
   const [isConfigured, setIsConfigured] = useState(false)
@@ -47,8 +53,7 @@ const IncrementalSyncScreen: React.FC = () => {
           result = await services.incrementalSyncService.syncUpload((p) => setProgress(p))
         }
 
-        Alert.alert(
-          t('common.success'),
+        toast.showSuccess(
           t('incremental_sync.done_detail')
             .replace('{up}', String(result.uploaded))
             .replace('{down}', String(result.downloaded))
@@ -61,7 +66,7 @@ const IncrementalSyncScreen: React.FC = () => {
         setProgress(null)
       }
     },
-    [services, t]
+    [services, t, toast]
   )
 
   const handleSync = useCallback(async () => {
@@ -69,10 +74,10 @@ const IncrementalSyncScreen: React.FC = () => {
       return await runSync('sync', t('incremental_sync.three_way'))
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      Alert.alert(t('common.error'), msg || t('incremental_sync.failed'))
+      toast.showError(msg || t('incremental_sync.failed'))
       throw e
     }
-  }, [runSync, t])
+  }, [runSync, t, toast])
 
   return (
     <StackScreenLayout
@@ -101,7 +106,7 @@ const IncrementalSyncScreen: React.FC = () => {
           disabled={!isConfigured || isSyncing}
           onPress={() =>
             runSync('uploadOnly', t('incremental_sync.upload_only')).catch((e) =>
-              Alert.alert(t('common.error'), e instanceof Error ? e.message : '')
+              toast.showError(e instanceof Error ? e.message : '')
             )
           }
         >
@@ -113,7 +118,7 @@ const IncrementalSyncScreen: React.FC = () => {
           disabled={!isConfigured || isSyncing}
           onPress={() =>
             runSync('downloadOnly', t('incremental_sync.download_only')).catch((e) =>
-              Alert.alert(t('common.error'), e instanceof Error ? e.message : '')
+              toast.showError(e instanceof Error ? e.message : '')
             )
           }
         >
@@ -127,7 +132,7 @@ const IncrementalSyncScreen: React.FC = () => {
           disabled={!isConfigured || isSyncing}
           onPress={() =>
             runSync('zipBackup', t('incremental_sync.zip_backup')).catch((e) =>
-              Alert.alert(t('common.error'), e instanceof Error ? e.message : '')
+              toast.showError(e instanceof Error ? e.message : '')
             )
           }
         >

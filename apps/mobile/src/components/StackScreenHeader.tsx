@@ -98,8 +98,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 52
+    paddingVertical: 6,
+    minHeight: 44
   },
   headerElevated: {
     shadowOffset: { width: 0, height: 1 },

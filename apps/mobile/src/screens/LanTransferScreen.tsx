@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { StyleSheet, Alert } from 'react-native'
-import { useNativeTheme } from '@baishou/ui/native'
+import { StyleSheet } from 'react-native'
+import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
@@ -11,6 +11,8 @@ import { getStackScreenChrome } from '../components/stackScreenChrome'
 export const LanTransferScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady } = useBaishou()
 
   const [devices, setDevices] = useState<DiscoveredDevice[]>([])
@@ -61,24 +63,22 @@ export const LanTransferScreen: React.FC = () => {
     )
 
     lanSyncService.onFileReceived((zipPath) => {
-      Alert.alert(t('lan_transfer.received_backup_title'), t('lan_transfer.received_backup_content'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.restore'),
-          onPress: async () => {
-            if (!archiveService) return
-            try {
-              await archiveService.importFromZip(zipPath, true)
-              Alert.alert(t('common.success'), t('lan.import_success'))
-            } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : String(e)
-              Alert.alert(t('common.error'), msg || t('lan.import_failed'))
-            }
-          }
+      void (async () => {
+        const restore = await dialog.confirm(t('lan_transfer.received_backup_content'), {
+          title: t('lan_transfer.received_backup_title'),
+          confirmText: t('common.restore')
+        })
+        if (!restore || !archiveService) return
+        try {
+          await archiveService.importFromZip(zipPath, true)
+          toast.showSuccess(t('lan.import_success'))
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e)
+          toast.showError(msg || t('lan.import_failed'))
         }
-      ])
+      })()
     })
-  }, [archiveService, dbReady, isSelfDevice, lanSyncService, t])
+  }, [archiveService, dbReady, dialog, isSelfDevice, lanSyncService, t, toast])
 
   const restartDualMode = useCallback(async () => {
     await stopDualMode()
@@ -101,39 +101,32 @@ export const LanTransferScreen: React.FC = () => {
       setSendProgress(0)
       const ok = await lanSyncService.sendFile(device.ip, device.port, (p) => setSendProgress(p))
       setSendingTo(null)
-      Alert.alert(
-        ok ? t('common.success') : t('common.error'),
-        ok
-          ? t('lan.send_success', { name: device.nickname })
-          : t('lan.send_failed', { name: device.nickname })
-      )
+      if (ok) {
+        toast.showSuccess(t('lan.send_success', { name: device.nickname }))
+      } else {
+        toast.showError(t('lan.send_failed', { name: device.nickname }))
+      }
     },
-    [lanSyncService, sendingTo, t]
+    [lanSyncService, sendingTo, t, toast]
   )
 
   const handleDevicePress = useCallback(
     (device: DiscoveredDevice) => {
       if (sendingTo || !device.ip || device.ip === 'Unknown') {
         if (device.ip === 'Unknown') {
-          Alert.alert(t('common.error'), t('lan_transfer.ip_not_found'))
+          toast.showError(t('lan_transfer.ip_not_found'))
         }
         return
       }
-      Alert.alert(
-        t('lan_transfer.send_confirm_title').replace('$nickname', device.nickname),
-        t('lan_transfer.send_confirm_content'),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          {
-            text: t('common.export'),
-            onPress: () => {
-              void sendToDevice(device)
-            }
-          }
-        ]
-      )
+      void (async () => {
+        const confirmed = await dialog.confirm(t('lan_transfer.send_confirm_content'), {
+          title: t('lan_transfer.send_confirm_title').replace('$nickname', device.nickname),
+          confirmText: t('common.export')
+        })
+        if (confirmed) void sendToDevice(device)
+      })()
     },
-    [sendToDevice, sendingTo, t]
+    [dialog, sendToDevice, sendingTo, t, toast]
   )
 
   return (

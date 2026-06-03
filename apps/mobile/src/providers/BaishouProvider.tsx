@@ -21,7 +21,8 @@ import {
   ShadowIndexSyncService,
   VaultService,
   MissingSummaryDetector,
-  SummaryGeneratorService
+  SummaryGeneratorService,
+  buildSharedContextText
 } from '@baishou/core-mobile'
 import { resolveSummaryTemplatesForGeneration } from '@baishou/shared'
 
@@ -110,6 +111,8 @@ interface BaishouContextValue {
     ragService: MobileRagService
     incrementalSyncService: MobileIncrementalSyncService
     attachmentManager: MobileAttachmentManagerService
+    /** 与桌面 summary:buildSharedContext 一致（总结 + 级联折叠后的日记） */
+    buildSharedContext: (lookbackMonths: number, locale?: string) => Promise<string>
   } | null
   startAgentChat?: (
     sessionId: string,
@@ -271,6 +274,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           summaryFileService,
           summarySyncService
         )
+
+        const buildSharedContext = async (lookbackMonths: number, locale?: string) => {
+          const allSummaries = await summaryManager.list()
+          const diaries = await shadowRepo.listAllWithFTS({ limit: 10000 })
+          return buildSharedContextText(allSummaries, lookbackMonths, locale, { diaries })
+        }
 
         const agentService = new AgentSessionService()
 
@@ -586,7 +595,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               mobileMcpService,
               ragService,
               incrementalSyncService,
-              attachmentManager
+              attachmentManager,
+              buildSharedContext
             },
             startAgentChat
           })

@@ -290,7 +290,7 @@ export const DiaryScreen: React.FC = () => {
     <>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.bgApp}
+        backgroundColor={colors.bgSurface}
       />
       <ScreenSafeArea preset="tab" style={{ backgroundColor: colors.bgApp }}>
         <View style={[styles.container, { backgroundColor: colors.bgApp }]}>

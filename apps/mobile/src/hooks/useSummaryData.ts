@@ -107,7 +107,7 @@ interface MissingSummary {
 interface GenerationState {
   progress: number
   phase: number
-  status: 'pending' | 'processing' | 'completed' | 'error'
+  status: 'pending' | 'running' | 'completed' | 'error'
   error?: string
 }
 
@@ -388,7 +388,7 @@ export function useSummaryData() {
       states[item.id] = {
         progress: item.progress,
         phase: item.phaseIdx,
-        status: item.status === 'running' ? 'processing' : item.status,
+        status: item.status,
         error: item.error
       }
     })
@@ -653,6 +653,10 @@ export function useSummaryData() {
     fetchData()
   }
 
+  const setConcurrency = useCallback((limit: number) => {
+    concurrencyLimitRef.current = Math.max(1, Math.min(5, limit))
+  }, [])
+
   return {
     summaries,
     stats,
@@ -661,6 +665,7 @@ export function useSummaryData() {
     generateSummary,
     queueGeneration,
     stopGeneration,
+    setConcurrency,
     generationStates,
     refreshData,
     loading,

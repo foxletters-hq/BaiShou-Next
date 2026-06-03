@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 56,
+    minHeight: 48,
     paddingHorizontal: 4,
     borderBottomWidth: 1
   },

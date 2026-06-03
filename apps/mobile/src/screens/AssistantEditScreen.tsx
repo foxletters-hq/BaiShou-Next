@@ -6,10 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
-  Switch
 } from 'react-native'
-import { useNativeTheme, scrollIndicatorStyle } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  scrollIndicatorStyle,
+  Switch
+} from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -34,6 +38,8 @@ interface Assistant {
 export const AssistantEditScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady } = useBaishou()
   const router = useRouter()
   const { id } = useLocalSearchParams()
@@ -74,7 +80,7 @@ export const AssistantEditScreen: React.FC = () => {
           setCompressTokenThreshold(assistant.compressTokenThreshold ?? 60000)
           setCompressKeepTurns(assistant.compressKeepTurns ?? 3)
         } else {
-          Alert.alert('错误', '助手未找到')
+          toast.showError(t('agent.assistant.not_found', '助手未找到'))
           router.back()
         }
       } catch (e) {
@@ -89,7 +95,7 @@ export const AssistantEditScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('错误', '助手名称不能为空')
+      toast.showError(t('agent.assistant.name_required', '助手名称不能为空'))
       return
     }
 
@@ -123,11 +129,13 @@ export const AssistantEditScreen: React.FC = () => {
       }
 
       await services.settingsManager.set('assistants', newAssistants)
-      Alert.alert('成功', isNew ? '助手已创建' : '助手已更新')
+      toast.showSuccess(
+        isNew ? t('agent.assistant.created', '助手已创建') : t('agent.assistant.updated', '助手已更新')
+      )
       router.back()
     } catch (e) {
       console.error('Failed to save assistant', e)
-      Alert.alert('错误', '保存失败')
+      toast.showError(t('common.errors.save_failed', '保存失败'))
     } finally {
       setSaving(false)
     }
@@ -136,26 +144,25 @@ export const AssistantEditScreen: React.FC = () => {
   const handleDelete = async () => {
     if (isNew || isDefault) return
 
-    Alert.alert('确认删除', `确定要删除助手「${name}」吗？此操作不可逆转。`, [
-      { text: '取消', style: 'cancel' },
+    const confirmed = await dialog.confirm(
+      t('agent.assistant.delete_confirm_content', `确定要删除助手「${name}」吗？此操作不可逆转。`),
       {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const assistants =
-              (await services?.settingsManager.get<Assistant[]>('assistants')) || []
-            const newAssistants = assistants.filter((a) => a.id !== id)
-            await services?.settingsManager.set('assistants', newAssistants)
-            Alert.alert('成功', '助手已删除')
-            router.back()
-          } catch (e) {
-            console.error('Failed to delete assistant', e)
-            Alert.alert('错误', '删除失败')
-          }
-        }
+        title: t('common.confirm_delete', '确认删除'),
+        confirmText: t('common.delete', '删除'),
+        destructive: true
       }
-    ])
+    )
+    if (!confirmed) return
+    try {
+      const assistants = (await services?.settingsManager.get<Assistant[]>('assistants')) || []
+      const newAssistants = assistants.filter((a) => a.id !== id)
+      await services?.settingsManager.set('assistants', newAssistants)
+      toast.showSuccess(t('agent.assistant.deleted', '助手已删除'))
+      router.back()
+    } catch (e) {
+      console.error('Failed to delete assistant', e)
+      toast.showError(t('common.delete_failed', '删除失败'))
+    }
   }
 
   const screenTitle = isNew
