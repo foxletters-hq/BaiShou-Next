@@ -13,21 +13,23 @@ export const chatBubbleStyles = StyleSheet.create({
   containerAssistant: {
     justifyContent: 'flex-start'
   },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    marginTop: 4
-  },
-  avatarText: {
-    fontSize: 16
-  },
   bubbleWrapper: {
     flex: 1,
     maxWidth: '85%'
+  },
+  bubbleWrapperUser: {
+    alignItems: 'flex-end'
+  },
+  nameLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4
+  },
+  nameLabelUser: {
+    textAlign: 'right'
+  },
+  nameLabelAssistant: {
+    textAlign: 'left'
   },
   bubble: {
     padding: 12,
@@ -101,7 +103,7 @@ export const chatBubbleStyles = StyleSheet.create({
   },
   actionOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end'
   },
   actionSheet: {

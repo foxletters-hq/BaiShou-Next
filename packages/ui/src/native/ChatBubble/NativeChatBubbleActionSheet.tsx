@@ -21,6 +21,7 @@ interface NativeChatBubbleActionSheetProps {
   message: ChatBubbleMessage
   onClose: () => void
   onStartEdit: () => void
+  onCopy?: () => void
   onResend?: () => void
   onReadAloud?: (content: string) => void
   onShowContext?: (msg: ChatBubbleMessage) => void
@@ -38,6 +39,7 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
   message,
   onClose,
   onStartEdit,
+  onCopy,
   onResend,
   onReadAloud,
   onShowContext,
@@ -71,6 +73,7 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
             {t('agent.chat.message_actions', '消息操作')}
           </Text>
           <ScrollView>
+            {onCopy && renderItem(t('common.copy', '复制'), onCopy)}
             {isUser && onResend && renderItem(t('agent.chat.resend', '重新发送'), onResend)}
             {(isUser || isAssistant) &&
               renderItem(

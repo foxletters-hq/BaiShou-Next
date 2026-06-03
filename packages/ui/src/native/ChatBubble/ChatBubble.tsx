@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import type { ChatBubbleProps } from './chat-bubble.types'
@@ -12,9 +11,11 @@ import {
   NativeChatBubbleTokenRow
 } from './NativeChatBubbleActionsRow'
 import { NativeChatBubbleActionSheet } from './NativeChatBubbleActionSheet'
+import { ChatBubbleAvatar } from './ChatBubbleAvatar'
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
   message,
+  userProfile,
   aiProfile,
   onRegenerate,
   onResend,
@@ -35,20 +36,32 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
   const hasContext = Boolean(message.contextMessages?.length)
+  const displayName = isUser
+    ? userProfile?.nickname || t('agent.chat.you_label', '你')
+    : aiProfile?.name || t('agent.chat.ai_label', 'AI')
 
   return (
     <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
-      {isAssistant && aiProfile && (
-        <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }]}>
-          {aiProfile.emoji ? (
-            <Text style={styles.avatarText}>{aiProfile.emoji}</Text>
-          ) : (
-            <MaterialIcons name="auto-awesome" size={16} color={colors.textSecondary} />
-          )}
-        </View>
-      )}
+      {isAssistant && aiProfile ? (
+        <ChatBubbleAvatar
+          variant="assistant"
+          emoji={aiProfile.emoji}
+          avatarPath={aiProfile.avatarPath}
+          style={{ marginRight: 8 }}
+        />
+      ) : null}
 
-      <View style={styles.bubbleWrapper}>
+      <View style={[styles.bubbleWrapper, isUser && styles.bubbleWrapperUser]}>
+        <Text
+          style={[
+            styles.nameLabel,
+            { color: colors.textSecondary },
+            isUser ? styles.nameLabelUser : styles.nameLabelAssistant
+          ]}
+        >
+          {displayName}
+        </Text>
+
         <TouchableOpacity
           onLongPress={() => setShowActions(true)}
           delayLongPress={500}
@@ -128,6 +141,15 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         {isAssistant && <NativeChatBubbleTokenRow colors={colors} message={message} />}
       </View>
 
+      {isUser ? (
+        <ChatBubbleAvatar
+          variant="user"
+          nickname={userProfile?.nickname}
+          avatarPath={userProfile?.avatarPath}
+          style={{ marginLeft: 8 }}
+        />
+      ) : null}
+
       <NativeChatBubbleActionSheet
         visible={showActions}
         colors={colors}
@@ -140,6 +162,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           edit.handleStartEdit()
           setShowActions(false)
         }}
+        onCopy={onCopy}
         onResend={onResend}
         onReadAloud={onReadAloud}
         onShowContext={onShowContext}

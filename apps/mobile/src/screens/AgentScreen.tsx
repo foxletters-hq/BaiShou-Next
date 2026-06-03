@@ -61,6 +61,10 @@ export const AgentScreen = () => {
     disabledToolIds: string[]
     customConfigs: Record<string, Record<string, unknown>>
   }>({ disabledToolIds: [], customConfigs: {} })
+  const [userProfile, setUserProfile] = useState<{
+    nickname: string
+    avatarPath?: string | null
+  }>({ nickname: '' })
 
   const {
     currentSessionId,
@@ -89,6 +93,7 @@ export const AgentScreen = () => {
 
   const {
     isStreaming,
+    streamError,
     streamingText,
     streamingReasoning,
     tokenUsage,
@@ -128,7 +133,7 @@ export const AgentScreen = () => {
 
   const { ttsPlayingMsgId, handleTtsReadAloud } = useTTS()
   const { branchSession } = useBranchSession()
-  useStreamError(null, isStreaming)
+  useStreamError(streamError, isStreaming)
 
   useEffect(() => {
     if (!showShortcutSheet || !dbReady || !services) return
@@ -168,6 +173,19 @@ export const AgentScreen = () => {
   useEffect(() => {
     loadAssistants()
   }, [loadAssistants, drawerOpen, showAssistantPicker])
+
+  useEffect(() => {
+    if (!dbReady || !services) return
+    services.settingsManager
+      .get<{ nickname?: string; avatarPath?: string | null }>('user_profile')
+      .then((profile) =>
+        setUserProfile({
+          nickname: profile?.nickname || t('agent.chat.you_label', '你'),
+          avatarPath: profile?.avatarPath
+        })
+      )
+      .catch(() => setUserProfile({ nickname: t('agent.chat.you_label', '你') }))
+  }, [dbReady, services, drawerOpen, t])
 
   const pinnedAssistants = useMemo(
     () =>
@@ -372,6 +390,21 @@ export const AgentScreen = () => {
   const totalCostMicros = tokenUsage?.totalCostMicros || 0
   const assistantDisplayName =
     currentAssistant?.name || t('agent.assistant.default_assistant_name', '默认伙伴')
+  const chatAiProfile = useMemo(
+    () => ({
+      name: assistantDisplayName,
+      emoji: currentAssistant?.emoji,
+      avatarPath: (currentAssistant as { avatarPath?: string | null } | null)?.avatarPath
+    }),
+    [assistantDisplayName, currentAssistant]
+  )
+  const chatUserProfile = useMemo(
+    () => ({
+      nickname: userProfile.nickname || t('agent.chat.you_label', '你'),
+      avatarPath: userProfile.avatarPath
+    }),
+    [userProfile, t]
+  )
 
   const renderEmptyState = () => (
     <View style={styles.empty}>
@@ -441,6 +474,8 @@ export const AgentScreen = () => {
                     isReasoning: item.isReasoning,
                     costMicros: item.costMicros
                   }}
+                  userProfile={chatUserProfile}
+                  aiProfile={chatAiProfile}
                   onRegenerate={() => handleRegenerate(item.id)}
                   onResend={
                     item.role === 'user'
@@ -499,10 +534,7 @@ export const AgentScreen = () => {
                     text={streamingText}
                     reasoning={streamingReasoning}
                     isReasoning={isStreaming && !streamingText && !!streamingReasoning}
-                    aiProfile={{
-                      name: assistantDisplayName,
-                      emoji: currentAssistant?.emoji
-                    }}
+                    aiProfile={chatAiProfile}
                   />
                 </View>
               ) : null
