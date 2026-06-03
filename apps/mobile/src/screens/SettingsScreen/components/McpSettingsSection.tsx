@@ -38,7 +38,7 @@ export const McpSettingsSection: React.FC = () => {
       activePort={mcp.activePort}
       onChange={(next) => void mcp.persistConfig(next)}
       onCopyEndpoint={() => void handleCopyEndpoint()}
-      onShowTools={mcp.showToolsAlert}
+      onShowTools={() => void mcp.showToolsDialog()}
     />
   )
 }
