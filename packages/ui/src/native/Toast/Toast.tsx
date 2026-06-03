@@ -1,15 +1,12 @@
-import React, { createContext, useContext, useState, useRef, useCallback } from 'react'
-import { Animated, Text, View, PanResponder, StyleSheet, Pressable } from 'react-native'
+import React, { createContext, useCallback, useContext, useMemo } from 'react'
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useToast } from 'heroui-native'
+import type { ToastComponentProps } from 'heroui-native'
+import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
 
 export type ToastType = 'info' | 'success' | 'error' | 'warning'
-
-interface ToastPayload {
-  message: string
-  type: ToastType
-}
 
 interface ToastContextType {
   showToast: (message: string, type?: ToastType) => void
@@ -35,123 +32,129 @@ const COLOR_BY_TYPE: Record<ToastType, string> = {
   warning: '#D97706'
 }
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { colors, isDark } = useNativeTheme()
-  const insets = useSafeAreaInsets()
-  const [toastData, setToastData] = useState<ToastPayload | null>(null)
-  const opacity = useRef(new Animated.Value(0)).current
-  const translateX = useRef(new Animated.Value(40)).current
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+function durationForType(type: ToastType): number {
+  if (type === 'error') return 5000
+  if (type === 'success') return 3000
+  return 2000
+}
 
-  const dismissToast = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(translateX, { toValue: 20, duration: 200, useNativeDriver: true })
-    ]).start(() => {
-      setToastData(null)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    })
-  }, [opacity, translateX])
-
-  const presentToast = useCallback(
-    (msg: string, type: ToastType = 'info') => {
-      setToastData({ message: msg, type })
-      opacity.setValue(0)
-      translateX.setValue(40)
-
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.timing(translateX, { toValue: 0, duration: 350, useNativeDriver: true })
-      ]).start()
-
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      timeoutRef.current = setTimeout(() => dismissToast(), type === 'error' ? 5000 : 3000)
-    },
-    [dismissToast, opacity, translateX]
-  )
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderRelease: (_e, gestureState) => {
-        if (gestureState.vx > 1.0 || gestureState.dx > 40) {
-          dismissToast()
-        }
-      }
-    })
-  ).current
-
-  const ctx: ToastContextType = {
-    showToast: presentToast,
-    showSuccess: (message) => presentToast(message, 'success'),
-    showError: (message) => presentToast(message, 'error'),
-    showInfo: (message) => presentToast(message, 'info'),
-    showWarning: (message) => presentToast(message, 'warning')
+const toastEnter = new Keyframe({
+  0: {
+    opacity: 1,
+    transform: [{ translateX: 48 }]
+  },
+  100: {
+    opacity: 1,
+    transform: [{ translateX: 0 }],
+    easing: Easing.out(Easing.cubic)
   }
+}).duration(240)
 
-  const iconColor = toastData ? COLOR_BY_TYPE[toastData.type] : colors.primary
+const toastExit = new Keyframe({
+  0: {
+    opacity: 1,
+    transform: [{ translateX: 0 }]
+  },
+  100: {
+    opacity: 1,
+    transform: [{ translateX: 48 }],
+    easing: Easing.in(Easing.cubic)
+  }
+}).duration(170)
+
+type BaishouHeroToastProps = ToastComponentProps & {
+  message: string
+  type: ToastType
+}
+
+const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({ id, message, type, hide }) => {
+  const { isDark, colors } = useNativeTheme()
+  const { width } = useWindowDimensions()
 
   return (
-    <ToastContext.Provider value={ctx}>
-      {children}
-      {toastData ? (
-        <Animated.View
-          {...panResponder.panHandlers}
+    <View style={styles.toastRow} pointerEvents="box-none">
+      <Animated.View
+        entering={toastEnter}
+        exiting={toastExit}
+        style={{ maxWidth: Math.min(width * 0.72, 360) }}
+      >
+        <Pressable
+          onPress={() => hide(id)}
           style={[
-            styles.host,
+            styles.toast,
             {
-              top: insets.top + 12,
-              opacity,
-              transform: [{ translateX }]
+              backgroundColor: isDark ? '#1C2936' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.borderMuted
             }
           ]}
         >
-          <Pressable onPress={dismissToast}>
-            <View
-              style={[
-                styles.toast,
-                {
-                  backgroundColor: isDark ? '#242424' : colors.bgSurface,
-                  borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
-                }
-              ]}
-            >
-              <MaterialIcons name={ICON_BY_TYPE[toastData.type]} size={18} color={iconColor} />
-              <Text style={[styles.message, { color: colors.textPrimary }]}>
-                {toastData.message}
-              </Text>
-            </View>
-          </Pressable>
-        </Animated.View>
-      ) : null}
-    </ToastContext.Provider>
+          <MaterialIcons name={ICON_BY_TYPE[type]} size={20} color={COLOR_BY_TYPE[type]} />
+          <Text style={[styles.message, { color: isDark ? colors.textPrimary : '#1A1C23' }]}>
+            {message}
+          </Text>
+        </Pressable>
+      </Animated.View>
+    </View>
   )
 }
 
+/**
+ * 桥接 HeroUI Native Toast，保留项目现有 `useNativeToast` 调用 API。
+ * Toast 生命周期和安全区走 Hero；视觉卡片自定义为实心白底 + 右侧短滑入。
+ */
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { toast } = useToast()
+
+  const presentToast = useCallback(
+    (message: string, type: ToastType = 'info') => {
+      toast.hide('all')
+      toast.show({
+        duration: durationForType(type),
+        component: (props) => <BaishouHeroToast {...props} message={message} type={type} />
+      })
+    },
+    [toast]
+  )
+
+  const ctx = useMemo<ToastContextType>(
+    () => ({
+      showToast: presentToast,
+      showSuccess: (message) => presentToast(message, 'success'),
+      showError: (message) => presentToast(message, 'error'),
+      showInfo: (message) => presentToast(message, 'info'),
+      showWarning: (message) => presentToast(message, 'warning')
+    }),
+    [presentToast]
+  )
+
+  return <ToastContext.Provider value={ctx}>{children}</ToastContext.Provider>
+}
+
 const styles = StyleSheet.create({
-  host: {
-    position: 'absolute',
-    right: 16,
-    left: 16,
-    alignItems: 'flex-end',
-    zIndex: 9999,
-    pointerEvents: 'box-none'
+  toastRow: {
+    width: '100%',
+    alignItems: 'flex-end'
   },
   toast: {
-    maxWidth: '100%',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 999,
+    borderCurve: 'continuous',
+    borderRadius: 14,
     borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 10
   },
   message: {
-    fontSize: 14,
-    fontWeight: '500',
     flexShrink: 1,
-    lineHeight: 20
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500'
   }
 })
 
