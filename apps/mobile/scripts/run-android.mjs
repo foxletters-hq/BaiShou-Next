@@ -6,11 +6,14 @@
 import { spawn, spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import fs from 'node:fs'
 import {
   METRO_PORT,
   devClientEnv,
   getLanIp,
   hasAdbDevice,
+  prepareAndroidInstall,
+  printAndroidInstallFailureHelp,
   printDevConnectionHelp,
   setupAdbReverse
 } from './mobile-dev-env.mjs'
@@ -37,6 +40,7 @@ if (cacheResult.status !== 0) {
 
 if (hasAdbDevice()) {
   setupAdbReverse(METRO_PORT)
+  prepareAndroidInstall()
 }
 
 console.log(`\n🔨 编译安装 Android 开发版，Metro 将用: http://${host}:${METRO_PORT}\n`)
@@ -50,4 +54,15 @@ const child = spawn('npx', args, {
   stdio: 'inherit'
 })
 
-child.on('exit', (code) => process.exit(code ?? 0))
+child.on('exit', (code) => {
+  if (code !== 0) {
+    const apk = path.join(
+      mobileRoot,
+      'android/app/build/outputs/apk/debug/app-debug.apk'
+    )
+    if (fs.existsSync(apk) && hasAdbDevice()) {
+      printAndroidInstallFailureHelp(apk)
+    }
+  }
+  process.exit(code ?? 0)
+})

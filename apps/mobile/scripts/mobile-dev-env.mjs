@@ -121,6 +121,43 @@ export function hasAdbDevice() {
   }
 }
 
+const ANDROID_PACKAGE_ID = 'com.anonymous.mobile'
+
+/**
+ * 编译安装前停止并卸载旧包，避免签名不一致 / 占用导致 adb install 失败。
+ */
+export function prepareAndroidInstall(packageId = ANDROID_PACKAGE_ID) {
+  if (!hasAdbDevice()) return false
+  try {
+    execSync(`adb shell am force-stop ${packageId}`, { stdio: 'pipe' })
+  } catch {
+    /* 未安装时忽略 */
+  }
+  try {
+    execSync(`adb uninstall ${packageId}`, { stdio: 'pipe' })
+    console.log(`📲 已卸载旧版 ${packageId}（避免安装冲突）\n`)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 安装失败时在终端打印可复制的排查步骤 */
+export function printAndroidInstallFailureHelp(apkPath) {
+  console.error(`
+❌ adb 安装 APK 失败（常见原因：无线 adb 断开、旧包签名不同、手机未解锁）
+
+可依次尝试：
+  adb disconnect && adb connect 192.168.1.10:5555   # 无线调试时重连
+  adb shell am force-stop ${ANDROID_PACKAGE_ID}
+  adb uninstall ${ANDROID_PACKAGE_ID}                 # 或在手机上手动卸载「mobile」
+  adb install -r -d "${apkPath}"
+
+仍失败时请查看完整原因：
+  adb install -r -d "${apkPath}"
+`)
+}
+
 /** USB 调试：把电脑 Metro 映射到手机 localhost */
 export function setupAdbReverse(port = METRO_PORT) {
   if (!hasAdbDevice()) return false
