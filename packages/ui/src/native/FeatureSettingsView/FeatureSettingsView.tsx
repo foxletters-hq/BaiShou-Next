@@ -58,11 +58,6 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
           <Switch
             value={feature.enabled}
             onValueChange={() => handleToggle(feature.id)}
-            trackColor={{
-              false: colors.borderSubtle,
-              true: colors.primaryLight
-            }}
-            thumbColor={feature.enabled ? colors.primary : colors.bgSurfaceHighest}
           />
         </View>
       ))}

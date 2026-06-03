@@ -301,28 +301,12 @@ export const AssistantEditScreen: React.FC = () => {
 
           <View style={styles.switchRow}>
             <Text style={[styles.switchLabel, { color: colors.textPrimary }]}>设为默认助手</Text>
-            <Switch
-              value={isDefault}
-              onValueChange={setIsDefault}
-              trackColor={{
-                false: colors.bgSurfaceHighest,
-                true: colors.primary + '80'
-              }}
-              thumbColor={isDefault ? colors.primary : colors.textSecondary}
-            />
+            <Switch value={isDefault} onValueChange={setIsDefault} />
           </View>
 
           <View style={styles.switchRow}>
             <Text style={[styles.switchLabel, { color: colors.textPrimary }]}>置顶显示</Text>
-            <Switch
-              value={isPinned}
-              onValueChange={setIsPinned}
-              trackColor={{
-                false: colors.bgSurfaceHighest,
-                true: colors.primary + '80'
-              }}
-              thumbColor={isPinned ? colors.primary : colors.textSecondary}
-            />
+            <Switch value={isPinned} onValueChange={setIsPinned} />
           </View>
         </View>
 
