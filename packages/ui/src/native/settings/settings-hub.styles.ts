@@ -28,5 +28,10 @@ export const settingsHubListStyles = StyleSheet.create({
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  /** 与 SettingsScreen 列表行右侧 › 一致 */
+  hubChevron: {
+    fontSize: 20,
+    lineHeight: 20
   }
 })

@@ -1,16 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, LayoutChangeEvent } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from './settings-hub.styles'
+import { CollapsibleHeight } from './CollapsibleHeight'
 
-const EXPAND_MS = 420
+const SLIDE_MS = 280
 
 export interface SettingsExpansionTileProps {
   title: string
@@ -29,76 +29,38 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
 }) => {
   const { colors, tokens } = useNativeTheme()
   const [open, setOpen] = useState(false)
-  const [contentHeight, setContentHeight] = useState(0)
-
-  const animatedHeight = useSharedValue(0)
-  const animatedOpacity = useSharedValue(0)
-
-  const finishClose = useCallback(() => {
-    setOpen(false)
-  }, [])
-
-  const onMeasureLayout = (event: LayoutChangeEvent) => {
-    const nextHeight = event.nativeEvent.layout.height
-    if (nextHeight <= 0) return
-    setContentHeight((prev) => (Math.abs(prev - nextHeight) > 1 ? nextHeight : prev))
-  }
+  const chevronRotation = useSharedValue(0)
 
   useEffect(() => {
-    if (!open || contentHeight <= 0) return
-    animatedHeight.value = withTiming(contentHeight, {
-      duration: EXPAND_MS,
+    chevronRotation.value = withTiming(open ? 1 : 0, {
+      duration: SLIDE_MS,
       easing: Easing.bezier(0.4, 0, 0.2, 1)
     })
-    animatedOpacity.value = withTiming(1, {
-      duration: EXPAND_MS,
-      easing: Easing.out(Easing.cubic)
-    })
-  }, [open, contentHeight, animatedHeight, animatedOpacity])
+  }, [open, chevronRotation])
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${chevronRotation.value * 90}deg` }]
+  }))
 
   const toggle = () => {
-    if (!open) {
-      setOpen(true)
-      return
-    }
-
-    animatedHeight.value = withTiming(0, {
-      duration: EXPAND_MS,
-      easing: Easing.bezier(0.4, 0, 0.2, 1)
-    })
-    animatedOpacity.value = withTiming(
-      0,
-      {
-        duration: EXPAND_MS,
-        easing: Easing.in(Easing.cubic)
-      },
-      (finished) => {
-        if (finished) {
-          runOnJS(finishClose)()
-        }
-      }
-    )
+    setOpen((prev) => !prev)
   }
-
-  const bodyAnimatedStyle = useAnimatedStyle(() => ({
-    height: open ? animatedHeight.value : 0,
-    opacity: animatedOpacity.value
-  }))
 
   const showRowDivider = embedded && (!isLast || open)
 
   const header = (
-    <Pressable
+    <TouchableOpacity
       onPress={toggle}
-      style={({ pressed }) => [
+      activeOpacity={0.65}
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+      style={[
         hubStyles.row,
         embedded &&
           showRowDivider && [hubStyles.rowDivider, { borderBottomColor: colors.borderSubtle }],
         !embedded && {
           paddingHorizontal: 14,
           paddingVertical: 13
-        },
-        { opacity: pressed ? 0.7 : 1 }
+        }
       ]}
     >
       <View style={{ flex: 1 }}>
@@ -111,22 +73,19 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
           </Text>
         ) : null}
       </View>
-      <Text
-        style={[
-          styles.chevron,
-          { color: colors.textTertiary, transform: [{ rotate: open ? '180deg' : '0deg' }] }
-        ]}
+      <Animated.Text
+        style={[hubStyles.hubChevron, { color: colors.textTertiary }, chevronStyle]}
       >
-        ▾
-      </Text>
-    </Pressable>
+        ›
+      </Animated.Text>
+    </TouchableOpacity>
   )
 
   const bodyInner = (
     <View
       style={[
         embedded ? styles.embeddedBody : styles.standaloneBody,
-        embedded && !isLast && open
+        embedded && !isLast
           ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSubtle }
           : null
       ]}
@@ -135,24 +94,11 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
     </View>
   )
 
-  const body = (
-    <>
-      <View style={styles.measureWrap} pointerEvents="none" collapsable={false}>
-        <View onLayout={onMeasureLayout} collapsable={false}>
-          {bodyInner}
-        </View>
-      </View>
-      <Animated.View style={[styles.bodyClip, bodyAnimatedStyle]} collapsable={false}>
-        {open ? bodyInner : null}
-      </Animated.View>
-    </>
-  )
-
   if (embedded) {
     return (
       <View>
         {header}
-        {body}
+        <CollapsibleHeight expanded={open}>{bodyInner}</CollapsibleHeight>
       </View>
     )
   }
@@ -167,27 +113,12 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
       }}
     >
       {header}
-      {body}
+      <CollapsibleHeight expanded={open}>{bodyInner}</CollapsibleHeight>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  chevron: {
-    fontSize: 14,
-    width: 18,
-    textAlign: 'center'
-  },
-  measureWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    opacity: 0,
-    zIndex: -1
-  },
-  bodyClip: {
-    overflow: 'hidden'
-  },
   embeddedBody: {
     paddingHorizontal: 14,
     paddingBottom: 14
