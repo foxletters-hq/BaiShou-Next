@@ -4,7 +4,8 @@ import {
   ModalProps as RNModalProps,
   View,
   Text,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  useWindowDimensions
 } from 'react-native'
 import { useNativeTheme } from '../theme'
 
@@ -22,6 +23,10 @@ export const Modal: React.FC<NativeModalProps> = ({
   ...props
 }) => {
   const { colors, tokens } = useNativeTheme()
+  const { width: screenWidth } = useWindowDimensions()
+  const horizontalMargin = Math.max(tokens.spacing.lg, 24)
+  const maxWidth = 320
+  const modalWidth = Math.min(screenWidth - horizontalMargin * 2, maxWidth)
 
   return (
     <RNModal
@@ -42,15 +47,12 @@ export const Modal: React.FC<NativeModalProps> = ({
           <TouchableWithoutFeedback>
             <View
               style={{
-                width: '90%',
+                width: modalWidth,
                 backgroundColor: colors.bgSurface,
                 borderRadius: tokens.radius.xl,
-                padding: tokens.spacing.lg,
-                elevation: 5,
-                shadowColor: 'var(--text-primary)',
-                shadowOpacity: 0.25,
-                shadowRadius: 4,
-                shadowOffset: { width: 0, height: 2 }
+                padding: tokens.spacing.md,
+                elevation: 0,
+                shadowOpacity: 0
               }}
             >
               {title && (

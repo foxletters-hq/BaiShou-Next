@@ -45,8 +45,8 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
   onCreatePress
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
-  const slideAnim = useRef(new Animated.Value(400)).current
+  const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const scaleAnim = useRef(new Animated.Value(0.85)).current
   const fadeAnim = useRef(new Animated.Value(0)).current
   const [mounted, setMounted] = React.useState(false)
 
@@ -54,14 +54,15 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
     if (isOpen) {
       setMounted(true)
       Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 280,
-          useNativeDriver: true
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 11
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 280,
+          duration: 200,
           useNativeDriver: true
         })
       ]).start()
@@ -71,20 +72,20 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
     if (!mounted) return
 
     Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 400,
-        duration: 220,
+      Animated.timing(scaleAnim, {
+        toValue: 0.85,
+        duration: 180,
         useNativeDriver: true
       }),
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 220,
+        duration: 180,
         useNativeDriver: true
       })
     ]).start(({ finished }) => {
       if (finished) setMounted(false)
     })
-  }, [isOpen, mounted, slideAnim, fadeAnim])
+  }, [isOpen, mounted, scaleAnim, fadeAnim])
 
   if (!mounted) return null
 
@@ -102,18 +103,19 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
 
         <Animated.View
           style={[
-            styles.sheet,
+            styles.dialog,
             {
               backgroundColor: colors.bgSurface,
-              borderTopLeftRadius: tokens.radius.xl,
-              borderTopRightRadius: tokens.radius.xl,
-              transform: [{ translateY: slideAnim }]
+              borderRadius: tokens.radius.xl,
+              width: '90%',
+              maxWidth: maxModalWidth,
+              maxHeight: '80%',
+              padding: tokens.spacing.lg,
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }]
             }
           ]}
         >
-          <View style={styles.handleWrap}>
-            <View style={[styles.handle, { backgroundColor: colors.borderSubtle }]} />
-          </View>
 
           <View style={styles.header}>
             <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
@@ -228,33 +230,19 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end'
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.45)'
   },
-  sheet: {
-    maxHeight: '75%',
-    paddingBottom: 24
-  },
-  handleWrap: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 4
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2
-  },
+  dialog: {},
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16
+    paddingBottom: 12
   },
   headerTitle: {
     fontSize: 17,
@@ -267,8 +255,7 @@ const styles = StyleSheet.create({
     maxHeight: 420
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
     gap: 8
   },
   emptyWrap: {

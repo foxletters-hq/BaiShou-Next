@@ -3,48 +3,25 @@ import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
 
+/** 与桌面 DashboardHeroBanner 一致：主色底 + 白字 + 装饰渐变球 */
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const greeting = t('dashboard.greeting', '又见面了，今天过得怎样？')
-
   return (
-    <View style={[styles.banner, { backgroundColor: colors.primaryLight }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
-        {t('common.app_title', '白守')} · {t('summary.collective_memories_title', '回忆')}
+    <View
+      style={[
+        styles.banner,
+        { backgroundColor: colors.primary }
+      ]}
+    >
+      <Text style={styles.title}>
+        {t('common.app_title')} · {t('summary.collective_memories_title')}
       </Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        {t(
-          'summary.algorithm_desc',
-          '基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。'
-        )}
-      </Text>
+      <Text style={styles.subtitle}>{t('summary.algorithm_desc')}</Text>
 
-      <View
-        style={[
-          styles.circle,
-          {
-            right: -20,
-            top: -40,
-            width: 140,
-            height: 140,
-            backgroundColor: colors.accentPink + '33'
-          }
-        ]}
-      />
-      <View
-        style={[
-          styles.circle,
-          {
-            right: 80,
-            bottom: -30,
-            width: 80,
-            height: 80,
-            backgroundColor: colors.accentBlue + '4D'
-          }
-        ]}
-      />
+      <View style={[styles.circle, styles.circlePink]} />
+      <View style={[styles.circle, styles.circleBlue]} />
     </View>
   )
 }
@@ -52,23 +29,41 @@ export const DashboardHeroBanner: React.FC = () => {
 const styles = StyleSheet.create({
   banner: {
     height: 140,
-    borderRadius: 16,
+    borderRadius: 20,
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     overflow: 'hidden'
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    zIndex: 1
+    color: '#ffffff',
+    zIndex: 1,
+    letterSpacing: -0.5
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 8,
-    zIndex: 1
+    zIndex: 1,
+    lineHeight: 18
   },
   circle: {
     position: 'absolute',
-    borderRadius: 100
+    borderRadius: 999
+  },
+  circlePink: {
+    right: -20,
+    top: -40,
+    width: 140,
+    height: 140,
+    backgroundColor: 'rgba(255, 154, 158, 0.2)'
+  },
+  circleBlue: {
+    right: 80,
+    bottom: -30,
+    width: 80,
+    height: 80,
+    backgroundColor: 'rgba(161, 196, 253, 0.3)'
   }
 })

@@ -1,27 +1,21 @@
-import React, { useMemo } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import React, { useMemo, useState } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Modal,
+  ScrollView
+} from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
 export interface ActivityHeatmapProps {
   data: Array<{ date: string; count: number }>
   year?: number
+  availableYears?: number[]
+  onYearChange?: (year: number) => void
 }
-
-const MONTH_LABELS = [
-  '1月',
-  '2月',
-  '3月',
-  '4月',
-  '5月',
-  '6月',
-  '7月',
-  '8月',
-  '9月',
-  '10月',
-  '11月',
-  '12月'
-]
-const DAY_LABELS = ['一', '三', '五']
 
 const getISOWeek = (date: Date): number => {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
@@ -31,19 +25,65 @@ const getISOWeek = (date: Date): number => {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
 }
 
-const getColorForCount = (count: number, colors: any): string => {
-  if (count === 0) return colors.bgSurfaceNormal
-  if (count <= 2) return colors.primary + '33'
-  if (count <= 5) return colors.primary + '80'
-  if (count <= 10) return colors.primary + 'CC'
+/** 与桌面 ActivityHeatmap：空档用 surface-highest，有记录用实心 primary */
+const getColorForCount = (
+  count: number,
+  colors: { bgSurfaceHighest?: string; bgSurfaceNormal: string; primary: string }
+): string => {
+  if (count === 0) return colors.bgSurfaceHighest ?? colors.bgSurfaceNormal
   return colors.primary
 }
 
 export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   data,
-  year = new Date().getFullYear()
+  year = new Date().getFullYear(),
+  availableYears,
+  onYearChange
 }) => {
+  const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const cardBorder = colors.dashboardCardBorder ?? 'rgba(148, 163, 184, 0.5)'
+  const [showYearPicker, setShowYearPicker] = useState(false)
+
+  const MONTHS = [
+    t('common.jan'),
+    t('common.feb'),
+    t('common.mar'),
+    t('common.apr'),
+    t('common.may'),
+    t('common.jun'),
+    t('common.jul'),
+    t('common.aug'),
+    t('common.sep'),
+    t('common.oct'),
+    t('common.nov'),
+    t('common.dec')
+  ]
+
+  const DAYS = [
+    t('common.sun'),
+    t('common.mon'),
+    t('common.tue'),
+    t('common.wed'),
+    t('common.thu'),
+    t('common.fri'),
+    t('common.sat')
+  ]
+
+  const allYears = useMemo(() => {
+    if (availableYears && availableYears.length > 0) {
+      return [...availableYears].sort((a, b) => a - b)
+    }
+    if (data.length > 0) {
+      const yearSet = new Set<number>()
+      data.forEach((d) => {
+        const y = parseInt(d.date.substring(0, 4), 10)
+        if (!isNaN(y)) yearSet.add(y)
+      })
+      return Array.from(yearSet).sort((a, b) => a - b)
+    }
+    return [new Date().getFullYear()]
+  }, [data, availableYears])
 
   const heatmapMatrix = useMemo(() => {
     const dateMap: Record<string, number> = {}
@@ -86,7 +126,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
     for (let month = 0; month < 12; month++) {
       const firstDay = new Date(year, month, 1)
       const week = getISOWeek(firstDay)
-      indices.push({ label: MONTH_LABELS[month]!, index: weekIndex })
+      indices.push({ label: MONTHS[month]!, index: weekIndex })
       if (month < 11) {
         const nextFirst = new Date(year, month + 1, 1)
         const nextWeek = getISOWeek(nextFirst)
@@ -94,72 +134,140 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
       }
     }
     return indices
-  }, [year])
+  }, [year, MONTHS])
 
-  const maxCount = useMemo(() => Math.max(...data.map((d) => d.count), 1), [data])
+  const totalCount = data.reduce((a, b) => a + b.count, 0)
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>{year} 年活动热力图</Text>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.bgSurface,
+          borderColor: cardBorder,
+          borderWidth: 1
+        }
+      ]}
+    >
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {year} {t('activity.yearly_records')}
+        </Text>
+        <View style={styles.selectors}>
+          {onYearChange && (
+            <Pressable
+              style={[styles.yearBtn, { borderColor: colors.borderSubtle }]}
+              onPress={() => setShowYearPicker(true)}
+            >
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                {year}
+                {t('common.year_suffix')} ▾
+              </Text>
+            </Pressable>
+          )}
+          <Text style={[styles.totalBadge, { color: colors.textSecondary }]}>
+            {totalCount} {t('activity.interactions')}
+          </Text>
+        </View>
+      </View>
+
+      <Modal
+        visible={showYearPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowYearPicker(false)}
+      >
+        <Pressable style={styles.overlay} onPress={() => setShowYearPicker(false)}>
+          <View style={[styles.yearModal, { backgroundColor: colors.bgSurface }]}>
+            <Text style={[styles.yearModalTitle, { color: colors.textPrimary }]}>
+              {t('activity.select_year')}
+            </Text>
+            <ScrollView contentContainerStyle={styles.yearGrid}>
+              {allYears.map((y) => (
+                <Pressable
+                  key={y}
+                  style={[
+                    styles.yearOption,
+                    {
+                      backgroundColor: y === year ? colors.primary + '20' : colors.bgSurfaceNormal,
+                      borderColor: y === year ? colors.primary : colors.borderSubtle
+                    }
+                  ]}
+                  onPress={() => {
+                    onYearChange?.(y)
+                    setShowYearPicker(false)
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: y === year ? colors.primary : colors.textPrimary,
+                      fontWeight: y === year ? '700' : '400'
+                    }}
+                  >
+                    {y}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
 
       <View style={styles.chartArea}>
         <View style={styles.dayLabels}>
-          {[0, 2, 4].map((idx) => (
-            <Text key={idx} style={[styles.dayLabel, { color: colors.textTertiary }]}>
-              {DAY_LABELS[idx / 2]}
+          {DAYS.map((day, i) => (
+            <Text
+              key={day}
+              style={[
+                styles.dayLabel,
+                { color: colors.textTertiary, opacity: i % 2 === 0 ? 1 : 0 }
+              ]}
+            >
+              {day}
             </Text>
           ))}
         </View>
 
-        <View style={styles.horizontalScroll}>
-          <View style={styles.monthRow}>
-            {monthIndices.map((m, i) => (
-              <Text
-                key={i}
-                style={[
-                  styles.monthLabel,
-                  {
-                    color: colors.textTertiary,
-                    left: m.index * 14 + m.index * 2
-                  }
-                ]}
-              >
-                {m.label}
-              </Text>
-            ))}
-          </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+          <View>
+            <View style={styles.monthRow}>
+              {monthIndices.map((m, i) => (
+                <Text
+                  key={i}
+                  style={[
+                    styles.monthLabel,
+                    {
+                      color: colors.textTertiary,
+                      left: m.index * (CELL_SIZE + CELL_GAP)
+                    }
+                  ]}
+                >
+                  {m.label}
+                </Text>
+              ))}
+            </View>
 
-          <View style={styles.grid}>
-            {heatmapMatrix.map((week, wi) => (
-              <View key={wi} style={styles.weekColumn}>
-                {week.map((cell, di) =>
-                  cell ? (
-                    <View
-                      key={di}
-                      style={[
-                        styles.cell,
-                        { backgroundColor: getColorForCount(cell.count, colors) }
-                      ]}
-                    />
-                  ) : (
-                    <View key={di} style={[styles.cell, { backgroundColor: 'transparent' }]} />
-                  )
-                )}
-              </View>
-            ))}
+            <View style={styles.grid}>
+              {heatmapMatrix.map((week, wi) => (
+                <View key={wi} style={styles.weekColumn}>
+                  {week.map((cell, di) =>
+                    cell ? (
+                      <View
+                        key={di}
+                        style={[
+                          styles.cell,
+                          { backgroundColor: getColorForCount(cell.count, colors) }
+                        ]}
+                      />
+                    ) : (
+                      <View key={di} style={[styles.cell, { backgroundColor: 'transparent' }]} />
+                    )
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
-      </View>
-
-      <View style={styles.legend}>
-        <Text style={[styles.legendText, { color: colors.textTertiary }]}>少</Text>
-        {[0, 2, 5, 10].map((level, i) => (
-          <View
-            key={i}
-            style={[styles.legendCell, { backgroundColor: getColorForCount(level, colors) }]}
-          />
-        ))}
-        <Text style={[styles.legendText, { color: colors.textTertiary }]}>多</Text>
+        </ScrollView>
       </View>
     </View>
   )
@@ -173,10 +281,58 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    flexWrap: 'wrap',
+    gap: 8
+  },
   title: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600'
+  },
+  selectors: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  yearBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1
+  },
+  totalBadge: {
+    fontSize: 13
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 24
+  },
+  yearModal: {
+    borderRadius: 12,
+    padding: 16,
+    maxHeight: '60%'
+  },
+  yearModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
     marginBottom: 12
+  },
+  yearGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  yearOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1
   },
   chartArea: {
     flexDirection: 'row'
@@ -193,12 +349,12 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   horizontalScroll: {
-    flex: 1,
-    overflow: 'hidden'
+    flex: 1
   },
   monthRow: {
     height: 18,
-    position: 'relative'
+    position: 'relative',
+    marginBottom: 4
   },
   monthLabel: {
     fontSize: 10,
@@ -216,21 +372,5 @@ const styles = StyleSheet.create({
     height: CELL_SIZE,
     borderRadius: 2,
     marginBottom: CELL_GAP
-  },
-  legend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    gap: 4
-  },
-  legendText: {
-    fontSize: 10,
-    marginHorizontal: 4
-  },
-  legendCell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-    borderRadius: 2
   }
 })
