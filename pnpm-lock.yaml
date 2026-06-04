@@ -15,6 +15,9 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
     devDependencies:
+      '@rolldown/binding-linux-x64-gnu':
+        specifier: 1.0.0-rc.12
+        version: 1.0.0-rc.12
       '@types/node':
         specifier: ^25.5.2
         version: 25.5.2
@@ -11901,8 +11904,7 @@ snapshots:
   '@rolldown/binding-linux-s390x-gnu@1.0.0-rc.12':
     optional: true
 
-  '@rolldown/binding-linux-x64-gnu@1.0.0-rc.12':
-    optional: true
+  '@rolldown/binding-linux-x64-gnu@1.0.0-rc.12': {}
 
   '@rolldown/binding-linux-x64-musl@1.0.0-rc.12':
     optional: true

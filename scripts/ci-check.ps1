@@ -8,6 +8,9 @@ try {
   pnpm install
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+  pnpm sync:icons:check
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   pnpm typecheck
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

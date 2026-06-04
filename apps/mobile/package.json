@@ -4,6 +4,7 @@
   "version": "Next-1.0.0",
   "scripts": {
     "commands": "node ../../scripts/commands-help.mjs mobile",
+    "predev": "node ../../scripts/sync-app-icon.mjs",
     "dev": "node ./scripts/start-dev.mjs",
     "dev:clear": "node ./scripts/run-android.mjs",
     "connect": "node ./scripts/connect-device.mjs",

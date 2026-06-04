@@ -22,12 +22,15 @@
     "clean": "turbo run clean",
     "db:generate": "turbo run db:generate --filter=@baishou/database",
     "db:push": "turbo run db:push --filter=@baishou/database",
+    "sync:icons": "node scripts/sync-app-icon.mjs",
+    "sync:icons:check": "node scripts/sync-app-icon.mjs --check",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,yaml,yml,css}\" --ignore-path .prettierignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yaml,yml,css}\" --ignore-path .prettierignore",
     "ci": "pnpm ci:check",
     "ci:check": "node scripts/ci-check-runner.mjs"
   },
   "devDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "1.0.0-rc.12",
     "@types/node": "^25.5.2",
     "@types/uuid": "^11.0.0",
     "eslint": "^10.2.0",

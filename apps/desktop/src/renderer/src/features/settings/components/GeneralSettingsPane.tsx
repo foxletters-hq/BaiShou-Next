@@ -14,7 +14,7 @@ import {
   AboutSettingsCard
 } from '@baishou/ui'
 import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from '@baishou/shared'
-import baishouHeroImg from '../../../assets/images/BaiShou-v0.0.1.jpeg'
+import baishouHeroImg from '@baishou/shared/assets/images/Next-1.0.0-banner.jpg'
 
 export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const navigate = useNavigate()
