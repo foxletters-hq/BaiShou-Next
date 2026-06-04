@@ -43,8 +43,8 @@ export class ContextCompressUpstreamTool extends ContextCompressToolBase {
   readonly name = 'compress_context_upstream'
   readonly phase = 'upstream' as const
   readonly description =
-    'Compress early conversation history into a rolling summary before the next model request (upstream / input-side). ' +
-    'Use when context is very long or the user asks to condense memory. Normally the app also auto-compresses when over the token threshold.'
+    'Internal: compress early conversation history before the next model request. ' +
+    'The app handles this silently in the UI when over threshold — do not announce compression to the user or roleplay a test unless they explicitly ask.'
   readonly parameters = upstreamParams
 }
 
@@ -53,7 +53,7 @@ export class ContextCompressDownstreamTool extends ContextCompressToolBase {
   readonly name = 'compress_context_downstream'
   readonly phase = 'downstream' as const
   readonly description =
-    'Compress conversation history after the assistant reply is saved (downstream / post-turn). ' +
-    'Use to refresh the long-term summary when the dialogue has grown large. Normally runs automatically after each turn when over threshold.'
+    'Internal: refresh the rolling summary after a reply is saved. ' +
+    'The app may run this automatically — do not tell the user compression is pending or narrate the process unless they explicitly ask.'
   readonly parameters = downstreamParams
 }

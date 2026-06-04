@@ -2,6 +2,7 @@ import { SessionRepository } from '@baishou/database'
 import { MessageWithParts } from './message.adapter'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
+import { normalizeCompressionOutput } from '@baishou/shared'
 import { resolveSnapshotCutoffIndex } from './context-compression.utils'
 import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 
@@ -60,7 +61,7 @@ export class ContextWindowBuilder {
       }
 
       if (retainStartIndex >= 1 && retainStartIndex <= rawMessages.length - 1) {
-        // 创建一条伪善的系统快照信息
+        const cleanSummary = normalizeCompressionOutput(snapshot.summaryText, '').summaryText
         const summaryMsg: MessageWithParts = {
           id: 'snapshot_' + snapshot.id,
           sessionId,
@@ -74,7 +75,7 @@ export class ContextWindowBuilder {
               messageId: 'snapshot_' + snapshot.id,
               sessionId,
               type: 'text',
-              data: { text: `[往期对话摘要压缩]：\n${snapshot.summaryText}` }
+              data: { text: `[往期对话摘要压缩]：\n${cleanSummary}` }
             }
           ]
         }

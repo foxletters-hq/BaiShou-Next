@@ -25,7 +25,10 @@ export interface PersistResultParams {
   provider: IAIProvider
   modelId: string
   skipUserMessageRecording?: boolean
+  userMessageId?: string
   streamError: any
+  dbHistory?: any[]
+  systemPrompt?: string
 }
 
 /**
@@ -47,6 +50,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
     provider,
     modelId,
     skipUserMessageRecording,
+    userMessageId,
     streamError
   } = params
 
@@ -138,10 +142,23 @@ export async function persistResult(params: PersistResultParams): Promise<{
         if (accumulator.text.length > 0) {
           const { get_encoding } = await import('tiktoken')
           const enc = get_encoding('cl100k_base')
-          finalUsage.inputTokens = enc.encode(rawUserText).length
+          let estimatedInput = enc.encode(rawUserText).length
+          if (params.systemPrompt) {
+            estimatedInput += enc.encode(params.systemPrompt).length
+          }
+          if (params.dbHistory && params.dbHistory.length > 0) {
+            const { extractMessageText } = await import('./context-compression.utils')
+            for (const msg of params.dbHistory) {
+              const text = extractMessageText(msg)
+              if (text) {
+                estimatedInput += enc.encode(text).length
+              }
+            }
+          }
+          finalUsage.inputTokens = estimatedInput
           finalUsage.outputTokens = enc.encode(accumulator.text + accumulator.reasoning).length
           enc.free()
-          logger.info(`[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略!`)
+          logger.info(`[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略! 预估输入: ${finalUsage.inputTokens}`)
         }
       } catch (e: any) {
         logger.warn('Fallback tiktoken estimation failed', e)
@@ -230,7 +247,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
         snapshotRepo,
         sessionId,
         compressionConfig,
-        providerType
+        providerType,
+        userMessageId ? { triggerUserMessageId: userMessageId } : undefined
       )
       ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
     })()

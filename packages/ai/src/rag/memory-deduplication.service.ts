@@ -17,6 +17,7 @@ import type {
   ToolDeduplicationService
 } from '../tools/agent.tool'
 import { logger } from '@baishou/shared'
+import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
 /** 相似度 > 此值视为精确重复 */
 const DUPLICATE_THRESHOLD = 0.92
@@ -205,7 +206,8 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
         })
         .join('\n')
 
-      const model = this.provider.getLanguageModel(this.modelId)
+      const baseModel = this.provider.getLanguageModel(this.modelId)
+      const model = wrapLanguageModelWithMiddlewares(baseModel, this.provider.config?.type || '')
 
       const { text } = await generateText({
         model,

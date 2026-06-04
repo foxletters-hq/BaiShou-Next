@@ -2,7 +2,6 @@ import { SessionRepository } from '@baishou/database'
 import { logger } from '@baishou/shared'
 import type { MessageWithParts } from './message.adapter'
 import { estimateTextTokens } from './call-chain-view-model.builder'
-import { extractMessageText } from './context-compression.utils'
 import { PRUNE_MINIMUM_TOKENS, PRUNE_PROTECT_TOKENS } from './compression.constants'
 
 const PRUNED_PLACEHOLDER = '[工具输出已剪枝，详见对话摘要]'

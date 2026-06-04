@@ -1,4 +1,6 @@
 import { type ActionDeps, type StreamRunConfig, runStreamWithPersistence } from './base.action'
+import type { SessionRepository, SnapshotRepository } from '@baishou/database'
+import { truncateSessionAfterOrderIndex } from '../session-truncate.utils'
 
 export async function runEditMessageAction(
   deps: ActionDeps,
@@ -6,27 +8,30 @@ export async function runEditMessageAction(
   messageId: string,
   newText: string
 ): Promise<boolean> {
-  const repo = deps.realSessionRepo as {
-    getMessageById(id: string): Promise<{ role: string; orderIndex: number } | null>
-    updateMessageTextPart(messageId: string, text: string): Promise<void>
-    deleteMessagesAfter(sessionId: string, orderIndex: number): Promise<void>
-  }
+  const sessionRepo = deps.realSessionRepo as SessionRepository
+  const snapshotRepo = deps.realSnapshotRepo as SnapshotRepository
 
-  const targetMsg = await repo.getMessageById(messageId)
+  const targetMsg = await sessionRepo.getMessageById(messageId)
   if (!targetMsg) return false
 
-  await repo.updateMessageTextPart(messageId, newText)
+  await sessionRepo.updateMessageTextPart(messageId, newText)
 
   if (targetMsg.role === 'assistant') {
     deps.emitter.sendFinish(deps.sessionId, { success: true })
     return true
   }
 
-  await repo.deleteMessagesAfter(deps.sessionId, targetMsg.orderIndex)
+  await truncateSessionAfterOrderIndex(
+    sessionRepo,
+    snapshotRepo,
+    deps.sessionId,
+    targetMsg.orderIndex
+  )
 
   return runStreamWithPersistence(deps, {
     ...config,
     userText: newText,
-    skipUserMessageRecording: true
+    skipUserMessageRecording: true,
+    userMessageId: messageId
   })
 }

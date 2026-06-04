@@ -2,6 +2,7 @@ import { generateText } from 'ai'
 import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
 import { logger } from '@baishou/shared'
+import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
 export class TitleGeneratorService {
   static onTitleUpdated?: (sessionId: string, newTitle: string) => Promise<void> | void
@@ -18,7 +19,8 @@ export class TitleGeneratorService {
     userTrivialText: string
   ): Promise<void> {
     try {
-      const model = provider.getLanguageModel(modelId)
+      const baseModel = provider.getLanguageModel(modelId)
+      const model = wrapLanguageModelWithMiddlewares(baseModel, provider.config?.type || '')
 
       // 请求产生名字
       // 我们用无系统的生成，只基于短句

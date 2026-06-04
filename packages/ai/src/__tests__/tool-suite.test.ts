@@ -14,13 +14,14 @@ import { MessageSearchTool } from '../tools/message-search.tool'
 import { SummaryReadTool } from '../tools/summary-read.tool'
 import { WebSearchTool } from '../tools/web-search.tool'
 import { UrlReadTool } from '../tools/url-read.tool'
+import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from '../tools/context-compress.tool'
 
 describe('ToolRegistry — Full Tool Suite', () => {
-  it('should auto-register all 14 built-in tools on construction', () => {
+  it('should auto-register all 16 built-in tools on construction', () => {
     const registry = new ToolRegistry()
     const allTools = registry.getAllRaw()
 
-    expect(allTools).toHaveLength(14)
+    expect(allTools).toHaveLength(16)
 
     // 检验每个预期工具都被注册了
     const toolNames = allTools.map((t) => t.name)
@@ -38,6 +39,8 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(toolNames).toContain('summary_read')
     expect(toolNames).toContain('web_search')
     expect(toolNames).toContain('url_read')
+    expect(toolNames).toContain('compress_context_upstream')
+    expect(toolNames).toContain('compress_context_downstream')
   })
 
   it('should convert enabled tools to Vercel format', () => {
@@ -48,8 +51,8 @@ describe('ToolRegistry — Full Tool Suite', () => {
       vaultName: '/tmp'
     })
 
-    // 14 个工具，其中 3 个因缺少条件隐式跳过（web_search/vector_search/memory_store）
-    expect(Object.keys(vercelTools)).toHaveLength(11)
+    // 16 个工具，其中 3 个因缺少条件隐式跳过（web_search/vector_search/memory_store）
+    expect(Object.keys(vercelTools)).toHaveLength(13)
     expect(vercelTools['current_time']).toBeDefined()
     expect(vercelTools['diary_read']).toBeDefined()
     expect(vercelTools['diary_write']).toBeDefined()
@@ -70,7 +73,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(vercelTools['web_search']).toBeUndefined()
     expect(vercelTools['url_read']).toBeUndefined()
     expect(vercelTools['current_time']).toBeDefined()
-    expect(Object.keys(vercelTools)).toHaveLength(10)
+    expect(Object.keys(vercelTools)).toHaveLength(12)
   })
 
   it('should disable RAG tools when ragEnabled is false', () => {
@@ -114,7 +117,9 @@ describe('ToolRegistry — Full Tool Suite', () => {
       new MessageSearchTool(),
       new SummaryReadTool(),
       new WebSearchTool(),
-      new UrlReadTool()
+      new UrlReadTool(),
+      new ContextCompressUpstreamTool(),
+      new ContextCompressDownstreamTool()
     ]
 
     for (const tool of tools) {

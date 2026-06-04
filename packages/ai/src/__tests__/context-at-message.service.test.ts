@@ -46,6 +46,7 @@ describe('ContextAtMessageService.resolveCompactionMeta', () => {
     ]
 
     const meta = ContextAtMessageService.resolveCompactionMeta(messages, {
+      id: 1,
       summaryText: 'sum',
       coveredUpToMessageId: 'a1',
       tailStartMessageId: 'u2'
