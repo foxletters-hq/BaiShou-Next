@@ -145,6 +145,16 @@ export const AgentScreen: React.FC = () => {
               ? flow.contextRecompressJob.startedAt
               : undefined
           }
+          recompressStreamText={
+            flow.stream.isCompressing && flow.stream.compressionPhase === 'manual'
+              ? flow.stream.compressionText
+              : ''
+          }
+          recompressStreamReasoning={
+            flow.stream.isCompressing && flow.stream.compressionPhase === 'manual'
+              ? flow.stream.compressionReasoning
+              : ''
+          }
           recompressError={
             flow.contextRecompressJob?.status === 'error'
               ? flow.contextRecompressJob.error

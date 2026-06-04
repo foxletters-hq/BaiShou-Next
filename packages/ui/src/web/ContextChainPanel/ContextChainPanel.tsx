@@ -11,7 +11,7 @@ import {
 import { usePanelTransition } from './usePanelTransition'
 import { usePanelResize } from './usePanelResize'
 import { ContextChainRecompressBar } from './ContextChainRecompressBar'
-import { ContextChainRecompressProgress } from './ContextChainRecompressProgress'
+import { CompressionActivityBar } from '../CompressionActivityBar'
 import panelStyles from './ContextChainPanel.module.css'
 
 export interface ContextChainPanelProps {
@@ -27,6 +27,8 @@ export interface ContextChainPanelProps {
   recompressBusy?: boolean
   recompressError?: string | null
   recompressStartedAt?: number
+  recompressStreamText?: string
+  recompressStreamReasoning?: string
   onRecompress?: () => void
   onRecompressDismissError?: () => void
 }
@@ -43,15 +45,20 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
   onCompressionSummaryUpdated,
   recompressBusy = false,
   recompressError = null,
-  recompressStartedAt,
+  recompressStreamText = '',
+  recompressStreamReasoning = '',
   onRecompress,
   onRecompressDismissError
 }) => {
   const [liveCompressionSummary, setLiveCompressionSummary] = React.useState<string | undefined>()
+  const [liveCompressionReasoning, setLiveCompressionReasoning] = React.useState<
+    string | undefined
+  >()
 
   React.useEffect(() => {
     if (isOpen && !recompressBusy) {
       setLiveCompressionSummary(undefined)
+      setLiveCompressionReasoning(undefined)
     }
   }, [isOpen, message.id, recompressBusy])
 
@@ -59,6 +66,10 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
     liveCompressionSummary ??
     flatEntries.find((e) => e.kind === 'compression-summary')?.summaryText ??
     compressedContent ??
+    ''
+  const effectiveCompressionReasoning =
+    liveCompressionReasoning ??
+    flatEntries.find((e) => e.kind === 'compression-summary')?.reasoningText ??
     ''
   const transition = usePanelTransition(isOpen)
   const { width, onResizeStart } = usePanelResize()
@@ -377,14 +388,24 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                       </div>
                     </div>
                     <div className={panelStyles.detailContent} ref={detailContentRef}>
-                      {recompressBusy && (
-                        <ContextChainRecompressProgress
-                          variant="embedded"
-                          startedAt={recompressStartedAt}
+                      {recompressBusy ? (
+                        <CompressionActivityBar
+                          phase="manual"
+                          embedded
+                          summary={recompressStreamText}
+                          reasoning={recompressStreamReasoning}
+                          isActive
                         />
-                      )}
-                      {!recompressBusy && (
-                        <MarkdownRenderer content={effectiveCompressionSummary} plainText />
+                      ) : (
+                        <CompressionActivityBar
+                          phase="auto"
+                          embedded
+                          summary={effectiveCompressionSummary}
+                          reasoning={effectiveCompressionReasoning}
+                          isActive={false}
+                          thoughtDurationMs={flatEntries.find((e) => e.kind === 'compression-summary')?.thoughtDurationMs}
+                          summaryDurationMs={flatEntries.find((e) => e.kind === 'compression-summary')?.summaryDurationMs}
+                        />
                       )}
                     </div>
                   </>

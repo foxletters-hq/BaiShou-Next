@@ -10,6 +10,11 @@ export interface UseAgentStreamResult {
   text: string
   reasoning: string
   isStreaming: boolean
+  isCompressing: boolean
+  compressionPhase: 'auto' | 'manual'
+  compressionText: string
+  compressionReasoning: string
+  compressionTriggerMessageId: string | null
   activeTool: { name: string; args: any } | null
   completedTools: ToolExecution[]
   error: string | null
@@ -43,6 +48,7 @@ export interface UseAgentStreamResult {
     providerId?: string,
     modelId?: string
   ) => Promise<void>
+  stopChat: () => void
   reset: () => void
 }
 
@@ -50,6 +56,11 @@ interface SessionStreamState {
   text: string
   reasoning: string
   isStreaming: boolean
+  isCompressing: boolean
+  compressionPhase: 'auto' | 'manual'
+  compressionText: string
+  compressionReasoning: string
+  compressionTriggerMessageId: string | null
   activeTool: { name: string; args: any } | null
   completedTools: ToolExecution[]
   error: string | null
@@ -66,6 +77,11 @@ function getOrCreateSessionState(sessionId: string): SessionStreamState {
       text: '',
       reasoning: '',
       isStreaming: false,
+      isCompressing: false,
+      compressionPhase: 'auto',
+      compressionText: '',
+      compressionReasoning: '',
+      compressionTriggerMessageId: null,
       activeTool: null,
       completedTools: [],
       error: null
@@ -119,7 +135,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       const sId = typeof payload === 'object' ? payload?.sessionId : null
       const chunk = typeof payload === 'object' ? payload?.chunk : payload
       if (!sId) return
-
+      console.log('[Renderer Stream] stream-chunk:', sId, 'chunkLength:', chunk?.length)
       updateSessionState(sId, (state) => {
         state.text += chunk
       })
@@ -129,8 +145,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       const sId = typeof payload === 'object' ? payload?.sessionId : null
       const chunk = typeof payload === 'object' ? payload?.chunk : payload
       if (!sId) return
-
-      console.log('[Renderer Stream] Reasoning Chunk:', JSON.stringify(chunk))
+      console.log('[Renderer Stream] reasoning-chunk:', sId, 'chunkLength:', chunk?.length)
       updateSessionState(sId, (state) => {
         state.reasoning += chunk
       })
@@ -141,7 +156,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       if (!sId) return
       const name = typeof payload === 'object' ? payload?.name : payload?.name
       const args = typeof payload === 'object' ? payload?.args : payload?.args
-
+      console.log('[Renderer Stream] tool-start:', sId, 'name:', name)
       updateSessionState(sId, (state) => {
         state.activeToolStartTime = Date.now()
         state.activeTool = { name, args }
@@ -152,7 +167,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       const sId = typeof payload === 'object' ? payload?.sessionId : null
       if (!sId) return
       const name = typeof payload === 'object' ? payload?.name : payload?.name
-
+      console.log('[Renderer Stream] tool-result:', sId, 'name:', name)
       updateSessionState(sId, (state) => {
         const start = state.activeToolStartTime || Date.now()
         const durationMs = Date.now() - start
@@ -164,7 +179,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     window.electron.ipcRenderer.on('agent:stream-finish', (_, payload: any) => {
       const sId = typeof payload === 'object' ? payload?.sessionId : null
       if (!sId) return
-
+      console.log('[Renderer Stream] stream-finish:', sId, 'payload:', JSON.stringify(payload))
       updateSessionState(sId, (state) => {
         state.isStreaming = false
         if (payload?.error) {
@@ -173,6 +188,60 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.activeTool = null
       })
     })
+
+    window.electron.ipcRenderer.on('agent:compression-event', (_, event: any) => {
+      const sId = event?.sessionId
+      if (!sId || !event?.type) return
+
+      updateSessionState(sId, (state) => {
+        if (event.type === 'start') {
+          state.isCompressing = true
+          state.compressionPhase = event.phase === 'manual' ? 'manual' : 'auto'
+          state.compressionText = ''
+          state.compressionReasoning = ''
+          state.compressionTriggerMessageId =
+            typeof event.triggerUserMessageId === 'string'
+              ? event.triggerUserMessageId
+              : null
+        } else if (event.type === 'reasoning-delta') {
+          state.compressionReasoning += event.chunk ?? ''
+        } else if (event.type === 'delta') {
+          state.compressionText += event.chunk ?? ''
+        } else if (event.type === 'finish') {
+          state.isCompressing = false
+          if (!event.ok) {
+            state.compressionText = ''
+            state.compressionReasoning = ''
+            state.compressionTriggerMessageId = null
+          }
+        }
+      })
+
+      if (event.type === 'finish' && event.ok) {
+        window.dispatchEvent(
+          new CustomEvent('baishou:compression-finished', {
+            detail: { sessionId: sId }
+          })
+        )
+      }
+    })
+
+    const onCompressionStreamReset = (e: Event) => {
+      const detail = (e as CustomEvent<{ sessionId?: string }>).detail
+      const sId = detail?.sessionId
+      if (!sId) return
+      updateSessionState(sId, (state) => {
+        state.compressionText = ''
+        state.compressionReasoning = ''
+        state.compressionTriggerMessageId = null
+      })
+    }
+
+    window.addEventListener('baishou:compression-stream-reset', onCompressionStreamReset)
+
+    return () => {
+      window.removeEventListener('baishou:compression-stream-reset', onCompressionStreamReset)
+    }
   }, [])
 
   const saveUserMessage = useCallback(
@@ -288,6 +357,18 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     []
   )
 
+  const stopChat = useCallback(() => {
+    if (typeof window !== 'undefined' && window.electron) {
+      window.electron.ipcRenderer.invoke('agent:stop-stream').catch(console.error)
+    }
+    if (currentSessionId) {
+      updateSessionState(currentSessionId, (state) => {
+        state.isStreaming = false
+        state.activeTool = null
+      })
+    }
+  }, [currentSessionId])
+
   const reset = useCallback(() => {
     if (!currentSessionId) return
     updateSessionState(currentSessionId, (state) => {
@@ -295,6 +376,10 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       state.reasoning = ''
       state.error = null
       state.isStreaming = false
+      state.isCompressing = false
+      state.compressionText = ''
+      state.compressionReasoning = ''
+      state.compressionTriggerMessageId = null
       state.activeTool = null
       state.completedTools = []
       state.activeToolStartTime = undefined
@@ -307,6 +392,11 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         text: '',
         reasoning: '',
         isStreaming: false,
+        isCompressing: false,
+        compressionPhase: 'auto' as const,
+        compressionText: '',
+        compressionReasoning: '',
+        compressionTriggerMessageId: null,
         activeTool: null,
         completedTools: [],
         error: null
@@ -316,6 +406,11 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     text: activeState.text,
     reasoning: activeState.reasoning,
     isStreaming: activeState.isStreaming,
+    isCompressing: activeState.isCompressing,
+    compressionPhase: activeState.compressionPhase,
+    compressionText: activeState.compressionText,
+    compressionReasoning: activeState.compressionReasoning,
+    compressionTriggerMessageId: activeState.compressionTriggerMessageId,
     activeTool: activeState.activeTool,
     completedTools: activeState.completedTools,
     error: activeState.error,
@@ -323,6 +418,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     startChat,
     editChat,
     resendChat,
+    stopChat,
     reset
   }
+
 }

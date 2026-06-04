@@ -50,6 +50,7 @@ export function useAgentChatFlow() {
   })
   const tokens = useTokenUsage(sessionId, stream.isStreaming)
   const scroll = useChatScroll({
+    sessionId,
     messages: chat.messages,
     streamingText: stream.text,
     streamingReasoning: stream.reasoning,
@@ -287,10 +288,9 @@ export function useAgentChatFlow() {
   }
 
   const handleStop = () => {
-    if (typeof window !== 'undefined' && window.electron) {
-      window.electron.ipcRenderer.invoke('agent:stop-stream').catch(console.error)
-    }
+    stream.stopChat()
   }
+
 
   const runContextRecompress = useCallback(
     async (targetSessionId: string) => {

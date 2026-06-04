@@ -1,7 +1,11 @@
 import React, { useMemo, useCallback, useEffect, useRef } from 'react'
-import { ChatBubble, StreamingBubble } from '@baishou/ui'
+import { ChatBubble, StreamingBubble, CompressionDivider, CompressionActivityBar } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
+import {
+  buildRoundIndexByMessageId,
+  isRoundPageStart
+} from '../utils/chat-round-pagination'
 import styles from '../AgentScreen.module.css'
 
 interface AgentMessageListProps {
@@ -71,7 +75,9 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
           if (entry.kind === 'compression-summary') {
             return {
               kind: 'compression-summary' as const,
-              summaryText: entry.summaryText ?? result?.compressedContent ?? ''
+              summaryText: entry.summaryText ?? result?.compressedContent ?? '',
+              reasoningText:
+                entry.reasoningText ?? result?.viewModel?.compressionReasoning ?? ''
             }
           }
           if (entry.kind === 'system-prompt') {
@@ -158,6 +164,44 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     return () => el.removeEventListener('scroll', onScroll)
   }, [chat.hasMore, triggerLoadMore, scroll.scrollRef])
 
+  const roundIndexByMessageId = useMemo(
+    () => buildRoundIndexByMessageId(chat.messages),
+    [chat.messages]
+  )
+
+  const compactionAnchor = chat.compactionAnchor as
+    | { messageId: string; record: Record<string, unknown> }
+    | null
+    | undefined
+
+  const compactionAnchorVisible = compactionAnchor
+    ? chat.messages.some((msg: { id: string }) => msg.id === compactionAnchor.messageId)
+    : false
+
+  const renderPersistedCompactionBar = (
+    record: {
+      streamTranscript?: string
+      streamReasoning?: string
+      phase?: 'auto' | 'manual'
+      status?: 'completed' | 'failed'
+      thoughtDurationMs?: number
+      summaryDurationMs?: number
+    },
+    phase: 'auto' | 'manual' = 'auto'
+  ) => (
+    <>
+      <CompressionActivityBar
+        phase={record.phase ?? phase}
+        summary={record.streamTranscript ?? ''}
+        reasoning={record.streamReasoning ?? ''}
+        isActive={false}
+        thoughtDurationMs={record.thoughtDurationMs}
+        summaryDurationMs={record.summaryDurationMs}
+      />
+      {record.status !== 'failed' && <CompressionDivider />}
+    </>
+  )
+
   const activeToolDisplayName = useMemo(() => {
     if (!stream.activeTool) return null
     if (stream.activeTool.name === 'web_search') {
@@ -187,11 +231,55 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             </button>
           )}
 
+          {compactionAnchor && !compactionAnchorVisible && (
+            <div className={styles.compressionAnchor}>
+              {renderPersistedCompactionBar(compactionAnchor.record)}
+            </div>
+          )}
+
           {[...chat.messages].map((msg) => {
+            const isLiveCompressionAnchor =
+              (stream.compressionPhase === 'auto' || stream.compressionPhase === 'manual') &&
+              stream.compressionTriggerMessageId === msg.id &&
+              (stream.isCompressing ||
+                ((Boolean(stream.compressionText?.trim()) ||
+                  Boolean(stream.compressionReasoning?.trim())) &&
+                  !msg.compactionRecord))
+
+            const persistedCompaction =
+              msg.role === 'user' && msg.compactionRecord
+                ? msg.compactionRecord
+                : compactionAnchor?.messageId === msg.id
+                  ? compactionAnchor.record
+                  : null
+
+            const hasPersistedCompressionContent = Boolean(
+              persistedCompaction &&
+                persistedCompaction.status !== 'failed' &&
+                (Boolean(persistedCompaction.streamTranscript?.trim()) ||
+                  Boolean(persistedCompaction.streamReasoning?.trim()))
+            )
+
+            const showCompressionDivider = hasPersistedCompressionContent
+
+            const showLiveCompressionActivity = isLiveCompressionAnchor
+
+            const compactionSummary = isLiveCompressionAnchor
+              ? stream.compressionText
+              : (persistedCompaction?.streamTranscript ?? '')
+
+            const compactionReasoning = isLiveCompressionAnchor
+              ? stream.compressionReasoning
+              : (persistedCompaction?.streamReasoning ?? '')
+
+            const compactionPhase = isLiveCompressionAnchor
+              ? stream.compressionPhase
+              : (persistedCompaction?.phase ?? 'auto')
+
             const bubbleMessage = {
               id: msg.id,
               sessionId: sessionId || 'default-session',
-              role: msg.role === 'user' ? 'user' : 'assistant',
+              role: (msg.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
               content: msg.content,
               reasoning: msg.reasoning,
               timestamp: msg.createdAt || new Date(),
@@ -203,44 +291,68 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               costMicros: msg.costMicros
             }
 
+            const roundIndex = roundIndexByMessageId.get(msg.id) ?? 0
+            const showPageSnap = isRoundPageStart(roundIndex)
+
             return (
-              <ChatBubble
-                key={msg.id}
-                message={bubbleMessage}
-                userProfile={{
-                  nickname: userProfile?.nickname || 'User',
-                  avatarPath: userProfile?.avatarPath
-                }}
-                aiProfile={{
-                  name: currentAssistant?.name || 'AI',
-                  avatarPath: currentAssistant?.avatarPath,
-                  emoji: currentAssistant?.emoji
-                }}
-                onShowContext={
-                  msg.role === 'user' || msg.role === 'assistant'
-                    ? (m) => handleShowContext(m, msg)
-                    : undefined
-                }
-                onReadAloud={
-                  msg.role === 'assistant'
-                    ? (content) => actions.handleReadAloud(content, msg.id)
-                    : undefined
-                }
-                isTtsPlaying={tts.ttsPlayingMsgId === msg.id}
-                onRegenerate={
-                  msg.role === 'assistant' ? () => actions.handleRegenerate(msg) : undefined
-                }
-                onEdit={() => {}}
-                onSaveEdit={(newContent) => actions.handleSaveEdit(msg, newContent)}
-                onResendEdit={(newContent) => actions.handleResendEdit(msg, newContent)}
-                onResend={msg.role === 'user' ? () => actions.handleResend(msg) : undefined}
-                onDelete={() => actions.handleDelete(msg)}
-                onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
-              />
+              <React.Fragment key={msg.id}>
+                {showPageSnap && <div className={styles.pageSnapAnchor} aria-hidden />}
+                {(showLiveCompressionActivity || showCompressionDivider) && (
+                  <div className={styles.compressionAnchor}>
+                    {showLiveCompressionActivity ? (
+                      <>
+                        <CompressionActivityBar
+                          phase={compactionPhase}
+                          summary={compactionSummary}
+                          reasoning={compactionReasoning}
+                          isActive
+                        />
+                      </>
+                    ) : (
+                      renderPersistedCompactionBar(
+                        persistedCompaction!,
+                        (persistedCompaction?.phase as 'auto' | 'manual') ?? 'auto'
+                      )
+                    )}
+                  </div>
+                )}
+                <ChatBubble
+                  message={bubbleMessage}
+                  userProfile={{
+                    nickname: userProfile?.nickname || 'User',
+                    avatarPath: userProfile?.avatarPath
+                  }}
+                  aiProfile={{
+                    name: currentAssistant?.name || 'AI',
+                    avatarPath: currentAssistant?.avatarPath,
+                    emoji: currentAssistant?.emoji
+                  }}
+                  onShowContext={
+                    msg.role === 'user' || msg.role === 'assistant'
+                      ? (m) => handleShowContext(m, msg)
+                      : undefined
+                  }
+                  onReadAloud={
+                    msg.role === 'assistant'
+                      ? (content) => actions.handleReadAloud(content, msg.id)
+                      : undefined
+                  }
+                  isTtsPlaying={tts.ttsPlayingMsgId === msg.id}
+                  onRegenerate={
+                    msg.role === 'assistant' ? () => actions.handleRegenerate(msg) : undefined
+                  }
+                  onEdit={() => {}}
+                  onSaveEdit={(newContent) => actions.handleSaveEdit(msg, newContent)}
+                  onResendEdit={(newContent) => actions.handleResendEdit(msg, newContent)}
+                  onResend={msg.role === 'user' ? () => actions.handleResend(msg) : undefined}
+                  onDelete={() => actions.handleDelete(msg)}
+                  onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
+                />
+              </React.Fragment>
             )
           })}
 
-          {stream.isStreaming && (
+          {stream.isStreaming && !stream.isCompressing && (
             <StreamingBubble
               text={stream.text}
               reasoning={stream.reasoning}
