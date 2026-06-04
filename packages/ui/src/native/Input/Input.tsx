@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react'
-import { View, type StyleProp, type ViewStyle } from 'react-native'
+import { View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import {
   Input as HeroInput,
   TextArea as HeroTextArea,
@@ -67,7 +67,7 @@ export const Input = forwardRef<any, NativeInputProps>(
 
     const inputClassName = cn(!compact && 'w-full', className)
 
-    const inputStyle = [
+    const inputStyle: StyleProp<TextStyle> = [
       fieldShell,
       leftSlot ? { paddingLeft: 40 } : null,
       rightSlot ? { paddingRight: 44 } : null,
