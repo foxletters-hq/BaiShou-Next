@@ -1,4 +1,4 @@
-import { generateText } from 'ai'
+import { streamText } from 'ai'
 import type { ModelMessage } from 'ai'
 import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
@@ -8,7 +8,7 @@ import {
   CompressionErrorCode,
   compressionError,
   getDefaultCompressionSystemPrompt,
-  buildAnchoredCompressionUserPrompt
+  buildCompressionPreviousSummaryBlock
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import { MessageAdapter, MessageWithParts } from './message.adapter'
@@ -33,8 +33,17 @@ import {
 } from './compression-session-lock'
 import { CompressionPruneService } from './compression-prune.service'
 import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
+import { emitCompressionLifecycle } from './compression-lifecycle'
+import { writeCompactionMarker, messageHasCompactionMarker, resolveLatestUserMessageId, finalizeCompressionForStorage } from './compaction-marker'
+import { consumeCompressionModelStream } from './compression-stream.utils'
+import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
 export type { SessionCompressionConfig } from './context-compression.utils'
+
+export type CompressionRunOptions = {
+  /** 方案 A：触发发送前压缩的用户消息 ID */
+  triggerUserMessageId?: string
+}
 
 export type RecompressResult = {
   ok: boolean
@@ -52,7 +61,8 @@ export class ContextCompressorService {
     snapshotRepo: SnapshotRepository,
     sessionId: string,
     config?: SessionCompressionConfig,
-    providerType?: string
+    providerType?: string,
+    runOptions?: CompressionRunOptions
   ): Promise<boolean> {
     return runCompressionWithSessionLock(sessionId, () =>
       ContextCompressorService.compress(
@@ -62,7 +72,8 @@ export class ContextCompressorService {
         snapshotRepo,
         sessionId,
         config,
-        providerType
+        providerType,
+        runOptions
       )
     )
   }
@@ -82,8 +93,12 @@ export class ContextCompressorService {
     snapshotRepo: SnapshotRepository,
     sessionId: string,
     config?: SessionCompressionConfig,
-    providerType = ''
+    providerType = '',
+    runOptions?: CompressionRunOptions
   ): Promise<boolean> {
+    const explicitTriggerUserMessageId = runOptions?.triggerUserMessageId
+    let compressionStarted = false
+
     try {
       const compressionConfig =
         config ?? (await resolveSessionCompressionConfig(sessionId, sessionRepo))
@@ -105,7 +120,9 @@ export class ContextCompressorService {
         COMPRESSION_MESSAGE_FETCH_LIMIT
       )) as MessageWithParts[]
 
-      if (allMessages.length < 4) return false
+      if (allMessages.length < 4) {
+        return false
+      }
 
       const latestSnapshot = await snapshotRepo.getLatestSnapshot(sessionId)
       const messagesAfterSnapshot = getMessagesAfterSnapshot(allMessages, latestSnapshot)
@@ -141,25 +158,54 @@ export class ContextCompressorService {
         return false
       }
 
+      const markerMessageId =
+        explicitTriggerUserMessageId ?? resolveLatestUserMessageId(allMessages)
+
+      if (markerMessageId) {
+        const alreadyCompressed = await messageHasCompactionMarker(
+          sessionRepo,
+          markerMessageId
+        )
+        if (alreadyCompressed) {
+          logger.info(
+            `[ContextCompressor] Session(${sessionId}) skip: trigger message ${markerMessageId} already has compaction marker.`
+          )
+          return false
+        }
+      }
+
+      emitCompressionLifecycle({
+        type: 'start',
+        sessionId,
+        phase: 'auto',
+        triggerUserMessageId: markerMessageId
+      })
+      compressionStarted = true
+
       const generated = await ContextCompressorService.generateSummaryText(
         provider,
         modelId,
+        sessionId,
         toCompress,
         compressionConfig,
         latestSnapshot?.summaryText ?? null,
         providerType
       )
-      if (!generated) return false
+      if (!generated) {
+        emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
+        return false
+      }
 
       const coveredLastMsg = toCompress[toCompress.length - 1]!
       const tailStartMessageId =
         splitTailStart ?? computeTailStartMessageId(allMessages, coveredLastMsg.id)
 
       const prevTokenCount = latestSnapshot?.tokenCount ?? 0
+      const stored = finalizeCompressionForStorage(generated.text, generated.reasoning)
 
       await snapshotRepo.appendSnapshot({
         sessionId: sessionId as string,
-        summaryText: generated.text,
+        summaryText: stored.summaryText,
         coveredUpToMessageId: coveredLastMsg.id,
         tailStartMessageId,
         messageCount: latestSnapshot
@@ -168,13 +214,39 @@ export class ContextCompressorService {
         tokenCount: prevTokenCount + generated.completionTokens
       })
 
+      const newSnapshot = await snapshotRepo.getLatestSnapshot(sessionId)
+      const markerTargetId = markerMessageId ?? coveredLastMsg.id
+      await writeCompactionMarker(sessionRepo, sessionId, markerTargetId, {
+        snapshotId: newSnapshot?.id,
+        compressedAt: Date.now(),
+        coveredUpToMessageId: coveredLastMsg.id,
+        streamTranscript: stored.summaryText,
+        streamReasoning: stored.reasoningText,
+        phase: 'auto',
+        status: 'completed',
+        thoughtDurationMs: generated.thoughtDurationMs,
+        summaryDurationMs: generated.summaryDurationMs
+      })
+
       logger.info(
         `[ContextCompressor] Snapshot Session(${sessionId}); context ~${contextTokens} tokens.`
       )
+      emitCompressionLifecycle({
+        type: 'finish',
+        sessionId,
+        phase: 'auto',
+        ok: true,
+        triggerUserMessageId: markerMessageId,
+        coveredUpToMessageId: coveredLastMsg.id,
+        snapshotId: newSnapshot?.id
+      })
       return true
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.error('[ContextCompressor] Compression failed:', message)
+      if (compressionStarted) {
+        emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
+      }
       return false
     }
   }
@@ -188,7 +260,11 @@ export class ContextCompressorService {
     config?: SessionCompressionConfig,
     providerType = ''
   ): Promise<RecompressResult> {
+    emitCompressionLifecycle({ type: 'start', sessionId, phase: 'manual' })
     const locked = await runRecompressWithSessionLock(sessionId, async () => {
+      let coveredUpToMessageId: string | undefined
+      let snapshotId: number | undefined
+      let succeeded = false
       try {
         const compressionConfig =
           config ?? (await resolveSessionCompressionConfig(sessionId, sessionRepo))
@@ -199,6 +275,7 @@ export class ContextCompressorService {
           return compressionError(CompressionErrorCode.NO_SNAPSHOT)
         }
 
+        snapshotId = latestSnapshot.id
         const previousSnapshot =
           snapshots.length >= 2 ? snapshots[snapshots.length - 2]! : null
 
@@ -229,6 +306,7 @@ export class ContextCompressorService {
         const generated = await ContextCompressorService.generateSummaryText(
           provider,
           modelId,
+          sessionId,
           toCompress,
           compressionConfig,
           previousSnapshot?.summaryText ?? null,
@@ -239,7 +317,8 @@ export class ContextCompressorService {
           return compressionError(CompressionErrorCode.EMPTY_SUMMARY)
         }
 
-        const normalizedSummary = generated.text.trim()
+        const stored = finalizeCompressionForStorage(generated.text, generated.reasoning)
+        const normalizedSummary = stored.summaryText
         const lastAssistant = [...toCompress].reverse().find((m) => m.role === 'assistant')
         const lastAssistantText = lastAssistant ? extractMessageText(lastAssistant).trim() : ''
         if (
@@ -250,6 +329,7 @@ export class ContextCompressorService {
         }
 
         const coveredLastMsg = toCompress[toCompress.length - 1]!
+        coveredUpToMessageId = coveredLastMsg.id
         const tailStartMessageId =
           splitTailStart ?? computeTailStartMessageId(allMessages, coveredLastMsg.id)
 
@@ -261,19 +341,51 @@ export class ContextCompressorService {
           tokenCount: generated.completionTokens
         })
 
+        await writeCompactionMarker(
+          sessionRepo,
+          sessionId,
+          ContextCompressorService.resolveRecompressMarkerMessageId(
+            allMessages,
+            latestSnapshot.id,
+            coveredLastMsg.id
+          ),
+          {
+            snapshotId: latestSnapshot.id,
+            compressedAt: Date.now(),
+            coveredUpToMessageId: coveredLastMsg.id,
+            streamTranscript: stored.summaryText,
+            streamReasoning: stored.reasoningText,
+            phase: 'manual',
+            status: 'completed',
+            thoughtDurationMs: generated.thoughtDurationMs,
+            summaryDurationMs: generated.summaryDurationMs
+          }
+        )
+
         logger.info(
           `[ContextCompressor] Recompress updated snapshot #${latestSnapshot.id} Session(${sessionId}).`
         )
 
+        succeeded = true
         return { ok: true, summaryText: normalizedSummary }
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e)
         logger.error('[ContextCompressor] Manual recompress failed:', message)
         return { ...compressionError(CompressionErrorCode.GENERIC, message), ok: false }
+      } finally {
+        emitCompressionLifecycle({
+          type: 'finish',
+          sessionId,
+          phase: 'manual',
+          ok: succeeded,
+          coveredUpToMessageId,
+          snapshotId
+        })
       }
     })
 
     if (locked === undefined) {
+      emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'manual', ok: false })
       return compressionError(CompressionErrorCode.ALREADY_RUNNING)
     }
     return locked
@@ -282,12 +394,14 @@ export class ContextCompressorService {
   private static async generateSummaryText(
     provider: IAIProvider,
     modelId: string,
+    sessionId: string,
     toCompress: MessageWithParts[],
     compressionConfig: SessionCompressionConfig,
     priorSummaryText: string | null,
     providerType: string
-  ): Promise<{ text: string; completionTokens: number } | null> {
-    const model = provider.getLanguageModel(modelId)
+  ): Promise<{ text: string; reasoning?: string; completionTokens: number; thoughtDurationMs: number; summaryDurationMs: number } | null> {
+    const baseModel = provider.getLanguageModel(modelId)
+    const model = wrapLanguageModelWithMiddlewares(baseModel, providerType)
     const systemBase =
       compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
 
@@ -298,34 +412,53 @@ export class ContextCompressorService {
       providerType
     )
 
-    const tailPrompt = buildAnchoredCompressionUserPrompt({
-      previousSummary: priorSummaryText?.trim() || undefined
-    })
+    const messages: ModelMessage[] = [...headMessages]
+    const previousSummaryBlock = buildCompressionPreviousSummaryBlock(
+      priorSummaryText?.trim() || undefined
+    )
+    if (previousSummaryBlock) {
+      messages.push({ role: 'user', content: previousSummaryBlock })
+    }
 
-    const messages: ModelMessage[] = [
-      ...headMessages,
-      { role: 'user', content: tailPrompt }
-    ]
-
-    const { text, usage } = await generateText({
+    const streamResult = streamText({
       model,
       system: systemBase,
       messages,
       temperature: 0.1
     })
 
-    if (!text?.trim()) return null
+    const streamed = await consumeCompressionModelStream(streamResult, sessionId)
 
-    const normalizedSummary = text.trim()
+    if (!streamed.summaryText) return null
     const lastAssistant = [...toCompress].reverse().find((m) => m.role === 'assistant')
     const lastAssistantText = lastAssistant ? extractMessageText(lastAssistant).trim() : ''
-    if (lastAssistantText.length > 40 && normalizedSummary === lastAssistantText) {
+    if (lastAssistantText.length > 40 && streamed.summaryText === lastAssistantText) {
       return null
     }
 
-    const completionTokens =
-      (usage as { completionTokens?: number } | undefined)?.completionTokens ?? 0
+    return {
+      text: streamed.summaryText,
+      reasoning: streamed.reasoningText || undefined,
+      completionTokens: streamed.completionTokens,
+      thoughtDurationMs: streamed.thoughtDurationMs,
+      summaryDurationMs: streamed.summaryDurationMs
+    }
+  }
 
-    return { text: normalizedSummary, completionTokens }
+
+  /** 重新压缩时优先更新已有触发用户消息上的 compaction 标记 */
+  private static resolveRecompressMarkerMessageId(
+    allMessages: MessageWithParts[],
+    snapshotId: number,
+    fallbackMessageId: string
+  ): string {
+    for (const msg of allMessages) {
+      const part = msg.parts?.find((p) => p.type === 'compaction')
+      const data = part?.data as { snapshotId?: number } | undefined
+      if (data?.snapshotId === snapshotId) {
+        return msg.id
+      }
+    }
+    return fallbackMessageId
   }
 }

@@ -9,8 +9,10 @@ import {
 } from './model-message-display.formatter'
 import { ContextCallChainBuilder } from './context-call-chain.builder'
 import { buildCallChainViewModel, type CallChainViewModel } from './call-chain-view-model.builder'
+import { normalizeCompressionOutput } from '@baishou/shared'
 import { resolveSnapshotCutoffIndex } from './context-compression.utils'
 import type { MessageWithParts } from './message.adapter'
+import { resolveCompactionReasoningForSnapshot, resolveCompactionDurationsForSnapshot } from './compaction-marker'
 
 export interface ContextAtMessageOptions {
   recentCount: number
@@ -102,7 +104,10 @@ export class ContextAtMessageService {
       },
       allMessages: allMessages as any,
       compressionSummary: compactionMeta.compressionSummary,
+      compressionReasoning: compactionMeta.compressionReasoning,
       compactionCutoffOrderIndex: compactionMeta.compactionCutoffOrderIndex,
+      thoughtDurationMs: compactionMeta.thoughtDurationMs,
+      summaryDurationMs: compactionMeta.summaryDurationMs,
       windowMessages: dbHistory
     })
 
@@ -145,25 +150,36 @@ export class ContextAtMessageService {
   static resolveCompactionMeta(
     allMessages: MessageWithParts[],
     snapshot: {
+      id: number
       summaryText: string
       coveredUpToMessageId: string
       tailStartMessageId?: string | null
     } | null
   ): {
     compressionSummary?: string
+    compressionReasoning?: string
     compactionCutoffOrderIndex?: number
+    thoughtDurationMs?: number
+    summaryDurationMs?: number
   } {
     if (!snapshot?.summaryText?.trim()) {
       return {}
     }
+
+    const compressionSummary = normalizeCompressionOutput(snapshot.summaryText, '').summaryText
+    const compressionReasoning = resolveCompactionReasoningForSnapshot(allMessages, snapshot.id)
+    const durations = resolveCompactionDurationsForSnapshot(allMessages, snapshot.id)
 
     if (snapshot.tailStartMessageId) {
       const tailIdx = allMessages.findIndex((m) => m.id === snapshot.tailStartMessageId)
       if (tailIdx > 0) {
         const anchor = allMessages[tailIdx - 1]
         return {
-          compressionSummary: snapshot.summaryText.trim(),
-          compactionCutoffOrderIndex: anchor?.orderIndex
+          compressionSummary,
+          compressionReasoning,
+          compactionCutoffOrderIndex: anchor?.orderIndex,
+          thoughtDurationMs: durations.thoughtDurationMs,
+          summaryDurationMs: durations.summaryDurationMs
         }
       }
     }
@@ -175,8 +191,11 @@ export class ContextAtMessageService {
       anchor?.orderIndex ?? (!Number.isNaN(orderFallback) ? orderFallback : undefined)
 
     return {
-      compressionSummary: snapshot.summaryText.trim(),
-      compactionCutoffOrderIndex
+      compressionSummary,
+      compressionReasoning,
+      compactionCutoffOrderIndex,
+      thoughtDurationMs: durations.thoughtDurationMs,
+      summaryDurationMs: durations.summaryDurationMs
     }
   }
 }

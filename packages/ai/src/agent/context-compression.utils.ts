@@ -90,7 +90,12 @@ export function estimateContextTokensForTrigger(
     const input = m.inputTokens ?? 0
     const output = m.outputTokens ?? 0
     if (input + output > 0) {
-      return input + output
+      const msgsAfter = allMessages.slice(i + 1)
+      let tokens = input + output
+      if (msgsAfter.length > 0) {
+        tokens += estimateMessagesTokens(msgsAfter, true)
+      }
+      return tokens
     }
   }
 
@@ -493,15 +498,6 @@ export function formatMessagesAsCompressionTranscript(messages: MessageWithParts
     blocks.push(`【${label}】\n${text}`)
   }
   return blocks.join('\n\n---\n\n')
-}
-
-export function buildCompressionUserPrompt(toCompress: MessageWithParts[]): string {
-  const transcript = formatMessagesAsCompressionTranscript(toCompress)
-  return `以下是需要压缩的多轮对话原文（必须同时体现【用户】诉求与【助手】【工具】回应，按时间顺序）：
-
-${transcript}
-
-请输出一份滚动对话摘要：按主题归纳用户意图、已解决的问题、关键事实与待办；禁止只复述最后一条助手回复、寒暄或感谢语。`
 }
 
 export function hasUserContentInCompressionBatch(messages: MessageWithParts[]): boolean {

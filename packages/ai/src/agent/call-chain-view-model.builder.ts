@@ -1,4 +1,5 @@
 import type { MessageWithParts } from './message.adapter'
+import { normalizeCompressionOutput } from '@baishou/shared'
 import {
   type DisplayContextMessage,
   formatMessageWithPartsForChain
@@ -28,13 +29,16 @@ export const COMPACTION_SUMMARY_PREFIX = '[往期对话摘要压缩]'
 
 export type CallChainFlatEntry =
   | { kind: 'system-prompt'; item: DisplayContextMessage }
-  | { kind: 'compression-summary'; summaryText: string }
+  | { kind: 'compression-summary'; summaryText: string; reasoningText?: string; thoughtDurationMs?: number; summaryDurationMs?: number }
   | { kind: 'round-header'; roundIndex: number }
   | { kind: 'message'; item: DisplayContextMessage; roundIndex: number }
 
 export interface CallChainViewModel {
   systemPrompt: string
   compressionSummary?: string
+  compressionReasoning?: string
+  thoughtDurationMs?: number
+  summaryDurationMs?: number
   rounds: CallChainRound[]
   flatEntries: CallChainFlatEntry[]
   activeRoundIndex: number
@@ -62,7 +66,7 @@ export function extractCompactionSummaryText(content: string): string {
   if (rest.startsWith('：') || rest.startsWith(':')) {
     rest = rest.slice(1).trim()
   }
-  return rest
+  return normalizeCompressionOutput(rest, '').summaryText
 }
 
 /** 从调用链中拆出系统提示词、压缩摘要、压缩点之后的对话项 */
@@ -144,6 +148,9 @@ export function buildPostCompactionDisplayHistory(
 function buildFlatEntries(
   systemPrompt: string,
   compressionSummary: string | undefined,
+  compressionReasoning: string | undefined,
+  thoughtDurationMs: number | undefined,
+  summaryDurationMs: number | undefined,
   rounds: CallChainRound[]
 ): CallChainFlatEntry[] {
   const entries: CallChainFlatEntry[] = []
@@ -162,7 +169,10 @@ function buildFlatEntries(
   if (compressionSummary?.trim()) {
     entries.push({
       kind: 'compression-summary',
-      summaryText: compressionSummary.trim()
+      summaryText: compressionSummary.trim(),
+      reasoningText: compressionReasoning?.trim() || undefined,
+      thoughtDurationMs,
+      summaryDurationMs
     })
   }
 
@@ -274,6 +284,9 @@ export function buildCallChainViewModel(params: {
     costMicros?: number
   }>
   compressionSummary?: string
+  compressionReasoning?: string
+  thoughtDurationMs?: number
+  summaryDurationMs?: number
   compactionCutoffOrderIndex?: number
   /** 与发给模型一致的窗口消息（含快照注入），用于按锚点切分轮次 */
   windowMessages?: MessageWithParts[]
@@ -281,6 +294,7 @@ export function buildCallChainViewModel(params: {
   const { inlineCompactionSummary } = splitChainForCallChainView(params.chain)
   const compressionSummary =
     params.compressionSummary?.trim() || inlineCompactionSummary?.trim() || undefined
+  const compressionReasoning = params.compressionReasoning?.trim() || undefined
 
   const historyForRounds = params.windowMessages?.length
     ? buildPostCompactionDisplayHistory(
@@ -290,7 +304,14 @@ export function buildCallChainViewModel(params: {
     : splitChainForCallChainView(params.chain).historyAfterCompaction
 
   const rounds = groupChainIntoRounds(historyForRounds)
-  const flatEntries = buildFlatEntries(params.systemPrompt, compressionSummary, rounds)
+  const flatEntries = buildFlatEntries(
+    params.systemPrompt,
+    compressionSummary,
+    compressionReasoning,
+    params.thoughtDurationMs,
+    params.summaryDurationMs,
+    rounds
+  )
 
   const contextText = [
     params.systemPrompt,
@@ -307,6 +328,9 @@ export function buildCallChainViewModel(params: {
   return {
     systemPrompt: params.systemPrompt,
     compressionSummary,
+    compressionReasoning,
+    thoughtDurationMs: params.thoughtDurationMs,
+    summaryDurationMs: params.summaryDurationMs,
     rounds,
     flatEntries,
     activeRoundIndex: resolveActiveRoundIndex(
