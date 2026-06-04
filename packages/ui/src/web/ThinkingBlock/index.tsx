@@ -55,6 +55,16 @@ export interface ThinkingBlockProps {
   defaultOpen?: boolean
   /** 流式时是否自动折叠，默认 true */
   autoCollapse?: boolean
+  /** 标题左侧图标，默认 ✨ */
+  headerIcon?: string
+  /** 进行中且尚无正文时仍显示（用于压缩等流式场景） */
+  forceVisible?: boolean
+  /** 进行中标题文案；不传则使用思考相关 i18n */
+  activeStatusLabel?: string
+  /** 完成后标题文案；不传则使用思考相关 i18n */
+  completedStatusLabel?: string
+  /** 流式进行中、尚无正文时的占位提示 */
+  streamingPlaceholder?: string
 }
 
 export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
@@ -62,7 +72,12 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   isThinking = false,
   thinkingTimeMs = 0,
   defaultOpen = false,
-  autoCollapse = true
+  autoCollapse = true,
+  headerIcon = '✨',
+  forceVisible = false,
+  activeStatusLabel,
+  completedStatusLabel,
+  streamingPlaceholder
 }) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -113,17 +128,32 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   // 状态文本
   const statusText = useMemo(() => {
     if (isThinking) {
+      if (activeStatusLabel) {
+        return `${activeStatusLabel} · ${timeText}`
+      }
       return t('agent.chat.thinking_time', '思考中 {{time}}', {
         time: timeText
       })
     }
     if (displayTime > 0) {
+      if (completedStatusLabel) {
+        if (completedStatusLabel.includes('{{time}}')) {
+          return completedStatusLabel.replace('{{time}}', timeText)
+        }
+        return `${completedStatusLabel} · ${timeText}`
+      }
       return t('agent.chat.thought_time', '思考耗时 {{time}}', {
         time: timeText
       })
     }
+    if (completedStatusLabel) {
+      if (completedStatusLabel.includes('{{time}}')) {
+        return completedStatusLabel.replace('{{time}}', '').replace(/ ·\s*$/, '').trim()
+      }
+      return completedStatusLabel
+    }
     return t('agent.chat.thought_process', '思考过程')
-  }, [isThinking, displayTime, timeText, t])
+  }, [isThinking, displayTime, timeText, t, activeStatusLabel, completedStatusLabel])
 
   // 获取预览行
   const previewLines = useMemo(() => {
@@ -145,7 +175,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   // 规范化后的完整内容
   const normalizedContent = useMemo(() => normalizeCJKSpacing(content), [content])
 
-  if (!content) return null
+  if (!content && !(forceVisible && isThinking)) return null
 
   const handleToggle = () => setIsOpen((prev) => !prev)
 
@@ -158,7 +188,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     >
       <div className={shared.header} onClick={handleToggle}>
         <div className={shared.headerIcon}>
-          <span className={styles.sparkle}>✨</span>
+          <span className={styles.sparkle}>{headerIcon}</span>
         </div>
 
         <span className={shared.headerTitle}>{statusText}</span>
@@ -168,10 +198,17 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         </div>
       </div>
 
+      {(content || isOpen || (forceVisible && isThinking)) && (
       <div className={shared.contentWrap}>
         <div className={shared.contentInner}>
           <div className={styles.content}>
-            {showCollapsedPreview ? (
+            {!content && isThinking && streamingPlaceholder ? (
+              <div className={styles.previewContainer} style={{ height: 38 }}>
+                <div className={`${styles.previewScroll} ${styles.previewWaiting}`}>
+                  {streamingPlaceholder}
+                </div>
+              </div>
+            ) : showCollapsedPreview ? (
               // 折叠态：显示预览行
               <div className={styles.previewContainer} style={{ height: previewHeight }}>
                 <div className={styles.previewScroll}>
@@ -187,11 +224,12 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
               </div>
             ) : (
               // 展开态/思考完成：支持完整 Markdown 渲染，保证排版美观且支持代码、公式与列表
-              <MarkdownRenderer content={content} />
+              <MarkdownRenderer content={normalizedContent} isStreaming={isThinking} />
             )}
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

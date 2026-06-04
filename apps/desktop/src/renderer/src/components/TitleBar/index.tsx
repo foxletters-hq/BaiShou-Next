@@ -153,6 +153,7 @@ export const TitleBar: React.FC = () => {
     setIsSwitchingVault(true)
     try {
       await (window as any).api?.vault?.switchActive(vaultName)
+      await (window as any).api?.vault?.waitForResync?.()
       setShowVaultMenu(false)
       window.location.reload()
     } catch (e) {

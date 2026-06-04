@@ -611,3 +611,21 @@
   color: var(--text-tertiary);
   font-size: 13px;
 }
+
+.gmp-sections-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 8px 16px;
+  margin-top: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.gmp-sections-container > .gmp-collapsible-section {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 0;
+}
+
+.gmp-sections-container > .gmp-collapsible-section:last-child {
+  border-bottom: none;
+}

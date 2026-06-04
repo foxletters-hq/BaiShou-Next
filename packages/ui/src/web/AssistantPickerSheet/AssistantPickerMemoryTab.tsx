@@ -19,6 +19,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
     editingCompressSystemPrompt,
     setEditingCompressSystemPrompt,
     saveConfig,
+    isSaving,
     i18n
   } = vm
   return (
@@ -283,7 +284,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               <HelpTooltip
                 content={t(
                   'agent.assistant.compress_system_prompt_desc',
-                  '生成对话压缩摘要时发给模型的系统指令。留空或使用「恢复默认」将按当前界面语言使用内置默认稿。'
+                  '生成对话压缩摘要时使用的系统提示词，与摘要模板一样支持多语言。所有规则写在此提示词中；未保存自定义内容前可「恢复默认」。'
                 )}
               />
               <div style={{ flex: 1 }} />
@@ -300,7 +301,6 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
                 onClick={() => {
                   const def = getDefaultCompressionSystemPrompt(i18n.language)
                   setEditingCompressSystemPrompt(def)
-                  saveConfig({ compressSystemPrompt: def })
                 }}
               >
                 {t('agent.assistant.compress_system_prompt_reset', '恢复默认')}
@@ -311,15 +311,39 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               rows={8}
               value={editingCompressSystemPrompt}
               onChange={(e) => setEditingCompressSystemPrompt(e.target.value)}
-              onBlur={(e) => {
-                const next = e.target.value
-                setEditingCompressSystemPrompt(next)
-                void saveConfig({
-                  compressSystemPrompt: editingCompressEnabled ? next.trim() || null : null
-                })
-              }}
               spellCheck={false}
             />
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginTop: 8
+              }}
+            >
+              <button
+                type="button"
+                disabled={isSaving}
+                style={{
+                  fontSize: 13,
+                  padding: '6px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  background: 'var(--color-primary)',
+                  color: 'var(--color-on-primary, #fff)',
+                  opacity: isSaving ? 0.6 : 1
+                }}
+                onClick={() => {
+                  void saveConfig({
+                    compressSystemPrompt: editingCompressEnabled
+                      ? editingCompressSystemPrompt.trim() || null
+                      : null
+                  })
+                }}
+              >
+                {t('common.save', '保存')}
+              </button>
+            </div>
           </>
         )}
       </div>

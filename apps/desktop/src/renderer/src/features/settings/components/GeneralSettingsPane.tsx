@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useUserProfileStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,6 +17,7 @@ import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from '@baishou/shared'
 import baishouHeroImg from '../../../assets/images/BaiShou-v0.0.1.jpeg'
 
 export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const archiveLocale = settings.locale === 'system' ? i18n.language : settings.locale
   const { profile, loadProfile } = useUserProfileStore() as any
@@ -137,6 +139,7 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
           onSwitch={async (id) => {
             if (id === activeVault?.name) return
             await (window as any).api?.vault?.switchActive(id)
+            await (window as any).api?.vault?.waitForResync?.()
             window.location.reload()
           }}
           onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
@@ -204,6 +207,7 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
           heroImageSrc={baishouHeroImg}
           onOpenGithubRepo={() => window.api.shell.openExternal(GITHUB_REPO_URL)}
           onOpenFeedback={() => window.api.shell.openExternal(GITHUB_ISSUES_URL)}
+          onOpenCompressionTestSession={(sessionId) => navigate(`/chat/${sessionId}`)}
         />
       </div>
     </div>

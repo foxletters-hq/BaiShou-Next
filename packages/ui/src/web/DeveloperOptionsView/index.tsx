@@ -1,15 +1,23 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdScience, MdDeleteForever, MdStorage, MdChevronRight } from 'react-icons/md'
+import { MdScience, MdDeleteForever, MdStorage, MdChevronRight, MdChat } from 'react-icons/md'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 
-export const DeveloperOptionsView: React.FC = () => {
+export interface DeveloperOptionsViewProps {
+  /** 注入压缩测试会话后跳转到对应对话页（桌面端传入） */
+  onOpenCompressionTestSession?: (sessionId: string) => void
+}
+
+export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
+  onOpenCompressionTestSession
+}) => {
   const { t } = useTranslation()
   const { alert, confirm } = useDialog()
   const [isClearing, setIsClearing] = useState(false)
   const [isLoadingDemo, setIsLoadingDemo] = useState(false)
   const [isClearingAgent, setIsClearingAgent] = useState(false)
+  const [isInsertingCompressionTest, setIsInsertingCompressionTest] = useState(false)
   const toast = useToast()
 
   const handleLoadDemoData = async () => {
@@ -55,6 +63,40 @@ export const DeveloperOptionsView: React.FC = () => {
     } catch (e: any) {
       await alert(t('developer.clear_failed', '清理失败: ') + e.message, t('common.error', '错误'))
       setIsClearing(false)
+    }
+  }
+
+  const handleInsertCompressionTestSession = async () => {
+    setIsInsertingCompressionTest(true)
+    try {
+      if (typeof window !== 'undefined' && (window as any).electron) {
+        const result = await (window as any).electron.ipcRenderer.invoke(
+          'developer:insert-compression-test-session'
+        )
+        const sessionId = result?.sessionId as string | undefined
+        const rounds = result?.roundCount ?? 15
+        const tokens = result?.estimatedContextTokens ?? 0
+        const threshold = result?.compressTokenThreshold ?? 0
+        toast.showSuccess(
+          t(
+            'developer.insert_compression_test_success',
+            threshold > 0
+              ? '已创建压缩测试对话（{{rounds}} 轮，约 {{tokens}} tokens，伙伴阈值 {{threshold}}）'
+              : '已创建压缩测试对话（{{rounds}} 轮，约 {{tokens}} tokens；伙伴未启用压缩阈值）',
+            { rounds, tokens, threshold }
+          )
+        )
+        if (sessionId && onOpenCompressionTestSession) {
+          onOpenCompressionTestSession(sessionId)
+        }
+      }
+    } catch (e: any) {
+      await alert(
+        t('developer.insert_compression_test_failed', '注入失败: ') + e.message,
+        t('common.error', '错误')
+      )
+    } finally {
+      setIsInsertingCompressionTest(false)
     }
   }
 
@@ -119,6 +161,50 @@ export const DeveloperOptionsView: React.FC = () => {
             </div>
           </div>
           {isLoadingDemo ? (
+            <div
+              className="loading-spinner"
+              style={{
+                width: 24,
+                height: 24,
+                borderTopColor: 'var(--color-primary)'
+              }}
+            />
+          ) : (
+            <MdChevronRight style={{ fontSize: 24, opacity: 0.5 }} />
+          )}
+        </div>
+
+        <div style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.05)' }} />
+
+        <div
+          className="settings-action-item"
+          onClick={isInsertingCompressionTest ? undefined : handleInsertCompressionTestSession}
+          style={{
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            cursor: isInsertingCompressionTest ? 'default' : 'pointer'
+          }}
+        >
+          <MdChat
+            style={{
+              fontSize: 24,
+              marginRight: 16,
+              color: 'var(--color-primary)'
+            }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+              {t('developer.insert_compression_test', '注入压缩测试对话')}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+              {t(
+                'developer.insert_compression_test_desc',
+                '新建一条含 15 轮、约 3 万 tokens 的模拟 AI 对话（含工具调用），用于测试滚动压缩。'
+              )}
+            </div>
+          </div>
+          {isInsertingCompressionTest ? (
             <div
               className="loading-spinner"
               style={{

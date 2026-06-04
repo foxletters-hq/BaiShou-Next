@@ -10,12 +10,20 @@ export const MainLayout: React.FC = () => {
   const cacheKey = getMainPageCacheKey(location.pathname)
   const showOutlet = cacheKey === null
 
+  // 当处于日记编辑或总结详情等二级子页面时，保持对应的缓存底座页面（如日记列表、总结列表）在背景挂载可见，防止黑屏或布局突变
+  let activeCacheKey = cacheKey
+  if (location.pathname.startsWith('/diary/')) {
+    activeCacheKey = '/diary'
+  } else if (location.pathname.startsWith('/summary/')) {
+    activeCacheKey = '/summary'
+  }
+
   return (
     <div className={styles.appContainer}>
       <div className={styles.mainContent}>
         <Sidebar />
         <div className={styles.pageContent}>
-          <MainPageCache activeKey={cacheKey} />
+          <MainPageCache activeKey={activeCacheKey} />
 
           <AnimatePresence mode="wait">
             {showOutlet && (

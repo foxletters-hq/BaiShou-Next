@@ -2,6 +2,10 @@ import { useState, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useAgentStore } from '@baishou/store'
+import {
+  reconcileCompressionStateAfterTruncate,
+  truncateSessionAfterOrderIndex
+} from '@baishou/ai'
 import { useBaishou } from '../providers/BaishouProvider'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { buildInsertSessionInput } from '../utils/session-input.util'
@@ -244,8 +248,13 @@ export function useAgentStream(
         if (userMessage.role !== 'user') return
 
         const dbUser = await services.sessionRepo.getMessageById(userMessage.id)
-        if (!dbUser) return
-        await services.sessionRepo.deleteMessagesAfter(currentSessionId, dbUser.orderIndex)
+        if (!dbUser || !services.snapshotRepo) return
+        await truncateSessionAfterOrderIndex(
+          services.sessionRepo,
+          services.snapshotRepo,
+          currentSessionId,
+          dbUser.orderIndex
+        )
         await reloadMessagesFromDb(currentSessionId)
 
         abortControllerRef.current = new AbortController()
@@ -352,6 +361,13 @@ export function useAgentStream(
             onPress: async () => {
               try {
                 await services.sessionRepo.deleteMessageAndFollowing(currentSessionId, messageId)
+                if (services.snapshotRepo) {
+                  await reconcileCompressionStateAfterTruncate(
+                    services.sessionRepo,
+                    services.snapshotRepo,
+                    currentSessionId
+                  )
+                }
                 await reloadMessagesFromDb(currentSessionId)
               } catch (e) {
                 console.error('Failed to delete message', e)

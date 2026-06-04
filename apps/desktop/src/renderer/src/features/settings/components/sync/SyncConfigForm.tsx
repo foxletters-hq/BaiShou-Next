@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Save, TestTube, Cloud, Globe, Settings } from 'lucide-react'
+import { Cloud, Globe, Settings } from 'lucide-react'
 import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { S3SyncForm } from './S3SyncForm'
@@ -256,14 +256,14 @@ export const SyncConfigForm: React.FC = () => {
 
       <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
         <button onClick={handleSaveConfig} style={actionButtonStyle}>
-          <Save size={14} /> {t('data_sync.save_config', 'Save Config')}
+          {t('data_sync.save_config', 'Save Config')}
         </button>
         <button
           onClick={handleTestConnection}
           disabled={status === 'connecting'}
           style={{ ...actionButtonStyle, opacity: status === 'connecting' ? 0.5 : 1 }}
         >
-          <TestTube size={14} /> {t('data_sync.test_connection', 'Test Connection')}
+          {t('data_sync.test_connection', 'Test Connection')}
         </button>
       </div>
 

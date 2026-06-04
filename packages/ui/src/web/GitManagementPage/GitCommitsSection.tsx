@@ -20,7 +20,6 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
     expandedFile,
     selectedFileDiff,
     handleRollbackAll,
-    handleRollback,
     pageSize,
     setPageSize,
     setPage,
@@ -103,15 +102,7 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
                                 <span className="gmp-tl-file-stats">
                                   +{change.additions} -{change.deletions}
                                 </span>
-                                <button
-                                  className="gmp-btn-small"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleRollback(change.path)
-                                  }}
-                                >
-                                  {t('version_control.rollback', '回滚')}
-                                </button>
+
                               </div>
 
                               {expandedFile === change.path && selectedFileDiff && (

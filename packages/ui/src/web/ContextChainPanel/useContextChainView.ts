@@ -280,6 +280,7 @@ export function useContextChainView({
     selected,
     compressionSelected,
     compressionSummaryText: compressionSummaryEntry?.summaryText?.trim() ?? '',
+    compressionReasoningText: compressionSummaryEntry?.reasoningText?.trim() ?? '',
     formatPreview,
     formatToolPreview,
     compressedContent,

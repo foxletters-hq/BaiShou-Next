@@ -58,9 +58,18 @@
 .messageList {
   flex: 1;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
+  scroll-snap-type: y proximity;
   display: flex;
   flex-direction: column;
+}
+
+.pageSnapAnchor {
+  flex-shrink: 0;
+  height: 1px;
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+  pointer-events: none;
 }
 
 .messageContent {
@@ -72,6 +81,14 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.compressionAnchor {
+  width: 100%;
+  max-width: min(800px, calc(100% - 60px));
+  margin: 0 auto 8px;
+  padding: 0 16px;
+  box-sizing: border-box;
 }
 
 .loadMoreBanner {

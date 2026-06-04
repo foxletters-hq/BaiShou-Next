@@ -45,10 +45,7 @@ export function useMessageActions({
       }
     }
     if (!userMsgId) return
-    const userMsgIndex = chat.messages.findIndex((m: any) => m.id === userMsgId)
-    if (userMsgIndex !== -1) {
-      chat.setMessages((prev: any[]) => prev.slice(0, userMsgIndex + 1))
-    }
+    chat.truncateMessages(userMsgId)
     chat.setStreamSessionId(sessionId)
     stream.resendChat(
       sessionId,
@@ -80,8 +77,7 @@ export function useMessageActions({
   /** 编辑后重发：截断消息列表并重新流式生成 */
   const handleResendEdit = async (msg: any, newContent: string) => {
     if (!sessionId || !newContent.trim()) return
-    const msgIndex = chat.messages.findIndex((m: any) => m.id === msg.id)
-    if (msgIndex !== -1) chat.setMessages((prev: any[]) => prev.slice(0, msgIndex + 1))
+    chat.truncateMessages(msg.id)
     chat.setStreamSessionId(sessionId)
     await stream.editChat(
       sessionId,
@@ -97,8 +93,7 @@ export function useMessageActions({
   /** 重发用户消息（不修改内容） */
   const handleResend = (msg: any) => {
     if (msg.role !== 'user' || !sessionId) return
-    const msgIndex = chat.messages.findIndex((m: any) => m.id === msg.id)
-    if (msgIndex !== -1) chat.setMessages((prev: any[]) => prev.slice(0, msgIndex + 1))
+    chat.truncateMessages(msg.id)
     chat.setStreamSessionId(sessionId)
     stream.resendChat(sessionId, msg.id, searchMode, model.currentProviderId, model.currentModelId)
   }

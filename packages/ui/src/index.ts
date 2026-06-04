@@ -83,6 +83,8 @@ export * from './web/VersionManager/index'
 // 聊天与Agent组件
 export * from './web/ChatBubble/index'
 export * from './web/StreamingBubble/index'
+export * from './web/CompressionDivider/index'
+export * from './web/CompressionActivityBar/index'
 export * from './web/ThinkingBlock/index'
 export * from './web/TokenBadge/index'
 export * from './web/ToolResultGroupCard/index'

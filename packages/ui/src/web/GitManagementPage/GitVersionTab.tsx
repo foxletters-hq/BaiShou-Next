@@ -28,10 +28,12 @@ export const GitVersionTab: React.FC<GitVersionTabProps> = ({ vm }) => {
       exit={{ opacity: 0, y: -10 }}
     >
       <GitVersionCommitBar vm={vm} />
-      <GitStagedSection vm={vm} />
-      <GitChangesSection vm={vm} />
-      <GitCommitsSection vm={vm} />
-      <GitRecentPullsSection vm={vm} />
+      <div className="gmp-sections-container">
+        <GitStagedSection vm={vm} />
+        <GitChangesSection vm={vm} />
+        <GitCommitsSection vm={vm} />
+        <GitRecentPullsSection vm={vm} />
+      </div>
       <GitConflictSection vm={vm} style={{ marginTop: 16 }} />
     </motion.div>
   )

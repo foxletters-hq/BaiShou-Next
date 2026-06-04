@@ -82,7 +82,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
             <span className={styles.titleIcon}>
               <ArrowLeftRight size={20} strokeWidth={2.5} />
             </span>
-            <span>{t('agent.switchModel', '切换心智核心')}</span>
+            <span>{t('agent.switchModel', '切换模型')}</span>
           </div>
         </div>
 

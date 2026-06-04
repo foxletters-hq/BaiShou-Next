@@ -105,6 +105,36 @@ export const AgentLayout: React.FC = () => {
     loadProfile()
   }, [fetchAssistants, loadConfig, loadProfile])
 
+  // Vault 切换后的后台 resync 完成时，刷新当前工作区的伙伴与会话列表
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electron) return undefined
+
+    const onVaultResyncComplete = (event: { type?: string }) => {
+      if (event?.type !== 'vault-resync-complete') return
+      resolvedAssistantIdRef.current = undefined
+      void fetchAssistants().then(() => {
+        const store = useAssistantStore.getState()
+        const ast = store.assistants.find((a: any) => a.isDefault) || store.assistants[0]
+        const astId = ast?.id != null ? String(ast.id) : undefined
+        if (astId) {
+          resolvedAssistantIdRef.current = astId
+          void loadSessions(true, astId)
+        } else {
+          void loadSessions(true)
+        }
+      })
+    }
+
+    const removeDiaryListener = window.electron.ipcRenderer.on(
+      'diary:sync-event',
+      onVaultResyncComplete
+    )
+
+    return () => {
+      removeDiaryListener()
+    }
+  }, [fetchAssistants, loadSessions])
+
   const currentAssistant = resolvedAssistantId
     ? assistants.find((a) => String(a.id) === String(resolvedAssistantId)) ||
       assistants.find((a) => a.isDefault)

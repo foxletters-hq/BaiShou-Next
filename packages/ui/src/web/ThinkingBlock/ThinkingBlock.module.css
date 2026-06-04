@@ -160,3 +160,11 @@
   margin-bottom: 4px;
   line-height: 1.6;
 }
+
+.previewWaiting {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  opacity: 0.8;
+  padding: 2px 0 4px;
+}

@@ -1,0 +1,36 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 8px 0 20px;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.2)) 70%, transparent) 20%,
+    color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.2)) 70%, transparent) 80%,
+    transparent
+  );
+  background-color: color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.18)) 100%, transparent);
+  min-width: 24px;
+}
+
+.label {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-on-surface-variant, rgba(255, 255, 255, 0.55));
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.15)) 100%, transparent);
+  background: color-mix(in srgb, var(--color-surface-container, rgba(255, 255, 255, 0.04)) 100%, transparent);
+  white-space: nowrap;
+}

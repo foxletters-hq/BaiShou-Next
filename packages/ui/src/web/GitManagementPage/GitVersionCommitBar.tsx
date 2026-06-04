@@ -1,4 +1,5 @@
 import React from 'react'
+import { MdRefresh } from 'react-icons/md'
 import type { GitManagementViewModel } from './useGitManagementPage'
 
 export interface GitVersionCommitBarProps {
@@ -40,6 +41,18 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
         disabled={!canCommit}
       >
         {t('version_control.commit_push', '提交并推送')}
+      </button>
+      <button
+        className="gmp-btn"
+        onClick={() => {
+          vm.handleLoadHistory()
+          vm.handleRefreshStatus()
+          vm.handleLoadRecentPulls()
+        }}
+        title={t('common.refresh', '刷新')}
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}
+      >
+        <MdRefresh size={18} />
       </button>
     </div>
   )

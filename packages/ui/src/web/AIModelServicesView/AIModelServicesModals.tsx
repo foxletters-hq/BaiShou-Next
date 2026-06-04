@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { MdArrowDropDown, MdClose, MdCloud } from 'react-icons/md'
+import { Search, Sparkles, Cpu, CheckCircle2, Blocks } from 'lucide-react'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 
@@ -9,6 +10,8 @@ export interface AIModelServicesModalsProps {
 }
 
 export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm }) => {
+  const [searchQuery, setSearchQuery] = useState('')
+
   const {
     t,
     isAddModalOpen,
@@ -27,8 +30,16 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
     testModelOptions,
     isTestModelDropdownOpen,
     setIsTestModelDropdownOpen,
-    confirmTestConnection
+    confirmTestConnection,
+    activeProviderMeta,
+    renderIcon
   } = vm
+
+  const filteredTestModels = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return testModelOptions
+    return testModelOptions.filter((m) => m && m.toLowerCase().includes(query))
+  }, [testModelOptions, searchQuery])
 
   return (
     <>
@@ -128,11 +139,17 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
       {isTestModalOpen &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={styles.addModalOverlay}>
-            <div className={styles.addModalContent}>
+          <div className={styles.testModalOverlay}>
+            <div className={styles.testModalContent}>
               <div className={styles.addModalHeader}>
                 <h3>{t('ai_config.test_connection_title', '选择测试模型')}</h3>
-                <button className={styles.closeBtn} onClick={() => setIsTestModalOpen(false)}>
+                <button
+                  className={styles.closeBtn}
+                  onClick={() => {
+                    setIsTestModalOpen(false)
+                    setSearchQuery('')
+                  }}
+                >
                   <MdClose size={20} />
                 </button>
               </div>
@@ -151,65 +168,80 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     '请选择要用来测试连接的模型。建议使用该供应商提供的体积小、速度快的免费模型进行测试。'
                   )}
                 </p>
-                <div className={styles.materialField}>
-                  <span className={styles.materialLabel}>
-                    {t('ai_config.model_id', 'Model ID')}
-                  </span>
-                  <div
-                    style={{ position: 'relative' }}
-                    className={styles.customSelectOuter}
-                    tabIndex={-1}
-                    onBlur={(e) => {
-                      // Check if new focus is inside the menu
-                      if (!e.currentTarget.contains(e.relatedTarget)) {
-                        setIsTestModelDropdownOpen(false)
-                      }
-                    }}
-                  >
+
+                {/* Search Box */}
+                <div className={styles.testSearchBox}>
+                  <div className={styles.testSearchInputWrapper}>
+                    <span className={styles.testSearchIcon}>
+                      <Search size={16} />
+                    </span>
                     <input
                       type="text"
-                      className={styles.addModalInput}
-                      placeholder={t('aiConfig.selectTestModel', '请选择测试模型')}
-                      value={testModelId}
-                      readOnly
-                      style={{ cursor: 'pointer', userSelect: 'none' }}
-                      onClick={() => setIsTestModelDropdownOpen(true)}
-                      onFocus={() => setIsTestModelDropdownOpen(true)}
+                      className={styles.testSearchInput}
+                      placeholder={t('common.search_model', '搜索模型...')}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
-                    <MdArrowDropDown
-                      size={20}
-                      style={{
-                        position: 'absolute',
-                        right: 12,
-                        top: 12,
-                        color: 'var(--color-text-secondary)',
-                        pointerEvents: 'none'
-                      }}
-                    />
-                    {isTestModelDropdownOpen && testModelOptions.length > 0 && (
-                      <div
-                        className={styles.customSelectMenu}
-                        style={{ maxHeight: 200, overflowY: 'auto' }}
-                      >
-                        {testModelOptions.map((m) => (
-                          <div
-                            key={m}
-                            className={styles.customSelectMenuItem}
-                            onClick={() => {
-                              setTestModelId(m)
-                              setIsTestModelDropdownOpen(false)
-                            }}
-                          >
-                            {m}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
+                </div>
+
+                {/* Model List Container */}
+                <div className={styles.testListContainer}>
+                  {filteredTestModels.length === 0 ? (
+                    <div className={styles.testEmptyState}>
+                      <Sparkles size={32} style={{ opacity: 0.3 }} />
+                      <span>{t('agent.noMatchModel', '未发现可搭载的模型')}</span>
+                    </div>
+                  ) : (
+                    <div className={styles.testProviderGroup}>
+                      <div className={styles.testProviderHeader}>
+                        <div className={styles.testProviderIconPlaceholder}>
+                          {activeProviderMeta ? renderIcon(activeProviderMeta.iconUrl) : <Blocks size={14} />}
+                        </div>
+                        <span className={styles.testProviderName}>
+                          {activeProviderMeta?.name || 'UNKNOWN PROVIDER'}
+                        </span>
+                        <span className={styles.testModelCountBadge}>
+                          {filteredTestModels.length}
+                        </span>
+                      </div>
+
+                      <div className={styles.testModelList}>
+                        {filteredTestModels.map((m) => {
+                          const isSelected = m === testModelId
+                          return (
+                            <div
+                              key={m}
+                              className={`${styles.testModelItem} ${isSelected ? styles.testModelItemSelected : ''}`}
+                              onClick={() => setTestModelId(m)}
+                            >
+                              <div className={styles.testModelItemIcon}>
+                                {activeProviderMeta ? renderIcon(activeProviderMeta.iconUrl) : <Blocks size={14} />}
+                              </div>
+                              <div className={styles.testModelItemCenter}>
+                                <span className={styles.testModelItemName}>{m}</span>
+                              </div>
+                              {isSelected && (
+                                <div className={styles.testCheckIcon}>
+                                  <CheckCircle2 size={18} strokeWidth={2.5} />
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className={styles.addModalFooter}>
-                <button className={styles.addModalCancel} onClick={() => setIsTestModalOpen(false)}>
+                <button
+                  className={styles.addModalCancel}
+                  onClick={() => {
+                    setIsTestModalOpen(false)
+                    setSearchQuery('')
+                  }}
+                >
                   {t('common.cancel', '取消')}
                 </button>
                 <button className={styles.addModalConfirm} onClick={confirmTestConnection}>
