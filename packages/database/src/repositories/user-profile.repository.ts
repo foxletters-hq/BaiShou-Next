@@ -1,12 +1,17 @@
 import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
-import type { UserProfile } from '@baishou/shared'
+import { USER_DEFAULT_AVATAR_SENTINEL, isCustomUserAvatar, type UserProfile } from '@baishou/shared'
 
 const KEY = 'user_profile_data'
 
+function withNormalizedAvatar(profile: UserProfile): UserProfile {
+  if (isCustomUserAvatar(profile.avatarPath)) return profile
+  return { ...profile, avatarPath: USER_DEFAULT_AVATAR_SENTINEL }
+}
+
 export const DEFAULT_PROFILE: UserProfile = {
   nickname: '白守用户', // t.settings.default_nickname
-  avatarPath: null,
+  avatarPath: USER_DEFAULT_AVATAR_SENTINEL,
   activePersonaId: '默认身份卡', // t.settings.default_identity
   personas: {
     默认身份卡: {
@@ -32,14 +37,14 @@ export class UserProfileRepository {
       .limit(1)
 
     if (result.length === 0) {
-      return DEFAULT_PROFILE
+      return withNormalizedAvatar(DEFAULT_PROFILE)
     }
 
     try {
-      return JSON.parse(result[0].value) as UserProfile
+      return withNormalizedAvatar(JSON.parse(result[0].value) as UserProfile)
     } catch (e) {
       console.error(`[UserProfileRepository] Failed to parse: ${e}`)
-      return DEFAULT_PROFILE
+      return withNormalizedAvatar(DEFAULT_PROFILE)
     }
   }
 

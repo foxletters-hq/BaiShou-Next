@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
+import { isCustomUserAvatar, resolveWebUserAvatarSrc } from '../user-avatar.util'
 
 export interface NavItem {
   id: string
@@ -108,11 +109,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Footer / User Profile */}
       <div className={styles.footer}>
         <div className={styles.avatar}>
-          {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="Avatar" />
-          ) : (
-            <span>{user?.nickname ? user.nickname[0].toUpperCase() : 'U'}</span>
-          )}
+          <img
+            src={
+              isCustomUserAvatar(user?.avatarUrl)
+                ? user!.avatarUrl!
+                : resolveWebUserAvatarSrc(user?.avatarUrl)
+            }
+            alt="Avatar"
+          />
         </div>
         <div className={styles.userInfo}>
           <span className={styles.nickname}>

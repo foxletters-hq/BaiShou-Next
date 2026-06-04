@@ -21,6 +21,7 @@ import { RefreshCw, FolderArchive } from 'lucide-react'
 import { useUserProfileStore } from '@baishou/store'
 import { useToast } from '@baishou/ui'
 import appIcon from '@baishou/shared/assets/images/icon.png'
+import { isCustomUserAvatar } from '@baishou/shared'
 import {
   DEFAULT_NAV_IDS,
   isSidebarVisibilityConfigured,
@@ -357,27 +358,25 @@ export const Sidebar: React.FC = () => {
 
       <div className={styles.userCard}>
         <div className={styles.avatar}>
-          {profile?.avatarPath && profile.avatarPath !== 'default' ? (
-            <img
-              src={
-                profile.avatarPath.startsWith('http') ||
-                profile.avatarPath.startsWith('data:') ||
-                profile.avatarPath.startsWith('local://')
+          <img
+            src={
+              isCustomUserAvatar(profile?.avatarPath)
+                ? profile!.avatarPath!.startsWith('http') ||
+                  profile.avatarPath.startsWith('data:') ||
+                  profile.avatarPath.startsWith('local://')
                   ? profile.avatarPath
                   : `local://${profile.avatarPath}`
-              }
-              alt="avatar"
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                backgroundColor: 'transparent'
-              }}
-            />
-          ) : (
-            (profile?.nickname || 'U').charAt(0).toUpperCase()
-          )}
+                : appIcon
+            }
+            alt="avatar"
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              backgroundColor: 'transparent'
+            }}
+          />
         </div>
         <div className={styles.userInfo}>
           <div className={styles.userName}>

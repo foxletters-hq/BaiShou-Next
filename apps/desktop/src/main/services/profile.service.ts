@@ -1,5 +1,6 @@
 import { dialog } from 'electron'
 import { AttachmentManagerService } from '@baishou/core-desktop'
+import { USER_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
 import { DesktopStoragePathService } from './path.service'
 
 /**
@@ -59,7 +60,7 @@ export class ProfileService {
         profile.avatarPath = await this.attachmentManager.resolveAvatarPath(profile.avatarPath)
       } catch (e: any) {
         if (e instanceof Error && e.message === 'AVATAR_FILE_NOT_FOUND') {
-          profile.avatarPath = null
+          profile.avatarPath = USER_DEFAULT_AVATAR_SENTINEL
           profile.avatarFileMissing = true
         }
       }

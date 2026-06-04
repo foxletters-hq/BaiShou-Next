@@ -5,7 +5,7 @@ import { UserProfile } from '@baishou/shared'
 describe('useUserProfileStore', () => {
   const mockBaseProfile: UserProfile = {
     nickname: 'TestUser',
-    avatarPath: null,
+    avatarPath: 'default',
     activePersonaId: 'P1',
     personas: {
       P1: { id: 'P1', facts: { Role: 'Dev' } }
