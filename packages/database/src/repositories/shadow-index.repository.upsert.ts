@@ -36,21 +36,6 @@ function trackAssignedId(maps: IdPathMaps, filePath: string, rowId: number): voi
   maps.pathById.set(rowId, normalizedPath)
 }
 
-function isPrimaryKeyConflict(error: unknown): boolean {
-  let cause: unknown = error
-  while (cause != null && typeof cause === 'object') {
-    const current = cause as { code?: string; message?: string; cause?: unknown }
-    if (
-      current.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
-      current.message?.includes('UNIQUE constraint failed: journals_index.id')
-    ) {
-      return true
-    }
-    cause = current.cause
-  }
-  return false
-}
-
 async function loadIdPathMaps(database: UpsertDb): Promise<IdPathMaps> {
   const existing = await database
     .select({
@@ -95,7 +80,11 @@ function syncFtsRowSync(
       sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${segmentChinese(rawContent)}, ${segmentChinese(tags)})`
     )
   } catch (e: any) {
-    console.warn(`[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]:`, e.message)
+    console.warn(
+      `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]:`,
+      e?.message,
+      e?.cause?.message ?? e?.cause ?? ''
+    )
   }
 }
 
@@ -112,7 +101,7 @@ async function syncFtsRowAsync(
       sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${segmentChinese(rawContent)}, ${segmentChinese(tags)})`
     )
   } catch (e: any) {
-    console.warn(`${logPrefix}:`, e.message)
+    console.warn(`${logPrefix}:`, e?.message, e?.cause?.message ?? e?.cause ?? '')
   }
 }
 
@@ -150,37 +139,28 @@ async function upsertOne(
     tags
   }
 
-  try {
-    const result = await db
-      .insert(shadowJournalIndexTable)
-      .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
-      .returning({ id: shadowJournalIndexTable.id })
+  // 关键：用 ON CONFLICT (id) DO UPDATE 原子处理 PK 冲突。
+  // 之前用 try/catch + 第二次 INSERT 会在 SQLite 事务中产生
+  // "Failed to run the query 'commit'"：一旦首条 INSERT 失败，
+  // 整个事务进入 needs-rollback 状态，即便异常被 catch 接住，
+  // 事务也已经中毒，后续 COMMIT 必然失败。
+  // ON CONFLICT 是单条原子语句，根本不会让事务中毒。
+  const result = await db
+    .insert(shadowJournalIndexTable)
+    .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
+    .onConflictDoUpdate({
+      target: shadowJournalIndexTable.id,
+      set: buildUpsertSet(indexData, rawContent, tags)
+    })
+    .returning({ id: shadowJournalIndexTable.id })
 
-    const rowId = result[0]?.id
-    if (rowId == null) {
-      throw new Error('[ShadowIndex] insert 返回了空 ID')
-    }
-
-    trackAssignedId(maps, filePath, rowId)
-    return rowId
-  } catch (error) {
-    if (insertId == null || !isPrimaryKeyConflict(error)) {
-      throw error
-    }
-
-    const result = await db
-      .insert(shadowJournalIndexTable)
-      .values(baseValues)
-      .returning({ id: shadowJournalIndexTable.id })
-
-    const rowId = result[0]?.id
-    if (rowId == null) {
-      throw new Error('[ShadowIndex] insert 返回了空 ID')
-    }
-
-    trackAssignedId(maps, filePath, rowId)
-    return rowId
+  const rowId = result[0]?.id
+  if (rowId == null) {
+    throw new Error('[ShadowIndex] insert 返回了空 ID')
   }
+
+  trackAssignedId(maps, filePath, rowId)
+  return rowId
 }
 
 function upsertOneSync(
@@ -217,39 +197,26 @@ function upsertOneSync(
     tags
   }
 
-  try {
-    const result = tx
-      .insert(shadowJournalIndexTable)
-      .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
-      .returning({ id: shadowJournalIndexTable.id })
-      .all() as any
+  // 关键：用 ON CONFLICT (id) DO UPDATE 原子处理 PK 冲突。
+  // 同步版本（better-sqlite3）同样不能在事务中吞掉 INSERT 异常后
+  // 再发第二条语句——SQLite 事务已经中毒，commit 必然挂。
+  const result = tx
+    .insert(shadowJournalIndexTable)
+    .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
+    .onConflictDoUpdate({
+      target: shadowJournalIndexTable.id,
+      set: buildUpsertSet(indexData, rawContent, tags)
+    })
+    .returning({ id: shadowJournalIndexTable.id })
+    .all() as any
 
-    const rowId = result[0]?.id
-    if (rowId == null) {
-      throw new Error('[ShadowIndex] insert 返回了空 ID')
-    }
-
-    trackAssignedId(maps, filePath, rowId)
-    return rowId
-  } catch (error) {
-    if (insertId == null || !isPrimaryKeyConflict(error)) {
-      throw error
-    }
-
-    const result = tx
-      .insert(shadowJournalIndexTable)
-      .values(baseValues)
-      .returning({ id: shadowJournalIndexTable.id })
-      .all() as any
-
-    const rowId = result[0]?.id
-    if (rowId == null) {
-      throw new Error('[ShadowIndex] insert 返回了空 ID')
-    }
-
-    trackAssignedId(maps, filePath, rowId)
-    return rowId
+  const rowId = result[0]?.id
+  if (rowId == null) {
+    throw new Error('[ShadowIndex] insert 返回了空 ID')
   }
+
+  trackAssignedId(maps, filePath, rowId)
+  return rowId
 }
 
 export class ShadowIndexUpsertOps {
@@ -276,28 +243,42 @@ export class ShadowIndexUpsertOps {
     const rowIds: number[] = []
     const isBetterSqlite = (this.database as any).session?.client?.prepare !== undefined
 
+    // 关键：FTS 同步必须在主事务 COMMIT 之后执行。
+    // SQLite 在事务内任一语句失败后会把整个事务置为 needs-rollback 状态，
+    // 即便用 try/catch 接住异常，事务也已经中毒，后续 COMMIT 必然失败。
+    // 把 FTS 挪到事务外（自带 try/catch 兜底）就能让索引写入与 FTS 同步真正解耦，
+    // FTS 不可用（最常见于 Android 系统 SQLite 未编译 FTS5）也不会影响保存。
     if (isBetterSqlite) {
       await (this.database as any).transaction((tx: any) => {
         for (const payload of payloads) {
           const rowId = upsertOneSync(tx, payload, maps)
           rowIds.push(rowId)
-          syncFtsRowSync(tx, rowId, payload.rawContent, payload.tags)
         }
       })
+      for (let i = 0; i < payloads.length; i++) {
+        syncFtsRowSync(
+          this.database as any,
+          rowIds[i]!,
+          payloads[i]!.rawContent,
+          payloads[i]!.tags
+        )
+      }
     } else {
       await this.database.transaction(async (tx) => {
         for (const payload of payloads) {
           const rowId = await upsertOne(tx, payload, maps)
           rowIds.push(rowId)
-          await syncFtsRowAsync(
-            tx,
-            rowId,
-            payload.rawContent,
-            payload.tags,
-            `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowId}]`
-          )
         }
       })
+      for (let i = 0; i < payloads.length; i++) {
+        await syncFtsRowAsync(
+          this.database,
+          rowIds[i]!,
+          payloads[i]!.rawContent,
+          payloads[i]!.tags,
+          `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowIds[i]!}]`
+        )
+      }
     }
 
     return rowIds
@@ -309,7 +290,7 @@ export class ShadowIndexUpsertOps {
     try {
       await this.database.run(sql`DELETE FROM journals_fts WHERE rowid = ${id}`)
     } catch (e: any) {
-      console.warn('[ShadowIndex] FTS 删除失败 (非阻塞):', e.message)
+      console.warn('[ShadowIndex] FTS 删除失败 (非阻塞):', e?.message, e?.cause?.message ?? e?.cause ?? '')
     }
   }
 }
