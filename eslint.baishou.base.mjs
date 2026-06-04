@@ -6,7 +6,7 @@ import { defineConfig } from 'eslint/config'
 import tseslint from '@electron-toolkit/eslint-config-ts'
 import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
-import i18nChineseRule from './scripts/eslint-plugin-i18n-chinese.js'
+import i18nChineseRule from './scripts/eslint-plugin-i18n-chinese.mjs'
 
 const sharedIgnores = [
   '**/node_modules',
