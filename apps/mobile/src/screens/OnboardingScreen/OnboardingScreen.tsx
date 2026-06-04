@@ -5,14 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
-  TextInput
+  Dimensions
 } from 'react-native'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, Input } from '@baishou/ui/native'
 import { ProviderType, type AiProviderModel } from '@baishou/shared'
 import { CompressionChart } from '../../components/CompressionChart'
 import { ONBOARDING_STORAGE_KEY } from '../../constants/storage'
@@ -156,19 +155,10 @@ export const OnboardingScreen: React.FC = () => {
           <Text style={[styles.apiKeyLabel, { color: colors.textPrimary }]}>
             {t('onboarding.api_key_label')}
           </Text>
-          <TextInput
-            style={[
-              styles.apiKeyInput,
-              {
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle,
-                backgroundColor: colors.bgSurfaceHighest
-              }
-            ]}
+          <Input
             value={apiKey}
             onChangeText={setApiKey}
             placeholder={t('onboarding.api_key_hint')}
-            placeholderTextColor={colors.textTertiary}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
@@ -381,13 +371,6 @@ const styles = StyleSheet.create({
   apiKeyLabel: {
     fontSize: 15,
     fontWeight: '600'
-  },
-  apiKeyInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16
   },
   secondaryButton: {
     paddingVertical: 14,

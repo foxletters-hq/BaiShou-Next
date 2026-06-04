@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Modal,
@@ -13,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { WEATHER_IDS, weatherI18nKey, type WeatherId } from '@baishou/shared'
-import { YearMonthPicker, useNativeTheme, WeatherEmoji } from '@baishou/ui/native'
+import { YearMonthPicker, useNativeTheme, WeatherEmoji, Input } from '@baishou/ui/native'
 
 export interface DiaryAppBarProps {
   searchQuery: string
@@ -77,10 +76,9 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
         <View style={styles.searchRow}>
           <View style={[styles.searchWrapper, { backgroundColor: colors.bgSurfaceNormal }]}>
             <MaterialIcons name="search" size={18} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.textPrimary }]}
+            <Input
+              style={styles.searchInput}
               placeholder={t('common.search_hint')}
-              placeholderTextColor={colors.textTertiary}
               value={searchQuery}
               onChangeText={onSearchChange}
               autoFocus
@@ -315,8 +313,10 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    paddingVertical: 0
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingHorizontal: 0,
+    minHeight: 0
   },
   iconBtn: {
     width: 36,

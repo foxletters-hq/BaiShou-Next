@@ -14,7 +14,8 @@ export interface SettingsSliderRowProps {
   formatValue?: (v: number) => string
 }
 
-/** 对齐桌面 WebSearchSettingsView：较粗轨道 + 右侧数值块 */
+const TRACK_HEIGHT = 6
+
 export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
   title,
   description,
@@ -27,6 +28,7 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
 }) => {
   const { colors } = useNativeTheme()
   const display = formatValue(value)
+  const pct = ((value - min) / (max - min)) * 100
 
   return (
     <View style={styles.block}>
@@ -39,17 +41,36 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
         </View>
       </View>
       <View style={styles.controlRow}>
-        <Slider
-          style={styles.slider}
-          minimumValue={min}
-          maximumValue={max}
-          step={step}
-          value={value}
-          onValueChange={(v) => onChange(step >= 1 ? Math.round(v) : v)}
-          minimumTrackTintColor={colors.primary}
-          maximumTrackTintColor={colors.bgSurfaceNormal}
-          thumbTintColor={colors.primary}
-        />
+        <View style={styles.sliderWrap}>
+          <View
+            style={[
+              styles.trackBase,
+              { height: TRACK_HEIGHT, borderRadius: TRACK_HEIGHT / 2, backgroundColor: colors.bgSurfaceNormal }
+            ]}
+          />
+          <View
+            style={[
+              styles.trackActive,
+              {
+                height: TRACK_HEIGHT,
+                borderRadius: TRACK_HEIGHT / 2,
+                backgroundColor: colors.primary,
+                width: `${pct}%`
+              }
+            ]}
+          />
+          <Slider
+            style={styles.slider}
+            minimumValue={min}
+            maximumValue={max}
+            step={step}
+            value={value}
+            onValueChange={(v) => onChange(step >= 1 ? Math.round(v) : v)}
+            minimumTrackTintColor="transparent"
+            maximumTrackTintColor="transparent"
+            thumbTintColor={colors.primary}
+          />
+        </View>
         <View style={[styles.valueBadge, { backgroundColor: colors.primaryLight }]}>
           <Text style={[styles.valueText, { color: colors.primary }]}>{display}</Text>
         </View>
@@ -69,8 +90,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12
   },
-  slider: {
+  sliderWrap: {
     flex: 1,
+    position: 'relative',
+    justifyContent: 'center',
+    height: 40
+  },
+  trackBase: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    marginTop: -3
+  },
+  trackActive: {
+    position: 'absolute',
+    left: 0,
+    top: '50%',
+    marginTop: -3
+  },
+  slider: {
+    width: '100%',
     height: 40
   },
   valueBadge: {

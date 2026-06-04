@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   getDefaultSummaryTemplate,
@@ -10,7 +10,7 @@ import {
   type SummaryPromptLocale,
   type SummaryTemplateKey
 } from '@baishou/shared'
-import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, Input } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import { SettingsGroupCard } from './SettingsGroupCard'
@@ -273,22 +273,15 @@ export const SummarySettingsSection: React.FC = () => {
           })}
         </View>
 
-        <TextInput
-          style={[
-            styles.editor,
-            {
-              backgroundColor: colors.bgSurface,
-              color: colors.textPrimary,
-              borderColor: colors.borderMuted
-            }
-          ]}
+        <Input
           value={localText}
           onChangeText={setLocalText}
           multiline
+          textarea
           numberOfLines={14}
-          textAlignVertical="top"
           placeholder={t('settings.summary_ai_prompt_hint')}
-          placeholderTextColor={colors.textTertiary}
+          style={{ minHeight: 220, lineHeight: 20 }}
+          containerStyle={{ marginBottom: 16 }}
         />
 
         <View style={styles.actions}>
@@ -359,15 +352,6 @@ const styles = StyleSheet.create({
     borderRadius: 6
   },
   tabIcon: { fontSize: 16 },
-  editor: {
-    minHeight: 220,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16
-  },
   actions: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   btn: {
     flex: 1,

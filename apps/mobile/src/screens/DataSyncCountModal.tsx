@@ -5,13 +5,13 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  TextInput,
   Pressable,
   ScrollView
 } from 'react-native'
 import Slider from '@react-native-community/slider'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import { Input } from '@baishou/ui/native'
 import type { useNativeTheme } from '@baishou/ui/native'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
@@ -88,15 +88,7 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
                 ? t('data_sync.max_snapshot_title', '快照上限设置')
                 : t('data_sync.max_backup_title', '备份上限设置')}
             </Text>
-            <TextInput
-              style={[
-                styles.countInput,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle,
-                  backgroundColor: colors.bgSurfaceNormal
-                }
-              ]}
+            <Input
               value={displayValue}
               onChangeText={handleInputChange}
               onBlur={() => {
@@ -209,15 +201,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '700'
-  },
-  countInput: {
-    width: 72,
-    height: 36,
-    borderWidth: 1,
-    borderRadius: 8,
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '600'
   },
   desc: {
     fontSize: 13,

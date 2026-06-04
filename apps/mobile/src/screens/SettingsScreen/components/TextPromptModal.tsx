@@ -3,13 +3,12 @@ import {
   Modal,
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
   Platform
 } from 'react-native'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, Input } from '@baishou/ui/native'
 
 export interface TextPromptModalProps {
   visible: boolean
@@ -68,23 +67,16 @@ export const TextPromptModal: React.FC<TextPromptModalProps> = ({
           {message ? (
             <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
           ) : null}
-          <TextInput
-            style={[
-              styles.input,
-              multiline && styles.inputMultiline,
-              {
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle,
-                backgroundColor: colors.bgApp
-              }
-            ]}
+          <Input
             value={value}
             onChangeText={setValue}
             placeholder={placeholder}
-            placeholderTextColor={colors.textTertiary}
             multiline={multiline}
+            textarea={multiline}
             secureTextEntry={secureTextEntry}
             autoFocus
+            containerStyle={{ marginBottom: 16 }}
+            style={multiline ? { minHeight: 100 } : undefined}
           />
           <View style={styles.actions}>
             <Pressable onPress={onCancel} style={styles.actionBtn}>
@@ -120,18 +112,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    marginBottom: 16
-  },
-  inputMultiline: {
-    minHeight: 100,
-    textAlignVertical: 'top'
   },
   actions: {
     flexDirection: 'row',

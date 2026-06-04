@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router'
-import React from 'react'
+import React, { useMemo } from 'react'
+import { StyleSheet } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '@baishou/ui/native'
@@ -8,11 +9,17 @@ export default function TabLayout() {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const sharedTabBarStyle = {
-    backgroundColor: colors.bgSurface,
-    borderTopWidth: 0,
-    elevation: 0
-  } as const
+  const sharedTabBarStyle = useMemo(
+    () =>
+      ({
+        backgroundColor: colors.bgSurface,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: colors.borderMuted,
+        elevation: 0,
+        shadowOpacity: 0
+      }) as const,
+    [colors.bgSurface, colors.borderMuted]
+  )
 
   return (
     <Tabs
@@ -20,6 +27,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: sharedTabBarStyle,
+        tabBarHideOnKeyboard: true,
         headerShown: false
       }}
     >

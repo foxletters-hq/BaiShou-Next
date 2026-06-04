@@ -18,6 +18,7 @@ import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { SummaryTabBar } from './components/SummaryTabBar'
 import { SummaryMissingSection } from './components/SummaryMissingSection'
 import { SummaryGalleryView } from './components/SummaryGalleryView'
+import { resolveSummaryConfig } from '../../services/mobile-summary-config.util'
 
 export const SummaryScreen: React.FC = () => {
   const { t, i18n } = useTranslation()
@@ -50,11 +51,8 @@ export const SummaryScreen: React.FC = () => {
   const checkModelConfigured = async (): Promise<boolean> => {
     if (!services) return false
     try {
-      const globalModels = await services.settingsManager.get<any>('global_models')
-      const providers = (await services.settingsManager.get<any[]>('ai_providers')) || []
-      const modelId = globalModels?.globalSummaryModelId
-      const config = providers.find((p: any) => p.id === modelId) || providers[0]
-      if (!config) {
+      const resolution = await resolveSummaryConfig(services.settingsManager)
+      if (!resolution.ok) {
         toast.showError(t('summary.model_not_configured'))
         return false
       }

@@ -92,6 +92,7 @@ interface BaishouContextValue {
     diaryService: DiaryService
     settingsManager: SettingsManagerService
     summaryManager: SummaryManagerService
+    summaryGenerator: SummaryGeneratorService
     archiveService: MobileArchiveService
     lanSyncService: MobileLanSyncService
     cloudSyncService: MobileCloudSyncService
@@ -580,6 +581,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               diaryService,
               settingsManager,
               summaryManager,
+              summaryGenerator,
               archiveService,
               lanSyncService,
               cloudSyncService,

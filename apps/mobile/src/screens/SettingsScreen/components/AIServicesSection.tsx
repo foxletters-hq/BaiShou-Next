@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, Input } from '@baishou/ui/native'
 import { PROVIDER_TYPES } from '../../../constants/known-ai-providers'
 import { AIProviderConfig, ProviderType } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -140,19 +140,10 @@ export const AIServicesSection: React.FC = () => {
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
               {t('settings.add_provider')}
             </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.bgApp,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
+            <Input
               value={addForm.name}
               onChangeText={(name) => setAddForm((f) => ({ ...f, name }))}
               placeholder={t('settings.provider_name')}
-              placeholderTextColor={colors.textTertiary}
             />
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
               {t('settings.provider_type')}
@@ -182,19 +173,10 @@ export const AIServicesSection: React.FC = () => {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.bgApp,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
+            <Input
               value={addForm.baseUrl}
               onChangeText={(baseUrl) => setAddForm((f) => ({ ...f, baseUrl }))}
               placeholder="Base URL (optional)"
-              placeholderTextColor={colors.textTertiary}
               autoCapitalize="none"
             />
             <View style={styles.modalActions}>
@@ -229,13 +211,6 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     marginTop: 4
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,

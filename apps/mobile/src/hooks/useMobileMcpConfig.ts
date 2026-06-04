@@ -40,7 +40,6 @@ export function useMobileMcpConfig() {
   }, [dbReady, services])
 
   const mcpEndpointUrl = `http://${deviceIp}:${config.mcpPort}/mcp`
-
   const persistConfig = useCallback(
     async (next: McpServerConfig) => {
       if (!services || !dbReady) return
@@ -48,12 +47,21 @@ export function useMobileMcpConfig() {
       try {
         await services.settingsManager.set('mcp_server_config', next)
         setConfig(next)
-        await services.mobileMcpService.applyConfig(next)
-        toast.showSuccess(t('settings.mcp_saved'))
+        // 延迟 300ms 待展开/收起动画执行完毕后，再在后台启动或停止 MCP 原生服务
+        setTimeout(async () => {
+          try {
+            await services.mobileMcpService.applyConfig(next)
+            toast.showSuccess(t('settings.mcp_saved'))
+          } catch (e) {
+            console.error(e)
+            toast.showError(t('common.errors.save_failed'))
+          } finally {
+            setApplying(false)
+          }
+        }, 300)
       } catch (e) {
         console.error(e)
         toast.showError(t('common.errors.save_failed'))
-      } finally {
         setApplying(false)
       }
     },

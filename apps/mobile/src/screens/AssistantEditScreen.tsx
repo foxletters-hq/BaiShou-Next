@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
 import {
   useNativeTheme,
   useNativeToast,
   useDialog,
   scrollIndicatorStyle,
-  Switch
+  Switch,
+  Input
 } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -198,35 +199,18 @@ export const AssistantEditScreen: React.FC = () => {
             >
               <Text style={styles.emojiText}>{emoji}</Text>
             </TouchableOpacity>
-            <TextInput
-              style={[
-                styles.nameInput,
-                {
-                  backgroundColor: colors.bgSurfaceHighest,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
+            <Input
               value={name}
               onChangeText={setName}
               placeholder="助手名称"
-              placeholderTextColor={colors.textSecondary}
+              style={{ flex: 1 }}
             />
           </View>
 
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: colors.bgSurfaceHighest,
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle
-              }
-            ]}
+          <Input
             value={description}
             onChangeText={setDescription}
             placeholder="助手描述（可选）"
-            placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={2}
           />
@@ -235,22 +219,14 @@ export const AssistantEditScreen: React.FC = () => {
         {/* 系统提示词 */}
         <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>系统提示词</Text>
-          <TextInput
-            style={[
-              styles.promptInput,
-              {
-                backgroundColor: colors.bgSurfaceHighest,
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle
-              }
-            ]}
+          <Input
             value={systemPrompt}
             onChangeText={setSystemPrompt}
             placeholder="输入系统提示词..."
-            placeholderTextColor={colors.textSecondary}
             multiline
+            textarea
             numberOfLines={6}
-            textAlignVertical="top"
+            style={{ minHeight: 120 }}
           />
         </View>
 
@@ -260,37 +236,19 @@ export const AssistantEditScreen: React.FC = () => {
 
           <View style={styles.configRow}>
             <Text style={[styles.configLabel, { color: colors.textPrimary }]}>Provider ID</Text>
-            <TextInput
-              style={[
-                styles.configInput,
-                {
-                  backgroundColor: colors.bgSurfaceHighest,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
+            <Input
               value={providerId}
               onChangeText={setProviderId}
               placeholder="留空使用全局配置"
-              placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.configRow}>
             <Text style={[styles.configLabel, { color: colors.textPrimary }]}>Model ID</Text>
-            <TextInput
-              style={[
-                styles.configInput,
-                {
-                  backgroundColor: colors.bgSurfaceHighest,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
+            <Input
               value={modelId}
               onChangeText={setModelId}
               placeholder="留空使用全局配置"
-              placeholderTextColor={colors.textSecondary}
             />
           </View>
         </View>
@@ -372,30 +330,6 @@ const styles = StyleSheet.create({
   emojiText: {
     fontSize: 24
   },
-  nameInput: {
-    flex: 1,
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    minHeight: 60
-  },
-  promptInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    minHeight: 150
-  },
   configRow: {
     marginBottom: 12
   },
@@ -403,13 +337,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8
-  },
-  configInput: {
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16
   },
   switchRow: {
     flexDirection: 'row',

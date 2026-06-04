@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ScrollView, TextInput } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   scrollIndicatorStyle,
   useNativeTheme,
   useDialog,
   useNativeToast,
+  Input,
   Pagination,
   type VaultInfo
 } from '@baishou/ui/native'
@@ -167,22 +168,12 @@ export const WorkspaceManagementScreen: React.FC = () => {
           ]}
         >
           <View style={[styles.searchWrap, { borderBottomColor: colors.borderSubtle }]}>
-            <TextInput
+            <Input
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder={t('workspace.search_placeholder', '搜索工作空间…')}
-              placeholderTextColor={colors.textTertiary}
-              style={[
-                styles.searchInput,
-                {
-                  color: colors.textPrimary,
-                  backgroundColor: colors.bgSurfaceNormal,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
               autoCapitalize="none"
               autoCorrect={false}
-              clearButtonMode="while-editing"
             />
           </View>
 
@@ -301,13 +292,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 15
   },
   emptyRow: {
     paddingHorizontal: 14,

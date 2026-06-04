@@ -6,12 +6,12 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   SafeAreaView
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import type { SyncConfig } from '@baishou/core-mobile'
+import { Input } from '@baishou/ui/native'
 import type { useNativeTheme } from '@baishou/ui/native'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
@@ -78,16 +78,6 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
       </TouchableOpacity>
     )
   }
-
-  const inputStyle = [
-    styles.input,
-    {
-      backgroundColor: colors.bgSurfaceNormal,
-      color: colors.textPrimary,
-      borderColor: colors.borderSubtle,
-      borderRadius: tokens.radius.sm
-    }
-  ]
 
   const sectionTitle =
     config.target === 'local'
@@ -160,8 +150,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                 {t('data_sync.webdav_url_label', 'WebDAV URL 地址')}
               </Text>
-              <TextInput
-                style={inputStyle}
+              <Input
                 value={config.webdavUrl}
                 onChangeText={(v) => onChange({ ...config, webdavUrl: v })}
                 autoCapitalize="none"
@@ -170,8 +159,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                 {t('data_sync.webdav_path_label', 'Base Path 子路径')}
               </Text>
-              <TextInput
-                style={inputStyle}
+              <Input
                 value={config.webdavPath}
                 onChangeText={(v) => onChange({ ...config, webdavPath: v })}
                 autoCapitalize="none"
@@ -179,8 +167,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                 {t('data_sync.webdav_user_label', 'Username 用户名')}
               </Text>
-              <TextInput
-                style={inputStyle}
+              <Input
                 value={config.webdavUsername}
                 onChangeText={(v) => onChange({ ...config, webdavUsername: v })}
                 autoCapitalize="none"
@@ -189,12 +176,12 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
                 {t('data_sync.webdav_password_label', 'Password 密码')}
               </Text>
               <View style={styles.passwordRow}>
-                <TextInput
-                  style={[inputStyle, { flex: 1 }]}
+                <Input
                   value={config.webdavPassword}
                   onChangeText={(v) => onChange({ ...config, webdavPassword: v })}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
+                  style={{ flex: 1 }}
                 />
                 <TouchableOpacity onPress={onTogglePassword} style={styles.eyeBtn}>
                   <MaterialIcons
@@ -212,8 +199,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                 {t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}
               </Text>
-              <TextInput
-                style={inputStyle}
+              <Input
                 value={config.s3Endpoint}
                 onChangeText={(v) => onChange({ ...config, s3Endpoint: v })}
                 autoCapitalize="none"
@@ -222,8 +208,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                 {t('data_sync.s3_region_label', 'Region 区域名')}
               </Text>
-              <TextInput
-                style={inputStyle}
+              <Input
                 value={config.s3Region}
                 onChangeText={(v) => onChange({ ...config, s3Region: v })}
                 autoCapitalize="none"
@@ -231,8 +216,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                 {t('data_sync.s3_bucket_label', 'Bucket 存储桶')}
               </Text>
-              <TextInput
-                style={inputStyle}
+              <Input
                 value={config.s3Bucket}
                 onChangeText={(v) => onChange({ ...config, s3Bucket: v })}
                 autoCapitalize="none"
@@ -240,8 +224,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                 {t('data_sync.s3_path_label', 'Path 子路径')}
               </Text>
-              <TextInput
-                style={inputStyle}
+              <Input
                 value={config.s3Path}
                 onChangeText={(v) => onChange({ ...config, s3Path: v })}
                 autoCapitalize="none"
@@ -249,8 +232,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
                 {t('data_sync.s3_ak_label', 'Access Key (AK)')}
               </Text>
-              <TextInput
-                style={inputStyle}
+              <Input
                 value={config.s3AccessKey}
                 onChangeText={(v) => onChange({ ...config, s3AccessKey: v })}
                 secureTextEntry={!showPassword}
@@ -260,12 +242,12 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
                 {t('data_sync.s3_sk_label', 'Secret Key (SK)')}
               </Text>
               <View style={styles.passwordRow}>
-                <TextInput
-                  style={[inputStyle, { flex: 1 }]}
+                <Input
                   value={config.s3SecretKey}
                   onChangeText={(v) => onChange({ ...config, s3SecretKey: v })}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
+                  style={{ flex: 1 }}
                 />
                 <TouchableOpacity onPress={onTogglePassword} style={styles.eyeBtn}>
                   <MaterialIcons
@@ -337,12 +319,6 @@ const styles = StyleSheet.create({
   localHint: { fontSize: 14, lineHeight: 22, textAlign: 'center', paddingVertical: 24 },
   form: { gap: 4 },
   fieldLabel: { fontSize: 13, fontWeight: '600', marginTop: 10, marginBottom: 6 },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 15
-  },
   passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   eyeBtn: { padding: 8 },
   saveBtn: {

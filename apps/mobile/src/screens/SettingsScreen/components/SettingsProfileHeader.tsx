@@ -3,7 +3,12 @@ import { View, Text, Pressable, Image, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useDialog,
+  useNativeToast,
+  resolveNativeUserAvatarSource
+} from '@baishou/ui/native'
 
 export interface SettingsProfileHeaderProps {
   profile: { nickname: string; avatarPath?: string | null }
@@ -71,11 +76,10 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
         accessibilityLabel={t('profile.change_avatar', '更换头像')}
       >
         <View style={[styles.avatar, { backgroundColor: colors.primaryContainer }]}>
-          {profile.avatarPath ? (
-            <Image source={{ uri: profile.avatarPath }} style={styles.avatarImage} />
-          ) : (
-            <MaterialIcons name="label" size={30} color={colors.primary} />
-          )}
+          <Image
+            source={resolveNativeUserAvatarSource(profile.avatarPath)}
+            style={styles.avatarImage}
+          />
         </View>
         <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
           <MaterialIcons name="photo-camera" size={12} color={colors.textOnPrimary} />

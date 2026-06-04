@@ -201,14 +201,14 @@ export const DiaryScreen: React.FC = () => {
   }, [currentPage, totalPages])
 
   useEffect(() => {
-    if (!dbReady || !services) return
+    if (!dbReady || !services || !storageReady) return
     const today = new Date()
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     services.diaryService
       .findByDate(new Date(dateStr))
       .then((entry) => setTodayEntry(entry?.id != null ? { id: entry.id } : null))
       .catch(() => setTodayEntry(null))
-  }, [dbReady, services, loadEntries])
+  }, [dbReady, services, storageReady, loadEntries])
 
   const displayEntries = useMemo((): DiaryListEntry[] => {
     if (!entries?.length) return []
@@ -254,17 +254,16 @@ export const DiaryScreen: React.FC = () => {
 
   const handleEditToday = () => {
     void ensureStorageThen(() => {
-      const dateStr = formatTodayDateStr()
       router.push({
         pathname: '/diary-editor',
-        params: todayEntry ? { date: dateStr, append: '1' } : { date: dateStr }
+        params: { date: formatTodayDateStr() }
       })
     })
   }
 
   const handleAddNew = () => {
     void ensureStorageThen(() => {
-      router.push({ pathname: '/diary-editor', params: { date: formatTodayDateStr() } })
+      router.push({ pathname: '/diary-editor', params: { new: '1' } })
     })
   }
 

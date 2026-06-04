@@ -3,5 +3,7 @@
 @import 'heroui-native/styles';
 
 @source './node_modules/heroui-native/lib';
+@source '../../packages/ui/src/native';
+@source './src';
 
 @import './styles/baishou-heroui-theme.css';
