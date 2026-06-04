@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, Image, StyleSheet } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
+import { isCustomUserAvatar, resolveNativeUserAvatarSource } from '../user-avatar.util'
 
 interface ChatBubbleAvatarProps {
   emoji?: string | null
@@ -22,14 +23,12 @@ export const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
 
   return (
     <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }, style]}>
-      {avatarPath ? (
-        <Image source={{ uri: avatarPath }} style={styles.avatarImage} />
+      {variant === 'user' ? (
+        <Image source={resolveNativeUserAvatarSource(avatarPath)} style={styles.avatarImage} />
+      ) : isCustomUserAvatar(avatarPath) ? (
+        <Image source={{ uri: avatarPath! }} style={styles.avatarImage} />
       ) : emoji ? (
         <Text style={styles.avatarText}>{emoji}</Text>
-      ) : variant === 'user' ? (
-        <Text style={[styles.avatarText, { color: colors.primary }]}>
-          {(nickname || 'U').charAt(0).toUpperCase()}
-        </Text>
       ) : (
         <MaterialIcons name="auto-awesome" size={16} color={colors.textSecondary} />
       )}

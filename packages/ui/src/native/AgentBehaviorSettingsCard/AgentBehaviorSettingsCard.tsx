@@ -5,17 +5,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
-  Platform,
-  UIManager,
   LayoutAnimation
 } from 'react-native'
 import Slider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
-}
+import { Input } from '../Input/Input'
 
 export interface AgentBehaviorSettingsCardProps {
   config: {
@@ -72,21 +66,13 @@ export const AgentBehaviorSettingsCard: React.FC<AgentBehaviorSettingsCardProps>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
             {t('settings.system_prompt', 'System Prompt')}
           </Text>
-          <TextInput
-            style={[
-              styles.promptInput,
-              {
-                backgroundColor: colors.bgSurfaceNormal,
-                color: colors.textPrimary,
-                borderColor: colors.borderMuted
-              }
-            ]}
+          <Input
+            style={styles.promptInput}
             value={config.defaultSystemPrompt}
             onChangeText={(v) => onChange({ ...config, defaultSystemPrompt: v })}
             multiline
+            textarea
             numberOfLines={6}
-            textAlignVertical="top"
-            placeholderTextColor={colors.textTertiary}
           />
 
           <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
@@ -145,8 +131,6 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
   promptInput: {
-    borderWidth: 1,
-    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,

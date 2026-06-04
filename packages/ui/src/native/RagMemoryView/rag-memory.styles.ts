@@ -12,7 +12,8 @@ export const ragMemoryStyles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     flex: 1,
-    marginRight: 12
+    marginRight: 12,
+    letterSpacing: -0.5
   },
   headerSubtitle: {
     fontSize: 13,
@@ -22,12 +23,14 @@ export const ragMemoryStyles = StyleSheet.create({
   clearAllBtn: {
     marginTop: 12,
     paddingVertical: 10,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderRadius: 10,
-    alignItems: 'center'
+    borderRadius: 20,
+    alignItems: 'center',
+    alignSelf: 'flex-start'
   },
   clearAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600'
   },
   disabledAlert: {
@@ -35,7 +38,7 @@ export const ragMemoryStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     padding: 12,
-    borderRadius: 10
+    borderRadius: 12
   },
   disabledAlertText: {
     flex: 1,
@@ -103,27 +106,40 @@ export const ragMemoryStyles = StyleSheet.create({
   divider: { height: 1 },
   statsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 12
   },
   statChip: {
     flex: 1,
-    borderRadius: 10,
+    borderRadius: 20,
     paddingVertical: 10,
-    alignItems: 'center'
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    borderWidth: 1
   },
-  statValue: { fontSize: 16, fontWeight: '600' },
+  statValue: { fontSize: 15, fontWeight: '700' },
   statLabel: { fontSize: 11, marginTop: 2 },
+  statChipBlue: {
+    borderWidth: 1
+  },
+  statChipGreen: {
+    borderWidth: 1
+  },
+  statChipGrey: {
+    borderWidth: 1
+  },
   warningBox: {
     marginHorizontal: 16,
     marginBottom: 12,
-    borderRadius: 8,
-    padding: 10
+    borderRadius: 12,
+    padding: 12
   },
   warningText: { fontSize: 13, fontWeight: '500' },
   dangerAlert: {
-    padding: 12
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1
   },
   dangerTitle: {
     fontSize: 14,
@@ -141,28 +157,63 @@ export const ragMemoryStyles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '500', marginBottom: 4 },
   hint: { fontSize: 12, lineHeight: 18, marginTop: 6, paddingHorizontal: 16, paddingBottom: 8 },
   slider: { width: '100%', height: 40 },
+  sliderWrap: {
+    position: 'relative',
+    justifyContent: 'center',
+    height: 40
+  },
+  trackBase: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    marginTop: -3
+  },
+  trackActive: {
+    position: 'absolute',
+    left: 0,
+    top: '50%',
+    marginTop: -3
+  },
   progressBox: {
     paddingHorizontal: 16,
     paddingVertical: 12
   },
   statusText: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
   progressBar: {
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden'
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4
+    borderRadius: 3
   },
   progressLabel: { fontSize: 12, marginTop: 6, textAlign: 'right' },
   actionRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     paddingHorizontal: 16,
-    marginBottom: 8
+    marginBottom: 8,
+    flexWrap: 'wrap'
   },
-  actionBtn: { flex: 1 },
+  actionBtn: { flex: 1, minWidth: 140 },
+  actionBtnBlue: {
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1
+  },
+  actionBtnGreen: {
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1
+  },
   searchRow: {
     flexDirection: 'row',
     gap: 8,
@@ -172,11 +223,11 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 14
+    fontSize: 14,
+    borderRadius: 12,
+    borderWidth: 1
   },
   modeRow: {
     flexDirection: 'row',
@@ -193,10 +244,25 @@ export const ragMemoryStyles = StyleSheet.create({
   modeText: { fontSize: 13, fontWeight: '500' },
   entryCard: {
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     marginHorizontal: 16,
-    marginVertical: 4
+    marginVertical: 5,
+    flexDirection: 'row',
+    gap: 12
+  },
+  entryIconBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 2
+  },
+  entryBraces: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'monospace'
+  },
+  entryContent: {
+    flex: 1
   },
   entryHeader: {
     flexDirection: 'row',
@@ -206,12 +272,52 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   entryModel: { fontSize: 12, fontWeight: '600', flex: 1 },
   deleteBtn: { fontSize: 13, fontWeight: '500' },
-  entryText: { fontSize: 13, lineHeight: 18, marginBottom: 6 },
+  entryText: { fontSize: 13, lineHeight: 19, marginBottom: 8 },
   entryFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    alignItems: 'center'
   },
   entryDate: { fontSize: 11 },
-  entrySimilarity: { fontSize: 11 },
-  bottomSpacer: { height: 40 }
+  entrySimilarity: {
+    fontSize: 11,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  bottomSpacer: { height: 40 },
+  configBlock: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden'
+  },
+  configBlockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12
+  },
+  configBlockTitle: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  paramSliderRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 4
+  },
+  paramLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  paramLabel: {
+    fontSize: 13
+  },
+  paramValue: {
+    fontSize: 14,
+    fontWeight: '700'
+  }
 })

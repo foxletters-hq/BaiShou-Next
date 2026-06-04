@@ -12,12 +12,21 @@ import { CollapsibleHeight } from './CollapsibleHeight'
 
 const SLIDE_MS = 280
 
+export type SettingsExpansionFrame = 'primary' | 'subtle' | 'none'
+
 export interface SettingsExpansionTileProps {
   title: string
   subtitle?: string
   children: React.ReactNode
   embedded?: boolean
   isLast?: boolean
+  /**
+   * 展开时 body 的外框样式：
+   * - 'subtle'：灰色细线边框 + 微圆角，无底色（默认）
+   * - 'primary'：主题色边框 + 浅色填充 + 轻微光晕
+   * - 'none'：不绘制边框
+   */
+  frame?: SettingsExpansionFrame
 }
 
 export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
@@ -25,11 +34,13 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
   subtitle,
   children,
   embedded = false,
-  isLast = false
+  isLast = false,
+  frame = 'subtle'
 }) => {
   const { colors, tokens } = useNativeTheme()
   const [open, setOpen] = useState(false)
   const chevronRotation = useSharedValue(0)
+  const frameOpacity = useSharedValue(0)
 
   useEffect(() => {
     chevronRotation.value = withTiming(open ? 1 : 0, {
@@ -38,8 +49,19 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
     })
   }, [open, chevronRotation])
 
+  useEffect(() => {
+    frameOpacity.value = withTiming(open ? 1 : 0, {
+      duration: SLIDE_MS,
+      easing: Easing.bezier(0.4, 0, 0.2, 1)
+    })
+  }, [open, frameOpacity])
+
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${chevronRotation.value * 90}deg` }]
+  }))
+
+  const frameStyle = useAnimatedStyle(() => ({
+    opacity: frameOpacity.value
   }))
 
   const toggle = () => {
@@ -47,6 +69,7 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
   }
 
   const showRowDivider = embedded && (!isLast || open)
+  const showFrame = frame !== 'none'
 
   const header = (
     <TouchableOpacity
@@ -73,25 +96,48 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
           </Text>
         ) : null}
       </View>
-      <Animated.Text
-        style={[hubStyles.hubChevron, { color: colors.textTertiary }, chevronStyle]}
-      >
+      <Animated.Text style={[hubStyles.hubChevron, { color: colors.textTertiary }, chevronStyle]}>
         ›
       </Animated.Text>
     </TouchableOpacity>
   )
 
-  const bodyInner = (
-    <View
-      style={[
-        embedded ? styles.embeddedBody : styles.standaloneBody,
-        embedded && !isLast
-          ? { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSubtle }
-          : null
-      ]}
-    >
-      {children}
-    </View>
+  // body 内层 padding：frame 模式用紧凑 padding（外层已自带 margin），
+  // 否则沿用原本的 embedded / standalone padding
+  const innerPadding = showFrame
+    ? styles.bodyFramedPadding
+    : embedded
+      ? styles.embeddedBody
+      : styles.standaloneBody
+
+  // body 最末行底边线：仅在 embedded 且非最后一项时显示
+  const lastRowDivider =
+    embedded && !isLast
+      ? {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.borderSubtle
+        }
+      : null
+
+  const bodyInner = showFrame ? (
+    <Animated.View style={frameStyle}>
+      <Animated.View
+        style={[
+          styles.bodyFramedOuter,
+          frame === 'primary' ? styles.bodyFramedOuterPrimary : styles.bodyFramedOuterSubtle,
+          {
+            borderColor: frame === 'primary' ? colors.primary : colors.borderStrong,
+            backgroundColor: frame === 'primary' ? colors.primaryContainer : 'transparent',
+            borderRadius: tokens.radius.md,
+            shadowColor: frame === 'primary' ? colors.primary : 'transparent'
+          }
+        ]}
+      >
+        <View style={[innerPadding, lastRowDivider]}>{children}</View>
+      </Animated.View>
+    </Animated.View>
+  ) : (
+    <View style={[innerPadding, lastRowDivider]}>{children}</View>
   )
 
   if (embedded) {
@@ -126,5 +172,25 @@ const styles = StyleSheet.create({
   standaloneBody: {
     paddingHorizontal: 16,
     paddingBottom: 16
+  },
+  // frame 模式：外层带边框、阴影、margin；内层仅 padding
+  bodyFramedOuter: {
+    marginHorizontal: 8,
+    marginBottom: 8,
+    marginTop: 4
+  },
+  bodyFramedOuterSubtle: {
+    borderWidth: 1
+  },
+  bodyFramedOuterPrimary: {
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 2
+  },
+  bodyFramedPadding: {
+    paddingHorizontal: 12,
+    paddingVertical: 10
   }
 })

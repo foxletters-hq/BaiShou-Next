@@ -23,7 +23,7 @@ export const appearanceSettingsStyles = StyleSheet.create({
   segmentedControl: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden'
   },
   segmentBtn: {
@@ -51,7 +51,7 @@ export const appearanceSettingsStyles = StyleSheet.create({
   langChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1
   },
   langText: { fontSize: 14 },

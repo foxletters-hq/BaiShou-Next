@@ -51,8 +51,10 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
                   alignItems: 'center',
                   paddingHorizontal: tokens.spacing.md,
                   paddingVertical: tokens.spacing.sm,
-                  borderRadius: tokens.radius.full,
-                  backgroundColor: isActive ? colors.primary : colors.bgSurfaceNormal,
+                  borderRadius: tokens.radius.sm,
+                  borderWidth: isActive ? 1.5 : 1,
+                  borderColor: isActive ? colors.borderStrong : colors.borderMuted,
+                  backgroundColor: 'transparent',
                   opacity: pressed ? 0.7 : 1,
                   gap: tokens.spacing.xs
                 })}
@@ -60,7 +62,7 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
                 <Text
                   style={{
                     fontSize: 14,
-                    color: isActive ? colors.onPrimary : colors.textPrimary,
+                    color: colors.textPrimary,
                     fontWeight: isActive ? '600' : '400'
                   }}
                 >
@@ -71,7 +73,7 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
                     <Text
                       style={{
                         fontSize: 14,
-                        color: isActive ? colors.onPrimary : colors.textSecondary
+                        color: colors.textSecondary
                       }}
                     >
                       ×

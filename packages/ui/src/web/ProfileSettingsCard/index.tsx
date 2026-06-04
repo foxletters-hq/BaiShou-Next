@@ -3,6 +3,7 @@ import styles from './ProfileSettingsCard.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { AvatarCropModal } from '../AvatarCropModal'
+import { resolveWebUserAvatarSrc } from '../user-avatar.util'
 
 export interface ProfileData {
   nickname: string
@@ -65,13 +66,11 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
     <>
       <div className={styles.cardContainer}>
         <div className={styles.avatarZone} onClick={handleTriggerPick}>
-          {profile.avatarPath ? (
-            <img className={styles.avatarImg} src={profile.avatarPath} alt="avatar" />
-          ) : (
-            <div className={styles.avatarFallback}>
-              {(profile.nickname || t('profile.default_nickname', 'User')).charAt(0).toUpperCase()}
-            </div>
-          )}
+          <img
+            className={styles.avatarImg}
+            src={resolveWebUserAvatarSrc(profile.avatarPath)}
+            alt="avatar"
+          />
           <div className={styles.avatarHover}>📷</div>
           <input
             type="file"

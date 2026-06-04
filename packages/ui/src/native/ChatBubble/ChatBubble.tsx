@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
+import { Input } from '../Input/Input'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
 import { useNativeChatBubbleEdit } from './useNativeChatBubbleEdit'
@@ -87,7 +88,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             )}
 
             {edit.isEditing ? (
-              <TextInput
+              <Input
                 ref={edit.editInputRef}
                 style={[
                   styles.editInput,
@@ -97,7 +98,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 onChangeText={edit.setEditContent}
                 multiline
                 autoFocus
-                textAlignVertical="top"
               />
             ) : (
               <Text

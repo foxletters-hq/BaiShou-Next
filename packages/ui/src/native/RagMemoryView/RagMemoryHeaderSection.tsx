@@ -47,8 +47,15 @@ export const RagMemoryHeaderSection: React.FC<RagMemoryHeaderSectionProps> = ({
       </Text>
       {stats.totalCount > 0 && onClearAll ? (
         <TouchableOpacity
-          style={[styles.clearAllBtn, { borderColor: colors.borderSubtle }]}
+          style={[
+            styles.clearAllBtn,
+            {
+              borderColor: 'rgba(239, 68, 68, 0.3)',
+              backgroundColor: 'rgba(239, 68, 68, 0.05)'
+            }
+          ]}
           onPress={() => void onClearAll()}
+          activeOpacity={0.7}
         >
           <Text style={[styles.clearAllText, { color: colors.error }]}>
             {t('settings.rag_clear_all')}

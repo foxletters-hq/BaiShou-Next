@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   ScrollView,
-  TextInput,
   Modal,
   Animated,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 
 export interface MockAiProviderModel {
   id: string
@@ -142,28 +142,22 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
             </TouchableOpacity>
           </View>
 
-          <View
-            style={[
-              styles.searchBar,
-              { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderSubtle }
-            ]}
-          >
-            <MaterialIcons name="search" size={18} color={colors.textTertiary} />
-            <TextInput
-              placeholder={t('common.search_model', '搜索模型...')}
-              placeholderTextColor={colors.textTertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={[styles.searchInput, { color: colors.textPrimary }]}
-              autoCorrect={false}
-              autoCapitalize="none"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <MaterialIcons name="close" size={16} color={colors.textTertiary} />
-              </TouchableOpacity>
-            )}
-          </View>
+          <Input
+            placeholder={t('common.search_model', '搜索模型...')}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            autoCorrect={false}
+            autoCapitalize="none"
+            leftSlot={<MaterialIcons name="search" size={18} color={colors.textTertiary} />}
+            rightSlot={
+              searchQuery.length > 0 ? (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+                </TouchableOpacity>
+              ) : undefined
+            }
+          />
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {filteredProviders.length === 0 ? (
@@ -293,20 +287,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700'
   },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1
-  },
   searchInput: {
-    flex: 1,
     fontSize: 15,
-    paddingVertical: 2
+    marginBottom: 12
   },
   list: {
     maxHeight: 420

@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native'
 import Animated, {
-  Easing,
   useAnimatedStyle,
   useSharedValue,
-  withTiming
+  withSpring
 } from 'react-native-reanimated'
-
-const SLIDE_MS = 280
 
 export interface CollapsibleHeightProps {
   expanded: boolean
@@ -30,9 +27,11 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({ expanded, 
   }
 
   useEffect(() => {
-    animatedHeight.value = withTiming(expanded ? measuredHeight : 0, {
-      duration: SLIDE_MS,
-      easing: Easing.bezier(0.4, 0, 0.2, 1)
+    animatedHeight.value = withSpring(expanded ? measuredHeight : 0, {
+      damping: 22,
+      stiffness: 180,
+      mass: 0.8,
+      overshootClamping: true
     })
   }, [animatedHeight, expanded, measuredHeight])
 

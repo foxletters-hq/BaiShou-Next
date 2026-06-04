@@ -55,10 +55,7 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
               </Text>
             ) : null}
           </View>
-          <Switch
-            value={feature.enabled}
-            onValueChange={() => handleToggle(feature.id)}
-          />
+          <Switch value={feature.enabled} onValueChange={() => handleToggle(feature.id)} />
         </View>
       ))}
       {features.length === 0 && (

@@ -64,8 +64,6 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
   const content = (
     <>
-      <View style={[styles.divider, { backgroundColor: colors.borderSubtle, marginTop: 0 }]} />
-
       <Text style={[styles.label, { color: colors.textPrimary }]}>
         {t('settings.theme_mode', '主题模式')}
       </Text>
@@ -78,7 +76,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               styles.segmentBtn,
               { borderRightColor: colors.borderMuted },
               themeMode === mode && {
-                backgroundColor: colors.primaryLight
+                backgroundColor: 'transparent'
               },
               index === 2 && { borderRightWidth: 0 }
             ]}
@@ -146,8 +144,9 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               styles.langChip,
               { borderColor: colors.borderMuted },
               language === lang.val && {
-                backgroundColor: colors.primaryLight,
-                borderColor: colors.primary
+                backgroundColor: 'transparent',
+                borderWidth: 1.5,
+                borderColor: colors.borderStrong
               }
             ]}
             onPress={() => onLanguageChange(lang.val)}

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
-  TextInput,
+  type TextInput as RNTextInput,
   StyleSheet,
   TouchableOpacity,
   Text,
@@ -11,7 +11,6 @@ import {
   LayoutAnimation,
   Platform,
   Pressable,
-  UIManager,
   useWindowDimensions
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -19,6 +18,7 @@ import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
 import type { DiaryEditorViewMode } from './diary-editor.types'
@@ -78,7 +78,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const [activeImage, setActiveImage] = useState<ParsedDiaryImage | null>(null)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [toolbarHeight, setToolbarHeight] = useState(52)
-  const textInputRef = useRef<TextInput>(null)
+  const textInputRef = useRef<RNTextInput>(null)
   const keyboardInsetLockedRef = useRef(false)
   const contentRef = useRef(content)
   const selectionRef = useRef({ start: 0, end: 0 })
@@ -209,9 +209,6 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const snapKeyboardChromeAway = useCallback(() => {
     keyboardInsetLockedRef.current = true
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true)
-    }
     LayoutAnimation.configureNext(
       LayoutAnimation.create(0, LayoutAnimation.Types.linear, 'opacity')
     )
@@ -371,18 +368,15 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             )}
 
             {viewMode === 'edit' ? (
-              <TextInput
+              <Input
                 ref={textInputRef}
                 style={[
                   styles.textArea,
-                  { color: colors.textPrimary, minHeight: Math.max(280, editorHeight) }
+                  { minHeight: Math.max(280, editorHeight) }
                 ]}
                 multiline
-                scrollEnabled={false}
+                textarea
                 placeholder={t('diary.editor_hint')}
-                placeholderTextColor={colors.textTertiary}
-                selectionColor={colors.primary}
-                cursorColor={colors.primary}
                 value={content}
                 selection={selection}
                 onChangeText={onContentChange}

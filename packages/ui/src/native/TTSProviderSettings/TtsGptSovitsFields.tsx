@@ -1,7 +1,8 @@
 import React from 'react'
-import { View, Text, TextInput } from 'react-native'
+import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 import type { TtsProviderConfig } from './tts-provider-settings.types'
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
 
@@ -14,27 +15,17 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const inputStyle = [
-    styles.input,
-    {
-      backgroundColor: colors.bgSurfaceNormal,
-      color: colors.textPrimary,
-      borderColor: colors.borderMuted
-    }
-  ]
-
   return (
     <>
       <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.ref_audio_path_label')}
         </Text>
-        <TextInput
-          style={inputStyle}
+        <Input
+          style={styles.input}
           value={config.refAudioPath ?? ''}
           onChangeText={(v) => onUpdate({ refAudioPath: v })}
           placeholder="/path/to/ref.wav"
-          placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -44,12 +35,11 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.prompt_text_label')}
         </Text>
-        <TextInput
-          style={inputStyle}
+        <Input
+          style={styles.input}
           value={config.promptText ?? ''}
           onChangeText={(v) => onUpdate({ promptText: v })}
           placeholder="..."
-          placeholderTextColor={colors.textTertiary}
         />
       </View>
 
@@ -57,12 +47,11 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.prompt_lang_label')}
         </Text>
-        <TextInput
-          style={inputStyle}
+        <Input
+          style={styles.input}
           value={config.promptLang ?? ''}
           onChangeText={(v) => onUpdate({ promptLang: v })}
           placeholder="zh"
-          placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -72,12 +61,11 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.text_lang_label')}
         </Text>
-        <TextInput
-          style={inputStyle}
+        <Input
+          style={styles.input}
           value={config.textLang ?? ''}
           onChangeText={(v) => onUpdate({ textLang: v })}
           placeholder="zh"
-          placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -105,21 +93,13 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
       <Text style={[styles.label, { color: colors.textPrimary }]}>
         {t('tts.settings.test_label')}
       </Text>
-      <TextInput
-        style={[
-          styles.input,
-          styles.multilineInput,
-          {
-            backgroundColor: colors.bgSurfaceNormal,
-            color: colors.textPrimary,
-            borderColor: colors.borderMuted
-          }
-        ]}
+      <Input
+        style={[styles.input, styles.multilineInput]}
         value={testText}
         onChangeText={onTestTextChange}
         multiline
+        textarea
         numberOfLines={3}
-        placeholderTextColor={colors.textTertiary}
       />
 
       {testResult && (

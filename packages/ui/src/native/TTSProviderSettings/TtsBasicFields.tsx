@@ -1,8 +1,9 @@
 import React from 'react'
-import { View, Text, TouchableOpacity, TextInput } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Slider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 import type { TtsProviderConfig } from './tts-provider-settings.types'
 import { TTS_PROVIDERS, TTS_FORMATS } from './tts-provider-settings.constants'
 
@@ -71,19 +72,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.base_url_label')}
         </Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.bgSurfaceNormal,
-              color: colors.textPrimary,
-              borderColor: colors.borderMuted
-            }
-          ]}
+        <Input
+          style={styles.input}
           value={config.baseUrl}
           onChangeText={(v) => onUpdate({ baseUrl: v })}
           placeholder="https://api.openai.com/v1"
-          placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -94,20 +87,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
           {t('tts.settings.api_key_label')}
         </Text>
         <View style={styles.apiKeyRow}>
-          <TextInput
-            style={[
-              styles.input,
-              styles.inputFlex,
-              {
-                backgroundColor: colors.bgSurfaceNormal,
-                color: colors.textPrimary,
-                borderColor: colors.borderMuted
-              }
-            ]}
+          <Input
+            style={[styles.input, styles.inputFlex]}
             value={config.apiKey}
             onChangeText={(v) => onUpdate({ apiKey: v })}
             placeholder="sk-..."
-            placeholderTextColor={colors.textTertiary}
             secureTextEntry={!showApiKey}
             autoCapitalize="none"
             autoCorrect={false}
@@ -128,19 +112,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.model_id_label')}
         </Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.bgSurfaceNormal,
-              color: colors.textPrimary,
-              borderColor: colors.borderMuted
-            }
-          ]}
+        <Input
+          style={styles.input}
           value={config.modelId}
           onChangeText={(v) => onUpdate({ modelId: v })}
           placeholder="tts-1"
-          placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -150,19 +126,11 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.voice_label')}
         </Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.bgSurfaceNormal,
-              color: colors.textPrimary,
-              borderColor: colors.borderMuted
-            }
-          ]}
+        <Input
+          style={styles.input}
           value={config.voice}
           onChangeText={(v) => onUpdate({ voice: v })}
           placeholder="alloy"
-          placeholderTextColor={colors.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
         />

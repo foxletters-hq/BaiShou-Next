@@ -1,7 +1,8 @@
 import React from 'react'
-import { View, Text, Pressable, TextInput, Modal } from 'react-native'
+import { View, Text, Pressable, Modal } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 import { Button } from '../Button/Button'
 
 export interface IdentitySettingsFactModalProps {
@@ -61,56 +62,20 @@ export const IdentitySettingsFactModal: React.FC<IdentitySettingsFactModalProps>
               : t('settings.add_identity_entry', '添加条目')}
           </Text>
 
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors.textSecondary,
-              marginBottom: tokens.spacing.xs
-            }}
-          >
-            {t('settings.identity_key', '标签')}
-          </Text>
-          <TextInput
+          <Input
+            label={t('settings.identity_key', '标签')}
             value={editKeyInput}
             onChangeText={onEditKeyChange}
             placeholder={t('settings.identity_key_hint', '如：生日、职业')}
-            placeholderTextColor={colors.textTertiary}
-            style={{
-              borderWidth: 1,
-              borderColor: colors.outlineVariant,
-              borderRadius: tokens.radius.md,
-              padding: tokens.spacing.sm,
-              fontSize: 16,
-              color: colors.textPrimary,
-              backgroundColor: colors.bgSurfaceNormal,
-              marginBottom: tokens.spacing.md
-            }}
+            containerStyle={{ marginBottom: tokens.spacing.md }}
           />
 
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors.textSecondary,
-              marginBottom: tokens.spacing.xs
-            }}
-          >
-            {t('settings.identity_value', '内容')}
-          </Text>
-          <TextInput
+          <Input
+            label={t('settings.identity_value', '内容')}
             value={editValInput}
             onChangeText={onEditValChange}
             placeholder={t('settings.identity_value_hint', '如：2000-05-20')}
-            placeholderTextColor={colors.textTertiary}
-            style={{
-              borderWidth: 1,
-              borderColor: colors.outlineVariant,
-              borderRadius: tokens.radius.md,
-              padding: tokens.spacing.sm,
-              fontSize: 16,
-              color: colors.textPrimary,
-              backgroundColor: colors.bgSurfaceNormal,
-              marginBottom: tokens.spacing.lg
-            }}
+            containerStyle={{ marginBottom: tokens.spacing.lg }}
           />
 
           <View

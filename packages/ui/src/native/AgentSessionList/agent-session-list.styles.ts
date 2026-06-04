@@ -3,15 +3,9 @@ import { StyleSheet } from 'react-native'
 export const agentSessionListStyles = StyleSheet.create({
   container: { flex: 1 },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1
+    margin: 12
   },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, paddingVertical: 10, fontSize: 15 },
+  searchInput: { fontSize: 15 },
   clearIcon: { fontSize: 18, paddingHorizontal: 6 },
   groupHeader: { paddingHorizontal: 16, paddingVertical: 8 },
   groupLabel: { fontSize: 13, fontWeight: '600' },

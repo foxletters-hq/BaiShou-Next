@@ -13,8 +13,6 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     marginBottom: 8
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14

@@ -29,34 +29,52 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         styles.statsCard,
         {
           marginHorizontal: tokens.spacing.lg,
-          marginBottom: tokens.spacing.md,
-          backgroundColor: colors.bgSurface,
-          borderRadius: tokens.radius.lg
+          marginBottom: tokens.spacing.md
         }
       ]}
     >
       <View style={styles.statsRow}>
-        <View style={[styles.statChip, { backgroundColor: colors.bgSurfaceNormal }]}>
-          <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.totalCount}</Text>
-          <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+        <View
+          style={[
+            styles.statChip,
+            {
+              backgroundColor: colors.primaryLight,
+              borderColor: 'rgba(91, 168, 245, 0.2)'
+            }
+          ]}
+        >
+          <Text style={[styles.statValue, { color: colors.primary }]}>{stats.totalCount}</Text>
+          <Text style={[styles.statLabel, { color: colors.primary }]}>
             {t('settings.rag_total_count')}
           </Text>
         </View>
         <TouchableOpacity
-          style={[styles.statChip, { backgroundColor: colors.bgSurfaceNormal }]}
+          style={[
+            styles.statChip,
+            {
+              backgroundColor: 'rgba(74, 222, 128, 0.08)',
+              borderColor: 'rgba(74, 222, 128, 0.2)'
+            }
+          ]}
           onPress={onNavigateToConfig}
           disabled={!onNavigateToConfig}
           activeOpacity={0.7}
         >
-          <Text style={[styles.statValue, { color: colors.textPrimary }]} numberOfLines={1}>
+          <Text style={[styles.statValue, { color: colors.success }]} numberOfLines={1}>
             {embeddingModelId ?? t('settings.rag_model_unassigned')}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+          <Text style={[styles.statLabel, { color: colors.success }]}>
             {t('settings.rag_model')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.statChip, { backgroundColor: colors.bgSurfaceNormal }]}
+          style={[
+            styles.statChip,
+            {
+              backgroundColor: colors.bgSurfaceHigh,
+              borderColor: colors.borderMuted
+            }
+          ]}
           onPress={() => void onDetectDimension?.()}
           disabled={isBusy || !onDetectDimension}
           activeOpacity={0.7}

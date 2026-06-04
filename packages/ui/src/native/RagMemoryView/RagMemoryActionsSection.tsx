@@ -1,8 +1,7 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { Button } from '../Button'
 import { SettingsSection } from '../SettingsSection'
 import type { RagState } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
@@ -55,28 +54,46 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
         </SettingsSection>
       )}
 
-      <View style={[styles.actionRow, { paddingHorizontal: 16, marginBottom: 8 }]}>
+      <View style={styles.actionRow}>
         {onBatchEmbed && (
-          <Button
-            variant="outlined"
-            onPress={onBatchEmbed}
+          <TouchableOpacity
+            style={[
+              styles.actionBtnBlue,
+              {
+                backgroundColor: colors.primaryLight,
+                borderColor: 'rgba(91, 168, 245, 0.2)',
+                opacity: ragState.isRunning ? 0.5 : 1
+              }
+            ]}
+            onPress={() => void onBatchEmbed()}
             disabled={ragState.isRunning}
-            style={styles.actionBtn}
+            activeOpacity={0.7}
           >
-            {isBatchEmbedding
-              ? `${t('common.processing')} ${ragState.progress}/${ragState.total}`
-              : t('settings.rag_batch_embed')}
-          </Button>
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
+              {isBatchEmbedding
+                ? `${t('common.processing')} ${ragState.progress}/${ragState.total}`
+                : t('settings.rag_batch_embed')}
+            </Text>
+          </TouchableOpacity>
         )}
         {onAddManualMemory && (
-          <Button
-            variant="outlined"
-            onPress={onAddManualMemory}
+          <TouchableOpacity
+            style={[
+              styles.actionBtnGreen,
+              {
+                backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                borderColor: 'rgba(34, 197, 94, 0.3)',
+                opacity: ragState.isRunning ? 0.5 : 1
+              }
+            ]}
+            onPress={() => void onAddManualMemory()}
             disabled={ragState.isRunning}
-            style={styles.actionBtn}
+            activeOpacity={0.7}
           >
-            {t('settings.rag_add_manual')}
-          </Button>
+            <Text style={{ color: colors.success, fontWeight: '600', fontSize: 13 }}>
+              {t('settings.rag_add_manual')}
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     </>

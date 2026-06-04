@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, Image, TextInput } from 'react-native'
+import { View, Text, Pressable, Image } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
 import { useNativeToast } from '../Toast'
 import * as ImagePicker from 'expo-image-picker'
+import { resolveNativeUserAvatarSource } from '../user-avatar.util'
 
 export interface ProfileData {
   nickname: string
@@ -78,23 +79,11 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
             overflow: 'hidden'
           }}
         >
-          {profile.avatarPath ? (
-            <Image
-              source={{ uri: profile.avatarPath }}
-              style={{ width: 100, height: 100 }}
-              resizeMode="cover"
-            />
-          ) : (
-            <Text
-              style={{
-                fontSize: 40,
-                fontWeight: '600',
-                color: colors.onPrimaryContainer
-              }}
-            >
-              {(profile.nickname || t('profile.defaultChar', '白')).charAt(0).toUpperCase()}
-            </Text>
-          )}
+          <Image
+            source={resolveNativeUserAvatarSource(profile.avatarPath)}
+            style={{ width: 100, height: 100 }}
+            resizeMode="cover"
+          />
         </View>
         <View
           style={{

@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import type { TextInput } from 'react-native'
 
 export function useNativeChatBubbleEdit(
   initialContent: string,
@@ -8,7 +7,7 @@ export function useNativeChatBubbleEdit(
 ) {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(initialContent)
-  const editInputRef = useRef<TextInput>(null)
+  const editInputRef = useRef<any>(null)
 
   const handleStartEdit = () => {
     setEditContent(initialContent)

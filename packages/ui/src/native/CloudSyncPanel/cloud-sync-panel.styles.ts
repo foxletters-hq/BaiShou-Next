@@ -38,7 +38,6 @@ export const cloudSyncPanelStyles = StyleSheet.create({
   fieldInput: {
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderWidth: 1,
     fontSize: 14
   },
   hintText: {

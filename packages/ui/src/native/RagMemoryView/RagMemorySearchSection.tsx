@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { Button } from '../Button'
+import { Input } from '../Input/Input'
 import { SettingsSection } from '../SettingsSection'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -25,58 +25,79 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({ 
   return (
     <SettingsSection title={t('common.search')}>
       <View style={styles.searchRow}>
-        <TextInput
+        <View
           style={[
             styles.searchInput,
             {
-              backgroundColor: colors.bgSurfaceNormal,
-              color: colors.textPrimary,
+              backgroundColor: colors.bgSurfaceHigh,
               borderColor: colors.borderMuted
             }
           ]}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder={
-            searchMode === 'semantic'
-              ? t('settings.rag_search_semantic_hint')
-              : t('settings.rag_search_text_hint')
-          }
-          placeholderTextColor={colors.textTertiary}
-          returnKeyType="search"
-          onSubmitEditing={handleSearch}
-        />
-        <Button onPress={handleSearch} disabled={!searchQuery.trim()}>
-          {t('common.search')}
-        </Button>
+        >
+          <Input
+            style={{ flex: 1, fontSize: 14 }}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder={
+              searchMode === 'semantic'
+                ? t('settings.rag_search_semantic_hint')
+                : t('settings.rag_search_text_hint')
+            }
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
+          />
+        </View>
+        <TouchableOpacity
+          style={[
+            {
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: colors.primary,
+              opacity: searchQuery.trim() ? 1 : 0.5
+            }
+          ]}
+          onPress={handleSearch}
+          disabled={!searchQuery.trim()}
+          activeOpacity={0.7}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+            {t('common.search')}
+          </Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.modeRow}>
-        {(['semantic', 'text'] as const).map((mode) => (
-          <TouchableOpacity
-            key={mode}
-            activeOpacity={0.7}
-            style={[
-              styles.modeChip,
-              {
-                borderColor: searchMode === mode ? colors.primary : colors.borderMuted,
-                backgroundColor: searchMode === mode ? colors.primaryLight : 'transparent'
-              }
-            ]}
-            onPress={() => setSearchMode(mode)}
-          >
-            <Text
+        {(['semantic', 'text'] as const).map((mode) => {
+          const active = searchMode === mode
+          return (
+            <TouchableOpacity
+              key={mode}
+              activeOpacity={0.7}
               style={[
-                styles.modeText,
+                styles.modeChip,
                 {
-                  color: searchMode === mode ? colors.primary : colors.textSecondary
+                  borderColor: active ? colors.primary : colors.borderMuted,
+                  backgroundColor: active ? colors.primaryLight : 'transparent'
                 }
               ]}
+              onPress={() => setSearchMode(mode)}
             >
-              {mode === 'semantic'
-                ? t('settings.rag_search_semantic')
-                : t('settings.rag_search_text')}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.modeText,
+                  {
+                    color: active ? colors.primary : colors.textSecondary,
+                    fontWeight: active ? '600' : '500'
+                  }
+                ]}
+              >
+                {mode === 'semantic'
+                  ? t('settings.rag_search_semantic')
+                  : t('settings.rag_search_text')}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
       </View>
     </SettingsSection>
   )

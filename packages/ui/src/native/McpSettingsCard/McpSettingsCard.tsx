@@ -1,8 +1,9 @@
 import React from 'react'
-import { View, Text, Pressable, TextInput, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { McpServerConfig } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 import { Switch } from '../Switch'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
@@ -36,7 +37,30 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const subtitle = config.mcpEnabled
+  // 本地状态乐观更新，Switch 按钮交互无延迟响应
+  const [localEnabled, setLocalEnabled] = React.useState(config.mcpEnabled)
+  const [localApplying, setLocalApplying] = React.useState(applying)
+
+  React.useEffect(() => {
+    setLocalEnabled(config.mcpEnabled)
+  }, [config.mcpEnabled])
+
+  React.useEffect(() => {
+    setLocalApplying(applying)
+  }, [applying])
+
+  const handleToggle = (value: boolean) => {
+    setLocalEnabled(value)
+    if (value) {
+      setLocalApplying(true)
+    } else {
+      setLocalApplying(false)
+    }
+    // 立即响应外部，使父级 applying 立刻变成 true 触发渐进式两阶段渲染
+    onChange({ ...config, mcpEnabled: value })
+  }
+
+  const subtitle = localEnabled
     ? t('settings.mcp_running', '运行中 · 端口 $port').replace('$port', String(config.mcpPort))
     : t('settings.mcp_desc', '允许外部 AI 通过 MCP 协议调用白守工具')
 
@@ -52,82 +76,82 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           <Text style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]}>
             {t('settings.mcp_enable', '启用 MCP 服务')}
           </Text>
-          <Switch
-            value={config.mcpEnabled}
-            disabled={applying}
-            onValueChange={(value) => onChange({ ...config, mcpEnabled: value })}
-          />
+          <Switch value={localEnabled} disabled={applying} onValueChange={handleToggle} />
         </View>
 
-        <AnimatedCollapse expanded={config.mcpEnabled}>
-          <Pressable
-            onPress={onShowTools}
-            style={({ pressed }) => [styles.row, styles.rowBorder, pressed && { opacity: 0.7 }]}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
-                {t('settings.mcp_view_tools', '查看已暴露的工具列表')}
-              </Text>
-              <Text style={[styles.sub, { color: colors.textSecondary }]}>
-                {t('settings.mcp_view_tools_desc')}
+        <AnimatedCollapse expanded={localEnabled}>
+          {localApplying ? (
+            // 微微展开阶段：只渲染小尺寸的加载状态，避免大组件挂载造成的首帧动画卡顿
+            <View style={styles.loadingWrapper}>
+              <ActivityIndicator color={colors.primary} size="small" />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                {t('settings.mcp_starting', '正在启停服务...')}
               </Text>
             </View>
-            <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
-          </Pressable>
+          ) : (
+            // 完整展开阶段：加载完毕后渲染出完整的配置面板
+            <>
+              <Pressable
+                onPress={onShowTools}
+                style={({ pressed }) => [styles.row, styles.rowBorder, pressed && { opacity: 0.7 }]}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
+                    {t('settings.mcp_view_tools', '查看已暴露的工具列表')}
+                  </Text>
+                  <Text style={[styles.sub, { color: colors.textSecondary }]}>
+                    {t('settings.mcp_view_tools_desc')}
+                  </Text>
+                </View>
+                <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
+              </Pressable>
 
-          <View style={[styles.portRow, styles.rowBorder]}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              {t('settings.mcp_port', '端口')}
-            </Text>
-            <TextInput
-              style={[
-                styles.portInput,
-                {
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle,
-                  backgroundColor: colors.bgSurface
-                }
-              ]}
-              keyboardType="number-pad"
-              value={String(config.mcpPort)}
-              onChangeText={(text) => {
-                const val = parseInt(text, 10)
-                if (!isNaN(val)) onChange({ ...config, mcpPort: val })
-              }}
-              onBlur={() => {
-                const port = Math.min(65535, Math.max(1000, config.mcpPort || 31004))
-                onChange({ ...config, mcpPort: port })
-              }}
-            />
-          </View>
+              <View style={[styles.portRow, styles.rowBorder]}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {t('settings.mcp_port', '端口')}
+                </Text>
+                <Input
+                  style={styles.portInput}
+                  keyboardType="number-pad"
+                  value={String(config.mcpPort)}
+                  onChangeText={(text) => {
+                    const val = parseInt(text, 10)
+                    if (!isNaN(val)) onChange({ ...config, mcpPort: val })
+                  }}
+                  onBlur={() => {
+                    const port = Math.min(65535, Math.max(1000, config.mcpPort || 31004))
+                    onChange({ ...config, mcpPort: port })
+                  }}
+                />
+              </View>
 
-          <View style={[styles.row, styles.col, styles.rowBorder]}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>
-              {t('settings.mcp_endpoint', '连接地址')}
-            </Text>
-            <Text style={[styles.mono, { color: colors.primary }]} selectable>
-              {mcpEndpointUrl}
-            </Text>
-            <Pressable
-              onPress={onCopyEndpoint}
-              style={({ pressed }) => [
-                styles.copyBtn,
-                { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
-              ]}
-            >
-              <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}>
-                {t('settings.mcp_copy_url', '复制 MCP 地址')}
-              </Text>
-            </Pressable>
-            {isRunning && activePort != null ? (
-              <Text style={[styles.sub, { color: colors.textSecondary }]}>
-                {t('settings.mcp_running').replace('$port', String(activePort))}
-              </Text>
-            ) : null}
-          </View>
+              <View style={[styles.row, styles.col, styles.rowBorder]}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {t('settings.mcp_endpoint', '连接地址')}
+                </Text>
+                <Text style={[styles.mono, { color: colors.primary }]} selectable>
+                  {mcpEndpointUrl}
+                </Text>
+                <Pressable
+                  onPress={onCopyEndpoint}
+                  style={({ pressed }) => [
+                    styles.copyBtn,
+                    { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
+                  ]}
+                >
+                  <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}>
+                    {t('settings.mcp_copy_url', '复制 MCP 地址')}
+                  </Text>
+                </Pressable>
+                {isRunning && activePort != null ? (
+                  <Text style={[styles.sub, { color: colors.textSecondary }]}>
+                    {t('settings.mcp_running').replace('$port', String(activePort))}
+                  </Text>
+                ) : null}
+              </View>
+            </>
+          )}
         </AnimatedCollapse>
-
-        {applying ? <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} /> : null}
       </View>
     </SettingsExpansionTile>
   )
@@ -170,10 +194,6 @@ const styles = StyleSheet.create({
   },
   portInput: {
     width: 100,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
     fontSize: 14,
     textAlign: 'center'
   },
@@ -187,5 +207,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8
+  },
+  loadingWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.08)'
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '500'
   }
 })

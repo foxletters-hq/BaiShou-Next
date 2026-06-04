@@ -20,14 +20,14 @@ export const RagMemoryDisabledAlert: React.FC<RagMemoryDisabledAlertProps> = ({ 
       style={[
         styles.disabledAlert,
         {
-          backgroundColor: colors.bgSurfaceNormal,
+          backgroundColor: 'rgba(239, 68, 68, 0.08)',
           marginHorizontal: tokens.spacing.lg,
           marginBottom: tokens.spacing.sm
         }
       ]}
     >
-      <MaterialCommunityIcons name="alert" size={18} color={colors.warning ?? colors.primary} />
-      <Text style={[styles.disabledAlertText, { color: colors.textPrimary }]}>
+      <MaterialCommunityIcons name="alert" size={18} color={colors.error} />
+      <Text style={[styles.disabledAlertText, { color: colors.error }]}>
         {t('settings.rag_disabled_alert')}
       </Text>
     </View>

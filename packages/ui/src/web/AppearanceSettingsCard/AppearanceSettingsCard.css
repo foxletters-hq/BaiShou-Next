@@ -198,8 +198,13 @@
 }
 
 .lang-chip.active {
-  background: rgba(154, 212, 234, 0.15);
-  border-color: #9ad4ea;
-  color: #9ad4ea;
-  font-weight: 500;
+  background: transparent;
+  border-width: 1.5px;
+  border-color: rgba(0, 0, 0, 0.24);
+  color: var(--text-primary, #1a1a1a);
+  font-weight: 600;
+}
+
+[data-theme='dark'] .lang-chip.active {
+  border-color: rgba(255, 255, 255, 0.32);
 }

@@ -50,65 +50,78 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
       style={[
         styles.entryCard,
         {
-          backgroundColor: colors.bgSurfaceNormal,
+          backgroundColor: colors.bgSurface,
           borderColor: colors.borderSubtle
         }
       ]}
     >
-      {menuOpen && <Pressable style={styles.menuOverlay} onPress={() => setActiveMenuId(null)} />}
-      <View style={styles.entryHeader}>
-        <Text style={[styles.entryModel, { color: colors.primary }]} numberOfLines={1}>
-          {item.modelId || '—'}
-        </Text>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => setActiveMenuId(menuOpen ? null : item.embeddingId)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={{ color: colors.textSecondary, fontSize: 18, fontWeight: '700' }}>⋮</Text>
-        </TouchableOpacity>
+      <View style={styles.entryIconBlock}>
+        <Text style={[styles.entryBraces, { color: colors.primary }]}>{'{ }'}</Text>
       </View>
-      {menuOpen && (
-        <View
-          style={[
-            styles.entryMenu,
-            { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
-          ]}
-        >
-          {onEdit && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setActiveMenuId(null)
-                void onEdit(item)
-              }}
+
+      <View style={styles.entryContent}>
+        {menuOpen && <Pressable style={styles.menuOverlay} onPress={() => setActiveMenuId(null)} />}
+        <View style={styles.entryHeader}>
+          <Text style={[styles.entryModel, { color: colors.primary }]} numberOfLines={1}>
+            {item.modelId || '—'}
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setActiveMenuId(menuOpen ? null : item.embeddingId)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ color: colors.textSecondary, fontSize: 18, fontWeight: '700' }}>⋮</Text>
+          </TouchableOpacity>
+        </View>
+        {menuOpen && (
+          <View
+            style={[
+              styles.entryMenu,
+              { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+            ]}
+          >
+            {onEdit && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setActiveMenuId(null)
+                  void onEdit(item)
+                }}
+              >
+                <Text style={{ color: colors.textPrimary }}>{t('common.edit')}</Text>
+              </TouchableOpacity>
+            )}
+            {onDelete && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => void handleDelete()}>
+                {deleting ? (
+                  <ActivityIndicator size="small" color={colors.error} />
+                ) : (
+                  <Text style={{ color: colors.error }}>{t('common.delete')}</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={4}>
+          {item.text}
+        </Text>
+        <View style={styles.entryFooter}>
+          <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
+            {new Date(item.createdAt).toLocaleDateString()}
+          </Text>
+          {item.similarity !== undefined && (
+            <View
+              style={[
+                styles.entrySimilarity,
+                { backgroundColor: 'rgba(91, 168, 245, 0.1)' }
+              ]}
             >
-              <Text style={{ color: colors.textPrimary }}>{t('common.edit')}</Text>
-            </TouchableOpacity>
-          )}
-          {onDelete && (
-            <TouchableOpacity style={styles.menuItem} onPress={() => void handleDelete()}>
-              {deleting ? (
-                <ActivityIndicator size="small" color={colors.error} />
-              ) : (
-                <Text style={{ color: colors.error }}>{t('common.delete')}</Text>
-              )}
-            </TouchableOpacity>
+              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
+                {(item.similarity * 100).toFixed(0)}%
+              </Text>
+            </View>
           )}
         </View>
-      )}
-      <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={4}>
-        {item.text}
-      </Text>
-      <View style={styles.entryFooter}>
-        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
-          {new Date(item.createdAt).toLocaleDateString()}
-        </Text>
-        {item.similarity !== undefined && (
-          <Text style={[styles.entrySimilarity, { color: colors.textSecondary }]}>
-            {t('recall.similarity')}: {(item.similarity * 100).toFixed(0)}%
-          </Text>
-        )}
       </View>
     </View>
   )

@@ -135,13 +135,15 @@
 }
 
 .inputChipActive {
-  background-color: rgba(91, 168, 245, 0.15);
-  border-color: transparent;
-  color: var(--color-primary);
+  background-color: transparent;
+  border-width: 1.5px;
+  border-color: rgba(0, 0, 0, 0.24);
+  color: var(--color-on-surface);
+  font-weight: 600;
 }
 
 .inputChipActive:hover {
-  background-color: rgba(91, 168, 245, 0.25);
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .chipCloseBtn {
@@ -316,6 +318,14 @@
 
 [data-theme='dark'] .iconIconButton:hover,
 [data-theme='dark'] .inputChip:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] .inputChipActive {
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+[data-theme='dark'] .inputChipActive:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
 

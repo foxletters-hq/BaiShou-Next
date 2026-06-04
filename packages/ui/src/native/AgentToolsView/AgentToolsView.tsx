@@ -5,13 +5,13 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Platform
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
+import { Input } from '../Input/Input'
 import { Tooltip } from '../Tooltip'
 
 export interface ToolManagementConfig {
@@ -145,7 +145,11 @@ const getCategoryMeta = (t: (key: string, fallback: string) => string) => ({
   }
 })
 
-export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange, disableScroll }) => {
+export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
+  config,
+  onChange,
+  disableScroll
+}) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
 
@@ -222,9 +226,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
             style={[
               styles.tabBadge,
               {
-                backgroundColor: !showCommunity
-                  ? 'rgba(255,255,255,0.2)'
-                  : colors.bgSurfaceHigh
+                backgroundColor: !showCommunity ? 'rgba(255,255,255,0.2)' : colors.bgSurfaceHigh
               }
             ]}
           >
@@ -348,11 +350,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({ config, onChange
                       >
                         <MaterialIcons name="remove" size={16} color={colors.textSecondary} />
                       </TouchableOpacity>
-                      <TextInput
+                      <Input
                         style={[
                           styles.stepperInput,
                           {
-                            color: colors.primary,
                             borderLeftColor: colors.borderMuted,
                             borderRightColor: colors.borderMuted
                           }

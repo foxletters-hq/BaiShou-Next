@@ -4,13 +4,13 @@ import {
   Text,
   Pressable,
   ScrollView,
-  TextInput,
   StyleSheet,
   ActivityIndicator
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import type { SummaryItem } from './gallery-panel.types'
 import { TYPE_I18N_MAP, formatDateRange } from './gallery-panel.utils'
@@ -112,19 +112,12 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
       </View>
       <ScrollView style={styles.detailScroll} contentContainerStyle={styles.detailScrollContent}>
         {isEditing ? (
-          <TextInput
-            style={[
-              styles.editor,
-              {
-                color: colors.textPrimary,
-                backgroundColor: colors.bgSurfaceLowest,
-                borderColor: colors.borderSubtle
-              }
-            ]}
+          <Input
+            style={styles.editor}
             value={editContent}
             onChangeText={onEditContentChange}
             multiline
-            textAlignVertical="top"
+            textarea
             placeholder={t('summary.content_placeholder')}
           />
         ) : (
@@ -201,8 +194,6 @@ const styles = StyleSheet.create({
   },
   editor: {
     minHeight: 280,
-    borderWidth: 1,
-    borderRadius: 8,
     padding: 12,
     fontSize: 15,
     lineHeight: 22

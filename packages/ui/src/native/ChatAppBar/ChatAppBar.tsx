@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, TextInput } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
+import { Input } from '../Input/Input'
 
 export interface AgentProfile {
   name: string
@@ -98,7 +99,7 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
 
         <View style={{ flex: 1 }}>
           {isEditing ? (
-            <TextInput
+            <Input
               value={editName}
               onChangeText={setEditName}
               onBlur={submitRename}
@@ -107,7 +108,6 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
               style={{
                 fontSize: 16,
                 fontWeight: '600',
-                color: colors.textPrimary,
                 padding: 0
               }}
             />

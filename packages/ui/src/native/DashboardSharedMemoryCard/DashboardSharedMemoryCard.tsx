@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { Input } from '../Input/Input'
 import { DesktopStyleSlider } from './DesktopStyleSlider'
 import { useNativeTheme } from '../../native/theme'
 
@@ -68,15 +69,9 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
             {t('summary.lookback_label')}
           </Text>
-          <TextInput
-            style={[
-              styles.numberInput,
-              {
-                color: colors.textPrimary,
-                backgroundColor: colors.bgSurfaceLowest,
-                borderColor: colors.colorOutlineVariant ?? colors.borderMuted
-              }
-            ]}
+          <Input
+            className="w-16 min-h-10 px-2"
+            style={styles.numberInput}
             value={draftMonths}
             keyboardType="number-pad"
             maxLength={4}
@@ -157,10 +152,9 @@ const styles = StyleSheet.create({
   },
   numberInput: {
     width: 64,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderRadius: 8,
+    minHeight: 40,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center'

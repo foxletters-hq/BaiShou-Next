@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, ReactNode, useCallback } fr
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
 import { Button } from '../Button/Button'
-import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
+import { Input } from '../Input/Input'
 import { useNativeTheme } from '../theme'
 
 export interface ConfirmOptions {
@@ -20,6 +21,8 @@ export interface ChooseOption {
   label: string
   value: string
   destructive?: boolean
+  /** 选项前缀元素（如供应商图标、头像），与 label 同行左对齐 */
+  leading?: ReactNode
 }
 
 export interface DialogContextState {
@@ -204,18 +207,21 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     onPress={() => closeDialog(opt.value)}
                     style={({ pressed }) => [
                       styles.chooseItem,
+                      opt.leading ? styles.chooseItemWithLeading : null,
                       {
                         backgroundColor: pressed ? colors.bgSurfaceNormal : 'transparent',
                         borderColor: colors.borderSubtle
                       }
                     ]}
                   >
+                    {opt.leading ? <View style={styles.chooseLeading}>{opt.leading}</View> : null}
                     <Text
                       style={{
+                        flex: 1,
                         fontSize: 16,
                         fontWeight: '500',
                         color: opt.destructive ? colors.error : colors.textPrimary,
-                        textAlign: 'center'
+                        textAlign: opt.leading ? 'left' : 'center'
                       }}
                     >
                       {opt.label}
@@ -226,26 +232,14 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             )}
 
             {state.type === 'prompt' && (
-              <TextInput
+              <Input
                 autoFocus
                 value={promptValue}
                 onChangeText={setPromptValue}
                 multiline={state.isMultiline}
+                textarea={state.isMultiline}
                 numberOfLines={state.isMultiline ? 4 : 1}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.outlineVariant,
-                  borderRadius: tokens.radius.md,
-                  paddingHorizontal: 12,
-                  paddingVertical: state.isMultiline ? 10 : 8,
-                  backgroundColor: colors.bgSurface,
-                  color: colors.textPrimary,
-                  fontSize: 16,
-                  marginTop: tokens.spacing.sm,
-                  minHeight: state.isMultiline ? 96 : 40,
-                  textAlignVertical: state.isMultiline ? 'top' : 'center'
-                }}
-                placeholderTextColor={colors.textTertiary}
+                containerStyle={{ marginTop: tokens.spacing.sm }}
               />
             )}
 
@@ -314,5 +308,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 8,
     borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  chooseItemWithLeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12
+  },
+  chooseLeading: {
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 })

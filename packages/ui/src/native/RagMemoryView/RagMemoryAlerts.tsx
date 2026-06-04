@@ -23,21 +23,21 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
     ragState.isRunning && (ragState.type === 'reembed' || ragState.type === 'migration')
   const showEmbedError = !isReembedding && !!ragState.error
 
-  const alertBoxStyle = [
-    styles.dangerAlert,
-    {
-      marginHorizontal: tokens.spacing.lg,
-      marginBottom: tokens.spacing.md,
-      backgroundColor: colors.errorContainer,
-      borderRadius: tokens.radius.md
-    }
-  ]
-
   return (
     <>
       {isReembedding && (
-        <View style={alertBoxStyle}>
-          <Text style={[styles.dangerTitle, { color: colors.error }]}>
+        <View
+          style={[
+            styles.dangerAlert,
+            {
+              marginHorizontal: tokens.spacing.lg,
+              marginBottom: tokens.spacing.md,
+              backgroundColor: colors.primaryLight,
+              borderColor: 'rgba(91, 168, 245, 0.3)'
+            }
+          ]}
+        >
+          <Text style={[styles.dangerTitle, { color: colors.primary }]}>
             {t('settings.rag_migrating')}
           </Text>
           {ragState.statusText ? (
@@ -67,7 +67,17 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
       )}
 
       {showEmbedError && (
-        <View style={alertBoxStyle}>
+        <View
+          style={[
+            styles.dangerAlert,
+            {
+              marginHorizontal: tokens.spacing.lg,
+              marginBottom: tokens.spacing.md,
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderColor: 'rgba(239, 68, 68, 0.3)'
+            }
+          ]}
+        >
           <Text style={[styles.dangerTitle, { color: colors.error }]}>
             {t('settings.rag_operation_failed')}
           </Text>
@@ -76,7 +86,17 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
       )}
 
       {!isReembedding && hasMismatchModel && (
-        <View style={alertBoxStyle}>
+        <View
+          style={[
+            styles.dangerAlert,
+            {
+              marginHorizontal: tokens.spacing.lg,
+              marginBottom: tokens.spacing.md,
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderColor: 'rgba(239, 68, 68, 0.3)'
+            }
+          ]}
+        >
           <Text style={[styles.dangerTitle, { color: colors.error }]}>
             {t('settings.rag_model_mismatch')}
           </Text>
@@ -85,11 +105,23 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           </Text>
           {onTriggerMigration ? (
             <TouchableOpacity
-              style={styles.warningAction}
+              style={[
+                styles.warningAction,
+                {
+                  backgroundColor: colors.primaryLight,
+                  borderColor: 'rgba(91, 168, 245, 0.35)',
+                  paddingVertical: 8,
+                  paddingHorizontal: 14,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  alignSelf: 'flex-start'
+                }
+              ]}
               onPress={() => void onTriggerMigration()}
               disabled={ragState.isRunning}
+              activeOpacity={0.7}
             >
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>
+              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
                 {t('settings.rag_trigger_migration')}
               </Text>
             </TouchableOpacity>

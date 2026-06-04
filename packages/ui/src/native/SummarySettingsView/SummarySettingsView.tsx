@@ -5,12 +5,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   Modal
 } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { SettingsSection } from '../SettingsSection'
+import { Input } from '../Input/Input'
 import { Button } from '../Button'
 
 export interface SummarySettingsViewProps {
@@ -105,21 +105,13 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
                 : t('summary.edit_template_title', '编辑模板')}
             </Text>
 
-            <TextInput
-              style={[
-                styles.modalInput,
-                {
-                  backgroundColor: colors.bgSurfaceNormal,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderMuted
-                }
-              ]}
+            <Input
+              style={styles.modalInput}
               value={editValue}
               onChangeText={setEditValue}
               multiline
+              textarea
               numberOfLines={12}
-              textAlignVertical="top"
-              placeholderTextColor={colors.textTertiary}
             />
 
             <View style={styles.modalActions}>
@@ -182,8 +174,6 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   modalInput: {
-    borderWidth: 1,
-    borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,

@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react'
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 
 export interface TagInputProps {
   tags: string[]
@@ -19,7 +20,7 @@ export const TagInput: React.FC<TagInputProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [inputText, setInputText] = useState('')
-  const inputRef = useRef<TextInput>(null)
+  const inputRef = useRef<any>(null)
 
   const addTag = (text: string) => {
     const trimmed = text.trim()
@@ -89,15 +90,14 @@ export const TagInput: React.FC<TagInputProps> = ({
       </View>
 
       {tags.length < maxTags && (
-        <TextInput
+        <Input
           ref={inputRef}
           value={inputText}
           onChangeText={setInputText}
           onSubmitEditing={handleSubmit}
           onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key)}
           placeholder={placeholder ?? t('tagInput.placeholder', '输入标签，回车或逗号分隔')}
-          placeholderTextColor={colors.textTertiary}
-          style={[styles.input, { color: colors.textPrimary }]}
+          style={styles.input}
           returnKeyType="done"
           blurOnSubmit={false}
         />

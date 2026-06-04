@@ -1,6 +1,7 @@
 import React from 'react'
-import { View, Text, TouchableOpacity, TextInput } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 import type { CloudSyncConfig } from './cloud-sync-panel.types'
 import { CLOUD_SYNC_TARGETS } from './cloud-sync-panel.utils'
 import { cloudSyncPanelStyles as styles } from './cloud-sync-panel.styles'
@@ -70,22 +71,13 @@ export const CloudSyncConfigFields: React.FC<CloudSyncConfigFieldsProps> = ({
   ) => (
     <View style={styles.fieldGroup}>
       <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{label}</Text>
-      <TextInput
-        style={[
-          styles.fieldInput,
-          {
-            backgroundColor: colors.bgSurfaceNormal,
-            color: colors.textPrimary,
-            borderColor: colors.borderSubtle,
-            borderRadius: tokens.radius.sm
-          }
-        ]}
+      <Input
+        style={styles.fieldInput}
         value={String(localConfig[field])}
         onChangeText={(v) =>
           onUpdateField(field, field === 'maxBackupCount' ? Math.max(1, Number(v) || 1) : v)
         }
         placeholder={placeholder}
-        placeholderTextColor={colors.textTertiary}
         secureTextEntry={secureTextEntry}
         keyboardType={field === 'maxBackupCount' ? 'numeric' : 'default'}
         autoCapitalize="none"
@@ -137,20 +129,11 @@ export const CloudSyncMaxBackupField: React.FC<{
   return (
     <View style={styles.fieldGroup}>
       <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>最大备份数</Text>
-      <TextInput
-        style={[
-          styles.fieldInput,
-          {
-            backgroundColor: colors.bgSurfaceNormal,
-            color: colors.textPrimary,
-            borderColor: colors.borderSubtle,
-            borderRadius: tokens.radius.sm
-          }
-        ]}
+      <Input
+        style={styles.fieldInput}
         value={String(localConfig.maxBackupCount)}
         onChangeText={(v) => onUpdateField('maxBackupCount', Math.max(1, Number(v) || 1))}
         placeholder="10"
-        placeholderTextColor={colors.textTertiary}
         keyboardType="numeric"
         autoCapitalize="none"
       />

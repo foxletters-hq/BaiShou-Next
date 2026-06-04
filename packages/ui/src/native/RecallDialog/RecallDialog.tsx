@@ -4,13 +4,13 @@ import {
   Text,
   Pressable,
   ScrollView,
-  TextInput,
   Modal,
   ActivityIndicator,
   SafeAreaView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 import type { NativeRecallDialogProps } from './recall-dialog.types'
 import { useRecallDialog } from './useRecallDialog'
 import { RecallDialogItem } from './RecallDialogItem'
@@ -133,15 +133,13 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
               }}
             >
               <Text style={{ fontSize: 16, marginRight: tokens.spacing.xs }}>🔍</Text>
-              <TextInput
+              <Input
                 placeholder={t('recall.search_hint', '检索关键字或记忆片段...')}
-                placeholderTextColor={colors.textTertiary}
                 value={dialog.searchQuery}
                 onChangeText={dialog.setSearchQuery}
                 style={{
                   flex: 1,
                   paddingVertical: tokens.spacing.sm,
-                  color: colors.textPrimary,
                   fontSize: 16
                 }}
               />

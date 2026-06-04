@@ -1,15 +1,13 @@
 import React, { useState, useCallback } from 'react'
 import {
   View,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Text,
   Image,
   ScrollView,
   LayoutAnimation,
-  Platform,
-  UIManager
+  Platform
 } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -17,11 +15,8 @@ import * as DocumentPicker from 'expo-document-picker'
 import type { MockChatAttachment } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
+import { Input } from '../Input/Input'
 import { useNativeToast } from '../Toast'
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
-}
 
 const TOOLBAR_ANIM_MS = 200
 
@@ -39,6 +34,8 @@ export interface InputBarProps {
   onToggleSearchMode?: () => void
   ttsMode?: 'off' | 'always' | 'manual'
   onToggleTtsMode?: () => void
+  /** 输入框获得焦点时回调（用于键盘预抬，避免闪动） */
+  onInputFocus?: () => void
 }
 
 export const InputBar: React.FC<InputBarProps> = ({
@@ -54,7 +51,8 @@ export const InputBar: React.FC<InputBarProps> = ({
   searchMode = false,
   onToggleSearchMode,
   ttsMode = 'manual',
-  onToggleTtsMode
+  onToggleTtsMode,
+  onInputFocus
 }) => {
   const { t } = useTranslation()
   const toast = useNativeToast()
@@ -86,8 +84,8 @@ export const InputBar: React.FC<InputBarProps> = ({
 
   const toolbarAnimatedStyle = useAnimatedStyle(() => ({
     opacity: toolbarProgress.value,
-    maxHeight: toolbarProgress.value * 44,
-    marginBottom: toolbarProgress.value * 8,
+    maxHeight: toolbarProgress.value * 48,
+    marginBottom: toolbarProgress.value * 10,
     overflow: 'hidden' as const
   }))
 
@@ -194,7 +192,7 @@ export const InputBar: React.FC<InputBarProps> = ({
         styles.container,
         {
           backgroundColor: colors.bgSurface,
-          borderTopColor: colors.borderMuted
+          borderTopColor: colors.borderSubtle
         }
       ]}
     >
@@ -274,58 +272,66 @@ export const InputBar: React.FC<InputBarProps> = ({
         )}
       </Animated.View>
 
-      <View style={[styles.inputWrapper, { backgroundColor: colors.bgSurfaceHigh }]}>
-        <TouchableOpacity
-          style={styles.toolbarToggle}
-          onPress={toggleToolbar}
-          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-        >
-          <MaterialIcons
-            name={showToolbar ? 'expand-less' : 'add'}
-            size={20}
-            color={colors.textTertiary}
-          />
-        </TouchableOpacity>
-        <TextInput
-          style={[styles.input, { color: colors.textPrimary }]}
-          value={text}
-          onChangeText={setText}
-          placeholder={t('agent.chat.input_hint', '输入消息...')}
-          placeholderTextColor={colors.textTertiary}
-          multiline
-          maxLength={4000}
-        />
-        {isLoading ? (
+      <Input
+        className="min-h-12 max-h-36"
+        style={[styles.input, text.length === 0 && styles.inputEmpty]}
+        value={text}
+        onChangeText={setText}
+        placeholder={t('agent.chat.input_hint', '输入消息...')}
+        multiline
+        maxLength={4000}
+        textAlignVertical={text.length === 0 ? 'center' : 'top'}
+        onFocus={onInputFocus}
+        leftSlot={
           <TouchableOpacity
-            style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
-            onPress={onStop}
-            accessibilityLabel={t('common.stop', '停止')}
+            style={styles.toolbarToggle}
+            onPress={toggleToolbar}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
-            <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+            <MaterialIcons
+              name={showToolbar ? 'expand-less' : 'add'}
+              size={20}
+              color={colors.textTertiary}
+            />
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.sendBtn,
-              { backgroundColor: colors.primary },
-              !text.trim() && attachments.length === 0 && { backgroundColor: colors.textTertiary }
-            ]}
-            onPress={handleSend}
-            disabled={!text.trim() && attachments.length === 0}
-            accessibilityLabel={t('common.send', '发送')}
-          >
-            <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
-          </TouchableOpacity>
-        )}
-      </View>
+        }
+        rightSlot={
+          isLoading ? (
+            <TouchableOpacity
+              style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
+              onPress={onStop}
+              accessibilityLabel={t('common.stop', '停止')}
+            >
+              <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.sendBtn,
+                { backgroundColor: colors.primary },
+                !text.trim() && attachments.length === 0 && {
+                  backgroundColor: colors.textTertiary
+                }
+              ]}
+              onPress={handleSend}
+              disabled={!text.trim() && attachments.length === 0}
+              accessibilityLabel={t('common.send', '发送')}
+            >
+              <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
+            </TouchableOpacity>
+          )
+        }
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 12,
-    borderTopWidth: 1
+    paddingTop: 12,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    borderTopWidth: StyleSheet.hairlineWidth
   },
   toolbarContent: {
     gap: 8,
@@ -336,8 +342,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1
   },
@@ -349,28 +355,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     maxWidth: 120
   },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 8
-  },
   toolbarToggle: {
     width: 28,
     height: 28,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 4,
-    marginBottom: 1
+    justifyContent: 'center'
   },
   input: {
-    flex: 1,
-    minHeight: 24,
-    maxHeight: 120,
+    minHeight: 48,
+    maxHeight: 140,
     fontSize: 15,
-    paddingTop: 4,
-    paddingBottom: 4
+    lineHeight: 20,
+    paddingVertical: 8
+  },
+  inputEmpty: {
+    paddingVertical: Platform.OS === 'ios' ? 13 : 11,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null)
   },
   sendBtn: {
     width: 32,

@@ -70,7 +70,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
             gap: tokens.spacing.sm
           }}
         >
-          <Text style={{ fontSize: 32, opacity: 0.3 }}>👤</Text>
+          <Text style={{ fontSize: 32, opacity: 0.3 }}>🏷️</Text>
           <Text
             style={{
               fontSize: 14,

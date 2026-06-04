@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { View, Text, Pressable, TextInput } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { Input } from '../Input/Input'
 
 export interface NativePaginationProps {
   /** 当前页码（从 1 开始） */
@@ -229,7 +230,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
             gap: tokens.spacing.xs
           }}
         >
-          <TextInput
+          <Input
             value={jumperValue}
             onChangeText={(text) => {
               const val = text.replace(/[^0-9]/g, '')
@@ -238,18 +239,12 @@ export const Pagination: React.FC<NativePaginationProps> = ({
             onSubmitEditing={handleJumperSubmit}
             keyboardType="numeric"
             placeholder="跳转"
-            placeholderTextColor={colors.textTertiary}
             editable={!disabled}
             style={{
               width: 60,
               height: 36,
-              borderWidth: 1,
-              borderColor: colors.outlineVariant,
-              borderRadius: tokens.radius.md,
               paddingHorizontal: 8,
               textAlign: 'center',
-              color: colors.textPrimary,
-              backgroundColor: colors.bgSurface,
               fontSize: 14
             }}
           />
