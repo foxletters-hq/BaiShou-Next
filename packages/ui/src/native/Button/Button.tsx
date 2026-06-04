@@ -55,7 +55,7 @@ export const Button: React.FC<NativeButtonProps> = ({
       base.opacity = 0.6
     }
 
-    return [base, typeof style === 'function' ? style({ pressed }) : style]
+    return [base, typeof style === 'function' ? style({ pressed, hovered: false }) : style]
   }
 
   const textColor =
