@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ScrollView
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   getDefaultSummaryTemplate,
@@ -18,9 +10,10 @@ import {
   type SummaryPromptLocale,
   type SummaryTemplateKey
 } from '@baishou/shared'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
+import { SettingsGroupCard } from './SettingsGroupCard'
 
 const TEMPLATE_KEYS: SummaryTemplateKey[] = ['weekly', 'monthly', 'quarterly', 'yearly']
 
@@ -34,6 +27,7 @@ const TAB_META: Record<SummaryTemplateKey, { icon: string; labelKey: string }> =
 export const SummarySettingsSection: React.FC = () => {
   const { t, i18n } = useTranslation()
   const { colors } = useNativeTheme()
+  const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
 
   const [summaryConfig, setSummaryConfig] = useState<SummaryConfig>({})
@@ -41,6 +35,9 @@ export const SummarySettingsSection: React.FC = () => {
   const [activePromptLocale, setActivePromptLocale] = useState<SummaryPromptLocale>('zh')
   const [localText, setLocalText] = useState('')
   const [generationLocale, setGenerationLocale] = useState<SummaryPromptLocale>('zh')
+  const [monthlySummarySource, setMonthlySummarySource] = useState<'weeklies' | 'diaries'>(
+    'weeklies'
+  )
   const activeTabRef = useRef<SummaryTemplateKey>(activeTab)
   activeTabRef.current = activeTab
 
@@ -52,6 +49,11 @@ export const SummarySettingsSection: React.FC = () => {
       const uiLang = resolveAppUiLanguage(settings.language, i18n.language)
       const autoLocale = resolveSummaryPromptLocale(uiLang)
       setSummaryConfig(saved)
+      const globalModels =
+        (await services.settingsManager.get<{ monthlySummarySource?: 'weeklies' | 'diaries' }>(
+          'global_models'
+        )) || {}
+      setMonthlySummarySource(globalModels.monthlySummarySource ?? 'weeklies')
       setGenerationLocale(autoLocale)
       setActivePromptLocale(autoLocale)
       setLocalText(
@@ -122,6 +124,17 @@ export const SummarySettingsSection: React.FC = () => {
     setLocalText(getSummaryTemplateForEdit(merged.instructionsByLocale, locale, activeTab))
   }
 
+  const persistMonthlySource = async (source: 'weeklies' | 'diaries') => {
+    if (!services || !dbReady) return
+    const globalModels =
+      (await services.settingsManager.get<Record<string, unknown>>('global_models')) || {}
+    await services.settingsManager.set('global_models', {
+      ...globalModels,
+      monthlySummarySource: source
+    })
+    setMonthlySummarySource(source)
+  }
+
   const handleSave = async () => {
     const settings = (await services?.settingsManager.get<{ language?: string }>('settings')) || {}
     const uiLang = resolveAppUiLanguage(settings.language, i18n.language)
@@ -131,8 +144,9 @@ export const SummarySettingsSection: React.FC = () => {
       promptLocale: autoLocale
     }
     await persistConfig(next)
+    await persistMonthlySource(monthlySummarySource)
     setGenerationLocale(autoLocale)
-    Alert.alert(t('common.success'), t('settings.saved'))
+    toast.showSuccess(t('settings.saved'))
   }
 
   const handleReset = async () => {
@@ -140,7 +154,7 @@ export const SummarySettingsSection: React.FC = () => {
     setLocalText(defaultText)
     const next = flushLocal(activePromptLocale, activeTab, defaultText)
     await persistConfig(next)
-    Alert.alert(t('common.success'), t('summary.reset_template_success'))
+    toast.showSuccess(t('summary.reset_template_success'))
   }
 
   const tabs = useMemo(
@@ -159,107 +173,160 @@ export const SummarySettingsSection: React.FC = () => {
 
   return (
     <ScrollView keyboardShouldPersistTaps="handled">
-      <Text style={[styles.desc, { color: colors.textSecondary }]}>
-        {t('settings.summary_ai_prompt_desc')}
-      </Text>
+      <SettingsGroupCard>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+          {t('settings.monthly_summary_data_source')}
+        </Text>
+        <Text style={[styles.desc, { color: colors.textSecondary }]}>
+          {t('settings.monthly_summary_data_source_desc')}
+        </Text>
+        <View style={[styles.sourceGroup, { backgroundColor: colors.bgApp }]}>
+          {(['weeklies', 'diaries'] as const).map((source) => {
+            const active = monthlySummarySource === source
+            const labelKey =
+              source === 'weeklies' ? 'settings.read_only_weeklies' : 'settings.read_all_diaries'
+            return (
+              <TouchableOpacity
+                key={source}
+                style={[styles.sourceBtn, active && { backgroundColor: colors.primary }]}
+                onPress={() => void persistMonthlySource(source)}
+              >
+                <Text
+                  style={{
+                    color: active ? colors.textOnPrimary : colors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: active ? '600' : '400',
+                    textAlign: 'center'
+                  }}
+                >
+                  {t(labelKey)}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </SettingsGroupCard>
 
-      <Text style={[styles.localeHint, { color: colors.textSecondary }]}>
-        {t('settings.summary_prompt_locale_hint')}:{' '}
-        <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{generationLabel}</Text>
-      </Text>
+      <SettingsGroupCard>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+          {t('settings.summary_ai_prompt_title')}
+        </Text>
+        <Text style={[styles.desc, { color: colors.textSecondary }]}>
+          {t('settings.summary_ai_prompt_desc')}
+        </Text>
 
-      <View style={styles.langBar}>
-        {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
-          <TouchableOpacity
-            key={lang.id}
-            style={[
-              styles.langChip,
-              {
-                borderColor: activePromptLocale === lang.id ? colors.primary : colors.borderMuted,
-                backgroundColor:
-                  activePromptLocale === lang.id ? colors.primaryLight : 'transparent'
-              },
-              generationLocale === lang.id && styles.langChipGeneration
-            ]}
-            onPress={() => handlePromptLocaleChange(lang.id)}
-          >
-            <Text
-              style={{
-                color: activePromptLocale === lang.id ? colors.primary : colors.textSecondary,
-                fontSize: 13
-              }}
+        <Text style={[styles.localeHint, { color: colors.textSecondary }]}>
+          {t('settings.summary_prompt_locale_hint')}:{' '}
+          <Text style={{ fontWeight: '600', color: colors.textPrimary }}>{generationLabel}</Text>
+        </Text>
+
+        <View style={styles.langBar}>
+          {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
+            <TouchableOpacity
+              key={lang.id}
+              style={[
+                styles.langChip,
+                {
+                  borderColor: activePromptLocale === lang.id ? colors.primary : colors.borderMuted,
+                  backgroundColor: activePromptLocale === lang.id ? colors.primary : 'transparent'
+                },
+                generationLocale === lang.id && styles.langChipGeneration
+              ]}
+              onPress={() => handlePromptLocaleChange(lang.id)}
             >
-              {t(lang.labelKey, lang.fallback)}
+              <Text
+                style={{
+                  color:
+                    activePromptLocale === lang.id ? colors.textOnPrimary : colors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: activePromptLocale === lang.id ? '600' : '400'
+                }}
+              >
+                {t(lang.labelKey, lang.fallback)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={[styles.tabBar, { backgroundColor: colors.bgApp }]}>
+          {tabs.map((tab) => {
+            const active = activeTab === tab.id
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.tabBtn, active && { backgroundColor: colors.primary }]}
+                onPress={() => handleTabChange(tab.id)}
+              >
+                <Text style={styles.tabIcon}>{tab.icon}</Text>
+                <Text
+                  style={{
+                    color: active ? colors.textOnPrimary : colors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: active ? '600' : '400'
+                  }}
+                  numberOfLines={1}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        <TextInput
+          style={[
+            styles.editor,
+            {
+              backgroundColor: colors.bgSurface,
+              color: colors.textPrimary,
+              borderColor: colors.borderMuted
+            }
+          ]}
+          value={localText}
+          onChangeText={setLocalText}
+          multiline
+          numberOfLines={14}
+          textAlignVertical="top"
+          placeholder={t('settings.summary_ai_prompt_hint')}
+          placeholderTextColor={colors.textTertiary}
+        />
+
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.btn, { borderColor: colors.borderSubtle }]}
+            onPress={() => void handleReset()}
+          >
+            <Text style={{ color: colors.textSecondary }}>{t('settings.restore_default')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.btn, styles.saveBtn, { backgroundColor: colors.primary }]}
+            onPress={() => void handleSave()}
+          >
+            <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
+              {t('common.save')}
             </Text>
           </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.tabBar}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[
-              styles.tabBtn,
-              {
-                borderColor: activeTab === tab.id ? colors.primary : colors.borderMuted,
-                backgroundColor: activeTab === tab.id ? colors.primaryLight : colors.bgSurfaceHighest
-              }
-            ]}
-            onPress={() => handleTabChange(tab.id)}
-          >
-            <Text style={styles.tabIcon}>{tab.icon}</Text>
-            <Text
-              style={{
-                color: activeTab === tab.id ? colors.primary : colors.textSecondary,
-                fontSize: 12,
-                fontWeight: activeTab === tab.id ? '600' : '400'
-              }}
-              numberOfLines={1}
-            >
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <TextInput
-        style={[
-          styles.editor,
-          {
-            backgroundColor: colors.bgSurfaceHighest,
-            color: colors.textPrimary,
-            borderColor: colors.borderMuted
-          }
-        ]}
-        value={localText}
-        onChangeText={setLocalText}
-        multiline
-        numberOfLines={14}
-        textAlignVertical="top"
-        placeholder={t('settings.summary_ai_prompt_hint')}
-        placeholderTextColor={colors.textTertiary}
-      />
-
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.btn, { borderColor: colors.borderSubtle }]}
-          onPress={() => void handleReset()}
-        >
-          <Text style={{ color: colors.textSecondary }}>{t('settings.restore_default')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.btn, styles.saveBtn, { backgroundColor: colors.primary }]}
-          onPress={() => void handleSave()}
-        >
-          <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>{t('common.save')}</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      </SettingsGroupCard>
     </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
+  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  sourceGroup: {
+    flexDirection: 'row',
+    gap: 4,
+    padding: 4,
+    borderRadius: 8,
+    marginBottom: 4
+  },
+  sourceBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 6
+  },
   desc: { fontSize: 14, lineHeight: 20, marginBottom: 12 },
   localeHint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
   langBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
@@ -272,16 +339,24 @@ const styles = StyleSheet.create({
   langChipGeneration: {
     borderStyle: 'dashed'
   },
-  tabBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  tabBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    padding: 4,
+    borderRadius: 8,
+    marginBottom: 12
+  },
   tabBtn: {
+    flex: 1,
+    minWidth: '22%',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 6,
     paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    maxWidth: '48%'
+    borderRadius: 6
   },
   tabIcon: { fontSize: 16 },
   editor: {

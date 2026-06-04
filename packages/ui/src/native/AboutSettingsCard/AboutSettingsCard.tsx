@@ -1,58 +1,85 @@
-import React, { useState } from 'react'
-import { View, Text } from 'react-native'
+import React from 'react'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { SettingsItem } from '../SettingsItem'
+import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import type { NativeAboutSettingsCardProps } from './about-settings.types'
-import { useAboutSettingsEasterEggs } from './useAboutSettingsEasterEggs'
-import { AboutSettingsAboutContent } from './AboutSettingsAboutContent'
-import { AboutSettingsPrivacyContent } from './AboutSettingsPrivacyContent'
-import { AboutSettingsFullscreenPanel } from './AboutSettingsFullscreenPanel'
 
 export const AboutSettingsCard: React.FC<NativeAboutSettingsCardProps> = ({
-  version,
-  heroImageSrc,
-  onOpenGithubHost
+  onNavigateAbout,
+  onNavigatePrivacy,
+  onOpenFeedback,
+  embedded = false
 }) => {
   const { t } = useTranslation()
-  const { tokens } = useNativeTheme()
-  const [showAbout, setShowAbout] = useState(false)
-  const [showPrivacy, setShowPrivacy] = useState(false)
-  const easterEggs = useAboutSettingsEasterEggs()
+  const { colors, tokens } = useNativeTheme()
+
+  const rows = [
+    {
+      key: 'about',
+      title: t('settings.about_baishou', '关于白守'),
+      onPress: onNavigateAbout,
+      trailing: '›'
+    },
+    {
+      key: 'privacy',
+      title: t('settings.development_philosophy', '开发哲学与无痕承诺'),
+      onPress: onNavigatePrivacy,
+      trailing: '›'
+    },
+    {
+      key: 'feedback',
+      title: t('settings.feedback', '问题反馈'),
+      onPress: onOpenFeedback,
+      trailing: '↗'
+    }
+  ]
+
+  const content = rows.map((row, index) => (
+    <Pressable
+      key={row.key}
+      onPress={row.onPress}
+      style={({ pressed }) => [
+        styles.row,
+        index < rows.length - 1 && {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.borderSubtle
+        },
+        { opacity: pressed ? 0.7 : 1 }
+      ]}
+    >
+      <Text style={[hubStyles.title, { color: colors.textPrimary, flex: 1 }]}>{row.title}</Text>
+      <Text style={[styles.chevron, { color: colors.textTertiary }]}>{row.trailing}</Text>
+    </Pressable>
+  ))
+
+  if (embedded) {
+    return <View>{content}</View>
+  }
 
   return (
-    <View style={{ gap: tokens.spacing.sm }}>
-      <SettingsItem
-        icon={<Text style={{ fontSize: 20 }}>ℹ️</Text>}
-        title={t('settings.about_baishou', '关于白守')}
-        onPress={() => setShowAbout(true)}
-      />
-
-      <SettingsItem
-        icon={<Text style={{ fontSize: 20 }}>🔒</Text>}
-        title={t('settings.development_philosophy', '开发哲学与无痕承诺')}
-        onPress={() => setShowPrivacy(true)}
-      />
-
-      <SettingsItem
-        icon={<Text style={{ fontSize: 20 }}>🐛</Text>}
-        title={t('settings.feedback', '问题反馈')}
-        onPress={onOpenGithubHost}
-      />
-
-      <AboutSettingsFullscreenPanel visible={showAbout} onClose={() => setShowAbout(false)}>
-        <AboutSettingsAboutContent
-          version={version}
-          heroImageSrc={heroImageSrc}
-          onOpenGithubHost={onOpenGithubHost}
-          onLogoTap={easterEggs.handleLogoTap}
-          onDevTap={easterEggs.handleDevTap}
-        />
-      </AboutSettingsFullscreenPanel>
-
-      <AboutSettingsFullscreenPanel visible={showPrivacy} onClose={() => setShowPrivacy(false)}>
-        <AboutSettingsPrivacyContent />
-      </AboutSettingsFullscreenPanel>
+    <View
+      style={{
+        backgroundColor: colors.bgSurface,
+        borderRadius: tokens.radius.lg,
+        overflow: 'hidden'
+      }}
+    >
+      {content}
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 12
+  },
+  chevron: {
+    fontSize: 18,
+    lineHeight: 18
+  }
+})

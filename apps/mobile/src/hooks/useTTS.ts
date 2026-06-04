@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
-import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 
 type AudioPlayer = {
@@ -19,6 +19,7 @@ async function loadExpoAudio() {
 
 export function useTTS() {
   const { t } = useTranslation()
+  const toast = useNativeToast()
   const { services } = useBaishou()
   const [ttsPlayingMsgId, setTtsPlayingMsgId] = useState<string | null>(null)
   const playerRef = useRef<AudioPlayer | null>(null)
@@ -51,7 +52,7 @@ export function useTTS() {
 
       try {
         if (!services) {
-          Alert.alert(t('common.error', '错误'), t('agent.tts_service_not_ready', '服务未就绪'))
+          toast.showError(t('agent.tts_service_not_ready', '服务未就绪'))
           return
         }
 
@@ -62,19 +63,13 @@ export function useTTS() {
         const ttsModelId = globalModels?.globalTtsModelId
 
         if (!ttsProviderId || !ttsModelId) {
-          Alert.alert(
-            t('agent.tts_not_configured', 'TTS 未配置'),
-            t('agent.tts_configure_hint', '请在设置中配置 TTS 模型')
-          )
+          toast.showError(t('agent.tts_configure_hint', '请在设置中配置 TTS 模型'))
           return
         }
 
         const providerConfig = providers.find((p: any) => p.id === ttsProviderId)
         if (!providerConfig) {
-          Alert.alert(
-            t('common.error', '错误'),
-            t('agent.tts_provider_not_found', 'TTS 提供商未找到')
-          )
+          toast.showError(t('agent.tts_provider_not_found', 'TTS 提供商未找到'))
           return
         }
 
@@ -129,7 +124,7 @@ export function useTTS() {
         if (!response.ok) {
           const errText = await response.text().catch(() => '')
           console.error(`[TTS] API error ${response.status}: ${errText}`)
-          Alert.alert(t('agent.tts_failed', '语音合成失败'), `API error: ${response.status}`)
+          toast.showError(`${t('agent.tts_failed', '语音合成失败')}: API error ${response.status}`)
           return
         }
 
@@ -142,7 +137,7 @@ export function useTTS() {
               `[TTS] MiMo TTS failed: No audio data in chat completions response`,
               resJson
             )
-            Alert.alert(t('agent.tts_failed', '语音合成失败'), 'Invalid audio data returned')
+            toast.showError(`${t('agent.tts_failed', '语音合成失败')}: Invalid audio data`)
             return
           }
           base64 = base64Audio
@@ -164,10 +159,7 @@ export function useTTS() {
           setAudioModeAsync = audio.setAudioModeAsync
         } catch (e) {
           console.error('[TTS] expo-audio native module unavailable:', e)
-          Alert.alert(
-            t('agent.tts_failed', '语音合成失败'),
-            'ExpoAudio 原生模块未安装。请执行 pnpm dev:mobile:clear 重新编译 APK。'
-          )
+          toast.showError('ExpoAudio 原生模块未安装，请重新编译 APK')
           return
         }
 
@@ -192,7 +184,7 @@ export function useTTS() {
         player.play()
       } catch (e: any) {
         console.error('[TTS] Error:', e)
-        Alert.alert(t('agent.tts_failed', '语音合成失败'), e.message || 'Unknown error')
+        toast.showError(`${t('agent.tts_failed', '语音合成失败')}: ${e.message || 'Unknown error'}`)
         setTtsPlayingMsgId(null)
       }
     },

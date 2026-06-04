@@ -124,7 +124,9 @@ export const DiaryList: React.FC<DiaryListProps> = ({
         </Text>
         {selectedMonth && (
           <TouchableOpacity onPress={onViewAll}>
-            <Text style={[styles.viewAllBtn, { color: colors.primary }]}>{t('common.view_all')}</Text>
+            <Text style={[styles.viewAllBtn, { color: colors.primary }]}>
+              {t('common.view_all')}
+            </Text>
           </TouchableOpacity>
         )}
         {showStoragePermission && onRequestStoragePermission ? (
@@ -146,7 +148,8 @@ export const DiaryList: React.FC<DiaryListProps> = ({
       data={entries}
       numColumns={numColumns}
       keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.listContent}
+      style={{ flex: 1, backgroundColor: colors.bgApp }}
+      contentContainerStyle={[styles.listContent, { backgroundColor: colors.bgApp }]}
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
       ListHeaderComponent={showPagination ? <PaginationBar /> : null}
       ListFooterComponent={showPagination ? <PaginationBar /> : null}

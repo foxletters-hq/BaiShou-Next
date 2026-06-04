@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react'
-import { View, Text, Pressable, Alert } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { useDialog } from '../Dialog'
 import type { AgentSession } from './agent-session-list.types'
 import { formatSessionTime } from './agent-session-list.utils'
 import { agentSessionListStyles as styles } from './agent-session-list.styles'
@@ -23,39 +24,55 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const dialog = useDialog()
 
-  const handleDelete = useCallback(() => {
-    Alert.alert(
-      t('agent.sessions.delete_title', '删除对话'),
+  const handleDelete = useCallback(async () => {
+    const confirmed = await dialog.confirm(
       t('agent.delete_session_confirm', '您确定要永久删除这篇对话吗？此操作不可逆转。'),
-      [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
-        {
-          text: t('common.delete', '删除'),
-          style: 'destructive',
-          onPress: () => onDelete?.(item.id)
-        }
-      ]
+      {
+        confirmText: t('common.delete', '删除'),
+        destructive: true
+      }
     )
-  }, [item.id, onDelete, t])
+    if (confirmed) onDelete?.(item.id)
+  }, [dialog, item.id, onDelete, t])
 
-  const handleRename = useCallback(() => {
-    Alert.prompt(
-      t('agent.sessions.rename', '重命名'),
+  const handleRename = useCallback(async () => {
+    const text = await dialog.prompt(
       t('agent.sessions.rename_hint', '输入新会话名称'),
-      [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
-        {
-          text: t('common.confirm', '确认'),
-          onPress: (text?: string) => {
-            if (text?.trim()) onRename?.(item.id, text.trim())
-          }
-        }
-      ],
-      'plain-text',
-      item.title
+      item.title,
+      t('agent.sessions.rename', '重命名')
     )
-  }, [item.id, item.title, onRename, t])
+    if (text?.trim()) onRename?.(item.id, text.trim())
+  }, [dialog, item.id, item.title, onRename, t])
+
+  const handleLongPress = useCallback(async () => {
+    const options: Array<{ label: string; value: string; destructive?: boolean }> = []
+    if (onPin) {
+      options.push({
+        label: item.isPinned
+          ? t('agent.sessions.unpin', '取消置顶')
+          : t('agent.sessions.pin', '置顶对话'),
+        value: 'pin'
+      })
+    }
+    if (onRename) {
+      options.push({ label: t('agent.sessions.rename', '重命名'), value: 'rename' })
+    }
+    if (onDelete) {
+      options.push({
+        label: t('common.delete', '删除'),
+        value: 'delete',
+        destructive: true
+      })
+    }
+    if (options.length === 0) return
+
+    const choice = await dialog.choose(item.title, options)
+    if (choice === 'pin') onPin?.(item.id)
+    else if (choice === 'rename') await handleRename()
+    else if (choice === 'delete') await handleDelete()
+  }, [dialog, handleDelete, handleRename, item, onDelete, onPin, onRename, t])
 
   return (
     <Pressable
@@ -67,25 +84,7 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
         }
       ]}
       onPress={() => onSelect(item.id)}
-      onLongPress={() => {
-        const buttons: Array<{ text: string; onPress?: () => void }> = []
-        if (onPin) {
-          buttons.push({
-            text: item.isPinned
-              ? t('agent.sessions.unpin', '取消置顶')
-              : t('agent.sessions.pin', '置顶对话'),
-            onPress: () => onPin(item.id)
-          })
-        }
-        if (onRename) {
-          buttons.push({ text: t('agent.sessions.rename', '重命名'), onPress: handleRename })
-        }
-        if (onDelete) {
-          buttons.push({ text: t('common.delete', '删除'), onPress: handleDelete })
-        }
-        buttons.push({ text: t('common.cancel', '取消') })
-        Alert.alert(item.title, undefined, buttons)
-      }}
+      onLongPress={() => void handleLongPress()}
     >
       <View style={styles.itemContent}>
         <View style={styles.itemHeader}>

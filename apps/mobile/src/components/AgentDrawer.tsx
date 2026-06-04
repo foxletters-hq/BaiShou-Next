@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  View,
-  Text,
-  Modal,
-  Pressable,
-  TouchableOpacity,
-  StyleSheet,
-  Animated
-} from 'react-native'
+import { View, Text, Modal, Pressable, TouchableOpacity, StyleSheet, Animated } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -220,7 +212,10 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                 <>
                   <AssistantAvatar assistant={currentAssistant} size={36} colors={colors} />
                   <View style={styles.currentMeta}>
-                    <Text style={[styles.currentName, { color: colors.textPrimary }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.currentName, { color: colors.textPrimary }]}
+                      numberOfLines={1}
+                    >
                       {currentAssistant.name}
                     </Text>
                     {currentAssistant.description ? (
@@ -236,9 +231,13 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                 </>
               ) : (
                 <>
-                  <View style={[styles.avatarSkeleton, { backgroundColor: colors.bgSurfaceNormal }]} />
+                  <View
+                    style={[styles.avatarSkeleton, { backgroundColor: colors.bgSurfaceNormal }]}
+                  />
                   <View style={styles.currentMeta}>
-                    <View style={[styles.lineSkeleton, { backgroundColor: colors.bgSurfaceNormal }]} />
+                    <View
+                      style={[styles.lineSkeleton, { backgroundColor: colors.bgSurfaceNormal }]}
+                    />
                     <View
                       style={[
                         styles.lineSkeleton,

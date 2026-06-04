@@ -61,9 +61,7 @@ export class MobileFileSystem implements IFileSystem {
       if (!info.exists || info.isDirectory) {
         throw enoentError(filePath, 'open')
       }
-      return encoding === 'base64'
-        ? externalReadB64Safe(filePath)
-        : externalReadTextSafe(filePath)
+      return encoding === 'base64' ? externalReadB64Safe(filePath) : externalReadTextSafe(filePath)
     }
     const uri = toFileUri(filePath)
     const info = await SandboxFS.getInfoAsync(uri)

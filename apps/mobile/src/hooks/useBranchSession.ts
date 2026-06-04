@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
-import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
 
 export function useBranchSession() {
   const { t } = useTranslation()
+  const toast = useNativeToast()
   const { services } = useBaishou()
 
   const branchSession = useCallback(
@@ -15,7 +16,7 @@ export function useBranchSession() {
       assistantName?: string
     ): Promise<string | null> => {
       if (!services) {
-        Alert.alert(t('common.error', '错误'), t('storage.service_unavailable', '服务未就绪'))
+        toast.showError(t('storage.service_unavailable', '服务未就绪'))
         return null
       }
 
@@ -95,10 +96,7 @@ export function useBranchSession() {
         return newSessionId
       } catch (e: any) {
         console.error('[Branch] Error:', e)
-        Alert.alert(
-          t('agent.chat.branch_failed', '分支创建失败'),
-          e.message || t('app.unknown_error', '未知网络或系统错误')
-        )
+        toast.showError(e.message || t('app.unknown_error', '未知网络或系统错误'))
         return null
       }
     },

@@ -133,9 +133,7 @@ export const AgentScreen: React.FC = () => {
               ...prev,
               compressedContent: summaryText,
               flatEntries: prev.flatEntries?.map((entry) =>
-                entry.kind === 'compression-summary'
-                  ? { ...entry, summaryText }
-                  : entry
+                entry.kind === 'compression-summary' ? { ...entry, summaryText } : entry
               )
             }))
           }}
@@ -156,9 +154,7 @@ export const AgentScreen: React.FC = () => {
               : ''
           }
           recompressError={
-            flow.contextRecompressJob?.status === 'error'
-              ? flow.contextRecompressJob.error
-              : null
+            flow.contextRecompressJob?.status === 'error' ? flow.contextRecompressJob.error : null
           }
           onRecompress={() => {
             const sid = flow.contextDialogState.sessionId ?? flow.sessionId

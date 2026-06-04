@@ -255,8 +255,8 @@ export class MobileStoragePathService implements IStoragePathService {
   }
 
   public async getUserAvatarsDirectory(): Promise<string> {
-    const root = getAppDocumentDirectory()
-    const dir = `${root}UserAvatars`
+    const root = await this.getAvatarsDirectory()
+    const dir = `${root}/UserAvatars`
     await this.ensureDir(dir)
     return dir
   }

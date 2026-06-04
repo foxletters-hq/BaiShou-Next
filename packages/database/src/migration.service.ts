@@ -186,7 +186,9 @@ export class MigrationService {
       const has = tableInfo.rows.some((c: { name?: string }) => c.name === 'compress_system_prompt')
       if (!has) {
         logger.info('[MigrationService] 添加 agent_assistants.compress_system_prompt 列...')
-        await this._executeSql(`ALTER TABLE agent_assistants ADD COLUMN compress_system_prompt TEXT`)
+        await this._executeSql(
+          `ALTER TABLE agent_assistants ADD COLUMN compress_system_prompt TEXT`
+        )
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
@@ -224,9 +226,7 @@ export class MigrationService {
   private async _ensureSnapshotTailStartColumn(): Promise<void> {
     try {
       const tableInfo = await this._executeSql(`PRAGMA table_info(compression_snapshots)`)
-      const has = tableInfo.rows.some(
-        (c: { name?: string }) => c.name === 'tail_start_message_id'
-      )
+      const has = tableInfo.rows.some((c: { name?: string }) => c.name === 'tail_start_message_id')
       if (!has) {
         logger.info('[MigrationService] 添加 compression_snapshots.tail_start_message_id 列...')
         await this._executeSql(

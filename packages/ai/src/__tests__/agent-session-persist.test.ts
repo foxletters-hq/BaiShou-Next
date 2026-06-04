@@ -22,8 +22,11 @@ function makeMsg(id: string, role: string, orderIndex: number, text: string): Me
   }
 }
 
+import { ModelPricingService } from '../pricing/model-pricing.service'
+
 describe('persistResult token estimation', () => {
   it('should estimate input tokens correctly when api usage is missing', async () => {
+    vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
     const sessionRepo = {
       getMessagesBySession: vi.fn().mockResolvedValue([]),
       insertMessageWithParts: vi.fn().mockResolvedValue(undefined),

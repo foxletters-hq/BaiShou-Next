@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
-import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import {
   reconcileCompressionStateAfterTruncate,
@@ -33,6 +33,8 @@ export function useAgentStream(
   searchMode?: boolean
 ) {
   const { t } = useTranslation()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { addMessage, updateMessage, setLoading, clearSession, messages } = useAgentStore()
   const { startAgentChat, services } = useBaishou()
 
@@ -86,8 +88,7 @@ export function useAgentStream(
           onSessionCreated?.(newSessionId)
         } catch (e) {
           console.error('Failed to create session', e)
-          Alert.alert(
-            t('common.error', '错误'),
+          toast.showError(
             t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg: '' })
           )
           return
@@ -108,7 +109,7 @@ export function useAgentStream(
         }
       )
       if ('error' in saveResult) {
-        Alert.alert(t('common.error', '错误'), saveResult.error)
+        toast.showError(saveResult.error)
         return
       }
 
@@ -350,34 +351,27 @@ export function useAgentStream(
   const handleDeleteMessage = useCallback(
     async (messageId: string) => {
       if (!currentSessionId || !services) return
-      Alert.alert(
-        t('common.confirm_delete', '确认删除'),
+      const confirmed = await dialog.confirm(
         t('agent.chat.delete_msg_confirm', '您确定要删除这条消息历史吗？此操作不可逆转。'),
-        [
-          { text: t('common.cancel', '取消'), style: 'cancel' },
-          {
-            text: t('common.delete', '删除'),
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await services.sessionRepo.deleteMessageAndFollowing(currentSessionId, messageId)
-                if (services.snapshotRepo) {
-                  await reconcileCompressionStateAfterTruncate(
-                    services.sessionRepo,
-                    services.snapshotRepo,
-                    currentSessionId
-                  )
-                }
-                await reloadMessagesFromDb(currentSessionId)
-              } catch (e) {
-                console.error('Failed to delete message', e)
-              }
-            }
-          }
-        ]
+        { confirmText: t('common.delete', '删除'), destructive: true }
       )
+      if (!confirmed) return
+      try {
+        await services.sessionRepo.deleteMessageAndFollowing(currentSessionId, messageId)
+        if (services.snapshotRepo) {
+          await reconcileCompressionStateAfterTruncate(
+            services.sessionRepo,
+            services.snapshotRepo,
+            currentSessionId
+          )
+        }
+        await reloadMessagesFromDb(currentSessionId)
+      } catch (e) {
+        console.error('Failed to delete message', e)
+        toast.showError(t('common.delete_failed', '删除失败'))
+      }
     },
-    [currentSessionId, services, t, reloadMessagesFromDb]
+    [currentSessionId, services, dialog, t, toast, reloadMessagesFromDb]
   )
 
   const updateTokenUsage = useCallback((usage: Partial<TokenUsage>) => {

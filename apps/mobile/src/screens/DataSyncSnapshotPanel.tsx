@@ -4,14 +4,13 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   RefreshControl,
   ScrollView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { SnapshotMeta } from '@baishou/core-mobile'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 
 const formatSize = (bytes: number): string => {
@@ -23,6 +22,8 @@ const formatSize = (bytes: number): string => {
 export const DataSyncSnapshotPanel: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady } = useBaishou()
   const archiveService = services?.archiveService
 
@@ -55,71 +56,61 @@ export const DataSyncSnapshotPanel: React.FC = () => {
 
   const handleCreate = () => {
     if (!archiveService) return
-    Alert.alert(
-      t('storage.create_snapshot'),
-      t('storage.create_snapshot_desc'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          onPress: async () => {
-            setCreating(true)
-            try {
-              const path = await archiveService.createSnapshot()
-              if (path) {
-                Alert.alert(t('common.success'), t('storage.snapshot_created'))
-                await loadSnapshots()
-              } else {
-                Alert.alert(t('common.error'), t('data_sync.backup_failed'))
-              }
-            } catch {
-              Alert.alert(t('common.error'), t('data_sync.backup_failed'))
-            } finally {
-              setCreating(false)
-            }
-          }
+    void (async () => {
+      const confirmed = await dialog.confirm(t('storage.create_snapshot_desc'), {
+        title: t('storage.create_snapshot'),
+        confirmText: t('common.confirm')
+      })
+      if (!confirmed) return
+      setCreating(true)
+      try {
+        const path = await archiveService.createSnapshot()
+        if (path) {
+          toast.showSuccess(t('storage.snapshot_created'))
+          await loadSnapshots()
+        } else {
+          toast.showError(t('data_sync.backup_failed'))
         }
-      ]
-    )
+      } catch {
+        toast.showError(t('data_sync.backup_failed'))
+      } finally {
+        setCreating(false)
+      }
+    })()
   }
 
   const handleRestore = (item: SnapshotMeta) => {
     if (!archiveService) return
-    Alert.alert(
-      t('data_sync.confirm_restore'),
-      t('data_sync.restore_warning'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await archiveService.restoreFromSnapshot(item.filename)
-              Alert.alert(t('common.success'), t('data_sync.restore_success'))
-            } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : String(e)
-              Alert.alert(t('common.error'), msg || t('data_sync.restore_failed'))
-            }
-          }
-        }
-      ]
-    )
+    void (async () => {
+      const confirmed = await dialog.confirm(t('data_sync.restore_warning'), {
+        title: t('data_sync.confirm_restore'),
+        confirmText: t('common.confirm'),
+        destructive: true
+      })
+      if (!confirmed) return
+      try {
+        await archiveService.restoreFromSnapshot(item.filename)
+        toast.showSuccess(t('data_sync.restore_success'))
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        toast.showError(msg || t('data_sync.restore_failed'))
+      }
+    })()
   }
 
   const handleDelete = (item: SnapshotMeta) => {
     if (!archiveService) return
-    Alert.alert(t('common.confirm_delete'), item.filename, [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          await archiveService.deleteSnapshot(item.filename)
-          await loadSnapshots()
-        }
-      }
-    ])
+    void (async () => {
+      const confirmed = await dialog.confirm(item.filename, {
+        title: t('common.confirm_delete'),
+        confirmText: t('common.delete'),
+        destructive: true
+      })
+      if (!confirmed) return
+      await archiveService.deleteSnapshot(item.filename)
+      await loadSnapshots()
+      toast.showSuccess(t('common.delete_success'))
+    })()
   }
 
   return (
@@ -193,7 +184,13 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
   hint: { fontSize: 12, lineHeight: 17 },
-  createBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, minWidth: 88, alignItems: 'center' },
+  createBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 88,
+    alignItems: 'center'
+  },
   empty: { paddingVertical: 24, textAlign: 'center', fontSize: 14 },
   row: {
     flexDirection: 'row',

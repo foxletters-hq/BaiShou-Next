@@ -1,4 +1,8 @@
-import { ShadowIndexRepository, UpsertShadowIndexPayload, normalizeShadowFilePath } from '@baishou/database'
+import {
+  ShadowIndexRepository,
+  UpsertShadowIndexPayload,
+  normalizeShadowFilePath
+} from '@baishou/database'
 import { parseDateStr, DiaryMeta, logger } from '@baishou/shared'
 
 import type { IFileSystem } from '../fs/file-system.types'
@@ -284,9 +288,7 @@ export class ShadowIndexSyncService {
       // 2. 将整个文件池放进内存并发分块事务系统中处理
       const uniqueDates = [...new Set(targetDates)]
       if (uniqueDates.length > 0) {
-        logger.info(
-          `[ShadowSync] 全量扫描提取到 ${uniqueDates.length} 份文件，进入并行流水线...`
-        )
+        logger.info(`[ShadowSync] 全量扫描提取到 ${uniqueDates.length} 份文件，进入并行流水线...`)
         await this.syncJournalsBatch(uniqueDates, skipRag)
       }
 

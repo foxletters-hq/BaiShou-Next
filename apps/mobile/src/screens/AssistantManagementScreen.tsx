@@ -1,6 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native'
-import { useNativeTheme } from '@baishou/ui/native'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  Image,
+  useWindowDimensions
+} from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useNativeTheme, useNativeToast, useDialog, scrollIndicatorStyle } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -17,16 +27,26 @@ interface Assistant {
   isPinned: boolean
   providerId?: string
   modelId?: string
+  avatarPath?: string
+  createdAt?: number
+  lastUsedAt?: number
+  useCount?: number
 }
 
 export const AssistantManagementScreen: React.FC = () => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark, tokens } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
+  const { width } = useWindowDimensions()
   const { services, dbReady } = useBaishou()
   const router = useRouter()
 
   const [assistants, setAssistants] = useState<Assistant[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const numColumns = width >= 520 ? 2 : 1
 
   const loadAssistants = useCallback(async () => {
     if (!dbReady || !services) return
@@ -41,8 +61,24 @@ export const AssistantManagementScreen: React.FC = () => {
   }, [dbReady, services])
 
   useEffect(() => {
-    loadAssistants()
+    void loadAssistants()
   }, [loadAssistants])
+
+  const processedAssistants = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    let list = [...assistants]
+    if (q) {
+      list = list.filter(
+        (a) =>
+          a.name.toLowerCase().includes(q) ||
+          (a.description && a.description.toLowerCase().includes(q))
+      )
+    }
+    return list.sort((a, b) => {
+      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
+      return (b.createdAt || 0) - (a.createdAt || 0)
+    })
+  }, [assistants, searchQuery])
 
   const handleCreateAssistant = () => {
     router.push({ pathname: '/assistant-edit', params: { id: 'new' } })
@@ -53,27 +89,27 @@ export const AssistantManagementScreen: React.FC = () => {
   }
 
   const handleDeleteAssistant = async (assistant: Assistant) => {
-    if (assistant.isDefault) {
-      Alert.alert('错误', '不能删除默认助手')
-      return
-    }
-
-    Alert.alert('确认删除', `确定要删除助手「${assistant.name}」吗？此操作不可逆转。`, [
-      { text: '取消', style: 'cancel' },
+    const confirmed = await dialog.confirm(
+      t(
+        'agent.assistant.delete_confirm_content',
+        '确认要永久销毁此智能体的全部数据吗？一旦抹除将不可撤销。'
+      ),
       {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const newAssistants = assistants.filter((a) => a.id !== assistant.id)
-            await services?.settingsManager.set('assistants', newAssistants)
-            setAssistants(newAssistants)
-          } catch (e) {
-            console.error('Failed to delete assistant', e)
-          }
-        }
+        title: t('agent.assistant.delete_confirm_title', '特级警告：抹除心智模式？'),
+        confirmText: t('common.delete', '删除'),
+        destructive: true
       }
-    ])
+    )
+    if (!confirmed) return
+    try {
+      const newAssistants = assistants.filter((a) => a.id !== assistant.id)
+      await services?.settingsManager.set('assistants', newAssistants)
+      setAssistants(newAssistants)
+      toast.showSuccess(t('agent.assistant.deleted', '助手已删除'))
+    } catch (e) {
+      console.error('Failed to delete assistant', e)
+      toast.showError(t('common.delete_failed', '删除失败'))
+    }
   }
 
   const handleTogglePin = async (assistant: Assistant) => {
@@ -88,109 +124,143 @@ export const AssistantManagementScreen: React.FC = () => {
     }
   }
 
-  const handleSetDefault = async (assistant: Assistant) => {
-    try {
-      const newAssistants = assistants.map((a) => ({
-        ...a,
-        isDefault: a.id === assistant.id
-      }))
-      await services?.settingsManager.set('assistants', newAssistants)
-      setAssistants(newAssistants)
-    } catch (e) {
-      console.error('Failed to set default', e)
-    }
-  }
-
-  const pinnedAssistants = assistants.filter((a) => a.isPinned)
-  const unpinnedAssistants = assistants.filter((a) => !a.isPinned)
-
-  const renderAssistantItem = ({ item }: { item: Assistant }) => (
+  const renderCard = ({ item }: { item: Assistant }) => (
     <TouchableOpacity
-      style={[styles.assistantItem, { backgroundColor: colors.bgSurfaceHighest }]}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.bgSurface,
+          borderColor: item.isPinned ? colors.primary : colors.borderSubtle,
+          borderRadius: tokens.radius.lg
+        },
+        item.isPinned && { borderWidth: 1.5 }
+      ]}
       onPress={() => handleEditAssistant(item)}
-      activeOpacity={0.7}
+      activeOpacity={0.75}
     >
-      <View style={[styles.assistantEmoji, { backgroundColor: colors.primaryLight }]}>
-        <Text style={styles.emojiText}>{item.emoji}</Text>
-      </View>
-
-      <View style={styles.assistantInfo}>
-        <View style={styles.assistantHeader}>
-          <Text style={[styles.assistantName, { color: colors.textPrimary }]}>{item.name}</Text>
-          {item.isDefault && (
-            <View style={[styles.defaultBadge, { backgroundColor: colors.primaryLight }]}>
-              <Text style={[styles.defaultText, { color: colors.primary }]}>默认</Text>
-            </View>
+      <View style={styles.cardHeader}>
+        <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceNormal }]}>
+          {item.avatarPath ? (
+            <Image source={{ uri: item.avatarPath }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.emojiText}>{item.emoji || '✨'}</Text>
           )}
-          {item.isPinned && <Text style={styles.pinIcon}>📌</Text>}
         </View>
-
-        {item.description && (
-          <Text style={[styles.assistantDesc, { color: colors.textSecondary }]} numberOfLines={1}>
-            {item.description}
-          </Text>
-        )}
+        <View style={styles.cardMeta}>
+          <View style={styles.nameRow}>
+            <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {item.name}
+            </Text>
+            {item.isPinned ? (
+              <MaterialIcons name="push-pin" size={14} color={colors.primary} />
+            ) : null}
+          </View>
+          {item.isDefault ? (
+            <Text style={[styles.defaultTag, { color: colors.primary }]}>
+              {t('assistant.default', '默认')}
+            </Text>
+          ) : null}
+        </View>
       </View>
 
-      <View style={styles.assistantActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleTogglePin(item)}>
-          <Text style={[styles.actionText, { color: colors.textSecondary }]}>
-            {item.isPinned ? '取消置顶' : '置顶'}
-          </Text>
+      <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={3}>
+        {item.description ||
+          item.systemPrompt ||
+          t('agent.assistant.no_prompt', '⚠️ 空白系统协议流...')}
+      </Text>
+
+      <View style={styles.cardActions}>
+        <TouchableOpacity
+          style={[styles.chipBtn, { borderColor: colors.borderSubtle }]}
+          onPress={() => void handleTogglePin(item)}
+        >
+          <MaterialIcons
+            name="push-pin"
+            size={16}
+            color={item.isPinned ? colors.primary : colors.textSecondary}
+          />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleSetDefault(item)}>
-          <Text style={[styles.actionText, { color: colors.textSecondary }]}>
-            {item.isDefault ? '已是默认' : '设为默认'}
-          </Text>
-        </TouchableOpacity>
-        {!item.isDefault && (
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleDeleteAssistant(item)}>
-            <Text style={[styles.actionText, { color: colors.error }]}>删除</Text>
+        {!item.isDefault ? (
+          <TouchableOpacity
+            style={[styles.chipBtn, { borderColor: colors.error + '55' }]}
+            onPress={() => handleDeleteAssistant(item)}
+          >
+            <MaterialIcons name="delete-outline" size={16} color={colors.error} />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
     </TouchableOpacity>
   )
 
   return (
     <StackScreenLayout
-      title={t('agent.assistant.management_title')}
+      title={t('agent.assistant.title', '伙伴管理')}
       {...getStackScreenChrome(colors)}
       headerRight={{
-        label: `+ ${t('common.add')}`,
+        label: `+ ${t('agent.assistant.create_new', '新增伙伴')}`,
         onPress: handleCreateAssistant
       }}
       contentStyle={styles.container}
     >
       {loading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>加载中...</Text>
-            </View>
-          ) : assistants.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🤖</Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>暂无助手</Text>
-              <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
-                点击右上角创建第一个助手
-              </Text>
-              <TouchableOpacity
-                style={[styles.createFirstButton, { backgroundColor: colors.primary }]}
-                onPress={handleCreateAssistant}
-              >
-                <Text style={[styles.createFirstText, { color: colors.textOnPrimary }]}>
-                  创建助手
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <FlatList
-              data={[...pinnedAssistants, ...unpinnedAssistants]}
-              renderItem={renderAssistantItem}
-              keyExtractor={(item) => item.id}
-              style={styles.list}
-              contentContainerStyle={styles.listContent}
+        <View style={styles.centered}>
+          <Text style={{ color: colors.textSecondary }}>{t('common.loading')}</Text>
+        </View>
+      ) : assistants.length === 0 ? (
+        <View style={styles.centered}>
+          <MaterialIcons
+            name="auto-awesome"
+            size={56}
+            color={colors.primary}
+            style={{ opacity: 0.65 }}
+          />
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+            {t('agent.assistant.empty_hint', '全列阵空爆：您的矩阵里还没有服役的心智')}
+          </Text>
+          <TouchableOpacity
+            style={[styles.createFirstButton, { borderColor: colors.primary }]}
+            onPress={handleCreateAssistant}
+          >
+            <MaterialIcons name="add" size={18} color={colors.primary} />
+            <Text style={[styles.createFirstText, { color: colors.primary }]}>
+              {t('agent.assistant.create_first', '执行首建协议')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={processedAssistants}
+          renderItem={renderCard}
+          key={numColumns}
+          numColumns={numColumns}
+          keyExtractor={(item) => item.id}
+          style={{ flex: 1, backgroundColor: colors.bgApp }}
+          contentContainerStyle={styles.listContent}
+          columnWrapperStyle={numColumns > 1 ? styles.columnWrap : undefined}
+          indicatorStyle={scrollIndicatorStyle(isDark)}
+          ListHeaderComponent={
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={t('common.search_hint', '搜索…')}
+              placeholderTextColor={colors.textTertiary}
+              style={[
+                styles.searchInput,
+                {
+                  color: colors.textPrimary,
+                  backgroundColor: colors.bgSurface,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
             />
-          )}
+          }
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <Text style={{ color: colors.textSecondary }}>{t('common.no_data')}</Text>
+            </View>
+          }
+        />
+      )}
     </StackScreenLayout>
   )
 }
@@ -199,105 +269,108 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  loadingText: {
-    fontSize: 16
-  },
-  emptyContainer: {
+  centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40
+    padding: 32,
+    gap: 16
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 8
-  },
-  emptySubText: {
-    fontSize: 14,
+  emptyTitle: {
+    fontSize: 15,
     textAlign: 'center',
-    marginBottom: 24
+    lineHeight: 22
   },
   createFirstButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1
   },
   createFirstText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600'
-  },
-  list: {
-    flex: 1
   },
   listContent: {
-    padding: 16
-  },
-  assistantItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 12
+    paddingBottom: 32,
+    gap: 12
   },
-  assistantEmoji: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12
+  columnWrap: {
+    gap: 12
   },
-  emojiText: {
-    fontSize: 24
-  },
-  assistantInfo: {
-    flex: 1
-  },
-  assistantHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  searchInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
     marginBottom: 4
   },
-  assistantName: {
+  card: {
+    flex: 1,
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+    minHeight: 140
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  avatarImage: {
+    width: 44,
+    height: 44
+  },
+  emojiText: {
+    fontSize: 22
+  },
+  cardMeta: {
+    flex: 1,
+    gap: 2
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  cardName: {
     fontSize: 16,
     fontWeight: '600',
-    marginRight: 8
+    flexShrink: 1
   },
-  defaultBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 8
-  },
-  defaultText: {
-    fontSize: 12,
+  defaultTag: {
+    fontSize: 11,
     fontWeight: '600'
   },
-  pinIcon: {
-    fontSize: 14
+  cardDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1
   },
-  assistantDesc: {
-    fontSize: 14
-  },
-  assistantActions: {
+  cardActions: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     gap: 8
   },
-  actionButton: {
-    padding: 8
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: '500'
+  chipBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 })

@@ -210,9 +210,7 @@ export function printDevConnectionHelp(lanHost = getLanIp(), port = METRO_PORT) 
     console.log(`   WSL2 自动打开 / 开发菜单请填: http://${lanHost}:${port} （勿用 localhost）`)
     printWslPortProxyHint(lanHost, port)
   } else if (adb) {
-    console.log(
-      `   adb reverse（USB/无线调试，自动打开优先）: http://localhost:${port}`
-    )
+    console.log(`   adb reverse（USB/无线调试，自动打开优先）: http://localhost:${port}`)
     if (devHost === 'localhost') {
       console.log('   当前自动打开将使用 localhost（adb reverse 已生效）')
     }

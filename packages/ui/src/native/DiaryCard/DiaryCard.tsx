@@ -120,7 +120,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
             <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
               <View style={styles.metaWeatherRow}>
                 <WeatherEmoji weather={weather} size={16} />
-                <Text style={[styles.metaText, { color: colors.textSecondary }]}>{weatherLabel}</Text>
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                  {weatherLabel}
+                </Text>
               </View>
             </View>
           )}
@@ -161,14 +163,10 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
       <View style={[styles.actionsDivider, { backgroundColor: colors.borderMuted }]} />
       <View style={styles.actionsBox}>
         <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
-          <Text style={[styles.editText, { color: colors.textSecondary }]}>
-            {t('common.edit')}
-          </Text>
+          <Text style={[styles.editText, { color: colors.textSecondary }]}>{t('common.edit')}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onDelete} style={styles.actionBtn}>
-          <Text style={[styles.deleteText, { color: colors.error }]}>
-            {t('common.delete')}
-          </Text>
+          <Text style={[styles.deleteText, { color: colors.error }]}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

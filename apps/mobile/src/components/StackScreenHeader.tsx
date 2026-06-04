@@ -81,10 +81,7 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
         ) : null}
       </View>
 
-      <Text
-        style={[styles.headerTitle, { color: colors.textPrimary }]}
-        numberOfLines={1}
-      >
+      <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
         {title}
       </Text>
 
@@ -98,8 +95,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 52
+    paddingVertical: 6,
+    minHeight: 44
   },
   headerElevated: {
     shadowOffset: { width: 0, height: 1 },

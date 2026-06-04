@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, Image, TextInput, Alert } from 'react-native'
+import { View, Text, Pressable, Image, TextInput } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
+import { useNativeToast } from '../Toast'
 import * as ImagePicker from 'expo-image-picker'
 
 export interface ProfileData {
@@ -22,6 +23,7 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const dialog = useDialog()
+  const toast = useNativeToast()
 
   const handlePickImage = async () => {
     try {
@@ -36,7 +38,7 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
         onSave({ ...profile, avatarPath: result.assets[0].uri })
       }
     } catch (error) {
-      Alert.alert(t('common.error', '错误'), t('profile.image_pick_error', '选择图片失败'))
+      toast.showError(t('profile.image_pick_error', '选择图片失败'))
     }
   }
 

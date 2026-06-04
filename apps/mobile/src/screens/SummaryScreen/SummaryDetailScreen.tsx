@@ -6,14 +6,21 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Alert,
   TextInput
 } from 'react-native'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
-import { useNativeTheme, scrollIndicatorStyle, MarkdownRenderer } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  scrollIndicatorStyle,
+  MarkdownRenderer
+} from '@baishou/ui/native'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import * as Clipboard from 'expo-clipboard'
+import { SummaryType } from '@baishou/shared'
+import { buildSummaryTitle } from './utils/buildSummaryTitle'
 
 interface SummaryDetail {
   id?: number
@@ -30,9 +37,18 @@ interface SummaryDetailScreenProps {
   onBack: () => void
 }
 
+const TYPE_I18N_MAP: Record<string, string> = {
+  weekly: 'summary.stats_week',
+  monthly: 'summary.stats_month',
+  quarterly: 'summary.stats_quarter',
+  yearly: 'summary.stats_year'
+}
+
 export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summaryId, onBack }) => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady } = useBaishou()
   const [summary, setSummary] = useState<SummaryDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -60,12 +76,12 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
             generatedAt: found.generatedAt != null ? toIso(found.generatedAt) : undefined
           })
         } else {
-          Alert.alert(t('common.error', '错误'), t('summary.not_found', '总结未找到'))
+          toast.showError(t('summary.not_found'))
           onBack()
         }
       } catch (e) {
         console.error('[SummaryDetail] fetch error:', e)
-        Alert.alert(t('common.error', '错误'), t('summary.load_failed', '加载失败'))
+        toast.showError(t('summary.load_failed'))
       } finally {
         setLoading(false)
       }
@@ -77,10 +93,10 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
     if (!summary?.content) return
     try {
       await Clipboard.setStringAsync(summary.content)
-      Alert.alert(t('common.success', '成功'), t('summary.copied', '内容已复制'))
+      toast.showSuccess(t('common.copy_success'))
     } catch (e) {
       console.error('[SummaryDetail] copy error:', e)
-      Alert.alert(t('common.error', '错误'), t('summary.copy_failed', '复制失败'))
+      toast.showError(t('common.copy_failed'))
     }
   }
 
@@ -101,15 +117,21 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
     try {
       const startDate = new Date(summary.startDate)
       const endDate = new Date(summary.endDate)
-      await services.summaryManager.update(summary.id, summary.type as any, startDate, endDate, {
-        content: editContent
-      })
+      await services.summaryManager.update(
+        summary.id,
+        summary.type as SummaryType,
+        startDate,
+        endDate,
+        {
+          content: editContent
+        }
+      )
       setSummary({ ...summary, content: editContent })
       setIsEditing(false)
-      Alert.alert(t('common.success', '成功'), t('summary.saved', '保存成功'))
+      toast.showSuccess(t('common.save_success'))
     } catch (e) {
       console.error('[SummaryDetail] save error:', e)
-      Alert.alert(t('common.error', '错误'), t('summary.save_failed', '保存失败'))
+      toast.showError(t('common.save_failed'))
     } finally {
       setIsSaving(false)
     }
@@ -117,29 +139,22 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
 
   const handleDelete = async () => {
     if (!summary || !services) return
-    Alert.alert(
-      t('common.confirm_delete', '确认删除'),
-      t('summary.delete_confirm', '确定要删除这个总结吗？此操作不可撤销。'),
-      [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
-        {
-          text: t('common.delete', '删除'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const startDate = new Date(summary.startDate)
-              const endDate = new Date(summary.endDate)
-              await services.summaryManager.delete(summary.type as any, startDate, endDate)
-              Alert.alert(t('common.success', '成功'), t('summary.deleted', '已删除'))
-              onBack()
-            } catch (e) {
-              console.error('[SummaryDetail] delete error:', e)
-              Alert.alert(t('common.error', '错误'), t('summary.delete_failed', '删除失败'))
-            }
-          }
-        }
-      ]
-    )
+    const title = buildSummaryTitle(summary, t)
+    const confirmed = await dialog.confirm(t('summary.delete_confirm').replace('$title', title), {
+      confirmText: t('common.delete'),
+      destructive: true
+    })
+    if (!confirmed) return
+    try {
+      const startDate = new Date(summary.startDate)
+      const endDate = new Date(summary.endDate)
+      await services.summaryManager.delete(summary.type as SummaryType, startDate, endDate)
+      toast.showSuccess(t('common.delete_success'))
+      onBack()
+    } catch (e) {
+      console.error('[SummaryDetail] delete error:', e)
+      toast.showError(t('common.delete_failed'))
+    }
   }
 
   const formatDate = (d: string) => {
@@ -170,21 +185,6 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
     }
   }
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'weekly':
-        return t('summary.stats_week', '周总结')
-      case 'monthly':
-        return t('summary.stats_month', '月总结')
-      case 'quarterly':
-        return t('summary.stats_quarter', '季总结')
-      case 'yearly':
-        return t('summary.stats_year', '年总结')
-      default:
-        return t('summary.stats_week', '周总结')
-    }
-  }
-
   if (loading) {
     return (
       <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgApp }}>
@@ -194,7 +194,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         />
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            {t('common.loading', '加载中...')}
+            {t('common.loading')}
           </Text>
         </View>
       </ScreenSafeArea>
@@ -202,6 +202,8 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
   }
 
   if (!summary) return null
+
+  const typeLabel = t(TYPE_I18N_MAP[summary.type] || summary.type)
 
   return (
     <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgApp }}>
@@ -221,7 +223,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
       >
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={[styles.backButtonText, { color: colors.primary }]}>
-            ← {t('common.back', '返回')}
+            ← {t('common.back')}
           </Text>
         </TouchableOpacity>
 
@@ -234,7 +236,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
                 disabled={isSaving}
               >
                 <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-                  {isSaving ? t('common.saving', '保存中...') : t('common.save', '保存')}
+                  {isSaving ? t('common.saving') : t('common.save')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -242,7 +244,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
                 onPress={handleCancelEdit}
               >
                 <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>
-                  {t('common.cancel', '取消')}
+                  {t('common.cancel')}
                 </Text>
               </TouchableOpacity>
             </>
@@ -253,7 +255,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
                 onPress={handleEdit}
               >
                 <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-                  {t('common.edit', '编辑')}
+                  {t('common.edit')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -261,7 +263,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
                 onPress={handleCopy}
               >
                 <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>
-                  {t('common.copy', '复制')}
+                  {t('common.copy')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -269,7 +271,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
                 onPress={handleDelete}
               >
                 <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-                  {t('common.delete', '删除')}
+                  {t('common.delete')}
                 </Text>
               </TouchableOpacity>
             </>
@@ -279,35 +281,24 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
 
       <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
         <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
-          <Text style={[styles.typeBadgeText, { color: colors.primary }]}>
-            {getTypeLabel(summary.type)}
-          </Text>
+          <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{typeLabel}</Text>
         </View>
 
         <View style={styles.dateContainer}>
-          <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-            {t('summary.date_range', '时间范围')}
-          </Text>
           <Text style={[styles.dateText, { color: colors.textPrimary }]}>
-            {formatDate(summary.startDate)} - {formatDate(summary.endDate)}
+            {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
           </Text>
         </View>
 
         {summary.generatedAt && (
           <View style={styles.dateContainer}>
             <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-              {t('summary.generated_at', '生成时间')}
-            </Text>
-            <Text style={[styles.dateText, { color: colors.textPrimary }]}>
-              {formatGeneratedAt(summary.generatedAt)}
+              {t('summary.generated_at')} {formatGeneratedAt(summary.generatedAt)}
             </Text>
           </View>
         )}
 
         <View style={styles.contentContainer}>
-          <Text style={[styles.contentLabel, { color: colors.textSecondary }]}>
-            {t('summary.content', '总结内容')}
-          </Text>
           {isEditing ? (
             <TextInput
               style={[
@@ -322,6 +313,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
               onChangeText={setEditContent}
               multiline
               textAlignVertical="top"
+              placeholder={t('summary.content_placeholder')}
             />
           ) : (
             <MarkdownRenderer content={summary.content} style={styles.contentText} />
@@ -333,9 +325,6 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1
-  },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
@@ -390,20 +379,13 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   dateLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4
+    fontSize: 14
   },
   dateText: {
     fontSize: 16
   },
   contentContainer: {
     marginBottom: 16
-  },
-  contentLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8
   },
   contentText: {
     fontSize: 16,

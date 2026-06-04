@@ -1,26 +1,37 @@
 import React, { useEffect, useState } from 'react'
-import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native'
+import { View, StyleSheet, ActivityIndicator } from 'react-native'
+import * as Clipboard from 'expo-clipboard'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
-import { useBaishou } from '../../../providers/BaishouProvider'
-import { notifyThemeRefresh } from '../../../lib/theme-events'
 import i18n from 'i18next'
-import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import {
+  useNativeTheme,
+  useNativeToast,
+  McpSettingsCard,
+  SettingsGroupDivider,
   AppearanceSettingsCard,
   IdentitySettingsCard,
   type UserProfileConfig
 } from '@baishou/ui/native'
+import { useBaishou } from '../../../providers/BaishouProvider'
+import { useMobileMcpConfig } from '../../../hooks/useMobileMcpConfig'
+import { notifyThemeRefresh } from '../../../lib/theme-events'
+import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import { SettingsProfileHeader } from './SettingsProfileHeader'
 
-/** 主设置页顶部：头像、昵称、身份卡、外观 */
-export const SettingsAccountPanel: React.FC = () => {
+export interface QuickSettingsGroupProps {
+  groupCardStyle: object
+}
+
+/** 快捷设置分组卡片内容（用户 / 身份卡 / 外观 / MCP） */
+export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCardStyle }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const { services, dbReady } = useBaishou()
+  const toast = useNativeToast()
+  const mcp = useMobileMcpConfig()
 
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
-  const [seedColor, setSeedColor] = useState('#007AFF')
+  const [seedColor, setSeedColor] = useState('#5BA8F5')
   const [language, setLanguage] = useState('system')
   const [profile, setProfile] = useState<any>({ nickname: '', avatarPath: '' })
   const [identityProfile, setIdentityProfile] = useState<UserProfileConfig>({
@@ -63,9 +74,9 @@ export const SettingsAccountPanel: React.FC = () => {
     try {
       await services.settingsManager.set('user_profile', newProfile)
       setProfile(newProfile)
-      Alert.alert(t('common.success'), t('common.save_success'))
+      toast.showSuccess(t('common.save_success'))
     } catch {
-      Alert.alert(t('common.error'), t('common.errors.save_failed'))
+      toast.showError(t('common.errors.save_failed'))
     }
   }
 
@@ -123,14 +134,24 @@ export const SettingsAccountPanel: React.FC = () => {
     }
   }
 
+  const handleCopyMcpEndpoint = async () => {
+    try {
+      await Clipboard.setStringAsync(mcp.mcpEndpointUrl)
+      toast.showSuccess(t('common.copied'))
+    } catch {
+      toast.showError(t('common.copy_failed'))
+    }
+  }
+
   const accountReady = dbReady && !!services
 
   return (
-    <View style={styles.panel}>
+    <View style={[styles.groupCard, groupCardStyle]}>
       <SettingsProfileHeader
         profile={profile}
         onSave={handleSaveProfile}
         disabled={!accountReady}
+        embedded
       />
 
       {!accountReady ? (
@@ -139,9 +160,13 @@ export const SettingsAccountPanel: React.FC = () => {
         </View>
       ) : (
         <>
-          <IdentitySettingsCard profile={identityProfile} onChange={handleIdentityChange} />
-
+          <IdentitySettingsCard
+            embedded
+            profile={identityProfile}
+            onChange={handleIdentityChange}
+          />
           <AppearanceSettingsCard
+            embedded
             themeMode={themeMode}
             seedColor={seedColor}
             language={language as 'system' | 'zh' | 'zh-TW' | 'en' | 'ja'}
@@ -149,30 +174,38 @@ export const SettingsAccountPanel: React.FC = () => {
             onSeedColorChange={handleSeedColorChange}
             onLanguageChange={handleSaveLanguage}
           />
+          {!mcp.loading ? (
+            <>
+              <SettingsGroupDivider />
+              <McpSettingsCard
+                embedded
+                isLast
+                config={mcp.config}
+                mcpEndpointUrl={mcp.mcpEndpointUrl}
+                applying={mcp.applying}
+                isRunning={mcp.isRunning}
+                activePort={mcp.activePort}
+                onChange={(next) => void mcp.persistConfig(next)}
+                onCopyEndpoint={() => void handleCopyMcpEndpoint()}
+                onShowTools={mcp.showToolsAlert}
+              />
+            </>
+          ) : null}
         </>
       )}
-
-      <View
-        style={[styles.sectionDivider, { borderColor: colors.borderSubtle }]}
-        accessibilityRole="none"
-      />
     </View>
   )
 }
 
+/** @deprecated 使用 QuickSettingsGroup + SettingsScreen 统一布局 */
+export const SettingsAccountPanel = QuickSettingsGroup
+
 const styles = StyleSheet.create({
-  panel: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 12
-  },
-  sectionDivider: {
-    marginTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderStyle: 'dashed'
+  groupCard: {
+    overflow: 'hidden'
   },
   loadingRow: {
     alignItems: 'center',
-    paddingVertical: 12
+    paddingVertical: 16
   }
 })

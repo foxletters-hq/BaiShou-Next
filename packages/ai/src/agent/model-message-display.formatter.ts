@@ -80,9 +80,7 @@ function formatModelMessageContent(msg: ModelMessage): string {
     .join('\n\n')
 }
 
-function orderAssistantDisplayItems(
-  items: DisplayContextMessage[]
-): DisplayContextMessage[] {
+function orderAssistantDisplayItems(items: DisplayContextMessage[]): DisplayContextMessage[] {
   const thinking = items.filter((i) => i.label === 'AI 思考')
   const output = items.filter((i) => i.label === 'AI 输出')
   const tools = items.filter((i) => i.label === '工具调用')
@@ -92,10 +90,7 @@ function orderAssistantDisplayItems(
   return [...thinking, ...tools, ...output, ...other]
 }
 
-function formatAssistantParts(
-  msg: ModelMessage,
-  toolMsg?: ModelMessage
-): DisplayContextMessage[] {
+function formatAssistantParts(msg: ModelMessage, toolMsg?: ModelMessage): DisplayContextMessage[] {
   if (typeof msg.content === 'string') {
     return [{ role: 'assistant', content: msg.content, label: 'AI 输出' }]
   }

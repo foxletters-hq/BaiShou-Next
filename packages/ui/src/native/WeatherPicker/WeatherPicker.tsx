@@ -10,11 +10,7 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
-import {
-  WEATHER_IDS,
-  weatherI18nKey,
-  type WeatherId
-} from '@baishou/shared'
+import { WEATHER_IDS, weatherI18nKey, type WeatherId } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { WeatherEmoji } from '../WeatherIcon'
 
@@ -42,7 +38,10 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
 
   const selectedId = value && (WEATHER_IDS as readonly string[]).includes(value) ? value : ''
   const displayLabel = selectedId
-    ? t(`diary.weather.${weatherI18nKey(selectedId as WeatherId)}`, weatherLabelFallback[selectedId as WeatherId])
+    ? t(
+        `diary.weather.${weatherI18nKey(selectedId as WeatherId)}`,
+        weatherLabelFallback[selectedId as WeatherId]
+      )
     : t('diary.weather.default')
 
   const close = useCallback(() => setOpen(false), [])
@@ -80,7 +79,10 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
         <View style={styles.triggerContent}>
           {selectedId ? <WeatherEmoji weather={selectedId} size={18} /> : null}
           <Text
-            style={[styles.triggerLabel, { color: selectedId ? colors.textPrimary : colors.textSecondary }]}
+            style={[
+              styles.triggerLabel,
+              { color: selectedId ? colors.textPrimary : colors.textSecondary }
+            ]}
             numberOfLines={1}
           >
             {displayLabel}
@@ -109,10 +111,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
             <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
               {WEATHER_IDS.map((id) => {
                 const active = selectedId === id
-                const label = t(
-                  `diary.weather.${weatherI18nKey(id)}`,
-                  weatherLabelFallback[id]
-                )
+                const label = t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])
                 return (
                   <Pressable
                     key={id}
@@ -148,9 +147,14 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
             </ScrollView>
             <Pressable
               onPress={() => handleSelect('')}
-              style={[styles.clearBtn, { backgroundColor: colors.bgSurfaceHighest, borderTopColor: colors.borderSubtle }]}
+              style={[
+                styles.clearBtn,
+                { backgroundColor: colors.bgSurfaceHighest, borderTopColor: colors.borderSubtle }
+              ]}
             >
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{t('diary.clear_filter')}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                {t('diary.clear_filter')}
+              </Text>
             </Pressable>
           </View>
         </View>

@@ -121,10 +121,7 @@ export function usableContextTokens(window: number, reserved?: number): number {
   return Math.max(0, window - r)
 }
 
-export function shouldCompressContext(
-  currentContextTokens: number,
-  threshold: number
-): boolean {
+export function shouldCompressContext(currentContextTokens: number, threshold: number): boolean {
   if (threshold <= 0) return false
   return currentContextTokens > threshold
 }
@@ -143,10 +140,7 @@ export function resolveCompressionTrigger(
   const candidates: number[] = []
   if (config.threshold > 0) candidates.push(config.threshold)
 
-  const usable = usableContextTokens(
-    config.modelContextWindow ?? 0,
-    config.reservedTokens
-  )
+  const usable = usableContextTokens(config.modelContextWindow ?? 0, config.reservedTokens)
   if (usable > 0) candidates.push(usable)
 
   if (candidates.length === 0) return false
@@ -168,9 +162,7 @@ export function extractMessageText(msg: MessageWithParts): string {
         name?: string
       }
       if (data.result !== undefined) {
-        chunks.push(
-          typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
-        )
+        chunks.push(typeof data.result === 'string' ? data.result : JSON.stringify(data.result))
       } else if (data.arguments !== undefined) {
         chunks.push(JSON.stringify(data.arguments))
       }
@@ -209,8 +201,7 @@ export function extractMessageTextForCompression(msg: MessageWithParts): string 
     } else if (p.type === 'tool') {
       const data = p.data as { result?: unknown; arguments?: unknown }
       if (data.result !== undefined) {
-        const raw =
-          typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
+        const raw = typeof data.result === 'string' ? data.result : JSON.stringify(data.result)
         chunks.push(truncateForCompression(raw, TOOL_OUTPUT_MAX_CHARS))
       } else if (data.arguments !== undefined) {
         chunks.push(JSON.stringify(data.arguments))
@@ -248,9 +239,7 @@ export function estimateMessagesTokens(
 }
 
 /** 送入摘要模型前截断超长 tool part（不修改库内原文） */
-export function cloneMessagesForCompressionModel(
-  messages: MessageWithParts[]
-): MessageWithParts[] {
+export function cloneMessagesForCompressionModel(messages: MessageWithParts[]): MessageWithParts[] {
   return messages.map((msg) => {
     if (!msg.parts?.length) return msg
     const parts = msg.parts.map((p) => {
@@ -325,9 +314,7 @@ export function trimLeadingOrphanMessagesAfterSnapshot(
 }
 
 /** 待压缩区末尾若只有未回复的用户消息，归入保留区，不参与摘要 */
-export function trimTrailingIncompleteUserTurn(
-  messages: MessageWithParts[]
-): MessageWithParts[] {
+export function trimTrailingIncompleteUserTurn(messages: MessageWithParts[]): MessageWithParts[] {
   if (messages.length === 0) return messages
   if (messages[messages.length - 1]!.role === 'user') {
     return messages.slice(0, -1)
@@ -373,11 +360,7 @@ function sliceMessagesThroughSnapshotAnchor(
   targetSnapshot: CompressionSnapshotRef,
   priorSnapshot: CompressionSnapshotRef | null
 ): MessageWithParts[] {
-  const endIdx = resolveSnapshotCutoffIndex(
-    allMessages,
-    targetSnapshot,
-    priorSnapshot
-  )
+  const endIdx = resolveSnapshotCutoffIndex(allMessages, targetSnapshot, priorSnapshot)
   if (endIdx < 0) return []
 
   let startIdx = 0
@@ -418,11 +401,7 @@ export function resolveCompressionBatch(
       ? getMessagesAfterSnapshot(allMessages, options.priorSnapshot)
       : trimLeadingOrphanMessagesAfterSnapshot([...allMessages])
 
-  const split = splitMessagesForCompression(
-    window,
-    options.keepTurns,
-    options.preserveRecentTokens
-  )
+  const split = splitMessagesForCompression(window, options.keepTurns, options.preserveRecentTokens)
 
   if (!options.targetSnapshot) {
     return { toCompress: split.toCompress, tailStartMessageId: split.tailStartMessageId }
@@ -442,8 +421,7 @@ export function resolveCompressionBatch(
     options.priorSnapshot
   )
   if (hasEnoughMessagesForRecompress(anchored)) {
-    const tailStart =
-      computeTailStartMessageId(allMessages, anchorId) ?? split.tailStartMessageId
+    const tailStart = computeTailStartMessageId(allMessages, anchorId) ?? split.tailStartMessageId
     return { toCompress: anchored, tailStartMessageId: tailStart }
   }
 
@@ -580,9 +558,7 @@ export function splitMessagesForCompression(
     }
   }
 
-  let toCompress = trimTrailingIncompleteUserTurn(
-    messagesAfterSnapshot.slice(0, retainFromIndex)
-  )
+  let toCompress = trimTrailingIncompleteUserTurn(messagesAfterSnapshot.slice(0, retainFromIndex))
   let cutIndex = toCompress.length
   while (cutIndex > 0 && toCompress[cutIndex - 1]!.role === 'tool') {
     cutIndex--

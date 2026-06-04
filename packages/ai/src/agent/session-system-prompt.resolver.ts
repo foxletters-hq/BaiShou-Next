@@ -91,7 +91,11 @@ export async function resolveEnabledToolsForSession(
   }
 
   let dedupService: any
-  if (embAdapter && params.systemModels?.embeddingProvider && params.systemModels?.embeddingModelId) {
+  if (
+    embAdapter &&
+    params.systemModels?.embeddingProvider &&
+    params.systemModels?.embeddingModelId
+  ) {
     const { MemoryDeduplicationServiceImpl } = await import('../rag/memory-deduplication.service')
     dedupService = new MemoryDeduplicationServiceImpl(
       embAdapter,

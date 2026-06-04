@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { useBaishou } from '../providers/BaishouProvider'
 import { buildInsertSessionInput } from '../utils/session-input.util'
@@ -22,6 +22,7 @@ interface SessionMessage {
 
 export function useAgentSession() {
   const { t } = useTranslation()
+  const toast = useNativeToast()
   const { messages, addMessage, clearSession } = useAgentStore()
   const { services } = useBaishou()
 
@@ -109,10 +110,7 @@ export function useAgentSession() {
     } catch (e) {
       console.error('Failed to create session', e)
       const msg = e instanceof Error ? e.message : String(e)
-      Alert.alert(
-        t('common.error', '错误'),
-        t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg })
-      )
+      toast.showError(t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg }))
       return null
     }
   }, [services, t, clearSession])
@@ -129,7 +127,7 @@ export function useAgentSession() {
         }
       } catch (e) {
         console.error('Failed to delete session', e)
-        Alert.alert(t('common.error', '错误'), t('agent.sessions.delete_session', '删除对话'))
+        toast.showError(t('agent.sessions.delete_session', '删除对话'))
       }
     },
     [services, t, currentSessionId, clearSession]

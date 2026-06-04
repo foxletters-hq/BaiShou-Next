@@ -81,7 +81,6 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
           >
             <View style={styles.header}>
               <View style={[styles.headerTitleRow, { gap: tokens.spacing.sm }]}>
-                <Text style={styles.headerIcon}>🔄</Text>
                 <Text style={[styles.headerText, { color: colors.textPrimary }]}>
                   {t('model.switch', '切换模型')}
                 </Text>

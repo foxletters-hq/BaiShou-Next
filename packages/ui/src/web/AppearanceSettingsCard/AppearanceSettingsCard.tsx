@@ -4,6 +4,7 @@ import './AppearanceSettingsCard.css'
 import { useTranslation } from 'react-i18next'
 import { MdOutlinePalette, MdDevices, MdWbSunny, MdDarkMode } from 'react-icons/md'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
+import { PRESET_THEME_COLORS, isPresetThemeColor } from '../../theme/preset-theme-colors'
 
 export interface AppearanceSettingsProps {
   themeMode: 'system' | 'light' | 'dark'
@@ -13,8 +14,6 @@ export interface AppearanceSettingsProps {
   onSeedColorChange: (color: string) => void
   onLanguageChange: (lang: string) => void
 }
-
-const PRESET_COLORS = ['#5BA8F5', '#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#C77DFF']
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   themeMode,
@@ -32,8 +31,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
     setLocalColor(seedColor)
   }, [seedColor])
 
-  const isCustomColor =
-    !PRESET_COLORS.includes(seedColor.toUpperCase()) && !PRESET_COLORS.includes(seedColor)
+  const isCustomColor = !isPresetThemeColor(seedColor)
 
   const LANGS = [
     { val: 'system', label: t('settings.language_system', '跟随系统') },
@@ -102,7 +100,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
         <div className="appearance-row">
           <label className="settings-label">{t('settings.theme_color', '基核种子色')}</label>
           <div className="color-palette">
-            {PRESET_COLORS.map((c) => (
+            {PRESET_THEME_COLORS.map((c) => (
               <div
                 key={c}
                 className={`color-dot ${seedColor.toUpperCase() === c.toUpperCase() ? 'active' : ''}`}

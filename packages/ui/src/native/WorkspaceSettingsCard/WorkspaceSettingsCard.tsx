@@ -1,8 +1,9 @@
-import React from 'react'
-import { View, Text, Pressable, Alert } from 'react-native'
+import React, { useMemo } from 'react'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { useNativeToast } from '../Toast'
+import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
+import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 
 export interface VaultInfo {
   name: string
@@ -17,221 +18,187 @@ export interface NativeWorkspaceSettingsCardProps {
   onSwitch: (name: string) => void
   onDelete: (name: string) => void
   onCreate: (name: string) => Promise<void>
+  onManageWorkspace?: () => void
   customRootPath?: string | null
   onPickCustomRoot?: () => Promise<string | null>
+  embedded?: boolean
+  isLast?: boolean
+}
+
+const RECENT_LIMIT = 3
+
+function toTimestamp(value: Date | string | undefined): number {
+  if (!value) return 0
+  try {
+    return (typeof value === 'string' ? new Date(value) : value).getTime()
+  } catch {
+    return 0
+  }
+}
+
+function pickRecentVaults(vaults: VaultInfo[], activeVault: VaultInfo | null): VaultInfo[] {
+  const sorted = [...vaults].sort(
+    (a, b) => toTimestamp(b.lastAccessedAt) - toTimestamp(a.lastAccessedAt)
+  )
+  const picked: VaultInfo[] = []
+  for (const vault of sorted) {
+    if (activeVault && vault.name === activeVault.name) continue
+    if (picked.length >= RECENT_LIMIT) break
+    picked.push(vault)
+  }
+  return picked
 }
 
 export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> = ({
   vaults,
   activeVault,
   onSwitch,
-  onDelete,
-  onCreate
+  onManageWorkspace,
+  embedded = false,
+  isLast = false
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
-  const toast = useNativeToast()
+  const { colors } = useNativeTheme()
 
-  const handleCreate = () => {
-    Alert.prompt(
-      t('workspace.new_name', '空间名称'),
-      undefined,
-      async (name) => {
-        if (!name?.trim()) return
-        try {
-          await onCreate(name.trim())
-        } catch (e) {
-          toast.showToast(t('workspace.create_failed', '创建失败'), 'error')
-        }
-      },
-      'plain-text'
-    )
-  }
+  const recentVaults = useMemo(() => pickRecentVaults(vaults, activeVault), [vaults, activeVault])
 
-  const handleDelete = (vaultName: string) => {
-    Alert.prompt(
-      t('workspace.delete_confirm_input', '请输入工作区名称 "{{name}}" 以确认删除：').replace(
-        '{{name}}',
-        vaultName
-      ),
-      undefined,
-      (input) => {
-        if (input === vaultName) {
-          onDelete(vaultName)
-        } else if (input !== null) {
-          toast.showToast(t('workspace.delete_name_mismatch', '名称不匹配，删除已取消。'), 'error')
-        }
-      },
-      'plain-text'
-    )
-  }
-
-  const lastAccessed = (v: VaultInfo) => {
-    if (!v.lastAccessedAt) return t('common.unknown_time', '未知时间')
-    try {
-      const d = typeof v.lastAccessedAt === 'string' ? new Date(v.lastAccessedAt) : v.lastAccessedAt
-      return d.toLocaleString().split('.')[0].replace('T', ' ')
-    } catch {
-      return t('common.unknown_time', '未知时间')
-    }
-  }
+  const currentVault = activeVault
 
   return (
-    <View
-      style={{
-        backgroundColor: colors.bgSurface,
-        borderRadius: tokens.radius.lg,
-        overflow: 'hidden'
-      }}
-    >
-      {/* 头部 */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          padding: tokens.spacing.lg,
-          gap: tokens.spacing.sm
-        }}
-      >
-        <Text style={{ fontSize: 20 }}>📂</Text>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: colors.textPrimary
-            }}
-          >
-            {t('workspace.title', '工作空间')}
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors.textSecondary
-            }}
-          >
-            {t('workspace.current', '当前空间: {{name}}').replace(
-              '{{name}}',
-              activeVault?.name ?? '未知'
-            )}
-          </Text>
-        </View>
-      </View>
-
-      {/* 工作区列表 */}
-      {vaults.map((vault) => {
-        const isActive = activeVault?.name === vault.name
-        return (
-          <View
-            key={vault.name}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              padding: tokens.spacing.md,
-              paddingHorizontal: tokens.spacing.lg,
-              borderTopWidth: 1,
-              borderTopColor: colors.borderSubtle,
-              gap: tokens.spacing.sm
-            }}
-          >
-            <Text style={{ fontSize: 18 }}>📁</Text>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '500',
-                  color: colors.textPrimary
-                }}
-              >
-                {vault.name}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: colors.textSecondary
-                }}
-              >
-                {t('workspace.last_accessed', '上次访问: {{time}}').replace(
-                  '{{time}}',
-                  lastAccessed(vault)
-                )}
-              </Text>
-            </View>
-            {isActive ? (
-              <Text style={{ fontSize: 20, color: colors.primary }}>✓</Text>
-            ) : (
-              <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
-                <Pressable
-                  onPress={() => onSwitch(vault.name)}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    paddingHorizontal: tokens.spacing.sm,
-                    paddingVertical: tokens.spacing.xs,
-                    borderRadius: tokens.radius.md,
-                    backgroundColor: colors.primaryContainer
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: colors.onPrimaryContainer,
-                      fontWeight: '600'
-                    }}
-                  >
-                    {t('workspace.switch', '切换')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleDelete(vault.name)}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    paddingHorizontal: tokens.spacing.sm,
-                    paddingVertical: tokens.spacing.xs,
-                    borderRadius: tokens.radius.md,
-                    backgroundColor: colors.errorContainer
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: colors.onErrorContainer,
-                      fontWeight: '600'
-                    }}
-                  >
-                    {t('workspace.delete', '删除')}
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-        )
+    <SettingsExpansionTile
+      embedded={embedded}
+      isLast={isLast}
+      title={t('workspace.title', '工作空间')}
+      subtitle={t('workspace.current', '当前空间: {{name}}', {
+        name: activeVault?.name ?? t('common.unknown', '未知')
       })}
-
-      {/* 创建新空间 */}
-      <Pressable
-        onPress={handleCreate}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          padding: tokens.spacing.md,
-          paddingHorizontal: tokens.spacing.lg,
-          borderTopWidth: 1,
-          borderTopColor: colors.borderSubtle,
-          gap: tokens.spacing.sm,
-          opacity: pressed ? 0.7 : 1
-        })}
-      >
-        <Text style={{ fontSize: 18, color: colors.primary }}>+</Text>
-        <Text
-          style={{
-            fontSize: 16,
-            color: colors.primary,
-            fontWeight: '600'
-          }}
+    >
+      {currentVault ? (
+        <View
+          style={[
+            styles.currentBlock,
+            { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurfaceNormal }
+          ]}
         >
-          {t('workspace.create_new', '创建新空间')}
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+            {t('workspace.current_space', '当前空间')}
+          </Text>
+          <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
+            {currentVault.name}
+          </Text>
+          {currentVault.path ? (
+            <Text style={[styles.pathText, { color: colors.textSecondary }]} numberOfLines={2}>
+              {currentVault.path.replace(/^file:\/\//, '')}
+            </Text>
+          ) : null}
+        </View>
+      ) : (
+        <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
+          {t('workspace.no_active', '尚未选择工作空间')}
         </Text>
+      )}
+
+      {recentVaults.length > 0 ? (
+        <>
+          <Text style={[styles.sectionLabel, styles.recentLabel, { color: colors.textSecondary }]}>
+            {t('workspace.recent_hint', '仅显示最近使用的三个工作空间')}
+          </Text>
+          {recentVaults.map((vault, index) => {
+            const isLastRecent = index === recentVaults.length - 1
+            return (
+              <Pressable
+                key={vault.name}
+                onPress={() => onSwitch(vault.name)}
+                style={({ pressed }) => [
+                  styles.recentRow,
+                  !isLastRecent && {
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomColor: colors.borderSubtle
+                  },
+                  { opacity: pressed ? 0.7 : 1 }
+                ]}
+              >
+                <Text
+                  style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]}
+                  numberOfLines={1}
+                >
+                  {vault.name}
+                </Text>
+                <Text style={[styles.actionText, { color: colors.primary }]}>
+                  {t('workspace.switch', '切换')}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </>
+      ) : null}
+
+      <Pressable
+        onPress={onManageWorkspace}
+        disabled={!onManageWorkspace}
+        style={({ pressed }) => [
+          styles.manageRow,
+          {
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: colors.borderSubtle,
+            opacity: !onManageWorkspace ? 0.45 : pressed ? 0.7 : 1
+          }
+        ]}
+      >
+        <Text style={[hubStyles.rowTitle, { color: colors.primary }]}>
+          {t('workspace.manage', '管理工作区')}
+        </Text>
+        <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
       </Pressable>
-    </View>
+    </SettingsExpansionTile>
   )
 }
+
+const styles = StyleSheet.create({
+  currentBlock: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    padding: 12,
+    gap: 4,
+    marginBottom: 8
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2
+  },
+  recentLabel: {
+    marginBottom: 4,
+    marginTop: 4
+  },
+  pathText: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    lineHeight: 16
+  },
+  emptyHint: {
+    fontSize: 13,
+    marginBottom: 8
+  },
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 10
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  manageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    marginTop: 4
+  },
+  chevron: {
+    fontSize: 18
+  }
+})

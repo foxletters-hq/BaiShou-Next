@@ -66,8 +66,7 @@ export function useContextChainView({
         ): e is CallChainFlatEntry & {
           kind: 'message' | 'system-prompt'
           item: MockChatMessage & { label?: string }
-        } =>
-          (e.kind === 'message' || e.kind === 'system-prompt') && Boolean(e.item)
+        } => (e.kind === 'message' || e.kind === 'system-prompt') && Boolean(e.item)
       ),
     [flatEntries]
   )
@@ -139,9 +138,7 @@ export function useContextChainView({
         continue
       }
       if (entry.kind === 'message' && entry.item && current) {
-        current.messages.push(
-          entry as CallChainRoundGroup['messages'][number]
-        )
+        current.messages.push(entry as CallChainRoundGroup['messages'][number])
       }
     }
 

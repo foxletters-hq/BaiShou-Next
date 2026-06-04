@@ -90,11 +90,7 @@ export async function copyBranchCompressionSnapshots(
     return false
   }
 
-  const newAnchorId = remapSnapshotAnchorToBranch(
-    snapshotToCopy,
-    oldToNewMessageId,
-    copiedMessages
-  )
+  const newAnchorId = remapSnapshotAnchorToBranch(snapshotToCopy, oldToNewMessageId, copiedMessages)
   if (!newAnchorId) {
     return false
   }

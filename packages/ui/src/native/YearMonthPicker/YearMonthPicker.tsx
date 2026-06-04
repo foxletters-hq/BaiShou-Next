@@ -3,7 +3,7 @@ import { Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import type { YearMonthPickerProps } from './year-month-picker.types'
-import { formatYearMonthLabel, getMonthWheelLabels } from './year-month-picker.utils'
+import { formatYearMonthLabel } from './year-month-picker.utils'
 import { yearMonthPickerStyles as styles } from './year-month-picker.styles'
 import { YearMonthPickerModal } from './YearMonthPickerModal'
 
@@ -22,17 +22,23 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
     return formatYearMonthLabel(selectedMonth.getFullYear(), selectedMonth.getMonth(), t)
   }, [selectedMonth, placeholder, t])
 
+  const isActive = Boolean(selectedMonth)
+
   return (
     <>
       <TouchableOpacity
-        style={[styles.triggerBtn, { backgroundColor: colors.bgSurfaceHighest }]}
+        style={[
+          styles.triggerBtn,
+          {
+            backgroundColor: colors.bgSurface,
+            borderWidth: 1,
+            borderColor: isActive ? colors.primary : colors.borderSubtle
+          }
+        ]}
         onPress={() => setIsOpen(true)}
       >
         <Text
-          style={[
-            styles.triggerText,
-            { color: selectedMonth ? colors.primary : colors.textSecondary }
-          ]}
+          style={[styles.triggerText, { color: isActive ? colors.primary : colors.textPrimary }]}
         >
           {displayText}
         </Text>

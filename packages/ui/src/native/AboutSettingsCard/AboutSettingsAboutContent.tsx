@@ -1,11 +1,11 @@
 import React from 'react'
-import { View, Text, Pressable, Linking } from 'react-native'
+import { View, Text, Pressable, Image, ImageSourcePropType, Linking } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
 export interface AboutSettingsAboutContentProps {
   version: string
-  heroImageSrc?: string
+  heroImageSrc?: string | ImageSourcePropType
   onOpenGithubHost: () => void
   onLogoTap: () => void
   onDevTap: () => void
@@ -13,13 +13,15 @@ export interface AboutSettingsAboutContentProps {
 
 export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps> = ({
   version,
-  heroImageSrc: _heroImageSrc,
+  heroImageSrc,
   onOpenGithubHost,
   onLogoTap,
   onDevTap
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
+
+  const heroSource = typeof heroImageSrc === 'string' ? { uri: heroImageSrc } : heroImageSrc
 
   return (
     <View
@@ -42,7 +44,13 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
             overflow: 'hidden'
           }}
         >
-          <Text style={{ fontSize: 64 }}>🌸</Text>
+          {heroSource ? (
+            <Image
+              source={heroSource}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
+          ) : null}
         </View>
       </Pressable>
 
@@ -62,7 +70,7 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
             color: colors.textSecondary
           }}
         >
-          v{version}
+          {version}
         </Text>
       </View>
 

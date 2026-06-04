@@ -39,7 +39,7 @@ async function resolveEmbeddingAdapter(
 }
 
 export function createMobileRagService(deps: MobileRagServiceDeps) {
-  return {
+  const service = {
     async getStats(): Promise<{ totalCount: number; currentDimension: number }> {
       const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
       let totalCount = 0
@@ -62,10 +62,60 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
         totalCount = ragConfig.totalEmbeddings || 0
       }
-      return {
-        totalCount,
-        currentDimension: globalModels.globalEmbeddingDimension || 0
+
+      let currentDimension = globalModels.globalEmbeddingDimension || 0
+      try {
+        const meta = await deps.hsRepo.getCurrentEmbeddingMeta()
+        if (meta?.dimension) {
+          currentDimension = meta.dimension
+        }
+      } catch (e) {
+        logger.warn('[MobileRag] getCurrentEmbeddingMeta failed', e as Error)
       }
+
+      return { totalCount, currentDimension }
+    },
+
+    async hasModelMismatch(): Promise<boolean> {
+      const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
+      const currentModelId = globalModels?.globalEmbeddingModelId as string | undefined
+      if (!currentModelId) return false
+
+      try {
+        const meta = await deps.hsRepo.getCurrentEmbeddingMeta()
+        if (!meta || meta.count === 0) return false
+
+        const heterogeneous = await deps.hsRepo.countHeterogeneousEmbeddings(currentModelId)
+        if (heterogeneous > 0) return true
+
+        if (meta.modelId && meta.modelId !== currentModelId) return true
+
+        const configuredDim = Number(globalModels.globalEmbeddingDimension || 0)
+        if (configuredDim > 0 && meta.dimension > 0 && configuredDim !== meta.dimension) {
+          return true
+        }
+      } catch (e) {
+        logger.warn('[MobileRag] hasModelMismatch failed', e as Error)
+      }
+
+      return false
+    },
+
+    async reembedAll(onProgress?: RagProgressCallback): Promise<number> {
+      await deps.hsRepo.clearEmbeddings()
+
+      const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
+      globalModels.globalEmbeddingDimension = 0
+      await deps.settingsManager.set('global_models', globalModels)
+
+      const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
+      ragConfig.totalEmbeddings = 0
+      await deps.settingsManager.set('rag_config', ragConfig)
+
+      onProgress?.({ current: 0, total: 1, status: 'detect-dimension' })
+      await service.detectDimension()
+
+      return service.batchEmbed(onProgress)
     },
 
     async detectDimension(): Promise<number> {
@@ -277,6 +327,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       await deps.settingsManager.set('rag_config', ragConfig)
     }
   }
+
+  return service
 }
 
 export type MobileRagService = ReturnType<typeof createMobileRagService>

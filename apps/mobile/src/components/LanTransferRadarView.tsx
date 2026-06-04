@@ -185,8 +185,7 @@ export const LanTransferRadarView: React.FC<LanTransferRadarViewProps> = ({
   const { colors } = useNativeTheme()
   const [zone, setZone] = useState<LayoutRectangle | null>(null)
 
-  const scale =
-    zone != null ? Math.min(zone.width, zone.height) / (RING_RADII[2] * 2 + 40) : 1
+  const scale = zone != null ? Math.min(zone.width, zone.height) / (RING_RADII[2] * 2 + 40) : 1
 
   return (
     <View
@@ -233,18 +232,20 @@ export const LanTransferRadarView: React.FC<LanTransferRadarViewProps> = ({
       )}
 
       {zone != null &&
-        devices.slice(0, 5).map((device, index) => (
-          <FloatingBubble
-            key={device.rawServiceId}
-            device={device}
-            index={index}
-            zone={zone}
-            colors={colors}
-            isSending={sendingTo === device.rawServiceId}
-            sendProgress={sendProgress}
-            onPress={() => onDevicePress(device)}
-          />
-        ))}
+        devices
+          .slice(0, 5)
+          .map((device, index) => (
+            <FloatingBubble
+              key={device.rawServiceId}
+              device={device}
+              index={index}
+              zone={zone}
+              colors={colors}
+              isSending={sendingTo === device.rawServiceId}
+              sendProgress={sendProgress}
+              onPress={() => onDevicePress(device)}
+            />
+          ))}
     </View>
   )
 }

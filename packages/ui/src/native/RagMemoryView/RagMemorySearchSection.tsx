@@ -7,7 +7,7 @@ import { SettingsSection } from '../SettingsSection'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
 interface RagMemorySearchSectionProps {
-  onSearch: (query: string, mode: string) => void
+  onSearch: (query: string, mode: 'semantic' | 'text') => void
 }
 
 export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({ onSearch }) => {
@@ -23,7 +23,7 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({ 
   }
 
   return (
-    <SettingsSection title={t('rag.search', '记忆搜索')}>
+    <SettingsSection title={t('common.search')}>
       <View style={styles.searchRow}>
         <TextInput
           style={[
@@ -36,13 +36,17 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({ 
           ]}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder={t('rag.search_placeholder', '输入搜索关键词')}
+          placeholder={
+            searchMode === 'semantic'
+              ? t('settings.rag_search_semantic_hint')
+              : t('settings.rag_search_text_hint')
+          }
           placeholderTextColor={colors.textTertiary}
           returnKeyType="search"
           onSubmitEditing={handleSearch}
         />
         <Button onPress={handleSearch} disabled={!searchQuery.trim()}>
-          {t('common.search', '搜索')}
+          {t('common.search')}
         </Button>
       </View>
       <View style={styles.modeRow}>
@@ -67,10 +71,9 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({ 
                 }
               ]}
             >
-              {t(
-                mode === 'semantic' ? 'rag.semantic' : 'rag.text',
-                mode === 'semantic' ? '语义' : '文本'
-              )}
+              {mode === 'semantic'
+                ? t('settings.rag_search_semantic')
+                : t('settings.rag_search_text')}
             </Text>
           </TouchableOpacity>
         ))}

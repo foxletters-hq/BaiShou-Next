@@ -32,12 +32,6 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'updater.section_title',
         icon: 'system-update',
         route: { type: 'section', section: 'updates' }
-      },
-      {
-        id: 'developer',
-        titleKey: 'developer.title',
-        icon: 'developer-mode',
-        route: { type: 'section', section: 'developer' }
       }
     ]
   },
@@ -81,12 +75,6 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'section', section: 'agent-tools' }
       },
       {
-        id: 'mcp',
-        titleKey: 'settings.mcp_title',
-        icon: 'electrical-services',
-        route: { type: 'section', section: 'mcp' }
-      },
-      {
         id: 'summary',
         titleKey: 'settings.summary_settings_title',
         icon: 'auto-awesome',
@@ -128,8 +116,9 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
 export const SETTINGS_SECTION_IDS = new Set(
   SETTINGS_HUB_GROUPS.flatMap((g) =>
     g.items
-      .filter((item): item is SettingsHubItem & { route: { type: 'section' } } =>
-        item.route.type === 'section'
+      .filter(
+        (item): item is SettingsHubItem & { route: { type: 'section' } } =>
+          item.route.type === 'section'
       )
       .map((item) => item.route.section)
   )

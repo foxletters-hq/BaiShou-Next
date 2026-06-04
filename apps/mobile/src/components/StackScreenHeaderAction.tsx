@@ -29,10 +29,7 @@ export const StackScreenHeaderAction: React.FC<StackScreenHeaderActionProps> = (
         />
       ) : (
         <Text
-          style={[
-            styles.label,
-            { color: disabled ? colors.textTertiary : colors.textSecondary }
-          ]}
+          style={[styles.label, { color: disabled ? colors.textTertiary : colors.textSecondary }]}
           numberOfLines={1}
         >
           {label ?? ''}

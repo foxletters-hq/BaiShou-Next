@@ -222,11 +222,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
       <div className={styles.messageList} ref={scroll.scrollRef}>
         <div className={styles.messageContent}>
           {chat.hasMore && (
-            <button
-              type="button"
-              className={styles.loadMoreBanner}
-              onClick={triggerLoadMore}
-            >
+            <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>
               {t('agent.chat.scroll_up_load_more', '点击或上滑加载更早对话')}
             </button>
           )}

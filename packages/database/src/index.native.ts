@@ -4,3 +4,5 @@
 export * from './expo'
 export * from './types'
 export * from './raw-sql.executor'
+
+export const shadowConnectionManager = null as any

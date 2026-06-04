@@ -62,7 +62,7 @@ export const GalleryImageGrid: React.FC<GalleryImageGridProps> = ({ images, onIm
       >
         <Text style={[styles.emptyIcon, { color: colors.textTertiary }]}>🖼️</Text>
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          {t('gallery.noImages', '暂无图片')}
+          {t('diary.no_content')}
         </Text>
       </View>
     )

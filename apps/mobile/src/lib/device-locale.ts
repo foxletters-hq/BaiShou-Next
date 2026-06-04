@@ -19,7 +19,10 @@ export function getSystemLanguage(): string {
   }
 }
 
-export function resolveAppUiLanguage(savedLanguage: string | undefined, i18nLanguage: string): string {
+export function resolveAppUiLanguage(
+  savedLanguage: string | undefined,
+  i18nLanguage: string
+): string {
   if (!savedLanguage || savedLanguage === 'system') {
     return getSystemLanguage()
   }

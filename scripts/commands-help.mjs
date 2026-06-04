@@ -9,10 +9,7 @@ const sections = [
     title: '开发',
     commands: [
       ['pnpm dev:desktop', '启动 Electron 桌面端'],
-      [
-        'pnpm dev:mobile',
-        '★ 日常开发：启动 Metro（只改 JS/TS；手机须已装开发版 APK）'
-      ],
+      ['pnpm dev:mobile', '★ 日常开发：启动 Metro（只改 JS/TS；手机须已装开发版 APK）'],
       [
         'pnpm dev:mobile:clear',
         '★ 全量重装：清 Metro/.expo/Gradle 缓存 + 重编安装 APK（升级 Expo、加原生模块、闪退时用；完成后 dev:mobile）'

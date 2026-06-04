@@ -1,5 +1,12 @@
 import React from 'react'
-import { Image, Text, StyleSheet, type StyleProp, type TextStyle, type ImageStyle } from 'react-native'
+import {
+  Image,
+  Text,
+  StyleSheet,
+  type StyleProp,
+  type TextStyle,
+  type ImageStyle
+} from 'react-native'
 import { getWeatherEmoji, normalizeWeatherId, type WeatherId, WEATHER_IDS } from '@baishou/shared'
 import { getWeatherFluentImageSource } from './weather-assets'
 
@@ -23,7 +30,14 @@ export const WeatherEmoji: React.FC<WeatherEmojiProps> = ({
 
   if (!source) {
     return (
-      <Text style={[styles.fallback, { fontSize: size * 0.9, lineHeight: size }, textStyle, style as TextStyle]}>
+      <Text
+        style={[
+          styles.fallback,
+          { fontSize: size * 0.9, lineHeight: size },
+          textStyle,
+          style as TextStyle
+        ]}
+      >
         {fallback}
       </Text>
     )

@@ -33,7 +33,11 @@ export const appearanceSettingsStyles = StyleSheet.create({
     borderRightWidth: 1
   },
   segmentText: { fontSize: 14 },
-  colorWrap: { flexDirection: 'row', gap: 12 },
+  colorPalette: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
   colorOption: {
     width: 40,
     height: 40,
@@ -42,15 +46,6 @@ export const appearanceSettingsStyles = StyleSheet.create({
     alignItems: 'center'
   },
   checkIcon: { fontSize: 20 },
-  customColorBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1
-  },
-  addIcon: { fontSize: 20 },
   divider: { height: 1, marginVertical: 16 },
   langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   langChip: {

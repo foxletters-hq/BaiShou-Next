@@ -133,10 +133,7 @@ export function buildPostCompactionDisplayHistory(
   for (const msg of windowMessages) {
     if (msg.isSummary) continue
     if (msg.role === 'system') continue
-    if (
-      compactionCutoffOrderIndex != null &&
-      msg.orderIndex <= compactionCutoffOrderIndex
-    ) {
+    if (compactionCutoffOrderIndex != null && msg.orderIndex <= compactionCutoffOrderIndex) {
       continue
     }
     items.push(...formatMessageWithPartsForChain(msg))

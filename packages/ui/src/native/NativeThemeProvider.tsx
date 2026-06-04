@@ -28,13 +28,27 @@ export function NativeThemeProvider({
   return <NativeThemeContext.Provider value={value}>{children}</NativeThemeContext.Provider>
 }
 
+function hexToRgbChannels(hex: string): string | undefined {
+  const h = hex.replace('#', '')
+  if (h.length !== 6) return undefined
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  if ([r, g, b].some((n) => Number.isNaN(n))) return undefined
+  return `${r}, ${g}, ${b}`
+}
+
 function applySeedColor(base: ThemeColors, seed?: string): ThemeColors {
   if (!seed || !/^#[0-9A-Fa-f]{6}$/.test(seed)) return base
+  const rgb = hexToRgbChannels(seed)
   return {
     ...base,
     primary: seed,
     primaryDark: seed,
-    primaryLight: seed + '22'
+    primaryRgb: rgb ?? base.primaryRgb,
+    /** 保持桌面 primaryLight / 轨道色，避免种子色过浅导致整页发飘 */
+    primaryLight: base.primaryLight,
+    primaryTrackMuted: rgb ? `rgba(${rgb}, 0.24)` : base.primaryTrackMuted
   }
 }
 

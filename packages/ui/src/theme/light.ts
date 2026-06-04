@@ -1,7 +1,11 @@
+/** 与桌面 css-variables.css :root 一致 */
 export const lightColors = {
   primary: '#5BA8F5',
   primaryDark: '#3A88D5',
   primaryLight: '#E0F0FE',
+  primaryTrackMuted: 'rgba(91, 168, 245, 0.24)',
+  primaryRgb: '91, 168, 245',
+  dashboardCardBorder: 'rgba(148, 163, 184, 0.5)',
   bgApp: '#F4F5F7',
   bgSurface: '#FFFFFF',
   bgSurfaceRaised: '#FFFFFF',

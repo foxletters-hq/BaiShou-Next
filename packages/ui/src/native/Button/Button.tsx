@@ -5,12 +5,15 @@ import { useNativeTheme } from '../theme'
 export interface NativeButtonProps extends PressableProps {
   variant?: 'elevated' | 'text' | 'outlined'
   isLoading?: boolean
+  /** 危险操作样式（红色文本） */
+  destructive?: boolean
   children: React.ReactNode
 }
 
 export const Button: React.FC<NativeButtonProps> = ({
   variant = 'elevated',
   isLoading = false,
+  destructive = false,
   children,
   style,
   disabled,
@@ -30,7 +33,11 @@ export const Button: React.FC<NativeButtonProps> = ({
     }
 
     if (variant === 'elevated') {
-      base.backgroundColor = pressed ? colors.primary + 'E6' : colors.primary
+      if (destructive) {
+        base.backgroundColor = pressed ? colors.error + 'CC' : colors.error
+      } else {
+        base.backgroundColor = pressed ? colors.primary + 'E6' : colors.primary
+      }
       base.elevation = pressed ? 4 : 2
       base.shadowColor = '#000'
       base.shadowOffset = { width: 0, height: pressed ? 2 : 1 }
@@ -51,7 +58,14 @@ export const Button: React.FC<NativeButtonProps> = ({
     return [base, typeof style === 'function' ? style({ pressed }) : style]
   }
 
-  const textColor = variant === 'elevated' ? colors.textOnPrimary : colors.primary
+  const textColor =
+    variant === 'elevated'
+      ? destructive
+        ? colors.onError
+        : colors.textOnPrimary
+      : destructive
+        ? colors.error
+        : colors.primary
 
   return (
     <Pressable

@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '../Toast'
+import { useDialog } from '../Dialog'
 import type { NativeIdentitySettingsCardProps } from './identity-settings.types'
 
 export function useIdentitySettings({ profile, onChange }: NativeIdentitySettingsCardProps) {
   const { t } = useTranslation()
   const toast = useNativeToast()
-  const [collapsed, setCollapsed] = useState(true)
+  const dialog = useDialog()
   const [isFactModalOpen, setIsFactModalOpen] = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editKeyInput, setEditKeyInput] = useState('')
@@ -24,78 +24,65 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
 
   const currentFacts = allPersonas[activeId].facts || {}
 
-  const handleSwitch = (pid: string) => {
+  const handleSwitch = async (pid: string) => {
     if (pid !== activeId) {
       onChange({ ...profile, activePersonaId: pid })
-    } else {
-      Alert.prompt(
-        t('settings.rename_identity_card', '重命名身份卡'),
-        undefined,
-        (newName) => {
-          if (newName && newName !== pid && !allPersonas[newName]) {
-            const nextPersonas = { ...allPersonas }
-            nextPersonas[newName] = { ...nextPersonas[pid], id: newName }
-            delete nextPersonas[pid]
-            onChange({
-              ...profile,
-              personas: nextPersonas,
-              activePersonaId: newName
-            })
-          }
-        },
-        'plain-text',
-        pid
-      )
+      return
+    }
+    const newName = await dialog.prompt(
+      t('settings.rename_identity_card', '重命名身份卡'),
+      pid,
+      t('settings.rename_identity_card', '重命名身份卡')
+    )
+    if (newName && newName !== pid && !allPersonas[newName]) {
+      const nextPersonas = { ...allPersonas }
+      nextPersonas[newName] = { ...nextPersonas[pid], id: newName }
+      delete nextPersonas[pid]
+      onChange({
+        ...profile,
+        personas: nextPersonas,
+        activePersonaId: newName
+      })
     }
   }
 
-  const handleAddPersona = () => {
-    Alert.prompt(
+  const handleAddPersona = async () => {
+    const newName = await dialog.prompt(
       t('settings.new_identity_card', '新建身份卡'),
-      undefined,
-      (newName) => {
-        if (newName && !allPersonas[newName]) {
-          const nextPersonas = {
-            ...allPersonas,
-            [newName]: { id: newName, facts: {} }
-          }
-          onChange({
-            ...profile,
-            personas: nextPersonas,
-            activePersonaId: newName
-          })
-        }
-      },
-      'plain-text'
+      '',
+      t('settings.new_identity_card', '新建身份卡')
     )
+    if (newName && !allPersonas[newName]) {
+      const nextPersonas = {
+        ...allPersonas,
+        [newName]: { id: newName, facts: {} }
+      }
+      onChange({
+        ...profile,
+        personas: nextPersonas,
+        activePersonaId: newName
+      })
+    }
   }
 
-  const handleDeletePersona = (pid: string) => {
+  const handleDeletePersona = async (pid: string) => {
     if (Object.keys(allPersonas).length <= 1) {
       toast.showToast(t('settings.identity_min_one', '至少保留一张身份卡！'), 'error')
       return
     }
-    Alert.alert(
-      t('common.confirm', '确认'),
+    const confirmed = await dialog.confirm(
       t('settings.delete_identity_card', '确定删除身份卡: $personaId').replace('$personaId', pid),
-      [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
-        {
-          text: t('common.confirm', '确定'),
-          style: 'destructive',
-          onPress: () => {
-            const nextPersonas = { ...allPersonas }
-            delete nextPersonas[pid]
-            const remainingIds = Object.keys(nextPersonas)
-            onChange({
-              ...profile,
-              personas: nextPersonas,
-              activePersonaId: remainingIds[0]
-            })
-          }
-        }
-      ]
+      { confirmText: t('common.confirm', '确定'), destructive: true }
     )
+    if (!confirmed) return
+    const nextPersonas = { ...allPersonas }
+    delete nextPersonas[pid]
+    const remainingIds = Object.keys(nextPersonas)
+    onChange({
+      ...profile,
+      personas: nextPersonas,
+      activePersonaId: remainingIds[0]
+    })
   }
 
   const startEdit = (k: string, v: string) => {
@@ -140,34 +127,24 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
     setIsFactModalOpen(false)
   }
 
-  const handleDeleteFact = (k: string) => {
-    Alert.alert(
-      t('common.confirm', '确认'),
+  const handleDeleteFact = async (k: string) => {
+    const confirmed = await dialog.confirm(
       t('settings.delete_identity_confirm', '确认删除「$key」？').replace('$key', k),
-      [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
-        {
-          text: t('common.confirm', '确定'),
-          style: 'destructive',
-          onPress: () => {
-            const nextFacts = { ...currentFacts }
-            delete nextFacts[k]
-            onChange({
-              ...profile,
-              personas: {
-                ...allPersonas,
-                [activeId]: { ...allPersonas[activeId], facts: nextFacts }
-              }
-            })
-          }
-        }
-      ]
+      { confirmText: t('common.confirm', '确定'), destructive: true }
     )
+    if (!confirmed) return
+    const nextFacts = { ...currentFacts }
+    delete nextFacts[k]
+    onChange({
+      ...profile,
+      personas: {
+        ...allPersonas,
+        [activeId]: { ...allPersonas[activeId], facts: nextFacts }
+      }
+    })
   }
 
   return {
-    collapsed,
-    setCollapsed,
     isFactModalOpen,
     setIsFactModalOpen,
     editingKey,

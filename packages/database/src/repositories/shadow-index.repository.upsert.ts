@@ -222,7 +222,7 @@ function upsertOneSync(
       .insert(shadowJournalIndexTable)
       .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
       .returning({ id: shadowJournalIndexTable.id })
-      .all() as unknown as Array<{ id: number }>
+      .all() as any
 
     const rowId = result[0]?.id
     if (rowId == null) {
@@ -240,7 +240,7 @@ function upsertOneSync(
       .insert(shadowJournalIndexTable)
       .values(baseValues)
       .returning({ id: shadowJournalIndexTable.id })
-      .all() as unknown as Array<{ id: number }>
+      .all() as any
 
     const rowId = result[0]?.id
     if (rowId == null) {

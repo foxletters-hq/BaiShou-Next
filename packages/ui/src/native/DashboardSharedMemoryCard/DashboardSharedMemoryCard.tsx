@@ -1,16 +1,18 @@
 import { useTranslation } from 'react-i18next'
-import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import Slider from '@react-native-community/slider'
+import React, { useCallback, useEffect, useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import { DesktopStyleSlider } from './DesktopStyleSlider'
 import { useNativeTheme } from '../../native/theme'
+
+const SLIDER_MIN = 1
+const SLIDER_BASE_MAX = 60
 
 interface DashboardSharedMemoryCardProps {
   lookbackMonths: number
   onMonthsChanged: (val: number) => void
   onCopyContext: () => void
 }
-
-// TODO: [Agent1-Dependency] 替换
 
 export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps> = ({
   lookbackMonths,
@@ -19,52 +21,98 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const cardBorder = colors.dashboardCardBorder ?? 'rgba(148, 163, 184, 0.5)'
+  const [draftMonths, setDraftMonths] = useState(String(lookbackMonths))
+
+  const commitMonths = useCallback(
+    (raw: string) => {
+      const n = parseInt(raw, 10)
+      if (Number.isNaN(n)) {
+        setDraftMonths(String(lookbackMonths))
+        return
+      }
+      const clamped = Math.max(SLIDER_MIN, n)
+      setDraftMonths(String(clamped))
+      onMonthsChanged(clamped)
+    },
+    [lookbackMonths, onMonthsChanged]
+  )
+
+  useEffect(() => {
+    setDraftMonths(String(lookbackMonths))
+  }, [lookbackMonths])
+
+  const sliderMax = Math.max(SLIDER_BASE_MAX, lookbackMonths)
+  const sliderValue = Math.min(Math.max(lookbackMonths, SLIDER_MIN), sliderMax)
 
   return (
-    <View
-      style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]}
-    >
+    <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: cardBorder }]}>
       <View style={styles.header}>
-        <Text style={styles.headerIcon}>🌸</Text>
+        <MaterialIcons
+          name="format-quote"
+          size={20}
+          color={colors.primary}
+          style={styles.headerIcon}
+        />
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          {t('summary.shared_memory', '共同回忆')}
+          {t('summary.shared_memory')}
         </Text>
       </View>
 
       <Text style={[styles.desc, { color: colors.textSecondary }]}>
-        {t(
-          'dashboard.shared_memory_desc',
-          '调整回溯月份，为 RAG 或大语言模型导出近期总结上下文片段。'
-        )}
+        {t('summary.shared_memory_desc')}
       </Text>
 
       <View style={styles.controls}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('dashboard.lookback_months', '回溯 {{count}} 个月', {
-            count: lookbackMonths
-          })}
-        </Text>
-        <Slider
-          style={styles.slider}
-          minimumValue={1}
-          maximumValue={60}
-          step={1}
-          value={lookbackMonths}
-          onValueChange={onMonthsChanged}
-          minimumTrackTintColor={colors.accentPink}
-          maximumTrackTintColor={colors.borderMuted}
-          thumbTintColor={colors.accentPink}
-        />
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>
+            {t('summary.lookback_label')}
+          </Text>
+          <TextInput
+            style={[
+              styles.numberInput,
+              {
+                color: colors.textPrimary,
+                backgroundColor: colors.bgSurfaceLowest,
+                borderColor: colors.colorOutlineVariant ?? colors.borderMuted
+              }
+            ]}
+            value={draftMonths}
+            keyboardType="number-pad"
+            maxLength={4}
+            selectTextOnFocus
+            onChangeText={(text) => {
+              const digits = text.replace(/\D/g, '')
+              setDraftMonths(digits)
+              if (digits.length > 0) {
+                const n = parseInt(digits, 10)
+                if (!Number.isNaN(n)) {
+                  onMonthsChanged(Math.max(SLIDER_MIN, n))
+                }
+              }
+            }}
+            onEndEditing={() => commitMonths(draftMonths)}
+            onBlur={() => commitMonths(draftMonths)}
+          />
+        </View>
+        <View style={styles.sliderWrap}>
+          <DesktopStyleSlider
+            value={sliderValue}
+            minimumValue={SLIDER_MIN}
+            maximumValue={sliderMax}
+            step={1}
+            onValueChange={onMonthsChanged}
+          />
+        </View>
       </View>
 
       <TouchableOpacity
-        activeOpacity={0.7}
-        style={[styles.btn, { backgroundColor: colors.accentPink }]}
+        activeOpacity={0.9}
+        style={[styles.btn, { backgroundColor: colors.primary }]}
         onPress={onCopyContext}
       >
-        <Text style={[styles.btnText, { color: colors.textOnPrimary }]}>
-          ✨ {t('dashboard.copy_to_ai', 'Copy 给 AI')}
-        </Text>
+        <MaterialIcons name="content-copy" size={16} color="#ffffff" style={styles.btnIcon} />
+        <Text style={styles.btnText}>{t('summary.copy_memories')}</Text>
       </TouchableOpacity>
     </View>
   )
@@ -82,42 +130,59 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   headerIcon: {
-    fontSize: 20,
     marginRight: 8
   },
   headerTitle: {
-    fontWeight: 'bold',
-    fontSize: 14
+    fontWeight: '800',
+    fontSize: 16
   },
   desc: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 20
-  },
-  controls: {
-    flexDirection: 'column',
-    gap: 8,
+    fontSize: 13,
+    lineHeight: 20.8,
     marginBottom: 24
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '500'
+  controls: {
+    marginBottom: 24,
+    gap: 8
   },
-  slider: {
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1
+  },
+  numberInput: {
+    width: 64,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center'
+  },
+  sliderWrap: {
     width: '100%',
-    height: 40
+    justifyContent: 'center',
+    minHeight: 44
   },
   btn: {
-    borderRadius: 20,
-    paddingVertical: 12,
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 4
+    justifyContent: 'center'
+  },
+  btnIcon: {
+    marginRight: 6
   },
   btnText: {
-    fontWeight: 'bold',
-    fontSize: 14
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#ffffff'
   }
 })

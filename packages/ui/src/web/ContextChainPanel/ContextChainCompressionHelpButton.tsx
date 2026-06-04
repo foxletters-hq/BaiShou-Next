@@ -12,10 +12,9 @@ export interface ContextChainCompressionHelpButtonProps {
 }
 
 /** 调用链底部「下次请求预计」旁的 ? — 点击打开说明弹窗（与工作空间说明一致） */
-export const ContextChainCompressionHelpButton: React.FC<ContextChainCompressionHelpButtonProps> = ({
-  size = 15,
-  className = ''
-}) => {
+export const ContextChainCompressionHelpButton: React.FC<
+  ContextChainCompressionHelpButtonProps
+> = ({ size = 15, className = '' }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 

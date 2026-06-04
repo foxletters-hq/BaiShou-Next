@@ -107,11 +107,7 @@ export class ContextCompressorService {
         compressionConfig.modelContextWindow ?? 0,
         compressionConfig.reservedTokens
       )
-      if (
-        compressionConfig.threshold <= 0 &&
-        usableWindow <= 0 &&
-        !compressionConfig.force
-      ) {
+      if (compressionConfig.threshold <= 0 && usableWindow <= 0 && !compressionConfig.force) {
         return false
       }
 
@@ -276,8 +272,7 @@ export class ContextCompressorService {
         }
 
         snapshotId = latestSnapshot.id
-        const previousSnapshot =
-          snapshots.length >= 2 ? snapshots[snapshots.length - 2]! : null
+        const previousSnapshot = snapshots.length >= 2 ? snapshots[snapshots.length - 2]! : null
 
         const allMessages = (await sessionRepo.getMessagesBySession(
           sessionId,
@@ -321,10 +316,7 @@ export class ContextCompressorService {
         const normalizedSummary = stored.summaryText
         const lastAssistant = [...toCompress].reverse().find((m) => m.role === 'assistant')
         const lastAssistantText = lastAssistant ? extractMessageText(lastAssistant).trim() : ''
-        if (
-          lastAssistantText.length > 40 &&
-          normalizedSummary === lastAssistantText
-        ) {
+        if (lastAssistantText.length > 40 && normalizedSummary === lastAssistantText) {
           return compressionError(CompressionErrorCode.VERBATIM_SUMMARY)
         }
 
@@ -406,11 +398,7 @@ export class ContextCompressorService {
       compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
 
     const headForModel = cloneMessagesForCompressionModel(toCompress)
-    const headMessages = await MessageAdapter.toVercelMessages(
-      headForModel,
-      modelId,
-      providerType
-    )
+    const headMessages = await MessageAdapter.toVercelMessages(headForModel, modelId, providerType)
 
     const messages: ModelMessage[] = [...headMessages]
     const previousSummaryBlock = buildCompressionPreviousSummaryBlock(

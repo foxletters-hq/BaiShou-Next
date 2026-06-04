@@ -24,7 +24,7 @@ import {
   PromptShortcutSheet,
   AgentToolsView
 } from '@baishou/ui/native'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 
@@ -48,13 +48,12 @@ export const AgentScreen = () => {
   const { t } = useTranslation()
   const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
+  const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [assistants, setAssistants] = useState<
-    Array<AssistantSummary & { isPinned?: boolean }>
-  >([])
+  const [assistants, setAssistants] = useState<Array<AssistantSummary & { isPinned?: boolean }>>([])
   const [shortcuts, setShortcuts] = useState<
     Array<{ id: string; icon: string; name: string; content: string }>
   >([])
@@ -195,7 +194,10 @@ export const AgentScreen = () => {
   }, [showToolManager, dbReady, services])
 
   const handleToolConfigChange = useCallback(
-    async (next: { disabledToolIds: string[]; customConfigs: Record<string, Record<string, unknown>> }) => {
+    async (next: {
+      disabledToolIds: string[]
+      customConfigs: Record<string, Record<string, unknown>>
+    }) => {
       setToolConfig(next)
       if (!services) return
       try {
@@ -301,13 +303,10 @@ export const AgentScreen = () => {
           currentAssistant?.name
         )
         if (newSessionId) {
-          Alert.alert(t('agent.chat.branch_success', '分支创建成功'))
+          toast.showSuccess(t('agent.chat.branch_success', '分支创建成功'))
         }
       } catch (e: any) {
-        Alert.alert(
-          t('agent.chat.branch_failed', '分支创建失败'),
-          e.message || t('app.unknown_error', '未知网络或系统错误')
-        )
+        toast.showError(e.message || t('app.unknown_error', '未知网络或系统错误'))
       }
     },
     [currentSessionId, branchSession, currentAssistant?.name, t]
@@ -376,13 +375,13 @@ export const AgentScreen = () => {
 
   const renderEmptyState = () => (
     <View style={styles.empty}>
-      <View
-        style={[
-          styles.emptyIconCircle,
-          { backgroundColor: colors.primary + '26' }
-        ]}
-      >
-        <MaterialIcons name="auto-awesome" size={38} color={colors.primary} style={{ opacity: 0.7 }} />
+      <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
+        <MaterialIcons
+          name="auto-awesome"
+          size={38}
+          color={colors.primary}
+          style={{ opacity: 0.7 }}
+        />
       </View>
       <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
         {t('agent.chat.start_chat', '开始和伙伴对话')}
@@ -461,7 +460,9 @@ export const AgentScreen = () => {
                       : undefined
                   }
                   isTtsPlaying={ttsPlayingMsgId === item.id}
-                  onShowContext={item.role === 'assistant' ? () => handleShowContext(item) : undefined}
+                  onShowContext={
+                    item.role === 'assistant' ? () => handleShowContext(item) : undefined
+                  }
                   onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
                 />
               </View>
@@ -530,7 +531,6 @@ export const AgentScreen = () => {
               isLoading={isLoading}
               onStop={handleStop}
               assistantName={assistantDisplayName}
-              onAssistantTap={() => setShowAssistantPicker(true)}
               onTriggerShortcut={() => setShowShortcutSheet(true)}
               onManageShortcuts={() => setShowShortcutSheet(true)}
               onRecall={() => setShowRecallSheet(true)}

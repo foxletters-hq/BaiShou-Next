@@ -18,6 +18,17 @@ export const getWeekNumber = (date: Date): number => {
   return Math.ceil(diff / (7 * 24 * 60 * 60 * 1000))
 }
 
+/** 列表「路径」行：起止日期，与桌面画廊列表一致 */
+export const formatSummarySpan = (s: SummaryItem): string => {
+  if (!s.startDate || !s.endDate) return ''
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const start = new Date(s.startDate)
+  const end = new Date(s.endDate)
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return ''
+  return `${fmt(start)} 至 ${fmt(end)}`
+}
+
 export const formatDateRange = (s: SummaryItem): string => {
   if (!s.startDate || !s.endDate) return ''
   const start = new Date(s.startDate)

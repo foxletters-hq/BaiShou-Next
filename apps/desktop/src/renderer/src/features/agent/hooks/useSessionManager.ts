@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useToast } from '@baishou/ui'
 
 export interface UseSessionManagerParams {
   currentAssistantId: string | undefined
@@ -22,6 +23,7 @@ export function useSessionManager(params: UseSessionManagerParams): UseSessionMa
   const { currentAssistantId } = params
   const [searchParams] = useSearchParams()
   const { t } = useTranslation()
+  const toast = useToast()
 
   const createSession = useCallback(
     async (title: string): Promise<string | null> => {
@@ -43,11 +45,13 @@ export function useSessionManager(params: UseSessionManagerParams): UseSessionMa
       } catch (e: any) {
         console.error('[useSessionManager] Create session failed:', e)
         const errMsg = e?.message || e
-        alert(t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg: errMsg }))
+        toast.showError(
+          t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg: errMsg })
+        )
         return null
       }
     },
-    [searchParams, currentAssistantId, t]
+    [searchParams, currentAssistantId, t, toast]
   )
 
   return { createSession }

@@ -34,7 +34,22 @@ export function useAgentModel() {
     const loadDefaultConfig = async () => {
       try {
         // 加载助手列表
-        const assistants = (await services.settingsManager.get<Assistant[]>('assistants')) || []
+        let assistants = (await services.settingsManager.get<Assistant[]>('assistants')) || []
+
+        // 如果没有助手，自动创建默认助手（参考桌面端逻辑）
+        if (assistants.length === 0) {
+          const defaultAssistant: Assistant = {
+            id: 'default',
+            name: t('agent.assistant.default_assistant_name', '默认伙伴'),
+            emoji: '🍵',
+            isDefault: true,
+            isPinned: false,
+            systemPrompt: ''
+          }
+          await services.settingsManager.set('assistants', [defaultAssistant])
+          assistants = [defaultAssistant]
+        }
+
         const defaultAssistant = assistants.find((a) => a.isDefault) || assistants[0]
         if (defaultAssistant) {
           setCurrentAssistant(defaultAssistant)

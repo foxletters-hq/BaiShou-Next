@@ -1,329 +1,272 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Switch, TextInput, Alert } from 'react-native'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import { PROVIDER_TYPES } from '../../../constants/known-ai-providers'
+import { AIProviderConfig, ProviderType } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
-import { AIProviderConfig } from '@baishou/shared'
+import { ProviderSortableList } from './ProviderSortableList'
+import {
+  applyProviderOrderFromIds,
+  buildProviderListItems,
+  effectiveProviderBaseUrl
+} from '../utils/provider-settings'
 
 export const AIServicesSection: React.FC = () => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const router = useRouter()
+  const { colors, tokens } = useNativeTheme()
   const { services, dbReady } = useBaishou()
+  const toast = useNativeToast()
 
-  const [providers, setProviders] = useState<AIProviderConfig[]>([])
+  const [savedProviders, setSavedProviders] = useState<AIProviderConfig[]>([])
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addForm, setAddForm] = useState({ name: '', type: 'openai', baseUrl: '' })
+
+  const providerItems = useMemo(
+    () => buildProviderListItems(savedProviders, t),
+    [savedProviders, t]
+  )
+
+  const [localProviderItems, setLocalProviderItems] = useState(providerItems)
 
   useEffect(() => {
-    if (!dbReady || !services) return
-    const loadProviders = async () => {
+    setLocalProviderItems(providerItems)
+  }, [providerItems])
+
+  const loadProviders = useCallback(async () => {
+    if (!services || !dbReady) return
+    try {
+      const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      setSavedProviders(list)
+    } catch (e) {
+      console.warn('Load providers failed', e)
+    }
+  }, [services, dbReady])
+
+  useEffect(() => {
+    void loadProviders()
+  }, [loadProviders])
+
+  const handleReorderProviders = useCallback(
+    async (orderedItems: typeof providerItems) => {
+      setLocalProviderItems(orderedItems)
+      if (!services || !dbReady) return
+      const orderedIds = orderedItems.map((p) => p.id)
+      const next = applyProviderOrderFromIds(savedProviders, orderedIds, orderedItems)
       try {
-        const providerList =
-          (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-        setProviders(providerList)
+        await services.settingsManager.set('ai_providers', next)
+        setSavedProviders(next)
       } catch (e) {
-        console.warn('Load providers failed', e)
+        console.warn('Reorder providers failed', e)
+        setLocalProviderItems(providerItems)
       }
-    }
-    loadProviders()
-  }, [dbReady, services])
+    },
+    [services, dbReady, savedProviders, providerItems]
+  )
 
-  const handleAddProvider = async () => {
-    if (!services || !dbReady) return
-    Alert.prompt(
-      t('settings.add_provider'),
-      t('settings.provider_name'),
-      async (newId) => {
-        if (!newId?.trim()) return
-        try {
-          const providerList = (await services.settingsManager.get<any[]>('ai_providers')) || []
-          if (providerList.some((p) => p.id === newId.trim())) {
-            Alert.alert(t('common.error'), t('settings.provider_name'))
-            return
-          }
-          const newProvider = {
-            id: newId.trim(),
-            name: newId.trim(),
-            type: 'custom',
-            apiKey: '',
-            baseUrl: '',
-            models: [],
-            enabledModels: [],
-            isEnabled: true,
-            isSystem: false,
-            sortOrder: providerList.length + 1
-          }
-          providerList.push(newProvider)
-          await services.settingsManager.set('ai_providers', providerList)
-          setProviders([...providerList])
-          Alert.alert(t('common.success'), t('common.save_success'))
-        } catch (e) {
-          Alert.alert(t('common.error'), t('ai_config.fetch_models_failed'))
-        }
-      },
-      'plain-text'
-    )
+  const handleOpenProvider = (id: string) => {
+    router.push(`/settings/ai-provider/${encodeURIComponent(id)}`)
   }
 
-  const handleDeleteProvider = async (index: number) => {
+  const handleAddCustomProvider = async () => {
     if (!services || !dbReady) return
-    const provider = providers[index]
-    if (provider.isSystem) {
-      Alert.alert(
-        t('common.hint'),
-        t('settings.provider_disabled')
-      )
+    const name = addForm.name.trim()
+    if (!name) {
+      toast.showWarning(t('settings.provider_name'))
       return
     }
-    Alert.alert(
-      t('common.delete'),
-      t('agent.assistant.delete_confirm_content'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            const newProviders = providers.filter((_, i) => i !== index)
-            await services.settingsManager.set('ai_providers', newProviders)
-            setProviders(newProviders)
-          }
-        }
-      ]
-    )
-  }
-
-  const handleTestConnection = async (providerIndex: number) => {
-    if (!services || !dbReady) return
-    const provider = providers[providerIndex]
-    if (!provider.apiKey) {
-      Alert.alert(t('common.hint'), t('ai_config.fill_api_key_hint'))
-      return
+    const id = `custom_${Date.now()}`
+    const baseUrl = addForm.baseUrl.trim() || effectiveProviderBaseUrl(id, addForm.type, '', '')
+    const newProvider: AIProviderConfig = {
+      id,
+      name,
+      type: addForm.type as ProviderType,
+      apiKey: '',
+      baseUrl,
+      models: [],
+      enabledModels: [],
+      isEnabled: true,
+      isSystem: false,
+      sortOrder: savedProviders.length + 1,
+      defaultDialogueModel: '',
+      defaultNamingModel: ''
     }
     try {
-      Alert.alert(t('common.hint'), t('settings.testing_connection'))
-      const response = await fetch(`${provider.baseUrl}/models`, {
-        headers: { Authorization: `Bearer ${provider.apiKey}` }
-      })
-      if (response.ok) {
-        Alert.alert(t('common.success'), t('ai_config.test_connection_success'))
-      } else {
-        Alert.alert(
-          t('common.error'),
-          t('ai_config.test_connection_failed', { e: String(response.status) })
-        )
-      }
-    } catch (e: any) {
-      Alert.alert(
-        t('common.error'),
-        t('ai_config.test_connection_failed', { e: e.message || '' })
-      )
+      const next = [...savedProviders, newProvider]
+      await services.settingsManager.set('ai_providers', next)
+      setSavedProviders(next)
+      setShowAddModal(false)
+      setAddForm({ name: '', type: 'openai', baseUrl: '' })
+      router.push(`/settings/ai-provider/${encodeURIComponent(id)}`)
+    } catch {
+      toast.showError(t('ai_config.save_failed'))
     }
   }
 
-  const handleFetchModels = async (providerIndex: number) => {
-    if (!services || !dbReady) return
-    const provider = providers[providerIndex]
-    if (!provider.apiKey) {
-      Alert.alert(t('common.hint'), t('ai_config.fill_api_key_hint'))
-      return
-    }
-    try {
-      Alert.alert(t('common.hint'), t('settings.fetch_models'))
-      const response = await fetch(`${provider.baseUrl}/models`, {
-        headers: { Authorization: `Bearer ${provider.apiKey}` }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        const models = (data.data || []).map((m: any) => m.id)
-        const newProviders = [...providers]
-        newProviders[providerIndex] = {
-          ...newProviders[providerIndex],
-          models
-        }
-        await services.settingsManager.set('ai_providers', newProviders)
-        setProviders(newProviders)
-        Alert.alert(
-          t('common.success'),
-          t('ai_config.fetch_models_success')
-        )
-      } else {
-        Alert.alert(
-          t('common.error'),
-          t('ai_config.fetch_models_failed')
-        )
-      }
-    } catch (e: any) {
-      Alert.alert(
-        t('common.error'),
-        t('ai_config.fetch_models_failed', { e: e.message || '' })
-      )
-    }
+  const cardStyle = {
+    backgroundColor: colors.bgSurface,
+    borderRadius: tokens.radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderSubtle
   }
 
-  return (
-    <View style={styles.section}>
-      {providers.map((provider, index) => (
-        <View
-          key={index}
-          style={[styles.providerItem, { backgroundColor: colors.bgSurfaceHighest }]}
-        >
-          <View style={styles.providerHeader}>
-            <Text style={[styles.providerName, { color: colors.textPrimary }]}>
-              {provider.name}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {!provider.isSystem && (
-                <TouchableOpacity
-                  onPress={() => handleDeleteProvider(index)}
-                  style={{ padding: 4 }}
-                >
-                  <Text style={{ color: colors.textSecondary, fontSize: 16 }}>🗑️</Text>
-                </TouchableOpacity>
-              )}
-              <Switch
-                value={provider.isEnabled}
-                onValueChange={async (value) => {
-                  const newProviders = [...providers]
-                  newProviders[index] = {
-                    ...newProviders[index],
-                    isEnabled: value
-                  }
-                  await services?.settingsManager.set('ai_providers', newProviders)
-                  setProviders(newProviders)
-                }}
-              />
-            </View>
-          </View>
-          {provider.isSystem && (
-            <Text style={[styles.providerType, { color: colors.primary, fontSize: 11 }]}>
-              🔒 系统核心
-            </Text>
-          )}
-          {!provider.isSystem && (
-            <Text style={[styles.providerType, { color: colors.textSecondary }]}>
-              类型: {provider.type}
-            </Text>
-          )}
-          <TextInput
-            style={[
-              styles.providerInput,
-              {
-                backgroundColor: colors.bgSurface,
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle
-              }
-            ]}
-            value={provider.apiKey}
-            onChangeText={async (text) => {
-              const newProviders = [...providers]
-              newProviders[index] = { ...newProviders[index], apiKey: text }
-              await services?.settingsManager.set('ai_providers', newProviders)
-              setProviders(newProviders)
-            }}
-            placeholder="API Key"
-            placeholderTextColor={colors.textSecondary}
-            secureTextEntry
-          />
-          <TextInput
-            style={[
-              styles.providerInput,
-              {
-                backgroundColor: colors.bgSurface,
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle
-              }
-            ]}
-            value={provider.baseUrl}
-            onChangeText={async (text) => {
-              const newProviders = [...providers]
-              newProviders[index] = { ...newProviders[index], baseUrl: text }
-              await services?.settingsManager.set('ai_providers', newProviders)
-              setProviders(newProviders)
-            }}
-            placeholder="Base URL"
-            placeholderTextColor={colors.textSecondary}
-          />
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            <TouchableOpacity
-              style={[styles.smallActionBtn, { backgroundColor: colors.bgSurface }]}
-              onPress={() => handleTestConnection(index)}
-            >
-              <Text style={[styles.smallActionBtnText, { color: colors.textPrimary }]}>
-                {t('settings.test_connection')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.smallActionBtn, { backgroundColor: colors.bgSurface }]}
-              onPress={() => handleFetchModels(index)}
-            >
-              <Text style={[styles.smallActionBtnText, { color: colors.textPrimary }]}>
-                {t('settings.fetch_models')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
-
+  const footer = (
+    <View style={styles.footer}>
       <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: colors.primary, marginTop: 12 }]}
-        onPress={handleAddProvider}
+        style={[styles.addBtn, { backgroundColor: colors.primary }]}
+        onPress={() => setShowAddModal(true)}
       >
-        <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
+        <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
           + {t('settings.add_provider')}
         </Text>
       </TouchableOpacity>
     </View>
   )
+
+  return (
+    <View style={styles.root}>
+      <ProviderSortableList
+        items={localProviderItems}
+        onOpen={handleOpenProvider}
+        onReorder={(items) => void handleReorderProviders(items)}
+        ListFooterComponent={footer}
+      />
+
+      {showAddModal && (
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.modalCard, cardStyle]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              {t('settings.add_provider')}
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.bgApp,
+                  color: colors.textPrimary,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
+              value={addForm.name}
+              onChangeText={(name) => setAddForm((f) => ({ ...f, name }))}
+              placeholder={t('settings.provider_name')}
+              placeholderTextColor={colors.textTertiary}
+            />
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+              {t('settings.provider_type')}
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeRow}>
+              {PROVIDER_TYPES.slice(0, 12).map((type: string) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.typeChip,
+                    {
+                      borderColor: addForm.type === type ? colors.primary : colors.borderSubtle,
+                      backgroundColor:
+                        addForm.type === type ? colors.primaryContainer : colors.bgApp
+                    }
+                  ]}
+                  onPress={() => setAddForm((f) => ({ ...f, type }))}
+                >
+                  <Text
+                    style={{
+                      color: addForm.type === type ? colors.primary : colors.textSecondary,
+                      fontSize: 12
+                    }}
+                  >
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.bgApp,
+                  color: colors.textPrimary,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
+              value={addForm.baseUrl}
+              onChangeText={(baseUrl) => setAddForm((f) => ({ ...f, baseUrl }))}
+              placeholder="Base URL (optional)"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="none"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                <Text style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => void handleAddCustomProvider()}>
+                <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                  {t('common.confirm')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: 24
+  root: {
+    flex: 1
   },
-  providerItem: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12
+  footer: {
+    marginTop: 8
   },
-  providerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8
-  },
-  providerName: {
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  providerType: {
-    fontSize: 12,
-    marginBottom: 12
-  },
-  providerInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-    marginBottom: 8
-  },
-  actionButton: {
+  addBtn: {
     paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  actionButtonText: {
-    fontSize: 15,
-    fontWeight: '600'
-  },
-  smallActionBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center'
   },
-  smallActionBtnText: {
+  fieldLabel: {
     fontSize: 12,
-    fontWeight: '600'
+    marginTop: 4
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    padding: 24,
+    zIndex: 20
+  },
+  modalCard: {
+    padding: 20,
+    gap: 10
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4
+  },
+  typeRow: {
+    maxHeight: 40,
+    marginBottom: 4
+  },
+  typeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: 6
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 20,
+    marginTop: 8
   }
 })

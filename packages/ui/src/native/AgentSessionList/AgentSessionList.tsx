@@ -50,7 +50,12 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
           { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderSubtle }
         ]}
       >
-        <MaterialIcons name="search" size={18} color={colors.textTertiary} style={styles.searchIcon} />
+        <MaterialIcons
+          name="search"
+          size={18}
+          color={colors.textTertiary}
+          style={styles.searchIcon}
+        />
         <TextInput
           placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
           placeholderTextColor={colors.textTertiary}

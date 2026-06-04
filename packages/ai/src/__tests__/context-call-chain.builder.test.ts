@@ -83,11 +83,7 @@ describe('ContextCallChainBuilder', () => {
       allMessages
     })
 
-    expect(result.chain.map((m) => m.label)).toEqual([
-      '系统提示词',
-      undefined,
-      'AI 输出'
-    ])
+    expect(result.chain.map((m) => m.label)).toEqual(['系统提示词', undefined, 'AI 输出'])
     expect(result.chain[2]?.content).toBe('answer')
   })
 

@@ -178,7 +178,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         node: { key: string; attributes: { src?: string; alt?: string } },
         _children: unknown,
         _parent: unknown,
-        inheritedStyles: { image?: object }
+        _styles: { image?: object }
       ) => {
         const rawSrc = node.attributes.src ?? ''
         const resolved = resolveImageUri?.(rawSrc) ?? rawSrc
@@ -188,7 +188,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           <Image
             key={node.key}
             source={{ uri: resolved }}
-            style={[inheritedStyles.image, styles.image, styles.imageBlock]}
+            style={[_styles.image, styles.image, styles.imageBlock]}
             resizeMode="contain"
           />
         )

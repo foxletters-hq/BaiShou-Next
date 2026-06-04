@@ -2,7 +2,11 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '../Toast'
 
-export function useAboutSettingsEasterEggs() {
+export interface AboutSettingsEasterEggOptions {
+  onDevModeUnlock?: () => void
+}
+
+export function useAboutSettingsEasterEggs(options: AboutSettingsEasterEggOptions = {}) {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const logoTapCount = useRef(0)
@@ -21,7 +25,7 @@ export function useAboutSettingsEasterEggs() {
 
     if (logoTapCount.current >= 5) {
       logoTapCount.current = 0
-      toast.showToast(t('about.love_message', '🌸樱&晓 永远爱着Anson❤️'), 'success')
+      toast.showSuccess(t('about.love_message', '🌸樱&晓 永远爱着Anson❤️'))
     }
   }
 
@@ -41,10 +45,10 @@ export function useAboutSettingsEasterEggs() {
         '$count',
         remaining.toString()
       )
-      toast.showToast(msg, 'info')
+      toast.showInfo(msg)
     } else if (count >= 10) {
       devTapCount.current = 0
-      // TODO: 打开开发者选项
+      options.onDevModeUnlock?.()
     }
   }
 

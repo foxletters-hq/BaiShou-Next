@@ -80,11 +80,7 @@ export class AgentSessionService {
         )) as import('./message.adapter').MessageWithParts[]
         const latestSnap = await snapshotRepo.getLatestSnapshot(sessionId)
         const afterSnap = getMessagesAfterSnapshot(rawForEstimate, latestSnap)
-        const contextTokens = estimateContextTokensForTrigger(
-          rawForEstimate,
-          afterSnap,
-          latestSnap
-        )
+        const contextTokens = estimateContextTokensForTrigger(rawForEstimate, afterSnap, latestSnap)
         if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
           logger.info(
             `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfig.threshold}, window=${compressionConfig.modelContextWindow ?? 0}), compressing before request.`

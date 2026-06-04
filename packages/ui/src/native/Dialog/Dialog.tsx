@@ -2,17 +2,39 @@ import React, { createContext, useContext, useState, ReactNode, useCallback } fr
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
 import { Button } from '../Button/Button'
-import { Input } from '../Input/Input'
-import { View, Text, TextInput } from 'react-native'
+import { View, Text, TextInput, StyleSheet, Pressable, ScrollView } from 'react-native'
 import { useNativeTheme } from '../theme'
 
+export interface ConfirmOptions {
+  /** 对话框标题（与字符串形式的 titleOrOptions 二选一） */
+  title?: string
+  /** 自定义确认按钮文本 */
+  confirmText?: string
+  /** 自定义取消按钮文本 */
+  cancelText?: string
+  /** 确认按钮以危险（红色）样式展示 */
+  destructive?: boolean
+}
+
+export interface ChooseOption {
+  label: string
+  value: string
+  destructive?: boolean
+}
+
 export interface DialogContextState {
-  confirm: (message: ReactNode, title?: string) => Promise<boolean>
+  confirm: (message: ReactNode, titleOrOptions?: string | ConfirmOptions) => Promise<boolean>
   prompt: (
     message: ReactNode,
     defaultValue?: string,
     title?: string,
     isMultiline?: boolean
+  ) => Promise<string | null>
+  /** 多选一（替代系统 ActionSheet / 多按钮 Alert） */
+  choose: (
+    title: string | undefined,
+    options: ChooseOption[],
+    message?: ReactNode
   ) => Promise<string | null>
   alert: (message: ReactNode, title?: string) => Promise<void>
   closeAll: () => void
@@ -20,7 +42,7 @@ export interface DialogContextState {
 
 const DialogContext = createContext<DialogContextState | null>(null)
 
-type DialogType = 'alert' | 'confirm' | 'prompt'
+type DialogType = 'alert' | 'confirm' | 'prompt' | 'choose'
 
 interface DialogState {
   isOpen: boolean
@@ -29,6 +51,8 @@ interface DialogState {
   message: ReactNode
   defaultValue?: string
   isMultiline?: boolean
+  confirmOptions?: ConfirmOptions
+  chooseOptions?: ChooseOption[]
   resolve?: (value: any) => void
 }
 
@@ -52,7 +76,21 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const closeAll = useCallback(() => {
     setState((prev) => {
-      if (prev.resolve) prev.resolve(prev.type === 'prompt' ? null : false)
+      if (prev.resolve) {
+        prev.resolve(prev.type === 'prompt' || prev.type === 'choose' ? null : false)
+      }
+      return { ...prev, isOpen: false }
+    })
+  }, [])
+
+  const dismissDialog = useCallback(() => {
+    setState((prev) => {
+      if (!prev.isOpen) return prev
+      if (prev.resolve) {
+        if (prev.type === 'prompt' || prev.type === 'choose') prev.resolve(null)
+        else if (prev.type === 'confirm') prev.resolve(false)
+        else prev.resolve(undefined)
+      }
       return { ...prev, isOpen: false }
     })
   }, [])
@@ -63,11 +101,44 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     })
   }, [])
 
-  const confirm = useCallback((message: ReactNode, title?: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      setState({ isOpen: true, type: 'confirm', message, title, resolve })
-    })
-  }, [])
+  const choose = useCallback(
+    (
+      title: string | undefined,
+      options: ChooseOption[],
+      message?: ReactNode
+    ): Promise<string | null> => {
+      return new Promise((resolve) => {
+        setState({
+          isOpen: true,
+          type: 'choose',
+          title,
+          message: message ?? '',
+          chooseOptions: options,
+          resolve
+        })
+      })
+    },
+    []
+  )
+
+  const confirm = useCallback(
+    (message: ReactNode, titleOrOptions?: string | ConfirmOptions): Promise<boolean> => {
+      const isOptions = typeof titleOrOptions === 'object' && titleOrOptions !== null
+      const options = isOptions ? (titleOrOptions as ConfirmOptions) : undefined
+      const title = isOptions ? options?.title : (titleOrOptions as string | undefined)
+      return new Promise((resolve) => {
+        setState({
+          isOpen: true,
+          type: 'confirm',
+          message,
+          title,
+          confirmOptions: options,
+          resolve
+        })
+      })
+    },
+    []
+  )
 
   const prompt = useCallback(
     (
@@ -97,10 +168,10 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return (
         <Text
           style={{
-            fontSize: 16,
+            fontSize: 15,
             color: colors.textPrimary,
-            marginBottom: tokens.spacing.md,
-            lineHeight: 24
+            marginBottom: tokens.spacing.sm,
+            lineHeight: 22
           }}
         >
           {state.message}
@@ -111,16 +182,41 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }
 
   return (
-    <DialogContext.Provider value={{ alert, confirm, prompt, closeAll }}>
+    <DialogContext.Provider value={{ alert, confirm, prompt, choose, closeAll }}>
       {children}
       {state.isOpen && (
-        <Modal
-          visible={state.isOpen}
-          onClose={() => closeDialog(state.type === 'prompt' ? null : false)}
-          title={state.title}
-        >
-          <View style={{ padding: tokens.spacing.md }}>
+        <Modal visible={state.isOpen} onClose={dismissDialog} title={state.title}>
+          <View style={styles.dialogBody}>
             {renderMessage()}
+
+            {state.type === 'choose' && state.chooseOptions && (
+              <ScrollView style={styles.chooseList} keyboardShouldPersistTaps="handled">
+                {state.chooseOptions.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => closeDialog(opt.value)}
+                    style={({ pressed }) => [
+                      styles.chooseItem,
+                      {
+                        backgroundColor: pressed ? colors.bgSurfaceNormal : 'transparent',
+                        borderColor: colors.borderSubtle
+                      }
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '500',
+                        color: opt.destructive ? colors.error : colors.textPrimary,
+                        textAlign: 'center'
+                      }}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
 
             {state.type === 'prompt' && (
               <TextInput
@@ -128,46 +224,58 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 value={promptValue}
                 onChangeText={setPromptValue}
                 multiline={state.isMultiline}
-                numberOfLines={state.isMultiline ? 6 : 1}
+                numberOfLines={state.isMultiline ? 4 : 1}
                 style={{
                   borderWidth: 1,
                   borderColor: colors.outlineVariant,
                   borderRadius: tokens.radius.md,
-                  padding: tokens.spacing.md,
+                  paddingHorizontal: 12,
+                  paddingVertical: state.isMultiline ? 10 : 8,
                   backgroundColor: colors.bgSurface,
                   color: colors.textPrimary,
                   fontSize: 16,
-                  marginTop: tokens.spacing.md,
-                  minHeight: state.isMultiline ? 120 : 48,
+                  marginTop: tokens.spacing.sm,
+                  minHeight: state.isMultiline ? 96 : 40,
                   textAlignVertical: state.isMultiline ? 'top' : 'center'
                 }}
                 placeholderTextColor={colors.textTertiary}
               />
             )}
 
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-                gap: tokens.spacing.sm,
-                marginTop: tokens.spacing.lg
-              }}
-            >
-              {state.type !== 'alert' && (
+            {state.type !== 'choose' && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'flex-end',
+                  gap: tokens.spacing.sm,
+                  marginTop: tokens.spacing.md
+                }}
+              >
+                {state.type !== 'alert' && (
+                  <Button
+                    variant="text"
+                    onPress={() => closeDialog(state.type === 'prompt' ? null : false)}
+                  >
+                    {state.confirmOptions?.cancelText ?? t('common.cancel', '取消')}
+                  </Button>
+                )}
                 <Button
-                  variant="text"
-                  onPress={() => closeDialog(state.type === 'prompt' ? null : false)}
+                  variant="elevated"
+                  onPress={() => closeDialog(state.type === 'prompt' ? promptValue : true)}
+                  destructive={state.confirmOptions?.destructive}
                 >
+                  {state.confirmOptions?.confirmText ?? t('common.confirm', '确定')}
+                </Button>
+              </View>
+            )}
+
+            {state.type === 'choose' && (
+              <View style={{ marginTop: tokens.spacing.md }}>
+                <Button variant="text" onPress={() => closeDialog(null)}>
                   {t('common.cancel', '取消')}
                 </Button>
-              )}
-              <Button
-                variant="elevated"
-                onPress={() => closeDialog(state.type === 'prompt' ? promptValue : true)}
-              >
-                {t('common.confirm', '确定')}
-              </Button>
-            </View>
+              </View>
+            )}
           </View>
         </Modal>
       )}
@@ -182,3 +290,18 @@ export const useDialog = (): DialogContextState => {
   }
   return context
 }
+
+const styles = StyleSheet.create({
+  dialogBody: {
+    paddingTop: 0
+  },
+  chooseList: {
+    maxHeight: 320,
+    marginTop: 4
+  },
+  chooseItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth
+  }
+})

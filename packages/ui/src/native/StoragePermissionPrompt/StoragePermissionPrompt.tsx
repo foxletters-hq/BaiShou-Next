@@ -66,11 +66,7 @@ export const StoragePermissionPrompt: React.FC<StoragePermissionPromptProps> = (
             { color: isOptional ? colors.textPrimary : colors.textOnPrimary }
           ]}
         >
-          {t(
-            isOptional
-              ? 'storage.enable_external_sync'
-              : 'settings.check_storage_permission'
-          )}
+          {t(isOptional ? 'storage.enable_external_sync' : 'settings.check_storage_permission')}
         </Text>
       </Pressable>
     </View>

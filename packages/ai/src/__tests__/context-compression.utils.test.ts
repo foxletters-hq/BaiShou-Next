@@ -19,12 +19,7 @@ import {
 } from '../agent/context-compression.utils'
 import type { MessageWithParts } from '../agent/message.adapter'
 
-function msg(
-  id: string,
-  role: string,
-  orderIndex: number,
-  text: string
-): MessageWithParts {
+function msg(id: string, role: string, orderIndex: number, text: string): MessageWithParts {
   return {
     id,
     sessionId: 's1',
@@ -90,7 +85,11 @@ describe('context-compression.utils', () => {
   })
 
   it('getMessagesAfterSnapshot slices after cutoff', () => {
-    const messages = [msg('1', 'user', 1, 'a'), msg('2', 'assistant', 2, 'b'), msg('3', 'user', 3, 'c')]
+    const messages = [
+      msg('1', 'user', 1, 'a'),
+      msg('2', 'assistant', 2, 'b'),
+      msg('3', 'user', 3, 'c')
+    ]
     const after = getMessagesAfterSnapshot(messages, {
       id: 9,
       sessionId: 's1',
@@ -184,9 +183,7 @@ describe('context-compression.utils', () => {
 
   it('hasEnoughMessagesForRecompress accepts a single user turn with text', () => {
     expect(hasEnoughMessagesForRecompress([msg('1', 'user', 1, 'only question')])).toBe(true)
-    expect(
-      hasEnoughMessagesForRecompress([msg('2', 'assistant', 2, 'only reply')])
-    ).toBe(false)
+    expect(hasEnoughMessagesForRecompress([msg('2', 'assistant', 2, 'only reply')])).toBe(false)
   })
 
   it('getMessagesForRecompress still returns messages when keepTurns would empty split', () => {
@@ -255,14 +252,26 @@ describe('context-compression.utils', () => {
   it('resolveCompressionTrigger uses min(threshold, usable window)', () => {
     // threshold smaller than usable → threshold governs
     expect(
-      resolveCompressionTrigger(61_000, { threshold: 60_000, keepTurns: 3, modelContextWindow: 128_000 })
+      resolveCompressionTrigger(61_000, {
+        threshold: 60_000,
+        keepTurns: 3,
+        modelContextWindow: 128_000
+      })
     ).toBe(true)
     expect(
-      resolveCompressionTrigger(59_000, { threshold: 60_000, keepTurns: 3, modelContextWindow: 128_000 })
+      resolveCompressionTrigger(59_000, {
+        threshold: 60_000,
+        keepTurns: 3,
+        modelContextWindow: 128_000
+      })
     ).toBe(false)
     // threshold disabled → window acts as safety net
     expect(
-      resolveCompressionTrigger(110_000, { threshold: 0, keepTurns: 3, modelContextWindow: 128_000 })
+      resolveCompressionTrigger(110_000, {
+        threshold: 0,
+        keepTurns: 3,
+        modelContextWindow: 128_000
+      })
     ).toBe(true)
     expect(
       resolveCompressionTrigger(50_000, { threshold: 0, keepTurns: 3, modelContextWindow: 128_000 })

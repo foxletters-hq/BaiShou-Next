@@ -1,161 +1,115 @@
-import React from 'react'
-import { View, Text, Pressable, ActivityIndicator, StyleSheet, Alert } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
+import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 
-export interface DataManagementCardProps {
+export interface NativeDataManagementCardProps {
   onExport: () => Promise<void>
   onImport: () => Promise<void>
-  onClearAll: () => Promise<void>
-  isExporting?: boolean
-  isImporting?: boolean
+  embedded?: boolean
+  isLast?: boolean
 }
 
-export const DataManagementCard: React.FC<DataManagementCardProps> = ({
+export const DataManagementCard: React.FC<NativeDataManagementCardProps> = ({
   onExport,
   onImport,
-  onClearAll,
-  isExporting = false,
-  isImporting = false
+  embedded = false,
+  isLast = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
 
-  const handleClearAll = () => {
-    Alert.alert(
-      t('dataManagement.clearAllTitle', '清除所有数据'),
-      t(
-        'dataManagement.clearAllMessage',
-        '确定要清除所有数据吗？此操作不可撤销，所有日记、会话和数据将被永久删除。'
-      ),
-      [
-        { text: t('common.cancel', '取消'), style: 'cancel' },
-        {
-          text: t('dataManagement.clearAll', '全部清除'),
-          style: 'destructive',
-          onPress: () => onClearAll()
-        }
-      ]
-    )
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      await onExport()
+    } finally {
+      setIsExporting(false)
+    }
   }
 
+  const handleImport = async () => {
+    setIsImporting(true)
+    try {
+      await onImport()
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const rows = [
+    {
+      key: 'export',
+      title: t('settings.export_data', '导出数据至本地'),
+      subtitle: t('settings.export_desc', '生成一份包含所有内容的 ZIP 备份文件'),
+      onPress: handleExport,
+      loading: isExporting
+    },
+    {
+      key: 'import',
+      title: t('settings.import_data', '从外部 ZIP 导入'),
+      subtitle: t('settings.import_desc', '选择本地 ZIP 文件覆盖恢复数据'),
+      onPress: handleImport,
+      loading: isImporting
+    }
+  ]
+
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.bgSurface,
-          borderColor: colors.borderSubtle
-        }
-      ]}
+    <SettingsExpansionTile
+      embedded={embedded}
+      isLast={isLast}
+      title={t('settings.data_management', '数据管理')}
+      subtitle={t('settings.data_management_desc', '导出、导入数据或局域网快传')}
     >
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
-        {t('dataManagement.title', '数据管理')}
-      </Text>
-      <Text style={[styles.description, { color: colors.textSecondary }]}>
-        {t('dataManagement.description', '导出、导入或清除您的数据')}
-      </Text>
-
-      <View style={styles.buttons}>
-        {/* Export Button */}
+      {rows.map((row, index) => (
         <Pressable
+          key={row.key}
+          disabled={row.loading || isExporting || isImporting}
+          onPress={() => void row.onPress()}
           style={({ pressed }) => [
-            styles.button,
-            {
-              backgroundColor: colors.primary,
-              opacity: pressed || isExporting ? 0.7 : 1
-            }
+            styles.row,
+            index > 0 && {
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: colors.borderSubtle
+            },
+            { opacity: pressed ? 0.7 : 1 }
           ]}
-          onPress={onExport}
-          disabled={isExporting}
         >
-          {isExporting ? (
-            <ActivityIndicator size="small" color={colors.onPrimary} />
+          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+            <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{row.title}</Text>
+            <Text style={[styles.sub, { color: colors.textSecondary }]}>{row.subtitle}</Text>
+          </View>
+          {row.loading ? (
+            <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
           ) : (
-            <Text style={styles.buttonIcon}>📤</Text>
+            <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
           )}
-          <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
-            {t('dataManagement.export', '导出数据')}
-          </Text>
         </Pressable>
-
-        {/* Import Button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            {
-              backgroundColor: colors.bgSurfaceNormal,
-              opacity: pressed || isImporting ? 0.7 : 1
-            }
-          ]}
-          onPress={onImport}
-          disabled={isImporting}
-        >
-          {isImporting ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Text style={styles.buttonIcon}>📥</Text>
-          )}
-          <Text style={[styles.buttonText, { color: colors.textPrimary }]}>
-            {t('dataManagement.import', '导入数据')}
-          </Text>
-        </Pressable>
-
-        {/* Clear All Button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            styles.clearButton,
-            {
-              backgroundColor: colors.errorContainer,
-              opacity: pressed ? 0.7 : 1
-            }
-          ]}
-          onPress={handleClearAll}
-        >
-          <Text style={styles.buttonIcon}>🗑️</Text>
-          <Text style={[styles.buttonText, { color: colors.onErrorContainer }]}>
-            {t('dataManagement.clearAll', '清除所有数据')}
-          </Text>
-        </Pressable>
-      </View>
-    </View>
+      ))}
+    </SettingsExpansionTile>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 20
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 6
-  },
-  description: {
-    fontSize: 14,
-    marginBottom: 18
-  },
-  buttons: {
-    gap: 10
-  },
-  button: {
+  row: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
     gap: 8
   },
-  clearButton: {},
-  buttonIcon: {
-    fontSize: 18
+  sub: {
+    fontSize: 13,
+    lineHeight: 18
   },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '600'
+  chevron: {
+    fontSize: 18,
+    marginTop: 2
+  },
+  loader: {
+    marginTop: 2
   }
 })

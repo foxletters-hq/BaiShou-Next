@@ -100,9 +100,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
   const listItemRefs = React.useRef<Map<string, HTMLDivElement>>(new Map())
   const detailContentRef = React.useRef<HTMLDivElement>(null)
 
-  const detailScrollKey = compressionSelected
-    ? 'compression'
-    : view.selectedMessageKey
+  const detailScrollKey = compressionSelected ? 'compression' : view.selectedMessageKey
 
   // 选中条目后详情区从顶部开始展示（而非滚到底部）
   React.useLayoutEffect(() => {
@@ -179,10 +177,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
   const hasCompressionCard = Boolean(effectiveCompressionSummary?.trim())
   const systemPromptId = view.systemPromptEntry?.item?.id ?? null
 
-  const renderChainMessage = (
-    entry: (typeof view.messageEntries)[number],
-    idx: number
-  ) => {
+  const renderChainMessage = (entry: (typeof view.messageEntries)[number], idx: number) => {
     if (!entry.item) return null
     const msg = entry.item
     const selected = view.selectedMessageKey === msg.id
@@ -245,7 +240,12 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
             </span>
             <span className={panelStyles.badge}>{messageCount}</span>
           </div>
-          <button type="button" className={panelStyles.closeBtn} onClick={onClose} aria-label="关闭">
+          <button
+            type="button"
+            className={panelStyles.closeBtn}
+            onClick={onClose}
+            aria-label="关闭"
+          >
             ×
           </button>
         </div>

@@ -145,7 +145,9 @@ export function externalGetInfo(path: string): ExternalPathInfo {
 }
 
 export function externalMakeDirectory(path: string, intermediates = true): void {
-  callNativeExternal('externalMakeDirectory', (mod) => mod.externalMakeDirectory(path, intermediates))
+  callNativeExternal('externalMakeDirectory', (mod) =>
+    mod.externalMakeDirectory(path, intermediates)
+  )
 }
 
 export function externalWriteString(path: string, content: string): void {

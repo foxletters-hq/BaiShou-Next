@@ -7,7 +7,6 @@ import {
   Text,
   Image,
   ScrollView,
-  Alert,
   LayoutAnimation,
   Platform,
   UIManager
@@ -18,6 +17,7 @@ import * as DocumentPicker from 'expo-document-picker'
 import type { MockChatAttachment } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
+import { useNativeToast } from '../Toast'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -57,6 +57,7 @@ export const InputBar: React.FC<InputBarProps> = ({
   onToggleTtsMode
 }) => {
   const { t } = useTranslation()
+  const toast = useNativeToast()
   const { colors } = useNativeTheme()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
@@ -67,8 +68,14 @@ export const InputBar: React.FC<InputBarProps> = ({
     LayoutAnimation.configureNext({
       duration: TOOLBAR_ANIM_MS,
       update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity }
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity
+      }
     })
     setShowToolbar((prev) => {
       const next = !prev
@@ -112,10 +119,7 @@ export const InputBar: React.FC<InputBarProps> = ({
           })
           .filter((att) => {
             if (att.isText && att.fileSize && att.fileSize > 512 * 1024) {
-              Alert.alert(
-                t('common.error', '错误'),
-                t('input.file_too_large', '文件大小超过限制 (最大 512KB)')
-              )
+              toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
               return false
             }
             return true
@@ -251,7 +255,9 @@ export const InputBar: React.FC<InputBarProps> = ({
               onToggleSearchMode,
               { active: searchMode, icon: 'public' }
             )}
-            {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, { icon: 'menu-book' })}
+            {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
+              icon: 'menu-book'
+            })}
             {renderToolbarChip(
               ttsMode === 'always'
                 ? t('agent.chat.tts_always', '始终朗读')
@@ -261,35 +267,25 @@ export const InputBar: React.FC<InputBarProps> = ({
               onToggleTtsMode,
               { active: ttsMode === 'always', icon: 'volume-up' }
             )}
-            {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, { icon: 'build' })}
+            {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
+              icon: 'build'
+            })}
           </ScrollView>
         )}
       </Animated.View>
 
-      <View style={styles.toolbarRow}>
+      <View style={[styles.inputWrapper, { backgroundColor: colors.bgSurfaceHigh }]}>
         <TouchableOpacity
-          style={[styles.toolBtn, { backgroundColor: colors.bgSurfaceHigh }]}
+          style={styles.toolbarToggle}
           onPress={toggleToolbar}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
           <MaterialIcons
-            name={showToolbar ? 'expand-more' : 'chevron-right'}
-            size={18}
-            color={colors.textSecondary}
+            name={showToolbar ? 'expand-less' : 'add'}
+            size={20}
+            color={colors.textTertiary}
           />
         </TouchableOpacity>
-        {onAssistantTap && (
-          <TouchableOpacity
-            style={[styles.assistantChip, { backgroundColor: colors.bgSurfaceHigh }]}
-            onPress={onAssistantTap}
-          >
-            <Text style={[styles.assistantChipText, { color: colors.textSecondary }]} numberOfLines={1}>
-              {assistantName}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={[styles.inputWrapper, { backgroundColor: colors.bgSurfaceHigh }]}>
         <TextInput
           style={[styles.input, { color: colors.textPrimary }]}
           value={text}
@@ -357,8 +353,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderRadius: 20,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 8
+  },
+  toolbarToggle: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+    marginBottom: 1
   },
   input: {
     flex: 1,
@@ -392,32 +396,6 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 2
-  },
-  toolbarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    paddingHorizontal: 4,
-    gap: 8
-  },
-  toolBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 8
-  },
-  toolIcon: {
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  assistantChip: {
-    flex: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8
-  },
-  assistantChipText: {
-    fontSize: 12,
-    fontWeight: '600'
   },
   attachmentList: {
     flexDirection: 'row',

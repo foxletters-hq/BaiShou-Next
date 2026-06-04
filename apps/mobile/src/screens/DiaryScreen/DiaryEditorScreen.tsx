@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { View, StyleSheet, ActivityIndicator } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { DiaryEditor, useNativeTheme } from '@baishou/ui/native'
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
+import { DiaryEditor, useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
 import { format } from 'date-fns'
 import { useBaishou } from '../../providers/BaishouProvider'
 import {
@@ -13,18 +13,24 @@ import {
 } from '../../services/mobile-diary-attachment.service'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { FullFileAccessGate } from '../../components/FullFileAccessGate'
-import { assertExternalStorageReady, isExternalStorageRequiredError } from '../../services/storage-permission.service'
+import {
+  assertExternalStorageReady,
+  isExternalStorageRequiredError
+} from '../../services/storage-permission.service'
 import { toFileUri } from '../../services/android-external-fs'
 
 export const DiaryEditorScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const dialog = useDialog()
+  const toast = useNativeToast()
   const { id, date, append } = useLocalSearchParams<{
     id?: string
     date?: string
     append?: string
   }>()
   const router = useRouter()
+  const navigation = useNavigation()
   const { services, dbReady } = useBaishou()
   const { granted: storageGranted, request: requestStorage } = useStoragePermission()
 
@@ -37,6 +43,7 @@ export const DiaryEditorScreen: React.FC = () => {
   const [originalContent, setOriginalContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [isDirty, setIsDirty] = useState(false)
+  const isDirtyRef = useRef(false)
   const [pickingImages, setPickingImages] = useState(false)
 
   useEffect(() => {
@@ -114,49 +121,53 @@ export const DiaryEditorScreen: React.FC = () => {
       // 统一使用下沉到 DiaryService 中的 save 接口，自动处理新建、更新与冲突自动合并
       await services.diaryService.save(existingId, input)
       setIsDirty(false)
+      isDirtyRef.current = false
       router.back()
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      if (isExternalStorageRequiredError(e) || msg.includes('expo-file-system') || msg.includes('原生存储')) {
-        Alert.alert(
-          t('storage.all_files_access_title'),
-          msg.includes('pnpm dev:mobile:clear')
-            ? msg
-            : t('storage.all_files_access_settings_hint'),
-          [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('settings.check_storage_permission'), onPress: () => void requestStorage() }
-          ]
+      if (
+        isExternalStorageRequiredError(e) ||
+        msg.includes('expo-file-system') ||
+        msg.includes('原生存储')
+      ) {
+        const openSettings = await dialog.confirm(
+          msg.includes('pnpm dev:mobile:clear') ? msg : t('storage.all_files_access_settings_hint'),
+          { confirmText: t('settings.check_storage_permission') }
         )
+        if (openSettings) void requestStorage()
         return
       }
       if (msg.includes('BaiShou_Root') && msg.includes('externalMakeDirectory')) {
-        Alert.alert(t('common.error'), msg)
+        toast.showError(msg)
         return
       }
       console.error('Failed to save diary:', e)
-      Alert.alert(t('common.error'), msg || t('diary.save_failed'))
+      toast.showError(msg || t('diary.save_failed'))
     }
   }
 
   const handleContentChange = (text: string) => {
     setContent(text)
     setIsDirty(true)
+    isDirtyRef.current = true
   }
 
   const handleTagsChange = (newTags: string[]) => {
     setTags(newTags)
     setIsDirty(true)
+    isDirtyRef.current = true
   }
 
   const handleWeatherChange = (newWeather: string | null) => {
     setWeather(newWeather)
     setIsDirty(true)
+    isDirtyRef.current = true
   }
 
   const handleFavoriteChange = (newIsFavorite: boolean) => {
     setIsFavorite(newIsFavorite)
     setIsDirty(true)
+    isDirtyRef.current = true
   }
 
   const [attachmentUriMap, setAttachmentUriMap] = useState<Record<string, string>>({})
@@ -231,20 +242,42 @@ export const DiaryEditorScreen: React.FC = () => {
     }
   }, [services?.pathService, selectedDate])
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (isDirty) {
-      Alert.alert(t('diary.exit_without_saving'), t('diary.exit_confirmation_hint'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('diary.exit_without_saving_confirm'),
-          style: 'destructive',
-          onPress: () => router.back()
-        }
-      ])
+      const confirmed = await dialog.confirm(t('diary.exit_confirmation_hint'), {
+        confirmText: t('diary.exit_without_saving_confirm'),
+        destructive: true
+      })
+      if (confirmed) {
+        setIsDirty(false)
+        isDirtyRef.current = false
+        router.back()
+      }
     } else {
       router.back()
     }
   }
+
+  // 拦截系统返回键 / 侧滑返回手势
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      if (!isDirtyRef.current) return
+
+      e.preventDefault()
+      void (async () => {
+        const confirmed = await dialog.confirm(t('diary.exit_confirmation_hint'), {
+          confirmText: t('diary.exit_without_saving_confirm'),
+          destructive: true
+        })
+        if (confirmed) {
+          setIsDirty(false)
+          isDirtyRef.current = false
+          router.back()
+        }
+      })()
+    })
+    return unsub
+  }, [navigation, dialog, t, router])
 
   if (loading) {
     return (

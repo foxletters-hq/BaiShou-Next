@@ -277,7 +277,7 @@ export class ShadowIndexQueryOps {
       .from(shadowJournalIndexTable)
       .where(eq(shadowJournalIndexTable.id, id))
       .limit(1)
-    return rows[0] ?? null
+    return (rows[0] as ShadowJournalRow) ?? null
   }
 
   async findByDate(dateIso: string): Promise<ShadowJournalRow | null> {

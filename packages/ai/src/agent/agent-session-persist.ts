@@ -238,8 +238,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
         sessionId,
         COMPRESSION_MESSAGE_FETCH_LIMIT
       )) as import('./message.adapter').MessageWithParts[]
-      const providerType =
-        (provider as { config?: { type?: string } }).config?.type ?? ''
+      const providerType = (provider as { config?: { type?: string } }).config?.type ?? ''
       await ContextCompressorService.tryCompress(
         provider,
         modelId,

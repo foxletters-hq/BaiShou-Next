@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const AttachmentManagementSection: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady } = useBaishou()
 
   const [attachments, setAttachments] = useState<any[]>([])
@@ -67,36 +69,25 @@ export const AttachmentManagementSection: React.FC = () => {
 
   const handleDeleteSelectedAttachments = async () => {
     if (selectedAttachments.size === 0) return
-    Alert.alert(
-      t('settings.attachment_clear_confirm_title'),
+    const confirmed = await dialog.confirm(
       t('settings.attachment_delete_selected_confirm', { count: selectedAttachments.size }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              for (const id of selectedAttachments) {
-                await services?.attachmentManager.deleteBatch([id])
-              }
-              setSelectedAttachments(new Set())
-              await loadAttachments()
-
-              Alert.alert(
-                t('common.success'),
-                t('common.confirm_success')
-              )
-            } catch (e) {
-              Alert.alert(
-                t('common.error'),
-                t('common.errors.save_failed')
-              )
-            }
-          }
-        }
-      ]
+      {
+        title: t('settings.attachment_clear_confirm_title'),
+        confirmText: t('common.delete'),
+        destructive: true
+      }
     )
+    if (!confirmed) return
+    try {
+      for (const id of selectedAttachments) {
+        await services?.attachmentManager.deleteBatch([id])
+      }
+      setSelectedAttachments(new Set())
+      await loadAttachments()
+      toast.showSuccess(t('common.confirm_success'))
+    } catch (e) {
+      toast.showError(t('common.errors.save_failed'))
+    }
   }
 
   return (

@@ -1,45 +1,79 @@
-import React, { createContext, useContext, useState, useRef } from 'react'
-import { Animated, Text, View, PanResponder } from 'react-native'
+import React, { createContext, useContext, useState, useRef, useCallback } from 'react'
+import { Animated, Text, View, PanResponder, StyleSheet, Pressable } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '../theme'
 
+export type ToastType = 'info' | 'success' | 'error' | 'warning'
+
+interface ToastPayload {
+  message: string
+  type: ToastType
+}
+
 interface ToastContextType {
-  showToast: (message: string, type?: 'info' | 'success' | 'error') => void
+  showToast: (message: string, type?: ToastType) => void
+  showSuccess: (message: string) => void
+  showError: (message: string) => void
+  showInfo: (message: string) => void
+  showWarning: (message: string) => void
 }
 
 const ToastContext = createContext<ToastContextType | null>(null)
 
+const ICON_BY_TYPE: Record<ToastType, keyof typeof MaterialIcons.glyphMap> = {
+  success: 'check-circle-outline',
+  error: 'error-outline',
+  info: 'info-outline',
+  warning: 'warning-amber'
+}
+
+const COLOR_BY_TYPE: Record<ToastType, string> = {
+  success: '#16A34A',
+  error: '#DC2626',
+  info: '#2563EB',
+  warning: '#D97706'
+}
+
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { colors, tokens, isDark } = useNativeTheme()
-  const [toastData, setToastData] = useState<{
-    message: string
-    type: string
-  } | null>(null)
+  const { colors, isDark } = useNativeTheme()
+  const insets = useSafeAreaInsets()
+  const [toastData, setToastData] = useState<ToastPayload | null>(null)
   const opacity = useRef(new Animated.Value(0)).current
-  const translateX = useRef(new Animated.Value(100)).current
+  const translateX = useRef(new Animated.Value(40)).current
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const dismissToast = () => {
+  const dismissToast = useCallback(() => {
     Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true
-      }),
-      Animated.timing(translateX, {
-        toValue: 100,
-        duration: 200,
-        useNativeDriver: true
-      })
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(translateX, { toValue: 20, duration: 200, useNativeDriver: true })
     ]).start(() => {
       setToastData(null)
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     })
-  }
+  }, [opacity, translateX])
+
+  const presentToast = useCallback(
+    (msg: string, type: ToastType = 'info') => {
+      setToastData({ message: msg, type })
+      opacity.setValue(0)
+      translateX.setValue(40)
+
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(translateX, { toValue: 0, duration: 350, useNativeDriver: true })
+      ]).start()
+
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = setTimeout(() => dismissToast(), type === 'error' ? 5000 : 3000)
+    },
+    [dismissToast, opacity, translateX]
+  )
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onPanResponderRelease: (e, gestureState) => {
+      onPanResponderRelease: (_e, gestureState) => {
         if (gestureState.vx > 1.0 || gestureState.dx > 40) {
           dismissToast()
         }
@@ -47,99 +81,79 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })
   ).current
 
-  const showToast = (msg: string, type = 'info') => {
-    setToastData({ message: msg, type })
-    opacity.setValue(0)
-    translateX.setValue(100)
-
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true
-      }),
-      Animated.timing(translateX, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true
-      })
-    ]).start()
-
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    timeoutRef.current = setTimeout(
-      () => {
-        dismissToast()
-      },
-      type === 'error' ? 5000 : 3000
-    )
+  const ctx: ToastContextType = {
+    showToast: presentToast,
+    showSuccess: (message) => presentToast(message, 'success'),
+    showError: (message) => presentToast(message, 'error'),
+    showInfo: (message) => presentToast(message, 'info'),
+    showWarning: (message) => presentToast(message, 'warning')
   }
 
-  const getIconColor = () => {
-    if (toastData?.type === 'success') return '#16A34A'
-    if (toastData?.type === 'error') return '#DC2626'
-    return colors.primary
-  }
+  const iconColor = toastData ? COLOR_BY_TYPE[toastData.type] : colors.primary
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={ctx}>
       {children}
-      {toastData && (
+      {toastData ? (
         <Animated.View
           {...panResponder.panHandlers}
-          style={{
-            position: 'absolute',
-            top: 40,
-            right: 16,
-            alignItems: 'flex-end',
-            opacity,
-            transform: [{ translateX }],
-            zIndex: 9999
-          }}
+          style={[
+            styles.host,
+            {
+              top: insets.top + 12,
+              opacity,
+              transform: [{ translateX }]
+            }
+          ]}
         >
-          <View
-            style={{
-              backgroundColor: isDark ? '#1C2936' : colors.bgSurface,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              borderRadius: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              shadowColor: 'var(--text-primary)',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 16,
-              elevation: 8,
-              borderWidth: 1,
-              borderColor: 'rgba(158, 158, 158, 0.1)',
-              maxWidth: '80%' // Roughly matches Flutter 0.7 * screen width
-            }}
-          >
-            <Text
-              style={{
-                color: getIconColor(),
-                fontSize: 18,
-                fontWeight: 'bold'
-              }}
+          <Pressable onPress={dismissToast}>
+            <View
+              style={[
+                styles.toast,
+                {
+                  backgroundColor: isDark ? '#242424' : colors.bgSurface,
+                  borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
+                }
+              ]}
             >
-              {toastData.type === 'error' ? '!' : toastData.type === 'success' ? '✓' : 'i'}
-            </Text>
-            <Text
-              style={{
-                color: colors.textPrimary,
-                fontSize: 14,
-                fontWeight: '500',
-                flexShrink: 1
-              }}
-            >
-              {toastData.message}
-            </Text>
-          </View>
+              <MaterialIcons name={ICON_BY_TYPE[toastData.type]} size={18} color={iconColor} />
+              <Text style={[styles.message, { color: colors.textPrimary }]}>
+                {toastData.message}
+              </Text>
+            </View>
+          </Pressable>
         </Animated.View>
-      )}
+      ) : null}
     </ToastContext.Provider>
   )
 }
+
+const styles = StyleSheet.create({
+  host: {
+    position: 'absolute',
+    right: 16,
+    left: 16,
+    alignItems: 'flex-end',
+    zIndex: 9999,
+    pointerEvents: 'box-none'
+  },
+  toast: {
+    maxWidth: '100%',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  message: {
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
+    lineHeight: 20
+  }
+})
 
 export const useNativeToast = () => {
   const ctx = useContext(ToastContext)

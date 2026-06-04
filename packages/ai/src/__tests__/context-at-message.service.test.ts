@@ -103,9 +103,7 @@ describe('formatModelMessagesForDisplay', () => {
       }
     ] as any)
 
-    const assistantLabels = formatted
-      .filter((m) => m.role === 'assistant')
-      .map((m) => m.label)
+    const assistantLabels = formatted.filter((m) => m.role === 'assistant').map((m) => m.label)
     expect(assistantLabels).toEqual(['AI 思考', 'AI 输出'])
   })
 })

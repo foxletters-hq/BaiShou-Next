@@ -101,9 +101,7 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
         <div className={styles.header}>
           <div className={styles.titleRow}>
             <span className={styles.icon}>🌿</span>
-            <span className={styles.title}>
-              {t('agent.chat.full_call_chain', '完整调用链')}
-            </span>
+            <span className={styles.title}>{t('agent.chat.full_call_chain', '完整调用链')}</span>
             <span className={styles.badge}>{contextMessages.length}</span>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, TextInput, Alert } from 'react-native'
+import { View, Text, Pressable, TextInput } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { useDialog } from '../Dialog'
 
 export interface AgentProfile {
   name: string
@@ -28,6 +29,7 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
+  const dialog = useDialog()
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(profile.name)
 
@@ -40,21 +42,16 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
     }
   }
 
-  const handleClearChat = () => {
-    if (onClearChat) {
-      Alert.alert(
-        t('common.confirm', '确认'),
-        t('agent.chat.clear_confirm', '确定要清空聊天记录吗？'),
-        [
-          { text: t('common.cancel', '取消'), style: 'cancel' },
-          {
-            text: t('common.confirm', '确定'),
-            onPress: onClearChat,
-            style: 'destructive'
-          }
-        ]
-      )
-    }
+  const handleClearChat = async () => {
+    if (!onClearChat) return
+    const confirmed = await dialog.confirm(
+      t('agent.chat.clear_confirm', '确定要清空聊天记录吗？'),
+      {
+        confirmText: t('common.confirm', '确定'),
+        destructive: true
+      }
+    )
+    if (confirmed) onClearChat()
   }
 
   const renderAvatar = () => (

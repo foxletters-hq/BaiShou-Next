@@ -114,19 +114,12 @@ export function useRagSystem(
           t('settings.rag_detect_success', '检测完成，该模型向量维度为：') + detectedDim
         )
       } else {
-        await alert(
-          t(
-            'ai_config.error_no_model',
-            '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
-          ),
-          t('common.error', '错误')
+        toast.showError(
+          t('ai_config.error_no_model', '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。')
         )
       }
     } catch (e: any) {
-      await alert(
-        t('settings.rag_detect_error', '检测发生错误：') + e.message,
-        t('common.error', '错误')
-      )
+      toast.showError(t('settings.rag_detect_error', '检测发生错误：') + e.message)
     } finally {
       setIsProcessing(false)
     }
@@ -173,9 +166,8 @@ export function useRagSystem(
         type: 'idle',
         error: detail
       }))
-      await alert(
-        t('settings.rag_batch_embed_failed', '批量嵌入失败：{{message}}', { message: detail }),
-        t('common.error', '错误')
+      toast.showError(
+        t('settings.rag_batch_embed_failed', '批量嵌入失败：{{message}}', { message: detail })
       )
     } finally {
       setIsProcessing(false)
@@ -338,10 +330,7 @@ export function useRagSystem(
     )
     if (confirmText !== phrase) {
       if (confirmText !== null) {
-        await alert(
-          t('settings.rag_clear_all_mismatch', '输入内容不匹配，操作已取消。'),
-          t('common.warning', '警告')
-        )
+        toast.showWarning(t('settings.rag_clear_all_mismatch', '输入内容不匹配，操作已取消。'))
       }
       return
     }

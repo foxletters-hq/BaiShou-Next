@@ -60,11 +60,7 @@ export class ContextAtMessageService {
       }
     }
 
-    const upToOrderIndex = this.resolveUpToOrderIndex(
-      target.role,
-      target.orderIndex,
-      allMessages
-    )
+    const upToOrderIndex = this.resolveUpToOrderIndex(target.role, target.orderIndex, allMessages)
 
     const dbHistory = await ContextWindowBuilder.build(sessionId, sessionRepo, snapshotRepo, {
       recentCount: options.recentCount,

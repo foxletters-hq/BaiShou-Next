@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react'
-import { Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useNativeToast } from '@baishou/ui/native'
 
 /**
  * 流式错误处理 Hook
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
  */
 export function useStreamError(error: string | null, isStreaming: boolean): void {
   const { t } = useTranslation()
+  const toast = useNativeToast()
   const lastErrorRef = useRef<string | null>(null)
 
   const getLocalizedError = (rawErr: string): string => {
@@ -53,7 +54,7 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
         lastErrorRef.current = error
         const title = t('agent.generation_failed', '回复生成失败')
         const detail = getLocalizedError(error)
-        Alert.alert(title, detail)
+        toast.showError(`${title}: ${detail}`)
       }
     } else if (!error) {
       lastErrorRef.current = null

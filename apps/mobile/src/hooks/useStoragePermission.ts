@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, AppState, Platform } from 'react-native'
+import { AppState, Platform } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
-import { hasStoragePermission, requestStoragePermission } from '../services/storage-permission.service'
+import {
+  hasStoragePermission,
+  requestStoragePermission
+} from '../services/storage-permission.service'
 import { useBaishou } from '../providers/BaishouProvider'
 
 export function useStoragePermission() {
@@ -61,9 +64,7 @@ export function useStoragePermission() {
     const permitted = await hasStoragePermission()
     if (!permitted) {
       setGranted(false)
-      Alert.alert(t('storage.all_files_access_title'), t('storage.all_files_access_settings_hint'), [
-        { text: t('common.ok') }
-      ])
+      toast.showWarning(t('storage.all_files_access_settings_hint'))
       return false
     }
 
@@ -74,9 +75,7 @@ export function useStoragePermission() {
     if (ok) {
       toast.showToast(t('common.permission.storage_granted'), 'success')
     } else {
-      Alert.alert(t('storage.all_files_access_title'), t('storage.all_files_access_settings_hint'), [
-        { text: t('common.ok') }
-      ])
+      toast.showWarning(t('storage.all_files_access_settings_hint'))
     }
 
     return ok

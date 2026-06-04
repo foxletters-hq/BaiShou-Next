@@ -13,7 +13,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
   onOpenCompressionTestSession
 }) => {
   const { t } = useTranslation()
-  const { alert, confirm } = useDialog()
+  const { confirm, alert } = useDialog()
   const [isClearing, setIsClearing] = useState(false)
   const [isLoadingDemo, setIsLoadingDemo] = useState(false)
   const [isClearingAgent, setIsClearingAgent] = useState(false)
@@ -28,10 +28,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
         toast.showSuccess(t('developer.load_demo_success', '模拟数据注入成功'))
       }
     } catch (e: any) {
-      await alert(
-        t('developer.load_demo_failed', '注入失败: ') + e.message,
-        t('common.error', '错误')
-      )
+      toast.showError(t('developer.load_demo_failed', '注入失败: ') + e.message)
     } finally {
       setIsLoadingDemo(false)
     }
@@ -51,17 +48,13 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
     try {
       if (typeof window !== 'undefined' && (window as any).electron) {
         await (window as any).electron.ipcRenderer.invoke('developer:clear-all-data')
-        await alert(
-          t(
-            'developer.clear_all_success',
-            '所有核心数据与环境已抹除，点击确认重启容器以进入安全着陆模式。'
-          ),
-          t('developer.clear_success', '清理完成')
+        toast.showSuccess(
+          t('developer.clear_all_success', '所有核心数据与环境已抹除，应用即将重启。')
         )
         await (window as any).electron.ipcRenderer.invoke('app:relaunch')
       }
     } catch (e: any) {
-      await alert(t('developer.clear_failed', '清理失败: ') + e.message, t('common.error', '错误'))
+      toast.showError(t('developer.clear_failed', '清理失败: ') + e.message)
       setIsClearing(false)
     }
   }
@@ -114,17 +107,11 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
     try {
       if (typeof window !== 'undefined' && (window as any).electron) {
         await (window as any).electron.ipcRenderer.invoke('developer:clear-agent-data')
-        await alert(
-          t(
-            'developer.clear_agent_success',
-            'Agent 数据库碎片已清空并安全关闭连结，系统需硬重启进行热重建。'
-          ),
-          t('developer.clear_success', '清理完成')
-        )
+        toast.showSuccess(t('developer.clear_agent_success', 'Agent 数据库已清空，应用即将重启。'))
         await (window as any).electron.ipcRenderer.invoke('app:relaunch')
       }
     } catch (e: any) {
-      await alert(t('developer.clear_failed', '清理失败: ') + e.message, t('common.error', '错误'))
+      toast.showError(t('developer.clear_failed', '清理失败: ') + e.message)
       setIsClearingAgent(false)
     }
   }

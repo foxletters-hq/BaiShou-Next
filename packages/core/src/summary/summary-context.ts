@@ -96,16 +96,27 @@ function markMonthsCovered(s: any, coveredMonthKeys: Set<string>): void {
  * @param lookbackMonths - 回溯月数
  * @param locale - 语言标识
  */
+export type SharedContextDiaryRow = {
+  date: string
+  rawContent?: string | null
+}
+
 export async function buildSharedContextText(
   summaries: any[],
   lookbackMonths: number,
-  locale?: string
+  locale?: string,
+  options?: { diaries?: SharedContextDiaryRow[] }
 ): Promise<string> {
-  const shadowDb = shadowConnectionManager.getDb()
-  if (!shadowDb) return ''
+  let diaries: SharedContextDiaryRow[]
+  if (options?.diaries) {
+    diaries = options.diaries
+  } else {
+    const shadowDb = shadowConnectionManager.getDb()
+    if (!shadowDb) return ''
 
-  const shadowRepo = new ShadowIndexRepository(shadowDb as any)
-  const diaries = await shadowRepo.listAllWithFTS()
+    const shadowRepo = new ShadowIndexRepository(shadowDb as any)
+    diaries = await shadowRepo.listAllWithFTS()
+  }
 
   const now = new Date()
   const cutoffDate = new Date()
