@@ -5,13 +5,57 @@ import {
   DiaryExportServiceImpl,
   FileSyncServiceImpl,
   ShadowIndexSyncService,
-  VaultIndexServiceImpl
+  VaultIndexServiceImpl,
+  IEmbeddingCallback
 } from '@baishou/core-desktop'
 import { parseDateStr } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 import { fileSystem, pathService, vaultService } from './vault.ipc'
 import { CreateDiaryInput, UpdateDiaryInput, DiaryListFilter } from '@baishou/shared'
+
+const embeddingCallback: IEmbeddingCallback = {
+  async reEmbedDiary(params) {
+    try {
+      const { settingsManager } = await import('./settings.ipc')
+      const ragConfig = (await settingsManager.get<any>('rag_config')) || {}
+      const ragEnabled = ragConfig.ragEnabled ?? true
+
+      const { getEmbeddingService } = await import('./rag.ipc')
+      const embeddingService = getEmbeddingService()
+
+      if (!ragEnabled || !embeddingService.isConfigured) {
+        return
+      }
+
+      const d = new Date(params.date)
+      const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const tagPrefix = params.tags.length > 0 ? `[标签: ${params.tags.join(', ')}] ` : ''
+
+      await embeddingService.reEmbedText({
+        text: params.content,
+        sourceType: 'diary',
+        sourceId: params.diaryId.toString(),
+        groupId: 'diary_auto',
+        chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
+        metadataJson: JSON.stringify({ updated_at: params.updatedAt.getTime() }),
+        sourceCreatedAt: d.getTime()
+      })
+    } catch (e: any) {
+      console.error('[DiaryIPC] RAG 嵌入发生异常:', e)
+    }
+  },
+
+  async deleteEmbeddingsBySource(sourceType, sourceId) {
+    try {
+      const { DesktopEmbeddingStorage } = await import('./rag.storage')
+      const storage = new DesktopEmbeddingStorage()
+      await storage.deleteEmbeddingsBySource(sourceType, sourceId)
+    } catch (e: any) {
+      console.error('[DiaryIPC] RAG 清理发生异常:', e)
+    }
+  }
+}
 
 /**
  * 日记管理服务工厂
@@ -26,7 +70,13 @@ export function getDiaryManager() {
 
   const shadowRepo = new ShadowIndexRepository(shadowDb)
   const fileSync = new FileSyncServiceImpl(pathService, fileSystem)
-  const shadowSync = new ShadowIndexSyncService(shadowRepo, pathService, vaultService, fileSystem)
+  const shadowSync = new ShadowIndexSyncService(
+    shadowRepo,
+    pathService,
+    vaultService,
+    fileSystem,
+    embeddingCallback
+  )
   const vaultIndex = new VaultIndexServiceImpl()
 
   return new DiaryService(shadowRepo, fileSync, shadowSync, vaultIndex)
@@ -35,7 +85,13 @@ export function getDiaryManager() {
 export function getShadowSync() {
   const shadowDb = shadowConnectionManager.getDb()
   const shadowRepo = new ShadowIndexRepository(shadowDb)
-  return new ShadowIndexSyncService(shadowRepo, pathService, vaultService, fileSystem)
+  return new ShadowIndexSyncService(
+    shadowRepo,
+    pathService,
+    vaultService,
+    fileSystem,
+    embeddingCallback
+  )
 }
 
 /**

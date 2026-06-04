@@ -315,3 +315,31 @@
   background: var(--border-subtle);
   margin: 4px 0;
 }
+
+.de-save-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.de-save-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.de-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: de-spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes de-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

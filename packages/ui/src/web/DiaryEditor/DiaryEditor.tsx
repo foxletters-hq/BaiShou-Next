@@ -23,6 +23,7 @@ interface DiaryEditorProps {
   mood?: string
   isFavorite?: boolean
   mediaPaths?: string[]
+  isSaving?: boolean
   onContentChange: (content: string) => void
   onTagsChange: (tags: string[]) => void
   onDateChange: (date: Date) => void
@@ -52,6 +53,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   mood = '',
   isFavorite = false,
   mediaPaths = [],
+  isSaving = false,
   onContentChange,
   onTagsChange,
   onDateChange,
@@ -227,8 +229,19 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           />
         </div>
         <div className="de-app-bar-actions">
-          <button className="de-save-btn" onClick={() => onSave?.(content, tags, selectedDate)}>
-            {t('common.save', '保存')}
+          <button
+            className="de-save-btn"
+            onClick={() => onSave?.(content, tags, selectedDate)}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <span className="de-save-loading">
+                <span className="de-spinner" />
+                {t('common.saving', '保存中...')}
+              </span>
+            ) : (
+              t('common.save', '保存')
+            )}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { normalizeWeatherId, type WeatherId } from '@baishou/shared'
 import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
@@ -221,7 +222,13 @@ export const DiaryPage: React.FC = () => {
   }, [entries])
 
   return (
-    <div className="diary-page-container">
+    <motion.div
+      className="diary-page-container"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+    >
       <DiaryAppBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -271,6 +278,6 @@ export const DiaryPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

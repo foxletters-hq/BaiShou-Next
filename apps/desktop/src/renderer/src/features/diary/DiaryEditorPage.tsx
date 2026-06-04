@@ -2,6 +2,7 @@ import React from 'react'
 import { DiaryEditor } from '@baishou/ui'
 import './DiaryEditorPage.css'
 import { useDiaryEditorPage } from './hooks/useDiaryEditorPage'
+import { motion } from 'framer-motion'
 
 export const DiaryEditorPage: React.FC = () => {
   const editor = useDiaryEditorPage()
@@ -17,7 +18,22 @@ export const DiaryEditorPage: React.FC = () => {
   }
 
   return (
-    <div className="diary-editor-page-container">
+    <motion.div
+      className="diary-editor-page-container"
+      style={{
+        pointerEvents: editor.isSaving ? 'none' : 'auto'
+      }}
+      initial={{ opacity: 0, scale: 0.98, y: 8 }}
+      animate={
+        editor.isSaving
+          ? { opacity: 0, scale: 0.98 }
+          : { opacity: 1, scale: 1, y: 0 }
+      }
+      transition={{
+        duration: editor.isSaving ? 0.15 : 0.2,
+        ease: editor.isSaving ? 'easeInOut' : 'easeOut'
+      }}
+    >
       <DiaryEditor
         content={editor.content}
         tags={editor.tags}
@@ -25,6 +41,7 @@ export const DiaryEditorPage: React.FC = () => {
         weather={editor.weather}
         isFavorite={editor.isFavorite}
         mediaPaths={editor.mediaPaths}
+        isSaving={editor.isSaving}
         onContentChange={editor.handleContentChange}
         onTagsChange={(newTags) => {
           editor.setTags(newTags)
@@ -80,6 +97,6 @@ export const DiaryEditorPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

@@ -224,11 +224,11 @@ export function useDiaryEditorPage() {
     setIsSaving(true)
     try {
       await autoSave(content)
+      await new Promise((resolve) => setTimeout(resolve, 180))
       goBackToSidebar()
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : undefined
       toast.showError(message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'))
-    } finally {
       setIsSaving(false)
     }
   }
