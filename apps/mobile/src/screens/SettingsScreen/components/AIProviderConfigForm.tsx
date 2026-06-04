@@ -4,11 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, useDialog, Switch } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, Switch, Input } from '@baishou/ui/native'
 import { AIProviderConfig } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
@@ -174,9 +173,13 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
       return
     }
     const picked = await dialog.choose(
-      t('settings.test_connection'),
-      chatModels.map((modelId) => ({ label: modelId, value: modelId })),
-      t('ai_config.select_test_model')
+      t('ai_config.test_connection_title', '选择测试模型'),
+      chatModels.map((modelId) => ({
+        label: modelId,
+        value: modelId,
+        leading: <ProviderBrandIcon providerId={providerId} size={18} />
+      })),
+      t('ai_config.test_connection_desc')
     )
     if (picked) await runTestConnection(picked)
   }
@@ -245,33 +248,16 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
       )}
 
       <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>API Key</Text>
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.bgApp,
-            color: colors.textPrimary,
-            borderColor: colors.borderSubtle
-          }
-        ]}
+      <Input
         value={localApiKey}
         onChangeText={setLocalApiKey}
         placeholder="API Key"
-        placeholderTextColor={colors.textTertiary}
         secureTextEntry
         autoCapitalize="none"
       />
 
       <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Base URL</Text>
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.bgApp,
-            color: colors.textPrimary,
-            borderColor: colors.borderSubtle
-          }
-        ]}
+      <Input
         value={localBaseUrl}
         onChangeText={setLocalBaseUrl}
         onEndEditing={() => {
@@ -279,7 +265,6 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
           if (normalized !== localBaseUrl) setLocalBaseUrl(normalized)
         }}
         placeholder={providerMeta?.defaultBase || 'Base URL'}
-        placeholderTextColor={colors.textTertiary}
         autoCapitalize="none"
         autoCorrect={false}
       />
@@ -298,7 +283,7 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
           onPress={handleResetConfig}
         >
           <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>
-            {t('common.reset')}
+            {t('settings.reset_default', '恢复默认')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -334,20 +319,11 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
 
       {(activeConfig.models?.length ?? 0) > 0 && (
         <>
-          <TextInput
-            style={[
-              styles.input,
-              styles.searchInput,
-              {
-                backgroundColor: colors.bgApp,
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle
-              }
-            ]}
+          <Input
             value={modelSearchQuery}
             onChangeText={setModelSearchQuery}
             placeholder={t('common.search_model')}
-            placeholderTextColor={colors.textTertiary}
+            containerStyle={styles.searchInput}
           />
           <View style={styles.modelList}>
             {sortedDisplayModels.length === 0 ? (
@@ -363,6 +339,9 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
                     style={[styles.modelRow, { borderBottomColor: colors.borderSubtle }]}
                     onPress={() => toggleModelEnabled(modelId)}
                   >
+                    <View style={styles.modelRowLeading}>
+                      <ProviderBrandIcon providerId={providerId} size={18} />
+                    </View>
                     <Text
                       style={[
                         styles.modelRowText,
@@ -419,13 +398,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14
-  },
   searchInput: {
     marginTop: 8
   },
@@ -454,6 +426,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 8
+  },
+  modelRowLeading: {
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   modelRowText: {
     flex: 1,

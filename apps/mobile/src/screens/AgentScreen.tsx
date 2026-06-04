@@ -3,8 +3,6 @@ import {
   View,
   StyleSheet,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   StatusBar,
   TouchableOpacity,
   Text,
@@ -15,6 +13,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
+import Animated, { useAnimatedStyle } from 'react-native-reanimated'
 import {
   ChatBubble,
   InputBar,
@@ -42,12 +41,23 @@ import { useAgentModel } from '../hooks/useAgentModel'
 import { useAgentUI } from '../hooks/useAgentUI'
 import { useTTS } from '../hooks/useTTS'
 import { useBranchSession } from '../hooks/useBranchSession'
+import { useKeyboardInset } from '../hooks/useKeyboardInset'
 import { useStreamError } from '../hooks/useStreamError'
+
+/** 底部输入栏 + 工具条的大致高度，用于列表留白与悬浮按钮定位 */
+const INPUT_DOCK_HEIGHT = 136
 
 export const AgentScreen = () => {
   const { t } = useTranslation()
   const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
+  const { inset: keyboardInset, prepareForKeyboard } = useKeyboardInset()
+  const inputDockStyle = useAnimatedStyle(() => ({
+    bottom: keyboardInset.value
+  }))
+  const scrollBtnStyle = useAnimatedStyle(() => ({
+    bottom: keyboardInset.value + INPUT_DOCK_HEIGHT + 12
+  }))
   const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
@@ -432,11 +442,7 @@ export const AgentScreen = () => {
         backgroundColor={colors.bgApp}
       />
       <ScreenSafeArea preset="tab" style={{ backgroundColor: colors.bgApp }}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
+        <View style={styles.container}>
           <AgentChatAppBar
             modelName={currentModelId || ''}
             costMicros={totalCostMicros}
@@ -456,7 +462,10 @@ export const AgentScreen = () => {
           <FlatList
             ref={flatListRef}
             style={styles.list}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: INPUT_DOCK_HEIGHT + 24 }
+            ]}
             data={messages}
             keyExtractor={(item) => item.id}
             keyboardShouldPersistTaps="handled"
@@ -548,17 +557,26 @@ export const AgentScreen = () => {
           />
 
           {showScrollButton && (
-            <TouchableOpacity
-              style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
-              onPress={() => scrollToBottom(flatListRef, true)}
-              accessibilityLabel={t('agent.chat.scroll_to_bottom', '回到最新消息')}
-            >
-              <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <Animated.View style={[styles.scrollBtnWrap, scrollBtnStyle]}>
+              <TouchableOpacity
+                style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
+                onPress={() => scrollToBottom(flatListRef, true)}
+                accessibilityLabel={t('agent.chat.scroll_to_bottom', '回到最新消息')}
+              >
+                <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </Animated.View>
           )}
 
-          <View style={[styles.inputWrap, { backgroundColor: colors.bgApp }]}>
+          <Animated.View
+            style={[
+              styles.inputDock,
+              { backgroundColor: colors.bgSurface },
+              inputDockStyle
+            ]}
+          >
             <InputBar
+              onInputFocus={prepareForKeyboard}
               onSend={handleSend}
               isLoading={isLoading}
               onStop={handleStop}
@@ -572,8 +590,8 @@ export const AgentScreen = () => {
               ttsMode={ttsMode}
               onToggleTtsMode={toggleTtsMode}
             />
-          </View>
-        </KeyboardAvoidingView>
+          </Animated.View>
+        </View>
       </ScreenSafeArea>
 
       <AgentDrawer
@@ -749,10 +767,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     opacity: 0.7
   },
-  scrollBtn: {
+  scrollBtnWrap: {
     position: 'absolute',
-    bottom: 120,
-    right: 24,
+    right: 24
+  },
+  scrollBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -764,9 +783,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4
   },
-  inputWrap: {
-    paddingHorizontal: 0,
-    paddingBottom: Platform.OS === 'ios' ? 8 : 4
+  inputDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0
   },
   toolModal: {
     flex: 1

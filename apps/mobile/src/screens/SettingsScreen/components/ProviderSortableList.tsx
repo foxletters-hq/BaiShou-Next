@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react'
-import { View, Text, StyleSheet, Pressable } from 'react-native'
+import React, { useCallback, useRef, useState } from 'react'
+import { View, Text, StyleSheet, Pressable, type LayoutChangeEvent } from 'react-native'
 import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams
@@ -29,6 +29,19 @@ export const ProviderSortableList: React.FC<ProviderSortableListProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
+  // DraggableFlatList 在 Android 原生 build 上嵌套纯 flex:1 父级时，
+  // 内部测量经常算成 0 高度，导致整张列表不可见（标题/页头正常但内容空白）。
+  // 用 onLayout 实测外层容器高度后显式传给列表，绕过这个测量 bug。
+  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null)
+  const measuredHeightRef = useRef<number | null>(null)
+  const handleContainerLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height
+    if (h > 0 && h !== measuredHeightRef.current) {
+      measuredHeightRef.current = h
+      setMeasuredHeight(h)
+    }
+  }, [])
+
   const renderItem = useCallback(
     ({ item, drag, isActive }: RenderItemParams<ProviderListItem>) => {
       return (
@@ -46,9 +59,10 @@ export const ProviderSortableList: React.FC<ProviderSortableListProps> = ({
           >
             <Pressable
               style={styles.dragHandle}
-              onPressIn={drag}
+              onLongPress={drag}
+              delayLongPress={300}
               hitSlop={10}
-              accessibilityLabel={t('settings.provider_drag_handle', '拖动排序')}
+              accessibilityLabel={t('settings.provider_drag_handle', '长按拖动排序')}
             >
               <MaterialCommunityIcons name="drag-vertical" size={22} color={colors.textTertiary} />
             </Pressable>
@@ -97,27 +111,29 @@ export const ProviderSortableList: React.FC<ProviderSortableListProps> = ({
         {t('ai_config.providers_label', '服务提供商')}
       </Text>
       <Text style={[styles.listHint, { color: colors.textTertiary }]}>
-        {t('settings.provider_sort_hint', '按住右侧把手拖动排序')}
+        {t('settings.provider_sort_hint', '长按右侧把手拖动排序')}
       </Text>
     </View>
   )
 
   return (
-    <DraggableFlatList
-      style={styles.list}
-      contentContainerStyle={styles.listContent}
-      data={items}
-      keyExtractor={(item) => item.id}
-      renderItem={renderItem}
-      onDragEnd={({ data }) => {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-        onReorder(data)
-      }}
-      ListHeaderComponent={listHeader}
-      ListFooterComponent={ListFooterComponent}
-      activationDistance={12}
-      keyboardShouldPersistTaps="handled"
-    />
+    <View style={styles.list} onLayout={handleContainerLayout}>
+      <DraggableFlatList
+        style={measuredHeight != null ? { height: measuredHeight } : styles.list}
+        contentContainerStyle={styles.listContent}
+        data={items}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        onDragEnd={({ data }) => {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+          onReorder(data)
+        }}
+        ListHeaderComponent={listHeader}
+        ListFooterComponent={ListFooterComponent}
+        activationDistance={12}
+        keyboardShouldPersistTaps="handled"
+      />
+    </View>
   )
 }
 

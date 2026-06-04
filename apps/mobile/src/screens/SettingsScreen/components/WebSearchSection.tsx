@@ -5,21 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  TextInput,
-  LayoutAnimation,
-  Platform,
-  UIManager
+  LayoutAnimation
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { WebSearchConfig } from '@baishou/shared'
-import { Switch, useNativeTheme } from '@baishou/ui/native'
+import { Switch, useNativeTheme, Input } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { SettingsGroupCard } from './SettingsGroupCard'
 import { SettingsSliderRow } from './SettingsSliderRow'
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
-}
 
 const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
   webSearchEngine: 'duckduckgo',
@@ -122,22 +115,14 @@ export const WebSearchSection: React.FC = () => {
             <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 6 }]}>
               {t('agent.tools.param_tavily_api_key_desc')}
             </Text>
-            <TextInput
-              style={[
-                styles.apiInput,
-                {
-                  backgroundColor: colors.bgSurface,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderMuted
-                }
-              ]}
+            <Input
               value={config.tavilyApiKey}
               onChangeText={(v) => applyPatch({ tavilyApiKey: v })}
               placeholder={t('agent.tools.param_tavily_api_key')}
-              placeholderTextColor={colors.textTertiary}
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry
+              containerStyle={{ marginTop: 8 }}
             />
           </>
         )}
@@ -220,14 +205,6 @@ const styles = StyleSheet.create({
   divider: { height: 1, marginVertical: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   rowText: { flex: 1 },
-  apiInput: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14
-  },
   collapsed: {
     height: 0,
     overflow: 'hidden',

@@ -11,7 +11,7 @@ import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { AboutSettingsAboutContent, useAboutSettingsEasterEggs } from '@baishou/ui/native'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const HERO_IMAGE = require('@baishou/shared/assets/images/BaiShou-v0.0.1.jpeg')
+const HERO_IMAGE = require('@baishou/shared/assets/images/Next-1.0.0-banner.jpg')
 
 export const AboutSettingsScreen: React.FC = () => {
   const { t } = useTranslation()

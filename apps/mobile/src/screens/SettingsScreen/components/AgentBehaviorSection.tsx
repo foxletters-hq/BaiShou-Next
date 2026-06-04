@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, Input } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { AgentBehaviorConfig } from '@baishou/shared'
@@ -92,15 +92,7 @@ export const AgentBehaviorSection: React.FC = () => {
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
           {t('settings.context_window_size_hint')}
         </Text>
-        <TextInput
-          style={[
-            styles.numberInput,
-            {
-              backgroundColor: colors.bgSurface,
-              color: colors.textPrimary,
-              borderColor: colors.borderSubtle
-            }
-          ]}
+        <Input
           value={
             isEditingContextWindowSize
               ? editingContextWindowSize
@@ -126,7 +118,6 @@ export const AgentBehaviorSection: React.FC = () => {
           }}
           keyboardType="number-pad"
           placeholder="20"
-          placeholderTextColor={colors.textTertiary}
         />
       </View>
 
@@ -138,15 +129,7 @@ export const AgentBehaviorSection: React.FC = () => {
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
           {t('settings.compress_token_threshold_hint')}
         </Text>
-        <TextInput
-          style={[
-            styles.numberInput,
-            {
-              backgroundColor: colors.bgSurface,
-              color: colors.textPrimary,
-              borderColor: colors.borderSubtle
-            }
-          ]}
+        <Input
           value={
             isEditingCompressTokens ? editingCompressTokens : String(config.companionCompressTokens)
           }
@@ -170,7 +153,6 @@ export const AgentBehaviorSection: React.FC = () => {
           }}
           keyboardType="number-pad"
           placeholder="8000"
-          placeholderTextColor={colors.textTertiary}
         />
       </View>
 
@@ -182,15 +164,7 @@ export const AgentBehaviorSection: React.FC = () => {
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
           {t('settings.truncate_token_threshold_hint')}
         </Text>
-        <TextInput
-          style={[
-            styles.numberInput,
-            {
-              backgroundColor: colors.bgSurface,
-              color: colors.textPrimary,
-              borderColor: colors.borderSubtle
-            }
-          ]}
+        <Input
           value={
             isEditingTruncateTokens ? editingTruncateTokens : String(config.companionTruncateTokens)
           }
@@ -214,7 +188,6 @@ export const AgentBehaviorSection: React.FC = () => {
           }}
           keyboardType="number-pad"
           placeholder="4000"
-          placeholderTextColor={colors.textTertiary}
         />
       </View>
 
@@ -226,22 +199,13 @@ export const AgentBehaviorSection: React.FC = () => {
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
           {t('settings.agent_persona_hint')}
         </Text>
-        <TextInput
-          style={[
-            styles.textArea,
-            {
-              backgroundColor: colors.bgSurface,
-              color: colors.textPrimary,
-              borderColor: colors.borderSubtle
-            }
-          ]}
+        <Input
           value={config.agentPersona}
           onChangeText={(text) => updateConfig({ agentPersona: text })}
           multiline
+          textarea
           numberOfLines={4}
-          textAlignVertical="top"
           placeholder={t('settings.agent_persona_placeholder')}
-          placeholderTextColor={colors.textTertiary}
         />
       </View>
 
@@ -253,22 +217,13 @@ export const AgentBehaviorSection: React.FC = () => {
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
           {t('settings.agent_guidelines_hint')}
         </Text>
-        <TextInput
-          style={[
-            styles.textArea,
-            {
-              backgroundColor: colors.bgSurface,
-              color: colors.textPrimary,
-              borderColor: colors.borderSubtle
-            }
-          ]}
+        <Input
           value={config.agentGuidelines}
           onChangeText={(text) => updateConfig({ agentGuidelines: text })}
           multiline
+          textarea
           numberOfLines={4}
-          textAlignVertical="top"
           placeholder={t('settings.agent_guidelines_placeholder')}
-          placeholderTextColor={colors.textTertiary}
         />
       </View>
 
@@ -280,19 +235,10 @@ export const AgentBehaviorSection: React.FC = () => {
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
           {t('settings.pinned_assistant_ids_hint')}
         </Text>
-        <TextInput
-          style={[
-            styles.textInput,
-            {
-              backgroundColor: colors.bgSurface,
-              color: colors.textPrimary,
-              borderColor: colors.borderSubtle
-            }
-          ]}
+        <Input
           value={config.pinnedAssistantIds.join(', ')}
           onChangeText={handlePinnedIdsChange}
           placeholder={t('settings.pinned_assistant_ids_placeholder')}
-          placeholderTextColor={colors.textTertiary}
         />
       </View>
 
@@ -342,30 +288,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 10,
     lineHeight: 18
-  },
-  numberInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    fontWeight: '500'
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    minHeight: 100,
-    lineHeight: 20
   },
   actions: {
     flexDirection: 'row',

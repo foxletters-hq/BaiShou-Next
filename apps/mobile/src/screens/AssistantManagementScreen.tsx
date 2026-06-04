@@ -5,12 +5,11 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  TextInput,
   Image,
   useWindowDimensions
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useNativeTheme, useNativeToast, useDialog, scrollIndicatorStyle } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, scrollIndicatorStyle, Input } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -239,19 +238,10 @@ export const AssistantManagementScreen: React.FC = () => {
           columnWrapperStyle={numColumns > 1 ? styles.columnWrap : undefined}
           indicatorStyle={scrollIndicatorStyle(isDark)}
           ListHeaderComponent={
-            <TextInput
+            <Input
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder={t('common.search_hint', '搜索…')}
-              placeholderTextColor={colors.textTertiary}
-              style={[
-                styles.searchInput,
-                {
-                  color: colors.textPrimary,
-                  backgroundColor: colors.bgSurface,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
             />
           }
           ListEmptyComponent={
@@ -301,14 +291,6 @@ const styles = StyleSheet.create({
   },
   columnWrap: {
     gap: 12
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    marginBottom: 4
   },
   card: {
     flex: 1,

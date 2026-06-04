@@ -16,7 +16,7 @@ interface Assistant {
 
 export function useAgentModel() {
   const { t } = useTranslation()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, storageReady } = useBaishou()
 
   // 助手管理状态
   const [currentAssistant, setCurrentAssistant] = useState<Assistant | null>(null)
@@ -29,7 +29,7 @@ export function useAgentModel() {
 
   // 加载默认助手和模型配置
   useEffect(() => {
-    if (!dbReady || !services) return
+    if (!dbReady || !services || !storageReady) return
 
     const loadDefaultConfig = async () => {
       try {
@@ -67,7 +67,7 @@ export function useAgentModel() {
     }
 
     loadDefaultConfig()
-  }, [dbReady, services])
+  }, [dbReady, services, storageReady, t])
 
   // 选择助手
   const handleSelectAssistant = useCallback((assistant: Assistant) => {

@@ -5,8 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
-  TextInput
+  StatusBar
 } from 'react-native'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import {
@@ -14,7 +13,8 @@ import {
   useNativeToast,
   useDialog,
   scrollIndicatorStyle,
-  MarkdownRenderer
+  MarkdownRenderer,
+  Input
 } from '@baishou/ui/native'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
@@ -300,20 +300,12 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
 
         <View style={styles.contentContainer}>
           {isEditing ? (
-            <TextInput
-              style={[
-                styles.contentInput,
-                {
-                  backgroundColor: colors.bgSurfaceHighest,
-                  color: colors.textPrimary,
-                  borderColor: colors.borderSubtle
-                }
-              ]}
+            <Input
               value={editContent}
               onChangeText={setEditContent}
               multiline
-              textAlignVertical="top"
               placeholder={t('summary.content_placeholder')}
+              style={styles.contentInput}
             />
           ) : (
             <MarkdownRenderer content={summary.content} style={styles.contentText} />
@@ -394,9 +386,6 @@ const styles = StyleSheet.create({
   contentInput: {
     fontSize: 16,
     lineHeight: 24,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
     minHeight: 200
   }
 })

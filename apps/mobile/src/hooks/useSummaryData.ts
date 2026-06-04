@@ -1,84 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useBaishou } from '../providers/BaishouProvider'
-import { SummaryType, MissingSummary as SharedMissingSummary, logger } from '@baishou/shared'
-
-// 构建总结提示词
-function buildSummaryPrompt(target: MissingSummary, contextData?: string): string {
-  const startDate = new Date(target.startDate)
-  const endDate = new Date(target.endDate)
-  const startStr = startDate.toISOString().split('T')[0] ?? ''
-  const endStr = endDate.toISOString().split('T')[0] ?? ''
-  const year = startDate.getFullYear()
-  const month = startDate.getMonth() + 1
-
-  let prompt = ''
-
-  switch (target.type) {
-    case 'weekly': {
-      const firstDayOfYear = new Date(year, 0, 1)
-      const weekNum = Math.ceil(
-        (startDate.getTime() - firstDayOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000) + 1
-      )
-      prompt = `请为以下时间段生成一份周记总结：
-- 年份：${year}
-- 周数：第${weekNum}周
-- 日期范围：${startStr} 至 ${endStr}
-
-请根据提供的日记内容，生成一份有深度、有洞察力的周记总结。总结应该：
-1. 回顾本周的主要事件和经历
-2. 提炼出关键的感悟和成长
-3. 使用 Markdown 格式，包含标题和段落
-4. 语言优美、有感染力`
-      break
-    }
-    case 'monthly':
-      prompt = `请为以下时间段生成一份月度总结：
-- 年份：${year}
-- 月份：${month}月
-- 日期范围：${startStr} 至 ${endStr}
-
-请根据提供的周记内容，生成一份全面的月度总结。总结应该：
-1. 概括本月的主要成就和挑战
-2. 分析本月的成长和变化
-3. 提出下月的改进方向
-4. 使用 Markdown 格式，包含标题和段落`
-      break
-    case 'quarterly': {
-      const quarter = Math.ceil(month / 3)
-      prompt = `请为以下时间段生成一份季度总结：
-- 年份：${year}
-- 季度：第${quarter}季度
-- 日期范围：${startStr} 至 ${endStr}
-
-请根据提供的月度总结内容，生成一份战略性的季度总结。总结应该：
-1. 评估本季度的整体表现
-2. 识别关键趋势和模式
-3. 提供下季度的规划建议
-4. 使用 Markdown 格式，包含标题和段落`
-      break
-    }
-    case 'yearly':
-      prompt = `请为以下时间段生成一份年度总结：
-- 年份：${year}
-- 日期范围：${startStr} 至 ${endStr}
-
-请根据提供的季度总结内容，生成一份全面的年度总结。总结应该：
-1. 回顾全年的重大事件和里程碑
-2. 分析个人成长和变化
-3. 展望未来的发展方向
-4. 使用 Markdown 格式，包含标题和段落`
-      break
-    default:
-      prompt = `请为 ${startStr} 至 ${endStr} 这段时间生成一份总结。`
-  }
-
-  // 如果有上下文数据，添加到提示词末尾
-  if (contextData) {
-    prompt += `\n\n---\n\n以下是需要总结的原始数据：\n\n${contextData}`
-  }
-
-  return prompt
-}
+import { SummaryType, logger } from '@baishou/shared'
+import { appendVaultDebugLog } from '../services/summary-debug-log.util'
 
 interface Summary {
   id: string
@@ -139,7 +62,7 @@ export function useSummaryData() {
   const queueRef = useRef<QueueItem[]>([])
   const activeCountRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const concurrencyLimitRef = useRef(3)
+  const concurrencyLimitRef = useRef(1)
   const isSchedulingRef = useRef(false)
 
   // 计算周数
@@ -399,6 +322,7 @@ export function useSummaryData() {
   const processTask = useCallback(
     async (task: QueueItem) => {
       const signal = abortControllerRef.current?.signal
+      const taskStartTime = Date.now()
 
       try {
         logger.info(`[SummaryQueue] Starting task: ${task.id}`)
@@ -407,81 +331,36 @@ export function useSummaryData() {
         task.progress = 5
         broadcastState()
 
-        // 阶段 0: 准备中
+        // 阶段 0: 发送请求中... 停留一小会儿让用户感知到
         await new Promise((r) => setTimeout(r, 500))
         if (signal?.aborted) throw new Error('用户取消了生成')
 
-        // 获取 AI 配置
-        const globalModels = await services?.settingsManager.get<any>('global_models')
-        const modelId = globalModels?.globalSummaryModelId || 'deepseek-chat'
+        if (!services) throw new Error('Services not ready')
 
-        // 阶段 1: 读取数据
-        task.phaseIdx = 1
-        task.progress = 25
-        broadcastState()
+        // 复用 SummaryGeneratorService —— 它内部走 buildMobileSummaryAiClient，
+        // Provider/Model 查找逻辑统一且与桌面端一致
+        const globalModels = await services.settingsManager.get<any>('global_models')
+        const finalModelId = globalModels?.globalSummaryModelId || 'deepseek-chat'
 
-        // 查询时间段内的日记内容
-        let contextData = ''
-        try {
-          const startDate = new Date(task.target.startDate)
-          const endDate = new Date(task.target.endDate)
-          // 获取所有日记并按日期范围过滤
-          const allDiaries = await services!.diaryService.listAll({ limit: 10000 })
-          const filteredDiaries = allDiaries.filter((d) => {
-            const diaryDate = d.date instanceof Date ? d.date : new Date(d.date)
-            return diaryDate >= startDate && diaryDate <= endDate
-          })
-          if (filteredDiaries && filteredDiaries.length > 0) {
-            contextData = filteredDiaries
-              .map((d) => {
-                const dateStr =
-                  d.date instanceof Date
-                    ? d.date.toISOString().split('T')[0]
-                    : String(d.date).split('T')[0]
-                const preview = d.preview || '（无内容）'
-                const tags = Array.isArray(d.tags) ? d.tags.join(', ') : d.tags || '无标签'
-                return `#### ${dateStr}\n${preview}\n标签: ${tags}`
-              })
-              .join('\n\n')
-          }
-        } catch (e) {
-          logger.warn(`[SummaryQueue] Failed to fetch diaries for task ${task.id}:`, e as any)
-        }
-
-        await new Promise((r) => setTimeout(r, 600))
-        if (signal?.aborted) throw new Error('用户取消了生成')
-
-        // 阶段 2: AI 思考中
-        task.phaseIdx = 2
-        task.progress = 50
-        broadcastState()
-
-        // 使用 AI Provider 生成内容
-        const providers = (await services!.settingsManager.get<any[]>('ai_providers')) || []
-        const config = providers.find((p: any) => p.id === modelId) || providers[0]
-        if (!config) throw new Error('未配置 AI Provider')
-
-        // 获取 AI Provider（通过 ProviderFactory 直接从配置创建实例）
-        const { AIProviderRegistry } = await import('@baishou/ai')
-        const registry = AIProviderRegistry.getInstance()
-        registry.initializeDefaultProviders()
-        const provider = registry.getOrUpdateProvider(config)
-
-        // 构建提示词
-        const prompt = buildSummaryPrompt(task.target, contextData)
-
-        // 使用 Vercel AI SDK 生成内容
-        const { streamText } = await import('ai')
-        const model = provider.getLanguageModel(config.models?.[0] || modelId)
-
-        let finalContent = ''
-        const result = streamText({
-          model,
-          prompt,
-          abortSignal: signal
+        await appendVaultDebugLog(services.pathService, services.fileSystem, {
+          timestamp: new Date().toISOString(),
+          event: 'start',
+          taskId: task.id,
+          targetType: task.target.type,
+          modelId: finalModelId
         })
 
-        for await (const chunk of result.textStream) {
+        const target = {
+          type: task.target.type as SummaryType,
+          startDate: new Date(task.target.startDate),
+          endDate: new Date(task.target.endDate),
+          label: task.target.label ?? ''
+        }
+        const stream = services.summaryGenerator.generate(target, finalModelId)
+
+        let finalContent = ''
+
+        for await (const chunk of stream) {
           if (signal?.aborted) {
             task.status = 'error'
             task.error = '用户取消了生成'
@@ -489,22 +368,54 @@ export function useSummaryData() {
             break
           }
 
-          finalContent += chunk
-          task.phaseIdx = 3
-          task.progress = 85
+          if (chunk.includes('STATUS:reading_data')) {
+            task.phaseIdx = 1
+            task.progress = 25
+            broadcastState()
+            // 阶段 1: 正在解析源数据... 停留一小会儿让用户有清晰感知
+            await new Promise((r) => setTimeout(r, 600))
+          } else if (chunk.includes('STATUS:thinking_via_')) {
+            logger.info(`[SummaryQueue] Task ${task.id} entered thinking phase: ${chunk}`)
+            task.phaseIdx = 2
+            task.progress = 50
+          } else if (chunk.includes('STATUS:generation_failed_error')) {
+            const cleanMsg = chunk.replace('STATUS:generation_failed_error:', '').trim()
+            throw new Error(cleanMsg)
+          } else if (!chunk.startsWith('STATUS:')) {
+            // 阶段 3: AI 总结正流式接收生成... 模拟流式打字机效果输出
+            const textLength = chunk.length
+            const stepSize = 12 // 每次输出 12 个字
+            let currentIdx = 0
+            while (currentIdx < textLength) {
+              if (signal?.aborted) {
+                break
+              }
+              const nextPart = chunk.substring(currentIdx, currentIdx + stepSize)
+              finalContent += nextPart
+              currentIdx += stepSize
+
+              task.phaseIdx = 3
+              task.progress = 85
+              broadcastState()
+              await new Promise((r) => setTimeout(r, 30)) // 每隔 30ms 输出一次
+            }
+          }
           broadcastState()
         }
 
         if (task.status === 'error') return
 
         if (finalContent.trim().length > 0) {
-          // 保存总结
+          // 正在保存总结... 停留一小会儿让用户感知到
           task.progress = 95
           broadcastState()
           await new Promise((r) => setTimeout(r, 600))
 
-          await services!.summaryManager.save({
-            type: task.target.type as any,
+          logger.info(
+            `[SummaryQueue] Saving generated summary for task: ${task.id}, content length: ${finalContent.length}`
+          )
+          await services.summaryManager.save({
+            type: task.target.type as SummaryType,
             startDate: new Date(task.target.startDate),
             endDate: new Date(task.target.endDate),
             content: finalContent
@@ -514,18 +425,37 @@ export function useSummaryData() {
           task.progress = 100
           task.phaseIdx = 4
           broadcastState()
-          logger.info(`[SummaryQueue] Task completed: ${task.id}`)
+          logger.info(`[SummaryQueue] Task completed successfully: ${task.id}`)
+
+          await appendVaultDebugLog(services.pathService, services.fileSystem, {
+            timestamp: new Date().toISOString(),
+            event: 'success',
+            taskId: task.id,
+            durationMs: Date.now() - taskStartTime,
+            contentLength: finalContent.length
+          })
 
           // 刷新数据
           setTimeout(fetchData, 1000)
         } else {
-          throw new Error('生成内容为空')
+          throw new Error('Generated content was empty.')
         }
       } catch (e: any) {
         logger.error(`[SummaryQueue] Task ${task.id} failed:`, e)
         task.status = 'error'
         task.error = e.message || String(e)
         broadcastState()
+
+        if (services) {
+          await appendVaultDebugLog(services.pathService, services.fileSystem, {
+            timestamp: new Date().toISOString(),
+            event: 'error',
+            taskId: task.id,
+            durationMs: Date.now() - taskStartTime,
+            errorMessage: e?.message || String(e),
+            errorStack: e?.stack || ''
+          })
+        }
       }
     },
     [broadcastState, services, fetchData]

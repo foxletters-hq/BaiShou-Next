@@ -56,10 +56,7 @@ const child = spawn('npx', args, {
 
 child.on('exit', (code) => {
   if (code !== 0) {
-    const apk = path.join(
-      mobileRoot,
-      'android/app/build/outputs/apk/debug/app-debug.apk'
-    )
+    const apk = path.join(mobileRoot, 'android/app/build/outputs/apk/debug/app-debug.apk')
     if (fs.existsSync(apk) && hasAdbDevice()) {
       printAndroidInstallFailureHelp(apk)
     }

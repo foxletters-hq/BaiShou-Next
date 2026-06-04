@@ -23,6 +23,12 @@
       --color-destructive: #ef4444;
       --color-success-base: #10b981;
       --color-warning-base: #f59e0b;
+
+      /* Form Field（heroui-native Input 走 bg-field border-field-border） */
+      --field-background: #ffffff;
+      --field-border: rgba(0, 0, 0, 0.12);
+      --field-border-width: 1.5px;
+      --baishou-input-border: rgba(0, 0, 0, 0.12);
     }
 
     @variant dark {
@@ -44,6 +50,11 @@
       --color-destructive: #ef4444;
       --color-success-base: #10b981;
       --color-warning-base: #f59e0b;
+
+      --field-background: #2d2d31;
+      --field-border: rgba(255, 255, 255, 0.16);
+      --field-border-width: 1.5px;
+      --baishou-input-border: rgba(255, 255, 255, 0.16);
     }
   }
 }

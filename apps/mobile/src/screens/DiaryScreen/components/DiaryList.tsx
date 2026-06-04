@@ -116,6 +116,13 @@ export const DiaryList: React.FC<DiaryListProps> = ({
   }
 
   if (totalCount === 0) {
+    if (showStoragePermission && onRequestStoragePermission) {
+      return (
+        <View style={styles.centered}>
+          <StoragePermissionPrompt onRequest={onRequestStoragePermission} compact mode="required" />
+        </View>
+      )
+    }
     return (
       <View style={styles.centered}>
         <MaterialIcons name="edit-note" size={64} color={colors.primary} style={{ opacity: 0.5 }} />
@@ -129,15 +136,6 @@ export const DiaryList: React.FC<DiaryListProps> = ({
             </Text>
           </TouchableOpacity>
         )}
-        {showStoragePermission && onRequestStoragePermission ? (
-          <View style={styles.permissionWrap}>
-            <StoragePermissionPrompt
-              onRequest={onRequestStoragePermission}
-              compact
-              mode="required"
-            />
-          </View>
-        ) : null}
       </View>
     )
   }
@@ -217,10 +215,5 @@ const styles = StyleSheet.create({
   },
   paginationControls: {
     gap: 12
-  },
-  permissionWrap: {
-    width: '100%',
-    marginTop: 20,
-    paddingHorizontal: 8
   }
 })

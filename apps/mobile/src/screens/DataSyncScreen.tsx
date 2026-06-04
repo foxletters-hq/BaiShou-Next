@@ -5,12 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   RefreshControl,
   ActivityIndicator
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useNativeTheme, useNativeToast, useDialog, scrollIndicatorStyle } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, scrollIndicatorStyle, Input } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
@@ -684,19 +683,10 @@ export const DataSyncScreen: React.FC = () => {
 
                     {renamingRecord === record.filename ? (
                       <View style={styles.renameContainer}>
-                        <TextInput
-                          style={[
-                            styles.renameInput,
-                            {
-                              backgroundColor: colors.bgSurfaceNormal,
-                              color: colors.textPrimary,
-                              borderColor: colors.borderStrong
-                            }
-                          ]}
+                        <Input
                           value={newRecordName}
                           onChangeText={setNewRecordName}
                           placeholder={t('data_sync.new_name_placeholder')}
-                          placeholderTextColor={colors.textSecondary}
                           autoFocus
                         />
                         <TouchableOpacity
@@ -889,14 +879,6 @@ const styles = StyleSheet.create({
   recordAction: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6 },
   recordActionText: { fontSize: 11, fontWeight: '600' },
   renameContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  renameInput: {
-    flex: 1,
-    height: 36,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    fontSize: 14
-  },
   renameConfirm: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
   renameConfirmText: { fontSize: 13, fontWeight: '600' },
   renameCancel: { padding: 8 },
