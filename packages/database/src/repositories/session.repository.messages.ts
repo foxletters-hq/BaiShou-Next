@@ -6,6 +6,16 @@ import { agentPartsTable as partsTbl } from '../schema/agent-parts'
 import type { InsertMessageInput, InsertPartInput } from './session.repository.types'
 import { generateSessionUUID } from './session.repository.utils'
 
+export interface CompactionMarkerInput {
+  snapshotId?: number
+  compressedAt: number
+  coveredUpToMessageId?: string
+  streamTranscript?: string
+  streamReasoning?: string
+  phase?: 'auto' | 'manual'
+  status?: 'completed' | 'failed'
+}
+
 export class SessionMessageOps {
   constructor(private readonly db: AppDatabase) {}
 
@@ -168,6 +178,67 @@ export class SessionMessageOps {
     if (ids.length > 0) {
       await this.deleteMessagesByIds(ids)
     }
+  }
+
+  async upsertCompactionMarker(
+    sessionId: string,
+    messageId: string,
+    marker: CompactionMarkerInput
+  ): Promise<void> {
+    const existing = await this.db
+      .select()
+      .from(partsTbl)
+      .where(and(eq(partsTbl.messageId, messageId), eq(partsTbl.type, 'compaction')))
+
+    const data = { ...marker }
+
+    if (existing.length > 0) {
+      await this.db
+        .update(partsTbl)
+        .set({ data })
+        .where(eq(partsTbl.id, existing[0]!.id))
+      return
+    }
+
+    await this.db.insert(partsTbl).values({
+      id: generateSessionUUID(),
+      messageId,
+      sessionId,
+      type: 'compaction',
+      data,
+      createdAt: new Date()
+    })
+  }
+
+  async messageHasCompactionMarker(messageId: string): Promise<boolean> {
+    const existing = await this.db
+      .select({ id: partsTbl.id })
+      .from(partsTbl)
+      .where(and(eq(partsTbl.messageId, messageId), eq(partsTbl.type, 'compaction')))
+      .limit(1)
+    return existing.length > 0
+  }
+
+  /** 清除 orderIndex >= fromOrderIndex 的保留消息上的 compaction marker（重发/编辑截断后允许重新压缩） */
+  async clearCompactionMarkersFromOrderIndex(
+    sessionId: string,
+    fromOrderIndex: number
+  ): Promise<void> {
+    const targetMessages = await this.db
+      .select({ id: messagesTbl.id })
+      .from(messagesTbl)
+      .where(
+        and(
+          eq(messagesTbl.sessionId, sessionId),
+          gte(messagesTbl.orderIndex, fromOrderIndex)
+        )
+      )
+    const messageIds = targetMessages.map((m) => m.id)
+    if (messageIds.length === 0) return
+
+    await this.db
+      .delete(partsTbl)
+      .where(and(inArray(partsTbl.messageId, messageIds), eq(partsTbl.type, 'compaction')))
   }
 
   async updateMessageTextPart(messageId: string, newText: string): Promise<void> {

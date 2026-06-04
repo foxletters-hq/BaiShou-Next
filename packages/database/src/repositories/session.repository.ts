@@ -68,6 +68,22 @@ export class SessionRepository {
     return this.messageOps.updateMessageTextPart(...args)
   }
 
+  upsertCompactionMarker(...args: Parameters<SessionMessageOps['upsertCompactionMarker']>) {
+    return this.messageOps.upsertCompactionMarker(...args)
+  }
+
+  messageHasCompactionMarker(
+    ...args: Parameters<SessionMessageOps['messageHasCompactionMarker']>
+  ) {
+    return this.messageOps.messageHasCompactionMarker(...args)
+  }
+
+  clearCompactionMarkersFromOrderIndex(
+    ...args: Parameters<SessionMessageOps['clearCompactionMarkersFromOrderIndex']>
+  ) {
+    return this.messageOps.clearCompactionMarkersFromOrderIndex(...args)
+  }
+
   getSessionById(...args: Parameters<SessionCrudOps['getSessionById']>) {
     return this.crudOps.getSessionById(...args)
   }

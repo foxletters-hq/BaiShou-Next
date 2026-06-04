@@ -102,4 +102,40 @@ describe('SnapshotRepository', () => {
     expect(latest).toBeDefined()
     expect(latest!.summaryText).toBe('Snapshot 3')
   })
+
+  it('deleteSnapshotsNotFullyContainedInMessages removes snapshots referencing deleted messages', async () => {
+    const sessionId = 'sess-truncate'
+    await repo.appendSnapshot({
+      sessionId,
+      summaryText: 'Valid',
+      coveredUpToMessageId: 'msg-keep',
+      tailStartMessageId: 'msg-tail-keep',
+      messageCount: 2,
+      tokenCount: null
+    })
+    await repo.appendSnapshot({
+      sessionId,
+      summaryText: 'Invalid covered',
+      coveredUpToMessageId: 'msg-gone',
+      messageCount: 1,
+      tokenCount: null
+    })
+    await repo.appendSnapshot({
+      sessionId,
+      summaryText: 'Invalid tail',
+      coveredUpToMessageId: 'msg-keep',
+      tailStartMessageId: 'msg-tail-gone',
+      messageCount: 2,
+      tokenCount: null
+    })
+
+    await repo.deleteSnapshotsNotFullyContainedInMessages(
+      sessionId,
+      new Set(['msg-keep', 'msg-tail-keep'])
+    )
+
+    const remaining = await repo.listSnapshotsBySession(sessionId)
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0]!.summaryText).toBe('Valid')
+  })
 })

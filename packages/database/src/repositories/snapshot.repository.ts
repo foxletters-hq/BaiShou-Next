@@ -1,6 +1,6 @@
 import { AppDatabase } from '../types'
 import { compressionSnapshotsTable } from '../schema/compression-snapshots'
-import { eq, desc, asc } from 'drizzle-orm'
+import { eq, desc, asc, inArray, and } from 'drizzle-orm'
 
 export interface Snapshot {
   id: number
@@ -91,6 +91,41 @@ export class SnapshotRepository {
       .set(patch)
       .where(eq(compressionSnapshotsTable.id, id))
   }
+
+  async deleteSnapshots(sessionId: string, ids: number[]): Promise<void> {
+    if (ids.length === 0) return
+
+    await this.db
+      .delete(compressionSnapshotsTable)
+      .where(
+        and(
+          eq(compressionSnapshotsTable.sessionId, sessionId),
+          inArray(compressionSnapshotsTable.id, ids)
+        )
+      )
+  }
+
+  /**
+   * 删除 coveredUpTo 或 tailStart 引用已不存在消息的压缩快照（重发/截断后回滚）
+   */
+  async deleteSnapshotsNotFullyContainedInMessages(
+    sessionId: string,
+    remainingMessageIds: Set<string>
+  ): Promise<void> {
+    const snapshots = await this.listSnapshotsBySession(sessionId)
+    const idsToDelete = snapshots
+      .filter((snap) => {
+        if (!remainingMessageIds.has(snap.coveredUpToMessageId)) return true
+        if (snap.tailStartMessageId && !remainingMessageIds.has(snap.tailStartMessageId)) {
+          return true
+        }
+        return false
+      })
+      .map((snap) => snap.id)
+
+    await this.deleteSnapshots(sessionId, idsToDelete)
+  }
+
 
   async getLatestSnapshot(sessionId: string): Promise<Snapshot | null> {
     const result = await this.db
