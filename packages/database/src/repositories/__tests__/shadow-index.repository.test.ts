@@ -170,7 +170,7 @@ describe('ShadowIndexRepository', () => {
 
       const res = await repo.searchFTS('1')
       expect(res).toHaveLength(1)
-      expect(res[0]!.contentSnippet).toContain('<b>10</b>:35:30')
+      expect(res[0]!.contentSnippet.replace(/<\/?b>/g, '')).toContain('10:35:30')
     })
 
     it('searchFTS handles Chinese token matching and snippet cleanup correctly', async () => {

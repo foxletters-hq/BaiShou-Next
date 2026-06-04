@@ -24,7 +24,7 @@ export async function runResendAction(
   }
 
   const textParts = targetWithParts.parts?.filter((p) => p.type === 'text') || []
-  const userText = textParts.map((p) => p.data?.text || '').join('\n')
+  const userText = textParts.map((p) => (p.data as any)?.text || '').join('\n')
   if (!userText) {
     deps.emitter.sendFinish(deps.sessionId, { error: '消息内容为空' })
     return false

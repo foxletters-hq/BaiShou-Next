@@ -29,6 +29,7 @@ function msg(
     id,
     sessionId: 's1',
     role: role as MessageWithParts['role'],
+    isSummary: false,
     orderIndex,
     createdAt: new Date(),
     parts: [{ id: `p-${id}`, messageId: id, sessionId: 's1', type: 'text', data: { text } }]

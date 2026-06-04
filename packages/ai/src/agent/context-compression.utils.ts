@@ -7,6 +7,7 @@ interface CompressionSnapshotRef {
   coveredUpToMessageId: string
   /** 累计已压缩消息条数（用于锚点 id 丢失时的回退） */
   messageCount?: number
+  [key: string]: any
 }
 import { estimateTextTokens } from './call-chain-view-model.builder'
 

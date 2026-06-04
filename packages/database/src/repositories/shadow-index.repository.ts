@@ -1,6 +1,6 @@
 import type { AppDatabase } from '../types'
 import { ShadowIndexQueryOps } from './shadow-index.repository.queries'
-import { ShadowIndexUpsertOps, normalizeShadowFilePath } from './shadow-index.repository.upsert'
+import { ShadowIndexUpsertOps } from './shadow-index.repository.upsert'
 
 export type {
   ShadowJournalRecord,

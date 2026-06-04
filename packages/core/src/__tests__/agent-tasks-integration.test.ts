@@ -209,7 +209,7 @@ describe('Agent 6: 伙伴聊天上下文验证', () => {
   it('任务30: ContextChainDialog 组件存在', () => {
     const tsx = readFile('packages/ui/src/web/ContextChainDialog/index.tsx')
     expect(tsx).toContain('上下文')
-    expect(tsx).toContain('压缩内容')
+    expect(tsx).toContain('压缩摘要')
     expect(tsx).toContain('提示词')
   })
 

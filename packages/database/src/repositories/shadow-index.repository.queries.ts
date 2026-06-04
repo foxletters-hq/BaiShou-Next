@@ -5,8 +5,7 @@ import type { AppDatabase } from '../types'
 import {
   cleanSegmentedSnippet,
   segmentChinese,
-  normalizeSearchQuery,
-  isNumericLikeQuery
+  normalizeSearchQuery
 } from './shadow-index.repository.text'
 import type {
   DiaryListFilterOptions,
@@ -272,7 +271,7 @@ export class ShadowIndexQueryOps {
       .where(inArray(shadowJournalIndexTable.id, ids))) as ShadowJournalRow[]
   }
 
-  async findById(id: number): Promise<ShadowJournalRecord | null> {
+  async findById(id: number): Promise<ShadowJournalRow | null> {
     const rows = await this.database
       .select()
       .from(shadowJournalIndexTable)
@@ -281,13 +280,13 @@ export class ShadowIndexQueryOps {
     return rows[0] ?? null
   }
 
-  async findByDate(dateIso: string): Promise<ShadowJournalRecord | null> {
+  async findByDate(dateIso: string): Promise<ShadowJournalRow | null> {
     const rows = await this.database
       .select()
       .from(shadowJournalIndexTable)
       .where(eq(shadowJournalIndexTable.date, dateIso))
       .limit(1)
-    return rows[0] ?? null
+    return (rows[0] as ShadowJournalRow) ?? null
   }
 
   async listAllWithFTS(options?: {

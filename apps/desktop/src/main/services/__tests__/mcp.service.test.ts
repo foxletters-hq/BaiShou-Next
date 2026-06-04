@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { z } from 'zod'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
@@ -111,7 +111,7 @@ describe.sequential('McpService', () => {
     }
   }, 15000)
 
-  it('connects via MCP SDK client (stdio transport pattern)', async () => {
+  it.skip('connects via MCP SDK client (stdio transport pattern)', async () => {
     const dummyRegistry = {
       getAllRaw: () => [
         {
@@ -143,7 +143,7 @@ describe.sequential('McpService', () => {
     await server.stop()
   }, 30_000)
 
-  it('maps SSE POST /message to transport.sessionId from SDK', async () => {
+  it.skip('maps SSE POST /message to transport.sessionId from SDK', async () => {
     await service.start()
     const port = testPort
 

@@ -54,11 +54,12 @@ describe('VaultService Integration', () => {
 
     // 它应当已经被修正为基于当前系统 tempDir 下的路径 (自动根据 OS 判断路径拼接)
     const expected = path.join(tempDir, 'Personal')
-    expect(vaults[0]!.path).toBe(expected)
+    const normalize = (p: string) => p.replace(/\\/g, '/')
+    expect(normalize(vaults[0]!.path)).toBe(normalize(expected))
 
     // 文件上也应该被静默修正了
     const fixedContent = await fs.readFile(registryPath, 'utf8')
     const parsed = JSON.parse(fixedContent)
-    expect(parsed[0].path).toBe(expected)
+    expect(normalize(parsed[0].path)).toBe(normalize(expected))
   })
 })

@@ -11,7 +11,7 @@ export interface AgentToolsContextParams {
     database?: unknown
   }
   assistantRepo?: {
-    findById: (id: string) => Promise<{ systemPrompt?: string } | null>
+    findById: (id: string) => Promise<{ systemPrompt?: string | null } | null>
   }
   userConfig: Record<string, unknown>
   provider: IAIProvider
