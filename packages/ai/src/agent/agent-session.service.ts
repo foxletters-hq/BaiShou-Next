@@ -1,14 +1,13 @@
 import {
   streamText,
-  wrapLanguageModel,
-  extractReasoningMiddleware,
   smoothStream,
   stepCountIs
 } from 'ai'
-import type { LanguageModelV3Middleware } from '@ai-sdk/provider'
-import { IAIProvider } from '../providers/provider.interface'
-import { createDeepSeekReasoningMiddleware } from '../middleware/deepseek-reasoning'
-import { buildMiddlewareChain, type ProviderType } from '../middleware/middleware-factory'
+import {
+  buildMiddlewareChain,
+  wrapLanguageModelWithMiddlewares,
+  type ProviderType
+} from '../middleware/middleware-factory'
 import { MessageAdapter } from './message.adapter'
 import { StreamAccumulator } from './stream-accumulator'
 import { StreamChunkAdapter } from './stream-chunk.adapter'
@@ -62,20 +61,15 @@ export class AgentSessionService {
       userConfig,
       attachments,
       webSearchResultFetcher,
-      abortSignal
+      abortSignal,
+      userMessageId,
+      skipUserMessageRecording
     } = options
 
     try {
       // 1. 获取基础模型，然后用 Vercel 原生 middleware 包装
       const baseModel = provider.getLanguageModel(modelId)
-      const middlewares = this.buildMiddlewares(provider)
-      const model =
-        middlewares.length > 0
-          ? wrapLanguageModel({
-              model: baseModel as any,
-              middleware: middlewares
-            })
-          : baseModel
+      const model = wrapLanguageModelWithMiddlewares(baseModel, provider.config?.type || '')
 
       // 2. 若上下文 token 超过阈值或逼近模型窗口，先同步压缩再构建窗口
       const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
@@ -102,7 +96,8 @@ export class AgentSessionService {
             snapshotRepo,
             sessionId,
             compressionConfig,
-            provider.config?.type ?? ''
+            provider.config?.type ?? '',
+            userMessageId ? { triggerUserMessageId: userMessageId } : undefined
           )
         }
       }
@@ -291,7 +286,8 @@ export class AgentSessionService {
             snapshotRepo,
             sessionId,
             merged,
-            provider.config?.type ?? ''
+            provider.config?.type ?? '',
+            userMessageId ? { triggerUserMessageId: userMessageId } : undefined
           )
           if (ok) {
             const { COMPRESSION_MESSAGE_FETCH_LIMIT } = await import('./compression.constants')
@@ -389,8 +385,11 @@ export class AgentSessionService {
         snapshotRepo,
         provider,
         modelId,
-        skipUserMessageRecording: (options as any).skipUserMessageRecording,
-        streamError
+        skipUserMessageRecording,
+        userMessageId,
+        streamError,
+        dbHistory,
+        systemPrompt: builtSystemPrompt
       })
 
       // 7. 向外抛出完成回调，传入 token 统计数据
@@ -410,45 +409,7 @@ export class AgentSessionService {
     }
   }
 
-  // ─── 构建 Vercel AI SDK 原生中间件链 ───
 
-  /**
-   * 根据 Provider 类型构建 Vercel AI SDK 原生 LanguageModelMiddleware 列表。
-   */
-  private buildMiddlewares(provider: IAIProvider): LanguageModelV3Middleware[] {
-    const middlewares: LanguageModelV3Middleware[] = []
-    const providerType = provider.config?.type || ''
-
-    // eslint-disable-next-line no-console
-    console.log('[AgentSessionService] buildMiddlewares called, providerType=%s', providerType)
-
-    // 1. DeepSeek reasoning 内容处理中间件 — 将历史消息中的 reasoning parts 转换为 <think> 标签
-    //    解决 DeepSeek API 要求回传 reasoning_content 的问题
-    if (providerType === 'deepseek') {
-      try {
-        middlewares.push(createDeepSeekReasoningMiddleware())
-        // eslint-disable-next-line no-console
-        console.log('[AgentSessionService] DeepSeek reasoning middleware added')
-      } catch (e: any) {
-        logger.warn('[AgentSessionService] createDeepSeekReasoningMiddleware not available:', e)
-      }
-    }
-
-    // 2. 推理提取中间件 — 适用于 DeepSeek-R1、QwQ 等在文本中嵌入 <think> 标签的模型
-    if (providerType === 'deepseek' || providerType === 'openai') {
-      try {
-        middlewares.push(extractReasoningMiddleware({ tagName: 'think' }) as any)
-        // eslint-disable-next-line no-console
-        console.log('[AgentSessionService] extractReasoningMiddleware added')
-      } catch (e: any) {
-        logger.warn('[AgentSessionService] extractReasoningMiddleware not available:', e)
-      }
-    }
-
-    // eslint-disable-next-line no-console
-    console.log('[AgentSessionService] Total middlewares: %d', middlewares.length)
-    return middlewares
-  }
 
   // ─── 将标准化 Chunk 分发到旧式回调 ───
 
