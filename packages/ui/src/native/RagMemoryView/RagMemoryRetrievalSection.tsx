@@ -87,7 +87,9 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
         </Text>
       </View>
 
-      <View style={[styles.paramSliderRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
+      <View
+        style={[styles.paramSliderRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}
+      >
         <View style={styles.paramLabelRow}>
           <Text style={[styles.paramLabel, { color: colors.textPrimary }]}>Top K</Text>
           <Text style={[styles.paramValue, { color: colors.primary }]}>{config.ragTopK}</Text>
@@ -103,7 +105,9 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
         />
       </View>
 
-      <View style={[styles.paramSliderRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
+      <View
+        style={[styles.paramSliderRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}
+      >
         <View style={styles.paramLabelRow}>
           <Text style={[styles.paramLabel, { color: colors.textPrimary }]}>
             {t('settings.rag_similarity_threshold')}
@@ -117,13 +121,17 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
           min={0}
           max={1}
           step={0.01}
-          onChange={(v) => onChange({ ...config, ragSimilarityThreshold: Math.round(v * 100) / 100 })}
+          onChange={(v) =>
+            onChange({ ...config, ragSimilarityThreshold: Math.round(v * 100) / 100 })
+          }
           primaryColor={colors.primary}
           trackMutedColor={colors.bgSurfaceNormal}
         />
       </View>
 
-      <View style={[styles.paramSliderRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
+      <View
+        style={[styles.paramSliderRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}
+      >
         <View style={styles.paramLabelRow}>
           <Text style={[styles.paramLabel, { color: colors.textPrimary }]}>
             {t('settings.rag_batch_embed_concurrency', '批量嵌入并发')}

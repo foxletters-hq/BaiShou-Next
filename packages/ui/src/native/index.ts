@@ -112,7 +112,4 @@ export {
   type ThemeModePreference
 } from './theme'
 
-export {
-  NATIVE_APP_BRAND_ICON,
-  resolveNativeUserAvatarSource
-} from './user-avatar.util'
+export { NATIVE_APP_BRAND_ICON, resolveNativeUserAvatarSource } from './user-avatar.util'

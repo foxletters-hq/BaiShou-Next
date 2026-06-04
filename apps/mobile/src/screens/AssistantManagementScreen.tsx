@@ -9,7 +9,13 @@ import {
   useWindowDimensions
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useNativeTheme, useNativeToast, useDialog, scrollIndicatorStyle, Input } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  scrollIndicatorStyle,
+  Input
+} from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'

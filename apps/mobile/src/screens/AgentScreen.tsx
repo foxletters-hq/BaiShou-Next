@@ -462,10 +462,7 @@ export const AgentScreen = () => {
           <FlatList
             ref={flatListRef}
             style={styles.list}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: INPUT_DOCK_HEIGHT + 24 }
-            ]}
+            contentContainerStyle={[styles.listContent, { paddingBottom: INPUT_DOCK_HEIGHT + 24 }]}
             data={messages}
             keyExtractor={(item) => item.id}
             keyboardShouldPersistTaps="handled"
@@ -569,11 +566,7 @@ export const AgentScreen = () => {
           )}
 
           <Animated.View
-            style={[
-              styles.inputDock,
-              { backgroundColor: colors.bgSurface },
-              inputDockStyle
-            ]}
+            style={[styles.inputDock, { backgroundColor: colors.bgSurface }, inputDockStyle]}
           >
             <InputBar
               onInputFocus={prepareForKeyboard}

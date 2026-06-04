@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native'
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring
-} from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'
 
 export interface CollapsibleHeightProps {
   expanded: boolean

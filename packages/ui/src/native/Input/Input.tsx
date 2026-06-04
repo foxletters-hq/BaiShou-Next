@@ -134,11 +134,7 @@ export const Input = forwardRef<any, NativeInputProps>(
       )
 
     const textFieldNode = (
-      <TextField
-        isInvalid={computedInvalid}
-        className="gap-1.5"
-        style={textFieldLayout}
-      >
+      <TextField isInvalid={computedInvalid} className="gap-1.5" style={textFieldLayout}>
         {label ? <Label>{label}</Label> : null}
         {inputWithSlots}
         {error ? (
@@ -156,9 +152,7 @@ export const Input = forwardRef<any, NativeInputProps>(
     }
 
     return (
-      <View style={[{ width: compact ? undefined : '100%' }, containerStyle]}>
-        {textFieldNode}
-      </View>
+      <View style={[{ width: compact ? undefined : '100%' }, containerStyle]}>{textFieldNode}</View>
     )
   }
 )

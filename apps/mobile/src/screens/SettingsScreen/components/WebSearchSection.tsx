@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  LayoutAnimation
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, LayoutAnimation } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { WebSearchConfig } from '@baishou/shared'
 import { Switch, useNativeTheme, Input } from '@baishou/ui/native'

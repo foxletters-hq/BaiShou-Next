@@ -199,12 +199,7 @@ export const AssistantEditScreen: React.FC = () => {
             >
               <Text style={styles.emojiText}>{emoji}</Text>
             </TouchableOpacity>
-            <Input
-              value={name}
-              onChangeText={setName}
-              placeholder="助手名称"
-              style={{ flex: 1 }}
-            />
+            <Input value={name} onChangeText={setName} placeholder="助手名称" style={{ flex: 1 }} />
           </View>
 
           <Input
@@ -236,20 +231,12 @@ export const AssistantEditScreen: React.FC = () => {
 
           <View style={styles.configRow}>
             <Text style={[styles.configLabel, { color: colors.textPrimary }]}>Provider ID</Text>
-            <Input
-              value={providerId}
-              onChangeText={setProviderId}
-              placeholder="留空使用全局配置"
-            />
+            <Input value={providerId} onChangeText={setProviderId} placeholder="留空使用全局配置" />
           </View>
 
           <View style={styles.configRow}>
             <Text style={[styles.configLabel, { color: colors.textPrimary }]}>Model ID</Text>
-            <Input
-              value={modelId}
-              onChangeText={setModelId}
-              placeholder="留空使用全局配置"
-            />
+            <Input value={modelId} onChangeText={setModelId} placeholder="留空使用全局配置" />
           </View>
         </View>
 

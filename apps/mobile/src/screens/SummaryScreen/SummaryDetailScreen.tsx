@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar
-} from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import {
   useNativeTheme,

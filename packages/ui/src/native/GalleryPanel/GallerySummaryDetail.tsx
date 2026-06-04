@@ -1,12 +1,5 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator
-} from 'react-native'
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'

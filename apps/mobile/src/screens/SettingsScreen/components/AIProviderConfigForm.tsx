@@ -1,11 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, useNativeToast, useDialog, Switch, Input } from '@baishou/ui/native'
 import { AIProviderConfig } from '@baishou/shared'

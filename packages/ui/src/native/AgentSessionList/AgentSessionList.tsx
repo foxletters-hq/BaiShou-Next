@@ -52,13 +52,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
           onChangeText={setSearchQuery}
           className="rounded-full min-h-10"
           style={styles.searchInput}
-          leftSlot={
-            <MaterialIcons
-              name="search"
-              size={18}
-              color={colors.textTertiary}
-            />
-          }
+          leftSlot={<MaterialIcons name="search" size={18} color={colors.textTertiary} />}
           rightSlot={
             searchQuery.length > 0 ? (
               <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>

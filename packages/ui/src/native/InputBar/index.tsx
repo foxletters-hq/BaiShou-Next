@@ -309,9 +309,10 @@ export const InputBar: React.FC<InputBarProps> = ({
               style={[
                 styles.sendBtn,
                 { backgroundColor: colors.primary },
-                !text.trim() && attachments.length === 0 && {
-                  backgroundColor: colors.textTertiary
-                }
+                !text.trim() &&
+                  attachments.length === 0 && {
+                    backgroundColor: colors.textTertiary
+                  }
               ]}
               onPress={handleSend}
               disabled={!text.trim() && attachments.length === 0}

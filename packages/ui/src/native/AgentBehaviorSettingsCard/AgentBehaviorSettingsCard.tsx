@@ -1,12 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  LayoutAnimation
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native'
 import Slider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'

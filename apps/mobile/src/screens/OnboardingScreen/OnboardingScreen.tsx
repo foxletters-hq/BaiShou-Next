@@ -1,12 +1,5 @@
 import React, { useState, useRef } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Dimensions
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'

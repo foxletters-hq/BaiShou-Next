@@ -110,12 +110,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
             {new Date(item.createdAt).toLocaleDateString()}
           </Text>
           {item.similarity !== undefined && (
-            <View
-              style={[
-                styles.entrySimilarity,
-                { backgroundColor: 'rgba(91, 168, 245, 0.1)' }
-              ]}
-            >
+            <View style={[styles.entrySimilarity, { backgroundColor: 'rgba(91, 168, 245, 0.1)' }]}>
               <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
                 {(item.similarity * 100).toFixed(0)}%
               </Text>

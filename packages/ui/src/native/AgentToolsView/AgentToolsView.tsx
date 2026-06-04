@@ -1,13 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Platform
-} from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'

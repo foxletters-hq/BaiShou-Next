@@ -256,12 +256,7 @@ export class ShadowIndexUpsertOps {
         }
       })
       for (let i = 0; i < payloads.length; i++) {
-        syncFtsRowSync(
-          this.database as any,
-          rowIds[i]!,
-          payloads[i]!.rawContent,
-          payloads[i]!.tags
-        )
+        syncFtsRowSync(this.database as any, rowIds[i]!, payloads[i]!.rawContent, payloads[i]!.tags)
       }
     } else {
       await this.database.transaction(async (tx) => {
@@ -290,7 +285,11 @@ export class ShadowIndexUpsertOps {
     try {
       await this.database.run(sql`DELETE FROM journals_fts WHERE rowid = ${id}`)
     } catch (e: any) {
-      console.warn('[ShadowIndex] FTS 删除失败 (非阻塞):', e?.message, e?.cause?.message ?? e?.cause ?? '')
+      console.warn(
+        '[ShadowIndex] FTS 删除失败 (非阻塞):',
+        e?.message,
+        e?.cause?.message ?? e?.cause ?? ''
+      )
     }
   }
 }

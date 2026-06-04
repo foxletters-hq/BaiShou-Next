@@ -370,10 +370,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
             {viewMode === 'edit' ? (
               <Input
                 ref={textInputRef}
-                style={[
-                  styles.textArea,
-                  { minHeight: Math.max(280, editorHeight) }
-                ]}
+                style={[styles.textArea, { minHeight: Math.max(280, editorHeight) }]}
                 multiline
                 textarea
                 placeholder={t('diary.editor_hint')}
