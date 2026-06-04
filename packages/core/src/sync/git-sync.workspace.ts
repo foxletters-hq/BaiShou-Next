@@ -47,7 +47,7 @@ export abstract class GitSyncWorkspaceMixin extends GitSyncInitMixin {
     return {
       staged,
       unstaged,
-      untracked: status.created.filter((p) => !this.isExcludedFromVersionControl(p)),
+      untracked: status.not_added.filter((p) => !this.isExcludedFromVersionControl(p)),
       conflicted: status.conflicted,
       hasChanges: !status.isClean()
     }

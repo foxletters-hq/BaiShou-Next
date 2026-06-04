@@ -280,4 +280,38 @@ describe('GitSyncService', () => {
       )
     })
   })
+
+  describe('GitSyncServiceImpl - getStatus', () => {
+    it('should correctly map untracked files from not_added instead of created', async () => {
+      const mockPathService = {
+        getActiveVaultPath: vi.fn().mockResolvedValue('/mock/vault')
+      } as any
+
+      const impl = new GitSyncServiceImpl(mockPathService)
+
+      const mockStatusResult = {
+        files: [
+          { path: 'Journals/2026/05/2026-05-27.md', index: '?', working_dir: '?' }
+        ],
+        created: [],
+        not_added: ['Journals/2026/05/2026-05-27.md'],
+        conflicted: [],
+        isClean: () => false
+      }
+
+      const mockGit = {
+        status: vi.fn().mockResolvedValue(mockStatusResult)
+      } as any
+
+      ;(impl as any).git = mockGit
+      vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
+      vi.spyOn(impl as any, 'untrackBaishouFiles').mockResolvedValue(false)
+
+      const result = await impl.getStatus()
+
+      expect(result.untracked).toEqual(['Journals/2026/05/2026-05-27.md'])
+      expect(result.staged).toEqual([])
+      expect(result.unstaged).toEqual([])
+    })
+  })
 })
