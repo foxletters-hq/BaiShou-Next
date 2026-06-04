@@ -1250,7 +1250,11 @@
     "clear_success": "清理完成",
     "clear_agent_db_desc": "删除 Agent 会话、伙伴、消息数据（重启后自动重建）",
     "clear_agent_db": "清理 Agent 数据库",
-    "clear_agent_success": "Agent 数据库碎片已清空并安全关闭连结，系统需硬重启进行热重建。"
+    "clear_agent_success": "Agent 資料庫已清空，請重啟應用程式以重建。",
+    "insert_compression_test": "注入壓縮測試對話",
+      "insert_compression_test_desc": "新建一條含 15 輪的模擬 AI 對話（含工具呼叫）；資料規模依目前綁定伙伴的壓縮閾值自動產生，用於測試滾動壓縮。",
+    "insert_compression_test_success": "已建立壓縮測試對話（{{rounds}} 輪，約 {{tokens}} tokens）",
+    "insert_compression_test_failed": "注入失敗："
   },
   "privacy": {
     "title": "隱私政策與理念",
@@ -1348,6 +1352,8 @@
       "resend": "重新發送",
       "thinking_time": "思考中 {{time}}",
       "thought_time": "思考時間 {{time}}",
+      "compression_thought_time": "總結思考時間 {{time}}",
+      "compression_summary_time": "生成摘要時間 {{time}}",
       "thought_process": "思考過程",
       "thinking": "思考中...",
       "thought_process_prefix": "思考過程",
@@ -1410,8 +1416,15 @@
       "compression_help_branch_body": "建立分支會複製訊息與仍有效的壓縮快照。在某條較早訊息上重發/編輯重發時，若錨點訊息被刪除，將回退為完整原文上下文而非摘要。",
       "compaction_summary": "對話壓縮",
       "compaction_between_rounds": "已壓縮更早輪次，以下從第 1 輪重新計數",
+      "compressing_context": "正在壓縮對話…",
+      "compressing_context_hint": "較早的訊息正在合併為摘要，完成後可繼續對話",
+      "compression_divider": "對話已壓縮",
+      "compression_divider_aria": "對話已壓縮分界",
+      "compression_stream_waiting": "等待模型輸出…",
       "recompress_btn": "重新壓縮",
       "recompress_running": "壓縮中…",
+      "recompress_completed": "重新壓縮完成",
+      "compression_completed": "對話壓縮完成",
       "recompress_hint": "依上次壓縮觸發時的訊息範圍，重新產生對話摘要",
       "recompress_banner_hint": "正在重新產生對話摘要，可切換條目或切換頁面，完成後會自動更新",
       "recompress_range_hint": "選擇要納入摘要的對話輪次（壓縮點之前的完整輪次），將傳送給模型產生新摘要。",
@@ -1705,7 +1718,7 @@
       "search_hint": "搜索近期聊天...",
       "no_recent_chats": "暫無近期對話，快點開始一個吧~"
     },
-    "switchModel": "切换心智核心",
+    "switchModel": "切換模型",
     "noMatchModel": "未發现可搭载的模型",
     "manageProviders": "管理模型与供应商"
   },

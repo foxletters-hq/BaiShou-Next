@@ -1261,7 +1261,11 @@
     "clear_success": "清理完成",
     "clear_agent_db_desc": "删除 Agent 会话、伙伴、消息数据（重启后自动重建）",
     "clear_agent_db": "清理 Agent 数据库",
-    "clear_agent_success": "Agent 数据库碎片已清空并安全关闭连结，系统需硬重启进行热重建。"
+    "clear_agent_success": "Agent データベースをクリアしました。再起動すると再構築されます。",
+    "insert_compression_test": "圧縮テスト会話を注入",
+      "insert_compression_test_desc": "15 ラウンドの模擬 AI 会話（ツール呼び出し含む）を新規作成。データ規模は紐づけた伙伴の圧縮閾値に基づいて自動生成されます。",
+    "insert_compression_test_success": "圧縮テスト会話を作成しました（{{rounds}} ラウンド、約 {{tokens}} tokens）",
+    "insert_compression_test_failed": "注入に失敗しました："
   },
   "privacy": {
     "title": "プライバシーと理念",
@@ -1359,6 +1363,8 @@
       "resend": "再送信",
       "thinking_time": "思考中 {{time}}",
       "thought_time": "思考時間 {{time}}",
+      "compression_thought_time": "要約思考時間 {{time}}",
+      "compression_summary_time": "要約生成時間 {{time}}",
       "thought_process": "思考プロセス",
       "thinking": "思考中...",
       "thought_process_prefix": "思考プロセス",
@@ -1421,8 +1427,15 @@
       "compression_help_branch_body": "分岐作成時はメッセージと有効な圧縮スナップショットを複製。より前のメッセージで再送/編集再送し、アンカーが削除された場合は要約ではなく全文コンテキストに戻ります。",
       "compaction_summary": "会話圧縮",
       "compaction_between_rounds": "より前のラウンドは圧縮済み。以下は第 1 ラウンドから再カウント",
+      "compressing_context": "会話を圧縮中…",
+      "compressing_context_hint": "古いメッセージを要約に統合しています。完了後に続行できます。",
+      "compression_divider": "会話を圧縮しました",
+      "compression_divider_aria": "会話圧縮の境界",
+      "compression_stream_waiting": "モデル出力を待っています…",
       "recompress_btn": "再圧縮",
       "recompress_running": "圧縮中…",
+      "recompress_completed": "再圧縮完了",
+      "compression_completed": "会話圧縮完了",
       "recompress_hint": "前回の圧縮トリガー時と同じメッセージ範囲で要約を再生成します",
       "recompress_banner_hint": "要約を再生成中。項目やページを切り替えても完了後に自動更新されます",
       "recompress_range_hint": "要約に含める会話ラウンド（圧縮境界より前の完全なラウンド）を選び、モデルで新しい要約を生成します。",
@@ -1716,7 +1729,7 @@
       "search_hint": "最近のチャットを検索...",
       "no_recent_chats": "最近のチャットはありません。すぐに始めましょう！"
     },
-    "switchModel": "切换心智核心",
+    "switchModel": "モデルを切り替え",
     "noMatchModel": "未发现可搭载的模型",
     "manageProviders": "管理模型与供应商"
   },
