@@ -1,5 +1,10 @@
 import { ipcMain } from 'electron'
-import { ContextAtMessageService, ContextCompressorService } from '@baishou/ai'
+import {
+  ContextAtMessageService,
+  ContextCompressorService,
+  parseCompactionMarkerData,
+  reconcileCompressionStateAfterTruncate
+} from '@baishou/ai'
 import { getAgentManagers, buildStreamConfig } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
 import { settingsManager } from './settings.ipc'
@@ -61,12 +66,19 @@ export function registerMessageIPC() {
           }
         })
 
+        const compactionPart = parts.find((p: any) => p.type === 'compaction')
+        const compactionRecord = compactionPart
+          ? parseCompactionMarkerData(compactionPart.data)
+          : null
+
         mapped.push({
           ...msg,
           content: contentText,
           reasoning: reasoningText || undefined,
           toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
           attachments: attachments.length > 0 ? attachments : undefined,
+          hasCompactionMarker: compactionRecord != null,
+          compactionRecord,
           parts
         } as any)
       }
@@ -146,8 +158,9 @@ export function registerMessageIPC() {
   // API: 删除消息
   // ==========================================
   ipcMain.handle('agent:delete-message', async (_, sessionId: string, messageId: string) => {
-    const { realSessionRepo } = getAgentManagers()
+    const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
     await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId)
+    await reconcileCompressionStateAfterTruncate(realSessionRepo, realSnapshotRepo, sessionId)
     return true
   })
 }

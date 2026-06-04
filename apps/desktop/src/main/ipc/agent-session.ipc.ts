@@ -6,6 +6,27 @@ import { settingsManager } from './settings.ipc'
 import { GlobalModelsConfig, logger } from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
 
+async function resolveActiveVaultName(): Promise<string | null> {
+  try {
+    return await pathService.getActiveVaultPath()
+  } catch {
+    return null
+  }
+}
+
+function filterSessionsForActiveVault<T extends { vaultName?: string | null }>(
+  rows: T[],
+  activeVaultPath: string | null
+): T[] {
+  if (!activeVaultPath) return rows
+  return rows.filter(
+    (row) =>
+      row.vaultName === activeVaultPath ||
+      row.vaultName === 'default' ||
+      !row.vaultName
+  )
+}
+
 export function registerSessionIPC() {
   // ==========================================
   // API: Sessions
@@ -24,8 +45,10 @@ export function registerSessionIPC() {
         `[IPC] agent:get-sessions - astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
       )
       const results = await sessionManager.findAllSessions(limit, offset, assistantId, searchQuery)
-      logger.info(`[IPC] agent:get-sessions - found ${results.length} sessions`)
-      return results
+      const activeVaultPath = await resolveActiveVaultName()
+      const filtered = filterSessionsForActiveVault(results, activeVaultPath)
+      logger.info(`[IPC] agent:get-sessions - found ${filtered.length} sessions`)
+      return filtered
     }
   )
 

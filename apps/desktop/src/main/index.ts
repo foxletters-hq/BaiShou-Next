@@ -20,6 +20,7 @@ import { registerDiaryAttachmentIPC } from './ipc/diary-attachment.ipc'
 import { registerRagIPC } from './ipc/rag.ipc'
 import { registerOnboardingIPC } from './ipc/onboarding.ipc'
 import { registerDeveloperIPC } from './ipc/developer.ipc'
+import { registerCompressionEventBridge } from './services/compression-event.service'
 import { registerSearchIPC } from './ipc/search.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
@@ -300,6 +301,7 @@ app.whenReady().then(async () => {
 
   // 2.5 提前注册所有业务级 IPC，防止渲染进程在窗口创建后立刻调用时 handler 尚未注册
   registerAgentIPC()
+  registerCompressionEventBridge()
   registerVaultIPC()
   registerArchiveIPC()
   registerLanIPC()

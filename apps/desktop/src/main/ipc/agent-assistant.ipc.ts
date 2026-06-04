@@ -7,6 +7,7 @@ export function registerAssistantIPC() {
   // ==========================================
   ipcMain.handle('agent:get-assistants', async () => {
     const { assistantManager } = getAgentManagers()
+    await assistantManager.fullResyncFromDisks()
     return await assistantManager.findAll()
   })
 

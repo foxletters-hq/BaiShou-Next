@@ -139,6 +139,12 @@ export function registerVaultIPC() {
     return switchVaultFast(vaultName)
   })
 
+  ipcMain.handle('vault:wait-for-resync', async () => {
+    const { waitForVaultEcosystemResync } = await import('../services/vault-resync.service')
+    await waitForVaultEcosystemResync()
+    return true
+  })
+
   ipcMain.handle('vault:delete', async (_, vaultName: string) => {
     await vaultService.deleteVault(vaultName)
     return true

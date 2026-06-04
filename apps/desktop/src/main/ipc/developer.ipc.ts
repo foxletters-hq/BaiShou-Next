@@ -9,6 +9,11 @@ import { pathService } from './vault.ipc'
 import { diaryWatcher } from '../services/diary-watcher.service'
 import { summaryWatcher } from '../services/summary-watcher.service'
 import { sessionWatcher } from '../services/session-watcher.service'
+import { getAgentManagers } from './agent-helpers'
+import {
+  insertCompressionTestSession,
+  resolveDefaultAgentIdentity
+} from '../services/compression-test-session.service'
 
 export function registerDeveloperIPC() {
   ipcMain.handle('developer:load-demo-data', async () => {
@@ -47,6 +52,29 @@ export function registerDeveloperIPC() {
       }
     }
     return true
+  })
+
+  ipcMain.handle('developer:insert-compression-test-session', async () => {
+    const { sessionManager, realSessionRepo, assistantManager } = getAgentManagers()
+    const identity = await resolveDefaultAgentIdentity()
+
+    let assistantId = identity.assistantId
+    if (!assistantId) {
+      const assistants = await assistantManager.findAll()
+      const preferred =
+        assistants.find((a) => a.isDefault) ?? assistants[0]
+      if (preferred) {
+        assistantId = preferred.id
+      }
+    }
+
+    return insertCompressionTestSession({
+      sessionManager,
+      sessionRepo: realSessionRepo,
+      assistantId,
+      providerId: identity.providerId,
+      modelId: identity.modelId
+    })
   })
 
   ipcMain.handle('app:relaunch', () => {

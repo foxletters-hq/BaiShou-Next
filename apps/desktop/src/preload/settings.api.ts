@@ -61,6 +61,7 @@ export const settingsApi = {
     list: () => ipcRenderer.invoke('vault:getAll'),
     getActive: () => ipcRenderer.invoke('vault:getActive'),
     switchActive: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
+    waitForResync: () => ipcRenderer.invoke('vault:wait-for-resync'),
     preload: (vaultName: string) => ipcRenderer.invoke('vault:preload', vaultName),
     delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
     createDialog: (name?: string) => ipcRenderer.invoke('vault:createDialog', name),
