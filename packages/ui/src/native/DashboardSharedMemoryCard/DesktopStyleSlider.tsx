@@ -21,6 +21,10 @@ export const DesktopStyleSlider: React.FC<DesktopStyleSliderProps> = ({
   const { colors } = useNativeTheme()
   const trackMuted = colors.primaryTrackMuted ?? 'rgba(91, 168, 245, 0.24)'
   const [trackWidth, setTrackWidth] = useState(0)
+  const trackRef = useRef<View>(null)
+  const trackPageX = useRef(0)
+  const gestureStartValue = useRef(0)
+  const gestureStartPageX = useRef(0)
 
   const clamp = (v: number) => {
     const stepped = Math.round(v / step) * step
@@ -40,19 +44,29 @@ export const DesktopStyleSlider: React.FC<DesktopStyleSliderProps> = ({
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (evt) => onValueChange(xToValue(evt.nativeEvent.locationX)),
-        onPanResponderMove: (evt) => onValueChange(xToValue(evt.nativeEvent.locationX))
+        onPanResponderGrant: (evt) => {
+          gestureStartPageX.current = evt.nativeEvent.pageX
+          gestureStartValue.current = xToValue(evt.nativeEvent.pageX - trackPageX.current)
+          onValueChange(gestureStartValue.current)
+        },
+        onPanResponderMove: (evt) => {
+          const localX = evt.nativeEvent.pageX - trackPageX.current
+          onValueChange(xToValue(localX))
+        }
       }),
     [trackWidth, minimumValue, maximumValue, step, onValueChange]
   )
-
-  const trackRef = useRef<View>(null)
 
   return (
     <View style={styles.wrap}>
       <View
         ref={trackRef}
-        onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
+        onLayout={(e: LayoutChangeEvent) => {
+          setTrackWidth(e.nativeEvent.layout.width)
+          trackRef.current?.measureInWindow((x) => {
+            trackPageX.current = x
+          })
+        }}
         style={styles.hitArea}
         {...panResponder.panHandlers}
       >
@@ -106,6 +120,7 @@ const styles = StyleSheet.create({
     top: (44 - THUMB_SIZE) / 2,
     width: THUMB_SIZE,
     height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2
+    borderRadius: THUMB_SIZE / 2,
+    zIndex: 1
   }
 })
