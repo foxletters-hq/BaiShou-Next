@@ -340,6 +340,7 @@
     "crop_avatar": "Crop Avatar",
     "identity_card": "Identity Card",
     "identity_card_desc": "AI can see this info in every conversation",
+    "identity_recent_hint": "Only the five most recently used identity cards are shown",
     "identity_card_empty": "No entries yet",
     "identity_card_empty_hint": "Tap the button below to add your basic info\ne.g. Birthday, Occupation",
     "add_identity_entry": "Add Entry",
@@ -1994,7 +1995,16 @@
     "permission_request_title": "Storage permission",
     "permission_request_message": "BaiShou needs storage access to save diaries and backups in BaiShou_Root.",
     "permission_request_positive": "Allow",
-    "permission_request_negative": "Deny"
+    "permission_request_negative": "Deny",
+    "permission_confirm_title": "Enable storage access",
+    "permission_confirm_message": "BaiShou needs access to BaiShou_Root on your device storage. You will be taken to system settings—enable “Allow management of all files”, then return to the app.",
+    "permission_confirm_message_xiaomi": "You will be taken to MIUI settings. Under Permissions → Files & documents (or “All files access”), allow BaiShou, then return to the app.",
+    "permission_confirm_message_huawei": "You will be taken to EMUI / HarmonyOS settings. Under Permissions → Storage or Files, allow BaiShou, then return to the app.",
+    "permission_confirm_message_oppo": "You will be taken to ColorOS settings. Under Permissions → Storage or All files access, allow BaiShou, then return to the app.",
+    "permission_confirm_message_vivo": "You will be taken to OriginOS settings. Under Permissions → Storage or All files, allow BaiShou, then return to the app.",
+    "permission_confirm_message_samsung": "You will be taken to Samsung settings. Under Permissions → Files and media or All files access, allow BaiShou, then return to the app.",
+    "permission_confirm_go_settings": "Open settings",
+    "permission_confirm_cancel": "Not now"
   },
   "emoji": {
     "categories": "Categories",

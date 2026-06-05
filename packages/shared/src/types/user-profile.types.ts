@@ -7,6 +7,7 @@ export interface UserProfile {
   avatarFileMissing?: boolean // 头像文件不存在标记（运行时检测，不持久化）
   activePersonaId: string // 当前激活的身份卡 ID
   personas: Record<string, Persona> // 所有身份卡字典（键为 personaId）
+  recentPersonaIds?: string[] // 最近使用的身份卡 ID 列表（用于快速切换）
 }
 
 /**
