@@ -220,27 +220,15 @@ class ExpoBaishouServerModule : Module() {
             }
         }
 
-        /** 打开系统「允许管理所有文件」或应用详情页 */
+        /** 打开系统「允许管理所有文件」或应用权限页（按厂商尝试多个 Intent） */
         Function("openAllFilesAccessSettings") {
             val context = appContext.currentActivity ?: appContext.reactContext ?: return@Function false
-            try {
-                val intent =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                            data = Uri.parse("package:${context.packageName}")
-                        }
-                    } else {
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                    }
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                true
-            } catch (e: Exception) {
-                e.printStackTrace()
-                false
-            }
+            AllFilesAccessSettingsOpener.open(context, context.packageName)
+        }
+
+        /** 设备厂商 key，供 JS 展示 ROM 专属引导文案（xiaomi / huawei / oppo / vivo / samsung / generic） */
+        Function("getStoragePermissionOemKey") {
+            AllFilesAccessSettingsOpener.getManufacturerKey()
         }
 
         /** 使用 java.io.File 探测外部 BaiShou_Root 可写（绕过 expo-file-system 的 Scoped Storage 限制） */
