@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, Input } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, Input, Button, CardLinkAction, Select } from '@baishou/ui/native'
 import { PROVIDER_TYPES } from '../../../constants/known-ai-providers'
 import { AIProviderConfig, ProviderType } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderSortableList } from './ProviderSortableList'
+import { ProviderBrandIcon } from './ProviderBrandIcon'
 import {
   applyProviderOrderFromIds,
   buildProviderListItems,
@@ -114,15 +115,20 @@ export const AIServicesSection: React.FC = () => {
 
   const footer = (
     <View style={styles.footer}>
-      <TouchableOpacity
-        style={[styles.addBtn, { backgroundColor: colors.primary }]}
-        onPress={() => setShowAddModal(true)}
-      >
-        <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
-          + {t('settings.add_provider')}
-        </Text>
-      </TouchableOpacity>
+      <CardLinkAction onPress={() => setShowAddModal(true)}>
+        {t('settings.add_provider')}
+      </CardLinkAction>
     </View>
+  )
+
+  const typeOptions = useMemo(
+    () =>
+      PROVIDER_TYPES.map((type) => ({
+        label: type,
+        value: type,
+        leading: <ProviderBrandIcon providerId={type} size={18} />
+      })),
+    []
   )
 
   return (
@@ -134,9 +140,22 @@ export const AIServicesSection: React.FC = () => {
         ListFooterComponent={footer}
       />
 
-      {showAddModal && (
-        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <View style={[styles.modalCard, cardStyle]}>
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <TouchableOpacity
+          style={[styles.modalOverlay, { backgroundColor: colors.overlay || 'rgba(0,0,0,0.4)' }]}
+          activeOpacity={1}
+          onPress={() => setShowAddModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.modalCard, cardStyle]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
               {t('settings.add_provider')}
             </Text>
@@ -148,31 +167,11 @@ export const AIServicesSection: React.FC = () => {
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
               {t('settings.provider_type')}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeRow}>
-              {PROVIDER_TYPES.slice(0, 12).map((type: string) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.typeChip,
-                    {
-                      borderColor: addForm.type === type ? colors.primary : colors.borderSubtle,
-                      backgroundColor:
-                        addForm.type === type ? colors.primaryContainer : colors.bgApp
-                    }
-                  ]}
-                  onPress={() => setAddForm((f) => ({ ...f, type }))}
-                >
-                  <Text
-                    style={{
-                      color: addForm.type === type ? colors.primary : colors.textSecondary,
-                      fontSize: 12
-                    }}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <Select
+              options={typeOptions}
+              value={addForm.type}
+              onValueChange={(type) => setAddForm((f) => ({ ...f, type }))}
+            />
             <Input
               value={addForm.baseUrl}
               onChangeText={(baseUrl) => setAddForm((f) => ({ ...f, baseUrl }))}
@@ -180,18 +179,16 @@ export const AIServicesSection: React.FC = () => {
               autoCapitalize="none"
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Text style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => void handleAddCustomProvider()}>
-                <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                  {t('common.confirm')}
-                </Text>
-              </TouchableOpacity>
+              <Button variant="ghost" onPress={() => setShowAddModal(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="primary" onPress={() => void handleAddCustomProvider()}>
+                {t('common.confirm')}
+              </Button>
             </View>
-          </View>
-        </View>
-      )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   )
 }
@@ -201,22 +198,18 @@ const styles = StyleSheet.create({
     flex: 1
   },
   footer: {
-    marginTop: 8
-  },
-  addBtn: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center'
+    marginTop: 8,
+    alignSelf: 'stretch',
+    width: '100%'
   },
   fieldLabel: {
     fontSize: 12,
     marginTop: 4
   },
   modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     justifyContent: 'center',
-    padding: 24,
-    zIndex: 20
+    padding: 24
   },
   modalCard: {
     padding: 20,
@@ -226,17 +219,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 4
-  },
-  typeRow: {
-    maxHeight: 40,
-    marginBottom: 4
-  },
-  typeChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginRight: 6
   },
   modalActions: {
     flexDirection: 'row',

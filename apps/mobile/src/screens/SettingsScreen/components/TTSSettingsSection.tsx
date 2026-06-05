@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { TTSProviderSettings, useNativeToast, type TtsProviderConfig } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { synthesizeTtsForTest } from '../../../services/mobile-tts-synthesize'
+import { fetchTtsProviderModels } from '../utils/tts-provider-models'
 
 export const TTSSettingsSection: React.FC = () => {
   const { t } = useTranslation()
@@ -115,10 +116,8 @@ export const TTSSettingsSection: React.FC = () => {
     <TTSProviderSettings
       initialConfig={initialConfig}
       onSaveConfig={handleSaveConfig}
+      onFetchModels={fetchTtsProviderModels}
       onTestTts={async (config, text) => {
-        if (!config.apiKey?.trim()) {
-          return { success: false, message: t('ai_config.fill_api_key_hint') }
-        }
         const result = await synthesizeTtsForTest(config, text)
         if (result.success) {
           return { success: true, message: t('tts.settings.test_success') }

@@ -10,11 +10,9 @@ import { useBaishou } from '../../../providers/BaishouProvider'
 import { useStoragePermission } from '../../../hooks/useStoragePermission'
 import {
   AboutSettingsCard,
-  WorkspaceSettingsCard,
   StorageSettingsCard,
   DataManagementCard,
   SettingsGroupDivider,
-  type VaultInfo
 } from '@baishou/ui/native'
 import {
   EXTERNAL_STORAGE_ROOT,
@@ -36,8 +34,6 @@ export const GeneralSettingsSection: React.FC = () => {
   const { granted: storageGranted, request: requestStorageAccess } = useStoragePermission()
 
   const [storageRootPath, setStorageRootPath] = useState('...')
-  const [vaults, setVaults] = useState<VaultInfo[]>([])
-  const [activeVault, setActiveVault] = useState<VaultInfo | null>(null)
 
   const refreshStorageRoot = useCallback(async () => {
     if (!services?.pathService) return
@@ -53,73 +49,16 @@ export const GeneralSettingsSection: React.FC = () => {
     }
   }, [services])
 
-  const loadVaults = useCallback(async () => {
-    if (!services || !dbReady) return
-    try {
-      const allVaults = await services.vaultService.getAllVaults()
-      const active = await services.vaultService.getActiveVault()
-      setVaults(
-        allVaults.map((v) => ({
-          name: v.name,
-          path: v.path,
-          createdAt: v.createdAt,
-          lastAccessedAt: v.lastAccessedAt
-        }))
-      )
-      if (active) {
-        setActiveVault({
-          name: active.name,
-          path: active.path,
-          createdAt: active.createdAt,
-          lastAccessedAt: active.lastAccessedAt
-        })
-      } else {
-        setActiveVault(null)
-      }
-    } catch (e) {
-      console.warn('Load vaults failed', e)
-    }
-  }, [dbReady, services])
-
   useEffect(() => {
     if (!dbReady || !services) return
     void refreshStorageRoot()
-    void loadVaults()
-  }, [dbReady, services, refreshStorageRoot, loadVaults])
+  }, [dbReady, services, refreshStorageRoot])
 
   useFocusEffect(
     useCallback(() => {
       void refreshStorageRoot()
-      void loadVaults()
-    }, [refreshStorageRoot, loadVaults])
+    }, [refreshStorageRoot])
   )
-
-  const handleSwitchVault = async (name: string) => {
-    if (!services || !dbReady) return
-    try {
-      await services.vaultService.switchVault(name)
-      await loadVaults()
-      toast.showSuccess(t('common.save_success'))
-    } catch {
-      toast.showError(t('common.errors.save_failed'))
-    }
-  }
-
-  const handleDeleteVault = async (name: string) => {
-    if (!services || !dbReady) return
-    try {
-      await services.vaultService.deleteVault(name)
-      await loadVaults()
-    } catch {
-      toast.showError(t('common.errors.save_failed'))
-    }
-  }
-
-  const handleCreateVault = async (name: string) => {
-    if (!services || !dbReady) return
-    await services.vaultService.switchVault(name)
-    await loadVaults()
-  }
 
   const handleExportData = async () => {
     if (!services || !dbReady) return
@@ -164,17 +103,6 @@ export const GeneralSettingsSection: React.FC = () => {
           }
         ]}
       >
-        <WorkspaceSettingsCard
-          embedded
-          vaults={vaults}
-          activeVault={activeVault}
-          onSwitch={handleSwitchVault}
-          onDelete={handleDeleteVault}
-          onCreate={handleCreateVault}
-          onManageWorkspace={() => router.push('/settings/workspaces')}
-        />
-        <SettingsGroupDivider />
-
         <StorageSettingsCard
           embedded
           storageRootPath={storageRootPath}

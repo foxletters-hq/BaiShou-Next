@@ -3,9 +3,16 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { useNativeTheme, useNativeToast, useDialog, ModelSwitcherPopup } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  ModelSwitcherPopup,
+  CardLinkAction
+} from '@baishou/ui/native'
 import { AIProviderConfig, GlobalModelsConfig, isEmbeddingModel, isTtsModel } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
+import { ProviderBrandIcon } from './ProviderBrandIcon'
 
 type ModelSelectorKey = 'globalDialogue' | 'globalNaming' | 'globalSummary' | 'globalEmbedding'
 
@@ -66,7 +73,7 @@ export const AIModelsSection: React.FC = () => {
   const [globalModels, setGlobalModels] = useState<GlobalModelsConfig>({} as GlobalModelsConfig)
   const [activeSelector, setActiveSelector] = useState<ModelSelectorKey | null>(null)
   const [popupModels, setPopupModels] = useState<
-    Array<{ id: string; name: string; providerId: string }>
+    Array<{ id: string; name: string; providerId: string; leading?: React.ReactNode }>
   >([])
   const [popupSelectedId, setPopupSelectedId] = useState('')
 
@@ -99,7 +106,7 @@ export const AIModelsSection: React.FC = () => {
   }
 
   const buildPopupModels = (forEmbedding: boolean) => {
-    const items: Array<{ id: string; name: string; providerId: string }> = []
+    const items: Array<{ id: string; name: string; providerId: string; leading?: React.ReactNode }> = []
     providers
       .filter((p) => p.isEnabled && (p.enabledModels?.length || p.models?.length))
       .forEach((p) => {
@@ -112,7 +119,8 @@ export const AIModelsSection: React.FC = () => {
           items.push({
             id: modelCompositeId(p.id, modelId),
             name: modelId,
-            providerId: p.name || p.id
+            providerId: p.name || p.id,
+            leading: <ProviderBrandIcon providerId={p.id} size={18} />
           })
         })
       })
@@ -239,31 +247,35 @@ export const AIModelsSection: React.FC = () => {
                 }
               ]}
             >
-              <Text
-                style={[
-                  styles.selectorValue,
-                  { color: isSet ? colors.textPrimary : colors.textTertiary }
-                ]}
-                numberOfLines={2}
-              >
-                {isSet
-                  ? getModelDisplay(providerKey, modelKey)
-                  : t('models.click_to_assign', '点击分配默认处理模型')}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                {isSet && (
+                  <ProviderBrandIcon providerId={globalModels[providerKey] as string} size={18} />
+                )}
+                <Text
+                  style={[
+                    styles.selectorValue,
+                    { color: isSet ? colors.textPrimary : colors.textTertiary }
+                  ]}
+                  numberOfLines={2}
+                >
+                  {isSet
+                    ? getModelDisplay(providerKey, modelKey)
+                    : t('models.click_to_assign', '点击分配默认处理模型')}
+                </Text>
+              </View>
               <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
             </View>
           </TouchableOpacity>
         )
       })}
 
-      <TouchableOpacity
-        style={[styles.linkCard, cardStyle]}
+      <CardLinkAction
+        variant="card"
+        style={{ marginTop: 4 }}
         onPress={() => router.push('/settings/ai-services')}
       >
-        <Text style={[styles.linkText, { color: colors.primary }]}>
-          {t('settings.configure_providers')}
-        </Text>
-      </TouchableOpacity>
+        {t('settings.configure_providers')}
+      </CardLinkAction>
 
       <ModelSwitcherPopup
         visible={activeSelector !== null}
@@ -324,14 +336,5 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 20,
     fontWeight: '300'
-  },
-  linkCard: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4
-  },
-  linkText: {
-    fontSize: 15,
-    fontWeight: '600'
   }
 })

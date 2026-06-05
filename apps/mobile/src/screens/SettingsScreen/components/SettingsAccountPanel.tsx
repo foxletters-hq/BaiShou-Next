@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { View, StyleSheet, ActivityIndicator } from 'react-native'
+import { useFocusEffect, useRouter } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
 import { useTranslation } from 'react-i18next'
 import i18n from 'i18next'
@@ -10,7 +11,9 @@ import {
   SettingsGroupDivider,
   AppearanceSettingsCard,
   IdentitySettingsCard,
-  type UserProfileConfig
+  WorkspaceSettingsCard,
+  type UserProfileConfig,
+  type VaultInfo
 } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useMobileMcpConfig } from '../../../hooks/useMobileMcpConfig'
@@ -26,6 +29,7 @@ export interface QuickSettingsGroupProps {
 export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCardStyle }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const router = useRouter()
   const { services, dbReady } = useBaishou()
   const toast = useNativeToast()
   const mcp = useMobileMcpConfig()
@@ -40,34 +44,103 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
     personas: { Default: { id: 'Default', facts: {} } }
   })
 
-  useEffect(() => {
-    if (!dbReady || !services) return
-    const load = async () => {
-      try {
-        const settings = (await services.settingsManager.get<any>('settings')) || {}
-        if (settings.themeMode) setThemeMode(settings.themeMode)
-        if (settings.seedColor) setSeedColor(settings.seedColor)
-        if (settings.language) setLanguage(settings.language)
+  const [vaults, setVaults] = useState<VaultInfo[]>([])
+  const [activeVault, setActiveVault] = useState<VaultInfo | null>(null)
 
-        const userProfile = (await services.settingsManager.get<any>('user_profile')) || {}
-        setProfile({
-          nickname: userProfile.nickname || '',
-          avatarPath: userProfile.avatarPath
+  const loadVaults = useCallback(async () => {
+    if (!services || !dbReady) return
+    try {
+      const allVaults = await services.vaultService.getAllVaults()
+      const active = await services.vaultService.getActiveVault()
+      setVaults(
+        allVaults.map((v) => ({
+          name: v.name,
+          path: v.path,
+          createdAt: v.createdAt,
+          lastAccessedAt: v.lastAccessedAt
+        }))
+      )
+      if (active) {
+        setActiveVault({
+          name: active.name,
+          path: active.path,
+          createdAt: active.createdAt,
+          lastAccessedAt: active.lastAccessedAt
         })
-        setIdentityProfile({
-          nickname: userProfile.nickname || '',
-          avatarPath: userProfile.avatarPath,
-          activePersonaId: userProfile.activePersonaId || 'Default',
-          personas: userProfile.personas || {
-            Default: { id: 'Default', facts: {} }
-          }
-        })
-      } catch (e) {
-        console.warn('Load account settings failed', e)
+      } else {
+        setActiveVault(null)
       }
+    } catch (e) {
+      console.warn('Load vaults failed', e)
     }
-    void load()
   }, [dbReady, services])
+
+  const handleSwitchVault = async (name: string) => {
+    if (!services || !dbReady) return
+    if (activeVault?.name === name) return
+    try {
+      await services.switchVault(name)
+      await loadVaults()
+      toast.showSuccess(t('common.save_success'))
+    } catch {
+      toast.showError(t('common.errors.save_failed'))
+    }
+  }
+
+  const handleDeleteVault = async (name: string) => {
+    if (!services || !dbReady) return
+    try {
+      await services.vaultService.deleteVault(name)
+      await loadVaults()
+    } catch {
+      toast.showError(t('common.errors.save_failed'))
+    }
+  }
+
+  const handleCreateVault = async (name: string) => {
+    if (!services || !dbReady) return
+    await services.switchVault(name)
+    await loadVaults()
+  }
+
+  const loadAccountSettings = useCallback(async () => {
+    if (!dbReady || !services) return
+    try {
+      const settings = (await services.settingsManager.get<any>('settings')) || {}
+      if (settings.themeMode) setThemeMode(settings.themeMode)
+      if (settings.seedColor) setSeedColor(settings.seedColor)
+      if (settings.language) setLanguage(settings.language)
+
+      const userProfile = (await services.settingsManager.get<any>('user_profile')) || {}
+      setProfile({
+        nickname: userProfile.nickname || '',
+        avatarPath: userProfile.avatarPath
+      })
+      setIdentityProfile({
+        nickname: userProfile.nickname || '',
+        avatarPath: userProfile.avatarPath,
+        activePersonaId: userProfile.activePersonaId || 'Default',
+        personas: userProfile.personas || {
+          Default: { id: 'Default', facts: {} }
+        },
+        recentPersonaIds: userProfile.recentPersonaIds
+      })
+    } catch (e) {
+      console.warn('Load account settings failed', e)
+    }
+  }, [dbReady, services])
+
+  useEffect(() => {
+    void loadAccountSettings()
+    void loadVaults()
+  }, [loadAccountSettings, loadVaults])
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadAccountSettings()
+      void loadVaults()
+    }, [loadAccountSettings, loadVaults])
+  )
 
   const handleSaveProfile = async (newProfile: any) => {
     if (!services || !dbReady) return
@@ -87,6 +160,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       const userProfile = (await services.settingsManager.get<any>('user_profile')) || {}
       userProfile.personas = newProfile.personas
       userProfile.activePersonaId = newProfile.activePersonaId
+      userProfile.recentPersonaIds = newProfile.recentPersonaIds
       userProfile.nickname = newProfile.nickname
       await services.settingsManager.set('user_profile', userProfile)
       setProfile({ ...profile, ...userProfile })
@@ -164,7 +238,19 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
             embedded
             profile={identityProfile}
             onChange={handleIdentityChange}
+            onManageIdentity={() => router.push('/settings/identity-cards')}
           />
+          <SettingsGroupDivider />
+          <WorkspaceSettingsCard
+            embedded
+            vaults={vaults}
+            activeVault={activeVault}
+            onSwitch={handleSwitchVault}
+            onDelete={handleDeleteVault}
+            onCreate={handleCreateVault}
+            onManageWorkspace={() => router.push('/settings/workspaces')}
+          />
+          <SettingsGroupDivider />
           <AppearanceSettingsCard
             embedded
             themeMode={themeMode}

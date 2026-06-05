@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { formatAppVersion } from '@baishou/shared'
-import { useNativeTheme, useNativeToast, useDialog, Switch } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, Switch, Button } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { MobileUpdateCheckResult } from '../../../services/mobile-updater.service'
 import { SettingsGroupCard } from './SettingsGroupCard'
@@ -93,19 +93,15 @@ export const UpdateSettingsSection: React.FC = () => {
           <Switch value={autoCheck} onValueChange={handleToggleAutoCheck} disabled={!dbReady} />
         </View>
 
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.primary }]}
+        <Button
+          variant="primary"
+          className="w-full"
           onPress={handleCheckUpdate}
-          disabled={checking || !dbReady}
+          isLoading={checking}
+          isDisabled={!dbReady}
         >
-          {checking ? (
-            <ActivityIndicator color={colors.textOnPrimary} />
-          ) : (
-            <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-              {t('updater.check')}
-            </Text>
-          )}
-        </TouchableOpacity>
+          {t('updater.check')}
+        </Button>
       </SettingsGroupCard>
     </View>
   )
@@ -153,13 +149,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 4
   },
-  button: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center'
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '600'
-  }
 })

@@ -55,6 +55,7 @@ export const AIProviderDetailScreen: React.FC<AIProviderDetailScreenProps> = ({ 
         indicatorStyle={scrollIndicatorStyle(isDark)}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
       >
         <AIProviderConfigForm
           providerId={providerId}

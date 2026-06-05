@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, useDialog, Input } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, Input, Button } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { AgentBehaviorConfig } from '@baishou/shared'
@@ -244,27 +244,17 @@ export const AgentBehaviorSection: React.FC = () => {
 
       {/* 操作按钮 */}
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.button, styles.resetButton, { borderColor: colors.borderSubtle }]}
-          onPress={handleResetDefaults}
-        >
-          <Text style={[styles.buttonText, { color: colors.textSecondary }]}>
-            {t('settings.reset_defaults')}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.saveButton,
-            { backgroundColor: dirty ? colors.primary : colors.borderMuted }
-          ]}
+        <Button variant="outline" className="flex-1" onPress={handleResetDefaults}>
+          {t('settings.reset_defaults')}
+        </Button>
+        <Button
+          variant="primary"
+          className="flex-1"
           onPress={handleSave}
-          disabled={!dirty}
+          isDisabled={!dirty}
         >
-          <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-            {t('common.save')}
-          </Text>
-        </TouchableOpacity>
+          {t('common.save')}
+        </Button>
       </View>
     </View>
   )
@@ -294,18 +284,4 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8
   },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center'
-  },
-  resetButton: {
-    borderWidth: 1
-  },
-  saveButton: {},
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '600'
-  }
 })

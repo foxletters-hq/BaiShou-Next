@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, Button } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const DeveloperSettingsSection: React.FC = () => {
@@ -88,35 +88,35 @@ export const DeveloperSettingsSection: React.FC = () => {
 
       {busy && <ActivityIndicator color={colors.primary} style={styles.spinner} />}
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.primary }]}
+      <Button
+        variant="primary"
+        className="w-full"
         onPress={handleLoadDemo}
-        disabled={busy || !dbReady}
+        isDisabled={busy || !dbReady}
+        style={styles.button}
       >
-        <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-          {t('developer.load_demo_data')}
-        </Text>
-      </TouchableOpacity>
+        {t('developer.load_demo_data')}
+      </Button>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.error }]}
+      <Button
+        variant="danger"
+        className="w-full"
         onPress={handleClearAgent}
-        disabled={busy || !dbReady}
+        isDisabled={busy || !dbReady}
+        style={styles.button}
       >
-        <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-          {t('developer.clear_agent_db')}
-        </Text>
-      </TouchableOpacity>
+        {t('developer.clear_agent_db')}
+      </Button>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.error }]}
+      <Button
+        variant="danger"
+        className="w-full"
         onPress={handleClearAll}
-        disabled={busy || !dbReady}
+        isDisabled={busy || !dbReady}
+        style={styles.button}
       >
-        <Text style={[styles.buttonText, { color: colors.textOnPrimary }]}>
-          {t('developer.clear_all_data')}
-        </Text>
-      </TouchableOpacity>
+        {t('developer.clear_all_data')}
+      </Button>
     </View>
   )
 }
@@ -134,13 +134,6 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   button: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
     marginBottom: 12
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '600'
   }
 })

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, Button } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 
 export const AttachmentManagementSection: React.FC = () => {
@@ -118,39 +118,25 @@ export const AttachmentManagementSection: React.FC = () => {
       </View>
 
       <View style={styles.attachmentActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: colors.primary }]}
+        <Button
+          variant="primary"
+          className="flex-1"
           onPress={handleSelectAllAttachments}
-          disabled={attachments.length === 0}
+          isDisabled={attachments.length === 0}
         >
-          <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>
-            {selectedAttachments.size === attachments.length
-              ? t('settings.attachment_deselect_all')
-              : t('settings.attachment_select_all')}
-          </Text>
-        </TouchableOpacity>
+          {selectedAttachments.size === attachments.length
+            ? t('settings.attachment_deselect_all')
+            : t('settings.attachment_select_all')}
+        </Button>
 
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            {
-              backgroundColor: selectedAttachments.size > 0 ? colors.error : colors.bgSurfaceHighest
-            }
-          ]}
+        <Button
+          variant={selectedAttachments.size > 0 ? 'danger' : 'secondary'}
+          className="flex-1"
           onPress={handleDeleteSelectedAttachments}
-          disabled={selectedAttachments.size === 0}
+          isDisabled={selectedAttachments.size === 0}
         >
-          <Text
-            style={[
-              styles.actionButtonText,
-              {
-                color: selectedAttachments.size > 0 ? colors.textOnPrimary : colors.textSecondary
-              }
-            ]}
-          >
-            {t('settings.attachment_delete_selected', { count: selectedAttachments.size })}
-          </Text>
-        </TouchableOpacity>
+          {t('settings.attachment_delete_selected', { count: selectedAttachments.size })}
+        </Button>
       </View>
 
       {isLoadingAttachments ? (
@@ -215,14 +201,9 @@ export const AttachmentManagementSection: React.FC = () => {
         </View>
       )}
 
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: colors.bgSurface }]}
-        onPress={loadAttachments}
-      >
-        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-          {t('common.refresh')}
-        </Text>
-      </TouchableOpacity>
+      <Button variant="outline" className="w-full" onPress={loadAttachments}>
+        {t('common.refresh')}
+      </Button>
     </View>
   )
 }
@@ -259,17 +240,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 16
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  actionButtonText: {
-    fontSize: 15,
-    fontWeight: '600'
   },
   loadingContainer: {
     alignItems: 'center',

@@ -17,6 +17,7 @@ export default function SettingsStackLayout() {
       <Stack.Screen name="about" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="workspaces" />
+      <Stack.Screen name="identity-cards" />
     </Stack>
   )
 }

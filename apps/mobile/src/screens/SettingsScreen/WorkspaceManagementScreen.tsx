@@ -8,6 +8,7 @@ import {
   useNativeToast,
   Input,
   Pagination,
+  Button,
   type VaultInfo
 } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
@@ -112,7 +113,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
     const name = await dialog.prompt(t('workspace.new_name', '空间名称'), '')
     if (!name?.trim()) return
     try {
-      await services!.vaultService.switchVault(name.trim())
+      await services!.switchVault(name.trim())
       await loadVaults()
       toast.showSuccess(t('common.save_success'))
     } catch {
@@ -123,7 +124,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
   const handleSwitch = async (name: string) => {
     if (!services || activeVault?.name === name) return
     try {
-      await services.vaultService.switchVault(name)
+      await services.switchVault(name)
       await loadVaults()
       toast.showSuccess(t('common.save_success'))
     } catch {
@@ -256,22 +257,25 @@ export const WorkspaceManagementScreen: React.FC = () => {
             </View>
           ) : null}
 
-          <Pressable
+          <Button
+            variant="ghost"
+            className="w-full rounded-none"
             onPress={() => void handleCreate()}
-            style={({ pressed }) => [
+            style={[
               styles.createRow,
               {
                 borderTopWidth: StyleSheet.hairlineWidth,
-                borderTopColor: colors.borderSubtle,
-                opacity: pressed ? 0.7 : 1
+                borderTopColor: colors.borderSubtle
               }
             ]}
           >
-            <Text style={[styles.rowTitle, { color: colors.primary, flex: 1 }]}>
-              {t('workspace.create_new', '创建新空间')}
-            </Text>
-            <Text style={{ color: colors.primary, fontSize: 20 }}>+</Text>
-          </Pressable>
+            <View style={styles.createRowInner}>
+              <Text style={[styles.rowTitle, { color: colors.primary, flex: 1 }]}>
+                {t('workspace.create_new', '创建新空间')}
+              </Text>
+              <Text style={{ color: colors.primary, fontSize: 20 }}>+</Text>
+            </View>
+          </Button>
         </View>
       </ScrollView>
     </StackScreenLayout>
@@ -336,8 +340,12 @@ const styles = StyleSheet.create({
     fontSize: 12
   },
   createRow: {
+    marginBottom: 0
+  },
+  createRowInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
     paddingHorizontal: 14,
     paddingVertical: 13,
     gap: 12

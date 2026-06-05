@@ -1,7 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import Slider from '@react-native-community/slider'
-import { useNativeTheme } from '@baishou/ui/native'
+import { NativeSlider, useNativeTheme } from '@baishou/ui/native'
 
 export interface SettingsSliderRowProps {
   title: string
@@ -13,8 +12,6 @@ export interface SettingsSliderRowProps {
   onChange: (v: number) => void
   formatValue?: (v: number) => string
 }
-
-const TRACK_HEIGHT = 6
 
 export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
   title,
@@ -28,7 +25,6 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
 }) => {
   const { colors } = useNativeTheme()
   const display = formatValue(value)
-  const pct = ((value - min) / (max - min)) * 100
 
   return (
     <View style={styles.block}>
@@ -42,37 +38,15 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
       </View>
       <View style={styles.controlRow}>
         <View style={styles.sliderWrap}>
-          <View
-            style={[
-              styles.trackBase,
-              {
-                height: TRACK_HEIGHT,
-                borderRadius: TRACK_HEIGHT / 2,
-                backgroundColor: colors.bgSurfaceNormal
-              }
-            ]}
-          />
-          <View
-            style={[
-              styles.trackActive,
-              {
-                height: TRACK_HEIGHT,
-                borderRadius: TRACK_HEIGHT / 2,
-                backgroundColor: colors.primary,
-                width: `${pct}%`
-              }
-            ]}
-          />
-          <Slider
-            style={styles.slider}
-            minimumValue={min}
-            maximumValue={max}
-            step={step}
+          <NativeSlider
             value={value}
-            onValueChange={(v) => onChange(step >= 1 ? Math.round(v) : v)}
-            minimumTrackTintColor="transparent"
-            maximumTrackTintColor="transparent"
-            thumbTintColor={colors.primary}
+            minValue={min}
+            maxValue={max}
+            step={step}
+            onChange={(v) => {
+              const n = v as number
+              onChange(step >= 1 ? Math.round(n) : n)
+            }}
           />
         </View>
         <View style={[styles.valueBadge, { backgroundColor: colors.primaryLight }]}>
@@ -96,26 +70,8 @@ const styles = StyleSheet.create({
   },
   sliderWrap: {
     flex: 1,
-    position: 'relative',
     justifyContent: 'center',
-    height: 40
-  },
-  trackBase: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: '50%',
-    marginTop: -3
-  },
-  trackActive: {
-    position: 'absolute',
-    left: 0,
-    top: '50%',
-    marginTop: -3
-  },
-  slider: {
-    width: '100%',
-    height: 40
+    paddingVertical: 8
   },
   valueBadge: {
     minWidth: 48,

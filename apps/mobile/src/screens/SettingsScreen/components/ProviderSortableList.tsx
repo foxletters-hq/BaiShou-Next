@@ -132,6 +132,7 @@ export const ProviderSortableList: React.FC<ProviderSortableListProps> = ({
         ListFooterComponent={ListFooterComponent}
         activationDistance={12}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       />
     </View>
   )
