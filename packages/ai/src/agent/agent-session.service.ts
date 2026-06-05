@@ -336,13 +336,18 @@ export class AgentSessionService {
         tools: enabledTools as any,
         customPersona: effectiveSystemPrompt,
         userProfileBlock:
-          typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined
+                  typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined
       })
 
       // 4. 调用 Vercel streamText
       // 使用 Intl.Segmenter 做 CJK 友好的词级流式分割，替代默认的 /\S+\s+/m
-      // 默认的 word 模式对中文按空格切分，会导致大量碎片化的流式输出
-      const cjkSegmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' })
+      // 默认的 word 模式对中文按空格切分，会导致大量碎片化的流式输出。
+      // 移动端引擎（如 Hermes）中 Intl.Segmenter 可能为 undefined，在此进行兼容性保护。
+      const hasSegmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter !== 'undefined'
+      const cjkSegmenter = hasSegmenter
+        ? new Intl.Segmenter('zh-CN', { granularity: 'word' })
+        : undefined
+
       const streamResult = await streamText({
         model,
         messages: messagesForModel,
@@ -350,7 +355,9 @@ export class AgentSessionService {
         tools: enabledTools,
         stopWhen: stepCountIs(10),
         abortSignal,
-        experimental_transform: smoothStream({ chunking: cjkSegmenter })
+        ...(hasSegmenter && cjkSegmenter
+          ? { experimental_transform: smoothStream({ chunking: cjkSegmenter }) }
+          : {})
       } as any)
 
       // 5. 使用统一的 StreamChunkAdapter 消费流
