@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import * as Clipboard from 'expo-clipboard'
 import {
   DashboardHeroBanner,
@@ -27,6 +32,15 @@ export const SummaryScreen: React.FC = () => {
   const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
+  const slideOffset = useSharedValue(0)
+
+  useEffect(() => {
+    slideOffset.value = withTiming(activeTab === 'gallery' ? 1 : 0, { duration: 280 })
+  }, [activeTab, slideOffset])
+
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -slideOffset.value * width }]
+  }))
   const [lookbackMonths, setLookbackMonths] = useState(1)
   const [isBatchGenerating, setIsBatchGenerating] = useState(false)
   const [concurrencyLimit, setConcurrencyLimit] = useState(3)
@@ -211,54 +225,57 @@ export const SummaryScreen: React.FC = () => {
         <View style={[styles.container, { backgroundColor: colors.bgApp }]}>
           <SummaryTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-          <View style={[styles.content, activeTab === 'gallery' && styles.contentGallery]}>
-            {activeTab === 'panel' ? (
-              <ScrollView
-                contentContainerStyle={styles.panelContent}
-                indicatorStyle={scrollIndicatorStyle(isDark)}
-                showsVerticalScrollIndicator={false}
-              >
-                <DashboardHeroBanner />
-                <View style={isWide ? styles.wideLayout : styles.narrowLayout}>
-                  <View style={styles.flex1}>
-                    <DashboardSharedMemoryCard
-                      lookbackMonths={lookbackMonths}
-                      onMonthsChanged={setLookbackMonths}
-                      onCopyContext={handleCopyContext}
-                    />
+          <View style={styles.sliderContainer}>
+            <Animated.View style={[styles.sliderTrack, { width: width * 2 }, animatedContainerStyle]}>
+              <View style={[styles.sliderPage, { width }, styles.panelPage]}>
+                <ScrollView
+                  contentContainerStyle={[styles.panelContent, styles.panelScrollContent]}
+                  indicatorStyle={scrollIndicatorStyle(isDark)}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <DashboardHeroBanner />
+                  <View style={isWide ? styles.wideLayout : styles.narrowLayout}>
+                    <View style={styles.flex1}>
+                      <DashboardSharedMemoryCard
+                        lookbackMonths={lookbackMonths}
+                        onMonthsChanged={setLookbackMonths}
+                        onCopyContext={handleCopyContext}
+                      />
+                    </View>
+                    <View style={styles.flex1}>
+                      <DashboardStatsCard {...stats} />
+                    </View>
                   </View>
-                  <View style={styles.flex1}>
-                    <DashboardStatsCard {...stats} />
-                  </View>
-                </View>
 
-                <ActivityHeatmap
-                  data={activityData}
-                  year={selectedYear}
-                  availableYears={availableYears}
-                  onYearChange={setSelectedYear}
-                />
+                  <ActivityHeatmap
+                    data={activityData}
+                    year={selectedYear}
+                    availableYears={availableYears}
+                    onYearChange={setSelectedYear}
+                  />
 
-                <SummaryMissingSection
-                  missingSummaries={missingSummaries}
-                  generationStates={generationStates}
-                  stats={stats}
-                  isBatchGenerating={isBatchGenerating}
-                  concurrencyLimit={concurrencyLimit}
-                  onBatchGenerate={handleBatchGenerate}
-                  onStopGeneration={handleStopGeneration}
-                  onConcurrencyChange={handleConcurrencyChange}
-                  onQueueSingle={async (item) => {
-                    const isConfigured = await checkModelConfigured()
-                    if (isConfigured) {
-                      queueGeneration([item], concurrencyLimit)
-                    }
-                  }}
-                />
-              </ScrollView>
-            ) : (
-              <SummaryGalleryView summaries={summaries} onRefreshData={refreshData} />
-            )}
+                  <SummaryMissingSection
+                    missingSummaries={missingSummaries}
+                    generationStates={generationStates}
+                    stats={stats}
+                    isBatchGenerating={isBatchGenerating}
+                    concurrencyLimit={concurrencyLimit}
+                    onBatchGenerate={handleBatchGenerate}
+                    onStopGeneration={handleStopGeneration}
+                    onConcurrencyChange={handleConcurrencyChange}
+                    onQueueSingle={async (item) => {
+                      const isConfigured = await checkModelConfigured()
+                      if (isConfigured) {
+                        queueGeneration([item], concurrencyLimit)
+                      }
+                    }}
+                  />
+                </ScrollView>
+              </View>
+              <View style={[styles.sliderPage, { width }]}>
+                <SummaryGalleryView summaries={summaries} onRefreshData={refreshData} />
+              </View>
+            </Animated.View>
           </View>
         </View>
       </ScreenSafeArea>
@@ -269,6 +286,26 @@ export const SummaryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1
+  },
+  sliderContainer: {
+    flex: 1,
+    overflow: 'hidden'
+  },
+  sliderTrack: {
+    flexDirection: 'row',
+    flex: 1
+  },
+  sliderPage: {
+    flex: 1
+  },
+  panelPage: {
+    paddingTop: 12
+  },
+  panelScrollContent: {
+    paddingHorizontal: 16,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center'
   },
   content: {
     flex: 1,

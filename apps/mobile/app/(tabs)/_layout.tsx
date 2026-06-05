@@ -27,7 +27,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: sharedTabBarStyle,
-        tabBarHideOnKeyboard: true,
+        tabBarHideOnKeyboard: false,
         headerShown: false
       }}
     >
@@ -46,6 +46,7 @@ export default function TabLayout() {
         name="agent"
         options={{
           title: t('nav.agent'),
+          tabBarHideOnKeyboard: false,
           tabBarIcon: ({ color }) => <MaterialIcons name="auto-awesome" size={24} color={color} />
         }}
       />

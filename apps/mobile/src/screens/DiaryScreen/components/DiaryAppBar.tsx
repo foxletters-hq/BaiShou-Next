@@ -195,7 +195,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               )}
             </View>
 
-            <ScrollView style={styles.filterBody}>
+            <ScrollView style={styles.filterBody} showsVerticalScrollIndicator={false}>
               <TouchableOpacity
                 style={[
                   styles.filterOption,

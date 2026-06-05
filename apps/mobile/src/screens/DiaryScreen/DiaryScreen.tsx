@@ -53,7 +53,7 @@ function parseFilterWeathers(saved: string | null): string[] {
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision, vaultSwitching } = useBaishou()
   const router = useRouter()
   const { needsFullFileAccess, request: requestStorage, storageReady } = useStoragePermission()
 
@@ -170,22 +170,22 @@ export const DiaryScreen: React.FC = () => {
   )
 
   const { entries, totalCount, loading, loadEntries } = useDiaryData(
-    dbReady ? services?.diaryService : undefined,
+    dbReady && !vaultSwitching ? services?.diaryService : undefined,
     diaryQuery
   )
 
   useEffect(() => {
-    if (dbReady && services?.diaryService && storageReady) {
+    if (dbReady && services?.diaryService && storageReady && !vaultSwitching) {
       void loadEntries()
     }
-  }, [dbReady, services?.diaryService, storageReady, loadEntries])
+  }, [dbReady, services?.diaryService, storageReady, vaultSwitching, vaultRevision, loadEntries])
 
   useFocusEffect(
     useCallback(() => {
-      if (dbReady && services?.diaryService && storageReady) {
+      if (dbReady && services?.diaryService && storageReady && !vaultSwitching) {
         void loadEntries()
       }
-    }, [dbReady, services?.diaryService, loadEntries, storageReady])
+    }, [dbReady, services?.diaryService, loadEntries, storageReady, vaultSwitching, vaultRevision])
   )
 
   const handleRequestStoragePermission = useCallback(async () => {
@@ -306,7 +306,7 @@ export const DiaryScreen: React.FC = () => {
             currentPage={currentPage}
             pageSize={pageSize}
             selectedMonth={selectedMonth}
-            loading={loading}
+            loading={needsFullFileAccess || vaultSwitching ? false : loading}
             onGoToEditor={(id) => router.push({ pathname: '/diary-editor', params: { id } })}
             onDeleteEntry={setDeletingId}
             onPageChange={setCurrentPage}

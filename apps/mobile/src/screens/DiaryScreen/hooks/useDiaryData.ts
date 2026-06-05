@@ -52,7 +52,10 @@ export function useDiaryData(diaryService: DiaryService | undefined, query: Diar
   const searchTerm = query.searchQuery.trim()
 
   const loadEntries = useCallback(async () => {
-    if (!diaryService) return
+    if (!diaryService) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const current = queryRef.current

@@ -8,7 +8,7 @@ import {
   Pressable,
   ScrollView
 } from 'react-native'
-import Slider from '@react-native-community/slider'
+import { NativeSlider } from '@baishou/ui/native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@baishou/ui/native'
@@ -109,16 +109,12 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
               : t('data_sync.max_backup_desc', '超过上限后，同步备份时将自动删除最早的备份文件。')}
           </Text>
 
-          <Slider
-            style={styles.slider}
-            minimumValue={1}
-            maximumValue={50}
-            step={1}
+          <NativeSlider
             value={tempCount === -1 ? 50 : tempCount}
-            onValueChange={(v) => onChangeCount(Math.round(v))}
-            minimumTrackTintColor={colors.primary}
-            maximumTrackTintColor={colors.borderSubtle}
-            thumbTintColor={colors.primary}
+            minValue={1}
+            maxValue={50}
+            step={1}
+            onChange={(v) => onChangeCount(Math.round(v as number))}
           />
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
@@ -206,11 +202,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     marginBottom: 8
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-    marginVertical: 8
   },
   chipsRow: {
     marginTop: 8,

@@ -13,7 +13,6 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
-import Animated, { useAnimatedStyle } from 'react-native-reanimated'
 import {
   ChatBubble,
   InputBar,
@@ -23,9 +22,10 @@ import {
   PromptShortcutSheet,
   AgentToolsView
 } from '@baishou/ui/native'
-import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useKeyboardHeight } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 
 import { partDataAsRecord } from '../utils/agent-part.util'
 import { AgentChatAppBar } from '../components/AgentChatAppBar'
@@ -41,23 +41,18 @@ import { useAgentModel } from '../hooks/useAgentModel'
 import { useAgentUI } from '../hooks/useAgentUI'
 import { useTTS } from '../hooks/useTTS'
 import { useBranchSession } from '../hooks/useBranchSession'
-import { useKeyboardInset } from '../hooks/useKeyboardInset'
 import { useStreamError } from '../hooks/useStreamError'
-
-/** 底部输入栏 + 工具条的大致高度，用于列表留白与悬浮按钮定位 */
+/** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
 
 export const AgentScreen = () => {
   const { t } = useTranslation()
   const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
-  const { inset: keyboardInset, prepareForKeyboard } = useKeyboardInset()
-  const inputDockStyle = useAnimatedStyle(() => ({
-    bottom: keyboardInset.value
-  }))
-  const scrollBtnStyle = useAnimatedStyle(() => ({
-    bottom: keyboardInset.value + INPUT_DOCK_HEIGHT + 12
-  }))
+  const { keyboardHeight } = useKeyboardHeight()
+  const tabBarHeight = useBottomTabBarHeight()
+  /** 键盘高度从屏幕底量起，输入区位于 Tab 栏上方，需扣除 Tab 栏高度，避免输入框与键盘间出现空隙 */
+  const inputOffset = Math.max(0, keyboardHeight - tabBarHeight)
   const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
@@ -164,6 +159,7 @@ export const AgentScreen = () => {
             description?: string
             emoji?: string
             isPinned?: boolean
+            lastUsedAt?: number
           }>
         >('assistants')) || []
       setAssistants(
@@ -172,7 +168,8 @@ export const AgentScreen = () => {
           name: a.name,
           description: a.description,
           emoji: a.emoji,
-          isPinned: Boolean(a.isPinned)
+          isPinned: Boolean(a.isPinned),
+          lastUsedAt: a.lastUsedAt || 0
         }))
       )
     } catch {
@@ -204,6 +201,44 @@ export const AgentScreen = () => {
         .slice(0, 3)
         .map(({ id, name, description, emoji }) => ({ id, name, description, emoji })),
     [assistants]
+  )
+
+  const handleSelectAssistantWithTracking = useCallback(
+    async (assistant: AssistantSummary) => {
+      const full = assistants.find((a) => a.id === assistant.id)
+      if (!full) return
+      handleSelectAssistant(full as any)
+      if (!services) return
+      try {
+        const list =
+          (await services.settingsManager.get<
+            Array<{
+              id: string
+              name: string
+              emoji: string
+              description?: string
+              isPinned?: boolean
+              lastUsedAt?: number
+              [key: string]: unknown
+            }>
+          >('assistants')) || []
+        const updated = list.map((a) =>
+          a.id === assistant.id ? { ...a, lastUsedAt: Date.now() } : a
+        )
+        await services.settingsManager.set('assistants', updated)
+        setAssistants(
+          updated.map((a) => ({
+            id: a.id,
+            name: a.name,
+            description: a.description,
+            emoji: a.emoji,
+            isPinned: Boolean(a.isPinned),
+            lastUsedAt: a.lastUsedAt || 0
+          }))
+        )
+      } catch {}
+    },
+    [assistants, handleSelectAssistant, services]
   )
 
   useEffect(() => {
@@ -388,11 +423,22 @@ export const AgentScreen = () => {
     [messages]
   )
 
+  const prevMsgLenRef = useRef(0)
+  const layoutReadyRef = useRef(false)
+
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100)
+    if (messages.length > 0 && messages.length > prevMsgLenRef.current) {
+      prevMsgLenRef.current = messages.length
+      requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: true }))
     }
   }, [messages])
+
+  const handleContentSizeChange = useCallback(() => {
+    if (messages.length > prevMsgLenRef.current) {
+      prevMsgLenRef.current = messages.length
+      requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: true }))
+    }
+  }, [messages.length])
 
   const totalInputTokens = tokenUsage?.inputTokens || 0
   const totalOutputTokens = tokenUsage?.outputTokens || 0
@@ -462,7 +508,10 @@ export const AgentScreen = () => {
           <FlatList
             ref={flatListRef}
             style={styles.list}
-            contentContainerStyle={[styles.listContent, { paddingBottom: INPUT_DOCK_HEIGHT + 24 }]}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: INPUT_DOCK_HEIGHT + inputOffset + 24 }
+            ]}
             data={messages}
             keyExtractor={(item) => item.id}
             keyboardShouldPersistTaps="handled"
@@ -546,15 +595,22 @@ export const AgentScreen = () => {
               ) : null
             }
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onContentSizeChange={handleContentSizeChange}
+            onLayout={() => {
+              if (!layoutReadyRef.current) {
+                layoutReadyRef.current = true
+                requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: false }))
+              }
+            }}
             onScroll={handleScroll}
             scrollEventThrottle={16}
             ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
           />
 
           {showScrollButton && (
-            <Animated.View style={[styles.scrollBtnWrap, scrollBtnStyle]}>
+            <View
+              style={[styles.scrollBtnWrap, { bottom: inputOffset + INPUT_DOCK_HEIGHT + 12 }]}
+            >
               <TouchableOpacity
                 style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
                 onPress={() => scrollToBottom(flatListRef, true)}
@@ -562,14 +618,19 @@ export const AgentScreen = () => {
               >
                 <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
-            </Animated.View>
+            </View>
           )}
 
-          <Animated.View
-            style={[styles.inputDock, { backgroundColor: colors.bgSurface }, inputDockStyle]}
+          <View
+            style={[
+              styles.inputDock,
+              {
+                backgroundColor: colors.bgSurface,
+                bottom: inputOffset
+              }
+            ]}
           >
             <InputBar
-              onInputFocus={prepareForKeyboard}
               onSend={handleSend}
               isLoading={isLoading}
               onStop={handleStop}
@@ -583,7 +644,7 @@ export const AgentScreen = () => {
               ttsMode={ttsMode}
               onToggleTtsMode={toggleTtsMode}
             />
-          </Animated.View>
+          </View>
         </View>
       </ScreenSafeArea>
 
@@ -608,10 +669,7 @@ export const AgentScreen = () => {
         }}
         onShowAssistantPicker={() => setShowAssistantPicker(true)}
         onSelectAssistant={(assistant) => {
-          const full = assistants.find((a) => a.id === assistant.id)
-          if (full) {
-            handleSelectAssistant(full as any)
-          }
+          void handleSelectAssistantWithTracking(assistant)
         }}
         onPinSession={handlePinSession}
         onDeleteSession={handleDeleteSession}
@@ -621,7 +679,7 @@ export const AgentScreen = () => {
       <AssistantPicker
         isVisible={showAssistantPicker}
         onClose={() => setShowAssistantPicker(false)}
-        onSelect={handleSelectAssistant}
+        onSelect={(a) => void handleSelectAssistantWithTracking(a)}
         selectedAssistantId={currentAssistant?.id}
       />
 

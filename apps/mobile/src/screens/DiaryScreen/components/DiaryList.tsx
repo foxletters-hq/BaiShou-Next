@@ -104,6 +104,14 @@ export const DiaryList: React.FC<DiaryListProps> = ({
     </View>
   )
 
+  if (showStoragePermission && onRequestStoragePermission) {
+    return (
+      <View style={styles.centered}>
+        <StoragePermissionPrompt onRequest={onRequestStoragePermission} compact mode="required" />
+      </View>
+    )
+  }
+
   if (loading && entries.length === 0) {
     return (
       <View style={styles.centered}>
@@ -116,13 +124,6 @@ export const DiaryList: React.FC<DiaryListProps> = ({
   }
 
   if (totalCount === 0) {
-    if (showStoragePermission && onRequestStoragePermission) {
-      return (
-        <View style={styles.centered}>
-          <StoragePermissionPrompt onRequest={onRequestStoragePermission} compact mode="required" />
-        </View>
-      )
-    }
     return (
       <View style={styles.centered}>
         <MaterialIcons name="edit-note" size={64} color={colors.primary} style={{ opacity: 0.5 }} />
@@ -147,6 +148,7 @@ export const DiaryList: React.FC<DiaryListProps> = ({
       numColumns={numColumns}
       keyExtractor={(item) => String(item.id)}
       style={{ flex: 1, backgroundColor: colors.bgApp }}
+      showsVerticalScrollIndicator={false}
       contentContainerStyle={[styles.listContent, { backgroundColor: colors.bgApp }]}
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
       ListHeaderComponent={showPagination ? <PaginationBar /> : null}
