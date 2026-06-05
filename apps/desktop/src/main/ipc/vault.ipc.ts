@@ -30,7 +30,7 @@ export async function connectShadowForActiveVault(): Promise<void> {
     logger.warn('[VaultIPC] 无活跃 Vault，跳过 Shadow DB 连接')
     return
   }
-  const sysDir = await pathService.getVaultSystemDirectory(activeVault.name)
+  const sysDir = await pathService.getShadowIndexDirectory(activeVault.name)
   await shadowConnectionManager.connect(sysDir)
   logger.info(`[VaultIPC] Shadow DB 已连接: ${activeVault.name}`)
 }
@@ -46,7 +46,7 @@ export async function preloadVaultShadowDb(vaultName: string): Promise<void> {
   const active = vaultService.getActiveVault()
   if (active?.name === vaultName) return
 
-  const sysDir = await pathService.getVaultSystemDirectory(vaultName)
+  const sysDir = await pathService.getShadowIndexDirectory(vaultName)
   const dbPath = path.join(sysDir, 'shadow_index_v2.db')
 
   try {

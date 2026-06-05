@@ -82,6 +82,10 @@ export class DesktopStoragePathService implements IStoragePathService {
     return vaultSysDir
   }
 
+  public async getShadowIndexDirectory(vaultName: string): Promise<string> {
+    return this.getVaultSystemDirectory(vaultName)
+  }
+
   private async getActiveVaultName(): Promise<string> {
     try {
       const rootDir = await this.getRootDirectory()
