@@ -13,15 +13,17 @@ export async function synthesizeTtsForTest(
   const baseUrl = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '')
   const modelId = config.modelId
   const isMimoTts = modelId.toLowerCase().includes('mimo-v2.5-tts')
+  const apiKey = config.apiKey?.trim()
+  const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (apiKey) {
+    authHeaders.Authorization = `Bearer ${apiKey}`
+  }
 
   let response: Response
   if (isMimoTts) {
     response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: authHeaders,
       body: JSON.stringify({
         model: modelId,
         messages: [
@@ -37,10 +39,7 @@ export async function synthesizeTtsForTest(
   } else {
     response = await fetch(`${baseUrl}/audio/speech`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: authHeaders,
       body: JSON.stringify({
         model: modelId,
         input: sample,
