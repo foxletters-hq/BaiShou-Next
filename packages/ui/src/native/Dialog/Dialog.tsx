@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
-import { Button } from '../Button/Button'
+import { Button } from '../Button'
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
 import { Input } from '../Input/Input'
 import { useNativeTheme } from '../theme'
@@ -197,7 +197,25 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 : null
             ]}
           >
-            {renderMessage()}
+            {state.type === 'prompt' ? (
+              <>
+                {typeof state.message === 'string' && state.message.trim().length > 0
+                  ? renderMessage()
+                  : null}
+                <Input
+                  autoFocus
+                  value={promptValue}
+                  onChangeText={setPromptValue}
+                  multiline={state.isMultiline}
+                  textarea={state.isMultiline}
+                  numberOfLines={state.isMultiline ? 4 : 1}
+                  placeholder={t('settings.identity_name_placeholder', '请输入名称')}
+                  containerStyle={{ marginTop: tokens.spacing.sm }}
+                />
+              </>
+            ) : (
+              renderMessage()
+            )}
 
             {state.type === 'choose' && state.chooseOptions && (
               <ScrollView style={styles.chooseList} keyboardShouldPersistTaps="handled">
@@ -231,48 +249,32 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               </ScrollView>
             )}
 
-            {state.type === 'prompt' && (
-              <Input
-                autoFocus
-                value={promptValue}
-                onChangeText={setPromptValue}
-                multiline={state.isMultiline}
-                textarea={state.isMultiline}
-                numberOfLines={state.isMultiline ? 4 : 1}
-                containerStyle={{ marginTop: tokens.spacing.sm }}
-              />
-            )}
-
             {state.type !== 'choose' && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'flex-end',
-                  gap: tokens.spacing.sm,
-                  marginTop: tokens.spacing.md
-                }}
-              >
+              <View style={styles.dialogActions}>
                 {state.type !== 'alert' && (
                   <Button
-                    variant="text"
+                    variant="outline"
+                    style={{ flex: 1 }}
                     onPress={() => closeDialog(state.type === 'prompt' ? null : false)}
                   >
                     {state.confirmOptions?.cancelText ?? t('common.cancel', '取消')}
                   </Button>
                 )}
                 <Button
-                  variant="elevated"
+                  variant="primary"
+                  style={state.type === 'alert' ? { width: '100%' } : { flex: 1 }}
                   onPress={() => closeDialog(state.type === 'prompt' ? promptValue : true)}
                   destructive={state.confirmOptions?.destructive}
                 >
-                  {state.confirmOptions?.confirmText ?? t('common.confirm', '确定')}
+                  {state.confirmOptions?.confirmText ??
+                    (state.type === 'alert' ? t('common.ok', '好的') : t('common.confirm', '确定'))}
                 </Button>
               </View>
             )}
 
             {state.type === 'choose' && (
-              <View style={{ marginTop: tokens.spacing.md }}>
-                <Button variant="text" onPress={() => closeDialog(null)}>
+              <View style={styles.dialogActions}>
+                <Button variant="outline" className="w-full" onPress={() => closeDialog(null)}>
                   {t('common.cancel', '取消')}
                 </Button>
               </View>
@@ -299,6 +301,12 @@ const styles = StyleSheet.create({
   dialogBodyScrollable: {
     flexShrink: 1,
     minHeight: 0
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+    marginTop: 16
   },
   chooseList: {
     maxHeight: 320,

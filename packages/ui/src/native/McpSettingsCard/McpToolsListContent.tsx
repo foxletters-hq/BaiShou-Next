@@ -22,7 +22,7 @@ export const McpToolsListContent: React.FC<{ tools: McpToolListItem[] }> = ({ to
       contentContainerStyle={styles.listContent}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
-      showsVerticalScrollIndicator
+      showsVerticalScrollIndicator={false}
       bounces
       overScrollMode="always"
     >

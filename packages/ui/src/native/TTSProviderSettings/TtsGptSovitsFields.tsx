@@ -17,7 +17,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
 
   return (
     <>
-      <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
+      <View style={[styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.ref_audio_path_label')}
         </Text>
@@ -31,7 +31,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
         />
       </View>
 
-      <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
+      <View style={[styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.prompt_text_label')}
         </Text>
@@ -43,7 +43,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
         />
       </View>
 
-      <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
+      <View style={[styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.prompt_lang_label')}
         </Text>
@@ -57,7 +57,7 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({ config, 
         />
       </View>
 
-      <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
+      <View style={[styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.text_lang_label')}
         </Text>
@@ -89,7 +89,7 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
   const { colors } = useNativeTheme()
 
   return (
-    <View style={[styles.fieldGroup, { borderTopColor: colors.borderSubtle }]}>
+    <View style={[styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]}>
       <Text style={[styles.label, { color: colors.textPrimary }]}>
         {t('tts.settings.test_label')}
       </Text>

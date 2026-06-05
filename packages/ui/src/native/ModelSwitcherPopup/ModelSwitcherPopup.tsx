@@ -6,7 +6,7 @@ import { useNativeTheme } from '../theme'
 export interface ModelSwitcherPopupProps {
   visible: boolean
   onClose: () => void
-  models: Array<{ id: string; name: string; providerId: string }>
+  models: Array<{ id: string; name: string; providerId: string; leading?: React.ReactNode }>
   selectedModelId: string
   onSelect: (modelId: string) => void
 }
@@ -23,7 +23,11 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
 
   if (!visible) return null
 
-  const renderItem = ({ item }: { item: { id: string; name: string; providerId: string } }) => {
+  const renderItem = ({
+    item
+  }: {
+    item: { id: string; name: string; providerId: string; leading?: React.ReactNode }
+  }) => {
     const isSelected = item.id === selectedModelId
     return (
       <Pressable
@@ -35,7 +39,8 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
               : pressed
                 ? colors.bgSurfaceNormal
                 : 'transparent',
-            borderRadius: tokens.radius.md
+            borderRadius: tokens.radius.md,
+            gap: 8
           }
         ]}
         onPress={() => {
@@ -43,6 +48,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
           onClose()
         }}
       >
+        {item.leading}
         <View style={styles.itemContent}>
           <Text style={[styles.providerLabel, { color: colors.textTertiary }]}>
             {item.providerId}

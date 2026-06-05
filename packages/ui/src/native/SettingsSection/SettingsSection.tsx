@@ -4,12 +4,14 @@ import { useNativeTheme } from '../theme'
 
 export interface NativeSettingsSectionProps extends ViewProps {
   title: string
+  titleAddon?: React.ReactNode
   description?: string
   children: React.ReactNode
 }
 
 export const SettingsSection: React.FC<NativeSettingsSectionProps> = ({
   title,
+  titleAddon,
   description,
   children,
   style,
@@ -33,15 +35,18 @@ export const SettingsSection: React.FC<NativeSettingsSectionProps> = ({
           marginBottom: tokens.spacing.sm
         }}
       >
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: '600',
-            color: colors.textPrimary
-          }}
-        >
-          {title}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '600',
+              color: colors.textPrimary
+            }}
+          >
+            {title}
+          </Text>
+          {titleAddon}
+        </View>
         {description && (
           <Text
             style={{

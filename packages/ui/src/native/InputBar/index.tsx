@@ -233,54 +233,52 @@ export const InputBar: React.FC<InputBarProps> = ({
         </ScrollView>
       )}
 
-      <Animated.View style={toolbarAnimatedStyle}>
-        {showToolbar && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.toolbarContent}
-          >
-            {renderToolbarChip(t('input.upload_attachment', '上传附件'), handlePickFiles, {
-              icon: 'attach-file'
-            })}
-            {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
-              icon: 'bolt'
-            })}
-            {renderToolbarChip(
-              searchMode
-                ? t('settings.web_search_mode_tool', '外部工具搜索')
-                : t('settings.web_search_mode_off', '关闭搜索'),
-              onToggleSearchMode,
-              { active: searchMode, icon: 'public' }
-            )}
-            {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
-              icon: 'menu-book'
-            })}
-            {renderToolbarChip(
-              ttsMode === 'always'
-                ? t('agent.chat.tts_always', '始终朗读')
-                : ttsMode === 'off'
-                  ? t('agent.chat.tts_off', '语音关闭')
-                  : t('agent.chat.tts_manual', '手动朗读'),
-              onToggleTtsMode,
-              { active: ttsMode === 'always', icon: 'volume-up' }
-            )}
-            {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
-              icon: 'build'
-            })}
-          </ScrollView>
-        )}
+      <Animated.View style={toolbarAnimatedStyle} pointerEvents={showToolbar ? 'auto' : 'none'}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.toolbarContent}
+        >
+          {renderToolbarChip(t('input.upload_attachment', '上传附件'), handlePickFiles, {
+            icon: 'attach-file'
+          })}
+          {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
+            icon: 'bolt'
+          })}
+          {renderToolbarChip(
+            searchMode
+              ? t('settings.web_search_mode_tool', '外部工具搜索')
+              : t('settings.web_search_mode_off', '关闭搜索'),
+            onToggleSearchMode,
+            { active: searchMode, icon: 'public' }
+          )}
+          {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
+            icon: 'menu-book'
+          })}
+          {renderToolbarChip(
+            ttsMode === 'always'
+              ? t('agent.chat.tts_always', '始终朗读')
+              : ttsMode === 'off'
+                ? t('agent.chat.tts_off', '语音关闭')
+                : t('agent.chat.tts_manual', '手动朗读'),
+            onToggleTtsMode,
+            { active: ttsMode === 'always', icon: 'volume-up' }
+          )}
+          {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
+            icon: 'build'
+          })}
+        </ScrollView>
       </Animated.View>
 
       <Input
         className="min-h-12 max-h-36"
-        style={[styles.input, text.length === 0 && styles.inputEmpty]}
+        style={styles.input}
         value={text}
         onChangeText={setText}
         placeholder={t('agent.chat.input_hint', '输入消息...')}
         multiline
         maxLength={4000}
-        textAlignVertical={text.length === 0 ? 'center' : 'top'}
+        textAlignVertical="center"
         onFocus={onInputFocus}
         leftSlot={
           <TouchableOpacity
@@ -367,10 +365,7 @@ const styles = StyleSheet.create({
     maxHeight: 140,
     fontSize: 15,
     lineHeight: 20,
-    paddingVertical: 8
-  },
-  inputEmpty: {
-    paddingVertical: Platform.OS === 'ios' ? 13 : 11,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null)
   },
   sendBtn: {

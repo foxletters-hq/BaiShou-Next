@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Modal } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { SettingsSection } from '../SettingsSection'
 import { Input } from '../Input/Input'
@@ -57,7 +57,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
   const editingTemplate = editingKey ? TEMPLATES.find((t) => t.key === editingKey) : null
 
   return (
-    <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <SettingsSection title={t('summary.templates', 'AI 总结指令模板')}>
         {TEMPLATES.map((item) => {
           const preview = config[item.key]
@@ -78,9 +78,9 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
                 {previewText || t('summary.empty_template', '未设置模板')}
               </Text>
               <Button
-                variant="outlined"
+                variant="outline"
                 onPress={() => openEditor(item.key)}
-                style={styles.editBtn}
+                className="self-start"
               >
                 {t('common.edit', '编辑')}
               </Button>
@@ -108,19 +108,12 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
             />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setEditingKey(null)} style={styles.modalBtn}>
-                <Text style={[styles.modalBtnTextGray, { color: colors.textSecondary }]}>
-                  {t('common.cancel', '取消')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={saveEditor}
-                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
-              >
-                <Text style={[styles.modalBtnTextWhite, { color: colors.textOnPrimary }]}>
-                  {t('common.save', '保存')}
-                </Text>
-              </TouchableOpacity>
+              <Button variant="ghost" onPress={() => setEditingKey(null)}>
+                {t('common.cancel', '取消')}
+              </Button>
+              <Button variant="primary" onPress={saveEditor}>
+                {t('common.save', '保存')}
+              </Button>
             </View>
           </View>
         </View>
@@ -149,7 +142,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 10
   },
-  editBtn: { alignSelf: 'flex-start' },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -179,14 +171,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
     gap: 12
   },
-  modalBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  modalBtnTextGray: { fontWeight: 'bold' },
-  modalBtnTextWhite: { fontWeight: 'bold' },
   bottomSpacer: { height: 40 }
 })

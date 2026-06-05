@@ -1,80 +1,123 @@
-import React from 'react'
-import { Pressable, Text, PressableProps, ActivityIndicator } from 'react-native'
+import React, { forwardRef } from 'react'
+import { ActivityIndicator, View, type StyleProp, type ViewStyle } from 'react-native'
+import {
+  Button as HeroButton,
+  LinkButton,
+  useButton,
+  cn,
+  type ButtonRootProps
+} from 'heroui-native'
 import { useNativeTheme } from '../theme'
+import {
+  resolveNativeButtonVariant,
+  type LegacyButtonVariant,
+  type NativeButtonVariant
+} from './button.utils'
+import { getHeroButtonLabelStyle, getHeroButtonRootStyle } from './button-field.styles'
 
-export interface NativeButtonProps extends PressableProps {
-  variant?: 'elevated' | 'text' | 'outlined'
+export type { LegacyButtonVariant, NativeButtonVariant }
+export { LinkButton, useButton }
+
+export interface NativeButtonProps
+  extends Pick<
+    ButtonRootProps,
+    | 'onPress'
+    | 'style'
+    | 'className'
+    | 'accessibilityLabel'
+    | 'accessibilityRole'
+    | 'testID'
+    | 'hitSlop'
+    | 'size'
+    | 'isIconOnly'
+  > {
+  variant?: NativeButtonVariant
   isLoading?: boolean
-  /** 危险操作样式（红色文本） */
+  /** 危险操作样式 */
   destructive?: boolean
+  disabled?: boolean
+  isDisabled?: boolean
   children: React.ReactNode
 }
 
-export const Button: React.FC<NativeButtonProps> = ({
-  variant = 'elevated',
-  isLoading = false,
-  destructive = false,
-  children,
-  style,
-  disabled,
-  ...props
-}) => {
-  const { colors, tokens } = useNativeTheme()
+type HeroButtonRef = React.ComponentRef<typeof HeroButton>
 
-  const getContainerStyle = (pressed: boolean) => {
-    let base: any = {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: tokens.spacing.sm,
-      paddingHorizontal: tokens.spacing.lg,
-      borderRadius: tokens.radius.full,
-      gap: tokens.spacing.sm
-    }
+const NativeButtonRoot = forwardRef<HeroButtonRef, NativeButtonProps>(
+  (
+    {
+      variant = 'elevated',
+      isLoading = false,
+      destructive = false,
+      children,
+      disabled,
+      isDisabled,
+      className,
+      style,
+      ...props
+    },
+    ref
+  ) => {
+    const { colors } = useNativeTheme()
+    const { variant: heroVariant, labelClassName } = resolveNativeButtonVariant(
+      variant,
+      destructive
+    )
+    const mergedDisabled = Boolean(disabled || isDisabled || isLoading)
+    const rootFallback = getHeroButtonRootStyle(colors, heroVariant)
+    const labelFallback = getHeroButtonLabelStyle(colors, heroVariant, labelClassName)
+    const mergedStyle: StyleProp<ViewStyle> = [
+      rootFallback,
+      typeof style === 'function' ? undefined : style
+    ]
 
-    if (variant === 'elevated') {
-      if (destructive) {
-        base.backgroundColor = pressed ? colors.error + 'CC' : colors.error
-      } else {
-        base.backgroundColor = pressed ? colors.primary + 'E6' : colors.primary
+    const renderLabel = (content: React.ReactNode) => {
+      if (typeof content === 'string') {
+        return (
+          <HeroButton.Label className={cn(labelClassName)} style={labelFallback}>
+            {content}
+          </HeroButton.Label>
+        )
       }
-      base.elevation = pressed ? 4 : 2
-      base.shadowColor = '#000'
-      base.shadowOffset = { width: 0, height: pressed ? 2 : 1 }
-      base.shadowOpacity = 0.2
-      base.shadowRadius = pressed ? 4 : 2
-    } else if (variant === 'outlined') {
-      base.backgroundColor = pressed ? colors.bgSurfaceNormal : 'transparent'
-      base.borderWidth = 1
-      base.borderColor = colors.primary
-    } else {
-      base.backgroundColor = pressed ? colors.bgSurfaceNormal : 'transparent'
+      return content
     }
 
-    if (disabled || isLoading) {
-      base.opacity = 0.6
-    }
+    const content = isLoading ? (
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8
+        }}
+      >
+        <ActivityIndicator size="small" />
+        {renderLabel(children)}
+      </View>
+    ) : (
+      renderLabel(children)
+    )
 
-    return [base, typeof style === 'function' ? style({ pressed, hovered: false }) : style]
+    return (
+      <HeroButton
+        ref={ref}
+        variant={heroVariant}
+        isDisabled={mergedDisabled}
+        className={className}
+        style={
+          typeof style === 'function'
+            ? (state) => [rootFallback, style(state)]
+            : mergedStyle
+        }
+        {...props}
+      >
+        {content}
+      </HeroButton>
+    )
   }
+)
 
-  const textColor =
-    variant === 'elevated'
-      ? destructive
-        ? colors.onError
-        : colors.textOnPrimary
-      : destructive
-        ? colors.error
-        : colors.primary
+NativeButtonRoot.displayName = 'NativeButton'
 
-  return (
-    <Pressable
-      style={({ pressed }) => getContainerStyle(pressed)}
-      disabled={disabled || isLoading}
-      {...props}
-    >
-      {isLoading ? <ActivityIndicator color={textColor} size="small" /> : null}
-      <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>{children}</Text>
-    </Pressable>
-  )
-}
+export const Button = Object.assign(NativeButtonRoot, {
+  Label: HeroButton.Label
+})

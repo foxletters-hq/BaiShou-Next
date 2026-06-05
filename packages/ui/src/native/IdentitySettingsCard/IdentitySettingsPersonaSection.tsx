@@ -1,110 +1,96 @@
-import React from 'react'
-import { View, Text, Pressable, ScrollView } from 'react-native'
+import React, { useMemo } from 'react'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
+import { pickQuickSwitchPersonaIds } from './identity-recent.utils'
 
 export interface IdentitySettingsPersonaSectionProps {
   activeId: string
   allPersonas: Record<string, { id: string; facts: Record<string, string> }>
+  recentPersonaIds?: string[]
   onSwitch: (pid: string) => void
-  onAddPersona: () => void
-  onDeletePersona: (pid: string) => void
 }
 
 export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSectionProps> = ({
   activeId,
   allPersonas,
-  onSwitch,
-  onAddPersona,
-  onDeletePersona
+  recentPersonaIds,
+  onSwitch
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
+
+  const switchIds = useMemo(
+    () => pickQuickSwitchPersonaIds(Object.keys(allPersonas), activeId, recentPersonaIds),
+    [activeId, allPersonas, recentPersonaIds]
+  )
+
+  if (switchIds.length === 0) return null
 
   return (
-    <>
-      <Text
-        style={{
-          fontSize: 14,
-          color: colors.textSecondary,
-          marginBottom: tokens.spacing.md
-        }}
-      >
-        {t('settings.identity_card_desc', '助手将自动结合这些核心词条构筑角色认知与您对话。')}
-      </Text>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: tokens.spacing.md }}
-      >
-        <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
-          {Object.keys(allPersonas).map((pid) => {
-            const isActive = pid === activeId
-            return (
-              <Pressable
-                key={pid}
-                onPress={() => onSwitch(pid)}
-                onLongPress={() => onDeletePersona(pid)}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: tokens.spacing.md,
-                  paddingVertical: tokens.spacing.sm,
-                  borderRadius: tokens.radius.sm,
-                  borderWidth: isActive ? 1.5 : 1,
-                  borderColor: isActive ? colors.borderStrong : colors.borderMuted,
-                  backgroundColor: 'transparent',
-                  opacity: pressed ? 0.7 : 1,
-                  gap: tokens.spacing.xs
-                })}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: colors.textPrimary,
-                    fontWeight: isActive ? '600' : '400'
-                  }}
-                >
-                  {pid}
-                </Text>
-                {isActive && Object.keys(allPersonas).length > 1 && (
-                  <Pressable onPress={() => onDeletePersona(pid)}>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: colors.textSecondary
-                      }}
-                    >
-                      ×
-                    </Text>
-                  </Pressable>
-                )}
-              </Pressable>
-            )
-          })}
+    <View
+      style={[
+        styles.list,
+        { borderColor: colors.borderStrong, backgroundColor: colors.bgSurfaceNormal }
+      ]}
+    >
+      {switchIds.map((pid, index) => {
+        const isActive = pid === activeId
+        const isLast = index === switchIds.length - 1
+        return (
           <Pressable
-            onPress={onAddPersona}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: tokens.spacing.md,
-              paddingVertical: tokens.spacing.sm,
-              borderRadius: tokens.radius.full,
-              borderWidth: 1,
-              borderColor: colors.primary,
-              borderStyle: 'dashed',
-              opacity: pressed ? 0.7 : 1,
-              gap: tokens.spacing.xs
-            })}
+            key={pid}
+            onPress={() => {
+              if (!isActive) onSwitch(pid)
+            }}
+            disabled={isActive}
+            style={({ pressed }) => [
+              styles.row,
+              !isLast && {
+                borderBottomWidth: 1,
+                borderBottomColor: colors.borderStrong
+              },
+              !isActive && pressed && { opacity: 0.7 }
+            ]}
           >
-            <Text style={{ fontSize: 14, color: colors.primary }}>+</Text>
-            <Text style={{ fontSize: 14, color: colors.primary }}>
-              {t('settings.new_identity', '新身份')}
+            <Text
+              style={[
+                hubStyles.rowTitle,
+                { color: isActive ? colors.primary : colors.textPrimary, flex: 1 }
+              ]}
+              numberOfLines={1}
+            >
+              {pid}
             </Text>
+            {isActive ? (
+              <Text style={[styles.activeMark, { color: colors.primary }]}>
+                {t('settings.identity_active_mark', '当前')}
+              </Text>
+            ) : null}
           </Pressable>
-        </View>
-      </ScrollView>
-    </>
+        )
+      })}
+    </View>
   )
 }
+
+const styles = StyleSheet.create({
+  list: {
+    borderWidth: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 12
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 11
+  },
+  activeMark: {
+    fontSize: 12,
+    fontWeight: '600'
+  }
+})

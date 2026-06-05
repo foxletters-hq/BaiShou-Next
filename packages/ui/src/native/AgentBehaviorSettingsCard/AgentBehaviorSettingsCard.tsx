@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native'
-import Slider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
+import { NativeSlider } from '../Slider'
 import { Input } from '../Input/Input'
 
 export interface AgentBehaviorSettingsCardProps {
@@ -74,19 +74,20 @@ export const AgentBehaviorSettingsCard: React.FC<AgentBehaviorSettingsCardProps>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
             {t('settings.temperature', '创造力 / 发散度')} ({tempDisplay})
           </Text>
-          <Slider
-            style={styles.slider}
-            minimumValue={0}
-            maximumValue={2.0}
-            step={0.1}
-            value={config.defaultTemperature}
-            onValueChange={(v) =>
-              onChange({ ...config, defaultTemperature: Math.round(v * 10) / 10 })
-            }
-            minimumTrackTintColor={colors.primary}
-            maximumTrackTintColor={colors.borderMuted}
-            thumbTintColor={colors.primary}
-          />
+          <View style={styles.slider}>
+            <NativeSlider
+              value={config.defaultTemperature}
+              minValue={0}
+              maxValue={2}
+              step={0.1}
+              onChange={(v) =>
+                onChange({
+                  ...config,
+                  defaultTemperature: Math.round((v as number) * 10) / 10
+                })
+              }
+            />
+          </View>
           <View style={styles.rangeRow}>
             <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>
               {t('settings.temp_low', '保守')}
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
     lineHeight: 20
   },
   divider: { height: 1, marginVertical: 16 },
-  slider: { width: '100%', height: 40 },
+  slider: { width: '100%', paddingVertical: 8 },
   rangeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

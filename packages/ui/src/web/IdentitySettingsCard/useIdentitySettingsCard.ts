@@ -19,11 +19,11 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
     Default: { id: 'Default', facts: {} }
   }
 
-  if (!allPersonas[activeId]) {
-    allPersonas[activeId] = { id: activeId, facts: {} }
-  }
+  const mergedPersonas = allPersonas[activeId]
+    ? allPersonas
+    : { ...allPersonas, [activeId]: { id: activeId, facts: {} } }
 
-  const currentFacts = allPersonas[activeId].facts || {}
+  const currentFacts = mergedPersonas[activeId].facts || {}
   const [collapsed, setCollapsed] = useState(true)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [isFactModalOpen, setIsFactModalOpen] = useState(false)
@@ -35,8 +35,8 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
       onChange({ ...profile, activePersonaId: pid })
     } else {
       const newName = await dialog.prompt(t('settings.rename_identity_card', '重命名身份卡'), pid)
-      if (newName && newName !== pid && !allPersonas[newName]) {
-        const nextPersonas = { ...allPersonas }
+      if (newName && newName !== pid && !mergedPersonas[newName]) {
+        const nextPersonas = { ...mergedPersonas }
         nextPersonas[newName] = { ...nextPersonas[pid], id: newName }
         delete nextPersonas[pid]
         onChange({
@@ -50,9 +50,9 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
 
   const handleAddPersona = async () => {
     const newName = await dialog.prompt(t('settings.new_identity_card', '新建身份卡'), '')
-    if (newName && !allPersonas[newName]) {
+    if (newName && !mergedPersonas[newName]) {
       const nextPersonas = {
-        ...allPersonas,
+        ...mergedPersonas,
         [newName]: { id: newName, facts: {} }
       }
       onChange({
@@ -98,8 +98,8 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
     onChange({
       ...profile,
       personas: {
-        ...allPersonas,
-        [activeId]: { ...allPersonas[activeId], facts: nextFacts }
+        ...mergedPersonas,
+        [activeId]: { ...mergedPersonas[activeId], facts: nextFacts }
       }
     })
     setIsFactModalOpen(false)
@@ -107,7 +107,7 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
 
   const handleDeletePersona = async (pid: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (Object.keys(allPersonas).length <= 1) {
+    if (Object.keys(mergedPersonas).length <= 1) {
       toast.showError(t('settings.identity_min_one', '至少保留一张身份卡！'))
       return
     }
@@ -115,7 +115,7 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
       t('settings.delete_identity_card', '确定删除身份卡: $personaId').replace('$personaId', pid)
     )
     if (confirmed) {
-      const nextPersonas = { ...allPersonas }
+      const nextPersonas = { ...mergedPersonas }
       delete nextPersonas[pid]
       const remainingIds = Object.keys(nextPersonas)
       onChange({
@@ -136,8 +136,8 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
       onChange({
         ...profile,
         personas: {
-          ...allPersonas,
-          [activeId]: { ...allPersonas[activeId], facts: nextFacts }
+          ...mergedPersonas,
+          [activeId]: { ...mergedPersonas[activeId], facts: nextFacts }
         }
       })
     }
@@ -145,7 +145,7 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
 
   return {
     activeId,
-    allPersonas,
+    allPersonas: mergedPersonas,
     currentFacts,
     collapsed,
     setCollapsed,

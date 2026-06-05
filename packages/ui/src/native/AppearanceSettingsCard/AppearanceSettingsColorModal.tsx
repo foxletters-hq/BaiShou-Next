@@ -1,8 +1,8 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, Modal } from 'react-native'
-import Slider from '@react-native-community/slider'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { NativeSlider } from '../Slider'
 import { appearanceSettingsStyles as styles } from './appearance-settings.styles'
 
 export interface AppearanceSettingsColorModalProps {
@@ -32,6 +32,7 @@ export const AppearanceSettingsColorModal: React.FC<AppearanceSettingsColorModal
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const colorThumb = { thumbColor: previewColor }
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -52,42 +53,39 @@ export const AppearanceSettingsColorModal: React.FC<AppearanceSettingsColorModal
             <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>
               {t('settings.theme_hue', '色相')}
             </Text>
-            <Slider
-              style={{ flex: 1, height: 40 }}
-              minimumValue={0}
-              maximumValue={360}
+            <NativeSlider
               value={hue}
-              onValueChange={onHueChange}
-              minimumTrackTintColor={previewColor}
-              thumbTintColor={previewColor}
+              minValue={0}
+              maxValue={360}
+              onChange={(v) => onHueChange(v as number)}
+              fillColor={previewColor}
+              thumbOptions={colorThumb}
             />
           </View>
           <View style={styles.sliderRow}>
             <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>
               {t('settings.theme_saturation', '饱和')}
             </Text>
-            <Slider
-              style={{ flex: 1, height: 40 }}
-              minimumValue={0}
-              maximumValue={100}
+            <NativeSlider
               value={sat}
-              onValueChange={onSatChange}
-              minimumTrackTintColor={previewColor}
-              thumbTintColor={previewColor}
+              minValue={0}
+              maxValue={100}
+              onChange={(v) => onSatChange(v as number)}
+              fillColor={previewColor}
+              thumbOptions={colorThumb}
             />
           </View>
           <View style={styles.sliderRow}>
             <Text style={[styles.sliderLabel, { color: colors.textSecondary }]}>
               {t('settings.theme_lightness', '明度')}
             </Text>
-            <Slider
-              style={{ flex: 1, height: 40 }}
-              minimumValue={20}
-              maximumValue={90}
+            <NativeSlider
               value={lit}
-              onValueChange={onLitChange}
-              minimumTrackTintColor={previewColor}
-              thumbTintColor={previewColor}
+              minValue={20}
+              maxValue={90}
+              onChange={(v) => onLitChange(v as number)}
+              fillColor={previewColor}
+              thumbOptions={colorThumb}
             />
           </View>
 

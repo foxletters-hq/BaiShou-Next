@@ -5,6 +5,7 @@ export * from './Input'
 export * from './Modal'
 export * from './Select'
 export * from './Switch'
+export * from './Slider'
 export * from './Toast'
 export * from './Badge'
 export * from './Dialog'
@@ -113,3 +114,5 @@ export {
 } from './theme'
 
 export { NATIVE_APP_BRAND_ICON, resolveNativeUserAvatarSource } from './user-avatar.util'
+
+export { useKeyboardHeight, type UseKeyboardHeightOptions } from './hooks/useKeyboardHeight'

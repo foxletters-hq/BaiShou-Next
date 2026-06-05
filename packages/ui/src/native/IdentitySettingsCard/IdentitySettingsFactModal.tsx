@@ -3,7 +3,7 @@ import { View, Text, Pressable, Modal } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
-import { Button } from '../Button/Button'
+import { Button } from '../Button'
 
 export interface IdentitySettingsFactModalProps {
   visible: boolean
@@ -85,10 +85,10 @@ export const IdentitySettingsFactModal: React.FC<IdentitySettingsFactModalProps>
               gap: tokens.spacing.sm
             }}
           >
-            <Button variant="text" onPress={onClose}>
+            <Button variant="outline" onPress={onClose}>
               {t('common.cancel', '取消')}
             </Button>
-            <Button variant="elevated" onPress={onSave}>
+            <Button variant="primary" onPress={onSave}>
               {t('common.save', '保存')}
             </Button>
           </View>

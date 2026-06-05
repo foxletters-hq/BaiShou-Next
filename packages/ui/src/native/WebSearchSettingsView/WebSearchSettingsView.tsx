@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
-import Slider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
+import { NativeSlider } from '../Slider'
 import { Switch } from '../Switch'
 import { SettingsSection } from '../SettingsSection'
 
@@ -32,7 +32,7 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
   const { colors } = useNativeTheme()
 
   return (
-    <ScrollView style={styles.scroll}>
+    <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
       <SettingsSection title={t('websearch.title', '网页搜索设置')}>
         <View style={styles.row}>
           <View style={styles.rowText}>
@@ -134,16 +134,12 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
               </TouchableOpacity>
             </View>
           </View>
-          <Slider
-            style={styles.slider}
-            minimumValue={1}
-            maximumValue={30}
-            step={1}
+          <NativeSlider
             value={config.maxResults}
-            onValueChange={(v) => onChange({ ...config, maxResults: Math.round(v) })}
-            minimumTrackTintColor={colors.primary}
-            maximumTrackTintColor={colors.borderMuted}
-            thumbTintColor={colors.primary}
+            minValue={1}
+            maxValue={30}
+            step={1}
+            onChange={(v) => onChange({ ...config, maxResults: Math.round(v as number) })}
           />
           <View style={styles.rangeRow}>
             <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>1</Text>
@@ -210,7 +206,6 @@ const styles = StyleSheet.create({
     minWidth: 28,
     textAlign: 'center'
   },
-  slider: { width: '100%', height: 40, marginTop: 4 },
   rangeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,16 +1,16 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, Pressable, ViewProps, Modal, TouchableWithoutFeedback } from 'react-native'
+import { View, Text, Pressable, ViewProps, Modal, ScrollView, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
 
 export interface NativeTooltipProps extends ViewProps {
   content: React.ReactNode
-  position?: 'top' | 'bottom'
+  position?: 'top' | 'bottom' | 'center'
 }
 
 export const Tooltip: React.FC<NativeTooltipProps> = ({
   content,
   children,
-  position = 'bottom',
+  position = 'center',
   style,
   ...props
 }) => {
@@ -31,6 +31,22 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
     setLayout({ x, y, width, height })
   }, [])
 
+  const isDark =
+    colors.textPrimary === '#ffffff' ||
+    colors.bgApp === '#000000' ||
+    colors.bgApp === '#121212' ||
+    colors.bgSurface === '#1e1e1e'
+
+  const solidBg = colors.bgSurface
+  const solidBorder = colors.borderSubtle
+  const shadowColor = '#000'
+
+  const getJustifyContent = () => {
+    if (position === 'top') return 'flex-start'
+    if (position === 'bottom') return 'flex-end'
+    return 'center'
+  }
+
   return (
     <>
       <Pressable onPress={handlePress} onLayout={handleLayout} style={style} {...props}>
@@ -39,48 +55,65 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
 
       {isVisible && (
         <Modal transparent visible={isVisible} animationType="fade" onRequestClose={handleClose}>
-          <TouchableWithoutFeedback onPress={handleClose}>
+          <View
+            style={{
+              flex: 1,
+              justifyContent: getJustifyContent(),
+              alignItems: 'center',
+              paddingBottom: position === 'bottom' ? 120 : 20,
+              paddingTop: position === 'top' ? 120 : 20,
+              paddingHorizontal: 20
+            }}
+          >
+            {/* 背景遮罩层：同级并列，点击关闭弹窗 */}
+            <Pressable
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: 'rgba(0, 0, 0, 0.4)' }
+              ]}
+              onPress={handleClose}
+            />
+
+            {/* 卡片本体：不再嵌套于 TouchableWithoutFeedback 内部，防止滚动事件被截断 */}
             <View
               style={{
-                flex: 1,
-                justifyContent: position === 'top' ? 'flex-start' : 'flex-end',
-                alignItems: 'center',
-                paddingBottom: position === 'bottom' ? 100 : 0,
-                paddingTop: position === 'top' ? 100 : 0
+                backgroundColor: solidBg,
+                borderColor: solidBorder,
+                borderWidth: 1,
+                borderRadius: tokens.radius.lg,
+                paddingHorizontal: tokens.spacing.md,
+                paddingVertical: tokens.spacing.md,
+                maxWidth: '92%',
+                width: 320,
+                maxHeight: 360,
+                elevation: 5,
+                shadowColor: shadowColor,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: isDark ? 0.35 : 0.12,
+                shadowRadius: 8
               }}
             >
-              <TouchableWithoutFeedback>
-                <View
-                  style={{
-                    backgroundColor: colors.inverseSurface,
-                    borderRadius: tokens.radius.md,
-                    paddingHorizontal: tokens.spacing.md,
-                    paddingVertical: tokens.spacing.sm,
-                    maxWidth: '80%',
-                    elevation: 4,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 4
-                  }}
-                >
-                  {typeof content === 'string' ? (
-                    <Text
-                      style={{
-                        color: colors.inverseOnSurface,
-                        fontSize: 14,
-                        lineHeight: 20
-                      }}
-                    >
-                      {content}
-                    </Text>
-                  ) : (
-                    content
-                  )}
-                </View>
-              </TouchableWithoutFeedback>
+              <ScrollView
+                style={{ maxHeight: 328 }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {typeof content === 'string' ? (
+                  <Text
+                    style={{
+                      color: colors.textPrimary,
+                      fontSize: 14,
+                      lineHeight: 21
+                    }}
+                  >
+                    {content}
+                  </Text>
+                ) : (
+                  content
+                )}
+              </ScrollView>
             </View>
-          </TouchableWithoutFeedback>
+          </View>
         </Modal>
       )}
     </>

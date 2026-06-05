@@ -3,6 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '../Toast'
 import { useDialog } from '../Dialog'
 import type { NativeIdentitySettingsCardProps } from './identity-settings.types'
+import {
+  removeRecentPersonaId,
+  renameRecentPersonaId,
+  updateRecentPersonaIds
+} from './identity-recent.utils'
 
 export function useIdentitySettings({ profile, onChange }: NativeIdentitySettingsCardProps) {
   const { t } = useTranslation()
@@ -18,15 +23,19 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
     Default: { id: 'Default', facts: {} }
   }
 
-  if (!allPersonas[activeId]) {
-    allPersonas[activeId] = { id: activeId, facts: {} }
-  }
+  const mergedPersonas = allPersonas[activeId]
+    ? allPersonas
+    : { ...allPersonas, [activeId]: { id: activeId, facts: {} } }
 
-  const currentFacts = allPersonas[activeId].facts || {}
+  const currentFacts = mergedPersonas[activeId].facts || {}
 
   const handleSwitch = async (pid: string) => {
     if (pid !== activeId) {
-      onChange({ ...profile, activePersonaId: pid })
+      onChange({
+        ...profile,
+        activePersonaId: pid,
+        recentPersonaIds: updateRecentPersonaIds(profile.recentPersonaIds, activeId, pid)
+      })
       return
     }
     const newName = await dialog.prompt(
@@ -34,39 +43,41 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
       pid,
       t('settings.rename_identity_card', '重命名身份卡')
     )
-    if (newName && newName !== pid && !allPersonas[newName]) {
-      const nextPersonas = { ...allPersonas }
+    if (newName && newName !== pid && !mergedPersonas[newName]) {
+      const nextPersonas = { ...mergedPersonas }
       nextPersonas[newName] = { ...nextPersonas[pid], id: newName }
       delete nextPersonas[pid]
       onChange({
         ...profile,
         personas: nextPersonas,
-        activePersonaId: newName
+        activePersonaId: newName,
+        recentPersonaIds: renameRecentPersonaId(profile.recentPersonaIds, pid, newName)
       })
     }
   }
 
   const handleAddPersona = async () => {
     const newName = await dialog.prompt(
-      t('settings.new_identity_card', '新建身份卡'),
+      t('settings.identity_name_prompt', '请输入身份卡名称'),
       '',
       t('settings.new_identity_card', '新建身份卡')
     )
-    if (newName && !allPersonas[newName]) {
+    if (newName && !mergedPersonas[newName]) {
       const nextPersonas = {
-        ...allPersonas,
+        ...mergedPersonas,
         [newName]: { id: newName, facts: {} }
       }
       onChange({
         ...profile,
         personas: nextPersonas,
-        activePersonaId: newName
+        activePersonaId: newName,
+        recentPersonaIds: updateRecentPersonaIds(profile.recentPersonaIds, activeId, newName)
       })
     }
   }
 
   const handleDeletePersona = async (pid: string) => {
-    if (Object.keys(allPersonas).length <= 1) {
+    if (Object.keys(mergedPersonas).length <= 1) {
       toast.showToast(t('settings.identity_min_one', '至少保留一张身份卡！'), 'error')
       return
     }
@@ -75,13 +86,15 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
       { confirmText: t('common.confirm', '确定'), destructive: true }
     )
     if (!confirmed) return
-    const nextPersonas = { ...allPersonas }
+    const nextPersonas = { ...mergedPersonas }
     delete nextPersonas[pid]
     const remainingIds = Object.keys(nextPersonas)
+    const nextActiveId = remainingIds[0]!
     onChange({
       ...profile,
       personas: nextPersonas,
-      activePersonaId: remainingIds[0]
+      activePersonaId: nextActiveId,
+      recentPersonaIds: removeRecentPersonaId(profile.recentPersonaIds, pid)
     })
   }
 
@@ -120,8 +133,8 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
     onChange({
       ...profile,
       personas: {
-        ...allPersonas,
-        [activeId]: { ...allPersonas[activeId], facts: nextFacts }
+        ...mergedPersonas,
+        [activeId]: { ...mergedPersonas[activeId], facts: nextFacts }
       }
     })
     setIsFactModalOpen(false)
@@ -138,8 +151,8 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
     onChange({
       ...profile,
       personas: {
-        ...allPersonas,
-        [activeId]: { ...allPersonas[activeId], facts: nextFacts }
+        ...mergedPersonas,
+        [activeId]: { ...mergedPersonas[activeId], facts: nextFacts }
       }
     })
   }
@@ -148,13 +161,13 @@ export function useIdentitySettings({ profile, onChange }: NativeIdentitySetting
     isFactModalOpen,
     setIsFactModalOpen,
     editingKey,
-    editKeyInput,
     setEditKeyInput,
     editValInput,
     setEditValInput,
     activeId,
-    allPersonas,
+    allPersonas: mergedPersonas,
     currentFacts,
+    editKeyInput,
     handleSwitch,
     handleAddPersona,
     handleDeletePersona,

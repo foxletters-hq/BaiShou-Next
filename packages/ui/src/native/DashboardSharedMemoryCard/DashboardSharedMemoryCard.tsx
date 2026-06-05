@@ -96,6 +96,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
             minimumValue={SLIDER_MIN}
             maximumValue={sliderMax}
             step={1}
+            onPreviewChange={(v) => setDraftMonths(String(v))}
             onValueChange={onMonthsChanged}
           />
         </View>

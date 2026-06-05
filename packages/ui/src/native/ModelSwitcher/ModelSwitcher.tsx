@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
+import { Button } from '../Button'
 
 export interface MockAiProviderModel {
   id: string
@@ -159,25 +160,23 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
             }
           />
 
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
             {filteredProviders.length === 0 ? (
               <View style={styles.emptyWrap}>
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {t('common.no_match_model', '没有匹配的可用模型')}
                 </Text>
                 {onManageProviders && (
-                  <TouchableOpacity
-                    style={[styles.manageBtn, { backgroundColor: colors.primaryContainer }]}
+                  <Button
+                    variant="ghost"
                     onPress={() => {
                       onManageProviders()
                       onClose()
                     }}
                   >
-                    <MaterialIcons name="settings" size={16} color={colors.onPrimaryContainer} />
-                    <Text style={[styles.manageBtnText, { color: colors.onPrimaryContainer }]}>
-                      {t('agent.manageProviders', '管理模型与供应商')}
-                    </Text>
-                  </TouchableOpacity>
+                    <MaterialIcons name="settings" size={16} color={colors.primary} />
+                    {t('agent.manageProviders', '管理模型与供应商')}
+                  </Button>
                 )}
               </View>
             ) : (
@@ -247,18 +246,18 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
           </ScrollView>
 
           {onManageProviders && filteredProviders.length > 0 && (
-            <TouchableOpacity
-              style={[styles.footerBtn, { borderTopColor: colors.borderSubtle }]}
+            <Button
+              variant="ghost"
+              className="w-full border-t border-border mt-1 pt-3.5"
+              style={{ borderTopColor: colors.borderSubtle }}
               onPress={() => {
                 onManageProviders()
                 onClose()
               }}
             >
               <MaterialIcons name="settings" size={18} color={colors.primary} />
-              <Text style={[styles.footerBtnText, { color: colors.primary }]}>
-                {t('agent.manageProviders', '管理模型与供应商')}
-              </Text>
-            </TouchableOpacity>
+              {t('agent.manageProviders', '管理模型与供应商')}
+            </Button>
           )}
         </Animated.View>
       </View>
@@ -306,18 +305,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center'
   },
-  manageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20
-  },
-  manageBtnText: {
-    fontSize: 14,
-    fontWeight: '600'
-  },
   providerGroup: {
     marginBottom: 14
   },
@@ -352,17 +339,5 @@ const styles = StyleSheet.create({
   modelName: {
     flex: 1,
     fontSize: 14
-  },
-  footerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    borderTopWidth: 1
-  },
-  footerBtnText: {
-    fontSize: 14,
-    fontWeight: '600'
   }
 })

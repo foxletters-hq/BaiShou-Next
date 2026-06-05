@@ -35,7 +35,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
   const filteredSessions = useMemo(() => {
     if (!searchQuery.trim()) return sessions
     const query = searchQuery.toLowerCase()
-    return sessions.filter((s) => s.title.toLowerCase().includes(query))
+    return sessions.filter((s) => (s.title ?? '').toLowerCase().includes(query))
   }, [sessions, searchQuery])
 
   const groupedSessions = useMemo(

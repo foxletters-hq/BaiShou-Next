@@ -1,7 +1,8 @@
 import React from 'react'
-import { View, Text, Pressable, Platform, StyleSheet } from 'react-native'
+import { View, Text, Platform, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Button } from '../Button'
 
 export interface StoragePermissionPromptProps {
   onRequest: () => void | Promise<void>
@@ -48,27 +49,13 @@ export const StoragePermissionPrompt: React.FC<StoragePermissionPromptProps> = (
       <Text style={[styles.desc, { color: colors.textSecondary }]}>
         {t(isOptional ? 'storage.all_files_access_desc_optional' : 'storage.all_files_access_desc')}
       </Text>
-      <Pressable
+      <Button
+        variant={isOptional ? 'outline' : 'primary'}
         onPress={onRequest}
-        style={({ pressed }) => [
-          styles.button,
-          {
-            opacity: pressed ? 0.85 : 1,
-            backgroundColor: isOptional ? colors.bgSurface : colors.primary,
-            borderWidth: isOptional ? 1 : 0,
-            borderColor: isOptional ? colors.borderSubtle : undefined
-          }
-        ]}
+        className="self-start"
       >
-        <Text
-          style={[
-            styles.buttonText,
-            { color: isOptional ? colors.textPrimary : colors.textOnPrimary }
-          ]}
-        >
-          {t(isOptional ? 'storage.enable_external_sync' : 'settings.check_storage_permission')}
-        </Text>
-      </Pressable>
+        {t(isOptional ? 'storage.enable_external_sync' : 'settings.check_storage_permission')}
+      </Button>
     </View>
   )
 }
@@ -88,15 +75,5 @@ const styles = StyleSheet.create({
   desc: {
     fontSize: 13,
     lineHeight: 18
-  },
-  button: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10
-  },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: '600'
   }
 })

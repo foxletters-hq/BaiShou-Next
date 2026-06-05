@@ -156,25 +156,6 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   label: { fontSize: 14, fontWeight: '500', marginBottom: 4 },
   hint: { fontSize: 12, lineHeight: 18, marginTop: 6, paddingHorizontal: 16, paddingBottom: 8 },
-  slider: { width: '100%', height: 40 },
-  sliderWrap: {
-    position: 'relative',
-    justifyContent: 'center',
-    height: 40
-  },
-  trackBase: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: '50%',
-    marginTop: -3
-  },
-  trackActive: {
-    position: 'absolute',
-    left: 0,
-    top: '50%',
-    marginTop: -3
-  },
   progressBox: {
     paddingHorizontal: 16,
     paddingVertical: 12

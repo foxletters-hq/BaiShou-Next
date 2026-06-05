@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 export interface NativeSelectOption {
   label: string
   value: string
+  leading?: React.ReactNode
 }
 
 export interface NativeSelectProps {
@@ -54,14 +55,19 @@ export const Select: React.FC<NativeSelectProps> = ({
         }}
         onPress={() => setModalVisible(true)}
       >
-        <Text
-          style={{
-            color: selectedOpt ? colors.textPrimary : colors.textSecondary,
-            fontSize: 16
-          }}
-        >
-          {selectedOpt ? selectedOpt.label : placeholder || 'Select...'}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+          {selectedOpt?.leading}
+          <Text
+            style={{
+              color: selectedOpt ? colors.textPrimary : colors.textSecondary,
+              fontSize: 16,
+              flex: 1
+            }}
+            numberOfLines={1}
+          >
+            {selectedOpt ? selectedOpt.label : placeholder || 'Select...'}
+          </Text>
+        </View>
         <Text style={{ color: colors.textSecondary, fontSize: 12 }}>▼</Text>
       </TouchableOpacity>
       {error ? (
@@ -107,13 +113,18 @@ export const Select: React.FC<NativeSelectProps> = ({
                       style={{
                         padding: tokens.spacing.md,
                         borderBottomWidth: 1,
-                        borderBottomColor: colors.bgSurfaceNormal
+                        borderBottomColor: colors.bgSurfaceNormal,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8
                       }}
                       onPress={() => {
                         onValueChange?.(item.value)
                         setModalVisible(false)
                       }}
                     >
+                      {item.leading}
                       <Text
                         style={{
                           color: colors.textPrimary,

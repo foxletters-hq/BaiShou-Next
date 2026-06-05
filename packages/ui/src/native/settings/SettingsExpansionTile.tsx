@@ -16,6 +16,7 @@ export type SettingsExpansionFrame = 'primary' | 'subtle' | 'none'
 
 export interface SettingsExpansionTileProps {
   title: string
+  titleAddon?: React.ReactNode
   subtitle?: string
   children: React.ReactNode
   embedded?: boolean
@@ -31,6 +32,7 @@ export interface SettingsExpansionTileProps {
 
 export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
   title,
+  titleAddon,
   subtitle,
   children,
   embedded = false,
@@ -87,7 +89,10 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
       ]}
     >
       <View style={{ flex: 1 }}>
-        <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{title}</Text>
+          {titleAddon}
+        </View>
         {subtitle ? (
           <Text
             style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2, fontWeight: '400' }}

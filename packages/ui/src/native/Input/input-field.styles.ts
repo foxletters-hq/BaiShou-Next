@@ -3,14 +3,14 @@ import type { lightColors } from '../../theme'
 
 type ThemeColors = typeof lightColors
 
-/** HeroUI Input 默认场域外观（rounded-2xl + 1.5px 边框），不依赖 Uniwind 是否生效 */
+/** HeroUI Input 默认场域外观（rounded-2xl + 1px 边框），不依赖 Uniwind 是否生效 */
 export function getHeroInputFieldStyle(
   colors: ThemeColors,
   options?: { multiline?: boolean }
 ): TextStyle {
   return {
     backgroundColor: colors.bgSurface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: 16,
     borderCurve: 'continuous',

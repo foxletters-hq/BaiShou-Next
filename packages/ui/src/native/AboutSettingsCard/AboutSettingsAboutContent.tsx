@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, Pressable, Image, ImageSourcePropType, Linking } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Button } from '../Button'
 
 export interface AboutSettingsAboutContentProps {
   version: string
@@ -148,27 +149,9 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
         </View>
       </Pressable>
 
-      <Pressable
-        onPress={onOpenGithubHost}
-        style={({ pressed }) => ({
-          backgroundColor: colors.primary,
-          borderRadius: tokens.radius.full,
-          paddingVertical: tokens.spacing.md,
-          paddingHorizontal: tokens.spacing.lg,
-          alignItems: 'center',
-          opacity: pressed ? 0.8 : 1
-        })}
-      >
-        <Text
-          style={{
-            color: colors.onPrimary,
-            fontSize: 16,
-            fontWeight: '600'
-          }}
-        >
-          {t('about.visit_github', '访问 GitHub 仓库')}
-        </Text>
-      </Pressable>
+      <Button variant="primary" onPress={onOpenGithubHost} className="w-full">
+        {t('about.visit_github', '访问 GitHub 仓库')}
+      </Button>
     </View>
   )
 }

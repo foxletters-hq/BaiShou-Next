@@ -20,4 +20,5 @@ export interface TTSProviderSettingsProps {
     config: TtsProviderConfig,
     text: string
   ) => Promise<{ success: boolean; message?: string }>
+  onFetchModels?: (providerId: string, apiKey: string, baseUrl: string) => Promise<string[]>
 }

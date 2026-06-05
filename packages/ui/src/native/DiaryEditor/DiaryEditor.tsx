@@ -10,14 +10,14 @@ import {
   Keyboard,
   LayoutAnimation,
   Platform,
-  Pressable,
-  useWindowDimensions
+  Pressable
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { useNativeTheme } from '../theme'
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
 import { Input } from '../Input/Input'
 import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
@@ -70,13 +70,11 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const { height: windowHeight } = useWindowDimensions()
   const [viewMode, setViewMode] = useState<DiaryEditorViewMode>('edit')
   const [selection, setSelection] = useState({ start: 0, end: 0 })
   const [editorHeight, setEditorHeight] = useState(200)
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const [activeImage, setActiveImage] = useState<ParsedDiaryImage | null>(null)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [toolbarHeight, setToolbarHeight] = useState(52)
   const textInputRef = useRef<RNTextInput>(null)
   const keyboardInsetLockedRef = useRef(false)
@@ -84,6 +82,14 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const selectionRef = useRef({ start: 0, end: 0 })
   const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null)
   const toolbarInsertingRef = useRef(false)
+
+  const { keyboardHeight, syncFromMetrics, resetKeyboard } = useKeyboardHeight({
+    shouldIgnoreShow: () => keyboardInsetLockedRef.current,
+    shouldIgnoreHide: () => toolbarInsertingRef.current,
+    onHide: () => {
+      keyboardInsetLockedRef.current = false
+    }
+  })
 
   contentRef.current = content
 
@@ -107,28 +113,17 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     }
   }, [content, syncSelection])
 
-  const syncKeyboardInsetFromMetrics = useCallback(() => {
-    const metrics = Keyboard.metrics()
-    if (metrics?.height) {
-      setKeyboardHeight(metrics.height)
-      return
-    }
-    if (metrics && metrics.screenY > 0 && windowHeight > metrics.screenY) {
-      setKeyboardHeight(windowHeight - metrics.screenY)
-    }
-  }, [windowHeight])
-
   const refocusEditor = useCallback(
     (sel: { start: number; end: number }) => {
       requestAnimationFrame(() => {
         textInputRef.current?.focus()
         textInputRef.current?.setNativeProps?.({ selection: sel })
         if (Platform.OS === 'android') {
-          requestAnimationFrame(syncKeyboardInsetFromMetrics)
+          requestAnimationFrame(syncFromMetrics)
         }
       })
     },
-    [syncKeyboardInsetFromMetrics]
+    [syncFromMetrics]
   )
 
   const insertAtPosition = useCallback(
@@ -212,40 +207,10 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     LayoutAnimation.configureNext(
       LayoutAnimation.create(0, LayoutAnimation.Types.linear, 'opacity')
     )
-    setKeyboardHeight(0)
+    resetKeyboard()
     textInputRef.current?.blur()
     Keyboard.dismiss()
-  }, [])
-
-  const resolveKeyboardInset = useCallback(
-    (end: { height: number; screenY: number }) => {
-      if (end.height > 0) return end.height
-      if (end.screenY > 0 && windowHeight > end.screenY) {
-        return windowHeight - end.screenY
-      }
-      const metrics = Keyboard.metrics()
-      return metrics?.height ?? 0
-    },
-    [windowHeight]
-  )
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      if (keyboardInsetLockedRef.current) return
-      setKeyboardHeight(resolveKeyboardInset(e.endCoordinates))
-    })
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      if (toolbarInsertingRef.current) return
-      keyboardInsetLockedRef.current = false
-      setKeyboardHeight(0)
-    })
-    return () => {
-      showSub.remove()
-      hideSub.remove()
-    }
-  }, [resolveKeyboardInset])
+  }, [resetKeyboard])
 
   const handleImageWidthDelta = useCallback(
     (delta: number) => {
@@ -341,6 +306,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           ]}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.editorMain}>
             {!isSummaryMode && onWeatherChange && viewMode === 'edit' && (
@@ -389,7 +355,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
                   keyboardInsetLockedRef.current = false
                   updateActiveImageFromSelection(selectionRef.current.end)
                   if (Platform.OS === 'android') {
-                    requestAnimationFrame(syncKeyboardInsetFromMetrics)
+                    requestAnimationFrame(syncFromMetrics)
                   }
                 }}
               />
