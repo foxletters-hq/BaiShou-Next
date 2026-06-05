@@ -40,7 +40,8 @@ if (clearCache) {
 const child = spawn('npx', expoArgs, {
   cwd: mobileRoot,
   env,
-  stdio: 'inherit'
+  stdio: 'inherit',
+  shell: process.platform === 'win32'
 })
 
 let openedOnDevice = false
