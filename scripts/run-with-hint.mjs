@@ -16,7 +16,7 @@ console.log(`\n📌 ${hint}\n`)
 
 const result = spawnSync(command, args, {
   stdio: 'inherit',
-  shell: false,
+  shell: process.platform === 'win32',
   env: process.env
 })
 

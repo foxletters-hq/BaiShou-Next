@@ -51,7 +51,8 @@ const args = ['expo', 'run:android', '--port', String(METRO_PORT), '--no-build-c
 const child = spawn('npx', args, {
   cwd: mobileRoot,
   env: devClientEnv(),
-  stdio: 'inherit'
+  stdio: 'inherit',
+  shell: process.platform === 'win32'
 })
 
 child.on('exit', (code) => {
