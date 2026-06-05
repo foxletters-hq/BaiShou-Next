@@ -1,23 +1,19 @@
 #!/usr/bin/env node
 /**
- * 将 packages/shared/assets/images/icon.png 同步到各端消费路径。
- * 唯一源文件：packages/shared/assets/images/icon.png
+ * 以移动端 icon 为准，同步到 desktop / shared。
  *
- * 用法：
- *   node scripts/sync-app-icon.mjs          # 写入目标文件
- *   node scripts/sync-app-icon.mjs --check  # 仅校验，不一致时 exit 1
+ * 换 icon：覆盖 apps/mobile/assets/images/icon.png → 重编 APK。
+ * Android 使用 legacy launcher（与 Flutter 一致），由系统自动加边距，无需再生成 foreground。
  */
 import { createHash } from 'node:crypto'
-import { copyFileSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const source = join(root, 'packages/shared/assets/images/icon.png')
-const targets = [
-  join(root, 'apps/desktop/resources/icon.png'),
-  join(root, 'apps/mobile/assets/images/icon.png')
-]
+const mobileIcon = join(root, 'apps/mobile/assets/images/icon.png')
+const sharedIcon = join(root, 'packages/shared/assets/images/icon.png')
+const desktopIcon = join(root, 'apps/desktop/resources/icon.png')
 
 const checkOnly = process.argv.includes('--check')
 
@@ -25,32 +21,37 @@ function md5(filePath) {
   return createHash('md5').update(readFileSync(filePath)).digest('hex')
 }
 
-const sourceHash = md5(source)
-const outOfSync = targets.filter((target) => {
+if (!existsSync(mobileIcon)) {
+  console.error(`[sync-app-icon] 缺少移动端 icon：${mobileIcon}`)
+  process.exit(1)
+}
+
+const mobileHash = md5(mobileIcon)
+const staleTargets = [sharedIcon, desktopIcon].filter((target) => {
   try {
-    return md5(target) !== sourceHash
+    return md5(target) !== mobileHash
   } catch {
     return true
   }
 })
 
 if (checkOnly) {
-  if (outOfSync.length > 0) {
+  if (staleTargets.length > 0) {
     console.error(
-      '[sync-app-icon] 以下文件与源 icon 不一致或缺失，请执行: pnpm sync:icons\n' +
-        outOfSync.map((p) => `  - ${p}`).join('\n')
+      '[sync-app-icon] desktop/shared 与 mobile icon 不一致，请执行: pnpm sync:icons\n' +
+        staleTargets.map((p) => `  - ${p}`).join('\n')
     )
     process.exit(1)
   }
-  console.log('[sync-app-icon] 各端 icon.png 已与 shared 源一致')
+  console.log('[sync-app-icon] mobile icon 已同步到各端')
   process.exit(0)
 }
 
-for (const target of outOfSync.length > 0 ? outOfSync : targets) {
-  copyFileSync(source, target)
+for (const target of staleTargets) {
+  copyFileSync(mobileIcon, target)
   console.log(`[sync-app-icon] ${target}`)
 }
 
-if (outOfSync.length === 0) {
-  console.log('[sync-app-icon] 已是最新，无需写入')
+if (staleTargets.length === 0) {
+  console.log('[sync-app-icon] desktop/shared 已是最新')
 }

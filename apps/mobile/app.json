@@ -11,11 +11,6 @@
       "supportsTablet": true
     },
     "android": {
-      "softwareKeyboardLayoutMode": "resize",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#FFFFFF"
-      },
       "package": "com.anonymous.mobile",
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -29,6 +24,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withAndroidAdjustNothing.js",
       "expo-dev-client",
       "expo-router",
       [
