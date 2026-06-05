@@ -90,6 +90,7 @@ describe('ShadowIndexSyncService', () => {
       getGlobalRegistryDirectory: async () => path.join(tmpDir, '.registry'),
       getVaultDirectory: async () => path.join(tmpDir, 'TestVault'),
       getVaultSystemDirectory: async () => path.join(tmpDir, 'TestVault', '.baishou'),
+      getShadowIndexDirectory: async () => path.join(tmpDir, 'TestVault', '.baishou'),
       getRootDirectory: async () => tmpDir,
       getSnapshotsDirectory: async () => path.join(tmpDir, 'snapshots'),
       getJournalsBaseDirectory: async () => journalsDir,
@@ -175,6 +176,18 @@ describe('ShadowIndexSyncService', () => {
     const r2 = await service.syncJournal('2026-03-29')
     expect(r2.isChanged).toBe(true)
     expect(r2.meta!.preview).toContain('修改后的内容')
+  })
+
+  it('syncJournal 应容错 mediaPaths: null 的 frontmatter', async () => {
+    const [year, month] = ['2026', '03']
+    const dir = path.join(journalsDir, year, month)
+    await fsp.mkdir(dir, { recursive: true })
+    const md = `---\ndate: 2026-03-27\nmediaPaths: null\n---\n\n正文内容`
+    await fsp.writeFile(path.join(dir, '2026-03-27.md'), md, 'utf8')
+
+    const result = await service.syncJournal('2026-03-27')
+    expect(result.isChanged).toBe(true)
+    expect(mockRepo._getRecordCount()).toBe(1)
   })
 
   // ── 4. 物理文件删除后的孤立索引清理 ──

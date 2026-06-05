@@ -20,6 +20,12 @@ export interface IStoragePathService {
   getVaultSystemDirectory(vaultName: string): Promise<string>
 
   /**
+   * 获取 Vault 影子索引 SQLite 所在目录（每 Vault 独立 shadow_index_v2.db）
+   * Desktop：与 getVaultSystemDirectory 相同；Mobile：应用沙盒内 per-vault 缓存目录
+   */
+  getShadowIndexDirectory(vaultName: string): Promise<string>
+
+  /**
    * 获取应用全局存放所有 Vaults 的根目录
    */
   getRootDirectory(): Promise<string>

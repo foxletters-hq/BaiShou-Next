@@ -62,7 +62,8 @@ export function parseJournalMarkdown(raw: string, fallbackDate: string): ParsedJ
   let mediaPaths: string[] = []
   if (meta['mediaPaths'] || meta['media_paths']) {
     try {
-      mediaPaths = JSON.parse(meta['mediaPaths'] || meta['media_paths'] || '[]')
+      const parsed = JSON.parse(meta['mediaPaths'] || meta['media_paths'] || '[]')
+      mediaPaths = Array.isArray(parsed) ? parsed.filter(Boolean).map(String) : []
     } catch {
       /* ignore */
     }

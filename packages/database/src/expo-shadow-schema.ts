@@ -3,7 +3,7 @@ import { executeRawSql } from './raw-sql.executor'
 import type { ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
 
 /**
- * 移动端将影子索引表建在 Agent 同一 SQLite 库中（桌面端为 per-vault shadow_index.db）
+ * 移动端 per-vault 影子索引 schema（shadow_index_v2.db）
  */
 export async function ensureExpoShadowIndexSchema(client: ExpoSqliteDatabase): Promise<void> {
   await executeRawSql(

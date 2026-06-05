@@ -9,7 +9,7 @@ export type {
   DiaryListFilterOptions
 } from './shadow-index.repository.types'
 
-export { normalizeShadowFilePath } from './shadow-index.repository.upsert'
+export { normalizeShadowFilePath, ShadowIndexUpsertOps } from './shadow-index.repository.upsert'
 
 /**
  * Shadow Index Repository

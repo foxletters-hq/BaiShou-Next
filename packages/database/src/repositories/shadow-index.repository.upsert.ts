@@ -11,6 +11,15 @@ type IdPathMaps = {
 
 type UpsertDb = Pick<AppDatabase, 'insert' | 'update' | 'select' | 'run' | 'transaction'>
 
+type SqliteDriverKind = 'better-sqlite' | 'expo-sync' | 'async'
+
+function detectSqliteDriver(database: AppDatabase): SqliteDriverKind {
+  const client = (database as any).session?.client
+  if (client?.prepare !== undefined) return 'better-sqlite'
+  if (client?.prepareSync !== undefined) return 'expo-sync'
+  return 'async'
+}
+
 export function normalizeShadowFilePath(filePath: string): string {
   return filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+/g, '/')
 }
@@ -220,7 +229,29 @@ function upsertOneSync(
 }
 
 export class ShadowIndexUpsertOps {
+  private static writeMutex: Promise<void> = Promise.resolve()
+
+  /** 等待进行中的 upsert / batchUpsert 结束（Vault 切换 disconnect 前调用） */
+  static async waitForIdle(): Promise<void> {
+    await ShadowIndexUpsertOps.writeMutex
+  }
+
   constructor(private readonly database: AppDatabase) {}
+
+  private async withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
+    let release: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const previous = ShadowIndexUpsertOps.writeMutex
+    ShadowIndexUpsertOps.writeMutex = previous.then(() => gate)
+    await previous
+    try {
+      return await fn()
+    } finally {
+      release!()
+    }
+  }
 
   async upsert(payload: UpsertShadowIndexPayload): Promise<number> {
     const maps = await loadIdPathMaps(this.database)
@@ -239,44 +270,67 @@ export class ShadowIndexUpsertOps {
   async batchUpsert(payloads: UpsertShadowIndexPayload[]): Promise<number[]> {
     if (payloads.length === 0) return []
 
-    const maps = await loadIdPathMaps(this.database)
-    const rowIds: number[] = []
-    const isBetterSqlite = (this.database as any).session?.client?.prepare !== undefined
+    return this.withWriteLock(async () => {
+      const maps = await loadIdPathMaps(this.database)
+      const rowIds: number[] = []
+      const driver = detectSqliteDriver(this.database)
 
-    // 关键：FTS 同步必须在主事务 COMMIT 之后执行。
-    // SQLite 在事务内任一语句失败后会把整个事务置为 needs-rollback 状态，
-    // 即便用 try/catch 接住异常，事务也已经中毒，后续 COMMIT 必然失败。
-    // 把 FTS 挪到事务外（自带 try/catch 兜底）就能让索引写入与 FTS 同步真正解耦，
-    // FTS 不可用（最常见于 Android 系统 SQLite 未编译 FTS5）也不会影响保存。
-    if (isBetterSqlite) {
-      await (this.database as any).transaction((tx: any) => {
-        for (const payload of payloads) {
-          const rowId = upsertOneSync(tx, payload, maps)
-          rowIds.push(rowId)
+      // 关键：FTS 同步必须在主事务 COMMIT 之后执行。
+      // SQLite 在事务内任一语句失败后会把整个事务置为 needs-rollback 状态，
+      // 即便用 try/catch 接住异常，事务也已经中毒，后续 COMMIT 必然失败。
+      // 把 FTS 挪到事务外（自带 try/catch 兜底）就能让索引写入与 FTS 同步真正解耦，
+      // FTS 不可用（最常见于 Android 系统 SQLite 未编译 FTS5）也不会影响保存。
+      if (driver === 'better-sqlite' || driver === 'expo-sync') {
+        // expo-sqlite 的 Drizzle transaction 是同步 API：async 回调会在 await 前 commit，
+        // 必须走 upsertOneSync，否则并发写同一连接会导致 Android 原生崩溃。
+        await this.database.transaction(async (tx) => {
+          for (const payload of payloads) {
+            const rowId = upsertOneSync(
+              tx as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
+              payload,
+              maps
+            )
+            rowIds.push(rowId)
+          }
+        })
+        for (let i = 0; i < payloads.length; i++) {
+          if (driver === 'better-sqlite') {
+            syncFtsRowSync(
+              this.database as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
+              rowIds[i]!,
+              payloads[i]!.rawContent,
+              payloads[i]!.tags
+            )
+          } else {
+            await syncFtsRowAsync(
+              this.database,
+              rowIds[i]!,
+              payloads[i]!.rawContent,
+              payloads[i]!.tags,
+              `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowIds[i]!}]`
+            )
+          }
         }
-      })
-      for (let i = 0; i < payloads.length; i++) {
-        syncFtsRowSync(this.database as any, rowIds[i]!, payloads[i]!.rawContent, payloads[i]!.tags)
-      }
-    } else {
-      await this.database.transaction(async (tx) => {
-        for (const payload of payloads) {
-          const rowId = await upsertOne(tx, payload, maps)
-          rowIds.push(rowId)
+      } else {
+        await this.database.transaction(async (tx) => {
+          for (const payload of payloads) {
+            const rowId = await upsertOne(tx, payload, maps)
+            rowIds.push(rowId)
+          }
+        })
+        for (let i = 0; i < payloads.length; i++) {
+          await syncFtsRowAsync(
+            this.database,
+            rowIds[i]!,
+            payloads[i]!.rawContent,
+            payloads[i]!.tags,
+            `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowIds[i]!}]`
+          )
         }
-      })
-      for (let i = 0; i < payloads.length; i++) {
-        await syncFtsRowAsync(
-          this.database,
-          rowIds[i]!,
-          payloads[i]!.rawContent,
-          payloads[i]!.tags,
-          `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowIds[i]!}]`
-        )
       }
-    }
 
-    return rowIds
+      return rowIds
+    })
   }
 
   async deleteById(id: number): Promise<void> {

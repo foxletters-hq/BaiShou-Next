@@ -175,9 +175,9 @@ export class ShadowIndexSyncService {
             location: diary.location ?? null,
             locationDetail: diary.locationDetail ?? null,
             isFavorite: diary.isFavorite,
-            hasMedia: diary.mediaPaths.length > 0,
-            rawContent: diary.content,
-            tags: diary.tags.join(',')
+            hasMedia: (diary.mediaPaths?.length ?? 0) > 0,
+            rawContent: diary.content ?? '',
+            tags: (diary.tags ?? []).join(',')
           })
           parsedDiaries.push(diary)
         })
@@ -211,8 +211,9 @@ export class ShadowIndexSyncService {
           const meta: DiaryMeta = {
             id,
             date: parseDateStr(d.date),
-            preview: d.content.length > 120 ? d.content.substring(0, 120) : d.content,
-            tags: d.tags,
+            preview:
+              (d.content?.length ?? 0) > 120 ? d.content!.substring(0, 120) : (d.content ?? ''),
+            tags: d.tags ?? [],
             updatedAt: d.updatedAt,
             weather: d.weather || undefined,
             mood: d.mood || undefined,

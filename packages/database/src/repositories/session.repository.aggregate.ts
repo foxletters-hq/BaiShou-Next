@@ -65,7 +65,7 @@ export class SessionAggregateSync {
 
   private async _upsertAggregateInternal(aggregate: any): Promise<void> {
     const { session, messages } = aggregate
-    const rawClient = (this.db as any).session?.client || (this.db as any).$client
+    const rawClient = (this.db as any).$client || (this.db as any).session?.client
 
     const toUnixSec = (ts: any): number => {
       const d = this._toDate(ts)
@@ -134,13 +134,22 @@ export class SessionAggregateSync {
 
     if (rawClient && typeof rawClient.batch === 'function') {
       await rawClient.batch(stmts)
-    } else if (rawClient) {
+    } else if (rawClient && typeof rawClient.transaction === 'function') {
       const runTx = rawClient.transaction((statements: typeof stmts) => {
         for (const stmt of statements) {
           rawClient.prepare(stmt.sql).run(...(stmt.args || []))
         }
       })
       runTx(stmts)
+    } else if (rawClient && typeof rawClient.runAsync === 'function') {
+      // expo-sqlite：勿用 withTransactionAsync，会与 Drizzle prepareSync 争用同一连接导致原生崩溃
+      for (const stmt of stmts) {
+        await rawClient.runAsync(stmt.sql, stmt.args ?? [])
+      }
+    } else if (rawClient && typeof rawClient.execAsync === 'function') {
+      for (const stmt of stmts) {
+        await rawClient.execAsync(stmt.sql, stmt.args ?? [])
+      }
     }
   }
 }
