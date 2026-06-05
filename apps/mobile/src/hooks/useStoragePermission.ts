@@ -2,10 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppState, Platform } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
-import {
-  hasStoragePermission,
-  requestStoragePermission
-} from '../services/storage-permission.service'
+import { hasStoragePermission, requestStoragePermission } from '../services/storage-permission.service'
 import { useBaishou } from '../providers/BaishouProvider'
 
 export function useStoragePermission() {
@@ -37,10 +34,16 @@ export function useStoragePermission() {
   useEffect(() => {
     if (Platform.OS !== 'android') return
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void refresh()
+      if (state === 'active') {
+        void refresh().then(async (permitted) => {
+          if (permitted && !storageReady) {
+            await retryStorageSetup()
+          }
+        })
+      }
     })
     return () => sub.remove()
-  }, [refresh])
+  }, [refresh, storageReady, retryStorageSetup])
 
   const request = useCallback(async (): Promise<boolean> => {
     if (Platform.OS !== 'android') return true
@@ -81,7 +84,9 @@ export function useStoragePermission() {
     return ok
   }, [retryStorageSetup, storageReady, t, toast])
 
-  const needsFullFileAccess = Platform.OS === 'android' && granted === false
+  const needsFullFileAccess =
+    Platform.OS === 'android' &&
+    (granted === false || (!storageReady && granted !== true))
 
   return {
     isAndroid: Platform.OS === 'android',

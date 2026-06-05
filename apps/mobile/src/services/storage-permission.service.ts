@@ -8,6 +8,7 @@ import {
   isBaishouServerAvailable,
   isExternalStorageNativeAvailable,
   openAllFilesAccessSettings as nativeOpenAllFilesAccessSettings,
+  getStoragePermissionOemKey as nativeGetStoragePermissionOemKey,
   probeExternalStorageWritable
 } from 'expo-baishou-server'
 
@@ -54,8 +55,57 @@ async function openAllFilesAccessSettingsFallback(): Promise<void> {
   )
 }
 
+export type StoragePermissionOemKey = 'xiaomi' | 'huawei' | 'oppo' | 'vivo' | 'samsung' | 'generic'
+
+/** 当前设备 ROM 标识，用于展示厂商专属引导文案 */
+export function getStoragePermissionOemKey(): StoragePermissionOemKey {
+  if (Platform.OS !== 'android') return 'generic'
+  const key = nativeGetStoragePermissionOemKey()
+  if (
+    key === 'xiaomi' ||
+    key === 'huawei' ||
+    key === 'oppo' ||
+    key === 'vivo' ||
+    key === 'samsung'
+  ) {
+    return key
+  }
+  return 'generic'
+}
+
+/** 用户确认后跳转设置页时展示的说明（按 ROM 区分） */
+export function getStoragePermissionConfirmMessage(): string {
+  const oem = getStoragePermissionOemKey()
+  const oemMessage = i18n.t(`storage.permission_confirm_message_${oem}`, { defaultValue: '' })
+  if (oemMessage) return oemMessage
+  return i18n.t('storage.permission_confirm_message')
+}
+
+/** 仅打开系统/ROM 权限页，不弹应用内确认（由调用方决定是否先确认） */
+export async function openStoragePermissionSettings(): Promise<void> {
+  if (Platform.OS !== 'android') return
+
+  const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : 0
+  if (apiLevel >= 30) {
+    if (isBaishouServerAvailable()) {
+      const opened = nativeOpenAllFilesAccessSettings()
+      if (!opened) {
+        await openAllFilesAccessSettingsFallback()
+      }
+    } else {
+      await openAllFilesAccessSettingsFallback()
+    }
+    return
+  }
+
+  if (!Application.applicationId) return
+  await IntentLauncher.startActivityAsync('android.settings.APPLICATION_DETAILS_SETTINGS', {
+    data: `package:${Application.applicationId}`
+  })
+}
+
 /**
- * 请求全文件访问：Android 11+ 跳转系统设置；较低版本请求 WRITE_EXTERNAL_STORAGE
+ * 请求全文件访问：Android 11+ 跳转系统/ROM 设置；较低版本弹出 WRITE_EXTERNAL_STORAGE 系统对话框
  */
 export async function requestStoragePermission(): Promise<boolean> {
   if (Platform.OS !== 'android') return true
@@ -63,11 +113,7 @@ export async function requestStoragePermission(): Promise<boolean> {
   const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : 0
 
   if (apiLevel >= 30) {
-    if (isBaishouServerAvailable()) {
-      nativeOpenAllFilesAccessSettings()
-    } else {
-      await openAllFilesAccessSettingsFallback()
-    }
+    await openStoragePermissionSettings()
     return hasStoragePermission()
   }
 
@@ -84,10 +130,5 @@ export async function requestStoragePermission(): Promise<boolean> {
 }
 
 export async function openAllFilesAccessSettings(): Promise<void> {
-  if (Platform.OS !== 'android') return
-  if (isBaishouServerAvailable()) {
-    nativeOpenAllFilesAccessSettings()
-    return
-  }
-  await openAllFilesAccessSettingsFallback()
+  await openStoragePermissionSettings()
 }

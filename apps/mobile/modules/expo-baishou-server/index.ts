@@ -18,6 +18,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   resolveMcpHttpResponse(requestId: string, responseBody: string): boolean
   hasAllFilesAccess(): boolean
   openAllFilesAccessSettings(): boolean
+  getStoragePermissionOemKey(): string
   probeExternalStorageWritable(): boolean
   externalGetInfo(path: string): ExternalPathInfo
   externalMakeDirectory(path: string, intermediates: boolean): void
@@ -127,6 +128,17 @@ export function openAllFilesAccessSettings(): boolean {
     return mod.openAllFilesAccessSettings()
   } catch {
     return false
+  }
+}
+
+/** xiaomi | huawei | oppo | vivo | samsung | generic */
+export function getStoragePermissionOemKey(): string {
+  const mod = getNative()
+  if (!mod || typeof mod.getStoragePermissionOemKey !== 'function') return 'generic'
+  try {
+    return mod.getStoragePermissionOemKey() || 'generic'
+  } catch {
+    return 'generic'
   }
 }
 
