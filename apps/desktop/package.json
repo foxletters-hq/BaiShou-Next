@@ -28,6 +28,8 @@
     "@baishou/core-desktop": "workspace:*",
     "@baishou/database-desktop": "workspace:*",
     "@baishou/shared": "workspace:*",
+    "better-sqlite3": "^12.10.0",
+    "sqlite-vec": "^0.1.9",
     "@baishou/store": "workspace:*",
     "@baishou/ui": "workspace:*",
     "@electron-toolkit/preload": "^3.0.2",

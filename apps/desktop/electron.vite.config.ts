@@ -22,19 +22,45 @@ const workspaceExcludes = [
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: workspaceExcludes })],
+    plugins: [
+      {
+        name: 'force-external',
+        resolveId(id) {
+          if (
+            id === 'better-sqlite3' ||
+            id.startsWith('better-sqlite3/') ||
+            id === 'sqlite-vec' ||
+            id.startsWith('sqlite-vec/') ||
+            id === '@libsql/client' ||
+            id.startsWith('@libsql/client/')
+          ) {
+            return { id, external: true }
+          }
+          return null
+        }
+      },
+      externalizeDepsPlugin({ exclude: workspaceExcludes })
+    ],
     resolve: {
       alias: workspaceAliases
     },
+    ssr: {
+      external: ['better-sqlite3', 'sqlite-vec', '@libsql/client']
+    },
     build: {
       rollupOptions: {
-        external: [
-          'electron',
-          '@libsql/client',
-          'better-sqlite3',
-          // pdf-parse 运行时 require 内置 pdf.js；打进 out/main 后相对路径会失效
-          'pdf-parse'
-        ]
+        external: (id) => {
+          if (
+            id === 'electron' ||
+            id === 'pdf-parse' ||
+            id.includes('better-sqlite3') ||
+            id.includes('sqlite-vec') ||
+            id.includes('@libsql/client')
+          ) {
+            return true
+          }
+          return false
+        }
       }
     }
   },
