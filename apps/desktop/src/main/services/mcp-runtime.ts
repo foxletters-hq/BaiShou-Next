@@ -1,5 +1,5 @@
 import type { McpServerConfig } from '@baishou/shared'
-import { SettingsRepository } from '@baishou/database'
+import { SettingsRepository } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { toolRegistry } from '../ipc/agent-helpers'

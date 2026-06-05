@@ -1,10 +1,10 @@
 import * as crypto from 'crypto'
 import { logger } from '@baishou/shared'
 import type { GlobalModelsConfig } from '@baishou/shared'
-import type { SessionRepository } from '@baishou/database'
-import { AssistantRepository } from '@baishou/database'
+import type { SessionRepository } from '@baishou/database-desktop'
+import { AssistantRepository } from '@baishou/database-desktop'
 import type { SessionManagerService } from '@baishou/core-desktop'
-import type { InsertPartInput } from '@baishou/database'
+import type { InsertPartInput } from '@baishou/database-desktop'
 import { pathService } from '../ipc/vault.ipc'
 import { settingsManager } from '../ipc/settings.ipc'
 
