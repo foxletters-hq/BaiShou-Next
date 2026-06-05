@@ -35,6 +35,7 @@ export { signS3Request } from './utils/aws-v4-sign'
 
 export * from './tts'
 export type { TtsSettings } from './types/settings.types'
+export * from './types/tts.types'
 export * from './constants/provider-base-urls'
 export * from './constants/app-locale.constants'
 export * from './constants/app-brand.constants'
