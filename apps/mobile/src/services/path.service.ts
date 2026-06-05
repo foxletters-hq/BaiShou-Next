@@ -182,6 +182,18 @@ export class MobileStoragePathService implements IStoragePathService {
     return vaultSysDir
   }
 
+  /**
+   * 影子索引为可重建缓存。expo-sqlite 在外置 BaiShou_Root 上 open 可能原生崩溃，
+   * 故 Mobile 将 per-vault shadow_index_v2.db 放在应用沙盒（与 Flutter 同路径 SSOT 的日记仍在外置 Vault）。
+   */
+  public async getShadowIndexDirectory(vaultName: string): Promise<string> {
+    const safeName = vaultName.replace(/[/\\]/g, '_')
+    const base = await this.getGlobalRegistryDirectory()
+    const dir = `${base}/shadow_indexes/${safeName}`
+    await this.ensureDir(dir)
+    return dir
+  }
+
   public async getSnapshotsDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
     const dir = `${await this.getVaultSystemDirectory(name)}/snapshots`

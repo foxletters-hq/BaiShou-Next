@@ -24,6 +24,7 @@ export class VaultFileWatcherService {
   private pendingDates = new Set<string>()
   private tickCount = 0
   private isProcessing = false
+  private fullScanInFlight = false
 
   start(vaultPath: string, deps: VaultFileWatcherDeps): void {
     this.stop()
@@ -57,6 +58,13 @@ export class VaultFileWatcherService {
     logger.info('[VaultFileWatcher] Stopped')
   }
 
+  /** 等待进行中的增量/全量同步结束（切换 Vault 前调用） */
+  async waitUntilIdle(): Promise<void> {
+    while (this.isProcessing || this.fullScanInFlight) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
+
   private onAppStateChange = (next: AppStateStatus) => {
     if (next === 'active') {
       this.startPolling()
@@ -85,10 +93,13 @@ export class VaultFileWatcherService {
 
     this.tickCount += 1
     if (this.tickCount % FULL_SCAN_EVERY_N_TICKS === 0) {
+      this.fullScanInFlight = true
       try {
         await this.deps.shadowIndexSyncService.fullScanVault(true)
       } catch (e) {
         logger.warn('[VaultFileWatcher] periodic fullScanVault failed:', e as Error)
+      } finally {
+        this.fullScanInFlight = false
       }
       return
     }

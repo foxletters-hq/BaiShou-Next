@@ -87,7 +87,7 @@ export class MobileLanSyncService implements ILanSyncService {
     const uuid = Math.floor(Math.random() * 10000).toString()
     const serviceName = `BaiShou-${safeNickname}-${uuid}`
 
-    this.zeroconf.publish(serviceName, 'tcp', 'baishou', 'local.', this.currentPort, {
+    this.zeroconf.publishService('tcp', 'baishou', 'local.', serviceName, this.currentPort, {
       nickname: safeNickname,
       ip: ip,
       device_type: 'mobile'

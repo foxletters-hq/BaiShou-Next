@@ -12,13 +12,8 @@ import {
   AssistantFileService,
   AssistantManagerService,
   SettingsFileService,
-  FileSyncService,
-  FileSyncServiceImpl,
-  VaultIndexService,
-  VaultIndexServiceImpl,
   SummaryFileService,
   SummarySyncService,
-  ShadowIndexSyncService,
   VaultService,
   MissingSummaryDetector,
   SummaryGeneratorService,
@@ -29,10 +24,10 @@ import { resolveSummaryTemplatesForGeneration } from '@baishou/shared'
 import {
   SessionRepository,
   AssistantRepository,
-  ShadowIndexRepository,
   SettingsRepository,
   SummaryRepositoryImpl,
-  SnapshotRepository
+  SnapshotRepository,
+  shadowConnectionManager
 } from '@baishou/database'
 
 import {
@@ -63,11 +58,20 @@ import { mobilePricingService, type MobilePricingService } from '../services/mob
 import type { VaultFileWatcherService } from '../services/vault-file-watcher.service'
 import type { MobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
 import type { IFileSystem } from '@baishou/core-mobile'
-import { createShadowDiaryRepoAdapter } from '../services/shadow-diary-adapter'
 import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
 import { sessionFileWatcher } from '../services/session-file-watcher.service'
 import { summaryFileWatcher } from '../services/summary-file-watcher.service'
+import {
+  activateVaultRuntime,
+  createUnavailableDiaryService,
+  createVaultDiaryServiceProxy,
+  EMPTY_DIARY_REPO_ADAPTER,
+  EMPTY_DIARY_SEARCHER,
+  initVaultLayer,
+  switchVaultRuntime,
+  type VaultBoundDiaryStack
+} from '../services/mobile-vault-runtime.service'
 import { logger } from '@baishou/shared'
 import type {
   SessionRepository as SessionRepositoryType,
@@ -81,6 +85,10 @@ interface BaishouContextValue {
   dbReady: boolean
   /** Android：是否已成功挂载外部 BaiShou_Root（无权限时为 false） */
   storageReady: boolean
+  /** 工作空间切换后递增，供列表等 UI 重新拉取数据 */
+  vaultRevision: number
+  /** 工作空间切换进行中（Shadow DB 重连窗口） */
+  vaultSwitching: boolean
   /** Android：授权后重试挂载 BaiShou_Root 并同步磁盘 */
   retryStorageSetup: () => Promise<boolean>
   services: {
@@ -104,6 +112,7 @@ interface BaishouContextValue {
     pricingService: MobilePricingService
     bootstrapper: MobileDataBootstrapper
     vaultFileWatcher: VaultFileWatcherService
+    switchVault: (vaultName: string) => Promise<void>
     memorySearch: (
       query: string,
       options?: { topK?: number; minScore?: number }
@@ -134,6 +143,8 @@ interface BaishouContextValue {
 const BaishouContext = createContext<BaishouContextValue>({
   dbReady: false,
   storageReady: Platform.OS !== 'android',
+  vaultRevision: 0,
+  vaultSwitching: false,
   retryStorageSetup: async () => Platform.OS !== 'android',
   services: null
 })
@@ -171,9 +182,12 @@ async function fetchDuckDuckGoSearch(query: string): Promise<string> {
 
 export function BaishouProvider({ children }: { children: ReactNode }) {
   const retryStorageSetupRef = useRef<() => Promise<boolean>>(async () => false)
+  const diaryStackRef = useRef<VaultBoundDiaryStack | null>(null)
   const [value, setValue] = useState<BaishouContextValue>({
     dbReady: false,
     storageReady: Platform.OS !== 'android',
+    vaultRevision: 0,
+    vaultSwitching: false,
     retryStorageSetup: () => retryStorageSetupRef.current(),
     services: null
   })
@@ -205,7 +219,6 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         // 3. 构建 Repositories
         const sessionRepo = new SessionRepository(drizzleDb)
         const assistantRepo = new AssistantRepository(drizzleDb)
-        const shadowRepo = new ShadowIndexRepository(drizzleDb)
         const settingsRepo = new SettingsRepository(drizzleDb)
         const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
 
@@ -228,27 +241,39 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           attachmentManager
         )
 
-        const fileSyncService = new FileSyncServiceImpl(pathService, fileSystem)
-        const vaultIndexService = new VaultIndexServiceImpl()
         const vaultService = new VaultService(pathService, fileSystem)
-        const shadowIndexSyncService = new ShadowIndexSyncService(
-          shadowRepo,
-          pathService,
-          vaultService,
-          fileSystem
-        )
-        const diaryService = new DiaryService(
-          shadowRepo,
-          fileSyncService,
-          shadowIndexSyncService,
-          vaultIndexService
-        )
+        const vaultRuntimeDeps = { pathService, vaultService, fileSystem }
 
         const settingsFileService = new SettingsFileService(pathService, fileSystem)
         const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
 
+        let diaryStack: VaultBoundDiaryStack | null = null
+        let storageReady = Platform.OS !== 'android'
+
+        if (Platform.OS === 'android') {
+          try {
+            diaryStack = await initVaultLayer(vaultRuntimeDeps)
+            diaryStackRef.current = diaryStack
+          } catch (e) {
+            if (isExternalStorageRequiredError(e)) {
+              logger.info(
+                '[BaishouProvider] Waiting for MANAGE_EXTERNAL_STORAGE; diary UI will prompt user'
+              )
+              storageReady = false
+            } else {
+              throw e
+            }
+          }
+        } else {
+          diaryStack = await initVaultLayer(vaultRuntimeDeps)
+          diaryStackRef.current = diaryStack
+        }
+
+        const diaryServiceProxy = createVaultDiaryServiceProxy(diaryStackRef)
+        const diarySearcher = diaryStack?.diarySearcher ?? EMPTY_DIARY_SEARCHER
+
         const summaryFileService = new SummaryFileService(pathService, fileSystem)
-        const diaryRepoAdapter = createShadowDiaryRepoAdapter(shadowRepo)
+        const diaryRepoAdapter = diaryStack?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
         const summaryConfig = (await settingsManager.get<any>('summary_config')) || {}
         const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig)
         const promptLocale = summaryConfig?.promptLocale ?? 'zh'
@@ -277,8 +302,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         )
 
         const buildSharedContext = async (lookbackMonths: number, locale?: string) => {
+          const stack = diaryStackRef.current
+          if (!stack) return ''
           const allSummaries = await summaryManager.list()
-          const diaries = await shadowRepo.listAllWithFTS({ limit: 10000 })
+          const diaries = await stack.shadowRepo.listAllWithFTS({ limit: 10000 })
           return buildSharedContextText(allSummaries, lookbackMonths, locale, { diaries })
         }
 
@@ -311,32 +338,20 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         registry.initializeDefaultProviders()
 
         // 日记全文搜索器（与桌面端 createDiarySearcher 对齐）
-        const diarySearcher = {
-          async searchFTS(query: string, limit?: number) {
-            const results = await shadowRepo.searchFTS(query, limit)
-            const allRecords = await shadowRepo.getAllRecords()
-            const idToDateMap = new Map(allRecords.map((r) => [r.id, r.date]))
-            return results.map((r) => ({
-              date: idToDateMap.get(r.rowid) || '',
-              contentSnippet: r.contentSnippet,
-              tags: r.tags,
-              rankScore: r.rankScore
-            }))
-          }
-        }
+        const getDiarySearcher = () => diaryStackRef.current?.diarySearcher ?? diarySearcher
 
         // 构建 RAG 记忆搜索所需的底层组件
         const rawClient = (drizzleDb as any)?.session?.client || (drizzleDb as any)
         const hsRepo = new SqliteHybridSearchRepository(rawClient)
         const hybridSearchService = new HybridSearchService(hsRepo)
-        const ragService = createMobileRagService({
+        const ragServiceRef = { current: createMobileRagService({
           settingsManager,
-          diaryService,
+          diaryService: diaryServiceProxy,
           hsRepo,
           hybridSearchService,
           registry,
           rawSqlClient: rawClient
-        })
+        }) }
 
         /**
          * RAG 语义记忆搜索
@@ -471,7 +486,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 sessionRepo,
                 snapshotRepo,
                 userConfig,
-                diarySearcher,
+                diarySearcher: getDiarySearcher(),
                 webSearchResultFetcher: webFetchContent,
                 fetchSearchPage: fetchDuckDuckGoSearch,
                 abortSignal: overrides?.abortSignal,
@@ -501,62 +516,145 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         }
 
         const bootstrapDeps = {
-          shadowIndexSyncService,
           sessionManager,
           assistantManager,
           settingsManager,
           summarySyncService
         }
 
-        const runStorageBootstrap = async () => {
-          await pathService.getRootDirectory()
-          await vaultService.initRegistry()
-          mobileDataBootstrapper.registerDeps(bootstrapDeps)
-          const activeVault = await vaultService.getActiveVault()
+        const watcherDeps = {
+          pathService,
+          fileSystem,
+          sessionFileService,
+          sessionSyncService,
+          sessionManager,
+          summarySyncService
+        }
+
+        const runStorageBootstrap = async (): Promise<VaultBoundDiaryStack> => {
+          const stack = diaryStackRef.current ?? (await initVaultLayer(vaultRuntimeDeps))
+          diaryStackRef.current = stack
+
+          const activeVault = vaultService.getActiveVault()
           if (activeVault?.path) {
-            await mobileDataBootstrapper.runWhenVaultReady(bootstrapDeps)
-            vaultFileWatcher.start(activeVault.path, {
-              shadowIndexSyncService,
-              fileSystem
+            await activateVaultRuntime({
+              pathService,
+              vaultService,
+              fileSystem,
+              diaryStack: stack,
+              bootstrapDeps,
+              watcherDeps
             })
-            const sessionsDir = await pathService.getSessionsBaseDirectory()
-            sessionFileWatcher.start(sessionsDir, {
-              sessionFileService,
-              sessionSyncService,
-              sessionManager,
-              fileSystem
-            })
-            summaryFileWatcher.start(summarySyncService)
           } else {
             logger.warn('[BaishouProvider] No active vault; skipped bootstrap and file watcher')
           }
+
+          return stack
         }
 
-        let storageReady = Platform.OS !== 'android'
-        if (Platform.OS === 'android') {
+        const switchVault = async (vaultName: string) => {
+          const active = vaultService.getActiveVault()
+          if (active?.name === vaultName && shadowConnectionManager.isConnected()) {
+            return
+          }
+
+          if (isMounted) {
+            setValue((prev) => ({ ...prev, vaultSwitching: true }))
+          }
+
+          try {
+            await switchVaultRuntime(vaultName, {
+              pathService,
+              vaultService,
+              fileSystem,
+              bootstrapDeps,
+              watcherDeps,
+              currentStack: diaryStackRef.current ?? undefined,
+              callbacks: {
+                onStackInvalidated: () => {
+                  diaryStackRef.current = null
+                },
+                onStackReady: (stack) => {
+                  diaryStackRef.current = stack
+                  ragServiceRef.current = createMobileRagService({
+                    settingsManager,
+                    diaryService: stack.diaryService,
+                    hsRepo,
+                    hybridSearchService,
+                    registry,
+                    rawSqlClient: rawClient
+                  })
+                  if (!isMounted) return
+                  setValue((prev) => ({
+                    ...prev,
+                    vaultRevision: prev.vaultRevision + 1,
+                    services: prev.services
+                      ? {
+                          ...prev.services,
+                          ragService: ragServiceRef.current,
+                          switchVault
+                        }
+                      : prev.services
+                  }))
+                },
+                onResyncComplete: () => {
+                  if (!isMounted) return
+                  setValue((prev) => ({
+                    ...prev,
+                    vaultRevision: prev.vaultRevision + 1
+                  }))
+                }
+              }
+            })
+          } catch (e) {
+            logger.error('[BaishouProvider] switchVault failed:', e as Error)
+            throw e
+          } finally {
+            if (isMounted) {
+              setValue((prev) => ({ ...prev, vaultSwitching: false }))
+            }
+          }
+        }
+
+        if (diaryStack) {
           try {
             await runStorageBootstrap()
             storageReady = true
           } catch (e) {
-            if (isExternalStorageRequiredError(e)) {
+            if (Platform.OS === 'android' && isExternalStorageRequiredError(e)) {
               logger.info(
-                '[BaishouProvider] Waiting for MANAGE_EXTERNAL_STORAGE; diary UI will prompt user'
+                '[BaishouProvider] Vault bootstrap deferred until external storage is granted'
               )
               storageReady = false
             } else {
               throw e
             }
           }
-        } else {
-          await runStorageBootstrap()
-          storageReady = true
         }
 
         retryStorageSetupRef.current = async () => {
           try {
-            await runStorageBootstrap()
+            const stack = await runStorageBootstrap()
+            ragServiceRef.current = createMobileRagService({
+              settingsManager,
+              diaryService: stack.diaryService,
+              hsRepo,
+              hybridSearchService,
+              registry,
+              rawSqlClient: rawClient
+            })
             if (isMounted) {
-              setValue((prev) => ({ ...prev, storageReady: true }))
+              setValue((prev) => ({
+                ...prev,
+                storageReady: true,
+                vaultRevision: prev.vaultRevision + 1,
+                services: prev.services
+                  ? {
+                      ...prev.services,
+                      ragService: ragServiceRef.current
+                    }
+                  : prev.services
+              }))
             }
             return true
           } catch (e) {
@@ -571,6 +669,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           setValue({
             dbReady: true,
             storageReady,
+            vaultRevision: 0,
+            vaultSwitching: false,
             retryStorageSetup: () => retryStorageSetupRef.current(),
             services: {
               agentService,
@@ -578,7 +678,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               sessionRepo,
               snapshotRepo,
               assistantManager,
-              diaryService,
+              diaryService: diaryServiceProxy,
               settingsManager,
               summaryManager,
               summaryGenerator,
@@ -593,9 +693,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               pricingService,
               bootstrapper: mobileDataBootstrapper,
               vaultFileWatcher,
+              switchVault,
               memorySearch,
               mobileMcpService,
-              ragService,
+              ragService: ragServiceRef.current,
               incrementalSyncService,
               attachmentManager,
               buildSharedContext

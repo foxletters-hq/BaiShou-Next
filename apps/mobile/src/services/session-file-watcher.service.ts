@@ -24,6 +24,7 @@ export class SessionFileWatcherService {
   private sessionsDir: string | null = null
   private mtimes = new Map<string, number>()
   private deps: WatcherDeps | null = null
+  private tickInFlight = false
 
   start(sessionsBaseDir: string, deps: WatcherDeps) {
     this.stop()
@@ -44,13 +45,20 @@ export class SessionFileWatcherService {
     this.deps = null
   }
 
+  async waitUntilIdle(): Promise<void> {
+    while (this.tickInFlight) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
+
   private onAppState = (state: AppStateStatus) => {
     if (state === 'active') void this.tick()
   }
 
   private async tick() {
-    if (!this.deps || !this.sessionsDir) return
+    if (!this.deps || !this.sessionsDir || this.tickInFlight) return
     if (AppState.currentState !== 'active') return
+    this.tickInFlight = true
     try {
       const files = await this.deps.fileSystem.readdir(this.sessionsDir)
       for (const name of files) {
@@ -75,6 +83,8 @@ export class SessionFileWatcherService {
       }
     } catch (e) {
       logger.warn('[SessionFileWatcher] tick error:', e as Error)
+    } finally {
+      this.tickInFlight = false
     }
   }
 }

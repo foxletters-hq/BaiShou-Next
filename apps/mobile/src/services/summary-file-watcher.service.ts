@@ -9,6 +9,7 @@ export class SummaryFileWatcherService {
   private timer: ReturnType<typeof setInterval> | null = null
   private appStateSub: { remove: () => void } | null = null
   private summarySync: SummarySyncService | null = null
+  private tickInFlight = false
 
   start(summarySync: SummarySyncService) {
     this.stop()
@@ -26,16 +27,25 @@ export class SummaryFileWatcherService {
     this.summarySync = null
   }
 
+  async waitUntilIdle(): Promise<void> {
+    while (this.tickInFlight) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
+
   private onAppState = (state: AppStateStatus) => {
     if (state === 'active') void this.tick()
   }
 
   private async tick() {
-    if (!this.summarySync || AppState.currentState !== 'active') return
+    if (!this.summarySync || AppState.currentState !== 'active' || this.tickInFlight) return
+    this.tickInFlight = true
     try {
       await this.summarySync.fullScanArchives()
     } catch (e) {
       logger.warn('[SummaryFileWatcher] fullScanArchives failed:', e as Error)
+    } finally {
+      this.tickInFlight = false
     }
   }
 }
