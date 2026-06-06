@@ -27,4 +27,13 @@
 | English  | [quotes-collection/quotes-collection.en.md](quotes-collection/quotes-collection.en.md) |
 | 日本語   | [quotes-collection/quotes-collection.ja.md](quotes-collection/quotes-collection.ja.md) |
 
+## 优质二创
+
+| 语言     | 文档                                                         |
+| -------- | ------------------------------------------------------------ |
+| 简体中文 | [fan-creations/fan-creations.md](fan-creations/fan-creations.md) |
+| 繁體中文 | [fan-creations/fan-creations.tw.md](fan-creations/fan-creations.tw.md) |
+| English  | [fan-creations/fan-creations.en.md](fan-creations/fan-creations.en.md) |
+| 日本語   | [fan-creations/fan-creations.ja.md](fan-creations/fan-creations.ja.md) |
+
 贡献与开发规范见 [../0-README.md](../0-README.md)。

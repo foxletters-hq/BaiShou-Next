@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
-[語錄收藏](quotes-collection/quotes-collection.tw.md)
+[語錄收藏](quotes-collection/quotes-collection.tw.md) · [優質二創](fan-creations/fan-creations.tw.md)
 
 > 以純白誓約，守護彼此一生。
 

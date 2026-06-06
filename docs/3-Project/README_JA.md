@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
-[語録コレクション](quotes-collection/quotes-collection.ja.md)
+[語録コレクション](quotes-collection/quotes-collection.ja.md) · [優質な二次創作](fan-creations/fan-creations.ja.md)
 
 > 純白の誓約で、互いの一生を守り続ける。
 

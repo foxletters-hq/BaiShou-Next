@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
-[Quote collection](quotes-collection/quotes-collection.en.md)
+[Quote collection](quotes-collection/quotes-collection.en.md) · [Quality fan creations](fan-creations/fan-creations.en.md)
 
 > A pure white oath, guarding each other for a lifetime.
 
