@@ -23,6 +23,8 @@
 
 ![粉絲群群友提議將上述語錄寫入 README](../assets/quotes-collection/quote-readme-suggestion.png)
 
+_記錄時間：2026-06-07_
+
 ---
 
 [返回專案介紹](../0-README.md)

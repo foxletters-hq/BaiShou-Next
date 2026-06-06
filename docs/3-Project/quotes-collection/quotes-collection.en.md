@@ -23,6 +23,8 @@ The community member replied:
 
 ![Fan community suggestion to add the quote above to README](../assets/quotes-collection/quote-readme-suggestion.png)
 
+_Recorded: 2026-06-07_
+
 ---
 
 [Back to project docs](../0-README.md)

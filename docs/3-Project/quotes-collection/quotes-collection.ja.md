@@ -23,6 +23,8 @@
 
 ![上記の語録を README に載せようとするファンコミュニティの提案](../assets/quotes-collection/quote-readme-suggestion.png)
 
+_記録日：2026-06-07_
+
 ---
 
 [プロジェクト紹介に戻る](../0-README.md)

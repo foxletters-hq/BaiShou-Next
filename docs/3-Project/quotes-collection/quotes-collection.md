@@ -23,6 +23,8 @@
 
 ![粉丝群群友提议将上述语录写入 README](../assets/quotes-collection/quote-readme-suggestion.png)
 
+_记录时间：2026-06-07_
+
 ---
 
 [返回项目介绍](../0-README.md)
