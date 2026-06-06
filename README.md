@@ -2,6 +2,8 @@
 
 [简体中文](README.md) | [繁體中文](docs/3-Project/README_TW.md) | [English](docs/3-Project/README_EN.md) | [日本語](docs/3-Project/README_JA.md)
 
+[语录收藏](./docs/3-Project/quotes-collection/quotes-collection.md)
+
 > 以纯白誓约，守护彼此一生。
 
 **白守**是一款开源的、注重隐私的 **AI 记忆陪伴**软件：在本地记录你的生活与日记，让 AI 伙伴真正「记得」你，并陪你对抗遗忘。

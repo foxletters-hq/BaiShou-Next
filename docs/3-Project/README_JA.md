@@ -2,6 +2,8 @@
 
 [简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
+[語録コレクション](quotes-collection/quotes-collection.ja.md)
+
 > 純白の誓約で、互いの一生を守り続ける。
 
 **白守**は、プライバシーを重視したオープンソースの **AI 記憶コンパニオン**です。日記と生活をローカルに記録し、AI パートナーに本当に「覚えて」もらい、忘却と向き合います。

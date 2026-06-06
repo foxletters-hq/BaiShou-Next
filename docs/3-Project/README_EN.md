@@ -2,6 +2,8 @@
 
 [简体中文](../../README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md)
 
+[Quote collection](quotes-collection/quotes-collection.en.md)
+
 > A pure white oath, guarding each other for a lifetime.
 
 **BaiShou** is an open-source, privacy-first **AI memory companion**: record your life and diaries locally, let AI partners truly _remember_ you, and fight forgetting together.

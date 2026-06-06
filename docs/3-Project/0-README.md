@@ -18,4 +18,13 @@
 | English  | [../../Latte/character-profile.en.md](../../Latte/character-profile.en.md) |
 | 日本語   | [../../Latte/character-profile.ja.md](../../Latte/character-profile.ja.md) |
 
+## 语录收藏
+
+| 语言     | 文档                                                         |
+| -------- | ------------------------------------------------------------ |
+| 简体中文 | [quotes-collection/quotes-collection.md](quotes-collection/quotes-collection.md) |
+| 繁體中文 | [quotes-collection/quotes-collection.tw.md](quotes-collection/quotes-collection.tw.md) |
+| English  | [quotes-collection/quotes-collection.en.md](quotes-collection/quotes-collection.en.md) |
+| 日本語   | [quotes-collection/quotes-collection.ja.md](quotes-collection/quotes-collection.ja.md) |
+
 贡献与开发规范见 [../0-README.md](../0-README.md)。
