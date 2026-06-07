@@ -1,84 +1,65 @@
+import {
+  CloneTtsProvider,
+  GptSovitsProvider,
+  MimoTtsProvider,
+  OpenAiTtsProvider,
+  TtsApiError,
+  TtsProviderRegistry
+} from '@baishou/shared'
 import type { TtsProviderConfig } from '@baishou/ui/native'
 
 export type TtsTestResult =
   | { success: true; audioBase64: string; format: string }
   | { success: false; error: string }
 
-/** 与 useTTS / 桌面 tts:synthesize 一致的试听请求（不播放，仅返回音频） */
+const registry = new TtsProviderRegistry()
+registry.register(new OpenAiTtsProvider())
+registry.register(new MimoTtsProvider())
+registry.register(new CloneTtsProvider())
+registry.register(new GptSovitsProvider())
+
+/** 与桌面 agent:tts-synthesize / TTS Registry 一致的试听请求 */
 export async function synthesizeTtsForTest(
   config: TtsProviderConfig,
   text: string
 ): Promise<TtsTestResult> {
   const sample = text.trim() || 'Hello'
-  const baseUrl = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '')
-  const modelId = config.modelId
-  const isMimoTts = modelId.toLowerCase().includes('mimo-v2.5-tts')
-  const apiKey = config.apiKey?.trim()
-  const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (apiKey) {
-    authHeaders.Authorization = `Bearer ${apiKey}`
+  const provider = registry.get(config.id) ?? registry.findByModel(config.modelId)
+  if (!provider) {
+    return { success: false, error: 'tts_provider_not_supported' }
   }
 
-  let response: Response
-  if (isMimoTts) {
-    response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({
-        model: modelId,
-        messages: [
-          { role: 'user', content: 'Natural, clear and professional speech style.' },
-          { role: 'assistant', content: sample }
-        ],
-        audio: {
-          format: config.responseFormat || 'wav',
-          voice: config.voice || '冰糖'
+  try {
+    const result = await provider.synthesize(
+      {
+        text: sample,
+        modelId: config.modelId,
+        settings: {
+          voice: config.voice,
+          speed: config.speed,
+          responseFormat: config.responseFormat,
+          refAudioPath: config.refAudioPath,
+          promptText: config.promptText,
+          promptLang: config.promptLang,
+          textLang: config.textLang
         }
-      })
-    })
-  } else {
-    response = await fetch(`${baseUrl}/audio/speech`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({
-        model: modelId,
-        input: sample,
-        voice: config.voice || 'alloy',
-        speed: config.speed ?? 1,
-        response_format: config.responseFormat || 'mp3'
-      })
-    })
-  }
+      },
+      {
+        baseUrl: (config.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, ''),
+        apiKey: config.apiKey?.trim() ?? ''
+      }
+    )
 
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    return { success: false, error: errText || `HTTP ${response.status}` }
-  }
-
-  if (isMimoTts) {
-    const resJson = await response.json()
-    const base64Audio = resJson.choices?.[0]?.message?.audio?.data
-    if (!base64Audio) {
-      return { success: false, error: 'No audio in response' }
-    }
     return {
       success: true,
-      audioBase64: base64Audio,
-      format: config.responseFormat || 'wav'
+      audioBase64: result.audioBase64,
+      format: result.format
     }
-  }
-
-  const buffer = await response.arrayBuffer()
-  const bytes = new Uint8Array(buffer)
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i])
-  }
-  const base64 = btoa(binary)
-
-  return {
-    success: true,
-    audioBase64: base64,
-    format: config.responseFormat || 'mp3'
+  } catch (error: unknown) {
+    if (error instanceof TtsApiError) {
+      return { success: false, error: error.message }
+    }
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, error: message }
   }
 }

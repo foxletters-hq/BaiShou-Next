@@ -1,8 +1,14 @@
 import type { MaterialIcons } from '@expo/vector-icons'
 
+export type SettingsStackPathname =
+  | '/settings/assistants'
+  | '/settings/lan-transfer'
+  | '/settings/data-sync'
+  | '/settings/tts'
+
 export type SettingsHubRoute =
   | { type: 'section'; section: string }
-  | { type: 'stack'; pathname: string }
+  | { type: 'stack'; pathname: SettingsStackPathname }
 
 export interface SettingsHubItem {
   id: string
@@ -54,7 +60,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         id: 'assistants',
         titleKey: 'agent.assistant.settings_entry',
         icon: 'school',
-        route: { type: 'stack', pathname: '/assistants' }
+        route: { type: 'stack', pathname: '/settings/assistants' }
       },
       {
         id: 'rag',
@@ -84,7 +90,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         id: 'tts',
         titleKey: 'settings.tts_settings',
         icon: 'volume-up',
-        route: { type: 'section', section: 'tts' }
+        route: { type: 'stack', pathname: '/settings/tts' }
       }
     ]
   },
@@ -95,13 +101,13 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         id: 'lan-transfer',
         titleKey: 'settings.lan_transfer',
         icon: 'wifi-tethering',
-        route: { type: 'stack', pathname: '/lan-transfer' }
+        route: { type: 'stack', pathname: '/settings/lan-transfer' }
       },
       {
         id: 'data-sync',
         titleKey: 'data_sync.title',
         icon: 'sync',
-        route: { type: 'stack', pathname: '/data-sync' }
+        route: { type: 'stack', pathname: '/settings/data-sync' }
       },
       {
         id: 'attachments',

@@ -17,59 +17,83 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
   const vm = useTtsProviderSettings(props)
 
   return (
-    <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <SettingsSection
-        title={t('tts.settings.title')}
-        titleAddon={
-          <HelpTooltip
-            content={t(
-              'tts.settings.page_tooltip',
-              '配置全局语音合成供应商、模型与发音人。OpenAI 兼容网关可只填 Base URL，无需 API Key 时留空即可获取模型并试听。'
-            )}
-          />
-        }
-      >
-        <TtsBasicFields
-          config={vm.config}
-          showApiKey={vm.showApiKey}
-          speedPercent={vm.speedPercent}
-          showApiKeyField={vm.showApiKeyField}
-          apiKeyOptional={vm.apiKeyOptional}
-          canFetchModels={vm.canFetchModels}
-          loadingModels={vm.loadingModels}
-          modelOptions={vm.modelOptions}
-          onUpdate={vm.update}
-          onProviderChange={vm.handleProviderChange}
-          onToggleApiKey={() => vm.setShowApiKey(!vm.showApiKey)}
-          onFetchModels={vm.handleFetchModels}
-          onSelectModel={vm.handleSelectModel}
-        />
-
-        {vm.isGptSovits && <TtsGptSovitsFields config={vm.config} onUpdate={vm.update} />}
-
-        <TtsTestSection
-          testText={vm.testText}
-          testResult={vm.testResult}
-          onTestTextChange={vm.setTestText}
-        />
-      </SettingsSection>
-
-      <View style={styles.actionRow}>
-        <Button
-          variant="outline"
-          onPress={vm.handleTest}
-          isLoading={vm.testing}
-          isDisabled={!props.onTestTts}
-          className="flex-1"
+    <ScrollView
+      style={styles.scroll}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.cardSection}>
+        <SettingsSection
+          title={t('tts.settings.title')}
+          titleAddon={
+            <HelpTooltip
+              content={t(
+                'tts.settings.page_tooltip',
+                '配置全局语音合成供应商、模型与发音人。OpenAI 兼容网关可只填 Base URL，无需 API Key 时留空即可获取模型并试听。'
+              )}
+            />
+          }
         >
-          {t('tts.settings.test_button')}
-        </Button>
+          <TtsBasicFields
+            config={vm.config}
+            providerOptions={vm.providerOptions}
+            formatOptions={vm.formatOptions}
+            showApiKey={vm.showApiKey}
+            showApiKeyField={vm.showApiKeyField}
+            apiKeyOptional={vm.apiKeyOptional}
+            canFetchModels={vm.canFetchModels}
+            loadingModels={vm.loadingModels}
+            modelPlaceholder={vm.modelPlaceholder}
+            voicePlaceholder={vm.voicePlaceholder}
+            getModelOptions={vm.getModelOptions}
+            isModelDropdownOpen={vm.isModelDropdownOpen}
+            showAllModelOptions={vm.showAllModelOptions}
+            onUpdate={vm.update}
+            onProviderChange={vm.handleProviderChange}
+            onToggleApiKey={() => vm.setShowApiKey(!vm.showApiKey)}
+            onFetchModels={vm.handleFetchModels}
+            onSelectModel={vm.handleSelectModel}
+            onModelDropdownOpen={() => {
+              vm.setIsModelDropdownOpen(true)
+              vm.setShowAllModelOptions(false)
+            }}
+            onModelDropdownToggle={() => {
+              vm.setIsModelDropdownOpen(!vm.isModelDropdownOpen)
+              vm.setShowAllModelOptions(true)
+            }}
+            onModelTextChange={(text) => {
+              vm.update({ modelId: text })
+              vm.setIsModelDropdownOpen(true)
+              vm.setShowAllModelOptions(false)
+            }}
+            showSpeedControl={vm.showSpeedControl}
+          />
+
+          {vm.isGptSovits && (
+            <TtsGptSovitsFields
+              config={vm.config}
+              langOptions={vm.langOptions}
+              onUpdate={vm.update}
+            />
+          )}
+
+          <TtsTestSection
+            testText={vm.testText}
+            testing={vm.testing}
+            canTest={!!props.onTestTts}
+            onTestTextChange={vm.setTestText}
+            onTest={vm.handleTest}
+          />
+        </SettingsSection>
+      </View>
+
+      <View style={styles.saveActions}>
         <Button
           variant="primary"
           onPress={vm.handleSave}
           isLoading={vm.saving}
           isDisabled={!props.onSaveConfig}
-          className="flex-1"
+          className="min-w-[120px]"
         >
           {t('common.save')}
         </Button>

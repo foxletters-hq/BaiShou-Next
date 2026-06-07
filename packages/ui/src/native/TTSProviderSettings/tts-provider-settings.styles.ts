@@ -11,10 +11,36 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth
   },
+  cardSection: {
+    borderRadius: 12,
+    overflow: 'visible'
+  },
   label: {
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 8
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8
+  },
+  labelInline: {
+    marginBottom: 0
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
+  sliderValue: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  fieldGroupRaised: {
+    zIndex: 30
   },
   helperText: {
     fontSize: 12,
@@ -42,7 +68,10 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     minWidth: 72
   },
   visibilityToggle: {
-    padding: 8
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   chipRow: {
     flexDirection: 'row',
@@ -68,12 +97,19 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500'
   },
-  actionRow: {
+  testRow: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    marginTop: 8
+    gap: 8,
+    alignItems: 'center'
   },
-  actionBtn: { flex: 1 },
+  testInput: {
+    flex: 1
+  },
+  saveActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    marginTop: 16
+  },
   bottomSpacer: { height: 40 }
 })

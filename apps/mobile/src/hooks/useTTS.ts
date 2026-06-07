@@ -1,20 +1,30 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNativeToast } from '@baishou/ui/native'
+import { useNativeToast, type TtsProviderConfig } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
+import { synthesizeTtsForTest } from '../services/mobile-tts-synthesize'
+import { playTtsAudio, stopTtsAudioPlayback } from '../services/play-tts-audio'
 
-type AudioPlayer = {
-  play: () => void
-  pause: () => void
-  release: () => void
-  addListener: (
-    event: 'playbackStatusUpdate',
-    listener: (status: { didJustFinish?: boolean }) => void
-  ) => { remove: () => void }
-}
-
-async function loadExpoAudio() {
-  return import('expo-audio')
+function buildGlobalTtsConfig(
+  ttsProviderId: string,
+  ttsModelId: string,
+  providerConfig: Record<string, unknown>,
+  ttsSettings: Record<string, unknown> | undefined
+): TtsProviderConfig {
+  return {
+    id: ttsProviderId,
+    name: ttsProviderId,
+    baseUrl: (providerConfig.baseUrl as string) || 'https://api.openai.com/v1',
+    apiKey: (providerConfig.apiKey as string) || '',
+    modelId: ttsModelId,
+    voice: (ttsSettings?.voice as string) || '',
+    speed: (ttsSettings?.speed as number) ?? 1,
+    responseFormat: (ttsSettings?.responseFormat as string) || 'mp3',
+    refAudioPath: (ttsSettings?.refAudioPath as string) || '',
+    promptText: (ttsSettings?.promptText as string) || '',
+    promptLang: (ttsSettings?.promptLang as string) || 'zh',
+    textLang: (ttsSettings?.textLang as string) || 'zh'
+  }
 }
 
 export function useTTS() {
@@ -22,20 +32,9 @@ export function useTTS() {
   const toast = useNativeToast()
   const { services } = useBaishou()
   const [ttsPlayingMsgId, setTtsPlayingMsgId] = useState<string | null>(null)
-  const playerRef = useRef<AudioPlayer | null>(null)
-  const playbackListenerRef = useRef<{ remove: () => void } | null>(null)
 
   const stopTTS = useCallback(async () => {
-    playbackListenerRef.current?.remove()
-    playbackListenerRef.current = null
-
-    if (playerRef.current) {
-      try {
-        playerRef.current.pause()
-        playerRef.current.release()
-      } catch {}
-      playerRef.current = null
-    }
+    await stopTtsAudioPlayback()
     setTtsPlayingMsgId(null)
   }, [])
 
@@ -73,122 +72,32 @@ export function useTTS() {
           return
         }
 
-        const apiKey = providerConfig.apiKey
-        const baseUrl = (providerConfig.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '')
-        const ttsSettings = globalModels?.globalTtsSettings
+        const config = buildGlobalTtsConfig(
+          ttsProviderId,
+          ttsModelId,
+          providerConfig,
+          globalModels?.globalTtsSettings
+        )
 
-        const isMimoTts = ttsModelId.toLowerCase().includes('mimo-v2.5-tts')
-        let response: Response
-
-        if (isMimoTts) {
-          const ttsEndpoint = `${baseUrl}/chat/completions`
-          response = await fetch(ttsEndpoint, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: ttsModelId,
-              messages: [
-                {
-                  role: 'user',
-                  content: 'Natural, clear and professional speech style.'
-                },
-                { role: 'assistant', content: content }
-              ],
-              audio: {
-                format: ttsSettings?.responseFormat || 'wav',
-                voice: ttsSettings?.voice || '冰糖'
-              }
-            })
-          })
-        } else {
-          const ttsEndpoint = `${baseUrl}/audio/speech`
-          response = await fetch(ttsEndpoint, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: ttsModelId,
-              input: content,
-              voice: ttsSettings?.voice || 'alloy',
-              speed: ttsSettings?.speed || 1.0,
-              response_format: ttsSettings?.responseFormat || 'mp3'
-            })
-          })
-        }
-
-        if (!response.ok) {
-          const errText = await response.text().catch(() => '')
-          console.error(`[TTS] API error ${response.status}: ${errText}`)
-          toast.showError(`${t('agent.tts_failed', '语音合成失败')}: API error ${response.status}`)
+        const result = await synthesizeTtsForTest(config, content)
+        if (!result.success) {
+          console.error('[TTS] Synthesize failed:', result.error)
+          toast.showError(`${t('agent.tts_failed', '语音合成失败')}: ${result.error}`)
           return
         }
 
-        let base64 = ''
-        if (isMimoTts) {
-          const resJson = await response.json()
-          const base64Audio = resJson.choices?.[0]?.message?.audio?.data
-          if (!base64Audio) {
-            console.error(
-              `[TTS] MiMo TTS failed: No audio data in chat completions response`,
-              resJson
-            )
-            toast.showError(`${t('agent.tts_failed', '语音合成失败')}: Invalid audio data`)
-            return
-          }
-          base64 = base64Audio
-        } else {
-          const arrayBuffer = await response.arrayBuffer()
-          const bytes = new Uint8Array(arrayBuffer)
-          let binary = ''
-          for (let i = 0; i < bytes.length; i++) {
-            binary += String.fromCharCode(bytes[i])
-          }
-          base64 = btoa(binary)
-        }
-
-        let createAudioPlayer: (typeof import('expo-audio'))['createAudioPlayer']
-        let setAudioModeAsync: (typeof import('expo-audio'))['setAudioModeAsync']
-        try {
-          const audio = await loadExpoAudio()
-          createAudioPlayer = audio.createAudioPlayer
-          setAudioModeAsync = audio.setAudioModeAsync
-        } catch (e) {
-          console.error('[TTS] expo-audio native module unavailable:', e)
-          toast.showError('ExpoAudio 原生模块未安装，请重新编译 APK')
-          return
-        }
-
-        await setAudioModeAsync({ playsInSilentMode: true })
-        const audioFormat = isMimoTts ? ttsSettings?.responseFormat || 'wav' : 'mp3'
-        const player = createAudioPlayer({
-          uri: `data:audio/${audioFormat};base64,${base64}`
-        })
-
-        playbackListenerRef.current = player.addListener('playbackStatusUpdate', (status) => {
-          if (status.didJustFinish) {
-            playbackListenerRef.current?.remove()
-            playbackListenerRef.current = null
-            player.release()
-            playerRef.current = null
-            setTtsPlayingMsgId(null)
-          }
-        })
-
-        playerRef.current = player
         if (messageId) setTtsPlayingMsgId(messageId)
-        player.play()
-      } catch (e: any) {
+        await playTtsAudio(result.audioBase64, result.format, () => {
+          setTtsPlayingMsgId(null)
+        })
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Unknown error'
         console.error('[TTS] Error:', e)
-        toast.showError(`${t('agent.tts_failed', '语音合成失败')}: ${e.message || 'Unknown error'}`)
+        toast.showError(`${t('agent.tts_failed', '语音合成失败')}: ${message}`)
         setTtsPlayingMsgId(null)
       }
     },
-    [ttsPlayingMsgId, services, t, stopTTS]
+    [ttsPlayingMsgId, services, t, stopTTS, toast]
   )
 
   return {

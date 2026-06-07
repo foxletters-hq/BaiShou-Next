@@ -1,15 +1,36 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useTranslation } from 'react-i18next'
-import { TTSProviderSettings, useNativeToast, type TtsProviderConfig } from '@baishou/ui/native'
+import {
+  TTSProviderSettings,
+  useNativeToast,
+  type ProviderLocalState,
+  type TtsProviderConfig,
+  mergePersistedConfigs,
+  isTtsProviderId
+} from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { synthesizeTtsForTest } from '../../../services/mobile-tts-synthesize'
+import { playTtsAudio } from '../../../services/play-tts-audio'
 import { fetchTtsProviderModels } from '../utils/tts-provider-models'
 
-export const TTSSettingsSection: React.FC = () => {
+const TTS_CONFIGS_STORAGE_KEY = 'baishou_tts_provider_configs'
+
+export interface TTSSettingsSectionProps {
+  providerId: string
+}
+
+export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ providerId }) => {
   const { t } = useTranslation()
   const toast = useNativeToast()
+  const router = useRouter()
   const { services, dbReady } = useBaishou()
   const [initialConfig, setInitialConfig] = useState<Partial<TtsProviderConfig> | undefined>()
+  const [providersList, setProvidersList] = useState<unknown[] | undefined>()
+  const [persistedConfigs, setPersistedConfigs] = useState<
+    Record<string, ProviderLocalState> | undefined
+  >()
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -17,45 +38,97 @@ export const TTSSettingsSection: React.FC = () => {
       const globalModels = (await services.settingsManager.get<any>('global_models')) || {}
       const providers = (await services.settingsManager.get<any[]>('ai_providers')) || []
       const savedProviderId = globalModels.globalTtsProviderId || 'openai-tts'
+      const activeId = isTtsProviderId(providerId) ? providerId : savedProviderId
       const providerConfig =
-        providers.find((p) => p.id === savedProviderId) || ({} as Record<string, unknown>)
+        providers.find((p) => p.id === activeId) || ({} as Record<string, unknown>)
       const ttsSettings = globalModels.globalTtsSettings || {}
 
+      let mergedPersisted = mergePersistedConfigs(undefined)
+      try {
+        const saved = await AsyncStorage.getItem(TTS_CONFIGS_STORAGE_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved) as Record<string, Partial<ProviderLocalState>>
+          mergedPersisted = mergePersistedConfigs(parsed)
+        }
+      } catch {
+        /* ignore */
+      }
+
+      setPersistedConfigs(mergedPersisted)
+      setProvidersList(providers)
+
+      const isActiveGlobal = activeId === savedProviderId
       setInitialConfig({
-        id: savedProviderId,
+        id: activeId,
         baseUrl:
           (providerConfig.baseUrl as string) ||
-          (savedProviderId === 'gpt-sovits'
+          mergedPersisted[activeId]?.baseUrl ||
+          (activeId === 'gpt-sovits'
             ? 'http://127.0.0.1:9880'
-            : savedProviderId === 'mimo-tts'
-              ? ''
-              : 'https://api.openai.com/v1'),
-        apiKey: (providerConfig.apiKey as string) || '',
+            : activeId === 'clone-tts'
+              ? 'http://127.0.0.1:8080'
+              : activeId === 'mimo-tts'
+                ? ''
+                : 'https://api.openai.com/v1'),
+        apiKey: (providerConfig.apiKey as string) || mergedPersisted[activeId]?.apiKey || '',
         modelId:
-          globalModels.globalTtsModelId ||
-          (savedProviderId === 'gpt-sovits'
+          (isActiveGlobal ? globalModels.globalTtsModelId : undefined) ||
+          mergedPersisted[activeId]?.modelId ||
+          (activeId === 'gpt-sovits'
             ? 'default'
-            : savedProviderId === 'mimo-tts'
+            : activeId === 'mimo-tts'
               ? 'mimo-v2.5-tts'
               : 'tts-1'),
         voice:
-          ttsSettings.voice ||
-          (savedProviderId === 'mimo-tts'
+          (isActiveGlobal ? ttsSettings.voice : undefined) ||
+          mergedPersisted[activeId]?.voice ||
+          (activeId === 'mimo-tts'
             ? '冰糖'
-            : savedProviderId === 'gpt-sovits'
+            : activeId === 'gpt-sovits'
               ? 'default'
               : 'alloy'),
-        speed: ttsSettings.speed ?? 1,
+        speed:
+          (isActiveGlobal ? ttsSettings.speed : undefined) ??
+          mergedPersisted[activeId]?.speed ??
+          1,
         responseFormat:
-          ttsSettings.responseFormat ||
-          (savedProviderId === 'mimo-tts' || savedProviderId === 'gpt-sovits' ? 'wav' : 'mp3'),
-        refAudioPath: ttsSettings.refAudioPath || '',
-        promptText: ttsSettings.promptText || '',
-        promptLang: ttsSettings.promptLang || 'zh',
-        textLang: ttsSettings.textLang || 'zh'
+          (isActiveGlobal ? ttsSettings.responseFormat : undefined) ||
+          mergedPersisted[activeId]?.responseFormat ||
+          (activeId === 'mimo-tts' || activeId === 'gpt-sovits' ? 'wav' : 'mp3'),
+        refAudioPath:
+          (isActiveGlobal ? ttsSettings.refAudioPath : undefined) ||
+          mergedPersisted[activeId]?.refAudioPath ||
+          '',
+        promptText:
+          (isActiveGlobal ? ttsSettings.promptText : undefined) ||
+          mergedPersisted[activeId]?.promptText ||
+          '',
+        promptLang:
+          (isActiveGlobal ? ttsSettings.promptLang : undefined) ||
+          mergedPersisted[activeId]?.promptLang ||
+          'zh',
+        textLang:
+          (isActiveGlobal ? ttsSettings.textLang : undefined) ||
+          mergedPersisted[activeId]?.textLang ||
+          'zh'
       })
     })()
-  }, [dbReady, services])
+  }, [dbReady, services, providerId])
+
+  const handlePersistConfigs = useCallback((configs: Record<string, ProviderLocalState>) => {
+    void AsyncStorage.setItem(
+      TTS_CONFIGS_STORAGE_KEY,
+      JSON.stringify({ ...configs, __lastActiveProviderId: providerId })
+    ).catch(() => {})
+  }, [providerId])
+
+  const handleProviderChange = useCallback(
+    (nextProviderId: string) => {
+      if (!isTtsProviderId(nextProviderId) || nextProviderId === providerId) return
+      router.replace(`/settings/tts/${nextProviderId}`)
+    },
+    [providerId, router]
+  )
 
   const handleSaveConfig = async (config: TtsProviderConfig) => {
     if (!services) return
@@ -108,21 +181,35 @@ export const TTSSettingsSection: React.FC = () => {
     toast.showSuccess(t('tts.settings.save_success'))
   }
 
-  const configReady = useMemo(() => initialConfig !== undefined, [initialConfig])
+  const configReady = useMemo(
+    () => initialConfig !== undefined && persistedConfigs !== undefined && providersList !== undefined,
+    [initialConfig, persistedConfigs, providersList]
+  )
 
   if (!configReady) return null
 
   return (
     <TTSProviderSettings
+      key={providerId}
       initialConfig={initialConfig}
+      activeProviderId={providerId}
+      onActiveProviderIdChange={handleProviderChange}
+      persistedConfigs={persistedConfigs}
+      onPersistConfigs={handlePersistConfigs}
+      providersList={providersList}
       onSaveConfig={handleSaveConfig}
       onFetchModels={fetchTtsProviderModels}
+      onPlayTestAudio={playTtsAudio}
       onTestTts={async (config, text) => {
         const result = await synthesizeTtsForTest(config, text)
         if (result.success) {
-          return { success: true, message: t('tts.settings.test_success') }
+          return {
+            success: true,
+            audioBase64: result.audioBase64,
+            format: result.format
+          }
         }
-        return { success: false, message: result.error }
+        return { success: false, error: result.error }
       }}
     />
   )

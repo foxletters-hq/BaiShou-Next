@@ -5,62 +5,66 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { NativeSlider } from '../Slider'
 import { Input } from '../Input/Input'
+import { Select } from '../Select/Select'
 import { Button } from '../Button'
-import { useDialog } from '../Dialog'
+import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import type { TtsProviderConfig } from './tts-provider-settings.types'
-import { TTS_PROVIDERS, TTS_FORMATS } from './tts-provider-settings.constants'
-
-const PROVIDER_I18N: Record<string, string> = {
-  'openai-tts': 'tts.settings.provider_openai',
-  'mimo-tts': 'tts.settings.provider_mimo',
-  'clone-tts': 'tts.settings.provider_clone',
-  'gpt-sovits': 'tts.settings.provider_gpt_sovits'
-}
+import { TtsModelCombobox } from './TtsModelCombobox'
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
 
 interface TtsBasicFieldsProps {
   config: TtsProviderConfig
+  providerOptions: { value: string; label: string }[]
+  formatOptions: { value: string; label: string }[]
   showApiKey: boolean
-  speedPercent: number
   showApiKeyField: boolean
   apiKeyOptional: boolean
   canFetchModels: boolean
   loadingModels: boolean
-  modelOptions: string[]
+  modelPlaceholder: string
+  voicePlaceholder: string
+  getModelOptions: () => string[]
+  isModelDropdownOpen: boolean
+  showAllModelOptions: boolean
   onUpdate: (patch: Partial<TtsProviderConfig>) => void
   onProviderChange: (id: string) => void
   onToggleApiKey: () => void
   onFetchModels: () => void
   onSelectModel: (modelId: string) => void
+  onModelDropdownOpen: () => void
+  onModelDropdownToggle: () => void
+  onModelTextChange: (text: string) => void
+  showSpeedControl: boolean
 }
 
 export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
   config,
+  providerOptions,
+  formatOptions,
   showApiKey,
-  speedPercent,
   showApiKeyField,
   apiKeyOptional,
   canFetchModels,
   loadingModels,
-  modelOptions,
+  modelPlaceholder,
+  voicePlaceholder,
+  getModelOptions,
+  isModelDropdownOpen,
+  showAllModelOptions,
   onUpdate,
   onProviderChange,
   onToggleApiKey,
   onFetchModels,
-  onSelectModel
+  onSelectModel,
+  onModelDropdownOpen,
+  onModelDropdownToggle,
+  onModelTextChange,
+  showSpeedControl
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const dialog = useDialog()
 
   const dividerStyle = [styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]
-
-  const modelPlaceholder =
-    config.id === 'clone-tts' || config.id === 'gpt-sovits'
-      ? 'default'
-      : config.id === 'mimo-tts'
-        ? 'mimo-v2.5-tts'
-        : 'tts-1'
 
   const baseUrlPlaceholder =
     config.id === 'clone-tts'
@@ -71,45 +75,17 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
           ? t('tts.settings.mimo_base_url_placeholder')
           : 'https://api.openai.com/v1'
 
-  const handlePickModel = async () => {
-    const picked = await dialog.choose(
-      t('tts.settings.model_id_label'),
-      modelOptions.map((modelId) => ({ label: modelId, value: modelId }))
-    )
-    if (picked) onSelectModel(picked)
-  }
-
   return (
     <>
       <View style={styles.fieldGroup}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.provider_label')}
         </Text>
-        <View style={styles.chipRow}>
-          {TTS_PROVIDERS.map((p) => (
-            <TouchableOpacity
-              key={p.id}
-              activeOpacity={0.7}
-              style={[
-                styles.chip,
-                {
-                  borderColor: config.id === p.id ? colors.primary : colors.borderMuted,
-                  backgroundColor: config.id === p.id ? colors.primaryLight : 'transparent'
-                }
-              ]}
-              onPress={() => onProviderChange(p.id)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  { color: config.id === p.id ? colors.primary : colors.textSecondary }
-                ]}
-              >
-                {t(PROVIDER_I18N[p.id] ?? 'tts.settings.provider_openai')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Select
+          options={providerOptions}
+          value={config.id}
+          onValueChange={onProviderChange}
+        />
       </View>
 
       <View style={dividerStyle}>
@@ -128,11 +104,16 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
       {showApiKeyField && (
         <View style={dividerStyle}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {apiKeyOptional
-              ? t('tts.settings.api_key_optional_label')
-              : t('tts.settings.api_key_label')}
-          </Text>
+          <View style={styles.labelRow}>
+            <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
+              {apiKeyOptional
+                ? t('tts.settings.api_key_optional_label')
+                : t('tts.settings.api_key_label')}
+            </Text>
+            {apiKeyOptional && (
+              <HelpTooltip content={t('tts.settings.api_key_tooltip')} />
+            )}
+          </View>
           {apiKeyOptional && (
             <Text style={[styles.helperText, { color: colors.textTertiary }]}>
               {t('tts.settings.api_key_optional_hint')}
@@ -150,12 +131,13 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={onToggleApiKey}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={styles.visibilityToggle}
                 accessibilityLabel={showApiKey ? t('common.hide') : t('common.show')}
               >
                 <MaterialIcons
                   name={showApiKey ? 'visibility-off' : 'visibility'}
-                  size={20}
+                  size={22}
                   color={colors.textSecondary}
                 />
               </TouchableOpacity>
@@ -164,30 +146,21 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         </View>
       )}
 
-      <View style={dividerStyle}>
+      <View style={[dividerStyle, isModelDropdownOpen && styles.fieldGroupRaised]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.model_id_label')}
         </Text>
         <View style={styles.modelRow}>
-          <Input
-            style={[styles.input, styles.modelInput]}
+          <TtsModelCombobox
             value={config.modelId}
-            onChangeText={(v) => onUpdate({ modelId: v })}
             placeholder={modelPlaceholder}
-            autoCapitalize="none"
-            autoCorrect={false}
-            rightSlot={
-              modelOptions.length > 0 ? (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => void handlePickModel()}
-                  style={styles.visibilityToggle}
-                  accessibilityLabel={t('tts.settings.model_id_label')}
-                >
-                  <MaterialIcons name="arrow-drop-down" size={24} color={colors.textSecondary} />
-                </TouchableOpacity>
-              ) : undefined
-            }
+            options={getModelOptions()}
+            showAllOptions={showAllModelOptions}
+            isOpen={isModelDropdownOpen}
+            onChangeText={onModelTextChange}
+            onFocus={onModelDropdownOpen}
+            onToggleDropdown={onModelDropdownToggle}
+            onSelect={onSelectModel}
           />
           {canFetchModels && (
             <Button
@@ -211,62 +184,48 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
           style={styles.input}
           value={config.voice}
           onChangeText={(v) => onUpdate({ voice: v })}
-          placeholder="alloy"
+          placeholder={voicePlaceholder}
           autoCapitalize="none"
           autoCorrect={false}
         />
+        <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+          {t('tts.settings.voice_hint')}
+        </Text>
       </View>
 
-      <View style={dividerStyle}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.settings.speed_label')} ({speedPercent}%)
-        </Text>
-        <NativeSlider
-          value={config.speed}
-          minValue={0.5}
-          maxValue={2.0}
-          step={0.1}
-          onChange={(v) => onUpdate({ speed: v as number })}
-        />
-        <View style={styles.rangeRow}>
-          <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>0.5x</Text>
-          <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>2.0x</Text>
+      {showSpeedControl && (
+        <View style={dividerStyle}>
+          <View style={styles.sliderHeader}>
+            <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
+              {t('tts.settings.speed_label')}
+            </Text>
+            <Text style={[styles.sliderValue, { color: colors.primary }]}>
+              {config.speed.toFixed(1)}x
+            </Text>
+          </View>
+          <NativeSlider
+            value={config.speed}
+            minValue={0.5}
+            maxValue={2.0}
+            step={0.1}
+            onChange={(v) => onUpdate({ speed: v as number })}
+          />
+          <View style={styles.rangeRow}>
+            <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>0.5x</Text>
+            <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>2.0x</Text>
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={dividerStyle}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.format_label')}
         </Text>
-        <View style={styles.chipRow}>
-          {TTS_FORMATS.map((fmt) => (
-            <TouchableOpacity
-              key={fmt.id}
-              activeOpacity={0.7}
-              style={[
-                styles.chip,
-                {
-                  borderColor:
-                    config.responseFormat === fmt.id ? colors.primary : colors.borderMuted,
-                  backgroundColor:
-                    config.responseFormat === fmt.id ? colors.primaryLight : 'transparent'
-                }
-              ]}
-              onPress={() => onUpdate({ responseFormat: fmt.id })}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  {
-                    color: config.responseFormat === fmt.id ? colors.primary : colors.textSecondary
-                  }
-                ]}
-              >
-                {fmt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Select
+          options={formatOptions}
+          value={config.responseFormat}
+          onValueChange={(v) => onUpdate({ responseFormat: v })}
+        />
       </View>
     </>
   )
