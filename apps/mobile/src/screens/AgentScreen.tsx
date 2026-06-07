@@ -108,6 +108,7 @@ export const AgentScreen = () => {
     handleStop,
     handleRegenerate,
     handleEditMessage,
+    handleSaveAssistantEdit,
     handleDeleteMessage
   } = useAgentStream(
     currentSessionId,
@@ -520,13 +521,14 @@ export const AgentScreen = () => {
               <View style={styles.bubble}>
                 <ChatBubble
                   message={{
+                    id: item.id,
                     role: item.role as any,
                     content: item.content,
+                    reasoning: item.reasoning,
                     toolInvocations: item.toolInvocations,
                     attachments: item.attachments,
                     inputTokens: item.inputTokens,
                     outputTokens: item.outputTokens,
-                    isReasoning: item.isReasoning,
                     costMicros: item.costMicros
                   }}
                   userProfile={chatUserProfile}
@@ -540,6 +542,11 @@ export const AgentScreen = () => {
                   onResendEdit={
                     item.role === 'user'
                       ? (content) => handleEditMessage(item.id, content)
+                      : undefined
+                  }
+                  onSaveEdit={
+                    item.role === 'assistant'
+                      ? (content) => handleSaveAssistantEdit(item.id, content)
                       : undefined
                   }
                   onCopy={() => Clipboard.setStringAsync(item.content)}
@@ -560,35 +567,16 @@ export const AgentScreen = () => {
             ListFooterComponent={
               isStreaming ? (
                 <View>
-                  {(activeTool || completedTools.length > 0) && (
-                    <View
-                      style={[
-                        styles.toolStatusContainer,
-                        { backgroundColor: colors.bgSurfaceNormal }
-                      ]}
-                    >
-                      {completedTools.map((tool, index) => (
-                        <View key={index} style={styles.toolItem}>
-                          <MaterialIcons name="check" size={14} color={colors.accentGreen} />
-                          <Text style={[styles.toolName, { color: colors.textSecondary }]}>
-                            {tool.name}
-                          </Text>
-                        </View>
-                      ))}
-                      {activeTool && (
-                        <View style={styles.toolItem}>
-                          <MaterialIcons name="sync" size={14} color={colors.primary} />
-                          <Text style={[styles.toolNameActive, { color: colors.textPrimary }]}>
-                            {activeTool.name}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
                   <StreamingBubble
                     text={streamingText}
                     reasoning={streamingReasoning}
                     isReasoning={isStreaming && !streamingText && !!streamingReasoning}
+                    activeToolName={activeTool?.name ?? null}
+                    completedTools={completedTools.map((tool) => ({
+                      name: tool.name,
+                      durationMs:
+                        tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0
+                    }))}
                     aiProfile={chatAiProfile}
                   />
                 </View>
@@ -632,7 +620,7 @@ export const AgentScreen = () => {
           >
             <InputBar
               onSend={handleSend}
-              isLoading={isLoading}
+              isLoading={isLoading || isStreaming}
               onStop={handleStop}
               assistantName={assistantDisplayName}
               onTriggerShortcut={() => setShowShortcutSheet(true)}

@@ -25,7 +25,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
   }, [props.isVisible, dbReady, services])
 
   const openAssistants = () => {
-    router.push('/assistants')
+    router.push('/settings/assistants')
   }
 
   return (

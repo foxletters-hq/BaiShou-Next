@@ -90,19 +90,29 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           <Text style={[styles.day, { color: colors.textPrimary }]}>{day}</Text>
           <View style={styles.dateMeta}>
             <Text style={[styles.weekday, { color: colors.textSecondary }]}>{weekday}</Text>
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: colors.primaryLight,
-                  borderColor: colors.primary
-                }
-              ]}
-            >
-              <Text style={[styles.badgeText, { color: colors.primary }]}>
-                {year} · {month}
-                {t('diary.month_suffix')}
-              </Text>
+            <View style={styles.badgeRow}>
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor: colors.primaryLight,
+                    borderColor: colors.primary
+                  }
+                ]}
+              >
+                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                  {year} · {month}
+                  {t('diary.month_suffix')}
+                </Text>
+              </View>
+              {weather ? (
+                <View style={styles.weatherInline}>
+                  <WeatherEmoji weather={weather} size={14} />
+                  <Text style={[styles.weatherInlineText, { color: colors.textSecondary }]}>
+                    {weatherLabel}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
@@ -113,19 +123,9 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
         )}
       </View>
 
-      {/* 元数据行：天气、心情、位置 */}
-      {(weather || mood || location) && (
+      {/* 元数据行：心情、位置 */}
+      {(mood || location) && (
         <View style={styles.metaRow}>
-          {weather && (
-            <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
-              <View style={styles.metaWeatherRow}>
-                <WeatherEmoji weather={weather} size={16} />
-                <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                  {weatherLabel}
-                </Text>
-              </View>
-            </View>
-          )}
           {mood && (
             <View style={[styles.metaBadge, { backgroundColor: colors.bgSurfaceHighest }]}>
               <Text style={[styles.metaText, { color: colors.textSecondary }]}>😊 {mood}</Text>
@@ -200,14 +200,29 @@ const styles = StyleSheet.create({
   day: { fontSize: 32, fontWeight: '800', lineHeight: 32 },
   dateMeta: { marginLeft: 12, justifyContent: 'center' },
   weekday: { fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
-  badge: {
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     marginTop: 4,
+    gap: 8
+  },
+  badge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 0.5
   },
   badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  weatherInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  weatherInlineText: {
+    fontSize: 11,
+    fontWeight: '600'
+  },
   headerSpacer: { width: 22 },
   metaRow: {
     flexDirection: 'row',
@@ -219,11 +234,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6
-  },
-  metaWeatherRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
   },
   metaText: { fontSize: 12 },
   contentContainer: { maxHeight: 120, overflow: 'hidden' },

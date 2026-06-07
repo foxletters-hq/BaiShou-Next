@@ -11,7 +11,7 @@ import {
   type InputProps as HeroInputProps
 } from 'heroui-native'
 import { useNativeTheme } from '../theme'
-import { sanitizeHeroInputStyle } from './input-style.utils'
+import { sanitizeHeroInputStyle, splitInputLayoutStyle } from './input-style.utils'
 import {
   getCompactTextFieldStyle,
   getHeroInputFieldStyle,
@@ -60,7 +60,11 @@ export const Input = forwardRef<any, NativeInputProps>(
     const { colors } = useNativeTheme()
     const computedInvalid = isInvalid ?? !!error
     const useTextArea = textarea && multiline
+    const hasSlots = Boolean(leftSlot || rightSlot)
     const sanitizedStyle = sanitizeHeroInputStyle(style)
+    const { inputStyle: layoutInputStyle, wrapperStyle: slotWrapperStyle } = hasSlots
+      ? splitInputLayoutStyle(sanitizedStyle)
+      : { inputStyle: sanitizedStyle, wrapperStyle: undefined }
     const compact = isCompactInputStyle(style)
     const fieldShell = getHeroInputFieldStyle(colors, { multiline: useTextArea || multiline })
     const textFieldLayout = getCompactTextFieldStyle(style)
@@ -70,8 +74,8 @@ export const Input = forwardRef<any, NativeInputProps>(
     const inputStyle: StyleProp<TextStyle> = [
       fieldShell,
       leftSlot ? { paddingLeft: 40 } : null,
-      rightSlot ? { paddingRight: 44 } : null,
-      sanitizedStyle
+      rightSlot ? { paddingRight: 48 } : null,
+      layoutInputStyle
     ]
 
     const inputNode = useTextArea ? (
@@ -96,42 +100,34 @@ export const Input = forwardRef<any, NativeInputProps>(
       />
     )
 
-    const inputWithSlots =
-      leftSlot || rightSlot ? (
-        <View style={{ position: 'relative', justifyContent: 'center' }}>
-          {inputNode}
-          {leftSlot ? (
-            <View
-              pointerEvents="box-none"
-              style={{
-                position: 'absolute',
-                left: 12,
-                top: 0,
-                bottom: 0,
-                justifyContent: 'center'
-              }}
-            >
-              {leftSlot}
-            </View>
-          ) : null}
-          {rightSlot ? (
-            <View
-              pointerEvents="box-none"
-              style={{
-                position: 'absolute',
-                right: 8,
-                top: 0,
-                bottom: 0,
-                justifyContent: 'center'
-              }}
-            >
-              {rightSlot}
-            </View>
-          ) : null}
-        </View>
-      ) : (
-        inputNode
-      )
+    const slotOverlayStyle = {
+      position: 'absolute' as const,
+      top: 0,
+      bottom: 0,
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const
+    }
+
+    const inputWithSlots = hasSlots ? (
+      <View style={[{ position: 'relative' }, slotWrapperStyle]}>
+        {inputNode}
+        {leftSlot ? (
+          <View pointerEvents="box-none" style={[slotOverlayStyle, { left: 12, width: 28 }]}>
+            {leftSlot}
+          </View>
+        ) : null}
+        {rightSlot ? (
+          <View
+            pointerEvents="box-none"
+            style={[slotOverlayStyle, { right: 4, width: 44, overflow: 'visible' }]}
+          >
+            {rightSlot}
+          </View>
+        ) : null}
+      </View>
+    ) : (
+      inputNode
+    )
 
     const textFieldNode = (
       <TextField isInvalid={computedInvalid} className="gap-1.5" style={textFieldLayout}>

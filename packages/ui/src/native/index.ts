@@ -21,6 +21,7 @@ export * from './ChatAppBar'
 export * from './ContextChainDialog'
 export * from './RecallDialog'
 export * from './ModelSwitcher'
+export * from './ProviderBrandIcon'
 export * from './AssistantPicker'
 
 // 日记组件

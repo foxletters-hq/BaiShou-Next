@@ -32,12 +32,13 @@ export const chatBubbleStyles = StyleSheet.create({
     textAlign: 'left'
   },
   bubble: {
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 16
   },
   text: {
     fontSize: 15,
-    lineHeight: 22
+    lineHeight: 24
   },
   reasoningBlock: {
     marginBottom: 8,

@@ -1,8 +1,12 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../../native/theme'
 import { Input } from '../Input/Input'
+import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
+import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
+import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
 import { useNativeChatBubbleEdit } from './useNativeChatBubbleEdit'
@@ -36,10 +40,20 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
-  const hasContext = Boolean(message.contextMessages?.length)
   const displayName = isUser
     ? userProfile?.nickname || t('agent.chat.you_label', '你')
     : aiProfile?.name || t('agent.chat.ai_label', 'AI')
+
+  const { cleanContent, cleanReasoning } = useMemo(
+    () => parseRedactedThinking(message.content || '', message.reasoning || ''),
+    [message.content, message.reasoning]
+  )
+
+  const toolInvocations = (message.toolInvocations || []) as Array<{
+    toolCallId: string
+    toolName: string
+    result: unknown
+  }>
 
   return (
     <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
@@ -76,16 +90,22 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 : { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
             ]}
           >
-            {isAssistant && message.isReasoning && message.reasoning && (
-              <View style={[styles.reasoningBlock, { borderColor: colors.borderSubtle }]}>
-                <Text style={[styles.reasoningLabel, { color: colors.textTertiary }]}>
-                  {t('agent.chat.reasoning', '思考中...')}
-                </Text>
-                <Text style={[styles.reasoningText, { color: colors.textSecondary }]}>
-                  {message.reasoning}
-                </Text>
+            {isAssistant && cleanReasoning ? (
+              <View style={{ marginBottom: cleanContent || toolInvocations.length ? 8 : 0 }}>
+                <ThinkingBlock
+                  content={cleanReasoning}
+                  isThinking={false}
+                  defaultOpen={false}
+                  autoCollapse
+                />
               </View>
-            )}
+            ) : null}
+
+            {isAssistant && toolInvocations.length > 0 ? (
+              <View style={{ marginBottom: cleanContent ? 8 : 0 }}>
+                <ToolResultGroupCard invocations={toolInvocations} />
+              </View>
+            ) : null}
 
             {edit.isEditing ? (
               <Input
@@ -99,13 +119,15 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 multiline
                 autoFocus
               />
-            ) : (
+            ) : isAssistant && cleanContent ? (
+              <MarkdownRenderer content={cleanContent} variant="chat" />
+            ) : !isAssistant ? (
               <Text
                 style={[styles.text, { color: isUser ? colors.textOnPrimary : colors.textPrimary }]}
               >
                 {message.content}
               </Text>
-            )}
+            ) : null}
           </View>
         </TouchableOpacity>
 
@@ -123,7 +145,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             colors={colors}
             isUser={isUser}
             isAssistant={isAssistant}
-            hasContext={hasContext}
             message={message}
             isTtsPlaying={Boolean(isTtsPlaying)}
             onCopy={onCopy ?? (() => {})}
@@ -152,10 +173,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
       <NativeChatBubbleActionSheet
         visible={showActions}
-        colors={colors}
         isUser={isUser}
         isAssistant={isAssistant}
-        hasContext={hasContext}
         message={message}
         onClose={() => setShowActions(false)}
         onStartEdit={() => {

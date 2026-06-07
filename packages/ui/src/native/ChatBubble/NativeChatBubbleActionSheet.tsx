@@ -1,23 +1,14 @@
 import React from 'react'
-import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Modal } from '../Modal/Modal'
+import { useNativeTheme } from '../theme'
 import type { ChatBubbleMessage } from './chat-bubble.types'
-import { chatBubbleStyles as styles } from './chat-bubble.styles'
-
-interface ThemeColors {
-  bgSurface: string
-  textPrimary: string
-  textSecondary: string
-  borderSubtle: string
-  error?: string
-}
 
 interface NativeChatBubbleActionSheetProps {
   visible: boolean
-  colors: ThemeColors
   isUser: boolean
   isAssistant: boolean
-  hasContext: boolean
   message: ChatBubbleMessage
   onClose: () => void
   onStartEdit: () => void
@@ -32,10 +23,8 @@ interface NativeChatBubbleActionSheetProps {
 
 export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetProps> = ({
   visible,
-  colors,
   isUser,
   isAssistant,
-  hasContext,
   message,
   onClose,
   onStartEdit,
@@ -48,63 +37,135 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
   onDelete
 }) => {
   const { t } = useTranslation()
+  const { colors, tokens } = useNativeTheme()
 
-  const renderItem = (label: string, onPress: () => void, destructive = false) => (
-    <TouchableOpacity
-      onPress={() => {
-        onPress()
-        onClose()
-      }}
-      style={styles.actionItem}
-    >
-      <Text
-        style={[styles.actionItemText, { color: destructive ? colors.error : colors.textPrimary }]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  )
+  const run = (action?: () => void) => {
+    if (!action) return
+    action()
+    onClose()
+  }
+
+  const items: Array<{ key: string; label: string; onPress?: () => void; destructive?: boolean }> = []
+
+  if (onCopy) {
+    items.push({ key: 'copy', label: t('common.copy', '复制'), onPress: onCopy })
+  }
+  if (isUser && onResend) {
+    items.push({ key: 'resend', label: t('agent.chat.resend', '重新发送'), onPress: onResend })
+  }
+  if (isUser || isAssistant) {
+    items.push({
+      key: 'edit',
+      label: t(isAssistant ? 'agent.chat.edit_ai' : 'agent.chat.edit', '编辑'),
+      onPress: onStartEdit
+    })
+  }
+  if (isAssistant && onReadAloud) {
+    items.push({
+      key: 'read',
+      label: t('agent.chat.readAloud', '语音朗读'),
+      onPress: () => onReadAloud(message.content)
+    })
+  }
+  if (isAssistant && onShowContext) {
+    items.push({
+      key: 'context',
+      label: t('chat.viewContextTree', '查看发送给 AI 的上下文'),
+      onPress: () => onShowContext(message)
+    })
+  }
+  if (isAssistant && onRegenerate) {
+    items.push({
+      key: 'regen',
+      label: t('agent.chat.regenerate', '重新生成'),
+      onPress: onRegenerate
+    })
+  }
+  if (isAssistant && onBranch) {
+    items.push({
+      key: 'branch',
+      label: t('agent.chat.branch', '从此处创建分支'),
+      onPress: onBranch
+    })
+  }
+  if (onDelete) {
+    items.push({
+      key: 'delete',
+      label: t('common.delete', '删除'),
+      onPress: onDelete,
+      destructive: true
+    })
+  }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.actionSheet, { backgroundColor: colors.bgSurface }]}>
-          <Text style={[styles.actionSheetTitle, { color: colors.textPrimary }]}>
-            {t('agent.chat.message_actions', '消息操作')}
-          </Text>
-          <ScrollView>
-            {onCopy && renderItem(t('common.copy', '复制'), onCopy)}
-            {isUser && onResend && renderItem(t('agent.chat.resend', '重新发送'), onResend)}
-            {(isUser || isAssistant) &&
-              renderItem(
-                t(isAssistant ? 'agent.chat.edit_ai' : 'agent.chat.edit', '编辑'),
-                onStartEdit
-              )}
-            {isAssistant &&
-              onReadAloud &&
-              renderItem(t('agent.chat.readAloud', '语音朗读'), () => onReadAloud(message.content))}
-            {isAssistant &&
-              hasContext &&
-              onShowContext &&
-              renderItem(t('agent.chat.context_chain', '上下文链'), () => onShowContext(message))}
-            {isAssistant &&
-              onRegenerate &&
-              renderItem(t('agent.chat.regenerate', '重新生成'), onRegenerate)}
-            {isAssistant &&
-              onBranch &&
-              renderItem(t('agent.chat.branch', '从此处创建分支'), onBranch)}
-            {onDelete && renderItem(t('common.delete', '删除'), onDelete, true)}
-          </ScrollView>
-          <TouchableOpacity
-            onPress={onClose}
-            style={[styles.actionCancel, { borderTopColor: colors.borderSubtle }]}
+    <Modal
+      visible={visible}
+      onClose={onClose}
+      title={t('agent.chat.message_actions', '消息操作')}
+      animationType="fade"
+    >
+      <View style={styles.list}>
+        {items.map((item, index) => (
+          <Pressable
+            key={item.key}
+            onPress={() => run(item.onPress)}
+            style={({ pressed }) => [
+              styles.item,
+              index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderSubtle },
+              pressed && { opacity: 0.7 }
+            ]}
           >
-            <Text style={[styles.actionCancelText, { color: colors.textSecondary }]}>
-              {t('common.cancel', '取消')}
+            <Text
+              style={[
+                styles.itemText,
+                { color: item.destructive ? colors.error : colors.textPrimary }
+              ]}
+            >
+              {item.label}
             </Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
+          </Pressable>
+        ))}
+      </View>
+      <Pressable
+        onPress={onClose}
+        style={({ pressed }) => [
+          styles.cancelBtn,
+          {
+            marginTop: tokens.spacing.sm,
+            borderColor: colors.borderSubtle,
+            opacity: pressed ? 0.7 : 1
+          }
+        ]}
+      >
+        <Text style={[styles.cancelText, { color: colors.textSecondary }]}>
+          {t('common.cancel', '取消')}
+        </Text>
+      </Pressable>
     </Modal>
   )
 }
+
+const styles = StyleSheet.create({
+  list: {
+    width: '100%'
+  },
+  item: {
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    alignItems: 'center'
+  },
+  itemText: {
+    fontSize: 16,
+    fontWeight: '500'
+  },
+  cancelBtn: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center'
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: '600'
+  }
+})

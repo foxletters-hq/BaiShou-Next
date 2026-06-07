@@ -55,7 +55,13 @@ export const DiaryScreen: React.FC = () => {
   const { colors, isDark } = useNativeTheme()
   const { services, dbReady, vaultRevision, vaultSwitching } = useBaishou()
   const router = useRouter()
-  const { needsFullFileAccess, request: requestStorage, storageReady } = useStoragePermission()
+  const {
+    needsFullFileAccess,
+    request: requestStorage,
+    storageReady,
+    permissionChecked,
+    isStoragePending
+  } = useStoragePermission()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(() => {
@@ -306,7 +312,11 @@ export const DiaryScreen: React.FC = () => {
             currentPage={currentPage}
             pageSize={pageSize}
             selectedMonth={selectedMonth}
-            loading={needsFullFileAccess || vaultSwitching ? false : loading}
+            loading={
+              needsFullFileAccess
+                ? false
+                : !permissionChecked || isStoragePending || vaultSwitching || loading
+            }
             onGoToEditor={(id) => router.push({ pathname: '/diary-editor', params: { id } })}
             onDeleteEntry={setDeletingId}
             onPageChange={setCurrentPage}

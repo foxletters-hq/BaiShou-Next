@@ -2,7 +2,6 @@ import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MessageActionBar } from '../MessageActionBar/MessageActionBar'
-import { NativeIconButton } from '../icons/NativeIconButton'
 import type { ChatBubbleMessage } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
 
@@ -20,7 +19,6 @@ interface NativeChatBubbleActionsRowProps {
   colors: ThemeColors
   isUser: boolean
   isAssistant: boolean
-  hasContext: boolean
   message: ChatBubbleMessage
   isTtsPlaying: boolean
   onCopy: () => void
@@ -37,7 +35,6 @@ interface NativeChatBubbleActionsRowProps {
 export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProps> = ({
   isUser,
   isAssistant,
-  hasContext,
   message,
   isTtsPlaying,
   onCopy,
@@ -50,7 +47,6 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
   onSaveEdit,
   onDelete
 }) => {
-  const { t } = useTranslation()
   const canEdit = isUser || Boolean(onSaveEdit)
 
   return (
@@ -61,17 +57,13 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
         onRetry={isUser ? onResend : onRegenerate}
         onReadAloud={isAssistant && onReadAloud ? () => onReadAloud(message.content) : undefined}
         onBranch={isAssistant ? onBranch : undefined}
+        onShowContext={
+          isAssistant && onShowContext ? () => onShowContext(message) : undefined
+        }
         onDelete={onDelete}
         isAI={isAssistant}
         isTtsPlaying={isTtsPlaying}
       />
-      {isAssistant && hasContext && onShowContext && (
-        <NativeIconButton
-          name="account-tree"
-          onPress={() => onShowContext(message)}
-          accessibilityLabel={t('agent.chat.context_chain', '上下文链')}
-        />
-      )}
     </View>
   )
 }

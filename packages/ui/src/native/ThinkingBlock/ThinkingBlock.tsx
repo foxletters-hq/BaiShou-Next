@@ -1,8 +1,12 @@
-import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer'
+import { CollapsibleAncillaryBlock } from '../CollapsibleAncillaryBlock'
+
+const MAX_PREVIEW_LINES = 5
+const PREVIEW_LINE_HEIGHT = 14
 
 export interface ThinkingBlockProps {
   content: string
@@ -10,146 +14,142 @@ export interface ThinkingBlockProps {
   thinkingTimeMs?: number
   defaultOpen?: boolean
   autoCollapse?: boolean
+  headerIcon?: string
+  forceVisible?: boolean
+  activeStatusLabel?: string
+  completedStatusLabel?: string
 }
 
 export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   content,
   isThinking = false,
-  thinkingTimeMs,
+  thinkingTimeMs = 0,
   defaultOpen = false,
-  autoCollapse = false
+  autoCollapse = true,
+  headerIcon = '✨',
+  forceVisible = false,
+  activeStatusLabel,
+  completedStatusLabel
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
-  const [expanded, setExpanded] = useState(autoCollapse ? false : defaultOpen)
+  const { colors } = useNativeTheme()
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const startTimeRef = useRef(Date.now())
+  const [displayTime, setDisplayTime] = useState(thinkingTimeMs)
 
-  const toggleExpand = () => {
-    setExpanded((prev) => !prev)
-  }
-
-  const getStatusText = (): string => {
+  useEffect(() => {
     if (isThinking) {
-      return t('agent.chat.thinking_time', '思考中 {{time}}', { time: '...' }).replace(
-        ' {{time}}',
-        '...'
-      )
+      startTimeRef.current = Date.now()
+      setDisplayTime(0)
+      const timer = setInterval(() => {
+        setDisplayTime(Date.now() - startTimeRef.current)
+      }, 100)
+      return () => clearInterval(timer)
     }
-    if (thinkingTimeMs !== undefined) {
-      const seconds = (thinkingTimeMs / 1000).toFixed(1)
-      return t('agent.chat.thought_time', '思考耗时 {{time}}', {
-        time: `${seconds}s`
-      })
+    if (thinkingTimeMs > 0) {
+      setDisplayTime(thinkingTimeMs)
     }
-    return t('agent.chat.thought_process', '思考过程')
-  }
+    return undefined
+  }, [isThinking, thinkingTimeMs])
 
-  const getLastLines = (text: string, lines: number): string => {
-    const allLines = text.split('\n')
-    return allLines.slice(-lines).join('\n')
-  }
+  useEffect(() => {
+    if (autoCollapse && isThinking) {
+      setIsOpen(false)
+    }
+  }, [autoCollapse, isThinking])
+
+  const timeText = useMemo(() => {
+    const seconds = displayTime / 1000
+    if (seconds < 1) return `${Math.round(displayTime / 100) * 100}ms`
+    return `${seconds.toFixed(1)}s`
+  }, [displayTime])
+
+  const statusText = useMemo(() => {
+    if (isThinking) {
+      if (activeStatusLabel) return `${activeStatusLabel} · ${timeText}`
+      return t('agent.chat.thinking_time', '思考中 {{time}}', { time: timeText })
+    }
+    if (displayTime > 0) {
+      if (completedStatusLabel) {
+        return completedStatusLabel.includes('{{time}}')
+          ? completedStatusLabel.replace('{{time}}', timeText)
+          : `${completedStatusLabel} · ${timeText}`
+      }
+      return t('agent.chat.thought_time', '思考耗时 {{time}}', { time: timeText })
+    }
+    if (completedStatusLabel) return completedStatusLabel
+    return t('agent.chat.thought_process', '思考过程')
+  }, [isThinking, displayTime, timeText, t, activeStatusLabel, completedStatusLabel])
+
+  const previewLines = useMemo(() => {
+    if (!content) return []
+    const lines = isThinking ? content.split('\n').slice(0, -1) : content.split('\n')
+    return lines.filter((line) => line.trim() !== '')
+  }, [content, isThinking])
+
+  const previewHeight = useMemo(() => {
+    const visibleCount = Math.min(previewLines.length, MAX_PREVIEW_LINES)
+    if (visibleCount < 1) return 38
+    return Math.min(120, Math.max(visibleCount + 1, 2) * PREVIEW_LINE_HEIGHT + 8)
+  }, [previewLines.length])
+
+  if (!content && !(forceVisible && isThinking)) return null
+
+  const showCollapsedPreview = isThinking && !isOpen
+
+  const preview = showCollapsedPreview ? (
+    <View style={[styles.previewContainer, { height: previewHeight }]}>
+      <View style={styles.previewScroll}>
+        {previewLines.slice(-MAX_PREVIEW_LINES).map((line, index) => (
+          <Text
+            key={`${index}-${line.slice(0, 12)}`}
+            style={[styles.previewLine, { color: colors.textTertiary }]}
+            numberOfLines={1}
+          >
+            {line}
+          </Text>
+        ))}
+      </View>
+      <View
+        style={[styles.previewFade, { backgroundColor: colors.bgSurface }]}
+        pointerEvents="none"
+      />
+    </View>
+  ) : undefined
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.bgSurfaceHighest,
-          borderColor: colors.borderSubtle,
-          borderRadius: tokens.radius.md
-        }
-      ]}
+    <CollapsibleAncillaryBlock
+      headerIcon={headerIcon}
+      title={statusText}
+      open={isOpen}
+      onToggle={() => setIsOpen((prev) => !prev)}
+      preview={preview}
     >
-      <TouchableOpacity style={styles.header} onPress={toggleExpand} activeOpacity={0.7}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.icon}>✨</Text>
-          <Text style={[styles.headerText, { color: colors.textSecondary }]}>
-            {getStatusText()}
-          </Text>
-        </View>
-        <Text
-          style={[
-            styles.arrow,
-            {
-              color: colors.textTertiary,
-              transform: [{ rotate: expanded ? '90deg' : '0deg' }]
-            }
-          ]}
-        >
-          ▶
-        </Text>
-      </TouchableOpacity>
-
-      {expanded ? (
-        <View style={styles.content}>
-          <MarkdownRenderer content={content} />
-        </View>
-      ) : (
-        <View style={styles.previewContainer}>
-          <Text style={[styles.previewText, { color: colors.textTertiary }]} numberOfLines={3}>
-            {getLastLines(content, 3)}
-          </Text>
-          <View
-            style={[
-              styles.gradientFade,
-              {
-                backgroundColor: colors.bgSurfaceHighest
-              }
-            ]}
-            pointerEvents="none"
-          />
-        </View>
-      )}
-    </View>
+      <MarkdownRenderer content={content} variant="ancillary" />
+    </CollapsibleAncillaryBlock>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    borderWidth: 1,
-    overflow: 'hidden'
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  icon: {
-    fontSize: 16,
-    marginRight: 8
-  },
-  headerText: {
-    fontSize: 14,
-    fontWeight: '500'
-  },
-  arrow: {
-    fontSize: 12
-  },
-  content: {
-    paddingHorizontal: 14,
-    paddingBottom: 12
-  },
   previewContainer: {
-    position: 'relative',
-    paddingHorizontal: 14,
-    paddingBottom: 8
+    overflow: 'hidden',
+    position: 'relative'
   },
-  previewText: {
-    fontSize: 13,
-    lineHeight: 20,
-    maxHeight: 60
+  previewScroll: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 2
   },
-  gradientFade: {
+  previewLine: {
+    fontSize: 11,
+    lineHeight: PREVIEW_LINE_HEIGHT
+  },
+  previewFade: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    height: 24,
-    opacity: 0.7
+    height: '60%',
+    opacity: 0.85
   }
 })

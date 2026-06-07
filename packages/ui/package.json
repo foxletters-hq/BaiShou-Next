@@ -70,7 +70,9 @@
     "heroui-native": "^1.0.0-beta.10"
   },
   "peerDependencies": {
+    "expo-asset": ">=11",
     "react": ">=19",
-    "react-native": ">=0.83"
+    "react-native": ">=0.83",
+    "react-native-svg": ">=15"
   }
 }

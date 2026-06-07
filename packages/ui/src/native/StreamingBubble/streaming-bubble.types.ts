@@ -16,5 +16,4 @@ export interface NativeStreamingBubbleProps {
   }
   error?: string | null
   onRetry?: () => void
-  onStop?: () => void
 }

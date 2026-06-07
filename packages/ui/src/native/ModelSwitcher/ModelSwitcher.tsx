@@ -9,15 +9,17 @@ import {
   StyleSheet,
   TouchableOpacity
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
 import { Button } from '../Button'
+import { ProviderBrandIcon } from '../ProviderBrandIcon'
 
 export interface MockAiProviderModel {
   id: string
   name: string
+  type?: string
   enabledModels?: string[]
   models?: string[]
 }
@@ -127,7 +129,9 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
               borderRadius: tokens.radius.xl,
               width: '90%',
               maxWidth: maxModalWidth,
-              maxHeight: '80%',
+              height: '72%',
+              maxHeight: 560,
+              minHeight: 480,
               padding: tokens.spacing.lg,
               opacity: fadeAnim,
               transform: [{ scale: scaleAnim }]
@@ -143,14 +147,19 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
             </TouchableOpacity>
           </View>
 
-          <Input
-            placeholder={t('common.search_model', '搜索模型...')}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.searchInput}
-            autoCorrect={false}
-            autoCapitalize="none"
-            leftSlot={<MaterialIcons name="search" size={18} color={colors.textTertiary} />}
+          <View style={styles.searchInputWrap}>
+            <Input
+              placeholder={t('common.search_model', '搜索模型...')}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+              autoCorrect={false}
+              autoCapitalize="none"
+              leftSlot={
+                <View style={styles.searchIconWrap}>
+                  <MaterialIcons name="search" size={18} color={colors.textTertiary} />
+                </View>
+              }
             rightSlot={
               searchQuery.length > 0 ? (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -158,7 +167,8 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                 </TouchableOpacity>
               ) : undefined
             }
-          />
+            />
+          </View>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
             {filteredProviders.length === 0 ? (
@@ -174,8 +184,8 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                       onClose()
                     }}
                   >
-                    <MaterialIcons name="settings" size={16} color={colors.primary} />
-                    {t('agent.manageProviders', '管理模型与供应商')}
+                    <MaterialCommunityIcons name="store-outline" size={16} color={colors.primary} />
+                    <Button.Label>{t('settings.manage_providers', '管理供应商')}</Button.Label>
                   </Button>
                 )}
               </View>
@@ -187,7 +197,11 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                 return (
                   <View key={provider.id} style={styles.providerGroup}>
                     <View style={styles.providerHeader}>
-                      <MaterialIcons name="cloud" size={16} color={colors.textSecondary} />
+                      <ProviderBrandIcon
+                        providerId={provider.id}
+                        providerType={provider.type}
+                        size={18}
+                      />
                       <Text style={[styles.providerName, { color: colors.textPrimary }]}>
                         {provider.name}
                       </Text>
@@ -216,10 +230,10 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                             }
                           ]}
                         >
-                          <MaterialIcons
-                            name="memory"
+                          <ProviderBrandIcon
+                            providerId={provider.id}
+                            providerType={provider.type}
                             size={16}
-                            color={isSelected ? colors.primary : colors.textTertiary}
                           />
                           <Text
                             style={[
@@ -255,8 +269,8 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                 onClose()
               }}
             >
-              <MaterialIcons name="settings" size={18} color={colors.primary} />
-              {t('agent.manageProviders', '管理模型与供应商')}
+              <MaterialCommunityIcons name="store-outline" size={18} color={colors.primary} />
+              <Button.Label>{t('settings.manage_providers', '管理供应商')}</Button.Label>
             </Button>
           )}
         </Animated.View>
@@ -275,7 +289,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.45)'
   },
-  dialog: {},
+  dialog: {
+    flexDirection: 'column'
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,12 +302,20 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700'
   },
-  searchInput: {
-    fontSize: 15,
+  searchInputWrap: {
     marginBottom: 12
   },
+  searchInput: {
+    fontSize: 15
+  },
+  searchIconWrap: {
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   list: {
-    maxHeight: 420
+    flex: 1
   },
   listContent: {
     paddingBottom: 8

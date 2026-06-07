@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { NativeIconButton } from '../icons/NativeIconButton'
 import { useNativeTheme } from '../theme'
@@ -11,6 +11,7 @@ export interface MessageActionBarProps {
   onReadAloud?: () => void
   onDelete?: () => void
   onBranch?: () => void
+  onShowContext?: () => void
   isAI?: boolean
   isTtsPlaying?: boolean
 }
@@ -22,6 +23,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
   onReadAloud,
   onDelete,
   onBranch,
+  onShowContext,
   isAI = false,
   isTtsPlaying = false
 }) => {
@@ -80,6 +82,17 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
         />
       )}
 
+      {onShowContext && (
+        <TouchableOpacity
+          onPress={onShowContext}
+          style={styles.contextBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.viewContextTree', '查看发送给 AI 的上下文')}
+        >
+          <Text style={styles.contextIcon}>🌿</Text>
+        </TouchableOpacity>
+      )}
+
       {onDelete && (
         <NativeIconButton
           name="delete-outline"
@@ -104,5 +117,15 @@ const styles = StyleSheet.create({
   },
   alignRight: {
     justifyContent: 'flex-end'
+  },
+  contextBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  contextIcon: {
+    fontSize: 14
   }
 })
