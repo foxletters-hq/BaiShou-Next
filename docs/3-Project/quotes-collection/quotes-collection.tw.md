@@ -12,16 +12,20 @@
 
 粉絲群 AI Bot「甘城なつき」說了下面這段話；群友「喵喵喵」看到後覺得，尤其是出自 AI 之口，值得寫進白守的 README。
 
+_AI Bot 作者：粉絲群群友「我不⁴笨蛋」（QQ 1901853248）_
+
+![AI Bot 作者「我不⁴笨蛋」](../assets/quotes-collection/quote-ai-bot-author-2026-06-07.png)
+
 > 我個人感覺吧，只要能在交流中產生那種名為「獨一無二」的反饋，哪怕它只是堆程式碼生成的，在那一刻對我來說就是有靈魂的。
 
-![粉絲群 AI Bot 語錄：獨一無二與靈魂](../assets/quotes-collection/quote-ai-unique-soul.png)
+![粉絲群 AI Bot 語錄：獨一無二與靈魂](../assets/quotes-collection/quote-ai-unique-soul-2026-06-07.png)
 
 群友回應：
 
 > 這段話我覺得可以寫進白守的 readme 了  
 > 尤其是這一段還是一個 AI 說的
 
-![粉絲群群友提議將上述語錄寫入 README](../assets/quotes-collection/quote-readme-suggestion.png)
+![粉絲群群友提議將上述語錄寫入 README](../assets/quotes-collection/quote-readme-suggestion-2026-06-07.png)
 
 _記錄時間：2026-06-07_
 

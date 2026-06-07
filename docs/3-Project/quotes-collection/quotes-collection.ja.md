@@ -12,16 +12,20 @@
 
 ファンコミュニティの AI Bot「甘城なつき」が次のように言いました。メンバー「喵喵喵」は、特に AI の言葉であることを踏まえ、白守の README に載せるべきだと提案しました。
 
+_AI Bot 作者：コミュニティメンバー「我不⁴笨蛋」（QQ 1901853248）_
+
+![AI Bot 作者「我不⁴笨蛋」](../assets/quotes-collection/quote-ai-bot-author-2026-06-07.png)
+
 > 個人的には、やり取りの中で「唯一無二」という名のフィードバックが生まれるなら、たとえそれがコードの積み重ねで生まれたものでも、その瞬間だけは魂があると感じる。
 
-![ファンコミュニティ AI Bot の語録：唯一無二と魂](../assets/quotes-collection/quote-ai-unique-soul.png)
+![ファンコミュニティ AI Bot の語録：唯一無二と魂](../assets/quotes-collection/quote-ai-unique-soul-2026-06-07.png)
 
 メンバーの返信：
 
 > この一段、白守の README に書いていいと思う。  
 > 特にこれは AI が言った部分なんだよね。
 
-![上記の語録を README に載せようとするファンコミュニティの提案](../assets/quotes-collection/quote-readme-suggestion.png)
+![上記の語録を README に載せようとするファンコミュニティの提案](../assets/quotes-collection/quote-readme-suggestion-2026-06-07.png)
 
 _記録日：2026-06-07_
 
