@@ -1,8 +1,4 @@
-import {
-  streamText,
-  smoothStream,
-  stepCountIs
-} from 'ai'
+import { streamText, smoothStream, stepCountIs } from 'ai'
 import {
   buildMiddlewareChain,
   wrapLanguageModelWithMiddlewares,
@@ -336,7 +332,7 @@ export class AgentSessionService {
         tools: enabledTools as any,
         customPersona: effectiveSystemPrompt,
         userProfileBlock:
-                  typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined
+          typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined
       })
 
       // 4. 调用 Vercel streamText
@@ -423,8 +419,6 @@ export class AgentSessionService {
       throw e
     }
   }
-
-
 
   // ─── 将标准化 Chunk 分发到旧式回调 ───
 

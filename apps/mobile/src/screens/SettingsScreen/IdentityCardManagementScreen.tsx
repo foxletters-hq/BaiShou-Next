@@ -171,7 +171,10 @@ export const IdentityCardManagementScreen: React.FC = () => {
       return
     }
     const confirmed = await dialog.confirm(
-      t('settings.delete_identity_card', '确定删除身份卡: $personaId').replace('$personaId', personaId),
+      t('settings.delete_identity_card', '确定删除身份卡: $personaId').replace(
+        '$personaId',
+        personaId
+      ),
       { confirmText: t('common.confirm', '确定'), destructive: true }
     )
     if (!confirmed) return
@@ -242,9 +245,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
                 ]}
               >
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>
-                    {persona.id}
-                  </Text>
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{persona.id}</Text>
                   <Text style={[styles.sub, { color: colors.textSecondary }]}>
                     {t('settings.identity_facts_count', '{{count}} 条身份条目', {
                       count: persona.factsCount

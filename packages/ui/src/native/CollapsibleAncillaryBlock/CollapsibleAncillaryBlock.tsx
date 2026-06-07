@@ -49,7 +49,11 @@ export const CollapsibleAncillaryBlock: React.FC<CollapsibleAncillaryBlockProps>
     transform: [{ rotate: `${-90 + chevronRotation.value * 90}deg` }]
   }))
 
-  const bodyExpanded = collapsible ? (open ? Boolean(children) : Boolean(preview)) : Boolean(children)
+  const bodyExpanded = collapsible
+    ? open
+      ? Boolean(children)
+      : Boolean(preview)
+    : Boolean(children)
   const bodyContent = open ? children : preview
 
   return (

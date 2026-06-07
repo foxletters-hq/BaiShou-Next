@@ -136,9 +136,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, visib
                   onChange(hueBarColors[Math.min(index, hueBarColors.length - 1)]!)
                 }}
               >
-                <Slider.Track
-                  style={{ height: 12, borderRadius: 6, overflow: 'hidden' }}
-                >
+                <Slider.Track style={{ height: 12, borderRadius: 6, overflow: 'hidden' }}>
                   <View style={styles.hueBar}>
                     {hueBarColors.map((color, index) => (
                       <View

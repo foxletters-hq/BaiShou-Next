@@ -200,9 +200,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
           state.compressionText = ''
           state.compressionReasoning = ''
           state.compressionTriggerMessageId =
-            typeof event.triggerUserMessageId === 'string'
-              ? event.triggerUserMessageId
-              : null
+            typeof event.triggerUserMessageId === 'string' ? event.triggerUserMessageId : null
         } else if (event.type === 'reasoning-delta') {
           state.compressionReasoning += event.chunk ?? ''
         } else if (event.type === 'delta') {
@@ -421,5 +419,4 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     stopChat,
     reset
   }
-
 }

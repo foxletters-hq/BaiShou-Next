@@ -12,7 +12,7 @@ import {
   AboutSettingsCard,
   StorageSettingsCard,
   DataManagementCard,
-  SettingsGroupDivider,
+  SettingsGroupDivider
 } from '@baishou/ui/native'
 import {
   EXTERNAL_STORAGE_ROOT,

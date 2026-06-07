@@ -2,10 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
-import {
-  reconcileCompressionStateAfterTruncate,
-  truncateSessionAfterOrderIndex
-} from '@baishou/ai'
+import { reconcileCompressionStateAfterTruncate, truncateSessionAfterOrderIndex } from '@baishou/ai'
 import { useBaishou } from '../providers/BaishouProvider'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { buildInsertSessionInput } from '../utils/session-input.util'
@@ -93,9 +90,7 @@ export function useAgentStream(
       if (!text.trim() || !services) return
 
       if (!currentProviderId || !currentModelId) {
-        toast.showInfo(
-          t('agent.error.no_model', '请先在顶部选择一个模型')
-        )
+        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }
 
@@ -244,9 +239,7 @@ export function useAgentStream(
       if (!currentSessionId || !services) return
 
       if (!currentProviderId || !currentModelId) {
-        toast.showInfo(
-          t('agent.error.no_model', '请先在顶部选择一个模型')
-        )
+        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }
 

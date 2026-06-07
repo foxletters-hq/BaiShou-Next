@@ -88,8 +88,7 @@ export async function consumeCompressionModelStream(
 
   const usage = await streamResult.usage
   const completionTokens =
-    (usage as { completionTokens?: number; outputTokens?: number } | undefined)
-      ?.completionTokens ??
+    (usage as { completionTokens?: number; outputTokens?: number } | undefined)?.completionTokens ??
     (usage as { outputTokens?: number } | undefined)?.outputTokens ??
     0
 
@@ -101,4 +100,3 @@ export async function consumeCompressionModelStream(
     summaryDurationMs
   }
 }
-

@@ -98,9 +98,7 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
           minValue={BATCH_EMBED_CONCURRENCY_MIN}
           maxValue={BATCH_EMBED_CONCURRENCY_MAX}
           step={1}
-          onChange={(v) =>
-            onChange({ ...config, batchEmbedConcurrency: Math.round(v as number) })
-          }
+          onChange={(v) => onChange({ ...config, batchEmbedConcurrency: Math.round(v as number) })}
         />
         <Text style={[styles.hint, { color: colors.textSecondary, paddingHorizontal: 0 }]}>
           {t('settings.rag_batch_embed_concurrency_hint')}

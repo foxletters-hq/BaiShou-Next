@@ -60,7 +60,10 @@ export function buildLanguageModelMiddlewares(providerType: string): LanguageMod
     try {
       middlewares.push(createDeepSeekReasoningMiddleware())
     } catch (e: any) {
-      logger.warn('[buildLanguageModelMiddlewares] createDeepSeekReasoningMiddleware not available:', e)
+      logger.warn(
+        '[buildLanguageModelMiddlewares] createDeepSeekReasoningMiddleware not available:',
+        e
+      )
     }
   }
 
@@ -89,4 +92,3 @@ export function wrapLanguageModelWithMiddlewares(model: any, providerType: strin
   }
   return model
 }
-

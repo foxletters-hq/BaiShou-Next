@@ -66,19 +66,23 @@ function createDeepSeekFetchInterceptor(
       }
     }
 
-    return fetchImpl(url, safeInit)
-      .then((response: Response) => {
-        const hasBody = response.body != null
-        const hasPipeThrough = hasBody && typeof (response.body as any).pipeThrough === 'function'
-        console.log(
-          '[FetchDebug] DeepSeek response: status=' + response.status +
-          ' hasBody=' + hasBody +
-          ' hasPipeThrough=' + hasPipeThrough +
-          ' contentType=' + (response.headers.get('content-type') || 'N/A') +
-          ' TDS=' + typeof (globalThis as any).TextDecoderStream
-        )
-        return response
-      })
+    return fetchImpl(url, safeInit).then((response: Response) => {
+      const hasBody = response.body != null
+      const hasPipeThrough = hasBody && typeof (response.body as any).pipeThrough === 'function'
+      console.log(
+        '[FetchDebug] DeepSeek response: status=' +
+          response.status +
+          ' hasBody=' +
+          hasBody +
+          ' hasPipeThrough=' +
+          hasPipeThrough +
+          ' contentType=' +
+          (response.headers.get('content-type') || 'N/A') +
+          ' TDS=' +
+          typeof (globalThis as any).TextDecoderStream
+      )
+      return response
+    })
   }
 }
 

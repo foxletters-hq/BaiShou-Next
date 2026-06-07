@@ -8,7 +8,10 @@ import type { ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
 const SHADOW_DB_FILENAME = 'shadow_index_v2.db'
 
 function normalizeVaultSystemDir(vaultSystemDir: string): string {
-  return vaultSystemDir.replace(/^file:\/\//, '').replace(/\\/g, '/').replace(/\/+$/, '')
+  return vaultSystemDir
+    .replace(/^file:\/\//, '')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/, '')
 }
 
 /**

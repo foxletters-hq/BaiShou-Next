@@ -247,12 +247,7 @@ export const AgentBehaviorSection: React.FC = () => {
         <Button variant="outline" className="flex-1" onPress={handleResetDefaults}>
           {t('settings.reset_defaults')}
         </Button>
-        <Button
-          variant="primary"
-          className="flex-1"
-          onPress={handleSave}
-          isDisabled={!dirty}
-        >
+        <Button variant="primary" className="flex-1" onPress={handleSave} isDisabled={!dirty}>
           {t('common.save')}
         </Button>
       </View>
@@ -283,5 +278,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 8
-  },
+  }
 })

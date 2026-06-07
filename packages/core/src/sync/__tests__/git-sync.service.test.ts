@@ -290,9 +290,7 @@ describe('GitSyncService', () => {
       const impl = new GitSyncServiceImpl(mockPathService)
 
       const mockStatusResult = {
-        files: [
-          { path: 'Journals/2026/05/2026-05-27.md', index: '?', working_dir: '?' }
-        ],
+        files: [{ path: 'Journals/2026/05/2026-05-27.md', index: '?', working_dir: '?' }],
         created: [],
         not_added: ['Journals/2026/05/2026-05-27.md'],
         conflicted: [],

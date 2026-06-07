@@ -1,6 +1,5 @@
 import { TextEncoderStream, TextDecoderStream } from '@stardazed/streams-text-encoding'
 import { fetch as expoFetch } from 'expo/fetch'
-
 ;(globalThis as any).TextEncoderStream = TextEncoderStream
 ;(globalThis as any).TextDecoderStream = TextDecoderStream
 
@@ -12,5 +11,7 @@ if (typeof expoFetch !== 'function') {
   ;(globalThis as any).__expoFetch = expoFetch
 }
 
-console.log('[POLYFILL] _layout.tsx polyfill loaded. TDS=' + typeof (globalThis as any).TextDecoderStream)
+console.log(
+  '[POLYFILL] _layout.tsx polyfill loaded. TDS=' + typeof (globalThis as any).TextDecoderStream
+)
 console.log('[POLYFILL] __expoFetch set:', typeof (globalThis as any).__expoFetch)

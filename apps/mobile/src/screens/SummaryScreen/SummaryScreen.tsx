@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar } from 'react-native'
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
-} from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import * as Clipboard from 'expo-clipboard'
 import {
   DashboardHeroBanner,
@@ -226,7 +222,9 @@ export const SummaryScreen: React.FC = () => {
           <SummaryTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
           <View style={styles.sliderContainer}>
-            <Animated.View style={[styles.sliderTrack, { width: width * 2 }, animatedContainerStyle]}>
+            <Animated.View
+              style={[styles.sliderTrack, { width: width * 2 }, animatedContainerStyle]}
+            >
               <View style={[styles.sliderPage, { width }, styles.panelPage]}>
                 <ScrollView
                   contentContainerStyle={[styles.panelContent, styles.panelScrollContent]}

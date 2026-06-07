@@ -1315,7 +1315,7 @@
     "clear_agent_db": "Flush Agent Overrides",
     "clear_agent_success": "Agent database cleared. Restart the app to rebuild it.",
     "insert_compression_test": "Insert compression test chat",
-      "insert_compression_test_desc": "Create a 15-round simulated AI dialogue with tool calls; data size is derived from the bound companion's compression threshold.",
+    "insert_compression_test_desc": "Create a 15-round simulated AI dialogue with tool calls; data size is derived from the bound companion's compression threshold.",
     "insert_compression_test_success": "Compression test chat created ({{rounds}} rounds, ~{{tokens}} tokens)",
     "insert_compression_test_failed": "Insert failed: "
   },

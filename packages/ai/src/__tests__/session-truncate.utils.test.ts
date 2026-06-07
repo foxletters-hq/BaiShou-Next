@@ -28,12 +28,7 @@ describe('session-truncate.utils', () => {
   })
 
   it('truncateSessionAfterOrderIndex deletes tail, clears markers, and prunes snapshots', async () => {
-    await truncateSessionAfterOrderIndex(
-      sessionRepo as any,
-      snapshotRepo as any,
-      'sess-1',
-      5
-    )
+    await truncateSessionAfterOrderIndex(sessionRepo as any, snapshotRepo as any, 'sess-1', 5)
 
     expect(sessionRepo.deleteMessagesAfter).toHaveBeenCalledWith('sess-1', 5)
     expect(sessionRepo.clearCompactionMarkersFromOrderIndex).toHaveBeenCalledWith('sess-1', 5)
@@ -77,6 +72,4 @@ describe('session-truncate.utils', () => {
 
     expect(snapshotRepo.deleteSnapshots).not.toHaveBeenCalled()
   })
-
 })
-

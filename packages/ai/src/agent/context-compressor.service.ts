@@ -34,7 +34,12 @@ import {
 import { CompressionPruneService } from './compression-prune.service'
 import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 import { emitCompressionLifecycle } from './compression-lifecycle'
-import { writeCompactionMarker, messageHasCompactionMarker, resolveLatestUserMessageId, finalizeCompressionForStorage } from './compaction-marker'
+import {
+  writeCompactionMarker,
+  messageHasCompactionMarker,
+  resolveLatestUserMessageId,
+  finalizeCompressionForStorage
+} from './compaction-marker'
 import { consumeCompressionModelStream } from './compression-stream.utils'
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
@@ -158,10 +163,7 @@ export class ContextCompressorService {
         explicitTriggerUserMessageId ?? resolveLatestUserMessageId(allMessages)
 
       if (markerMessageId) {
-        const alreadyCompressed = await messageHasCompactionMarker(
-          sessionRepo,
-          markerMessageId
-        )
+        const alreadyCompressed = await messageHasCompactionMarker(sessionRepo, markerMessageId)
         if (alreadyCompressed) {
           logger.info(
             `[ContextCompressor] Session(${sessionId}) skip: trigger message ${markerMessageId} already has compaction marker.`
@@ -391,11 +393,16 @@ export class ContextCompressorService {
     compressionConfig: SessionCompressionConfig,
     priorSummaryText: string | null,
     providerType: string
-  ): Promise<{ text: string; reasoning?: string; completionTokens: number; thoughtDurationMs: number; summaryDurationMs: number } | null> {
+  ): Promise<{
+    text: string
+    reasoning?: string
+    completionTokens: number
+    thoughtDurationMs: number
+    summaryDurationMs: number
+  } | null> {
     const baseModel = provider.getLanguageModel(modelId)
     const model = wrapLanguageModelWithMiddlewares(baseModel, providerType)
-    const systemBase =
-      compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
+    const systemBase = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
 
     const headForModel = cloneMessagesForCompressionModel(toCompress)
     const headMessages = await MessageAdapter.toVercelMessages(headForModel, modelId, providerType)
@@ -432,7 +439,6 @@ export class ContextCompressorService {
       summaryDurationMs: streamed.summaryDurationMs
     }
   }
-
 
   /** 重新压缩时优先更新已有触发用户消息上的 compaction 标记 */
   private static resolveRecompressMarkerMessageId(

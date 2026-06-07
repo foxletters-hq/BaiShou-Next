@@ -291,7 +291,6 @@ export function useAgentChatFlow() {
     stream.stopChat()
   }
 
-
   const runContextRecompress = useCallback(
     async (targetSessionId: string) => {
       if (!targetSessionId) return

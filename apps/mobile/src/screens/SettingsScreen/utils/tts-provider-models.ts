@@ -18,7 +18,9 @@ export async function fetchTtsProviderModels(
         const data = await response.json()
         if (Array.isArray(data)) {
           return data
-            .map((item: { alias?: string; name?: string }) => item.alias || item.name || String(item))
+            .map(
+              (item: { alias?: string; name?: string }) => item.alias || item.name || String(item)
+            )
             .filter(Boolean)
         }
       }

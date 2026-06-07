@@ -57,9 +57,7 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
         onRetry={isUser ? onResend : onRegenerate}
         onReadAloud={isAssistant && onReadAloud ? () => onReadAloud(message.content) : undefined}
         onBranch={isAssistant ? onBranch : undefined}
-        onShowContext={
-          isAssistant && onShowContext ? () => onShowContext(message) : undefined
-        }
+        onShowContext={isAssistant && onShowContext ? () => onShowContext(message) : undefined}
         onDelete={onDelete}
         isAI={isAssistant}
         isTtsPlaying={isTtsPlaying}

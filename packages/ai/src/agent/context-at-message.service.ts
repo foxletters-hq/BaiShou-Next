@@ -12,7 +12,10 @@ import { buildCallChainViewModel, type CallChainViewModel } from './call-chain-v
 import { normalizeCompressionOutput } from '@baishou/shared'
 import { resolveSnapshotCutoffIndex } from './context-compression.utils'
 import type { MessageWithParts } from './message.adapter'
-import { resolveCompactionReasoningForSnapshot, resolveCompactionDurationsForSnapshot } from './compaction-marker'
+import {
+  resolveCompactionReasoningForSnapshot,
+  resolveCompactionDurationsForSnapshot
+} from './compaction-marker'
 
 export interface ContextAtMessageOptions {
   recentCount: number

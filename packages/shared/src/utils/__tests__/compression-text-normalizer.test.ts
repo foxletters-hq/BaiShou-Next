@@ -19,10 +19,7 @@ describe('normalizeCompressionOutput', () => {
   })
 
   it('preserves native reasoning and cleans summary only', () => {
-    const { summaryText, reasoningText } = normalizeCompressionOutput(
-      '纯摘要正文',
-      '已有思考'
-    )
+    const { summaryText, reasoningText } = normalizeCompressionOutput('纯摘要正文', '已有思考')
     expect(summaryText).toBe('纯摘要正文')
     expect(reasoningText).toBe('已有思考')
   })

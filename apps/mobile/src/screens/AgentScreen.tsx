@@ -574,8 +574,7 @@ export const AgentScreen = () => {
                     activeToolName={activeTool?.name ?? null}
                     completedTools={completedTools.map((tool) => ({
                       name: tool.name,
-                      durationMs:
-                        tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0
+                      durationMs: tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0
                     }))}
                     aiProfile={chatAiProfile}
                   />
@@ -596,9 +595,7 @@ export const AgentScreen = () => {
           />
 
           {showScrollButton && (
-            <View
-              style={[styles.scrollBtnWrap, { bottom: inputOffset + INPUT_DOCK_HEIGHT + 12 }]}
-            >
+            <View style={[styles.scrollBtnWrap, { bottom: inputOffset + INPUT_DOCK_HEIGHT + 12 }]}>
               <TouchableOpacity
                 style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
                 onPress={() => scrollToBottom(flatListRef, true)}

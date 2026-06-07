@@ -5,10 +5,7 @@ import type { lightColors } from '../../theme'
 type ThemeColors = typeof lightColors
 
 /** HeroUI Button 默认外观兜底，不依赖 Uniwind 是否生效 */
-export function getHeroButtonRootStyle(
-  colors: ThemeColors,
-  variant: ButtonVariant
-): ViewStyle {
+export function getHeroButtonRootStyle(colors: ThemeColors, variant: ButtonVariant): ViewStyle {
   const base: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',

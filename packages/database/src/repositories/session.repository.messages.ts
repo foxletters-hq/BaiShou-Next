@@ -193,10 +193,7 @@ export class SessionMessageOps {
     const data = { ...marker }
 
     if (existing.length > 0) {
-      await this.db
-        .update(partsTbl)
-        .set({ data })
-        .where(eq(partsTbl.id, existing[0]!.id))
+      await this.db.update(partsTbl).set({ data }).where(eq(partsTbl.id, existing[0]!.id))
       return
     }
 
@@ -227,12 +224,7 @@ export class SessionMessageOps {
     const targetMessages = await this.db
       .select({ id: messagesTbl.id })
       .from(messagesTbl)
-      .where(
-        and(
-          eq(messagesTbl.sessionId, sessionId),
-          gte(messagesTbl.orderIndex, fromOrderIndex)
-        )
-      )
+      .where(and(eq(messagesTbl.sessionId, sessionId), gte(messagesTbl.orderIndex, fromOrderIndex)))
     const messageIds = targetMessages.map((m) => m.id)
     if (messageIds.length === 0) return
 

@@ -299,10 +299,7 @@ export function useTtsProviderSettings({
         await onPlayTestAudio?.(result.audioBase64, result.format || 'mp3')
         toast.showSuccess(t('tts.settings.test_success'))
       } else {
-        const err =
-          result?.message || result?.error
-            ? ` (${result.message ?? result.error})`
-            : ''
+        const err = result?.message || result?.error ? ` (${result.message ?? result.error})` : ''
         toast.showError(t('tts.settings.test_failed') + err)
       }
     } catch (error: unknown) {
@@ -314,9 +311,7 @@ export function useTtsProviderSettings({
   }
 
   const showSpeedControl =
-    providerType === 'openai-tts' ||
-    providerType === 'clone-tts' ||
-    providerType === 'gpt-sovits'
+    providerType === 'openai-tts' || providerType === 'clone-tts' || providerType === 'gpt-sovits'
 
   const modelPlaceholder =
     providerType === 'clone-tts' || providerType === 'gpt-sovits'

@@ -61,8 +61,7 @@ export function registerDeveloperIPC() {
     let assistantId = identity.assistantId
     if (!assistantId) {
       const assistants = await assistantManager.findAll()
-      const preferred =
-        assistants.find((a) => a.isDefault) ?? assistants[0]
+      const preferred = assistants.find((a) => a.isDefault) ?? assistants[0]
       if (preferred) {
         assistantId = preferred.id
       }

@@ -327,30 +327,32 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     streamSessionIdRef.current = id
   }, [])
 
-  const truncateMessages = useCallback((messageId: string) => {
-    const idx = messageCacheRef.current.findIndex((m) => m.id === messageId)
-    if (idx === -1) return
+  const truncateMessages = useCallback(
+    (messageId: string) => {
+      const idx = messageCacheRef.current.findIndex((m) => m.id === messageId)
+      if (idx === -1) return
 
-    // Truncate cache
-    const truncated = messageCacheRef.current.slice(0, idx + 1)
-    if (truncated[idx]) {
-      truncated[idx] = {
-        ...truncated[idx],
-        compactionRecord: undefined,
-        hasCompactionMarker: false
+      // Truncate cache
+      const truncated = messageCacheRef.current.slice(0, idx + 1)
+      if (truncated[idx]) {
+        truncated[idx] = {
+          ...truncated[idx],
+          compactionRecord: undefined,
+          hasCompactionMarker: false
+        }
       }
-    }
-    messageCacheRef.current = truncated
-    loadedFromEndRef.current = truncated.length
+      messageCacheRef.current = truncated
+      loadedFromEndRef.current = truncated.length
 
-    // Re-resolve compaction anchor
-    const newAnchor = resolveLatestCompactionAnchor(truncated)
-    setCompactionAnchor(newAnchor)
+      // Re-resolve compaction anchor
+      const newAnchor = resolveLatestCompactionAnchor(truncated)
+      setCompactionAnchor(newAnchor)
 
-    // Sync to display window
-    syncFromCache(roundWindowStartRef.current)
-  }, [syncFromCache])
-
+      // Sync to display window
+      syncFromCache(roundWindowStartRef.current)
+    },
+    [syncFromCache]
+  )
 
   return {
     messages,

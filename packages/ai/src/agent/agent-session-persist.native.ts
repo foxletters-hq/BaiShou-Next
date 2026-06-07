@@ -155,7 +155,9 @@ export async function persistResult(params: PersistResultParams): Promise<{
           finalUsage.inputTokens = estimatedInput
           finalUsage.outputTokens = enc.encode(accumulator.text + accumulator.reasoning).length
           enc.free()
-          logger.info(`[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略! 预估输入: ${finalUsage.inputTokens}`)
+          logger.info(
+            `[AgentSessionService] 提示: 接口未返回 Token，已启用本地预估策略! 预估输入: ${finalUsage.inputTokens}`
+          )
         }
       } catch (e: any) {
         logger.warn('Fallback tiktoken estimation failed', e)

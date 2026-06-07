@@ -11,7 +11,11 @@ import {
   SettingsManagerService,
   SummarySyncService
 } from '@baishou/core-mobile'
-import { ShadowIndexRepository, shadowConnectionManager, ShadowIndexUpsertOps } from '@baishou/database'
+import {
+  ShadowIndexRepository,
+  shadowConnectionManager,
+  ShadowIndexUpsertOps
+} from '@baishou/database'
 import { logger } from '@baishou/shared'
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
 import { scheduleVaultEcosystemResync } from './mobile-vault-resync.service'
@@ -28,9 +32,7 @@ export type VaultDiarySearcher = {
   searchFTS: (
     query: string,
     limit?: number
-  ) => Promise<
-    Array<{ date: string; contentSnippet: string; tags: string; rankScore: number }>
-  >
+  ) => Promise<Array<{ date: string; contentSnippet: string; tags: string; rankScore: number }>>
 }
 
 /** 随 Vault 切换需重建的日记/影子索引相关服务 */
@@ -74,9 +76,9 @@ export const EMPTY_DIARY_SEARCHER: VaultDiarySearcher = {
 }
 
 /** 始终委托到 diaryStackRef.current，避免 Vault 切换后仍访问已关闭的 Shadow DB */
-export function createVaultDiaryServiceProxy(
-  stackRef: { current: VaultBoundDiaryStack | null }
-): DiaryService {
+export function createVaultDiaryServiceProxy(stackRef: {
+  current: VaultBoundDiaryStack | null
+}): DiaryService {
   const unavailable = createUnavailableDiaryService()
   return new Proxy(unavailable, {
     get(_target, prop) {
@@ -205,7 +207,11 @@ function buildBootstrapDeps(
   diaryStack: VaultBoundDiaryStack,
   bootstrapDeps: Omit<
     MobileBootstrapperDeps,
-    'shadowIndexSyncService' | 'sessionManager' | 'assistantManager' | 'settingsManager' | 'summarySyncService'
+    | 'shadowIndexSyncService'
+    | 'sessionManager'
+    | 'assistantManager'
+    | 'settingsManager'
+    | 'summarySyncService'
   > & {
     sessionManager: SessionManagerService
     assistantManager: AssistantManagerService
@@ -230,7 +236,11 @@ async function runVaultBootstrap(
     diaryStack: VaultBoundDiaryStack
     bootstrapDeps: Omit<
       MobileBootstrapperDeps,
-      'shadowIndexSyncService' | 'sessionManager' | 'assistantManager' | 'settingsManager' | 'summarySyncService'
+      | 'shadowIndexSyncService'
+      | 'sessionManager'
+      | 'assistantManager'
+      | 'settingsManager'
+      | 'summarySyncService'
     > & {
       sessionManager: SessionManagerService
       assistantManager: AssistantManagerService
@@ -247,15 +257,11 @@ async function runVaultBootstrap(
 
   if (options?.deferResync) {
     // 后台 resync 完成后再启动 watcher，避免 fullScanVault 与 VaultFileWatcher 并发写 Shadow DB
-    void scheduleVaultEcosystemResync(
-      bootstrapDeps,
-      options.resyncReason ?? 'vault-switch',
-      () => {
-        void restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps).finally(
-          () => options.onResyncComplete?.()
-        )
-      }
-    )
+    void scheduleVaultEcosystemResync(bootstrapDeps, options.resyncReason ?? 'vault-switch', () => {
+      void restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps).finally(() =>
+        options.onResyncComplete?.()
+      )
+    })
     return
   }
 
@@ -306,7 +312,11 @@ export async function activateVaultRuntime(deps: {
   diaryStack: VaultBoundDiaryStack
   bootstrapDeps: Omit<
     MobileBootstrapperDeps,
-    'shadowIndexSyncService' | 'sessionManager' | 'assistantManager' | 'settingsManager' | 'summarySyncService'
+    | 'shadowIndexSyncService'
+    | 'sessionManager'
+    | 'assistantManager'
+    | 'settingsManager'
+    | 'summarySyncService'
   > & {
     sessionManager: SessionManagerService
     assistantManager: AssistantManagerService

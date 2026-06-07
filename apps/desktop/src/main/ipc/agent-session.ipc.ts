@@ -20,10 +20,7 @@ function filterSessionsForActiveVault<T extends { vaultName?: string | null }>(
 ): T[] {
   if (!activeVaultPath) return rows
   return rows.filter(
-    (row) =>
-      row.vaultName === activeVaultPath ||
-      row.vaultName === 'default' ||
-      !row.vaultName
+    (row) => row.vaultName === activeVaultPath || row.vaultName === 'default' || !row.vaultName
   )
 }
 

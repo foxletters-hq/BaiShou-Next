@@ -13,9 +13,9 @@ export default function TtsSettingsIndexRoute() {
   useEffect(() => {
     if (!dbReady || !services) return
     void (async () => {
-      const globalModels = (await services.settingsManager.get<{ globalTtsProviderId?: string }>(
-        'global_models'
-      )) || {}
+      const globalModels =
+        (await services.settingsManager.get<{ globalTtsProviderId?: string }>('global_models')) ||
+        {}
       let providerId = globalModels.globalTtsProviderId || 'openai-tts'
 
       try {

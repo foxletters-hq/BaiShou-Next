@@ -65,12 +65,11 @@ export const CompressionActivityBar: React.FC<CompressionActivityBarProps> = ({
           forceVisible={reasoningStreaming}
           headerIcon="✨"
           activeStatusLabel={t('agent.chat.compression_thinking', '压缩思考中…')}
-          completedStatusLabel={t('agent.chat.compression_thought_time', '总结思考耗时 {{time}}', { time: '{{time}}' })}
+          completedStatusLabel={t('agent.chat.compression_thought_time', '总结思考耗时 {{time}}', {
+            time: '{{time}}'
+          })}
           thinkingTimeMs={thoughtDurationMs}
-          streamingPlaceholder={t(
-            'agent.chat.compression_thinking_waiting',
-            '等待压缩模型思考…'
-          )}
+          streamingPlaceholder={t('agent.chat.compression_thinking_waiting', '等待压缩模型思考…')}
           defaultOpen={false}
           autoCollapse
         />
@@ -83,7 +82,9 @@ export const CompressionActivityBar: React.FC<CompressionActivityBarProps> = ({
           forceVisible={isActive && !hasSummary}
           headerIcon="💕"
           activeStatusLabel={activeStatusLabel}
-          completedStatusLabel={t('agent.chat.compression_summary_time', '生成摘要耗时 {{time}}', { time: '{{time}}' })}
+          completedStatusLabel={t('agent.chat.compression_summary_time', '生成摘要耗时 {{time}}', {
+            time: '{{time}}'
+          })}
           thinkingTimeMs={summaryDurationMs}
           streamingPlaceholder={t('agent.chat.compression_stream_waiting', '等待摘要输出…')}
           defaultOpen={false}

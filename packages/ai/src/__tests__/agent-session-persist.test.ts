@@ -84,11 +84,11 @@ describe('persistResult token estimation', () => {
     // Assertions
     expect(sessionRepo.insertMessageWithParts).toHaveBeenCalled()
     const insertedMessage = sessionRepo.insertMessageWithParts.mock.calls[0]![0]
-    
+
     // We expect the inputTokens to be estimated using tiktoken (cl100k_base)
     const { get_encoding } = await import('tiktoken')
     const enc = get_encoding('cl100k_base')
-    const expectedInputTokens = 
+    const expectedInputTokens =
       enc.encode(rawUserText).length +
       enc.encode(systemPrompt).length +
       enc.encode('Hello old message').length +

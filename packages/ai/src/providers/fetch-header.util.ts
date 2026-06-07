@@ -83,9 +83,7 @@ function resolvePlatformFetch(): typeof fetch {
   return globalThis.fetch.bind(globalThis)
 }
 
-export function createSanitizedFetch(
-  fetchImpl?: typeof fetch
-): typeof fetch {
+export function createSanitizedFetch(fetchImpl?: typeof fetch): typeof fetch {
   const impl = fetchImpl || resolvePlatformFetch()
   return async (url, init) => impl(url, sanitizeRequestInit(init))
 }

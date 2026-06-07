@@ -126,7 +126,6 @@ export class SnapshotRepository {
     await this.deleteSnapshots(sessionId, idsToDelete)
   }
 
-
   async getLatestSnapshot(sessionId: string): Promise<Snapshot | null> {
     const result = await this.db
       .select()

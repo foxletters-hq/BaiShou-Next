@@ -54,8 +54,7 @@ export function splitInputLayoutStyle(style?: StyleProp<TextStyle>): {
   }
 
   const inputStyle = Object.keys(rest).length > 0 ? rest : undefined
-  const wrapper =
-    Object.keys(wrapperStyle).length > 0 ? wrapperStyle : undefined
+  const wrapper = Object.keys(wrapperStyle).length > 0 ? wrapperStyle : undefined
 
   return { inputStyle, wrapperStyle: wrapper }
 }

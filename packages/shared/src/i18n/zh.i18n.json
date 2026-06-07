@@ -1360,7 +1360,7 @@
     "clear_agent_db": "清理 Agent 数据库",
     "clear_agent_success": "Agent 数据库碎片已清空并安全关闭连结，系统需硬重启进行热重建。",
     "insert_compression_test": "注入压缩测试对话",
-      "insert_compression_test_desc": "新建一条含 15 轮的模拟 AI 对话（含工具调用）；数据规模按当前绑定伙伴的压缩阈值自动生成，用于测试滚动压缩。",
+    "insert_compression_test_desc": "新建一条含 15 轮的模拟 AI 对话（含工具调用）；数据规模按当前绑定伙伴的压缩阈值自动生成，用于测试滚动压缩。",
     "insert_compression_test_success": "已创建压缩测试对话（{{rounds}} 轮，约 {{tokens}} tokens）",
     "insert_compression_test_failed": "注入失败: "
   },

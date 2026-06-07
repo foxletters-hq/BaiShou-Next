@@ -55,7 +55,6 @@ export async function reconcileCompressionStateAfterTruncate(
   }
 }
 
-
 /**
  * 从 cutoffOrderIndex 之后截断会话：删除后续消息、回滚无效压缩快照、清除截断点上的 compaction marker。
  * 用于重发/编辑/重新生成，确保后续压缩 UI 与上下文可被重新生成。

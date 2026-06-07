@@ -24,11 +24,7 @@ export const DiaryEditorPage: React.FC = () => {
         pointerEvents: editor.isSaving ? 'none' : 'auto'
       }}
       initial={{ opacity: 0, scale: 0.98, y: 8 }}
-      animate={
-        editor.isSaving
-          ? { opacity: 0, scale: 0.98 }
-          : { opacity: 1, scale: 1, y: 0 }
-      }
+      animate={editor.isSaving ? { opacity: 0, scale: 0.98 } : { opacity: 1, scale: 1, y: 0 }}
       transition={{
         duration: editor.isSaving ? 0.15 : 0.2,
         ease: editor.isSaving ? 'easeInOut' : 'easeOut'

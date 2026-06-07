@@ -101,14 +101,7 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
       scrollToBottom()
     }
     prevNewestIdRef.current = newestMsg?.id || null
-  }, [
-    messages,
-    streamingText,
-    streamingReasoning,
-    isStreaming,
-    activeTool,
-    scrollToBottom
-  ])
+  }, [messages, streamingText, streamingReasoning, isStreaming, activeTool, scrollToBottom])
 
   return { scrollRef, showScrollButton, scrollToBottom }
 }

@@ -45,7 +45,8 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
     onClose()
   }
 
-  const items: Array<{ key: string; label: string; onPress?: () => void; destructive?: boolean }> = []
+  const items: Array<{ key: string; label: string; onPress?: () => void; destructive?: boolean }> =
+    []
 
   if (onCopy) {
     items.push({ key: 'copy', label: t('common.copy', '复制'), onPress: onCopy })
@@ -111,7 +112,10 @@ export const NativeChatBubbleActionSheet: React.FC<NativeChatBubbleActionSheetPr
             onPress={() => run(item.onPress)}
             style={({ pressed }) => [
               styles.item,
-              index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderSubtle },
+              index > 0 && {
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: colors.borderSubtle
+              },
               pressed && { opacity: 0.7 }
             ]}
           >

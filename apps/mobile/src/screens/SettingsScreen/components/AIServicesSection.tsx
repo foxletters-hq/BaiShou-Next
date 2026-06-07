@@ -2,7 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, Input, Button, CardLinkAction, Select } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  Input,
+  Button,
+  CardLinkAction,
+  Select
+} from '@baishou/ui/native'
 import { PROVIDER_TYPES } from '../../../constants/known-ai-providers'
 import { AIProviderConfig, ProviderType } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'

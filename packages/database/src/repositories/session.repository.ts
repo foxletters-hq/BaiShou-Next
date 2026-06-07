@@ -72,9 +72,7 @@ export class SessionRepository {
     return this.messageOps.upsertCompactionMarker(...args)
   }
 
-  messageHasCompactionMarker(
-    ...args: Parameters<SessionMessageOps['messageHasCompactionMarker']>
-  ) {
+  messageHasCompactionMarker(...args: Parameters<SessionMessageOps['messageHasCompactionMarker']>) {
     return this.messageOps.messageHasCompactionMarker(...args)
   }
 

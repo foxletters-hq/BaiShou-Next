@@ -17,7 +17,8 @@ export function mapSessionMessageFromDb(msg: {
     (p) => typeof p.data === 'object' && p.data && (p.data as { isReasoning?: boolean }).isReasoning
   )
   const normalTextParts = textParts.filter(
-    (p) => !(typeof p.data === 'object' && p.data && (p.data as { isReasoning?: boolean }).isReasoning)
+    (p) =>
+      !(typeof p.data === 'object' && p.data && (p.data as { isReasoning?: boolean }).isReasoning)
   )
 
   const textFromPart = (p: (typeof parts)[number]) => {
@@ -33,11 +34,9 @@ export function mapSessionMessageFromDb(msg: {
   const toolInvocations = parts
     .filter((p) => p.type === 'tool')
     .map((p) => {
-      const data =
-        typeof p.data === 'object' && p.data ? (p.data as Record<string, unknown>) : {}
+      const data = typeof p.data === 'object' && p.data ? (p.data as Record<string, unknown>) : {}
       return {
-        state:
-          data.status === 'completed' || data.status === 'failed' ? 'result' : 'call',
+        state: data.status === 'completed' || data.status === 'failed' ? 'result' : 'call',
         toolCallId: String(data.callId ?? ''),
         toolName: String(data.name ?? ''),
         args: data.arguments ?? {},
@@ -57,10 +56,7 @@ export function mapSessionMessageFromDb(msg: {
             filePath: String(att.url || att.filePath || ''),
             isImage: att.type === 'image' || att.isImage === true,
             isPdf: att.mimeType === 'application/pdf' || fileName.endsWith('.pdf'),
-            isText:
-              att.isText === true ||
-              att.type === 'text' ||
-              /\.(txt|md)$/i.test(fileName)
+            isText: att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
           }
         })
       : undefined

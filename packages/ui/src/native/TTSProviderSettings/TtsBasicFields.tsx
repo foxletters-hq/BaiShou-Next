@@ -81,11 +81,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.provider_label')}
         </Text>
-        <Select
-          options={providerOptions}
-          value={config.id}
-          onValueChange={onProviderChange}
-        />
+        <Select options={providerOptions} value={config.id} onValueChange={onProviderChange} />
       </View>
 
       <View style={dividerStyle}>
@@ -110,9 +106,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
                 ? t('tts.settings.api_key_optional_label')
                 : t('tts.settings.api_key_label')}
             </Text>
-            {apiKeyOptional && (
-              <HelpTooltip content={t('tts.settings.api_key_tooltip')} />
-            )}
+            {apiKeyOptional && <HelpTooltip content={t('tts.settings.api_key_tooltip')} />}
           </View>
           {apiKeyOptional && (
             <Text style={[styles.helperText, { color: colors.textTertiary }]}>

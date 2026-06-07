@@ -1,11 +1,13 @@
 import React, { useMemo, useCallback, useEffect, useRef } from 'react'
-import { ChatBubble, StreamingBubble, CompressionDivider, CompressionActivityBar } from '@baishou/ui'
+import {
+  ChatBubble,
+  StreamingBubble,
+  CompressionDivider,
+  CompressionActivityBar
+} from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
-import {
-  buildRoundIndexByMessageId,
-  isRoundPageStart
-} from '../utils/chat-round-pagination'
+import { buildRoundIndexByMessageId, isRoundPageStart } from '../utils/chat-round-pagination'
 import styles from '../AgentScreen.module.css'
 
 interface AgentMessageListProps {
@@ -76,8 +78,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             return {
               kind: 'compression-summary' as const,
               summaryText: entry.summaryText ?? result?.compressedContent ?? '',
-              reasoningText:
-                entry.reasoningText ?? result?.viewModel?.compressionReasoning ?? ''
+              reasoningText: entry.reasoningText ?? result?.viewModel?.compressionReasoning ?? ''
             }
           }
           if (entry.kind === 'system-prompt') {
@@ -251,9 +252,9 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
 
             const hasPersistedCompressionContent = Boolean(
               persistedCompaction &&
-                persistedCompaction.status !== 'failed' &&
-                (Boolean(persistedCompaction.streamTranscript?.trim()) ||
-                  Boolean(persistedCompaction.streamReasoning?.trim()))
+              persistedCompaction.status !== 'failed' &&
+              (Boolean(persistedCompaction.streamTranscript?.trim()) ||
+                Boolean(persistedCompaction.streamReasoning?.trim()))
             )
 
             const showCompressionDivider = hasPersistedCompressionContent

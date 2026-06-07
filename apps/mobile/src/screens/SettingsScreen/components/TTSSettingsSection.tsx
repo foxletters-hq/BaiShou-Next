@@ -82,15 +82,9 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
         voice:
           (isActiveGlobal ? ttsSettings.voice : undefined) ||
           mergedPersisted[activeId]?.voice ||
-          (activeId === 'mimo-tts'
-            ? '冰糖'
-            : activeId === 'gpt-sovits'
-              ? 'default'
-              : 'alloy'),
+          (activeId === 'mimo-tts' ? '冰糖' : activeId === 'gpt-sovits' ? 'default' : 'alloy'),
         speed:
-          (isActiveGlobal ? ttsSettings.speed : undefined) ??
-          mergedPersisted[activeId]?.speed ??
-          1,
+          (isActiveGlobal ? ttsSettings.speed : undefined) ?? mergedPersisted[activeId]?.speed ?? 1,
         responseFormat:
           (isActiveGlobal ? ttsSettings.responseFormat : undefined) ||
           mergedPersisted[activeId]?.responseFormat ||
@@ -115,12 +109,15 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
     })()
   }, [dbReady, services, providerId])
 
-  const handlePersistConfigs = useCallback((configs: Record<string, ProviderLocalState>) => {
-    void AsyncStorage.setItem(
-      TTS_CONFIGS_STORAGE_KEY,
-      JSON.stringify({ ...configs, __lastActiveProviderId: providerId })
-    ).catch(() => {})
-  }, [providerId])
+  const handlePersistConfigs = useCallback(
+    (configs: Record<string, ProviderLocalState>) => {
+      void AsyncStorage.setItem(
+        TTS_CONFIGS_STORAGE_KEY,
+        JSON.stringify({ ...configs, __lastActiveProviderId: providerId })
+      ).catch(() => {})
+    },
+    [providerId]
+  )
 
   const handleProviderChange = useCallback(
     (nextProviderId: string) => {
@@ -182,7 +179,8 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
   }
 
   const configReady = useMemo(
-    () => initialConfig !== undefined && persistedConfigs !== undefined && providersList !== undefined,
+    () =>
+      initialConfig !== undefined && persistedConfigs !== undefined && providersList !== undefined,
     [initialConfig, persistedConfigs, providersList]
   )
 

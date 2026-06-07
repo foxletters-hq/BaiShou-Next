@@ -50,7 +50,12 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
           vm.handleLoadRecentPulls()
         }}
         title={t('common.refresh', '刷新')}
-        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '8px'
+        }}
       >
         <MdRefresh size={18} />
       </button>

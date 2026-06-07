@@ -160,17 +160,21 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                   <MaterialIcons name="search" size={18} color={colors.textTertiary} />
                 </View>
               }
-            rightSlot={
-              searchQuery.length > 0 ? (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <MaterialIcons name="close" size={16} color={colors.textTertiary} />
-                </TouchableOpacity>
-              ) : undefined
-            }
+              rightSlot={
+                searchQuery.length > 0 ? (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <MaterialIcons name="close" size={16} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                ) : undefined
+              }
             />
           </View>
 
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          >
             {filteredProviders.length === 0 ? (
               <View style={styles.emptyWrap}>
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>

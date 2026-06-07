@@ -1256,7 +1256,7 @@
     "clear_agent_db": "清理 Agent 数据库",
     "clear_agent_success": "Agent 資料庫已清空，請重啟應用程式以重建。",
     "insert_compression_test": "注入壓縮測試對話",
-      "insert_compression_test_desc": "新建一條含 15 輪的模擬 AI 對話（含工具呼叫）；資料規模依目前綁定伙伴的壓縮閾值自動產生，用於測試滾動壓縮。",
+    "insert_compression_test_desc": "新建一條含 15 輪的模擬 AI 對話（含工具呼叫）；資料規模依目前綁定伙伴的壓縮閾值自動產生，用於測試滾動壓縮。",
     "insert_compression_test_success": "已建立壓縮測試對話（{{rounds}} 輪，約 {{tokens}} tokens）",
     "insert_compression_test_failed": "注入失敗："
   },

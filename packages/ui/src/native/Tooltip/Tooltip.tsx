@@ -67,10 +67,7 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
           >
             {/* 背景遮罩层：同级并列，点击关闭弹窗 */}
             <Pressable
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: 'rgba(0, 0, 0, 0.4)' }
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]}
               onPress={handleClose}
             />
 

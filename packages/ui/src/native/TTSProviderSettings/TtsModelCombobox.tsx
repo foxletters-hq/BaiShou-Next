@@ -123,9 +123,7 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                     >
                       {opt}
                     </Text>
-                    {selected && (
-                      <MaterialIcons name="check" size={16} color={colors.primary} />
-                    )}
+                    {selected && <MaterialIcons name="check" size={16} color={colors.primary} />}
                   </TouchableOpacity>
                 )
               })}

@@ -344,14 +344,16 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const rawClient = (drizzleDb as any)?.session?.client || (drizzleDb as any)
         const hsRepo = new SqliteHybridSearchRepository(rawClient)
         const hybridSearchService = new HybridSearchService(hsRepo)
-        const ragServiceRef = { current: createMobileRagService({
-          settingsManager,
-          diaryService: diaryServiceProxy,
-          hsRepo,
-          hybridSearchService,
-          registry,
-          rawSqlClient: rawClient
-        }) }
+        const ragServiceRef = {
+          current: createMobileRagService({
+            settingsManager,
+            diaryService: diaryServiceProxy,
+            hsRepo,
+            hybridSearchService,
+            registry,
+            rawSqlClient: rawClient
+          })
+        }
 
         /**
          * RAG 语义记忆搜索

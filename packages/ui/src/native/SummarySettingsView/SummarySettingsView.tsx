@@ -57,7 +57,11 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
   const editingTemplate = editingKey ? TEMPLATES.find((t) => t.key === editingKey) : null
 
   return (
-    <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.scroll}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <SettingsSection title={t('summary.templates', 'AI 总结指令模板')}>
         {TEMPLATES.map((item) => {
           const preview = config[item.key]
@@ -77,11 +81,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
               <Text style={[styles.preview, { color: colors.textSecondary }]} numberOfLines={2}>
                 {previewText || t('summary.empty_template', '未设置模板')}
               </Text>
-              <Button
-                variant="outline"
-                onPress={() => openEditor(item.key)}
-                className="self-start"
-              >
+              <Button variant="outline" onPress={() => openEditor(item.key)} className="self-start">
                 {t('common.edit', '编辑')}
               </Button>
             </View>

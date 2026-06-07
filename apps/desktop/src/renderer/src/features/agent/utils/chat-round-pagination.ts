@@ -11,9 +11,7 @@ export type ChatLikeMessage = {
 }
 
 /** 按用户消息切分对话轮次（一轮 = 从用户消息到下一轮用户消息之前） */
-export function groupMessagesIntoRounds<T extends ChatLikeMessage>(
-  messages: readonly T[]
-): T[][] {
+export function groupMessagesIntoRounds<T extends ChatLikeMessage>(messages: readonly T[]): T[][] {
   const rounds: T[][] = []
   let bucket: T[] = []
 

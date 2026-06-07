@@ -18,7 +18,11 @@
     color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.2)) 70%, transparent) 80%,
     transparent
   );
-  background-color: color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.18)) 100%, transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--color-outline, rgba(255, 255, 255, 0.18)) 100%,
+    transparent
+  );
   min-width: 24px;
 }
 
@@ -30,7 +34,12 @@
   color: var(--color-on-surface-variant, rgba(255, 255, 255, 0.55));
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.15)) 100%, transparent);
-  background: color-mix(in srgb, var(--color-surface-container, rgba(255, 255, 255, 0.04)) 100%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.15)) 100%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-surface-container, rgba(255, 255, 255, 0.04)) 100%,
+    transparent
+  );
   white-space: nowrap;
 }

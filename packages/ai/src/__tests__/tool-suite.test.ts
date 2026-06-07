@@ -14,7 +14,10 @@ import { MessageSearchTool } from '../tools/message-search.tool'
 import { SummaryReadTool } from '../tools/summary-read.tool'
 import { WebSearchTool } from '../tools/web-search.tool'
 import { UrlReadTool } from '../tools/url-read.tool'
-import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from '../tools/context-compress.tool'
+import {
+  ContextCompressUpstreamTool,
+  ContextCompressDownstreamTool
+} from '../tools/context-compress.tool'
 
 describe('ToolRegistry — Full Tool Suite', () => {
   it('should auto-register all 16 built-in tools on construction', () => {

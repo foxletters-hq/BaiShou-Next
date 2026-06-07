@@ -18,19 +18,18 @@ import { getHeroButtonLabelStyle, getHeroButtonRootStyle } from './button-field.
 export type { LegacyButtonVariant, NativeButtonVariant }
 export { LinkButton, useButton }
 
-export interface NativeButtonProps
-  extends Pick<
-    ButtonRootProps,
-    | 'onPress'
-    | 'style'
-    | 'className'
-    | 'accessibilityLabel'
-    | 'accessibilityRole'
-    | 'testID'
-    | 'hitSlop'
-    | 'size'
-    | 'isIconOnly'
-  > {
+export interface NativeButtonProps extends Pick<
+  ButtonRootProps,
+  | 'onPress'
+  | 'style'
+  | 'className'
+  | 'accessibilityLabel'
+  | 'accessibilityRole'
+  | 'testID'
+  | 'hitSlop'
+  | 'size'
+  | 'isIconOnly'
+> {
   variant?: NativeButtonVariant
   isLoading?: boolean
   /** 危险操作样式 */
@@ -103,11 +102,7 @@ const NativeButtonRoot = forwardRef<HeroButtonRef, NativeButtonProps>(
         variant={heroVariant}
         isDisabled={mergedDisabled}
         className={className}
-        style={
-          typeof style === 'function'
-            ? (state) => [rootFallback, style(state)]
-            : mergedStyle
-        }
+        style={typeof style === 'function' ? (state) => [rootFallback, style(state)] : mergedStyle}
         {...props}
       >
         {content}

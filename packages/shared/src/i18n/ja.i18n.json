@@ -1267,7 +1267,7 @@
     "clear_agent_db": "清理 Agent 数据库",
     "clear_agent_success": "Agent データベースをクリアしました。再起動すると再構築されます。",
     "insert_compression_test": "圧縮テスト会話を注入",
-      "insert_compression_test_desc": "15 ラウンドの模擬 AI 会話（ツール呼び出し含む）を新規作成。データ規模は紐づけた伙伴の圧縮閾値に基づいて自動生成されます。",
+    "insert_compression_test_desc": "15 ラウンドの模擬 AI 会話（ツール呼び出し含む）を新規作成。データ規模は紐づけた伙伴の圧縮閾値に基づいて自動生成されます。",
     "insert_compression_test_success": "圧縮テスト会話を作成しました（{{rounds}} ラウンド、約 {{tokens}} tokens）",
     "insert_compression_test_failed": "注入に失敗しました："
   },

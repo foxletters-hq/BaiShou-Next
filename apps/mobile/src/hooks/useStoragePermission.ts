@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppState, Platform } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
-import { hasStoragePermission, requestStoragePermission } from '../services/storage-permission.service'
+import {
+  hasStoragePermission,
+  requestStoragePermission
+} from '../services/storage-permission.service'
 import { useBaishou } from '../providers/BaishouProvider'
 
 export function useStoragePermission() {
@@ -91,8 +94,7 @@ export function useStoragePermission() {
   }, [retryStorageSetup, storageReady, t, toast])
 
   /** 仅在已确认未授权时展示权限引导，避免启动时 granted 未决的闪屏 */
-  const needsFullFileAccess =
-    Platform.OS === 'android' && permissionChecked && granted === false
+  const needsFullFileAccess = Platform.OS === 'android' && permissionChecked && granted === false
 
   /** 已授权但外部存储/vault 仍在挂载 */
   const isStoragePending =

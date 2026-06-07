@@ -182,10 +182,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 }) => {
   const { colors } = useNativeTheme()
 
-  const markdownStyles = useMemo(
-    () => buildMarkdownStyles(colors, variant),
-    [colors, variant]
-  )
+  const markdownStyles = useMemo(() => buildMarkdownStyles(colors, variant), [colors, variant])
 
   const markdownit = useMemo(
     () =>
@@ -237,10 +234,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
   return (
     <View
-      style={[
-        variant === 'default' ? styles.containerDefault : styles.containerCompact,
-        style
-      ]}
+      style={[variant === 'default' ? styles.containerDefault : styles.containerCompact, style]}
     >
       <Markdown style={markdownStyles} rules={rules} markdownit={markdownit}>
         {displayContent}

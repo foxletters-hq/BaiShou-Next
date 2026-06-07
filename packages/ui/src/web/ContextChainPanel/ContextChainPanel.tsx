@@ -403,8 +403,14 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                           summary={effectiveCompressionSummary}
                           reasoning={effectiveCompressionReasoning}
                           isActive={false}
-                          thoughtDurationMs={flatEntries.find((e) => e.kind === 'compression-summary')?.thoughtDurationMs}
-                          summaryDurationMs={flatEntries.find((e) => e.kind === 'compression-summary')?.summaryDurationMs}
+                          thoughtDurationMs={
+                            flatEntries.find((e) => e.kind === 'compression-summary')
+                              ?.thoughtDurationMs
+                          }
+                          summaryDurationMs={
+                            flatEntries.find((e) => e.kind === 'compression-summary')
+                              ?.summaryDurationMs
+                          }
                         />
                       )}
                     </div>

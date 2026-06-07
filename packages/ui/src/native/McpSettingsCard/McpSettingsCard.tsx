@@ -74,26 +74,40 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   const mcpHelpContent = (
     <View style={{ gap: 12 }}>
       <Text style={{ fontSize: 14, color: colors.textPrimary, lineHeight: 20 }}>
-        {t('settings.mcp_help_intro', '启用 MCP 后，白守会在本机启动 MCP 服务，供 Cursor 调用日记、记忆等工具。')}
+        {t(
+          'settings.mcp_help_intro',
+          '启用 MCP 后，白守会在本机启动 MCP 服务，供 Cursor 调用日记、记忆等工具。'
+        )}
       </Text>
       <View style={{ gap: 4 }}>
         <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
           {t('settings.mcp_help_json_title', 'JSON 配置客户端')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-          1. {t('settings.mcp_help_json_1', '打开 设置 → MCP → 编辑 JSON，在 mcpServers 中新增服务器。')}{'\n'}
-          2. {t('settings.mcp_help_json_2', 'type 设为 streamableHttp，baseUrl 设为上方连接地址（必须以 /mcp 结尾）。')}
+          1.{' '}
+          {t(
+            'settings.mcp_help_json_1',
+            '打开 设置 → MCP → 编辑 JSON，在 mcpServers 中新增服务器。'
+          )}
+          {'\n'}
+          2.{' '}
+          {t(
+            'settings.mcp_help_json_2',
+            'type 设为 streamableHttp，baseUrl 设为上方连接地址（必须以 /mcp 结尾）。'
+          )}
         </Text>
-        <Text style={{
-          fontSize: 11,
-          fontFamily: 'monospace',
-          backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
-          padding: 8,
-          borderRadius: 6,
-          color: colors.primary,
-          lineHeight: 15,
-          marginTop: 4
-        }}>
+        <Text
+          style={{
+            fontSize: 11,
+            fontFamily: 'monospace',
+            backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
+            padding: 8,
+            borderRadius: 6,
+            color: colors.primary,
+            lineHeight: 15,
+            marginTop: 4
+          }}
+        >
           {`{
   "mcpServers": {
     "baishou": {
@@ -109,12 +123,24 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           {t('settings.mcp_help_cursor_title', 'Cursor')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-          1. {t('settings.mcp_help_cursor_1', '打开 Cursor 设置 → Features → MCP（或编辑项目/全局 mcp.json）。')}{'\n'}
-          2. {t('settings.mcp_help_cursor_2', '添加服务器，将 url 设为上方连接地址，保存后重启 Cursor 或刷新 MCP 列表。')}
+          1.{' '}
+          {t(
+            'settings.mcp_help_cursor_1',
+            '打开 Cursor 设置 → Features → MCP（或编辑项目/全局 mcp.json）。'
+          )}
+          {'\n'}
+          2.{' '}
+          {t(
+            'settings.mcp_help_cursor_2',
+            '添加服务器，将 url 设为上方连接地址，保存后重启 Cursor 或刷新 MCP 列表。'
+          )}
         </Text>
       </View>
       <Text style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', marginTop: 4 }}>
-        {t('settings.mcp_help_note', '请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守桌面端运行。')}
+        {t(
+          'settings.mcp_help_note',
+          '请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守桌面端运行。'
+        )}
       </Text>
     </View>
   )

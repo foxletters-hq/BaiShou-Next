@@ -102,7 +102,6 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
                                 <span className="gmp-tl-file-stats">
                                   +{change.additions} -{change.deletions}
                                 </span>
-
                               </div>
 
                               {expandedFile === change.path && selectedFileDiff && (

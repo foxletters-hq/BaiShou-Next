@@ -148,7 +148,10 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     }
     if (completedStatusLabel) {
       if (completedStatusLabel.includes('{{time}}')) {
-        return completedStatusLabel.replace('{{time}}', '').replace(/ ·\s*$/, '').trim()
+        return completedStatusLabel
+          .replace('{{time}}', '')
+          .replace(/ ·\s*$/, '')
+          .trim()
       }
       return completedStatusLabel
     }
@@ -199,36 +202,36 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
       </div>
 
       {(content || isOpen || (forceVisible && isThinking)) && (
-      <div className={shared.contentWrap}>
-        <div className={shared.contentInner}>
-          <div className={styles.content}>
-            {!content && isThinking && streamingPlaceholder ? (
-              <div className={styles.previewContainer} style={{ height: 38 }}>
-                <div className={`${styles.previewScroll} ${styles.previewWaiting}`}>
-                  {streamingPlaceholder}
+        <div className={shared.contentWrap}>
+          <div className={shared.contentInner}>
+            <div className={styles.content}>
+              {!content && isThinking && streamingPlaceholder ? (
+                <div className={styles.previewContainer} style={{ height: 38 }}>
+                  <div className={`${styles.previewScroll} ${styles.previewWaiting}`}>
+                    {streamingPlaceholder}
+                  </div>
                 </div>
-              </div>
-            ) : showCollapsedPreview ? (
-              // 折叠态：显示预览行
-              <div className={styles.previewContainer} style={{ height: previewHeight }}>
-                <div className={styles.previewScroll}>
-                  {previewLines.map((line, index) => {
-                    if (index < previewLines.length - MAX_PREVIEW_LINES) return null
-                    return (
-                      <div key={index} className={styles.previewLine}>
-                        {line}
-                      </div>
-                    )
-                  })}
+              ) : showCollapsedPreview ? (
+                // 折叠态：显示预览行
+                <div className={styles.previewContainer} style={{ height: previewHeight }}>
+                  <div className={styles.previewScroll}>
+                    {previewLines.map((line, index) => {
+                      if (index < previewLines.length - MAX_PREVIEW_LINES) return null
+                      return (
+                        <div key={index} className={styles.previewLine}>
+                          {line}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              // 展开态/思考完成：支持完整 Markdown 渲染，保证排版美观且支持代码、公式与列表
-              <MarkdownRenderer content={normalizedContent} isStreaming={isThinking} />
-            )}
+              ) : (
+                // 展开态/思考完成：支持完整 Markdown 渲染，保证排版美观且支持代码、公式与列表
+                <MarkdownRenderer content={normalizedContent} isStreaming={isThinking} />
+              )}
+            </div>
           </div>
         </div>
-      </div>
       )}
     </div>
   )

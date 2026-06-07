@@ -148,5 +148,5 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 13,
     marginTop: 4
-  },
+  }
 })

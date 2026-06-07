@@ -82,7 +82,8 @@ const TURN_SPECS: TurnSpec[] = [
   },
   {
     user: '读一下 packages/ai/src/agent/context-compressor.service.ts 里 generateSummaryText 的实现要点。',
-    assistantIntro: '该函数把 toCompress 转成 ModelMessage，末尾追加 anchored user prompt，temperature 设为 0.1。',
+    assistantIntro:
+      '该函数把 toCompress 转成 ModelMessage，末尾追加 anchored user prompt，temperature 设为 0.1。',
     tools: [
       {
         name: 'diary_read',
@@ -337,9 +338,7 @@ export async function insertCompressionTestSession(deps: {
     const assistantMsgId = generateUUID()
     const assistantBody = padToChars(spec.assistantIntro, charBudgets[round]!)
 
-    const inputTokens = isLastRound
-      ? targetTokens - 800
-      : Math.min(2400 + round * 180, 8000)
+    const inputTokens = isLastRound ? targetTokens - 800 : Math.min(2400 + round * 180, 8000)
     const outputTokens = isLastRound ? 800 : 280 + round * 12
     cumulativeInputTokens += inputTokens
     cumulativeInputTokens += outputTokens

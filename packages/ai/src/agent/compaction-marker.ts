@@ -33,10 +33,8 @@ export function parseCompactionMarkerData(data: unknown): CompactionMarkerData |
   const d = data as Record<string, unknown>
   if (typeof d.compressedAt !== 'number') return null
 
-  let streamTranscript =
-    typeof d.streamTranscript === 'string' ? d.streamTranscript : undefined
-  let streamReasoning =
-    typeof d.streamReasoning === 'string' ? d.streamReasoning : undefined
+  let streamTranscript = typeof d.streamTranscript === 'string' ? d.streamTranscript : undefined
+  let streamReasoning = typeof d.streamReasoning === 'string' ? d.streamReasoning : undefined
 
   if (streamTranscript) {
     const normalized = normalizeCompressionOutput(streamTranscript, streamReasoning ?? '')
@@ -121,4 +119,3 @@ export function resolveCompactionDurationsForSnapshot(
   }
   return {}
 }
-

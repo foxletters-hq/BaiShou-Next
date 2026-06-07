@@ -29,7 +29,13 @@ export const COMPACTION_SUMMARY_PREFIX = '[往期对话摘要压缩]'
 
 export type CallChainFlatEntry =
   | { kind: 'system-prompt'; item: DisplayContextMessage }
-  | { kind: 'compression-summary'; summaryText: string; reasoningText?: string; thoughtDurationMs?: number; summaryDurationMs?: number }
+  | {
+      kind: 'compression-summary'
+      summaryText: string
+      reasoningText?: string
+      thoughtDurationMs?: number
+      summaryDurationMs?: number
+    }
   | { kind: 'round-header'; roundIndex: number }
   | { kind: 'message'; item: DisplayContextMessage; roundIndex: number }
 

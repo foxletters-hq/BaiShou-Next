@@ -196,7 +196,11 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     <div className={styles.testProviderGroup}>
                       <div className={styles.testProviderHeader}>
                         <div className={styles.testProviderIconPlaceholder}>
-                          {activeProviderMeta ? renderIcon(activeProviderMeta.iconUrl) : <Blocks size={14} />}
+                          {activeProviderMeta ? (
+                            renderIcon(activeProviderMeta.iconUrl)
+                          ) : (
+                            <Blocks size={14} />
+                          )}
                         </div>
                         <span className={styles.testProviderName}>
                           {activeProviderMeta?.name || 'UNKNOWN PROVIDER'}
@@ -216,7 +220,11 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                               onClick={() => setTestModelId(m)}
                             >
                               <div className={styles.testModelItemIcon}>
-                                {activeProviderMeta ? renderIcon(activeProviderMeta.iconUrl) : <Blocks size={14} />}
+                                {activeProviderMeta ? (
+                                  renderIcon(activeProviderMeta.iconUrl)
+                                ) : (
+                                  <Blocks size={14} />
+                                )}
                               </div>
                               <div className={styles.testModelItemCenter}>
                                 <span className={styles.testModelItemName}>{m}</span>
