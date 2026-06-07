@@ -20,3 +20,18 @@ if (typeof global !== 'undefined' && typeof global.SharedArrayBuffer === 'undefi
     }
   })
 }
+
+// Register expo/fetch before any bundle code runs (AI SDK needs response.body streaming on RN).
+try {
+  const { fetch: expoFetch } = require('expo/fetch')
+  if (typeof expoFetch === 'function') {
+    globalThis.__expoFetch = expoFetch
+  } else {
+    console.warn('[POLYFILL] expo/fetch export is not a function')
+  }
+} catch (e) {
+  console.warn('[POLYFILL] Failed to load expo/fetch:', e)
+}
+
+console.log('[POLYFILL] Metro-injected polyfill loaded. TDS=' + typeof globalThis.TextDecoderStream)
+console.log('[POLYFILL] __expoFetch (metro):', typeof globalThis.__expoFetch)
