@@ -63,10 +63,31 @@ export function sanitizeRequestInit(init?: RequestInit): RequestInit | undefined
   }
 }
 
+function isReactNativeRuntime(): boolean {
+  return (
+    typeof navigator !== 'undefined' &&
+    (navigator as { product?: string }).product === 'ReactNative'
+  )
+}
+
+function resolvePlatformFetch(): typeof fetch {
+  const expoFetch = (globalThis as any).__expoFetch
+  if (typeof expoFetch === 'function') {
+    return expoFetch
+  }
+  if (isReactNativeRuntime()) {
+    console.warn(
+      '[FetchAdapter] __expoFetch is missing on React Native; falling back to global fetch (no response.body streaming). Import apps/mobile polyfills before AI calls.'
+    )
+  }
+  return globalThis.fetch.bind(globalThis)
+}
+
 export function createSanitizedFetch(
-  fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)
+  fetchImpl?: typeof fetch
 ): typeof fetch {
-  return async (url, init) => fetchImpl(url, sanitizeRequestInit(init))
+  const impl = fetchImpl || resolvePlatformFetch()
+  return async (url, init) => impl(url, sanitizeRequestInit(init))
 }
 
 export function sanitizeApiKeyForHttp(apiKey: string): string {

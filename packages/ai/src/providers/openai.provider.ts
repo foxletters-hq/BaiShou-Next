@@ -17,16 +17,13 @@ import {
 import { extractApiErrorMessage, formatModelNotAvailableMessage } from './provider-api-error.util'
 
 /**
- * DeepSeek thinking 模式的双向拦截器：
+ * DeepSeek thinking 模式的请求方向拦截器：
  *
- * 【响应方向】@ai-sdk/openai 的 openaiChatChunkSchema 未定义 reasoning_content 字段，
- *   导致 Zod 校验时丢弃 DeepSeek 返回的推理内容。本拦截器在 SSE 流中将 reasoning_content
- *   注入到 content 字段（以 <think> 标签包裹），确保 SDK 能捕获推理文本。
+ * 将 assistant 消息中的 <think> 标签提取为独立的 reasoning_content 字段，
+ * 满足 DeepSeek API 多轮对话中必须回传推理内容的要求。
  *
- * 【请求方向】将 assistant 消息中的 <think> 标签提取为独立的 reasoning_content 字段，
- *   满足 DeepSeek API 多轮对话中必须回传推理内容的要求。
- *
- * 同时缓存当次响应的 reasoning_content，供后续请求回传。
+ * 响应方向的 reasoning_content 处理由 @ai-sdk/openai patch 原生支持，
+ * 不再在此处对 SSE 流进行二次拦截（避免移动端 ReadableStream 兼容问题）。
  */
 function createDeepSeekFetchInterceptor(
   baseURL?: string,
@@ -69,95 +66,19 @@ function createDeepSeekFetchInterceptor(
       }
     }
 
-    const response = await fetchImpl(url, safeInit)
-
-    if (!response.ok || !response.body) {
-      return response
-    }
-
-    // 响应方向：拦截 SSE 流，将 reasoning_content 注入到 content 字段
-    // 使用 ReadableStream 逐行处理，不破坏流式传输
-    const originalReader = response.body.getReader()
-    const decoder = new TextDecoder()
-    const encoder = new TextEncoder()
-    let buffer = ''
-
-    // 维持流的 think 状态，只在首尾插入 think 标签，避免每个微小片段都被重复包裹导致频繁开关 think 状态而引入换行符
-    let hasStartedThink = false
-
-    const transformSSELine = (line: string): string => {
-      if (!line.startsWith('data: ') || line === 'data: [DONE]') {
-        return line
-      }
-      try {
-        const data = JSON.parse(line.slice(6))
-        const delta = data?.choices?.[0]?.delta
-        if (delta) {
-          if (delta.reasoning_content) {
-            if (!hasStartedThink) {
-              hasStartedThink = true
-              delta.content = `<think>${delta.reasoning_content}`
-            } else {
-              delta.content = delta.reasoning_content
-            }
-            delete delta.reasoning_content
-            return `data: ${JSON.stringify(data)}`
-          } else if (hasStartedThink) {
-            hasStartedThink = false
-            delta.content = `</think>${delta.content || ''}`
-            return `data: ${JSON.stringify(data)}`
-          }
-        }
-      } catch {
-        // 非 JSON 行，原样返回
-      }
-      return line
-    }
-
-    const transformedStream = new ReadableStream({
-      async pull(controller) {
-        const { done, value } = await originalReader.read()
-        if (done) {
-          if (buffer) {
-            const transformed = transformSSELine(buffer)
-            controller.enqueue(encoder.encode(transformed))
-          }
-          controller.close()
-          return
-        }
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        // 最后稳健起见保留尾行
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          const transformed = transformSSELine(line)
-          controller.enqueue(encoder.encode(transformed + '\n'))
-        }
-      }
-    })
-
-    const sanitizedHeaders = new Headers()
-    response.headers.forEach((val, key) => {
-      let safeVal = ''
-      for (let i = 0; i < val.length; i++) {
-        safeVal += val.charCodeAt(i) <= 255 ? val[i] : '?'
-      }
-      sanitizedHeaders.set(key, safeVal)
-    })
-
-    let safeStatusText = ''
-    const statusText = response.statusText || ''
-    for (let i = 0; i < statusText.length; i++) {
-      safeStatusText += statusText.charCodeAt(i) <= 255 ? statusText[i] : '?'
-    }
-
-    return new Response(transformedStream, {
-      status: response.status,
-      statusText: safeStatusText,
-      headers: sanitizedHeaders
-    })
+    return fetchImpl(url, safeInit)
+      .then((response: Response) => {
+        const hasBody = response.body != null
+        const hasPipeThrough = hasBody && typeof (response.body as any).pipeThrough === 'function'
+        console.log(
+          '[FetchDebug] DeepSeek response: status=' + response.status +
+          ' hasBody=' + hasBody +
+          ' hasPipeThrough=' + hasPipeThrough +
+          ' contentType=' + (response.headers.get('content-type') || 'N/A') +
+          ' TDS=' + typeof (globalThis as any).TextDecoderStream
+        )
+        return response
+      })
   }
 }
 

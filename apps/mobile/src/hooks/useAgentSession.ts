@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
-import { useAgentStore } from '@baishou/store'
+import { useAgentStore, type AgentMessagePart } from '@baishou/store'
 import { useBaishou } from '../providers/BaishouProvider'
 import { buildInsertSessionInput } from '../utils/session-input.util'
 import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
@@ -11,12 +11,13 @@ interface SessionMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  reasoning?: string
   timestamp: Date
   toolInvocations?: any[]
   attachments?: any[]
+  parts?: AgentMessagePart[]
   inputTokens?: number
   outputTokens?: number
-  isReasoning?: boolean
   costMicros?: number
 }
 
@@ -32,15 +33,7 @@ export function useAgentSession() {
 
   // 将数据库消息转换为 UI 消息格式
   const mapDbMessageToUI = useCallback((msg: any): SessionMessage => {
-    const mapped = mapSessionMessageFromDb(msg)
-    return {
-      ...mapped,
-      toolInvocations: msg.toolInvocations,
-      inputTokens: msg.inputTokens,
-      outputTokens: msg.outputTokens,
-      isReasoning: msg.isReasoning,
-      costMicros: msg.costMicros
-    }
+    return mapSessionMessageFromDb(msg) as SessionMessage
   }, [])
 
   // 加载会话消息

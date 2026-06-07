@@ -405,6 +405,18 @@ export class AgentSessionService {
       }
     } catch (e: any) {
       logger.error('[AgentSessionService] Error in streamChat:', e)
+      if (e?.cause) {
+        logger.error('[AgentSessionService] Cause:', e.cause)
+      }
+      if (e?.url) {
+        logger.error('[AgentSessionService] Failing URL:', e.url)
+      }
+      if (e?.statusCode) {
+        logger.error('[AgentSessionService] HTTP status:', e.statusCode)
+      }
+      if (e?.responseHeaders) {
+        logger.error('[AgentSessionService] Response headers:', JSON.stringify(e.responseHeaders))
+      }
       if (callbacks?.onError) {
         callbacks.onError(e)
       }

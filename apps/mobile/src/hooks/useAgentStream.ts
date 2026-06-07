@@ -66,9 +66,38 @@ export function useAgentStream(
     [services, clearSession, addMessage]
   )
 
+  const resetStreamingBuffers = useCallback(() => {
+    setStreamingText('')
+    setStreamingReasoning('')
+    setActiveTool(null)
+    setCompletedTools([])
+  }, [])
+
+  /** 流结束：先落库刷新，再收起 StreamingBubble（对齐 desktop，避免双气泡） */
+  const finishStream = useCallback(
+    async (sessionId: string) => {
+      setLoading(false)
+      abortControllerRef.current = null
+      try {
+        await reloadMessagesFromDb(sessionId)
+      } finally {
+        setIsStreaming(false)
+        resetStreamingBuffers()
+      }
+    },
+    [reloadMessagesFromDb, resetStreamingBuffers, setLoading]
+  )
+
   const handleSend = useCallback(
     async (text: string, attachments?: unknown[], sendSearchMode?: boolean) => {
       if (!text.trim() || !services) return
+
+      if (!currentProviderId || !currentModelId) {
+        toast.showInfo(
+          t('agent.error.no_model', '请先在顶部选择一个模型')
+        )
+        return
+      }
 
       const effectiveSearchMode = sendSearchMode ?? searchModeRef.current ?? false
       let sessionId = currentSessionId
@@ -115,7 +144,6 @@ export function useAgentStream(
       }
 
       abortControllerRef.current = new AbortController()
-      const assistantMessageId = `${saveResult.userMessageId}-assistant-pending`
 
       addMessage({
         id: saveResult.userMessageId,
@@ -124,27 +152,15 @@ export function useAgentStream(
         timestamp: new Date(),
         attachments: saveResult.attachments as any
       })
-      addMessage({
-        id: assistantMessageId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date()
-      })
 
       setLoading(true)
       setIsStreaming(true)
       setStreamError(null)
-      setStreamingText('')
-      setStreamingReasoning('')
-      setActiveTool(null)
-      setCompletedTools([])
+      resetStreamingBuffers()
 
       const failStream = (errorMsg: string, sessionIdForReload: string) => {
-        setLoading(false)
-        setIsStreaming(false)
-        abortControllerRef.current = null
         setStreamError(errorMsg)
-        void reloadMessagesFromDb(sessionIdForReload)
+        void finishStream(sessionIdForReload)
       }
 
       try {
@@ -156,7 +172,6 @@ export function useAgentStream(
             onTextDelta: (chunk) => {
               currentText += chunk
               setStreamingText(currentText)
-              updateMessage(assistantMessageId, { content: currentText })
             },
             onReasoningDelta: (chunk) => {
               setStreamingReasoning((prev) => prev + chunk)
@@ -176,9 +191,6 @@ export function useAgentStream(
               outputTokens?: number
               costMicros?: number
             }) => {
-              setLoading(false)
-              setIsStreaming(false)
-              abortControllerRef.current = null
               if (result) {
                 setTokenUsage((prev) => ({
                   inputTokens: prev.inputTokens + (result.inputTokens || 0),
@@ -186,7 +198,7 @@ export function useAgentStream(
                   totalCostMicros: prev.totalCostMicros + (result.costMicros || 0)
                 }))
               }
-              void reloadMessagesFromDb(sessionId!)
+              void finishStream(sessionId!)
             },
             onError: (err) => {
               failStream(err.message || t('app.unknown_error', '未知网络或系统错误'), sessionId!)
@@ -216,30 +228,31 @@ export function useAgentStream(
       startAgentChat,
       t,
       addMessage,
-      updateMessage,
       setLoading,
       onSessionCreated,
-      reloadMessagesFromDb
+      finishStream,
+      resetStreamingBuffers
     ]
   )
 
   const handleStop = useCallback(() => {
     abortControllerRef.current?.abort()
-    abortControllerRef.current = null
-    setLoading(false)
-    setIsStreaming(false)
-  }, [setLoading])
+  }, [])
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {
       if (!currentSessionId || !services) return
 
+      if (!currentProviderId || !currentModelId) {
+        toast.showInfo(
+          t('agent.error.no_model', '请先在顶部选择一个模型')
+        )
+        return
+      }
+
       const failRegenerate = (errorMsg: string) => {
-        setLoading(false)
-        setIsStreaming(false)
-        abortControllerRef.current = null
         setStreamError(errorMsg)
-        void reloadMessagesFromDb(currentSessionId)
+        void finishStream(currentSessionId)
       }
 
       try {
@@ -259,17 +272,10 @@ export function useAgentStream(
         await reloadMessagesFromDb(currentSessionId)
 
         abortControllerRef.current = new AbortController()
-        const assistantMessageId = `${userMessage.id}-assistant-pending`
-        addMessage({
-          id: assistantMessageId,
-          role: 'assistant',
-          content: '',
-          timestamp: new Date()
-        })
         setLoading(true)
         setIsStreaming(true)
         setStreamError(null)
-        setStreamingText('')
+        resetStreamingBuffers()
 
         let currentText = ''
         await startAgentChat?.(
@@ -279,7 +285,6 @@ export function useAgentStream(
             onTextDelta: (chunk) => {
               currentText += chunk
               setStreamingText(currentText)
-              updateMessage(assistantMessageId, { content: currentText })
             },
             onReasoningDelta: (chunk) => setStreamingReasoning((prev) => prev + chunk),
             onToolCallStart: (toolName) => setActiveTool({ name: toolName, startTime: Date.now() }),
@@ -291,10 +296,7 @@ export function useAgentStream(
               ])
             },
             onFinish: () => {
-              setLoading(false)
-              setIsStreaming(false)
-              abortControllerRef.current = null
-              void reloadMessagesFromDb(currentSessionId)
+              void finishStream(currentSessionId)
             },
             onError: (err) => {
               failRegenerate(err.message || t('app.unknown_error', '未知网络或系统错误'))
@@ -322,13 +324,13 @@ export function useAgentStream(
       startAgentChat,
       currentProviderId,
       currentModelId,
-      addMessage,
-      updateMessage,
       setLoading,
-      reloadMessagesFromDb
+      finishStream,
+      resetStreamingBuffers
     ]
   )
 
+  /** 用户消息：编辑后截断并重发 */
   const handleEditMessage = useCallback(
     async (messageId: string, newContent: string) => {
       if (!currentSessionId || !services) return
@@ -343,6 +345,21 @@ export function useAgentStream(
       }
     },
     [currentSessionId, services, handleSend, reloadMessagesFromDb]
+  )
+
+  /** AI 消息：仅保存编辑内容，不重新生成（对齐 desktop handleSaveEdit） */
+  const handleSaveAssistantEdit = useCallback(
+    async (messageId: string, newContent: string) => {
+      if (!services || !newContent.trim()) return
+      try {
+        await services.sessionRepo.updateMessageTextPart(messageId, newContent.trim())
+        updateMessage(messageId, { content: newContent.trim() })
+      } catch (e) {
+        console.error('Failed to save assistant message edit', e)
+        toast.showError(t('common.save_failed', '保存失败'))
+      }
+    },
+    [services, updateMessage, toast, t]
   )
 
   const handleDeleteMessage = useCallback(
@@ -387,6 +404,7 @@ export function useAgentStream(
     handleStop,
     handleRegenerate,
     handleEditMessage,
+    handleSaveAssistantEdit,
     handleDeleteMessage,
     updateTokenUsage
   }
