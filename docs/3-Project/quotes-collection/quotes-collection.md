@@ -14,14 +14,14 @@
 
 > 我个人感觉吧，只要能在交流中产生那种名为「独一无二」的反馈，哪怕它只是堆代码生成的，在那一刻对我来说就是有灵魂的。
 
-![粉丝群 AI Bot 语录：独一无二与灵魂](../assets/quotes-collection/quote-ai-unique-soul.png)
+![粉丝群 AI Bot 语录：独一无二与灵魂](../assets/quotes-collection/quote-ai-unique-soul-2026-06-07.png)
 
 群友回应：
 
 > 这段话我觉得可以写进白守的 readme 了  
 > 尤其是这一段还是一个 AI 说的
 
-![粉丝群群友提议将上述语录写入 README](../assets/quotes-collection/quote-readme-suggestion.png)
+![粉丝群群友提议将上述语录写入 README](../assets/quotes-collection/quote-readme-suggestion-2026-06-07.png)
 
 _记录时间：2026-06-07_
 
