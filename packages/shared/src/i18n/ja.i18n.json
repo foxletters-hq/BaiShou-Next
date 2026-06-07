@@ -558,6 +558,7 @@
     "reset_defaults": "既定に戻す",
     "global_models_saved": "グローバルモデル設定を保存しました",
     "configure_providers": "プロバイダーを設定",
+    "manage_providers": "プロバイダーを管理",
     "not_set": "未設定",
     "no_models_available": "利用可能なモデルがありません。先にプロバイダーを設定してください",
     "disabled_tools": "無効",

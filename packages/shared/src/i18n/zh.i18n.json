@@ -654,6 +654,7 @@
     "reset_defaults": "恢复默认",
     "global_models_saved": "全局模型配置已保存",
     "configure_providers": "配置供应商",
+    "manage_providers": "管理供应商",
     "not_set": "未设置",
     "no_models_available": "没有可用的模型，请先配置供应商",
     "disabled_tools": "已禁用",

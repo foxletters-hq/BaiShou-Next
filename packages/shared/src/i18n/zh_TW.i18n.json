@@ -590,6 +590,7 @@
     "reset_defaults": "恢復預設",
     "global_models_saved": "全域模型設定已儲存",
     "configure_providers": "設定供應商",
+    "manage_providers": "管理供應商",
     "not_set": "未設定",
     "no_models_available": "沒有可用的模型，請先設定供應商",
     "disabled_tools": "已停用",

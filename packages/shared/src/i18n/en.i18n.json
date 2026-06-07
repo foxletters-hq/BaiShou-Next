@@ -556,6 +556,7 @@
     "reset_defaults": "Reset defaults",
     "global_models_saved": "Global model settings saved",
     "configure_providers": "Configure providers",
+    "manage_providers": "Manage providers",
     "not_set": "Not set",
     "no_models_available": "No models available. Configure providers first.",
     "disabled_tools": "Disabled",
