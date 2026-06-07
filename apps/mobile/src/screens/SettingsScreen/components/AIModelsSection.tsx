@@ -7,8 +7,9 @@ import {
   useNativeTheme,
   useNativeToast,
   useDialog,
-  ModelSwitcherPopup,
-  CardLinkAction
+  ModelSwitcher,
+  CardLinkAction,
+  type MockAiProviderModel
 } from '@baishou/ui/native'
 import { AIProviderConfig, GlobalModelsConfig, isEmbeddingModel, isTtsModel } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -48,17 +49,29 @@ const MODEL_FIELD_META: Array<{
   }
 ]
 
-function modelCompositeId(providerId: string, modelId: string): string {
-  return `${providerId}::${modelId}`
-}
-
-function parseCompositeId(composite: string): { providerId: string; modelId: string } | null {
-  const idx = composite.indexOf('::')
-  if (idx <= 0) return null
-  return {
-    providerId: composite.slice(0, idx),
-    modelId: composite.slice(idx + 2)
-  }
+function buildFilteredProviders(
+  providers: AIProviderConfig[],
+  forEmbedding: boolean
+): MockAiProviderModel[] {
+  return providers
+    .filter((p) => p.isEnabled && (p.enabledModels?.length || p.models?.length))
+    .map((p) => {
+      const pool = p.enabledModels?.length ? p.enabledModels : p.models || []
+      const filtered = pool.filter((modelId) => {
+        const isEmbed = isEmbeddingModel(modelId)
+        const isTts = isTtsModel(modelId)
+        if (forEmbedding) return isEmbed
+        return !isEmbed && !isTts
+      })
+      return {
+        id: p.id,
+        name: p.name || p.id,
+        type: p.type,
+        enabledModels: filtered,
+        models: filtered
+      }
+    })
+    .filter((p) => (p.enabledModels?.length ?? 0) > 0)
 }
 
 export const AIModelsSection: React.FC = () => {
@@ -72,10 +85,6 @@ export const AIModelsSection: React.FC = () => {
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
   const [globalModels, setGlobalModels] = useState<GlobalModelsConfig>({} as GlobalModelsConfig)
   const [activeSelector, setActiveSelector] = useState<ModelSelectorKey | null>(null)
-  const [popupModels, setPopupModels] = useState<
-    Array<{ id: string; name: string; providerId: string; leading?: React.ReactNode }>
-  >([])
-  const [popupSelectedId, setPopupSelectedId] = useState('')
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -105,47 +114,26 @@ export const AIModelsSection: React.FC = () => {
     }
   }
 
-  const buildPopupModels = (forEmbedding: boolean) => {
-    const items: Array<{ id: string; name: string; providerId: string; leading?: React.ReactNode }> = []
-    providers
-      .filter((p) => p.isEnabled && (p.enabledModels?.length || p.models?.length))
-      .forEach((p) => {
-        const pool = p.enabledModels?.length ? p.enabledModels : p.models || []
-        pool.forEach((modelId) => {
-          const isEmbed = isEmbeddingModel(modelId)
-          const isTts = isTtsModel(modelId)
-          if (forEmbedding && !isEmbed) return
-          if (!forEmbedding && (isEmbed || isTts)) return
-          items.push({
-            id: modelCompositeId(p.id, modelId),
-            name: modelId,
-            providerId: p.name || p.id,
-            leading: <ProviderBrandIcon providerId={p.id} size={18} />
-          })
-        })
-      })
-    return items
-  }
+  const activeFieldMeta = activeSelector
+    ? MODEL_FIELD_META.find((f) => f.key === activeSelector)
+    : null
+
+  const switcherProviders = useMemo(() => {
+    if (!activeFieldMeta) return []
+    return buildFilteredProviders(providers, activeFieldMeta.forEmbedding)
+  }, [providers, activeFieldMeta])
 
   const openSelector = (fieldKey: ModelSelectorKey, forEmbedding: boolean) => {
-    const models = buildPopupModels(forEmbedding)
-    if (models.length === 0) {
+    const filtered = buildFilteredProviders(providers, forEmbedding)
+    if (filtered.length === 0) {
       toast.showWarning(t('settings.no_models_available'))
       return
     }
-    const providerKey = `${fieldKey}ProviderId` as keyof GlobalModelsConfig
-    const modelKey = `${fieldKey}ModelId` as keyof GlobalModelsConfig
-    const pid = String(globalModels[providerKey] ?? '')
-    const mid = String(globalModels[modelKey] ?? '')
-    setPopupModels(models)
-    setPopupSelectedId(pid && mid ? modelCompositeId(pid, mid) : '')
     setActiveSelector(fieldKey)
   }
 
-  const handleSelectModel = async (compositeId: string) => {
+  const handleSelectModel = async (providerId: string, modelId: string) => {
     if (!activeSelector) return
-    const parsed = parseCompositeId(compositeId)
-    if (!parsed) return
 
     const providerKey = `${activeSelector}ProviderId` as keyof GlobalModelsConfig
     const modelKey = `${activeSelector}ModelId` as keyof GlobalModelsConfig
@@ -156,7 +144,7 @@ export const AIModelsSection: React.FC = () => {
       const isSwitching =
         currentProvider &&
         currentModel &&
-        (currentProvider !== parsed.providerId || currentModel !== parsed.modelId)
+        (currentProvider !== providerId || currentModel !== modelId)
 
       if (isSwitching) {
         const confirmed = await dialog.confirm(t('agent.rag.migration_switch_warning_content'), {
@@ -168,8 +156,8 @@ export const AIModelsSection: React.FC = () => {
 
     const newConfig: GlobalModelsConfig = {
       ...globalModels,
-      [providerKey]: parsed.providerId,
-      [modelKey]: parsed.modelId
+      [providerKey]: providerId,
+      [modelKey]: modelId
     }
     await handleSaveGlobalModels(newConfig)
     setActiveSelector(null)
@@ -208,6 +196,9 @@ export const AIModelsSection: React.FC = () => {
         const providerKey = `${field.key}ProviderId` as keyof GlobalModelsConfig
         const modelKey = `${field.key}ModelId` as keyof GlobalModelsConfig
         const isSet = Boolean(globalModels[providerKey] && globalModels[modelKey])
+        const selectedProvider = isSet
+          ? providers.find((p) => p.id === globalModels[providerKey])
+          : undefined
 
         return (
           <TouchableOpacity
@@ -249,7 +240,11 @@ export const AIModelsSection: React.FC = () => {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                 {isSet && (
-                  <ProviderBrandIcon providerId={globalModels[providerKey] as string} size={18} />
+                  <ProviderBrandIcon
+                    providerId={globalModels[providerKey] as string}
+                    providerType={selectedProvider?.type}
+                    size={18}
+                  />
                 )}
                 <Text
                   style={[
@@ -277,12 +272,22 @@ export const AIModelsSection: React.FC = () => {
         {t('settings.configure_providers')}
       </CardLinkAction>
 
-      <ModelSwitcherPopup
-        visible={activeSelector !== null}
+      <ModelSwitcher
+        isOpen={activeSelector !== null}
         onClose={() => setActiveSelector(null)}
-        models={popupModels}
-        selectedModelId={popupSelectedId}
+        providers={switcherProviders}
+        currentProviderId={
+          activeSelector
+            ? (globalModels[`${activeSelector}ProviderId` as keyof GlobalModelsConfig] as string)
+            : null
+        }
+        currentModelId={
+          activeSelector
+            ? (globalModels[`${activeSelector}ModelId` as keyof GlobalModelsConfig] as string)
+            : null
+        }
         onSelect={handleSelectModel}
+        onManageProviders={() => router.push('/settings/ai-services')}
       />
     </View>
   )

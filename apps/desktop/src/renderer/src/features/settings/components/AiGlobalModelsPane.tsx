@@ -74,6 +74,7 @@ export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) =>
             availableProviders={providerRecord}
             onChange={(config) => settings.setGlobalModels(config)}
             onEmbeddingMigrationRequest={handleEmbeddingMigrationRequest}
+            onManageProviders={() => navigate('/settings/ai-services')}
           />
         </div>
       )}
