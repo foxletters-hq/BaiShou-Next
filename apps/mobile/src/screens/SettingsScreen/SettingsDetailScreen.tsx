@@ -13,7 +13,6 @@ import { WebSearchSection } from './components/WebSearchSection'
 import { AgentToolsSection } from './components/AgentToolsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
-import { TTSSettingsSection } from './components/TTSSettingsSection'
 import { McpSettingsSection } from './components/McpSettingsSection'
 import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
 import { UpdateSettingsSection } from './components/UpdateSettingsSection'
@@ -50,8 +49,6 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
         return <SummarySettingsSection />
       case 'attachments':
         return <AttachmentManagementSection />
-      case 'tts':
-        return <TTSSettingsSection />
       case 'updates':
         return <UpdateSettingsSection />
       case 'developer':

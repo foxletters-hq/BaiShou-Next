@@ -12,15 +12,21 @@ export function useStoragePermission() {
   const [granted, setGranted] = useState<boolean | undefined>(
     Platform.OS === 'android' ? undefined : true
   )
+  const [permissionChecked, setPermissionChecked] = useState(Platform.OS !== 'android')
 
   const refresh = useCallback(async (): Promise<boolean> => {
     if (Platform.OS !== 'android') {
       setGranted(true)
+      setPermissionChecked(true)
       return true
     }
-    const ok = await hasStoragePermission()
-    setGranted(ok)
-    return ok
+    try {
+      const ok = await hasStoragePermission()
+      setGranted(ok)
+      return ok
+    } finally {
+      setPermissionChecked(true)
+    }
   }, [])
 
   useEffect(() => {
@@ -84,14 +90,20 @@ export function useStoragePermission() {
     return ok
   }, [retryStorageSetup, storageReady, t, toast])
 
+  /** 仅在已确认未授权时展示权限引导，避免启动时 granted 未决的闪屏 */
   const needsFullFileAccess =
-    Platform.OS === 'android' &&
-    (granted === false || (!storageReady && granted !== true))
+    Platform.OS === 'android' && permissionChecked && granted === false
+
+  /** 已授权但外部存储/vault 仍在挂载 */
+  const isStoragePending =
+    Platform.OS === 'android' && permissionChecked && granted === true && !storageReady
 
   return {
     isAndroid: Platform.OS === 'android',
     granted,
+    permissionChecked,
     storageReady,
+    isStoragePending,
     refresh,
     request,
     needsFullFileAccess,

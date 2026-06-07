@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler'
+import '../src/polyfills'
 import '../global.css'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import { Stack } from 'expo-router'
@@ -66,17 +67,16 @@ function AppContent() {
 
   return (
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="settings"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_right'
-          }}
-        />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right'
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="settings" />
         <Stack.Screen
           name="diary-editor"
           options={{
@@ -85,29 +85,13 @@ function AppContent() {
             headerShown: false
           }}
         />
-        <Stack.Screen name="assistants" options={{ headerShown: false }} />
-        <Stack.Screen name="assistant-edit" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="lan-transfer"
-          options={{
-            headerShown: false
-          }}
-        />
-        <Stack.Screen
-          name="data-sync"
-          options={{
-            headerShown: false
-          }}
-        />
-        <Stack.Screen
-          name="summary-detail"
-          options={{
-            title: t('summary.dashboard_title'),
-            headerShown: false
-          }}
-        />
-        <Stack.Screen name="storage" options={{ headerShown: false }} />
-        <Stack.Screen name="incremental-sync" options={{ headerShown: false }} />
+        <Stack.Screen name="assistants" />
+        <Stack.Screen name="assistant-edit" />
+        <Stack.Screen name="lan-transfer" />
+        <Stack.Screen name="data-sync" />
+        <Stack.Screen name="summary-detail" />
+        <Stack.Screen name="storage" />
+        <Stack.Screen name="incremental-sync" />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

@@ -1,5 +1,5 @@
-import { LanTransferScreen } from '@/src/screens/LanTransferScreen'
+import { Redirect } from 'expo-router'
 
-export default function LanTransferRoute() {
-  return <LanTransferScreen />
+export default function LanTransferRedirect() {
+  return <Redirect href="/settings/lan-transfer" />
 }

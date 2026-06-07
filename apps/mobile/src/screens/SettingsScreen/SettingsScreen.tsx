@@ -20,7 +20,7 @@ export const SettingsScreen: React.FC = () => {
     if (route.type === 'section') {
       router.push(`/settings/${route.section}`)
     } else {
-      router.push(route.pathname as '/assistants')
+      router.push(route.pathname)
     }
   }
 

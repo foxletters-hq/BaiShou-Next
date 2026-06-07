@@ -1,5 +1,5 @@
-import { DataSyncScreen } from '@/src/screens/DataSyncScreen'
+import { Redirect } from 'expo-router'
 
-export default function DataSyncRoute() {
-  return <DataSyncScreen />
+export default function DataSyncRedirect() {
+  return <Redirect href="/settings/data-sync" />
 }

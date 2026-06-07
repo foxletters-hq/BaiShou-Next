@@ -86,11 +86,11 @@ export const AssistantManagementScreen: React.FC = () => {
   }, [assistants, searchQuery])
 
   const handleCreateAssistant = () => {
-    router.push({ pathname: '/assistant-edit', params: { id: 'new' } })
+    router.push({ pathname: '/settings/assistant-edit', params: { id: 'new' } })
   }
 
   const handleEditAssistant = (assistant: Assistant) => {
-    router.push({ pathname: '/assistant-edit', params: { id: assistant.id } })
+    router.push({ pathname: '/settings/assistant-edit', params: { id: assistant.id } })
   }
 
   const handleDeleteAssistant = async (assistant: Assistant) => {

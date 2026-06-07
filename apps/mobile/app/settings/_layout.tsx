@@ -13,6 +13,12 @@ export default function SettingsStackLayout() {
       }}
     >
       <Stack.Screen name="[section]" />
+      <Stack.Screen name="assistants" />
+      <Stack.Screen name="assistant-edit" />
+      <Stack.Screen name="lan-transfer" />
+      <Stack.Screen name="data-sync" />
+      <Stack.Screen name="tts/index" />
+      <Stack.Screen name="tts/[provider]" />
       <Stack.Screen name="ai-provider/[id]" />
       <Stack.Screen name="about" />
       <Stack.Screen name="privacy" />

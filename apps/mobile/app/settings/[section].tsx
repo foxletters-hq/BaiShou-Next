@@ -7,6 +7,10 @@ export default function SettingsSectionRoute() {
   const { section: sectionParam } = useLocalSearchParams<{ section: string | string[] }>()
   const section = Array.isArray(sectionParam) ? sectionParam[0] : sectionParam
 
+  if (section === 'tts') {
+    return <Redirect href="/settings/tts" />
+  }
+
   if (!section || !SETTINGS_SECTION_IDS.has(section)) {
     return <Redirect href="/(tabs)/settings" />
   }
