@@ -30,13 +30,15 @@ export interface AIGlobalModelsViewProps {
       globalEmbeddingDimension: number
     }
   }) => Promise<boolean>
+  onManageProviders?: () => void
 }
 
 export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   config,
   availableProviders,
   onChange,
-  onEmbeddingMigrationRequest
+  onEmbeddingMigrationRequest,
+  onManageProviders
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
@@ -268,6 +270,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           }
           onSelect={handleSelectModel}
           onClose={() => setActiveSelector(null)}
+          onManageProviders={onManageProviders}
         />
       )}
     </div>

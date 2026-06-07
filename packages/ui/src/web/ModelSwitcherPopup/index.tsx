@@ -4,7 +4,7 @@ import styles from './ModelSwitcherPopup.module.css'
 import { useTranslation } from 'react-i18next'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
-import { MdCloud, MdCheck, MdSearch, MdVisibility } from 'react-icons/md'
+import { MdCloud, MdCheck, MdSearch, MdSettings, MdVisibility } from 'react-icons/md'
 import { isVisionModel } from '@baishou/shared'
 
 export interface AiProviderModel {
@@ -21,6 +21,7 @@ interface ModelSwitcherPopupProps {
   currentModelId?: string
   onSelect: (providerId: string, modelId: string) => void
   onClose: () => void
+  onManageProviders?: () => void
 }
 
 export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
@@ -28,7 +29,8 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
   currentProviderId,
   currentModelId,
   onSelect,
-  onClose
+  onClose,
+  onManageProviders
 }) => {
   const { t } = useTranslation()
   const { isDark } = useTheme()
@@ -149,6 +151,22 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
             ))
           )}
         </div>
+
+        {onManageProviders && (
+          <div className={styles.manageFooter}>
+            <button
+              className={styles.manageBtn}
+              onClick={() => {
+                onManageProviders()
+                onClose()
+              }}
+              type="button"
+            >
+              <MdSettings size={14} />
+              <span>{t('settings.ai_services', '供应商管理')}</span>
+            </button>
+          </div>
+        )}
       </div>
     </>,
     document.body
