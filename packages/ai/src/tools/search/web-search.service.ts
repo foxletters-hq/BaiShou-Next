@@ -1,3 +1,5 @@
+import { logger } from '@baishou/shared'
+import { searchExaMcp } from './exa-mcp-search'
 import { HtmlToMarkdownConverter } from './html-to-markdown'
 import { LocalBingProvider } from './local-bing-provider'
 import { LocalGoogleProvider } from './local-google-provider'
@@ -8,7 +10,42 @@ export interface SearchResult {
   snippet: string
 }
 
-export type SearchEngineType = 'tavily' | 'duckduckgo' | 'local-bing' | 'local-google'
+export type SearchEngineType =
+  | 'tavily'
+  | 'exa'
+  | 'exa-mcp'
+  | 'anysearch'
+  | 'duckduckgo'
+  | 'local-bing'
+  | 'local-google'
+
+/** 单次搜索诊断信息，便于排查「无结果」问题 */
+export interface SearchDiagnostics {
+  engine: SearchEngineType
+  query: string
+  httpStatus?: number
+  htmlBytes?: number
+  parsedCount?: number
+  error?: string
+  detail?: string
+}
+
+function createFetchSignal(timeoutMs: number): AbortSignal {
+  if (
+    typeof AbortSignal !== 'undefined' &&
+    'timeout' in AbortSignal &&
+    typeof AbortSignal.timeout === 'function'
+  ) {
+    return AbortSignal.timeout(timeoutMs)
+  }
+  const controller = new AbortController()
+  setTimeout(() => controller.abort(), timeoutMs)
+  return controller.signal
+}
+
+function cleanApiKey(apiKey?: string): string {
+  return (apiKey || '').replace(/[\s\u200B-\u200D\uFEFF\u00A0]/g, '').trim()
+}
 
 /**
  * 搜索引擎分流网关及底层抓取器（无头实现）
@@ -48,9 +85,12 @@ export class WebSearchService {
     maxResultsPerQuery?: number
     totalMaxResults?: number
     apiKey?: string
+    exaApiKey?: string
+    anysearchApiKey?: string
     webSearchResultFetcher?: (url: string) => Promise<string>
     fetchSearchPage?: (url: string) => Promise<string>
     plainSnippetLength?: number
+    onDiagnostics?: (diag: SearchDiagnostics) => void
   }): Promise<SearchResult[]> {
     const {
       queries,
@@ -58,9 +98,12 @@ export class WebSearchService {
       maxResultsPerQuery = 5,
       totalMaxResults = 10,
       apiKey,
+      exaApiKey,
+      anysearchApiKey,
       webSearchResultFetcher,
       fetchSearchPage,
-      plainSnippetLength
+      plainSnippetLength,
+      onDiagnostics
     } = params
 
     if (queries.length === 0) return []
@@ -70,9 +113,12 @@ export class WebSearchService {
         engine,
         totalMaxResults,
         apiKey,
+        exaApiKey,
+        anysearchApiKey,
         webSearchResultFetcher,
         fetchSearchPage,
-        plainSnippetLength
+        plainSnippetLength,
+        onDiagnostics
       )
     }
 
@@ -82,9 +128,12 @@ export class WebSearchService {
         engine,
         maxResultsPerQuery,
         apiKey,
+        exaApiKey,
+        anysearchApiKey,
         webSearchResultFetcher,
         fetchSearchPage,
-        plainSnippetLength
+        plainSnippetLength,
+        onDiagnostics
       )
     )
     const allResultsRaw = await Promise.allSettled(promises)
@@ -112,12 +161,26 @@ export class WebSearchService {
     engine: SearchEngineType,
     maxResults: number = this.defaultMaxResults,
     apiKey?: string,
+    exaApiKey?: string,
+    anysearchApiKey?: string,
     webSearchResultFetcher?: (url: string) => Promise<string>,
     fetchSearchPage?: (url: string) => Promise<string>,
-    plainSnippetLength?: number
+    plainSnippetLength?: number,
+    onDiagnostics?: (diag: SearchDiagnostics) => void
   ): Promise<SearchResult[]> {
+    logger.info(`[WebSearchService] search engine=${engine} query="${query}" maxResults=${maxResults}`)
+
     if (engine === 'duckduckgo') {
-      return this.searchDuckDuckGo(query, maxResults)
+      return this.searchDuckDuckGo(query, maxResults, onDiagnostics)
+    }
+    if (engine === 'exa') {
+      return this.searchExa(query, maxResults, exaApiKey, onDiagnostics)
+    }
+    if (engine === 'exa-mcp') {
+      return searchExaMcp(query, maxResults, onDiagnostics)
+    }
+    if (engine === 'anysearch') {
+      return this.searchAnysearch(query, maxResults, anysearchApiKey, onDiagnostics)
     }
     if (engine === 'local-bing') {
       return this.searchLocalBing(
@@ -137,32 +200,56 @@ export class WebSearchService {
         plainSnippetLength
       )
     }
-    return this.searchTavily(query, maxResults, apiKey)
+    return this.searchTavily(query, maxResults, apiKey, onDiagnostics)
   }
 
   // --- DuckDuckGo 骨灰级抓取器 (避开封禁方案) ---
   private static async searchDuckDuckGo(
     query: string,
-    maxResults: number
+    maxResults: number,
+    onDiagnostics?: (diag: SearchDiagnostics) => void
   ): Promise<SearchResult[]> {
     const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query)
+    const emit = (partial: Omit<SearchDiagnostics, 'engine' | 'query'>) => {
+      const diag: SearchDiagnostics = { engine: 'duckduckgo', query, ...partial }
+      onDiagnostics?.(diag)
+      logger.info('[WebSearchService] DDG diagnostics:', JSON.stringify(diag))
+    }
 
     const maxRetries = 2 // DuckDuckGo 经常返回 403 或 202（流控）
     for (let i = 0; i <= maxRetries; i++) {
       try {
         const resp = await fetch(url, {
           headers: this.browserHeaders,
-          signal: AbortSignal.timeout(10000)
+          signal: createFetchSignal(10000)
         })
         if (resp.status !== 200) {
+          emit({
+            httpStatus: resp.status,
+            error: `HTTP ${resp.status}`,
+            detail: i < maxRetries ? `retry ${i + 1}/${maxRetries}` : 'max retries reached'
+          })
           if (i === maxRetries)
             throw new Error('DuckDuckGo blocked request. Status: ' + resp.status)
           await new Promise((r) => setTimeout(r, 1000)) // sleep 缓刑
           continue
         }
         const html = await resp.text()
-        return this.parseDuckDuckGoResults(html, maxResults)
+        const results = this.parseDuckDuckGoResults(html, maxResults)
+        const titleBlocks = (html.match(/class="result__title"/g) || []).length
+        emit({
+          httpStatus: resp.status,
+          htmlBytes: html.length,
+          parsedCount: results.length,
+          detail:
+            results.length === 0
+              ? `HTML has ${titleBlocks} result__title blocks but parser returned 0`
+              : `parsed ${results.length} results`
+        })
+        return results
       } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        emit({ error: msg, detail: i < maxRetries ? `retry ${i + 1}/${maxRetries}` : 'failed' })
         if (i === maxRetries) throw e
       }
     }
@@ -220,15 +307,16 @@ export class WebSearchService {
         // 解析错误则保持原样
       }
 
-      if (actualUrl && title && snippetClean.length > 10) {
+      if (actualUrl && title) {
         // 由于部分 DuckDuckGo 搜出的标题和 Snippet 可能带有 HTML Entites
         // 此处复用刚写的 converter 强制 decode 它保证中文和符号没有烂在里面
+        const decodedSnippet = snippetClean.replace(/&#(\d+);|&[a-z]+;/g, (m) =>
+          HtmlToMarkdownConverter.convert(m)
+        )
         results.push({
           title: title.replace(/&#(\d+);|&[a-z]+;/g, (m) => HtmlToMarkdownConverter.convert(m)),
           url: actualUrl,
-          snippet: snippetClean.replace(/&#(\d+);|&[a-z]+;/g, (m) =>
-            HtmlToMarkdownConverter.convert(m)
-          )
+          snippet: decodedSnippet || title
         })
       }
     }
@@ -236,14 +324,155 @@ export class WebSearchService {
     return results
   }
 
+  // --- Exa RESTful 获取 ---
+  private static async searchExa(
+    query: string,
+    maxResults: number,
+    apiKey?: string,
+    onDiagnostics?: (diag: SearchDiagnostics) => void
+  ): Promise<SearchResult[]> {
+    const cleanKey = cleanApiKey(apiKey)
+    const emit = (partial: Omit<SearchDiagnostics, 'engine' | 'query'>) => {
+      const diag: SearchDiagnostics = { engine: 'exa', query, ...partial }
+      onDiagnostics?.(diag)
+      logger.info('[WebSearchService] Exa diagnostics:', JSON.stringify(diag))
+    }
+
+    if (!cleanKey) {
+      emit({ error: 'Exa API key is missing or invalid.' })
+      throw new Error('Exa API key is missing or invalid.')
+    }
+
+    const resp = await fetch('https://api.exa.ai/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cleanKey
+      },
+      signal: createFetchSignal(15000),
+      body: JSON.stringify({
+        query,
+        numResults: maxResults,
+        contents: { text: true }
+      })
+    })
+
+    if (!resp.ok) {
+      const text = await resp.text()
+      emit({ httpStatus: resp.status, error: text.slice(0, 200) })
+      throw new Error('Exa search failed: ' + resp.status + ' ' + text)
+    }
+
+    const data = (await resp.json()) as {
+      results?: Array<{ title?: string | null; url?: string; text?: string }>
+    }
+    const resultsRaw = Array.isArray(data.results) ? data.results : []
+    const results: SearchResult[] = []
+
+    for (const item of resultsRaw) {
+      if (results.length >= maxResults) break
+      const t = item.title?.trim() || ''
+      const u = item.url?.trim() || ''
+      const c = item.text?.trim() || ''
+      if (u && (t || c)) {
+        results.push({ title: t || u, url: u, snippet: c || t })
+      }
+    }
+
+    emit({ httpStatus: resp.status, parsedCount: results.length })
+    return results
+  }
+
+  // --- AnySearch RESTful 获取 ---
+  private static async searchAnysearch(
+    query: string,
+    maxResults: number,
+    apiKey?: string,
+    onDiagnostics?: (diag: SearchDiagnostics) => void
+  ): Promise<SearchResult[]> {
+    const cleanKey = cleanApiKey(apiKey)
+    const emit = (partial: Omit<SearchDiagnostics, 'engine' | 'query'>) => {
+      const diag: SearchDiagnostics = { engine: 'anysearch', query, ...partial }
+      onDiagnostics?.(diag)
+      logger.info('[WebSearchService] AnySearch diagnostics:', JSON.stringify(diag))
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (cleanKey) {
+      headers.Authorization = 'Bearer ' + cleanKey
+    }
+
+    const resp = await fetch('https://api.anysearch.com/v1/search', {
+      method: 'POST',
+      headers,
+      signal: createFetchSignal(15000),
+      body: JSON.stringify({
+        query,
+        max_results: Math.min(Math.max(maxResults, 1), 100),
+        zone: 'cn',
+        language: 'zh-CN'
+      })
+    })
+
+    if (!resp.ok) {
+      const text = await resp.text()
+      emit({ httpStatus: resp.status, error: text.slice(0, 200) })
+      throw new Error('AnySearch failed: ' + resp.status + ' ' + text)
+    }
+
+    const data = (await resp.json()) as {
+      code?: number
+      message?: string
+      data?: {
+        results?: Array<{
+          title?: string | null
+          url?: string
+          snippet?: string
+          content?: string
+        }>
+      }
+    }
+
+    if (data.code !== undefined && data.code !== 0) {
+      emit({ error: data.message || `code=${data.code}` })
+      throw new Error('AnySearch API error: ' + (data.message || String(data.code)))
+    }
+
+    const resultsRaw = Array.isArray(data.data?.results) ? data.data.results : []
+    const results: SearchResult[] = []
+
+    for (const item of resultsRaw) {
+      if (results.length >= maxResults) break
+      const t = item.title?.trim() || ''
+      const u = item.url?.trim() || ''
+      const snippet = item.snippet?.trim() || ''
+      const content = item.content?.trim() || ''
+      const body = content || snippet
+      if (u && (t || body)) {
+        results.push({ title: t || u, url: u, snippet: body || t })
+      }
+    }
+
+    emit({ httpStatus: resp.status, parsedCount: results.length })
+    return results
+  }
+
   // --- Tavily RESTful 获取 ---
   private static async searchTavily(
     query: string,
     maxResults: number,
-    apiKey?: string
+    apiKey?: string,
+    onDiagnostics?: (diag: SearchDiagnostics) => void
   ): Promise<SearchResult[]> {
-    const cleanKey = (apiKey || '').replace(/[\s\u200B-\u200D\uFEFF\u00A0]/g, '').trim()
+    const cleanKey = cleanApiKey(apiKey)
+    const emit = (partial: Omit<SearchDiagnostics, 'engine' | 'query'>) => {
+      const diag: SearchDiagnostics = { engine: 'tavily', query, ...partial }
+      onDiagnostics?.(diag)
+      logger.info('[WebSearchService] Tavily diagnostics:', JSON.stringify(diag))
+    }
+
     if (!cleanKey) {
+      emit({ error: 'Tavily API key is missing or invalid.' })
       throw new Error('Tavily API key is missing or invalid.')
     }
 
@@ -253,7 +482,7 @@ export class WebSearchService {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + cleanKey
       },
-      signal: AbortSignal.timeout(15000),
+      signal: createFetchSignal(15000),
       body: JSON.stringify({
         query,
         max_results: maxResults,
@@ -264,6 +493,7 @@ export class WebSearchService {
 
     if (!resp.ok) {
       const text = await resp.text()
+      emit({ httpStatus: resp.status, error: text.slice(0, 200) })
       throw new Error('Tavily search failed: ' + resp.status + ' ' + text)
     }
 
@@ -281,6 +511,7 @@ export class WebSearchService {
       }
     }
 
+    emit({ httpStatus: resp.status, parsedCount: results.length })
     return results
   }
 

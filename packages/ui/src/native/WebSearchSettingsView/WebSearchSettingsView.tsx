@@ -21,7 +21,9 @@ export interface WebSearchSettingsViewProps {
 
 const ENGINES = [
   { id: 'duckduckgo', label: 'DuckDuckGo' },
-  { id: 'tavily', label: 'Tavily' }
+  { id: 'tavily', label: 'Tavily' },
+  { id: 'exa', label: 'Exa' },
+  { id: 'exa-mcp', label: 'Exa MCP' }
 ]
 
 export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({

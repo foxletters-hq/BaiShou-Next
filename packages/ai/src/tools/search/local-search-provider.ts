@@ -87,8 +87,7 @@ export abstract class LocalSearchProvider {
               url: item.url,
               content: this.truncateContent(content, snippetLimit)
             } satisfies SearchResult
-          } catch (e: any) {
-            logger.warn(`[LocalSearchProvider] Failed to fetch content for ${item.url}:`, e)
+          } catch {
             return null
           }
         }

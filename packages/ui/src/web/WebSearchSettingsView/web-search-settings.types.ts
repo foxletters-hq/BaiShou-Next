@@ -3,6 +3,8 @@ export interface WebSearchConfig {
   webSearchMaxResults: number
   webSearchRagEnabled: boolean
   tavilyApiKey: string
+  exaApiKey: string
+  anysearchApiKey: string
   webSearchRagMaxChunks: number
   webSearchRagChunksPerSource: number
   webSearchPlainSnippetLength: number
@@ -49,5 +51,26 @@ export const SEARCH_ENGINE_OPTIONS: SearchEngineOption[] = [
     titleFallback: 'Tavily API',
     descKey: 'settings.web_search_engine_tavily_desc',
     descFallback: '需要配置 API Key，专为大模型打造的搜索引擎，响应快、稳定性高。'
+  },
+  {
+    value: 'exa',
+    titleKey: 'settings.web_search_engine_exa',
+    titleFallback: 'Exa API',
+    descKey: 'settings.web_search_engine_exa_desc',
+    descFallback: '需要配置 API Key，面向 AI 的语义搜索引擎，结果质量高。'
+  },
+  {
+    value: 'exa-mcp',
+    titleKey: 'settings.web_search_engine_exa_mcp',
+    titleFallback: 'Exa MCP',
+    descKey: 'settings.web_search_engine_exa_mcp_desc',
+    descFallback: '通过 Exa MCP Server 免费搜索，无需 API Key。'
+  },
+  {
+    value: 'anysearch',
+    titleKey: 'settings.web_search_engine_anysearch',
+    titleFallback: 'AnySearch API',
+    descKey: 'settings.web_search_engine_anysearch_desc',
+    descFallback: '需要配置 API Key，面向 AI Agent 的统一搜索基础设施，免费账户每日 1000 次。'
   }
 ]

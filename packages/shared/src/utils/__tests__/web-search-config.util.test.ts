@@ -12,6 +12,8 @@ describe('web-search-config.util', () => {
       webSearchMaxResults: 8,
       webSearchRagEnabled: false,
       tavilyApiKey: 'tvly-test',
+      exaApiKey: 'exa-test',
+      anysearchApiKey: 'as-test',
       webSearchRagMaxChunks: 10,
       webSearchRagChunksPerSource: 3,
       webSearchPlainSnippetLength: 4500
@@ -22,6 +24,8 @@ describe('web-search-config.util', () => {
       web_search_max_results: 8,
       web_search_rag_enabled: false,
       tavily_api_key: 'tvly-test',
+      exa_api_key: 'exa-test',
+      anysearch_api_key: 'as-test',
       web_search_rag_max_chunks: 10,
       web_search_rag_chunks_per_source: 3,
       web_search_plain_snippet_length: 4500

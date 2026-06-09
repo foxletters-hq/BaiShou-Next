@@ -3,6 +3,8 @@ import type { WebSearchSettingsViewProps } from './web-search-settings.types'
 import { useWebSearchSettingsView } from './useWebSearchSettingsView'
 import { SearchEngineSection } from './SearchEngineSection'
 import { TavilyApiKeySection } from './TavilyApiKeySection'
+import { ExaApiKeySection } from './ExaApiKeySection'
+import { AnysearchApiKeySection } from './AnysearchApiKeySection'
 import { GeneralSettingsSection } from './GeneralSettingsSection'
 import styles from './WebSearchSettingsView.module.css'
 
@@ -23,11 +25,33 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
 
       {searchConfig.webSearchEngine === 'tavily' && (
         <TavilyApiKeySection
-          localApiKey={view.localApiKey}
-          apiKeyVisible={view.apiKeyVisible}
-          onApiKeyChange={view.setLocalApiKey}
-          onToggleVisibility={() => view.setApiKeyVisible(!view.apiKeyVisible)}
-          onSave={view.saveApiKey}
+          localApiKey={view.localTavilyApiKey}
+          apiKeyVisible={view.tavilyApiKeyVisible}
+          onApiKeyChange={view.setLocalTavilyApiKey}
+          onToggleVisibility={() => view.setTavilyApiKeyVisible(!view.tavilyApiKeyVisible)}
+          onSave={view.saveTavilyApiKey}
+        />
+      )}
+
+      {searchConfig.webSearchEngine === 'exa' && (
+        <ExaApiKeySection
+          localApiKey={view.localExaApiKey}
+          apiKeyVisible={view.exaApiKeyVisible}
+          onApiKeyChange={view.setLocalExaApiKey}
+          onToggleVisibility={() => view.setExaApiKeyVisible(!view.exaApiKeyVisible)}
+          onSave={view.saveExaApiKey}
+        />
+      )}
+
+      {searchConfig.webSearchEngine === 'anysearch' && (
+        <AnysearchApiKeySection
+          localApiKey={view.localAnysearchApiKey}
+          apiKeyVisible={view.anysearchApiKeyVisible}
+          onApiKeyChange={view.setLocalAnysearchApiKey}
+          onToggleVisibility={() =>
+            view.setAnysearchApiKeyVisible(!view.anysearchApiKeyVisible)
+          }
+          onSave={view.saveAnysearchApiKey}
         />
       )}
 
