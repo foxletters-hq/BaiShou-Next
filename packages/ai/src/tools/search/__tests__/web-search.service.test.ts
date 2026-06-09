@@ -63,11 +63,38 @@ describe('WebSearchService', () => {
   describe('search engine selection', () => {
     it('should have correct engine types', () => {
       // 验证搜索引擎类型定义
-      const engines = ['tavily', 'duckduckgo', 'local-bing', 'local-google']
+      const engines = [
+        'tavily',
+        'exa',
+        'exa-mcp',
+        'anysearch',
+        'duckduckgo',
+        'local-bing',
+        'local-google'
+      ]
       expect(engines).toContain('tavily')
+      expect(engines).toContain('exa')
+      expect(engines).toContain('exa-mcp')
+      expect(engines).toContain('anysearch')
       expect(engines).toContain('duckduckgo')
       expect(engines).toContain('local-bing')
       expect(engines).toContain('local-google')
+    })
+  })
+
+  describe('parseDuckDuckGoResults without snippet', () => {
+    it('should accept results with title only when snippet is short', () => {
+      const html = `
+        <div class="result__title">
+          <a rel="nofollow" href="https://example.com">Short</a>
+        </div>
+        <div class="result__snippet">
+          <a>Hi</a>
+        </div>
+      `
+      const results = WebSearchService.parseDuckDuckGoResults(html, 5)
+      expect(results).toHaveLength(1)
+      expect(results[0]!.title).toBe('Short')
     })
   })
 })

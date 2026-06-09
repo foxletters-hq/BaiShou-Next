@@ -48,11 +48,13 @@ export function webSearchConfigToUserConfig(
   webSearchConfig?: Partial<WebSearchConfig> | null
 ): Record<string, unknown> {
   return {
-    web_search_engine: webSearchConfig?.webSearchEngine || 'duckduckgo',
+    web_search_engine: webSearchConfig?.webSearchEngine || 'exa-mcp',
     web_search_max_results:
       webSearchConfig?.webSearchMaxResults ?? DEFAULT_WEB_SEARCH_LIMITS.maxResults,
     web_search_rag_enabled: webSearchConfig?.webSearchRagEnabled ?? true,
     tavily_api_key: webSearchConfig?.tavilyApiKey || '',
+    exa_api_key: webSearchConfig?.exaApiKey || '',
+    anysearch_api_key: webSearchConfig?.anysearchApiKey || '',
     web_search_rag_max_chunks:
       webSearchConfig?.webSearchRagMaxChunks ?? DEFAULT_WEB_SEARCH_LIMITS.ragMaxChunks,
     web_search_rag_chunks_per_source:

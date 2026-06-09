@@ -14,24 +14,50 @@ export function useWebSearchSettingsView({
 }: UseWebSearchSettingsViewOptions) {
   const { t } = useTranslation()
   const toast = useToast()
-  const [apiKeyVisible, setApiKeyVisible] = useState(false)
-  const [localApiKey, setLocalApiKey] = useState(searchConfig.tavilyApiKey || '')
+  const [tavilyApiKeyVisible, setTavilyApiKeyVisible] = useState(false)
+  const [exaApiKeyVisible, setExaApiKeyVisible] = useState(false)
+  const [anysearchApiKeyVisible, setAnysearchApiKeyVisible] = useState(false)
+  const [localTavilyApiKey, setLocalTavilyApiKey] = useState(searchConfig.tavilyApiKey || '')
+  const [localExaApiKey, setLocalExaApiKey] = useState(searchConfig.exaApiKey || '')
+  const [localAnysearchApiKey, setLocalAnysearchApiKey] = useState(
+    searchConfig.anysearchApiKey || ''
+  )
 
   const handleChange = (key: keyof WebSearchConfig, value: unknown) => {
     onSearchChange({ ...searchConfig, [key]: value })
   }
 
-  const saveApiKey = () => {
-    handleChange('tavilyApiKey', localApiKey)
+  const saveTavilyApiKey = () => {
+    handleChange('tavilyApiKey', localTavilyApiKey)
+    toast.showSuccess(t('common.success', '操作成功'))
+  }
+
+  const saveExaApiKey = () => {
+    handleChange('exaApiKey', localExaApiKey)
+    toast.showSuccess(t('common.success', '操作成功'))
+  }
+
+  const saveAnysearchApiKey = () => {
+    handleChange('anysearchApiKey', localAnysearchApiKey)
     toast.showSuccess(t('common.success', '操作成功'))
   }
 
   return {
-    apiKeyVisible,
-    setApiKeyVisible,
-    localApiKey,
-    setLocalApiKey,
+    tavilyApiKeyVisible,
+    setTavilyApiKeyVisible,
+    exaApiKeyVisible,
+    setExaApiKeyVisible,
+    anysearchApiKeyVisible,
+    setAnysearchApiKeyVisible,
+    localTavilyApiKey,
+    setLocalTavilyApiKey,
+    localExaApiKey,
+    setLocalExaApiKey,
+    localAnysearchApiKey,
+    setLocalAnysearchApiKey,
     handleChange,
-    saveApiKey
+    saveTavilyApiKey,
+    saveExaApiKey,
+    saveAnysearchApiKey
   }
 }

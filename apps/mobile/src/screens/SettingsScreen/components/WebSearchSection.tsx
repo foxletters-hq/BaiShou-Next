@@ -8,10 +8,12 @@ import { SettingsGroupCard } from './SettingsGroupCard'
 import { SettingsSliderRow } from './SettingsSliderRow'
 
 const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
-  webSearchEngine: 'duckduckgo',
+  webSearchEngine: 'exa-mcp',
   webSearchMaxResults: 5,
   webSearchRagEnabled: false,
   tavilyApiKey: '',
+  exaApiKey: '',
+  anysearchApiKey: '',
   webSearchRagMaxChunks: 12,
   webSearchRagChunksPerSource: 4,
   webSearchPlainSnippetLength: 3000
@@ -19,7 +21,10 @@ const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
 
 const ENGINES: Array<{ id: WebSearchConfig['webSearchEngine']; labelKey: string }> = [
   { id: 'duckduckgo', labelKey: 'settings.web_search_engine_duckduckgo' },
-  { id: 'tavily', labelKey: 'settings.web_search_engine_tavily' }
+  { id: 'tavily', labelKey: 'settings.web_search_engine_tavily' },
+  { id: 'exa', labelKey: 'settings.web_search_engine_exa' },
+  { id: 'exa-mcp', labelKey: 'settings.web_search_engine_exa_mcp' },
+  { id: 'anysearch', labelKey: 'settings.web_search_engine_anysearch' }
 ]
 
 export const WebSearchSection: React.FC = () => {
@@ -112,6 +117,48 @@ export const WebSearchSection: React.FC = () => {
               value={config.tavilyApiKey}
               onChangeText={(v) => applyPatch({ tavilyApiKey: v })}
               placeholder={t('agent.tools.param_tavily_api_key')}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              containerStyle={{ marginTop: 8 }}
+            />
+          </>
+        )}
+
+        {config.webSearchEngine === 'exa' && (
+          <>
+            <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('agent.tools.param_exa_api_key')}
+            </Text>
+            <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 6 }]}>
+              {t('agent.tools.param_exa_api_key_desc')}
+            </Text>
+            <Input
+              value={config.exaApiKey}
+              onChangeText={(v) => applyPatch({ exaApiKey: v })}
+              placeholder={t('agent.tools.param_exa_api_key')}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              containerStyle={{ marginTop: 8 }}
+            />
+          </>
+        )}
+
+        {config.webSearchEngine === 'anysearch' && (
+          <>
+            <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('agent.tools.param_anysearch_api_key')}
+            </Text>
+            <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 6 }]}>
+              {t('agent.tools.param_anysearch_api_key_desc')}
+            </Text>
+            <Input
+              value={config.anysearchApiKey}
+              onChangeText={(v) => applyPatch({ anysearchApiKey: v })}
+              placeholder={t('agent.tools.param_anysearch_api_key')}
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry

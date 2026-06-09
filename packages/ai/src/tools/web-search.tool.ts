@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import { AgentTool, ToolContext, ToolConfigParam } from './agent.tool'
-import { WebSearchService, SearchEngineType, SearchResult } from './search/web-search.service'
+import {
+  WebSearchService,
+  SearchEngineType,
+  SearchResult,
+  type SearchDiagnostics
+} from './search/web-search.service'
 import { SearchRagService } from './search/search-rag.service'
 import { resolveWebSearchLimits } from './search/web-search-config.util'
 
@@ -52,7 +57,10 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
           { label: 'Bing (Local Browser)', value: 'local-bing' },
           { label: 'Google (Local Browser)', value: 'local-google' },
           { label: 'DuckDuckGo (Free / No Key Required)', value: 'duckduckgo' },
-          { label: 'Tavily (Requires API Key)', value: 'tavily' }
+          { label: 'Tavily (Requires API Key)', value: 'tavily' },
+          { label: 'Exa (Requires API Key)', value: 'exa' },
+          { label: 'Exa MCP (Free / No Key Required)', value: 'exa-mcp' },
+          { label: 'AnySearch (Requires API Key)', value: 'anysearch' }
         ]
       },
       {
@@ -62,6 +70,22 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
         defaultValue: '',
         isSecret: true,
         placeholder: 'tvly-xxxx...'
+      },
+      {
+        key: 'exa_api_key',
+        label: 'Exa API Key',
+        type: 'string',
+        defaultValue: '',
+        isSecret: true,
+        placeholder: 'exa-xxxx...'
+      },
+      {
+        key: 'anysearch_api_key',
+        label: 'AnySearch API Key',
+        type: 'string',
+        defaultValue: '',
+        isSecret: true,
+        placeholder: 'as-xxxx...'
       },
       {
         key: 'web_search_max_results',
@@ -83,12 +107,18 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
     if (queries.length === 0) return 'Error: At least one search query is required.'
 
     const engineStr =
-      (context.userConfig?.['web_search_engine'] as SearchEngineType | undefined) || 'duckduckgo'
+      (context.userConfig?.['web_search_engine'] as SearchEngineType | undefined) || 'exa-mcp'
     const limits = resolveWebSearchLimits(context.userConfig)
     const maxResults = limits.maxResults
     const ragEnabled =
       (context.userConfig?.['web_search_rag_enabled'] as boolean | undefined) !== false
     const tavilyKey = context.userConfig?.['tavily_api_key'] as string | undefined
+    const exaKey = context.userConfig?.['exa_api_key'] as string | undefined
+    const anysearchKey = context.userConfig?.['anysearch_api_key'] as string | undefined
+    const diagnostics: SearchDiagnostics[] = []
+    const onDiagnostics = (diag: SearchDiagnostics) => {
+      diagnostics.push(diag)
+    }
 
     try {
       // 1. 无头获取引擎数据（如果有电子端代理 `webSearchResultFetcher` 则走之，否则走内置 Node API）
@@ -97,17 +127,23 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
       let actualEngine = engineStr
       let results: SearchResult[] = []
 
-      try {
-        results = await WebSearchService.multiSearch({
+      const runSearch = (engine: SearchEngineType) =>
+        WebSearchService.multiSearch({
           queries,
-          engine: actualEngine,
+          engine,
           maxResultsPerQuery: maxResults,
           totalMaxResults: maxResults + 5,
           apiKey: tavilyKey,
+          exaApiKey: exaKey,
+          anysearchApiKey: anysearchKey,
           webSearchResultFetcher: context.webSearchResultFetcher,
           fetchSearchPage: context.fetchSearchPage,
-          plainSnippetLength: limits.plainSnippetLength
+          plainSnippetLength: limits.plainSnippetLength,
+          onDiagnostics
         })
+
+      try {
+        results = await runSearch(actualEngine)
       } catch (primaryErr) {
         console.warn(
           `[WebSearchTool] Primary engine ${actualEngine} failed, trying fallback. Error:`,
@@ -117,21 +153,26 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
         if (actualEngine.startsWith('local-')) {
           throw primaryErr
         }
-        actualEngine = actualEngine === 'tavily' ? 'duckduckgo' : 'tavily'
-        results = await WebSearchService.multiSearch({
-          queries,
-          engine: actualEngine,
-          maxResultsPerQuery: maxResults,
-          totalMaxResults: maxResults,
-          apiKey: tavilyKey,
-          webSearchResultFetcher: context.webSearchResultFetcher,
-          fetchSearchPage: context.fetchSearchPage,
-          plainSnippetLength: limits.plainSnippetLength
-        })
+        const fallbacks = this.getFallbackEngines(actualEngine, tavilyKey, exaKey, anysearchKey)
+        let lastErr: unknown = primaryErr
+        for (const fb of fallbacks) {
+          try {
+            actualEngine = fb
+            results = await runSearch(fb)
+            lastErr = null
+            break
+          } catch (e) {
+            lastErr = e
+          }
+        }
+        if (lastErr) throw lastErr
       }
 
       if (results.length === 0) {
-        return `No search results found for: ${queries.join(', ')}`
+        return (
+          `No search results found for: ${queries.join(', ')}\n\n` +
+          this.formatDiagnostics(actualEngine, diagnostics)
+        )
       }
 
       // 2. RAG 切分降维 （可选启用且具有可用服务）
@@ -173,8 +214,51 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
     }
   }
 
+  private getFallbackEngines(
+    primary: SearchEngineType,
+    tavilyKey?: string,
+    exaKey?: string,
+    anysearchKey?: string
+  ): SearchEngineType[] {
+    const hasKey = (key?: string) => Boolean((key || '').replace(/\s/g, '').trim())
+    const candidates: SearchEngineType[] = []
+    if (primary !== 'anysearch' && hasKey(anysearchKey)) candidates.push('anysearch')
+    if (primary !== 'exa-mcp' && !primary.startsWith('local-')) candidates.push('exa-mcp')
+    if (primary !== 'exa' && hasKey(exaKey)) candidates.push('exa')
+    if (primary !== 'tavily' && hasKey(tavilyKey)) candidates.push('tavily')
+    if (primary !== 'duckduckgo' && !primary.startsWith('local-')) candidates.push('duckduckgo')
+    return candidates
+  }
+
+  private formatDiagnostics(engine: string, diagnostics: SearchDiagnostics[]): string {
+    if (diagnostics.length === 0) {
+      return `[Diagnostics] engine=${engine}, no detailed trace captured.`
+    }
+    const lines = diagnostics.map((d) => {
+      const parts = [
+        `engine=${d.engine}`,
+        d.httpStatus !== undefined ? `http=${d.httpStatus}` : null,
+        d.htmlBytes !== undefined ? `htmlBytes=${d.htmlBytes}` : null,
+        d.parsedCount !== undefined ? `parsed=${d.parsedCount}` : null,
+        d.error ? `error=${d.error}` : null,
+        d.detail ? `detail=${d.detail}` : null
+      ].filter(Boolean)
+      return `- query="${d.query}": ${parts.join(', ')}`
+    })
+    return `[Diagnostics] lastEngine=${engine}\n${lines.join('\n')}`
+  }
+
   private formatPlainResults(queries: string[], results: SearchResult[], engine: string): string {
-    const engineName = engine === 'tavily' ? 'Tavily API' : 'DuckDuckGo'
+    const engineNames: Record<string, string> = {
+      tavily: 'Tavily API',
+      exa: 'Exa API',
+      'exa-mcp': 'Exa MCP',
+      anysearch: 'AnySearch API',
+      duckduckgo: 'DuckDuckGo',
+      'local-bing': 'Bing Local',
+      'local-google': 'Google Local'
+    }
+    const engineName = engineNames[engine] || engine
     const buf: string[] = [
       `Search queries: ${queries.map((q) => `"${q}"`).join(', ')}`,
       `Found ${results.length} results (via ${engineName}):\n`

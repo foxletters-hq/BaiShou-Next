@@ -33,7 +33,7 @@ export function registerSearchIPC() {
     try {
       return await webSearchResultFetcher(url)
     } catch (e: any) {
-      logger.error('[SearchIPC] Failed to fetch content:', e)
+      logger.debug('[SearchIPC] Web fetch skipped:', e)
       return `Failed to read URL: ${e?.message || String(e)}`
     }
   })
