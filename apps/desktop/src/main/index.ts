@@ -24,6 +24,7 @@ import { registerCompressionEventBridge } from './services/compression-event.ser
 import { registerSearchIPC } from './ipc/search.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
+import { registerShortcutIPC } from './ipc/shortcut.ipc'
 import {
   installDatabaseSchema,
   SettingsRepository,
@@ -319,6 +320,7 @@ app.whenReady().then(async () => {
   registerSearchIPC()
   registerUpdaterIPC()
   registerShellIPC()
+  registerShortcutIPC()
 
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
   createWindow(needsOnboarding)

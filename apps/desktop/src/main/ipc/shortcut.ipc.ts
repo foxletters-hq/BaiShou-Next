@@ -1,20 +1,21 @@
-import { ipcMain } from 'electron'
 import { PromptShortcut } from '@baishou/shared'
 import { PromptShortcutRepository } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
+import { tracedIpcHandle } from './ipc-trace.util'
+
 export function registerShortcutIPC() {
-  ipcMain.handle('shortcuts:get-all', async () => {
+  tracedIpcHandle('shortcuts:get-all', async () => {
     const repo = new PromptShortcutRepository(getAppDb())
     return await repo.getShortcuts()
   })
 
-  ipcMain.handle('shortcuts:save-all', async (_, list: PromptShortcut[]) => {
+  tracedIpcHandle('shortcuts:save-all', async (_, list: PromptShortcut[]) => {
     const repo = new PromptShortcutRepository(getAppDb())
     await repo.saveShortcuts(list)
     return true
   })
 
-  ipcMain.handle('shortcuts:add', async (_, sc: Omit<PromptShortcut, 'id'>) => {
+  tracedIpcHandle('shortcuts:add', async (_, sc: Omit<PromptShortcut, 'id'>) => {
     const repo = new PromptShortcutRepository(getAppDb())
     const list = await repo.getShortcuts()
     const newSc = { ...sc, id: Math.random().toString(36).substring(7) }
@@ -23,7 +24,7 @@ export function registerShortcutIPC() {
     return newSc
   })
 
-  ipcMain.handle('shortcuts:update', async (_, id: string, payload: Partial<PromptShortcut>) => {
+  tracedIpcHandle('shortcuts:update', async (_, id: string, payload: Partial<PromptShortcut>) => {
     const repo = new PromptShortcutRepository(getAppDb())
     const list = await repo.getShortcuts()
     const index = list.findIndex((s) => s.id === id)
@@ -33,7 +34,7 @@ export function registerShortcutIPC() {
     }
   })
 
-  ipcMain.handle('shortcuts:delete', async (_, id: string) => {
+  tracedIpcHandle('shortcuts:delete', async (_, id: string) => {
     const repo = new PromptShortcutRepository(getAppDb())
     const list = await repo.getShortcuts()
     const filterList = list.filter((s) => s.id !== id)

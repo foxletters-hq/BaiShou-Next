@@ -5,6 +5,7 @@ import { settingsApi } from './settings.api'
 import { syncApi } from './sync.api'
 import { agentApi } from './agent.api'
 import { systemApi } from './system.api'
+import { shortcutsApi } from './shortcuts.api'
 
 // Custom APIs for renderer
 
@@ -37,7 +38,8 @@ export const api = {
   ...diaryApi,
   ...settingsApi,
   ...syncApi,
-  ...systemApi
+  ...systemApi,
+  shortcuts: shortcutsApi
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
