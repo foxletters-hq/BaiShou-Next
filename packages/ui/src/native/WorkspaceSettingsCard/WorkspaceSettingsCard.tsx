@@ -113,7 +113,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
         <View
           style={[
             styles.currentBlock,
-            { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurfaceNormal }
+            { borderColor: colors.borderMuted, backgroundColor: colors.bgSurface }
           ]}
         >
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
@@ -139,39 +139,31 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
           <Text style={[styles.sectionLabel, styles.recentLabel, { color: colors.textSecondary }]}>
             {t('workspace.recent_hint', '仅显示最近使用的三个工作空间')}
           </Text>
-          <View
-            style={[
-              styles.recentGroup,
-              { borderColor: colors.borderStrong, backgroundColor: colors.bgSurfaceNormal }
-            ]}
-          >
-            {recentVaults.map((vault, index) => {
-              const isLastRecent = index === recentVaults.length - 1
-              return (
-                <Pressable
-                  key={vault.name}
-                  onPress={() => onSwitch(vault.name)}
-                  style={({ pressed }) => [
-                    styles.recentRow,
-                    !isLastRecent && {
-                      borderBottomWidth: 1,
-                      borderBottomColor: colors.borderStrong
-                    },
-                    { opacity: pressed ? 0.7 : 1 }
-                  ]}
+          <View style={styles.recentList}>
+            {recentVaults.map((vault) => (
+              <Pressable
+                key={vault.name}
+                onPress={() => onSwitch(vault.name)}
+                style={({ pressed }) => [
+                  styles.recentCard,
+                  {
+                    borderColor: colors.borderMuted,
+                    backgroundColor: colors.bgSurface,
+                    opacity: pressed ? 0.92 : 1
+                  }
+                ]}
+              >
+                <Text
+                  style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]}
+                  numberOfLines={1}
                 >
-                  <Text
-                    style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]}
-                    numberOfLines={1}
-                  >
-                    {vault.name}
-                  </Text>
-                  <Text style={[styles.switchAction, { color: colors.primary }]}>
-                    {t('workspace.switch', '切换')}
-                  </Text>
-                </Pressable>
-              )
-            })}
+                  {vault.name}
+                </Text>
+                <Text style={[styles.switchAction, { color: colors.primary }]}>
+                  {t('workspace.switch', '切换')}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </>
       ) : null}
@@ -190,8 +182,9 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
 
 const styles = StyleSheet.create({
   currentBlock: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderRadius: 16,
     padding: 12,
     gap: 4,
     marginBottom: 8
@@ -214,18 +207,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 8
   },
-  recentGroup: {
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: 'hidden'
+  recentList: {
+    gap: 12
   },
-  recentRow: {
+  recentCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 11
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'solid'
   },
   switchAction: {
     fontSize: 14,

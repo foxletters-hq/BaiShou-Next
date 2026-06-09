@@ -1,16 +1,24 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { View, StyleSheet } from 'react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import {
   RagMemoryView,
+  ModelSwitcher,
   useNativeToast,
   useDialog,
+  type MockAiProviderModel,
   type RagConfig,
   type RagEntry,
   type RagState
 } from '@baishou/ui/native'
-import { DEFAULT_BATCH_EMBED_CONCURRENCY, type RagConfig as SharedRagConfig } from '@baishou/shared'
+import {
+  AIProviderConfig,
+  DEFAULT_BATCH_EMBED_CONCURRENCY,
+  GlobalModelsConfig,
+  isEmbeddingModel,
+  isTtsModel,
+  type RagConfig as SharedRagConfig
+} from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useMobileRagSystem } from '../../../hooks/useMobileRagSystem'
 import { TextPromptModal } from './TextPromptModal'
@@ -23,6 +31,23 @@ const DEFAULT_RAG_CONFIG: RagConfig = {
 }
 
 type PromptMode = 'manual' | 'edit' | 'clear' | null
+
+function buildEmbeddingProviders(providers: AIProviderConfig[]): MockAiProviderModel[] {
+  return providers
+    .filter((p) => p.isEnabled && (p.enabledModels?.length || p.models?.length))
+    .map((p) => {
+      const pool = p.enabledModels?.length ? p.enabledModels : p.models || []
+      const filtered = pool.filter((modelId) => isEmbeddingModel(modelId) && !isTtsModel(modelId))
+      return {
+        id: p.id,
+        name: p.name || p.id,
+        type: p.type,
+        enabledModels: filtered,
+        models: filtered
+      }
+    })
+    .filter((p) => (p.enabledModels?.length ?? 0) > 0)
+}
 
 export const RAGMemorySection: React.FC = () => {
   const { t } = useTranslation()
@@ -44,6 +69,9 @@ export const RAGMemorySection: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic')
   const [embeddingModelId, setEmbeddingModelId] = useState<string>()
+  const [embeddingProviderId, setEmbeddingProviderId] = useState<string>()
+  const [providers, setProviders] = useState<AIProviderConfig[]>([])
+  const [showModelSwitcher, setShowModelSwitcher] = useState(false)
   const {
     hasMismatchModel,
     ragState,
@@ -80,9 +108,11 @@ export const RAGMemorySection: React.FC = () => {
 
       const ragStats = await services.ragService.getStats()
       const globalModels =
-        (await services.settingsManager.get<{ globalEmbeddingModelId?: string }>(
-          'global_models'
-        )) || {}
+        (await services.settingsManager.get<{
+          globalEmbeddingProviderId?: string
+          globalEmbeddingModelId?: string
+        }>('global_models')) || {}
+      setEmbeddingProviderId(globalModels.globalEmbeddingProviderId)
       setEmbeddingModelId(globalModels.globalEmbeddingModelId)
       setStats({
         totalCount: ragStats.totalCount,
@@ -139,6 +169,9 @@ export const RAGMemorySection: React.FC = () => {
   useEffect(() => {
     if (!dbReady || !services) return
     const init = async () => {
+      const providerList =
+        (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      setProviders(providerList)
       const saved = (await services.settingsManager.get<SharedRagConfig>('rag_config')) ?? null
       setConfig({
         ragEnabled: saved?.ragEnabled ?? DEFAULT_RAG_CONFIG.ragEnabled,
@@ -151,6 +184,64 @@ export const RAGMemorySection: React.FC = () => {
     }
     void init()
   }, [dbReady, services, loadRagData])
+
+  const embeddingProviders = useMemo(() => buildEmbeddingProviders(providers), [providers])
+
+  const openModelSwitcher = useCallback(async () => {
+    if (embeddingProviders.length === 0) {
+      const goConfigure = await dialog.confirm(t('settings.no_models_available'), {
+        title: t('ai_config.embedding_model_title'),
+        confirmText: t('settings.manage_providers')
+      })
+      if (goConfigure) {
+        router.push('/settings/ai-services')
+      }
+      return
+    }
+    setShowModelSwitcher(true)
+  }, [embeddingProviders.length, dialog, router, t])
+
+  const handleSelectEmbeddingModel = useCallback(
+    async (providerId: string, modelId: string) => {
+      if (!services || !dbReady) return
+
+      const isSwitching =
+        embeddingProviderId &&
+        embeddingModelId &&
+        (embeddingProviderId !== providerId || embeddingModelId !== modelId)
+
+      if (isSwitching) {
+        const confirmed = await dialog.confirm(t('agent.rag.migration_switch_warning_content'), {
+          title: t('agent.rag.migration_switch_warning_title')
+        })
+        if (!confirmed) return
+      }
+
+      const current =
+        (await services.settingsManager.get<GlobalModelsConfig>('global_models')) ||
+        ({} as GlobalModelsConfig)
+      await services.settingsManager.set('global_models', {
+        ...current,
+        globalEmbeddingProviderId: providerId,
+        globalEmbeddingModelId: modelId
+      })
+      setEmbeddingProviderId(providerId)
+      setEmbeddingModelId(modelId)
+      setShowModelSwitcher(false)
+      await checkModelMismatch()
+      await loadRagData()
+    },
+    [
+      services,
+      dbReady,
+      embeddingProviderId,
+      embeddingModelId,
+      dialog,
+      t,
+      checkModelMismatch,
+      loadRagData
+    ]
+  )
 
   const saveConfig = async (next: RagConfig) => {
     if (!services || !dbReady) return
@@ -332,7 +423,7 @@ export const RAGMemorySection: React.FC = () => {
   }, [handleReembedAfterModelChange, loadRagData, pageSize])
 
   return (
-    <View style={styles.wrap}>
+    <>
       <RagMemoryView
         config={config}
         stats={stats}
@@ -344,6 +435,7 @@ export const RAGMemorySection: React.FC = () => {
         currentPage={currentPage}
         pageSize={pageSize}
         searchQuery={searchQuery}
+        searchMode={searchMode}
         onChange={saveConfig}
         onDetectDimension={handleDetectDimension}
         onBatchEmbed={handleBatchEmbed}
@@ -353,8 +445,18 @@ export const RAGMemorySection: React.FC = () => {
         onSearch={handleSearch}
         onDeleteEntry={handleDeleteEntry}
         onEditEntry={handleEditEntry}
-        onNavigateToConfig={() => router.push('/settings/ai-models')}
+        onConfigureModel={openModelSwitcher}
         onPageChange={handlePageChange}
+      />
+
+      <ModelSwitcher
+        isOpen={showModelSwitcher}
+        onClose={() => setShowModelSwitcher(false)}
+        providers={embeddingProviders}
+        currentProviderId={embeddingProviderId}
+        currentModelId={embeddingModelId}
+        onSelect={handleSelectEmbeddingModel}
+        onManageProviders={() => router.push('/settings/ai-services')}
       />
 
       <TextPromptModal
@@ -393,13 +495,6 @@ export const RAGMemorySection: React.FC = () => {
         onCancel={() => setPromptMode(null)}
         onConfirm={onPromptConfirm}
       />
-    </View>
+    </>
   )
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    minHeight: 400
-  }
-})

@@ -162,17 +162,20 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
         </View>
 
         <AnimatedCollapse expanded={localEnabled}>
-          {localApplying ? (
-            // 微微展开阶段：只渲染小尺寸的加载状态，避免大组件挂载造成的首帧动画卡顿
-            <View style={styles.loadingWrapper}>
-              <ActivityIndicator color={colors.primary} size="small" />
-              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                {t('settings.mcp_starting', '正在启停服务...')}
-              </Text>
-            </View>
-          ) : (
-            // 完整展开阶段：加载完毕后渲染出完整的配置面板
-            <>
+          <View style={styles.panel}>
+            {localApplying ? (
+              <View style={styles.loadingOverlay} pointerEvents="none">
+                <ActivityIndicator color={colors.primary} size="small" />
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  {t('settings.mcp_starting', '正在启停服务...')}
+                </Text>
+              </View>
+            ) : null}
+
+            <View
+              style={localApplying ? styles.panelDimmed : undefined}
+              pointerEvents={localApplying ? 'none' : 'auto'}
+            >
               <Pressable
                 onPress={onShowTools}
                 style={({ pressed }) => [styles.row, styles.rowBorder, pressed && { opacity: 0.7 }]}
@@ -231,8 +234,8 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
                   </Text>
                 ) : null}
               </View>
-            </>
-          )}
+            </View>
+          </View>
         </AnimatedCollapse>
       </View>
     </SettingsExpansionTile>
@@ -290,14 +293,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8
   },
-  loadingWrapper: {
+  panel: {
+    position: 'relative'
+  },
+  panelDimmed: {
+    opacity: 0.45
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
     gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.08)'
+    zIndex: 1
   },
   loadingText: {
     fontSize: 13,

@@ -1,25 +1,7 @@
 import { StyleSheet } from 'react-native'
 
 export const ragMemoryStyles = StyleSheet.create({
-  scroll: { flex: 1 },
-  headerBlock: {},
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    flex: 1,
-    marginRight: 12,
-    letterSpacing: -0.5
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 6
-  },
+  root: {},
   clearAllBtn: {
     marginTop: 12,
     paddingVertical: 10,
@@ -45,120 +27,49 @@ export const ragMemoryStyles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18
   },
-  statsCard: {
-    overflow: 'hidden'
-  },
-  warningAction: {
-    marginTop: 8
-  },
-  paginationRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10
-  },
-  paginationInfo: {
-    fontSize: 13
-  },
-  pageSizeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8
-  },
-  pageSizeChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1
-  },
-  emptyBox: {
-    padding: 24,
-    alignItems: 'center'
-  },
-  menuOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1
-  },
-  entryMenu: {
-    position: 'absolute',
-    right: 12,
-    top: 36,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingVertical: 4,
-    minWidth: 120,
-    zIndex: 2,
-    elevation: 4
-  },
-  menuItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 14
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14
-  },
-  rowText: { flex: 1, marginRight: 12 },
-  rowTitle: { fontSize: 15, fontWeight: '500' },
-  rowSubtitle: { fontSize: 13, marginTop: 2 },
-  divider: { height: 1 },
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12
+    flexWrap: 'wrap',
+    gap: 8
   },
   statChip: {
-    flex: 1,
-    borderRadius: 20,
+    flexGrow: 1,
+    flexBasis: '46%',
+    minWidth: 132,
+    borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     alignItems: 'center',
-    borderWidth: 1
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 4
   },
-  statValue: { fontSize: 15, fontWeight: '700' },
-  statLabel: { fontSize: 11, marginTop: 2 },
-  statChipBlue: {
-    borderWidth: 1
-  },
-  statChipGreen: {
-    borderWidth: 1
-  },
-  statChipGrey: {
-    borderWidth: 1
-  },
-  warningBox: {
-    marginHorizontal: 16,
-    marginBottom: 12,
+  statValue: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  statLabel: { fontSize: 11, textAlign: 'center' },
+  alertBox: {
+    marginTop: 12,
     borderRadius: 12,
-    padding: 12
-  },
-  warningText: { fontSize: 13, fontWeight: '500' },
-  dangerAlert: {
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
     borderWidth: 1
   },
-  dangerTitle: {
+  alertTitle: {
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 4
   },
-  dangerDesc: {
+  alertDesc: {
     fontSize: 13,
     lineHeight: 18
   },
-  fieldGroup: {
-    paddingHorizontal: 16,
-    paddingVertical: 12
+  alertAction: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignSelf: 'flex-start'
   },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 4 },
-  hint: { fontSize: 12, lineHeight: 18, marginTop: 6, paddingHorizontal: 16, paddingBottom: 8 },
   progressBox: {
-    paddingHorizontal: 16,
-    paddingVertical: 12
+    marginBottom: 12
   },
   statusText: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
   progressBar: {
@@ -172,63 +83,32 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   progressLabel: { fontSize: 12, marginTop: 6, textAlign: 'right' },
   actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    flexWrap: 'wrap'
+    gap: 10
   },
-  actionBtn: { flex: 1, minWidth: 140 },
-  actionBtnBlue: {
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1
   },
-  actionBtnGreen: {
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+  actionBtnOutlined: {
     borderWidth: 1
   },
-  searchRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: 'center'
+  actionBtnText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flexShrink: 1,
+    textAlign: 'center'
   },
-  searchInput: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    borderRadius: 12,
-    borderWidth: 1
-  },
-  modeRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 12
-  },
-  modeChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1
-  },
-  modeText: { fontSize: 13, fontWeight: '500' },
   entryCard: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 14,
-    marginHorizontal: 16,
-    marginVertical: 5,
+    marginBottom: 8,
     flexDirection: 'row',
     gap: 12
   },
@@ -252,7 +132,6 @@ export const ragMemoryStyles = StyleSheet.create({
     marginBottom: 6
   },
   entryModel: { fontSize: 12, fontWeight: '600', flex: 1 },
-  deleteBtn: { fontSize: 13, fontWeight: '500' },
   entryText: { fontSize: 13, lineHeight: 19, marginBottom: 8 },
   entryFooter: {
     flexDirection: 'row',
@@ -267,38 +146,41 @@ export const ragMemoryStyles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4
   },
-  bottomSpacer: { height: 40 },
-  configBlock: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden'
-  },
-  configBlockHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12
-  },
-  configBlockTitle: {
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  paramSliderRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 4
-  },
-  paramLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyBox: {
+    paddingVertical: 24,
     alignItems: 'center'
   },
-  paramLabel: {
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1
+  },
+  entryMenu: {
+    position: 'absolute',
+    right: 0,
+    top: 28,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 4,
+    minWidth: 120,
+    zIndex: 2,
+    elevation: 4
+  },
+  menuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 14
+  },
+  paginationRow: {
+    paddingTop: 12,
+    gap: 10
+  },
+  paginationInfo: {
     fontSize: 13
   },
-  paramValue: {
-    fontSize: 14,
-    fontWeight: '700'
-  }
+  pageSizeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8
+  },
+  bottomSpacer: { height: 16 }
 })

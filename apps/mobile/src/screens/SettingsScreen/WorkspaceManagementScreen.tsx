@@ -8,7 +8,6 @@ import {
   useNativeToast,
   Input,
   Pagination,
-  Button,
   type VaultInfo
 } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
@@ -38,7 +37,7 @@ function toTimestamp(value: Date | string | undefined): number {
 
 export const WorkspaceManagementScreen: React.FC = () => {
   const { t } = useTranslation()
-  const { colors, isDark, tokens } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const chrome = getStackScreenChrome(colors)
   const { services, dbReady } = useBaishou()
   const dialog = useDialog()
@@ -158,125 +157,119 @@ export const WorkspaceManagementScreen: React.FC = () => {
       contentStyle={styles.layoutContent}
     >
       <ScrollView
-        style={styles.scroll}
+        style={[styles.scroll, { backgroundColor: colors.bgApp }]}
         contentContainerStyle={styles.scrollContent}
         indicatorStyle={scrollIndicatorStyle(isDark)}
       >
         <View
           style={[
-            styles.card,
-            { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
+            styles.flatCard,
+            { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
           ]}
         >
-          <View style={[styles.searchWrap, { borderBottomColor: colors.borderSubtle }]}>
-            <Input
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder={t('workspace.search_placeholder', '搜索工作空间…')}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <Input
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder={t('workspace.search_placeholder', '搜索工作空间…')}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
 
-          {filteredVaults.length === 0 ? (
-            <View style={styles.emptyRow}>
-              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-                {t('workspace.search_empty', '没有匹配的工作空间')}
-              </Text>
-            </View>
-          ) : null}
-
-          {pagedVaults.map((vault, index) => {
-            const isActive = activeVault?.name === vault.name
-            const isLast = index === pagedVaults.length - 1 && !showPagination
-            return (
-              <View
-                key={vault.name}
-                style={[
-                  styles.row,
-                  !isLast && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: colors.borderSubtle
-                  }
-                ]}
-              >
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{vault.name}</Text>
-                  <Text style={[styles.sub, { color: colors.textSecondary }]}>
-                    {t('workspace.last_accessed', '上次访问: {{time}}', {
-                      time: formatLastAccessed(
-                        vault.lastAccessedAt,
-                        t('common.unknown_time', '未知时间')
-                      )
-                    })}
-                  </Text>
-                </View>
-                {isActive ? (
-                  <Text style={[styles.badge, { color: colors.primary }]}>
-                    {t('workspace.current_short', '当前')}
-                  </Text>
-                ) : (
-                  <View style={styles.actions}>
-                    <Pressable onPress={() => void handleSwitch(vault.name)}>
-                      <Text style={[styles.action, { color: colors.primary }]}>
-                        {t('workspace.switch', '切换')}
-                      </Text>
-                    </Pressable>
-                    <Pressable onPress={() => void handleDelete(vault.name)}>
-                      <Text style={[styles.action, { color: '#ef4444' }]}>
-                        {t('workspace.delete', '删除')}
-                      </Text>
-                    </Pressable>
-                  </View>
-                )}
-              </View>
-            )
-          })}
-
-          {showPagination ? (
-            <View
-              style={[
-                styles.paginationWrap,
-                { borderTopColor: colors.borderSubtle, borderBottomColor: colors.borderSubtle }
-              ]}
-            >
-              <Text style={[styles.pageInfo, { color: colors.textSecondary }]}>
-                {t('workspace.page_info', '共 {{total}} 个 · 第 {{page}} / {{pages}} 页', {
-                  total: filteredVaults.length,
-                  page: safePage,
-                  pages: totalPages
-                })}
-              </Text>
-              <Pagination
-                current={safePage}
-                total={totalPages}
-                onChange={setCurrentPage}
-                siblingCount={1}
-                showFirstLast
-              />
-            </View>
-          ) : null}
-
-          <Button
-            variant="ghost"
-            className="w-full rounded-none"
-            onPress={() => void handleCreate()}
+        {filteredVaults.length === 0 ? (
+          <View
             style={[
-              styles.createRow,
-              {
-                borderTopWidth: StyleSheet.hairlineWidth,
-                borderTopColor: colors.borderSubtle
-              }
+              styles.flatCard,
+              styles.emptyRow,
+              { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
             ]}
           >
-            <View style={styles.createRowInner}>
-              <Text style={[styles.rowTitle, { color: colors.primary, flex: 1 }]}>
-                {t('workspace.create_new', '创建新空间')}
-              </Text>
-              <Text style={{ color: colors.primary, fontSize: 20 }}>+</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+              {t('workspace.search_empty', '没有匹配的工作空间')}
+            </Text>
+          </View>
+        ) : null}
+
+        {pagedVaults.map((vault) => {
+          const isActive = activeVault?.name === vault.name
+          return (
+            <View
+              key={vault.name}
+              style={[
+                styles.flatCard,
+                styles.vaultCard,
+                { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
+              ]}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{vault.name}</Text>
+                <Text style={[styles.sub, { color: colors.textSecondary }]}>
+                  {t('workspace.last_accessed', '上次访问: {{time}}', {
+                    time: formatLastAccessed(
+                      vault.lastAccessedAt,
+                      t('common.unknown_time', '未知时间')
+                    )
+                  })}
+                </Text>
+              </View>
+              {isActive ? (
+                <Text style={[styles.badge, { color: colors.primary }]}>
+                  {t('workspace.current_short', '当前')}
+                </Text>
+              ) : (
+                <View style={styles.actions}>
+                  <Pressable onPress={() => void handleSwitch(vault.name)}>
+                    <Text style={[styles.action, { color: colors.primary }]}>
+                      {t('workspace.switch', '切换')}
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={() => void handleDelete(vault.name)}>
+                    <Text style={[styles.action, { color: '#ef4444' }]}>
+                      {t('workspace.delete', '删除')}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
-          </Button>
-        </View>
+          )
+        })}
+
+        {showPagination ? (
+          <View style={styles.paginationWrap}>
+            <Text style={[styles.pageInfo, { color: colors.textSecondary }]}>
+              {t('workspace.page_info', '共 {{total}} 个 · 第 {{page}} / {{pages}} 页', {
+                total: filteredVaults.length,
+                page: safePage,
+                pages: totalPages
+              })}
+            </Text>
+            <Pagination
+              current={safePage}
+              total={totalPages}
+              onChange={setCurrentPage}
+              siblingCount={1}
+              showFirstLast
+            />
+          </View>
+        ) : null}
+
+        <Pressable
+          onPress={() => void handleCreate()}
+          style={({ pressed }) => [
+            styles.flatCard,
+            styles.createCard,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted,
+              opacity: pressed ? 0.92 : 1
+            }
+          ]}
+        >
+          <Text style={[styles.rowTitle, { color: colors.primary, flex: 1 }]}>
+            {t('workspace.create_new', '创建新空间')}
+          </Text>
+          <Text style={{ color: colors.primary, fontSize: 20 }}>+</Text>
+        </Pressable>
       </ScrollView>
     </StackScreenLayout>
   )
@@ -287,27 +280,30 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32
+    paddingBottom: 32,
+    gap: 12
   },
-  card: {
-    overflow: 'hidden'
-  },
-  searchWrap: {
+  flatCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'solid',
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth
+    paddingVertical: 12
   },
   emptyRow: {
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20
   },
-  row: {
+  vaultCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13
+    gap: 12
+  },
+  createCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
   },
   rowTitle: {
     fontSize: 16,
@@ -330,24 +326,10 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   paginationWrap: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth
+    paddingVertical: 4,
+    gap: 8
   },
   pageInfo: {
     fontSize: 12
   },
-  createRow: {
-    marginBottom: 0
-  },
-  createRowInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12
-  }
 })

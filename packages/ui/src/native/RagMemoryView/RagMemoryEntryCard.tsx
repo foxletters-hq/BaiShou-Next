@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Pagination as RagPagination } from '../Pagination'
-import { SettingsSection } from '../SettingsSection'
+import { settingsCardStyles } from '../settings/settings-card.styles'
 import type { RagEntry } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -50,7 +50,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
       style={[
         styles.entryCard,
         {
-          backgroundColor: colors.bgSurface,
+          backgroundColor: colors.bgSurfaceHigh,
           borderColor: colors.borderSubtle
         }
       ]}
@@ -110,7 +110,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
             {new Date(item.createdAt).toLocaleDateString()}
           </Text>
           {item.similarity !== undefined && (
-            <View style={[styles.entrySimilarity, { backgroundColor: 'rgba(91, 168, 245, 0.1)' }]}>
+            <View style={[styles.entrySimilarity, { backgroundColor: colors.primaryLight }]}>
               <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
                 {(item.similarity * 100).toFixed(0)}%
               </Text>
@@ -154,7 +154,7 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
   const showPagination = effectiveTotal > 10
 
   return (
-    <SettingsSection title={t('settings.rag_entries')}>
+    <View>
       {entries.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={[styles.paginationInfo, { color: colors.textSecondary }]}>
@@ -189,10 +189,10 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
                 <TouchableOpacity
                   key={size}
                   style={[
-                    styles.pageSizeChip,
+                    settingsCardStyles.chip,
                     {
                       borderColor: selected ? colors.primary : colors.borderMuted,
-                      backgroundColor: selected ? colors.primaryContainer : 'transparent'
+                      backgroundColor: selected ? colors.primaryLight : 'transparent'
                     }
                   ]}
                   onPress={() => onPageChange(1, size)}
@@ -200,7 +200,8 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
                   <Text
                     style={{
                       fontSize: 12,
-                      color: selected ? colors.primary : colors.textSecondary
+                      color: selected ? colors.primary : colors.textSecondary,
+                      fontWeight: selected ? '600' : '400'
                     }}
                   >
                     {size} {t('settings.rag_per_page')}
@@ -218,6 +219,6 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
           />
         </View>
       )}
-    </SettingsSection>
+    </View>
   )
 }

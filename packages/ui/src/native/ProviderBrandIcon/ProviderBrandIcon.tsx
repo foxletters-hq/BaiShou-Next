@@ -74,7 +74,7 @@ export const ProviderBrandIcon: React.FC<ProviderBrandIconProps> = ({
         {
           width: wrapSize,
           height: wrapSize,
-          backgroundColor: colors.bgSurfaceNormal,
+          backgroundColor: '#FFFFFF',
           borderRadius: wrapSize / 4
         }
       ]}

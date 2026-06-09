@@ -170,10 +170,12 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
               }
 
               const defaultWebSearchConfig: WebSearchConfig = {
-                webSearchEngine: 'duckduckgo',
+                webSearchEngine: 'exa-mcp',
                 webSearchMaxResults: 5,
                 webSearchRagEnabled: false,
                 tavilyApiKey: '',
+                exaApiKey: '',
+                anysearchApiKey: '',
                 webSearchRagMaxChunks: 12,
                 webSearchRagChunksPerSource: 4,
                 webSearchPlainSnippetLength: 3000

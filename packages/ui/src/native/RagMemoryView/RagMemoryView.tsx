@@ -1,7 +1,10 @@
-import React from 'react'
-import { ScrollView, View } from 'react-native'
-import type { RagMemoryViewProps } from './rag-memory.types'
+import React, { useCallback } from 'react'
+import { View, LayoutAnimation } from 'react-native'
+import type { RagConfig, RagMemoryViewProps } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
+import { SettingsGroupCard } from '../settings/SettingsGroupCard'
+import { SettingsCardDivider } from '../settings/SettingsCardDivider'
+import { settingsCardStyles } from '../settings/settings-card.styles'
 import { RagMemoryHeaderSection } from './RagMemoryHeaderSection'
 import { RagMemoryDisabledAlert } from './RagMemoryDisabledAlert'
 import { RagMemoryStatsSection } from './RagMemoryStatsSection'
@@ -30,6 +33,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   currentPage = 1,
   pageSize = 10,
   searchQuery = '',
+  searchMode = 'semantic',
   onChange,
   onBatchEmbed,
   onAddManualMemory,
@@ -38,59 +42,96 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onDeleteEntry,
   onEditEntry,
   onNavigateToConfig,
+  onConfigureModel,
   onDetectDimension,
   onTriggerMigration,
   onPageChange
 }) => {
-  const isBusy = ragState.isRunning
+  const ragOn = config.ragEnabled
+
+  const handleConfigChange = useCallback(
+    (next: RagConfig) => {
+      if (next.ragEnabled !== config.ragEnabled) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+      }
+      onChange(next)
+    },
+    [config.ragEnabled, onChange]
+  )
 
   return (
-    <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
-      <RagMemoryHeaderSection
-        config={config}
-        stats={stats}
-        onChange={onChange}
-        onClearAll={onClearAll}
-      />
+    <View style={styles.root}>
+      <SettingsGroupCard>
+        <RagMemoryHeaderSection
+          config={config}
+          stats={stats}
+          onChange={handleConfigChange}
+          onClearAll={onClearAll}
+        />
 
-      <RagMemoryDisabledAlert ragEnabled={config.ragEnabled} />
+        <RagMemoryDisabledAlert ragEnabled={config.ragEnabled} />
 
-      <RagMemoryStatsSection
-        stats={stats}
-        embeddingModelId={embeddingModelId}
-        isBusy={isBusy}
-        onNavigateToConfig={onNavigateToConfig}
-        onDetectDimension={onDetectDimension}
-      />
+        <View
+          style={ragOn ? undefined : settingsCardStyles.collapsed}
+          pointerEvents={ragOn ? 'auto' : 'none'}
+        >
+          <SettingsCardDivider />
 
-      <RagMemoryAlerts
-        ragState={ragState}
-        hasMismatchModel={hasMismatchModel}
-        onTriggerMigration={onTriggerMigration}
-      />
+          <RagMemoryStatsSection
+            stats={stats}
+            embeddingModelId={embeddingModelId}
+            isBusy={ragState.isRunning}
+            onConfigureModel={onConfigureModel ?? onNavigateToConfig}
+            onDetectDimension={onDetectDimension}
+          />
 
-      <RagMemoryRetrievalSection config={config} onChange={onChange} />
+          <RagMemoryAlerts
+            ragState={ragState}
+            hasMismatchModel={hasMismatchModel}
+            onTriggerMigration={onTriggerMigration}
+          />
 
-      <RagMemoryActionsSection
-        ragState={ragState}
-        onBatchEmbed={onBatchEmbed}
-        onAddManualMemory={onAddManualMemory}
-      />
+          <SettingsCardDivider />
 
-      {onSearch && <RagMemorySearchSection onSearch={onSearch} />}
+          <RagMemoryRetrievalSection config={config} onChange={handleConfigChange} />
 
-      <RagMemoryEntriesSection
-        entries={entries}
-        searchQuery={searchQuery}
-        totalCount={totalCount}
-        currentPage={currentPage}
-        pageSize={pageSize}
-        onDeleteEntry={onDeleteEntry}
-        onEditEntry={onEditEntry}
-        onPageChange={onPageChange}
-      />
+          <SettingsCardDivider />
+
+          <RagMemoryActionsSection
+            ragState={ragState}
+            onBatchEmbed={onBatchEmbed}
+            onAddManualMemory={onAddManualMemory}
+          />
+        </View>
+      </SettingsGroupCard>
+
+      <View
+        style={ragOn ? undefined : settingsCardStyles.collapsed}
+        pointerEvents={ragOn ? 'auto' : 'none'}
+      >
+        {onSearch ? (
+          <RagMemorySearchSection
+            searchQuery={searchQuery}
+            searchMode={searchMode}
+            onSearch={onSearch}
+          />
+        ) : null}
+
+        <SettingsGroupCard style={{ marginBottom: 0, marginTop: onSearch ? 16 : 0 }}>
+          <RagMemoryEntriesSection
+            entries={entries}
+            searchQuery={searchQuery}
+            totalCount={totalCount}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onDeleteEntry={onDeleteEntry}
+            onEditEntry={onEditEntry}
+            onPageChange={onPageChange}
+          />
+        </SettingsGroupCard>
+      </View>
 
       <View style={styles.bottomSpacer} />
-    </ScrollView>
+    </View>
   )
 }

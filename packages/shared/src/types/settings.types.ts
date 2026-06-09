@@ -71,6 +71,8 @@ export interface WebSearchConfig {
   webSearchMaxResults: number // 搜索返回的最大结果数 (1-30，默认 5)
   webSearchRagEnabled: boolean // 是否启用了 Web-RAG (网页压缩读取)
   tavilyApiKey: string // Tavily API 密钥
+  exaApiKey: string // Exa API 密钥
+  anysearchApiKey: string // AnySearch API 密钥
   webSearchRagMaxChunks: number // 引用片段总数上限 (默认 12)
   webSearchRagChunksPerSource: number // 单来源最大片段数 (默认 4)
   webSearchPlainSnippetLength: number // 未配置 Embedding 时的纯文本截取上限 (默认 3000)
@@ -152,6 +154,7 @@ export interface DevicePreferences {
   web_search_max_results?: number
   web_search_rag_enabled?: boolean
   tavily_api_key?: string
+  exa_api_key?: string
   web_search_rag_max_chunks?: number
   web_search_rag_chunks_per_source?: number
   web_search_plain_snippet_length?: number

@@ -58,7 +58,7 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
     }
   }
 
-  const isSelfScrolling = section === 'rag' || section === 'ai-services'
+  const isSelfScrolling = section === 'ai-services'
 
   return (
     <StackScreenLayout title={title} {...chrome} contentStyle={styles.layoutContent}>

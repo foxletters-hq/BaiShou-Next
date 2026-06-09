@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
+import { settingsCardStyles } from '../settings/settings-card.styles'
 import type { RagConfig, RagStats } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -20,38 +21,32 @@ export const RagMemoryHeaderSection: React.FC<RagMemoryHeaderSectionProps> = ({
   onClearAll
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   return (
-    <View
-      style={[
-        styles.headerBlock,
-        {
-          paddingHorizontal: tokens.spacing.lg,
-          paddingTop: tokens.spacing.md,
-          paddingBottom: tokens.spacing.sm
-        }
-      ]}
-    >
-      <View style={styles.headerRow}>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          {t('agent.rag.title')}
-        </Text>
+    <View>
+      <View style={settingsCardStyles.row}>
+        <View style={settingsCardStyles.rowText}>
+          <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+            {t('agent.rag.title')}
+          </Text>
+          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 6 }]}>
+            {t('settings.tooltip_rag_management')}
+          </Text>
+        </View>
         <Switch
           value={config.ragEnabled}
           onValueChange={(v) => onChange({ ...config, ragEnabled: v })}
         />
       </View>
-      <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-        {t('settings.tooltip_rag_management')}
-      </Text>
+
       {stats.totalCount > 0 && onClearAll ? (
         <TouchableOpacity
           style={[
             styles.clearAllBtn,
             {
-              borderColor: 'rgba(239, 68, 68, 0.3)',
-              backgroundColor: 'rgba(239, 68, 68, 0.05)'
+              borderColor: colors.errorContainer,
+              backgroundColor: colors.errorContainer
             }
           ]}
           onPress={() => void onClearAll()}

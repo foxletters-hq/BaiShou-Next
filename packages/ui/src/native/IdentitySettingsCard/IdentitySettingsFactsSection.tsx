@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
@@ -22,9 +23,10 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
   return (
     <View
       style={{
-        backgroundColor: colors.bgSurfaceNormal,
         borderRadius: tokens.radius.md,
-        overflow: 'hidden'
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: colors.borderSubtle
       }}
     >
       <View
@@ -55,7 +57,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
             opacity: pressed ? 0.7 : 1
           })}
         >
-          <Text style={{ fontSize: 14, color: colors.primary }}>+</Text>
+          <MaterialIcons name="add" size={16} color={colors.primary} />
           <Text style={{ fontSize: 14, color: colors.primary }}>
             {t('settings.add_identity_entry', '添加条目')}
           </Text>
@@ -70,7 +72,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
             gap: tokens.spacing.sm
           }}
         >
-          <Text style={{ fontSize: 32, opacity: 0.3 }}>🏷️</Text>
+          <MaterialIcons name="person-add-alt" size={32} color={colors.textTertiary} />
           <Text
             style={{
               fontSize: 14,
@@ -82,19 +84,19 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
           </Text>
         </View>
       ) : (
-        Object.entries(currentFacts).map(([k, v]) => (
+        Object.entries(currentFacts).map(([k, v], index, entries) => (
           <View
             key={k}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               padding: tokens.spacing.sm,
-              borderBottomWidth: 1,
+              borderBottomWidth: index < entries.length - 1 ? 1 : 0,
               borderBottomColor: colors.borderSubtle,
               gap: tokens.spacing.sm
             }}
           >
-            <Text style={{ fontSize: 14 }}>🏷️</Text>
+            <MaterialIcons name="label" size={18} color={colors.primary} />
             <View style={{ flex: 1 }}>
               <Text
                 style={{
@@ -115,10 +117,10 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
               </Text>
             </View>
             <Pressable onPress={() => onStartEdit(k, v)} style={{ padding: 4 }}>
-              <Text style={{ fontSize: 14, color: colors.primary }}>✎</Text>
+              <MaterialIcons name="edit" size={18} color={colors.textSecondary} />
             </Pressable>
             <Pressable onPress={() => onDeleteFact(k)} style={{ padding: 4 }}>
-              <Text style={{ fontSize: 14, color: colors.error }}>🗑️</Text>
+              <MaterialIcons name="delete-outline" size={18} color={colors.error} />
             </Pressable>
           </View>
         ))

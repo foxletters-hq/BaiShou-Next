@@ -111,9 +111,7 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
         baseUrl
       )
       const prevEnabled = config.enabledModels || []
-      const enabledModels = prevEnabled.length
-        ? models.filter((m) => prevEnabled.includes(m))
-        : models
+      const enabledModels = models.filter((m) => prevEnabled.includes(m))
       await persistProvider({ models, enabledModels, apiKey: localApiKey, baseUrl })
       toast.showSuccess(t('ai_config.fetch_models_success'))
     } catch (e: unknown) {
@@ -241,16 +239,9 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
         </Text>
       )}
 
-      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>API Key</Text>
-      <Input
-        value={localApiKey}
-        onChangeText={setLocalApiKey}
-        placeholder="API Key"
-        secureTextEntry
-        autoCapitalize="none"
-      />
-
-      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Base URL</Text>
+      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+        {t('ai_config.base_url', 'API 地址')}
+      </Text>
       <Input
         value={localBaseUrl}
         onChangeText={setLocalBaseUrl}
@@ -258,9 +249,20 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
           const normalized = normalizeBaseUrlOnBlur(localBaseUrl)
           if (normalized !== localBaseUrl) setLocalBaseUrl(normalized)
         }}
-        placeholder={providerMeta?.defaultBase || 'Base URL'}
+        placeholder={providerMeta?.defaultBase || t('tts.settings.base_url_label', 'API Base URL')}
         autoCapitalize="none"
         autoCorrect={false}
+      />
+
+      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+        {t('ai_config.api_key', 'API Key')}
+      </Text>
+      <Input
+        value={localApiKey}
+        onChangeText={setLocalApiKey}
+        placeholder={t('ai_config.api_key_placeholder', 'API Key')}
+        secureTextEntry
+        autoCapitalize="none"
       />
 
       <View style={styles.actionRow}>

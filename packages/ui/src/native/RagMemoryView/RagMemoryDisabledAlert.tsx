@@ -11,7 +11,7 @@ interface RagMemoryDisabledAlertProps {
 
 export const RagMemoryDisabledAlert: React.FC<RagMemoryDisabledAlertProps> = ({ ragEnabled }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   if (ragEnabled) return null
 
@@ -20,14 +20,13 @@ export const RagMemoryDisabledAlert: React.FC<RagMemoryDisabledAlertProps> = ({ 
       style={[
         styles.disabledAlert,
         {
-          backgroundColor: 'rgba(239, 68, 68, 0.08)',
-          marginHorizontal: tokens.spacing.lg,
-          marginBottom: tokens.spacing.sm
+          backgroundColor: colors.errorContainer,
+          marginTop: 12
         }
       ]}
     >
       <MaterialCommunityIcons name="alert" size={18} color={colors.error} />
-      <Text style={[styles.disabledAlertText, { color: colors.error }]}>
+      <Text style={[styles.disabledAlertText, { color: colors.onErrorContainer }]}>
         {t('settings.rag_disabled_alert')}
       </Text>
     </View>

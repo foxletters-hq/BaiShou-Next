@@ -41,6 +41,7 @@ export interface RagMemoryViewProps {
   currentPage?: number
   pageSize?: number
   searchQuery?: string
+  searchMode?: 'semantic' | 'text'
   migrationState?: EmbeddingMigrationStateView | null
   onChange: (config: RagConfig) => void
   onClearDimension?: () => Promise<void>
@@ -55,6 +56,8 @@ export interface RagMemoryViewProps {
   onDeleteEntry?: (id: string) => Promise<void>
   onEditEntry?: (entry: RagEntry) => Promise<void>
   onNavigateToConfig?: () => void
+  /** 点击嵌入模型芯片时打开模型选择（优先于 onNavigateToConfig） */
+  onConfigureModel?: () => void
   onDetectDimension?: () => Promise<void>
   onPageChange?: (page: number, pageSize: number) => void
 }

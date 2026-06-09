@@ -1,8 +1,8 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { SettingsSection } from '../SettingsSection'
 import type { RagState } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -27,41 +27,39 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
     ragState.isRunning && ragState.type !== 'reembed' && ragState.type !== 'migration'
 
   return (
-    <>
+    <View>
       {showInlineProgress && (
-        <SettingsSection title={t('settings.rag_migrating', '处理中')}>
-          <View style={styles.progressBox}>
-            <Text style={[styles.statusText, { color: colors.textPrimary }]}>
-              {ragState.statusText || t('common.processing')}
-            </Text>
-            <View style={[styles.progressBar, { backgroundColor: colors.bgSurfaceNormal }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    backgroundColor: colors.primary,
-                    width: `${progressPercent}%`
-                  }
-                ]}
-              />
-            </View>
-            {ragState.total > 0 ? (
-              <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-                {ragState.progress}/{ragState.total}
-              </Text>
-            ) : null}
+        <View style={styles.progressBox}>
+          <Text style={[styles.statusText, { color: colors.textPrimary }]}>
+            {ragState.statusText || t('common.processing')}
+          </Text>
+          <View style={[styles.progressBar, { backgroundColor: colors.bgSurfaceNormal }]}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: colors.primary,
+                  width: `${progressPercent}%`
+                }
+              ]}
+            />
           </View>
-        </SettingsSection>
+          {ragState.total > 0 ? (
+            <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
+              {ragState.progress}/{ragState.total}
+            </Text>
+          ) : null}
+        </View>
       )}
 
       <View style={styles.actionRow}>
         {onBatchEmbed && (
           <TouchableOpacity
             style={[
-              styles.actionBtnBlue,
+              styles.actionBtn,
               {
                 backgroundColor: colors.primaryLight,
-                borderColor: 'rgba(91, 168, 245, 0.2)',
+                borderColor: 'transparent',
                 opacity: ragState.isRunning ? 0.5 : 1
               }
             ]}
@@ -69,7 +67,8 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
             disabled={ragState.isRunning}
             activeOpacity={0.7}
           >
-            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
+            <MaterialIcons name="auto-stories" size={16} color={colors.primary} />
+            <Text style={[styles.actionBtnText, { color: colors.primary }]}>
               {isBatchEmbedding
                 ? `${t('common.processing')} ${ragState.progress}/${ragState.total}`
                 : t('settings.rag_batch_embed')}
@@ -79,10 +78,11 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
         {onAddManualMemory && (
           <TouchableOpacity
             style={[
-              styles.actionBtnGreen,
+              styles.actionBtn,
+              styles.actionBtnOutlined,
               {
-                backgroundColor: 'rgba(34, 197, 94, 0.05)',
-                borderColor: 'rgba(34, 197, 94, 0.3)',
+                backgroundColor: colors.bgSurfaceHigh,
+                borderColor: colors.borderMuted,
                 opacity: ragState.isRunning ? 0.5 : 1
               }
             ]}
@@ -90,12 +90,13 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
             disabled={ragState.isRunning}
             activeOpacity={0.7}
           >
-            <Text style={{ color: colors.success, fontWeight: '600', fontSize: 13 }}>
+            <MaterialIcons name="add-comment" size={16} color={colors.success} />
+            <Text style={[styles.actionBtnText, { color: colors.success }]}>
               {t('settings.rag_add_manual')}
             </Text>
           </TouchableOpacity>
         )}
       </View>
-    </>
+    </View>
   )
 }

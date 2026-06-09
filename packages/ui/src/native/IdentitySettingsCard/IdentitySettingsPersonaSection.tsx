@@ -2,7 +2,6 @@ import React, { useMemo } from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { pickQuickSwitchPersonaIds } from './identity-recent.utils'
 
 export interface IdentitySettingsPersonaSectionProps {
@@ -29,15 +28,9 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
   if (switchIds.length === 0) return null
 
   return (
-    <View
-      style={[
-        styles.list,
-        { borderColor: colors.borderStrong, backgroundColor: colors.bgSurfaceNormal }
-      ]}
-    >
-      {switchIds.map((pid, index) => {
+    <View style={styles.chipRow}>
+      {switchIds.map((pid) => {
         const isActive = pid === activeId
-        const isLast = index === switchIds.length - 1
         return (
           <Pressable
             key={pid}
@@ -46,18 +39,22 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
             }}
             disabled={isActive}
             style={({ pressed }) => [
-              styles.row,
-              !isLast && {
-                borderBottomWidth: 1,
-                borderBottomColor: colors.borderStrong
+              styles.chip,
+              {
+                borderColor: isActive ? colors.primary : colors.borderMuted,
+                borderWidth: isActive ? 1.5 : 1,
+                backgroundColor: 'transparent'
               },
               !isActive && pressed && { opacity: 0.7 }
             ]}
           >
             <Text
               style={[
-                hubStyles.rowTitle,
-                { color: isActive ? colors.primary : colors.textPrimary, flex: 1 }
+                styles.chipText,
+                {
+                  color: colors.textPrimary,
+                  fontWeight: isActive ? '600' : '500'
+                }
               ]}
               numberOfLines={1}
             >
@@ -76,21 +73,26 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
 }
 
 const styles = StyleSheet.create({
-  list: {
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: 'hidden',
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 12
   },
-  row: {
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    minHeight: 32,
     paddingHorizontal: 12,
-    paddingVertical: 11
+    borderRadius: 8
+  },
+  chipText: {
+    fontSize: 14,
+    maxWidth: 160
   },
   activeMark: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600'
   }
 })
