@@ -12,8 +12,14 @@ export interface NativeRecallDialogProps {
   onClose: () => void
   items: RecallItem[]
   isSearching?: boolean
-  onSearch: (query: string, tab: 'diary' | 'memory') => void
+  onSearch: (query: string, tab: 'diary' | 'memory', mode?: 'semantic' | 'text') => void
   onInject: (selectedItems: RecallItem[]) => void
+  searchMode?: 'semantic' | 'text'
+  onToggleSearchMode?: () => void
+  lookbackMonths?: number
+  onMonthsChanged?: (val: number) => void
+  onCopyContext?: () => void
+  onCopyDiarySnippet?: (snippet: string) => void
 }
 
 export type RecallTab = 'diary' | 'memory'

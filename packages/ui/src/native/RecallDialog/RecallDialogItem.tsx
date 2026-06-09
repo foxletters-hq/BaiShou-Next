@@ -26,23 +26,26 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
       onPress={() => onToggle(item.id)}
       style={{
         flexDirection: 'row',
-        padding: tokens.spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.borderSubtle,
-        backgroundColor: isSelected ? colors.primaryContainer : 'transparent',
-        gap: tokens.spacing.sm
+        alignItems: 'flex-start',
+        gap: tokens.spacing.md,
+        padding: tokens.spacing.md,
+        backgroundColor: isSelected ? colors.primaryContainer : colors.bgSurface,
+        borderWidth: 1,
+        borderColor: isSelected ? colors.primary : colors.borderMuted,
+        borderRadius: tokens.radius.lg
       }}
     >
       <View
         style={{
           width: 24,
           height: 24,
-          borderRadius: 12,
+          borderRadius: 6,
           borderWidth: 2,
           borderColor: isSelected ? colors.primary : colors.outlineVariant,
-          backgroundColor: isSelected ? colors.primary : 'transparent',
+          backgroundColor: isSelected ? colors.primary : colors.bgSurface,
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          marginTop: 2
         }}
       >
         {isSelected && <Text style={{ color: colors.onPrimary, fontSize: 12 }}>✓</Text>}
@@ -53,7 +56,7 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 4
+            marginBottom: 6
           }}
         >
           <View
@@ -61,14 +64,14 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
               flexDirection: 'row',
               alignItems: 'center',
               gap: tokens.spacing.xs,
-              flex: 1
+              flex: 1,
+              marginRight: tokens.spacing.sm
             }}
           >
-            <Text style={{ fontSize: 14 }}>{item.type === 'diary' ? '📖' : '🧠'}</Text>
             <Text
               style={{
-                fontSize: 14,
-                fontWeight: '600',
+                fontSize: 15,
+                fontWeight: '700',
                 color: colors.textPrimary,
                 flexShrink: 1
               }}
@@ -97,9 +100,8 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
           </View>
           <Text
             style={{
-              fontSize: 12,
-              color: colors.textSecondary,
-              marginLeft: tokens.spacing.xs
+              fontSize: 11,
+              color: colors.textSecondary
             }}
           >
             {item.date}
@@ -108,8 +110,9 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
         <Text
           numberOfLines={2}
           style={{
-            fontSize: 14,
-            color: colors.textSecondary
+            fontSize: 13,
+            color: colors.textSecondary,
+            lineHeight: 20
           }}
         >
           {item.snippet}

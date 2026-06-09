@@ -4,26 +4,27 @@ import type { RecallItem, RecallTab } from './recall-dialog.types'
 export function useRecallDialog(
   isOpen: boolean,
   items: RecallItem[],
-  onSearch: (query: string, tab: RecallTab) => void,
+  onSearch: (query: string, tab: RecallTab, mode?: 'semantic' | 'text') => void,
   onInject: (selectedItems: RecallItem[]) => void,
-  onClose: () => void
+  onClose: () => void,
+  searchMode: 'semantic' | 'text' = 'semantic'
 ) {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<RecallTab>('diary')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    let cleanup: (() => void) | undefined
-    if (isOpen) {
-      const timeoutId = setTimeout(() => {
-        onSearch(searchQuery, activeTab)
-      }, 400)
-      cleanup = () => {
-        clearTimeout(timeoutId)
-      }
-    }
-    return cleanup
-  }, [searchQuery, activeTab, isOpen, onSearch])
+    if (!isOpen || activeTab !== 'diary') return
+    onSearch('', 'diary')
+  }, [activeTab, isOpen, onSearch])
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'memory') return undefined
+    const timeoutId = setTimeout(() => {
+      onSearch(searchQuery, 'memory', searchMode)
+    }, 400)
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, searchMode, activeTab, isOpen, onSearch])
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -37,6 +38,7 @@ export function useRecallDialog(
   const switchTab = (tab: RecallTab) => {
     setActiveTab(tab)
     setSelectedIds(new Set())
+    setSearchQuery('')
   }
 
   const handleInject = () => {
