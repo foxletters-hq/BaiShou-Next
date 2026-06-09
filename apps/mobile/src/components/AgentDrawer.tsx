@@ -4,7 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { AgentSessionList, useNativeTheme } from '@baishou/ui/native'
+import { AgentSessionList, AssistantAvatar, useNativeTheme } from '@baishou/ui/native'
 import type { AgentSession } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 
@@ -13,6 +13,8 @@ export interface AssistantSummary {
   name: string
   description?: string
   emoji?: string
+  avatarPath?: string
+  displayAvatarUri?: string
 }
 
 interface AgentDrawerProps {
@@ -31,34 +33,23 @@ interface AgentDrawerProps {
 }
 
 const DRAWER_WIDTH = 280
+/** 每页 10 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
+const SESSION_PAGE_SIZE = 10
 
-function AssistantAvatar({
+function DrawerAssistantAvatar({
   assistant,
-  size,
-  colors
+  size
 }: {
   assistant: AssistantSummary
   size: number
-  colors: ReturnType<typeof useNativeTheme>['colors']
 }) {
   return (
-    <View
-      style={[
-        styles.avatarShell,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: colors.bgSurfaceNormal
-        }
-      ]}
-    >
-      {assistant.emoji ? (
-        <Text style={[styles.avatarEmoji, { fontSize: size * 0.45 }]}>{assistant.emoji}</Text>
-      ) : (
-        <MaterialIcons name="auto-awesome" size={size * 0.45} color={colors.textSecondary} />
-      )}
-    </View>
+    <AssistantAvatar
+      emoji={assistant.emoji}
+      avatarPath={assistant.avatarPath}
+      resolvedAvatarUri={assistant.displayAvatarUri}
+      size={size}
+    />
   )
 }
 
@@ -82,36 +73,100 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   const router = useRouter()
   const { services, dbReady } = useBaishou()
   const [sessions, setSessions] = useState<AgentSession[]>([])
+  const [hasMoreSessions, setHasMoreSessions] = useState(false)
+  const [isLoadingMoreSessions, setIsLoadingMoreSessions] = useState(false)
   const [mounted, setMounted] = useState(false)
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current
   const fadeAnim = useRef(new Animated.Value(0)).current
+  const sessionsLoadedFromDbRef = useRef(0)
+  const lastLoadRequestId = useRef(0)
 
-  const loadSessions = useCallback(async () => {
-    if (!dbReady || !services) return
-    try {
-      const sessionList = await services.sessionManager.list()
-      setSessions(
-        sessionList.map((s: any) => ({
-          id: s.id,
-          title: s.title || t('agent.sessions.default_title', '新对话'),
-          isPinned: Boolean(s.isPinned),
-          lastMessageAt: s.updatedAt
-            ? new Date(s.updatedAt).getTime()
-            : s.createdAt
-              ? new Date(s.createdAt).getTime()
-              : Date.now(),
-          messageCount: s.messageCount ?? 0
-        }))
-      )
-    } catch (e) {
-      console.warn('Failed to load sessions', e)
-    }
-  }, [dbReady, services, t])
+  const mapSession = useCallback(
+    (s: any): AgentSession => ({
+      id: s.id,
+      title: s.title || t('agent.sessions.default_title', '新对话'),
+      isPinned: Boolean(s.isPinned),
+      lastMessageAt: s.updatedAt
+        ? new Date(s.updatedAt).getTime()
+        : s.createdAt
+          ? new Date(s.createdAt).getTime()
+          : Date.now(),
+      messageCount: s.messageCount ?? 0
+    }),
+    [t]
+  )
+
+  const loadSessions = useCallback(
+    async (resetOffset = true) => {
+      if (!dbReady || !services || !currentAssistant?.id) return
+
+      const reqId = ++lastLoadRequestId.current
+      const offset = resetOffset ? 0 : sessionsLoadedFromDbRef.current
+      const assistantId = currentAssistant.id
+
+      if (!resetOffset) {
+        setIsLoadingMoreSessions(true)
+      }
+
+      try {
+        const sessionList = await services.sessionManager.list(
+          SESSION_PAGE_SIZE + 1,
+          offset,
+          assistantId
+        )
+
+        if (reqId !== lastLoadRequestId.current) return
+
+        if (sessionList && sessionList.length > 0) {
+          const hasMore = sessionList.length > SESSION_PAGE_SIZE
+          const page = hasMore ? sessionList.slice(0, SESSION_PAGE_SIZE) : sessionList
+          const mapped = page.map(mapSession)
+
+          if (resetOffset) {
+            setSessions(mapped)
+            sessionsLoadedFromDbRef.current = sessionList.length
+          } else {
+            setSessions((prev) => {
+              const existing = new Set(prev.map((s) => s.id))
+              const merged = [...prev]
+              for (const row of mapped) {
+                if (!existing.has(row.id)) merged.push(row)
+              }
+              return merged
+            })
+            sessionsLoadedFromDbRef.current += sessionList.length
+          }
+          setHasMoreSessions(hasMore)
+        } else {
+          if (resetOffset) {
+            setSessions([])
+            sessionsLoadedFromDbRef.current = 0
+          }
+          setHasMoreSessions(false)
+        }
+      } catch (e) {
+        console.warn('Failed to load sessions', e)
+      } finally {
+        if (reqId === lastLoadRequestId.current) {
+          setIsLoadingMoreSessions(false)
+        }
+      }
+    },
+    [dbReady, services, currentAssistant?.id, mapSession]
+  )
+
+  useEffect(() => {
+    if (!visible || !currentAssistant?.id) return
+    lastLoadRequestId.current += 1
+    sessionsLoadedFromDbRef.current = 0
+    setSessions([])
+    setHasMoreSessions(false)
+    void loadSessions(true)
+  }, [visible, currentAssistant?.id, loadSessions])
 
   useEffect(() => {
     if (visible) {
       setMounted(true)
-      loadSessions()
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
@@ -143,7 +198,7 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
     ]).start(({ finished }) => {
       if (finished) setMounted(false)
     })
-  }, [visible, mounted, slideAnim, fadeAnim, loadSessions])
+  }, [visible, mounted, slideAnim, fadeAnim])
 
   const handleSelect = (id: string) => {
     onSelectSession(id)
@@ -158,18 +213,22 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   const handlePin = async (id: string) => {
     const session = sessions.find((s) => s.id === id)
     if (session) onPinSession(id, session.isPinned)
-    await loadSessions()
+    await loadSessions(true)
   }
 
   const handleDelete = async (id: string) => {
     onDeleteSession(id)
-    await loadSessions()
+    await loadSessions(true)
   }
 
   const handleRename = async (id: string, title: string) => {
     onRenameSession(id, title)
-    await loadSessions()
+    await loadSessions(true)
   }
+
+  const handleLoadMore = useCallback(() => {
+    void loadSessions(false)
+  }, [loadSessions])
 
   if (!mounted) return null
 
@@ -210,7 +269,7 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
             >
               {currentAssistant ? (
                 <>
-                  <AssistantAvatar assistant={currentAssistant} size={36} colors={colors} />
+                  <DrawerAssistantAvatar assistant={currentAssistant} size={36} />
                   <View style={styles.currentMeta}>
                     <Text
                       style={[styles.currentName, { color: colors.textPrimary }]}
@@ -277,7 +336,7 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                       }}
                       accessibilityLabel={assistant.name}
                     >
-                      <AssistantAvatar assistant={assistant} size={36} colors={colors} />
+                      <DrawerAssistantAvatar assistant={assistant} size={36} />
                     </TouchableOpacity>
                   )
                 })
@@ -320,6 +379,9 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
                 onPin={handlePin}
                 onDelete={handleDelete}
                 onRename={handleRename}
+                hasMore={hasMoreSessions}
+                isLoadingMore={isLoadingMoreSessions}
+                onLoadMore={handleLoadMore}
               />
             </View>
           </View>

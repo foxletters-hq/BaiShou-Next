@@ -16,7 +16,18 @@ import {
   shadowConnectionManager,
   ShadowIndexUpsertOps
 } from '@baishou/database'
-import { logger } from '@baishou/shared'
+import { formatDiaryPreviewText, logger, parseDateStr } from '@baishou/shared'
+import { mergeDiaryTags, type ToolDiaryMutationResult } from '@baishou/ai'
+
+function diaryPreviewFromRaw(raw: string | null | undefined): string {
+  const cleaned = formatDiaryPreviewText(raw)
+  const firstLine = cleaned
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('---'))
+  if (!firstLine) return '(empty)'
+  return firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine
+}
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
 import { scheduleVaultEcosystemResync } from './mobile-vault-resync.service'
 import { vaultFileWatcher } from './vault-file-watcher.service'
@@ -33,6 +44,19 @@ export type VaultDiarySearcher = {
     query: string,
     limit?: number
   ) => Promise<Array<{ date: string; contentSnippet: string; tags: string; rankScore: number }>>
+  listInDateRange: (
+    startDate: string,
+    endDate: string
+  ) => Promise<Array<{ date: string; preview: string }>>
+  readByDates: (dates: string[]) => Promise<Array<{ date: string; content: string | null }>>
+  writeEntry: (date: string, content: string, tags?: string) => Promise<ToolDiaryMutationResult>
+  editEntry: (args: {
+    date: string
+    content: string
+    mode: 'append' | 'overwrite'
+    tags?: string
+  }) => Promise<ToolDiaryMutationResult>
+  deleteEntry: (date: string) => Promise<ToolDiaryMutationResult>
 }
 
 /** 随 Vault 切换需重建的日记/影子索引相关服务 */
@@ -71,8 +95,18 @@ export function createUnavailableDiaryService(): DiaryService {
   } as unknown as DiaryService
 }
 
+const diaryMutationUnavailable = async (): Promise<ToolDiaryMutationResult> => ({
+  ok: false,
+  message: 'Error: Diary storage is not available. Please configure external storage first.'
+})
+
 export const EMPTY_DIARY_SEARCHER: VaultDiarySearcher = {
-  searchFTS: async () => []
+  searchFTS: async () => [],
+  listInDateRange: async () => [],
+  readByDates: async (dates) => dates.map((date) => ({ date, content: null })),
+  writeEntry: diaryMutationUnavailable,
+  editEntry: diaryMutationUnavailable,
+  deleteEntry: diaryMutationUnavailable
 }
 
 /** 始终委托到 diaryStackRef.current，避免 Vault 切换后仍访问已关闭的 Shadow DB */
@@ -144,6 +178,99 @@ export function createVaultBoundDiaryStack(deps: {
         tags: r.tags,
         rankScore: r.rankScore
       }))
+    },
+    async listInDateRange(startDate: string, endDate: string) {
+      const rows = await shadowRepo.findByDateRange(startDate, endDate)
+      return rows.map((row) => ({
+        date: row.date,
+        preview: diaryPreviewFromRaw((row as { rawContent?: string | null }).rawContent)
+      }))
+    },
+    async readByDates(dates: string[]) {
+      const rows: Array<{ date: string; content: string | null }> = []
+      for (const date of dates) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          rows.push({ date, content: null })
+          continue
+        }
+        const diary = await diaryService.findByDate(parseDateStr(date))
+        rows.push({ date, content: diary?.content ?? null })
+      }
+      return rows
+    },
+    async writeEntry(date: string, content: string, tags?: string) {
+      try {
+        const tagsStr = tags
+          ?.split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .join(',')
+        await diaryService.create({
+          date: parseDateStr(date),
+          content,
+          ...(tagsStr ? { tags: tagsStr } : {})
+        })
+        return { ok: true as const }
+      } catch (e) {
+        if (e instanceof Error && e.name === 'DiaryDateConflictError') {
+          return {
+            ok: false as const,
+            message: `Error: A diary entry for ${date} already exists. Use diary_edit to modify it.`
+          }
+        }
+        return {
+          ok: false as const,
+          message: `Error: Failed to create diary entry: ${e instanceof Error ? e.message : String(e)}`
+        }
+      }
+    },
+    async editEntry({ date, content, mode, tags }) {
+      try {
+        const existing = await diaryService.findByDate(parseDateStr(date))
+        if (!existing?.id) {
+          return {
+            ok: false as const,
+            message: `Error: Diary entry for ${date} does not exist. Use diary_write to create it instead.`
+          }
+        }
+
+        let finalContent = content
+        if (mode === 'append') {
+          const now = new Date()
+          const hours = String(now.getHours()).padStart(2, '0')
+          const minutes = String(now.getMinutes()).padStart(2, '0')
+          finalContent = `${existing.content.trimEnd()}\n\n##### ${hours}:${minutes}\n\n${content}`
+        }
+
+        await diaryService.update(existing.id, {
+          content: finalContent,
+          ...(tags ? { tags: mergeDiaryTags(existing.tags, tags) } : {})
+        })
+        return { ok: true as const }
+      } catch (e) {
+        return {
+          ok: false as const,
+          message: `Error: Failed to edit diary: ${e instanceof Error ? e.message : String(e)}`
+        }
+      }
+    },
+    async deleteEntry(date: string) {
+      try {
+        const existing = await diaryService.findByDate(parseDateStr(date))
+        if (!existing?.id) {
+          return {
+            ok: false as const,
+            message: `Error: Could not find diary entry for ${date} to delete.`
+          }
+        }
+        await diaryService.delete(existing.id)
+        return { ok: true as const }
+      } catch (e) {
+        return {
+          ok: false as const,
+          message: `Error: Failed to delete diary: ${e instanceof Error ? e.message : String(e)}`
+        }
+      }
     }
   }
 

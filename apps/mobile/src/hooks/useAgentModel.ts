@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ASSISTANT_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+import { syncSettingsAssistantsToRepo } from '../services/mobile-assistant-sync.service'
 
-// 助手接口
 interface Assistant {
   id: string
   name: string
   emoji: string
+  description?: string
+  avatarPath?: string
   isDefault: boolean
   isPinned: boolean
   systemPrompt?: string
@@ -41,7 +44,8 @@ export function useAgentModel() {
           const defaultAssistant: Assistant = {
             id: 'default',
             name: t('agent.assistant.default_assistant_name', '默认伙伴'),
-            emoji: '🍵',
+            emoji: '',
+            avatarPath: ASSISTANT_DEFAULT_AVATAR_SENTINEL,
             isDefault: true,
             isPinned: false,
             systemPrompt: ''
@@ -49,6 +53,8 @@ export function useAgentModel() {
           await services.settingsManager.set('assistants', [defaultAssistant])
           assistants = [defaultAssistant]
         }
+
+        await syncSettingsAssistantsToRepo(services.settingsManager, services.assistantManager)
 
         const defaultAssistant = assistants.find((a) => a.isDefault) || assistants[0]
         if (defaultAssistant) {

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
-import { installExpoDatabaseSchema, detectVecSupport } from '@baishou/database/expo'
+import { ensureExpoAgentDatabaseInstalled, detectVecSupport } from '@baishou/database/expo'
 import {
   SessionManagerService,
   DiaryService,
@@ -20,6 +20,7 @@ import {
   buildSharedContextText
 } from '@baishou/core-mobile'
 import { resolveSummaryTemplatesForGeneration } from '@baishou/shared'
+import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 
 import {
   SessionRepository,
@@ -36,14 +37,19 @@ import {
   AgentSessionService,
   StreamChatCallbacks,
   htmlToPlainText,
-  webSearchConfigToUserConfig,
   EmbeddingAdapter,
   HybridSearchService
 } from '@baishou/ai'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 
 import { MobileStoragePathService } from '../services/path.service'
+import {
+  loadContextAtMessage,
+  buildMobileStreamUserConfig,
+  type MobileContextAtMessagePayload
+} from '../services/mobile-context-at-message.service'
 import { createMobileFileSystem } from '../services/create-mobile-file-system'
+import { setupMobileLocalFileReader } from '../services/mobile-local-file-reader.service'
 import { MobileArchiveService } from '../services/archive.service'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
@@ -57,6 +63,7 @@ import { MobileUpdaterService } from '../services/mobile-updater.service'
 import { mobilePricingService, type MobilePricingService } from '../services/mobile-pricing.service'
 import type { VaultFileWatcherService } from '../services/vault-file-watcher.service'
 import type { MobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
+import { ensureMobileCompressionBridge } from '../services/mobile-compression-event.service'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { buildMobileSummaryAiClient } from '../services/mobile-summary-ai-client'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
@@ -101,6 +108,7 @@ interface BaishouContextValue {
     settingsManager: SettingsManagerService
     summaryManager: SummaryManagerService
     summaryGenerator: SummaryGeneratorService
+    missingSummaryDetector: MissingSummaryDetector
     archiveService: MobileArchiveService
     lanSyncService: MobileLanSyncService
     cloudSyncService: MobileCloudSyncService
@@ -123,6 +131,12 @@ interface BaishouContextValue {
     attachmentManager: MobileAttachmentManagerService
     /** 与桌面 summary:buildSharedContext 一致（总结 + 级联折叠后的日记） */
     buildSharedContext: (lookbackMonths: number, locale?: string) => Promise<string>
+    /** 与桌面 agent:get-context-at-message 一致 */
+    getContextAtMessage: (
+      sessionId: string,
+      messageId: string,
+      searchMode?: boolean
+    ) => Promise<MobileContextAtMessagePayload>
   } | null
   startAgentChat?: (
     sessionId: string,
@@ -151,33 +165,57 @@ const BaishouContext = createContext<BaishouContextValue>({
 
 export const useBaishou = () => useContext(BaishouContext)
 
-/** 使用 native fetch 获取网页内容并转换为正文（长度限制由工具层按设置处理） */
-async function webFetchContent(url: string): Promise<string> {
+const MOBILE_BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9'
+}
+
+const WEB_FETCH_TIMEOUT_MS = 15_000
+
+function createWebFetchSignal(timeoutMs: number): AbortSignal {
+  if (
+    typeof AbortSignal !== 'undefined' &&
+    'timeout' in AbortSignal &&
+    typeof AbortSignal.timeout === 'function'
+  ) {
+    return AbortSignal.timeout(timeoutMs)
+  }
+  const controller = new AbortController()
+  setTimeout(() => controller.abort(), timeoutMs)
+  return controller.signal
+}
+
+/** 获取搜索页原始 HTML（供 local-bing / local-google 解析，对齐桌面端 fetchSearchPage 契约） */
+async function fetchSearchPageHtml(url: string): Promise<string> {
   try {
     const response = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
-      }
+      headers: MOBILE_BROWSER_HEADERS,
+      signal: createWebFetchSignal(WEB_FETCH_TIMEOUT_MS)
     })
-
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`)
+      return ''
     }
-
-    const plainText = htmlToPlainText(await response.text())
-    return plainText || 'The webpage is empty or cannot be parsed textually.'
-  } catch (e: any) {
-    logger.error(`Failed to fetch URL: ${url}`, e)
-    return `Failed to read URL: ${e.message || String(e)}`
+    return await response.text()
+  } catch {
+    // 单个 URL 失败不影响搜索主流程，静默跳过
+    return ''
   }
 }
 
-/** 搜索 DuckDuckGo 并获取搜索结果页面 */
-async function fetchDuckDuckGoSearch(query: string): Promise<string> {
-  const encoded = encodeURIComponent(query)
-  const url = `https://html.duckduckgo.com/html/?q=${encoded}`
-  return webFetchContent(url)
+/** 使用 native fetch 获取网页内容并转换为正文（长度限制由工具层按设置处理） */
+async function webFetchContent(url: string): Promise<string> {
+  const html = await fetchSearchPageHtml(url)
+  if (!html) {
+    return 'The webpage is empty or cannot be parsed textually.'
+  }
+  try {
+    const plainText = htmlToPlainText(html)
+    return plainText || 'The webpage is empty or cannot be parsed textually.'
+  } catch {
+    return 'The webpage is empty or cannot be parsed textually.'
+  }
 }
 
 export function BaishouProvider({ children }: { children: ReactNode }) {
@@ -198,10 +236,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
     async function init() {
       try {
-        // 1. 初始化 SQLite 环境
-        const expoDb = await SQLite.openDatabaseAsync('baishou_next_mobile.db')
-
-        const { drizzleDb, driver } = await installExpoDatabaseSchema(expoDb as any)
+        // 1. 初始化 SQLite 环境（单例，避免并发 open + 迁移）
+        const { drizzleDb, driver } = await ensureExpoAgentDatabaseInstalled(() =>
+          SQLite.openDatabaseAsync('baishou_next_mobile.db')
+        )
 
         const vecCapability = await detectVecSupport(driver)
         if (vecCapability.available) {
@@ -214,6 +252,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         }
 
         const fileSystem = createMobileFileSystem()
+        setupMobileLocalFileReader(fileSystem)
         const pathService = new MobileStoragePathService(fileSystem) as any
 
         // 3. 构建 Repositories
@@ -461,15 +500,20 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
             const provider = registry.getOrUpdateProvider(config)
 
-            // 读取搜索相关配置
             const searchMode = overrides?.searchMode ?? false
-            const webSearchConfig = await settingsManager.get<any>('web_search_config')
-            const ragConfig = await settingsManager.get<any>('rag_config')
+            const userConfig = await buildMobileStreamUserConfig(
+              settingsManager,
+              searchMode
+            )
 
-            const userConfig: Record<string, unknown> = {
-              web_search_enabled: searchMode,
-              ...webSearchConfigToUserConfig(webSearchConfig),
-              ragEnabled: ragConfig?.ragEnabled ?? true
+            const embeddingProviderId = globalModels?.globalEmbeddingProviderId
+            const embeddingModelId = globalModels?.globalEmbeddingModelId
+            let embeddingProvider
+            if (embeddingProviderId && embeddingModelId && embeddingModelId !== 'off') {
+              const embConfig = providers.find((p: any) => p.id === embeddingProviderId)
+              if (embConfig) {
+                embeddingProvider = registry.getOrUpdateProvider(embConfig)
+              }
             }
 
             const modelId =
@@ -488,9 +532,12 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                 sessionRepo,
                 snapshotRepo,
                 userConfig,
+                systemModels: embeddingProvider
+                  ? { embeddingProvider, embeddingModelId }
+                  : undefined,
                 diarySearcher: getDiarySearcher(),
                 webSearchResultFetcher: webFetchContent,
-                fetchSearchPage: fetchDuckDuckGoSearch,
+                fetchSearchPage: fetchSearchPageHtml,
                 abortSignal: overrides?.abortSignal,
                 userMessageId: overrides?.userMessageId,
                 skipUserMessageRecording: overrides?.skipUserMessageRecording,
@@ -509,6 +556,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         } catch (mcpErr) {
           logger.warn('[BaishouProvider] MCP server failed to start:', mcpErr as Error)
         }
+
+        ensureMobileCompressionBridge()
 
         logger.info('Mobile DB and DI Container Ready!')
         if (Platform.OS === 'android') {
@@ -667,6 +716,29 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        const getContextAtMessage = (
+          sessionId: string,
+          messageId: string,
+          searchMode = false
+        ) =>
+          loadContextAtMessage(
+            {
+              sessionRepo,
+              snapshotRepo,
+              assistantManager,
+              settingsManager,
+              toolRegistry,
+              diarySearcher: getDiarySearcher(),
+              webSearchResultFetcher: webFetchContent,
+              fetchSearchPage: fetchSearchPageHtml
+            },
+            sessionId,
+            messageId,
+            searchMode
+          )
+
+        void getTtsPlaybackSettings(settingsManager).catch(() => {})
+
         if (isMounted) {
           setValue({
             dbReady: true,
@@ -684,6 +756,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               settingsManager,
               summaryManager,
               summaryGenerator,
+              missingSummaryDetector,
               archiveService,
               lanSyncService,
               cloudSyncService,
@@ -701,7 +774,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               ragService: ragServiceRef.current,
               incrementalSyncService,
               attachmentManager,
-              buildSharedContext
+              buildSharedContext,
+              getContextAtMessage
             },
             startAgentChat
           })

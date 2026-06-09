@@ -1,13 +1,22 @@
 import { Tabs } from 'expo-router'
 import React, { useMemo } from 'react'
-import { StyleSheet } from 'react-native'
+import { Platform, StyleSheet } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '@baishou/ui/native'
+import { HapticTab } from '../../components/haptic-tab'
+
+/** 图标 + 文字内容区高度（不含底部安全区） */
+const TAB_BAR_CONTENT_HEIGHT = 56
 
 export default function TabLayout() {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const insets = useSafeAreaInsets()
+
+  const tabBarBottomInset =
+    Platform.OS === 'android' ? Math.max(insets.bottom, 8) : insets.bottom
 
   const sharedTabBarStyle = useMemo(
     () =>
@@ -16,9 +25,12 @@ export default function TabLayout() {
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: colors.borderMuted,
         elevation: 0,
-        shadowOpacity: 0
+        shadowOpacity: 0,
+        // 总高度 = 内容区 + 底部安全区；paddingBottom 由 React Navigation 默认注入，此处只覆盖 Android 最小底边距
+        height: TAB_BAR_CONTENT_HEIGHT + tabBarBottomInset,
+        paddingBottom: tabBarBottomInset
       }) as const,
-    [colors.bgSurface, colors.borderMuted]
+    [colors.bgSurface, colors.borderMuted, tabBarBottomInset]
   )
 
   return (
@@ -27,6 +39,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: sharedTabBarStyle,
+        tabBarButton: (props) => <HapticTab {...props} />,
         tabBarHideOnKeyboard: false,
         headerShown: false
       }}
