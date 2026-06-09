@@ -12,17 +12,21 @@ interface TtsGptSovitsFieldsProps {
   config: TtsProviderConfig
   langOptions: { value: string; label: string }[]
   onUpdate: (patch: Partial<TtsProviderConfig>) => void
+  compact?: boolean
 }
 
 export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
   config,
   langOptions,
-  onUpdate
+  onUpdate,
+  compact = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const dividerStyle = [styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]
+  const dividerStyle = compact
+    ? [styles.divider, { backgroundColor: colors.borderSubtle }]
+    : [styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]
 
   return (
     <>
@@ -83,6 +87,7 @@ interface TtsTestSectionProps {
   canTest: boolean
   onTestTextChange: (text: string) => void
   onTest: () => void
+  compact?: boolean
 }
 
 export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
@@ -90,13 +95,20 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
   testing,
   canTest,
   onTestTextChange,
-  onTest
+  onTest,
+  compact = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
+  const wrapStyle = compact
+    ? [styles.divider, { backgroundColor: colors.borderSubtle }]
+    : [styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]
+
   return (
-    <View style={[styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]}>
+    <View>
+      {compact ? <View style={wrapStyle} /> : null}
+      <View style={compact ? styles.fieldGroupCard : wrapStyle}>
       <Text style={[styles.label, { color: colors.textPrimary }]}>
         {t('tts.settings.test_label')}
       </Text>
@@ -118,6 +130,7 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
         >
           {testing ? t('tts.settings.testing') : t('tts.settings.test_button')}
         </Button>
+      </View>
       </View>
     </View>
   )

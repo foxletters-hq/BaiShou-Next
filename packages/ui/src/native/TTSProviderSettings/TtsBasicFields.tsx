@@ -13,6 +13,7 @@ import { TtsModelCombobox } from './TtsModelCombobox'
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
 
 interface TtsBasicFieldsProps {
+  layout?: 'section' | 'groupCard'
   config: TtsProviderConfig
   providerOptions: { value: string; label: string }[]
   formatOptions: { value: string; label: string }[]
@@ -38,6 +39,7 @@ interface TtsBasicFieldsProps {
 }
 
 export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
+  layout = 'section',
   config,
   providerOptions,
   formatOptions,
@@ -64,7 +66,26 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const dividerStyle = [styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]
+  const compact = layout === 'groupCard'
+  const fieldWrapStyle = compact ? styles.fieldGroupCard : styles.fieldGroup
+  const sectionDividerStyle = [styles.fieldGroupDivider, { borderTopColor: colors.borderSubtle }]
+
+  const Section: React.FC<{ children: React.ReactNode; raised?: boolean }> = ({
+    children,
+    raised
+  }) => {
+    if (compact) {
+      return (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <View style={[styles.fieldGroupCard, raised && styles.fieldGroupRaised]}>{children}</View>
+        </>
+      )
+    }
+    return (
+      <View style={[sectionDividerStyle, raised && styles.fieldGroupRaised]}>{children}</View>
+    )
+  }
 
   const baseUrlPlaceholder =
     config.id === 'clone-tts'
@@ -77,14 +98,44 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
   return (
     <>
-      <View style={styles.fieldGroup}>
+      <View style={fieldWrapStyle}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.provider_label')}
         </Text>
-        <Select options={providerOptions} value={config.id} onValueChange={onProviderChange} />
+        {compact ? (
+          <View style={styles.chipRow}>
+            {providerOptions.map((opt) => {
+              const active = config.id === opt.value
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.chip,
+                    {
+                      borderColor: active ? colors.primary : colors.borderMuted,
+                      backgroundColor: active ? colors.primaryLight : 'transparent'
+                    }
+                  ]}
+                  onPress={() => onProviderChange(opt.value)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: active ? colors.primary : colors.textSecondary, fontWeight: active ? '600' : '400' }
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        ) : (
+          <Select options={providerOptions} value={config.id} onValueChange={onProviderChange} />
+        )}
       </View>
 
-      <View style={dividerStyle}>
+      <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.base_url_label')}
         </Text>
@@ -96,10 +147,10 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
           autoCapitalize="none"
           autoCorrect={false}
         />
-      </View>
+      </Section>
 
       {showApiKeyField && (
-        <View style={dividerStyle}>
+        <Section>
           <View style={styles.labelRow}>
             <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
               {apiKeyOptional
@@ -137,10 +188,10 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
               </TouchableOpacity>
             }
           />
-        </View>
+        </Section>
       )}
 
-      <View style={[dividerStyle, isModelDropdownOpen && styles.fieldGroupRaised]}>
+      <Section raised={isModelDropdownOpen}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.model_id_label')}
         </Text>
@@ -168,9 +219,9 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
             </Button>
           )}
         </View>
-      </View>
+      </Section>
 
-      <View style={dividerStyle}>
+      <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.voice_label')}
         </Text>
@@ -185,10 +236,10 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         <Text style={[styles.helperText, { color: colors.textTertiary }]}>
           {t('tts.settings.voice_hint')}
         </Text>
-      </View>
+      </Section>
 
       {showSpeedControl && (
-        <View style={dividerStyle}>
+        <Section>
           <View style={styles.sliderHeader}>
             <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
               {t('tts.settings.speed_label')}
@@ -208,10 +259,10 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
             <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>0.5x</Text>
             <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>2.0x</Text>
           </View>
-        </View>
+        </Section>
       )}
 
-      <View style={dividerStyle}>
+      <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.format_label')}
         </Text>
@@ -219,8 +270,9 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
           options={formatOptions}
           value={config.responseFormat}
           onValueChange={(v) => onUpdate({ responseFormat: v })}
+          presentation="center"
         />
-      </View>
+      </Section>
     </>
   )
 }

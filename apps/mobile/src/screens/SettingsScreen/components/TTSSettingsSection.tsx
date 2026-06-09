@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +15,8 @@ import { useBaishou } from '../../../providers/BaishouProvider'
 import { synthesizeTtsForTest } from '../../../services/mobile-tts-synthesize'
 import { playTtsAudio } from '../../../services/play-tts-audio'
 import { fetchTtsProviderModels } from '../utils/tts-provider-models'
+import { setTtsPlaybackSettingsCache } from '../../../services/mobile-tts-settings.service'
+import { SettingsGroupCard } from './SettingsGroupCard'
 
 const TTS_CONFIGS_STORAGE_KEY = 'baishou_tts_provider_configs'
 
@@ -56,6 +59,7 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
 
       setPersistedConfigs(mergedPersisted)
       setProvidersList(providers)
+      setTtsPlaybackSettingsCache({ globalModels, providers })
 
       const isActiveGlobal = activeId === savedProviderId
       setInitialConfig({
@@ -160,7 +164,7 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
     await services.settingsManager.set('ai_providers', nextProviders)
 
     const globalModels = (await services.settingsManager.get<any>('global_models')) || {}
-    await services.settingsManager.set('global_models', {
+    const nextGlobalModels = {
       ...globalModels,
       globalTtsProviderId: config.id,
       globalTtsModelId: config.modelId,
@@ -173,7 +177,9 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
         promptLang: config.promptLang,
         textLang: config.textLang
       }
-    })
+    }
+    await services.settingsManager.set('global_models', nextGlobalModels)
+    setTtsPlaybackSettingsCache({ globalModels: nextGlobalModels, providers: nextProviders })
 
     toast.showSuccess(t('tts.settings.save_success'))
   }
@@ -187,28 +193,37 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
   if (!configReady) return null
 
   return (
-    <TTSProviderSettings
-      key={providerId}
-      initialConfig={initialConfig}
-      activeProviderId={providerId}
-      onActiveProviderIdChange={handleProviderChange}
-      persistedConfigs={persistedConfigs}
-      onPersistConfigs={handlePersistConfigs}
-      providersList={providersList}
-      onSaveConfig={handleSaveConfig}
-      onFetchModels={fetchTtsProviderModels}
-      onPlayTestAudio={playTtsAudio}
-      onTestTts={async (config, text) => {
-        const result = await synthesizeTtsForTest(config, text)
-        if (result.success) {
-          return {
-            success: true,
-            audioBase64: result.audioBase64,
-            format: result.format
-          }
-        }
-        return { success: false, error: result.error }
-      }}
-    />
+    <ScrollView
+      style={{ flex: 1 }}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <SettingsGroupCard style={{ marginBottom: 0 }}>
+        <TTSProviderSettings
+          key={providerId}
+          layout="groupCard"
+          initialConfig={initialConfig}
+          activeProviderId={providerId}
+          onActiveProviderIdChange={handleProviderChange}
+          persistedConfigs={persistedConfigs}
+          onPersistConfigs={handlePersistConfigs}
+          providersList={providersList}
+          onSaveConfig={handleSaveConfig}
+          onFetchModels={fetchTtsProviderModels}
+          onPlayTestAudio={playTtsAudio}
+          onTestTts={async (config, text) => {
+            const result = await synthesizeTtsForTest(config, text)
+            if (result.success) {
+              return {
+                success: true,
+                audioBase64: result.audioBase64,
+                format: result.format
+              }
+            }
+            return { success: false, error: result.error }
+          }}
+        />
+      </SettingsGroupCard>
+    </ScrollView>
   )
 }

@@ -20,7 +20,11 @@ export default function TtsProviderSettingsRoute() {
   }
 
   return (
-    <StackScreenLayout title={t('settings.tts_settings')} {...chrome}>
+    <StackScreenLayout
+      title={t('settings.tts_settings')}
+      {...chrome}
+      contentStyle={{ flex: 1, padding: 16, paddingBottom: 32 }}
+    >
       <TTSSettingsSection providerId={provider} />
     </StackScreenLayout>
   )

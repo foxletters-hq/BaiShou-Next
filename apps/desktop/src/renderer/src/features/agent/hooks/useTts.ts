@@ -8,9 +8,14 @@ import { toast } from '@baishou/ui'
  * @returns 包含 TTS 状态和控制方法的对象
  */
 export function useTts(t: any) {
-  const [ttsMode, setTtsMode] = useState<'off' | 'always' | 'manual'>(() => {
+  const [ttsMode, setTtsMode] = useState<'always' | 'manual'>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('baishou_tts_mode') as any) || 'manual'
+      const stored = localStorage.getItem('baishou_tts_mode')
+      if (stored === 'always') return 'always'
+      if (stored === 'off') {
+        localStorage.setItem('baishou_tts_mode', 'manual')
+      }
+      return 'manual'
     }
     return 'manual'
   })

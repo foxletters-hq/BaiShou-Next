@@ -52,4 +52,6 @@ export interface TTSProviderSettingsProps {
   /** 试听成功后播放音频（移动端 expo-audio） */
   onPlayTestAudio?: (audioBase64: string, format: string) => Promise<void>
   onFetchModels?: (providerId: string, apiKey: string, baseUrl: string) => Promise<string[]>
+  /** groupCard：卡片内布局，无重复标题与帮助图标（对齐移动端网络搜索设置） */
+  layout?: 'section' | 'groupCard'
 }

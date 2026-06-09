@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeToast, type TtsProviderConfig } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { synthesizeTtsForTest } from '../services/mobile-tts-synthesize'
+import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
 import { playTtsAudio, stopTtsAudioPlayback } from '../services/play-tts-audio'
 
 function buildGlobalTtsConfig(
@@ -55,8 +56,7 @@ export function useTTS() {
           return
         }
 
-        const globalModels = await services.settingsManager.get<any>('global_models')
-        const providers = (await services.settingsManager.get<any[]>('ai_providers')) || []
+        const { globalModels, providers } = await getTtsPlaybackSettings(services.settingsManager)
 
         const ttsProviderId = globalModels?.globalTtsProviderId
         const ttsModelId = globalModels?.globalTtsModelId

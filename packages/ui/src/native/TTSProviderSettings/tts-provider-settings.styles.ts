@@ -6,6 +6,13 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12
   },
+  fieldGroupCard: {
+    paddingVertical: 0
+  },
+  divider: {
+    height: 1,
+    marginVertical: 14
+  },
   fieldGroupDivider: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -110,6 +117,16 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 16,
     marginTop: 16
+  },
+  saveActionsGroupCard: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16
+  },
+  groupCardDesc: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16
   },
   bottomSpacer: { height: 40 }
 })
