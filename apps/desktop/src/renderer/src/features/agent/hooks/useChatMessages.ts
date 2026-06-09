@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import type { MockChatAttachment } from '@baishou/shared'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,
   CHAT_ROUNDS_PER_PAGE,
@@ -62,6 +63,7 @@ export interface UseChatMessagesResult {
   optimisticRemove: (optimisticId: string) => void
   setStreamSessionId: (id: string | null) => void
   truncateMessages: (messageId: string) => void
+  ensureMessageAttachments: (messageId: string, attachments: MockChatAttachment[]) => void
 }
 
 /** @deprecated 兼容旧测试引用；首屏按轮分页，不再按固定条数估算 */
@@ -327,6 +329,22 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     streamSessionIdRef.current = id
   }, [])
 
+  const ensureMessageAttachments = useCallback(
+    (messageId: string, attachments: MockChatAttachment[]) => {
+      if (!attachments.length) return
+
+      const patch = (msg: any) => {
+        if (msg.id !== messageId) return msg
+        if (msg.attachments?.length) return msg
+        return { ...msg, attachments }
+      }
+
+      messageCacheRef.current = messageCacheRef.current.map(patch)
+      setMessages((prev) => prev.map(patch))
+    },
+    []
+  )
+
   const truncateMessages = useCallback(
     (messageId: string) => {
       const idx = messageCacheRef.current.findIndex((m) => m.id === messageId)
@@ -364,6 +382,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
     refreshMessages,
     optimisticRemove,
     setStreamSessionId,
-    truncateMessages
+    truncateMessages,
+    ensureMessageAttachments
   }
 }

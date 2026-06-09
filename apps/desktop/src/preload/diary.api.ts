@@ -36,6 +36,7 @@ export const diaryApi = {
     deleteBatch: (ids: string[]) => ipcRenderer.invoke('attachment:deleteBatch', ids),
     openInFolder: (absolutePath: string) =>
       ipcRenderer.invoke('attachment:openInFolder', absolutePath),
+    openFile: (absolutePath: string) => ipcRenderer.invoke('attachment:openFile', absolutePath),
     deleteFile: (sessionId: string, fileName: string) =>
       ipcRenderer.invoke('attachment:deleteFile', sessionId, fileName),
     listDiaryAttachments: () => ipcRenderer.invoke('attachment:listDiaryAttachments'),

@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useRef } from 'react'
+import { mapAttachmentsFromParts } from '@baishou/shared'
 import {
   ChatBubble,
   StreamingBubble,
@@ -103,6 +104,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               role: entry.item?.role ?? 'user',
               content: entry.item?.content,
               label: entry.item?.label,
+              attachments: entry.item?.attachments,
               timestamp: sourceMsg.createdAt || new Date()
             }
           }
@@ -273,6 +275,9 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               ? stream.compressionPhase
               : (persistedCompaction?.phase ?? 'auto')
 
+            const bubbleAttachments =
+              msg.attachments ?? mapAttachmentsFromParts(msg.parts)
+
             const bubbleMessage = {
               id: msg.id,
               sessionId: sessionId || 'default-session',
@@ -281,7 +286,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               reasoning: msg.reasoning,
               timestamp: msg.createdAt || new Date(),
               toolInvocations: msg.toolInvocations,
-              attachments: msg.attachments,
+              attachments: bubbleAttachments,
               inputTokens: msg.inputTokens,
               outputTokens: msg.outputTokens,
               isReasoning: msg.isReasoning,
