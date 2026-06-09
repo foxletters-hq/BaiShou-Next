@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { AssistantPicker as SharedAssistantPicker } from '@baishou/ui/native'
+import {
+  isAssistantAvatarDirectUri,
+  isAssistantAvatarRelativePath,
+  isDefaultAssistantAvatarPath
+} from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import type { MockAgentAssistant } from '@baishou/ui/native'
 
@@ -11,6 +16,22 @@ interface AssistantPickerProps {
   selectedAssistantId?: string
 }
 
+async function resolveDisplayAvatarUri(
+  avatarPath: string | undefined,
+  resolveRelative: (path: string) => Promise<string>
+): Promise<string | undefined> {
+  if (isDefaultAssistantAvatarPath(avatarPath)) return undefined
+  if (isAssistantAvatarDirectUri(avatarPath)) return avatarPath
+  if (isAssistantAvatarRelativePath(avatarPath)) {
+    try {
+      return await resolveRelative(avatarPath)
+    } catch {
+      return undefined
+    }
+  }
+  return undefined
+}
+
 export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
   const router = useRouter()
   const { services, dbReady } = useBaishou()
@@ -18,10 +39,32 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
 
   useEffect(() => {
     if (!props.isVisible || !dbReady || !services) return
-    services.settingsManager
-      .get<any[]>('assistants')
-      .then((a) => setAssistants(a || []))
-      .catch(() => setAssistants([]))
+
+    const load = async () => {
+      try {
+        const list = (await services.settingsManager.get<any[]>('assistants')) || []
+        const mapped: MockAgentAssistant[] = await Promise.all(
+          list.map(async (a) => ({
+            id: a.id,
+            name: a.name,
+            description: a.description || '',
+            emoji: a.emoji,
+            avatarPath: a.avatarPath,
+            displayAvatarUri: await resolveDisplayAvatarUri(a.avatarPath, (path) =>
+              services.attachmentManager.resolveAvatarPath(path)
+            ),
+            systemPrompt: a.systemPrompt,
+            providerId: a.providerId,
+            modelId: a.modelId
+          }))
+        )
+        setAssistants(mapped)
+      } catch {
+        setAssistants([])
+      }
+    }
+
+    void load()
   }, [props.isVisible, dbReady, services])
 
   const openAssistants = () => {
@@ -32,17 +75,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
     <SharedAssistantPicker
       isOpen={props.isVisible}
       onClose={props.onClose}
-      assistants={assistants.map(
-        (a): MockAgentAssistant => ({
-          id: a.id,
-          name: a.name,
-          description: a.description || '',
-          emoji: a.emoji,
-          systemPrompt: a.systemPrompt,
-          providerId: a.providerId,
-          modelId: a.modelId
-        })
-      )}
+      assistants={assistants}
       currentAssistantId={props.selectedAssistantId || null}
       onSelect={(selected) => {
         const full = assistants.find((a) => a.id === selected.id)

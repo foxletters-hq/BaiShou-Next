@@ -12,12 +12,16 @@ import {
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { AssistantAvatar } from '../AssistantAvatar'
 
 export interface MockAgentAssistant {
   id: string
   name: string
   description: string
   emoji?: string
+  avatarPath?: string
+  /** 已解析的本地展示 URI（相对路径 avatars/ 时使用） */
+  displayAvatarUri?: string
   systemPrompt?: string
   providerId?: string
   modelId?: string
@@ -175,13 +179,12 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
                     onPress={() => handleSelect(assistant)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }]}>
-                      {assistant.emoji ? (
-                        <Text style={styles.avatarEmoji}>{assistant.emoji}</Text>
-                      ) : (
-                        <MaterialIcons name="auto-awesome" size={20} color={colors.textSecondary} />
-                      )}
-                    </View>
+                    <AssistantAvatar
+                      emoji={assistant.emoji}
+                      avatarPath={assistant.avatarPath}
+                      resolvedAvatarUri={assistant.displayAvatarUri}
+                      size={40}
+                    />
                     <View style={styles.cardBody}>
                       <Text
                         style={[

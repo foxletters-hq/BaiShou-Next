@@ -6,3 +6,6 @@ export const APP_BRAND_ICON_PATH = 'assets/images/icon.png'
 
 /** 关于页横幅（桌面 / 移动端共用，源文件在 packages/shared/assets/images/） */
 export const APP_BRAND_BANNER_PATH = 'assets/images/Next-1.0.0-banner.jpg'
+
+/** 内置默认伙伴头像（移动端 require / 桌面端 import 共用路径） */
+export const DEFAULT_ASSISTANT_AVATAR_PATH = 'assets/images/default-assistant-avatar.jpg'

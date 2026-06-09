@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
-import { Terminal, Zap } from 'lucide-react'
+import { Terminal } from 'lucide-react'
 import styles from './PromptShortcutSheet.module.css'
 import { useTranslation } from 'react-i18next'
 
@@ -104,7 +104,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   return (
     <div className={styles.overlay}>
       <div className={styles.header}>
-        <Zap size={14} /> {t('shortcut.title', '快捷控制指令 (Shortcut)')}
+        {t('shortcut.title', '快捷指令')}
       </div>
       <div className={styles.listArea} ref={listRef}>
         {paginatedShortcuts.map((rawShortcut, i) => {

@@ -1,26 +1,25 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  useWindowDimensions
-} from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, useWindowDimensions } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import {
   useNativeTheme,
   useNativeToast,
   useDialog,
   scrollIndicatorStyle,
-  Input
+  Input,
+  AssistantAvatar
 } from '@baishou/ui/native'
+import {
+  isAssistantAvatarDirectUri,
+  isAssistantAvatarRelativePath,
+  isDefaultAssistantAvatarPath
+} from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
+import { syncSettingsAssistantsToRepo } from '../services/mobile-assistant-sync.service'
 
 interface Assistant {
   id: string
@@ -36,6 +35,7 @@ interface Assistant {
   createdAt?: number
   lastUsedAt?: number
   useCount?: number
+  displayAvatarUri?: string
 }
 
 export const AssistantManagementScreen: React.FC = () => {
@@ -57,7 +57,26 @@ export const AssistantManagementScreen: React.FC = () => {
     if (!dbReady || !services) return
     try {
       const assistantList = (await services.settingsManager.get<Assistant[]>('assistants')) || []
-      setAssistants(assistantList)
+      const withAvatars = await Promise.all(
+        assistantList.map(async (a) => {
+          let displayAvatarUri: string | undefined
+          if (
+            a.avatarPath &&
+            !isDefaultAssistantAvatarPath(a.avatarPath) &&
+            isAssistantAvatarRelativePath(a.avatarPath)
+          ) {
+            try {
+              displayAvatarUri = await services.attachmentManager.resolveAvatarPath(a.avatarPath)
+            } catch {
+              displayAvatarUri = undefined
+            }
+          } else if (a.avatarPath && isAssistantAvatarDirectUri(a.avatarPath)) {
+            displayAvatarUri = a.avatarPath
+          }
+          return { ...a, displayAvatarUri }
+        })
+      )
+      setAssistants(withAvatars)
     } catch (e) {
       console.error('Failed to load assistants', e)
     } finally {
@@ -68,6 +87,12 @@ export const AssistantManagementScreen: React.FC = () => {
   useEffect(() => {
     void loadAssistants()
   }, [loadAssistants])
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadAssistants()
+    }, [loadAssistants])
+  )
 
   const processedAssistants = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -109,6 +134,9 @@ export const AssistantManagementScreen: React.FC = () => {
     try {
       const newAssistants = assistants.filter((a) => a.id !== assistant.id)
       await services?.settingsManager.set('assistants', newAssistants)
+      if (services) {
+        await syncSettingsAssistantsToRepo(services.settingsManager, services.assistantManager)
+      }
       setAssistants(newAssistants)
       toast.showSuccess(t('agent.assistant.deleted', '助手已删除'))
     } catch (e) {
@@ -123,6 +151,9 @@ export const AssistantManagementScreen: React.FC = () => {
         a.id === assistant.id ? { ...a, isPinned: !a.isPinned } : a
       )
       await services?.settingsManager.set('assistants', newAssistants)
+      if (services) {
+        await syncSettingsAssistantsToRepo(services.settingsManager, services.assistantManager)
+      }
       setAssistants(newAssistants)
     } catch (e) {
       console.error('Failed to toggle pin', e)
@@ -144,13 +175,12 @@ export const AssistantManagementScreen: React.FC = () => {
       activeOpacity={0.75}
     >
       <View style={styles.cardHeader}>
-        <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceNormal }]}>
-          {item.avatarPath ? (
-            <Image source={{ uri: item.avatarPath }} style={styles.avatarImage} />
-          ) : (
-            <Text style={styles.emojiText}>{item.emoji || '✨'}</Text>
-          )}
-        </View>
+        <AssistantAvatar
+          emoji={item.emoji}
+          avatarPath={item.avatarPath}
+          resolvedAvatarUri={item.displayAvatarUri}
+          size={44}
+        />
         <View style={styles.cardMeta}>
           <View style={styles.nameRow}>
             <Text style={[styles.cardName, { color: colors.textPrimary }]} numberOfLines={1}>
