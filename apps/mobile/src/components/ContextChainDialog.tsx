@@ -1,5 +1,9 @@
 import React from 'react'
-import { ContextChainDialog as SharedContextChainDialog } from '@baishou/ui/native'
+import {
+  ContextChainDialog as SharedContextChainDialog,
+  type CallChainFlatEntry,
+  type CallChainPanelMeta
+} from '@baishou/ui/native'
 import type { MockChatMessage } from '@baishou/ui/native'
 
 export interface ContextChainDialogProps {
@@ -13,13 +17,9 @@ export interface ContextChainDialogProps {
     outputTokens?: number
     costMicros?: number
   }
-  contextMessages: Array<{
-    role: string
-    content: string
-    timestamp?: Date
-  }>
+  flatEntries?: CallChainFlatEntry[]
+  meta?: CallChainPanelMeta
   compressedContent?: string
-  originalContent?: string
   systemPrompt?: string
 }
 
@@ -33,20 +33,14 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = (props) => 
     costMicros: props.message.costMicros
   }
 
-  const adaptedContextMessages: MockChatMessage[] = props.contextMessages.map((msg, i) => ({
-    id: `ctx-${i}`,
-    role: msg.role as MockChatMessage['role'],
-    content: msg.content
-  }))
-
   return (
     <SharedContextChainDialog
       isOpen={props.visible}
       onClose={props.onClose}
       message={adaptedMessage}
-      contextMessages={adaptedContextMessages}
+      flatEntries={props.flatEntries}
+      meta={props.meta}
       compressedContent={props.compressedContent}
-      originalContent={props.originalContent}
       systemPrompt={props.systemPrompt}
     />
   )

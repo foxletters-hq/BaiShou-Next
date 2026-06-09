@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, Pressable, ScrollView } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import type { MockChatMessage } from './context-chain-dialog.types'
@@ -18,7 +18,7 @@ export const ContextChainList: React.FC<ContextChainListProps> = ({
   const { colors, tokens } = useNativeTheme()
 
   return (
-    <ScrollView style={{ maxHeight: 400 }}>
+    <View>
       {contextMessages.map((msg, idx) => (
         <Pressable
           key={idx}
@@ -74,7 +74,7 @@ export const ContextChainList: React.FC<ContextChainListProps> = ({
           <Text style={{ fontSize: 16, color: colors.textSecondary }}>›</Text>
         </Pressable>
       ))}
-    </ScrollView>
+    </View>
   )
 }
 
@@ -86,18 +86,16 @@ export const ContextChainTextContent: React.FC<ContextChainTextContentProps> = (
   const { colors, tokens } = useNativeTheme()
 
   return (
-    <ScrollView style={{ maxHeight: 400 }}>
-      <Text
-        style={{
-          fontSize: 14,
-          color: colors.textPrimary,
-          lineHeight: 22,
-          padding: tokens.spacing.sm,
-          fontFamily: 'monospace'
-        }}
-      >
-        {content}
-      </Text>
-    </ScrollView>
+    <Text
+      style={{
+        fontSize: 14,
+        color: colors.textPrimary,
+        lineHeight: 22,
+        padding: tokens.spacing.sm,
+        fontFamily: 'monospace'
+      }}
+    >
+      {content}
+    </Text>
   )
 }

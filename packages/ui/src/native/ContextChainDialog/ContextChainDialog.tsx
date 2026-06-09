@@ -1,30 +1,88 @@
-import React, { useState } from 'react'
-import { View, Text, Pressable, Modal, SafeAreaView } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import {
+  View,
+  Text,
+  Pressable,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { MarkdownRenderer } from '../MarkdownRenderer'
 import type { NativeContextChainDialogProps, ContextChainTab } from './context-chain-dialog.types'
 import { buildContextChainTabs } from './context-chain-dialog.utils'
 import { ContextChainStatsBar } from './ContextChainStatsBar'
 import { ContextChainTabBar } from './ContextChainTabBar'
 import { ContextChainList, ContextChainTextContent } from './ContextChainList'
+import { ContextChainFlatList } from './ContextChainFlatList'
 import { ContextChainMessageDetail } from './ContextChainMessageDetail'
+import { ContextChainDetailPage } from './ContextChainDetailPage'
+import { ContextChainFooter } from './ContextChainFooter'
+import { useContextChainView } from './useContextChainView'
 
-export type { MockChatMessage, NativeContextChainDialogProps } from './context-chain-dialog.types'
+const chainScrollProps = {
+  showsVerticalScrollIndicator: false,
+  showsHorizontalScrollIndicator: false,
+  keyboardShouldPersistTaps: 'handled' as const,
+  nestedScrollEnabled: false,
+  overScrollMode: 'never' as const
+}
+
+export type {
+  MockChatMessage,
+  NativeContextChainDialogProps
+} from './context-chain-dialog.types'
+export type { CallChainFlatEntry, CallChainPanelMeta } from './context-chain-panel.types'
 
 export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
   isOpen,
   onClose,
   message,
-  contextMessages,
+  contextMessages = [],
+  flatEntries = [],
+  meta,
   compressedContent,
   originalContent,
   systemPrompt
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const { height: windowHeight } = useWindowDimensions()
+
+  const modalMaxHeight = Math.floor(windowHeight * 0.88)
   const [selectedMsgIndex, setSelectedMsgIndex] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<ContextChainTab>('context')
+  const [detailKey, setDetailKey] = useState<string | null>(null)
+
+  const useFlatChain = flatEntries.length > 0
+  const view = useContextChainView({
+    message,
+    flatEntries,
+    meta,
+    compressedContent,
+    systemPrompt,
+    isOpen: isOpen && useFlatChain
+  })
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedMsgIndex(null)
+      setActiveTab('context')
+      setDetailKey(null)
+    }
+  }, [isOpen, message.id])
+
+  const handleRequestClose = () => {
+    if (useFlatChain && detailKey) {
+      setDetailKey(null)
+      return
+    }
+    onClose()
+  }
 
   const compressionHelpContent = (
     <View style={{ gap: 12 }}>
@@ -103,9 +161,13 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
 
   if (!isOpen) return null
 
-  const tabs = buildContextChainTabs(t, compressedContent, originalContent, systemPrompt)
+  const legacyTabs = buildContextChainTabs(t, compressedContent, originalContent, systemPrompt)
+  const tabs = useFlatChain ? view.tabs : legacyTabs
+  const messageCount = useFlatChain
+    ? flatEntries.filter((e) => e.kind === 'message' || e.kind === 'system-prompt').length
+    : contextMessages.length
 
-  const renderContent = () => {
+  const renderLegacyContent = () => {
     if (activeTab === 'context') {
       return (
         <ContextChainList contextMessages={contextMessages} onSelectMessage={setSelectedMsgIndex} />
@@ -124,95 +186,143 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
   }
 
   return (
-    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
+    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={handleRequestClose}>
+      <View
         style={{
           flex: 1,
           backgroundColor: colors.overlay,
           justifyContent: 'center',
           alignItems: 'center'
         }}
-        onPress={onClose}
       >
-        <SafeAreaView style={{ width: '100%', alignItems: 'center' }}>
-          <Pressable
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" />
+
+        <SafeAreaView style={{ width: '100%', alignItems: 'center' }} pointerEvents="box-none">
+          <View
             style={{
-              width: '90%',
+              width: '92%',
               maxWidth: maxModalWidth,
-              maxHeight: '85%',
+              height: modalMaxHeight,
+              maxHeight: modalMaxHeight,
               backgroundColor: colors.bgSurface,
               borderRadius: tokens.radius.xl,
-              padding: tokens.spacing.lg
+              padding: tokens.spacing.lg,
+              overflow: 'hidden'
             }}
-            onPress={(e) => e.stopPropagation()}
           >
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: tokens.spacing.md
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: tokens.spacing.sm
-                }}
-              >
-                <Text style={{ fontSize: 20 }}>🌿</Text>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    color: colors.textPrimary
-                  }}
-                >
-                  {t('agent.chat.context_chain', '上下文调用链')}
-                </Text>
-                <HelpTooltip content={compressionHelpContent} />
+            {useFlatChain && detailKey ? (
+              <View style={{ flex: 1, minHeight: 0 }}>
+                <ContextChainDetailPage
+                  view={view}
+                  detailKey={detailKey}
+                  onBack={() => setDetailKey(null)}
+                  onClose={onClose}
+                />
+              </View>
+            ) : (
+              <View style={{ flex: 1, minHeight: 0 }}>
                 <View
                   style={{
-                    backgroundColor: colors.primaryContainer,
-                    borderRadius: tokens.radius.full,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: tokens.spacing.md
                   }}
                 >
-                  <Text style={{ fontSize: 12, color: colors.onPrimaryContainer }}>
-                    {contextMessages.length}
-                  </Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: tokens.spacing.sm,
+                      flex: 1
+                    }}
+                  >
+                    <Text style={{ fontSize: 20 }}>🌿</Text>
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: '600',
+                        color: colors.textPrimary
+                      }}
+                      numberOfLines={1}
+                    >
+                      {t('agent.chat.full_call_chain', '完整调用链')}
+                    </Text>
+                    <HelpTooltip content={compressionHelpContent} />
+                    <View
+                      style={{
+                        backgroundColor: colors.primaryContainer,
+                        borderRadius: tokens.radius.full,
+                        paddingHorizontal: 8,
+                        paddingVertical: 2
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, color: colors.onPrimaryContainer }}>
+                        {messageCount}
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={onClose}>
+                    <Text style={{ fontSize: 24, color: colors.textSecondary }}>×</Text>
+                  </Pressable>
                 </View>
+
+                {!useFlatChain ? <ContextChainStatsBar message={message} /> : null}
+
+                <ContextChainTabBar
+                  tabs={tabs}
+                  activeTab={useFlatChain ? view.activeTab : activeTab}
+                  onTabChange={(tab) => {
+                    if (useFlatChain) {
+                      if (tab === 'context' || tab === 'compressed' || tab === 'prompt') {
+                        view.setActiveTab(tab)
+                      }
+                      return
+                    }
+                    setActiveTab(tab)
+                  }}
+                />
+
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: colors.borderSubtle,
+                    marginVertical: tokens.spacing.sm
+                  }}
+                />
+
+                <ScrollView
+                  style={{ flex: 1, minHeight: 0 }}
+                  contentContainerStyle={{ paddingBottom: tokens.spacing.sm }}
+                  {...chainScrollProps}
+                >
+                  {useFlatChain ? (
+                    view.activeTab === 'context' ? (
+                      <ContextChainFlatList view={view} onOpenDetail={setDetailKey} />
+                    ) : view.activeTab === 'compressed' && view.compressedContent ? (
+                      <MarkdownRenderer content={view.compressedContent} variant="ancillary" />
+                    ) : view.activeTab === 'prompt' && view.systemPrompt ? (
+                      <MarkdownRenderer content={view.systemPrompt} variant="ancillary" />
+                    ) : null
+                  ) : (
+                    renderLegacyContent()
+                  )}
+
+                  {useFlatChain ? <ContextChainFooter view={view} /> : null}
+                </ScrollView>
               </View>
-              <Pressable onPress={onClose}>
-                <Text style={{ fontSize: 24, color: colors.textSecondary }}>×</Text>
-              </Pressable>
-            </View>
-
-            <ContextChainStatsBar message={message} />
-            <ContextChainTabBar tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-
-            <View
-              style={{
-                height: 1,
-                backgroundColor: colors.borderSubtle,
-                marginBottom: tokens.spacing.sm
-              }}
-            />
-
-            {renderContent()}
-          </Pressable>
+            )}
+          </View>
         </SafeAreaView>
 
-        {selectedMsgIndex !== null && (
+        {!useFlatChain && selectedMsgIndex !== null ? (
           <ContextChainMessageDetail
             message={contextMessages[selectedMsgIndex]}
             index={selectedMsgIndex}
             onClose={() => setSelectedMsgIndex(null)}
           />
-        )}
-      </Pressable>
+        ) : null}
+      </View>
     </Modal>
   )
 }

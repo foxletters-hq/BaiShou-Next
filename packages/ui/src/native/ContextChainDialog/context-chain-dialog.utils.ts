@@ -34,6 +34,25 @@ export function getRoleColor(role: string, colors: ThemeColors): string {
   }
 }
 
+export function getLabelBadgeColor(label: string, colors: ThemeColors): string {
+  switch (label) {
+    case '系统提示词':
+      return colors.tertiary
+    case '用户':
+      return colors.primary
+    case 'AI 思考':
+      return colors.secondary
+    case 'AI 输出':
+      return colors.secondary
+    case '工具调用':
+      return colors.error
+    case '对话压缩':
+      return colors.tertiary
+    default:
+      return getRoleColor(label, colors)
+  }
+}
+
 export function buildContextChainTabs(
   t: TFunction,
   compressedContent?: string,
