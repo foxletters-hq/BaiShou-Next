@@ -275,8 +275,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               ? stream.compressionPhase
               : (persistedCompaction?.phase ?? 'auto')
 
-            const bubbleAttachments =
-              msg.attachments ?? mapAttachmentsFromParts(msg.parts)
+            const bubbleAttachments = msg.attachments ?? mapAttachmentsFromParts(msg.parts)
 
             const bubbleMessage = {
               id: msg.id,

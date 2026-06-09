@@ -307,7 +307,11 @@ export class AgentSessionService {
         ? new Intl.Segmenter('zh-CN', { granularity: 'word' })
         : undefined
 
-      if (attachments?.length && messageHasImageAttachments(attachments) && !isVisionModel(modelId)) {
+      if (
+        attachments?.length &&
+        messageHasImageAttachments(attachments) &&
+        !isVisionModel(modelId)
+      ) {
         throw new Error(
           `当前模型「${modelId}」不支持图片识别，请更换为视觉模型（如 gemini-3-flash、gpt-4o）后再发送图片`
         )

@@ -35,7 +35,6 @@ describe('resolveAttachmentAbsolutePath', () => {
 })
 
 describe('mapAttachmentsFromParts', () => {
-
   it('maps md attachment parts for chat bubble', () => {
     const result = mapAttachmentsFromParts([
       { id: 'part-1', type: 'text', data: { text: '请总结这个文件' } },
@@ -63,8 +62,16 @@ describe('mapAttachmentsFromParts', () => {
 
   it('maps image parts separately from file attachments', () => {
     const result = mapAttachmentsFromParts([
-      { id: 'img-1', type: 'image', data: { fileName: 'shot.png', isImage: true, filePath: 'D:\\a.png' } },
-      { id: 'file-1', type: 'attachment', data: { fileName: 'doc.pdf', isPdf: true, filePath: 'D:\\b.pdf' } }
+      {
+        id: 'img-1',
+        type: 'image',
+        data: { fileName: 'shot.png', isImage: true, filePath: 'D:\\a.png' }
+      },
+      {
+        id: 'file-1',
+        type: 'attachment',
+        data: { fileName: 'doc.pdf', isPdf: true, filePath: 'D:\\b.pdf' }
+      }
     ])
 
     expect(result).toHaveLength(2)

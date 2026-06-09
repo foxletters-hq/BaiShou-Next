@@ -58,7 +58,11 @@ export function resolveAttachmentAbsolutePath(filePath?: string): string {
 
 function toLocalAttachmentPath(rawPath: string): string {
   if (!rawPath) return ''
-  if (rawPath.startsWith('blob:') || rawPath.startsWith('local://') || rawPath.startsWith('data:')) {
+  if (
+    rawPath.startsWith('blob:') ||
+    rawPath.startsWith('local://') ||
+    rawPath.startsWith('data:')
+  ) {
     return rawPath
   }
   if (rawPath.startsWith('file://')) {
@@ -86,12 +90,10 @@ export function mapAttachmentsFromParts(
     const att = normalizePartData(p.data)
     const fileName = String(att.name || att.fileName || 'Attachment')
     const isImage =
-      String(p.type ?? '').toLowerCase() === 'image' ||
-      att.type === 'image' ||
-      att.isImage === true
-    const isPdf = att.mimeType === 'application/pdf' || att.isPdf === true || /\.pdf$/i.test(fileName)
-    const isText =
-      att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
+      String(p.type ?? '').toLowerCase() === 'image' || att.type === 'image' || att.isImage === true
+    const isPdf =
+      att.mimeType === 'application/pdf' || att.isPdf === true || /\.pdf$/i.test(fileName)
+    const isText = att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
     const rawPath = String(att.url || att.filePath || '')
     return {
       id: String(p.id ?? fileName),
@@ -107,16 +109,18 @@ export function mapAttachmentsFromParts(
 }
 
 /** 将 save-user-message 返回的附件对象映射为 UI 附件（发送后即时补齐气泡展示） */
-export function mapSavedAttachmentsForUi(attachments: readonly unknown[] | undefined): MockChatAttachment[] | undefined {
+export function mapSavedAttachmentsForUi(
+  attachments: readonly unknown[] | undefined
+): MockChatAttachment[] | undefined {
   if (!attachments?.length) return undefined
 
   const mapped = attachments.map((raw, index) => {
     const att = normalizePartData(raw)
     const fileName = String(att.name || att.fileName || 'Attachment')
     const isImage = att.type === 'image' || att.isImage === true
-    const isPdf = att.mimeType === 'application/pdf' || att.isPdf === true || /\.pdf$/i.test(fileName)
-    const isText =
-      att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
+    const isPdf =
+      att.mimeType === 'application/pdf' || att.isPdf === true || /\.pdf$/i.test(fileName)
+    const isText = att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
     const rawPath = String(att.url || att.filePath || '')
 
     return {
