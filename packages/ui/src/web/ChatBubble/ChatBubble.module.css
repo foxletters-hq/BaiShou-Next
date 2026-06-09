@@ -102,6 +102,15 @@
   align-items: flex-end;
 }
 
+.userBubbleCard .attDocument {
+  background-color: rgba(255, 255, 255, 0.96);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.userBubbleCard .attDocName {
+  color: var(--text-primary);
+}
+
 .editingBubbleCard {
   background-color: var(--bg-surface);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);

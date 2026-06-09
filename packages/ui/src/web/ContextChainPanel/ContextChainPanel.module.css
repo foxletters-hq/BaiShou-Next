@@ -828,3 +828,87 @@
   background-color: rgba(var(--text-tertiary-rgb, 100, 116, 139), 0.1);
   color: var(--text-tertiary);
 }
+
+.chainAttachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+
+.chainAttachmentsCompact {
+  gap: 6px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
+.chainAttImageBtn,
+.chainAttDocBtn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.chainAttImage {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: var(--bg-surface-normal);
+  border: 1px solid var(--border-subtle);
+  display: block;
+  transition: opacity 0.12s ease;
+}
+
+.chainAttImageBtn:hover .chainAttImage {
+  opacity: 0.88;
+}
+
+.chainAttachmentsCompact .chainAttImage {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+}
+
+.chainAttDocBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 200px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background-color: var(--bg-surface-normal);
+  border: 1px solid var(--border-subtle);
+  transition: background-color 0.12s ease;
+}
+
+.chainAttDocBtn:hover {
+  background-color: var(--bg-surface-highlight);
+}
+
+.chainAttachmentsCompact .chainAttDocBtn {
+  max-width: 140px;
+  padding: 4px 8px;
+  gap: 6px;
+}
+
+.chainAttDocIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.chainAttachmentsCompact .chainAttDocIcon {
+  font-size: 16px;
+}
+
+.chainAttDocName {
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

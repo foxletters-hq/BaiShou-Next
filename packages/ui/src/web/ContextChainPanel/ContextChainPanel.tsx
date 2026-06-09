@@ -12,6 +12,7 @@ import { usePanelTransition } from './usePanelTransition'
 import { usePanelResize } from './usePanelResize'
 import { ContextChainRecompressBar } from './ContextChainRecompressBar'
 import { CompressionActivityBar } from '../CompressionActivityBar'
+import { ContextChainAttachments } from './ContextChainAttachments'
 import panelStyles from './ContextChainPanel.module.css'
 
 export interface ContextChainPanelProps {
@@ -201,12 +202,17 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
         <span className={`${panelStyles.msgRole} ${view.getLabelBadgeClass(msg.label)}`}>
           {label}
         </span>
+        {msg.attachments && msg.attachments.length > 0 && (
+          <ContextChainAttachments attachments={msg.attachments} compact />
+        )}
         <div className={panelStyles.msgPreview}>
           {msg.label === '工具调用'
             ? view.formatToolPreview(msg.content)
             : msg.content
               ? view.formatPreview(msg.content)
-              : view.t('agent.chat.empty_content', '[空文本]')}
+              : !msg.attachments?.length
+                ? view.t('agent.chat.empty_content', '[空文本]')
+                : null}
         </div>
       </div>
     )
@@ -425,14 +431,17 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                       </span>
                     </div>
                     <div className={panelStyles.detailContent} ref={detailContentRef}>
+                      {view.selected.attachments && view.selected.attachments.length > 0 && (
+                        <ContextChainAttachments attachments={view.selected.attachments} />
+                      )}
                       {view.selected.content ? (
                         <MarkdownRenderer
                           content={view.selected.content}
                           plainText={view.selected.label === '系统提示词'}
                         />
-                      ) : (
+                      ) : !view.selected.attachments?.length ? (
                         view.t('agent.chat.no_content', '[无内容]')
-                      )}
+                      ) : null}
                     </div>
                   </>
                 ) : (
