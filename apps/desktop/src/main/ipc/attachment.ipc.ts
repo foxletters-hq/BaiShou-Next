@@ -53,6 +53,30 @@ export function registerAttachmentIPC() {
     }
   })
 
+  ipcMain.handle('attachment:openFile', async (_, absolutePath: string) => {
+    try {
+      const roots = await getAttachmentAllowedRoots(pathService)
+      const resolvedPath = path.resolve(absolutePath)
+
+      if (!isPathUnderAllowedRoots(resolvedPath, roots)) {
+        throw new Error('Access denied: target path is outside allowed directories.')
+      }
+
+      if (!existsSync(resolvedPath)) {
+        throw new Error('File not found.')
+      }
+
+      const errorMessage = await shell.openPath(resolvedPath)
+      if (errorMessage) {
+        throw new Error(errorMessage)
+      }
+      return true
+    } catch (e) {
+      console.error('[AttachmentIPC] Error in openFile:', e)
+      throw e
+    }
+  })
+
   ipcMain.handle('attachment:deleteFile', async (_, sessionId: string, fileName: string) => {
     await attachmentManager.deleteFile(sessionId, fileName)
     return true

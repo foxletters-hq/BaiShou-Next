@@ -52,10 +52,32 @@ export function registerAttachmentIPC() {
                     await fs.copyFile(att.filePath, destPath)
                     att.url = `file:///${destPath.replace(/\\/g, '/')}`
                     att.filePath = destPath
+                    att.fileName = att.fileName || newFileName
+                    att.name = att.name || att.fileName
 
-                    // 读取文本内容（如果是 txt/md 文件）
+                    const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
                     const isText = /\.(txt|md)$/i.test(newFileName)
                     const isPdf = /\.pdf$/i.test(newFileName)
+                    att.isImage = isImage
+                    att.isText = isText
+                    att.isPdf = isPdf
+                    if (isImage) {
+                      att.type = 'image'
+                      const ext = path.extname(newFileName).toLowerCase()
+                      att.mimeType =
+                        ext === '.png'
+                          ? 'image/png'
+                          : ext === '.gif'
+                            ? 'image/gif'
+                            : ext === '.webp'
+                              ? 'image/webp'
+                              : 'image/jpeg'
+                    } else if (isPdf) {
+                      att.type = 'file'
+                      att.mimeType = 'application/pdf'
+                    }
+
+                    // 读取文本内容（如果是 txt/md 文件）
                     if (isText) {
                       try {
                         const stats = await fs.stat(destPath)
@@ -145,7 +167,8 @@ export function registerAttachmentIPC() {
               id: crypto.randomUUID(),
               messageId: userMsgId,
               sessionId: args.sessionId,
-              type: 'attachment',
+              // 图片单独封装为 image part（多模态 user message）
+              type: att.isImage ? 'image' : 'attachment',
               data: att
             })
           }

@@ -33,6 +33,16 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
       )
     }
     if (
+      lower.includes('entity too large') ||
+      lower.includes('413') ||
+      lower.includes('payload too large')
+    ) {
+      return t(
+        'agent.error.payload_too_large',
+        '请求体过大（多为图片未压缩或历史图片过多），请换用小图、减少附件，或更换视觉模型后重试'
+      )
+    }
+    if (
       lower.includes('rate limit') ||
       lower.includes('too many requests') ||
       lower.includes('429')

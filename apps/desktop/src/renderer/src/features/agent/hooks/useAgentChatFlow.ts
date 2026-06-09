@@ -21,6 +21,7 @@ import { useRecallSearch } from './useRecallSearch'
 import { useAssistantResolver } from './useAssistantResolver'
 import { useTranslation } from 'react-i18next'
 import { useTts } from './useTts'
+import { mapSavedAttachmentsForUi } from '@baishou/shared'
 
 /**
  * 封装 Agent 聊天页面的全部业务状态流转、时序哨兵以及大模型对话控制逻辑的自定义控制器 Hook。
@@ -258,6 +259,11 @@ export function useAgentChatFlow() {
       }
 
       await chat.refreshMessages(1, targetSessionId)
+
+      const savedAttachments = mapSavedAttachmentsForUi(saveResult.attachments)
+      if (saveResult.userMessageId && savedAttachments?.length) {
+        chat.ensureMessageAttachments(saveResult.userMessageId, savedAttachments)
+      }
 
       if (!sessionId) {
         if (loadSessions) {
