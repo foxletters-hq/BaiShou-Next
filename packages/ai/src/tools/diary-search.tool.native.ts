@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { runDiarySearchViaFts } from './diary-search-fts.util'
 
 const diarySearchParams = z.object({
   query: z
@@ -31,7 +32,7 @@ export class DiarySearchTool extends AgentTool<typeof diarySearchParams> {
 
   readonly parameters = diarySearchParams
 
-  async execute(_args: z.infer<typeof diarySearchParams>, _context: ToolContext): Promise<string> {
-    return 'Error: File-based diary search is not available on mobile. Please use the database-based search instead.'
+  async execute(args: z.infer<typeof diarySearchParams>, context: ToolContext): Promise<string> {
+    return runDiarySearchViaFts(args, context)
   }
 }

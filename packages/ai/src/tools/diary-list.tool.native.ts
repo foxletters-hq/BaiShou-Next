@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { runDiaryListViaDb } from './diary-list-db.util'
 
 const diaryListParams = z.object({
   start_date: z.string().describe('Start date (inclusive). Format: YYYY-MM-DD.'),
@@ -17,7 +18,7 @@ export class DiaryListTool extends AgentTool<typeof diaryListParams> {
 
   readonly parameters = diaryListParams
 
-  async execute(_args: z.infer<typeof diaryListParams>, _context: ToolContext): Promise<string> {
-    return 'Error: File-based diary listing is not available on mobile. Please use the database-based search instead.'
+  async execute(args: z.infer<typeof diaryListParams>, context: ToolContext): Promise<string> {
+    return runDiaryListViaDb(args, context)
   }
 }

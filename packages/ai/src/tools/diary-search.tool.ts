@@ -10,6 +10,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { runDiarySearchViaFts } from './diary-search-fts.util'
 // @ts-ignore - Node built-in, available at runtime
 import { readdir, readFile } from 'node:fs/promises'
 // @ts-ignore - Node built-in, available at runtime
@@ -57,56 +58,11 @@ export class DiarySearchTool extends AgentTool<typeof diarySearchParams> {
 
     // 优先使用 FTS5 索引
     if (context.diarySearcher) {
-      return this.executeFTS(args, context, keywords, limit)
+      return runDiarySearchViaFts(args, context)
     }
 
     // 降级为文件遍历
     return this.executeFileScan(args, context, keywords, limit)
-  }
-
-  private async executeFTS(
-    args: z.infer<typeof diarySearchParams>,
-    context: ToolContext,
-    keywords: string[],
-    limit: number
-  ): Promise<string> {
-    const results: Array<{ date: string; snippet: string }> = []
-
-    for (const keyword of keywords) {
-      const ftsResults = await context.diarySearcher!.searchFTS(keyword, limit * 2)
-
-      for (const r of ftsResults) {
-        // 日期范围过滤
-        if (args.start_date && r.date < args.start_date) continue
-        if (args.end_date && r.date > args.end_date) continue
-
-        // 去重
-        if (results.some((existing) => existing.date === r.date)) continue
-
-        results.push({
-          date: r.date,
-          snippet: r.contentSnippet || '(no preview)'
-        })
-
-        if (results.length >= limit) break
-      }
-      if (results.length >= limit) break
-    }
-
-    if (results.length === 0) {
-      return `No diary entries found matching "${args.query}".`
-    }
-
-    results.sort((a, b) => b.date.localeCompare(a.date))
-
-    const lines = [`Found ${results.length} diary entries matching "${args.query}" (FTS):\n`]
-    for (const r of results) {
-      lines.push(`## ${r.date}`)
-      lines.push(r.snippet)
-      lines.push('')
-    }
-
-    return lines.join('\n')
   }
 
   private async executeFileScan(

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { runDiaryDeleteViaDb } from './diary-crud-db.util'
 // @ts-ignore - Node built-in, available at runtime
 import { unlink, access } from 'node:fs/promises'
 // @ts-ignore - Node built-in, available at runtime
@@ -20,6 +21,10 @@ export class DiaryDeleteTool extends AgentTool<typeof diaryDeleteParams> {
   readonly parameters = diaryDeleteParams
 
   async execute(args: z.infer<typeof diaryDeleteParams>, context: ToolContext): Promise<string> {
+    if (context.diarySearcher?.deleteEntry) {
+      return runDiaryDeleteViaDb(args, context)
+    }
+
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(args.date)) {
       return `Error: Invalid date format "${args.date}". Expected YYYY-MM-DD.`

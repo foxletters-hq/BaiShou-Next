@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { runDiaryDeleteViaDb } from './diary-crud-db.util'
 
 const diaryDeleteParams = z.object({
   date: z.string().describe('The exact date of the diary to delete. Format: YYYY-MM-DD.')
@@ -15,7 +16,7 @@ export class DiaryDeleteTool extends AgentTool<typeof diaryDeleteParams> {
 
   readonly parameters = diaryDeleteParams
 
-  async execute(_args: z.infer<typeof diaryDeleteParams>, _context: ToolContext): Promise<string> {
-    return 'Error: File-based diary deletion is not available on mobile. Please use the database-based tools instead.'
+  async execute(args: z.infer<typeof diaryDeleteParams>, context: ToolContext): Promise<string> {
+    return runDiaryDeleteViaDb(args, context)
   }
 }

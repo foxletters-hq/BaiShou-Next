@@ -10,6 +10,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { runDiaryListViaDb } from './diary-list-db.util'
 // @ts-ignore - Node built-in, available at runtime
 import { readdir, readFile } from 'node:fs/promises'
 // @ts-ignore - Node built-in, available at runtime
@@ -31,6 +32,10 @@ export class DiaryListTool extends AgentTool<typeof diaryListParams> {
   readonly parameters = diaryListParams
 
   async execute(args: z.infer<typeof diaryListParams>, context: ToolContext): Promise<string> {
+    if (context.diarySearcher?.listInDateRange) {
+      return runDiaryListViaDb(args, context)
+    }
+
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(args.start_date) || !dateRegex.test(args.end_date)) {
       return 'Error: Invalid date format. Expected YYYY-MM-DD.'

@@ -2,6 +2,7 @@ import { CreateDiaryInput, Diary, formatLocalDate, parseDateStr } from '@baishou
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
+import { parseJournalMarkdown } from './journal-markdown.parser'
 
 export interface FileSyncService {
   writeJournal(diary: CreateDiaryInput | Diary): Promise<void>
@@ -87,76 +88,24 @@ export class FileSyncServiceImpl implements FileSyncService {
   async fullScanVault(): Promise<void> {}
 
   private _parseMarkdown(raw: string, fallbackDate: Date): Diary | null {
-    const fmRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/
-    const match = raw.match(fmRegex)
-
-    if (!match) {
+    const parsed = parseJournalMarkdown(raw, formatLocalDate(fallbackDate))
+    if (!parsed) {
       return { date: fallbackDate, content: raw.trim() } as Diary
     }
 
-    const rawMeta = match[1] ?? ''
-    const body = match[2] ?? ''
-    const diary: Partial<Diary> & { date: Date; content: string } = {
-      date: fallbackDate,
-      content: body.trim()
-    }
-
-    for (const line of rawMeta.split('\n')) {
-      const colonIdx = line.indexOf(':')
-      if (colonIdx === -1) continue
-      const key = line.substring(0, colonIdx).trim()
-      const val = line.substring(colonIdx + 1).trim()
-      if (!key || !val) continue
-
-      switch (key) {
-        case 'id':
-          diary.id = Number(val)
-          break
-        case 'date':
-          diary.date = parseDateStr(val) ?? fallbackDate
-          break
-        case 'tags': {
-          const clean = val.replace(/^\[/, '').replace(/\]$/, '')
-          const tagArr = clean
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-          diary.tags = tagArr.join(',')
-          break
-        }
-        case 'weather':
-          diary.weather = val
-          break
-        case 'mood':
-          diary.mood = val
-          break
-        case 'location':
-          diary.location = val
-          break
-        case 'location_detail':
-        case 'locationDetail':
-          diary.locationDetail = val
-          break
-        case 'is_favorite':
-        case 'isFavorite':
-          diary.isFavorite = val === 'true'
-          break
-        case 'updated_at':
-        case 'updatedAt':
-          diary.updatedAt = new Date(val)
-          break
-        case 'createdAt':
-          diary.createdAt = new Date(val)
-          break
-        case 'mediaPaths': {
-          try {
-            diary.mediaPaths = JSON.parse(val)
-          } catch {}
-          break
-        }
-      }
-    }
-
-    return diary as Diary
+    return {
+      id: parsed.id || undefined,
+      date: parseDateStr(parsed.date) ?? fallbackDate,
+      content: parsed.content,
+      tags: parsed.tags.length > 0 ? parsed.tags.join(',') : undefined,
+      createdAt: parsed.createdAt,
+      updatedAt: parsed.updatedAt,
+      weather: parsed.weather,
+      mood: parsed.mood,
+      location: parsed.location,
+      locationDetail: parsed.locationDetail,
+      isFavorite: parsed.isFavorite,
+      mediaPaths: parsed.mediaPaths
+    } as Diary
   }
 }

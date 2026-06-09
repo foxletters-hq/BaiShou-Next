@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { runDiaryReadViaDb } from './diary-crud-db.util'
 // @ts-ignore - Node built-in, available at runtime
 import { readFile, access } from 'node:fs/promises'
 // @ts-ignore - Node built-in, available at runtime
@@ -25,6 +26,10 @@ export class DiaryReadTool extends AgentTool<typeof diaryReadParams> {
   readonly parameters = diaryReadParams
 
   async execute(args: z.infer<typeof diaryReadParams>, context: ToolContext): Promise<string> {
+    if (context.diarySearcher?.readByDates) {
+      return runDiaryReadViaDb(args, context)
+    }
+
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     const results: string[] = []
 

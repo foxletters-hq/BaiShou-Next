@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { runDiaryEditViaDb } from './diary-crud-db.util'
 
 const diaryEditParams = z.object({
   date: z.string().describe('The exact date of the diary to edit. Format: YYYY-MM-DD.'),
@@ -29,7 +30,7 @@ export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
 
   readonly parameters = diaryEditParams
 
-  async execute(_args: z.infer<typeof diaryEditParams>, _context: ToolContext): Promise<string> {
-    return 'Error: File-based diary editing is not available on mobile. Please use the database-based tools instead.'
+  async execute(args: z.infer<typeof diaryEditParams>, context: ToolContext): Promise<string> {
+    return runDiaryEditViaDb(args, context)
   }
 }
