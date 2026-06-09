@@ -1,3 +1,4 @@
+import { mapAttachmentsFromParts } from '@baishou/shared'
 import type { AgentMessagePart } from '@baishou/store'
 
 /** 将 DB 消息（含 parts）映射为 Agent UI 消息（对齐 desktop agent-message.ipc） */
@@ -44,22 +45,7 @@ export function mapSessionMessageFromDb(msg: {
       }
     })
 
-  const attachmentParts = parts.filter((p) => p.type === 'attachment')
-  const attachments =
-    attachmentParts.length > 0
-      ? attachmentParts.map((p) => {
-          const att = (typeof p.data === 'object' ? p.data : {}) as Record<string, unknown>
-          const fileName = String(att.name || att.fileName || 'Attachment')
-          return {
-            id: p.id,
-            fileName,
-            filePath: String(att.url || att.filePath || ''),
-            isImage: att.type === 'image' || att.isImage === true,
-            isPdf: att.mimeType === 'application/pdf' || fileName.endsWith('.pdf'),
-            isText: att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
-          }
-        })
-      : undefined
+  const attachments = mapAttachmentsFromParts(parts)
 
   return {
     id: msg.id,

@@ -58,7 +58,7 @@ export async function saveUserMessage(
       id: string
       messageId: string
       sessionId: string
-      type: 'text' | 'attachment'
+      type: 'text' | 'image' | 'attachment'
       data: unknown
     }> = [
       {
@@ -76,7 +76,7 @@ export async function saveUserMessage(
           id: generateUUID(),
           messageId: userMsgId,
           sessionId: args.sessionId,
-          type: 'attachment',
+          type: att.isImage ? 'image' : 'attachment',
           data: att
         })
       }

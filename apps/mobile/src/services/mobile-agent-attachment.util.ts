@@ -55,6 +55,23 @@ export async function processAgentAttachments(
           out.url = dest
           out.filePath = dest
 
+          const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
+          const isPdf = /\.pdf$/i.test(newFileName)
+          if (isImage) {
+            out.isImage = true
+            out.type = 'image'
+            out.mimeType =
+              newFileName.endsWith('.png')
+                ? 'image/png'
+                : newFileName.endsWith('.gif')
+                  ? 'image/gif'
+                  : newFileName.endsWith('.webp')
+                    ? 'image/webp'
+                    : 'image/jpeg'
+          } else if (isPdf) {
+            out.isPdf = true
+          }
+
           if (/\.(txt|md)$/i.test(newFileName)) {
             try {
               const st = await fileSystem.stat(dest)
@@ -69,8 +86,7 @@ export async function processAgentAttachments(
             } catch {
               // ignore read errors
             }
-          } else if (/\.pdf$/i.test(newFileName)) {
-            out.isPdf = true
+          } else if (isPdf) {
             const nativePdf = supportsNativePdf(modelId, providerType)
             if (!nativePdf) {
               try {
