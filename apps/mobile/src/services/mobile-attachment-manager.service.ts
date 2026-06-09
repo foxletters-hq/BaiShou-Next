@@ -7,8 +7,9 @@ import type {
   IFileSystem,
   IStoragePathService
 } from '@baishou/core-mobile'
-import { joinPath } from '@baishou/core-mobile'
-import { importUriToPath } from './mobile-uri-import'
+import { joinPath, basename } from '@baishou/core-mobile'
+import { importUriToPath, inferImageExtension } from './mobile-uri-import'
+import { toFileUri } from './android-external-fs'
 
 /**
  * 移动端附件管理，所有 vault 读写经 IFileSystem。
@@ -19,15 +20,29 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     private readonly fileSystem: IFileSystem
   ) {}
 
-  private async vaultSystemDir(): Promise<string> {
-    return this.pathService.getVaultSystemDirectory('default')
+  /** 历史版本将伙伴头像写在 vault/.baishou/avatars；现统一为 attachments/avatars */
+  private async legacyVaultAvatarsDirs(): Promise<string[]> {
+    const dirs: string[] = []
+    try {
+      dirs.push(joinPath(await this.pathService.getVaultSystemDirectory('default'), 'avatars'))
+    } catch {
+      // ignore
+    }
+    try {
+      const activePath = await this.pathService.getActiveVaultPath()
+      if (activePath) {
+        const activeDir = joinPath(activePath, '.baishou', 'avatars')
+        if (!dirs.includes(activeDir)) dirs.push(activeDir)
+      }
+    } catch {
+      // ignore
+    }
+    return dirs
   }
 
   async importAvatar(absoluteSourcePath: string, prefix = 'agent'): Promise<string> {
-    const sysDir = await this.vaultSystemDir()
-    const avatarsDir = joinPath(sysDir, 'avatars')
-    await this.fileSystem.mkdir(avatarsDir, { recursive: true })
-    const ext = absoluteSourcePath.includes('.') ? absoluteSourcePath.split('.').pop() : 'jpg'
+    const avatarsDir = await this.pathService.getAvatarsDirectory()
+    const ext = inferImageExtension(absoluteSourcePath)
     const name = `${prefix}_${Date.now()}.${ext}`
     const dest = joinPath(avatarsDir, name)
     await importUriToPath(absoluteSourcePath, dest, this.fileSystem)
@@ -35,8 +50,24 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   }
 
   async resolveAvatarPath(relativePath: string): Promise<string> {
-    const sysDir = await this.vaultSystemDir()
-    return joinPath(sysDir, relativePath)
+    if (!relativePath?.startsWith('avatars/')) {
+      return relativePath
+    }
+
+    const filename = basename(relativePath)
+    const candidateDirs = [
+      await this.pathService.getAvatarsDirectory(),
+      ...(await this.legacyVaultAvatarsDirs())
+    ]
+
+    for (const dir of candidateDirs) {
+      const absPath = joinPath(dir, filename)
+      if (await this.fileSystem.exists(absPath)) {
+        return toFileUri(absPath)
+      }
+    }
+
+    throw new Error(`AVATAR_FILE_NOT_FOUND: ${relativePath}`)
   }
 
   async listOrphans(activeSessionIds: Set<string>): Promise<AttachmentItem[]> {
@@ -54,8 +85,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   }
 
   async listSessionGroups(activeSessionIds: Set<string>): Promise<SessionAttachmentGroup[]> {
-    const sysDir = await this.vaultSystemDir()
-    const attDir = joinPath(sysDir, 'attachments')
+    const attDir = await this.pathService.getAttachmentsBaseDirectory()
     if (!(await this.fileSystem.exists(attDir))) return []
 
     const sessionIds = await this.fileSystem.readdir(attDir)
@@ -93,15 +123,15 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   }
 
   async deleteFile(sessionId: string, fileName: string): Promise<void> {
-    const sysDir = await this.vaultSystemDir()
-    const fp = joinPath(sysDir, 'attachments', sessionId, fileName)
+    const attDir = await this.pathService.getAttachmentsBaseDirectory()
+    const fp = joinPath(attDir, sessionId, fileName)
     await this.fileSystem.unlink(fp)
   }
 
   async deleteBatch(ids: string[]): Promise<void> {
-    const sysDir = await this.vaultSystemDir()
+    const attDir = await this.pathService.getAttachmentsBaseDirectory()
     for (const id of ids) {
-      const fp = joinPath(sysDir, 'attachments', id)
+      const fp = joinPath(attDir, id)
       await this.fileSystem.rm(fp, { recursive: true, force: true })
     }
   }

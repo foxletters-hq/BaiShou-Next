@@ -1,6 +1,11 @@
 import { isVisionModel, supportsNativePdf } from '@baishou/shared'
 import { resolveAttachmentFilePath } from '../platform/resolve-attachment-path'
-import { canReadLocalPath, readPdfTextFromPath } from '../platform/read-local-file'
+import {
+  canReadLocalPath,
+  readLocalFileAsBase64,
+  readLocalFileAsBase64Async,
+  readPdfTextFromPath
+} from '../platform/read-local-file'
 import { normalizeImageForModel } from '../platform/normalize-image-for-model'
 
 export type AttachmentLike = {
@@ -111,8 +116,8 @@ export async function appendFileAttachmentToContentParts(
       try {
         const filePath = resolveAttachmentFilePath(att)
         if (canReadLocalPath(filePath)) {
-          const { readLocalFileAsBase64 } = await import('../platform/read-local-file')
-          fileData = readLocalFileAsBase64(filePath)
+          fileData =
+            readLocalFileAsBase64(filePath) || (await readLocalFileAsBase64Async(filePath))
         }
       } catch {
         // fallback below

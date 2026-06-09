@@ -18,6 +18,12 @@ export type AttachmentInput = {
   textContent?: string
 }
 
+/** 落库前去掉二进制 data，仅保留路径与元数据（对齐桌面 agent-attachment.ipc） */
+export function stripAttachmentBinaryForStorage(att: AttachmentInput): AttachmentInput {
+  const { data: _data, ...rest } = att
+  return rest
+}
+
 /**
  * 将聊天附件复制到 vault 会话目录（对齐桌面 agent-attachment.ipc）。
  */
@@ -55,6 +61,26 @@ export async function processAgentAttachments(
           )
           out.url = dest
           out.filePath = dest
+          out.fileName = out.fileName || newFileName
+          out.name = out.name || out.fileName
+
+          const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
+          const isPdf = /\.pdf$/i.test(newFileName)
+          if (isImage) {
+            out.isImage = true
+            out.type = 'image'
+            out.mimeType = newFileName.endsWith('.png')
+              ? 'image/png'
+              : newFileName.endsWith('.gif')
+                ? 'image/gif'
+                : newFileName.endsWith('.webp')
+                  ? 'image/webp'
+                  : 'image/jpeg'
+          } else if (isPdf) {
+            out.isPdf = true
+            out.type = 'file'
+            out.mimeType = 'application/pdf'
+          }
 
           const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
           const isPdf = /\.pdf$/i.test(newFileName)
@@ -109,11 +135,17 @@ export async function processAgentAttachments(
           await fileSystem.writeFile(dest, b64, 'base64')
           out.url = dest
           out.filePath = dest
+          out.fileName = newFileName
+          out.name = newFileName
           out.isImage = true
+          out.type = 'image'
+          out.mimeType = 'image/png'
         } catch {
           // ignore
         }
       }
+
+      delete out.data
       return out
     })
   )

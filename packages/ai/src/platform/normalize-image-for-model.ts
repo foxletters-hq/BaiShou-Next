@@ -1,5 +1,9 @@
 import { resolveAttachmentFilePath } from './resolve-attachment-path'
-import { canReadLocalPath, readLocalFileAsBase64 } from './read-local-file'
+import {
+  canReadLocalPath,
+  readLocalFileAsBase64,
+  readLocalFileAsBase64Async
+} from './read-local-file'
 import type { AttachmentLike } from '../agent/attachment-content.builder'
 
 /** 限制尺寸与 base64 体积，避免 API 413 */
@@ -88,7 +92,10 @@ export async function normalizeImageForModel(
     const resized = await resizeWithElectron(filePath)
     if (resized) return resized
 
-    const base64 = readLocalFileAsBase64(filePath)
+    let base64 = readLocalFileAsBase64(filePath)
+    if (!base64) {
+      base64 = await readLocalFileAsBase64Async(filePath)
+    }
     if (!base64) return null
     assertWithinSizeLimit(base64, '图片')
     return { base64, mimeType: resolveImageMimeType(att, filePath) }
