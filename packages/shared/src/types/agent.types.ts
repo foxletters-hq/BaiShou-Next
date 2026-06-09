@@ -42,6 +42,8 @@ export const AgentPartTypeSchema = z.enum([
   'tool',
   'stepFinish',
   'compaction',
+  /** 用户上传的图片（独立 part，对齐多模态 user message 结构） */
+  'image',
   'attachment',
   'context_snapshot'
 ])
