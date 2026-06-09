@@ -10,7 +10,7 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import { logger, supportsNativePdf, type ISqlExecutor } from '@baishou/shared'
+import { isVisionModel, logger, type ISqlExecutor } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -28,12 +28,7 @@ import { SnapshotRepository } from '@baishou/database'
 
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
-import { resolveAttachmentFilePath } from '../platform/resolve-attachment-path'
-import {
-  canReadLocalPath,
-  readLocalFileAsBase64,
-  readPdfTextFromPath
-} from '../platform/read-local-file'
+import { messageHasImageAttachments } from './attachment-content.builder'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -116,63 +111,31 @@ export class AgentSessionService {
 
       if (!userContentAlreadyInContext) {
         if (attachments && attachments.length > 0) {
-          const contentParts: any[] = [{ type: 'text', text: userText }]
+          const {
+            appendFileAttachmentToContentParts,
+            appendImagePartToContentParts,
+            finalizeUserContentParts,
+            inferAttachmentFlags
+          } = await import('./attachment-content.builder')
+          const contentParts: unknown[] = []
+          if (userText.trim()) {
+            contentParts.push({ type: 'text', text: userText })
+          }
           for (const att of attachments) {
-            if (att.isText === true || att.textContent) {
-              const textContent = att.textContent || ''
-              contentParts.push({
-                type: 'text',
-                text: `\n\n[User Uploaded File Attachment: ${att.name || 'Attachment'}]\n\`\`\`\n${textContent}\n\`\`\`\n`
+            const flags = inferAttachmentFlags(att)
+            if (flags.isImage) {
+              await appendImagePartToContentParts(contentParts, att, { modelId })
+            } else {
+              await appendFileAttachmentToContentParts(contentParts, att, {
+                modelId,
+                providerType: provider.config?.type
               })
-            } else if (att.isImage === true) {
-              if (att.url) {
-                contentParts.push({ type: 'image', image: new URL(att.url) })
-              } else if (att.data) {
-                const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`
-                const base64Data = att.data.startsWith('data:') ? att.data : prefix + att.data
-                contentParts.push({ type: 'image', image: base64Data })
-              }
-            } else if (att.isPdf === true) {
-              const nativePdfSupported = supportsNativePdf(modelId, provider.config?.type)
-              if (nativePdfSupported) {
-                let fileData: string = ''
-                try {
-                  const filePath = resolveAttachmentFilePath(att)
-                  if (canReadLocalPath(filePath)) {
-                    fileData = readLocalFileAsBase64(filePath)
-                  }
-                } catch (readErr) {
-                  logger.warn('Failed to read local PDF file for model part, fallback', {
-                    error: readErr as any
-                  })
-                }
-
-                contentParts.push({
-                  type: 'file',
-                  mediaType: 'application/pdf',
-                  data: fileData || att.data || ''
-                })
-              } else {
-                let textContent = att.textContent || ''
-                if (!textContent) {
-                  try {
-                    const filePath = resolveAttachmentFilePath(att)
-                    if (canReadLocalPath(filePath)) {
-                      textContent = await readPdfTextFromPath(filePath)
-                      att.textContent = textContent
-                    }
-                  } catch (pdfErr) {
-                    logger.error('Failed to parse PDF file on fallback:', { error: pdfErr as any })
-                  }
-                }
-                contentParts.push({
-                  type: 'text',
-                  text: `\n\n[User Uploaded File Attachment: ${att.name || (att as any).fileName || 'Attachment'}]\n\`\`\`\n${textContent}\n\`\`\`\n`
-                })
-              }
             }
           }
-          coreMessages.push({ role: 'user', content: contentParts })
+          coreMessages.push({
+            role: 'user',
+            content: finalizeUserContentParts(contentParts)
+          })
         } else {
           coreMessages.push({ role: 'user', content: userText })
         }
@@ -344,6 +307,32 @@ export class AgentSessionService {
         ? new Intl.Segmenter('zh-CN', { granularity: 'word' })
         : undefined
 
+      if (attachments?.length && messageHasImageAttachments(attachments) && !isVisionModel(modelId)) {
+        throw new Error(
+          `当前模型「${modelId}」不支持图片识别，请更换为视觉模型（如 gemini-3-flash、gpt-4o）后再发送图片`
+        )
+      }
+
+      const lastUserMsg = [...messagesForModel].reverse().find((m) => m.role === 'user')
+      if (lastUserMsg) {
+        const content = lastUserMsg.content
+        const isEmptyUserContent =
+          content === '' ||
+          (Array.isArray(content) && content.length === 0) ||
+          (Array.isArray(content) &&
+            content.every(
+              (part) =>
+                typeof part === 'object' &&
+                part !== null &&
+                'type' in part &&
+                (part as { type?: string; text?: string }).type === 'text' &&
+                !(part as { text?: string }).text?.trim()
+            ))
+        if (isEmptyUserContent) {
+          throw new Error('无法发送：用户消息内容为空（附件可能未能正确读取）')
+        }
+      }
+
       const streamResult = await streamText({
         model,
         messages: messagesForModel,
@@ -362,13 +351,22 @@ export class AgentSessionService {
         onChunk: (chunk) => this.dispatchChunkToCallbacks(chunk, callbacks)
       })
 
-      const { error: streamError } = await adapter.consumeStream(streamResult)
+      let streamError = (await adapter.consumeStream(streamResult)).error
 
       // 记录性能指标
       const metrics = adapter.getMetrics()
       logger.info(
         `[AgentSessionService] 性能指标: TTFT=${metrics.timeToFirstToken}ms, 总耗时=${metrics.totalDuration}ms, 速度=${metrics.tokensPerSecond} tok/s`
       )
+
+      const hasModelOutput =
+        Boolean(accumulator.text.trim()) ||
+        Boolean(accumulator.reasoning.trim()) ||
+        accumulator.toolCalls.length > 0
+
+      if (!streamError && !hasModelOutput) {
+        streamError = new Error('模型未返回任何内容，请检查附件格式或稍后重试')
+      }
 
       if (streamError) {
         logger.warn('[AgentSessionService] Stream encountered a fatal error:', streamError)
@@ -391,8 +389,10 @@ export class AgentSessionService {
         systemPrompt: builtSystemPrompt
       })
 
-      // 7. 向外抛出完成回调，传入 token 统计数据
-      if (callbacks?.onFinish) {
+      // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）
+      if (streamError) {
+        callbacks?.onError?.(streamError)
+      } else if (callbacks?.onFinish) {
         callbacks.onFinish({
           inputTokens: usageResult.inputTokens,
           outputTokens: usageResult.outputTokens,
@@ -413,9 +413,7 @@ export class AgentSessionService {
       if (e?.responseHeaders) {
         logger.error('[AgentSessionService] Response headers:', JSON.stringify(e.responseHeaders))
       }
-      if (callbacks?.onError) {
-        callbacks.onError(e)
-      }
+      callbacks?.onError?.(e)
       throw e
     }
   }
@@ -442,9 +440,6 @@ export class AgentSessionService {
         callbacks.onToolCallResult?.(chunk.toolName, chunk.output)
         break
       case ChunkType.ERROR:
-        if (callbacks.onError && chunk.error instanceof Error) {
-          callbacks.onError(chunk.error)
-        }
         break
     }
   }

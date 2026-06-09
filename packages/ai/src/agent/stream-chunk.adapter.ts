@@ -53,6 +53,11 @@ export class StreamChunkAdapter {
         const { done, value } = await reader.read()
         if (done) break
 
+        if ((value as { type?: string }).type === 'error') {
+          const err = (value as { error?: unknown }).error ?? value
+          fatalError = err instanceof Error ? err : new Error(String(err))
+        }
+
         // 交给累积器保存进度
         this.accumulator.add(value)
 

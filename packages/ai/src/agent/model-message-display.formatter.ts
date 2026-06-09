@@ -1,4 +1,5 @@
 import type { ModelMessage } from 'ai'
+import { mapAttachmentsFromParts, type MockChatAttachment } from '@baishou/shared'
 import type { MessageWithParts } from './message.adapter'
 
 export interface DisplayContextMessage {
@@ -6,6 +7,7 @@ export interface DisplayContextMessage {
   content: string
   /** 调用链中的展示标签，如「系统提示词」「AI 输出」 */
   label?: string
+  attachments?: MockChatAttachment[]
 }
 
 export function formatToolInvocationCard(
@@ -199,9 +201,18 @@ export function formatMessageWithPartsForChain(msg: MessageWithParts): DisplayCo
       .map((p) => (p.data as { text?: string })?.text)
       .filter(Boolean)
       .join('\n')
-    if (text) {
-      items.push({ role: 'user', content: text, label: '用户' })
+
+    const attachments = mapAttachmentsFromParts(msg.parts)
+
+    if (text || attachments?.length) {
+      items.push({
+        role: 'user',
+        content: text,
+        label: '用户',
+        attachments: attachments?.length ? attachments : undefined
+      })
     }
+
     return items
   }
 

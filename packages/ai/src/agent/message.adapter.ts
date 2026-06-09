@@ -1,11 +1,10 @@
-import { AgentMessage, AgentPart, supportsNativePdf } from '@baishou/shared'
+import { AgentMessage, AgentPart } from '@baishou/shared'
 import { ModelMessage, ToolResultPart } from 'ai'
-import { resolveAttachmentFilePath } from '../platform/resolve-attachment-path'
 import {
-  canReadLocalPath,
-  readLocalFileAsBase64,
-  readPdfTextFromPath
-} from '../platform/read-local-file'
+  appendFileAttachmentToContentParts,
+  appendImagePartToContentParts,
+  finalizeUserContentParts
+} from './attachment-content.builder'
 
 export interface MessageWithParts extends AgentMessage {
   parts: AgentPart[]
@@ -45,73 +44,19 @@ export class MessageAdapter {
               }
               contentParts.push({ type: 'text', text: refBlock })
             }
+          } else if (p.type === 'image') {
+            await appendImagePartToContentParts(contentParts, p.data as any, {
+              modelId: activeModelId
+            })
           } else if (p.type === 'attachment') {
-            const att = p.data as any
-            if (att.isText === true || att.textContent) {
-              const textContent = att.textContent || ''
-              contentParts.push({
-                type: 'text',
-                text: `\n\n[User Uploaded File Attachment: ${att.name || att.fileName || 'Attachment'}]\n\`\`\`\n${textContent}\n\`\`\`\n`
-              })
-            } else if (att.isImage === true) {
-              if (att.url) {
-                contentParts.push({ type: 'image', image: new URL(att.url) })
-              } else if (att.data) {
-                // Format as Data URL since that is widely safe for string or buffer fallback in custom impls
-                const prefix = `data:${att.mimeType || 'image/jpeg'};base64,`
-                const base64Data = att.data.startsWith('data:') ? att.data : prefix + att.data
-                contentParts.push({ type: 'image', image: base64Data })
-              }
-            } else if (att.isPdf === true) {
-              const nativePdfSupported = supportsNativePdf(
-                activeModelId || '',
-                activeProviderType || ''
-              )
-              if (nativePdfSupported) {
-                let fileData: string = ''
-                try {
-                  const filePath = resolveAttachmentFilePath(att)
-                  if (canReadLocalPath(filePath)) {
-                    fileData = readLocalFileAsBase64(filePath)
-                  }
-                } catch (readErr) {
-                  console.warn('Failed to read local PDF file for adapter part, fallback:', readErr)
-                }
-
-                contentParts.push({
-                  type: 'file',
-                  mediaType: 'application/pdf',
-                  data: fileData || att.data || ''
-                })
-              } else {
-                let textContent = att.textContent || ''
-                if (!textContent) {
-                  try {
-                    const filePath = resolveAttachmentFilePath(att)
-                    if (canReadLocalPath(filePath)) {
-                      textContent = await readPdfTextFromPath(filePath)
-                      att.textContent = textContent
-                    }
-                  } catch (pdfErr) {
-                    console.error('Failed to parse PDF file on adapter fallback:', pdfErr)
-                  }
-                }
-                contentParts.push({
-                  type: 'text',
-                  text: `\n\n[User Uploaded File Attachment: ${att.name || att.fileName || 'Attachment'}]\n\`\`\`\n${textContent}\n\`\`\`\n`
-                })
-              }
-            }
+            await appendFileAttachmentToContentParts(contentParts, p.data as any, {
+              modelId: activeModelId,
+              providerType: activeProviderType
+            })
           }
         }
 
-        // Vercel SDK 需要处理：如果纯文本，直接塞 string（节约处理和提高多数模型兼容性）
-        let finalContent: any = contentParts
-        if (contentParts.length === 1 && contentParts[0].type === 'text') {
-          finalContent = contentParts[0].text
-        } else if (contentParts.length === 0) {
-          finalContent = ''
-        }
+        const finalContent = finalizeUserContentParts(contentParts)
 
         vercelMessages.push({
           role: msg.role as 'system' | 'user',

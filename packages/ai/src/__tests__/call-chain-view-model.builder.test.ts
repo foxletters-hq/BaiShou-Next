@@ -10,6 +10,35 @@ import { formatMessageWithPartsForChain } from '../agent/model-message-display.f
 import type { MessageWithParts } from '../agent/message.adapter'
 
 describe('groupChainIntoRounds', () => {
+  it('keeps user text and attachments in the same round', () => {
+    const msg = {
+      id: 'm1',
+      sessionId: 's1',
+      role: 'user',
+      isSummary: false,
+      orderIndex: 1,
+      createdAt: new Date(),
+      parts: [
+        { id: 'p1', messageId: 'm1', sessionId: 's1', type: 'text', data: { text: 'hello' } },
+        {
+          id: 'p2',
+          messageId: 'm1',
+          sessionId: 's1',
+          type: 'attachment',
+          data: { name: 'photo.png', type: 'image', url: '/tmp/photo.png' }
+        }
+      ]
+    } as MessageWithParts
+
+    const rounds = groupChainIntoRounds(formatMessageWithPartsForChain(msg))
+    expect(rounds).toHaveLength(1)
+    expect(rounds[0]?.items).toHaveLength(1)
+    expect(rounds[0]?.items[0]?.content).toBe('hello')
+    expect(rounds[0]?.items[0]?.attachments).toMatchObject([
+      { fileName: 'photo.png', isImage: true }
+    ])
+  })
+
   it('splits by user messages into rounds', () => {
     const rounds = groupChainIntoRounds([
       { role: 'user', content: 'a' },

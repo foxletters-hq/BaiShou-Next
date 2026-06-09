@@ -174,6 +174,9 @@ export function extractMessageText(msg: MessageWithParts): string {
           chunks.push(`${s.title ?? 'Context'}\n${s.content ?? ''}`)
         }
       }
+    } else if (p.type === 'image') {
+      const att = p.data as { name?: string; fileName?: string }
+      chunks.push(`[图片附件 ${att.name || att.fileName || ''}]`)
     } else if (p.type === 'attachment') {
       const att = p.data as { textContent?: string; name?: string; fileName?: string }
       if (att.textContent) {
@@ -214,6 +217,9 @@ export function extractMessageTextForCompression(msg: MessageWithParts): string 
           chunks.push(`${s.title ?? 'Context'}\n${s.content ?? ''}`)
         }
       }
+    } else if (p.type === 'image') {
+      const att = p.data as { name?: string; fileName?: string }
+      chunks.push(`[图片附件 ${att.name || att.fileName || ''}]`)
     } else if (p.type === 'attachment') {
       const att = p.data as { textContent?: string; name?: string; fileName?: string }
       if (att.textContent) {
