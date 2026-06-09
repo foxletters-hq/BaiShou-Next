@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { systemSettingsTable } from '../schema/system-settings'
-import type { PromptShortcut } from '@baishou/shared'
+import { SHORTCUT_TRACE_CHAIN, traceCall, type PromptShortcut } from '@baishou/shared'
 
 const KEY = 'prompt_shortcuts_v2'
 
@@ -25,7 +25,7 @@ export class PromptShortcutRepository {
   /**
    * 获取快捷指令列表
    */
-  async getShortcuts(): Promise<PromptShortcut[]> {
+  private async readStoredShortcuts(): Promise<PromptShortcut[]> {
     const result = await this.db
       .select({ value: systemSettingsTable.value })
       .from(systemSettingsTable)
@@ -33,36 +33,56 @@ export class PromptShortcutRepository {
       .limit(1)
 
     if (result.length === 0) {
-      return DEFAULT_SHORTCUTS
+      return []
     }
 
     try {
       return JSON.parse(result[0].value) as PromptShortcut[]
     } catch (e) {
       console.error(`[PromptShortcutRepository] Failed to parse: ${e}`)
-      return DEFAULT_SHORTCUTS
+      return []
     }
+  }
+
+  async getStoredShortcuts(): Promise<PromptShortcut[]> {
+    return traceCall(SHORTCUT_TRACE_CHAIN, 'PromptShortcutRepository.getStored', () =>
+      this.readStoredShortcuts()
+    )
+  }
+
+  async getShortcuts(): Promise<PromptShortcut[]> {
+    return traceCall(SHORTCUT_TRACE_CHAIN, 'PromptShortcutRepository.get', async () => {
+      const stored = await this.readStoredShortcuts()
+      return stored.length > 0 ? stored : DEFAULT_SHORTCUTS
+    })
   }
 
   /**
    * 保存完整的快捷指令列表
    */
   async saveShortcuts(list: PromptShortcut[]): Promise<void> {
-    const jsonStr = JSON.stringify(list)
+    await traceCall(
+      SHORTCUT_TRACE_CHAIN,
+      'PromptShortcutRepository.save',
+      async () => {
+        const jsonStr = JSON.stringify(list)
 
-    await this.db
-      .insert(systemSettingsTable)
-      .values({
-        key: KEY,
-        value: jsonStr,
-        updatedAt: new Date()
-      })
-      .onConflictDoUpdate({
-        target: systemSettingsTable.key,
-        set: {
-          value: jsonStr,
-          updatedAt: new Date()
-        }
-      })
+        await this.db
+          .insert(systemSettingsTable)
+          .values({
+            key: KEY,
+            value: jsonStr,
+            updatedAt: new Date()
+          })
+          .onConflictDoUpdate({
+            target: systemSettingsTable.key,
+            set: {
+              value: jsonStr,
+              updatedAt: new Date()
+            }
+          })
+      },
+      { payload: list }
+    )
   }
 }

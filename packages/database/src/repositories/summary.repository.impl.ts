@@ -3,10 +3,17 @@ import { SummaryRepository } from './summary.repository'
 import { summariesTable } from '../schema/summaries'
 import { eq, and, gte } from 'drizzle-orm'
 import { AppDatabase } from '../types'
+import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 
 export class SummaryRepositoryImpl implements SummaryRepository {
   constructor(private readonly db: AppDatabase) {}
+
+  private run<T>(fn: () => Promise<T>): Promise<T> {
+    return withExpoAgentDatabaseLock(this.db, fn)
+  }
+
   async save(summary: CreateSummaryInput): Promise<Summary> {
+    return this.run(async () => {
     const result = await this.db
       .insert(summariesTable)
       .values({
@@ -19,9 +26,11 @@ export class SummaryRepositoryImpl implements SummaryRepository {
       .returning()
 
     return result[0] as unknown as Summary
+    })
   }
 
   async upsert(summary: CreateSummaryInput): Promise<Summary> {
+    return this.run(async () => {
     const result = await this.db
       .insert(summariesTable)
       .values({
@@ -37,9 +46,11 @@ export class SummaryRepositoryImpl implements SummaryRepository {
       })
       .returning()
     return result[0] as unknown as Summary
+    })
   }
 
   async update(id: number, summary: UpdateSummaryInput): Promise<Summary> {
+    return this.run(async () => {
     const result = await this.db
       .update(summariesTable)
       .set({
@@ -54,9 +65,11 @@ export class SummaryRepositoryImpl implements SummaryRepository {
     }
 
     return result[0] as unknown as Summary
+    })
   }
 
   async getByDateRange(type: SummaryType, start: Date, end: Date): Promise<Summary | null> {
+    return this.run(async () => {
     const result = await this.db
       .select()
       .from(summariesTable)
@@ -70,24 +83,31 @@ export class SummaryRepositoryImpl implements SummaryRepository {
       .limit(1)
 
     return (result[0] as unknown as Summary) ?? null
+    })
   }
 
   async getSummaries(options?: { start?: Date }): Promise<Summary[]> {
-    let query = this.db.select().from(summariesTable).$dynamic()
+    return this.run(async () => {
+      let query = this.db.select().from(summariesTable).$dynamic()
 
-    if (options?.start) {
-      query = query.where(gte(summariesTable.startDate, options.start))
-    }
+      if (options?.start) {
+        query = query.where(gte(summariesTable.startDate, options.start))
+      }
 
-    const rows = await query
-    return rows as unknown as Summary[]
+      const rows = await query
+      return rows as unknown as Summary[]
+    })
   }
 
   async delete(id: number): Promise<void> {
-    await this.db.delete(summariesTable).where(eq(summariesTable.id, id))
+    return this.run(async () => {
+      await this.db.delete(summariesTable).where(eq(summariesTable.id, id))
+    })
   }
 
   async deleteAll(): Promise<void> {
-    await this.db.delete(summariesTable)
+    return this.run(async () => {
+      await this.db.delete(summariesTable)
+    })
   }
 }

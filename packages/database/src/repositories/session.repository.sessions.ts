@@ -4,6 +4,7 @@ import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
 import type { InsertSessionInput } from './session.repository.types'
+import { usesSyncTransaction } from './session.repository.utils'
 
 export class SessionCrudOps {
   constructor(private readonly db: AppDatabase) {}
@@ -183,9 +184,7 @@ export class SessionCrudOps {
   async deleteSessions(ids: string[]): Promise<void> {
     if (ids.length === 0) return
     const { inArray } = await import('drizzle-orm')
-    const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined
-
-    if (isBetterSqlite) {
+    if (usesSyncTransaction(this.db)) {
       await (this.db as any).transaction((tx: any) => {
         tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids)).run()
         tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids)).run()

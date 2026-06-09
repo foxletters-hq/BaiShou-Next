@@ -4,7 +4,7 @@ import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
 import type { InsertMessageInput, InsertPartInput } from './session.repository.types'
-import { generateSessionUUID } from './session.repository.utils'
+import { generateSessionUUID, usesSyncTransaction } from './session.repository.utils'
 
 export interface CompactionMarkerInput {
   snapshotId?: number
@@ -23,9 +23,7 @@ export class SessionMessageOps {
     message: InsertMessageInput,
     parts: InsertPartInput[]
   ): Promise<void> {
-    const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined
-
-    if (isBetterSqlite) {
+    if (usesSyncTransaction(this.db)) {
       await (this.db as any).transaction((tx: any) => {
         tx.insert(messagesTbl)
           .values({
@@ -125,9 +123,7 @@ export class SessionMessageOps {
   }
 
   async deleteMessage(_sessionId: string, messageId: string): Promise<void> {
-    const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined
-
-    if (isBetterSqlite) {
+    if (usesSyncTransaction(this.db)) {
       await (this.db as any).transaction((tx: any) => {
         tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId)).run()
         tx.delete(messagesTbl).where(eq(messagesTbl.id, messageId)).run()
@@ -263,8 +259,7 @@ export class SessionMessageOps {
   }
 
   private async deleteMessagesByIds(ids: string[]): Promise<void> {
-    const isBetterSqlite = (this.db as any).session?.client?.prepare !== undefined
-    if (isBetterSqlite) {
+    if (usesSyncTransaction(this.db)) {
       await (this.db as any).transaction((tx: any) => {
         tx.delete(partsTbl).where(inArray(partsTbl.messageId, ids)).run()
         tx.delete(messagesTbl).where(inArray(messagesTbl.id, ids)).run()

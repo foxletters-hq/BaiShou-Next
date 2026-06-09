@@ -6,8 +6,17 @@ export function generateSessionUUID(): string {
   })
 }
 
+export {
+  detectSqliteDriver,
+  usesSyncTransaction,
+  withExpoAgentDatabaseLock
+} from '../expo-agent-db.lock'
+
+import { usesSyncTransaction } from '../expo-agent-db.lock'
+
+/** @deprecated 使用 usesSyncTransaction */
 function isBetterSqliteDb(db: unknown): boolean {
-  return (db as any).session?.client?.prepare !== undefined
+  return usesSyncTransaction(db)
 }
 
 export { isBetterSqliteDb }

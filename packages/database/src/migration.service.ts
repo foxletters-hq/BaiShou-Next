@@ -5,6 +5,7 @@ import { migrationsTable } from './schema/migration-table'
 import { logger } from '@baishou/shared'
 import { executeRawSql } from './raw-sql.executor'
 import { FTS_SYNC_TRIGGER_STATEMENTS } from './schema/fts'
+import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
 
 export interface MigrationJournal {
   version: string
@@ -47,6 +48,10 @@ export class MigrationService {
   }
 
   public async runMigrations(): Promise<void> {
+    return withExpoAgentDatabaseLock(this.db, () => this.runMigrationsUnlocked())
+  }
+
+  private async runMigrationsUnlocked(): Promise<void> {
     try {
       logger.info('[MigrationService] 检查 Agent DB 迁移，目录:', this.migrationDir)
 

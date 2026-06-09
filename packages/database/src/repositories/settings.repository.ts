@@ -1,5 +1,8 @@
 import { eq } from 'drizzle-orm'
+import { SHORTCUT_TRACE_CHAIN, traceCall } from '@baishou/shared'
 import { systemSettingsTable } from '../schema/system-settings'
+
+const TRACED_SETTINGS_KEYS = new Set(['prompt_shortcuts_v2', 'prompt_shortcuts'])
 import type {
   AIProviderConfig,
   GlobalModelsConfig,
@@ -11,6 +14,7 @@ import type {
   McpServerConfig,
   HotkeyConfig
 } from '@baishou/shared'
+import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 import {
   DEFAULT_AI_PROVIDERS,
   DEFAULT_GLOBAL_MODELS,
@@ -30,6 +34,18 @@ export class SettingsRepository {
    * 获取指定键的配置，并反序列化为模型 T。若不存在则返回 null。
    */
   async get<T>(key: string): Promise<T | null> {
+    if (!TRACED_SETTINGS_KEYS.has(key)) {
+      return withExpoAgentDatabaseLock(this.db, async () => this.getUnlocked<T>(key))
+    }
+    return traceCall(
+      SHORTCUT_TRACE_CHAIN,
+      'SettingsRepository.get',
+      () => withExpoAgentDatabaseLock(this.db, async () => this.getUnlocked<T>(key)),
+      { key }
+    )
+  }
+
+  private async getUnlocked<T>(key: string): Promise<T | null> {
     const result = await this.db
       .select({ value: systemSettingsTable.value })
       .from(systemSettingsTable)
@@ -52,6 +68,10 @@ export class SettingsRepository {
    * 将全量配置抽出
    */
   async getAll(): Promise<Record<string, any>> {
+    return withExpoAgentDatabaseLock(this.db, () => this.getAllUnlocked())
+  }
+
+  private async getAllUnlocked(): Promise<Record<string, any>> {
     const rows = await this.db.select().from(systemSettingsTable)
     const result: Record<string, any> = {}
     for (const r of rows) {
@@ -69,6 +89,18 @@ export class SettingsRepository {
    * 将任意数据模型序列化为 JSON 字符串，并保存至数据库。支持插入和更新 (Upsert)。
    */
   async set<T>(key: string, value: T): Promise<void> {
+    if (!TRACED_SETTINGS_KEYS.has(key)) {
+      return withExpoAgentDatabaseLock(this.db, () => this.setUnlocked(key, value))
+    }
+    return traceCall(
+      SHORTCUT_TRACE_CHAIN,
+      'SettingsRepository.set',
+      () => withExpoAgentDatabaseLock(this.db, () => this.setUnlocked(key, value)),
+      { key, payload: value }
+    )
+  }
+
+  private async setUnlocked<T>(key: string, value: T): Promise<void> {
     const jsonStr = JSON.stringify(value)
     if (jsonStr === undefined) {
       throw new Error(`[SettingsRepository] Cannot persist undefined value for key: ${key}`)
@@ -94,7 +126,9 @@ export class SettingsRepository {
    * 删除指定的配置键。
    */
   async delete(key: string): Promise<void> {
-    await this.db.delete(systemSettingsTable).where(eq(systemSettingsTable.key, key))
+    return withExpoAgentDatabaseLock(this.db, async () => {
+      await this.db.delete(systemSettingsTable).where(eq(systemSettingsTable.key, key))
+    })
   }
 
   // --- 领域配置获取与保存 (Domain Configs) ---

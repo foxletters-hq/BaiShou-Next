@@ -31,6 +31,15 @@ import { AppDatabase } from './types'
 import { ExpoSqliteDriver, ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
 import { MigrationService } from './migration.service'
 import { EMBEDDED_AGENT_MIGRATIONS } from './embedded-agent-migrations'
+import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
+
+export type ExpoDatabaseInstallResult = {
+  expoDb: ExpoSqliteDatabase
+  drizzleDb: AppDatabase
+  driver: ExpoSqliteDriver
+}
+
+let expoAgentDatabaseInstall: Promise<ExpoDatabaseInstallResult> | null = null
 
 /** 旧版将影子索引建在 Agent 主库中；迁移至 per-vault 文件后清理遗留表 */
 async function dropLegacyAgentShadowTables(expoDb: ExpoSqliteDatabase): Promise<void> {
@@ -60,6 +69,23 @@ export async function installExpoDatabaseSchema(expoDb: ExpoSqliteDatabase): Pro
   const { drizzleDb, driver } = initExpoDatabase(expoDb)
   const migrationService = new MigrationService(drizzleDb, expoDb, '', EMBEDDED_AGENT_MIGRATIONS)
   await migrationService.runMigrations()
-  await dropLegacyAgentShadowTables(expoDb)
+  await withExpoAgentDatabaseLock(drizzleDb, () => dropLegacyAgentShadowTables(expoDb))
   return { drizzleDb, driver }
+}
+
+/**
+ * 保证 Agent 主库只初始化一次。
+ * 避免 React Strict Mode / 热重载下并发 open + 迁移，在 Android 上触发 prepareSync NPE。
+ */
+export async function ensureExpoAgentDatabaseInstalled(
+  openDatabase: () => Promise<ExpoSqliteDatabase>
+): Promise<ExpoDatabaseInstallResult> {
+  if (!expoAgentDatabaseInstall) {
+    expoAgentDatabaseInstall = (async () => {
+      const expoDb = await openDatabase()
+      const { drizzleDb, driver } = await installExpoDatabaseSchema(expoDb)
+      return { expoDb, drizzleDb, driver }
+    })()
+  }
+  return expoAgentDatabaseInstall
 }

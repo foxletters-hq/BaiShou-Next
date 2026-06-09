@@ -1,6 +1,7 @@
 import { AppDatabase } from '../types'
 import { compressionSnapshotsTable } from '../schema/compression-snapshots'
 import { eq, desc, asc, inArray, and } from 'drizzle-orm'
+import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 
 export interface Snapshot {
   id: number
@@ -17,6 +18,10 @@ export interface Snapshot {
 export class SnapshotRepository {
   constructor(private readonly db: AppDatabase) {}
 
+  private run<T>(fn: () => Promise<T>): Promise<T> {
+    return withExpoAgentDatabaseLock(this.db, fn)
+  }
+
   /**
    * 写入一条会话压缩快照（追加，不覆盖旧快照）
    * 对标原版 Flutter `appendSnapshot()`
@@ -26,14 +31,16 @@ export class SnapshotRepository {
       tailStartMessageId?: string | null
     }
   ): Promise<void> {
-    await this.db.insert(compressionSnapshotsTable).values({
-      sessionId: params.sessionId, // TEXT UUID，直接存储，无需强转
-      summaryText: params.summaryText,
-      coveredUpToMessageId: params.coveredUpToMessageId, // TEXT UUID
-      tailStartMessageId: params.tailStartMessageId ?? null,
-      messageCount: params.messageCount,
-      tokenCount: params.tokenCount ?? null,
-      createdAt: new Date()
+    return this.run(async () => {
+      await this.db.insert(compressionSnapshotsTable).values({
+        sessionId: params.sessionId, // TEXT UUID，直接存储，无需强转
+        summaryText: params.summaryText,
+        coveredUpToMessageId: params.coveredUpToMessageId, // TEXT UUID
+        tailStartMessageId: params.tailStartMessageId ?? null,
+        messageCount: params.messageCount,
+        tokenCount: params.tokenCount ?? null,
+        createdAt: new Date()
+      })
     })
   }
 
@@ -42,6 +49,7 @@ export class SnapshotRepository {
    * 对标原版 Flutter `getLatestSnapshot()`
    */
   async listSnapshotsBySession(sessionId: string): Promise<Snapshot[]> {
+    return this.run(async () => {
     const results = await this.db
       .select()
       .from(compressionSnapshotsTable)
@@ -58,6 +66,7 @@ export class SnapshotRepository {
       tokenCount: result.tokenCount ?? null,
       createdAt: result.createdAt
     }))
+    })
   }
 
   /** 原地更新已有快照（手动重新压缩，避免堆叠多条记录） */
@@ -74,35 +83,39 @@ export class SnapshotRepository {
       >
     >
   ): Promise<void> {
-    const patch: Record<string, unknown> = {}
-    if (params.summaryText !== undefined) patch.summaryText = params.summaryText
-    if (params.coveredUpToMessageId !== undefined) {
-      patch.coveredUpToMessageId = params.coveredUpToMessageId
-    }
-    if (params.tailStartMessageId !== undefined) {
-      patch.tailStartMessageId = params.tailStartMessageId
-    }
-    if (params.messageCount !== undefined) patch.messageCount = params.messageCount
-    if (params.tokenCount !== undefined) patch.tokenCount = params.tokenCount
-    if (Object.keys(patch).length === 0) return
+    return this.run(async () => {
+      const patch: Record<string, unknown> = {}
+      if (params.summaryText !== undefined) patch.summaryText = params.summaryText
+      if (params.coveredUpToMessageId !== undefined) {
+        patch.coveredUpToMessageId = params.coveredUpToMessageId
+      }
+      if (params.tailStartMessageId !== undefined) {
+        patch.tailStartMessageId = params.tailStartMessageId
+      }
+      if (params.messageCount !== undefined) patch.messageCount = params.messageCount
+      if (params.tokenCount !== undefined) patch.tokenCount = params.tokenCount
+      if (Object.keys(patch).length === 0) return
 
-    await this.db
-      .update(compressionSnapshotsTable)
-      .set(patch)
-      .where(eq(compressionSnapshotsTable.id, id))
+      await this.db
+        .update(compressionSnapshotsTable)
+        .set(patch)
+        .where(eq(compressionSnapshotsTable.id, id))
+    })
   }
 
   async deleteSnapshots(sessionId: string, ids: number[]): Promise<void> {
     if (ids.length === 0) return
 
-    await this.db
-      .delete(compressionSnapshotsTable)
-      .where(
-        and(
-          eq(compressionSnapshotsTable.sessionId, sessionId),
-          inArray(compressionSnapshotsTable.id, ids)
+    return this.run(async () => {
+      await this.db
+        .delete(compressionSnapshotsTable)
+        .where(
+          and(
+            eq(compressionSnapshotsTable.sessionId, sessionId),
+            inArray(compressionSnapshotsTable.id, ids)
+          )
         )
-      )
+    })
   }
 
   /**
@@ -127,6 +140,7 @@ export class SnapshotRepository {
   }
 
   async getLatestSnapshot(sessionId: string): Promise<Snapshot | null> {
+    return this.run(async () => {
     const result = await this.db
       .select()
       .from(compressionSnapshotsTable)
@@ -147,5 +161,6 @@ export class SnapshotRepository {
       tokenCount: result.tokenCount ?? null,
       createdAt: result.createdAt
     }
+    })
   }
 }

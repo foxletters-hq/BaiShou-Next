@@ -2,6 +2,7 @@ import type { AppDatabase } from '../types'
 import { SessionAggregateSync } from './session.repository.aggregate'
 import { SessionMessageOps } from './session.repository.messages'
 import { SessionCrudOps } from './session.repository.sessions'
+import { withExpoAgentDatabaseLock } from './session.repository.utils'
 
 export type {
   InsertSessionInput,
@@ -20,85 +21,89 @@ export class SessionRepository {
     this.aggregateSync = new SessionAggregateSync(db)
   }
 
+  private run<T>(fn: () => Promise<T>): Promise<T> {
+    return withExpoAgentDatabaseLock(this.db, fn)
+  }
+
   upsertSession(...args: Parameters<SessionCrudOps['upsertSession']>) {
-    return this.crudOps.upsertSession(...args)
+    return this.run(() => this.crudOps.upsertSession(...args))
   }
 
   insertMessageWithParts(...args: Parameters<SessionMessageOps['insertMessageWithParts']>) {
-    return this.messageOps.insertMessageWithParts(...args)
+    return this.run(() => this.messageOps.insertMessageWithParts(...args))
   }
 
   updateTokenUsage(...args: Parameters<SessionCrudOps['updateTokenUsage']>) {
-    return this.crudOps.updateTokenUsage(...args)
+    return this.run(() => this.crudOps.updateTokenUsage(...args))
   }
 
   getMessagesBySession(...args: Parameters<SessionMessageOps['getMessagesBySession']>) {
-    return this.messageOps.getMessagesBySession(...args)
+    return this.run(() => this.messageOps.getMessagesBySession(...args))
   }
 
   findAllSessions(...args: Parameters<SessionCrudOps['findAllSessions']>) {
-    return this.crudOps.findAllSessions(...args)
+    return this.run(() => this.crudOps.findAllSessions(...args))
   }
 
   updateSessionTitle(...args: Parameters<SessionCrudOps['updateSessionTitle']>) {
-    return this.crudOps.updateSessionTitle(...args)
+    return this.run(() => this.crudOps.updateSessionTitle(...args))
   }
 
   deleteSessions(...args: Parameters<SessionCrudOps['deleteSessions']>) {
-    return this.crudOps.deleteSessions(...args)
+    return this.run(() => this.crudOps.deleteSessions(...args))
   }
 
   deleteMessage(...args: Parameters<SessionMessageOps['deleteMessage']>) {
-    return this.messageOps.deleteMessage(...args)
+    return this.run(() => this.messageOps.deleteMessage(...args))
   }
 
   deleteMessageAndFollowing(...args: Parameters<SessionMessageOps['deleteMessageAndFollowing']>) {
-    return this.messageOps.deleteMessageAndFollowing(...args)
+    return this.run(() => this.messageOps.deleteMessageAndFollowing(...args))
   }
 
   getMessageById(...args: Parameters<SessionMessageOps['getMessageById']>) {
-    return this.messageOps.getMessageById(...args)
+    return this.run(() => this.messageOps.getMessageById(...args))
   }
 
   deleteMessagesAfter(...args: Parameters<SessionMessageOps['deleteMessagesAfter']>) {
-    return this.messageOps.deleteMessagesAfter(...args)
+    return this.run(() => this.messageOps.deleteMessagesAfter(...args))
   }
 
   updateMessageTextPart(...args: Parameters<SessionMessageOps['updateMessageTextPart']>) {
-    return this.messageOps.updateMessageTextPart(...args)
+    return this.run(() => this.messageOps.updateMessageTextPart(...args))
   }
 
   upsertCompactionMarker(...args: Parameters<SessionMessageOps['upsertCompactionMarker']>) {
-    return this.messageOps.upsertCompactionMarker(...args)
+    return this.run(() => this.messageOps.upsertCompactionMarker(...args))
   }
 
   messageHasCompactionMarker(...args: Parameters<SessionMessageOps['messageHasCompactionMarker']>) {
-    return this.messageOps.messageHasCompactionMarker(...args)
+    return this.run(() => this.messageOps.messageHasCompactionMarker(...args))
   }
 
   clearCompactionMarkersFromOrderIndex(
     ...args: Parameters<SessionMessageOps['clearCompactionMarkersFromOrderIndex']>
   ) {
-    return this.messageOps.clearCompactionMarkersFromOrderIndex(...args)
+    return this.run(() => this.messageOps.clearCompactionMarkersFromOrderIndex(...args))
   }
 
   getSessionById(...args: Parameters<SessionCrudOps['getSessionById']>) {
-    return this.crudOps.getSessionById(...args)
+    return this.run(() => this.crudOps.getSessionById(...args))
   }
 
   togglePin(...args: Parameters<SessionCrudOps['togglePin']>) {
-    return this.crudOps.togglePin(...args)
+    return this.run(() => this.crudOps.togglePin(...args))
   }
 
   updatePartsDataFallback(...args: Parameters<SessionCrudOps['updatePartsDataFallback']>) {
-    return this.crudOps.updatePartsDataFallback(...args)
+    return this.run(() => this.crudOps.updatePartsDataFallback(...args))
   }
 
   getSessionAggregate(...args: Parameters<SessionAggregateSync['getSessionAggregate']>) {
-    return this.aggregateSync.getSessionAggregate(...args)
+    return this.run(() => this.aggregateSync.getSessionAggregate(...args))
   }
 
   upsertAggregate(...args: Parameters<SessionAggregateSync['upsertAggregate']>) {
-    return this.aggregateSync.upsertAggregate(...args)
+    return this.run(() => this.aggregateSync.upsertAggregate(...args))
   }
 }

@@ -231,10 +231,12 @@ export const DEFAULT_RAG_CONFIG: RagConfig = {
 }
 
 export const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
-  webSearchEngine: 'duckduckgo',
+  webSearchEngine: 'exa-mcp',
   webSearchMaxResults: 5,
   webSearchRagEnabled: false,
   tavilyApiKey: '',
+  exaApiKey: '',
+  anysearchApiKey: '',
   webSearchRagMaxChunks: 12,
   webSearchRagChunksPerSource: 4,
   webSearchPlainSnippetLength: 3000

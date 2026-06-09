@@ -232,6 +232,8 @@ export class LegacyImportService {
     if (config['web_search_rag_enabled'] !== undefined)
       web.webSearchRagEnabled = config['web_search_rag_enabled']
     if (config['tavily_api_key']) web.tavilyApiKey = config['tavily_api_key']
+    if (config['exa_api_key']) web.exaApiKey = config['exa_api_key']
+    if (config['anysearch_api_key']) web.anysearchApiKey = config['anysearch_api_key']
     if (config['web_search_rag_max_chunks'] !== undefined)
       web.webSearchRagMaxChunks = config['web_search_rag_max_chunks']
     if (config['web_search_rag_chunks_per_source'] !== undefined)
