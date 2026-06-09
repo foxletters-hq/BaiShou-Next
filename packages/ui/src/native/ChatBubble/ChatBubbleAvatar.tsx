@@ -3,10 +3,15 @@ import { View, Text, Image, StyleSheet } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { isCustomUserAvatar, resolveNativeUserAvatarSource } from '../user-avatar.util'
+import {
+  resolveNativeAssistantAvatarSource,
+  shouldShowAssistantEmoji
+} from '../assistant-avatar.util'
 
 interface ChatBubbleAvatarProps {
   emoji?: string | null
   avatarPath?: string | null
+  resolvedAvatarUri?: string | null
   nickname?: string
   variant: 'user' | 'assistant'
   style?: object
@@ -15,6 +20,7 @@ interface ChatBubbleAvatarProps {
 export const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
   emoji,
   avatarPath,
+  resolvedAvatarUri,
   nickname,
   variant,
   style
@@ -25,12 +31,13 @@ export const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
     <View style={[styles.avatar, { backgroundColor: colors.bgSurfaceHighest }, style]}>
       {variant === 'user' ? (
         <Image source={resolveNativeUserAvatarSource(avatarPath)} style={styles.avatarImage} />
-      ) : isCustomUserAvatar(avatarPath) ? (
-        <Image source={{ uri: avatarPath! }} style={styles.avatarImage} />
-      ) : emoji ? (
+      ) : shouldShowAssistantEmoji(avatarPath, resolvedAvatarUri, emoji) ? (
         <Text style={styles.avatarText}>{emoji}</Text>
       ) : (
-        <MaterialIcons name="auto-awesome" size={16} color={colors.textSecondary} />
+        <Image
+          source={resolveNativeAssistantAvatarSource(avatarPath, resolvedAvatarUri)}
+          style={styles.avatarImage}
+        />
       )}
     </View>
   )

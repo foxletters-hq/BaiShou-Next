@@ -68,7 +68,11 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
     }
     if (options.length === 0) return
 
-    const choice = await dialog.choose(item.title, options)
+    const choice = await dialog.choose(
+      undefined,
+      options,
+      item.title || t('agent.sessions.default_title', '新对话')
+    )
     if (choice === 'pin') onPin?.(item.id)
     else if (choice === 'rename') await handleRename()
     else if (choice === 'delete') await handleDelete()

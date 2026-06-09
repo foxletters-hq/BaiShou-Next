@@ -55,9 +55,11 @@ export function StreamingBubbleToolExecution({
       title={title}
       open
       collapsible={false}
+      inlineBody
+      bodyPadding={false}
       onToggle={() => {}}
     >
-      <View style={[styles.toolList, { borderTopColor: colors.borderSubtle }]}>
+      <View style={styles.toolList}>
         {completedTools.map((tool, idx) => {
           const durationText =
             tool.durationMs < 1000
@@ -83,9 +85,10 @@ export function StreamingBubbleToolExecution({
 
 const styles = StyleSheet.create({
   toolList: {
-    paddingTop: 6,
-    gap: 4,
-    borderTopWidth: StyleSheet.hairlineWidth
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 6
   },
   toolItem: {
     flexDirection: 'row',

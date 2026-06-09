@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../../native/theme'
-import { Input } from '../Input/Input'
+import { NativeChatBubbleInlineEditor } from './NativeChatBubbleInlineEditor'
 import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
@@ -31,23 +31,31 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onResendEdit,
   onShowContext,
   onReadAloud,
-  isTtsPlaying
+  isTtsPlaying,
+  onEditingChange
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [showActions, setShowActions] = useState(false)
-  const edit = useNativeChatBubbleEdit(message.content, onSaveEdit, onResendEdit)
-
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
-  const displayName = isUser
-    ? userProfile?.nickname || t('agent.chat.you_label', '你')
-    : aiProfile?.name || t('agent.chat.ai_label', 'AI')
 
   const { cleanContent, cleanReasoning } = useMemo(
     () => parseRedactedThinking(message.content || '', message.reasoning || ''),
     [message.content, message.reasoning]
   )
+
+  const editableContent = isAssistant ? cleanContent || message.content || '' : message.content || ''
+  const edit = useNativeChatBubbleEdit(
+    editableContent,
+    message.id,
+    onSaveEdit,
+    onResendEdit,
+    onEditingChange
+  )
+  const displayName = isUser
+    ? userProfile?.nickname || t('agent.chat.you_label', '你')
+    : aiProfile?.name || t('agent.chat.ai_label', 'AI')
 
   const toolInvocations = (message.toolInvocations || []) as Array<{
     toolCallId: string
@@ -62,11 +70,18 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           variant="assistant"
           emoji={aiProfile.emoji}
           avatarPath={aiProfile.avatarPath}
+          resolvedAvatarUri={aiProfile.resolvedAvatarUri}
           style={{ marginRight: 8 }}
         />
       ) : null}
 
-      <View style={[styles.bubbleWrapper, isUser && styles.bubbleWrapperUser]}>
+      <View
+        style={[
+          styles.bubbleWrapper,
+          isUser ? styles.bubbleWrapperUser : styles.bubbleWrapperAssistant,
+          edit.isEditing ? styles.bubbleWrapperEditing : null
+        ]}
+      >
         <Text
           style={[
             styles.nameLabel,
@@ -77,59 +92,58 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           {displayName}
         </Text>
 
-        <TouchableOpacity
-          onLongPress={() => setShowActions(true)}
-          delayLongPress={500}
-          activeOpacity={0.8}
-        >
-          <View
-            style={[
-              styles.bubble,
-              isUser
+        <View
+          style={[
+            styles.bubble,
+            edit.isEditing ? styles.bubbleEditing : null,
+            edit.isEditing
+              ? isUser
+                ? { backgroundColor: colors.bgSurface, borderBottomRightRadius: 4 }
+                : { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
+              : isUser
                 ? { backgroundColor: colors.primary, borderBottomRightRadius: 4 }
                 : { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
-            ]}
-          >
-            {isAssistant && cleanReasoning ? (
-              <View style={{ marginBottom: cleanContent || toolInvocations.length ? 8 : 0 }}>
-                <ThinkingBlock
-                  content={cleanReasoning}
-                  isThinking={false}
-                  defaultOpen={false}
-                  autoCollapse
-                />
-              </View>
-            ) : null}
+          ]}
+        >
+          {isAssistant && cleanReasoning ? (
+            <View style={{ marginBottom: cleanContent || toolInvocations.length ? 8 : 0 }}>
+              <ThinkingBlock
+                content={cleanReasoning}
+                isThinking={false}
+                defaultOpen={false}
+                autoCollapse
+              />
+            </View>
+          ) : null}
 
-            {isAssistant && toolInvocations.length > 0 ? (
-              <View style={{ marginBottom: cleanContent ? 8 : 0 }}>
-                <ToolResultGroupCard invocations={toolInvocations} />
-              </View>
-            ) : null}
+          {isAssistant && toolInvocations.length > 0 ? (
+            <View style={{ marginBottom: cleanContent ? 8 : 0 }}>
+              <ToolResultGroupCard invocations={toolInvocations} />
+            </View>
+          ) : null}
 
-            {edit.isEditing ? (
-              <Input
-                ref={edit.editInputRef}
-                style={[
-                  styles.editInput,
-                  { color: isUser ? colors.textOnPrimary : colors.textPrimary }
-                ]}
+          {edit.isEditing ? (
+            <View style={styles.editInputWrap}>
+              <NativeChatBubbleInlineEditor
+                inputRef={edit.editInputRef}
                 value={edit.editContent}
                 onChangeText={edit.setEditContent}
-                multiline
-                autoFocus
               />
-            ) : isAssistant && cleanContent ? (
-              <MarkdownRenderer content={cleanContent} variant="chat" />
-            ) : !isAssistant ? (
-              <Text
-                style={[styles.text, { color: isUser ? colors.textOnPrimary : colors.textPrimary }]}
-              >
-                {message.content}
-              </Text>
-            ) : null}
-          </View>
-        </TouchableOpacity>
+            </View>
+          ) : (
+            <Pressable onLongPress={() => setShowActions(true)} delayLongPress={500}>
+              {isAssistant && cleanContent ? (
+                <MarkdownRenderer content={cleanContent} variant="chat" />
+              ) : !isAssistant ? (
+                <Text
+                  style={[styles.text, { color: isUser ? colors.textOnPrimary : colors.textPrimary }]}
+                >
+                  {message.content}
+                </Text>
+              ) : null}
+            </Pressable>
+          )}
+        </View>
 
         {edit.isEditing ? (
           <NativeChatBubbleEditActions

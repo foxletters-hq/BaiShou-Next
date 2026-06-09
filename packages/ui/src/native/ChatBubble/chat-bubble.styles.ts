@@ -4,8 +4,10 @@ export const chatBubbleStyles = StyleSheet.create({
   container: {
     marginVertical: 8,
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    alignItems: 'flex-start'
+    paddingHorizontal: 12,
+    paddingVertical: 0,
+    alignItems: 'flex-start',
+    width: '100%'
   },
   containerUser: {
     justifyContent: 'flex-end'
@@ -14,11 +16,29 @@ export const chatBubbleStyles = StyleSheet.create({
     justifyContent: 'flex-start'
   },
   bubbleWrapper: {
-    flex: 1,
-    maxWidth: '85%'
+    flexShrink: 1,
+    maxWidth: '88%',
+    minWidth: 0
   },
   bubbleWrapperUser: {
-    alignItems: 'flex-end'
+    alignItems: 'flex-end',
+    marginLeft: 24
+  },
+  bubbleWrapperAssistant: {
+    alignItems: 'flex-start',
+    marginRight: 24
+  },
+  bubbleWrapperEditing: {
+    width: '88%',
+    maxWidth: '88%'
+  },
+  bubbleEditing: {
+    width: '100%',
+    alignSelf: 'stretch'
+  },
+  editInputWrap: {
+    width: '100%',
+    alignSelf: 'stretch'
   },
   nameLabel: {
     fontSize: 12,
@@ -56,9 +76,11 @@ export const chatBubbleStyles = StyleSheet.create({
     fontStyle: 'italic'
   },
   editInput: {
+    width: '100%',
     fontSize: 15,
     lineHeight: 22,
-    minHeight: 44,
+    minHeight: 100,
+    maxHeight: 260,
     padding: 0
   },
   editActions: {

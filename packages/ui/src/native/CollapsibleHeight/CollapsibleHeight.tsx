@@ -10,10 +10,13 @@ import Animated, {
 
 export type CollapsibleHeightAnimation = 'spring' | 'ease'
 
+/** 与 SettingsExpansionTile / web collapse 一致的缓动曲线 */
+export const COLLAPSIBLE_EASE = Easing.bezier(0.4, 0, 0.2, 1)
+
 export interface CollapsibleHeightProps {
   expanded: boolean
   children: React.ReactNode
-  /** spring：设置页；ease：聊天气泡附属块（对齐 desktop 0.3s ease） */
+  /** spring：设置页分组；ease：聊天气泡附属块 / MCP 等（对齐 desktop 0.3s ease） */
   animation?: CollapsibleHeightAnimation
   durationMs?: number
 }
@@ -42,7 +45,7 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
     if (animation === 'ease') {
       animatedHeight.value = withTiming(target, {
         duration: durationMs,
-        easing: Easing.out(Easing.ease)
+        easing: COLLAPSIBLE_EASE
       })
       return
     }
@@ -75,7 +78,8 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
 const styles = StyleSheet.create({
   clip: {
     overflow: 'hidden',
-    position: 'relative'
+    position: 'relative',
+    width: '100%'
   },
   content: {
     position: 'absolute',

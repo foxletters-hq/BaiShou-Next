@@ -89,6 +89,7 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
     <View style={styles.editActions}>
       <TouchableOpacity
         onPress={onCancel}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         style={[styles.editBtn, { borderColor: colors.borderSubtle }]}
       >
         <Text style={[styles.editBtnText, { color: colors.textSecondary }]}>
@@ -98,6 +99,7 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
       {isUser && onResendEdit && (
         <TouchableOpacity
           onPress={onResendEdit}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={[styles.editBtn, { backgroundColor: colors.primary }]}
         >
           <Text style={[styles.editBtnText, { color: colors.textOnPrimary }]}>
@@ -108,6 +110,7 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
       {isAssistant && onSaveEdit && (
         <TouchableOpacity
           onPress={onSaveEdit}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={[styles.editBtn, { backgroundColor: colors.primary }]}
         >
           <Text style={[styles.editBtnText, { color: colors.textOnPrimary }]}>

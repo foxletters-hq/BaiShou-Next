@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useImperativeHandle, forwardRef, useRef } from 'react'
 import {
   View,
   TouchableOpacity,
@@ -11,12 +11,18 @@ import {
 } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
-import * as DocumentPicker from 'expo-document-picker'
 import type { MockChatAttachment } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import { Input } from '../Input/Input'
 import { useNativeToast } from '../Toast'
+import { useDialog } from '../Dialog'
+import {
+  pickAttachmentsFromCamera,
+  pickAttachmentsFromFileManager,
+  pickAttachmentsFromPhotoLibrary,
+  type PickAttachmentsResult
+} from './attachment-picker.util'
 
 const TOOLBAR_ANIM_MS = 200
 
@@ -32,13 +38,20 @@ export interface InputBarProps {
   onOpenTools?: () => void
   searchMode?: boolean
   onToggleSearchMode?: () => void
-  ttsMode?: 'off' | 'always' | 'manual'
+  ttsMode?: 'always' | 'manual'
   onToggleTtsMode?: () => void
   /** 输入框获得焦点时回调（用于键盘预抬，避免闪动） */
   onInputFocus?: () => void
+  /** 为 false 时禁用底部主输入框（气泡内联编辑时避免双键盘/抢焦点） */
+  composerEnabled?: boolean
 }
 
-export const InputBar: React.FC<InputBarProps> = ({
+export interface InputBarRef {
+  insertText: (text: string) => void
+  focus: () => void
+}
+
+export const InputBar = forwardRef<InputBarRef, InputBarProps>(({
   onSend,
   isLoading,
   onStop,
@@ -52,11 +65,14 @@ export const InputBar: React.FC<InputBarProps> = ({
   onToggleSearchMode,
   ttsMode = 'manual',
   onToggleTtsMode,
-  onInputFocus
-}) => {
+  onInputFocus,
+  composerEnabled = true
+}, ref) => {
   const { t } = useTranslation()
+  const dialog = useDialog()
   const toast = useNativeToast()
   const { colors } = useNativeTheme()
+  const inputRef = useRef<any>(null)
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
   const [showToolbar, setShowToolbar] = useState(true)
@@ -89,47 +105,75 @@ export const InputBar: React.FC<InputBarProps> = ({
     overflow: 'hidden' as const
   }))
 
-  const handlePickFiles = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        multiple: true,
-        type: '*/*'
-      })
-
-      if (!result.canceled && result.assets) {
-        const newAtts = result.assets
-          .map((asset) => {
-            const isImage =
-              /\.(png|jpe?g|gif|webp|bmp)$/i.test(asset.name) ||
-              (asset.mimeType?.startsWith('image/') ?? false)
-            const isPdf = /\.pdf$/i.test(asset.name) || asset.mimeType === 'application/pdf'
-            const isText =
-              /\.(txt|md)$/i.test(asset.name) || (asset.mimeType?.startsWith('text/') ?? false)
-            return {
-              id: Math.random().toString(36).substring(7),
-              fileName: asset.name,
-              filePath: asset.uri,
-              isImage,
-              isPdf,
-              isText,
-              fileSize: asset.size
-            }
-          })
-          .filter((att) => {
-            if (att.isText && att.fileSize && att.fileSize > 512 * 1024) {
-              toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
-              return false
-            }
-            return true
-          })
-        if (newAtts.length > 0) {
-          setAttachments((prev) => [...prev, ...newAtts])
+  const applyPickResult = useCallback(
+    (result: PickAttachmentsResult) => {
+      if (!result.ok) {
+        if (result.reason === 'permission_denied') {
+          toast.showError(
+            t('input.attachment_permission_denied', '需要相机或相册权限才能继续')
+          )
+        } else if (result.reason === 'text_too_large') {
+          toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
         }
+        return
       }
+      setAttachments((prev) => [...prev, ...result.attachments])
+    },
+    [t, toast]
+  )
+
+  const handleUploadAttachment = useCallback(async () => {
+    const iconColor = colors.textSecondary
+    const choice = await dialog.choose(
+      undefined,
+      [
+        {
+          label: t('input.attachment_camera', '拍照'),
+          value: 'camera',
+          centered: true,
+          leading: <MaterialIcons name="photo-camera" size={22} color={iconColor} />
+        },
+        {
+          label: t('input.attachment_photo_library', '相册'),
+          value: 'album',
+          centered: true,
+          leading: <MaterialIcons name="photo-library" size={22} color={iconColor} />
+        },
+        {
+          label: t('input.attachment_file_manager', '文件管理'),
+          value: 'files',
+          centered: true,
+          leading: <MaterialIcons name="folder-open" size={22} color={iconColor} />
+        }
+      ],
+      t('input.attachment_source_title', '选择附件来源')
+    )
+    if (!choice) return
+
+    try {
+      let result: PickAttachmentsResult
+      if (choice === 'camera') {
+        result = await pickAttachmentsFromCamera()
+      } else if (choice === 'album') {
+        result = await pickAttachmentsFromPhotoLibrary()
+      } else {
+        result = await pickAttachmentsFromFileManager()
+      }
+      applyPickResult(result)
     } catch (err) {
-      console.warn('Document picker error:', err)
+      console.warn('Attachment picker error:', err)
     }
-  }
+  }, [applyPickResult, colors.textSecondary, dialog, t])
+
+  useImperativeHandle(ref, () => ({
+    insertText: (newText: string) => {
+      setText((prev) => (prev ? `${prev}\n${newText}` : newText))
+      setTimeout(() => inputRef.current?.focus?.(), 0)
+    },
+    focus: () => {
+      inputRef.current?.focus?.()
+    }
+  }))
 
   const handleSend = () => {
     if ((text.trim() || attachments.length > 0) && !isLoading) {
@@ -239,7 +283,7 @@ export const InputBar: React.FC<InputBarProps> = ({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.toolbarContent}
         >
-          {renderToolbarChip(t('input.upload_attachment', '上传附件'), handlePickFiles, {
+          {renderToolbarChip(t('input.upload_attachment', '上传附件'), handleUploadAttachment, {
             icon: 'attach-file'
           })}
           {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
@@ -258,9 +302,7 @@ export const InputBar: React.FC<InputBarProps> = ({
           {renderToolbarChip(
             ttsMode === 'always'
               ? t('agent.chat.tts_always', '始终朗读')
-              : ttsMode === 'off'
-                ? t('agent.chat.tts_off', '语音关闭')
-                : t('agent.chat.tts_manual', '手动朗读'),
+              : t('agent.chat.tts_manual', '手动朗读'),
             onToggleTtsMode,
             { active: ttsMode === 'always', icon: 'volume-up' }
           )}
@@ -270,7 +312,9 @@ export const InputBar: React.FC<InputBarProps> = ({
         </ScrollView>
       </Animated.View>
 
+      <View pointerEvents={composerEnabled ? 'auto' : 'none'}>
       <Input
+        ref={inputRef}
         className="min-h-12 max-h-36"
         style={styles.input}
         value={text}
@@ -279,7 +323,8 @@ export const InputBar: React.FC<InputBarProps> = ({
         multiline
         maxLength={4000}
         textAlignVertical="center"
-        onFocus={onInputFocus}
+        editable={composerEnabled}
+        onFocus={composerEnabled ? onInputFocus : undefined}
         leftSlot={
           <TouchableOpacity
             style={styles.toolbarToggle}
@@ -321,9 +366,12 @@ export const InputBar: React.FC<InputBarProps> = ({
           )
         }
       />
+      </View>
     </View>
   )
-}
+})
+
+InputBar.displayName = 'InputBar'
 
 const styles = StyleSheet.create({
   container: {

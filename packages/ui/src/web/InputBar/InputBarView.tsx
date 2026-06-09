@@ -192,7 +192,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                         icon={<Volume2 size={14} />}
                         label={
                           ttsMode === 'always'
-                            ? t('agent.chat.tts_always', '始终播放')
+                            ? t('agent.chat.tts_always', '始终朗读')
                             : t('agent.chat.tts_manual', '手动朗读')
                         }
                         isActive={ttsMode === 'always'}

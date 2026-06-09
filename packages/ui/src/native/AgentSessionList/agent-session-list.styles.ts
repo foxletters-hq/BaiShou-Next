@@ -22,5 +22,6 @@ export const agentSessionListStyles = StyleSheet.create({
   itemTime: { fontSize: 12 },
   itemCount: { fontSize: 12 },
   emptyContainer: { padding: 40, alignItems: 'center' },
-  emptyText: { fontSize: 15 }
+  emptyText: { fontSize: 15 },
+  footerLoader: { paddingVertical: 16, alignItems: 'center' }
 })

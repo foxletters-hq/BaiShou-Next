@@ -1,11 +1,18 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo, useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Platform
+} from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
-import { Input } from '../Input/Input'
-import { Tooltip } from '../Tooltip'
+import { HelpTooltip } from '../Tooltip/HelpTooltip'
 
 export interface ToolManagementConfig {
   disabledToolIds: string[]
@@ -258,7 +265,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
     </View>
   )
 
-  const renderToolCard = (tool: AgentToolDef) => {
+  const renderToolCard = (tool: AgentToolDef, isLastInGroup: boolean) => {
     const isEnabled = !(config.disabledToolIds || []).includes(tool.id)
     const hasParams = tool.configurableParams && tool.configurableParams.length > 0
     const toolIcon = TOOL_ICONS[tool.id] || 'extension'
@@ -267,12 +274,11 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
       <View
         key={tool.id}
         style={[
-          styles.toolCard,
-          {
-            backgroundColor: colors.bgSurface,
-            borderColor: colors.borderMuted,
-            opacity: isEnabled ? 1 : 0.8
-          }
+          !isLastInGroup && {
+            borderBottomWidth: 1,
+            borderBottomColor: colors.borderStrong
+          },
+          { opacity: isEnabled ? 1 : 0.75 }
         ]}
       >
         <View style={styles.cardMain}>
@@ -300,9 +306,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
               >
                 {tool.name}
               </Text>
-              <Tooltip content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}>
-                <MaterialIcons name="help-outline" size={16} color={colors.textSecondary} />
-              </Tooltip>
+              <HelpTooltip
+                content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
+                size={16}
+              />
               <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
                 <Text style={[styles.toolIdText, { color: colors.textSecondary }]}>{tool.id}</Text>
               </View>
@@ -312,74 +319,85 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
         </View>
 
         {hasParams && isEnabled && (
-          <View style={styles.paramsWrapper}>
-            <View style={[styles.paramsDivider, { backgroundColor: colors.borderSubtle }]} />
-            <View style={styles.paramsConfigArea}>
-              {tool.configurableParams?.map((param) => {
-                const val = getToolParam(tool.id, param) as number
-                return (
-                  <View key={param.key} style={styles.paramItem}>
-                    <View style={styles.paramLabelGroup}>
-                      {param.icon === 'ListOrdered' && (
-                        <MaterialIcons
-                          name="format-list-numbered"
-                          size={16}
-                          color={colors.textSecondary}
-                          style={styles.paramIcon}
-                        />
-                      )}
-                      <Text style={[styles.paramLabel, { color: colors.textPrimary }]}>
-                        {param.label}
-                      </Text>
-                    </View>
-                    <View style={[styles.stepperContainer, { borderColor: colors.borderMuted }]}>
-                      <TouchableOpacity
-                        style={[
-                          styles.stepperBtn,
-                          val <= (param.min ?? 1) && styles.stepperBtnDisabled
-                        ]}
-                        disabled={val <= (param.min ?? 1)}
-                        onPress={() => setToolParam(tool.id, param.key, val - 1)}
-                      >
-                        <MaterialIcons name="remove" size={16} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                      <Input
-                        style={[
-                          styles.stepperInput,
-                          {
-                            borderLeftColor: colors.borderMuted,
-                            borderRightColor: colors.borderMuted
-                          }
-                        ]}
-                        keyboardType="number-pad"
-                        value={String(val)}
-                        onChangeText={(text) => {
-                          const parsed = parseInt(text, 10)
-                          if (!isNaN(parsed)) {
-                            const clamped = Math.min(
-                              Math.max(parsed, param.min ?? 1),
-                              param.max ?? 50
-                            )
-                            setToolParam(tool.id, param.key, clamped)
-                          }
-                        }}
-                      />
-                      <TouchableOpacity
-                        style={[
-                          styles.stepperBtn,
-                          val >= (param.max ?? 50) && styles.stepperBtnDisabled
-                        ]}
-                        disabled={val >= (param.max ?? 50)}
-                        onPress={() => setToolParam(tool.id, param.key, val + 1)}
-                      >
-                        <MaterialIcons name="add" size={16} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
+          <>
+            <View style={[styles.paramsDivider, { backgroundColor: colors.borderStrong }]} />
+            {tool.configurableParams?.map((param) => {
+              const val = getToolParam(tool.id, param) as number
+              return (
+                <View key={param.key} style={[styles.cardMain, styles.paramRow]}>
+                  <View
+                    style={[
+                      styles.toolIconWrapper,
+                      { backgroundColor: colors.bgSurfaceNormal }
+                    ]}
+                  >
+                    <MaterialIcons
+                      name={param.icon === 'ListOrdered' ? 'format-list-numbered' : 'tune'}
+                      size={18}
+                      color={colors.textSecondary}
+                    />
                   </View>
-                )
-              })}
-            </View>
-          </View>
+                  <View style={[styles.toolInfo, styles.paramInfoRow]}>
+                    <Text style={[styles.paramLabel, { color: colors.textPrimary }]}>
+                      {param.label}
+                    </Text>
+                    <HelpTooltip
+                      content={t(
+                        'agent.tools.param_max_results_tooltip',
+                        t('agent.tools.param_max_results_desc', '')
+                      )}
+                      size={14}
+                    />
+                  </View>
+                  <View style={[styles.stepperContainer, { borderColor: colors.borderMuted }]}>
+                    <TouchableOpacity
+                      style={[
+                        styles.stepperBtn,
+                        val <= (param.min ?? 1) && styles.stepperBtnDisabled
+                      ]}
+                      disabled={val <= (param.min ?? 1)}
+                      onPress={() => setToolParam(tool.id, param.key, val - 1)}
+                    >
+                      <MaterialIcons name="remove" size={16} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={[
+                        styles.stepperInput,
+                        {
+                          color: colors.textPrimary,
+                          borderLeftColor: colors.borderMuted,
+                          borderRightColor: colors.borderMuted
+                        }
+                      ]}
+                      keyboardType="number-pad"
+                      value={String(val)}
+                      selectTextOnFocus
+                      onChangeText={(text) => {
+                        const parsed = parseInt(text, 10)
+                        if (!isNaN(parsed)) {
+                          const clamped = Math.min(
+                            Math.max(parsed, param.min ?? 1),
+                            param.max ?? 50
+                          )
+                          setToolParam(tool.id, param.key, clamped)
+                        }
+                      }}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.stepperBtn,
+                        val >= (param.max ?? 50) && styles.stepperBtnDisabled
+                      ]}
+                      disabled={val >= (param.max ?? 50)}
+                      onPress={() => setToolParam(tool.id, param.key, val + 1)}
+                    >
+                      <MaterialIcons name="add" size={16} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )
+            })}
+          </>
         )}
       </View>
     )
@@ -399,7 +417,17 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
               <MaterialIcons name={catIcon} size={18} color={colors.primary} />
               <Text style={[styles.categoryLabel, { color: colors.primary }]}>{meta.label}</Text>
             </View>
-            <View style={styles.categoryList}>{list.map(renderToolCard)}</View>
+            <View
+              style={[
+                styles.categoryList,
+                {
+                  borderColor: colors.borderStrong,
+                  backgroundColor: colors.bgSurface
+                }
+              ]}
+            >
+              {list.map((tool, index) => renderToolCard(tool, index === list.length - 1))}
+            </View>
           </View>
         )
       })}
@@ -486,13 +514,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 6
   },
-  tabActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2
-  },
+  tabActive: {},
   tabText: {
     fontSize: 13,
     fontWeight: '600'
@@ -532,30 +554,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5
   },
   categoryList: {
-    gap: 12
-  },
-  toolCard: {
-    borderRadius: 12,
     borderWidth: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1
+    borderRadius: 10,
+    overflow: 'hidden'
   },
   cardMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    paddingLeft: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
     gap: 12
   },
   toolIconWrapper: {
-    padding: 8,
+    padding: 6,
     borderRadius: 8,
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -581,39 +595,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
   },
-  paramsWrapper: {
-    flexDirection: 'column'
-  },
   paramsDivider: {
-    height: 1,
-    marginHorizontal: 16
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 12
   },
-  paramsConfigArea: {
-    padding: 12,
-    paddingHorizontal: 16
+  paramRow: {
+    paddingTop: 8,
+    paddingBottom: 12
   },
-  paramItem: {
+  paramInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  paramLabelGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  paramIcon: {
-    marginRight: 4
+    gap: 6
   },
   paramLabel: {
-    fontSize: 13
+    fontSize: 13,
+    fontWeight: '500',
+    flexShrink: 1
   },
   stepperContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 32,
     borderRadius: 8,
-    borderWidth: 1
+    borderWidth: 1,
+    overflow: 'hidden'
   },
   stepperBtn: {
     width: 32,
@@ -625,14 +631,16 @@ const styles = StyleSheet.create({
     opacity: 0.2
   },
   stepperInput: {
-    width: 44,
-    height: '100%',
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
+    width: 40,
+    height: 32,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
-    padding: 0
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    includeFontPadding: false
   },
   communityBlank: {
     alignItems: 'center',

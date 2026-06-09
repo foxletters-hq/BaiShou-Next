@@ -19,6 +19,7 @@ export interface ChatBubbleProps {
   aiProfile?: {
     name: string
     avatarPath?: string | null
+    resolvedAvatarUri?: string | null
     emoji?: string | null
   }
   onEdit?: () => void
@@ -32,4 +33,6 @@ export interface ChatBubbleProps {
   onShowContext?: (msg: ChatBubbleMessage) => void
   onReadAloud?: (content: string) => void
   isTtsPlaying?: boolean
+  /** 气泡进入/退出内联编辑时通知父级（用于键盘与底部输入栏联动） */
+  onEditingChange?: (editing: boolean, messageId?: string) => void
 }

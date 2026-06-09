@@ -12,6 +12,8 @@ export interface NativeStreamingBubbleProps {
   aiProfile?: {
     name: string
     avatarPath?: string | null
+    /** 相对路径 avatars/… 解析后的本地 URI */
+    resolvedAvatarUri?: string | null
     emoji?: string | null
   }
   error?: string | null

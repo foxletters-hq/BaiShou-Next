@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer'
-import { CollapsibleAncillaryBlock } from '../CollapsibleAncillaryBlock'
+import { CollapsibleHeight } from '../CollapsibleHeight'
 
 const MAX_PREVIEW_LINES = 5
 const PREVIEW_LINE_HEIGHT = 14
+const CHEVRON_MS = 250
 
 export interface ThinkingBlockProps {
   content: string
@@ -20,6 +28,7 @@ export interface ThinkingBlockProps {
   completedStatusLabel?: string
 }
 
+/** 对齐 desktop ThinkingBlock：折叠时高度与内容同步裁剪，而非先卸载内容再收高度 */
 export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   content,
   isThinking = false,
@@ -36,6 +45,19 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const startTimeRef = useRef(Date.now())
   const [displayTime, setDisplayTime] = useState(thinkingTimeMs)
+  const chevronRotation = useSharedValue(defaultOpen ? 1 : 0)
+
+  useEffect(() => {
+    const target = isOpen ? 1 : 0
+    chevronRotation.value = withTiming(target, {
+      duration: CHEVRON_MS,
+      easing: Easing.bezier(0.25, 0.8, 0.25, 1)
+    })
+  }, [isOpen, chevronRotation])
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${-90 + chevronRotation.value * 90}deg` }]
+  }))
 
   useEffect(() => {
     if (isThinking) {
@@ -96,41 +118,100 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   if (!content && !(forceVisible && isThinking)) return null
 
   const showCollapsedPreview = isThinking && !isOpen
-
-  const preview = showCollapsedPreview ? (
-    <View style={[styles.previewContainer, { height: previewHeight }]}>
-      <View style={styles.previewScroll}>
-        {previewLines.slice(-MAX_PREVIEW_LINES).map((line, index) => (
-          <Text
-            key={`${index}-${line.slice(0, 12)}`}
-            style={[styles.previewLine, { color: colors.textTertiary }]}
-            numberOfLines={1}
-          >
-            {line}
-          </Text>
-        ))}
-      </View>
-      <View
-        style={[styles.previewFade, { backgroundColor: colors.bgSurface }]}
-        pointerEvents="none"
-      />
-    </View>
-  ) : undefined
+  const hasBody = Boolean(content) || (forceVisible && isThinking)
+  const bodyExpanded = isOpen || showCollapsedPreview
 
   return (
-    <CollapsibleAncillaryBlock
-      headerIcon={headerIcon}
-      title={statusText}
-      open={isOpen}
-      onToggle={() => setIsOpen((prev) => !prev)}
-      preview={preview}
+    <View
+      style={[
+        styles.shell,
+        {
+          borderColor: colors.borderMuted,
+          backgroundColor: colors.bgSurface
+        }
+      ]}
     >
-      <MarkdownRenderer content={content} variant="ancillary" />
-    </CollapsibleAncillaryBlock>
+      <TouchableOpacity
+        style={[styles.header, { backgroundColor: colors.bgSurface }]}
+        onPress={() => setIsOpen((prev) => !prev)}
+        activeOpacity={0.7}
+        delayPressIn={80}
+      >
+        <Text style={styles.headerIcon}>{headerIcon}</Text>
+        <Text style={[styles.headerTitle, { color: colors.textSecondary }]} numberOfLines={1}>
+          {statusText}
+        </Text>
+        <Animated.View style={chevronStyle}>
+          <MaterialIcons name="expand-more" size={18} color={colors.textTertiary} />
+        </Animated.View>
+      </TouchableOpacity>
+
+      {hasBody && (
+        <CollapsibleHeight expanded={bodyExpanded} animation="ease" durationMs={300}>
+          <View style={[styles.body, { borderTopColor: colors.borderSubtle }]}>
+            {showCollapsedPreview ? (
+              <View style={[styles.previewContainer, { height: previewHeight }]}>
+                <View style={styles.previewScroll}>
+                  {previewLines.slice(-MAX_PREVIEW_LINES).map((line, index) => (
+                    <Text
+                      key={`${index}-${line.slice(0, 12)}`}
+                      style={[styles.previewLine, { color: colors.textTertiary }]}
+                      numberOfLines={1}
+                    >
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+                <View
+                  style={[styles.previewFade, { backgroundColor: colors.bgSurface }]}
+                  pointerEvents="none"
+                />
+              </View>
+            ) : (
+              <MarkdownRenderer content={content} variant="ancillary" />
+            )}
+          </View>
+        </CollapsibleHeight>
+      )}
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  shell: {
+    width: '100%',
+    marginBottom: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    overflow: 'hidden'
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 42
+  },
+  headerIcon: {
+    fontSize: 14,
+    width: 24,
+    textAlign: 'center',
+    marginRight: 8,
+    lineHeight: 16
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 19
+  },
+  body: {
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
   previewContainer: {
     overflow: 'hidden',
     position: 'relative'

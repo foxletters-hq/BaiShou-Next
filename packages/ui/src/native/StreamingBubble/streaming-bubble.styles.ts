@@ -7,8 +7,10 @@ export function createStreamingBubbleStyles(
 ) {
   const row: ViewStyle = {
     flexDirection: 'row',
-    padding: tokens.spacing.md,
-    gap: tokens.spacing.sm
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: tokens.spacing.sm,
+    width: '100%'
   }
 
   const avatar: ViewStyle = {
@@ -66,7 +68,14 @@ export function createStreamingBubbleStyles(
     row,
     avatar,
     avatarEmoji,
-    content: { flex: 1, maxWidth: '92%' },
+    content: {
+      flex: 1,
+      flexShrink: 1,
+      maxWidth: '88%',
+      minWidth: 0,
+      marginRight: 24,
+      alignSelf: 'stretch'
+    },
     aiName,
     bubbleCard,
     dotsWrap,

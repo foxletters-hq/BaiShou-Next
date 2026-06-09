@@ -1,120 +1,206 @@
-import React from 'react'
-import { View, Text, Pressable, Modal, SafeAreaView, StyleSheet } from 'react-native'
+import React, { useCallback, useState } from 'react'
+import {
+  View,
+  Text,
+  Pressable,
+  Modal,
+  SafeAreaView,
+  StyleSheet,
+  Linking,
+  ActivityIndicator
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 
+export interface CostDetails {
+  modelName?: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens?: number
+  estimatedCost: string
+  lastInputTokens?: number
+}
+
 export interface ChatCostDialogProps {
-  visible: boolean
+  details: CostDetails
   onClose: () => void
-  totalTokens: number
-  totalCost: number
-  sessionTokens: number
-  sessionCost: number
+  /** 与桌面端一致 */
+  isOpen?: boolean
+  /** 兼容旧移动端调用 */
+  visible?: boolean
+  pricingLastUpdated?: Date | null
+  onRefreshPricing?: () => Promise<{ success: boolean; error?: string }>
+  pricingSourceUrl?: string
 }
 
 export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
-  visible,
+  details,
   onClose,
-  totalTokens,
-  totalCost,
-  sessionTokens,
-  sessionCost
+  isOpen,
+  visible,
+  pricingLastUpdated,
+  onRefreshPricing,
+  pricingSourceUrl
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
 
-  if (!visible) return null
+  const open = isOpen ?? visible ?? false
+  const sourceUrl = pricingSourceUrl || 'https://models.dev'
 
-  const formatTokens = (tokens: number) => {
-    if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`
-    if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`
-    return tokens.toString()
-  }
+  const formatLastUpdated = useCallback(
+    (date: Date | null | undefined): string => {
+      if (!date) return t('agent.chat.pricing_unknown', '未知')
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    },
+    [t]
+  )
 
-  const formatCost = (cost: number) => `$${cost.toFixed(4)}`
+  const handleRefresh = useCallback(async () => {
+    if (!onRefreshPricing || isRefreshing) return
+    setIsRefreshing(true)
+    setRefreshError(null)
+    try {
+      const result = await onRefreshPricing()
+      if (!result.success && result.error) {
+        setRefreshError(result.error)
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setRefreshError(msg || t('agent.chat.pricing_refresh_failed', '刷新失败'))
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [onRefreshPricing, isRefreshing, t])
+
+  if (!open) return null
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
         <SafeAreaView style={styles.safeArea}>
           <Pressable
             style={[
-              styles.modalContent,
+              styles.dialog,
               {
-                width: '90%',
                 maxWidth: maxModalWidth,
                 backgroundColor: colors.bgSurface,
-                borderRadius: tokens.radius.xl,
-                padding: tokens.spacing.lg
+                borderRadius: 28
               }
             ]}
             onPress={(e) => e.stopPropagation()}
           >
-            <View style={styles.header}>
-              <View style={[styles.headerTitleRow, { gap: tokens.spacing.sm }]}>
-                <Text style={styles.headerIcon}>💰</Text>
-                <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-                  {t('agent.chat.cost_detail_title', '当前计费')}
-                </Text>
-              </View>
-              <Pressable onPress={onClose}>
-                <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>×</Text>
-              </Pressable>
-            </View>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              {t('agent.chat.cost_detail_title', '当前计费')}
+            </Text>
 
-            <View
-              style={[
-                styles.card,
-                {
-                  backgroundColor: colors.bgSurfaceNormal,
-                  borderRadius: tokens.radius.md,
-                  padding: tokens.spacing.md
-                }
-              ]}
-            >
-              {/* Session Stats */}
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                {t('agent.chat.cost_context_title', '当前上下文')}
-              </Text>
-              <View style={styles.row}>
-                <Text style={[styles.label, { color: colors.textTertiary }]}>
-                  {t('agent.chat.cost_context_size', '上下文大小')}
-                </Text>
-                <Text style={[styles.value, { color: colors.textPrimary }]}>
-                  {formatTokens(sessionTokens)}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={[styles.label, { color: colors.textTertiary }]}>
-                  {t('agent.chat.round_cost', '本轮')}
-                </Text>
-                <Text style={[styles.value, { color: colors.primary, fontWeight: '700' }]}>
-                  {formatCost(sessionCost)}
-                </Text>
-              </View>
-
-              <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-
-              {/* Total Stats */}
+            <View style={styles.content}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                 {t('agent.chat.cost_cumulative_title', '累计 API 消耗')}
               </Text>
-              <View style={styles.row}>
-                <Text style={[styles.label, { color: colors.textTertiary }]}>
-                  {t('agent.chat.tokens_unit', 'tokens')}
+              <View style={styles.spacer8} />
+
+              <View style={styles.costRow}>
+                <Text style={[styles.costLabel, { color: colors.textSecondary }]}>
+                  {t('agent.chat.cost_cumulative_total', '累计费用')}
                 </Text>
-                <Text style={[styles.value, { color: colors.textPrimary }]}>
-                  {formatTokens(totalTokens)}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={[styles.label, { color: colors.textTertiary }]}>
-                  {t('agent.chat.round_cost', '本轮')}
-                </Text>
-                <Text style={[styles.value, { color: colors.primary, fontWeight: '700' }]}>
-                  {formatCost(totalCost)}
+                <Text style={[styles.costValue, { color: colors.textPrimary }]}>
+                  {details.estimatedCost}
                 </Text>
               </View>
+              <View style={styles.costRow}>
+                <Text style={[styles.costLabel, { color: colors.textSecondary }]}>
+                  {t('agent.chat.cost_cumulative_input', '累计输入')}
+                </Text>
+                <Text style={[styles.costValue, { color: colors.textPrimary }]}>
+                  {details.promptTokens} {t('agent.chat.tokens_unit', 'tokens')}
+                </Text>
+              </View>
+              <View style={styles.costRow}>
+                <Text style={[styles.costLabel, { color: colors.textSecondary }]}>
+                  {t('agent.chat.cost_cumulative_output', '累计输出')}
+                </Text>
+                <Text style={[styles.costValue, { color: colors.textPrimary }]}>
+                  {details.completionTokens} {t('agent.chat.tokens_unit', 'tokens')}
+                </Text>
+              </View>
+
+              <View style={[styles.divider, { borderBottomColor: colors.borderSubtle }]} />
+
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                {t('agent.chat.pricing_table_title', '价格表信息')}
+              </Text>
+              <View style={styles.spacer8} />
+
+              <View style={styles.costRow}>
+                <Text style={[styles.costLabel, { color: colors.textSecondary }]}>
+                  {t('agent.chat.pricing_last_updated', '最后更新')}
+                </Text>
+                <Text style={[styles.costValue, { color: colors.textPrimary }]}>
+                  {formatLastUpdated(pricingLastUpdated)}
+                </Text>
+              </View>
+
+              <View style={styles.costRow}>
+                <Text style={[styles.costLabel, { color: colors.textSecondary }]}>
+                  {t('agent.chat.pricing_source', '价格数据源')}
+                </Text>
+                <View style={styles.pricingSourceContainer}>
+                  <Pressable onPress={() => void Linking.openURL(sourceUrl)}>
+                    <Text style={[styles.sourceLink, { color: colors.primary }]}>models.dev</Text>
+                  </Pressable>
+                  {onRefreshPricing ? (
+                    <Pressable
+                      style={[
+                        styles.refreshButtonInline,
+                        { borderColor: colors.primary },
+                        isRefreshing && styles.refreshButtonDisabled
+                      ]}
+                      onPress={() => void handleRefresh()}
+                      disabled={isRefreshing}
+                    >
+                      {isRefreshing ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Text style={[styles.refreshButtonText, { color: colors.primary }]}>
+                          {t('agent.chat.pricing_refresh', '刷新')}
+                        </Text>
+                      )}
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+
+              {refreshError ? (
+                <View
+                  style={[
+                    styles.errorMessage,
+                    { backgroundColor: colors.errorContainer }
+                  ]}
+                >
+                  <Text style={{ color: colors.error, fontSize: 12 }}>{refreshError}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.spacer16} />
+
+              <Text style={[styles.disclaimer, { color: colors.textTertiary }]}>
+                {t(
+                  'agent.chat.cost_disclaimer',
+                  '提示：此费用计算数据来自本地 pricing 规则 (或 models.dev)，存在更新不及时或计费方式不同的情况，仅供参考。'
+                )}
+              </Text>
+            </View>
+
+            <View style={styles.actions}>
+              <Pressable onPress={onClose} style={styles.textButton}>
+                <Text style={[styles.textButtonLabel, { color: colors.primary }]}>
+                  {t('common.confirm', '确认')}
+                </Text>
+              </Pressable>
             </View>
           </Pressable>
         </SafeAreaView>
@@ -127,54 +213,110 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    paddingHorizontal: 20
   },
   safeArea: {
     width: '100%',
     alignItems: 'center'
   },
-  modalContent: {},
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20
+  dialog: {
+    width: '100%',
+    maxWidth: 400
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center'
+  title: {
+    paddingTop: 24,
+    paddingHorizontal: 28,
+    paddingBottom: 16,
+    fontSize: 20,
+    fontWeight: '600',
+    lineHeight: 28
   },
-  headerIcon: {
-    fontSize: 20
+  content: {
+    paddingHorizontal: 28
   },
-  headerText: {
-    fontSize: 18,
-    fontWeight: '600'
-  },
-  closeIcon: {
-    fontSize: 24
-  },
-  card: {},
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    marginBottom: 10
+    lineHeight: 20,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase'
   },
-  row: {
+  spacer8: { height: 8 },
+  spacer16: { height: 16 },
+  costRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6
+    paddingVertical: 6,
+    gap: 12
   },
-  label: {
-    fontSize: 15
+  costLabel: {
+    fontSize: 14,
+    lineHeight: 20,
+    flexShrink: 0
   },
-  value: {
-    fontSize: 15,
-    fontWeight: '600'
+  costValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+    textAlign: 'right',
+    flex: 1
   },
   divider: {
-    height: 1,
-    marginVertical: 14
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginVertical: 16
+  },
+  disclaimer: {
+    fontSize: 12,
+    lineHeight: 18
+  },
+  pricingSourceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    justifyContent: 'flex-end'
+  },
+  sourceLink: {
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  refreshButtonInline: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    minHeight: 28,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  refreshButtonDisabled: {
+    opacity: 0.5
+  },
+  refreshButtonText: {
+    fontSize: 12,
+    fontWeight: '500'
+  },
+  errorMessage: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8
+  },
+  actions: {
+    paddingTop: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 28,
+    alignItems: 'flex-end'
+  },
+  textButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12
+  },
+  textButtonLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    textTransform: 'uppercase'
   }
 })

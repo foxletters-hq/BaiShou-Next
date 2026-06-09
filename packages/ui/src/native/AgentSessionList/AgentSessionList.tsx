@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react'
-import { View, Text, Pressable, FlatList } from 'react-native'
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
@@ -15,7 +15,10 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
   onSelect,
   onPin,
   onDelete,
-  onRename
+  onRename,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -42,6 +45,29 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
     () => groupSessionsByTime(filteredSessions, groupLabel),
     [filteredSessions, t]
   )
+
+  const endReachedLockRef = useRef(false)
+
+  useEffect(() => {
+    if (!isLoadingMore) {
+      endReachedLockRef.current = false
+    }
+  }, [isLoadingMore])
+
+  const handleEndReached = useCallback(() => {
+    if (!hasMore || isLoadingMore || !onLoadMore || endReachedLockRef.current) return
+    endReachedLockRef.current = true
+    onLoadMore()
+  }, [hasMore, isLoadingMore, onLoadMore])
+
+  const listFooter = useMemo(() => {
+    if (!isLoadingMore) return null
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={colors.textSecondary} />
+      </View>
+    )
+  }, [isLoadingMore, colors.textSecondary])
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
@@ -92,6 +118,9 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
             </Text>
           </View>
         }
+        ListFooterComponent={listFooter}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.2}
         showsVerticalScrollIndicator={false}
       />
     </View>

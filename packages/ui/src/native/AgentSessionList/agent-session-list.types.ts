@@ -12,4 +12,7 @@ export interface AgentSessionListProps {
   onPin?: (id: string) => void
   onDelete?: (id: string) => void
   onRename?: (id: string, name: string) => void
+  hasMore?: boolean
+  isLoadingMore?: boolean
+  onLoadMore?: () => void
 }

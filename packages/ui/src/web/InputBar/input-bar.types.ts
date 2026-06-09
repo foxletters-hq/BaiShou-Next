@@ -12,7 +12,7 @@ export interface InputBarProps {
   onOpenTools?: () => void
   searchMode?: boolean
   onToggleSearchMode?: () => void
-  ttsMode?: 'off' | 'always' | 'manual'
+  ttsMode?: 'always' | 'manual'
   onToggleTtsMode?: () => void
 }
 

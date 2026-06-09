@@ -22,6 +22,10 @@ export interface CollapsibleAncillaryBlockProps {
   preview?: React.ReactNode
   /** 流式工具条等场景：仅展示、不可折叠 */
   collapsible?: boolean
+  /** 内容区不加内边距（工具结果列表等贴边展示） */
+  bodyPadding?: boolean
+  /** 流式工具条：标题栏下直接展示内容，不走 CollapsibleHeight */
+  inlineBody?: boolean
 }
 
 /** 对齐 desktop CollapsibleAncillaryBlock — 思考过程 / 工具调用等附属块外壳 */
@@ -32,7 +36,9 @@ export const CollapsibleAncillaryBlock: React.FC<CollapsibleAncillaryBlockProps>
   onToggle,
   children,
   preview,
-  collapsible = true
+  collapsible = true,
+  bodyPadding = true,
+  inlineBody = false
 }) => {
   const { colors } = useNativeTheme()
   const chevronRotation = useSharedValue(open ? 1 : 0)
@@ -61,14 +67,13 @@ export const CollapsibleAncillaryBlock: React.FC<CollapsibleAncillaryBlockProps>
       style={[
         styles.shell,
         {
-          borderColor: colors.borderSubtle,
-          backgroundColor: colors.bgSurface,
-          borderRadius: 12
+          borderColor: colors.borderMuted,
+          backgroundColor: colors.bgSurface
         }
       ]}
     >
       <TouchableOpacity
-        style={[styles.header, { backgroundColor: colors.bgSurfaceNormal }]}
+        style={[styles.header, { backgroundColor: colors.bgSurface }]}
         onPress={collapsible ? onToggle : undefined}
         activeOpacity={collapsible ? 0.7 : 1}
         disabled={!collapsible}
@@ -82,13 +87,33 @@ export const CollapsibleAncillaryBlock: React.FC<CollapsibleAncillaryBlockProps>
         </Animated.View>
       </TouchableOpacity>
 
-      <CollapsibleHeight expanded={bodyExpanded} animation="ease" durationMs={300}>
-        {bodyContent ? (
-          <View style={[styles.body, { borderTopColor: colors.borderSubtle }]}>{bodyContent}</View>
-        ) : (
-          <View />
-        )}
-      </CollapsibleHeight>
+      {inlineBody ? (
+        children ? (
+          <View
+            style={[
+              bodyPadding ? styles.body : styles.bodyFlush,
+              { borderTopColor: colors.borderSubtle }
+            ]}
+          >
+            {children}
+          </View>
+        ) : null
+      ) : (
+        <CollapsibleHeight expanded={bodyExpanded} animation="ease" durationMs={300}>
+          {bodyContent ? (
+            <View
+              style={[
+                bodyPadding ? styles.body : styles.bodyFlush,
+                { borderTopColor: colors.borderSubtle }
+              ]}
+            >
+              {bodyContent}
+            </View>
+          ) : (
+            <View />
+          )}
+        </CollapsibleHeight>
+      )}
     </View>
   )
 }
@@ -97,7 +122,9 @@ const styles = StyleSheet.create({
   shell: {
     width: '100%',
     marginBottom: 8,
-    borderWidth: 1.5,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'solid',
     overflow: 'hidden'
   },
   header: {
@@ -124,6 +151,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 10,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
+  bodyFlush: {
     borderTopWidth: StyleSheet.hairlineWidth
   }
 })

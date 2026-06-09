@@ -40,7 +40,12 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
 
   return (
     <View style={styles.row}>
-      <StreamingBubbleAvatar emoji={aiProfile.emoji} styles={styles} />
+      <StreamingBubbleAvatar
+        emoji={aiProfile.emoji}
+        avatarPath={aiProfile.avatarPath}
+        resolvedAvatarUri={aiProfile.resolvedAvatarUri}
+        styles={styles}
+      />
 
       <View style={styles.content}>
         <Text style={styles.aiName}>{aiName}</Text>
