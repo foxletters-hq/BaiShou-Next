@@ -1,7 +1,11 @@
 import type { SessionManagerService } from '@baishou/core-mobile'
 import type { SessionRepository, InsertPartInput } from '@baishou/database'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
-import { processAgentAttachments, type AttachmentInput } from './mobile-agent-attachment.util'
+import {
+  processAgentAttachments,
+  stripAttachmentBinaryForStorage,
+  type AttachmentInput
+} from './mobile-agent-attachment.util'
 
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -77,7 +81,7 @@ export async function saveUserMessage(
           messageId: userMsgId,
           sessionId: args.sessionId,
           type: att.isImage ? 'image' : 'attachment',
-          data: att
+          data: stripAttachmentBinaryForStorage(att)
         })
       }
     }

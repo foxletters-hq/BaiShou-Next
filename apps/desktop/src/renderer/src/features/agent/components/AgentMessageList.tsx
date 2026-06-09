@@ -208,12 +208,13 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   const activeToolDisplayName = useMemo(() => {
     if (!stream.activeTool) return null
     if (stream.activeTool.name === 'web_search') {
-      const engine = settings.webSearchConfig?.webSearchEngine || 'duckduckgo'
+      const engine = settings.webSearchConfig?.webSearchEngine || 'exa-mcp'
       const engineNames: Record<string, string> = {
         'local-google': t('settings.web_search_engine_local_google', 'Google 本地搜索'),
         'local-bing': t('settings.web_search_engine_local_bing', 'Bing 本地搜索'),
         duckduckgo: t('settings.web_search_engine_duckduckgo', 'DuckDuckGo'),
-        tavily: t('settings.web_search_engine_tavily', 'Tavily API')
+        tavily: t('settings.web_search_engine_tavily', 'Tavily API'),
+        'exa-mcp': t('settings.web_search_engine_exa_mcp', 'Exa MCP')
       }
       return `${t('agent.tools.web_search', '网络搜索')} (${engineNames[engine] || engine})`
     }
@@ -298,25 +299,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             return (
               <React.Fragment key={msg.id}>
                 {showPageSnap && <div className={styles.pageSnapAnchor} aria-hidden />}
-                {(showLiveCompressionActivity || showCompressionDivider) && (
-                  <div className={styles.compressionAnchor}>
-                    {showLiveCompressionActivity ? (
-                      <>
-                        <CompressionActivityBar
-                          phase={compactionPhase}
-                          summary={compactionSummary}
-                          reasoning={compactionReasoning}
-                          isActive
-                        />
-                      </>
-                    ) : (
-                      renderPersistedCompactionBar(
-                        persistedCompaction!,
-                        (persistedCompaction?.phase as 'auto' | 'manual') ?? 'auto'
-                      )
-                    )}
-                  </div>
-                )}
                 <ChatBubble
                   message={bubbleMessage}
                   userProfile={{
@@ -349,6 +331,23 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                   onDelete={() => actions.handleDelete(msg)}
                   onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
                 />
+                {(showLiveCompressionActivity || showCompressionDivider) && (
+                  <div className={styles.compressionAnchor}>
+                    {showLiveCompressionActivity ? (
+                      <CompressionActivityBar
+                        phase={compactionPhase}
+                        summary={compactionSummary}
+                        reasoning={compactionReasoning}
+                        isActive
+                      />
+                    ) : (
+                      renderPersistedCompactionBar(
+                        persistedCompaction!,
+                        (persistedCompaction?.phase as 'auto' | 'manual') ?? 'auto'
+                      )
+                    )}
+                  </div>
+                )}
               </React.Fragment>
             )
           })}

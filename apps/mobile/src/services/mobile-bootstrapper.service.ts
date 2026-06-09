@@ -7,6 +7,7 @@ import type {
 } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
 import i18n from 'i18next'
+import { syncSettingsAssistantsToRepo } from './mobile-assistant-sync.service'
 
 export interface MobileBootstrapperDeps {
   shadowIndexSyncService: ShadowIndexSyncService
@@ -99,13 +100,20 @@ export class MobileDataBootstrapper {
         const defaultAssistant = {
           id: 'default',
           name: i18n.t('agent.assistant.default_assistant_name', '默认伙伴'),
-          emoji: '🍵',
+          emoji: '',
+          avatarPath: 'default-assistant',
           isDefault: true,
           isPinned: false,
           systemPrompt: ''
         }
         await deps.settingsManager.set('assistants', [defaultAssistant])
         logger.info('[MobileBootstrapper] Created default assistant')
+      }
+
+      try {
+        await syncSettingsAssistantsToRepo(deps.settingsManager, deps.assistantManager)
+      } catch (e) {
+        logger.warn('[MobileBootstrapper] syncSettingsAssistantsToRepo failed:', e as Error)
       }
 
       const userProfile = await deps.settingsManager.get<any>('user_profile')

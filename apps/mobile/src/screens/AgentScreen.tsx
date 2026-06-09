@@ -1,4 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import { useFocusEffect } from 'expo-router'
+import {
+  isAssistantAvatarDirectUri,
+  isAssistantAvatarRelativePath,
+  isDefaultAssistantAvatarPath,
+  type PromptShortcut
+} from '@baishou/shared'
 import {
   View,
   StyleSheet,
@@ -8,14 +15,19 @@ import {
   Text,
   Alert,
   Modal,
-  Pressable
+  Pressable,
+  Platform,
+  Dimensions,
+  Keyboard,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
 import {
-  ChatBubble,
   InputBar,
+  type InputBarRef,
   StreamingBubble,
   RecallDialog,
   ChatCostDialog,
@@ -27,8 +39,8 @@ import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 
-import { partDataAsRecord } from '../utils/agent-part.util'
 import { AgentChatAppBar } from '../components/AgentChatAppBar'
+import { AgentMessageRow } from '../components/AgentMessageRow'
 import { ScreenSafeArea } from '../components/ScreenSafeArea'
 import { AgentDrawer, type AssistantSummary } from '../components/AgentDrawer'
 import { AssistantPicker } from '../components/AssistantPicker'
@@ -42,26 +54,55 @@ import { useAgentUI } from '../hooks/useAgentUI'
 import { useTTS } from '../hooks/useTTS'
 import { useBranchSession } from '../hooks/useBranchSession'
 import { useStreamError } from '../hooks/useStreamError'
+import { useMobilePromptShortcuts } from '../hooks/useMobilePromptShortcuts'
+import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
+/** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
+const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
+/** 编辑态且键盘收起时：保存/token 与底部工具栏之间的额外间距 */
+const BUBBLE_EDIT_DOCK_GAP = 16
 
 export const AgentScreen = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
-  const { keyboardHeight } = useKeyboardHeight()
+  /** 遮罩层内输入框聚焦时不应顶起主聊天输入栏 */
+  const keyboardOverlayRef = useRef(false)
+  const { keyboardHeight, resetKeyboard } = useKeyboardHeight({
+    shouldIgnoreShow: () => keyboardOverlayRef.current
+  })
   const tabBarHeight = useBottomTabBarHeight()
   /** 键盘高度从屏幕底量起，输入区位于 Tab 栏上方，需扣除 Tab 栏高度，避免输入框与键盘间出现空隙 */
   const inputOffset = Math.max(0, keyboardHeight - tabBarHeight)
+  const [isBubbleEditing, setIsBubbleEditing] = useState(false)
+  const [recallLookbackMonths, setRecallLookbackMonths] = useState(1)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [inputDockHeight, setInputDockHeight] = useState(INPUT_DOCK_HEIGHT)
+  /** 气泡内联编辑时：底部主输入栏不随键盘上移，列表仅为键盘留白（不再叠加入口栏高度） */
+  const dockBottomOffset = isBubbleEditing ? 0 : inputOffset
+  const bubbleEditKeyboardInset = Math.max(0, keyboardHeight - tabBarHeight)
+  const isEditKeyboardVisible = keyboardHeight >= 60
+  const listBottomPadding = isBubbleEditing
+    ? isEditKeyboardVisible
+      ? bubbleEditKeyboardInset + BUBBLE_EDIT_KEYBOARD_BUFFER + 16
+      : inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
+    : inputDockHeight + inputOffset + 24
+
+  const handleBubbleEditingChange = useCallback((editing: boolean, messageId?: string) => {
+    setIsBubbleEditing(editing)
+    setEditingMessageId(editing && messageId ? messageId : null)
+  }, [])
+
   const toast = useNativeToast()
   const { services, dbReady } = useBaishou()
   const flatListRef = useRef<FlatList>(null)
+  const inputBarRef = useRef<InputBarRef>(null)
+  const editingRowRef = useRef<View>(null)
+  const scrollOffsetRef = useRef(0)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [assistants, setAssistants] = useState<Array<AssistantSummary & { isPinned?: boolean }>>([])
-  const [shortcuts, setShortcuts] = useState<
-    Array<{ id: string; icon: string; name: string; content: string }>
-  >([])
   const [toolConfig, setToolConfig] = useState<{
     disabledToolIds: string[]
     customConfigs: Record<string, Record<string, unknown>>
@@ -78,11 +119,44 @@ export const AgentScreen = () => {
     messages,
     handleLoadMore,
     handleSelectSession,
+    handleAssistantSwitched,
     handleCreateSession,
     handleDeleteSession,
     handlePinSession,
     handleRenameSession
   } = useAgentSession()
+
+  /** 按行实测位置微调滚动：键盘展开时避开键盘，收起时避开底部工具栏 */
+  const scrollEditingMessageIntoView = useCallback(() => {
+    if (!editingMessageId) return
+    const row = editingRowRef.current
+    if (!row) return
+
+    row.measureInWindow((_x, y, _w, height) => {
+      const windowHeight = Dimensions.get('window').height
+      const keyboardOpen = keyboardHeight >= 60
+      const safeBottom = keyboardOpen
+        ? windowHeight - keyboardHeight - BUBBLE_EDIT_KEYBOARD_BUFFER
+        : windowHeight - tabBarHeight - inputDockHeight - BUBBLE_EDIT_DOCK_GAP
+      const rowBottom = y + height
+      if (rowBottom <= safeBottom + 4) return
+
+      flatListRef.current?.scrollToOffset({
+        offset: scrollOffsetRef.current + (rowBottom - safeBottom),
+        animated: true
+      })
+    })
+  }, [editingMessageId, keyboardHeight, tabBarHeight, inputDockHeight])
+
+  useEffect(() => {
+    if (!isBubbleEditing || !editingMessageId) return
+    const early = setTimeout(scrollEditingMessageIntoView, Platform.OS === 'ios' ? 80 : 160)
+    const late = setTimeout(scrollEditingMessageIntoView, Platform.OS === 'ios' ? 340 : 480)
+    return () => {
+      clearTimeout(early)
+      clearTimeout(late)
+    }
+  }, [isBubbleEditing, editingMessageId, keyboardHeight, scrollEditingMessageIntoView])
 
   const {
     currentAssistant,
@@ -93,11 +167,19 @@ export const AgentScreen = () => {
     setShowAssistantPicker,
     setShowModelSwitcher,
     handleSelectAssistant,
-    handleSelectModel
+    handleSelectModel,
+    setCurrentAssistant
   } = useAgentModel()
+
+  const resolvedCurrentAvatarUri = useResolvedAssistantAvatar(currentAssistant?.avatarPath)
 
   const {
     isStreaming,
+    isCompressing,
+    compressionPhase,
+    compressionText,
+    compressionReasoning,
+    compressionTriggerMessageId,
     streamError,
     streamingText,
     streamingReasoning,
@@ -107,6 +189,7 @@ export const AgentScreen = () => {
     handleSend,
     handleStop,
     handleRegenerate,
+    handleResend,
     handleEditMessage,
     handleSaveAssistantEdit,
     handleDeleteMessage
@@ -134,53 +217,106 @@ export const AgentScreen = () => {
     handleScroll,
     scrollToBottom,
     handleRecallSearch,
-    handleInjectRecall
+    handleInjectRecall,
+    recallSearchMode,
+    toggleRecallSearchMode
   } = useAgentUI()
+
+  useEffect(() => {
+    const overlaysOpen =
+      drawerOpen || showShortcutSheet || showRecallSheet || showToolManager
+    keyboardOverlayRef.current = overlaysOpen
+    if (overlaysOpen) {
+      resetKeyboard()
+      Keyboard.dismiss()
+    }
+  }, [
+    drawerOpen,
+    showShortcutSheet,
+    showRecallSheet,
+    showToolManager,
+    resetKeyboard
+  ])
+
+  const {
+    shortcuts,
+    addShortcut,
+    updateShortcut,
+    deleteShortcut,
+    reorderShortcuts
+  } = useMobilePromptShortcuts(showShortcutSheet)
+
+  const handleListScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollOffsetRef.current = event.nativeEvent.contentOffset.y
+      handleScroll(event)
+    },
+    [handleScroll]
+  )
 
   const { ttsPlayingMsgId, handleTtsReadAloud } = useTTS()
   const { branchSession } = useBranchSession()
   useStreamError(streamError, isStreaming)
 
-  useEffect(() => {
-    if (!showShortcutSheet || !dbReady || !services) return
-    services.settingsManager
-      .get<Array<{ id: string; icon: string; name: string; content: string }>>('prompt_shortcuts')
-      .then((items) => setShortcuts(items || []))
-      .catch(() => setShortcuts([]))
-  }, [showShortcutSheet, dbReady, services])
-
   const loadAssistants = useCallback(async () => {
     if (!dbReady || !services) return
     try {
-      const list =
-        (await services.settingsManager.get<
-          Array<{
-            id: string
-            name: string
-            description?: string
-            emoji?: string
-            isPinned?: boolean
-            lastUsedAt?: number
-          }>
-        >('assistants')) || []
-      setAssistants(
-        list.map((a) => ({
-          id: a.id,
-          name: a.name,
-          description: a.description,
-          emoji: a.emoji,
-          isPinned: Boolean(a.isPinned),
-          lastUsedAt: a.lastUsedAt || 0
-        }))
+      const list = (await services.settingsManager.get<any[]>('assistants')) || []
+      const mapped = await Promise.all(
+        list.map(async (a) => {
+          let displayAvatarUri: string | undefined
+          if (
+            a.avatarPath &&
+            !isDefaultAssistantAvatarPath(a.avatarPath) &&
+            isAssistantAvatarRelativePath(a.avatarPath)
+          ) {
+            try {
+              displayAvatarUri = await services.attachmentManager.resolveAvatarPath(a.avatarPath)
+            } catch {
+              displayAvatarUri = undefined
+            }
+          } else if (a.avatarPath && isAssistantAvatarDirectUri(a.avatarPath)) {
+            displayAvatarUri = a.avatarPath
+          }
+          return {
+            id: a.id,
+            name: a.name,
+            description: a.description,
+            emoji: a.emoji,
+            avatarPath: a.avatarPath,
+            displayAvatarUri,
+            isPinned: Boolean(a.isPinned),
+            lastUsedAt: a.lastUsedAt || 0
+          }
+        })
       )
+      setAssistants(mapped)
     } catch {
       setAssistants([])
     }
   }, [dbReady, services])
 
+  const refreshCurrentAssistant = useCallback(async () => {
+    if (!dbReady || !services || !currentAssistant?.id) return
+    try {
+      const list = (await services.settingsManager.get<any[]>('assistants')) || []
+      const updated = list.find((a) => a.id === currentAssistant.id)
+      if (updated) setCurrentAssistant(updated)
+    } catch {
+      // ignore
+    }
+  }, [dbReady, services, currentAssistant?.id, setCurrentAssistant])
+
   useEffect(() => {
-    loadAssistants()
+    void loadAssistants()
   }, [loadAssistants, drawerOpen, showAssistantPicker])
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadAssistants()
+      void refreshCurrentAssistant()
+    }, [loadAssistants, refreshCurrentAssistant])
+  )
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -200,7 +336,14 @@ export const AgentScreen = () => {
       assistants
         .filter((a) => a.isPinned)
         .slice(0, 3)
-        .map(({ id, name, description, emoji }) => ({ id, name, description, emoji })),
+        .map(({ id, name, description, emoji, avatarPath, displayAvatarUri }) => ({
+          id,
+          name,
+          description,
+          emoji,
+          avatarPath,
+          displayAvatarUri
+        })),
     [assistants]
   )
 
@@ -209,6 +352,15 @@ export const AgentScreen = () => {
       const full = assistants.find((a) => a.id === assistant.id)
       if (!full) return
       handleSelectAssistant(full as any)
+      const fullWithModel = full as {
+        providerId?: string
+        modelId?: string
+      }
+      await handleAssistantSwitched(
+        assistant.id,
+        fullWithModel.providerId,
+        fullWithModel.modelId
+      )
       if (!services) return
       try {
         const list =
@@ -227,19 +379,10 @@ export const AgentScreen = () => {
           a.id === assistant.id ? { ...a, lastUsedAt: Date.now() } : a
         )
         await services.settingsManager.set('assistants', updated)
-        setAssistants(
-          updated.map((a) => ({
-            id: a.id,
-            name: a.name,
-            description: a.description,
-            emoji: a.emoji,
-            isPinned: Boolean(a.isPinned),
-            lastUsedAt: a.lastUsedAt || 0
-          }))
-        )
+        void loadAssistants()
       } catch {}
     },
-    [assistants, handleSelectAssistant, services]
+    [assistants, handleSelectAssistant, handleAssistantSwitched, services, loadAssistants]
   )
 
   useEffect(() => {
@@ -274,27 +417,22 @@ export const AgentScreen = () => {
   )
 
   const handleShortcutSelect = useCallback(
-    (shortcut: { content: string }) => {
+    (shortcut: PromptShortcut) => {
       setShowShortcutSheet(false)
       if (shortcut.content.trim()) {
-        void handleSend(shortcut.content.trim())
+        inputBarRef.current?.insertText(shortcut.content.trim())
       }
     },
-    [handleSend, setShowShortcutSheet]
+    [setShowShortcutSheet]
   )
 
-  const [ttsMode, setTtsMode] = useState<'off' | 'manual' | 'always'>(() => 'manual')
+  const [ttsMode, setTtsMode] = useState<'manual' | 'always'>(() => 'manual')
   const ttsModeRef = useRef(ttsMode)
   ttsModeRef.current = ttsMode
 
   const toggleTtsMode = useCallback(() => {
     setTtsMode((prev) => {
-      const nextMap: Record<string, 'off' | 'manual' | 'always'> = {
-        off: 'manual',
-        manual: 'always',
-        always: 'off'
-      }
-      const next = nextMap[prev] || 'manual'
+      const next = prev === 'manual' ? 'always' : 'manual'
       AsyncStorage.setItem('baishou_tts_mode', next).catch(() => {})
       return next
     })
@@ -303,8 +441,13 @@ export const AgentScreen = () => {
   useEffect(() => {
     AsyncStorage.getItem('baishou_tts_mode')
       .then((v) => {
-        if (v === 'off' || v === 'manual' || v === 'always') {
-          setTtsMode(v)
+        if (v === 'always') {
+          setTtsMode('always')
+        } else if (v === 'off' || v === 'manual') {
+          setTtsMode('manual')
+          if (v === 'off') {
+            AsyncStorage.setItem('baishou_tts_mode', 'manual').catch(() => {})
+          }
         }
       })
       .catch(() => {})
@@ -347,14 +490,14 @@ export const AgentScreen = () => {
   const [contextDialogState, setContextDialogState] = useState<{
     visible: boolean
     message: any
-    contextMessages: any[]
+    flatEntries: any[]
+    meta?: any
     compressedContent?: string
-    originalContent?: string
     systemPrompt?: string
   }>({
     visible: false,
     message: {},
-    contextMessages: []
+    flatEntries: []
   })
 
   const handleBranch = useCallback(
@@ -377,51 +520,38 @@ export const AgentScreen = () => {
   )
 
   const handleShowContext = useCallback(
-    (message: any) => {
-      let decodedContext: any[] = []
-      let compressedContent: string | undefined
-      let systemPrompt: string | undefined
-
-      const msgIndex = messages.findIndex((m: any) => m.id === message.id)
-      if (msgIndex > 0) {
-        const prevMsg = messages[msgIndex - 1]
-        if (prevMsg.role === 'user' && prevMsg.parts) {
-          const ctxPart = prevMsg.parts.find((p) => p.type === 'context_snapshot')
-          const ctxData = ctxPart ? partDataAsRecord(ctxPart.data) : undefined
-          const snapshots = ctxData?.snapshots
-          if (Array.isArray(snapshots)) {
-            decodedContext = snapshots.map((s: Record<string, unknown>) => ({
-              role: 'system',
-              content: `${s.title ? '[' + String(s.title) + '] ' : ''}${String(s.content ?? '')}`,
-              timestamp: message.createdAt || new Date()
-            }))
-          }
-
-          const compPart = prevMsg.parts.find((p) => p.type === 'compaction')
-          const compData = compPart ? partDataAsRecord(compPart.data) : undefined
-          if (typeof compData?.summary === 'string') {
-            compressedContent = compData.summary
-          }
-        }
-
-        if (msgIndex === 1 || (msgIndex === 2 && messages[0]?.role === 'system')) {
-          const sysMsg = messages.find((m: any) => m.role === 'system')
-          if (sysMsg?.content) {
-            systemPrompt = sysMsg.content
-          }
-        }
+    async (message: any) => {
+      if (!currentSessionId || !services?.getContextAtMessage) return
+      try {
+        const { result, flatEntries } = await services.getContextAtMessage(
+          currentSessionId,
+          message.id,
+          searchMode
+        )
+        const vm = result.viewModel
+        setContextDialogState({
+          visible: true,
+          message: {
+            ...message,
+            inputTokens: message.inputTokens,
+            outputTokens: message.outputTokens,
+            costMicros: message.costMicros
+          },
+          flatEntries,
+          meta: {
+            nextRequest: vm?.nextRequest,
+            roundUsage: vm?.roundUsage,
+            activeRoundIndex: vm?.activeRoundIndex
+          },
+          compressedContent: result.compressedContent,
+          systemPrompt: result.systemPrompt
+        })
+      } catch (e) {
+        console.error('[AgentScreen] Failed to load context at message:', e)
+        toast.showError(t('agent.chat.context_load_failed', '加载调用链失败'))
       }
-
-      setContextDialogState({
-        visible: true,
-        message,
-        contextMessages: decodedContext,
-        compressedContent,
-        originalContent: message.content,
-        systemPrompt
-      })
     },
-    [messages]
+    [currentSessionId, services, searchMode, toast, t]
   )
 
   const prevMsgLenRef = useRef(0)
@@ -445,15 +575,48 @@ export const AgentScreen = () => {
   const totalOutputTokens = tokenUsage?.outputTokens || 0
   const estimatedCost = (tokenUsage?.totalCostMicros || 0) / 1_000_000
   const totalCostMicros = tokenUsage?.totalCostMicros || 0
+  const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
+
+  useEffect(() => {
+    if (!showCostDialog || !dbReady || !services?.pricingService) return
+    void services.pricingService.getStatus().then((status) => {
+      if (status.lastUpdated) {
+        setPricingLastUpdated(new Date(status.lastUpdated))
+      }
+    })
+  }, [showCostDialog, dbReady, services])
+
+  const handleRefreshPricing = useCallback(async () => {
+    if (!services?.pricingService) {
+      return { success: false, error: t('agent.chat.pricing_refresh_failed', '刷新失败') }
+    }
+    try {
+      const result = await services.pricingService.refresh()
+      if (result.lastUpdated) {
+        setPricingLastUpdated(new Date(result.lastUpdated))
+      }
+      if (result.success) {
+        toast.showSuccess(t('agent.chat.pricing_refreshed', '价格表已更新'))
+      }
+      return {
+        success: result.success,
+        error: result.success ? undefined : t('agent.chat.pricing_refresh_failed', '刷新失败')
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      return { success: false, error: msg }
+    }
+  }, [services, t, toast])
   const assistantDisplayName =
     currentAssistant?.name || t('agent.assistant.default_assistant_name', '默认伙伴')
   const chatAiProfile = useMemo(
     () => ({
       name: assistantDisplayName,
       emoji: currentAssistant?.emoji,
-      avatarPath: (currentAssistant as { avatarPath?: string | null } | null)?.avatarPath
+      avatarPath: currentAssistant?.avatarPath || null,
+      resolvedAvatarUri: resolvedCurrentAvatarUri || null
     }),
-    [assistantDisplayName, currentAssistant]
+    [assistantDisplayName, currentAssistant, resolvedCurrentAvatarUri]
   )
   const chatUserProfile = useMemo(
     () => ({
@@ -509,63 +672,75 @@ export const AgentScreen = () => {
           <FlatList
             ref={flatListRef}
             style={styles.list}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: INPUT_DOCK_HEIGHT + inputOffset + 24 }
-            ]}
+            contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
             data={messages}
             keyExtractor={(item) => item.id}
-            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="always"
             keyboardDismissMode="interactive"
-            renderItem={({ item }) => (
-              <View style={styles.bubble}>
-                <ChatBubble
-                  message={{
-                    id: item.id,
-                    role: item.role as any,
-                    content: item.content,
-                    reasoning: item.reasoning,
-                    toolInvocations: item.toolInvocations,
-                    attachments: item.attachments,
-                    inputTokens: item.inputTokens,
-                    outputTokens: item.outputTokens,
-                    costMicros: item.costMicros
-                  }}
-                  userProfile={chatUserProfile}
-                  aiProfile={chatAiProfile}
-                  onRegenerate={() => handleRegenerate(item.id)}
-                  onResend={
-                    item.role === 'user'
-                      ? () => handleEditMessage(item.id, item.content)
-                      : undefined
-                  }
-                  onResendEdit={
-                    item.role === 'user'
-                      ? (content) => handleEditMessage(item.id, content)
-                      : undefined
-                  }
-                  onSaveEdit={
-                    item.role === 'assistant'
-                      ? (content) => handleSaveAssistantEdit(item.id, content)
-                      : undefined
-                  }
-                  onCopy={() => Clipboard.setStringAsync(item.content)}
-                  onDelete={() => handleDeleteMessage(item.id)}
-                  onReadAloud={
-                    item.role === 'assistant'
-                      ? (content) => handleTtsReadAloud(content, item.id)
-                      : undefined
-                  }
-                  isTtsPlaying={ttsPlayingMsgId === item.id}
-                  onShowContext={
-                    item.role === 'assistant' ? () => handleShowContext(item) : undefined
-                  }
-                  onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
-                />
-              </View>
-            )}
+            renderItem={({ item }) => {
+              const msgWithCompaction = item as typeof item & {
+                compactionRecord?: { streamTranscript?: string } | null
+              }
+              const isLiveCompressionAnchor =
+                (compressionPhase === 'auto' || compressionPhase === 'manual') &&
+                compressionTriggerMessageId === item.id &&
+                (isCompressing ||
+                  ((Boolean(compressionText?.trim()) || Boolean(compressionReasoning?.trim())) &&
+                    !msgWithCompaction.compactionRecord))
+
+              return (
+                <View
+                  ref={item.id === editingMessageId ? editingRowRef : undefined}
+                  collapsable={false}
+                  style={styles.bubble}
+                >
+                  <AgentMessageRow
+                    item={msgWithCompaction as any}
+                    chatUserProfile={chatUserProfile}
+                    chatAiProfile={chatAiProfile}
+                    isLiveCompressionAnchor={isLiveCompressionAnchor}
+                    liveCompression={{
+                      phase: compressionPhase,
+                      summary: compressionText,
+                      reasoning: compressionReasoning,
+                      isActive: isCompressing
+                    }}
+                    onRegenerate={() => handleRegenerate(item.id)}
+                    onResend={
+                      item.role === 'user' ? () => void handleResend(item.id) : undefined
+                    }
+                    onResendEdit={
+                      item.role === 'user'
+                        ? (content) => handleEditMessage(item.id, content)
+                        : undefined
+                    }
+                    onSaveEdit={
+                      item.role === 'assistant'
+                        ? (content) => handleSaveAssistantEdit(item.id, content)
+                        : undefined
+                    }
+                    onCopy={() => Clipboard.setStringAsync(item.content)}
+                    onDelete={() => handleDeleteMessage(item.id)}
+                    onReadAloud={
+                      item.role === 'assistant'
+                        ? () => handleTtsReadAloud(item.content, item.id)
+                        : undefined
+                    }
+                    isTtsPlaying={ttsPlayingMsgId === item.id}
+                    onShowContext={
+                      item.role === 'assistant' ? () => handleShowContext(item) : undefined
+                    }
+                    onBranch={
+                      item.role === 'assistant' ? () => handleBranch(item.id) : undefined
+                    }
+                    onBubbleEditingChange={handleBubbleEditingChange}
+                  />
+                </View>
+              )
+            }}
             ListFooterComponent={
-              isStreaming ? (
+              isStreaming && !isCompressing ? (
                 <View>
                   <StreamingBubble
                     text={streamingText}
@@ -589,13 +764,16 @@ export const AgentScreen = () => {
                 requestAnimationFrame(() => flatListRef.current?.scrollToEnd({ animated: false }))
               }
             }}
-            onScroll={handleScroll}
+            onScroll={handleListScroll}
             scrollEventThrottle={16}
             ListEmptyComponent={!isStreaming ? renderEmptyState() : null}
           />
 
-          {showScrollButton && (
-            <View style={[styles.scrollBtnWrap, { bottom: inputOffset + INPUT_DOCK_HEIGHT + 12 }]}>
+          {showScrollButton && !isBubbleEditing && (
+            <View
+              pointerEvents="box-none"
+              style={[styles.scrollBtnWrap, { bottom: dockBottomOffset + inputDockHeight + 12 }]}
+            >
               <TouchableOpacity
                 style={[styles.scrollBtn, { backgroundColor: colors.bgSurface }]}
                 onPress={() => scrollToBottom(flatListRef, true)}
@@ -607,18 +785,26 @@ export const AgentScreen = () => {
           )}
 
           <View
+            onLayout={(event) => {
+              const next = Math.ceil(event.nativeEvent.layout.height)
+              if (next > 0 && next !== inputDockHeight) setInputDockHeight(next)
+            }}
             style={[
               styles.inputDock,
               {
                 backgroundColor: colors.bgSurface,
-                bottom: inputOffset
+                bottom: dockBottomOffset,
+                opacity: isBubbleEditing ? 0.92 : 1
               }
             ]}
+            pointerEvents={isBubbleEditing ? 'none' : 'auto'}
           >
             <InputBar
+              ref={inputBarRef}
               onSend={handleSend}
               isLoading={isLoading || isStreaming}
               onStop={handleStop}
+              composerEnabled={!isBubbleEditing}
               assistantName={assistantDisplayName}
               onTriggerShortcut={() => setShowShortcutSheet(true)}
               onManageShortcuts={() => setShowShortcutSheet(true)}
@@ -641,8 +827,10 @@ export const AgentScreen = () => {
             ? {
                 id: currentAssistant.id,
                 name: currentAssistant.name,
-                description: (currentAssistant as { description?: string }).description,
-                emoji: currentAssistant.emoji
+                description: currentAssistant.description,
+                emoji: currentAssistant.emoji,
+                avatarPath: currentAssistant.avatarPath,
+                displayAvatarUri: resolvedCurrentAvatarUri || undefined
               }
             : null
         }
@@ -650,7 +838,11 @@ export const AgentScreen = () => {
         selectedSessionId={currentSessionId || undefined}
         onSelectSession={handleSelectSession}
         onCreateSession={() => {
-          void handleCreateSession()
+          void handleCreateSession({
+            assistantId: currentAssistant?.id,
+            providerId: currentProviderId || undefined,
+            modelId: currentModelId || undefined
+          })
         }}
         onShowAssistantPicker={() => setShowAssistantPicker(true)}
         onSelectAssistant={(assistant) => {
@@ -677,12 +869,18 @@ export const AgentScreen = () => {
       />
 
       <ChatCostDialog
-        visible={showCostDialog}
+        isOpen={showCostDialog}
         onClose={() => setShowCostDialog(false)}
-        totalTokens={totalInputTokens + totalOutputTokens}
-        totalCost={estimatedCost}
-        sessionTokens={totalInputTokens + totalOutputTokens}
-        sessionCost={estimatedCost}
+        details={{
+          modelName:
+            currentModelId || t('agent.no_model_selected', '暂未选择模型'),
+          promptTokens: totalInputTokens,
+          completionTokens: totalOutputTokens,
+          totalTokens: totalInputTokens + totalOutputTokens,
+          estimatedCost: `$${estimatedCost.toFixed(6)}`
+        }}
+        pricingLastUpdated={pricingLastUpdated}
+        onRefreshPricing={handleRefreshPricing}
       />
 
       <PromptShortcutSheet
@@ -690,6 +888,10 @@ export const AgentScreen = () => {
         onClose={() => setShowShortcutSheet(false)}
         shortcuts={shortcuts}
         onSelect={handleShortcutSelect}
+        onAdd={addShortcut}
+        onUpdate={updateShortcut}
+        onDelete={deleteShortcut}
+        onReorder={reorderShortcuts}
       />
 
       <RecallDialog
@@ -699,6 +901,33 @@ export const AgentScreen = () => {
         isSearching={isSearchingRecall}
         onSearch={handleRecallSearch}
         onInject={handleInjectRecall}
+        searchMode={recallSearchMode}
+        onToggleSearchMode={toggleRecallSearchMode}
+        lookbackMonths={recallLookbackMonths}
+        onMonthsChanged={setRecallLookbackMonths}
+        onCopyContext={async () => {
+          try {
+            const contextText = await services?.buildSharedContext?.(
+              recallLookbackMonths,
+              i18n.language
+            )
+            if (contextText) {
+              await Clipboard.setStringAsync(contextText)
+              toast.showSuccess(t('summary.toast_copied', '共同回忆已复制'))
+            }
+          } catch (e: unknown) {
+            console.error('[AgentScreen] Copy shared context failed:', e)
+            toast.showError(t('common.copy_failed', '复制失败'))
+          }
+        }}
+        onCopyDiarySnippet={async (snippet) => {
+          try {
+            await Clipboard.setStringAsync(snippet)
+            toast.showSuccess(t('recall.copy_success', '已复制记忆到剪贴板！'))
+          } catch {
+            toast.showError(t('common.copy_failed', '复制失败'))
+          }
+        }}
       />
 
       <Modal
@@ -726,9 +955,9 @@ export const AgentScreen = () => {
         visible={contextDialogState.visible}
         onClose={() => setContextDialogState((prev) => ({ ...prev, visible: false }))}
         message={contextDialogState.message}
-        contextMessages={contextDialogState.contextMessages}
+        flatEntries={contextDialogState.flatEntries}
+        meta={contextDialogState.meta}
         compressedContent={contextDialogState.compressedContent}
-        originalContent={contextDialogState.originalContent}
         systemPrompt={contextDialogState.systemPrompt}
       />
     </>
@@ -745,7 +974,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline'
   },
   list: { flex: 1 },
-  listContent: { paddingVertical: 24, paddingHorizontal: 16, flexGrow: 1 },
+  listContent: { paddingVertical: 24, paddingHorizontal: 0, flexGrow: 1 },
   bubble: { marginBottom: 20 },
   toolStatusContainer: {
     paddingHorizontal: 16,

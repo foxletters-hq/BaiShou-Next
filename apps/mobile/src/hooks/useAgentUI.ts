@@ -14,6 +14,7 @@ export function useAgentUI() {
   const [showToolManager, setShowToolManager] = useState(false)
   const [recallItems, setRecallItems] = useState<RecallItem[]>([])
   const [isSearchingRecall, setIsSearchingRecall] = useState(false)
+  const [recallSearchMode, setRecallSearchMode] = useState<'semantic' | 'text'>('semantic')
   const isUserScrollingRef = useRef(false)
 
   const handleScroll = useCallback((event: any) => {
@@ -34,7 +35,7 @@ export function useAgentUI() {
   }, [])
 
   const handleRecallSearch = useCallback(
-    async (query: string, tab: 'diary' | 'memory') => {
+    async (query: string, tab: 'diary' | 'memory', _mode?: 'semantic' | 'text') => {
       if (!services) return
       setIsSearchingRecall(true)
       try {
@@ -44,7 +45,7 @@ export function useAgentUI() {
             setRecallItems(
               dbEntries.map((d: any) => ({
                 id: d.id.toString(),
-                type: 'diary',
+                type: 'diary' as const,
                 title: d.title || t('common.untitled', '无标题'),
                 snippet: d.snippet || d.content?.substring(0, 100) || '',
                 date: new Date(d.createdAt).toISOString().split('T')[0]
@@ -54,16 +55,21 @@ export function useAgentUI() {
             setRecallItems([])
           }
         } else {
-          const memoryEntries = await services.diaryService.search(query)
-          if (memoryEntries) {
+          const memoryResults = await services.memorySearch?.(query, {
+            topK: 20,
+            minScore: 0.3
+          })
+          if (memoryResults && memoryResults.length > 0) {
             setRecallItems(
-              memoryEntries.map((d: any) => ({
-                id: d.id.toString(),
-                type: 'memory',
-                title: d.title || t('agent.chat.memory', 'AI 记忆'),
-                snippet: d.snippet || d.content?.substring(0, 150) || '',
-                date: new Date(d.createdAt).toISOString().split('T')[0],
-                similarity: d.rankScore
+              memoryResults.map((r, index) => ({
+                id: `memory_${index}`,
+                type: 'memory' as const,
+                title: t('agent.recall.memory', '记忆'),
+                snippet: r.chunkText.substring(0, 150),
+                date: r.createdAt
+                  ? new Date(r.createdAt * 1000).toISOString().split('T')[0]
+                  : '',
+                similarity: r.score
               }))
             )
           } else {
@@ -77,8 +83,12 @@ export function useAgentUI() {
         setIsSearchingRecall(false)
       }
     },
-    [services, t]
+    [services, t, recallSearchMode]
   )
+
+  const toggleRecallSearchMode = useCallback(() => {
+    setRecallSearchMode((prev) => (prev === 'semantic' ? 'text' : 'semantic'))
+  }, [])
 
   const handleInjectRecall = useCallback((items: RecallItem[]) => {
     setShowRecallSheet(false)
@@ -100,6 +110,8 @@ export function useAgentUI() {
     handleScroll,
     scrollToBottom,
     handleRecallSearch,
-    handleInjectRecall
+    handleInjectRecall,
+    recallSearchMode,
+    toggleRecallSearchMode
   }
 }

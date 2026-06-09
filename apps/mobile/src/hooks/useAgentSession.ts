@@ -25,7 +25,7 @@ export function useAgentSession() {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const { messages, addMessage, clearSession } = useAgentStore()
-  const { services } = useBaishou()
+  const { services, dbReady } = useBaishou()
 
   // 会话管理状态
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
@@ -36,77 +36,119 @@ export function useAgentSession() {
     return mapSessionMessageFromDb(msg) as SessionMessage
   }, [])
 
-  // 加载会话消息
+  const MESSAGE_PAGE_SIZE = 20
+
+  // 加载会话消息（从末尾取最近 N 条）
   const loadMessages = useCallback(
-    async (sessionId: string, limit = 20, offset = 0) => {
-      if (!services) return
+    async (sessionId: string, limit = MESSAGE_PAGE_SIZE) => {
+      if (!dbReady || !services) return
       try {
-        const msgs = await services.sessionManager.getMessagesBySession(sessionId, limit + offset)
+        clearSession()
+        const msgs = await services.sessionManager.getMessagesBySession(sessionId, limit)
         if (msgs && msgs.length > 0) {
-          if (offset === 0) {
-            clearSession()
-          }
           msgs.forEach((msg: any) => addMessage(mapDbMessageToUI(msg)))
-          setHasMore(msgs.length === limit)
+          setHasMore(msgs.length >= limit)
+        } else {
+          setHasMore(false)
         }
       } catch (e) {
         console.error('Failed to load messages', e)
+        setHasMore(false)
       }
     },
-    [services, clearSession, addMessage, mapDbMessageToUI]
+    [dbReady, services, clearSession, addMessage, mapDbMessageToUI]
   )
 
-  // 加载更多消息（使用 offset 分页）
+  // 加载更多历史消息（扩大 limit 后全量替换，避免重复）
   const handleLoadMore = useCallback(async () => {
-    if (!currentSessionId || !services) return
+    if (!dbReady || !currentSessionId || !services) return
     try {
-      const currentCount = messages.length
-      const msgs = await services.sessionManager.getMessagesBySession(
-        currentSessionId,
-        20 + currentCount
-      )
+      const newLimit = messages.length + MESSAGE_PAGE_SIZE
+      const msgs = await services.sessionManager.getMessagesBySession(currentSessionId, newLimit)
+      clearSession()
       if (msgs && msgs.length > 0) {
         msgs.forEach((msg: any) => addMessage(mapDbMessageToUI(msg)))
-        setHasMore(msgs.length === 20)
+        setHasMore(msgs.length >= newLimit)
       } else {
         setHasMore(false)
       }
     } catch (e) {
       console.error('Failed to load more messages', e)
     }
-  }, [currentSessionId, services, messages, addMessage, mapDbMessageToUI])
+  }, [dbReady, currentSessionId, services, messages.length, clearSession, addMessage, mapDbMessageToUI])
 
   // 选择会话
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
       setCurrentSessionId(sessionId)
-      clearSession()
       await loadMessages(sessionId)
     },
-    [clearSession, loadMessages]
+    [loadMessages]
+  )
+
+  // 切换伙伴时加载该伙伴最近会话（对齐桌面端 handleAssistantSwitched）
+  const handleAssistantSwitched = useCallback(
+    async (assistantId: string, providerId?: string, modelId?: string) => {
+      if (!dbReady || !services) return
+      try {
+        const sessionList = await services.sessionManager.list(100, 0, assistantId)
+        if (sessionList.length > 0) {
+          const sorted = [...sessionList].sort(
+            (a: { updatedAt?: Date | string | null }, b: { updatedAt?: Date | string | null }) =>
+              new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+          )
+          await handleSelectSession(sorted[0]!.id)
+          return
+        }
+
+        const newId = Date.now().toString()
+        await services.sessionManager.upsertSession(
+          buildInsertSessionInput({
+            id: newId,
+            title: t('agent.sessions.default_title', '新对话'),
+            assistantId,
+            providerId,
+            modelId
+          })
+        )
+        setCurrentSessionId(newId)
+        clearSession()
+      } catch (e) {
+        console.error('Failed to switch assistant session', e)
+      }
+    },
+    [dbReady, services, handleSelectSession, clearSession, t]
   )
 
   // 创建新会话
-  const handleCreateSession = useCallback(async () => {
-    if (!services) return null
-    try {
-      const newId = Date.now().toString()
-      await services.sessionManager.upsertSession(
-        buildInsertSessionInput({
-          id: newId,
-          title: t('agent.sessions.default_title', '新对话')
-        })
-      )
-      setCurrentSessionId(newId)
-      clearSession()
-      return newId
-    } catch (e) {
-      console.error('Failed to create session', e)
-      const msg = e instanceof Error ? e.message : String(e)
-      toast.showError(t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg }))
-      return null
-    }
-  }, [services, t, clearSession])
+  const handleCreateSession = useCallback(
+    async (options?: { assistantId?: string; providerId?: string; modelId?: string }) => {
+      if (!dbReady || !services) return null
+      try {
+        const newId = Date.now().toString()
+        await services.sessionManager.upsertSession(
+          buildInsertSessionInput({
+            id: newId,
+            title: t('agent.sessions.default_title', '新对话'),
+            assistantId: options?.assistantId,
+            providerId: options?.providerId,
+            modelId: options?.modelId
+          })
+        )
+        setCurrentSessionId(newId)
+        clearSession()
+        return newId
+      } catch (e) {
+        console.error('Failed to create session', e)
+        const msg = e instanceof Error ? e.message : String(e)
+        toast.showError(
+          t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg })
+        )
+        return null
+      }
+    },
+    [dbReady, services, t, clearSession, toast]
+  )
 
   // 删除会话
   const handleDeleteSession = useCallback(
@@ -161,6 +203,7 @@ export function useAgentSession() {
     loadMessages,
     handleLoadMore,
     handleSelectSession,
+    handleAssistantSwitched,
     handleCreateSession,
     handleDeleteSession,
     handlePinSession,

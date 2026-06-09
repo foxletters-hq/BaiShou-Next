@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
@@ -7,6 +7,8 @@ import { useBaishou } from '../providers/BaishouProvider'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { buildInsertSessionInput } from '../utils/session-input.util'
 import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
+import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.util'
+import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
 
 interface TokenUsage {
   inputTokens: number
@@ -46,10 +48,19 @@ export function useAgentStream(
   const [activeTool, setActiveTool] = useState<ToolCallInfo | null>(null)
   const [completedTools, setCompletedTools] = useState<ToolCallInfo[]>([])
   const [streamError, setStreamError] = useState<string | null>(null)
+  const [isCompressing, setIsCompressing] = useState(false)
+  const [compressionPhase, setCompressionPhase] = useState<'auto' | 'manual'>('auto')
+  const [compressionText, setCompressionText] = useState('')
+  const [compressionReasoning, setCompressionReasoning] = useState('')
+  const [compressionTriggerMessageId, setCompressionTriggerMessageId] = useState<string | null>(
+    null
+  )
 
   const searchModeRef = useRef(searchMode)
   searchModeRef.current = searchMode
   const abortControllerRef = useRef<AbortController | null>(null)
+  const currentSessionIdRef = useRef(currentSessionId)
+  currentSessionIdRef.current = currentSessionId
 
   const reloadMessagesFromDb = useCallback(
     async (sessionId: string) => {
@@ -63,12 +74,95 @@ export function useAgentStream(
     [services, clearSession, addMessage]
   )
 
+  const syncTokenUsageFromMessages = useCallback((sessionMessages: typeof messages) => {
+    const assistantMessages = sessionMessages.filter((m) => m.role === 'assistant')
+    setTokenUsage({
+      inputTokens: assistantMessages.reduce((sum, m) => sum + (m.inputTokens || 0), 0),
+      outputTokens: assistantMessages.reduce((sum, m) => sum + (m.outputTokens || 0), 0),
+      totalCostMicros: assistantMessages.reduce((sum, m) => sum + (m.costMicros || 0), 0)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!currentSessionId) {
+      setTokenUsage({ inputTokens: 0, outputTokens: 0, totalCostMicros: 0 })
+      return
+    }
+    if (!isStreaming) {
+      syncTokenUsageFromMessages(messages)
+    }
+  }, [currentSessionId, messages, isStreaming, syncTokenUsageFromMessages])
+
+  /** 对齐 desktop useAgentStream：消费 onCompressionLifecycle / agent:compression-event */
+  useEffect(() => {
+    return subscribeMobileCompressionEvents((event) => {
+      if (event.sessionId !== currentSessionIdRef.current) return
+
+      if (event.type === 'start') {
+        setIsCompressing(true)
+        setCompressionPhase(event.phase === 'manual' ? 'manual' : 'auto')
+        setCompressionText('')
+        setCompressionReasoning('')
+        setCompressionTriggerMessageId(
+          typeof event.triggerUserMessageId === 'string' ? event.triggerUserMessageId : null
+        )
+        return
+      }
+
+      if (event.type === 'reasoning-delta') {
+        setCompressionReasoning((prev) => prev + (event.chunk ?? ''))
+        return
+      }
+
+      if (event.type === 'delta') {
+        setCompressionText((prev) => prev + (event.chunk ?? ''))
+        return
+      }
+
+      if (event.type === 'finish') {
+        setIsCompressing(false)
+        if (!event.ok) {
+          setCompressionText('')
+          setCompressionReasoning('')
+          setCompressionTriggerMessageId(null)
+          return
+        }
+
+        void (async () => {
+          const sessionId = event.sessionId
+          try {
+            await services?.sessionManager.flushSessionToDisk(sessionId)
+          } catch {
+            /* ignore */
+          }
+          await reloadMessagesFromDb(sessionId)
+          setCompressionText('')
+          setCompressionReasoning('')
+          setCompressionTriggerMessageId(null)
+        })()
+      }
+    })
+  }, [reloadMessagesFromDb, services])
+
   const resetStreamingBuffers = useCallback(() => {
     setStreamingText('')
     setStreamingReasoning('')
     setActiveTool(null)
     setCompletedTools([])
   }, [])
+
+  /** 中断当前流式/压缩 UI，避免重发或新消息与旧生成并行 */
+  const interruptActiveStream = useCallback(() => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    setIsStreaming(false)
+    setIsCompressing(false)
+    setLoading(false)
+    setCompressionText('')
+    setCompressionReasoning('')
+    setCompressionTriggerMessageId(null)
+    resetStreamingBuffers()
+  }, [resetStreamingBuffers, setLoading])
 
   /** 流结束：先落库刷新，再收起 StreamingBubble（对齐 desktop，避免双气泡） */
   const finishStream = useCallback(
@@ -83,6 +177,83 @@ export function useAgentStream(
       }
     },
     [reloadMessagesFromDb, resetStreamingBuffers, setLoading]
+  )
+
+  /** 对齐 desktop resend/edit：截断后复用已有用户消息 id，不再 insert 新消息 */
+  const streamFromExistingUserMessage = useCallback(
+    async (
+      sessionId: string,
+      userMessage: { id: string; content: string; attachments?: unknown[] }
+    ) => {
+      if (!currentProviderId || !currentModelId) {
+        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+        return
+      }
+
+      const fail = (errorMsg: string) => {
+        setStreamError(errorMsg)
+        void finishStream(sessionId)
+      }
+
+      interruptActiveStream()
+      abortControllerRef.current = new AbortController()
+      setLoading(true)
+      setIsStreaming(true)
+      setStreamError(null)
+      resetStreamingBuffers()
+
+      let currentText = ''
+      try {
+        await startAgentChat?.(
+          sessionId,
+          userMessage.content,
+          {
+            onTextDelta: (chunk) => {
+              currentText += chunk
+              setStreamingText(currentText)
+            },
+            onReasoningDelta: (chunk) => setStreamingReasoning((prev) => prev + chunk),
+            onToolCallStart: (toolName) => setActiveTool({ name: toolName, startTime: Date.now() }),
+            onToolCallResult: (toolName, result) => {
+              setActiveTool(null)
+              setCompletedTools((prev) => [
+                ...prev,
+                { name: toolName, startTime: Date.now(), endTime: Date.now(), result }
+              ])
+            },
+            onFinish: () => {
+              void finishStream(sessionId)
+            },
+            onError: (err) => {
+              fail(err.message || t('app.unknown_error', '未知网络或系统错误'))
+            }
+          },
+          {
+            providerId: currentProviderId || undefined,
+            modelId: currentModelId || undefined,
+            searchMode: searchModeRef.current,
+            abortSignal: abortControllerRef.current.signal,
+            userMessageId: userMessage.id,
+            skipUserMessageRecording: true,
+            attachments: userMessage.attachments
+          }
+        )
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        fail(msg)
+      }
+    },
+    [
+      currentProviderId,
+      currentModelId,
+      toast,
+      t,
+      finishStream,
+      interruptActiveStream,
+      resetStreamingBuffers,
+      setLoading,
+      startAgentChat
+    ]
   )
 
   const handleSend = useCallback(
@@ -138,6 +309,7 @@ export function useAgentStream(
         return
       }
 
+      interruptActiveStream()
       abortControllerRef.current = new AbortController()
 
       addMessage({
@@ -145,7 +317,7 @@ export function useAgentStream(
         role: 'user',
         content: text,
         timestamp: new Date(),
-        attachments: saveResult.attachments as any
+        attachments: mapSavedAttachmentsForMobileUi(saveResult.attachments) as any
       })
 
       setLoading(true)
@@ -181,18 +353,7 @@ export function useAgentStream(
                 { name: toolName, startTime: Date.now(), endTime: Date.now(), result }
               ])
             },
-            onFinish: (result?: {
-              inputTokens?: number
-              outputTokens?: number
-              costMicros?: number
-            }) => {
-              if (result) {
-                setTokenUsage((prev) => ({
-                  inputTokens: prev.inputTokens + (result.inputTokens || 0),
-                  outputTokens: prev.outputTokens + (result.outputTokens || 0),
-                  totalCostMicros: prev.totalCostMicros + (result.costMicros || 0)
-                }))
-              }
+            onFinish: () => {
               void finishStream(sessionId!)
             },
             onError: (err) => {
@@ -226,13 +387,14 @@ export function useAgentStream(
       setLoading,
       onSessionCreated,
       finishStream,
-      resetStreamingBuffers
+      resetStreamingBuffers,
+      interruptActiveStream
     ]
   )
 
   const handleStop = useCallback(() => {
-    abortControllerRef.current?.abort()
-  }, [])
+    interruptActiveStream()
+  }, [interruptActiveStream])
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {
@@ -263,48 +425,11 @@ export function useAgentStream(
           dbUser.orderIndex
         )
         await reloadMessagesFromDb(currentSessionId)
-
-        abortControllerRef.current = new AbortController()
-        setLoading(true)
-        setIsStreaming(true)
-        setStreamError(null)
-        resetStreamingBuffers()
-
-        let currentText = ''
-        await startAgentChat?.(
-          currentSessionId,
-          userMessage.content,
-          {
-            onTextDelta: (chunk) => {
-              currentText += chunk
-              setStreamingText(currentText)
-            },
-            onReasoningDelta: (chunk) => setStreamingReasoning((prev) => prev + chunk),
-            onToolCallStart: (toolName) => setActiveTool({ name: toolName, startTime: Date.now() }),
-            onToolCallResult: (toolName, result) => {
-              setActiveTool(null)
-              setCompletedTools((prev) => [
-                ...prev,
-                { name: toolName, startTime: Date.now(), endTime: Date.now(), result }
-              ])
-            },
-            onFinish: () => {
-              void finishStream(currentSessionId)
-            },
-            onError: (err) => {
-              failRegenerate(err.message || t('app.unknown_error', '未知网络或系统错误'))
-            }
-          },
-          {
-            providerId: currentProviderId || undefined,
-            modelId: currentModelId || undefined,
-            searchMode: searchModeRef.current,
-            abortSignal: abortControllerRef.current.signal,
-            userMessageId: userMessage.id,
-            skipUserMessageRecording: true,
-            attachments: userMessage.attachments
-          }
-        )
+        await streamFromExistingUserMessage(currentSessionId, {
+          id: userMessage.id,
+          content: userMessage.content,
+          attachments: userMessage.attachments
+        })
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         failRegenerate(msg)
@@ -314,30 +439,93 @@ export function useAgentStream(
       currentSessionId,
       services,
       messages,
-      startAgentChat,
       currentProviderId,
       currentModelId,
-      setLoading,
+      toast,
+      t,
       finishStream,
-      resetStreamingBuffers
+      streamFromExistingUserMessage,
+      reloadMessagesFromDb
     ]
   )
 
-  /** 用户消息：编辑后截断并重发 */
-  const handleEditMessage = useCallback(
-    async (messageId: string, newContent: string) => {
-      if (!currentSessionId || !services) return
+  /** 用户消息：原样重发（对齐 desktop handleResend / agent:resend） */
+  const handleResend = useCallback(
+    async (messageId: string) => {
+      if (!currentSessionId || !services?.snapshotRepo) return
+      const storeMsg = messages.find((m) => m.id === messageId)
+      if (!storeMsg || storeMsg.role !== 'user') return
+
       try {
         const dbMsg = await services.sessionRepo.getMessageById(messageId)
         if (!dbMsg) return
-        await services.sessionRepo.deleteMessagesAfter(currentSessionId, dbMsg.orderIndex - 1)
+
+        await truncateSessionAfterOrderIndex(
+          services.sessionRepo,
+          services.snapshotRepo,
+          currentSessionId,
+          dbMsg.orderIndex
+        )
         await reloadMessagesFromDb(currentSessionId)
-        await handleSend(newContent)
+        await streamFromExistingUserMessage(currentSessionId, {
+          id: messageId,
+          content: storeMsg.content,
+          attachments: storeMsg.attachments
+        })
       } catch (e) {
-        console.error('Failed to edit message', e)
+        console.error('Failed to resend message', e)
+        toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
       }
     },
-    [currentSessionId, services, handleSend, reloadMessagesFromDb]
+    [
+      currentSessionId,
+      services,
+      messages,
+      reloadMessagesFromDb,
+      streamFromExistingUserMessage,
+      toast,
+      t
+    ]
+  )
+
+  /** 用户消息：编辑后截断并重发（对齐 desktop handleResendEdit / agent:edit-message） */
+  const handleEditMessage = useCallback(
+    async (messageId: string, newContent: string) => {
+      if (!currentSessionId || !services?.snapshotRepo || !newContent.trim()) return
+
+      try {
+        const dbMsg = await services.sessionRepo.getMessageById(messageId)
+        if (!dbMsg || dbMsg.role !== 'user') return
+
+        await services.sessionRepo.updateMessageTextPart(messageId, newContent.trim())
+        await truncateSessionAfterOrderIndex(
+          services.sessionRepo,
+          services.snapshotRepo,
+          currentSessionId,
+          dbMsg.orderIndex
+        )
+        await reloadMessagesFromDb(currentSessionId)
+
+        const storeMsg = messages.find((m) => m.id === messageId)
+        await streamFromExistingUserMessage(currentSessionId, {
+          id: messageId,
+          content: newContent.trim(),
+          attachments: storeMsg?.attachments
+        })
+      } catch (e) {
+        console.error('Failed to edit message', e)
+        toast.showError(t('agent.chat.resend_failed', '重新发送失败'))
+      }
+    },
+    [
+      currentSessionId,
+      services,
+      messages,
+      reloadMessagesFromDb,
+      streamFromExistingUserMessage,
+      toast,
+      t
+    ]
   )
 
   /** AI 消息：仅保存编辑内容，不重新生成（对齐 desktop handleSaveEdit） */
@@ -387,6 +575,11 @@ export function useAgentStream(
 
   return {
     isStreaming,
+    isCompressing,
+    compressionPhase,
+    compressionText,
+    compressionReasoning,
+    compressionTriggerMessageId,
     streamError,
     streamingText,
     streamingReasoning,
@@ -396,6 +589,7 @@ export function useAgentStream(
     handleSend,
     handleStop,
     handleRegenerate,
+    handleResend,
     handleEditMessage,
     handleSaveAssistantEdit,
     handleDeleteMessage,

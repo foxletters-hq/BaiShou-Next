@@ -1,10 +1,45 @@
-import { mapAttachmentsFromParts } from '@baishou/shared'
+import { mapAttachmentsFromParts, resolveAttachmentAbsolutePath } from '@baishou/shared'
 import type { AgentMessagePart } from '@baishou/store'
+import { parseCompactionMarkerData, type CompactionMarkerData } from '@baishou/ai'
+
+/** local://（桌面）或裸路径 → React Native Image 可用的 file:// */
+function toMobileAttachmentFilePath(filePath?: string): string {
+  if (!filePath) return ''
+  if (
+    filePath.startsWith('file://') ||
+    filePath.startsWith('content://') ||
+    filePath.startsWith('data:')
+  ) {
+    return filePath
+  }
+  const abs = resolveAttachmentAbsolutePath(filePath)
+  if (!abs) return filePath
+  return abs.startsWith('/') ? `file://${abs}` : `file:///${abs}`
+}
+
+function stripBinaryFromParts(
+  parts: Array<{ type: string; id?: string; data?: Record<string, unknown> | string }>
+) {
+  return parts.map((part) => {
+    const partType = String(part.type ?? '').toLowerCase()
+    if (
+      (partType !== 'attachment' && partType !== 'image') ||
+      typeof part.data !== 'object' ||
+      !part.data
+    ) {
+      return part
+    }
+    const att = part.data as Record<string, unknown>
+    const { data: _bin, ...rest } = att
+    return { ...part, data: rest }
+  })
+}
 
 /** 将 DB 消息（含 parts）映射为 Agent UI 消息（对齐 desktop agent-message.ipc） */
 export function mapSessionMessageFromDb(msg: {
   id: string
   role: string
+  orderIndex?: number
   createdAt?: string | Date
   parts?: Array<{ type: string; id?: string; data?: Record<string, unknown> | string }>
   inputTokens?: number
@@ -45,7 +80,15 @@ export function mapSessionMessageFromDb(msg: {
       }
     })
 
-  const attachments = mapAttachmentsFromParts(parts)
+  const attachments = mapAttachmentsFromParts(parts)?.map((att) => ({
+    ...att,
+    filePath: toMobileAttachmentFilePath(att.filePath)
+  }))
+
+  const compactionPart = parts.find((p) => p.type === 'compaction')
+  const compactionRecord: CompactionMarkerData | null = compactionPart
+    ? parseCompactionMarkerData(compactionPart.data)
+    : null
 
   return {
     id: msg.id,
@@ -53,11 +96,14 @@ export function mapSessionMessageFromDb(msg: {
     content,
     reasoning,
     timestamp: new Date(msg.createdAt ?? Date.now()),
+    orderIndex: msg.orderIndex,
     toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
     attachments,
     inputTokens: msg.inputTokens,
     outputTokens: msg.outputTokens,
     costMicros: msg.costMicros,
-    parts: parts.length > 0 ? (parts as AgentMessagePart[]) : undefined
+    compactionRecord,
+    parts:
+      parts.length > 0 ? (stripBinaryFromParts(parts) as AgentMessagePart[]) : undefined
   }
 }

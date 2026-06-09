@@ -32,7 +32,7 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: colors.bgSurface,
+          backgroundColor: colors.bgApp,
           borderBottomColor: colors.borderSubtle
         }
       ]}
@@ -57,11 +57,18 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
       <View style={[styles.side, styles.sideRight]}>
         {showCost ? (
           <TouchableOpacity
-            style={[styles.costBadge, { backgroundColor: colors.bgSurfaceHighest }]}
+            style={[
+              styles.costBadge,
+              {
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderMuted
+              }
+            ]}
             onPress={onCostPress}
+            activeOpacity={0.85}
             accessibilityLabel={t('agent.chat.cost_detail_title', '当前计费')}
           >
-            <Text style={[styles.costText, { color: colors.textSecondary }]}>{costLabel}</Text>
+            <Text style={[styles.costText, { color: colors.textPrimary }]}>{costLabel}</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -105,17 +112,21 @@ const styles = StyleSheet.create({
   modelName: {
     fontSize: 16,
     fontWeight: '700',
-    maxWidth: '78%',
+    flexShrink: 1,
+    maxWidth: '92%',
     textAlign: 'center'
   },
   costBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6
+    minWidth: 80,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1
   },
   costText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    fontVariant: ['tabular-nums']
+    fontVariant: ['tabular-nums'],
+    textAlign: 'center'
   }
 })
