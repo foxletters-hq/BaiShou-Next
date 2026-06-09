@@ -272,26 +272,42 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         </View>
       </View>
 
-      <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
-        <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
-          <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{typeLabel}</Text>
-        </View>
+      <ScrollView
+        style={[styles.content, { backgroundColor: colors.bgApp }]}
+        contentContainerStyle={styles.contentScroll}
+        indicatorStyle={scrollIndicatorStyle(isDark)}
+      >
+        <View
+          style={[
+            styles.metaCard,
+            { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
+          ]}
+        >
+          <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
+            <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{typeLabel}</Text>
+          </View>
 
-        <View style={styles.dateContainer}>
-          <Text style={[styles.dateText, { color: colors.textPrimary }]}>
-            {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
-          </Text>
-        </View>
-
-        {summary.generatedAt && (
           <View style={styles.dateContainer}>
-            <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-              {t('summary.generated_at')} {formatGeneratedAt(summary.generatedAt)}
+            <Text style={[styles.dateText, { color: colors.textPrimary }]}>
+              {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
             </Text>
           </View>
-        )}
 
-        <View style={styles.contentContainer}>
+          {summary.generatedAt ? (
+            <View style={styles.dateContainerLast}>
+              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+                {t('summary.generated_at')} {formatGeneratedAt(summary.generatedAt)}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View
+          style={[
+            styles.contentCard,
+            { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
+          ]}
+        >
           {isEditing ? (
             <Input
               value={editContent}
@@ -346,7 +362,23 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   content: {
-    flex: 1,
+    flex: 1
+  },
+  contentScroll: {
+    padding: 16,
+    gap: 12,
+    paddingBottom: 32
+  },
+  metaCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    padding: 16
+  },
+  contentCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'solid',
     padding: 16
   },
   typeBadge: {
@@ -354,23 +386,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    marginBottom: 16
+    marginBottom: 12
   },
   typeBadgeText: {
     fontSize: 14,
     fontWeight: '600'
   },
   dateContainer: {
-    marginBottom: 16
+    marginBottom: 8
+  },
+  dateContainerLast: {
+    marginBottom: 0
   },
   dateLabel: {
     fontSize: 14
   },
   dateText: {
     fontSize: 16
-  },
-  contentContainer: {
-    marginBottom: 16
   },
   contentText: {
     fontSize: 16,

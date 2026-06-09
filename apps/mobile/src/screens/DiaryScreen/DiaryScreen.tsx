@@ -15,6 +15,7 @@ import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
+import { DiaryFab } from './components/DiaryFab'
 import { DiaryList, type DiaryListEntry } from './components/DiaryList'
 import { useDiaryData, type DiaryPageQuery } from './hooks/useDiaryData'
 
@@ -260,10 +261,17 @@ export const DiaryScreen: React.FC = () => {
 
   const handleEditToday = () => {
     void ensureStorageThen(() => {
-      router.push({
-        pathname: '/diary-editor',
-        params: { date: formatTodayDateStr() }
-      })
+      if (todayEntry) {
+        router.push({
+          pathname: '/diary-editor',
+          params: { id: String(todayEntry.id), append: '1' }
+        })
+      } else {
+        router.push({
+          pathname: '/diary-editor',
+          params: { date: formatTodayDateStr() }
+        })
+      }
     })
   }
 
@@ -301,9 +309,6 @@ export const DiaryScreen: React.FC = () => {
             onFilterWeathersChange={setFilterWeathers}
             filterFavorite={filterFavorite}
             onFilterFavoriteChange={setFilterFavorite}
-            todayEntry={todayEntry}
-            onEditToday={handleEditToday}
-            onAddNew={handleAddNew}
           />
 
           <DiaryList
@@ -324,6 +329,12 @@ export const DiaryScreen: React.FC = () => {
             onViewAll={() => setSelectedMonth(null)}
             showStoragePermission={needsFullFileAccess}
             onRequestStoragePermission={handleRequestStoragePermission}
+          />
+
+          <DiaryFab
+            todayEntry={todayEntry}
+            onEditToday={handleEditToday}
+            onAddNew={handleAddNew}
           />
         </View>
       </ScreenSafeArea>
@@ -376,7 +387,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   container: {
-    flex: 1
+    flex: 1,
+    position: 'relative'
   },
   deleteOverlay: {
     flex: 1,

@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Platform } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '@baishou/ui/native'
@@ -182,7 +182,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
         <View
           style={[
             styles.emptyBox,
-            { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+            { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
           ]}
         >
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -208,16 +208,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                   styles.card,
                   {
                     backgroundColor: colors.bgSurface,
-                    borderColor: colors.borderSubtle,
-                    ...Platform.select({
-                      ios: {
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.04,
-                        shadowRadius: 2
-                      },
-                      android: { elevation: 1 }
-                    })
+                    borderColor: colors.borderMuted
                   }
                 ]}
               >
@@ -315,6 +306,7 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 16,
     borderWidth: 1,
+    borderStyle: 'solid',
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -369,6 +361,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 16,
     borderWidth: 1,
+    borderStyle: 'solid',
     gap: 12
   },
   cardIconBox: {

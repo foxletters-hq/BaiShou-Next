@@ -35,7 +35,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const cardBorder = colors.dashboardCardBorder ?? 'rgba(148, 163, 184, 0.5)'
+  const cardBorder = colors.borderMuted
   const [showYearPicker, setShowYearPicker] = useState(false)
 
   const MONTHS = [
@@ -276,7 +276,8 @@ const CELL_GAP = 2
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    borderRadius: 12
+    borderRadius: 16,
+    borderStyle: 'solid'
   },
   header: {
     flexDirection: 'row',

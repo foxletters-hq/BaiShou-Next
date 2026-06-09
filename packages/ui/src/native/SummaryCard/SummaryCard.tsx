@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
 
 interface SummaryCardProps {
@@ -28,7 +28,10 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.bgSurface }]}
+      style={[
+        styles.card,
+        { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
+      ]}
       onPress={onClick}
       activeOpacity={0.8}
     >
@@ -66,16 +69,8 @@ const styles = StyleSheet.create({
     padding: 20,
     marginHorizontal: 20,
     marginVertical: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4
-      },
-      android: { elevation: 2 },
-      web: { boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }
-    })
+    borderWidth: 1,
+    borderStyle: 'solid'
   },
   header: {
     flexDirection: 'row',

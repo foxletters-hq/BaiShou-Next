@@ -27,7 +27,11 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
   const { colors } = useNativeTheme()
   return (
     <ScrollView
-      style={[styles.list, compact && styles.listCompact, { backgroundColor: colors.bgSurface }]}
+      style={[
+        styles.list,
+        compact && styles.listCompact,
+        { backgroundColor: compact ? colors.bgApp : colors.bgSurface }
+      ]}
       contentContainerStyle={[
         styles.listContent,
         compact && styles.listContentCompact,
@@ -48,28 +52,35 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
           </Text>
         </View>
       ) : (
-        items.map((item, index) => {
+        items.map((item) => {
           const id = String(item.id ?? '')
           const isSelected = !compact && selectedSummary?.id === item.id
           const preview = getPreview(item.content)
           const path = formatSummarySpan(item)
-          const isLast = index === items.length - 1
 
           return (
             <Pressable
               key={id}
-              style={[
-                styles.item,
-                compact && styles.itemCompact,
-                compact && !isLast && { borderBottomColor: colors.borderSubtle },
-                compact && isLast && styles.itemCompactLast,
-                !compact && {
-                  backgroundColor: isSelected
-                    ? `rgba(${colors.primaryRgb ?? '91, 168, 245'}, 0.1)`
-                    : 'transparent',
-                  borderLeftColor: isSelected ? colors.primary : 'transparent'
-                }
-              ]}
+              style={({ pressed }) =>
+                compact
+                  ? [
+                      styles.compactCard,
+                      {
+                        backgroundColor: colors.bgSurface,
+                        borderColor: colors.borderMuted,
+                        opacity: pressed ? 0.92 : 1
+                      }
+                    ]
+                  : [
+                      styles.item,
+                      {
+                        backgroundColor: isSelected
+                          ? `rgba(${colors.primaryRgb ?? '91, 168, 245'}, 0.1)`
+                          : 'transparent',
+                        borderLeftColor: isSelected ? colors.primary : 'transparent'
+                      }
+                    ]
+              }
               onPress={() => onItemClick(id)}
             >
               <View style={styles.itemMain}>
@@ -136,9 +147,10 @@ const styles = StyleSheet.create({
     flexGrow: 1
   },
   listContentCompact: {
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    paddingBottom: 0
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
+    gap: 12
   },
   listContentEmpty: {
     flexGrow: 1,
@@ -169,18 +181,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderLeftWidth: 3
   },
-  itemCompact: {
+  compactCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 0,
-    borderRadius: 0,
-    borderLeftWidth: 0,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 16
-  },
-  itemCompactLast: {
-    borderBottomWidth: 0
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    paddingVertical: 16,
+    paddingHorizontal: 16
   },
   itemMain: {
     flex: 1,

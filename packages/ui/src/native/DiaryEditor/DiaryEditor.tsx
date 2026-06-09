@@ -15,6 +15,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
+import { TagInput } from '../TagInput/TagInput'
 import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
 import { useNativeTheme } from '../theme'
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
@@ -309,6 +310,12 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.editorMain}>
+            {!isSummaryMode && viewMode === 'edit' && (
+              <View style={styles.tagsSection}>
+                <TagInput tags={tags} onChange={onTagsChange} />
+              </View>
+            )}
+
             {!isSummaryMode && onWeatherChange && viewMode === 'edit' && (
               <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
                 <WeatherPicker value={weather} onChange={onWeatherChange} />
@@ -421,6 +428,9 @@ const styles = StyleSheet.create({
   bodyContent: { padding: 16 },
   bodyContentGrow: { flexGrow: 1 },
   editorMain: { flexGrow: 1 },
+  tagsSection: {
+    marginBottom: 12
+  },
   metaBar: {
     flexDirection: 'row',
     alignItems: 'center',

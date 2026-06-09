@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../../native/theme'
 import {
@@ -175,20 +175,10 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.04,
-        shadowRadius: 16
-      },
-      android: { elevation: 4 },
-      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }
-    }),
-    marginBottom: 24
+    borderStyle: 'solid'
   },
   header: {
     flexDirection: 'row',

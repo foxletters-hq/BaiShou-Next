@@ -196,16 +196,15 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 32
+    paddingTop: 12,
+    paddingBottom: 120
   },
   columnWrapper: {
-    gap: 16
+    gap: 12
   },
   cardCell: {
     flex: 1,
-    marginBottom: 16,
-    paddingHorizontal: 4
+    marginBottom: 12
   },
   paginationBar: {
     gap: 12,

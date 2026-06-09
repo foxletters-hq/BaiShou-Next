@@ -22,7 +22,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const cardBorder = colors.dashboardCardBorder ?? 'rgba(148, 163, 184, 0.5)'
+  const cardBorder = colors.borderMuted
   const [draftMonths, setDraftMonths] = useState(String(lookbackMonths))
 
   const commitMonths = useCallback(
@@ -118,7 +118,8 @@ const styles = StyleSheet.create({
   card: {
     padding: 20,
     borderRadius: 16,
-    borderWidth: 1
+    borderWidth: 1,
+    borderStyle: 'solid'
   },
   header: {
     flexDirection: 'row',

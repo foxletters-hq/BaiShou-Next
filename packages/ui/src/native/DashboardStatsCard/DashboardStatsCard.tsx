@@ -77,7 +77,7 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const cardBorder = colors.dashboardCardBorder ?? 'rgba(148, 163, 184, 0.5)'
+  const cardBorder = colors.borderMuted
   const counts = [
     totalDiaryCount,
     totalWeeklyCount,
@@ -140,6 +140,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
     borderWidth: 1,
+    borderStyle: 'solid',
     padding: 20
   },
   header: {

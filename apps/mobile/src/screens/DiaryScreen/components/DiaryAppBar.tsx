@@ -6,8 +6,7 @@ import {
   StyleSheet,
   Modal,
   Pressable,
-  ScrollView,
-  useWindowDimensions
+  ScrollView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -23,9 +22,6 @@ export interface DiaryAppBarProps {
   onFilterWeathersChange: (weathers: string[]) => void
   filterFavorite: boolean
   onFilterFavoriteChange: (v: boolean) => void
-  todayEntry: { id: number } | null
-  onEditToday: () => void
-  onAddNew: () => void
 }
 
 export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
@@ -36,15 +32,10 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   filterWeathers,
   onFilterWeathersChange,
   filterFavorite,
-  onFilterFavoriteChange,
-  todayEntry,
-  onEditToday,
-  onAddNew
+  onFilterFavoriteChange
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const { width } = useWindowDimensions()
-  const compactActions = width < 400
   const [isSearching, setIsSearching] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
@@ -75,14 +66,18 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
       {isSearching ? (
         <View style={styles.searchRow}>
           <View style={[styles.searchWrapper, { backgroundColor: colors.bgSurfaceNormal }]}>
-            <MaterialIcons name="search" size={18} color={colors.textSecondary} />
             <Input
-              style={styles.searchInput}
+              className="min-h-0 flex-1 border-0 bg-transparent px-0"
+              containerStyle={styles.searchInputWrap}
+              style={[styles.searchInput, { color: colors.textPrimary }]}
               placeholder={t('common.search_hint')}
               value={searchQuery}
               onChangeText={onSearchChange}
               autoFocus
               returnKeyType="search"
+              leftSlot={
+                <MaterialIcons name="search" size={18} color={colors.textSecondary} />
+              }
             />
           </View>
           <TouchableOpacity onPress={closeSearch} style={styles.iconBtn} accessibilityRole="button">
@@ -129,42 +124,6 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               accessibilityLabel={t('common.search_hint')}
             >
               <MaterialIcons name="search" size={22} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={onEditToday}
-              style={styles.iconBtn}
-              accessibilityRole="button"
-              accessibilityLabel={
-                todayEntry ? t('settings.edit_today_tooltip') : t('settings.write_today_tooltip')
-              }
-            >
-              <MaterialIcons
-                name={todayEntry ? 'edit-note' : 'today'}
-                size={22}
-                color={colors.textPrimary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={onAddNew}
-              style={[
-                compactActions ? styles.iconBtn : styles.addBtn,
-                compactActions
-                  ? undefined
-                  : {
-                      borderWidth: 1,
-                      borderColor: colors.primary,
-                      backgroundColor: colors.bgSurface
-                    }
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={t('settings.write_diary_button')}
-            >
-              <MaterialIcons name="add" size={compactActions ? 22 : 18} color={colors.primary} />
-              {!compactActions && (
-                <Text style={[styles.addBtnText, { color: colors.primary }]}>
-                  {t('settings.write_diary_button')}
-                </Text>
-              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -311,12 +270,22 @@ const styles = StyleSheet.create({
     height: 36,
     gap: 8
   },
-  searchInput: {
+  searchInputWrap: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: 'transparent',
     borderWidth: 0,
-    paddingHorizontal: 0,
-    minHeight: 0
+    padding: 0,
+    margin: 0
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 0,
+    minHeight: 36,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0
   },
   iconBtn: {
     width: 36,
@@ -338,19 +307,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4
-  },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 4,
-    marginLeft: 4
-  },
-  addBtnText: {
-    fontSize: 13,
-    fontWeight: '600'
   },
   modalOverlay: {
     flex: 1,
