@@ -15,13 +15,11 @@ export const Card: React.FC<NativeCardProps> = ({ style, children, ...props }) =
       style={[
         {
           backgroundColor: colors.bgSurface,
-          borderRadius: tokens.radius.md,
-          padding: tokens.spacing.md,
-          elevation: 1,
-          shadowColor: 'var(--text-primary)',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.05,
-          shadowRadius: 2
+          borderRadius: 16,
+          borderWidth: 1,
+          borderStyle: 'solid',
+          borderColor: colors.borderMuted,
+          padding: tokens.spacing.md
         },
         style
       ]}

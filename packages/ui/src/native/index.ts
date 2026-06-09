@@ -51,6 +51,8 @@ export * from './StatisticCard'
 
 // 聊天增强组件
 export * from './ThinkingBlock'
+export * from './CompressionActivityBar'
+export * from './CompressionDivider'
 export * from './ToolResultGroupCard'
 export * from './MessageActionBar'
 
@@ -89,6 +91,12 @@ export * from './AssistantPickerSheet'
 export * from './ChatCostDialog'
 export * from './AgentSessionList'
 export * from './EmojiPicker'
+export * from './AssistantAvatar'
+export {
+  resolveNativeAssistantAvatarSource,
+  NATIVE_DEFAULT_ASSISTANT_AVATAR,
+  shouldShowAssistantEmoji
+} from './assistant-avatar.util'
 export * from './TagInput'
 export * from './DiaryMetaCard'
 export * from './DatePicker'
@@ -97,6 +105,10 @@ export * from './GalleryPanel'
 export * from './DataManagementCard'
 export * from './McpSettingsCard'
 export * from './settings/SettingsGroupDivider'
+export * from './settings/SettingsGroupCard'
+export * from './settings/SettingsSliderRow'
+export * from './settings/SettingsCardDivider'
+export { settingsCardStyles } from './settings/settings-card.styles'
 export * from './AttachmentManagementView'
 export * from './AssistantManagementView'
 export * from './AssistantMatrixCard'

@@ -6,7 +6,7 @@ type ThemeColors = typeof lightColors
 /** HeroUI Input 默认场域外观（rounded-2xl + 1px 边框），不依赖 Uniwind 是否生效 */
 export function getHeroInputFieldStyle(
   colors: ThemeColors,
-  options?: { multiline?: boolean }
+  options?: { multiline?: boolean; compact?: boolean }
 ): TextStyle {
   return {
     backgroundColor: colors.bgSurface,
@@ -14,7 +14,7 @@ export function getHeroInputFieldStyle(
     borderColor: colors.borderStrong,
     borderRadius: 16,
     borderCurve: 'continuous',
-    minHeight: options?.multiline ? undefined : 48,
+    minHeight: options?.multiline || options?.compact ? undefined : 48,
     paddingHorizontal: 12,
     color: colors.textPrimary
   }

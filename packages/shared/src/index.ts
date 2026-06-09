@@ -22,6 +22,7 @@ export * from './i18n/i18n.types'
 export * from './utils/pricing.util'
 export * from './utils/date.utils'
 export { logger } from './utils/logger'
+export { traceCall, SHORTCUT_TRACE_CHAIN } from './utils/call-trace'
 export * from './utils/model-capabilities'
 
 // Mock 数据与类型（供开发阶段跨包使用）
@@ -57,6 +58,7 @@ export * from './utils/version.utils'
 export * from './utils/diary-preview.util'
 export * from './utils/compression-text-normalizer'
 export * from './utils/user-avatar.util'
+export * from './utils/assistant-avatar.util'
 export * from './utils/message-attachment.util'
 
 export { threeWayMerge, type MergeDecision } from './sync/three-way-merge'

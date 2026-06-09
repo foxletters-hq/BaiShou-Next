@@ -66,7 +66,10 @@ export const Input = forwardRef<any, NativeInputProps>(
       ? splitInputLayoutStyle(sanitizedStyle)
       : { inputStyle: sanitizedStyle, wrapperStyle: undefined }
     const compact = isCompactInputStyle(style)
-    const fieldShell = getHeroInputFieldStyle(colors, { multiline: useTextArea || multiline })
+    const fieldShell = getHeroInputFieldStyle(colors, {
+      multiline: useTextArea || multiline,
+      compact
+    })
     const textFieldLayout = getCompactTextFieldStyle(style)
 
     const inputClassName = cn(!compact && 'w-full', className)

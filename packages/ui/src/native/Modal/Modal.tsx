@@ -40,7 +40,7 @@ export const Modal: React.FC<NativeModalProps> = ({
       onRequestClose={onClose}
       {...props}
     >
-      <View style={styles.backdrop}>
+      <View style={styles.backdrop} pointerEvents="box-none">
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={onClose}
@@ -55,7 +55,8 @@ export const Modal: React.FC<NativeModalProps> = ({
               maxHeight: resolvedMaxHeight,
               backgroundColor: colors.bgSurface,
               borderRadius: tokens.radius.xl,
-              padding: tokens.spacing.md
+              padding: tokens.spacing.md,
+              zIndex: 2
             }
           ]}
         >

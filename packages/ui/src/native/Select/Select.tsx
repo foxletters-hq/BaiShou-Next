@@ -1,11 +1,14 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
   FlatList,
   Modal,
-  TouchableWithoutFeedback
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  Animated
 } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +19,8 @@ export interface NativeSelectOption {
   leading?: React.ReactNode
 }
 
+export type NativeSelectPresentation = 'sheet' | 'center'
+
 export interface NativeSelectProps {
   options: NativeSelectOption[]
   value?: string
@@ -23,6 +28,10 @@ export interface NativeSelectProps {
   placeholder?: string
   error?: string
   style?: any
+  /** sheet：自底部滑出；center：屏幕居中弹出 */
+  presentation?: NativeSelectPresentation
+  /** sheet 模式下是否显示半透明遮罩（嵌套在已有弹窗内建议关闭） */
+  showOverlay?: boolean
 }
 
 export const Select: React.FC<NativeSelectProps> = ({
@@ -31,13 +40,35 @@ export const Select: React.FC<NativeSelectProps> = ({
   onValueChange,
   placeholder,
   error,
-  style
+  style,
+  presentation = 'sheet',
+  showOverlay = false
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
+  const { width: screenWidth } = useWindowDimensions()
   const [modalVisible, setModalVisible] = useState(false)
+  const sheetTranslateY = useRef(new Animated.Value(320)).current
 
   const selectedOpt = options.find((o) => o.value === value)
+  const panelWidth = Math.min(screenWidth - 48, 320)
+
+  useEffect(() => {
+    if (presentation !== 'sheet') return
+    if (modalVisible) {
+      sheetTranslateY.setValue(320)
+      Animated.spring(sheetTranslateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 68,
+        friction: 12
+      }).start()
+      return
+    }
+    sheetTranslateY.setValue(320)
+  }, [modalVisible, presentation, sheetTranslateY])
+
+  const closeSheet = () => setModalVisible(false)
 
   return (
     <View style={style}>
@@ -85,81 +116,172 @@ export const Select: React.FC<NativeSelectProps> = ({
       <Modal
         visible={modalVisible}
         transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
+        animationType={presentation === 'center' ? 'fade' : 'fade'}
+        onRequestClose={closeSheet}
       >
-        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View
-            style={{
-              flex: 1,
-              justifyContent: 'flex-end',
-              backgroundColor: 'rgba(0,0,0,0.5)'
-            }}
-          >
-            <TouchableWithoutFeedback>
-              <View
-                style={{
+        {presentation === 'center' ? (
+          <View style={styles.centerOverlay}>
+            <Pressable
+              style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgOverlay }]}
+              onPress={closeSheet}
+            />
+            <View
+              style={[
+                styles.centerPanel,
+                {
+                  width: panelWidth,
+                  backgroundColor: colors.bgSurface,
+                  borderColor: colors.borderSubtle,
+                  borderRadius: tokens.radius.lg
+                }
+              ]}
+            >
+              {options.map((item, index) => {
+                const active = item.value === value
+                return (
+                  <TouchableOpacity
+                    key={item.value}
+                    style={[
+                      styles.centerOption,
+                      index < options.length - 1 && {
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: colors.borderSubtle
+                      },
+                      active && { backgroundColor: colors.primaryLight }
+                    ]}
+                    onPress={() => {
+                      onValueChange?.(item.value)
+                      closeSheet()
+                    }}
+                  >
+                    {item.leading}
+                    <Text
+                      style={{
+                        color: active ? colors.primary : colors.textPrimary,
+                        fontSize: 16,
+                        flex: 1
+                      }}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+              <TouchableOpacity
+                style={[styles.centerCancel, { borderTopColor: colors.borderSubtle }]}
+                onPress={closeSheet}
+              >
+                <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
+                  {t('common.cancel', '取消')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.sheetRoot}>
+            {showOverlay ? (
+              <Pressable
+                style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgOverlay }]}
+                onPress={closeSheet}
+              />
+            ) : (
+              <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+            )}
+            <Animated.View
+              style={[
+                styles.sheetPanel,
+                {
                   backgroundColor: colors.bgSurface,
                   borderTopLeftRadius: tokens.radius.lg,
                   borderTopRightRadius: tokens.radius.lg,
-                  maxHeight: '50%'
-                }}
-              >
-                <FlatList
-                  data={options}
-                  keyExtractor={(item) => item.value}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={{
-                        padding: tokens.spacing.md,
-                        borderBottomWidth: 1,
-                        borderBottomColor: colors.bgSurfaceNormal,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8
-                      }}
-                      onPress={() => {
-                        onValueChange?.(item.value)
-                        setModalVisible(false)
-                      }}
-                    >
-                      {item.leading}
-                      <Text
-                        style={{
-                          color: colors.textPrimary,
-                          fontSize: 16,
-                          textAlign: 'center'
-                        }}
-                      >
-                        {item.label}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                />
-                <TouchableOpacity
-                  style={{
-                    padding: tokens.spacing.md,
-                    marginBottom: tokens.spacing.lg
-                  }}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Text
+                  transform: [{ translateY: sheetTranslateY }]
+                }
+              ]}
+            >
+              <FlatList
+                data={options}
+                keyExtractor={(item) => item.value}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
                     style={{
-                      color: colors.primary,
-                      fontSize: 16,
-                      textAlign: 'center',
-                      fontWeight: 'bold'
+                      padding: tokens.spacing.md,
+                      borderBottomWidth: 1,
+                      borderBottomColor: colors.bgSurfaceNormal,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8
+                    }}
+                    onPress={() => {
+                      onValueChange?.(item.value)
+                      closeSheet()
                     }}
                   >
-                    {t('common.cancel', '取消')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
+                    {item.leading}
+                    <Text
+                      style={{
+                        color: colors.textPrimary,
+                        fontSize: 16,
+                        textAlign: 'center'
+                      }}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <TouchableOpacity
+                style={{
+                  padding: tokens.spacing.md,
+                  marginBottom: tokens.spacing.lg
+                }}
+                onPress={closeSheet}
+              >
+                <Text
+                  style={{
+                    color: colors.primary,
+                    fontSize: 16,
+                    textAlign: 'center',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {t('common.cancel', '取消')}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
-        </TouchableWithoutFeedback>
+        )}
       </Modal>
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  centerOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  centerPanel: {
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden'
+  },
+  centerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14
+  },
+  centerCancel: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 14
+  },
+  sheetRoot: {
+    flex: 1,
+    justifyContent: 'flex-end'
+  },
+  sheetPanel: {
+    maxHeight: '50%'
+  }
+})

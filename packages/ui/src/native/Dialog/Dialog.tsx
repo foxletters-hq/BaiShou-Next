@@ -21,8 +21,10 @@ export interface ChooseOption {
   label: string
   value: string
   destructive?: boolean
-  /** 选项前缀元素（如供应商图标、头像），与 label 同行左对齐 */
+  /** 选项前缀元素（如供应商图标、头像），与 label 同行展示 */
   leading?: ReactNode
+  /** 为 true 时图标与文字作为一组水平居中（默认左对齐） */
+  centered?: boolean
 }
 
 export interface DialogContextState {
@@ -188,7 +190,15 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     <DialogContext.Provider value={{ alert, confirm, prompt, choose, closeAll }}>
       {children}
       {state.isOpen && (
-        <Modal visible={state.isOpen} onClose={dismissDialog} title={state.title}>
+        <Modal
+          visible={state.isOpen}
+          onClose={dismissDialog}
+          title={
+            state.type === 'confirm' || state.type === 'prompt' || state.type === 'choose'
+              ? undefined
+              : state.title
+          }
+        >
           <View
             style={[
               styles.dialogBody,
@@ -213,39 +223,69 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                   containerStyle={{ marginTop: tokens.spacing.sm }}
                 />
               </>
+            ) : state.type === 'choose' ? (
+              typeof state.message === 'string' && state.message.trim().length > 0 ? (
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: colors.textPrimary,
+                    textAlign: 'center',
+                    marginBottom: tokens.spacing.md,
+                    lineHeight: 22
+                  }}
+                  numberOfLines={2}
+                >
+                  {state.message}
+                </Text>
+              ) : null
             ) : (
               renderMessage()
             )}
 
             {state.type === 'choose' && state.chooseOptions && (
               <ScrollView style={styles.chooseList} keyboardShouldPersistTaps="handled">
-                {state.chooseOptions.map((opt) => (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => closeDialog(opt.value)}
-                    style={({ pressed }) => [
-                      styles.chooseItem,
-                      opt.leading ? styles.chooseItemWithLeading : null,
-                      {
-                        backgroundColor: pressed ? colors.bgSurfaceNormal : 'transparent',
-                        borderColor: colors.borderSubtle
-                      }
-                    ]}
-                  >
-                    {opt.leading ? <View style={styles.chooseLeading}>{opt.leading}</View> : null}
-                    <Text
-                      style={{
-                        flex: 1,
-                        fontSize: 16,
-                        fontWeight: '500',
-                        color: opt.destructive ? colors.error : colors.textPrimary,
-                        textAlign: opt.leading ? 'left' : 'center'
-                      }}
+                {state.chooseOptions.map((opt) => {
+                  const labelStyle = {
+                    fontSize: 16,
+                    fontWeight: '500' as const,
+                    color: opt.destructive ? colors.error : colors.textPrimary
+                  }
+
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => closeDialog(opt.value)}
+                      style={({ pressed }) => [
+                        styles.chooseItem,
+                        opt.leading && !opt.centered ? styles.chooseItemWithLeading : null,
+                        opt.leading && opt.centered ? styles.chooseItemCentered : null,
+                        {
+                          backgroundColor: pressed ? colors.bgSurfaceNormal : 'transparent',
+                          borderColor: colors.borderSubtle
+                        }
+                      ]}
                     >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                ))}
+                      {opt.leading ? (
+                        opt.centered ? (
+                          <View style={styles.chooseCenteredRow}>
+                            <View style={styles.chooseLeading}>{opt.leading}</View>
+                            <Text style={labelStyle}>{opt.label}</Text>
+                          </View>
+                        ) : (
+                          <>
+                            <View style={styles.chooseLeading}>{opt.leading}</View>
+                            <Text style={{ ...labelStyle, flex: 1, textAlign: 'left' }}>
+                              {opt.label}
+                            </Text>
+                          </>
+                        )
+                      ) : (
+                        <Text style={{ ...labelStyle, textAlign: 'center' }}>{opt.label}</Text>
+                      )}
+                    </Pressable>
+                  )
+                })}
               </ScrollView>
             )}
 
@@ -322,6 +362,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 12
+  },
+  chooseItemCentered: {
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  chooseCenteredRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
   },
   chooseLeading: {
     alignItems: 'center',
