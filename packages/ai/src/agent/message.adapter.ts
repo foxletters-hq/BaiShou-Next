@@ -61,7 +61,7 @@ export class MessageAdapter {
         vercelMessages.push({
           role: msg.role as 'system' | 'user',
           content: finalContent
-        })
+        } as ModelMessage)
       } else if (msg.role === 'assistant') {
         const contentParts: any[] = []
         // 收集已完成的工具调用结果，后续生成独立的 role: 'tool' 消息

@@ -28,14 +28,8 @@ export function inferAttachmentFlags(att: AttachmentLike): {
       att.isImage === true ||
       att.type === 'image' ||
       /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(fileName),
-    isPdf:
-      att.isPdf === true ||
-      att.mimeType === 'application/pdf' ||
-      /\.pdf$/i.test(fileName),
-    isText:
-      att.isText === true ||
-      att.type === 'text' ||
-      /\.(txt|md)$/i.test(fileName)
+    isPdf: att.isPdf === true || att.mimeType === 'application/pdf' || /\.pdf$/i.test(fileName),
+    isText: att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
   }
 }
 
@@ -161,7 +155,7 @@ export async function appendAttachmentToContentParts(
   await appendFileAttachmentToContentParts(contentParts, att, opts)
 }
 
-export function finalizeUserContentParts(contentParts: unknown[]): string | unknown[] {
+export function finalizeUserContentParts(contentParts: any[]): string | any[] {
   if (contentParts.length === 1) {
     const only = contentParts[0] as { type?: string; text?: string }
     if (only?.type === 'text' && typeof only.text === 'string') {

@@ -5,6 +5,7 @@ import { extractPdfText } from '../utils/mobile-pdf.util'
 import { importUriToPath } from './mobile-uri-import'
 
 export type AttachmentInput = {
+  type?: string
   filePath?: string
   fileName?: string
   name?: string
@@ -60,14 +61,13 @@ export async function processAgentAttachments(
           if (isImage) {
             out.isImage = true
             out.type = 'image'
-            out.mimeType =
-              newFileName.endsWith('.png')
-                ? 'image/png'
-                : newFileName.endsWith('.gif')
-                  ? 'image/gif'
-                  : newFileName.endsWith('.webp')
-                    ? 'image/webp'
-                    : 'image/jpeg'
+            out.mimeType = newFileName.endsWith('.png')
+              ? 'image/png'
+              : newFileName.endsWith('.gif')
+                ? 'image/gif'
+                : newFileName.endsWith('.webp')
+                  ? 'image/webp'
+                  : 'image/jpeg'
           } else if (isPdf) {
             out.isPdf = true
           }

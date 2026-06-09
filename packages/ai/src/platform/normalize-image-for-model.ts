@@ -32,13 +32,11 @@ function resolveImageMimeType(att: AttachmentLike, filePath: string): string {
 function parseDataUrl(data: string): { base64: string; mimeType?: string } {
   if (!data.startsWith('data:')) return { base64: data }
   const match = data.match(/^data:([^;]+);base64,(.+)$/s)
-  if (match) return { mimeType: match[1], base64: match[2] }
+  if (match?.[1] && match[2]) return { mimeType: match[1], base64: match[2] }
   return { base64: data.replace(/^data:[^;]*;base64,/, '') }
 }
 
-async function resizeWithElectron(
-  filePath: string
-): Promise<NormalizedImagePayload | null> {
+async function resizeWithElectron(filePath: string): Promise<NormalizedImagePayload | null> {
   if (!process.versions.electron) return null
 
   try {

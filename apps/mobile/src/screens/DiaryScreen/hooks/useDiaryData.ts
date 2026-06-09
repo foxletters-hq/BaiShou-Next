@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { logger } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
-import type { DiaryService } from '@baishou/core/mobile'
+import type { DiaryService } from '@baishou/core-mobile'
 
 export interface DiaryPageQuery {
   selectedMonth: Date | null
