@@ -107,7 +107,9 @@ export class ContextAtMessageService {
       compactionCutoffOrderIndex: compactionMeta.compactionCutoffOrderIndex,
       thoughtDurationMs: compactionMeta.thoughtDurationMs,
       summaryDurationMs: compactionMeta.summaryDurationMs,
-      windowMessages: dbHistory
+      windowMessages: dbHistory,
+      targetMessage: target as MessageWithParts,
+      allMessagesWithParts: allMessages as MessageWithParts[]
     })
 
     return {

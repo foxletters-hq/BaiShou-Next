@@ -105,6 +105,10 @@ export interface ToolDeduplicationService {
 /**
  * 日记全文搜索接口 (FTS5)
  */
+export type ToolDiaryMutationResult =
+  | { ok: true }
+  | { ok: false; message: string }
+
 export interface ToolDiarySearcher {
   searchFTS(
     query: string,
@@ -117,6 +121,23 @@ export interface ToolDiarySearcher {
       rankScore: number
     }>
   >
+  /** 按日期范围列出日记（移动端/桌面影子索引） */
+  listInDateRange?(
+    startDate: string,
+    endDate: string
+  ): Promise<Array<{ date: string; preview: string }>>
+  /** 按日期读取日记全文（移动端经 DiaryService） */
+  readByDates?(
+    dates: string[]
+  ): Promise<Array<{ date: string; content: string | null }>>
+  writeEntry?(date: string, content: string, tags?: string): Promise<ToolDiaryMutationResult>
+  editEntry?(args: {
+    date: string
+    content: string
+    mode: 'append' | 'overwrite'
+    tags?: string
+  }): Promise<ToolDiaryMutationResult>
+  deleteEntry?(date: string): Promise<ToolDiaryMutationResult>
 }
 
 /**

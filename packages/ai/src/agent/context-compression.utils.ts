@@ -1,3 +1,4 @@
+import type { ModelMessage } from 'ai'
 import type { SessionRepository } from '@baishou/database'
 import { AssistantRepository } from '@baishou/database'
 import type { MessageWithParts } from './message.adapter'
@@ -242,6 +243,28 @@ export function estimateMessagesTokens(
       ),
     0
   )
+}
+
+/**
+ * 压缩摘要专用：将历史消息压平为纯文本 user/assistant 轮次。
+ * 避免 DeepSeek thinking 模式 + tool-call 结构在压缩请求中触发 400。
+ */
+export function toFlatTextModelMessages(messages: MessageWithParts[]): ModelMessage[] {
+  const result: ModelMessage[] = []
+  for (const msg of messages) {
+    if (msg.role !== 'user' && msg.role !== 'assistant' && msg.role !== 'tool') {
+      continue
+    }
+    const text = extractMessageTextForCompression(msg).trim()
+    if (!text) continue
+
+    if (msg.role === 'tool') {
+      result.push({ role: 'user', content: `[工具输出]\n${text}` })
+      continue
+    }
+    result.push({ role: msg.role, content: text })
+  }
+  return result
 }
 
 /** 送入摘要模型前截断超长 tool part（不修改库内原文） */

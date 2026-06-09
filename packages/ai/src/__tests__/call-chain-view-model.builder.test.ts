@@ -260,6 +260,80 @@ describe('buildCallChainViewModel', () => {
     expect(vm.rounds[1]?.roundIndex).toBe(2)
     expect(vm.activeRoundIndex).toBe(2)
   })
+
+  it('appends assistant reply items when target is assistant with window messages', () => {
+    const windowMessages = [
+      {
+        id: 'm1',
+        sessionId: 's1',
+        role: 'user',
+        isSummary: false,
+        orderIndex: 1,
+        createdAt: new Date(),
+        parts: [
+          { id: 'p1', messageId: 'm1', sessionId: 's1', type: 'text', data: { text: '你好' } }
+        ]
+      }
+    ] as MessageWithParts[]
+
+    const assistantTarget = {
+      id: 'm2',
+      sessionId: 's1',
+      role: 'assistant',
+      isSummary: false,
+      orderIndex: 2,
+      createdAt: new Date(),
+      parts: [
+        {
+          id: 'p2',
+          messageId: 'm2',
+          sessionId: 's1',
+          type: 'text',
+          data: { text: 'think', isReasoning: true }
+        },
+        {
+          id: 'p3',
+          messageId: 'm2',
+          sessionId: 's1',
+          type: 'tool',
+          data: { name: 'message_search', arguments: {}, result: 'ok' }
+        },
+        {
+          id: 'p4',
+          messageId: 'm2',
+          sessionId: 's1',
+          type: 'text',
+          data: { text: '你好呀' }
+        }
+      ]
+    } as MessageWithParts
+
+    const vm = buildCallChainViewModel({
+      chain: [
+        { role: 'user', content: '你好', label: '用户' },
+        { role: 'assistant', content: 'think', label: 'AI 思考' },
+        { role: 'assistant', content: 'tool', label: '工具调用' },
+        { role: 'assistant', content: '你好呀', label: 'AI 输出' }
+      ],
+      systemPrompt: 'sys',
+      recentCount: 30,
+      target: { role: 'assistant', orderIndex: 2 },
+      allMessages: [
+        { role: 'user', orderIndex: 1 },
+        { role: 'assistant', orderIndex: 2 }
+      ],
+      windowMessages,
+      targetMessage: assistantTarget,
+      allMessagesWithParts: [windowMessages[0]!, assistantTarget]
+    })
+
+    const messageLabels = vm.flatEntries
+      .filter((e) => e.kind === 'message')
+      .map((e) => (e.kind === 'message' ? e.item?.label : undefined))
+
+    expect(messageLabels).toEqual(['用户', 'AI 思考', '工具调用', 'AI 输出'])
+    expect(vm.rounds[0]?.items).toHaveLength(4)
+  })
 })
 
 describe('buildPostCompactionDisplayHistory', () => {

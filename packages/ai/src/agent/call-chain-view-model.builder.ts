@@ -130,6 +130,29 @@ export function groupChainIntoRounds(items: DisplayContextMessage[]): CallChainR
  * 仅将压缩锚点之后、且已进入上下文窗口的消息格式化为调用链轮次素材。
  * 避免把压缩前历史也算进「第 1 轮」。
  */
+function appendResponseItemsToHistory(
+  historyForRounds: DisplayContextMessage[],
+  target: { role: string; orderIndex: number },
+  targetMessage?: MessageWithParts,
+  allMessagesWithParts?: MessageWithParts[]
+): DisplayContextMessage[] {
+  let responseItems: DisplayContextMessage[] = []
+
+  if (target.role === 'assistant' && targetMessage?.parts?.length) {
+    responseItems = formatMessageWithPartsForChain(targetMessage)
+  } else if (target.role === 'user' && allMessagesWithParts?.length) {
+    const response = allMessagesWithParts
+      .filter((m) => m.role === 'assistant' && m.orderIndex > target.orderIndex)
+      .sort((a, b) => a.orderIndex - b.orderIndex)[0]
+    if (response?.parts?.length) {
+      responseItems = formatMessageWithPartsForChain(response)
+    }
+  }
+
+  if (responseItems.length === 0) return historyForRounds
+  return [...historyForRounds, ...responseItems]
+}
+
 export function buildPostCompactionDisplayHistory(
   windowMessages: MessageWithParts[],
   compactionCutoffOrderIndex?: number
@@ -293,18 +316,30 @@ export function buildCallChainViewModel(params: {
   compactionCutoffOrderIndex?: number
   /** 与发给模型一致的窗口消息（含快照注入），用于按锚点切分轮次 */
   windowMessages?: MessageWithParts[]
+  /** 锚点消息（含 parts），用于在窗口上下文后追加本轮 AI 回复/工具调用 */
+  targetMessage?: MessageWithParts
+  allMessagesWithParts?: MessageWithParts[]
 }): CallChainViewModel {
   const { inlineCompactionSummary } = splitChainForCallChainView(params.chain)
   const compressionSummary =
     params.compressionSummary?.trim() || inlineCompactionSummary?.trim() || undefined
   const compressionReasoning = params.compressionReasoning?.trim() || undefined
 
-  const historyForRounds = params.windowMessages?.length
+  let historyForRounds = params.windowMessages?.length
     ? buildPostCompactionDisplayHistory(
         params.windowMessages,
         compressionSummary ? params.compactionCutoffOrderIndex : undefined
       )
     : splitChainForCallChainView(params.chain).historyAfterCompaction
+
+  if (params.windowMessages?.length) {
+    historyForRounds = appendResponseItemsToHistory(
+      historyForRounds,
+      params.target,
+      params.targetMessage,
+      params.allMessagesWithParts
+    )
+  }
 
   const rounds = groupChainIntoRounds(historyForRounds)
   const flatEntries = buildFlatEntries(

@@ -23,12 +23,25 @@ import {
   usableContextTokens
 } from './context-compression.utils'
 import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
-// @ts-ignore
-import { SnapshotRepository } from '@baishou/database'
+import {
+  AssistantRepository,
+  MessageRepository,
+  SnapshotRepository,
+  SqliteHybridSearchRepository
+} from '@baishou/database'
+import { DatabaseAdapter } from '../tools/adapters/database.adapter'
+import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
+import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
 
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
-import { messageHasImageAttachments } from './attachment-content.builder'
+import {
+  appendFileAttachmentToContentParts,
+  appendImagePartToContentParts,
+  finalizeUserContentParts,
+  inferAttachmentFlags,
+  messageHasImageAttachments
+} from './attachment-content.builder'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -69,23 +82,36 @@ export class AgentSessionService {
           sessionId,
           COMPRESSION_MESSAGE_FETCH_LIMIT
         )) as import('./message.adapter').MessageWithParts[]
+        // 重发/编辑截断后 token 可能低于阈值，但仍需强制重压缩（内容可能已变）
+        const canForceRecompress =
+          skipUserMessageRecording === true && rawForEstimate.length >= 4
+        const compressionConfigForRun = canForceRecompress
+          ? { ...compressionConfig, force: true }
+          : compressionConfig
         const latestSnap = await snapshotRepo.getLatestSnapshot(sessionId)
         const afterSnap = getMessagesAfterSnapshot(rawForEstimate, latestSnap)
         const contextTokens = estimateContextTokensForTrigger(rawForEstimate, afterSnap, latestSnap)
-        if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
+        if (resolveCompressionTrigger(contextTokens, compressionConfigForRun)) {
           logger.info(
-            `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfig.threshold}, window=${compressionConfig.modelContextWindow ?? 0}), compressing before request.`
+            `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfigForRun.threshold}, window=${compressionConfigForRun.modelContextWindow ?? 0}, force=${Boolean(compressionConfigForRun.force)}), compressing before request.`
           )
-          await ContextCompressorService.tryCompress(
+          const compressed = await ContextCompressorService.tryCompress(
             provider,
             modelId,
             sessionRepo,
             snapshotRepo,
             sessionId,
-            compressionConfig,
+            compressionConfigForRun,
             provider.config?.type ?? '',
             userMessageId ? { triggerUserMessageId: userMessageId } : undefined
           )
+          if (compressed) {
+            const allForPrune = (await sessionRepo.getMessagesBySession(
+              sessionId,
+              COMPRESSION_MESSAGE_FETCH_LIMIT
+            )) as import('./message.adapter').MessageWithParts[]
+            ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
+          }
         }
       }
 
@@ -111,12 +137,6 @@ export class AgentSessionService {
 
       if (!userContentAlreadyInContext) {
         if (attachments && attachments.length > 0) {
-          const {
-            appendFileAttachmentToContentParts,
-            appendImagePartToContentParts,
-            finalizeUserContentParts,
-            inferAttachmentFlags
-          } = await import('./attachment-content.builder')
           const contentParts: unknown[] = []
           if (userText.trim()) {
             contentParts.push({ type: 'text', text: userText })
@@ -147,11 +167,7 @@ export class AgentSessionService {
         ? coreMessages
         : messageMiddlewareChain.apply(coreMessages)
 
-      // 3. 构建可用的 Tools 及其底层接续支持
-      const { SqliteHybridSearchRepository, MessageRepository } = await import('@baishou/database')
-      const { DatabaseAdapter } = await import('../tools/adapters/database.adapter')
-      const { EmbeddingAdapter } = await import('../tools/adapters/embedding.adapter')
-
+      // 3. 构建可用的 Tools 及其底层接续支持（静态 import，避免 Android Hermes 运行时动态打包 SyntaxError）
       const drizzleDb = (sessionRepo as any).db || (sessionRepo as any).database
       if (!drizzleDb) {
         throw new Error('Agent database connection is unavailable')
@@ -210,8 +226,6 @@ export class AgentSessionService {
       // 构建记忆去重服务
       let dedupService: any = undefined
       if (embAdapter && systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
-        const { MemoryDeduplicationServiceImpl } =
-          await import('../rag/memory-deduplication.service')
         dedupService = new MemoryDeduplicationServiceImpl(
           embAdapter,
           dbAdapter,
@@ -224,7 +238,6 @@ export class AgentSessionService {
 
       const contextCompressionRunner = {
         run: async (phase: 'upstream' | 'downstream', opts?: { force?: boolean }) => {
-          const { resolveSessionCompressionConfig } = await import('./context-compression.utils')
           const config = await resolveSessionCompressionConfig(sessionId, sessionRepo)
           const merged = { ...config, force: opts?.force }
           const usableWindow = usableContextTokens(
@@ -245,7 +258,6 @@ export class AgentSessionService {
             userMessageId ? { triggerUserMessageId: userMessageId } : undefined
           )
           if (ok) {
-            const { COMPRESSION_MESSAGE_FETCH_LIMIT } = await import('./compression.constants')
             const allForPrune = (await sessionRepo.getMessagesBySession(
               sessionId,
               COMPRESSION_MESSAGE_FETCH_LIMIT
@@ -280,7 +292,6 @@ export class AgentSessionService {
       // --- 灵魂注入 (如果有 Assistant 绑定) ---
       let effectiveSystemPrompt = systemPrompt
       if (sessionObj?.assistantId) {
-        const { AssistantRepository } = await import('@baishou/database')
         const astRepo = new AssistantRepository(
           (sessionRepo as any).db || (sessionRepo as any).database
         )
@@ -404,7 +415,10 @@ export class AgentSessionService {
         })
       }
     } catch (e: any) {
-      logger.error('[AgentSessionService] Error in streamChat:', e)
+      logger.error(
+        '[AgentSessionService] Error in streamChat:',
+        e?.stack || e?.message || e
+      )
       if (e?.cause) {
         logger.error('[AgentSessionService] Cause:', e.cause)
       }

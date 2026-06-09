@@ -1,6 +1,13 @@
 import type { ISqlExecutor } from '@baishou/shared'
+import {
+  MessageRepository,
+  SqliteHybridSearchRepository
+} from '@baishou/database'
 import type { IAIProvider } from '../providers/provider.interface'
 import type { ToolRegistry } from '../tools/tool-registry'
+import { DatabaseAdapter } from '../tools/adapters/database.adapter'
+import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
+import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
 import { SystemPromptBuilder } from './system-prompt.builder'
 
 export interface AgentToolsContextParams {
@@ -65,10 +72,6 @@ function createClientExecutor(drizzleDb: any): ISqlExecutor {
 export async function resolveEnabledToolsForSession(
   params: AgentToolsContextParams
 ): Promise<Record<string, unknown>> {
-  const { SqliteHybridSearchRepository, MessageRepository } = await import('@baishou/database')
-  const { DatabaseAdapter } = await import('../tools/adapters/database.adapter')
-  const { EmbeddingAdapter } = await import('../tools/adapters/embedding.adapter')
-
   const drizzleDb = (params.sessionRepo as any).db || (params.sessionRepo as any).database
   if (!drizzleDb) {
     throw new Error('Agent database connection is unavailable')
@@ -96,7 +99,6 @@ export async function resolveEnabledToolsForSession(
     params.systemModels?.embeddingProvider &&
     params.systemModels?.embeddingModelId
   ) {
-    const { MemoryDeduplicationServiceImpl } = await import('../rag/memory-deduplication.service')
     dedupService = new MemoryDeduplicationServiceImpl(
       embAdapter,
       dbAdapter,

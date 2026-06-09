@@ -25,6 +25,7 @@ export * from './tools/diary-list.tool'
 export * from './tools/diary-edit.tool'
 export * from './tools/diary-delete.tool'
 export * from './tools/diary-search.tool'
+export * from './tools/diary-crud-db.util'
 export * from './tools/memory-store.tool'
 export * from './tools/memory-delete.tool'
 export * from './tools/vector-search.tool'
@@ -66,8 +67,14 @@ export * from './agent/session-truncate.utils'
 export {
   readPdfTextFromPath,
   readLocalFileAsBase64,
+  readLocalFileAsBase64Async,
   canReadLocalPath
 } from './platform/read-local-file'
+export {
+  registerLocalFileReader,
+  clearLocalFileReader,
+  type LocalFileReader
+} from './platform/local-file-reader.registry'
 
 export type { IStreamEmitter } from './agent/stream-emitter.interface'
 export { AgentChatCoreService } from './agent/agent-chat-core.service'

@@ -11,7 +11,7 @@ import {
   buildCompressionPreviousSummaryBlock
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
-import { MessageAdapter, MessageWithParts } from './message.adapter'
+import { MessageWithParts } from './message.adapter'
 import {
   estimateContextTokensForTrigger,
   getMessagesAfterSnapshot,
@@ -25,6 +25,7 @@ import {
   preserveRecentTokenBudget,
   extractMessageText,
   cloneMessagesForCompressionModel,
+  toFlatTextModelMessages,
   type SessionCompressionConfig
 } from './context-compression.utils'
 import {
@@ -58,7 +59,7 @@ export type RecompressResult = {
 }
 
 export class ContextCompressorService {
-  /** 带会话锁的压缩入口（请求前 / 消息落库后共用） */
+  /** 带会话锁的压缩入口（每轮发消息时上游压缩一次） */
   static async tryCompress(
     provider: IAIProvider,
     modelId: string,
@@ -162,7 +163,7 @@ export class ContextCompressorService {
       const markerMessageId =
         explicitTriggerUserMessageId ?? resolveLatestUserMessageId(allMessages)
 
-      if (markerMessageId) {
+      if (markerMessageId && !compressionConfig.force) {
         const alreadyCompressed = await messageHasCompactionMarker(sessionRepo, markerMessageId)
         if (alreadyCompressed) {
           logger.info(
@@ -405,7 +406,7 @@ export class ContextCompressorService {
     const systemBase = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
 
     const headForModel = cloneMessagesForCompressionModel(toCompress)
-    const headMessages = await MessageAdapter.toVercelMessages(headForModel, modelId, providerType)
+    const headMessages = toFlatTextModelMessages(headForModel)
 
     const messages: ModelMessage[] = [...headMessages]
     const previousSummaryBlock = buildCompressionPreviousSummaryBlock(
@@ -422,9 +423,21 @@ export class ContextCompressorService {
       temperature: 0.1
     })
 
-    const streamed = await consumeCompressionModelStream(streamResult, sessionId)
+    let streamed: Awaited<ReturnType<typeof consumeCompressionModelStream>>
+    try {
+      streamed = await consumeCompressionModelStream(streamResult, sessionId)
+    } catch (streamErr: unknown) {
+      const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
+      logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
+      throw streamErr
+    }
 
-    if (!streamed.summaryText) return null
+    if (!streamed.summaryText) {
+      logger.error(
+        `[ContextCompressor] Session(${sessionId}) empty summary (API may have returned an error).`
+      )
+      return null
+    }
     const lastAssistant = [...toCompress].reverse().find((m) => m.role === 'assistant')
     const lastAssistantText = lastAssistant ? extractMessageText(lastAssistant).trim() : ''
     if (lastAssistantText.length > 40 && streamed.summaryText === lastAssistantText) {

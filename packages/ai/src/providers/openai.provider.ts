@@ -16,10 +16,44 @@ import {
 } from './fetch-header.util'
 import { extractApiErrorMessage, formatModelNotAvailableMessage } from './provider-api-error.util'
 
+const DEEPSEEK_THINK_OPEN = '<' + 'redacted_thinking>'
+const DEEPSEEK_THINK_CLOSE = '<' + '/redacted_thinking>'
+
+/** 将 assistant 正文中的 redacted_thinking 块提取为 reasoning_content，并从 content 中移除 */
+export function applyDeepSeekReasoningFields(msg: {
+  role?: string
+  content?: unknown
+  reasoning_content?: string
+  tool_calls?: unknown[]
+}): void {
+  if (msg.role !== 'assistant' || typeof msg.content !== 'string' || !msg.content) {
+    return
+  }
+
+  const thinkMatch = msg.content.match(
+    new RegExp(`${DEEPSEEK_THINK_OPEN}\\s*([\\s\\S]*?)\\s*${DEEPSEEK_THINK_CLOSE}`)
+  )
+  if (!thinkMatch) return
+
+  const reasoningContent = thinkMatch[1]?.trim() ?? ''
+  msg.content = msg.content
+    .replace(
+      new RegExp(`${DEEPSEEK_THINK_OPEN}[\\s\\S]*?${DEEPSEEK_THINK_CLOSE}\\s*`, 'g'),
+      ''
+    )
+    .trim()
+  if (reasoningContent) {
+    msg.reasoning_content = reasoningContent
+  }
+  if (!msg.content) {
+    msg.content = null
+  }
+}
+
 /**
  * DeepSeek thinking 模式的请求方向拦截器：
  *
- * 将 assistant 消息中的 <think> 标签提取为独立的 reasoning_content 字段，
+ * 将 assistant 消息中的  标签提取为独立的 reasoning_content 字段，
  * 满足 DeepSeek API 多轮对话中必须回传推理内容的要求。
  *
  * 响应方向的 reasoning_content 处理由 @ai-sdk/openai patch 原生支持，
@@ -49,15 +83,7 @@ function createDeepSeekFetchInterceptor(
         const body = JSON.parse(safeInit.body)
         if (body.messages && Array.isArray(body.messages)) {
           for (const msg of body.messages) {
-            if (msg.role !== 'assistant' || typeof msg.content !== 'string' || !msg.content) {
-              continue
-            }
-            const thinkMatch = msg.content.match(/<think>\s*([\s\S]*?)\s*<\/think>/)
-            if (thinkMatch) {
-              const reasoningContent = thinkMatch[1].trim()
-              msg.content = msg.content.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim()
-              msg.reasoning_content = reasoningContent
-            }
+            applyDeepSeekReasoningFields(msg)
           }
           safeInit.body = JSON.stringify(body)
         }
@@ -67,20 +93,17 @@ function createDeepSeekFetchInterceptor(
     }
 
     return fetchImpl(url, safeInit).then((response: Response) => {
-      const hasBody = response.body != null
-      const hasPipeThrough = hasBody && typeof (response.body as any).pipeThrough === 'function'
-      console.log(
-        '[FetchDebug] DeepSeek response: status=' +
-          response.status +
-          ' hasBody=' +
-          hasBody +
-          ' hasPipeThrough=' +
-          hasPipeThrough +
-          ' contentType=' +
-          (response.headers.get('content-type') || 'N/A') +
-          ' TDS=' +
-          typeof (globalThis as any).TextDecoderStream
-      )
+      if (!response.ok) {
+        void response
+          .clone()
+          .text()
+          .then((body) => {
+            console.error(
+              `[FetchDebug] DeepSeek error status=${response.status} body=${body.slice(0, 800)}`
+            )
+          })
+          .catch(() => {})
+      }
       return response
     })
   }

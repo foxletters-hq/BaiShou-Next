@@ -234,25 +234,6 @@ export async function persistResult(params: PersistResultParams): Promise<{
           rawUserText
         )
       }
-      const { ContextCompressorService } = await import('./context-compressor.service')
-      const { resolveSessionCompressionConfig } = await import('./context-compression.utils')
-      const { COMPRESSION_MESSAGE_FETCH_LIMIT } = await import('./compression.constants')
-      const compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
-      const allForPrune = (await sessionRepo.getMessagesBySession(
-        sessionId,
-        COMPRESSION_MESSAGE_FETCH_LIMIT
-      )) as import('./message.adapter').MessageWithParts[]
-      const providerType = (provider as { config?: { type?: string } }).config?.type ?? ''
-      await ContextCompressorService.tryCompress(
-        provider,
-        modelId,
-        sessionRepo,
-        snapshotRepo,
-        sessionId,
-        compressionConfig,
-        providerType
-      )
-      ContextCompressorService.schedulePrune(sessionRepo, sessionId, allForPrune)
     })()
   }
 

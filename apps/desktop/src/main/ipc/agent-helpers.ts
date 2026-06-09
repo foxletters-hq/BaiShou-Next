@@ -19,7 +19,23 @@ import {
 } from '@baishou/core-desktop'
 import { fileSystem, pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
-import { AIProviderConfig, GlobalModelsConfig, logger } from '@baishou/shared'
+import {
+  AIProviderConfig,
+  GlobalModelsConfig,
+  formatDiaryPreviewText,
+  logger,
+  parseDateStr
+} from '@baishou/shared'
+
+function previewDiaryRow(raw: string | null | undefined): string {
+  const cleaned = formatDiaryPreviewText(raw)
+  const firstLine = cleaned
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('---'))
+  if (!firstLine) return '(empty)'
+  return firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine
+}
 import { searchService } from '../services/search.service'
 import {
   AgentSessionService,
@@ -28,8 +44,10 @@ import {
   htmlToPlainText,
   EMPTY_WEB_PAGE_MESSAGE,
   UNAVAILABLE_WEB_PAGE_MESSAGE,
-  webSearchConfigToUserConfig
+  webSearchConfigToUserConfig,
+  mergeDiaryTags
 } from '@baishou/ai'
+import { getDiaryManager } from './diary.ipc'
 
 export const toolRegistry = new ToolRegistry()
 export const agentService = new AgentSessionService()
@@ -86,6 +104,103 @@ export function createDiarySearcher() {
           tags: r.tags,
           rankScore: r.rankScore
         }))
+      },
+      async listInDateRange(startDate: string, endDate: string) {
+        const rows = await shadowRepo.findByDateRange(startDate, endDate)
+        return rows.map((row) => ({
+          date: row.date,
+          preview: previewDiaryRow(row.rawContent as string | null | undefined)
+        }))
+      },
+      async readByDates(dates: string[]) {
+        const diaryService = getDiaryManager()
+        const rows: Array<{ date: string; content: string | null }> = []
+        for (const date of dates) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            rows.push({ date, content: null })
+            continue
+          }
+          const diary = await diaryService.findByDate(parseDateStr(date))
+          rows.push({ date, content: diary?.content ?? null })
+        }
+        return rows
+      },
+      async writeEntry(date: string, content: string, tags?: string) {
+        try {
+          const diaryService = getDiaryManager()
+          const tagsStr = tags
+            ?.split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .join(',')
+          await diaryService.create({
+            date: parseDateStr(date),
+            content,
+            ...(tagsStr ? { tags: tagsStr } : {})
+          })
+          return { ok: true as const }
+        } catch (e) {
+          if (e instanceof Error && e.name === 'DiaryDateConflictError') {
+            return {
+              ok: false as const,
+              message: `Error: A diary entry for ${date} already exists. Use diary_edit to modify it.`
+            }
+          }
+          return {
+            ok: false as const,
+            message: `Error: Failed to create diary entry: ${e instanceof Error ? e.message : String(e)}`
+          }
+        }
+      },
+      async editEntry({ date, content, mode, tags }) {
+        try {
+          const diaryService = getDiaryManager()
+          const existing = await diaryService.findByDate(parseDateStr(date))
+          if (!existing?.id) {
+            return {
+              ok: false as const,
+              message: `Error: Diary entry for ${date} does not exist. Use diary_write to create it instead.`
+            }
+          }
+
+          let finalContent = content
+          if (mode === 'append') {
+            const now = new Date()
+            const hours = String(now.getHours()).padStart(2, '0')
+            const minutes = String(now.getMinutes()).padStart(2, '0')
+            finalContent = `${existing.content.trimEnd()}\n\n##### ${hours}:${minutes}\n\n${content}`
+          }
+
+          await diaryService.update(existing.id, {
+            content: finalContent,
+            ...(tags ? { tags: mergeDiaryTags(existing.tags, tags) } : {})
+          })
+          return { ok: true as const }
+        } catch (e) {
+          return {
+            ok: false as const,
+            message: `Error: Failed to edit diary: ${e instanceof Error ? e.message : String(e)}`
+          }
+        }
+      },
+      async deleteEntry(date: string) {
+        try {
+          const diaryService = getDiaryManager()
+          const existing = await diaryService.findByDate(parseDateStr(date))
+          if (!existing?.id) {
+            return {
+              ok: false as const,
+              message: `Error: Could not find diary entry for ${date} to delete.`
+            }
+          }
+          await diaryService.delete(existing.id)
+          return { ok: true as const }
+        } catch (e) {
+          return {
+            ok: false as const,
+            message: `Error: Failed to delete diary: ${e instanceof Error ? e.message : String(e)}`
+          }
+        }
       }
     }
   } catch {
@@ -139,7 +254,7 @@ export function createWebSearchResultFetcher() {
       const plainText = htmlToPlainText(html)
       return plainText || EMPTY_WEB_PAGE_MESSAGE
     } catch (e: any) {
-      logger.error(`Failed to fetch URL: ${url}`, e)
+      logger.debug(`Web fetch skipped for ${url}:`, e)
       return UNAVAILABLE_WEB_PAGE_MESSAGE
     }
   }
