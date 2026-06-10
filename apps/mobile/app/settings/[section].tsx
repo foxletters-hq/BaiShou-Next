@@ -11,6 +11,10 @@ export default function SettingsSectionRoute() {
     return <Redirect href="/settings/tts" />
   }
 
+  if (section === 'general' || section === 'updates') {
+    return <Redirect href="/(tabs)/settings" />
+  }
+
   if (!section || !SETTINGS_SECTION_IDS.has(section)) {
     return <Redirect href="/(tabs)/settings" />
   }

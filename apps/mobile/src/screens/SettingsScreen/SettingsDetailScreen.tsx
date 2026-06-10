@@ -5,18 +5,17 @@ import { scrollIndicatorStyle, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { getHubItemTitleKey } from './settingsHubItems'
-import { GeneralSettingsSection } from './components/GeneralSettingsSection'
 import { AIServicesSection } from './components/AIServicesSection'
 import { AIModelsSection } from './components/AIModelsSection'
 import { RAGMemorySection } from './components/RAGMemorySection'
 import { WebSearchSection } from './components/WebSearchSection'
 import { AgentToolsSection } from './components/AgentToolsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
+import { DiaryTemplateSettingsSection } from './components/DiaryTemplateSettingsSection'
+import { DiaryAiWritingSettingsSection } from './components/DiaryAiWritingSettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { McpSettingsSection } from './components/McpSettingsSection'
 import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
-import { UpdateSettingsSection } from './components/UpdateSettingsSection'
-
 export interface SettingsDetailScreenProps {
   section: string
 }
@@ -31,8 +30,6 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
 
   const renderContent = () => {
     switch (section) {
-      case 'general':
-        return <GeneralSettingsSection />
       case 'ai-services':
         return <AIServicesSection />
       case 'ai-models':
@@ -45,12 +42,14 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
         return <AgentToolsSection />
       case 'mcp':
         return <McpSettingsSection />
+      case 'diary-template':
+        return <DiaryTemplateSettingsSection />
+      case 'diary-ai-writing':
+        return <DiaryAiWritingSettingsSection />
       case 'summary':
         return <SummarySettingsSection />
       case 'attachments':
         return <AttachmentManagementSection />
-      case 'updates':
-        return <UpdateSettingsSection />
       case 'developer':
         return <DeveloperSettingsSection />
       default:
