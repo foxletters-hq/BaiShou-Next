@@ -29,7 +29,11 @@ export function useCloudSyncFetch(
     const startTime = Date.now()
 
     if (activeTab === 'snapshot') {
-      if (!onListSnapshots) return
+      if (!onListSnapshots) {
+        setRecords([])
+        resetSelection()
+        return
+      }
       setIsLoading(true)
       try {
         const r = await onListSnapshots()
@@ -101,6 +105,9 @@ export function useCloudSyncFetch(
           setIsLoading(false)
           resetSelection()
         })
+    } else {
+      setRecords([])
+      resetSelection()
     }
   }, [savedConfig, activeTab, onListRecords, onListSnapshots, setConfig, toast, t])
 

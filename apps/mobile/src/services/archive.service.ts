@@ -179,7 +179,7 @@ export class MobileArchiveService implements IArchiveService {
     const files = await this.fileSystem.readdir(snapshotDir)
     const results: import('@baishou/core-mobile').SnapshotMeta[] = []
     for (const filename of files) {
-      if (!filename.endsWith('.zip')) continue
+      if (!filename.endsWith('.zip') || !filename.startsWith('snapshot_')) continue
       const fullPath = `${snapshotDir}/${filename}`
       try {
         const stat = await this.fileSystem.stat(fullPath)
@@ -201,7 +201,7 @@ export class MobileArchiveService implements IArchiveService {
     if (!(await this.fileSystem.exists(fullPath))) {
       throw new Error('Snapshot not found')
     }
-    return this.importFromZip(fullPath, false)
+    return this.importFromZip(fullPath, true)
   }
 
   public async deleteSnapshot(filename: string): Promise<void> {

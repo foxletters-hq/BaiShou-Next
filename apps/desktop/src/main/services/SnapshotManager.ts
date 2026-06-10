@@ -35,7 +35,7 @@ export class SnapshotManager {
         const files = await fsp.readdir(snapshotDir)
         const zipFiles: { name: string; mtime: number }[] = []
         for (const f of files) {
-          if (f.toLowerCase().endsWith('.zip')) {
+          if (f.toLowerCase().endsWith('.zip') && f.startsWith('snapshot_')) {
             const stat = await fsp.stat(path.join(snapshotDir, f))
             zipFiles.push({ name: f, mtime: stat.mtimeMs })
           }
@@ -66,7 +66,7 @@ export class SnapshotManager {
     const files = await fsp.readdir(snapshotDir)
     const results: { filename: string; createdAt: number; size: number }[] = []
     for (const f of files) {
-      if (f.endsWith('.zip')) {
+      if (f.endsWith('.zip') && f.startsWith('snapshot_')) {
         const stat = await fsp.stat(path.join(snapshotDir, f))
         results.push({
           filename: f,

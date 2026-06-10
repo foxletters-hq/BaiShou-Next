@@ -1,5 +1,6 @@
 import React from 'react'
 import { CloudSyncPanel } from '@baishou/ui'
+import { cloudSyncArchiveApi } from '../cloudSyncArchiveApi'
 
 interface DataSyncPaneProps {
   settings: any
@@ -28,6 +29,11 @@ export const DataSyncPane: React.FC<DataSyncPaneProps> = ({ settings }) => {
         onRename={async (config: any, oldName: string, newName: string) =>
           (window as any).api?.cloud?.rename(config, oldName, newName)
         }
+        onListSnapshots={cloudSyncArchiveApi.listSnapshots}
+        onRestoreSnapshot={cloudSyncArchiveApi.restoreSnapshot}
+        onDeleteSnapshot={cloudSyncArchiveApi.deleteSnapshot}
+        onBatchDeleteSnapshots={cloudSyncArchiveApi.batchDeleteSnapshots}
+        onRenameSnapshot={cloudSyncArchiveApi.renameSnapshot}
       />
     </div>
   )

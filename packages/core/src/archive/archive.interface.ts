@@ -33,14 +33,14 @@ export interface IArchiveService {
   importFromZip(zipFilePath: string, createSnapshotBefore?: boolean): Promise<ImportResult>
 
   /**
-   * 系统主动生成隐式快照供后悔药回滚。
+   * 在覆盖本地数据前生成保护性快照（仅由 importFromZip / restoreFromSnapshot 内部调用）。
    */
   createSnapshot(): Promise<string | null>
 
   /** 列出本地快照（按创建时间倒序） */
   listSnapshots(): Promise<SnapshotMeta[]>
 
-  /** 从本地快照恢复（不再创建前置快照） */
+  /** 从本地快照恢复（恢复前会自动生成一份新的保护性快照） */
   restoreFromSnapshot(filename: string): Promise<ImportResult>
 
   /** 删除指定本地快照 */

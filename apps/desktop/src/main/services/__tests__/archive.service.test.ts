@@ -119,19 +119,24 @@ describe('DesktopArchiveService', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true)
 
       // Return files, some are zip, some are not
-      vi.mocked(fsp.readdir).mockResolvedValue(['snap1.zip', 'snap2.zip', 'other.txt'] as any)
+      vi.mocked(fsp.readdir).mockResolvedValue([
+        'snapshot_1.zip',
+        'snapshot_2.zip',
+        'BaiShou_Backup.zip',
+        'other.txt'
+      ] as any)
 
       vi.mocked(fsp.stat).mockImplementation(async (filePath) => {
-        if (filePath.toString().includes('snap1')) return { mtimeMs: 1000, size: 10 } as any
-        if (filePath.toString().includes('snap2')) return { mtimeMs: 2000, size: 20 } as any
+        if (filePath.toString().includes('snapshot_1')) return { mtimeMs: 1000, size: 10 } as any
+        if (filePath.toString().includes('snapshot_2')) return { mtimeMs: 2000, size: 20 } as any
         return { mtimeMs: 0, size: 0 } as any
       })
 
       const res = await service.listSnapshots()
 
       expect(res).toHaveLength(2)
-      expect(res[0].filename).toBe('snap2.zip') // newer first
-      expect(res[1].filename).toBe('snap1.zip')
+      expect(res[0].filename).toBe('snapshot_2.zip') // newer first
+      expect(res[1].filename).toBe('snapshot_1.zip')
     })
   })
 
