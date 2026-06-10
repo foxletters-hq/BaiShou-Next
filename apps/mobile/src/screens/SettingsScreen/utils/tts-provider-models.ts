@@ -2,6 +2,7 @@ import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import {
   AIProviderConfig,
   ProviderType,
+  fetchOpenAiCompatibleModelIds,
   resolveProviderBaseUrl,
   resolveTtsProviderBaseUrl
 } from '@baishou/shared'
@@ -39,28 +40,7 @@ export async function fetchTtsProviderModels(
   }
 
   if (providerId === 'openai-tts') {
-    if (!trimmedUrl) {
-      return ['tts-1', 'tts-1-hd']
-    }
-    try {
-      const headers: Record<string, string> = {}
-      if (trimmedKey) {
-        headers.Authorization = `Bearer ${trimmedKey}`
-      }
-      const response = await fetch(`${trimmedUrl}/models`, { headers })
-      if (response.ok) {
-        const data = await response.json()
-        if (data && Array.isArray(data.data)) {
-          const allIds = data.data.map((m: { id?: string }) => m.id).filter(Boolean) as string[]
-          const ttsModels = allIds.filter((id) => id.toLowerCase().includes('tts'))
-          if (ttsModels.length > 0) return ttsModels
-          if (allIds.length > 0) return allIds
-        }
-      }
-    } catch {
-      // fall through to defaults
-    }
-    return ['tts-1', 'tts-1-hd']
+    return fetchOpenAiCompatibleModelIds(trimmedUrl, trimmedKey)
   }
 
   if (providerId === 'mimo-tts') {

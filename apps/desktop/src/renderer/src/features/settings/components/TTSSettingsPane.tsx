@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import {
+  applyTtsSaveToGlobalModels,
+  buildTtsProviderStatesFromGlobal,
   buildTtsSettingsInitialConfig,
-  getTtsInitialConfigs,
   isTtsProviderId,
   synthesizeTtsFromFormConfig,
   TtsProviderRegistry,
@@ -24,7 +25,6 @@ export const TTSSettingsPane: React.FC = () => {
   const settings = useSettingsStore()
 
   const handleSaveConfig = async (config: TtsProviderConfig) => {
-    // 清理历史误写入 ai_providers 的 TTS 项（TTS 与 AI 供应商完全独立）
     const providers = Array.isArray(settings.providers) ? settings.providers : []
     if (providers.some((p: { id: string }) => isTtsProviderId(p.id))) {
       await settings.setProviders(providers.filter((p: { id: string }) => !isTtsProviderId(p.id)))
@@ -33,28 +33,7 @@ export const TTSSettingsPane: React.FC = () => {
     const globalModels = settings.globalModels
     if (!globalModels) return
 
-    const existingConfigs = globalModels.globalTtsProviderConfigs ?? {}
-    await settings.setGlobalModels({
-      ...globalModels,
-      globalTtsProviderId: config.id,
-      globalTtsModelId: config.modelId,
-      globalTtsProviderConfigs: {
-        ...existingConfigs,
-        [config.id]: {
-          baseUrl: config.baseUrl,
-          apiKey: config.apiKey
-        }
-      },
-      globalTtsSettings: {
-        voice: config.voice,
-        speed: config.speed,
-        responseFormat: config.responseFormat,
-        refAudioPath: config.refAudioPath,
-        promptText: config.promptText,
-        promptLang: config.promptLang,
-        textLang: config.textLang
-      }
-    })
+    await settings.setGlobalModels(applyTtsSaveToGlobalModels(globalModels, config))
   }
 
   const handleTestTts = async (config: TtsProviderConfig, text: string) => {
@@ -75,6 +54,11 @@ export const TTSSettingsPane: React.FC = () => {
   }
 
   const globalModels = settings.globalModels
+  const initialProviderStates = useMemo(
+    () => buildTtsProviderStatesFromGlobal(globalModels),
+    [globalModels]
+  )
+
   const initialConfig = useMemo(() => {
     const savedProviderId = globalModels?.globalTtsProviderId || 'openai-tts'
 
@@ -84,14 +68,15 @@ export const TTSSettingsPane: React.FC = () => {
       globalTtsModelId: globalModels?.globalTtsModelId,
       globalTtsSettings: globalModels?.globalTtsSettings,
       globalTtsProviderConfigs: globalModels?.globalTtsProviderConfigs,
-      persisted: getTtsInitialConfigs()
+      persisted: initialProviderStates
     })
-  }, [globalModels])
+  }, [globalModels, initialProviderStates])
 
   return (
     <div className="settings-pane settings-pane-full">
       <TTSProviderSettings
         initialConfig={initialConfig}
+        initialProviderStates={initialProviderStates}
         onSaveConfig={handleSaveConfig}
         onTestTts={handleTestTts}
         onFetchModels={async (providerId, apiKey, baseUrl) => {
