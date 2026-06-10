@@ -105,13 +105,15 @@ const styles = StyleSheet.create({
     elevation: 2
   },
   sideStart: {
-    flex: 1,
+    width: 88,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start'
   },
   sideEnd: {
-    flex: 1,
+    width: 88,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -132,7 +134,8 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   headerTitle: {
-    flex: 1.6,
+    flex: 1,
+    minWidth: 0,
     fontSize: 17,
     fontWeight: '600',
     textAlign: 'center'
