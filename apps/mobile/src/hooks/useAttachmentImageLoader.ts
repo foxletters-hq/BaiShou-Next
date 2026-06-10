@@ -52,7 +52,10 @@ async function readImageDataUri(
 
 export function useAttachmentImageLoader(fileSystem: IFileSystem | undefined) {
   const loadImageUri = useCallback(
-    async (filePath: string, purpose: AttachmentImagePurpose = 'thumbnail'): Promise<string | null> => {
+    async (
+      filePath: string,
+      purpose: AttachmentImagePurpose = 'thumbnail'
+    ): Promise<string | null> => {
       const cacheKey = `${purpose}:${filePath}`
       const cache = getAttachmentImageCache(purpose)
       const cached = cache.get(cacheKey)

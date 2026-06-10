@@ -48,9 +48,7 @@ export const WebSearchSettingsView: React.FC<WebSearchSettingsViewProps> = ({
           localApiKey={view.localAnysearchApiKey}
           apiKeyVisible={view.anysearchApiKeyVisible}
           onApiKeyChange={view.setLocalAnysearchApiKey}
-          onToggleVisibility={() =>
-            view.setAnysearchApiKeyVisible(!view.anysearchApiKeyVisible)
-          }
+          onToggleVisibility={() => view.setAnysearchApiKeyVisible(!view.anysearchApiKeyVisible)}
           onSave={view.saveAnysearchApiKey}
         />
       )}

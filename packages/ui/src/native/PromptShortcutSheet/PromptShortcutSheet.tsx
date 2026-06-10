@@ -123,11 +123,14 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   const handleDeletePress = useCallback(
     async (id: string) => {
       if (!onDelete) return
-      const confirmed = await dialog.confirm(t('shortcut.delete_confirm', '确定删除这条快捷指令吗？'), {
-        confirmText: t('common.delete', '删除'),
-        cancelText: t('common.cancel', '取消'),
-        destructive: true
-      })
+      const confirmed = await dialog.confirm(
+        t('shortcut.delete_confirm', '确定删除这条快捷指令吗？'),
+        {
+          confirmText: t('common.delete', '删除'),
+          cancelText: t('common.cancel', '取消'),
+          destructive: true
+        }
+      )
       if (confirmed) {
         try {
           await onDelete(id)
@@ -339,7 +342,10 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
               ]}
             >
               {editingItem ? (
-                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
                   <View style={styles.header}>
                     <Text style={[styles.headerText, { color: colors.textPrimary }]}>
                       {editingItem.id === 'new'
@@ -351,27 +357,27 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                     </Pressable>
                   </View>
 
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                  {t('shortcut.label_name', '指令名称')}
-                </Text>
-                <Input
-                  value={draftName}
-                  onChangeText={setDraftName}
-                  placeholder={t('shortcut.label_hint', '例如：翻译')}
-                  style={styles.fieldInput}
-                />
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                    {t('shortcut.label_name', '指令名称')}
+                  </Text>
+                  <Input
+                    value={draftName}
+                    onChangeText={setDraftName}
+                    placeholder={t('shortcut.label_hint', '例如：翻译')}
+                    style={styles.fieldInput}
+                  />
 
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 12 }]}>
-                  {t('shortcut.content_prompt', '对应内容')}
-                </Text>
-                <Input
-                  value={draftContent}
-                  onChangeText={setDraftContent}
-                  placeholder={t('shortcut.content_hint', '请帮我翻译下面这段文本。')}
-                  multiline
-                  textarea
-                  style={[styles.fieldInput, styles.fieldTextArea]}
-                />
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 12 }]}>
+                    {t('shortcut.content_prompt', '对应内容')}
+                  </Text>
+                  <Input
+                    value={draftContent}
+                    onChangeText={setDraftContent}
+                    placeholder={t('shortcut.content_hint', '请帮我翻译下面这段文本。')}
+                    multiline
+                    textarea
+                    style={[styles.fieldInput, styles.fieldTextArea]}
+                  />
 
                   <View style={styles.formActions}>
                     <Pressable
@@ -412,7 +418,9 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           style={[styles.addBtn, { backgroundColor: colors.primary }]}
                           onPress={handleCreateNew}
                         >
-                          <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}>
+                          <Text
+                            style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}
+                          >
                             + {t('shortcut.add_short', '新增')}
                           </Text>
                         </Pressable>
@@ -476,9 +484,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                       </View>
                     ) : (
                       <FlatList
-                        style={
-                          listAreaHeight != null ? { height: listAreaHeight } : styles.list
-                        }
+                        style={listAreaHeight != null ? { height: listAreaHeight } : styles.list}
                         contentContainerStyle={styles.listContent}
                         data={paginatedShortcuts}
                         keyExtractor={(item) => item.id}
@@ -522,7 +528,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           disabled={currentPage >= totalPages}
                           onPress={() => setCurrentPage(currentPage + 1)}
                         >
-                          <MaterialIcons name="chevron-right" size={22} color={colors.textPrimary} />
+                          <MaterialIcons
+                            name="chevron-right"
+                            size={22}
+                            color={colors.textPrimary}
+                          />
                         </Pressable>
                       </View>
                     </View>

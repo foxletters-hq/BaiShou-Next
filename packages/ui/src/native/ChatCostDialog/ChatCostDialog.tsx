@@ -175,12 +175,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
               </View>
 
               {refreshError ? (
-                <View
-                  style={[
-                    styles.errorMessage,
-                    { backgroundColor: colors.errorContainer }
-                  ]}
-                >
+                <View style={[styles.errorMessage, { backgroundColor: colors.errorContainer }]}>
                   <Text style={{ color: colors.error, fontSize: 12 }}>{refreshError}</Text>
                 </View>
               ) : null}

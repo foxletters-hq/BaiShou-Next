@@ -341,114 +341,114 @@ export const DataSyncScreen: React.FC = () => {
 
   const renderHeaderActions = () => (
     <View style={styles.headerActionsGroup}>
-        {backupTab === 'cloud' && (
-          <>
-            {isMultiSelectMode ? (
-              <>
-                <TouchableOpacity
-                  style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
-                  onPress={() => {
-                    if (selectedRecords.size === cloudRecords.length) setSelectedRecords(new Set())
-                    else setSelectedRecords(new Set(cloudRecords.map((r) => r.filename)))
-                  }}
-                >
-                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                    {selectedRecords.size === cloudRecords.length
-                      ? t('settings.attachment_deselect_all', '取消全选')
-                      : t('settings.attachment_select_all', '全选')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsMultiSelectMode(false)
-                    setSelectedRecords(new Set())
-                  }}
-                >
-                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                    {t('common.cancel')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.headerActionBtn,
-                    { backgroundColor: colors.error, borderColor: colors.error }
-                  ]}
-                  onPress={handleBatchDeleteRecords}
-                  disabled={selectedRecords.size === 0}
-                >
-                  <MaterialIcons name="delete" size={14} color={colors.textOnPrimary} />
-                  <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '600' }}>
-                    {' '}
-                    {t('common.delete')} ({selectedRecords.size})
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
+      {backupTab === 'cloud' && (
+        <>
+          {isMultiSelectMode ? (
+            <>
               <TouchableOpacity
                 style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
                 onPress={() => {
-                  setIsMultiSelectMode(true)
-                  setSelectedRecords(new Set())
+                  if (selectedRecords.size === cloudRecords.length) setSelectedRecords(new Set())
+                  else setSelectedRecords(new Set(cloudRecords.map((r) => r.filename)))
                 }}
-                disabled={cloudRecords.length === 0 || recordsLoading}
               >
-                <MaterialIcons
-                  name="check-box-outline-blank"
-                  size={14}
-                  color={colors.textSecondary}
-                />
                 <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                  {' '}
-                  {t('data_sync.batch_manage', '批量管理')}
+                  {selectedRecords.size === cloudRecords.length
+                    ? t('settings.attachment_deselect_all', '取消全选')
+                    : t('settings.attachment_select_all', '全选')}
                 </Text>
               </TouchableOpacity>
-            )}
+              <TouchableOpacity
+                onPress={() => {
+                  setIsMultiSelectMode(false)
+                  setSelectedRecords(new Set())
+                }}
+              >
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  {t('common.cancel')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.headerActionBtn,
+                  { backgroundColor: colors.error, borderColor: colors.error }
+                ]}
+                onPress={handleBatchDeleteRecords}
+                disabled={selectedRecords.size === 0}
+              >
+                <MaterialIcons name="delete" size={14} color={colors.textOnPrimary} />
+                <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '600' }}>
+                  {' '}
+                  {t('common.delete')} ({selectedRecords.size})
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
             <TouchableOpacity
               style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
-              onPress={openSettings}
+              onPress={() => {
+                setIsMultiSelectMode(true)
+                setSelectedRecords(new Set())
+              }}
+              disabled={cloudRecords.length === 0 || recordsLoading}
             >
-              <MaterialIcons name="settings" size={14} color={colors.textSecondary} />
+              <MaterialIcons
+                name="check-box-outline-blank"
+                size={14}
+                color={colors.textSecondary}
+              />
               <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
                 {' '}
-                {t('data_sync.sync_settings_button', '备份设置')}
+                {t('data_sync.batch_manage', '批量管理')}
               </Text>
             </TouchableOpacity>
-          </>
-        )}
-
-        <TouchableOpacity
-          style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
-          onPress={openCountModal}
-        >
-          <MaterialIcons name="inventory-2" size={14} color={colors.textSecondary} />
-          <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-            {' '}
-            {maxCountLabel}
-          </Text>
-        </TouchableOpacity>
-
-        {backupTab === 'cloud' && (
+          )}
           <TouchableOpacity
-            style={[
-              styles.headerActionBtn,
-              { backgroundColor: colors.primary, borderColor: colors.primary }
-            ]}
-            onPress={handleSyncNow}
-            disabled={isSyncing || syncConfig.target === 'local'}
+            style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
+            onPress={openSettings}
           >
-            {isSyncing ? (
-              <ActivityIndicator size="small" color={colors.textOnPrimary} />
-            ) : (
-              <MaterialIcons name="cloud-upload" size={14} color={colors.textOnPrimary} />
-            )}
-            <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '700' }}>
+            <MaterialIcons name="settings" size={14} color={colors.textSecondary} />
+            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
               {' '}
-              {isSyncing
-                ? t('data_sync.syncing_status', '备份中...')
-                : t('data_sync.sync_now_button', '立即备份')}
+              {t('data_sync.sync_settings_button', '备份设置')}
             </Text>
           </TouchableOpacity>
-        )}
+        </>
+      )}
+
+      <TouchableOpacity
+        style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
+        onPress={openCountModal}
+      >
+        <MaterialIcons name="inventory-2" size={14} color={colors.textSecondary} />
+        <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+          {' '}
+          {maxCountLabel}
+        </Text>
+      </TouchableOpacity>
+
+      {backupTab === 'cloud' && (
+        <TouchableOpacity
+          style={[
+            styles.headerActionBtn,
+            { backgroundColor: colors.primary, borderColor: colors.primary }
+          ]}
+          onPress={handleSyncNow}
+          disabled={isSyncing || syncConfig.target === 'local'}
+        >
+          {isSyncing ? (
+            <ActivityIndicator size="small" color={colors.textOnPrimary} />
+          ) : (
+            <MaterialIcons name="cloud-upload" size={14} color={colors.textOnPrimary} />
+          )}
+          <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '700' }}>
+            {' '}
+            {isSyncing
+              ? t('data_sync.syncing_status', '备份中...')
+              : t('data_sync.sync_now_button', '立即备份')}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   )
 

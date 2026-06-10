@@ -15,8 +15,7 @@ export default function TabLayout() {
   const { colors } = useNativeTheme()
   const insets = useSafeAreaInsets()
 
-  const tabBarBottomInset =
-    Platform.OS === 'android' ? Math.max(insets.bottom, 8) : insets.bottom
+  const tabBarBottomInset = Platform.OS === 'android' ? Math.max(insets.bottom, 8) : insets.bottom
 
   const sharedTabBarStyle = useMemo(
     () =>

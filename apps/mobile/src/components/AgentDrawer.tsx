@@ -36,13 +36,7 @@ const DRAWER_WIDTH = 280
 /** 每页 10 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
 const SESSION_PAGE_SIZE = 10
 
-function DrawerAssistantAvatar({
-  assistant,
-  size
-}: {
-  assistant: AssistantSummary
-  size: number
-}) {
+function DrawerAssistantAvatar({ assistant, size }: { assistant: AssistantSummary; size: number }) {
   return (
     <AssistantAvatar
       emoji={assistant.emoji}

@@ -5,10 +5,7 @@ import { useNativeTheme } from '../theme'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock'
 import { getLabelBadgeColor } from './context-chain-dialog.utils'
-import {
-  COMPRESSION_SUMMARY_SELECTION_KEY,
-  type useContextChainView
-} from './useContextChainView'
+import { COMPRESSION_SUMMARY_SELECTION_KEY, type useContextChainView } from './useContextChainView'
 
 type ContextChainView = ReturnType<typeof useContextChainView>
 
@@ -33,9 +30,7 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
   const isSystemPrompt = Boolean(systemPromptId && detailKey === systemPromptId)
 
   const selectedEntry = view.flatEntries.find(
-    (e) =>
-      (e.kind === 'message' || e.kind === 'system-prompt') &&
-      e.item?.id === detailKey
+    (e) => (e.kind === 'message' || e.kind === 'system-prompt') && e.item?.id === detailKey
   )
   const selected = selectedEntry?.item
 

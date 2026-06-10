@@ -45,7 +45,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     [message.content, message.reasoning]
   )
 
-  const editableContent = isAssistant ? cleanContent || message.content || '' : message.content || ''
+  const editableContent = isAssistant
+    ? cleanContent || message.content || ''
+    : message.content || ''
   const edit = useNativeChatBubbleEdit(
     editableContent,
     message.id,
@@ -136,7 +138,10 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 <MarkdownRenderer content={cleanContent} variant="chat" />
               ) : !isAssistant ? (
                 <Text
-                  style={[styles.text, { color: isUser ? colors.textOnPrimary : colors.textPrimary }]}
+                  style={[
+                    styles.text,
+                    { color: isUser ? colors.textOnPrimary : colors.textPrimary }
+                  ]}
                 >
                   {message.content}
                 </Text>

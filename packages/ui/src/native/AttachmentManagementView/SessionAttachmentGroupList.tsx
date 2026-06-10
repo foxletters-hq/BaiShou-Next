@@ -102,9 +102,7 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                 style={[
                   styles.folderIconBox,
                   {
-                    backgroundColor: group.isOrphan
-                      ? colors.error + '18'
-                      : colors.primary + '18'
+                    backgroundColor: group.isOrphan ? colors.error + '18' : colors.primary + '18'
                   }
                 ]}
               >
@@ -212,7 +210,9 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                         >
                           {file.name}
                         </Text>
-                        <Text style={[styles.fileSize, { color: colors.textSecondary, marginTop: 2 }]}>
+                        <Text
+                          style={[styles.fileSize, { color: colors.textSecondary, marginTop: 2 }]}
+                        >
                           {formatSize(file.sizeMB)}
                         </Text>
                       </View>

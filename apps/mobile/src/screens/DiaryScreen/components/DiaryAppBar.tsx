@@ -75,9 +75,7 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               onChangeText={onSearchChange}
               autoFocus
               returnKeyType="search"
-              leftSlot={
-                <MaterialIcons name="search" size={18} color={colors.textSecondary} />
-              }
+              leftSlot={<MaterialIcons name="search" size={18} color={colors.textSecondary} />}
             />
           </View>
           <TouchableOpacity onPress={closeSearch} style={styles.iconBtn} accessibilityRole="button">

@@ -82,9 +82,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         </>
       )
     }
-    return (
-      <View style={[sectionDividerStyle, raised && styles.fieldGroupRaised]}>{children}</View>
-    )
+    return <View style={[sectionDividerStyle, raised && styles.fieldGroupRaised]}>{children}</View>
   }
 
   const baseUrlPlaceholder =

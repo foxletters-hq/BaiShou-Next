@@ -157,10 +157,7 @@ const FilterOption: React.FC<{
   colors: ReturnType<typeof useNativeTheme>['colors']
 }> = ({ label, active, onPress, colors }) => (
   <TouchableOpacity
-    style={[
-      sheetStyles.option,
-      active && { backgroundColor: colors.primary + '18' }
-    ]}
+    style={[sheetStyles.option, active && { backgroundColor: colors.primary + '18' }]}
     onPress={onPress}
   >
     <Text

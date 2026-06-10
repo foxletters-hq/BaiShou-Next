@@ -115,8 +115,8 @@ export function parseExaMcpResponse(responseText: string): ExaMcpRawResult[] {
     throw new Error('Exa MCP response parsing failed: no parseable content found')
   }
 
-  return parseExaMcpTextChunk(payloadTexts.join('\n\n')).filter(
-    (item) => Boolean(item.title || item.url || item.text)
+  return parseExaMcpTextChunk(payloadTexts.join('\n\n')).filter((item) =>
+    Boolean(item.title || item.url || item.text)
   )
 }
 

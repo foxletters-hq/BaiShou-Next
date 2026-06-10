@@ -66,9 +66,7 @@ export function useAgentUI() {
                 type: 'memory' as const,
                 title: t('agent.recall.memory', '记忆'),
                 snippet: r.chunkText.substring(0, 150),
-                date: r.createdAt
-                  ? new Date(r.createdAt * 1000).toISOString().split('T')[0]
-                  : '',
+                date: r.createdAt ? new Date(r.createdAt * 1000).toISOString().split('T')[0] : '',
                 similarity: r.score
               }))
             )

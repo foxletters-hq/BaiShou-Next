@@ -1,5 +1,12 @@
 import React from 'react'
-import { View, Text, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView } from 'react-native'
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView
+} from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'

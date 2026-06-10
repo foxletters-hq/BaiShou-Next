@@ -51,325 +51,332 @@ export interface InputBarRef {
   focus: () => void
 }
 
-export const InputBar = forwardRef<InputBarRef, InputBarProps>(({
-  onSend,
-  isLoading,
-  onStop,
-  assistantName = 'Assistant',
-  onAssistantTap,
-  onRecall,
-  onTriggerShortcut,
-  onManageShortcuts,
-  onOpenTools,
-  searchMode = false,
-  onToggleSearchMode,
-  ttsMode = 'manual',
-  onToggleTtsMode,
-  onInputFocus,
-  composerEnabled = true
-}, ref) => {
-  const { t } = useTranslation()
-  const dialog = useDialog()
-  const toast = useNativeToast()
-  const { colors } = useNativeTheme()
-  const inputRef = useRef<any>(null)
-  const [text, setText] = useState('')
-  const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
-  const [showToolbar, setShowToolbar] = useState(true)
-  const toolbarProgress = useSharedValue(1)
+export const InputBar = forwardRef<InputBarRef, InputBarProps>(
+  (
+    {
+      onSend,
+      isLoading,
+      onStop,
+      assistantName = 'Assistant',
+      onAssistantTap,
+      onRecall,
+      onTriggerShortcut,
+      onManageShortcuts,
+      onOpenTools,
+      searchMode = false,
+      onToggleSearchMode,
+      ttsMode = 'manual',
+      onToggleTtsMode,
+      onInputFocus,
+      composerEnabled = true
+    },
+    ref
+  ) => {
+    const { t } = useTranslation()
+    const dialog = useDialog()
+    const toast = useNativeToast()
+    const { colors } = useNativeTheme()
+    const inputRef = useRef<any>(null)
+    const [text, setText] = useState('')
+    const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
+    const [showToolbar, setShowToolbar] = useState(true)
+    const toolbarProgress = useSharedValue(1)
 
-  const toggleToolbar = useCallback(() => {
-    LayoutAnimation.configureNext({
-      duration: TOOLBAR_ANIM_MS,
-      update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity
-      },
-      delete: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity
-      }
-    })
-    setShowToolbar((prev) => {
-      const next = !prev
-      toolbarProgress.value = withTiming(next ? 1 : 0, { duration: TOOLBAR_ANIM_MS })
-      return next
-    })
-  }, [toolbarProgress])
-
-  const toolbarAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: toolbarProgress.value,
-    maxHeight: toolbarProgress.value * 48,
-    marginBottom: toolbarProgress.value * 10,
-    overflow: 'hidden' as const
-  }))
-
-  const applyPickResult = useCallback(
-    (result: PickAttachmentsResult) => {
-      if (!result.ok) {
-        if (result.reason === 'permission_denied') {
-          toast.showError(
-            t('input.attachment_permission_denied', '需要相机或相册权限才能继续')
-          )
-        } else if (result.reason === 'text_too_large') {
-          toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
+    const toggleToolbar = useCallback(() => {
+      LayoutAnimation.configureNext({
+        duration: TOOLBAR_ANIM_MS,
+        update: { type: LayoutAnimation.Types.easeInEaseOut },
+        create: {
+          type: LayoutAnimation.Types.easeInEaseOut,
+          property: LayoutAnimation.Properties.opacity
+        },
+        delete: {
+          type: LayoutAnimation.Types.easeInEaseOut,
+          property: LayoutAnimation.Properties.opacity
         }
+      })
+      setShowToolbar((prev) => {
+        const next = !prev
+        toolbarProgress.value = withTiming(next ? 1 : 0, { duration: TOOLBAR_ANIM_MS })
+        return next
+      })
+    }, [toolbarProgress])
+
+    const toolbarAnimatedStyle = useAnimatedStyle(() => ({
+      opacity: toolbarProgress.value,
+      maxHeight: toolbarProgress.value * 48,
+      marginBottom: toolbarProgress.value * 10,
+      overflow: 'hidden' as const
+    }))
+
+    const applyPickResult = useCallback(
+      (result: PickAttachmentsResult) => {
+        if (!result.ok) {
+          if (result.reason === 'permission_denied') {
+            toast.showError(t('input.attachment_permission_denied', '需要相机或相册权限才能继续'))
+          } else if (result.reason === 'text_too_large') {
+            toast.showError(t('input.file_too_large', '文件大小超过限制 (最大 512KB)'))
+          }
+          return
+        }
+        setAttachments((prev) => [...prev, ...result.attachments])
+      },
+      [t, toast]
+    )
+
+    const handleUploadAttachment = useCallback(async () => {
+      const iconColor = colors.textSecondary
+      const choice = await dialog.choose(
+        undefined,
+        [
+          {
+            label: t('input.attachment_camera', '拍照'),
+            value: 'camera',
+            centered: true,
+            leading: <MaterialIcons name="photo-camera" size={22} color={iconColor} />
+          },
+          {
+            label: t('input.attachment_photo_library', '相册'),
+            value: 'album',
+            centered: true,
+            leading: <MaterialIcons name="photo-library" size={22} color={iconColor} />
+          },
+          {
+            label: t('input.attachment_file_manager', '文件管理'),
+            value: 'files',
+            centered: true,
+            leading: <MaterialIcons name="folder-open" size={22} color={iconColor} />
+          }
+        ],
+        t('input.attachment_source_title', '选择附件来源')
+      )
+      if (!choice) return
+
+      try {
+        let result: PickAttachmentsResult
+        if (choice === 'camera') {
+          result = await pickAttachmentsFromCamera()
+        } else if (choice === 'album') {
+          result = await pickAttachmentsFromPhotoLibrary()
+        } else {
+          result = await pickAttachmentsFromFileManager()
+        }
+        applyPickResult(result)
+      } catch (err) {
+        console.warn('Attachment picker error:', err)
+      }
+    }, [applyPickResult, colors.textSecondary, dialog, t])
+
+    useImperativeHandle(ref, () => ({
+      insertText: (newText: string) => {
+        setText((prev) => (prev ? `${prev}\n${newText}` : newText))
+        setTimeout(() => inputRef.current?.focus?.(), 0)
+      },
+      focus: () => {
+        inputRef.current?.focus?.()
+      }
+    }))
+
+    const handleSend = () => {
+      if ((text.trim() || attachments.length > 0) && !isLoading) {
+        onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined)
+        setText('')
+        setAttachments([])
+      }
+    }
+
+    const handleShortcutPress = () => {
+      if (onTriggerShortcut) {
+        onTriggerShortcut()
         return
       }
-      setAttachments((prev) => [...prev, ...result.attachments])
-    },
-    [t, toast]
-  )
-
-  const handleUploadAttachment = useCallback(async () => {
-    const iconColor = colors.textSecondary
-    const choice = await dialog.choose(
-      undefined,
-      [
-        {
-          label: t('input.attachment_camera', '拍照'),
-          value: 'camera',
-          centered: true,
-          leading: <MaterialIcons name="photo-camera" size={22} color={iconColor} />
-        },
-        {
-          label: t('input.attachment_photo_library', '相册'),
-          value: 'album',
-          centered: true,
-          leading: <MaterialIcons name="photo-library" size={22} color={iconColor} />
-        },
-        {
-          label: t('input.attachment_file_manager', '文件管理'),
-          value: 'files',
-          centered: true,
-          leading: <MaterialIcons name="folder-open" size={22} color={iconColor} />
-        }
-      ],
-      t('input.attachment_source_title', '选择附件来源')
-    )
-    if (!choice) return
-
-    try {
-      let result: PickAttachmentsResult
-      if (choice === 'camera') {
-        result = await pickAttachmentsFromCamera()
-      } else if (choice === 'album') {
-        result = await pickAttachmentsFromPhotoLibrary()
-      } else {
-        result = await pickAttachmentsFromFileManager()
-      }
-      applyPickResult(result)
-    } catch (err) {
-      console.warn('Attachment picker error:', err)
+      onManageShortcuts?.()
     }
-  }, [applyPickResult, colors.textSecondary, dialog, t])
 
-  useImperativeHandle(ref, () => ({
-    insertText: (newText: string) => {
-      setText((prev) => (prev ? `${prev}\n${newText}` : newText))
-      setTimeout(() => inputRef.current?.focus?.(), 0)
-    },
-    focus: () => {
-      inputRef.current?.focus?.()
+    const renderToolbarChip = (
+      label: string,
+      onPress?: () => void,
+      options?: { active?: boolean; icon?: keyof typeof MaterialIcons.glyphMap }
+    ) => {
+      if (!onPress) return null
+      const active = options?.active ?? false
+      return (
+        <TouchableOpacity
+          key={label}
+          style={[
+            styles.chip,
+            {
+              backgroundColor: active ? colors.primary : colors.bgSurfaceHigh,
+              borderColor: colors.borderMuted
+            }
+          ]}
+          onPress={onPress}
+        >
+          {options?.icon ? (
+            <MaterialIcons
+              name={options.icon}
+              size={14}
+              color={active ? colors.textOnPrimary : colors.textSecondary}
+            />
+          ) : null}
+          <Text
+            style={[
+              styles.chipLabel,
+              { color: active ? colors.textOnPrimary : colors.textSecondary }
+            ]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </TouchableOpacity>
+      )
     }
-  }))
 
-  const handleSend = () => {
-    if ((text.trim() || attachments.length > 0) && !isLoading) {
-      onSend(text.trim(), attachments.length > 0 ? [...attachments] : undefined)
-      setText('')
-      setAttachments([])
-    }
-  }
-
-  const handleShortcutPress = () => {
-    if (onTriggerShortcut) {
-      onTriggerShortcut()
-      return
-    }
-    onManageShortcuts?.()
-  }
-
-  const renderToolbarChip = (
-    label: string,
-    onPress?: () => void,
-    options?: { active?: boolean; icon?: keyof typeof MaterialIcons.glyphMap }
-  ) => {
-    if (!onPress) return null
-    const active = options?.active ?? false
     return (
-      <TouchableOpacity
-        key={label}
+      <View
         style={[
-          styles.chip,
+          styles.container,
           {
-            backgroundColor: active ? colors.primary : colors.bgSurfaceHigh,
-            borderColor: colors.borderMuted
+            backgroundColor: colors.bgSurface,
+            borderTopColor: colors.borderSubtle
           }
         ]}
-        onPress={onPress}
       >
-        {options?.icon ? (
-          <MaterialIcons
-            name={options.icon}
-            size={14}
-            color={active ? colors.textOnPrimary : colors.textSecondary}
+        {attachments.length > 0 && (
+          <ScrollView
+            horizontal
+            style={styles.attachmentList}
+            showsHorizontalScrollIndicator={false}
+          >
+            {attachments.map((att) => (
+              <View
+                key={att.id}
+                style={[
+                  styles.attachmentChip,
+                  {
+                    borderColor: colors.borderMuted,
+                    backgroundColor: colors.bgSurfaceHigh
+                  }
+                ]}
+              >
+                {att.isImage ? (
+                  <Image source={{ uri: att.filePath }} style={styles.attImage} />
+                ) : (
+                  <View style={styles.attDoc}>
+                    <Text style={styles.attDocIcon}>{att.isPdf || att.isText ? '📄' : '📁'}</Text>
+                    <Text
+                      style={[styles.attDocName, { color: colors.textSecondary }]}
+                      numberOfLines={1}
+                    >
+                      {att.fileName}
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={[styles.attRemoveBtn, { backgroundColor: colors.bgOverlay }]}
+                  onPress={() => setAttachments((prev) => prev.filter((p) => p.id !== att.id))}
+                >
+                  <Text style={[styles.attRemoveLabel, { color: colors.textOnPrimary }]}>×</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        <Animated.View style={toolbarAnimatedStyle} pointerEvents={showToolbar ? 'auto' : 'none'}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.toolbarContent}
+          >
+            {renderToolbarChip(t('input.upload_attachment', '上传附件'), handleUploadAttachment, {
+              icon: 'attach-file'
+            })}
+            {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
+              icon: 'bolt'
+            })}
+            {renderToolbarChip(
+              searchMode
+                ? t('settings.web_search_mode_tool', '外部工具搜索')
+                : t('settings.web_search_mode_off', '关闭搜索'),
+              onToggleSearchMode,
+              { active: searchMode, icon: 'public' }
+            )}
+            {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
+              icon: 'menu-book'
+            })}
+            {renderToolbarChip(
+              ttsMode === 'always'
+                ? t('agent.chat.tts_always', '始终朗读')
+                : t('agent.chat.tts_manual', '手动朗读'),
+              onToggleTtsMode,
+              { active: ttsMode === 'always', icon: 'volume-up' }
+            )}
+            {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
+              icon: 'build'
+            })}
+          </ScrollView>
+        </Animated.View>
+
+        <View pointerEvents={composerEnabled ? 'auto' : 'none'}>
+          <Input
+            ref={inputRef}
+            className="min-h-12 max-h-36"
+            style={styles.input}
+            value={text}
+            onChangeText={setText}
+            placeholder={t('agent.chat.input_hint', '输入消息...')}
+            multiline
+            maxLength={4000}
+            textAlignVertical="center"
+            editable={composerEnabled}
+            onFocus={composerEnabled ? onInputFocus : undefined}
+            leftSlot={
+              <TouchableOpacity
+                style={styles.toolbarToggle}
+                onPress={toggleToolbar}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              >
+                <MaterialIcons
+                  name={showToolbar ? 'expand-less' : 'add'}
+                  size={20}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+            }
+            rightSlot={
+              isLoading ? (
+                <TouchableOpacity
+                  style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
+                  onPress={onStop}
+                  accessibilityLabel={t('common.stop', '停止')}
+                >
+                  <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.sendBtn,
+                    { backgroundColor: colors.primary },
+                    !text.trim() &&
+                      attachments.length === 0 && {
+                        backgroundColor: colors.textTertiary
+                      }
+                  ]}
+                  onPress={handleSend}
+                  disabled={!text.trim() && attachments.length === 0}
+                  accessibilityLabel={t('common.send', '发送')}
+                >
+                  <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
+                </TouchableOpacity>
+              )
+            }
           />
-        ) : null}
-        <Text
-          style={[
-            styles.chipLabel,
-            { color: active ? colors.textOnPrimary : colors.textSecondary }
-          ]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </TouchableOpacity>
+        </View>
+      </View>
     )
   }
-
-  return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.bgSurface,
-          borderTopColor: colors.borderSubtle
-        }
-      ]}
-    >
-      {attachments.length > 0 && (
-        <ScrollView horizontal style={styles.attachmentList} showsHorizontalScrollIndicator={false}>
-          {attachments.map((att) => (
-            <View
-              key={att.id}
-              style={[
-                styles.attachmentChip,
-                {
-                  borderColor: colors.borderMuted,
-                  backgroundColor: colors.bgSurfaceHigh
-                }
-              ]}
-            >
-              {att.isImage ? (
-                <Image source={{ uri: att.filePath }} style={styles.attImage} />
-              ) : (
-                <View style={styles.attDoc}>
-                  <Text style={styles.attDocIcon}>{att.isPdf || att.isText ? '📄' : '📁'}</Text>
-                  <Text
-                    style={[styles.attDocName, { color: colors.textSecondary }]}
-                    numberOfLines={1}
-                  >
-                    {att.fileName}
-                  </Text>
-                </View>
-              )}
-              <TouchableOpacity
-                style={[styles.attRemoveBtn, { backgroundColor: colors.bgOverlay }]}
-                onPress={() => setAttachments((prev) => prev.filter((p) => p.id !== att.id))}
-              >
-                <Text style={[styles.attRemoveLabel, { color: colors.textOnPrimary }]}>×</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-      )}
-
-      <Animated.View style={toolbarAnimatedStyle} pointerEvents={showToolbar ? 'auto' : 'none'}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.toolbarContent}
-        >
-          {renderToolbarChip(t('input.upload_attachment', '上传附件'), handleUploadAttachment, {
-            icon: 'attach-file'
-          })}
-          {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
-            icon: 'bolt'
-          })}
-          {renderToolbarChip(
-            searchMode
-              ? t('settings.web_search_mode_tool', '外部工具搜索')
-              : t('settings.web_search_mode_off', '关闭搜索'),
-            onToggleSearchMode,
-            { active: searchMode, icon: 'public' }
-          )}
-          {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
-            icon: 'menu-book'
-          })}
-          {renderToolbarChip(
-            ttsMode === 'always'
-              ? t('agent.chat.tts_always', '始终朗读')
-              : t('agent.chat.tts_manual', '手动朗读'),
-            onToggleTtsMode,
-            { active: ttsMode === 'always', icon: 'volume-up' }
-          )}
-          {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
-            icon: 'build'
-          })}
-        </ScrollView>
-      </Animated.View>
-
-      <View pointerEvents={composerEnabled ? 'auto' : 'none'}>
-      <Input
-        ref={inputRef}
-        className="min-h-12 max-h-36"
-        style={styles.input}
-        value={text}
-        onChangeText={setText}
-        placeholder={t('agent.chat.input_hint', '输入消息...')}
-        multiline
-        maxLength={4000}
-        textAlignVertical="center"
-        editable={composerEnabled}
-        onFocus={composerEnabled ? onInputFocus : undefined}
-        leftSlot={
-          <TouchableOpacity
-            style={styles.toolbarToggle}
-            onPress={toggleToolbar}
-            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-          >
-            <MaterialIcons
-              name={showToolbar ? 'expand-less' : 'add'}
-              size={20}
-              color={colors.textTertiary}
-            />
-          </TouchableOpacity>
-        }
-        rightSlot={
-          isLoading ? (
-            <TouchableOpacity
-              style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
-              onPress={onStop}
-              accessibilityLabel={t('common.stop', '停止')}
-            >
-              <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.sendBtn,
-                { backgroundColor: colors.primary },
-                !text.trim() &&
-                  attachments.length === 0 && {
-                    backgroundColor: colors.textTertiary
-                  }
-              ]}
-              onPress={handleSend}
-              disabled={!text.trim() && attachments.length === 0}
-              accessibilityLabel={t('common.send', '发送')}
-            >
-              <MaterialIcons name="arrow-upward" size={18} color={colors.textOnPrimary} />
-            </TouchableOpacity>
-          )
-        }
-      />
-      </View>
-    </View>
-  )
-})
+)
 
 InputBar.displayName = 'InputBar'
 

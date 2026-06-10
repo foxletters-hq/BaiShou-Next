@@ -37,10 +37,7 @@ export function applyDeepSeekReasoningFields(msg: {
 
   const reasoningContent = thinkMatch[1]?.trim() ?? ''
   msg.content = msg.content
-    .replace(
-      new RegExp(`${DEEPSEEK_THINK_OPEN}[\\s\\S]*?${DEEPSEEK_THINK_CLOSE}\\s*`, 'g'),
-      ''
-    )
+    .replace(new RegExp(`${DEEPSEEK_THINK_OPEN}[\\s\\S]*?${DEEPSEEK_THINK_CLOSE}\\s*`, 'g'), '')
     .trim()
   if (reasoningContent) {
     msg.reasoning_content = reasoningContent

@@ -116,8 +116,7 @@ export async function appendFileAttachmentToContentParts(
       try {
         const filePath = resolveAttachmentFilePath(att)
         if (canReadLocalPath(filePath)) {
-          fileData =
-            readLocalFileAsBase64(filePath) || (await readLocalFileAsBase64Async(filePath))
+          fileData = readLocalFileAsBase64(filePath) || (await readLocalFileAsBase64Async(filePath))
         }
       } catch {
         // fallback below

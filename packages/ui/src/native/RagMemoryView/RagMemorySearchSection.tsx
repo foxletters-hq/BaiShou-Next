@@ -57,9 +57,7 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
           onChangeText={handleQueryChange}
           placeholder={t('agent.rag.search_hint')}
           returnKeyType="search"
-          leftSlot={
-            <MaterialIcons name="search" size={18} color={colors.textSecondary} />
-          }
+          leftSlot={<MaterialIcons name="search" size={18} color={colors.textSecondary} />}
           rightSlot={
             searchQuery.length > 0 ? (
               <TouchableOpacity
@@ -81,10 +79,7 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
             <TouchableOpacity
               key={mode}
               activeOpacity={0.7}
-              style={[
-                styles.segmentBtn,
-                active && { backgroundColor: colors.bgSurface }
-              ]}
+              style={[styles.segmentBtn, active && { backgroundColor: colors.bgSurface }]}
               onPress={() => handleModeChange(mode)}
             >
               <Text

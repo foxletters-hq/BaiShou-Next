@@ -30,12 +30,7 @@ export const OverviewCard: React.FC<OverviewCardProps> = ({ items }) => {
           )}
           <View style={styles.statColumn}>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{item.label}</Text>
-            <Text
-              style={[
-                styles.statValue,
-                { color: item.valueColor ?? colors.textPrimary }
-              ]}
-            >
+            <Text style={[styles.statValue, { color: item.valueColor ?? colors.textPrimary }]}>
               {item.value}
             </Text>
           </View>

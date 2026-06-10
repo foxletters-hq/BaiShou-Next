@@ -94,7 +94,7 @@ export async function buildMobileStreamUserConfig(
 export function mapContextResultToFlatEntries(
   result: ContextAtMessageResult,
   sessionId: string,
-  sourceMessageId: string,
+  sourceMessageId: string
 ): MappedCallChainFlatEntry[] {
   const vm = result.viewModel
   return (vm?.flatEntries ?? []).map((entry, i) => {

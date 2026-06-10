@@ -3,10 +3,7 @@ import { View, Text, Pressable } from 'react-native'
 import { useNativeTheme } from '../theme'
 import type { CallChainFlatEntry } from './context-chain-panel.types'
 import { getLabelBadgeColor } from './context-chain-dialog.utils'
-import {
-  COMPRESSION_SUMMARY_SELECTION_KEY,
-  useContextChainView
-} from './useContextChainView'
+import { COMPRESSION_SUMMARY_SELECTION_KEY, useContextChainView } from './useContextChainView'
 import { contextChainFlatListStyles as styles } from './context-chain-flat-list.styles'
 
 type ContextChainView = ReturnType<typeof useContextChainView>
@@ -64,7 +61,14 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
 
   if (view.flatEntries.length === 0) {
     return (
-      <Text style={{ fontSize: 14, color: colors.textSecondary, paddingVertical: 24, textAlign: 'center' }}>
+      <Text
+        style={{
+          fontSize: 14,
+          color: colors.textSecondary,
+          paddingVertical: 24,
+          textAlign: 'center'
+        }}
+      >
         {view.t('agent.chat.no_context_messages', '暂无发送给 AI 的上下文记录')}
       </Text>
     )
@@ -168,18 +172,14 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
 
       {hasCompressionCard && (
         <Text style={[styles.compressionHint, { color: colors.textSecondary }]}>
-          {view.t(
-            'agent.chat.compaction_between_rounds',
-            '已压缩更早轮次，以下从第 1 轮重新计数'
-          )}
+          {view.t('agent.chat.compaction_between_rounds', '已压缩更早轮次，以下从第 1 轮重新计数')}
         </Text>
       )}
 
       {view.roundGroups.map((group) => {
         const expanded = view.isRoundExpanded(group.roundIndex)
         const isActiveRound =
-          group.roundIndex ===
-          (view.meta?.activeRoundIndex ?? view.resolveDefaultActiveRound())
+          group.roundIndex === (view.meta?.activeRoundIndex ?? view.resolveDefaultActiveRound())
         const visibleMessages = view.getVisibleMessages(group)
 
         return (

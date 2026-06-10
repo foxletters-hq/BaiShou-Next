@@ -68,9 +68,9 @@ export const AgentMessageRow: React.FC<AgentMessageRowProps> = ({
 
   const hasPersistedCompressionContent = Boolean(
     persistedCompaction &&
-      persistedCompaction.status !== 'failed' &&
-      (Boolean(persistedCompaction.streamTranscript?.trim()) ||
-        Boolean(persistedCompaction.streamReasoning?.trim()))
+    persistedCompaction.status !== 'failed' &&
+    (Boolean(persistedCompaction.streamTranscript?.trim()) ||
+      Boolean(persistedCompaction.streamReasoning?.trim()))
   )
 
   const showLiveCompression = isLiveCompressionAnchor
@@ -88,8 +88,7 @@ export const AgentMessageRow: React.FC<AgentMessageRowProps> = ({
     ? liveCompression.phase
     : (persistedCompaction?.phase ?? 'auto')
 
-  const showDivider =
-    showPersistedCompression && persistedCompaction?.status !== 'failed'
+  const showDivider = showPersistedCompression && persistedCompaction?.status !== 'failed'
 
   return (
     <View style={styles.row}>

@@ -24,11 +24,7 @@ export const NativeChatBubbleInlineEditor: React.FC<NativeChatBubbleInlineEditor
   return (
     <TextInput
       ref={inputRef}
-      style={[
-        styles.editInput,
-        { color: colors.textPrimary },
-        style
-      ]}
+      style={[styles.editInput, { color: colors.textPrimary }, style]}
       value={value}
       onChangeText={onChangeText}
       multiline

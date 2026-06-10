@@ -14,7 +14,9 @@ export const CompressionDivider: React.FC = () => {
       accessibilityLabel={t('agent.chat.compression_divider_aria', '对话已压缩')}
     >
       <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />
-      <Text style={[styles.label, { color: colors.textSecondary, borderColor: colors.borderSubtle }]}>
+      <Text
+        style={[styles.label, { color: colors.textSecondary, borderColor: colors.borderSubtle }]}
+      >
         {t('agent.chat.compression_divider', '对话已压缩')}
       </Text>
       <View style={[styles.line, { backgroundColor: colors.borderSubtle }]} />

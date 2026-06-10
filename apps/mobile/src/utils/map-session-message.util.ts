@@ -103,7 +103,6 @@ export function mapSessionMessageFromDb(msg: {
     outputTokens: msg.outputTokens,
     costMicros: msg.costMicros,
     compactionRecord,
-    parts:
-      parts.length > 0 ? (stripBinaryFromParts(parts) as AgentMessagePart[]) : undefined
+    parts: parts.length > 0 ? (stripBinaryFromParts(parts) as AgentMessagePart[]) : undefined
   }
 }

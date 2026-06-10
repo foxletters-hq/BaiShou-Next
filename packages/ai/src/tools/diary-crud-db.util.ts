@@ -72,9 +72,7 @@ export async function runDiaryWriteViaDb(
 
   const result = await context.diarySearcher.writeEntry(args.date, args.content, args.tags)
   const tagNote = args.tags?.trim() ? ` Tags: ${args.tags.trim()}.` : ''
-  return result.ok
-    ? `Successfully created diary entry for ${args.date}.${tagNote}`
-    : result.message
+  return result.ok ? `Successfully created diary entry for ${args.date}.${tagNote}` : result.message
 }
 
 export async function runDiaryEditViaDb(
@@ -117,7 +115,5 @@ export async function runDiaryDeleteViaDb(
   }
 
   const result = await context.diarySearcher.deleteEntry(args.date)
-  return result.ok
-    ? `Successfully deleted the diary entry for ${args.date}.`
-    : result.message
+  return result.ok ? `Successfully deleted the diary entry for ${args.date}.` : result.message
 }

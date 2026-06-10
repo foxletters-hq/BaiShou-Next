@@ -109,28 +109,28 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
     <View>
       {compact ? <View style={wrapStyle} /> : null}
       <View style={compact ? styles.fieldGroupCard : wrapStyle}>
-      <Text style={[styles.label, { color: colors.textPrimary }]}>
-        {t('tts.settings.test_label')}
-      </Text>
-      <View style={styles.testRow}>
-        <Input
-          style={[styles.input, styles.testInput]}
-          value={testText}
-          onChangeText={onTestTextChange}
-          placeholder={t('tts.settings.test_placeholder')}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <Button
-          variant="outline"
-          onPress={onTest}
-          isLoading={testing}
-          isDisabled={!canTest || testing}
-          className="min-w-[72px] px-3.5"
-        >
-          {testing ? t('tts.settings.testing') : t('tts.settings.test_button')}
-        </Button>
-      </View>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>
+          {t('tts.settings.test_label')}
+        </Text>
+        <View style={styles.testRow}>
+          <Input
+            style={[styles.input, styles.testInput]}
+            value={testText}
+            onChangeText={onTestTextChange}
+            placeholder={t('tts.settings.test_placeholder')}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Button
+            variant="outline"
+            onPress={onTest}
+            isLoading={testing}
+            isDisabled={!canTest || testing}
+            className="min-w-[72px] px-3.5"
+          >
+            {testing ? t('tts.settings.testing') : t('tts.settings.test_button')}
+          </Button>
+        </View>
       </View>
     </View>
   )

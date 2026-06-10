@@ -77,7 +77,9 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           <Text style={[styles.alertTitle, { color: colors.error }]}>
             {t('settings.rag_operation_failed')}
           </Text>
-          <Text style={[styles.alertDesc, { color: colors.onErrorContainer }]}>{ragState.error}</Text>
+          <Text style={[styles.alertDesc, { color: colors.onErrorContainer }]}>
+            {ragState.error}
+          </Text>
         </View>
       )}
 

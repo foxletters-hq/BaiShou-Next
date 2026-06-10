@@ -32,10 +32,7 @@ const chainScrollProps = {
   overScrollMode: 'never' as const
 }
 
-export type {
-  MockChatMessage,
-  NativeContextChainDialogProps
-} from './context-chain-dialog.types'
+export type { MockChatMessage, NativeContextChainDialogProps } from './context-chain-dialog.types'
 export type { CallChainFlatEntry, CallChainPanelMeta } from './context-chain-panel.types'
 
 export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({

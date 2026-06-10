@@ -331,5 +331,5 @@ const styles = StyleSheet.create({
   },
   pageInfo: {
     fontSize: 12
-  },
+  }
 })

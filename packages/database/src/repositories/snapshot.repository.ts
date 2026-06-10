@@ -50,22 +50,22 @@ export class SnapshotRepository {
    */
   async listSnapshotsBySession(sessionId: string): Promise<Snapshot[]> {
     return this.run(async () => {
-    const results = await this.db
-      .select()
-      .from(compressionSnapshotsTable)
-      .where(eq(compressionSnapshotsTable.sessionId, sessionId))
-      .orderBy(asc(compressionSnapshotsTable.createdAt), asc(compressionSnapshotsTable.id))
+      const results = await this.db
+        .select()
+        .from(compressionSnapshotsTable)
+        .where(eq(compressionSnapshotsTable.sessionId, sessionId))
+        .orderBy(asc(compressionSnapshotsTable.createdAt), asc(compressionSnapshotsTable.id))
 
-    return results.map((result) => ({
-      id: result.id,
-      sessionId: result.sessionId,
-      summaryText: result.summaryText,
-      coveredUpToMessageId: result.coveredUpToMessageId,
-      tailStartMessageId: result.tailStartMessageId ?? null,
-      messageCount: result.messageCount,
-      tokenCount: result.tokenCount ?? null,
-      createdAt: result.createdAt
-    }))
+      return results.map((result) => ({
+        id: result.id,
+        sessionId: result.sessionId,
+        summaryText: result.summaryText,
+        coveredUpToMessageId: result.coveredUpToMessageId,
+        tailStartMessageId: result.tailStartMessageId ?? null,
+        messageCount: result.messageCount,
+        tokenCount: result.tokenCount ?? null,
+        createdAt: result.createdAt
+      }))
     })
   }
 
@@ -141,26 +141,26 @@ export class SnapshotRepository {
 
   async getLatestSnapshot(sessionId: string): Promise<Snapshot | null> {
     return this.run(async () => {
-    const result = await this.db
-      .select()
-      .from(compressionSnapshotsTable)
-      .where(eq(compressionSnapshotsTable.sessionId, sessionId))
-      .orderBy(desc(compressionSnapshotsTable.createdAt), desc(compressionSnapshotsTable.id))
-      .limit(1)
-      .get()
+      const result = await this.db
+        .select()
+        .from(compressionSnapshotsTable)
+        .where(eq(compressionSnapshotsTable.sessionId, sessionId))
+        .orderBy(desc(compressionSnapshotsTable.createdAt), desc(compressionSnapshotsTable.id))
+        .limit(1)
+        .get()
 
-    if (!result) return null
+      if (!result) return null
 
-    return {
-      id: result.id,
-      sessionId: result.sessionId,
-      summaryText: result.summaryText,
-      coveredUpToMessageId: result.coveredUpToMessageId,
-      tailStartMessageId: result.tailStartMessageId ?? null,
-      messageCount: result.messageCount,
-      tokenCount: result.tokenCount ?? null,
-      createdAt: result.createdAt
-    }
+      return {
+        id: result.id,
+        sessionId: result.sessionId,
+        summaryText: result.summaryText,
+        coveredUpToMessageId: result.coveredUpToMessageId,
+        tailStartMessageId: result.tailStartMessageId ?? null,
+        messageCount: result.messageCount,
+        tokenCount: result.tokenCount ?? null,
+        createdAt: result.createdAt
+      }
     })
   }
 }

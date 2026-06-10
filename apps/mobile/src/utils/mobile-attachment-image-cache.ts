@@ -47,9 +47,7 @@ export class LruStringCache {
 const thumbCache = new LruStringCache(ATTACHMENT_THUMB_CACHE_LIMIT)
 const previewCache = new LruStringCache(ATTACHMENT_PREVIEW_CACHE_LIMIT)
 
-export function getAttachmentImageCache(
-  purpose: AttachmentImagePurpose
-): LruStringCache {
+export function getAttachmentImageCache(purpose: AttachmentImagePurpose): LruStringCache {
   return purpose === 'preview' ? previewCache : thumbCache
 }
 

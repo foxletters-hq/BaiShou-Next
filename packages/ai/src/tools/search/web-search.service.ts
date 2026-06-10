@@ -168,7 +168,9 @@ export class WebSearchService {
     plainSnippetLength?: number,
     onDiagnostics?: (diag: SearchDiagnostics) => void
   ): Promise<SearchResult[]> {
-    logger.info(`[WebSearchService] search engine=${engine} query="${query}" maxResults=${maxResults}`)
+    logger.info(
+      `[WebSearchService] search engine=${engine} query="${query}" maxResults=${maxResults}`
+    )
 
     if (engine === 'duckduckgo') {
       return this.searchDuckDuckGo(query, maxResults, onDiagnostics)
