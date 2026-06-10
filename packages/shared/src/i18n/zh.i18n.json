@@ -396,6 +396,7 @@
     "confirm_restore": "确认恢复",
     "confirm_restore_desc": "恢复快照将覆盖当前所有数据。\n\n确认继续？",
     "restoring_data": "正在恢复数据...",
+    "restoring_data_hint": "请勿关闭应用或进行其他操作，请耐心等待恢复完成",
     "restore_success": "快照恢复成功：$diaries 条日记，$summaries 条总结",
     "restore_success_simple": "数据恢复成功，所有工作区数据和设备配置已还原",
     "restore_failed_generic": "恢复失败，数据不完整",

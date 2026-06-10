@@ -378,6 +378,7 @@
     "confirm_restore": "確認復原",
     "confirm_restore_desc": "復原快照將覆蓋目前所有資料。\n\n確認繼續？",
     "restoring_data": "正在復原資料...",
+    "restoring_data_hint": "請勿關閉應用或進行其他操作，請耐心等待復原完成",
     "restore_success": "快照還原成功：$diaries 筆日記，$summaries 筆總結",
     "restore_success_simple": "資料還原成功，所有工作空間資料和裝置設定已復原",
     "restore_failed_generic": "復原失敗",

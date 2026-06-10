@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import * as WebBrowser from 'expo-web-browser'
 import { useTranslation } from 'react-i18next'
 import { GITHUB_ISSUES_URL } from '@baishou/shared'
-import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, RestoreBlockingOverlay } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useStoragePermission } from '../../../hooks/useStoragePermission'
 import {
@@ -34,6 +34,7 @@ export const GeneralSettingsSection: React.FC = () => {
   const { granted: storageGranted, request: requestStorageAccess } = useStoragePermission()
 
   const [storageRootPath, setStorageRootPath] = useState('...')
+  const [isRestoring, setIsRestoring] = useState(false)
 
   const refreshStorageRoot = useCallback(async () => {
     if (!services?.pathService) return
@@ -81,6 +82,7 @@ export const GeneralSettingsSection: React.FC = () => {
         copyToCacheDirectory: true
       })
       if (pick.canceled || !pick.assets?.[0]?.uri) return
+      setIsRestoring(true)
       const result = await services.archiveService.importFromZip(pick.assets[0].uri, true)
       if (result && (result.fileCount > 0 || result.fileCount === -1)) {
         toast.showSuccess(t('settings.restore_success_simple'))
@@ -89,10 +91,14 @@ export const GeneralSettingsSection: React.FC = () => {
       }
     } catch (e: any) {
       toast.showError(t('settings.import_failed_with_error', { error: e.message || '' }))
+    } finally {
+      setIsRestoring(false)
     }
   }
 
   return (
+    <>
+    <RestoreBlockingOverlay visible={isRestoring} />
     <View style={styles.section}>
       <View
         style={[
@@ -122,6 +128,7 @@ export const GeneralSettingsSection: React.FC = () => {
         />
       </View>
     </View>
+    </>
   )
 }
 

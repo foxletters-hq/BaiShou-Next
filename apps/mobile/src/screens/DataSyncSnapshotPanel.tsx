@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { SnapshotMeta } from '@baishou/core-mobile'
-import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, RestoreBlockingOverlay } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 
 const formatSize = (bytes: number): string => {
@@ -30,8 +30,7 @@ export const DataSyncSnapshotPanel: React.FC = () => {
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([])
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [creating, setCreating] = useState(false)
-
+  const [isRestoring, setIsRestoring] = useState(false)
   const loadSnapshots = useCallback(async () => {
     if (!archiveService) return
     setLoading(true)
@@ -54,31 +53,6 @@ export const DataSyncSnapshotPanel: React.FC = () => {
     setRefreshing(false)
   }
 
-  const handleCreate = () => {
-    if (!archiveService) return
-    void (async () => {
-      const confirmed = await dialog.confirm(t('storage.create_snapshot_desc'), {
-        title: t('storage.create_snapshot'),
-        confirmText: t('common.confirm')
-      })
-      if (!confirmed) return
-      setCreating(true)
-      try {
-        const path = await archiveService.createSnapshot()
-        if (path) {
-          toast.showSuccess(t('storage.snapshot_created'))
-          await loadSnapshots()
-        } else {
-          toast.showError(t('data_sync.backup_failed'))
-        }
-      } catch {
-        toast.showError(t('data_sync.backup_failed'))
-      } finally {
-        setCreating(false)
-      }
-    })()
-  }
-
   const handleRestore = (item: SnapshotMeta) => {
     if (!archiveService) return
     void (async () => {
@@ -88,12 +62,15 @@ export const DataSyncSnapshotPanel: React.FC = () => {
         destructive: true
       })
       if (!confirmed) return
+      setIsRestoring(true)
       try {
         await archiveService.restoreFromSnapshot(item.filename)
         toast.showSuccess(t('data_sync.restore_success'))
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e)
         toast.showError(msg || t('data_sync.restore_failed'))
+      } finally {
+        setIsRestoring(false)
       }
     })()
   }
@@ -114,6 +91,8 @@ export const DataSyncSnapshotPanel: React.FC = () => {
   }
 
   return (
+    <>
+    <RestoreBlockingOverlay visible={isRestoring} />
     <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
@@ -124,19 +103,6 @@ export const DataSyncSnapshotPanel: React.FC = () => {
             {t('data_sync.snapshots_scope_hint')}
           </Text>
         </View>
-        <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: colors.primary }]}
-          onPress={handleCreate}
-          disabled={creating}
-        >
-          {creating ? (
-            <ActivityIndicator color={colors.textOnPrimary} size="small" />
-          ) : (
-            <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}>
-              {t('storage.create_snapshot')}
-            </Text>
-          )}
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -176,6 +142,7 @@ export const DataSyncSnapshotPanel: React.FC = () => {
         )}
       </ScrollView>
     </View>
+    </>
   )
 }
 
@@ -184,13 +151,6 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
   hint: { fontSize: 12, lineHeight: 17 },
-  createBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 88,
-    alignItems: 'center'
-  },
   empty: { paddingVertical: 24, textAlign: 'center', fontSize: 14 },
   row: {
     flexDirection: 'row',

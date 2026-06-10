@@ -10,6 +10,7 @@ import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
+import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 
 export interface DataManagementCardProps {
   onExportZip?: () => Promise<void>
@@ -50,18 +51,22 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
     if (!confirmed) return
 
     setIsImporting(true)
+    let willReload = false
     try {
-      await onImportZip(filePath)
+      await onImportZip!(filePath)
       toast.showSuccess(t('settings.restore_success_simple', '恢复成功'))
+      willReload = true
       setTimeout(() => window.location.reload(), 1500)
     } catch (e: any) {
       toast.showError(t('settings.restore_failed', '恢复失败：') + e.message)
     } finally {
-      setIsImporting(false)
+      if (!willReload) setIsImporting(false)
     }
   }
 
   return (
+    <>
+    <RestoreBlockingOverlay visible={isImporting} />
     <SettingsExpansionTile
       icon={<MdOutlineStorage size={24} />}
       title={t('settings.data_management', '数据管理')}
@@ -105,5 +110,6 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
         <MdChevronRight size={22} className="settings-list-tile-trailing" />
       </button>
     </SettingsExpansionTile>
+    </>
   )
 }

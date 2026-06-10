@@ -11,7 +11,13 @@ import {
 import { useFocusEffect } from '@react-navigation/native'
 import { StorageSettingsCard } from '@baishou/ui/native'
 import { SettingsSection } from '@baishou/ui/native'
-import { useNativeTheme, scrollIndicatorStyle, useNativeToast, useDialog } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  scrollIndicatorStyle,
+  useNativeToast,
+  useDialog,
+  RestoreBlockingOverlay
+} from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import * as DocumentPicker from 'expo-document-picker'
@@ -202,19 +208,9 @@ export const StorageScreen: React.FC = () => {
     }
   }, [services, t])
 
-  const handleCreateSnapshot = useCallback(async () => {
-    if (!services?.archiveService) return
-    try {
-      const snapshotPath = await services.archiveService.createSnapshot()
-      if (snapshotPath) {
-        toast.showSuccess(t('storage.snapshot_created', '快照已创建'))
-      }
-    } catch (e: any) {
-      toast.showError(e.message)
-    }
-  }, [services, t])
-
   return (
+    <>
+    <RestoreBlockingOverlay visible={isImporting} />
     <StackScreenLayout
       title={t('storage.title')}
       {...getStackScreenChrome(colors)}
@@ -287,27 +283,12 @@ export const StorageScreen: React.FC = () => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={handleCreateSnapshot}
-            disabled={isExporting || isImporting}
-          >
-            <Text style={{ fontSize: 18 }}>💾</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>
-                {t('storage.create_snapshot', '创建快照')}
-              </Text>
-              <Text style={[styles.menuDesc, { color: colors.textSecondary }]}>
-                {t('storage.create_snapshot_desc', '保存当前数据的一份本地快照备份')}
-              </Text>
-            </View>
-            <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
-          </TouchableOpacity>
         </SettingsSection>
 
         <View style={{ height: 40 }} />
       </ScrollView>
     </StackScreenLayout>
+    </>
   )
 }
 

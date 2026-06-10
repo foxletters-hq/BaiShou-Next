@@ -386,6 +386,7 @@
     "confirm_restore": "復元の確認",
     "confirm_restore_desc": "スナップショットを復元すると、現在のすべてのデータが上書きされます。\n\n続行しますか？",
     "restoring_data": "データを復元中...",
+    "restoring_data_hint": "アプリを閉じたり他の操作を行わないでください。復元が完了するまでお待ちください。",
     "restore_success": "スナップショットの復元に成功しました：$diaries 件の日記、$summaries 件の要約",
     "restore_success_simple": "データの復元に成功しました。すべてのワークスペースデータとデバイス設定が復元されました",
     "restore_failed_generic": "復元失敗、データ不完全",

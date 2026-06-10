@@ -5,6 +5,7 @@ import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import { MdRadar, MdRefresh, MdComputer, MdSmartphone, MdSend, MdQrCode } from 'react-icons/md'
 import { HelpTooltip } from '../HelpTooltip'
+import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import { QRCodeSVG } from 'qrcode.react'
 
 export interface DiscoveredDevice {
@@ -64,6 +65,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     allIps?: string[]
   } | null>(null)
   const [showQrCode, setShowQrCode] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
   const discoveryCleanupRef = useRef<(() => void) | null>(null)
 
   const isSelfDevice = (
@@ -158,14 +160,20 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
           t('lan_transfer.receive_confirm_title', '收到数据包')
         )
         if (confirmed) {
+          setIsRestoring(true)
+          let willReload = false
           onImportZip(zipPath)
             .then(() => {
               toast.showSuccess(t('lan.import_success', '导入成功，应用即将重载'))
+              willReload = true
               setTimeout(() => window.location.reload(), 1500)
             })
             .catch((e) => {
               console.error(e)
               toast.showError(t('lan.import_failed', '重载导入失败'))
+            })
+            .finally(() => {
+              if (!willReload) setIsRestoring(false)
             })
         } else {
           toast.show(t('lan.receive_cancelled', '已取消接收与挂载'))
@@ -197,6 +205,8 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   }
 
   return (
+    <>
+    <RestoreBlockingOverlay visible={isRestoring} />
     <div className={styles.container}>
       <div className={styles.appBar}>
         <div style={{ flex: 1 }} />
@@ -314,5 +324,6 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
           })}
       </div>
     </div>
+    </>
   )
 }

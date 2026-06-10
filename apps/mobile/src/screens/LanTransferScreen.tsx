@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { StyleSheet } from 'react-native'
-import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, RestoreBlockingOverlay } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
@@ -19,6 +19,7 @@ export const LanTransferScreen: React.FC = () => {
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [sendingTo, setSendingTo] = useState<string | null>(null)
   const [sendProgress, setSendProgress] = useState(0)
+  const [isRestoring, setIsRestoring] = useState(false)
   const localConnRef = useRef<{ ip: string; port: number; serviceId: string } | null>(null)
 
   const lanSyncService = services?.lanSyncService
@@ -69,12 +70,15 @@ export const LanTransferScreen: React.FC = () => {
           confirmText: t('common.restore')
         })
         if (!restore || !archiveService) return
+        setIsRestoring(true)
         try {
           await archiveService.importFromZip(zipPath, true)
           toast.showSuccess(t('lan.import_success'))
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e)
           toast.showError(msg || t('lan.import_failed'))
+        } finally {
+          setIsRestoring(false)
         }
       })()
     })
@@ -130,6 +134,8 @@ export const LanTransferScreen: React.FC = () => {
   )
 
   return (
+    <>
+    <RestoreBlockingOverlay visible={isRestoring} />
     <StackScreenLayout
       title={t('lan_transfer.title')}
       {...getStackScreenChrome(colors)}
@@ -148,6 +154,7 @@ export const LanTransferScreen: React.FC = () => {
         onDevicePress={handleDevicePress}
       />
     </StackScreenLayout>
+    </>
   )
 }
 

@@ -14,7 +14,8 @@ import {
   useNativeToast,
   useDialog,
   scrollIndicatorStyle,
-  Input
+  Input,
+  RestoreBlockingOverlay
 } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -46,6 +47,7 @@ export const DataSyncScreen: React.FC = () => {
   const [recordsLoading, setRecordsLoading] = useState(false)
   const [recordsRefreshing, setRecordsRefreshing] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set())
   const [renamingRecord, setRenamingRecord] = useState<string | null>(null)
@@ -201,12 +203,15 @@ export const DataSyncScreen: React.FC = () => {
         confirmText: t('common.confirm')
       })
       if (!confirmed || !cloudSyncService) return
+      setIsRestoring(true)
       try {
         const result = await cloudSyncService.restoreFromCloud(syncConfig, filename)
         toast.showSuccess(result.message)
       } catch (e) {
         logger.error('云端恢复失败', e instanceof Error ? e : String(e))
         toast.showError(t('data_sync.restore_failed'))
+      } finally {
+        setIsRestoring(false)
       }
     },
     [cloudSyncService, dialog, syncConfig, t, toast]
@@ -469,6 +474,8 @@ export const DataSyncScreen: React.FC = () => {
   }
 
   return (
+    <>
+    <RestoreBlockingOverlay visible={isRestoring} />
     <StackScreenLayout
       title={t('data_sync.title')}
       {...getStackScreenChrome(colors)}
@@ -803,6 +810,7 @@ export const DataSyncScreen: React.FC = () => {
         onClose={() => setShowCountModal(false)}
       />
     </StackScreenLayout>
+    </>
   )
 }
 

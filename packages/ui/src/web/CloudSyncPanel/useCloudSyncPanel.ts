@@ -16,6 +16,7 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
     ...(savedConfig || {})
   }))
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
   const [showCountModal, setShowCountModal] = useState(false)
   const [tempCount, setTempCount] = useState(config.maxBackupCount)
@@ -38,6 +39,7 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
     activeTab,
     selected: fetchState.selected,
     setIsSyncing,
+    setIsRestoring,
     setShowConfig,
     tempCount,
     setTempCount,
@@ -56,6 +58,7 @@ export function useCloudSyncPanel(props: CloudSyncPanelProps) {
     setConfig,
     ...fetchState,
     isSyncing,
+    isRestoring,
     showConfig,
     setShowConfig,
     showCountModal,

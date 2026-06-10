@@ -12,6 +12,7 @@ export interface UseCloudSyncActionsParams {
   activeTab: 'cloud' | 'snapshot'
   selected: Set<string>
   setIsSyncing: React.Dispatch<React.SetStateAction<boolean>>
+  setIsRestoring: React.Dispatch<React.SetStateAction<boolean>>
   setShowConfig: React.Dispatch<React.SetStateAction<boolean>>
   tempCount: number
   setTempCount: React.Dispatch<React.SetStateAction<number>>
@@ -27,6 +28,7 @@ export function useCloudSyncActions({
   activeTab,
   selected,
   setIsSyncing,
+  setIsRestoring,
   setShowConfig,
   tempCount,
   setTempCount,
@@ -95,7 +97,8 @@ export function useCloudSyncActions({
           )
     )
     if (!confirmed) return
-    setIsSyncing(true)
+    setIsRestoring(true)
+    let willReload = false
     try {
       const res =
         activeTab === 'snapshot'
@@ -112,10 +115,11 @@ export function useCloudSyncActions({
       if (res.success) toast.showSuccess(res.message)
       else toast.showError(res.message)
       if (res.success) {
+        willReload = true
         setTimeout(() => window.location.reload(), 1500)
       }
     } finally {
-      setIsSyncing(false)
+      if (!willReload) setIsRestoring(false)
     }
   }
 
