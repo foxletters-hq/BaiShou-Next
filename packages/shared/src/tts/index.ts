@@ -1,3 +1,4 @@
+export { fetchOpenAiCompatibleModelIds } from './fetch-tts-models'
 export {
   TTS_PROVIDER_IDS,
   TTS_DEFAULT_BASE_URLS,
@@ -10,9 +11,18 @@ export {
   getTtsInitialConfigs,
   mergeTtsPersistedConfigs,
   buildTtsSettingsInitialConfig,
+  buildTtsProviderStatesFromGlobal,
+  buildTtsProviderConnectionEntry,
   resolveTtsProviderCredentials
 } from './tts-defaults'
-export type { TtsProviderId, TtsProviderLocalState, TtsSettingsInitialConfig } from './tts-defaults'
+export type {
+  TtsProviderId,
+  TtsProviderLocalState,
+  TtsSettingsInitialConfig,
+  TtsGlobalModelsSnapshot
+} from './tts-defaults'
+export { applyTtsSaveToGlobalModels } from './save-tts-global-config'
+export type { TtsSavePayload } from './save-tts-global-config'
 export { synthesizeTtsFromSettings, synthesizeTtsFromFormConfig } from './synthesize-from-settings'
 export type {
   TtsSynthesizeFromSettingsInput,

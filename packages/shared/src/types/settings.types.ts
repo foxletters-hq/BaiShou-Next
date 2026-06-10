@@ -24,10 +24,20 @@ export interface AIProviderConfig {
   webSearchMode?: string // 网络搜索模式（如：duckduckgo等，可能在原版为某些特定模型特有）
 }
 
-/** TTS 供应商连接信息（与 ai_providers 分离，避免在模型服务列表中出现 TTS 项） */
+/** TTS 供应商配置（与 ai_providers 分离，按供应商 id 独立存储） */
 export interface TtsProviderConnectionConfig {
   baseUrl?: string
   apiKey?: string
+  /** 上次从服务端拉取的模型列表 */
+  availableModels?: string[]
+  modelId?: string
+  voice?: string
+  speed?: number
+  responseFormat?: string
+  refAudioPath?: string
+  promptText?: string
+  promptLang?: string
+  textLang?: string
 }
 
 export interface GlobalModelsConfig {

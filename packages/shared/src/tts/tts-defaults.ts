@@ -167,6 +167,68 @@ export function resolveTtsProviderCredentials(
   return globalTtsProviderConfigs?.[providerId] ?? {}
 }
 
+export interface TtsGlobalModelsSnapshot {
+  globalTtsProviderId?: string
+  globalTtsModelId?: string
+  globalTtsSettings?: Partial<TtsSettings>
+  globalTtsProviderConfigs?: Record<string, Partial<TtsProviderLocalState>>
+}
+
+/** 从 global_models 还原各 TTS 供应商的完整表单状态（不依赖 localStorage） */
+export function buildTtsProviderStatesFromGlobal(
+  globalModels?: TtsGlobalModelsSnapshot | null
+): Record<TtsProviderId, TtsProviderLocalState> {
+  const result = getTtsInitialConfigs()
+  if (!globalModels) return result
+
+  const savedProviderId = isTtsProviderId(globalModels.globalTtsProviderId || '')
+    ? globalModels.globalTtsProviderId!
+    : 'openai-tts'
+  const ttsSettings = globalModels.globalTtsSettings || {}
+  const providerConfigs = globalModels.globalTtsProviderConfigs || {}
+
+  for (const id of TTS_PROVIDER_IDS) {
+    const saved = providerConfigs[id]
+    if (saved) {
+      result[id] = mergeTtsProviderEntry(result[id], saved)
+    }
+  }
+
+  result[savedProviderId] = mergeTtsProviderEntry(result[savedProviderId], {
+    modelId: globalModels.globalTtsModelId,
+    voice: ttsSettings.voice,
+    speed: ttsSettings.speed,
+    responseFormat: ttsSettings.responseFormat,
+    refAudioPath: ttsSettings.refAudioPath,
+    promptText: ttsSettings.promptText,
+    promptLang: ttsSettings.promptLang,
+    textLang: ttsSettings.textLang,
+    baseUrl: providerConfigs[savedProviderId]?.baseUrl,
+    apiKey: providerConfigs[savedProviderId]?.apiKey,
+    availableModels: providerConfigs[savedProviderId]?.availableModels
+  })
+
+  return result
+}
+
+export function buildTtsProviderConnectionEntry(
+  state: TtsProviderLocalState
+): NonNullable<TtsGlobalModelsSnapshot['globalTtsProviderConfigs']>[string] {
+  return {
+    baseUrl: state.baseUrl,
+    apiKey: state.apiKey,
+    availableModels: state.availableModels,
+    modelId: state.modelId,
+    voice: state.voice,
+    speed: state.speed,
+    responseFormat: state.responseFormat,
+    refAudioPath: state.refAudioPath,
+    promptText: state.promptText,
+    promptLang: state.promptLang,
+    textLang: state.textLang
+  }
+}
+
 export function buildTtsSettingsInitialConfig(params: {
   activeProviderId: string
   globalTtsProviderId?: string

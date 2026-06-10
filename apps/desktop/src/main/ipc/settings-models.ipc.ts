@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import {
   AIProviderConfig,
   GlobalModelsConfig,
+  fetchOpenAiCompatibleModelIds,
   isTtsProviderId,
   logger,
   resolveProviderBaseUrl,
@@ -287,31 +288,13 @@ export function registerSettingsModelsIPC() {
       }
 
       if (providerId === 'openai-tts') {
-        const base = tempUrl?.trim().replace(/\/$/, '') || ''
-        if (!base) {
-          return ['tts-1', 'tts-1-hd']
-        }
         try {
-          const headers: Record<string, string> = {}
-          const key = tempKey?.trim()
-          if (key) {
-            headers.Authorization = `Bearer ${key}`
-          }
-          const response = await fetch(`${base}/models`, { headers })
-          if (response.ok) {
-            const data = await response.json()
-            if (data && Array.isArray(data.data)) {
-              const allIds = data.data.map((m: any) => m.id).filter(Boolean) as string[]
-              const ttsModels = allIds.filter((id) => id.toLowerCase().includes('tts'))
-              if (ttsModels.length > 0) return ttsModels
-              if (allIds.length > 0) return allIds
-            }
-          }
+          return await fetchOpenAiCompatibleModelIds(tempUrl || '', tempKey)
         } catch (err) {
           // @ts-ignore
           logger.error?.('[TTS] Fetch OpenAI-compatible models failed:', err)
+          return ['tts-1', 'tts-1-hd']
         }
-        return ['tts-1', 'tts-1-hd']
       }
 
       const providers = await getAutoFixedProviders()
