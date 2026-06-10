@@ -24,6 +24,12 @@ export interface AIProviderConfig {
   webSearchMode?: string // 网络搜索模式（如：duckduckgo等，可能在原版为某些特定模型特有）
 }
 
+/** TTS 供应商连接信息（与 ai_providers 分离，避免在模型服务列表中出现 TTS 项） */
+export interface TtsProviderConnectionConfig {
+  baseUrl?: string
+  apiKey?: string
+}
+
 export interface GlobalModelsConfig {
   globalDialogueProviderId: string
   globalDialogueModelId: string
@@ -37,6 +43,8 @@ export interface GlobalModelsConfig {
   globalTtsProviderId: string
   globalTtsModelId: string
   globalTtsSettings?: TtsSettings
+  /** 各 TTS 供应商的 baseUrl / apiKey，key 为 openai-tts、mimo-tts 等 */
+  globalTtsProviderConfigs?: Record<string, TtsProviderConnectionConfig>
   monthlySummarySource: 'weeklies' | 'diaries' // 月度总结数据源：'weeklies' (仅周记) 或 'diaries' (全量日记)
 }
 
