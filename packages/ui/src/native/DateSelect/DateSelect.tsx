@@ -31,7 +31,8 @@ export const DateSelect: React.FC<DateSelectProps> = ({
   fields = DEFAULT_FIELDS,
   scrollKey = 'default',
   minDate,
-  maxDate
+  maxDate,
+  selectionBandColor
 }) => {
   const { t } = useTranslation()
   const years = useMemo(() => getDatePickerYears(), [])
@@ -95,6 +96,7 @@ export const DateSelect: React.FC<DateSelectProps> = ({
           items={years.map(String)}
           selectedIndex={yearIndex}
           onIndexChange={handleYearIndex}
+          selectionBandColor={selectionBandColor}
         />
       )}
       {showMonth && (
@@ -103,6 +105,7 @@ export const DateSelect: React.FC<DateSelectProps> = ({
           items={monthLabels}
           selectedIndex={monthIndex}
           onIndexChange={handleMonthIndex}
+          selectionBandColor={selectionBandColor}
         />
       )}
       {showDay && (
@@ -111,6 +114,7 @@ export const DateSelect: React.FC<DateSelectProps> = ({
           items={dayLabels}
           selectedIndex={Math.min(dayIndex, dayLabels.length - 1)}
           onIndexChange={handleDayIndex}
+          selectionBandColor={selectionBandColor}
         />
       )}
     </View>

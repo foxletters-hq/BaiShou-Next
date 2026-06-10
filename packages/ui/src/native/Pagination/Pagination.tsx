@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { View, Text, Pressable } from 'react-native'
+import { View, Text, Pressable, TextInput } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { Input } from '../Input/Input'
+import { paginationStyles as styles } from './pagination.styles'
 
 export interface NativePaginationProps {
   /** 当前页码（从 1 开始） */
@@ -80,11 +82,14 @@ export const Pagination: React.FC<NativePaginationProps> = ({
   showJumper = true,
   disabled = false
 }) => {
-  const { colors, tokens } = useNativeTheme()
-  const [jumperValue, setJumperValue] = useState('')
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+  const pageUnitLabel = t('common.pagination_page_unit', 'Page')
+
+  const [jumperValue, setJumperValue] = useState(() => String(current))
 
   useEffect(() => {
-    setJumperValue('')
+    setJumperValue(String(current))
   }, [current])
 
   const handlePageChange = useCallback(
@@ -103,25 +108,27 @@ export const Pagination: React.FC<NativePaginationProps> = ({
     const page = parseInt(jumperValue, 10)
     if (!isNaN(page) && page >= 1 && page <= total) {
       handlePageChange(page)
+      return
     }
-    setJumperValue('')
-  }, [disabled, jumperValue, total, handlePageChange])
+    setJumperValue(String(current))
+  }, [disabled, jumperValue, total, current, handlePageChange])
 
   const pageRange = getPageRange(current, total, siblingCount)
+
+  const navBtnStyle = (isDisabled: boolean) => [
+    styles.pageBtn,
+    {
+      backgroundColor: colors.bgSurface,
+      borderColor: colors.borderSubtle,
+      opacity: isDisabled ? 0.35 : 1
+    }
+  ]
 
   const renderPageButton = (page: number | 'ellipsis', index: number) => {
     if (page === 'ellipsis') {
       return (
-        <View
-          key={`ellipsis-${index}`}
-          style={{
-            paddingHorizontal: 8,
-            paddingVertical: 8,
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          <Text style={{ color: colors.textSecondary, fontSize: 14 }}>···</Text>
+        <View key={`ellipsis-${index}`} style={styles.ellipsis}>
+          <Text style={[styles.ellipsisText, { color: colors.textTertiary }]}>···</Text>
         </View>
       )
     }
@@ -132,22 +139,25 @@ export const Pagination: React.FC<NativePaginationProps> = ({
         key={page}
         onPress={() => handlePageChange(page)}
         disabled={disabled}
-        style={{
-          minWidth: 36,
-          height: 36,
-          borderRadius: tokens.radius.md,
-          backgroundColor: isActive ? colors.primary : 'transparent',
-          justifyContent: 'center',
-          alignItems: 'center',
-          opacity: disabled ? 0.5 : 1
-        }}
+        style={[
+          styles.pageBtn,
+          {
+            backgroundColor: isActive ? colors.primary : colors.bgSurface,
+            borderColor: isActive ? colors.primary : colors.borderSubtle,
+            opacity: disabled ? 0.5 : 1
+          },
+          isActive && {
+            ...styles.pageBtnActive,
+            shadowColor: colors.primary
+          }
+        ]}
       >
         <Text
-          style={{
-            color: isActive ? colors.onPrimary : colors.textPrimary,
-            fontSize: 14,
-            fontWeight: isActive ? '600' : '400'
-          }}
+          style={[
+            styles.pageBtnText,
+            isActive ? styles.pageBtnTextActive : null,
+            { color: isActive ? colors.onPrimary : colors.textPrimary }
+          ]}
         >
           {page}
         </Text>
@@ -156,99 +166,83 @@ export const Pagination: React.FC<NativePaginationProps> = ({
   }
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: tokens.spacing.xs,
-        flexWrap: 'wrap',
-        justifyContent: 'center'
-      }}
-    >
-      {/* 首页按钮 */}
+    <View style={styles.root}>
       {showFirstLast && (
         <Pressable
           onPress={() => handlePageChange(1)}
           disabled={disabled || current <= 1}
-          style={{
-            padding: 8,
-            opacity: disabled || current <= 1 ? 0.3 : 1
-          }}
+          style={navBtnStyle(disabled || current <= 1)}
+          accessibilityLabel={t('common.pagination_first_page', 'First page')}
         >
-          <Text style={{ color: colors.textPrimary, fontSize: 16 }}>⟨⟨</Text>
+          <MaterialIcons
+            name="keyboard-double-arrow-left"
+            size={16}
+            color={colors.textPrimary}
+          />
         </Pressable>
       )}
 
-      {/* 上一页按钮 */}
       <Pressable
         onPress={() => handlePageChange(current - 1)}
         disabled={disabled || current <= 1}
-        style={{
-          padding: 8,
-          opacity: disabled || current <= 1 ? 0.3 : 1
-        }}
+        style={navBtnStyle(disabled || current <= 1)}
+        accessibilityLabel={t('common.pagination_previous_page', 'Previous page')}
       >
-        <Text style={{ color: colors.textPrimary, fontSize: 16 }}>⟨</Text>
+        <MaterialIcons name="chevron-left" size={18} color={colors.textPrimary} />
       </Pressable>
 
-      {/* 页码按钮 */}
       {pageRange.map((page, index) => renderPageButton(page, index))}
 
-      {/* 下一页按钮 */}
       <Pressable
         onPress={() => handlePageChange(current + 1)}
         disabled={disabled || current >= total}
-        style={{
-          padding: 8,
-          opacity: disabled || current >= total ? 0.3 : 1
-        }}
+        style={navBtnStyle(disabled || current >= total)}
+        accessibilityLabel={t('common.pagination_next_page', 'Next page')}
       >
-        <Text style={{ color: colors.textPrimary, fontSize: 16 }}>⟩</Text>
+        <MaterialIcons name="chevron-right" size={18} color={colors.textPrimary} />
       </Pressable>
 
-      {/* 末页按钮 */}
       {showFirstLast && (
         <Pressable
           onPress={() => handlePageChange(total)}
           disabled={disabled || current >= total}
-          style={{
-            padding: 8,
-            opacity: disabled || current >= total ? 0.3 : 1
-          }}
+          style={navBtnStyle(disabled || current >= total)}
+          accessibilityLabel={t('common.pagination_last_page', 'Last page')}
         >
-          <Text style={{ color: colors.textPrimary, fontSize: 16 }}>⟩⟩</Text>
+          <MaterialIcons
+            name="keyboard-double-arrow-right"
+            size={16}
+            color={colors.textPrimary}
+          />
         </Pressable>
       )}
 
-      {/* 页码输入跳转 */}
       {showJumper && total > 1 && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginLeft: tokens.spacing.sm,
-            gap: tokens.spacing.xs
-          }}
-        >
-          <Input
+        <View style={styles.jumper}>
+          <TextInput
             value={jumperValue}
             onChangeText={(text) => {
               const val = text.replace(/[^0-9]/g, '')
               setJumperValue(val)
             }}
             onSubmitEditing={handleJumperSubmit}
-            keyboardType="numeric"
-            placeholder="跳转"
+            onBlur={handleJumperSubmit}
+            keyboardType="number-pad"
+            returnKeyType="go"
             editable={!disabled}
-            style={{
-              width: 60,
-              height: 36,
-              paddingHorizontal: 8,
-              textAlign: 'center',
-              fontSize: 14
-            }}
+            selectTextOnFocus
+            style={[
+              styles.jumperInput,
+              {
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle,
+                color: colors.textPrimary
+              }
+            ]}
           />
-          <Text style={{ color: colors.textSecondary, fontSize: 14 }}>页</Text>
+          <Text style={[styles.jumperSuffix, { color: colors.textTertiary }]}>
+            {pageUnitLabel}
+          </Text>
         </View>
       )}
     </View>

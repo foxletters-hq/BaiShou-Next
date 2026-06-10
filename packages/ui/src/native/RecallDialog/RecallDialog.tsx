@@ -6,11 +6,11 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
-  SafeAreaView,
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Platform
+  Platform,
+  useWindowDimensions
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
@@ -39,6 +39,8 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const { height: windowHeight } = useWindowDimensions()
+  const modalHeight = Math.min(Math.max(windowHeight * 0.75, 420), Math.floor(windowHeight * 0.82))
   const dialog = useRecallDialog(isOpen, items, onSearch, onInject, onClose, searchMode)
   const showSharedMemoryCard =
     dialog.activeTab === 'diary' && onCopyContext && onMonthsChanged && lookbackMonths != null
@@ -49,13 +51,22 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
 
   return (
     <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
-        <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.close', '关闭')}
+        />
+
+        <View style={styles.dialogWrap} pointerEvents="box-none">
           <View
             style={[
               styles.dialog,
               {
+                width: '94%',
                 maxWidth: maxModalWidth,
+                height: modalHeight,
                 backgroundColor: colors.bgSurface
               }
             ]}
@@ -286,8 +297,8 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
               </View>
             )}
           </View>
-        </SafeAreaView>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   )
 }
@@ -298,16 +309,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  safeArea: {
+  dialogWrap: {
     width: '100%',
     alignItems: 'center',
-    paddingHorizontal: 16
+    zIndex: 2
   },
   dialog: {
-    width: '100%',
-    height: '75%',
-    maxHeight: '80%',
-    minHeight: 420,
     borderRadius: 20,
     overflow: 'hidden',
     flexDirection: 'column'

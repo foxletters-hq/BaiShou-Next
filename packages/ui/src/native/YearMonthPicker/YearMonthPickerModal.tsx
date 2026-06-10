@@ -16,13 +16,15 @@ export function YearMonthPickerModal({
   onClose,
   selectedMonth,
   onChange,
-  colors
+  colors,
+  selectionBandColor
 }: {
   isOpen: boolean
   onClose: () => void
   selectedMonth: Date | null
   onChange: YearMonthPickerProps['onChange']
   colors: ReturnType<typeof useNativeTheme>['colors']
+  selectionBandColor?: string
 }) {
   const { t } = useTranslation()
 
@@ -73,6 +75,7 @@ export function YearMonthPickerModal({
         value={draft}
         onChange={handleDraftChange}
         scrollKey={openKey}
+        selectionBandColor={selectionBandColor}
       />
 
       <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>

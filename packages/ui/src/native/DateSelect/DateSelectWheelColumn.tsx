@@ -21,13 +21,15 @@ export interface DateSelectWheelColumnProps {
   selectedIndex: number
   onIndexChange: (index: number) => void
   scrollKey: string
+  selectionBandColor?: string
 }
 
 export const DateSelectWheelColumn: React.FC<DateSelectWheelColumnProps> = ({
   items,
   selectedIndex,
   onIndexChange,
-  scrollKey
+  scrollKey,
+  selectionBandColor
 }) => {
   const { colors } = useNativeTheme()
   const scrollRef = useRef<ScrollViewType>(null)
@@ -128,7 +130,7 @@ export const DateSelectWheelColumn: React.FC<DateSelectWheelColumnProps> = ({
             top: WHEEL_ITEM_HEIGHT * WHEEL_PAD_COUNT,
             height: WHEEL_ITEM_HEIGHT,
             borderColor: colors.borderSubtle,
-            backgroundColor: colors.primaryLight
+            backgroundColor: selectionBandColor ?? colors.primaryLight
           }
         ]}
       />

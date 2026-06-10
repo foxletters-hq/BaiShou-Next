@@ -13,7 +13,8 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
   titlePlaceholder
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
+  const tagBackgroundColor = isDark ? colors.bgSurface : '#FFFFFF'
   const [isOpen, setIsOpen] = useState(false)
   const placeholder = titlePlaceholder ?? t('diary.all_diaries')
 
@@ -30,7 +31,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
         style={[
           styles.triggerBtn,
           {
-            backgroundColor: colors.bgSurface,
+            backgroundColor: tagBackgroundColor,
             borderWidth: 1,
             borderColor: isActive ? colors.primary : colors.borderSubtle
           }
@@ -51,6 +52,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
         selectedMonth={selectedMonth}
         onChange={onChange}
         colors={colors}
+        selectionBandColor={tagBackgroundColor}
       />
     </>
   )

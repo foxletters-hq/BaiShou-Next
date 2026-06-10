@@ -9,4 +9,6 @@ export interface DateSelectProps {
   scrollKey?: string
   minDate?: Date
   maxDate?: Date
+  /** 滚轮选中行高亮背景，默认主题色浅底 */
+  selectionBandColor?: string
 }
