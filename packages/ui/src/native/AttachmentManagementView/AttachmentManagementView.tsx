@@ -1,94 +1,114 @@
-import React, { useState } from 'react'
-import { View, Text, FlatList, ActivityIndicator } from 'react-native'
-import { useTranslation } from 'react-i18next'
+import React from 'react'
+import { View, Text, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
+import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import type { AttachmentManagementViewProps } from './attachment-management.types'
+import { useAttachmentManagementView } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
-import { AttachmentListItem } from './AttachmentListItem'
-import { AttachmentManagementHeader } from './AttachmentManagementHeader'
-import { AttachmentManagementFooter } from './AttachmentManagementFooter'
+import { SessionAttachmentPane } from './SessionAttachmentPane'
+import { DiaryAttachmentPane } from './DiaryAttachmentPane'
 
-export type { AttachmentItem, AttachmentManagementViewProps } from './attachment-management.types'
+export type {
+  AttachmentFileItem,
+  SessionAttachmentGroup,
+  DiaryAttachmentFileItem,
+  AttachmentManagementViewProps
+} from './attachment-management.types'
 
-export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> = ({
-  attachments,
-  onDelete,
-  onRefresh,
-  isLoading = false,
-  style,
-  ...props
-}) => {
-  const { colors, tokens } = useNativeTheme()
-  const { t } = useTranslation()
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [deleting, setDeleting] = useState(false)
+export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> = (props) => {
+  const { colors } = useNativeTheme()
+  const { isLoading = false, onRefresh, style, ...rest } = props
+  const vm = useAttachmentManagementView(props)
+  const [refreshing, setRefreshing] = React.useState(false)
 
-  const totalSize = attachments.reduce((sum, a) => sum + a.sizeInBytes, 0)
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
-
-  const handleDelete = async () => {
-    if (selectedIds.size === 0) return
-    setDeleting(true)
+  const handleRefresh = async () => {
+    if (!onRefresh) return
+    setRefreshing(true)
     try {
-      await onDelete(Array.from(selectedIds))
-      setSelectedIds(new Set())
+      await onRefresh()
     } finally {
-      setDeleting(false)
+      setRefreshing(false)
     }
   }
 
   return (
-    <View style={[{ flex: 1 }, style]} {...props}>
-      <AttachmentManagementHeader
-        totalCount={attachments.length}
-        totalSize={totalSize}
-        colors={colors}
-      />
+    <View style={[styles.container, style]} {...rest}>
+      <View style={[styles.mainTabNav, { backgroundColor: colors.bgSurface, borderRadius: 10 }]}>
+        <View style={styles.mainTabs}>
+          <TouchableOpacity
+            style={[
+              styles.mainTabItem,
+              vm.activePane === 'diary' && { backgroundColor: colors.primary }
+            ]}
+            onPress={() => vm.setActivePane('diary')}
+          >
+            <MaterialIcons
+              name="event-note"
+              size={16}
+              color={vm.activePane === 'diary' ? colors.textOnPrimary : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.mainTabText,
+                {
+                  color: vm.activePane === 'diary' ? colors.textOnPrimary : colors.textPrimary
+                }
+              ]}
+            >
+              {vm.t('settings.attachment_pane_diary', '日记附件')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.mainTabItem,
+              vm.activePane === 'session' && { backgroundColor: colors.primary }
+            ]}
+            onPress={() => vm.setActivePane('session')}
+          >
+            <MaterialIcons
+              name="folder"
+              size={16}
+              color={vm.activePane === 'session' ? colors.textOnPrimary : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.mainTabText,
+                {
+                  color: vm.activePane === 'session' ? colors.textOnPrimary : colors.textPrimary
+                }
+              ]}
+            >
+              {vm.t('settings.attachment_pane_session', 'AI 会话附件')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
-        <FlatList
-          data={attachments}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <AttachmentListItem
-              item={item}
-              isSelected={selectedIds.has(item.id)}
-              onToggle={toggleSelect}
-              colors={colors}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshing={isLoading}
-          onRefresh={onRefresh}
-          ItemSeparatorComponent={() => <View style={{ height: tokens.spacing.xs }} />}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-                {t('attachment.empty', '暂无附件')}
-              </Text>
-            </View>
+        <ScrollView
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl refreshing={refreshing} onRefresh={() => void handleRefresh()} />
+            ) : undefined
           }
-        />
+          keyboardShouldPersistTaps="handled"
+        >
+          {vm.activePane === 'diary' ? (
+            <DiaryAttachmentPane vm={vm} />
+          ) : (
+            <SessionAttachmentPane vm={vm} />
+          )}
+        </ScrollView>
       )}
-      <AttachmentManagementFooter
-        selectedCount={selectedIds.size}
-        deleting={deleting}
-        onDelete={handleDelete}
-        colors={colors}
+
+      <NativeImagePreviewModal
+        uri={vm.imagePreview?.src ?? null}
+        onClose={() => vm.setImagePreview(null)}
       />
     </View>
   )
