@@ -54,4 +54,6 @@ export interface TTSProviderSettingsProps {
   onFetchModels?: (providerId: string, apiKey: string, baseUrl: string) => Promise<string[]>
   /** groupCard：卡片内布局，无重复标题与帮助图标（对齐移动端网络搜索设置） */
   layout?: 'section' | 'groupCard'
+  /** 获取模型成功后自动写入全局配置，并隐藏保存按钮 */
+  autoSaveOnFetchModels?: boolean
 }
