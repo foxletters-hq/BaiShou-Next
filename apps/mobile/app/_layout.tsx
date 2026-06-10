@@ -12,9 +12,10 @@ import { useTranslation } from 'react-i18next'
 import { Platform, NativeModules } from 'react-native'
 import i18n from 'i18next'
 
-import { useNativeTheme, DialogProvider } from '@baishou/ui/native'
+import { useNativeTheme, DialogProvider, preloadAllProviderIcons } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
+import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
 
@@ -70,7 +71,7 @@ function AppContent() {
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: 'slide_from_right'
+          ...fadeStackAnimation
         }}
       >
         <Stack.Screen name="index" />
@@ -82,7 +83,8 @@ function AppContent() {
           options={{
             presentation: 'modal',
             title: t('diary.editor_title', '编辑记忆'),
-            headerShown: false
+            headerShown: false,
+            ...fadeStackAnimation
           }}
         />
         <Stack.Screen name="assistants" />
@@ -100,6 +102,7 @@ function AppContent() {
 
 export default function RootLayout() {
   useEffect(() => {
+    preloadAllProviderIcons()
     SplashScreen.hideAsync()
   }, [])
 

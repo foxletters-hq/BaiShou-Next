@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '@baishou/ui/native'
 import { HapticTab } from '../../components/haptic-tab'
+import { fadeTabAnimation } from '@/src/navigation/fadeStackAnimation'
 
 /** 图标 + 文字内容区高度（不含底部安全区） */
 const TAB_BAR_CONTENT_HEIGHT = 56
@@ -34,13 +35,16 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      detachInactiveScreens={false}
       screenOptions={{
+        ...fadeTabAnimation,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: sharedTabBarStyle,
         tabBarButton: (props) => <HapticTab {...props} />,
         tabBarHideOnKeyboard: false,
-        headerShown: false
+        headerShown: false,
+        sceneStyle: { backgroundColor: colors.bgApp }
       }}
     >
       <Tabs.Screen

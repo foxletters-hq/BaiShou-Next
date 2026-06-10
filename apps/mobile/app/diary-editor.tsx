@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router'
 import { DiaryEditorScreen } from '@/src/screens/DiaryScreen/DiaryEditorScreen'
+import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 
 export default function DiaryEditorRoute() {
   return (
@@ -8,7 +9,8 @@ export default function DiaryEditorRoute() {
         options={{
           presentation: 'modal',
           title: '编辑记忆',
-          headerShown: false
+          headerShown: false,
+          ...fadeStackAnimation
         }}
       />
       <DiaryEditorScreen />

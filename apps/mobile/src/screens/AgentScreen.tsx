@@ -1,11 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
-import { useFocusEffect } from 'expo-router'
-import {
-  isAssistantAvatarDirectUri,
-  isAssistantAvatarRelativePath,
-  isDefaultAssistantAvatarPath,
-  type PromptShortcut
-} from '@baishou/shared'
+import { useFocusEffect, useRouter } from 'expo-router'
+import { type PromptShortcut } from '@baishou/shared'
 import {
   View,
   StyleSheet,
@@ -14,7 +9,6 @@ import {
   TouchableOpacity,
   Text,
   Alert,
-  Modal,
   Pressable,
   Platform,
   Dimensions,
@@ -31,8 +25,7 @@ import {
   StreamingBubble,
   RecallDialog,
   ChatCostDialog,
-  PromptShortcutSheet,
-  AgentToolsView
+  PromptShortcutSheet
 } from '@baishou/ui/native'
 import { useNativeTheme, useNativeToast, useKeyboardHeight } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
@@ -56,6 +49,7 @@ import { useBranchSession } from '../hooks/useBranchSession'
 import { useStreamError } from '../hooks/useStreamError'
 import { useMobilePromptShortcuts } from '../hooks/useMobilePromptShortcuts'
 import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
+import { resolveAssistantAvatarDisplayUri } from '../lib/assistant-avatar-uri'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
 /** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
@@ -64,6 +58,7 @@ const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
 const BUBBLE_EDIT_DOCK_GAP = 16
 
 export const AgentScreen = () => {
+  const router = useRouter()
   const { t, i18n } = useTranslation()
   const { isLoading, searchMode, toggleSearchMode } = useAgentStore()
   const { colors, isDark } = useNativeTheme()
@@ -103,10 +98,6 @@ export const AgentScreen = () => {
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [assistants, setAssistants] = useState<Array<AssistantSummary & { isPinned?: boolean }>>([])
-  const [toolConfig, setToolConfig] = useState<{
-    disabledToolIds: string[]
-    customConfigs: Record<string, Record<string, unknown>>
-  }>({ disabledToolIds: [], customConfigs: {} })
   const [userProfile, setUserProfile] = useState<{
     nickname: string
     avatarPath?: string | null
@@ -207,13 +198,11 @@ export const AgentScreen = () => {
     showScrollButton,
     showShortcutSheet,
     showRecallSheet,
-    showToolManager,
     recallItems,
     isSearchingRecall,
     setShowCostDialog,
     setShowShortcutSheet,
     setShowRecallSheet,
-    setShowToolManager,
     handleScroll,
     scrollToBottom,
     handleRecallSearch,
@@ -223,13 +212,13 @@ export const AgentScreen = () => {
   } = useAgentUI()
 
   useEffect(() => {
-    const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet || showToolManager
+    const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet
     keyboardOverlayRef.current = overlaysOpen
     if (overlaysOpen) {
       resetKeyboard()
       Keyboard.dismiss()
     }
-  }, [drawerOpen, showShortcutSheet, showRecallSheet, showToolManager, resetKeyboard])
+  }, [drawerOpen, showShortcutSheet, showRecallSheet, resetKeyboard])
 
   const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
     useMobilePromptShortcuts(showShortcutSheet)
@@ -252,20 +241,10 @@ export const AgentScreen = () => {
       const list = (await services.settingsManager.get<any[]>('assistants')) || []
       const mapped = await Promise.all(
         list.map(async (a) => {
-          let displayAvatarUri: string | undefined
-          if (
-            a.avatarPath &&
-            !isDefaultAssistantAvatarPath(a.avatarPath) &&
-            isAssistantAvatarRelativePath(a.avatarPath)
-          ) {
-            try {
-              displayAvatarUri = await services.attachmentManager.resolveAvatarPath(a.avatarPath)
-            } catch {
-              displayAvatarUri = undefined
-            }
-          } else if (a.avatarPath && isAssistantAvatarDirectUri(a.avatarPath)) {
-            displayAvatarUri = a.avatarPath
-          }
+          const displayAvatarUri = await resolveAssistantAvatarDisplayUri(
+            a.avatarPath,
+            (path) => services.attachmentManager.resolveAvatarPath(path)
+          )
           return {
             id: a.id,
             name: a.name,
@@ -367,37 +346,6 @@ export const AgentScreen = () => {
       } catch {}
     },
     [assistants, handleSelectAssistant, handleAssistantSwitched, services, loadAssistants]
-  )
-
-  useEffect(() => {
-    if (!showToolManager || !dbReady || !services) return
-    services.settingsManager
-      .get<{ disabledToolIds?: string[]; customConfigs?: Record<string, Record<string, unknown>> }>(
-        'tool_config'
-      )
-      .then((config) =>
-        setToolConfig({
-          disabledToolIds: config?.disabledToolIds || [],
-          customConfigs: config?.customConfigs || {}
-        })
-      )
-      .catch(() => setToolConfig({ disabledToolIds: [], customConfigs: {} }))
-  }, [showToolManager, dbReady, services])
-
-  const handleToolConfigChange = useCallback(
-    async (next: {
-      disabledToolIds: string[]
-      customConfigs: Record<string, Record<string, unknown>>
-    }) => {
-      setToolConfig(next)
-      if (!services) return
-      try {
-        await services.settingsManager.set('tool_config', next)
-      } catch (e) {
-        console.warn('Failed to save tool config', e)
-      }
-    },
-    [services]
   )
 
   const handleShortcutSelect = useCallback(
@@ -789,7 +737,7 @@ export const AgentScreen = () => {
               onTriggerShortcut={() => setShowShortcutSheet(true)}
               onManageShortcuts={() => setShowShortcutSheet(true)}
               onRecall={() => setShowRecallSheet(true)}
-              onOpenTools={() => setShowToolManager(true)}
+              onOpenTools={() => router.push('/agent/tools')}
               searchMode={searchMode}
               onToggleSearchMode={toggleSearchMode}
               ttsMode={ttsMode}
@@ -909,27 +857,6 @@ export const AgentScreen = () => {
         }}
       />
 
-      <Modal
-        visible={showToolManager}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowToolManager(false)}
-      >
-        <ScreenSafeArea preset="modal" style={{ backgroundColor: colors.bgApp }}>
-          <View style={[styles.toolModalHeader, { borderBottomColor: colors.borderSubtle }]}>
-            <Text style={[styles.toolModalTitle, { color: colors.textPrimary }]}>
-              {t('settings.agent_tools_title', '工具管理')}
-            </Text>
-            <Pressable onPress={() => setShowToolManager(false)}>
-              <Text style={[styles.toolModalClose, { color: colors.textSecondary }]}>
-                {t('common.close', '关闭')}
-              </Text>
-            </Pressable>
-          </View>
-          <AgentToolsView config={toolConfig} onChange={handleToolConfigChange} />
-        </ScreenSafeArea>
-      </Modal>
-
       <ContextChainDialog
         visible={contextDialogState.visible}
         onClose={() => setContextDialogState((prev) => ({ ...prev, visible: false }))}
@@ -1031,24 +958,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0
-  },
-  toolModal: {
-    flex: 1
-  },
-  toolModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1
-  },
-  toolModalTitle: {
-    fontSize: 18,
-    fontWeight: '700'
-  },
-  toolModalClose: {
-    fontSize: 16,
-    fontWeight: '600'
   }
 })

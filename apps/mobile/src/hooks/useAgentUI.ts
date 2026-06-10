@@ -11,7 +11,6 @@ export function useAgentUI() {
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [showShortcutSheet, setShowShortcutSheet] = useState(false)
   const [showRecallSheet, setShowRecallSheet] = useState(false)
-  const [showToolManager, setShowToolManager] = useState(false)
   const [recallItems, setRecallItems] = useState<RecallItem[]>([])
   const [isSearchingRecall, setIsSearchingRecall] = useState(false)
   const [recallSearchMode, setRecallSearchMode] = useState<'semantic' | 'text'>('semantic')
@@ -97,14 +96,12 @@ export function useAgentUI() {
     showScrollButton,
     showShortcutSheet,
     showRecallSheet,
-    showToolManager,
     recallItems,
     isSearchingRecall,
     setShowCostDialog,
     setShowScrollButton,
     setShowShortcutSheet,
     setShowRecallSheet,
-    setShowToolManager,
     handleScroll,
     scrollToBottom,
     handleRecallSearch,
