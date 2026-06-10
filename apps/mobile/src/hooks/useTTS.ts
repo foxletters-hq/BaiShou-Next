@@ -1,32 +1,9 @@
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNativeToast, type TtsProviderConfig } from '@baishou/ui/native'
+import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
-import { synthesizeTtsForTest } from '../services/mobile-tts-synthesize'
-import { getTtsPlaybackSettings } from '../services/mobile-tts-settings.service'
+import { synthesizeTtsFromSavedSettings } from '../services/mobile-tts-synthesize'
 import { playTtsAudio, stopTtsAudioPlayback } from '../services/play-tts-audio'
-
-function buildGlobalTtsConfig(
-  ttsProviderId: string,
-  ttsModelId: string,
-  providerConfig: Record<string, unknown>,
-  ttsSettings: Record<string, unknown> | undefined
-): TtsProviderConfig {
-  return {
-    id: ttsProviderId,
-    name: ttsProviderId,
-    baseUrl: (providerConfig.baseUrl as string) || 'https://api.openai.com/v1',
-    apiKey: (providerConfig.apiKey as string) || '',
-    modelId: ttsModelId,
-    voice: (ttsSettings?.voice as string) || '',
-    speed: (ttsSettings?.speed as number) ?? 1,
-    responseFormat: (ttsSettings?.responseFormat as string) || 'mp3',
-    refAudioPath: (ttsSettings?.refAudioPath as string) || '',
-    promptText: (ttsSettings?.promptText as string) || '',
-    promptLang: (ttsSettings?.promptLang as string) || 'zh',
-    textLang: (ttsSettings?.textLang as string) || 'zh'
-  }
-}
 
 export function useTTS() {
   const { t } = useTranslation()
@@ -56,33 +33,19 @@ export function useTTS() {
           return
         }
 
-        const { globalModels, providers } = await getTtsPlaybackSettings(services.settingsManager)
-
-        const ttsProviderId = globalModels?.globalTtsProviderId
-        const ttsModelId = globalModels?.globalTtsModelId
-
-        if (!ttsProviderId || !ttsModelId) {
-          toast.showError(t('agent.tts_configure_hint', '请在设置中配置 TTS 模型'))
-          return
-        }
-
-        const providerConfig = providers.find((p: any) => p.id === ttsProviderId)
-        if (!providerConfig) {
-          toast.showError(t('agent.tts_provider_not_found', 'TTS 提供商未找到'))
-          return
-        }
-
-        const config = buildGlobalTtsConfig(
-          ttsProviderId,
-          ttsModelId,
-          providerConfig,
-          globalModels?.globalTtsSettings
-        )
-
-        const result = await synthesizeTtsForTest(config, content)
+        const result = await synthesizeTtsFromSavedSettings(services.settingsManager, content)
         if (!result.success) {
           console.error('[TTS] Synthesize failed:', result.error)
-          toast.showError(`${t('agent.tts_failed', '语音合成失败')}: ${result.error}`)
+          const errorCodeMap: Record<string, string> = {
+            tts_not_configured: t('agent.tts_configure_hint', '请在设置中配置 TTS 模型'),
+            tts_provider_not_found: t('agent.tts_provider_not_found', 'TTS 提供商未找到'),
+            tts_api_error: t('agent.tts_failed', '语音合成失败'),
+            tts_synthesis_failed: t('agent.tts_failed', '语音合成失败')
+          }
+          const errorMsg =
+            (result.errorCode && errorCodeMap[result.errorCode]) ||
+            `${t('agent.tts_failed', '语音合成失败')}: ${result.error}`
+          toast.showError(errorMsg)
           return
         }
 

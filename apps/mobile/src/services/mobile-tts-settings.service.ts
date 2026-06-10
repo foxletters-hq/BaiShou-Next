@@ -5,7 +5,6 @@ const TTS_PLAYBACK_CACHE_KEY = 'baishou_tts_playback_cache'
 
 export interface TtsPlaybackSettings {
   globalModels: Record<string, unknown> | null
-  providers: Record<string, unknown>[]
 }
 
 let memoryCache: TtsPlaybackSettings | null = null
@@ -37,16 +36,16 @@ async function readFromDiskCache(): Promise<TtsPlaybackSettings | null> {
  * 读取 TTS 播放所需配置。流式聊天期间 SQLite 可能繁忙，优先内存/磁盘缓存并带重试。
  */
 export async function getTtsPlaybackSettings(
-  settingsManager: SettingsManagerService
+  settingsManager: SettingsManagerService,
+  options?: { forceRefresh?: boolean }
 ): Promise<TtsPlaybackSettings> {
-  if (memoryCache) return memoryCache
+  if (memoryCache && !options?.forceRefresh) return memoryCache
 
   const maxAttempts = 5
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const globalModels = (await settingsManager.get<Record<string, unknown>>('global_models')) || null
-      const providers = (await settingsManager.get<Record<string, unknown>[]>('ai_providers')) || []
-      const settings: TtsPlaybackSettings = { globalModels, providers }
+      const settings: TtsPlaybackSettings = { globalModels }
       setTtsPlaybackSettingsCache(settings)
       return settings
     } catch (error) {

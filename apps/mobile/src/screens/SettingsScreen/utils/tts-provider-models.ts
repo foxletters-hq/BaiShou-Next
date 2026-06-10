@@ -1,5 +1,10 @@
 import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
-import { AIProviderConfig, ProviderType, resolveProviderBaseUrl } from '@baishou/shared'
+import {
+  AIProviderConfig,
+  ProviderType,
+  resolveProviderBaseUrl,
+  resolveTtsProviderBaseUrl
+} from '@baishou/shared'
 
 /** 与桌面 settings:fetch-models 中 TTS 相关分支保持一致 */
 export async function fetchTtsProviderModels(
@@ -7,8 +12,11 @@ export async function fetchTtsProviderModels(
   apiKey: string,
   baseUrl: string
 ): Promise<string[]> {
-  const trimmedUrl = baseUrl.trim().replace(/\/$/, '')
   const trimmedKey = apiKey.trim()
+  const trimmedUrl =
+    providerId === 'mimo-tts'
+      ? resolveTtsProviderBaseUrl(providerId, baseUrl)
+      : baseUrl.trim().replace(/\/$/, '')
 
   if (providerId === 'clone-tts') {
     if (!trimmedUrl) return []
@@ -53,6 +61,31 @@ export async function fetchTtsProviderModels(
       // fall through to defaults
     }
     return ['tts-1', 'tts-1-hd']
+  }
+
+  if (providerId === 'mimo-tts') {
+    const config: AIProviderConfig = {
+      id: providerId,
+      type: providerId as ProviderType,
+      name: providerId.toUpperCase(),
+      apiKey: trimmedKey,
+      baseUrl: trimmedUrl,
+      isSystem: true,
+      isEnabled: false,
+      models: [],
+      enabledModels: [],
+      defaultDialogueModel: '',
+      defaultNamingModel: '',
+      sortOrder: 999
+    }
+    const registry = AIProviderRegistry.getInstance()
+    const instance = registry.getOrUpdateProvider(config) as IAIProvider & {
+      fetchAvailableModels?: () => Promise<string[]>
+    }
+    if (!instance.fetchAvailableModels) {
+      throw new Error('Provider does not support fetchAvailableModels')
+    }
+    return instance.fetchAvailableModels()
   }
 
   const config: AIProviderConfig = {
