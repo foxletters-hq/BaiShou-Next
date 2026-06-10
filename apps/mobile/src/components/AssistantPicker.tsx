@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { AssistantPicker as SharedAssistantPicker } from '@baishou/ui/native'
-import {
-  isAssistantAvatarDirectUri,
-  isAssistantAvatarRelativePath,
-  isDefaultAssistantAvatarPath
-} from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+import { resolveAssistantAvatarDisplayUri } from '../lib/assistant-avatar-uri'
 import type { MockAgentAssistant } from '@baishou/ui/native'
 
 interface AssistantPickerProps {
@@ -14,22 +10,6 @@ interface AssistantPickerProps {
   onClose: () => void
   onSelect: (assistant: any) => void
   selectedAssistantId?: string
-}
-
-async function resolveDisplayAvatarUri(
-  avatarPath: string | undefined,
-  resolveRelative: (path: string) => Promise<string>
-): Promise<string | undefined> {
-  if (isDefaultAssistantAvatarPath(avatarPath)) return undefined
-  if (isAssistantAvatarDirectUri(avatarPath)) return avatarPath
-  if (avatarPath && isAssistantAvatarRelativePath(avatarPath)) {
-    try {
-      return await resolveRelative(avatarPath)
-    } catch {
-      return undefined
-    }
-  }
-  return undefined
 }
 
 export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
@@ -50,7 +30,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
             description: a.description || '',
             emoji: a.emoji,
             avatarPath: a.avatarPath,
-            displayAvatarUri: await resolveDisplayAvatarUri(a.avatarPath, (path) =>
+            displayAvatarUri: await resolveAssistantAvatarDisplayUri(a.avatarPath, (path) =>
               services.attachmentManager.resolveAvatarPath(path)
             ),
             systemPrompt: a.systemPrompt,

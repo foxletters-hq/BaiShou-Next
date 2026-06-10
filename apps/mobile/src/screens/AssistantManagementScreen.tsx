@@ -16,12 +16,8 @@ import {
   Input,
   AssistantAvatar
 } from '@baishou/ui/native'
-import {
-  isAssistantAvatarDirectUri,
-  isAssistantAvatarRelativePath,
-  isDefaultAssistantAvatarPath
-} from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+import { resolveAssistantAvatarDisplayUri } from '../lib/assistant-avatar-uri'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { StackScreenLayout } from '../components/StackScreenLayout'
@@ -66,20 +62,10 @@ export const AssistantManagementScreen: React.FC = () => {
       const assistantList = (await services.settingsManager.get<Assistant[]>('assistants')) || []
       const withAvatars = await Promise.all(
         assistantList.map(async (a) => {
-          let displayAvatarUri: string | undefined
-          if (
-            a.avatarPath &&
-            !isDefaultAssistantAvatarPath(a.avatarPath) &&
-            isAssistantAvatarRelativePath(a.avatarPath)
-          ) {
-            try {
-              displayAvatarUri = await services.attachmentManager.resolveAvatarPath(a.avatarPath)
-            } catch {
-              displayAvatarUri = undefined
-            }
-          } else if (a.avatarPath && isAssistantAvatarDirectUri(a.avatarPath)) {
-            displayAvatarUri = a.avatarPath
-          }
+          const displayAvatarUri = await resolveAssistantAvatarDisplayUri(
+            a.avatarPath,
+            (path) => services.attachmentManager.resolveAvatarPath(path)
+          )
           return { ...a, displayAvatarUri }
         })
       )

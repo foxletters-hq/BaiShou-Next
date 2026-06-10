@@ -16,7 +16,6 @@ import {
   settingsCardStyles,
   ProviderBrandIcon,
   AssistantAvatar,
-  type MockAiProviderModel
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,
@@ -25,8 +24,8 @@ import {
   getDefaultCompressionSystemPrompt,
   isAssistantAvatarDirectUri,
   isAssistantAvatarRelativePath,
-  isEmbeddingModel,
-  isTtsModel
+  filterProvidersForModelSwitcher,
+  type ModelSwitcherProvider
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -34,6 +33,10 @@ import { useTranslation } from 'react-i18next'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { syncSettingsAssistantsToRepo } from '../services/mobile-assistant-sync.service'
+import {
+  isResolvableAssistantAvatarDirectUri,
+  normalizeAssistantAvatarDisplayUri
+} from '../lib/assistant-avatar-uri'
 
 interface Assistant {
   id: string
@@ -70,23 +73,6 @@ function formatKeepTurns(t: (key: string, fallback: string) => string, count: nu
   )
 }
 
-function buildChatProviders(providers: AIProviderConfig[]): MockAiProviderModel[] {
-  return providers
-    .filter((p) => p.isEnabled && (p.enabledModels?.length || p.models?.length))
-    .map((p) => {
-      const pool = p.enabledModels?.length ? p.enabledModels : p.models || []
-      const filtered = pool.filter((modelId) => !isEmbeddingModel(modelId) && !isTtsModel(modelId))
-      return {
-        id: p.id,
-        name: p.name || p.id,
-        type: p.type,
-        enabledModels: filtered,
-        models: filtered
-      }
-    })
-    .filter((p) => (p.enabledModels?.length ?? 0) > 0)
-}
-
 export const AssistantEditScreen: React.FC = () => {
   const { t, i18n } = useTranslation()
   const { colors, isDark, tokens } = useNativeTheme()
@@ -116,7 +102,7 @@ export const AssistantEditScreen: React.FC = () => {
     getDefaultCompressionSystemPrompt()
   )
   const [existingAssistant, setExistingAssistant] = useState<Assistant | null>(null)
-  const [chatProviders, setChatProviders] = useState<MockAiProviderModel[]>([])
+  const [chatProviders, setChatProviders] = useState<ModelSwitcherProvider[]>([])
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -135,14 +121,14 @@ export const AssistantEditScreen: React.FC = () => {
         setPreviewAvatarUri(null)
         return
       }
-      if (isAssistantAvatarDirectUri(path)) {
-        setPreviewAvatarUri(path)
+      if (isResolvableAssistantAvatarDirectUri(path)) {
+        setPreviewAvatarUri(normalizeAssistantAvatarDisplayUri(path))
         return
       }
       if (isAssistantAvatarRelativePath(path) && services) {
         try {
           const resolved = await services.attachmentManager.resolveAvatarPath(path)
-          setPreviewAvatarUri(resolved)
+          setPreviewAvatarUri(normalizeAssistantAvatarDisplayUri(resolved))
         } catch {
           setPreviewAvatarUri(null)
         }
@@ -157,7 +143,7 @@ export const AssistantEditScreen: React.FC = () => {
     if (!dbReady || !services) return
     services.settingsManager
       .get<AIProviderConfig[]>('ai_providers')
-      .then((list) => setChatProviders(buildChatProviders(list || [])))
+      .then((list) => setChatProviders(filterProvidersForModelSwitcher(list || [], 'dialogue')))
       .catch(() => setChatProviders([]))
   }, [dbReady, services])
 
@@ -684,6 +670,7 @@ export const AssistantEditScreen: React.FC = () => {
           setModelId(mid)
           setShowModelSwitcher(false)
         }}
+        onManageProviders={() => router.push('/settings/ai-services')}
       />
     </StackScreenLayout>
   )
