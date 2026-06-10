@@ -56,9 +56,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
     const query = searchQuery.toLowerCase()
 
     for (const provider of providers) {
-      const enabled = provider.enabledModels || []
-      const all = provider.models || []
-      const modelList = enabled.length > 0 ? enabled : all
+      const modelList = provider.enabledModels ?? provider.models ?? []
       const matched = query
         ? modelList.filter((m) => m && m.toLowerCase().includes(query))
         : modelList

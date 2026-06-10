@@ -15,8 +15,7 @@ import {
   AIProviderConfig,
   DEFAULT_BATCH_EMBED_CONCURRENCY,
   GlobalModelsConfig,
-  isEmbeddingModel,
-  isTtsModel,
+  filterProvidersForModelSwitcher,
   type RagConfig as SharedRagConfig
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -33,20 +32,7 @@ const DEFAULT_RAG_CONFIG: RagConfig = {
 type PromptMode = 'manual' | 'edit' | 'clear' | null
 
 function buildEmbeddingProviders(providers: AIProviderConfig[]): MockAiProviderModel[] {
-  return providers
-    .filter((p) => p.isEnabled && (p.enabledModels?.length || p.models?.length))
-    .map((p) => {
-      const pool = p.enabledModels?.length ? p.enabledModels : p.models || []
-      const filtered = pool.filter((modelId) => isEmbeddingModel(modelId) && !isTtsModel(modelId))
-      return {
-        id: p.id,
-        name: p.name || p.id,
-        type: p.type,
-        enabledModels: filtered,
-        models: filtered
-      }
-    })
-    .filter((p) => (p.enabledModels?.length ?? 0) > 0)
+  return filterProvidersForModelSwitcher(providers, 'embedding')
 }
 
 export const RAGMemorySection: React.FC = () => {

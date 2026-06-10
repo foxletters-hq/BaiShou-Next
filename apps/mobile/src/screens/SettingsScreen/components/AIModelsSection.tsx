@@ -8,10 +8,14 @@ import {
   useNativeToast,
   useDialog,
   ModelSwitcher,
-  CardLinkAction,
-  type MockAiProviderModel
+  CardLinkAction
 } from '@baishou/ui/native'
-import { AIProviderConfig, GlobalModelsConfig, isEmbeddingModel, isTtsModel } from '@baishou/shared'
+import {
+  AIProviderConfig,
+  GlobalModelsConfig,
+  filterProvidersForModelSwitcher,
+  type ModelSwitcherProvider
+} from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 
@@ -52,26 +56,8 @@ const MODEL_FIELD_META: Array<{
 function buildFilteredProviders(
   providers: AIProviderConfig[],
   forEmbedding: boolean
-): MockAiProviderModel[] {
-  return providers
-    .filter((p) => p.isEnabled && (p.enabledModels?.length || p.models?.length))
-    .map((p) => {
-      const pool = p.enabledModels?.length ? p.enabledModels : p.models || []
-      const filtered = pool.filter((modelId) => {
-        const isEmbed = isEmbeddingModel(modelId)
-        const isTts = isTtsModel(modelId)
-        if (forEmbedding) return isEmbed
-        return !isEmbed && !isTts
-      })
-      return {
-        id: p.id,
-        name: p.name || p.id,
-        type: p.type,
-        enabledModels: filtered,
-        models: filtered
-      }
-    })
-    .filter((p) => (p.enabledModels?.length ?? 0) > 0)
+): ModelSwitcherProvider[] {
+  return filterProvidersForModelSwitcher(providers, forEmbedding ? 'embedding' : 'dialogue')
 }
 
 export const AIModelsSection: React.FC = () => {
