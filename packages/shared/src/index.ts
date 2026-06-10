@@ -60,5 +60,6 @@ export * from './utils/compression-text-normalizer'
 export * from './utils/user-avatar.util'
 export * from './utils/assistant-avatar.util'
 export * from './utils/message-attachment.util'
+export * from './utils/attachment-reference.util'
 
 export { threeWayMerge, type MergeDecision } from './sync/three-way-merge'
