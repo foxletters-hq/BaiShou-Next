@@ -948,7 +948,7 @@
     "exit_without_saving": "離開且不儲存？",
     "exit_confirmation_hint": "目前內容有未儲存的修改，離開將遺失這些更改喔。",
     "exit_without_saving_confirm": "不儲存並離開",
-    "editor_tag_placeholder": "輸入標籤，按Enter儲存",
+    "editor_tag_placeholder": "使用換行新增標籤哦...",
     "date_format_editor_title": "{{year}}年{{month}}月{{day}}日 {{weekday}}",
     "edit_summary": "编辑总结",
     "editor_leave_confirm": "当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？",

@@ -959,7 +959,7 @@
     "exit_without_saving": "保存せずに終了しますか？",
     "exit_confirmation_hint": "保存されていない変更があります。移動するとこれらの変更は失われます。",
     "exit_without_saving_confirm": "保存せずに終了",
-    "editor_tag_placeholder": "タグを入力し、Enterで保存",
+    "editor_tag_placeholder": "改行でタグを追加...",
     "date_format_editor_title": "{{year}}年{{month}}月{{day}}日 {{weekday}}",
     "edit_summary": "まとめを編集",
     "editor_leave_confirm": "保存されていない内容があります。終了すると、変更は失われます。破棄して終了しますか？",

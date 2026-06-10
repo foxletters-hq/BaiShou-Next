@@ -40,28 +40,12 @@ export const TagInput: React.FC<TagInputProps> = ({
   }
 
   const handleSubmit = () => {
-    if (inputText.includes(',')) {
-      const parts = inputText.split(',')
-      let newTags = [...tags]
-      for (const part of parts) {
-        const trimmed = part.trim()
-        if (trimmed && !newTags.includes(trimmed) && newTags.length < maxTags) {
-          newTags.push(trimmed)
-        }
-      }
-      onChange(newTags)
-      setInputText('')
-    } else {
-      addTag(inputText)
-    }
+    addTag(inputText)
   }
 
   const handleKeyPress = (key: string) => {
-    if (key === 'Enter' || key === ',') {
+    if (key === 'Enter') {
       addTag(inputText)
-    }
-    if (key === 'Backspace' && !inputText && tags.length > 0) {
-      removeTag(tags.length - 1)
     }
   }
 
@@ -96,7 +80,7 @@ export const TagInput: React.FC<TagInputProps> = ({
           onChangeText={setInputText}
           onSubmitEditing={handleSubmit}
           onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key)}
-          placeholder={placeholder ?? t('tagInput.placeholder', '输入标签，回车或逗号分隔')}
+          placeholder={placeholder ?? t('diary.tag_input_hint', '使用换行添加标签哦...')}
           style={styles.input}
           returnKeyType="done"
           blurOnSubmit={false}

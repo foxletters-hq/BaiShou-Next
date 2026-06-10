@@ -1048,7 +1048,7 @@
     "exit_without_saving": "离开且不保存？",
     "exit_confirmation_hint": "当前内容有未保存的修改，离开将丢失这些更改哦。",
     "exit_without_saving_confirm": "不保存并离开",
-    "editor_tag_placeholder": "输入标签，按回车保存",
+    "editor_tag_placeholder": "使用换行添加标签哦...",
     "date_format_editor_title": "{{year}}年{{month}}月{{day}}日 {{weekday}}",
     "edit_summary": "编辑总结",
     "editor_leave_confirm": "当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？",

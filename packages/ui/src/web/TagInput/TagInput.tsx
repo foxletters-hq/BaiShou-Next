@@ -25,8 +25,6 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onChange }) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       saveCurrentTag()
-    } else if (e.key === 'Backspace' && !inputValue && tags.length > 0) {
-      onChange(tags.slice(0, -1))
     }
   }
 
@@ -56,7 +54,7 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onChange }) => {
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         placeholder={
-          tags.length === 0 ? t('diary.editor_tag_placeholder', '输入标签，按回车保存') : ''
+          tags.length === 0 ? t('diary.tag_input_hint', '使用换行添加标签哦...') : ''
         }
       />
     </div>
