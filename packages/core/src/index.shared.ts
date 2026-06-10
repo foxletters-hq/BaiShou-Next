@@ -3,6 +3,7 @@
  */
 
 export * from './fs'
+export * from './storage/storage-root-migration'
 
 export * from './diary/diary.service'
 export * from './diary/file-sync.service'
