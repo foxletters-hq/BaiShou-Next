@@ -19,10 +19,7 @@ export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onA
   const { colors } = useNativeTheme()
 
   return (
-    <View
-      pointerEvents="box-none"
-      style={[styles.wrap, { bottom: FAB_MARGIN_BOTTOM }]}
-    >
+    <View pointerEvents="box-none" style={[styles.wrap, { bottom: FAB_MARGIN_BOTTOM }]}>
       <TouchableOpacity
         onPress={onEditToday}
         style={[

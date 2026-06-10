@@ -61,12 +61,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
             ]}
           >
             <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
-              <View
-                style={[
-                  styles.tabs,
-                  { backgroundColor: colors.bgSurfaceNormal }
-                ]}
-              >
+              <View style={[styles.tabs, { backgroundColor: colors.bgSurfaceNormal }]}>
                 {(['diary', 'memory'] as const).map((tab) => {
                   const active = dialog.activeTab === tab
                   return (
@@ -150,12 +145,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 </View>
 
                 {onToggleSearchMode && (
-                  <View
-                    style={[
-                      styles.segmented,
-                      { backgroundColor: colors.bgSurfaceNormal }
-                    ]}
-                  >
+                  <View style={[styles.segmented, { backgroundColor: colors.bgSurfaceNormal }]}>
                     {(['semantic', 'text'] as const).map((mode) => {
                       const active = searchMode === mode
                       return (
@@ -281,16 +271,13 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                   <MaterialIcons
                     name="arrow-circle-up"
                     size={16}
-                    color={
-                      dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary
-                    }
+                    color={dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary}
                   />
                   <Text
                     style={{
                       fontSize: 12,
                       fontWeight: '600',
-                      color:
-                        dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary
+                      color: dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary
                     }}
                   >
                     {t('recall.inject', '提取至当前上下文对话')}
@@ -385,7 +372,9 @@ const styles = StyleSheet.create({
     paddingLeft: 38,
     paddingRight: 36,
     minHeight: 44,
-    ...(Platform.OS === 'android' ? { includeFontPadding: false, textAlignVertical: 'center' } : null)
+    ...(Platform.OS === 'android'
+      ? { includeFontPadding: false, textAlignVertical: 'center' }
+      : null)
   },
   searchClearBtn: {
     position: 'absolute',

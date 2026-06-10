@@ -53,9 +53,7 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onChange }) => {
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
-        placeholder={
-          tags.length === 0 ? t('diary.tag_input_hint', '使用换行添加标签哦...') : ''
-        }
+        placeholder={tags.length === 0 ? t('diary.tag_input_hint', '使用换行添加标签哦...') : ''}
       />
     </div>
   )

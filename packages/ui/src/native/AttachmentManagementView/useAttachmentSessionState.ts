@@ -93,7 +93,10 @@ export function useAttachmentSessionState(
 
   const handleDeleteSingleGroup = async (sessionId: string) => {
     const confirmed = await dialog.confirm(
-      t('settings.attachment_delete_group_confirm', '确定要删除该会话的所有附件吗？此操作不可撤销。'),
+      t(
+        'settings.attachment_delete_group_confirm',
+        '确定要删除该会话的所有附件吗？此操作不可撤销。'
+      ),
       {
         title: t('settings.attachment_clear_confirm_title'),
         confirmText: t('common.delete'),

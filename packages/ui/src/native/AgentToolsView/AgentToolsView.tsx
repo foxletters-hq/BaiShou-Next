@@ -326,10 +326,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
               return (
                 <View key={param.key} style={[styles.cardMain, styles.paramRow]}>
                   <View
-                    style={[
-                      styles.toolIconWrapper,
-                      { backgroundColor: colors.bgSurfaceNormal }
-                    ]}
+                    style={[styles.toolIconWrapper, { backgroundColor: colors.bgSurfaceNormal }]}
                   >
                     <MaterialIcons
                       name={param.icon === 'ListOrdered' ? 'format-list-numbered' : 'tune'}

@@ -24,8 +24,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const dimensionText =
-    stats.currentDimension > 0 ? String(stats.currentDimension) : '—'
+  const dimensionText = stats.currentDimension > 0 ? String(stats.currentDimension) : '—'
 
   return (
     <View style={styles.statsRow}>

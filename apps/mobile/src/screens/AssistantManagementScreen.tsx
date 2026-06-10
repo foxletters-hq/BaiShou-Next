@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, useWindowDimensions } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  useWindowDimensions
+} from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import {
   useNativeTheme,

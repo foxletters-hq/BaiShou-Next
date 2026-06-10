@@ -25,9 +25,7 @@ export const ExaApiKeySection: React.FC<ExaApiKeySectionProps> = ({
     <div className={styles.cardSection}>
       <div className={styles.apiConfigBody}>
         <div className={styles.cardTitleRow}>
-          <h3 className={styles.cardTitle}>
-            {t('agent.tools.param_exa_api_key', 'Exa API Key')}
-          </h3>
+          <h3 className={styles.cardTitle}>{t('agent.tools.param_exa_api_key', 'Exa API Key')}</h3>
           <HelpTooltip
             content={t(
               'agent.tools.param_exa_api_key_desc',

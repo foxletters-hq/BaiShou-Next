@@ -14,75 +14,75 @@ export class SummaryRepositoryImpl implements SummaryRepository {
 
   async save(summary: CreateSummaryInput): Promise<Summary> {
     return this.run(async () => {
-    const result = await this.db
-      .insert(summariesTable)
-      .values({
-        type: summary.type,
-        startDate: summary.startDate,
-        endDate: summary.endDate,
-        content: summary.content,
-        sourceIds: summary.sourceIds ?? null
-      })
-      .returning()
+      const result = await this.db
+        .insert(summariesTable)
+        .values({
+          type: summary.type,
+          startDate: summary.startDate,
+          endDate: summary.endDate,
+          content: summary.content,
+          sourceIds: summary.sourceIds ?? null
+        })
+        .returning()
 
-    return result[0] as unknown as Summary
+      return result[0] as unknown as Summary
     })
   }
 
   async upsert(summary: CreateSummaryInput): Promise<Summary> {
     return this.run(async () => {
-    const result = await this.db
-      .insert(summariesTable)
-      .values({
-        type: summary.type,
-        startDate: summary.startDate,
-        endDate: summary.endDate,
-        content: summary.content,
-        sourceIds: summary.sourceIds ?? null
-      })
-      .onConflictDoUpdate({
-        target: [summariesTable.type, summariesTable.startDate, summariesTable.endDate],
-        set: { content: summary.content, sourceIds: summary.sourceIds ?? null }
-      })
-      .returning()
-    return result[0] as unknown as Summary
+      const result = await this.db
+        .insert(summariesTable)
+        .values({
+          type: summary.type,
+          startDate: summary.startDate,
+          endDate: summary.endDate,
+          content: summary.content,
+          sourceIds: summary.sourceIds ?? null
+        })
+        .onConflictDoUpdate({
+          target: [summariesTable.type, summariesTable.startDate, summariesTable.endDate],
+          set: { content: summary.content, sourceIds: summary.sourceIds ?? null }
+        })
+        .returning()
+      return result[0] as unknown as Summary
     })
   }
 
   async update(id: number, summary: UpdateSummaryInput): Promise<Summary> {
     return this.run(async () => {
-    const result = await this.db
-      .update(summariesTable)
-      .set({
-        ...summary
-        // map optional undefined properties as valid undefined for partial update
-      })
-      .where(eq(summariesTable.id, id))
-      .returning()
+      const result = await this.db
+        .update(summariesTable)
+        .set({
+          ...summary
+          // map optional undefined properties as valid undefined for partial update
+        })
+        .where(eq(summariesTable.id, id))
+        .returning()
 
-    if (!result.length) {
-      throw new Error(`Summary with id ${id} not found.`)
-    }
+      if (!result.length) {
+        throw new Error(`Summary with id ${id} not found.`)
+      }
 
-    return result[0] as unknown as Summary
+      return result[0] as unknown as Summary
     })
   }
 
   async getByDateRange(type: SummaryType, start: Date, end: Date): Promise<Summary | null> {
     return this.run(async () => {
-    const result = await this.db
-      .select()
-      .from(summariesTable)
-      .where(
-        and(
-          eq(summariesTable.type, type),
-          eq(summariesTable.startDate, start),
-          eq(summariesTable.endDate, end)
+      const result = await this.db
+        .select()
+        .from(summariesTable)
+        .where(
+          and(
+            eq(summariesTable.type, type),
+            eq(summariesTable.startDate, start),
+            eq(summariesTable.endDate, end)
+          )
         )
-      )
-      .limit(1)
+        .limit(1)
 
-    return (result[0] as unknown as Summary) ?? null
+      return (result[0] as unknown as Summary) ?? null
     })
   }
 

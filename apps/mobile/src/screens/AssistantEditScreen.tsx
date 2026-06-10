@@ -302,13 +302,11 @@ export const AssistantEditScreen: React.FC = () => {
             ? ASSISTANT_DEFAULT_AVATAR_SENTINEL
             : emoji
               ? undefined
-              : finalAvatarPath ?? ASSISTANT_DEFAULT_AVATAR_SENTINEL,
+              : (finalAvatarPath ?? ASSISTANT_DEFAULT_AVATAR_SENTINEL),
         contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressTokenThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
-        compressSystemPrompt: isCompressDisabled
-          ? null
-          : compressSystemPrompt.trim() || null,
+        compressSystemPrompt: isCompressDisabled ? null : compressSystemPrompt.trim() || null,
         createdAt: existingAssistant?.createdAt ?? Date.now()
       }
 
@@ -336,7 +334,10 @@ export const AssistantEditScreen: React.FC = () => {
     if (isNew || existingAssistant?.isDefault) return
 
     const confirmed = await dialog.confirm(
-      t('agent.assistant.delete_confirm_content', '确定要删除此伙伴吗？关联的对话及附件将会被一并删除。'),
+      t(
+        'agent.assistant.delete_confirm_content',
+        '确定要删除此伙伴吗？关联的对话及附件将会被一并删除。'
+      ),
       {
         title: t('agent.assistant.delete_confirm_title', '删除伙伴'),
         confirmText: t('common.delete', '删除'),
@@ -583,10 +584,7 @@ export const AssistantEditScreen: React.FC = () => {
           <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
             {isCompressDisabled
               ? t('agent.assistant.compress_disabled_desc', '对话不会自动压缩，所有消息将完整保留')
-              : t(
-                  'agent.assistant.compress_enabled_desc',
-                  '对话超过阈值时自动将旧消息压缩为摘要'
-                )}
+              : t('agent.assistant.compress_enabled_desc', '对话超过阈值时自动将旧消息压缩为摘要')}
           </Text>
 
           {!isCompressDisabled ? (

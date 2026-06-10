@@ -223,28 +223,16 @@ export const AgentScreen = () => {
   } = useAgentUI()
 
   useEffect(() => {
-    const overlaysOpen =
-      drawerOpen || showShortcutSheet || showRecallSheet || showToolManager
+    const overlaysOpen = drawerOpen || showShortcutSheet || showRecallSheet || showToolManager
     keyboardOverlayRef.current = overlaysOpen
     if (overlaysOpen) {
       resetKeyboard()
       Keyboard.dismiss()
     }
-  }, [
-    drawerOpen,
-    showShortcutSheet,
-    showRecallSheet,
-    showToolManager,
-    resetKeyboard
-  ])
+  }, [drawerOpen, showShortcutSheet, showRecallSheet, showToolManager, resetKeyboard])
 
-  const {
-    shortcuts,
-    addShortcut,
-    updateShortcut,
-    deleteShortcut,
-    reorderShortcuts
-  } = useMobilePromptShortcuts(showShortcutSheet)
+  const { shortcuts, addShortcut, updateShortcut, deleteShortcut, reorderShortcuts } =
+    useMobilePromptShortcuts(showShortcutSheet)
 
   const handleListScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -356,11 +344,7 @@ export const AgentScreen = () => {
         providerId?: string
         modelId?: string
       }
-      await handleAssistantSwitched(
-        assistant.id,
-        fullWithModel.providerId,
-        fullWithModel.modelId
-      )
+      await handleAssistantSwitched(assistant.id, fullWithModel.providerId, fullWithModel.modelId)
       if (!services) return
       try {
         const list =
@@ -707,9 +691,7 @@ export const AgentScreen = () => {
                       isActive: isCompressing
                     }}
                     onRegenerate={() => handleRegenerate(item.id)}
-                    onResend={
-                      item.role === 'user' ? () => void handleResend(item.id) : undefined
-                    }
+                    onResend={item.role === 'user' ? () => void handleResend(item.id) : undefined}
                     onResendEdit={
                       item.role === 'user'
                         ? (content) => handleEditMessage(item.id, content)
@@ -731,9 +713,7 @@ export const AgentScreen = () => {
                     onShowContext={
                       item.role === 'assistant' ? () => handleShowContext(item) : undefined
                     }
-                    onBranch={
-                      item.role === 'assistant' ? () => handleBranch(item.id) : undefined
-                    }
+                    onBranch={item.role === 'assistant' ? () => handleBranch(item.id) : undefined}
                     onBubbleEditingChange={handleBubbleEditingChange}
                   />
                 </View>
@@ -872,8 +852,7 @@ export const AgentScreen = () => {
         isOpen={showCostDialog}
         onClose={() => setShowCostDialog(false)}
         details={{
-          modelName:
-            currentModelId || t('agent.no_model_selected', '暂未选择模型'),
+          modelName: currentModelId || t('agent.no_model_selected', '暂未选择模型'),
           promptTokens: totalInputTokens,
           completionTokens: totalOutputTokens,
           totalTokens: totalInputTokens + totalOutputTokens,

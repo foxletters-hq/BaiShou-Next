@@ -1,8 +1,5 @@
 import type { ISqlExecutor } from '@baishou/shared'
-import {
-  MessageRepository,
-  SqliteHybridSearchRepository
-} from '@baishou/database'
+import { MessageRepository, SqliteHybridSearchRepository } from '@baishou/database'
 import type { IAIProvider } from '../providers/provider.interface'
 import type { ToolRegistry } from '../tools/tool-registry'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'

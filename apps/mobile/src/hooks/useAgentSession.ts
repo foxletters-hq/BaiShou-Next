@@ -75,7 +75,15 @@ export function useAgentSession() {
     } catch (e) {
       console.error('Failed to load more messages', e)
     }
-  }, [dbReady, currentSessionId, services, messages.length, clearSession, addMessage, mapDbMessageToUI])
+  }, [
+    dbReady,
+    currentSessionId,
+    services,
+    messages.length,
+    clearSession,
+    addMessage,
+    mapDbMessageToUI
+  ])
 
   // 选择会话
   const handleSelectSession = useCallback(

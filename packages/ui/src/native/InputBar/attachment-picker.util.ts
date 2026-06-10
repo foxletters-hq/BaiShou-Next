@@ -19,14 +19,15 @@ function attachmentFromImageAsset(asset: ImagePicker.ImagePickerAsset): MockChat
   }
 }
 
-function attachmentFromDocumentAsset(asset: DocumentPicker.DocumentPickerAsset): MockChatAttachment | null {
+function attachmentFromDocumentAsset(
+  asset: DocumentPicker.DocumentPickerAsset
+): MockChatAttachment | null {
   const fileName = asset.name || `file_${Date.now()}`
   const isImage =
     /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(fileName) ||
     (asset.mimeType?.startsWith('image/') ?? false)
   const isPdf = /\.pdf$/i.test(fileName) || asset.mimeType === 'application/pdf'
-  const isText =
-    /\.(txt|md)$/i.test(fileName) || (asset.mimeType?.startsWith('text/') ?? false)
+  const isText = /\.(txt|md)$/i.test(fileName) || (asset.mimeType?.startsWith('text/') ?? false)
 
   if (isText && asset.size && asset.size > 512 * 1024) {
     return null

@@ -219,12 +219,7 @@ export const Select: React.FC<NativeSelectProps> = ({
         </Text>
       ) : null}
 
-      <Modal
-        visible={mounted}
-        transparent
-        animationType="none"
-        onRequestClose={closeSheet}
-      >
+      <Modal visible={mounted} transparent animationType="none" onRequestClose={closeSheet}>
         {presentation === 'center' || isSettings ? (
           <View style={settingsSelectorStyles.modalOverlay}>
             <Animated.View
@@ -250,7 +245,10 @@ export const Select: React.FC<NativeSelectProps> = ({
             >
               {renderCenterOptions()}
               <TouchableOpacity
-                style={[settingsSelectorStyles.modalCancel, { borderTopColor: colors.borderSubtle }]}
+                style={[
+                  settingsSelectorStyles.modalCancel,
+                  { borderTopColor: colors.borderSubtle }
+                ]}
                 onPress={closeSheet}
               >
                 <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>

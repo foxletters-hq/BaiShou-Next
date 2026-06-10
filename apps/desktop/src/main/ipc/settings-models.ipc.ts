@@ -279,11 +279,7 @@ export function registerSettingsModelsIPC() {
             sortOrder: 999
           } as AIProviderConfig
         }
-        const clone = withResolvedProviderBaseUrl(
-          { ...config, baseUrl: base },
-          tempKey,
-          base
-        )
+        const clone = withResolvedProviderBaseUrl({ ...config, baseUrl: base }, tempKey, base)
         const registry = AIProviderRegistry.getInstance()
         const provider = registry.createProviderInstance(clone)
         if (!provider) throw new Error('Provider instance creation failed')

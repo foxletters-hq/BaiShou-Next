@@ -44,7 +44,8 @@ export async function getTtsPlaybackSettings(
   const maxAttempts = 5
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const globalModels = (await settingsManager.get<Record<string, unknown>>('global_models')) || null
+      const globalModels =
+        (await settingsManager.get<Record<string, unknown>>('global_models')) || null
       const settings: TtsPlaybackSettings = { globalModels }
       setTtsPlaybackSettingsCache(settings)
       return settings

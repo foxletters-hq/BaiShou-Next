@@ -193,9 +193,7 @@ export function buildTtsSettingsInitialConfig(params: {
   const ttsSettings = globalTtsSettings || {}
   const savedConnection = globalTtsProviderConfigs?.[activeId]
   const resolvedBaseUrl =
-    savedConnection?.baseUrl?.trim() ||
-    local?.baseUrl?.trim() ||
-    getTtsDefaultBaseUrl(activeId)
+    savedConnection?.baseUrl?.trim() || local?.baseUrl?.trim() || getTtsDefaultBaseUrl(activeId)
   const resolvedApiKey = savedConnection?.apiKey ?? local?.apiKey ?? ''
 
   return {
@@ -210,27 +208,15 @@ export function buildTtsSettingsInitialConfig(params: {
       (isActiveGlobal ? ttsSettings.voice : undefined) ||
       local?.voice ||
       TTS_DEFAULT_VOICES[activeId],
-    speed:
-      (isActiveGlobal ? ttsSettings.speed : undefined) ?? local?.speed ?? 1,
+    speed: (isActiveGlobal ? ttsSettings.speed : undefined) ?? local?.speed ?? 1,
     responseFormat:
       (isActiveGlobal ? ttsSettings.responseFormat : undefined) ||
       local?.responseFormat ||
       getTtsDefaultResponseFormat(activeId),
     refAudioPath:
-      (isActiveGlobal ? ttsSettings.refAudioPath : undefined) ||
-      local?.refAudioPath ||
-      '',
-    promptText:
-      (isActiveGlobal ? ttsSettings.promptText : undefined) ||
-      local?.promptText ||
-      '',
-    promptLang:
-      (isActiveGlobal ? ttsSettings.promptLang : undefined) ||
-      local?.promptLang ||
-      'zh',
-    textLang:
-      (isActiveGlobal ? ttsSettings.textLang : undefined) ||
-      local?.textLang ||
-      'zh'
+      (isActiveGlobal ? ttsSettings.refAudioPath : undefined) || local?.refAudioPath || '',
+    promptText: (isActiveGlobal ? ttsSettings.promptText : undefined) || local?.promptText || '',
+    promptLang: (isActiveGlobal ? ttsSettings.promptLang : undefined) || local?.promptLang || 'zh',
+    textLang: (isActiveGlobal ? ttsSettings.textLang : undefined) || local?.textLang || 'zh'
   }
 }

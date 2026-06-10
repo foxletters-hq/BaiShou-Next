@@ -84,10 +84,7 @@ function parseYamlListTags(metaBlock: string): string[] {
 function parseInlineTags(tagVal: string): string[] {
   const bracket = tagVal.match(/^\[(.*)\]$/s)
   const inner = bracket ? bracket[1]! : tagVal
-  return inner
-    .split(',')
-    .map(stripQuotes)
-    .filter(Boolean)
+  return inner.split(',').map(stripQuotes).filter(Boolean)
 }
 
 function parseFrontmatterMeta(metaBlock: string): Record<string, string> {

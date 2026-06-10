@@ -23,12 +23,6 @@ export const AttachmentPaginationBar: React.FC<AttachmentPaginationBarProps> = (
 }) => (
   <View style={styles.paginationRow}>
     <PageSizeSelector value={pageSize} options={PAGE_SIZE_OPTIONS} onChange={onPageSizeChange} />
-    <Pagination
-      current={current}
-      total={total}
-      onChange={onPageChange}
-      showFirstLast
-      showJumper
-    />
+    <Pagination current={current} total={total} onChange={onPageChange} showFirstLast showJumper />
   </View>
 )

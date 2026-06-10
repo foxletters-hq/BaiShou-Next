@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { ScrollView } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { buildTtsSettingsInitialConfig, isTtsProviderId, mergeTtsPersistedConfigs } from '@baishou/shared'
+import {
+  buildTtsSettingsInitialConfig,
+  isTtsProviderId,
+  mergeTtsPersistedConfigs
+} from '@baishou/shared'
 import {
   TTSProviderSettings,
   type ProviderLocalState,
@@ -65,7 +69,7 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
         })
       )
     })()
-  // 供应商芯片切换只更新本地 activeProviderId，不走路由，避免栈页面滑入动画
+    // 供应商芯片切换只更新本地 activeProviderId，不走路由，避免栈页面滑入动画
   }, [dbReady, services, providerId])
 
   const handlePersistConfigs = useCallback(

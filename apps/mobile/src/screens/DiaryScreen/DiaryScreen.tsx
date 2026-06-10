@@ -331,11 +331,7 @@ export const DiaryScreen: React.FC = () => {
             onRequestStoragePermission={handleRequestStoragePermission}
           />
 
-          <DiaryFab
-            todayEntry={todayEntry}
-            onEditToday={handleEditToday}
-            onAddNew={handleAddNew}
-          />
+          <DiaryFab todayEntry={todayEntry} onEditToday={handleEditToday} onAddNew={handleAddNew} />
         </View>
       </ScreenSafeArea>
 

@@ -47,7 +47,10 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
 
   const filteredOptions = useMemo(() => {
     const query = draft.toLowerCase().trim()
-    const base = showAllOptions || !query ? options : options.filter((opt) => opt.toLowerCase().includes(query))
+    const base =
+      showAllOptions || !query
+        ? options
+        : options.filter((opt) => opt.toLowerCase().includes(query))
     return base.length > 0 ? base : options
   }, [options, showAllOptions, draft])
 
@@ -198,7 +201,10 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                   onPress={applyCustom}
                 >
                   <MaterialIcons name="edit" size={18} color={colors.primary} />
-                  <Text style={[comboboxStyles.optionText, { color: colors.primary }]} numberOfLines={1}>
+                  <Text
+                    style={[comboboxStyles.optionText, { color: colors.primary }]}
+                    numberOfLines={1}
+                  >
                     {t('tts.settings.use_custom_model', '使用')}: {draft.trim()}
                   </Text>
                 </TouchableOpacity>

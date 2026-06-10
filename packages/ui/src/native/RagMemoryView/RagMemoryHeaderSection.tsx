@@ -27,7 +27,9 @@ export const RagMemoryHeaderSection: React.FC<RagMemoryHeaderSectionProps> = ({
     <View>
       <View style={settingsCardStyles.row}>
         <View style={settingsCardStyles.rowText}>
-          <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+          <Text
+            style={[settingsCardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}
+          >
             {t('agent.rag.title')}
           </Text>
           <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 6 }]}>

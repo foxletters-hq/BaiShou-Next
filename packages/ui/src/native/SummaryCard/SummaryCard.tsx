@@ -28,10 +28,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
   return (
     <TouchableOpacity
-      style={[
-        styles.card,
-        { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
-      ]}
+      style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }]}
       onPress={onClick}
       activeOpacity={0.8}
     >

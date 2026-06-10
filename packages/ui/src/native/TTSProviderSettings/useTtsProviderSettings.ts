@@ -291,15 +291,7 @@ export function useTtsProviderSettings({
     } finally {
       setLoadingModels(false)
     }
-  }, [
-    configs,
-    providerType,
-    onFetchModels,
-    autoSaveOnFetchModels,
-    persistCurrentConfig,
-    t,
-    toast
-  ])
+  }, [configs, providerType, onFetchModels, autoSaveOnFetchModels, persistCurrentConfig, t, toast])
 
   const handleSelectModel = useCallback(
     (modelId: string) => {

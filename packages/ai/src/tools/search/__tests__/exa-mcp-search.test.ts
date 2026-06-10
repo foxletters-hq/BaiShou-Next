@@ -24,8 +24,6 @@ describe('exa-mcp-search', () => {
   })
 
   it('throws when response has no parseable content', () => {
-    expect(() => parseExaMcpResponse('{"error":"bad"}')).toThrow(
-      'Exa MCP response parsing failed'
-    )
+    expect(() => parseExaMcpResponse('{"error":"bad"}')).toThrow('Exa MCP response parsing failed')
   })
 })

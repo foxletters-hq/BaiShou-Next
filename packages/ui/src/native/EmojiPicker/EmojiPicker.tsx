@@ -130,11 +130,19 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
             ]}
             onPress={(e) => e.stopPropagation()}
           >
-            <View style={[styles.header, { paddingHorizontal: tokens.spacing.lg, paddingTop: tokens.spacing.lg }]}>
+            <View
+              style={[
+                styles.header,
+                { paddingHorizontal: tokens.spacing.lg, paddingTop: tokens.spacing.lg }
+              ]}
+            >
               <Text style={[styles.headerText, { color: colors.textPrimary }]}>
                 {t('emoji.picker_title', '选择表情')}
               </Text>
-              <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TouchableOpacity
+                onPress={onClose}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <MaterialIcons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -146,9 +154,7 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
                 onChangeText={setSearchQuery}
                 autoCorrect={false}
                 autoCapitalize="none"
-                leftSlot={
-                  <MaterialIcons name="search" size={18} color={colors.textTertiary} />
-                }
+                leftSlot={<MaterialIcons name="search" size={18} color={colors.textTertiary} />}
                 rightSlot={
                   searchQuery.length > 0 ? (
                     <TouchableOpacity onPress={() => setSearchQuery('')}>
