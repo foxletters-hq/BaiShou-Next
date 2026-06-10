@@ -6,6 +6,7 @@ import {
   ToolRegistry,
   webSearchConfigToUserConfig
 } from '@baishou/ai'
+import { resolveDiaryAiWritingPrompt, type DiaryTemplateConfig } from '@baishou/shared'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
 import type { AssistantManagerService, SettingsManagerService } from '@baishou/core-mobile'
 export interface MappedCallChainFlatEntry {
@@ -66,6 +67,8 @@ export async function buildMobileStreamUserConfig(
   const behaviorConfig = await settingsManager.get<any>('agent_behavior_config')
   const webSearchConfig = await settingsManager.get<any>('web_search_config')
   const globalModels = await settingsManager.get<any>('global_models')
+  const diaryTemplateConfig =
+    (await settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
   const providers = (await settingsManager.get<any[]>('ai_providers')) || []
 
   const embeddingProviderId = globalModels?.globalEmbeddingProviderId
@@ -87,7 +90,8 @@ export async function buildMobileStreamUserConfig(
           : assistantContextWindow
         : (behaviorConfig?.agentContextWindowSize ?? 30),
     web_search_enabled: searchMode,
-    ...webSearchConfigToUserConfig(webSearchConfig)
+    ...webSearchConfigToUserConfig(webSearchConfig),
+    diaryAiWritingPrompt: resolveDiaryAiWritingPrompt(diaryTemplateConfig)
   }
 }
 

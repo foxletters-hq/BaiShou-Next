@@ -4,6 +4,8 @@ export interface SystemPromptBuilderOptions {
   customPersona?: string
   customGuidelines?: string
   userProfileBlock?: string
+  /** 伙伴使用写日记 / 编辑日记工具时的书写规范 */
+  diaryAiWritingPrompt?: string
 }
 
 export class SystemPromptBuilder {
@@ -11,7 +13,8 @@ export class SystemPromptBuilder {
    * 构建带有当前环境、所在时间、生效工具以及自定义教条的最终提示词
    */
   public static build(options: SystemPromptBuilderOptions): string {
-    const { vaultName, tools, customPersona, customGuidelines, userProfileBlock } = options
+    const { vaultName, tools, customPersona, customGuidelines, userProfileBlock, diaryAiWritingPrompt } =
+      options
 
     const buffer: string[] = []
 
@@ -95,6 +98,15 @@ export class SystemPromptBuilder {
       buffer.push('<available_tools>')
       buffer.push('No tools are currently available.')
       buffer.push('</available_tools>')
+      buffer.push('')
+    }
+
+    const hasDiaryWriteTools =
+      availableToolIds.includes('diary_write') || availableToolIds.includes('diary_edit')
+    if (hasDiaryWriteTools && diaryAiWritingPrompt?.trim()) {
+      buffer.push('<diary_writing_guidelines>')
+      buffer.push(diaryAiWritingPrompt.trim())
+      buffer.push('</diary_writing_guidelines>')
       buffer.push('')
     }
 

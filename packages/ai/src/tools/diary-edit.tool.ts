@@ -28,7 +28,7 @@ export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
 
   readonly description =
     'Modify an existing diary entry. ' +
-    'Default mode is "append", which adds new content with a timestamp header (##### HH:mm). ' +
+    'Default mode is "append", which adds new content with a timestamp header (##### HH:mm:ss). ' +
     'Use "overwrite" mode to replace the entire content. ' +
     'Tags are automatically merged with existing ones.'
 
@@ -66,7 +66,8 @@ export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
         const now = new Date()
         const hours = String(now.getHours()).padStart(2, '0')
         const minutes = String(now.getMinutes()).padStart(2, '0')
-        const timestamp = `\n\n##### ${hours}:${minutes}\n\n`
+        const seconds = String(now.getSeconds()).padStart(2, '0')
+        const timestamp = `\n\n##### ${hours}:${minutes}:${seconds}\n\n`
         finalContent = existing.trimEnd() + timestamp + args.content
       }
 

@@ -140,6 +140,10 @@ export async function buildSystemPromptForSession(
     tools: enabledTools as any,
     customPersona: effectiveSystemPrompt,
     userProfileBlock:
-      typeof params.userConfig?.userCard === 'string' ? params.userConfig.userCard : undefined
+      typeof params.userConfig?.userCard === 'string' ? params.userConfig.userCard : undefined,
+    diaryAiWritingPrompt:
+      typeof params.userConfig?.diaryAiWritingPrompt === 'string'
+        ? params.userConfig.diaryAiWritingPrompt
+        : undefined
   })
 }

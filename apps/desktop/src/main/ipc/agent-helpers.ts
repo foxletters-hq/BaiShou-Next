@@ -23,6 +23,8 @@ import {
   AIProviderConfig,
   GlobalModelsConfig,
   formatDiaryPreviewText,
+  resolveDiaryAiWritingPrompt,
+  resolveDiaryAppendBlock,
   logger,
   parseDateStr
 } from '@baishou/shared'
@@ -165,10 +167,10 @@ export function createDiarySearcher() {
 
           let finalContent = content
           if (mode === 'append') {
-            const now = new Date()
-            const hours = String(now.getHours()).padStart(2, '0')
-            const minutes = String(now.getMinutes()).padStart(2, '0')
-            finalContent = `${existing.content.trimEnd()}\n\n##### ${hours}:${minutes}\n\n${content}`
+            const templateConfig =
+              (await settingsManager.get<any>('diary_template_config')) || {}
+            const block = resolveDiaryAppendBlock(templateConfig, new Date()).replace(/\u200B$/, '')
+            finalContent = existing.content.trimEnd() + block + content
           }
 
           await diaryService.update(existing.id, {
@@ -382,6 +384,8 @@ export async function buildStreamConfig(
 
   const hasEmbeddingModel = !!embeddingProvider && !!embeddingModelId
 
+  const diaryTemplateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
+
   const userConfig = {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
@@ -394,7 +398,8 @@ export async function buildStreamConfig(
         : (behaviorConfig?.agentContextWindowSize ?? 30),
     web_search_enabled: searchMode ?? false,
     ...webSearchConfigToUserConfig(webSearchConfig),
-    userCard
+    userCard,
+    diaryAiWritingPrompt: resolveDiaryAiWritingPrompt(diaryTemplateConfig)
   }
 
   return {

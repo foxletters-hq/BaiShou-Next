@@ -304,7 +304,11 @@ export class AgentSessionService {
         tools: enabledTools as any,
         customPersona: effectiveSystemPrompt,
         userProfileBlock:
-          typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined
+          typeof userConfig?.['userCard'] === 'string' ? userConfig['userCard'] : undefined,
+        diaryAiWritingPrompt:
+          typeof userConfig?.['diaryAiWritingPrompt'] === 'string'
+            ? userConfig['diaryAiWritingPrompt']
+            : undefined
       })
 
       // 4. 调用 Vercel streamText
