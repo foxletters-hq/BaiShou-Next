@@ -92,7 +92,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >

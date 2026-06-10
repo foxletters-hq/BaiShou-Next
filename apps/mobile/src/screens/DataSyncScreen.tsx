@@ -31,6 +31,8 @@ import {
 } from './dataSyncDefaults'
 import { DataSyncCountModal } from './DataSyncCountModal'
 import { DataSyncConfigSheet } from './DataSyncConfigSheet'
+import { useArchiveImportExport } from '../hooks/useArchiveImportExport'
+import { ArchiveLocalBackupSection } from './DataSyncScreen/ArchiveLocalBackupSection'
 
 export const DataSyncScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -60,6 +62,11 @@ export const DataSyncScreen: React.FC = () => {
 
   const noLimitLabel = t('data_sync.no_limit', '不限制数量')
   const cloudSyncService = services?.cloudSyncService
+  const {
+    handleExport: handleArchiveExport,
+    handleImport: handleArchiveImport,
+    isImporting: isArchiveImporting
+  } = useArchiveImportExport()
 
   const totalSizeString = useMemo(() => {
     const total = cloudRecords.reduce((sum, r) => sum + r.sizeInBytes, 0)
@@ -475,13 +482,18 @@ export const DataSyncScreen: React.FC = () => {
 
   return (
     <>
-    <RestoreBlockingOverlay visible={isRestoring} />
+    <RestoreBlockingOverlay visible={isRestoring || isArchiveImporting} />
     <StackScreenLayout
       title={t('data_sync.title')}
       {...getStackScreenChrome(colors)}
       contentStyle={styles.container}
     >
       <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
+        <ArchiveLocalBackupSection
+          onExport={handleArchiveExport}
+          onImport={handleArchiveImport}
+        />
+
         {backupTab === 'cloud' && (
           <View
             style={[
