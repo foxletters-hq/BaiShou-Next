@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
 import type { TTSProviderSettingsProps, ProviderLocalState } from './tts-provider-settings.types'
 import { getInitialConfigs } from './tts-provider-settings.defaults'
-import { buildInitializedConfigs, persistTtsConfigs } from './useTTSProviderSettings.init'
+import { buildInitializedConfigs } from './useTTSProviderSettings.init'
 import { useTTSProviderSettingsHandlers } from './useTTSProviderSettings.handlers'
+
+const AUTO_SAVE_DEBOUNCE_MS = 500
 
 export function useTTSProviderSettings({
   initialConfig,
-  providersList,
+  initialProviderStates,
   onSaveConfig,
   onTestTts,
   onFetchModels
@@ -24,10 +26,11 @@ export function useTTSProviderSettings({
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [showAllOptions, setShowAllOptions] = useState(false)
   const comboboxRef = useRef<HTMLDivElement>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
+  const skipAutoSaveRef = useRef(true)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout>>()
 
   const updateCurrentConfig = useCallback(
     (updates: Partial<ProviderLocalState>) => {
@@ -43,23 +46,20 @@ export function useTTSProviderSettings({
   )
 
   useEffect(() => {
-    if (isInitialized) {
-      persistTtsConfigs(configs)
-    }
-  }, [configs, isInitialized])
-
-  useEffect(() => {
     if (!isInitialized) {
       const { configs: merged, providerType: activeType } = buildInitializedConfigs(
-        configs,
-        providersList,
+        initialProviderStates,
         initialConfig
       )
       setProviderType(activeType)
       setConfigs(merged)
       setIsInitialized(true)
     }
-  }, [initialConfig, providersList, isInitialized, configs])
+  }, [initialConfig, initialProviderStates, isInitialized])
+
+  useEffect(() => {
+    skipAutoSaveRef.current = true
+  }, [providerType])
 
   const currentConfig = configs[providerType] || {
     baseUrl: '',
@@ -133,40 +133,24 @@ export function useTTSProviderSettings({
   }, [isDropdownOpen])
 
   const getModelOptions = useCallback(() => {
-    const { modelId, availableModels } = configs[providerType]
+    const { availableModels } = configs[providerType]
     const defaults =
       providerType === 'clone-tts' || providerType === 'gpt-sovits'
         ? ['default']
         : providerType === 'mimo-tts'
           ? ['mimo-v2.5-tts']
           : ['tts-1', 'tts-1-hd']
-    const baseOptions = availableModels.length > 0 ? availableModels : defaults
-    if (showAllOptions || !modelId.trim()) return baseOptions
-    const filtered = baseOptions.filter((opt) =>
-      opt.toLowerCase().includes(modelId.toLowerCase().trim())
-    )
-    return filtered.length > 0 ? filtered : baseOptions
-  }, [providerType, configs, showAllOptions])
+    return availableModels.length > 0 ? availableModels : defaults
+  }, [providerType, configs])
 
-  const handleSelectModel = useCallback(
-    (val: string) => {
-      updateCurrentConfig(
-        providerType === 'clone-tts' || providerType === 'gpt-sovits'
-          ? { modelId: val, voice: val }
-          : { modelId: val }
-      )
-      setIsDropdownOpen(false)
-    },
-    [updateCurrentConfig, providerType]
-  )
-
-  const { handleFetchModels, handleSave, handleTest } = useTTSProviderSettingsHandlers({
+  const { handleFetchModels, handleTest, persistCurrentConfig } = useTTSProviderSettingsHandlers({
     providerType,
     configs,
     testText,
     defaultMimoVoice,
     getProviderName,
-    updateCurrentConfig,
+    skipAutoSaveRef,
+    setConfigs,
     onSaveConfig,
     onTestTts,
     onFetchModels,
@@ -176,6 +160,55 @@ export function useTTSProviderSettings({
     setIsTesting,
     setIsLoadingModels
   })
+
+  const handleSelectModel = useCallback(
+    (val: string) => {
+      const updates =
+        providerType === 'clone-tts' || providerType === 'gpt-sovits'
+          ? { modelId: val, voice: val }
+          : { modelId: val }
+      const nextState = { ...configs[providerType], ...updates }
+      skipAutoSaveRef.current = true
+      updateCurrentConfig(updates)
+      setIsDropdownOpen(false)
+      if (onSaveConfig) {
+        void persistCurrentConfig(nextState, { silent: true })
+      }
+    },
+    [updateCurrentConfig, providerType, configs, onSaveConfig, persistCurrentConfig]
+  )
+
+  const state = configs[providerType]
+
+  useEffect(() => {
+    if (!isInitialized || !onSaveConfig || !state) return
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false
+      return
+    }
+
+    clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(() => {
+      void persistCurrentConfig(state, { silent: true })
+    }, AUTO_SAVE_DEBOUNCE_MS)
+
+    return () => clearTimeout(autoSaveTimerRef.current)
+  }, [
+    isInitialized,
+    onSaveConfig,
+    providerType,
+    state?.modelId,
+    state?.voice,
+    state?.speed,
+    state?.responseFormat,
+    state?.baseUrl,
+    state?.apiKey,
+    state?.refAudioPath,
+    state?.promptText,
+    state?.promptLang,
+    state?.textLang,
+    persistCurrentConfig
+  ])
 
   const showSpeedControl =
     providerType === 'openai-tts' || providerType === 'clone-tts' || providerType === 'gpt-sovits'
@@ -194,8 +227,6 @@ export function useTTSProviderSettings({
     isLoadingModels,
     isDropdownOpen,
     setIsDropdownOpen,
-    showAllOptions,
-    setShowAllOptions,
     comboboxRef,
     showApiKey,
     setShowApiKey,
@@ -206,7 +237,6 @@ export function useTTSProviderSettings({
     getModelOptions,
     handleSelectModel,
     handleFetchModels,
-    handleSave,
     handleTest,
     showSpeedControl,
     onFetchModels

@@ -7,6 +7,7 @@ export interface TtsProviderConfig {
   voice: string
   speed: number
   responseFormat: string
+  availableModels?: string[]
   refAudioPath?: string
   promptText?: string
   promptLang?: string
@@ -15,6 +16,8 @@ export interface TtsProviderConfig {
 
 export interface TTSProviderSettingsProps {
   initialConfig?: Partial<TtsProviderConfig>
+  /** 从 global_models 还原的各供应商表单状态 */
+  initialProviderStates?: Record<string, ProviderLocalState>
   providersList?: any[]
   onSaveConfig?: (config: TtsProviderConfig) => Promise<void>
   onTestTts?: (

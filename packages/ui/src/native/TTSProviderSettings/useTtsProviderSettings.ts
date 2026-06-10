@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '../Toast'
 import type {
@@ -6,8 +6,10 @@ import type {
   TtsProviderConfig,
   TTSProviderSettingsProps
 } from './tts-provider-settings.types'
-import { getInitialConfigs, mergePersistedConfigs } from './tts-provider-settings.defaults'
+import { getInitialConfigs } from './tts-provider-settings.defaults'
 import { buildInitializedConfigs } from './useTtsProviderSettings.init'
+
+const AUTO_SAVE_DEBOUNCE_MS = 500
 
 function requiresBaseUrl(providerId: string): boolean {
   return providerId === 'openai-tts' || providerId === 'clone-tts' || providerId === 'gpt-sovits'
@@ -26,6 +28,7 @@ function buildTtsConfig(
     voice,
     speed,
     responseFormat,
+    availableModels,
     refAudioPath,
     promptText,
     promptLang,
@@ -46,6 +49,7 @@ function buildTtsConfig(
           : 'alloy'),
     speed,
     responseFormat,
+    availableModels,
     refAudioPath,
     promptText,
     promptLang,
@@ -55,37 +59,29 @@ function buildTtsConfig(
 
 export function useTtsProviderSettings({
   initialConfig,
+  initialProviderStates,
   activeProviderId,
   onActiveProviderIdChange,
-  persistedConfigs,
-  onPersistConfigs,
-  providersList,
   onSaveConfig,
   onTestTts,
   onFetchModels,
-  onPlayTestAudio,
-  autoSaveOnFetchModels
+  onPlayTestAudio
 }: Pick<
   TTSProviderSettingsProps,
   | 'initialConfig'
+  | 'initialProviderStates'
   | 'activeProviderId'
   | 'onActiveProviderIdChange'
-  | 'persistedConfigs'
-  | 'onPersistConfigs'
-  | 'providersList'
   | 'onSaveConfig'
   | 'onTestTts'
   | 'onFetchModels'
   | 'onPlayTestAudio'
-  | 'autoSaveOnFetchModels'
 >) {
   const { t } = useTranslation()
   const toast = useNativeToast()
 
   const [providerType, setProviderType] = useState<string>(activeProviderId || 'openai-tts')
-  const [configs, setConfigs] = useState<Record<string, ProviderLocalState>>(() =>
-    mergePersistedConfigs(persistedConfigs ?? getInitialConfigs())
-  )
+  const [configs, setConfigs] = useState<Record<string, ProviderLocalState>>(getInitialConfigs)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [loadingModels, setLoadingModels] = useState(false)
@@ -95,7 +91,8 @@ export function useTtsProviderSettings({
   const [showApiKey, setShowApiKey] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
-  const [showAllModelOptions, setShowAllModelOptions] = useState(false)
+  const skipAutoSaveRef = useRef(true)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout>>()
 
   const getProviderName = useCallback(
     (type: string) => {
@@ -149,10 +146,8 @@ export function useTtsProviderSettings({
 
   useEffect(() => {
     if (!isInitialized) {
-      const base = mergePersistedConfigs(persistedConfigs ?? getInitialConfigs())
       const { configs: merged, providerType: activeType } = buildInitializedConfigs(
-        base,
-        providersList,
+        initialProviderStates,
         initialConfig,
         activeProviderId
       )
@@ -160,7 +155,7 @@ export function useTtsProviderSettings({
       setConfigs(merged)
       setIsInitialized(true)
     }
-  }, [initialConfig, providersList, isInitialized, persistedConfigs, activeProviderId])
+  }, [initialConfig, initialProviderStates, isInitialized, activeProviderId])
 
   useEffect(() => {
     if (activeProviderId && activeProviderId !== providerType) {
@@ -169,10 +164,8 @@ export function useTtsProviderSettings({
   }, [activeProviderId, providerType])
 
   useEffect(() => {
-    if (isInitialized) {
-      onPersistConfigs?.(configs)
-    }
-  }, [configs, isInitialized, onPersistConfigs])
+    skipAutoSaveRef.current = true
+  }, [providerType])
 
   const currentConfig = configs[providerType] || {
     baseUrl: '',
@@ -220,27 +213,31 @@ export function useTtsProviderSettings({
   }, [providerType])
 
   const getModelOptions = useCallback(() => {
-    const { modelId, availableModels } = configs[providerType] ?? currentConfig
+    const { availableModels } = configs[providerType] ?? currentConfig
     const defaults = getDefaultModelOptions()
-    const baseOptions = availableModels.length > 0 ? availableModels : defaults
-    if (showAllModelOptions || !modelId.trim()) return baseOptions
-    const filtered = baseOptions.filter((opt) =>
-      opt.toLowerCase().includes(modelId.toLowerCase().trim())
-    )
-    return filtered.length > 0 ? filtered : baseOptions
-  }, [providerType, configs, currentConfig, showAllModelOptions, getDefaultModelOptions])
+    return availableModels.length > 0 ? availableModels : defaults
+  }, [providerType, configs, currentConfig, getDefaultModelOptions])
 
   const persistCurrentConfig = useCallback(
-    async (state: ProviderLocalState) => {
+    async (
+      state: ProviderLocalState,
+      options?: { silent?: boolean; successMessage?: string }
+    ) => {
       if (!onSaveConfig) return false
       if (!state.baseUrl.trim() && requiresBaseUrl(providerType)) {
-        toast.showError(t('tts.settings.base_url_required'))
+        if (!options?.silent) {
+          toast.showError(t('tts.settings.base_url_required'))
+        }
         return false
       }
       setSaving(true)
       try {
         await onSaveConfig(buildTtsConfig(providerType, state, getProviderName, defaultMimoVoice))
-        toast.showSuccess(t('tts.settings.save_success'))
+        if (options?.successMessage) {
+          toast.showSuccess(options.successMessage)
+        } else if (!options?.silent) {
+          toast.showSuccess(t('tts.settings.save_success'))
+        }
         return true
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
@@ -276,9 +273,13 @@ export function useTtsProviderSettings({
             ? { voice: nextModelId }
             : {})
         }
+        skipAutoSaveRef.current = true
         setConfigs((prev) => ({ ...prev, [providerType]: nextState }))
-        if (autoSaveOnFetchModels) {
-          await persistCurrentConfig(nextState)
+        if (onSaveConfig) {
+          await persistCurrentConfig(nextState, {
+            silent: true,
+            successMessage: t('tts.settings.fetch_models_success')
+          })
         } else {
           toast.showSuccess(t('tts.settings.fetch_models_success'))
         }
@@ -291,23 +292,56 @@ export function useTtsProviderSettings({
     } finally {
       setLoadingModels(false)
     }
-  }, [configs, providerType, onFetchModels, autoSaveOnFetchModels, persistCurrentConfig, t, toast])
+  }, [configs, providerType, onFetchModels, onSaveConfig, persistCurrentConfig, t, toast])
 
   const handleSelectModel = useCallback(
     (modelId: string) => {
-      if (providerType === 'clone-tts' || providerType === 'gpt-sovits') {
-        updateCurrentConfig({ modelId, voice: modelId })
-      } else {
-        updateCurrentConfig({ modelId })
-      }
+      const updates =
+        providerType === 'clone-tts' || providerType === 'gpt-sovits'
+          ? { modelId, voice: modelId }
+          : { modelId }
+      const nextState = { ...configs[providerType], ...updates }
+      skipAutoSaveRef.current = true
+      updateCurrentConfig(updates)
       setIsModelDropdownOpen(false)
+      if (onSaveConfig) {
+        void persistCurrentConfig(nextState, { silent: true })
+      }
     },
-    [providerType, updateCurrentConfig]
+    [providerType, configs, updateCurrentConfig, onSaveConfig, persistCurrentConfig]
   )
 
-  const handleSave = async () => {
-    await persistCurrentConfig(configs[providerType])
-  }
+  const state = configs[providerType]
+
+  useEffect(() => {
+    if (!isInitialized || !onSaveConfig || !state) return
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false
+      return
+    }
+
+    clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(() => {
+      void persistCurrentConfig(state, { silent: true })
+    }, AUTO_SAVE_DEBOUNCE_MS)
+
+    return () => clearTimeout(autoSaveTimerRef.current)
+  }, [
+    isInitialized,
+    onSaveConfig,
+    providerType,
+    state?.modelId,
+    state?.voice,
+    state?.speed,
+    state?.responseFormat,
+    state?.baseUrl,
+    state?.apiKey,
+    state?.refAudioPath,
+    state?.promptText,
+    state?.promptLang,
+    state?.textLang,
+    persistCurrentConfig
+  ])
 
   const handleTest = async () => {
     if (!onTestTts) return
@@ -372,15 +406,12 @@ export function useTtsProviderSettings({
     setTestText,
     showApiKey,
     setShowApiKey,
-    handleSave,
     handleTest,
     handleFetchModels,
     handleSelectModel,
     getModelOptions,
     isModelDropdownOpen,
     setIsModelDropdownOpen,
-    showAllModelOptions,
-    setShowAllModelOptions,
     canFetchModels: !!onFetchModels,
     isGptSovits: providerType === 'gpt-sovits',
     showApiKeyField: providerType !== 'clone-tts' && providerType !== 'gpt-sovits',

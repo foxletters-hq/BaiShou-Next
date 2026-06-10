@@ -1,37 +1,6 @@
 import type { ProviderLocalState, TtsProviderConfig } from './tts-provider-settings.types'
 import { isTtsProviderId } from './useTTSProviderSettings.constants'
-
-export function persistTtsConfigs(configs: Record<string, ProviderLocalState>): void {
-  try {
-    localStorage.setItem('baishou_tts_provider_configs', JSON.stringify(configs))
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-function mergeProviderEntry(
-  configs: Record<string, ProviderLocalState>,
-  prov: {
-    id: string
-    baseUrl?: string
-    apiKey?: string
-    defaultDialogueModel?: string
-    models?: string[]
-  }
-): void {
-  if (!isTtsProviderId(prov.id)) return
-  const id = prov.id
-  configs[id] = {
-    ...configs[id],
-    baseUrl: prov.baseUrl !== undefined ? prov.baseUrl : configs[id].baseUrl,
-    apiKey: prov.apiKey || configs[id].apiKey,
-    modelId: prov.defaultDialogueModel || (prov.models && prov.models[0]) || configs[id].modelId,
-    availableModels:
-      Array.isArray(prov.models) && prov.models.length > 0
-        ? prov.models
-        : configs[id].availableModels
-  }
-}
+import { getInitialConfigs } from './tts-provider-settings.defaults'
 
 function mergeInitialConfigEntry(
   configs: Record<string, ProviderLocalState>,
@@ -44,6 +13,7 @@ function mergeInitialConfigEntry(
     promptText?: string
     promptLang?: string
     textLang?: string
+    availableModels?: string[]
   }
   configs[id] = {
     ...configs[id],
@@ -56,6 +26,10 @@ function mergeInitialConfigEntry(
       initialConfig.responseFormat !== undefined
         ? initialConfig.responseFormat
         : configs[id].responseFormat,
+    availableModels:
+      extra.availableModels && extra.availableModels.length > 0
+        ? extra.availableModels
+        : configs[id].availableModels,
     refAudioPath: extra.refAudioPath !== undefined ? extra.refAudioPath : configs[id].refAudioPath,
     promptText: extra.promptText !== undefined ? extra.promptText : configs[id].promptText,
     promptLang: extra.promptLang !== undefined ? extra.promptLang : configs[id].promptLang,
@@ -64,16 +38,12 @@ function mergeInitialConfigEntry(
 }
 
 export function buildInitializedConfigs(
-  configs: Record<string, ProviderLocalState>,
-  providersList: unknown[] | undefined,
+  initialProviderStates: Record<string, ProviderLocalState> | undefined,
   initialConfig: Partial<TtsProviderConfig> | undefined
 ): { configs: Record<string, ProviderLocalState>; providerType: string } {
-  const newConfigs = { ...configs }
-
-  if (Array.isArray(providersList)) {
-    providersList.forEach((prov) =>
-      mergeProviderEntry(newConfigs, prov as Parameters<typeof mergeProviderEntry>[1])
-    )
+  const newConfigs = {
+    ...getInitialConfigs(),
+    ...initialProviderStates
   }
 
   let providerType = 'openai-tts'

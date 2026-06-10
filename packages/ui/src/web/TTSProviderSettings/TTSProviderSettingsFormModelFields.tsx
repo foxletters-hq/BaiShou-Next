@@ -12,7 +12,6 @@ export function TTSProviderSettingsFormModelFields({ vm }: { vm: TTSProviderSett
     comboboxRef,
     isDropdownOpen,
     setIsDropdownOpen,
-    setShowAllOptions,
     getModelOptions,
     handleSelectModel,
     handleFetchModels,
@@ -38,20 +37,13 @@ export function TTSProviderSettingsFormModelFields({ vm }: { vm: TTSProviderSett
             onChange={(e) => {
               updateCurrentConfig({ modelId: e.target.value })
               setIsDropdownOpen(true)
-              setShowAllOptions(false)
             }}
-            onFocus={() => {
-              setIsDropdownOpen(true)
-              setShowAllOptions(false)
-            }}
+            onFocus={() => setIsDropdownOpen(true)}
             className={styles.comboboxInput}
           />
           <div
             className={`${styles.comboboxArrow} ${isDropdownOpen ? styles.rotated : ''}`}
-            onClick={() => {
-              setIsDropdownOpen(!isDropdownOpen)
-              setShowAllOptions(true)
-            }}
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
             <svg
               width="10"

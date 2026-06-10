@@ -1,29 +1,5 @@
 import type { ProviderLocalState, TtsProviderConfig } from './tts-provider-settings.types'
-import { isTtsProviderId } from './tts-provider-settings.defaults'
-
-function mergeProviderEntry(
-  configs: Record<string, ProviderLocalState>,
-  prov: {
-    id: string
-    baseUrl?: string
-    apiKey?: string
-    defaultDialogueModel?: string
-    models?: string[]
-  }
-): void {
-  if (!isTtsProviderId(prov.id)) return
-  const id = prov.id
-  configs[id] = {
-    ...configs[id],
-    baseUrl: prov.baseUrl !== undefined ? prov.baseUrl : configs[id].baseUrl,
-    apiKey: prov.apiKey || configs[id].apiKey,
-    modelId: prov.defaultDialogueModel || (prov.models && prov.models[0]) || configs[id].modelId,
-    availableModels:
-      Array.isArray(prov.models) && prov.models.length > 0
-        ? prov.models
-        : configs[id].availableModels
-  }
-}
+import { getInitialConfigs, isTtsProviderId } from './tts-provider-settings.defaults'
 
 function mergeInitialConfigEntry(
   configs: Record<string, ProviderLocalState>,
@@ -31,6 +7,9 @@ function mergeInitialConfigEntry(
 ): void {
   if (!isTtsProviderId(initialConfig.id)) return
   const id = initialConfig.id
+  const extra = initialConfig as Partial<TtsProviderConfig> & {
+    availableModels?: string[]
+  }
   configs[id] = {
     ...configs[id],
     baseUrl: initialConfig.baseUrl !== undefined ? initialConfig.baseUrl : configs[id].baseUrl,
@@ -42,6 +21,10 @@ function mergeInitialConfigEntry(
       initialConfig.responseFormat !== undefined
         ? initialConfig.responseFormat
         : configs[id].responseFormat,
+    availableModels:
+      extra.availableModels && extra.availableModels.length > 0
+        ? extra.availableModels
+        : configs[id].availableModels,
     refAudioPath:
       initialConfig.refAudioPath !== undefined
         ? initialConfig.refAudioPath
@@ -55,17 +38,13 @@ function mergeInitialConfigEntry(
 }
 
 export function buildInitializedConfigs(
-  configs: Record<string, ProviderLocalState>,
-  providersList: unknown[] | undefined,
+  initialProviderStates: Record<string, ProviderLocalState> | undefined,
   initialConfig: Partial<TtsProviderConfig> | undefined,
   activeProviderId?: string
 ): { configs: Record<string, ProviderLocalState>; providerType: string } {
-  const newConfigs = { ...configs }
-
-  if (Array.isArray(providersList)) {
-    providersList.forEach((prov) =>
-      mergeProviderEntry(newConfigs, prov as Parameters<typeof mergeProviderEntry>[1])
-    )
+  const newConfigs = {
+    ...getInitialConfigs(),
+    ...initialProviderStates
   }
 
   let providerType: string =

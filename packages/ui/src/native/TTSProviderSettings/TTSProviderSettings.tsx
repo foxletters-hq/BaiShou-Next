@@ -2,7 +2,6 @@ import React from 'react'
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { SettingsSection } from '../SettingsSection'
-import { Button } from '../Button'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { useNativeTheme } from '../theme'
 import type { TTSProviderSettingsProps } from './tts-provider-settings.types'
@@ -17,7 +16,6 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const layout = props.layout ?? 'section'
-  const showSaveButton = !props.autoSaveOnFetchModels
   const vm = useTtsProviderSettings(props)
 
   const fields = (
@@ -36,24 +34,16 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
         voicePlaceholder={vm.voicePlaceholder}
         getModelOptions={vm.getModelOptions}
         isModelDropdownOpen={vm.isModelDropdownOpen}
-        showAllModelOptions={vm.showAllModelOptions}
         onUpdate={vm.update}
         onProviderChange={vm.handleProviderChange}
         onToggleApiKey={() => vm.setShowApiKey(!vm.showApiKey)}
         onFetchModels={vm.handleFetchModels}
         onSelectModel={vm.handleSelectModel}
-        onModelDropdownOpen={() => {
-          vm.setIsModelDropdownOpen(true)
-          vm.setShowAllModelOptions(false)
-        }}
-        onModelDropdownToggle={() => {
-          vm.setIsModelDropdownOpen(!vm.isModelDropdownOpen)
-          vm.setShowAllModelOptions(true)
-        }}
+        onModelDropdownOpen={() => vm.setIsModelDropdownOpen(true)}
+        onModelDropdownToggle={() => vm.setIsModelDropdownOpen(!vm.isModelDropdownOpen)}
         onModelTextChange={(text) => {
           vm.update({ modelId: text })
           vm.setIsModelDropdownOpen(true)
-          vm.setShowAllModelOptions(false)
         }}
         showSpeedControl={vm.showSpeedControl}
       />
@@ -78,20 +68,6 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
     </>
   )
 
-  const saveButton = (
-    <View style={layout === 'groupCard' ? styles.saveActionsGroupCard : styles.saveActions}>
-      <Button
-        variant="primary"
-        onPress={vm.handleSave}
-        isLoading={vm.saving}
-        isDisabled={!props.onSaveConfig}
-        className="min-w-[120px]"
-      >
-        {t('common.save')}
-      </Button>
-    </View>
-  )
-
   if (layout === 'groupCard') {
     return (
       <>
@@ -102,7 +78,6 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
           )}
         </Text>
         {fields}
-        {showSaveButton ? saveButton : null}
       </>
     )
   }
@@ -128,7 +103,6 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
           {fields}
         </SettingsSection>
       </View>
-      {showSaveButton ? saveButton : null}
       <View style={styles.bottomSpacer} />
     </ScrollView>
   )

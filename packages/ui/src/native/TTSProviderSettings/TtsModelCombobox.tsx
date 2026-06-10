@@ -19,7 +19,6 @@ interface TtsModelComboboxProps {
   value: string
   placeholder: string
   options: string[]
-  showAllOptions: boolean
   isOpen: boolean
   onChangeText: (text: string) => void
   onFocus: () => void
@@ -31,7 +30,6 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
   value,
   placeholder,
   options,
-  showAllOptions,
   isOpen,
   onChangeText,
   onFocus,
@@ -47,12 +45,10 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
 
   const filteredOptions = useMemo(() => {
     const query = draft.toLowerCase().trim()
-    const base =
-      showAllOptions || !query
-        ? options
-        : options.filter((opt) => opt.toLowerCase().includes(query))
-    return base.length > 0 ? base : options
-  }, [options, showAllOptions, draft])
+    if (!query) return options
+    const filtered = options.filter((opt) => opt.toLowerCase().includes(query))
+    return filtered.length > 0 ? filtered : options
+  }, [options, draft])
 
   const hasValue = Boolean(value.trim())
 

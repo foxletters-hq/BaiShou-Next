@@ -7,6 +7,7 @@ export interface TtsProviderConfig {
   voice: string
   speed: number
   responseFormat: string
+  availableModels?: string[]
   refAudioPath?: string
   promptText?: string
   promptLang?: string
@@ -29,15 +30,12 @@ export interface ProviderLocalState {
 
 export interface TTSProviderSettingsProps {
   initialConfig?: Partial<TtsProviderConfig>
+  /** 从 global_models 还原的各供应商表单状态 */
+  initialProviderStates?: Record<string, ProviderLocalState>
   /** 从 URL 或路由传入的当前供应商 */
   activeProviderId?: string
   /** 切换供应商时回调（用于更新路由） */
   onActiveProviderIdChange?: (providerId: string) => void
-  /** 已保存的各供应商草稿（如 AsyncStorage / localStorage） */
-  persistedConfigs?: Record<string, ProviderLocalState>
-  /** 各供应商配置变更时持久化 */
-  onPersistConfigs?: (configs: Record<string, ProviderLocalState>) => void
-  providersList?: unknown[]
   onSaveConfig?: (config: TtsProviderConfig) => Promise<void>
   onTestTts?: (
     config: TtsProviderConfig,
@@ -54,6 +52,4 @@ export interface TTSProviderSettingsProps {
   onFetchModels?: (providerId: string, apiKey: string, baseUrl: string) => Promise<string[]>
   /** groupCard：卡片内布局，无重复标题与帮助图标（对齐移动端网络搜索设置） */
   layout?: 'section' | 'groupCard'
-  /** 获取模型成功后自动写入全局配置，并隐藏保存按钮 */
-  autoSaveOnFetchModels?: boolean
 }

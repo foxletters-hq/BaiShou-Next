@@ -1,4 +1,5 @@
-import { useCallback } from 'react'
+import { useCallback, type MutableRefObject } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import type { TFunction } from 'i18next'
 import type {
   TtsProviderConfig,
@@ -13,7 +14,8 @@ type HandlerDeps = {
   testText: string
   defaultMimoVoice: string
   getProviderName: (type: string) => string
-  updateCurrentConfig: (updates: Partial<ProviderLocalState>) => void
+  skipAutoSaveRef: MutableRefObject<boolean>
+  setConfigs: Dispatch<SetStateAction<Record<string, ProviderLocalState>>>
   onSaveConfig?: (config: TtsProviderConfig) => Promise<void>
   onTestTts?: TTSProviderSettingsProps['onTestTts']
   onFetchModels?: TTSProviderSettingsProps['onFetchModels']
@@ -30,7 +32,7 @@ function requiresBaseUrl(providerType: string): boolean {
   )
 }
 
-function buildTtsConfig(
+export function buildTtsConfig(
   providerType: string,
   state: ProviderLocalState,
   getProviderName: (type: string) => string,
@@ -43,6 +45,7 @@ function buildTtsConfig(
     voice,
     speed,
     responseFormat,
+    availableModels,
     refAudioPath,
     promptText,
     promptLang,
@@ -63,6 +66,7 @@ function buildTtsConfig(
           : 'alloy'),
     speed,
     responseFormat,
+    availableModels,
     refAudioPath,
     promptText,
     promptLang,
@@ -77,7 +81,8 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
     testText,
     defaultMimoVoice,
     getProviderName,
-    updateCurrentConfig,
+    skipAutoSaveRef,
+    setConfigs,
     onSaveConfig,
     onTestTts,
     onFetchModels,
@@ -88,23 +93,73 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
     setIsLoadingModels
   } = deps
 
+  const persistCurrentConfig = useCallback(
+    async (
+      state: ProviderLocalState,
+      options?: { silent?: boolean; successMessage?: string }
+    ) => {
+      if (!onSaveConfig) return false
+      if (!state.baseUrl.trim() && requiresBaseUrl(providerType)) {
+        if (!options?.silent) {
+          toast.showError(t('tts.settings.base_url_required', '请填写 Base URL'))
+        }
+        return false
+      }
+      setIsSaving(true)
+      try {
+        await onSaveConfig(buildTtsConfig(providerType, state, getProviderName, defaultMimoVoice))
+        if (options?.successMessage) {
+          toast.showSuccess(options.successMessage)
+        } else if (!options?.silent) {
+          toast.showSuccess(t('tts.settings.save_success', 'TTS 配置已保存'))
+        }
+        return true
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        toast.showError(t('tts.settings.save_failed', '保存失败: ') + message)
+        return false
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [onSaveConfig, providerType, getProviderName, defaultMimoVoice, t, toast, setIsSaving]
+  )
+
   const handleFetchModels = useCallback(async () => {
-    const { apiKey, baseUrl } = configs[providerType]
-    const trimmedUrl = baseUrl.trim()
+    if (!onFetchModels) return
+    const state = configs[providerType]
+    const trimmedUrl = state.baseUrl.trim()
     if (!trimmedUrl && requiresBaseUrl(providerType)) {
       toast.showError(t('tts.settings.base_url_required', '请填写 Base URL'))
       return
     }
     setIsLoadingModels(true)
     try {
-      if (onFetchModels) {
-        const models = await onFetchModels(providerType, apiKey.trim(), trimmedUrl)
-        if (models && models.length > 0) {
-          updateCurrentConfig({ availableModels: models })
-          toast.showSuccess(t('tts.settings.fetch_models_success', '成功获取模型列表'))
-        } else {
-          toast.showWarning(t('tts.settings.fetch_models_empty', '未获取到可用模型'))
+      const models = await onFetchModels(providerType, state.apiKey.trim(), trimmedUrl)
+      if (models.length > 0) {
+        const currentModelId = state.modelId?.trim()
+        const nextModelId =
+          currentModelId && models.includes(currentModelId) ? currentModelId : models[0]
+        const nextState: ProviderLocalState = {
+          ...state,
+          availableModels: models,
+          modelId: nextModelId,
+          ...(providerType === 'clone-tts' || providerType === 'gpt-sovits'
+            ? { voice: nextModelId }
+            : {})
         }
+        skipAutoSaveRef.current = true
+        setConfigs((prev) => ({ ...prev, [providerType]: nextState }))
+        if (onSaveConfig) {
+          await persistCurrentConfig(nextState, {
+            silent: true,
+            successMessage: t('tts.settings.fetch_models_success', '成功获取模型列表')
+          })
+        } else {
+          toast.showSuccess(t('tts.settings.fetch_models_success', '成功获取模型列表'))
+        }
+      } else {
+        toast.showWarning(t('tts.settings.fetch_models_empty', '未获取到可用模型'))
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
@@ -112,34 +167,16 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
     } finally {
       setIsLoadingModels(false)
     }
-  }, [providerType, configs, onFetchModels, updateCurrentConfig, t, toast, setIsLoadingModels])
-
-  const handleSave = useCallback(async () => {
-    const state = configs[providerType]
-    if (!state.baseUrl.trim() && requiresBaseUrl(providerType)) {
-      toast.showError(t('tts.settings.base_url_required', '请填写 Base URL'))
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      await onSaveConfig?.(buildTtsConfig(providerType, state, getProviderName, defaultMimoVoice))
-      toast.showSuccess(t('tts.settings.save_success', 'TTS 配置已保存'))
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      toast.showError(t('tts.settings.save_failed', '保存失败: ') + message)
-    } finally {
-      setIsSaving(false)
-    }
   }, [
     providerType,
     configs,
+    onFetchModels,
     onSaveConfig,
-    getProviderName,
-    defaultMimoVoice,
+    persistCurrentConfig,
+    setConfigs,
     t,
     toast,
-    setIsSaving
+    setIsLoadingModels
   ])
 
   const handleTest = useCallback(async () => {
@@ -181,5 +218,5 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
     setIsTesting
   ])
 
-  return { handleFetchModels, handleSave, handleTest }
+  return { handleFetchModels, handleTest, persistCurrentConfig }
 }

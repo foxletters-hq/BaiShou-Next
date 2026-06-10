@@ -26,7 +26,6 @@ interface TtsBasicFieldsProps {
   voicePlaceholder: string
   getModelOptions: () => string[]
   isModelDropdownOpen: boolean
-  showAllModelOptions: boolean
   onUpdate: (patch: Partial<TtsProviderConfig>) => void
   onProviderChange: (id: string) => void
   onToggleApiKey: () => void
@@ -52,7 +51,6 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
   voicePlaceholder,
   getModelOptions,
   isModelDropdownOpen,
-  showAllModelOptions,
   onUpdate,
   onProviderChange,
   onToggleApiKey,
@@ -174,7 +172,6 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
             value={config.modelId}
             placeholder={modelPlaceholder}
             options={getModelOptions()}
-            showAllOptions={showAllModelOptions}
             isOpen={isModelDropdownOpen}
             onChangeText={onModelTextChange}
             onFocus={onModelDropdownOpen}
