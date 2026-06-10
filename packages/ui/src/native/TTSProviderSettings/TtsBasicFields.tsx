@@ -102,37 +102,13 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.provider_label')}
         </Text>
-        {compact ? (
-          <View style={styles.chipRow}>
-            {providerOptions.map((opt) => {
-              const active = config.id === opt.value
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.chip,
-                    {
-                      borderColor: active ? colors.primary : colors.borderMuted,
-                      backgroundColor: active ? colors.primaryLight : 'transparent'
-                    }
-                  ]}
-                  onPress={() => onProviderChange(opt.value)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: active ? colors.primary : colors.textSecondary, fontWeight: active ? '600' : '400' }
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-        ) : (
-          <Select options={providerOptions} value={config.id} onValueChange={onProviderChange} />
-        )}
+        <Select
+          variant="settings"
+          options={providerOptions}
+          value={config.id}
+          onValueChange={onProviderChange}
+          presentation="center"
+        />
       </View>
 
       <Section>
@@ -191,7 +167,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
         </Section>
       )}
 
-      <Section raised={isModelDropdownOpen}>
+      <Section>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('tts.settings.model_id_label')}
         </Text>
@@ -267,6 +243,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
           {t('tts.settings.format_label')}
         </Text>
         <Select
+          variant="settings"
           options={formatOptions}
           value={config.responseFormat}
           onValueChange={(v) => onUpdate({ responseFormat: v })}

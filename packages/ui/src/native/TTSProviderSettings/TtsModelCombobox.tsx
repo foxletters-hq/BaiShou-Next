@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -6,11 +6,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Pressable,
+  Modal,
+  Animated,
   StyleSheet
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
-import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
+import { settingsSelectorStyles } from '../SettingsSelector/settings-selector.styles'
 
 interface TtsModelComboboxProps {
   value: string
@@ -35,73 +38,172 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
   onToggleDropdown,
   onSelect
 }) => {
-  const { colors } = useNativeTheme()
-  const [layoutHeight, setLayoutHeight] = useState(0)
+  const { t } = useTranslation()
+  const { colors, tokens } = useNativeTheme()
+  const [mounted, setMounted] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.92)).current
 
   const filteredOptions = useMemo(() => {
-    if (showAllOptions || !value.trim()) return options
-    const query = value.toLowerCase().trim()
-    const filtered = options.filter((opt) => opt.toLowerCase().includes(query))
-    return filtered.length > 0 ? filtered : options
-  }, [options, showAllOptions, value])
+    const query = draft.toLowerCase().trim()
+    const base = showAllOptions || !query ? options : options.filter((opt) => opt.toLowerCase().includes(query))
+    return base.length > 0 ? base : options
+  }, [options, showAllOptions, draft])
+
+  const hasValue = Boolean(value.trim())
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (!mounted) return
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 160,
+          useNativeDriver: true
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.92,
+          duration: 160,
+          useNativeDriver: true
+        })
+      ]).start(({ finished }) => {
+        if (finished) setMounted(false)
+      })
+      return
+    }
+
+    setDraft(value)
+    setMounted(true)
+    fadeAnim.setValue(0)
+    scaleAnim.setValue(0.92)
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11
+      })
+    ]).start()
+  }, [isOpen, mounted, value, fadeAnim, scaleAnim])
+
+  const close = () => {
+    if (isOpen) onToggleDropdown()
+  }
+
+  const applyCustom = () => {
+    const next = draft.trim()
+    if (!next) return
+    onChangeText(next)
+    onSelect(next)
+    close()
+  }
+
+  const showCustomApply =
+    draft.trim().length > 0 &&
+    !filteredOptions.some((opt) => opt.toLowerCase() === draft.trim().toLowerCase())
 
   return (
-    <View
-      style={comboboxStyles.wrapper}
-      onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
-    >
-      <View
+    <View style={comboboxStyles.wrapper}>
+      <TouchableOpacity
+        activeOpacity={0.7}
         style={[
-          comboboxStyles.inputShell,
+          settingsSelectorStyles.trigger,
           {
-            borderColor: isOpen ? colors.primary : colors.borderStrong,
-            backgroundColor: colors.bgSurface
+            backgroundColor: colors.bgSurface,
+            borderColor: hasValue ? colors.borderMuted : colors.borderSubtle
           }
         ]}
+        onPress={() => {
+          onFocus()
+          onToggleDropdown()
+        }}
       >
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={onFocus}
-          placeholder={placeholder}
-          placeholderTextColor={colors.textTertiary}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={[comboboxStyles.input, { color: colors.textPrimary }]}
-        />
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={onToggleDropdown}
-          style={comboboxStyles.arrowBtn}
-          accessibilityRole="button"
+        <Text
+          style={[
+            settingsSelectorStyles.triggerValue,
+            { color: hasValue ? colors.textPrimary : colors.textTertiary }
+          ]}
+          numberOfLines={2}
         >
-          <MaterialIcons
-            name={isOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-            size={22}
-            color={isOpen ? colors.primary : colors.textSecondary}
-          />
-        </TouchableOpacity>
-      </View>
+          {hasValue ? value : placeholder}
+        </Text>
+        <Text style={[settingsSelectorStyles.chevron, { color: colors.textTertiary }]}>›</Text>
+      </TouchableOpacity>
 
-      {isOpen && filteredOptions.length > 0 && (
-        <>
-          <Pressable style={comboboxStyles.backdrop} onPress={onToggleDropdown} />
-          <View
+      <Modal visible={mounted} transparent animationType="none" onRequestClose={close}>
+        <View style={settingsSelectorStyles.modalOverlay}>
+          <Animated.View
             style={[
-              comboboxStyles.dropdown,
+              settingsSelectorStyles.modalBackdrop,
+              { backgroundColor: colors.bgOverlay, opacity: fadeAnim }
+            ]}
+          >
+            <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              comboboxStyles.modalPanel,
               {
-                top: layoutHeight + 4,
                 backgroundColor: colors.bgSurface,
-                borderColor: colors.borderMuted,
-                shadowColor: colors.textPrimary
+                borderColor: colors.borderSubtle,
+                borderRadius: tokens.radius.lg,
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }]
               }
             ]}
           >
+            <View style={[comboboxStyles.modalHeader, { borderBottomColor: colors.borderSubtle }]}>
+              <Text style={[comboboxStyles.modalTitle, { color: colors.textPrimary }]}>
+                {t('tts.settings.model_id_label', '模型 ID')}
+              </Text>
+              <TouchableOpacity onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <MaterialIcons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={comboboxStyles.searchWrap}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder={t('common.search_model', '搜索模型...')}
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={[
+                  comboboxStyles.searchInput,
+                  {
+                    color: colors.textPrimary,
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.borderSubtle
+                  }
+                ]}
+              />
+            </View>
+
             <ScrollView
               keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled
               style={comboboxStyles.optionsList}
+              showsVerticalScrollIndicator={false}
             >
+              {showCustomApply && (
+                <TouchableOpacity
+                  style={[comboboxStyles.optionItem, { backgroundColor: colors.primaryLight }]}
+                  onPress={applyCustom}
+                >
+                  <MaterialIcons name="edit" size={18} color={colors.primary} />
+                  <Text style={[comboboxStyles.optionText, { color: colors.primary }]} numberOfLines={1}>
+                    {t('tts.settings.use_custom_model', '使用')}: {draft.trim()}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {filteredOptions.map((opt) => {
                 const selected = opt === value
                 return (
@@ -112,7 +214,10 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                       comboboxStyles.optionItem,
                       selected && { backgroundColor: colors.primaryLight }
                     ]}
-                    onPress={() => onSelect(opt)}
+                    onPress={() => {
+                      onSelect(opt)
+                      close()
+                    }}
                   >
                     <Text
                       style={[
@@ -123,71 +228,62 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                     >
                       {opt}
                     </Text>
-                    {selected && <MaterialIcons name="check" size={16} color={colors.primary} />}
+                    {selected && <MaterialIcons name="check" size={18} color={colors.primary} />}
                   </TouchableOpacity>
                 )
               })}
             </ScrollView>
-          </View>
-        </>
-      )}
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   )
 }
 
 const comboboxStyles = StyleSheet.create({
   wrapper: {
-    flex: 1,
-    position: 'relative',
-    zIndex: 20
+    flex: 1
   },
-  inputShell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-    minHeight: 48,
-    paddingLeft: 12,
-    paddingRight: 4
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: 10
-  },
-  arrowBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 10
-  },
-  dropdown: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 30,
+  modalPanel: {
+    width: '90%',
+    maxWidth: 360,
+    maxHeight: '70%',
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    maxHeight: 200,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
     overflow: 'hidden'
   },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '600'
+  },
+  searchWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14
+  },
   optionsList: {
-    maxHeight: 200
+    maxHeight: 320
   },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     gap: 8
   },
   optionText: {

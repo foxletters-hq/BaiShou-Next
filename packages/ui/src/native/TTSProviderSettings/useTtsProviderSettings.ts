@@ -63,7 +63,8 @@ export function useTtsProviderSettings({
   onSaveConfig,
   onTestTts,
   onFetchModels,
-  onPlayTestAudio
+  onPlayTestAudio,
+  autoSaveOnFetchModels
 }: Pick<
   TTSProviderSettingsProps,
   | 'initialConfig'
@@ -76,6 +77,7 @@ export function useTtsProviderSettings({
   | 'onTestTts'
   | 'onFetchModels'
   | 'onPlayTestAudio'
+  | 'autoSaveOnFetchModels'
 >) {
   const { t } = useTranslation()
   const toast = useNativeToast()
@@ -228,20 +230,58 @@ export function useTtsProviderSettings({
     return filtered.length > 0 ? filtered : baseOptions
   }, [providerType, configs, currentConfig, showAllModelOptions, getDefaultModelOptions])
 
+  const persistCurrentConfig = useCallback(
+    async (state: ProviderLocalState) => {
+      if (!onSaveConfig) return false
+      if (!state.baseUrl.trim() && requiresBaseUrl(providerType)) {
+        toast.showError(t('tts.settings.base_url_required'))
+        return false
+      }
+      setSaving(true)
+      try {
+        await onSaveConfig(buildTtsConfig(providerType, state, getProviderName, defaultMimoVoice))
+        toast.showSuccess(t('tts.settings.save_success'))
+        return true
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        toast.showError(t('tts.settings.save_failed') + message)
+        return false
+      } finally {
+        setSaving(false)
+      }
+    },
+    [onSaveConfig, providerType, getProviderName, defaultMimoVoice, t, toast]
+  )
+
   const handleFetchModels = useCallback(async () => {
     if (!onFetchModels) return
-    const { apiKey, baseUrl } = configs[providerType]
-    const trimmedUrl = baseUrl.trim()
+    const state = configs[providerType]
+    const trimmedUrl = state.baseUrl.trim()
     if (!trimmedUrl && requiresBaseUrl(providerType)) {
       toast.showError(t('tts.settings.base_url_required'))
       return
     }
     setLoadingModels(true)
     try {
-      const models = await onFetchModels(providerType, apiKey.trim(), trimmedUrl)
+      const models = await onFetchModels(providerType, state.apiKey.trim(), trimmedUrl)
       if (models.length > 0) {
-        updateCurrentConfig({ availableModels: models })
-        toast.showSuccess(t('tts.settings.fetch_models_success'))
+        const currentModelId = state.modelId?.trim()
+        const nextModelId =
+          currentModelId && models.includes(currentModelId) ? currentModelId : models[0]
+        const nextState: ProviderLocalState = {
+          ...state,
+          availableModels: models,
+          modelId: nextModelId,
+          ...(providerType === 'clone-tts' || providerType === 'gpt-sovits'
+            ? { voice: nextModelId }
+            : {})
+        }
+        setConfigs((prev) => ({ ...prev, [providerType]: nextState }))
+        if (autoSaveOnFetchModels) {
+          await persistCurrentConfig(nextState)
+        } else {
+          toast.showSuccess(t('tts.settings.fetch_models_success'))
+        }
       } else {
         toast.showWarning(t('tts.settings.fetch_models_empty'))
       }
@@ -251,7 +291,15 @@ export function useTtsProviderSettings({
     } finally {
       setLoadingModels(false)
     }
-  }, [configs, providerType, onFetchModels, t, toast, updateCurrentConfig])
+  }, [
+    configs,
+    providerType,
+    onFetchModels,
+    autoSaveOnFetchModels,
+    persistCurrentConfig,
+    t,
+    toast
+  ])
 
   const handleSelectModel = useCallback(
     (modelId: string) => {
@@ -266,22 +314,7 @@ export function useTtsProviderSettings({
   )
 
   const handleSave = async () => {
-    if (!onSaveConfig) return
-    const state = configs[providerType]
-    if (!state.baseUrl.trim() && requiresBaseUrl(providerType)) {
-      toast.showError(t('tts.settings.base_url_required'))
-      return
-    }
-    setSaving(true)
-    try {
-      await onSaveConfig(buildTtsConfig(providerType, state, getProviderName, defaultMimoVoice))
-      toast.showSuccess(t('tts.settings.save_success'))
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      toast.showError(t('tts.settings.save_failed') + message)
-    } finally {
-      setSaving(false)
-    }
+    await persistCurrentConfig(configs[providerType])
   }
 
   const handleTest = async () => {

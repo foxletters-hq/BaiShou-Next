@@ -17,6 +17,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const layout = props.layout ?? 'section'
+  const showSaveButton = !props.autoSaveOnFetchModels
   const vm = useTtsProviderSettings(props)
 
   const fields = (
@@ -101,7 +102,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
           )}
         </Text>
         {fields}
-        {saveButton}
+        {showSaveButton ? saveButton : null}
       </>
     )
   }
@@ -127,7 +128,7 @@ export const TTSProviderSettings: React.FC<TTSProviderSettingsProps> = (props) =
           {fields}
         </SettingsSection>
       </View>
-      {saveButton}
+      {showSaveButton ? saveButton : null}
       <View style={styles.bottomSpacer} />
     </ScrollView>
   )
