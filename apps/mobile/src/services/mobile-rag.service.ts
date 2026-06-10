@@ -1,5 +1,13 @@
 import { AIProviderRegistry, EmbeddingAdapter, HybridSearchService } from '@baishou/ai'
-import { limitExecute, resolveBatchEmbedConcurrency } from '@baishou/shared'
+import {
+  diaryDateToSourceCreatedSeconds,
+  EMBEDDING_SOURCE_SORT_MILLIS_SQL,
+  EMBEDDING_SOURCE_SORT_ORDER_SQL,
+  limitExecute,
+  resolveBatchEmbedConcurrency,
+  sortDiariesByDateAsc,
+  timestampToMillis
+} from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 import type { SettingsManagerService, DiaryService } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
@@ -155,8 +163,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         await deps.hsRepo.initVectorIndex(dimension)
       }
 
-      const diaries = await deps.diaryService.listAll({ limit: 10000 })
-      const total = diaries?.length || 0
+      const diaries = sortDiariesByDateAsc(await deps.diaryService.listAll({ limit: 10000 }))
+      const total = diaries.length
       const ragSettings =
         (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
       const batchConcurrency = resolveBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
@@ -179,7 +187,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
 
         await deps.hsRepo.deleteEmbeddingsBySource('diary', String(diary.id))
 
-        const d = meta.date instanceof Date ? meta.date : new Date(meta.date)
+        const d = diary.date instanceof Date ? diary.date : new Date(diary.date)
         const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         const tagPrefix = meta.tags?.length ? `[标签: ${meta.tags.join(', ')}] ` : ''
 
@@ -188,7 +196,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
           text: prefixedText,
           sourceType: 'diary',
           sourceId: String(diary.id),
-          groupId: 'diary_batch'
+          groupId: 'diary_batch',
+          sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000
         })
 
         embedded++
@@ -226,7 +235,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
             const entries = results.map((r) => ({
               embeddingId: r.messageId,
               text: r.chunkText,
-              createdAt: r.createdAt || Date.now(),
+              createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
               similarity: r.score
             }))
             const sliced = entries.slice(offset, offset + limit)
@@ -241,7 +250,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         const page = fts.slice(offset, offset + limit).map((r) => ({
           embeddingId: r.messageId,
           text: r.chunkText,
-          createdAt: r.createdAt || Date.now(),
+          createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
           similarity: r.score
         }))
         return { entries: page, total: fts.length }
@@ -260,10 +269,17 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const total = Number(countRow?.count ?? 0)
 
       const listRes = await client.execute({
-        sql: `SELECT embedding_id as embeddingId, chunk_text as text, created_at as createdAt FROM ${HYBRID_SEARCH_TABLE} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        sql: `SELECT embedding_id as embeddingId, chunk_text as text,
+              ${EMBEDDING_SOURCE_SORT_MILLIS_SQL} as createdAt
+              FROM ${HYBRID_SEARCH_TABLE}
+              ORDER BY ${EMBEDDING_SOURCE_SORT_ORDER_SQL}
+              LIMIT ? OFFSET ?`,
         args: [limit, offset]
       })
-      const entries = (listRes.rows || []) as Array<Record<string, unknown>>
+      const entries = ((listRes.rows || []) as Array<Record<string, unknown>>).map((row) => ({
+        ...row,
+        createdAt: timestampToMillis(Number(row.createdAt)) ?? Date.now()
+      }))
       return { entries, total }
     },
 

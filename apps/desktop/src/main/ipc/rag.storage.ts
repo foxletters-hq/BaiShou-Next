@@ -1,7 +1,7 @@
 import { IEmbeddingStorage } from '@baishou/ai'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
-import { mapMigrationBackupRow, logger } from '@baishou/shared'
+import { mapMigrationBackupRow, logger, normalizeUnixToSeconds } from '@baishou/shared'
 import { eq, and, sql } from 'drizzle-orm'
 
 /** 嵌入迁移备份表名 */
@@ -45,7 +45,9 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
         dimension: params.embedding.length,
         modelId: params.modelId,
         createdAt: new Date(),
-        sourceCreatedAt: params.sourceCreatedAt ? new Date(params.sourceCreatedAt) : new Date()
+        sourceCreatedAt: new Date(
+          normalizeUnixToSeconds(params.sourceCreatedAt ?? Date.now()) * 1000
+        )
       })
       .onConflictDoUpdate({
         target: [memoryEmbeddingsTable.embeddingId],
@@ -54,7 +56,10 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
           embedding: vectorBuffer,
           dimension: params.embedding.length,
           modelId: params.modelId,
-          metadataJson: params.metadataJson || '{}'
+          metadataJson: params.metadataJson || '{}',
+          sourceCreatedAt: new Date(
+            normalizeUnixToSeconds(params.sourceCreatedAt ?? Date.now()) * 1000
+          )
         }
       })
   }

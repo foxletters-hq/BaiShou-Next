@@ -4,12 +4,18 @@ import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { eq, sql } from 'drizzle-orm'
 import { getDiaryManager } from './diary.ipc'
-import { getEmbeddingService, getEmbeddingConfig, filterUnindexedDiaries } from './rag.ipc'
+import {
+  getEmbeddingService,
+  getEmbeddingConfig,
+  filterUnindexedDiaries,
+  sortDiariesByDateAsc
+} from './rag.ipc'
 import { DesktopEmbeddingStorage } from './rag.storage'
 import { settingsManager } from './settings.ipc'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
 import {
   buildMigrationStreamResult,
+  diaryDateToSourceCreatedSeconds,
   limitExecute,
   logger,
   resolveBatchEmbedConcurrency,
@@ -179,7 +185,9 @@ export function registerRagBuildIPC() {
         } catch {}
       }
 
-      const diariesToEmbed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
+      const diariesToEmbed = sortDiariesByDateAsc(
+        filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
+      )
       const total = diariesToEmbed.length
       const ragConfig =
         (await settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
@@ -211,9 +219,10 @@ export function registerRagBuildIPC() {
           return
         }
 
-        const d = meta.date
+        const d = diary.date
         const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         const tagPrefix = meta.tags.length > 0 ? `[标签: ${meta.tags.join(', ')}] ` : ''
+        const sourceCreatedAt = diaryDateToSourceCreatedSeconds(d) * 1000
 
         await embeddingService.reEmbedText({
           text: diary.content,
@@ -222,7 +231,7 @@ export function registerRagBuildIPC() {
           groupId: 'diary_batch',
           chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
           metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
-          sourceCreatedAt: diary.date.getTime(),
+          sourceCreatedAt,
           skipIndexPrep: true
         })
 

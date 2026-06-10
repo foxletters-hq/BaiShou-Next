@@ -2,7 +2,11 @@ import { ipcMain } from 'electron'
 import { memoryEmbeddingsTable, SqliteHybridSearchRepository } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
 import { eq, desc, like, sql } from 'drizzle-orm'
+import { EMBEDDING_SOURCE_SORT_MILLIS_SQL, timestampToMillis } from '@baishou/shared'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
+
+/** 分页列表：优先 source_created_at（日记 date），兼容秒/毫秒混用 */
+const embeddingSortMillis = sql.raw(EMBEDDING_SOURCE_SORT_MILLIS_SQL)
 
 export function registerRagQueryIPC() {
   const config = getEmbeddingConfig()
@@ -73,7 +77,9 @@ export function registerRagQueryIPC() {
                   text: r.chunkText,
                   modelId: config.getGlobalEmbeddingModelId() || 'unknown',
                   createdAt:
-                    typeof r.createdAt === 'number' && r.createdAt > 0 ? r.createdAt : Date.now(),
+                    timestampToMillis(
+                      typeof r.createdAt === 'number' ? r.createdAt : undefined
+                    ) ?? Date.now(),
                   similarity: r.score // コサイン类似度が score に入っている
                 }))
 
@@ -93,22 +99,32 @@ export function registerRagQueryIPC() {
       }
 
       // ── 传统文本检索分支（Keyword/Text Search Mode, or fallback） ──
-      const query = db.select().from(memoryEmbeddingsTable)
+      let query = db
+        .select({
+          embeddingId: memoryEmbeddingsTable.embeddingId,
+          text: memoryEmbeddingsTable.chunkText,
+          modelId: memoryEmbeddingsTable.modelId,
+          sortMillis: embeddingSortMillis
+        })
+        .from(memoryEmbeddingsTable)
 
       if (params.keyword && params.keyword.trim() !== '') {
-        query.where(like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`))
+        query = query.where(like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`)) as typeof query
       }
 
       const results = await query
-        .orderBy(desc(memoryEmbeddingsTable.createdAt))
+        .orderBy(
+          sql.raw(`${EMBEDDING_SOURCE_SORT_MILLIS_SQL} DESC`),
+          desc(memoryEmbeddingsTable.embeddingId)
+        )
         .limit(params.limit || 10)
         .offset(params.offset || 0)
 
       const entries = results.map((r) => ({
         embeddingId: r.embeddingId,
-        text: r.chunkText,
+        text: r.text,
         modelId: r.modelId,
-        createdAt: r.createdAt?.getTime() || Date.now()
+        createdAt: timestampToMillis(Number(r.sortMillis)) ?? Date.now()
       }))
 
       if (params.withTotal) {

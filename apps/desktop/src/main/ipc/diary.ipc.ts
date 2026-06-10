@@ -8,7 +8,7 @@ import {
   VaultIndexServiceImpl,
   IEmbeddingCallback
 } from '@baishou/core-desktop'
-import { parseDateStr } from '@baishou/shared'
+import { diaryDateToSourceCreatedSeconds, parseDateStr } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 import { fileSystem, pathService, vaultService } from './vault.ipc'
@@ -39,7 +39,7 @@ const embeddingCallback: IEmbeddingCallback = {
         groupId: 'diary_auto',
         chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
         metadataJson: JSON.stringify({ updated_at: params.updatedAt.getTime() }),
-        sourceCreatedAt: d.getTime()
+        sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000
       })
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 嵌入发生异常:', e)

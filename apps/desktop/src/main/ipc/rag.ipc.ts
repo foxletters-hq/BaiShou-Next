@@ -85,6 +85,8 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
   }
 }
 
+export { sortDiariesByDateAsc, sortDiariesByDateDesc } from '@baishou/shared'
+
 export function filterUnindexedDiaries<T extends { id: any; updatedAt?: Date }>(
   diaries: T[],
   embeddedIds: Set<string>,
