@@ -179,7 +179,7 @@ export class WebSearchService {
       return this.searchExa(query, maxResults, exaApiKey, onDiagnostics)
     }
     if (engine === 'exa-mcp') {
-      return searchExaMcp(query, maxResults, onDiagnostics)
+      return searchExaMcp(query, maxResults, onDiagnostics, plainSnippetLength)
     }
     if (engine === 'anysearch') {
       return this.searchAnysearch(query, maxResults, anysearchApiKey, onDiagnostics)

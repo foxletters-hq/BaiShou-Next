@@ -1,5 +1,6 @@
 import { cosineSimilarity } from 'ai'
 import { ToolEmbeddingService } from '../agent.tool'
+import { truncateSearchSnippet } from './web-content.util'
 
 export interface CompressInput {
   query: string
@@ -7,6 +8,8 @@ export interface CompressInput {
   embeddingService: ToolEmbeddingService
   totalMaxChunks?: number
   chunksPerSource?: number
+  /** Max characters per result returned to the model (defaults to 1200). */
+  maxSnippetLength?: number
 }
 
 export interface CompressedResult {
@@ -16,24 +19,39 @@ export interface CompressedResult {
   avgScore: number
 }
 
+export interface CompressOutput {
+  results: CompressedResult[]
+  /** False when query/chunk embedding failed — caller should fall back to plain truncated output. */
+  embeddingSucceeded: boolean
+}
+
 export class SearchRagService {
   /**
    * 对网络搜索结果进行语义压缩：按与 query 的相关度排序，返回最相关的 Top-K 结果。
+   * 成功时每个结果只保留最相关 chunk，而非整页正文。
    */
-  static async compress(input: CompressInput): Promise<CompressedResult[]> {
-    const { query, results, embeddingService, totalMaxChunks = 5, chunksPerSource = 4 } = input
+  static async compress(input: CompressInput): Promise<CompressOutput> {
+    const {
+      query,
+      results,
+      embeddingService,
+      totalMaxChunks = 5,
+      chunksPerSource = 4,
+      maxSnippetLength = 1200
+    } = input
+
+    const truncate = (text: string) => truncateSearchSnippet(text, maxSnippetLength)
 
     if (!embeddingService.isConfigured || results.length === 0) {
-      return results.map((r) => ({ ...r, avgScore: 0 }))
+      return { results: [], embeddingSucceeded: false }
     }
 
     try {
       const queryEmbedding = await embeddingService.embedQuery(query)
       if (!queryEmbedding) {
-        return results.map((r) => ({ ...r, avgScore: 0 }))
+        return { results: [], embeddingSucceeded: false }
       }
 
-      // 对每个 result 的 content 做分块、嵌入、计算相似度
       const scoredResults: CompressedResult[] = []
 
       for (const result of results) {
@@ -48,13 +66,20 @@ export class SearchRagService {
 
         let totalScore = 0
         let scoredChunkCount = 0
+        let bestChunk = ''
+        let bestChunkScore = -1
 
         for (const chunk of limitedChunks) {
           try {
             const chunkEmb = await embeddingService.embedQuery(chunk)
             if (chunkEmb) {
-              totalScore += cosineSimilarity(queryEmbedding, chunkEmb)
+              const score = cosineSimilarity(queryEmbedding, chunkEmb)
+              totalScore += score
               scoredChunkCount++
+              if (score > bestChunkScore) {
+                bestChunkScore = score
+                bestChunk = chunk
+              }
             }
           } catch {
             /* skip failed chunks */
@@ -62,15 +87,25 @@ export class SearchRagService {
         }
 
         const avgScore = scoredChunkCount > 0 ? totalScore / scoredChunkCount : 0
-        scoredResults.push({ ...result, content: text, avgScore })
+        const content =
+          bestChunk.length > 0 ? truncate(bestChunk) : truncate(text.slice(0, maxSnippetLength))
+        scoredResults.push({ ...result, content, avgScore })
       }
 
-      // 按平均相似度降序排列，取前 totalMaxChunks 个
-      scoredResults.sort((a, b) => b.avgScore - a.avgScore)
-      return scoredResults.slice(0, totalMaxChunks)
-    } catch (e: any) {
-      console.warn('[SearchRagService] compress failed, returning unranked:', e.message)
-      return results.map((r) => ({ ...r, avgScore: 0 }))
+      const ranked = scoredResults
+        .filter((r) => r.avgScore > 0)
+        .sort((a, b) => b.avgScore - a.avgScore)
+        .slice(0, totalMaxChunks)
+
+      if (ranked.length === 0) {
+        return { results: [], embeddingSucceeded: false }
+      }
+
+      return { results: ranked, embeddingSucceeded: true }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      console.warn('[SearchRagService] compress failed, falling back to plain output:', message)
+      return { results: [], embeddingSucceeded: false }
     }
   }
 

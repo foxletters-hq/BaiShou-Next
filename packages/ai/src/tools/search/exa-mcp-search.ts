@@ -1,4 +1,5 @@
 import { logger } from '@baishou/shared'
+import { truncateSearchSnippet } from './web-content.util'
 
 export interface ExaMcpSearchResult {
   title: string
@@ -120,13 +121,20 @@ export function parseExaMcpResponse(responseText: string): ExaMcpRawResult[] {
   )
 }
 
-function toSearchResults(items: ExaMcpRawResult[], maxResults: number): ExaMcpSearchResult[] {
+function toSearchResults(
+  items: ExaMcpRawResult[],
+  maxResults: number,
+  maxSnippetLength?: number
+): ExaMcpSearchResult[] {
   const results: ExaMcpSearchResult[] = []
   for (const item of items) {
     if (results.length >= maxResults) break
     const u = item.url?.trim() || ''
     const t = item.title?.trim() || ''
-    const c = item.text?.trim() || ''
+    let c = item.text?.trim() || ''
+    if (maxSnippetLength && maxSnippetLength > 0) {
+      c = truncateSearchSnippet(c, maxSnippetLength)
+    }
     if (u && (t || c)) {
       results.push({ title: t || u, url: u, snippet: c || t })
     }
@@ -141,7 +149,8 @@ function toSearchResults(items: ExaMcpRawResult[], maxResults: number): ExaMcpSe
 export async function searchExaMcp(
   query: string,
   maxResults: number,
-  onDiagnostics?: (diag: ExaMcpDiagnostics) => void
+  onDiagnostics?: (diag: ExaMcpDiagnostics) => void,
+  maxSnippetLength?: number
 ): Promise<ExaMcpSearchResult[]> {
   const emit = (partial: Omit<ExaMcpDiagnostics, 'engine' | 'query'>) => {
     const diag: ExaMcpDiagnostics = { engine: 'exa-mcp', query, ...partial }
@@ -182,7 +191,7 @@ export async function searchExaMcp(
 
   const responseText = await resp.text()
   const rawItems = parseExaMcpResponse(responseText)
-  const results = toSearchResults(rawItems, maxResults)
+  const results = toSearchResults(rawItems, maxResults, maxSnippetLength)
 
   emit({
     httpStatus: resp.status,

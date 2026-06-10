@@ -8,6 +8,7 @@ import {
 } from './search/web-search.service'
 import { SearchRagService } from './search/search-rag.service'
 import { resolveWebSearchLimits } from './search/web-search-config.util'
+import { truncateSearchSnippet } from './search/web-content.util'
 
 const webSearchParams = z.object({
   queries: z
@@ -177,7 +178,7 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
 
       // 2. RAG 切分降维 （可选启用且具有可用服务）
       if (ragEnabled && context.embeddingService?.isConfigured) {
-        const compressed = await SearchRagService.compress({
+        const { results: compressed, embeddingSucceeded } = await SearchRagService.compress({
           query: queries[0]!,
           results: results.map((r) => ({
             title: r.title,
@@ -186,29 +187,17 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
           })),
           embeddingService: context.embeddingService,
           totalMaxChunks: limits.ragMaxChunks,
-          chunksPerSource: limits.ragChunksPerSource
+          chunksPerSource: limits.ragChunksPerSource,
+          maxSnippetLength: limits.plainSnippetLength
         })
 
-        if (compressed.length > 0) {
-          const buf: string[] = [
-            `Search queries: ${queries.map((q) => `"${q}"`).join(', ')}`,
-            `Found ${results.length} results, RAG-compressed to ${compressed.length} relevant sources:\n`
-          ]
-          compressed.forEach((r, i) => {
-            buf.push(`[${i + 1}] [${r.title}](${r.url})`)
-            buf.push(`Relevance: ${(r.avgScore * 100).toFixed(1)}%`)
-            buf.push(r.content)
-            buf.push('')
-          })
-          buf.push(
-            'These results have been semantically filtered for relevance. Use [number](url) to cite sources.'
-          )
-          return buf.join('\n')
+        if (embeddingSucceeded && compressed.length > 0) {
+          return this.formatRagResults(queries, results.length, compressed)
         }
       }
 
       // 3. Fallback 到朴素无 RAG 格式化输出
-      return this.formatPlainResults(queries, results, actualEngine)
+      return this.formatPlainResults(queries, results, actualEngine, limits.plainSnippetLength)
     } catch (e) {
       return `Web search failed: ${e instanceof Error ? e.message : String(e)}`
     }
@@ -248,7 +237,33 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
     return `[Diagnostics] lastEngine=${engine}\n${lines.join('\n')}`
   }
 
-  private formatPlainResults(queries: string[], results: SearchResult[], engine: string): string {
+  private formatRagResults(
+    queries: string[],
+    totalResultCount: number,
+    compressed: Array<{ title: string; url: string; content: string; avgScore: number }>
+  ): string {
+    const buf: string[] = [
+      `Search queries: ${queries.map((q) => `"${q}"`).join(', ')}`,
+      `Found ${totalResultCount} results, RAG-compressed to ${compressed.length} relevant sources:\n`
+    ]
+    compressed.forEach((r, i) => {
+      buf.push(`[${i + 1}] [${r.title}](${r.url})`)
+      buf.push(`Relevance: ${(r.avgScore * 100).toFixed(1)}%`)
+      buf.push(r.content)
+      buf.push('')
+    })
+    buf.push(
+      'These results have been semantically filtered for relevance. Use [number](url) to cite sources.'
+    )
+    return buf.join('\n')
+  }
+
+  private formatPlainResults(
+    queries: string[],
+    results: SearchResult[],
+    engine: string,
+    plainSnippetLength: number
+  ): string {
     const engineNames: Record<string, string> = {
       tavily: 'Tavily API',
       exa: 'Exa API',
@@ -265,11 +280,7 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
     ]
     results.forEach((r, i) => {
       buf.push(`[${i + 1}] [${r.title}](${r.url})`)
-      let snippet = r.snippet
-      if (snippet.length > 600) {
-        snippet = snippet.slice(0, 600) + '... (truncated, use url_read for full text)'
-      }
-      buf.push(snippet + '\n')
+      buf.push(truncateSearchSnippet(r.snippet, plainSnippetLength) + '\n')
     })
     buf.push(
       'Use [number](url) format to cite specific sources in your response. Use url_read for more details on specific pages.'

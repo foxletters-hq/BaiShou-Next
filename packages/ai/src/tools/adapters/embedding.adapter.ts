@@ -44,6 +44,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
+    sourceCreatedAt?: number
   }): Promise<void> {
     if (!this.hybridRepo) {
       throw new Error('hybridRepo must be provided to store embeddings permanently.')
@@ -69,7 +70,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         chunkText: chunk,
         embedding: embVector,
         modelId: this.modelId,
-        sourceCreatedAt: Date.now()
+        sourceCreatedAt: options.sourceCreatedAt ?? Date.now()
       })
     }
   }
