@@ -1,12 +1,14 @@
 package expo.modules.baishouserver
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import expo.modules.kotlin.Promise
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import expo.modules.kotlin.modules.Module
@@ -136,9 +138,12 @@ class BaishouHttpServer(
     }
 }
 
+private const val OPEN_DIRECTORY_TREE_CODE = 8842
+
 class ExpoBaishouServerModule : Module() {
     private var server: BaishouHttpServer? = null
     private val pendingMcpRequests = ConcurrentHashMap<String, PendingMcpRequest>()
+    private var pendingDirectoryPromise: Promise? = null
 
     private fun dispatchMcpRequestToJs(body: String): String {
         val requestId = UUID.randomUUID().toString()
@@ -285,6 +290,94 @@ class ExpoBaishouServerModule : Module() {
         Function("externalCopy") { fromPath: String, toPath: String ->
             val context = appContext.reactContext ?: throw Exception("React context is null")
             ExternalStorageFiles.copyPath(context, fromPath, toPath)
+        }
+
+        /** 在后台线程复制，避免大目录迁移阻塞 RN 主线程导致闪退 */
+        AsyncFunction("externalCopyAsync") { fromPath: String, toPath: String, promise: Promise ->
+            val context = appContext.reactContext
+            if (context == null) {
+                promise.reject("E_NO_CONTEXT", "React context is null", null)
+                return@AsyncFunction
+            }
+            Thread {
+                try {
+                    ExternalStorageFiles.copyPath(context, fromPath, toPath)
+                    promise.resolve(null)
+                } catch (e: Exception) {
+                    promise.reject("E_EXTERNAL_COPY", e.message ?: "external copy failed", e)
+                }
+            }.start()
+        }
+
+        /** 调起系统目录选择器（ACTION_OPEN_DOCUMENT_TREE） */
+        AsyncFunction("pickDirectoryAsync") { promise: Promise ->
+            if (pendingDirectoryPromise != null) {
+                promise.reject("E_DIRECTORY_PICKER_IN_PROGRESS", "Directory picker is already open", null)
+                return@AsyncFunction
+            }
+            pendingDirectoryPromise = promise
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+            }
+            appContext.throwingActivity.startActivityForResult(intent, OPEN_DIRECTORY_TREE_CODE)
+        }
+
+        OnActivityDestroys {
+            pendingDirectoryPromise?.let { promise ->
+                pendingDirectoryPromise = null
+                promise.resolve(mapOf("canceled" to true))
+            }
+        }
+
+        OnActivityResult { _, (requestCode, resultCode, intent) ->
+            if (requestCode != OPEN_DIRECTORY_TREE_CODE || pendingDirectoryPromise == null) {
+                return@OnActivityResult
+            }
+
+            val promise = pendingDirectoryPromise!!
+            pendingDirectoryPromise = null
+
+            if (resultCode != Activity.RESULT_OK || intent?.data == null) {
+                promise.resolve(mapOf("canceled" to true))
+                return@OnActivityResult
+            }
+
+            val context = appContext.reactContext
+            if (context == null) {
+                promise.reject("E_NO_CONTEXT", "React context is null", null)
+                return@OnActivityResult
+            }
+
+            val treeUri = intent.data!!
+            val flags = intent.flags and (
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            try {
+                context.contentResolver.takePersistableUriPermission(treeUri, flags)
+            } catch (_: Exception) {
+                // 部分 ROM 可能不支持持久化，仍可尝试解析路径
+            }
+
+            val path = DirectoryTreeUri.resolvePath(context, treeUri)
+            if (path.isNullOrBlank()) {
+                promise.reject(
+                    "E_DIRECTORY_PATH",
+                    "Unable to resolve filesystem path from selected directory",
+                    null
+                )
+                return@OnActivityResult
+            }
+
+            promise.resolve(
+                mapOf(
+                    "canceled" to false,
+                    "path" to path,
+                    "uri" to treeUri.toString()
+                )
+            )
         }
     }
 }

@@ -8,8 +8,10 @@ import { StoragePermissionPrompt } from '../StoragePermissionPrompt/StoragePermi
 
 export interface NativeStorageSettingsCardProps {
   storageRootPath?: string
-  onChangeRoot?: () => Promise<void>
-  changeRootLabel?: string
+  onChangeDirectory?: () => void | Promise<void>
+  changeDirectoryLabel?: string
+  onMigrateDirectory?: () => void | Promise<void>
+  migrateDirectoryLabel?: string
   allFilesAccessGranted?: boolean
   onRequestAllFilesAccess?: () => void | Promise<void>
   embedded?: boolean
@@ -18,8 +20,10 @@ export interface NativeStorageSettingsCardProps {
 
 export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
   storageRootPath = '...',
-  onChangeRoot,
-  changeRootLabel,
+  onChangeDirectory,
+  changeDirectoryLabel,
+  onMigrateDirectory,
+  migrateDirectoryLabel,
   allFilesAccessGranted,
   onRequestAllFilesAccess,
   embedded = false,
@@ -39,48 +43,73 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
         <StoragePermissionPrompt onRequest={onRequestAllFilesAccess} mode="required" />
       ) : null}
 
-      <View style={styles.rootRow}>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
-            {t('settings.storage_root', '数据根目录')}
-          </Text>
-          <Text style={[styles.mono, { color: colors.textSecondary }]} selectable>
-            {storageRootPath}
-          </Text>
-        </View>
-        {onChangeRoot ? (
-          <Pressable
-            onPress={() => void onChangeRoot()}
-            style={({ pressed }) => [
-              styles.actionChip,
-              { backgroundColor: colors.primaryContainer, opacity: pressed ? 0.7 : 1 }
-            ]}
-          >
-            <Text style={{ color: colors.onPrimaryContainer, fontWeight: '600', fontSize: 13 }}>
-              {changeRootLabel ?? t('settings.change_storage_root', '更换根目录')}
-            </Text>
-          </Pressable>
-        ) : null}
+      <View style={styles.rootBlock}>
+        <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
+          {t('settings.storage_root', '数据根目录')}
+        </Text>
+        <Text style={[styles.mono, { color: colors.textSecondary }]} selectable>
+          {storageRootPath}
+        </Text>
       </View>
+
+      {onChangeDirectory ? (
+        <Pressable
+          onPress={() => void onChangeDirectory()}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            {
+              borderColor: colors.primary,
+              backgroundColor: colors.primaryContainer,
+              opacity: pressed ? 0.7 : 1
+            }
+          ]}
+        >
+          <Text style={{ color: colors.onPrimaryContainer, fontWeight: '600', fontSize: 14 }}>
+            {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {onMigrateDirectory ? (
+        <Pressable
+          onPress={() => void onMigrateDirectory()}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            styles.actionBtnSecondary,
+            {
+              borderColor: colors.borderSubtle,
+              backgroundColor: colors.bgSurface,
+              opacity: pressed ? 0.7 : 1
+            }
+          ]}
+        >
+          <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
+            {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
+          </Text>
+        </Pressable>
+      ) : null}
     </SettingsExpansionTile>
   )
 }
 
 const styles = StyleSheet.create({
-  rootRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12
+  rootBlock: {
+    gap: 4
   },
   mono: {
     fontSize: 13,
     fontFamily: 'monospace',
     lineHeight: 18
   },
-  actionChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    flexShrink: 0
+  actionBtn: {
+    marginTop: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center'
+  },
+  actionBtnSecondary: {
+    marginTop: 8
   }
 })

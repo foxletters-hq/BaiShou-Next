@@ -22,6 +22,8 @@ export interface DiaryAppBarProps {
   onFilterWeathersChange: (weathers: string[]) => void
   filterFavorite: boolean
   onFilterFavoriteChange: (v: boolean) => void
+  onSyncPress?: () => void
+  isSyncing?: boolean
 }
 
 export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
@@ -32,7 +34,9 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
   filterWeathers,
   onFilterWeathersChange,
   filterFavorite,
-  onFilterFavoriteChange
+  onFilterFavoriteChange,
+  onSyncPress,
+  isSyncing = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -115,6 +119,21 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
           </View>
 
           <View style={styles.right}>
+            {onSyncPress ? (
+              <TouchableOpacity
+                onPress={onSyncPress}
+                style={styles.iconBtn}
+                disabled={isSyncing}
+                accessibilityRole="button"
+                accessibilityLabel={t('data_sync.sync_now')}
+              >
+                <MaterialIcons
+                  name="sync"
+                  size={22}
+                  color={isSyncing ? colors.textTertiary : colors.textPrimary}
+                />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               onPress={() => setIsSearching(true)}
               style={styles.iconBtn}

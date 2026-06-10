@@ -1,6 +1,7 @@
 import type { FileEncoding, FileStat, IFileSystem } from '@baishou/core-mobile'
 import {
   externalCopySafe,
+  externalCopyAsyncSafe,
   externalDeleteSafe,
   externalGetInfoSafe,
   externalListDirSafe,
@@ -107,11 +108,7 @@ export class MobileFileSystem implements IFileSystem {
     if (isExternalStoragePath(src) && isExternalStoragePath(dest)) {
       const srcInfo = externalGetInfoSafe(src)
       if (srcInfo.isDirectory) {
-        await this.mkdir(dest, { recursive: true })
-        const names = externalListDirSafe(src)
-        for (const name of names) {
-          await this.copyFile(`${normalizePath(src)}/${name}`, `${normalizePath(dest)}/${name}`)
-        }
+        await externalCopyAsyncSafe(src, dest)
         return
       }
       externalCopySafe(src, dest)

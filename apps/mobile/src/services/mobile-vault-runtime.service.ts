@@ -16,7 +16,13 @@ import {
   shadowConnectionManager,
   ShadowIndexUpsertOps
 } from '@baishou/database'
-import { formatDiaryPreviewText, logger, parseDateStr } from '@baishou/shared'
+import {
+  formatDiaryPreviewText,
+  logger,
+  parseDateStr,
+  resolveDiaryAppendBlock,
+  type DiaryTemplateConfig
+} from '@baishou/shared'
 import { mergeDiaryTags, type ToolDiaryMutationResult } from '@baishou/ai'
 
 function diaryPreviewFromRaw(raw: string | null | undefined): string {
@@ -139,6 +145,7 @@ export async function initVaultLayer(deps: {
   pathService: IStoragePathService
   vaultService: VaultService
   fileSystem: IFileSystem
+  settingsManager?: SettingsManagerService
 }): Promise<VaultBoundDiaryStack> {
   await deps.pathService.getRootDirectory()
   await deps.vaultService.initRegistry()
@@ -150,6 +157,7 @@ export function createVaultBoundDiaryStack(deps: {
   pathService: IStoragePathService
   vaultService: VaultService
   fileSystem: IFileSystem
+  settingsManager?: SettingsManagerService
 }): VaultBoundDiaryStack {
   const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb())
   const fileSyncService = new FileSyncServiceImpl(deps.pathService, deps.fileSystem)
@@ -236,10 +244,11 @@ export function createVaultBoundDiaryStack(deps: {
 
         let finalContent = content
         if (mode === 'append') {
-          const now = new Date()
-          const hours = String(now.getHours()).padStart(2, '0')
-          const minutes = String(now.getMinutes()).padStart(2, '0')
-          finalContent = `${existing.content.trimEnd()}\n\n##### ${hours}:${minutes}\n\n${content}`
+          const templateConfig: DiaryTemplateConfig = deps.settingsManager
+            ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
+            : {}
+          const block = resolveDiaryAppendBlock(templateConfig, new Date()).replace(/\u200B$/, '')
+          finalContent = existing.content.trimEnd() + block + content
         }
 
         await diaryService.update(existing.id, {
@@ -330,6 +339,105 @@ export async function prepareVaultSwitch(currentStack?: VaultBoundDiaryStack): P
   await mobileDataBootstrapper.waitUntilIdle()
 }
 
+/** 文件级迁移/复制前：停 watcher、刷盘、断开 Shadow DB（不退出应用） */
+export async function quiesceStorageForFileCopy(deps: {
+  currentStack?: VaultBoundDiaryStack
+  settingsManager: SettingsManagerService
+}): Promise<void> {
+  await prepareVaultSwitch(deps.currentStack)
+  await deps.settingsManager.flushToDisk()
+  shadowConnectionManager.disconnect()
+}
+
+export async function resumeStorageAfterFileCopy(deps: {
+  pathService: IStoragePathService
+  vaultService: VaultService
+  fileSystem: IFileSystem
+  bootstrapDeps: Omit<
+    MobileBootstrapperDeps,
+    | 'shadowIndexSyncService'
+    | 'sessionManager'
+    | 'assistantManager'
+    | 'settingsManager'
+    | 'summarySyncService'
+  > & {
+    sessionManager: SessionManagerService
+    assistantManager: AssistantManagerService
+    settingsManager: SettingsManagerService
+    summarySyncService: SummarySyncService
+  }
+  watcherDeps: VaultRuntimeWatcherDeps
+}): Promise<VaultBoundDiaryStack> {
+  await connectShadowForActiveVault(deps)
+  const diaryStack = createVaultBoundDiaryStack({
+    pathService: deps.pathService,
+    vaultService: deps.vaultService,
+    fileSystem: deps.fileSystem,
+    settingsManager: deps.bootstrapDeps.settingsManager
+  })
+  // 根路径未变，仅恢复 watcher / Shadow 连接，避免迁移后立刻全量重扫导致闪退
+  await runVaultBootstrap({ ...deps, diaryStack }, { skipFullResync: true })
+  return diaryStack
+}
+
+let storageRootRebootstrapInFlight: Promise<VaultBoundDiaryStack> | null = null
+
+/** 数据根目录变更后：重载 registry、重连 Shadow DB、重建 diary stack 并全量扫描日记 */
+export async function rebootstrapAfterStorageRootChange(deps: {
+  pathService: IStoragePathService
+  vaultService: VaultService
+  fileSystem: IFileSystem
+  diaryStack?: VaultBoundDiaryStack
+  bootstrapDeps: Omit<
+    MobileBootstrapperDeps,
+    | 'shadowIndexSyncService'
+    | 'sessionManager'
+    | 'assistantManager'
+    | 'settingsManager'
+    | 'summarySyncService'
+  > & {
+    sessionManager: SessionManagerService
+    assistantManager: AssistantManagerService
+    settingsManager: SettingsManagerService
+    summarySyncService: SummarySyncService
+  }
+  watcherDeps: VaultRuntimeWatcherDeps
+}): Promise<VaultBoundDiaryStack> {
+  if (storageRootRebootstrapInFlight) {
+    return storageRootRebootstrapInFlight
+  }
+
+  const task = (async () => {
+    await prepareVaultSwitch(deps.diaryStack)
+    await shadowConnectionManager.disconnect()
+    await deps.vaultService.initRegistry()
+    await connectShadowForActiveVault(deps)
+
+    const diaryStack = createVaultBoundDiaryStack({
+      pathService: deps.pathService,
+      vaultService: deps.vaultService,
+      fileSystem: deps.fileSystem,
+      settingsManager: deps.bootstrapDeps.settingsManager
+    })
+    const bootstrapDeps = buildBootstrapDeps(diaryStack, deps.bootstrapDeps)
+    mobileDataBootstrapper.registerDeps(bootstrapDeps)
+    diaryStack.shadowIndexSyncService.setSyncEnabled(true)
+    await mobileDataBootstrapper.runWhenVaultReady(bootstrapDeps, { force: true })
+    await restartVaultWatchers(diaryStack, deps.vaultService, deps.watcherDeps)
+    logger.info('[VaultRuntime] Storage root rebootstrap completed')
+    return diaryStack
+  })()
+
+  storageRootRebootstrapInFlight = task
+  try {
+    return await task
+  } finally {
+    if (storageRootRebootstrapInFlight === task) {
+      storageRootRebootstrapInFlight = null
+    }
+  }
+}
+
 function buildBootstrapDeps(
   diaryStack: VaultBoundDiaryStack,
   bootstrapDeps: Omit<
@@ -376,11 +484,21 @@ async function runVaultBootstrap(
     }
     watcherDeps: VaultRuntimeWatcherDeps
   },
-  options?: { deferResync?: boolean; resyncReason?: string; onResyncComplete?: () => void }
+  options?: {
+    deferResync?: boolean
+    skipFullResync?: boolean
+    resyncReason?: string
+    onResyncComplete?: () => void
+  }
 ): Promise<void> {
   const bootstrapDeps = buildBootstrapDeps(deps.diaryStack, deps.bootstrapDeps)
   mobileDataBootstrapper.registerDeps(bootstrapDeps)
   deps.diaryStack.shadowIndexSyncService.setSyncEnabled(true)
+
+  if (options?.skipFullResync) {
+    await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
+    return
+  }
 
   if (options?.deferResync) {
     // 后台 resync 完成后再启动 watcher，避免 fullScanVault 与 VaultFileWatcher 并发写 Shadow DB
@@ -492,7 +610,12 @@ export async function switchVaultRuntime(
     deps.callbacks?.onStackInvalidated?.()
 
     await connectShadowForActiveVault(deps)
-    const diaryStack = createVaultBoundDiaryStack(deps)
+    const diaryStack = createVaultBoundDiaryStack({
+      pathService: deps.pathService,
+      vaultService: deps.vaultService,
+      fileSystem: deps.fileSystem,
+      settingsManager: deps.bootstrapDeps.settingsManager
+    })
     deps.callbacks?.onStackReady?.(diaryStack)
 
     await runVaultBootstrap(

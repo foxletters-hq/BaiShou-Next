@@ -1,6 +1,7 @@
 import { Platform } from 'react-native'
 import {
   externalCopy,
+  externalCopyAsync,
   externalDelete,
   externalGetInfo,
   externalMakeDirectory,
@@ -119,4 +120,9 @@ export function externalMoveSafe(from: string, to: string): void {
 export function externalCopySafe(from: string, to: string): void {
   ensureNativeModule()
   externalCopy(toFileUri(from), toFileUri(to))
+}
+
+export async function externalCopyAsyncSafe(from: string, to: string): Promise<void> {
+  ensureNativeModule()
+  await externalCopyAsync(toFileUri(from), toFileUri(to))
 }

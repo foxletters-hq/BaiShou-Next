@@ -12,6 +12,10 @@ export type ExternalPathInfo = {
   size: number
 }
 
+export type PickDirectoryResult =
+  | { canceled: true }
+  | { canceled: false; path: string; uri: string }
+
 declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   startServer(port: number): number
   stopServer(): void
@@ -30,6 +34,8 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalReadDirectory(path: string): string[]
   externalMove(fromPath: string, toPath: string): void
   externalCopy(fromPath: string, toPath: string): void
+  externalCopyAsync(fromPath: string, toPath: string): Promise<void>
+  pickDirectoryAsync(): Promise<PickDirectoryResult>
 }
 
 const NATIVE_REBUILD_HINT =
@@ -55,6 +61,11 @@ export function isBaishouServerAvailable(): boolean {
 export function isExternalStorageNativeAvailable(): boolean {
   const mod = getNative()
   return mod != null && typeof mod.externalMakeDirectory === 'function'
+}
+
+export function isNativeDirectoryPickerAvailable(): boolean {
+  const mod = getNative()
+  return mod != null && typeof mod.pickDirectoryAsync === 'function'
 }
 
 function requireNative() {
@@ -192,4 +203,21 @@ export function externalMove(fromPath: string, toPath: string): void {
 
 export function externalCopy(fromPath: string, toPath: string): void {
   callNativeExternal('externalCopy', (mod) => mod.externalCopy(fromPath, toPath))
+}
+
+export async function externalCopyAsync(fromPath: string, toPath: string): Promise<void> {
+  const mod = requireNative()
+  if (typeof mod.externalCopyAsync !== 'function') {
+    externalCopy(fromPath, toPath)
+    return
+  }
+  await mod.externalCopyAsync(fromPath, toPath)
+}
+
+export async function pickDirectoryAsync(): Promise<PickDirectoryResult> {
+  const mod = requireNative()
+  if (typeof mod.pickDirectoryAsync !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 pickDirectoryAsync）`)
+  }
+  return mod.pickDirectoryAsync()
 }

@@ -10,13 +10,16 @@ export interface NativeDataManagementCardProps {
   onImport: () => Promise<void>
   embedded?: boolean
   isLast?: boolean
+  /** 平铺展示导入/导出操作，不包在可折叠区块内 */
+  flat?: boolean
 }
 
 export const DataManagementCard: React.FC<NativeDataManagementCardProps> = ({
   onExport,
   onImport,
   embedded = false,
-  isLast = false
+  isLast = false,
+  flat = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -58,6 +61,36 @@ export const DataManagementCard: React.FC<NativeDataManagementCardProps> = ({
     }
   ]
 
+  const rowList = rows.map((row, index) => (
+    <Pressable
+      key={row.key}
+      disabled={row.loading || isExporting || isImporting}
+      onPress={() => void row.onPress()}
+      style={({ pressed }) => [
+        styles.row,
+        index > 0 && {
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.borderSubtle
+        },
+        { opacity: pressed ? 0.7 : 1 }
+      ]}
+    >
+      <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+        <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{row.title}</Text>
+        <Text style={[styles.sub, { color: colors.textSecondary }]}>{row.subtitle}</Text>
+      </View>
+      {row.loading ? (
+        <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
+      ) : (
+        <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
+      )}
+    </Pressable>
+  ))
+
+  if (flat) {
+    return <View>{rowList}</View>
+  }
+
   return (
     <SettingsExpansionTile
       embedded={embedded}
@@ -65,31 +98,7 @@ export const DataManagementCard: React.FC<NativeDataManagementCardProps> = ({
       title={t('settings.data_management', '数据管理')}
       subtitle={t('settings.data_management_desc', '导出、导入数据或局域网快传')}
     >
-      {rows.map((row, index) => (
-        <Pressable
-          key={row.key}
-          disabled={row.loading || isExporting || isImporting}
-          onPress={() => void row.onPress()}
-          style={({ pressed }) => [
-            styles.row,
-            index > 0 && {
-              borderTopWidth: StyleSheet.hairlineWidth,
-              borderTopColor: colors.borderSubtle
-            },
-            { opacity: pressed ? 0.7 : 1 }
-          ]}
-        >
-          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-            <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{row.title}</Text>
-            <Text style={[styles.sub, { color: colors.textSecondary }]}>{row.subtitle}</Text>
-          </View>
-          {row.loading ? (
-            <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
-          ) : (
-            <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
-          )}
-        </Pressable>
-      ))}
+      {rowList}
     </SettingsExpansionTile>
   )
 }

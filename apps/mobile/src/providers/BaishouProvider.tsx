@@ -80,6 +80,9 @@ import {
   EMPTY_DIARY_REPO_ADAPTER,
   EMPTY_DIARY_SEARCHER,
   initVaultLayer,
+  quiesceStorageForFileCopy,
+  rebootstrapAfterStorageRootChange,
+  resumeStorageAfterFileCopy,
   switchVaultRuntime,
   type VaultBoundDiaryStack
 } from '../services/mobile-vault-runtime.service'
@@ -102,6 +105,8 @@ interface BaishouContextValue {
   vaultSwitching: boolean
   /** Android：授权后重试挂载 BaiShou_Root 并同步磁盘 */
   retryStorageSetup: () => Promise<boolean>
+  /** 暂停文件监听与 Shadow DB，执行磁盘操作后自动恢复（用于目录迁移） */
+  runWithStorageQuiesced: <T>(fn: () => Promise<T>) => Promise<T>
   services: {
     agentService: AgentSessionService
     sessionManager: SessionManagerService
@@ -164,6 +169,7 @@ const BaishouContext = createContext<BaishouContextValue>({
   vaultRevision: 0,
   vaultSwitching: false,
   retryStorageSetup: async () => Platform.OS !== 'android',
+  runWithStorageQuiesced: async (fn) => fn(),
   services: null
 })
 
@@ -224,6 +230,9 @@ async function webFetchContent(url: string): Promise<string> {
 
 export function BaishouProvider({ children }: { children: ReactNode }) {
   const retryStorageSetupRef = useRef<() => Promise<boolean>>(async () => false)
+  const runWithStorageQuiescedRef = useRef<<T>(fn: () => Promise<T>) => Promise<T>>(
+    async (fn) => fn()
+  )
   const diaryStackRef = useRef<VaultBoundDiaryStack | null>(null)
   const [value, setValue] = useState<BaishouContextValue>({
     dbReady: false,
@@ -231,6 +240,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     vaultRevision: 0,
     vaultSwitching: false,
     retryStorageSetup: () => retryStorageSetupRef.current(),
+    runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
     services: null
   })
 
@@ -285,10 +295,10 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         )
 
         const vaultService = new VaultService(pathService, fileSystem)
-        const vaultRuntimeDeps = { pathService, vaultService, fileSystem }
 
         const settingsFileService = new SettingsFileService(pathService, fileSystem)
         const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
+        const vaultRuntimeDeps = { pathService, vaultService, fileSystem, settingsManager }
 
         let diaryStack: VaultBoundDiaryStack | null = null
         let storageReady = Platform.OS !== 'android'
@@ -686,7 +696,36 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
 
         retryStorageSetupRef.current = async () => {
           try {
-            const stack = await runStorageBootstrap()
+            const priorStack = diaryStackRef.current
+            let stack: VaultBoundDiaryStack
+
+            if (!priorStack) {
+              stack = await initVaultLayer(vaultRuntimeDeps)
+              diaryStackRef.current = stack
+              const activeVault = vaultService.getActiveVault()
+              if (activeVault?.path) {
+                await activateVaultRuntime({
+                  pathService,
+                  vaultService,
+                  fileSystem,
+                  diaryStack: stack,
+                  bootstrapDeps,
+                  watcherDeps
+                })
+              }
+            } else {
+              diaryStackRef.current = null
+              stack = await rebootstrapAfterStorageRootChange({
+                pathService,
+                vaultService,
+                fileSystem,
+                diaryStack: priorStack,
+                bootstrapDeps,
+                watcherDeps
+              })
+              diaryStackRef.current = stack
+            }
+
             ragServiceRef.current = createMobileRagService({
               settingsManager,
               diaryService: stack.diaryService,
@@ -717,6 +756,83 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        runWithStorageQuiescedRef.current = async <T,>(fn: () => Promise<T>): Promise<T> => {
+          let mcpWasRunning = false
+          const stack = diaryStackRef.current
+          if (isMounted) {
+            setValue((prev) => ({ ...prev, vaultSwitching: true }))
+          }
+          try {
+            await quiesceStorageForFileCopy({
+              currentStack: stack ?? undefined,
+              settingsManager
+            })
+            if (mobileMcpService?.isServerRunning()) {
+              mcpWasRunning = true
+              await mobileMcpService.stop()
+            }
+            return await fn()
+          } finally {
+            try {
+              const priorStack = diaryStackRef.current
+              if (priorStack) {
+                diaryStackRef.current = null
+                try {
+                  const resumedStack = await resumeStorageAfterFileCopy({
+                    pathService,
+                    vaultService,
+                    fileSystem,
+                    bootstrapDeps,
+                    watcherDeps
+                  })
+                  diaryStackRef.current = resumedStack
+                  ragServiceRef.current = createMobileRagService({
+                    settingsManager,
+                    diaryService: resumedStack.diaryService,
+                    hsRepo,
+                    hybridSearchService,
+                    registry,
+                    rawSqlClient: rawClient
+                  })
+                } catch (resumeError) {
+                  logger.error(
+                    '[BaishouProvider] resumeStorageAfterFileCopy failed, retrying setup:',
+                    resumeError as Error
+                  )
+                  const recovered = await retryStorageSetupRef.current()
+                  if (!recovered) {
+                    diaryStackRef.current = priorStack
+                    throw resumeError
+                  }
+                }
+              } else {
+                await retryStorageSetupRef.current()
+              }
+              if (mcpWasRunning) {
+                await mobileMcpService?.start()
+              }
+              if (isMounted) {
+                setValue((prev) => ({
+                  ...prev,
+                  vaultSwitching: false,
+                  vaultRevision: prev.vaultRevision + 1,
+                  services: prev.services
+                    ? {
+                        ...prev.services,
+                        ragService: ragServiceRef.current
+                      }
+                    : prev.services
+                }))
+              }
+            } catch (e) {
+              logger.error('[BaishouProvider] runWithStorageQuiesced resume failed:', e as Error)
+              if (isMounted) {
+                setValue((prev) => ({ ...prev, vaultSwitching: false }))
+              }
+            }
+          }
+        }
+
         const getContextAtMessage = (sessionId: string, messageId: string, searchMode = false) =>
           loadContextAtMessage(
             {
@@ -743,6 +859,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             vaultRevision: 0,
             vaultSwitching: false,
             retryStorageSetup: () => retryStorageSetupRef.current(),
+            runWithStorageQuiesced: (fn) => runWithStorageQuiescedRef.current(fn),
             services: {
               agentService,
               sessionManager,
