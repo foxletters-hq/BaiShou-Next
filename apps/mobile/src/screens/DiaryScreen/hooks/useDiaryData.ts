@@ -43,7 +43,7 @@ function buildCountFilter(query: DiaryPageQuery): Omit<DiaryListFilter, 'limit' 
 export function useDiaryData(diaryService: DiaryService | undefined, query: DiaryPageQuery) {
   const [entries, setEntries] = useState<any[]>([])
   const [totalCount, setTotalCount] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const queryRef = useRef(query)
   queryRef.current = query
 

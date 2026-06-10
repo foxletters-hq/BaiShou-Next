@@ -11,7 +11,7 @@ import { useBaishou } from '../providers/BaishouProvider'
 export function useStoragePermission() {
   const { t } = useTranslation()
   const toast = useNativeToast()
-  const { dbReady, storageReady, retryStorageSetup } = useBaishou()
+  const { storageReady, retryStorageSetup } = useBaishou()
   const [granted, setGranted] = useState<boolean | undefined>(
     Platform.OS === 'android' ? undefined : true
   )
@@ -33,12 +33,8 @@ export function useStoragePermission() {
   }, [])
 
   useEffect(() => {
-    if (Platform.OS !== 'android') {
-      void refresh()
-      return
-    }
-    if (dbReady) void refresh()
-  }, [refresh, dbReady])
+    void refresh()
+  }, [refresh])
 
   useEffect(() => {
     if (Platform.OS !== 'android') return

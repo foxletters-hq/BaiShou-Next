@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
   useWindowDimensions
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -37,6 +38,8 @@ export interface DiaryListProps {
   pageSize: number
   selectedMonth: Date | null
   loading: boolean
+  /** 已授权但外部存储尚未挂载完成 */
+  storagePending?: boolean
   onGoToEditor: (id: number) => void
   onDeleteEntry: (id: number) => void
   onPageChange: (page: number) => void
@@ -54,6 +57,7 @@ export const DiaryList: React.FC<DiaryListProps> = ({
   pageSize,
   selectedMonth,
   loading,
+  storagePending = false,
   onGoToEditor,
   onDeleteEntry,
   onPageChange,
@@ -80,27 +84,44 @@ export const DiaryList: React.FC<DiaryListProps> = ({
     [t, totalCount, safeCurrentPage, totalPages]
   )
 
-  const PaginationBar = () => (
-    <View style={styles.paginationBar}>
-      <Text style={[styles.paginationInfo, { color: colors.textTertiary }]}>{paginationInfo}</Text>
-      <View style={styles.paginationControls}>
+  const PaginationBar = ({ placement }: { placement: 'top' | 'bottom' }) => (
+    <View
+      style={[
+        styles.paginationBar,
+        placement === 'top' ? styles.paginationBarTop : styles.paginationBarBottom,
+        { borderColor: colors.borderSubtle }
+      ]}
+    >
+      <View style={styles.paginationMetaRow}>
+        <Text style={[styles.paginationInfo, { color: colors.textTertiary }]} numberOfLines={1}>
+          {paginationInfo}
+        </Text>
         <PageSizeSelector
           value={pageSize}
-          options={[50, 80, 100, 200]}
+          options={[20, 30, 50, 80, 100]}
+          label={t('diary.per_page', '条/页')}
           onChange={(size) => {
             onPageSizeChange(size)
             onPageChange(1)
           }}
         />
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        bounces={false}
+        style={styles.paginationNavScroll}
+        contentContainerStyle={styles.paginationNavContent}
+      >
         <Pagination
           current={safeCurrentPage}
           total={totalPages}
           onChange={onPageChange}
-          siblingCount={1}
-          showFirstLast
+          siblingCount={width >= 400 ? 1 : 0}
+          showFirstLast={width >= 360}
           showJumper
         />
-      </View>
+      </ScrollView>
     </View>
   )
 
@@ -108,6 +129,17 @@ export const DiaryList: React.FC<DiaryListProps> = ({
     return (
       <View style={styles.centered}>
         <StoragePermissionPrompt onRequest={onRequestStoragePermission} compact mode="required" />
+      </View>
+    )
+  }
+
+  if (storagePending && entries.length === 0) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          {t('storage.mounting', '正在准备日记存储…')}
+        </Text>
       </View>
     )
   }
@@ -151,8 +183,8 @@ export const DiaryList: React.FC<DiaryListProps> = ({
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[styles.listContent, { backgroundColor: colors.bgApp }]}
       columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
-      ListHeaderComponent={showPagination ? <PaginationBar /> : null}
-      ListFooterComponent={showPagination ? <PaginationBar /> : null}
+      ListHeaderComponent={showPagination ? <PaginationBar placement="top" /> : null}
+      ListFooterComponent={showPagination ? <PaginationBar placement="bottom" /> : null}
       renderItem={({ item }) => (
         <View style={styles.cardCell}>
           <DiaryCard
@@ -207,14 +239,36 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   paginationBar: {
-    gap: 12,
-    paddingVertical: 8,
-    marginBottom: 8
+    gap: 10
+  },
+  paginationBarTop: {
+    paddingTop: 4,
+    paddingBottom: 12,
+    marginBottom: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  paginationBarBottom: {
+    paddingTop: 16,
+    marginTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
+  paginationMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
   },
   paginationInfo: {
+    flex: 1,
     fontSize: 13
   },
-  paginationControls: {
-    gap: 12
+  paginationNavScroll: {
+    alignSelf: 'stretch'
+  },
+  paginationNavContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 2
   }
 })

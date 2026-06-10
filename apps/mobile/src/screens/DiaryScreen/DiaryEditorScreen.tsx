@@ -4,7 +4,11 @@ import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { DiaryEditor, useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
-import { format } from 'date-fns'
+import {
+  resolveDiaryAppendBlock,
+  resolveDiaryNewEntryContent,
+  type DiaryTemplateConfig
+} from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
 import {
   getDiaryInsertMarkdown,
@@ -41,7 +45,7 @@ export const DiaryEditorScreen: React.FC = () => {
   const [isFavorite, setIsFavorite] = useState(false)
   const [existingId, setExistingId] = useState<number | null>(null)
   const [originalContent, setOriginalContent] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const isDirtyRef = useRef(false)
   const [pickingImages, setPickingImages] = useState(false)
@@ -49,8 +53,15 @@ export const DiaryEditorScreen: React.FC = () => {
   useEffect(() => {
     if (!dbReady || !services) return
 
+    let cancelled = false
+    setLoading(true)
+
     const fetchDiary = async () => {
       try {
+        const templateConfig =
+          (await services.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
+        const now = new Date()
+
         if (id) {
           // 通过 id 查询日记
           const diary = await services.diaryService.findById(Number(id))
@@ -77,7 +88,7 @@ export const DiaryEditorScreen: React.FC = () => {
 
             // 如果是追加模式，保留原内容，在末尾追加
             if (append === '1') {
-              const timeMark = `\n\n##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`
+              const timeMark = resolveDiaryAppendBlock(templateConfig, now)
               setContent(existing.content + timeMark)
               setOriginalContent(existing.content)
             } else {
@@ -85,24 +96,23 @@ export const DiaryEditorScreen: React.FC = () => {
               setOriginalContent(existing.content)
             }
           } else {
-            // 新建日记，设置初始时间标记
-            const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`
-            setContent(timeMark)
+            setContent(resolveDiaryNewEntryContent(templateConfig, now))
             setSelectedDate(new Date(date))
           }
         } else {
-          // 没有 id 和 date，新建日记
-          const timeMark = `##### ${format(new Date(), 'HH:mm:ss')}\n\n\u200B`
-          setContent(timeMark)
+          setContent(resolveDiaryNewEntryContent(templateConfig, now))
         }
       } catch (e) {
         console.error('Failed to load diary:', e)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
-    fetchDiary()
+    void fetchDiary()
+    return () => {
+      cancelled = true
+    }
   }, [id, date, append, dbReady, services])
 
   const handleSave = async () => {

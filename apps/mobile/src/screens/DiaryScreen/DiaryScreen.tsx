@@ -10,7 +10,7 @@ import {
   formatDiaryPreviewText,
   type WeatherId
 } from '@baishou/shared'
-import { useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
@@ -54,6 +54,8 @@ function parseFilterWeathers(saved: string | null): string[] {
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
+  const toast = useNativeToast()
+  const dialog = useDialog()
   const { services, dbReady, vaultRevision, vaultSwitching } = useBaishou()
   const router = useRouter()
   const {
@@ -76,6 +78,7 @@ export const DiaryScreen: React.FC = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
   const [isStateRestored, setIsStateRestored] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
     const restoreState = async () => {
@@ -105,7 +108,7 @@ export const DiaryScreen: React.FC = () => {
 
         if (savedPageSize) {
           const size = Number(savedPageSize)
-          if (!isNaN(size) && [50, 80, 100, 200].includes(size)) setPageSize(size)
+          if (!isNaN(size) && [20, 30, 50, 80, 100].includes(size)) setPageSize(size)
         }
       } catch (e) {
         logger.error('恢复日记筛选状态失败', e instanceof Error ? e : String(e))
@@ -292,6 +295,43 @@ export const DiaryScreen: React.FC = () => {
     }
   }
 
+  const handleIncrementalSync = useCallback(async () => {
+    if (!services?.incrementalSyncService || !dbReady) {
+      toast.showError(t('workspace.service_unavailable'))
+      return
+    }
+
+    if (isSyncing) return
+
+    const configured = await services.incrementalSyncService.isConfigured()
+    if (!configured) {
+      const goConfigure = await dialog.confirm(t('data_sync.error_not_configured'), {
+        title: t('data_sync.incremental_sync'),
+        confirmText: t('settings.go_to_settings')
+      })
+      if (goConfigure) router.push('/incremental-sync')
+      return
+    }
+
+    setIsSyncing(true)
+    try {
+      const result = await services.incrementalSyncService.sync()
+      toast.showSuccess(t('data_sync.sync_completed'))
+      if (result.conflicts > 0) {
+        toast.showWarning(
+          t('data_sync.sync_result_conflicts').replace('$count', String(result.conflicts))
+        )
+      }
+    } catch (e) {
+      logger.error('增量同步失败', e instanceof Error ? e : String(e))
+      toast.showError(
+        e instanceof Error ? e.message : t('data_sync.sync_failed_generic')
+      )
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [dbReady, dialog, isSyncing, router, services, t, toast])
+
   return (
     <>
       <StatusBar
@@ -309,6 +349,8 @@ export const DiaryScreen: React.FC = () => {
             onFilterWeathersChange={setFilterWeathers}
             filterFavorite={filterFavorite}
             onFilterFavoriteChange={setFilterFavorite}
+            onSyncPress={() => void handleIncrementalSync()}
+            isSyncing={isSyncing}
           />
 
           <DiaryList
@@ -317,11 +359,8 @@ export const DiaryScreen: React.FC = () => {
             currentPage={currentPage}
             pageSize={pageSize}
             selectedMonth={selectedMonth}
-            loading={
-              needsFullFileAccess
-                ? false
-                : !permissionChecked || isStoragePending || vaultSwitching || loading
-            }
+            loading={needsFullFileAccess ? false : vaultSwitching || loading}
+            storagePending={isStoragePending}
             onGoToEditor={(id) => router.push({ pathname: '/diary-editor', params: { id } })}
             onDeleteEntry={setDeletingId}
             onPageChange={setCurrentPage}
