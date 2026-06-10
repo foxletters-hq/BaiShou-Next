@@ -94,10 +94,7 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
   } = deps
 
   const persistCurrentConfig = useCallback(
-    async (
-      state: ProviderLocalState,
-      options?: { silent?: boolean; successMessage?: string }
-    ) => {
+    async (state: ProviderLocalState, options?: { silent?: boolean; successMessage?: string }) => {
       if (!onSaveConfig) return false
       if (!state.baseUrl.trim() && requiresBaseUrl(providerType)) {
         if (!options?.silent) {

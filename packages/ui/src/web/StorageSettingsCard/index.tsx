@@ -48,7 +48,9 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
             <span className="settings-list-tile-title">
               {t('settings.storage_root', '数据根目录')}
             </span>
-            <span className="settings-list-tile-subtitle settings-monospace">{storageRootPath}</span>
+            <span className="settings-list-tile-subtitle settings-monospace">
+              {storageRootPath}
+            </span>
           </div>
         </div>
 

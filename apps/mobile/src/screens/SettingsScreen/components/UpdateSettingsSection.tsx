@@ -11,7 +11,9 @@ export interface UpdateSettingsSectionProps {
   embedded?: boolean
 }
 
-export const UpdateSettingsSection: React.FC<UpdateSettingsSectionProps> = ({ embedded = false }) => {
+export const UpdateSettingsSection: React.FC<UpdateSettingsSectionProps> = ({
+  embedded = false
+}) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const toast = useNativeToast()

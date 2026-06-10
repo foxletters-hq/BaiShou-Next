@@ -13,8 +13,14 @@ export class SystemPromptBuilder {
    * 构建带有当前环境、所在时间、生效工具以及自定义教条的最终提示词
    */
   public static build(options: SystemPromptBuilderOptions): string {
-    const { vaultName, tools, customPersona, customGuidelines, userProfileBlock, diaryAiWritingPrompt } =
-      options
+    const {
+      vaultName,
+      tools,
+      customPersona,
+      customGuidelines,
+      userProfileBlock,
+      diaryAiWritingPrompt
+    } = options
 
     const buffer: string[] = []
 

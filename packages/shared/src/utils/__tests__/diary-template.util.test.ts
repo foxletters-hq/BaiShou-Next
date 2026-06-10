@@ -11,9 +11,9 @@ describe('diary-template.util', () => {
   const fixedDate = new Date('2026-06-11T15:30:45')
 
   it('replaces template variables', () => {
-    expect(
-      applyDiaryTemplateVars('##### {time} on {date} ({datetime})', fixedDate)
-    ).toBe('##### 15:30:45 on 2026-06-11 (2026-06-11 15:30:45)')
+    expect(applyDiaryTemplateVars('##### {time} on {date} ({datetime})', fixedDate)).toBe(
+      '##### 15:30:45 on 2026-06-11 (2026-06-11 15:30:45)'
+    )
   })
 
   it('uses defaults when config is empty', () => {

@@ -4,11 +4,7 @@ import {
   targetDirectoryHasData as targetDirectoryHasDataCore,
   validateStorageDirectoryWritable as validateStorageDirectoryWritableCore
 } from '@baishou/core'
-import {
-  isPathInsideStorageRoot,
-  isSameStorageRoot,
-  normalizeStorageRoot
-} from '@baishou/shared'
+import { isPathInsideStorageRoot, isSameStorageRoot, normalizeStorageRoot } from '@baishou/shared'
 import { normalizeExternalStoragePath, stripFileScheme } from './android-external-fs'
 
 function normalizeRoot(path: string): string {

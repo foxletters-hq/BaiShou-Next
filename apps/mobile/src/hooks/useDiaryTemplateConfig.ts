@@ -35,7 +35,9 @@ export function useDiaryTemplateConfig(): {
   const reload = useCallback(async (): Promise<DiaryTemplateConfig> => {
     if (!services) return diaryTemplateConfigCache
     try {
-      const saved = await readDiaryTemplateConfig(services.settingsManager.get.bind(services.settingsManager))
+      const saved = await readDiaryTemplateConfig(
+        services.settingsManager.get.bind(services.settingsManager)
+      )
       const epoch = ++fetchEpochRef.current
       applyConfig(saved, epoch)
       setHydrated(true)

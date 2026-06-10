@@ -5,8 +5,7 @@ import { DEFAULT_WEB_SEARCH_LIMITS } from './web-search-config.util'
 
 const TRUNCATION_SUFFIX = '\n\n[Content truncated due to length limits...]'
 
-export const SEARCH_SNIPPET_TRUNCATION_SUFFIX =
-  '... (truncated, use url_read for full text)'
+export const SEARCH_SNIPPET_TRUNCATION_SUFFIX = '... (truncated, use url_read for full text)'
 
 /** Truncate a search result snippet before sending to the model or embedding APIs. */
 export function truncateSearchSnippet(text: string, maxLength: number): string {

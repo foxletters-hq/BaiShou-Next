@@ -324,9 +324,7 @@ export const DiaryScreen: React.FC = () => {
       }
     } catch (e) {
       logger.error('增量同步失败', e instanceof Error ? e : String(e))
-      toast.showError(
-        e instanceof Error ? e.message : t('data_sync.sync_failed_generic')
-      )
+      toast.showError(e instanceof Error ? e.message : t('data_sync.sync_failed_generic'))
     } finally {
       setIsSyncing(false)
     }

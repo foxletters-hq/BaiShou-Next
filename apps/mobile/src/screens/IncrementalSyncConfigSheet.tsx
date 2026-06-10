@@ -112,19 +112,17 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
                 {t('data_sync.incremental_sync_desc')}
               </Text>
             </View>
-            <Switch value={config.enabled} onValueChange={(enabled) => onChange({ ...config, enabled })} />
+            <Switch
+              value={config.enabled}
+              onValueChange={(enabled) => onChange({ ...config, enabled })}
+            />
           </View>
 
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
             {t('data_sync.select_target_title')}
           </Text>
 
-          {renderTargetCard(
-            's3',
-            'cloud',
-            t('data_sync.target_s3'),
-            t('data_sync.target_s3_desc')
-          )}
+          {renderTargetCard('s3', 'cloud', t('data_sync.target_s3'), t('data_sync.target_s3_desc'))}
           {renderTargetCard(
             'webdav',
             'language',

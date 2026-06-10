@@ -174,11 +174,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
           style={navBtnStyle(disabled || current <= 1)}
           accessibilityLabel={t('common.pagination_first_page', 'First page')}
         >
-          <MaterialIcons
-            name="keyboard-double-arrow-left"
-            size={16}
-            color={colors.textPrimary}
-          />
+          <MaterialIcons name="keyboard-double-arrow-left" size={16} color={colors.textPrimary} />
         </Pressable>
       )}
 
@@ -209,11 +205,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
           style={navBtnStyle(disabled || current >= total)}
           accessibilityLabel={t('common.pagination_last_page', 'Last page')}
         >
-          <MaterialIcons
-            name="keyboard-double-arrow-right"
-            size={16}
-            color={colors.textPrimary}
-          />
+          <MaterialIcons name="keyboard-double-arrow-right" size={16} color={colors.textPrimary} />
         </Pressable>
       )}
 
@@ -240,9 +232,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
               }
             ]}
           />
-          <Text style={[styles.jumperSuffix, { color: colors.textTertiary }]}>
-            {pageUnitLabel}
-          </Text>
+          <Text style={[styles.jumperSuffix, { color: colors.textTertiary }]}>{pageUnitLabel}</Text>
         </View>
       )}
     </View>

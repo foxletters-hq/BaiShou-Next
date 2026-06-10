@@ -95,9 +95,8 @@ export async function initVaultSystem() {
 
 export function registerVaultIPC() {
   ipcMain.handle('vault:pickCustomRootPath', async (event) => {
-    const { pickStorageDirectory, changeStorageRootDirectory } = await import(
-      '../services/desktop-storage-directory.service'
-    )
+    const { pickStorageDirectory, changeStorageRootDirectory } =
+      await import('../services/desktop-storage-directory.service')
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return null
 

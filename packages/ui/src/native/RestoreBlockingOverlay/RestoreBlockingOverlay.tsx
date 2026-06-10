@@ -17,8 +17,7 @@ export const RestoreBlockingOverlay: React.FC<RestoreBlockingOverlayProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const resolvedMessage = message ?? t('settings.restoring_data', '正在恢复数据...')
-  const resolvedHint =
-    hint ?? t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作')
+  const resolvedHint = hint ?? t('settings.restoring_data_hint', '请勿关闭应用或进行其他操作')
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>

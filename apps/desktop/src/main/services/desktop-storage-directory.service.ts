@@ -4,11 +4,7 @@ import {
   targetDirectoryHasData,
   validateStorageDirectoryWritable
 } from '@baishou/core'
-import {
-  isPathInsideStorageRoot,
-  isSameStorageRoot,
-  logger
-} from '@baishou/shared'
+import { isPathInsideStorageRoot, isSameStorageRoot, logger } from '@baishou/shared'
 import { shadowConnectionManager } from '@baishou/database-desktop'
 import { pathService, vaultService, connectShadowForActiveVault } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
@@ -164,11 +160,6 @@ export async function migrateStorageRootDirectory(
   }
 
   await runWithStorageQuiesced(async () => {
-    await copyStorageRootContents(
-      fileSystem,
-      validation.sourceRoot,
-      targetPath,
-      onProgress
-    )
+    await copyStorageRootContents(fileSystem, validation.sourceRoot, targetPath, onProgress)
   })
 }

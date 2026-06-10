@@ -167,8 +167,7 @@ export function createDiarySearcher() {
 
           let finalContent = content
           if (mode === 'append') {
-            const templateConfig =
-              (await settingsManager.get<any>('diary_template_config')) || {}
+            const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
             const block = resolveDiaryAppendBlock(templateConfig, new Date()).replace(/\u200B$/, '')
             finalContent = existing.content.trimEnd() + block + content
           }

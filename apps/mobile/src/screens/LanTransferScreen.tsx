@@ -1,6 +1,11 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { StyleSheet } from 'react-native'
-import { useNativeTheme, useNativeToast, useDialog, RestoreBlockingOverlay } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  RestoreBlockingOverlay
+} from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
@@ -135,25 +140,25 @@ export const LanTransferScreen: React.FC = () => {
 
   return (
     <>
-    <RestoreBlockingOverlay visible={isRestoring} />
-    <StackScreenLayout
-      title={t('lan_transfer.title')}
-      {...getStackScreenChrome(colors)}
-      headerRight={{
-        icon: 'refresh',
-        onPress: () => void restartDualMode(),
-        accessibilityLabel: t('common.refresh')
-      }}
-      contentStyle={styles.content}
-    >
-      <LanTransferRadarView
-        devices={devices}
-        isDiscovering={isDiscovering}
-        sendingTo={sendingTo}
-        sendProgress={sendProgress}
-        onDevicePress={handleDevicePress}
-      />
-    </StackScreenLayout>
+      <RestoreBlockingOverlay visible={isRestoring} />
+      <StackScreenLayout
+        title={t('lan_transfer.title')}
+        {...getStackScreenChrome(colors)}
+        headerRight={{
+          icon: 'refresh',
+          onPress: () => void restartDualMode(),
+          accessibilityLabel: t('common.refresh')
+        }}
+        contentStyle={styles.content}
+      >
+        <LanTransferRadarView
+          devices={devices}
+          isDiscovering={isDiscovering}
+          sendingTo={sendingTo}
+          sendProgress={sendProgress}
+          onDevicePress={handleDevicePress}
+        />
+      </StackScreenLayout>
     </>
   )
 }

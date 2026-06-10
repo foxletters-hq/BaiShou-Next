@@ -21,8 +21,7 @@ export const AgentToolsScreen: React.FC = () => {
     if (!dbReady || !services) return
     void (async () => {
       let saved =
-        (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
-        null
+        (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ?? null
       if (!saved) {
         const legacy =
           (await services.settingsManager.get<ToolManagementConfig>('tool_config')) ?? null

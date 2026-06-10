@@ -10,7 +10,12 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { SnapshotMeta } from '@baishou/core-mobile'
-import { useNativeTheme, useNativeToast, useDialog, RestoreBlockingOverlay } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  useNativeToast,
+  useDialog,
+  RestoreBlockingOverlay
+} from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 
 const formatSize = (bytes: number): string => {
@@ -92,56 +97,56 @@ export const DataSyncSnapshotPanel: React.FC = () => {
 
   return (
     <>
-    <RestoreBlockingOverlay visible={isRestoring} />
-    <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {t('data_sync.local_snapshots')}
-          </Text>
-          <Text style={[styles.hint, { color: colors.textTertiary }]}>
-            {t('data_sync.snapshots_scope_hint')}
-          </Text>
+      <RestoreBlockingOverlay visible={isRestoring} />
+      <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+              {t('data_sync.local_snapshots')}
+            </Text>
+            <Text style={[styles.hint, { color: colors.textTertiary }]}>
+              {t('data_sync.snapshots_scope_hint')}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        nestedScrollEnabled
-      >
-        {loading && snapshots.length === 0 ? (
-          <Text style={[styles.empty, { color: colors.textSecondary }]}>
-            {t('data_sync.loading_snapshots')}
-          </Text>
-        ) : snapshots.length === 0 ? (
-          <Text style={[styles.empty, { color: colors.textSecondary }]}>
-            {t('data_sync.no_snapshots_hint')}
-          </Text>
-        ) : (
-          snapshots.map((item) => (
-            <View
-              key={item.filename}
-              style={[styles.row, { borderBottomColor: colors.borderSubtle }]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
-                  {item.filename}
-                </Text>
-                <Text style={[styles.meta, { color: colors.textSecondary }]}>
-                  {new Date(item.createdAt).toLocaleString()} · {formatSize(item.size)}
-                </Text>
+        <ScrollView
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          nestedScrollEnabled
+        >
+          {loading && snapshots.length === 0 ? (
+            <Text style={[styles.empty, { color: colors.textSecondary }]}>
+              {t('data_sync.loading_snapshots')}
+            </Text>
+          ) : snapshots.length === 0 ? (
+            <Text style={[styles.empty, { color: colors.textSecondary }]}>
+              {t('data_sync.no_snapshots_hint')}
+            </Text>
+          ) : (
+            snapshots.map((item) => (
+              <View
+                key={item.filename}
+                style={[styles.row, { borderBottomColor: colors.borderSubtle }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {item.filename}
+                  </Text>
+                  <Text style={[styles.meta, { color: colors.textSecondary }]}>
+                    {new Date(item.createdAt).toLocaleString()} · {formatSize(item.size)}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => handleRestore(item)} style={styles.actionBtn}>
+                  <Text style={{ color: colors.primary }}>{t('data_sync.restore')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDelete(item)} style={styles.actionBtn}>
+                  <Text style={{ color: colors.error }}>{t('common.delete')}</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => handleRestore(item)} style={styles.actionBtn}>
-                <Text style={{ color: colors.primary }}>{t('data_sync.restore')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDelete(item)} style={styles.actionBtn}>
-                <Text style={{ color: colors.error }}>{t('common.delete')}</Text>
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-      </ScrollView>
-    </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
     </>
   )
 }

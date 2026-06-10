@@ -145,7 +145,9 @@ export function useStorageSettings() {
 
       const writable = await validateStorageDirectoryWritable(services.fileSystem, targetPath)
       if (!writable) {
-        toast.showError(t('storage.directory_not_writable', '无法写入所选目录，请检查权限或更换路径'))
+        toast.showError(
+          t('storage.directory_not_writable', '无法写入所选目录，请检查权限或更换路径')
+        )
         return null
       }
 

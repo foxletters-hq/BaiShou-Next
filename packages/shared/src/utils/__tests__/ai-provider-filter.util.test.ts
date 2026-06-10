@@ -3,7 +3,9 @@ import type { AIProviderConfig } from '../../types/settings.types'
 import { ProviderType } from '../../types/ai-provider.types'
 import { filterProvidersForModelSwitcher } from '../ai-provider-filter.util'
 
-function provider(partial: Partial<AIProviderConfig> & Pick<AIProviderConfig, 'id'>): AIProviderConfig {
+function provider(
+  partial: Partial<AIProviderConfig> & Pick<AIProviderConfig, 'id'>
+): AIProviderConfig {
   return {
     name: partial.id,
     type: ProviderType.OpenAI,

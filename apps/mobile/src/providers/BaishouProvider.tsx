@@ -230,8 +230,8 @@ async function webFetchContent(url: string): Promise<string> {
 
 export function BaishouProvider({ children }: { children: ReactNode }) {
   const retryStorageSetupRef = useRef<() => Promise<boolean>>(async () => false)
-  const runWithStorageQuiescedRef = useRef<<T>(fn: () => Promise<T>) => Promise<T>>(
-    async (fn) => fn()
+  const runWithStorageQuiescedRef = useRef<<T>(fn: () => Promise<T>) => Promise<T>>(async (fn) =>
+    fn()
   )
   const diaryStackRef = useRef<VaultBoundDiaryStack | null>(null)
   const [value, setValue] = useState<BaishouContextValue>({
@@ -759,6 +759,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         runWithStorageQuiescedRef.current = async <T,>(fn: () => Promise<T>): Promise<T> => {
           let mcpWasRunning = false
           const stack = diaryStackRef.current
+          let result: T | undefined
+          let fnError: unknown
+          let resumeError: unknown
           if (isMounted) {
             setValue((prev) => ({ ...prev, vaultSwitching: true }))
           }
@@ -771,7 +774,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               mcpWasRunning = true
               await mobileMcpService.stop()
             }
-            return await fn()
+            result = await fn()
+          } catch (e) {
+            fnError = e
           } finally {
             try {
               const priorStack = diaryStackRef.current
@@ -794,15 +799,15 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                     registry,
                     rawSqlClient: rawClient
                   })
-                } catch (resumeError) {
+                } catch (caughtResumeError) {
                   logger.error(
                     '[BaishouProvider] resumeStorageAfterFileCopy failed, retrying setup:',
-                    resumeError as Error
+                    caughtResumeError as Error
                   )
                   const recovered = await retryStorageSetupRef.current()
                   if (!recovered) {
                     diaryStackRef.current = priorStack
-                    throw resumeError
+                    resumeError = caughtResumeError
                   }
                 }
               } else {
@@ -831,6 +836,9 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               }
             }
           }
+          if (resumeError) throw resumeError
+          if (fnError) throw fnError
+          return result as T
         }
 
         const getContextAtMessage = (sessionId: string, messageId: string, searchMode = false) =>

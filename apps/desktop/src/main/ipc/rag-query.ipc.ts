@@ -77,9 +77,8 @@ export function registerRagQueryIPC() {
                   text: r.chunkText,
                   modelId: config.getGlobalEmbeddingModelId() || 'unknown',
                   createdAt:
-                    timestampToMillis(
-                      typeof r.createdAt === 'number' ? r.createdAt : undefined
-                    ) ?? Date.now(),
+                    timestampToMillis(typeof r.createdAt === 'number' ? r.createdAt : undefined) ??
+                    Date.now(),
                   similarity: r.score // コサイン类似度が score に入っている
                 }))
 
@@ -109,7 +108,9 @@ export function registerRagQueryIPC() {
         .from(memoryEmbeddingsTable)
 
       if (params.keyword && params.keyword.trim() !== '') {
-        query = query.where(like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`)) as typeof query
+        query = query.where(
+          like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`)
+        ) as typeof query
       }
 
       const results = await query

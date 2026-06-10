@@ -56,7 +56,12 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
       >
         <Text style={[styles.pageSizeValue, { color: colors.primary }]}>{value}</Text>
         <Text style={[styles.pageSizeUnit, { color: colors.textTertiary }]}>{resolvedLabel}</Text>
-        <MaterialIcons name="view-list" size={14} color={colors.textTertiary} style={{ opacity: 0.7 }} />
+        <MaterialIcons
+          name="view-list"
+          size={14}
+          color={colors.textTertiary}
+          style={{ opacity: 0.7 }}
+        />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -112,7 +117,9 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
             </View>
             <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: colors.textTertiary }]}>{resolvedLabel}</Text>
+              <Text style={[styles.footerText, { color: colors.textTertiary }]}>
+                {resolvedLabel}
+              </Text>
             </View>
           </View>
         </View>

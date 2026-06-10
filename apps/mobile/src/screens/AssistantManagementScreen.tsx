@@ -62,9 +62,8 @@ export const AssistantManagementScreen: React.FC = () => {
       const assistantList = (await services.settingsManager.get<Assistant[]>('assistants')) || []
       const withAvatars = await Promise.all(
         assistantList.map(async (a) => {
-          const displayAvatarUri = await resolveAssistantAvatarDisplayUri(
-            a.avatarPath,
-            (path) => services.attachmentManager.resolveAvatarPath(path)
+          const displayAvatarUri = await resolveAssistantAvatarDisplayUri(a.avatarPath, (path) =>
+            services.attachmentManager.resolveAvatarPath(path)
           )
           return { ...a, displayAvatarUri }
         })

@@ -29,9 +29,10 @@ export const DiaryAiWritingSettingsSection: React.FC = () => {
       const trimmed = localPrompt.trim()
       const saved = config.aiWritingPrompt?.trim()
       const isDefault = trimmed === DEFAULT_DIARY_AI_WRITING_PROMPT.trim()
-      const next = isDefault && !saved
-        ? await persistMerge({ aiWritingPrompt: undefined })
-        : await persistMerge({ aiWritingPrompt: trimmed })
+      const next =
+        isDefault && !saved
+          ? await persistMerge({ aiWritingPrompt: undefined })
+          : await persistMerge({ aiWritingPrompt: trimmed })
       setLocalPrompt(resolvePromptForEdit(next.aiWritingPrompt))
       setDirty(false)
       toast.showSuccess(t('settings.saved'))

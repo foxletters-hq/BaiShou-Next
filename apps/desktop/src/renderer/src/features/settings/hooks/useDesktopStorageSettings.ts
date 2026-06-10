@@ -95,9 +95,12 @@ export function useDesktopStorageSettings(onStatsRefresh?: () => Promise<void>) 
     return path ?? null
   }, [])
 
-  const validateTarget = useCallback(async (targetPath: string): Promise<StorageTargetValidation | null> => {
-    return (await getStorageApi()?.validateTargetDirectory?.(targetPath)) ?? null
-  }, [])
+  const validateTarget = useCallback(
+    async (targetPath: string): Promise<StorageTargetValidation | null> => {
+      return (await getStorageApi()?.validateTargetDirectory?.(targetPath)) ?? null
+    },
+    []
+  )
 
   const switchToDirectory = useCallback(
     async (targetPath: string): Promise<boolean> => {

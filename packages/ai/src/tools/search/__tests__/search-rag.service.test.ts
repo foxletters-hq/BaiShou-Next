@@ -2,9 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { SearchRagService } from '../search-rag.service'
 import type { ToolEmbeddingService } from '../../agent.tool'
 
-function mockEmbeddingService(
-  impl: (text: string) => number[] | null
-): ToolEmbeddingService {
+function mockEmbeddingService(impl: (text: string) => number[] | null): ToolEmbeddingService {
   return {
     isConfigured: true,
     embedQuery: vi.fn(async (text: string) => impl(text)),
@@ -59,7 +57,9 @@ describe('SearchRagService.compress', () => {
 
     const output = await SearchRagService.compress({
       query: 'news today',
-      results: [{ title: 'A', url: 'https://a.com', content: 'Some page content without matches.' }],
+      results: [
+        { title: 'A', url: 'https://a.com', content: 'Some page content without matches.' }
+      ],
       embeddingService
     })
 

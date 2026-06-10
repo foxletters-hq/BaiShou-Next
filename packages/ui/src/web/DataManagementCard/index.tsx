@@ -66,50 +66,54 @@ export const DataManagementCard: React.FC<DataManagementCardProps> = ({
 
   return (
     <>
-    <RestoreBlockingOverlay visible={isImporting} />
-    <SettingsExpansionTile
-      icon={<MdOutlineStorage size={24} />}
-      title={t('settings.data_management', '数据管理')}
-      subtitle={t('settings.data_management_desc', '导出、导入和恢复数据')}
-    >
-      {/* 导出数据 */}
-      <button
-        className="settings-list-tile"
-        onClick={handleExport}
-        disabled={isExporting || isImporting}
+      <RestoreBlockingOverlay visible={isImporting} />
+      <SettingsExpansionTile
+        icon={<MdOutlineStorage size={24} />}
+        title={t('settings.data_management', '数据管理')}
+        subtitle={t('settings.data_management_desc', '导出、导入和恢复数据')}
       >
-        <div className="settings-list-tile-leading">
-          <MdOutlineDownload size={22} />
-        </div>
-        <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">{t('settings.export_data', '导出数据')}</span>
-          <span className="settings-list-tile-subtitle">
-            {t('settings.export_desc', '将所有数据导出为 ZIP 压缩包')}
-          </span>
-        </div>
-        <MdChevronRight size={22} className="settings-list-tile-trailing" />
-      </button>
+        {/* 导出数据 */}
+        <button
+          className="settings-list-tile"
+          onClick={handleExport}
+          disabled={isExporting || isImporting}
+        >
+          <div className="settings-list-tile-leading">
+            <MdOutlineDownload size={22} />
+          </div>
+          <div className="settings-list-tile-content">
+            <span className="settings-list-tile-title">
+              {t('settings.export_data', '导出数据')}
+            </span>
+            <span className="settings-list-tile-subtitle">
+              {t('settings.export_desc', '将所有数据导出为 ZIP 压缩包')}
+            </span>
+          </div>
+          <MdChevronRight size={22} className="settings-list-tile-trailing" />
+        </button>
 
-      <div className="settings-list-divider indent" />
+        <div className="settings-list-divider indent" />
 
-      {/* 导入数据 */}
-      <button
-        className="settings-list-tile"
-        onClick={handleImport}
-        disabled={isExporting || isImporting || !onPickFile}
-      >
-        <div className="settings-list-tile-leading">
-          <MdOutlineUploadFile size={22} />
-        </div>
-        <div className="settings-list-tile-content">
-          <span className="settings-list-tile-title">{t('settings.import_data', '导入数据')}</span>
-          <span className="settings-list-tile-subtitle">
-            {t('settings.import_desc', '从 ZIP 备份文件恢复数据（将覆盖当前数据）')}
-          </span>
-        </div>
-        <MdChevronRight size={22} className="settings-list-tile-trailing" />
-      </button>
-    </SettingsExpansionTile>
+        {/* 导入数据 */}
+        <button
+          className="settings-list-tile"
+          onClick={handleImport}
+          disabled={isExporting || isImporting || !onPickFile}
+        >
+          <div className="settings-list-tile-leading">
+            <MdOutlineUploadFile size={22} />
+          </div>
+          <div className="settings-list-tile-content">
+            <span className="settings-list-tile-title">
+              {t('settings.import_data', '导入数据')}
+            </span>
+            <span className="settings-list-tile-subtitle">
+              {t('settings.import_desc', '从 ZIP 备份文件恢复数据（将覆盖当前数据）')}
+            </span>
+          </div>
+          <MdChevronRight size={22} className="settings-list-tile-trailing" />
+        </button>
+      </SettingsExpansionTile>
     </>
   )
 }

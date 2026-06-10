@@ -99,7 +99,7 @@ export const AIServicesSection: React.FC = () => {
       enabledModels: [],
       isEnabled: true,
       isSystem: false,
-      sortOrder: savedProviders.length + 1,
+      sortOrder: (savedProviders ?? []).length + 1,
       defaultDialogueModel: '',
       defaultNamingModel: ''
     }

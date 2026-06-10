@@ -241,9 +241,8 @@ export const AgentScreen = () => {
       const list = (await services.settingsManager.get<any[]>('assistants')) || []
       const mapped = await Promise.all(
         list.map(async (a) => {
-          const displayAvatarUri = await resolveAssistantAvatarDisplayUri(
-            a.avatarPath,
-            (path) => services.attachmentManager.resolveAvatarPath(path)
+          const displayAvatarUri = await resolveAssistantAvatarDisplayUri(a.avatarPath, (path) =>
+            services.attachmentManager.resolveAvatarPath(path)
           )
           return {
             id: a.id,

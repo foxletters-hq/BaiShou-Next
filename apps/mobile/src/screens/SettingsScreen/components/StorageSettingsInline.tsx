@@ -47,7 +47,11 @@ export const StorageSettingsInline: React.FC<StorageSettingsInlineProps> = ({
 
   return (
     <>
-      <RestoreBlockingOverlay visible={overlayVisible} message={overlayMessage} hint={overlayHint} />
+      <RestoreBlockingOverlay
+        visible={overlayVisible}
+        message={overlayMessage}
+        hint={overlayHint}
+      />
       <StorageSettingsCard
         embedded={embedded}
         isLast={isLast}

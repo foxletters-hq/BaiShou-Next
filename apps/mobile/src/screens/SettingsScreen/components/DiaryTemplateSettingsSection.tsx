@@ -93,10 +93,7 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
           {t('settings.diary_template_append', '追加记录模板')}
         </Text>
         <Text style={[styles.desc, { color: colors.textSecondary }]}>
-          {t(
-            'settings.diary_template_append_desc',
-            '在已有日记末尾追加新记录时插入的时间块。'
-          )}
+          {t('settings.diary_template_append_desc', '在已有日记末尾追加新记录时插入的时间块。')}
         </Text>
         {!hydrated ? (
           <View style={styles.loadingRow}>

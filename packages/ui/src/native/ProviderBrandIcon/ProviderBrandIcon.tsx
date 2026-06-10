@@ -39,7 +39,7 @@ const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
     [iconProviderId, isDark]
   )
   const [xml, setXml] = useState<string | null>(() =>
-    iconModule != null ? getCachedProviderIconXml(iconModule) ?? null : null
+    iconModule != null ? (getCachedProviderIconXml(iconModule) ?? null) : null
   )
 
   useEffect(() => {

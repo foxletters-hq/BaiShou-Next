@@ -206,124 +206,126 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
 
   return (
     <>
-    <RestoreBlockingOverlay visible={isRestoring} />
-    <div className={styles.container}>
-      <div className={styles.appBar}>
-        <div style={{ flex: 1 }} />
-        <HelpTooltip
-          content={t(
-            'lan_transfer.usage_tooltip',
-            '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。'
+      <RestoreBlockingOverlay visible={isRestoring} />
+      <div className={styles.container}>
+        <div className={styles.appBar}>
+          <div style={{ flex: 1 }} />
+          <HelpTooltip
+            content={t(
+              'lan_transfer.usage_tooltip',
+              '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。'
+            )}
+            size={20}
+            className={styles.helpBtn}
+          />
+          {localConnection && (
+            <button
+              className={styles.qrFixedBtn}
+              onClick={() => setShowQrCode(!showQrCode)}
+              title={t('lan_transfer.show_qr', '扫码连接')}
+            >
+              <MdQrCode size={20} />
+            </button>
           )}
-          size={20}
-          className={styles.helpBtn}
-        />
-        {localConnection && (
           <button
-            className={styles.qrFixedBtn}
-            onClick={() => setShowQrCode(!showQrCode)}
-            title={t('lan_transfer.show_qr', '扫码连接')}
+            className={styles.refreshBtn}
+            onClick={restartDualMode}
+            title={t('common.refresh', '刷新')}
           >
-            <MdQrCode size={20} />
+            <MdRefresh size={20} />
           </button>
-        )}
-        <button
-          className={styles.refreshBtn}
-          onClick={restartDualMode}
-          title={t('common.refresh', '刷新')}
-        >
-          <MdRefresh size={20} />
-        </button>
-      </div>
-
-      <div className={styles.radarZone}>
-        {isActive && (
-          <div className={styles.radarRings}>
-            <div className={`${styles.ring} ${styles.ring1}`}></div>
-            <div className={`${styles.ring} ${styles.ring2}`}></div>
-            <div className={`${styles.ring} ${styles.ring3}`}></div>
-          </div>
-        )}
-
-        <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
-          <span className={styles.coreIcon}>
-            <MdRadar size={32} />
-          </span>
         </div>
 
-        {isActive && devices.length === 0 && (
-          <div className={styles.scanHintWrapper}>
-            <div className={styles.scanTitle}>
-              {t('lan_transfer.scanning_nearby', '正在扫描附近设备...')}
+        <div className={styles.radarZone}>
+          {isActive && (
+            <div className={styles.radarRings}>
+              <div className={`${styles.ring} ${styles.ring1}`}></div>
+              <div className={`${styles.ring} ${styles.ring2}`}></div>
+              <div className={`${styles.ring} ${styles.ring3}`}></div>
             </div>
-            <div className={styles.scanSubtitle}>
-              {t('lan_transfer.scan_hint', '请确保两台设备处于相同的 Wi-Fi 网络下')}
-            </div>
+          )}
+
+          <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
+            <span className={styles.coreIcon}>
+              <MdRadar size={32} />
+            </span>
           </div>
-        )}
 
-        {showQrCode && localConnection && (
-          <div className={styles.qrOverlay} onClick={() => setShowQrCode(false)}>
-            <div className={styles.qrCard} onClick={(e) => e.stopPropagation()}>
-              <div className={styles.qrTitle}>{t('lan_transfer.scan_to_connect', '扫码连接')}</div>
-              <div className={styles.qrCodeWrapper}>
-                <QRCodeSVG
-                  value={`baishou://${localConnection.ip}:${localConnection.port}`}
-                  size={200}
-                  level="M"
-                  includeMargin={true}
-                />
+          {isActive && devices.length === 0 && (
+            <div className={styles.scanHintWrapper}>
+              <div className={styles.scanTitle}>
+                {t('lan_transfer.scanning_nearby', '正在扫描附近设备...')}
               </div>
-              <div className={styles.qrInfo}>
-                <span className={styles.qrIp}>
-                  {localConnection.ip}:{localConnection.port}
-                </span>
+              <div className={styles.scanSubtitle}>
+                {t('lan_transfer.scan_hint', '请确保两台设备处于相同的 Wi-Fi 网络下')}
               </div>
-              <div className={styles.qrHint}>
-                {t('lan_transfer.qr_hint', '使用白守移动端扫描此二维码即可连接')}
-              </div>
-              <button className={styles.qrCloseBtn} onClick={() => setShowQrCode(false)}>
-                {t('common.close', '关闭')}
-              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {isActive &&
-          devices.map((d, index) => {
-            const pos = FIXED_POSITIONS[index % FIXED_POSITIONS.length]
-            const isSending = sendingTo === d.rawServiceId
-            const delayStyle = { animationDelay: `${index * 0.5}s` }
-
-            return (
-              <div
-                key={d.rawServiceId}
-                className={`${styles.deviceBubble} ${isSending ? styles.bubbleSending : ''}`}
-                style={{ top: pos.top, left: pos.left, ...delayStyle }}
-              >
-                <div className={styles.bubbleIcon}>{d.deviceType === 'mobile' ? '📱' : '💻'}</div>
-                <div className={styles.bubbleInfo}>
-                  <span className={styles.bubbleName} title={d.nickname}>
-                    {d.nickname}
-                  </span>
-                  <span className={styles.bubbleIp}>{d.ip}</span>
+          {showQrCode && localConnection && (
+            <div className={styles.qrOverlay} onClick={() => setShowQrCode(false)}>
+              <div className={styles.qrCard} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.qrTitle}>
+                  {t('lan_transfer.scan_to_connect', '扫码连接')}
                 </div>
-
-                <button
-                  className={styles.sendOverlayBtn}
-                  disabled={sendingTo !== null}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleSend(d)
-                  }}
-                >
-                  {isSending ? `${progress}%` : t('common.export', '发送')}
+                <div className={styles.qrCodeWrapper}>
+                  <QRCodeSVG
+                    value={`baishou://${localConnection.ip}:${localConnection.port}`}
+                    size={200}
+                    level="M"
+                    includeMargin={true}
+                  />
+                </div>
+                <div className={styles.qrInfo}>
+                  <span className={styles.qrIp}>
+                    {localConnection.ip}:{localConnection.port}
+                  </span>
+                </div>
+                <div className={styles.qrHint}>
+                  {t('lan_transfer.qr_hint', '使用白守移动端扫描此二维码即可连接')}
+                </div>
+                <button className={styles.qrCloseBtn} onClick={() => setShowQrCode(false)}>
+                  {t('common.close', '关闭')}
                 </button>
               </div>
-            )
-          })}
+            </div>
+          )}
+
+          {isActive &&
+            devices.map((d, index) => {
+              const pos = FIXED_POSITIONS[index % FIXED_POSITIONS.length]
+              const isSending = sendingTo === d.rawServiceId
+              const delayStyle = { animationDelay: `${index * 0.5}s` }
+
+              return (
+                <div
+                  key={d.rawServiceId}
+                  className={`${styles.deviceBubble} ${isSending ? styles.bubbleSending : ''}`}
+                  style={{ top: pos.top, left: pos.left, ...delayStyle }}
+                >
+                  <div className={styles.bubbleIcon}>{d.deviceType === 'mobile' ? '📱' : '💻'}</div>
+                  <div className={styles.bubbleInfo}>
+                    <span className={styles.bubbleName} title={d.nickname}>
+                      {d.nickname}
+                    </span>
+                    <span className={styles.bubbleIp}>{d.ip}</span>
+                  </div>
+
+                  <button
+                    className={styles.sendOverlayBtn}
+                    disabled={sendingTo !== null}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSend(d)
+                    }}
+                  >
+                    {isSending ? `${progress}%` : t('common.export', '发送')}
+                  </button>
+                </div>
+              )
+            })}
+        </div>
       </div>
-    </div>
     </>
   )
 }

@@ -15,7 +15,7 @@ import {
   SettingsGroupCard,
   settingsCardStyles,
   ProviderBrandIcon,
-  AssistantAvatar,
+  AssistantAvatar
 } from '@baishou/ui/native'
 import {
   AIProviderConfig,

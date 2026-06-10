@@ -482,346 +482,356 @@ export const DataSyncScreen: React.FC = () => {
 
   return (
     <>
-    <RestoreBlockingOverlay visible={isRestoring || isArchiveImporting} />
-    <StackScreenLayout
-      title={t('data_sync.title')}
-      {...getStackScreenChrome(colors)}
-      contentStyle={styles.container}
-    >
-      <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
-        <ArchiveLocalBackupSection
-          onExport={handleArchiveExport}
-          onImport={handleArchiveImport}
-        />
+      <RestoreBlockingOverlay visible={isRestoring || isArchiveImporting} />
+      <StackScreenLayout
+        title={t('data_sync.title')}
+        {...getStackScreenChrome(colors)}
+        contentStyle={styles.container}
+      >
+        <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
+          <ArchiveLocalBackupSection
+            onExport={handleArchiveExport}
+            onImport={handleArchiveImport}
+          />
 
-        {backupTab === 'cloud' && (
-          <View
-            style={[
-              styles.statCardsRow,
-              { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
-            ]}
-          >
-            <View style={styles.statCard}>
-              <View
-                style={[
-                  styles.statIconWrapper,
-                  { backgroundColor: getTargetColor(syncConfig.target) + '15' }
-                ]}
-              >
-                <MaterialIcons
-                  name={getTargetIconName(syncConfig.target)}
-                  size={20}
-                  color={getTargetColor(syncConfig.target)}
-                />
-              </View>
-              <View style={styles.statInfo}>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  {t('data_sync.sync_target', '备份目标')}
-                </Text>
-                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                  {syncConfig.target.toUpperCase()}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIconWrapper, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
-                <MaterialIcons name="storage" size={20} color="#10b981" />
-              </View>
-              <View style={styles.statInfo}>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  {t('data_sync.total_backup_size', '总备份大小')}
-                </Text>
-                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                  {totalSizeString}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIconWrapper, { backgroundColor: 'rgba(168,85,247,0.1)' }]}>
-                <MaterialIcons name="history" size={20} color="#a855f7" />
-              </View>
-              <View style={styles.statInfo}>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  {t('data_sync.backup_count', '备份数量')}
-                </Text>
-                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                  {cloudRecords.length}{' '}
-                  <Text style={{ fontSize: 13, fontWeight: 'normal' }}>
-                    {t('common.copies_unit', '份')}
+          {backupTab === 'cloud' && (
+            <View
+              style={[
+                styles.statCardsRow,
+                { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+              ]}
+            >
+              <View style={styles.statCard}>
+                <View
+                  style={[
+                    styles.statIconWrapper,
+                    { backgroundColor: getTargetColor(syncConfig.target) + '15' }
+                  ]}
+                >
+                  <MaterialIcons
+                    name={getTargetIconName(syncConfig.target)}
+                    size={20}
+                    color={getTargetColor(syncConfig.target)}
+                  />
+                </View>
+                <View style={styles.statInfo}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    {t('data_sync.sync_target', '备份目标')}
                   </Text>
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        <View style={[styles.section, { backgroundColor: colors.bgSurface, paddingVertical: 12 }]}>
-          <View style={[styles.backupTabBar, { backgroundColor: colors.bgSurfaceHighest }]}>
-            <TouchableOpacity
-              style={[
-                styles.backupTab,
-                backupTab === 'cloud' && { backgroundColor: colors.bgSurface }
-              ]}
-              onPress={() => setBackupTab('cloud')}
-            >
-              <Text
-                style={{
-                  color: backupTab === 'cloud' ? colors.primary : colors.textSecondary,
-                  fontWeight: backupTab === 'cloud' ? '600' : '400'
-                }}
-              >
-                {t('data_sync.cloud_backups_tab')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.backupTab,
-                backupTab === 'snapshot' && { backgroundColor: colors.bgSurface }
-              ]}
-              onPress={() => setBackupTab('snapshot')}
-            >
-              <Text
-                style={{
-                  color: backupTab === 'snapshot' ? colors.primary : colors.textSecondary,
-                  fontWeight: backupTab === 'snapshot' ? '600' : '400'
-                }}
-              >
-                {t('data_sync.local_snapshots_tab')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.headerTitleRow}>
-            <View style={styles.headerTitleBlock}>
-              <Text style={[styles.headerTitleLabel, { color: colors.textPrimary }]}>
-                {backupTab === 'snapshot'
-                  ? t('data_sync.local_snapshots', '本地快照')
-                  : t('data_sync.sync_records', '云端备份')}
-              </Text>
-              <TouchableOpacity onPress={showHelp} hitSlop={8}>
-                <MaterialIcons name="help-outline" size={18} color={colors.textSecondary} />
-              </TouchableOpacity>
-              {backupTab === 'cloud' && (
-                <View style={[styles.targetBadge, { borderColor: colors.primary }]}>
-                  <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                     {syncConfig.target.toUpperCase()}
                   </Text>
                 </View>
-              )}
-              {backupTab === 'cloud' && (
-                <TouchableOpacity
-                  onPress={() => void fetchCloudRecords()}
-                  disabled={recordsLoading}
-                  hitSlop={8}
-                >
-                  <MaterialIcons name="refresh" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {renderHeaderActions()}
-        </View>
-
-        {backupTab === 'snapshot' ? <DataSyncSnapshotPanel /> : null}
-
-        {backupTab === 'cloud' && (
-          <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-            {recordsLoading && cloudRecords.length === 0 ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 12 }]}>
-                  {t('data_sync.loading_records', '正在连线获取云端记录...')}
-                </Text>
               </View>
-            ) : cloudRecords.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <MaterialIcons
-                  name="inventory-2"
-                  size={48}
-                  color={colors.textTertiary}
-                  style={{ opacity: 0.5 }}
-                />
-                {syncConfig.target === 'local' ? (
-                  <>
-                    <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
-                      {t('data_sync.local_target_no_cloud_records')}
-                    </Text>
-                    <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
-                      {t('data_sync.local_target_no_cloud_records_desc')}
-                    </Text>
-                  </>
-                ) : (
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {t('data_sync.no_records_hint', '暂无备份记录')}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrapper, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
+                  <MaterialIcons name="storage" size={20} color="#10b981" />
+                </View>
+                <View style={styles.statInfo}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    {t('data_sync.total_backup_size', '总备份大小')}
                   </Text>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                    {totalSizeString}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrapper, { backgroundColor: 'rgba(168,85,247,0.1)' }]}>
+                  <MaterialIcons name="history" size={20} color="#a855f7" />
+                </View>
+                <View style={styles.statInfo}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                    {t('data_sync.backup_count', '备份数量')}
+                  </Text>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                    {cloudRecords.length}{' '}
+                    <Text style={{ fontSize: 13, fontWeight: 'normal' }}>
+                      {t('common.copies_unit', '份')}
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          <View
+            style={[styles.section, { backgroundColor: colors.bgSurface, paddingVertical: 12 }]}
+          >
+            <View style={[styles.backupTabBar, { backgroundColor: colors.bgSurfaceHighest }]}>
+              <TouchableOpacity
+                style={[
+                  styles.backupTab,
+                  backupTab === 'cloud' && { backgroundColor: colors.bgSurface }
+                ]}
+                onPress={() => setBackupTab('cloud')}
+              >
+                <Text
+                  style={{
+                    color: backupTab === 'cloud' ? colors.primary : colors.textSecondary,
+                    fontWeight: backupTab === 'cloud' ? '600' : '400'
+                  }}
+                >
+                  {t('data_sync.cloud_backups_tab')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.backupTab,
+                  backupTab === 'snapshot' && { backgroundColor: colors.bgSurface }
+                ]}
+                onPress={() => setBackupTab('snapshot')}
+              >
+                <Text
+                  style={{
+                    color: backupTab === 'snapshot' ? colors.primary : colors.textSecondary,
+                    fontWeight: backupTab === 'snapshot' ? '600' : '400'
+                  }}
+                >
+                  {t('data_sync.local_snapshots_tab')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.headerTitleRow}>
+              <View style={styles.headerTitleBlock}>
+                <Text style={[styles.headerTitleLabel, { color: colors.textPrimary }]}>
+                  {backupTab === 'snapshot'
+                    ? t('data_sync.local_snapshots', '本地快照')
+                    : t('data_sync.sync_records', '云端备份')}
+                </Text>
+                <TouchableOpacity onPress={showHelp} hitSlop={8}>
+                  <MaterialIcons name="help-outline" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+                {backupTab === 'cloud' && (
+                  <View style={[styles.targetBadge, { borderColor: colors.primary }]}>
+                    <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
+                      {syncConfig.target.toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                {backupTab === 'cloud' && (
+                  <TouchableOpacity
+                    onPress={() => void fetchCloudRecords()}
+                    disabled={recordsLoading}
+                    hitSlop={8}
+                  >
+                    <MaterialIcons name="refresh" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
                 )}
               </View>
-            ) : (
-              <ScrollView
-                nestedScrollEnabled
-                refreshControl={
-                  <RefreshControl
-                    refreshing={recordsRefreshing}
-                    onRefresh={handleRefreshRecords}
-                    colors={[colors.primary]}
-                    tintColor={colors.primary}
-                  />
-                }
-              >
-                {cloudRecords.map((record) => (
-                  <View
-                    key={record.filename}
-                    style={[
-                      styles.recordItem,
-                      { backgroundColor: colors.bgSurfaceHighest },
-                      selectedRecords.has(record.filename) && {
-                        borderColor: colors.primary,
-                        borderWidth: 2
-                      }
-                    ]}
-                  >
-                    {isMultiSelectMode && (
-                      <TouchableOpacity
-                        style={[
-                          styles.checkbox,
-                          {
-                            borderColor: colors.borderSubtle,
-                            backgroundColor: selectedRecords.has(record.filename)
-                              ? colors.primary
-                              : 'transparent'
-                          }
-                        ]}
-                        onPress={() => toggleRecordSelection(record.filename)}
-                      >
-                        {selectedRecords.has(record.filename) && (
-                          <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
+            </View>
 
-                    {renamingRecord === record.filename ? (
-                      <View style={styles.renameContainer}>
-                        <Input
-                          value={newRecordName}
-                          onChangeText={setNewRecordName}
-                          placeholder={t('data_sync.new_name_placeholder')}
-                          autoFocus
-                        />
-                        <TouchableOpacity
-                          style={[styles.renameConfirm, { backgroundColor: colors.primary }]}
-                          onPress={() => void handleRenameRecord(record.filename)}
-                        >
-                          <Text style={[styles.renameConfirmText, { color: colors.textOnPrimary }]}>
-                            {t('common.confirm')}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.renameCancel}
-                          onPress={() => {
-                            setRenamingRecord(null)
-                            setNewRecordName('')
-                          }}
-                        >
-                          <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>
-                            {t('common.cancel')}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <>
-                        <MaterialIcons
-                          name="description"
-                          size={22}
-                          color={colors.primary}
-                          style={{ marginRight: 10, opacity: 0.85 }}
-                        />
-                        <View style={styles.recordInfo}>
-                          <Text
-                            style={[styles.recordName, { color: colors.textPrimary }]}
-                            numberOfLines={1}
-                          >
-                            {record.filename}
-                            {!record.managed && (
-                              <Text style={{ color: colors.primary, fontSize: 11 }}>
-                                {' '}
-                                {t('cloud.unmanaged_label', '手动')}
-                              </Text>
-                            )}
-                          </Text>
-                          <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
-                            {new Date(record.lastModified).toLocaleString()} ·{' '}
-                            {formatSize(record.sizeInBytes)}
-                          </Text>
-                        </View>
-
-                        {!isMultiSelectMode && (
-                          <View style={styles.recordActions}>
-                            <TouchableOpacity
-                              style={[
-                                styles.recordAction,
-                                { backgroundColor: colors.primaryLight }
-                              ]}
-                              onPress={() => handleRestoreRecord(record.filename)}
-                            >
-                              <Text style={[styles.recordActionText, { color: colors.primary }]}>
-                                {t('data_sync.restore')}
-                              </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[
-                                styles.recordAction,
-                                { backgroundColor: colors.secondaryContainer }
-                              ]}
-                              onPress={() => {
-                                setRenamingRecord(record.filename)
-                                setNewRecordName(record.filename)
-                              }}
-                            >
-                              <Text
-                                style={[
-                                  styles.recordActionText,
-                                  { color: colors.onSecondaryContainer }
-                                ]}
-                              >
-                                {t('data_sync.rename')}
-                              </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[
-                                styles.recordAction,
-                                { backgroundColor: colors.errorContainer }
-                              ]}
-                              onPress={() => handleDeleteCloudRecord(record.filename)}
-                            >
-                              <Text style={[styles.recordActionText, { color: colors.error }]}>
-                                {t('common.delete')}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </>
-                    )}
-                  </View>
-                ))}
-              </ScrollView>
-            )}
+            {renderHeaderActions()}
           </View>
-        )}
-      </ScrollView>
 
-      <DataSyncCountModal
-        visible={showCountModal}
-        activeTab={backupTab}
-        tempCount={tempCount}
-        noLimitLabel={noLimitLabel}
-        colors={colors}
-        maxModalWidth={maxModalWidth}
-        onChangeCount={setTempCount}
-        onConfirm={() => void confirmCountModal()}
-        onClose={() => setShowCountModal(false)}
-      />
-    </StackScreenLayout>
+          {backupTab === 'snapshot' ? <DataSyncSnapshotPanel /> : null}
+
+          {backupTab === 'cloud' && (
+            <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
+              {recordsLoading && cloudRecords.length === 0 ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text
+                    style={[styles.loadingText, { color: colors.textSecondary, marginTop: 12 }]}
+                  >
+                    {t('data_sync.loading_records', '正在连线获取云端记录...')}
+                  </Text>
+                </View>
+              ) : cloudRecords.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <MaterialIcons
+                    name="inventory-2"
+                    size={48}
+                    color={colors.textTertiary}
+                    style={{ opacity: 0.5 }}
+                  />
+                  {syncConfig.target === 'local' ? (
+                    <>
+                      <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
+                        {t('data_sync.local_target_no_cloud_records')}
+                      </Text>
+                      <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
+                        {t('data_sync.local_target_no_cloud_records_desc')}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                      {t('data_sync.no_records_hint', '暂无备份记录')}
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <ScrollView
+                  nestedScrollEnabled
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={recordsRefreshing}
+                      onRefresh={handleRefreshRecords}
+                      colors={[colors.primary]}
+                      tintColor={colors.primary}
+                    />
+                  }
+                >
+                  {cloudRecords.map((record) => (
+                    <View
+                      key={record.filename}
+                      style={[
+                        styles.recordItem,
+                        { backgroundColor: colors.bgSurfaceHighest },
+                        selectedRecords.has(record.filename) && {
+                          borderColor: colors.primary,
+                          borderWidth: 2
+                        }
+                      ]}
+                    >
+                      {isMultiSelectMode && (
+                        <TouchableOpacity
+                          style={[
+                            styles.checkbox,
+                            {
+                              borderColor: colors.borderSubtle,
+                              backgroundColor: selectedRecords.has(record.filename)
+                                ? colors.primary
+                                : 'transparent'
+                            }
+                          ]}
+                          onPress={() => toggleRecordSelection(record.filename)}
+                        >
+                          {selectedRecords.has(record.filename) && (
+                            <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>
+                              ✓
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
+
+                      {renamingRecord === record.filename ? (
+                        <View style={styles.renameContainer}>
+                          <Input
+                            value={newRecordName}
+                            onChangeText={setNewRecordName}
+                            placeholder={t('data_sync.new_name_placeholder')}
+                            autoFocus
+                          />
+                          <TouchableOpacity
+                            style={[styles.renameConfirm, { backgroundColor: colors.primary }]}
+                            onPress={() => void handleRenameRecord(record.filename)}
+                          >
+                            <Text
+                              style={[styles.renameConfirmText, { color: colors.textOnPrimary }]}
+                            >
+                              {t('common.confirm')}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.renameCancel}
+                            onPress={() => {
+                              setRenamingRecord(null)
+                              setNewRecordName('')
+                            }}
+                          >
+                            <Text
+                              style={[styles.renameCancelText, { color: colors.textSecondary }]}
+                            >
+                              {t('common.cancel')}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <>
+                          <MaterialIcons
+                            name="description"
+                            size={22}
+                            color={colors.primary}
+                            style={{ marginRight: 10, opacity: 0.85 }}
+                          />
+                          <View style={styles.recordInfo}>
+                            <Text
+                              style={[styles.recordName, { color: colors.textPrimary }]}
+                              numberOfLines={1}
+                            >
+                              {record.filename}
+                              {!record.managed && (
+                                <Text style={{ color: colors.primary, fontSize: 11 }}>
+                                  {' '}
+                                  {t('cloud.unmanaged_label', '手动')}
+                                </Text>
+                              )}
+                            </Text>
+                            <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
+                              {new Date(record.lastModified).toLocaleString()} ·{' '}
+                              {formatSize(record.sizeInBytes)}
+                            </Text>
+                          </View>
+
+                          {!isMultiSelectMode && (
+                            <View style={styles.recordActions}>
+                              <TouchableOpacity
+                                style={[
+                                  styles.recordAction,
+                                  { backgroundColor: colors.primaryLight }
+                                ]}
+                                onPress={() => handleRestoreRecord(record.filename)}
+                              >
+                                <Text style={[styles.recordActionText, { color: colors.primary }]}>
+                                  {t('data_sync.restore')}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[
+                                  styles.recordAction,
+                                  { backgroundColor: colors.secondaryContainer }
+                                ]}
+                                onPress={() => {
+                                  setRenamingRecord(record.filename)
+                                  setNewRecordName(record.filename)
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.recordActionText,
+                                    { color: colors.onSecondaryContainer }
+                                  ]}
+                                >
+                                  {t('data_sync.rename')}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[
+                                  styles.recordAction,
+                                  { backgroundColor: colors.errorContainer }
+                                ]}
+                                onPress={() => handleDeleteCloudRecord(record.filename)}
+                              >
+                                <Text style={[styles.recordActionText, { color: colors.error }]}>
+                                  {t('common.delete')}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </>
+                      )}
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          )}
+        </ScrollView>
+
+        <DataSyncCountModal
+          visible={showCountModal}
+          activeTab={backupTab}
+          tempCount={tempCount}
+          noLimitLabel={noLimitLabel}
+          colors={colors}
+          maxModalWidth={maxModalWidth}
+          onChangeCount={setTempCount}
+          onConfirm={() => void confirmCountModal()}
+          onClose={() => setShowCountModal(false)}
+        />
+      </StackScreenLayout>
     </>
   )
 }

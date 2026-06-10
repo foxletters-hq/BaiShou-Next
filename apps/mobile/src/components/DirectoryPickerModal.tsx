@@ -102,8 +102,16 @@ export const DirectoryPickerModal: React.FC<DirectoryPickerModalProps> = ({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgApp} />
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.bgApp}
+      />
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.bgApp }]}
         edges={['top', 'left', 'right', 'bottom']}
@@ -118,7 +126,12 @@ export const DirectoryPickerModal: React.FC<DirectoryPickerModalProps> = ({
           <View style={{ width: 48 }} />
         </View>
 
-        <View style={[styles.pathBar, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}>
+        <View
+          style={[
+            styles.pathBar,
+            { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+          ]}
+        >
           <TouchableOpacity
             onPress={handleGoUp}
             disabled={normalizeDir(currentPath) === ANDROID_ROOT}
@@ -126,7 +139,11 @@ export const DirectoryPickerModal: React.FC<DirectoryPickerModalProps> = ({
           >
             <MaterialIcons name="arrow-upward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text style={[styles.pathText, { color: colors.textSecondary }]} numberOfLines={2} selectable>
+          <Text
+            style={[styles.pathText, { color: colors.textSecondary }]}
+            numberOfLines={2}
+            selectable
+          >
             {currentPath}
           </Text>
         </View>
@@ -160,7 +177,12 @@ export const DirectoryPickerModal: React.FC<DirectoryPickerModalProps> = ({
           />
         )}
 
-        <View style={[styles.footer, { borderTopColor: colors.borderSubtle, backgroundColor: colors.bgApp }]}>
+        <View
+          style={[
+            styles.footer,
+            { borderTopColor: colors.borderSubtle, backgroundColor: colors.bgApp }
+          ]}
+        >
           <Button variant="primary" className="w-full" onPress={() => onSelect(currentPath)}>
             {t('storage.select_this_directory', '选择此目录')}
           </Button>
