@@ -111,6 +111,18 @@ export interface SummaryConfig {
 }
 
 /**
+ * 日记正文模板配置（新建 / 追加时的初始 Markdown）
+ */
+export interface DiaryTemplateConfig {
+  /** 新建日记时的初始正文，支持 {time} {date} {datetime} */
+  newEntryTemplate?: string
+  /** 追加记录时插入的时间块，支持 {time} {date} {datetime} */
+  appendBlockTemplate?: string
+  /** 伙伴调用写日记 / 编辑日记工具时的书写提示词 */
+  aiWritingPrompt?: string
+}
+
+/**
  * 工具管理配置
  */
 export interface ToolManagementConfig {

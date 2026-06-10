@@ -5,6 +5,7 @@ import type {
   RagConfig,
   WebSearchConfig,
   SummaryConfig,
+  DiaryTemplateConfig,
   ToolManagementConfig,
   McpServerConfig,
   HotkeyConfig
@@ -245,6 +246,8 @@ export const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
 export const DEFAULT_SUMMARY_CONFIG: SummaryConfig = {
   instructions: {}
 }
+
+export const DEFAULT_DIARY_TEMPLATE_CONFIG: DiaryTemplateConfig = {}
 
 export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
   disabledToolIds: [],
