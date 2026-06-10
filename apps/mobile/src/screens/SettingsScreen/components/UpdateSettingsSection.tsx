@@ -7,7 +7,11 @@ import { useBaishou } from '../../../providers/BaishouProvider'
 import type { MobileUpdateCheckResult } from '../../../services/mobile-updater.service'
 import { SettingsGroupCard } from './SettingsGroupCard'
 
-export const UpdateSettingsSection: React.FC = () => {
+export interface UpdateSettingsSectionProps {
+  embedded?: boolean
+}
+
+export const UpdateSettingsSection: React.FC<UpdateSettingsSectionProps> = ({ embedded = false }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const toast = useNativeToast()
@@ -60,49 +64,57 @@ export const UpdateSettingsSection: React.FC = () => {
 
   const currentVersion = formatAppVersion(services?.updaterService.getCurrentVersion())
 
-  return (
-    <View style={styles.section}>
-      <SettingsGroupCard>
+  const content = (
+    <>
+      <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>
+          {t('updater.current_version')}
+        </Text>
+        <Text style={[styles.value, { color: colors.textSecondary }]}>{currentVersion}</Text>
+      </View>
+
+      {lastResult?.latestVersion && (
         <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {t('updater.current_version')}
+            {t('updater.latest_version')}
           </Text>
-          <Text style={[styles.value, { color: colors.textSecondary }]}>{currentVersion}</Text>
+          <Text style={[styles.value, { color: colors.textSecondary }]}>
+            {formatAppVersion(lastResult.latestVersion)}
+          </Text>
         </View>
+      )}
 
-        {lastResult?.latestVersion && (
-          <View style={[styles.row, { borderColor: colors.borderSubtle }]}>
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t('updater.latest_version')}
-            </Text>
-            <Text style={[styles.value, { color: colors.textSecondary }]}>
-              {formatAppVersion(lastResult.latestVersion)}
-            </Text>
-          </View>
-        )}
-
-        <View style={[styles.switchRow, { borderColor: colors.borderSubtle }]}>
-          <View style={styles.switchText}>
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t('updater.auto_check')}
-            </Text>
-            <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              {t('updater.auto_check_desc')}
-            </Text>
-          </View>
-          <Switch value={autoCheck} onValueChange={handleToggleAutoCheck} disabled={!dbReady} />
+      <View style={[styles.switchRow, { borderColor: colors.borderSubtle }]}>
+        <View style={styles.switchText}>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>
+            {t('updater.auto_check')}
+          </Text>
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+            {t('updater.auto_check_desc')}
+          </Text>
         </View>
+        <Switch value={autoCheck} onValueChange={handleToggleAutoCheck} disabled={!dbReady} />
+      </View>
 
-        <Button
-          variant="primary"
-          className="w-full"
-          onPress={handleCheckUpdate}
-          isLoading={checking}
-          isDisabled={!dbReady}
-        >
-          {t('updater.check')}
-        </Button>
-      </SettingsGroupCard>
+      <Button
+        variant="primary"
+        className="w-full"
+        onPress={handleCheckUpdate}
+        isLoading={checking}
+        isDisabled={!dbReady}
+      >
+        {t('updater.check')}
+      </Button>
+    </>
+  )
+
+  if (embedded) {
+    return <View style={styles.embedded}>{content}</View>
+  }
+
+  return (
+    <View style={styles.section}>
+      <SettingsGroupCard>{content}</SettingsGroupCard>
     </View>
   )
 }
@@ -110,6 +122,10 @@ export const UpdateSettingsSection: React.FC = () => {
 const styles = StyleSheet.create({
   section: {
     marginBottom: 24
+  },
+  embedded: {
+    paddingHorizontal: 14,
+    paddingBottom: 14
   },
   sectionTitle: {
     fontSize: 14,

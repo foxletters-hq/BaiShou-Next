@@ -10,6 +10,8 @@ import {
   type SettingsHubRoute
 } from './settingsHubItems'
 import { QuickSettingsGroup } from './components/SettingsAccountPanel'
+import { SettingsAboutGroup } from './components/SettingsAboutGroup'
+import { StorageSettingsInline } from './components/StorageSettingsInline'
 
 export const SettingsScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -19,12 +21,22 @@ export const SettingsScreen: React.FC = () => {
   const navigate = (route: SettingsHubRoute) => {
     if (route.type === 'section') {
       router.push(`/settings/${route.section}`)
-    } else {
+    } else if (route.type === 'stack') {
       router.push(route.pathname)
     }
   }
 
-  const renderItem = (item: SettingsHubItem, isLast: boolean) => (
+  const renderHubItem = (item: SettingsHubItem, index: number, groupLength: number) => {
+    const isLast = index === groupLength - 1
+
+    if (item.route.type === 'inline' && item.route.id === 'storage') {
+      return <StorageSettingsInline key={item.id} embedded isLast={isLast} />
+    }
+
+    return renderNavItem(item, isLast)
+  }
+
+  const renderNavItem = (item: SettingsHubItem, isLast: boolean) => (
     <TouchableOpacity
       key={item.id}
       style={[
@@ -74,12 +86,12 @@ export const SettingsScreen: React.FC = () => {
                 {t(group.titleKey)}
               </Text>
               <View style={[styles.groupCard, groupCardStyle]}>
-                {group.items.map((item, index) =>
-                  renderItem(item, index === group.items.length - 1)
-                )}
+                {group.items.map((item, index) => renderHubItem(item, index, group.items.length))}
               </View>
             </View>
           ))}
+
+          <SettingsAboutGroup groupCardStyle={groupCardStyle} />
         </View>
       </ScrollView>
     </View>

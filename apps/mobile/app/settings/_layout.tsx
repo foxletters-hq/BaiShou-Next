@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router'
 import { useNativeTheme } from '@baishou/ui/native'
+import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 
 export default function SettingsStackLayout() {
   const { colors } = useNativeTheme()
@@ -8,7 +9,7 @@ export default function SettingsStackLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
+        ...fadeStackAnimation,
         contentStyle: { flex: 1, backgroundColor: colors.bgApp }
       }}
     >

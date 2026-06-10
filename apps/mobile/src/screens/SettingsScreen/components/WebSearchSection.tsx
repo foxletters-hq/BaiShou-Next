@@ -2,22 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, LayoutAnimation } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { WebSearchConfig } from '@baishou/shared'
+import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
 import { Switch, useNativeTheme, Input } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { SettingsGroupCard } from './SettingsGroupCard'
 import { SettingsSliderRow } from './SettingsSliderRow'
-
-const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
-  webSearchEngine: 'exa-mcp',
-  webSearchMaxResults: 5,
-  webSearchRagEnabled: false,
-  tavilyApiKey: '',
-  exaApiKey: '',
-  anysearchApiKey: '',
-  webSearchRagMaxChunks: 12,
-  webSearchRagChunksPerSource: 4,
-  webSearchPlainSnippetLength: 3000
-}
 
 const ENGINES: Array<{ id: WebSearchConfig['webSearchEngine']; labelKey: string }> = [
   { id: 'duckduckgo', labelKey: 'settings.web_search_engine_duckduckgo' },
