@@ -340,12 +340,7 @@ export const DataSyncScreen: React.FC = () => {
           )
 
   const renderHeaderActions = () => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.headerActionsScroll}
-    >
-      <View style={styles.headerActionsGroup}>
+    <View style={styles.headerActionsGroup}>
         {backupTab === 'cloud' && (
           <>
             {isMultiSelectMode ? (
@@ -454,8 +449,7 @@ export const DataSyncScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         )}
-      </View>
-    </ScrollView>
+    </View>
   )
 
   if (showConfigForm) {
@@ -846,8 +840,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1
   },
-  headerActionsScroll: { marginTop: 4 },
-  headerActionsGroup: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
+  headerActionsGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4
+  },
   headerActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
