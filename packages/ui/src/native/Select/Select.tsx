@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { useTranslation } from 'react-i18next'
+import { settingsSelectorStyles } from '../SettingsSelector/settings-selector.styles'
 
 export interface NativeSelectOption {
   label: string
@@ -20,6 +21,7 @@ export interface NativeSelectOption {
 }
 
 export type NativeSelectPresentation = 'sheet' | 'center'
+export type NativeSelectVariant = 'default' | 'settings'
 
 export interface NativeSelectProps {
   options: NativeSelectOption[]
@@ -32,6 +34,8 @@ export interface NativeSelectProps {
   presentation?: NativeSelectPresentation
   /** sheet 模式下是否显示半透明遮罩（嵌套在已有弹窗内建议关闭） */
   showOverlay?: boolean
+  /** settings：对齐全局默认模型选择器样式 */
+  variant?: NativeSelectVariant
 }
 
 export const Select: React.FC<NativeSelectProps> = ({
@@ -42,64 +46,166 @@ export const Select: React.FC<NativeSelectProps> = ({
   error,
   style,
   presentation = 'sheet',
-  showOverlay = false
+  showOverlay = false,
+  variant = 'default'
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const { width: screenWidth } = useWindowDimensions()
   const [modalVisible, setModalVisible] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const sheetTranslateY = useRef(new Animated.Value(320)).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.92)).current
 
   const selectedOpt = options.find((o) => o.value === value)
   const panelWidth = Math.min(screenWidth - 48, 320)
+  const hasValue = Boolean(selectedOpt)
+  const isSettings = variant === 'settings'
 
   useEffect(() => {
-    if (presentation !== 'sheet') return
-    if (modalVisible) {
-      sheetTranslateY.setValue(320)
-      Animated.spring(sheetTranslateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 68,
-        friction: 12
-      }).start()
+    if (!modalVisible) {
+      if (!mounted) return
+      if (presentation === 'center' || isSettings) {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 160,
+            useNativeDriver: true
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 0.92,
+            duration: 160,
+            useNativeDriver: true
+          })
+        ]).start(({ finished }) => {
+          if (finished) setMounted(false)
+        })
+        return
+      }
+      Animated.timing(sheetTranslateY, {
+        toValue: 320,
+        duration: 180,
+        useNativeDriver: true
+      }).start(({ finished }) => {
+        if (finished) setMounted(false)
+      })
       return
     }
+
+    setMounted(true)
+    if (presentation === 'center' || isSettings) {
+      fadeAnim.setValue(0)
+      scaleAnim.setValue(0.92)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 11
+        })
+      ]).start()
+      return
+    }
+
     sheetTranslateY.setValue(320)
-  }, [modalVisible, presentation, sheetTranslateY])
+    Animated.spring(sheetTranslateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 68,
+      friction: 12
+    }).start()
+  }, [modalVisible, presentation, isSettings, mounted, fadeAnim, scaleAnim, sheetTranslateY])
 
   const closeSheet = () => setModalVisible(false)
+
+  const triggerContent = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+      {selectedOpt?.leading}
+      <Text
+        style={{
+          color: hasValue ? colors.textPrimary : colors.textTertiary,
+          fontSize: isSettings ? 14 : 16,
+          lineHeight: isSettings ? 20 : undefined,
+          flex: 1
+        }}
+        numberOfLines={2}
+      >
+        {selectedOpt ? selectedOpt.label : placeholder || 'Select...'}
+      </Text>
+    </View>
+  )
+
+  const renderCenterOptions = () =>
+    options.map((item, index) => {
+      const active = item.value === value
+      return (
+        <TouchableOpacity
+          key={item.value}
+          style={[
+            settingsSelectorStyles.modalOption,
+            index < options.length - 1 && {
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: colors.borderSubtle
+            },
+            active && { backgroundColor: colors.primaryLight }
+          ]}
+          onPress={() => {
+            onValueChange?.(item.value)
+            closeSheet()
+          }}
+        >
+          {item.leading}
+          <Text
+            style={{
+              color: active ? colors.primary : colors.textPrimary,
+              fontSize: 16,
+              flex: 1
+            }}
+          >
+            {item.label}
+          </Text>
+          {active && <Text style={{ color: colors.primary, fontSize: 16 }}>✓</Text>}
+        </TouchableOpacity>
+      )
+    })
 
   return (
     <View style={style}>
       <TouchableOpacity
-        style={{
-          backgroundColor: colors.bgSurfaceNormal,
-          paddingHorizontal: tokens.spacing.md,
-          paddingVertical: tokens.spacing.md,
-          borderRadius: tokens.radius.sm,
-          borderBottomWidth: 1,
-          borderBottomColor: error ? colors.accentGreen : 'transparent',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}
+        style={
+          isSettings
+            ? [
+                settingsSelectorStyles.trigger,
+                {
+                  backgroundColor: colors.bgSurface,
+                  borderColor: hasValue ? colors.borderMuted : colors.borderSubtle
+                }
+              ]
+            : {
+                backgroundColor: colors.bgSurfaceNormal,
+                paddingHorizontal: tokens.spacing.md,
+                paddingVertical: tokens.spacing.md,
+                borderRadius: tokens.radius.sm,
+                borderBottomWidth: 1,
+                borderBottomColor: error ? colors.accentGreen : 'transparent',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }
+        }
+        activeOpacity={0.7}
         onPress={() => setModalVisible(true)}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-          {selectedOpt?.leading}
-          <Text
-            style={{
-              color: selectedOpt ? colors.textPrimary : colors.textSecondary,
-              fontSize: 16,
-              flex: 1
-            }}
-            numberOfLines={1}
-          >
-            {selectedOpt ? selectedOpt.label : placeholder || 'Select...'}
-          </Text>
-        </View>
-        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>▼</Text>
+        {triggerContent}
+        <Text style={[settingsSelectorStyles.chevron, { color: colors.textTertiary }]}>
+          {isSettings ? '›' : '▼'}
+        </Text>
       </TouchableOpacity>
       {error ? (
         <Text
@@ -114,68 +220,44 @@ export const Select: React.FC<NativeSelectProps> = ({
       ) : null}
 
       <Modal
-        visible={modalVisible}
+        visible={mounted}
         transparent
-        animationType={presentation === 'center' ? 'fade' : 'fade'}
+        animationType="none"
         onRequestClose={closeSheet}
       >
-        {presentation === 'center' ? (
-          <View style={styles.centerOverlay}>
-            <Pressable
-              style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgOverlay }]}
-              onPress={closeSheet}
-            />
-            <View
+        {presentation === 'center' || isSettings ? (
+          <View style={settingsSelectorStyles.modalOverlay}>
+            <Animated.View
               style={[
-                styles.centerPanel,
+                settingsSelectorStyles.modalBackdrop,
+                { backgroundColor: colors.bgOverlay, opacity: fadeAnim }
+              ]}
+            >
+              <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+            </Animated.View>
+            <Animated.View
+              style={[
+                settingsSelectorStyles.modalPanel,
                 {
                   width: panelWidth,
                   backgroundColor: colors.bgSurface,
                   borderColor: colors.borderSubtle,
-                  borderRadius: tokens.radius.lg
+                  borderRadius: tokens.radius.lg,
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }]
                 }
               ]}
             >
-              {options.map((item, index) => {
-                const active = item.value === value
-                return (
-                  <TouchableOpacity
-                    key={item.value}
-                    style={[
-                      styles.centerOption,
-                      index < options.length - 1 && {
-                        borderBottomWidth: StyleSheet.hairlineWidth,
-                        borderBottomColor: colors.borderSubtle
-                      },
-                      active && { backgroundColor: colors.primaryLight }
-                    ]}
-                    onPress={() => {
-                      onValueChange?.(item.value)
-                      closeSheet()
-                    }}
-                  >
-                    {item.leading}
-                    <Text
-                      style={{
-                        color: active ? colors.primary : colors.textPrimary,
-                        fontSize: 16,
-                        flex: 1
-                      }}
-                    >
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
+              {renderCenterOptions()}
               <TouchableOpacity
-                style={[styles.centerCancel, { borderTopColor: colors.borderSubtle }]}
+                style={[settingsSelectorStyles.modalCancel, { borderTopColor: colors.borderSubtle }]}
                 onPress={closeSheet}
               >
                 <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
                   {t('common.cancel', '取消')}
                 </Text>
               </TouchableOpacity>
-            </View>
+            </Animated.View>
           </View>
         ) : (
           <View style={styles.sheetRoot}>
@@ -257,26 +339,6 @@ export const Select: React.FC<NativeSelectProps> = ({
 }
 
 const styles = StyleSheet.create({
-  centerOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  centerPanel: {
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden'
-  },
-  centerOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14
-  },
-  centerCancel: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 14
-  },
   sheetRoot: {
     flex: 1,
     justifyContent: 'flex-end'
