@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import {
@@ -28,20 +28,21 @@ export const AIServicesSection: React.FC = () => {
   const { services, dbReady } = useBaishou()
   const toast = useNativeToast()
 
-  const [savedProviders, setSavedProviders] = useState<AIProviderConfig[]>([])
+  const [savedProviders, setSavedProviders] = useState<AIProviderConfig[] | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', type: 'openai', baseUrl: '' })
 
   const providerItems = useMemo(
-    () => buildProviderListItems(savedProviders, t),
+    () => buildProviderListItems(savedProviders ?? [], t),
     [savedProviders, t]
   )
 
-  const [localProviderItems, setLocalProviderItems] = useState(providerItems)
+  const [localProviderItems, setLocalProviderItems] = useState<typeof providerItems>([])
 
   useEffect(() => {
+    if (savedProviders === null) return
     setLocalProviderItems(providerItems)
-  }, [providerItems])
+  }, [savedProviders, providerItems])
 
   const loadProviders = useCallback(async () => {
     if (!services || !dbReady) return
@@ -50,6 +51,7 @@ export const AIServicesSection: React.FC = () => {
       setSavedProviders(list)
     } catch (e) {
       console.warn('Load providers failed', e)
+      setSavedProviders([])
     }
   }, [services, dbReady])
 
@@ -62,7 +64,7 @@ export const AIServicesSection: React.FC = () => {
       setLocalProviderItems(orderedItems)
       if (!services || !dbReady) return
       const orderedIds = orderedItems.map((p) => p.id)
-      const next = applyProviderOrderFromIds(savedProviders, orderedIds, orderedItems)
+      const next = applyProviderOrderFromIds(savedProviders ?? [], orderedIds, orderedItems)
       try {
         await services.settingsManager.set('ai_providers', next)
         setSavedProviders(next)
@@ -102,7 +104,7 @@ export const AIServicesSection: React.FC = () => {
       defaultNamingModel: ''
     }
     try {
-      const next = [...savedProviders, newProvider]
+      const next = [...(savedProviders ?? []), newProvider]
       await services.settingsManager.set('ai_providers', next)
       setSavedProviders(next)
       setShowAddModal(false)
@@ -137,6 +139,14 @@ export const AIServicesSection: React.FC = () => {
       })),
     []
   )
+
+  if (savedProviders === null) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.root}>
@@ -203,6 +213,12 @@ export const AIServicesSection: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex: 1
+  },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48
   },
   footer: {
     marginTop: 8,

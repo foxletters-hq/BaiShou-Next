@@ -56,12 +56,7 @@ export function buildProviderListItems(
       isEnabled: p.isEnabled ?? false
     }))
 
-  return [...knownItems, ...customItems].sort((a, b) => {
-    const aEnabled = savedById.get(a.id)?.isEnabled ?? false
-    const bEnabled = savedById.get(b.id)?.isEnabled ?? false
-    if (aEnabled !== bEnabled) return aEnabled ? -1 : 1
-    return a.sortOrder - b.sortOrder
-  })
+  return [...knownItems, ...customItems].sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
 export function getProviderConfig(
