@@ -1,7 +1,15 @@
-import { ipcMain, app } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
+import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { vaultService, pathService } from './vault.ipc'
+import {
+  changeStorageRootDirectory,
+  migrateStorageRootDirectory,
+  pickStorageDirectory,
+  validateStorageTarget,
+  type StorageTargetValidation
+} from '../services/desktop-storage-directory.service'
 
 export function registerStorageIPC() {
   ipcMain.handle('storage:getStats', async () => {
@@ -18,7 +26,6 @@ export function registerStorageIPC() {
         sqliteSize = stats.size
       }
 
-      // Vector DB might be another file or dir. Hardcoding dummy wrapper for now.
       const vectorDbSize = 0
       const mediaCacheSize = 0
 
@@ -47,13 +54,36 @@ export function registerStorageIPC() {
     }
   })
 
+  ipcMain.handle('storage:pickDirectory', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return null
+    return pickStorageDirectory(window)
+  })
+
+  ipcMain.handle(
+    'storage:validateTargetDirectory',
+    async (_, targetPath: string): Promise<StorageTargetValidation> => {
+      return validateStorageTarget(targetPath)
+    }
+  )
+
+  ipcMain.handle('storage:changeDirectory', async (_, targetPath: string) => {
+    await changeStorageRootDirectory(targetPath)
+    return { ok: true as const }
+  })
+
+  ipcMain.handle('storage:migrateDirectory', async (event, targetPath: string) => {
+    await migrateStorageRootDirectory(targetPath, (itemName) => {
+      event.sender.send('storage:migration-progress', { name: itemName })
+    })
+    return { ok: true as const }
+  })
+
   ipcMain.handle('storage:clearCache', async () => {
-    // Implement cache clearing logic if necessary
     return true
   })
 
   ipcMain.handle('storage:vacuumDb', async () => {
-    // Provide SQLite VACUUM hook later
     return true
   })
 }

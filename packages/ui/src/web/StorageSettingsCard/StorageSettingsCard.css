@@ -1,0 +1,35 @@
+.storage-settings-root-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+
+.storage-settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.storage-settings-action-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-primary, #5ba8f5);
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent);
+  color: var(--color-primary, #5ba8f5);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.storage-settings-action-btn:hover {
+  opacity: 0.85;
+}
+
+.storage-settings-action-btn-secondary {
+  border-color: var(--border-subtle, rgba(0, 0, 0, 0.08));
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #111);
+}

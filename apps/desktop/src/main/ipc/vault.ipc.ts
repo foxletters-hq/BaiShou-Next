@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 import { createClient } from '@libsql/client'
@@ -95,26 +95,16 @@ export async function initVaultSystem() {
 
 export function registerVaultIPC() {
   ipcMain.handle('vault:pickCustomRootPath', async (event) => {
+    const { pickStorageDirectory, changeStorageRootDirectory } = await import(
+      '../services/desktop-storage-directory.service'
+    )
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return null
 
-    const result = await dialog.showOpenDialog(window, {
-      title: 'Select Workspace Root Directory',
-      properties: ['openDirectory', 'createDirectory']
-    })
+    const newPath = await pickStorageDirectory(window)
+    if (!newPath) return null
 
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
-
-    const newPath = result.filePaths[0]
-    await pathService.updateRootDirectory(newPath)
-    // 重新初始化注册表（路径变更）
-    await vaultService.initRegistry()
-    // 重新连接 Shadow DB（新路径下的 Vault）
-    await connectShadowForActiveVault()
-    resetSyncService()
-    resetGitService()
+    await changeStorageRootDirectory(newPath)
     return newPath
   })
 

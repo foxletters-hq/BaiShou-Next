@@ -11,10 +11,12 @@ import {
   McpSettingsCard,
   StorageSettingsCard,
   IdentitySettingsCard,
-  AboutSettingsCard
+  AboutSettingsCard,
+  RestoreBlockingOverlay
 } from '@baishou/ui'
 import { GITHUB_ISSUES_URL, GITHUB_REPO_URL } from '@baishou/shared'
 import baishouHeroImg from '@baishou/shared/assets/images/Next-1.0.0-banner.jpg'
+import { useDesktopStorageSettings } from '../hooks/useDesktopStorageSettings'
 
 export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   const navigate = useNavigate()
@@ -32,6 +34,19 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
     mediaCacheStats: '0 MB'
   })
 
+  const refreshStorageStats = async () => {
+    try {
+      if ((window as any).api?.storage) {
+        const stats = await (window as any).api.storage.getStats()
+        if (stats) setStorageStats(stats)
+      }
+    } catch (e) {
+      console.warn('Load storage stats failed', e)
+    }
+  }
+
+  const storageSettings = useDesktopStorageSettings(refreshStorageStats)
+
   useEffect(() => {
     if (loadProfile) loadProfile()
     const fetchVaults = async () => {
@@ -40,15 +55,6 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
         const active = await (window as any).api?.vault?.getActive()
         if (vList) setVaults(vList)
         if (active) setActiveVault(active)
-      } catch (e) {}
-    }
-
-    const fetchStorage = async () => {
-      try {
-        if ((window as any).api?.storage) {
-          const stats = await (window as any).api.storage.getStats()
-          if (stats) setStorageStats(stats)
-        }
       } catch (e) {}
     }
 
@@ -62,12 +68,18 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
     }
 
     fetchVaults()
-    fetchStorage()
+    void refreshStorageStats()
     fetchVersion()
   }, [loadProfile])
 
   return (
-    <div className="settings-pane" style={{ paddingBottom: 0 }}>
+    <>
+      <RestoreBlockingOverlay
+        visible={storageSettings.overlayVisible}
+        message={storageSettings.overlayMessage}
+        hint={storageSettings.overlayHint}
+      />
+      <div className="settings-pane" style={{ paddingBottom: 0 }}>
       {/* 账户设置 */}
       <div className="glass-panel-card">
         <ProfileSettingsCard
@@ -153,25 +165,12 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
         <div className="settings-item-divider" />
 
         <StorageSettingsCard
-          storageRootPath={storageStats.storageRootPath}
+          storageRootPath={storageSettings.storageRootPath || storageStats.storageRootPath}
           sqliteSizeStats={storageStats.sqliteSizeStats}
           vectorDbStats={storageStats.vectorDbStats}
           mediaCacheStats={storageStats.mediaCacheStats}
-          onChangeRoot={async () => {
-            try {
-              const newPath =
-                (await (window as any).api?.vault?.pickCustomRootPath?.()) ||
-                (await (window as any).api?.system?.pickDirectory?.())
-              if (newPath) {
-                if ((window as any).api?.storage) {
-                  const s = await (window as any).api.storage.getStats()
-                  if (s) setStorageStats(s)
-                }
-              }
-            } catch (e) {
-              console.error(e)
-            }
-          }}
+          onChangeDirectory={storageSettings.handleChangeDirectory}
+          onMigrateDirectory={storageSettings.handleMigrateDirectory}
           onClearCache={async () => {
             await (window as any).api?.storage?.clearCache()
             if ((window as any).api?.storage) {
@@ -211,5 +210,6 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
         />
       </div>
     </div>
+    </>
   )
 }

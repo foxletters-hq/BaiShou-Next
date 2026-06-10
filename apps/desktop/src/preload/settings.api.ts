@@ -77,7 +77,24 @@ export const settingsApi = {
 
   storage: {
     getStats: () => ipcRenderer.invoke('storage:getStats'),
+    pickDirectory: () => ipcRenderer.invoke('storage:pickDirectory'),
+    validateTargetDirectory: (targetPath: string) =>
+      ipcRenderer.invoke('storage:validateTargetDirectory', targetPath),
+    changeDirectory: (targetPath: string) =>
+      ipcRenderer.invoke('storage:changeDirectory', targetPath),
+    migrateDirectory: (targetPath: string) =>
+      ipcRenderer.invoke('storage:migrateDirectory', targetPath),
     clearCache: () => ipcRenderer.invoke('storage:clearCache'),
-    vacuumDb: () => ipcRenderer.invoke('storage:vacuumDb')
+    vacuumDb: () => ipcRenderer.invoke('storage:vacuumDb'),
+    onMigrationProgress: (callback: (payload: { name: string }) => void) => {
+      const listener = (_: unknown, payload: { name: string }) => callback(payload)
+      ipcRenderer.on('storage:migration-progress', listener)
+      return () => ipcRenderer.removeListener('storage:migration-progress', listener)
+    },
+    onRootChanged: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('storage:root-changed', listener)
+      return () => ipcRenderer.removeListener('storage:root-changed', listener)
+    }
   }
 }
