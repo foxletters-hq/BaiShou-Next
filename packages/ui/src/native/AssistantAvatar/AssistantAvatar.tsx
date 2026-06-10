@@ -40,6 +40,7 @@ export const AssistantAvatar: React.FC<AssistantAvatarProps> = ({
         <Text style={[styles.emoji, { fontSize: size * 0.45 }]}>{emoji}</Text>
       ) : (
         <Image
+          key={resolvedAvatarUri ?? avatarPath ?? 'default'}
           source={resolveNativeAssistantAvatarSource(avatarPath, resolvedAvatarUri)}
           style={{ width: size, height: size, borderRadius: radius }}
           resizeMode="cover"

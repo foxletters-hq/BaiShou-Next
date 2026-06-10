@@ -17,18 +17,17 @@ export function resolveNativeAssistantAvatarSource(
   avatarPath?: string | null,
   resolvedUri?: string | null
 ): ImageSourcePropType {
+  if (resolvedUri) {
+    return { uri: resolvedUri }
+  }
   if (avatarPath && isAssistantAvatarDirectUri(avatarPath)) {
     return { uri: avatarPath }
   }
   if (isAssistantAvatarRelativePath(avatarPath)) {
-    if (resolvedUri) return { uri: resolvedUri }
     return NATIVE_DEFAULT_ASSISTANT_AVATAR
   }
   if (!isAssistantCustomAvatar(avatarPath)) {
     return NATIVE_DEFAULT_ASSISTANT_AVATAR
-  }
-  if (resolvedUri) {
-    return { uri: resolvedUri }
   }
   return NATIVE_DEFAULT_ASSISTANT_AVATAR
 }
