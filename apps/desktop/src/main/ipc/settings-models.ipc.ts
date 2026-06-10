@@ -2,8 +2,10 @@ import { ipcMain } from 'electron'
 import {
   AIProviderConfig,
   GlobalModelsConfig,
+  isTtsProviderId,
   logger,
-  resolveProviderBaseUrl
+  resolveProviderBaseUrl,
+  resolveTtsProviderBaseUrl
 } from '@baishou/shared'
 import { AIProviderRegistry } from '@baishou/ai'
 import { settingsManager } from './settings.ipc'
@@ -60,7 +62,7 @@ export async function getAutoFixedProviders(): Promise<AIProviderConfig[]> {
   if (needsSave) {
     await settingsManager.set('ai_providers', providers)
   }
-  return providers
+  return providers.filter((p) => !isTtsProviderId(p.id))
 }
 
 /**
@@ -104,11 +106,7 @@ export function registerSettingsModelsIPC() {
       globalModels.globalEmbeddingModelId = ''
       changed = true
     }
-    if (!isValid(globalModels.globalTtsProviderId, globalModels.globalTtsModelId)) {
-      globalModels.globalTtsProviderId = ''
-      globalModels.globalTtsModelId = ''
-      changed = true
-    }
+    // TTS 配置独立于 ai_providers，不在此处裁剪
 
     if (changed) {
       await settingsManager.set('global_models', globalModels)
@@ -259,6 +257,37 @@ export function registerSettingsModelsIPC() {
           logger.error?.('[TTS] Fetch CloneTTS voices failed:', err)
           return []
         }
+      }
+
+      if (providerId === 'mimo-tts') {
+        const base = resolveTtsProviderBaseUrl('mimo-tts', tempUrl)
+        const providers = await getAutoFixedProviders()
+        let config = providers.find((p) => p.id === providerId)
+        if (!config) {
+          config = {
+            id: providerId,
+            type: providerId as any,
+            name: providerId.toUpperCase(),
+            apiKey: '',
+            baseUrl: '',
+            isSystem: true,
+            isEnabled: false,
+            models: [],
+            enabledModels: [],
+            defaultDialogueModel: '',
+            defaultNamingModel: '',
+            sortOrder: 999
+          } as AIProviderConfig
+        }
+        const clone = withResolvedProviderBaseUrl(
+          { ...config, baseUrl: base },
+          tempKey,
+          base
+        )
+        const registry = AIProviderRegistry.getInstance()
+        const provider = registry.createProviderInstance(clone)
+        if (!provider) throw new Error('Provider instance creation failed')
+        return provider.fetchAvailableModels()
       }
 
       if (providerId === 'openai-tts') {

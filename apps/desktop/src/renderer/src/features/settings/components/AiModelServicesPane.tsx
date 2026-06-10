@@ -1,4 +1,5 @@
 import React from 'react'
+import { isTtsProviderId } from '@baishou/shared'
 import { AIModelServicesView } from '@baishou/ui'
 
 export const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) => {
@@ -6,6 +7,7 @@ export const AiModelServicesPane: React.FC<{ settings: any }> = ({ settings }) =
     const rec: Record<string, any> = {}
     if (Array.isArray(settings.providers)) {
       settings.providers.forEach((p: any) => {
+        if (isTtsProviderId(p.id)) return
         rec[p.id] = {
           providerId: p.id,
           name: p.name,
