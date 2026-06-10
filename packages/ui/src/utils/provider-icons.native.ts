@@ -2,6 +2,7 @@
  * 供应商品牌图标（Metro 静态资源模块，供 RN ProviderBrandIcon 使用）
  */
 
+import { Asset } from 'expo-asset'
 import openaiIcon from '../assets/ai_provider_icon/openai.svg'
 import geminiColorIcon from '../assets/ai_provider_icon/gemini-color.svg'
 import geminiMonoIcon from '../assets/ai_provider_icon/gemini.svg'
@@ -73,4 +74,88 @@ export function getProviderIconModule(
 
 export function hasProviderIcon(providerId: string): boolean {
   return providerId in PROVIDER_ICONS
+}
+
+const resolvedIconUriCache = new Map<ProviderIconModule, string>()
+const resolvedIconXmlCache = new Map<ProviderIconModule, string>()
+const pendingIconUriResolves = new Map<ProviderIconModule, Promise<string | null>>()
+const pendingIconXmlResolves = new Map<ProviderIconModule, Promise<string | null>>()
+
+export function getCachedProviderIconUri(iconModule: ProviderIconModule): string | undefined {
+  return resolvedIconUriCache.get(iconModule)
+}
+
+export function getCachedProviderIconXml(iconModule: ProviderIconModule): string | undefined {
+  return resolvedIconXmlCache.get(iconModule)
+}
+
+/** 解析并缓存供应商 SVG 模块对应的本地 URI，避免 Modal 反复挂载时重复 downloadAsync */
+export async function resolveProviderIconUri(
+  iconModule: ProviderIconModule
+): Promise<string | null> {
+  const cached = resolvedIconUriCache.get(iconModule)
+  if (cached) return cached
+
+  const pending = pendingIconUriResolves.get(iconModule)
+  if (pending) return pending
+
+  const task = (async () => {
+    try {
+      const asset = Asset.fromModule(iconModule)
+      if (!asset.localUri) {
+        await asset.downloadAsync()
+      }
+      const uri = asset.localUri ?? asset.uri
+      if (uri) resolvedIconUriCache.set(iconModule, uri)
+      return uri ?? null
+    } catch {
+      return null
+    } finally {
+      pendingIconUriResolves.delete(iconModule)
+    }
+  })()
+
+  pendingIconUriResolves.set(iconModule, task)
+  return task
+}
+
+/** 解析并缓存 SVG 正文，供 SvgXml 同步渲染，避免 SvgUri 每次挂载重新 fetch */
+export async function resolveProviderIconXml(
+  iconModule: ProviderIconModule
+): Promise<string | null> {
+  const cachedXml = resolvedIconXmlCache.get(iconModule)
+  if (cachedXml) return cachedXml
+
+  const pending = pendingIconXmlResolves.get(iconModule)
+  if (pending) return pending
+
+  const task = (async () => {
+    try {
+      const uri = await resolveProviderIconUri(iconModule)
+      if (!uri) return null
+      const response = await fetch(uri)
+      const xml = await response.text()
+      if (xml) resolvedIconXmlCache.set(iconModule, xml)
+      return xml || null
+    } catch {
+      return null
+    } finally {
+      pendingIconXmlResolves.delete(iconModule)
+    }
+  })()
+
+  pendingIconXmlResolves.set(iconModule, task)
+  return task
+}
+
+/** 应用启动时预加载全部品牌图标，进入供应商管理时可立即显示 */
+export function preloadAllProviderIcons(): void {
+  const modules = new Set<ProviderIconModule>()
+  for (const pair of Object.values(PROVIDER_ICONS)) {
+    modules.add(pair.light)
+    modules.add(pair.dark)
+  }
+  for (const iconModule of modules) {
+    void resolveProviderIconXml(iconModule)
+  }
 }

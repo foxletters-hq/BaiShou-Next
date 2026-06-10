@@ -1,9 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { memo, useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, useColorScheme } from 'react-native'
-import { SvgUri } from 'react-native-svg'
-import { Asset } from 'expo-asset'
+import { SvgXml } from 'react-native-svg'
 import { useNativeTheme } from '../theme'
-import { getProviderIconModule, hasProviderIcon } from '../../utils/provider-icons.native'
+import {
+  getCachedProviderIconXml,
+  getProviderIconModule,
+  hasProviderIcon,
+  resolveProviderIconXml
+} from '../../utils/provider-icons.native'
 
 export interface ProviderBrandIconProps {
   providerId: string
@@ -18,7 +22,7 @@ function resolveIconProviderId(providerId: string, providerType?: string): strin
   return providerId
 }
 
-export const ProviderBrandIcon: React.FC<ProviderBrandIconProps> = ({
+const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
   providerId,
   providerType,
   size = 22
@@ -34,29 +38,27 @@ export const ProviderBrandIcon: React.FC<ProviderBrandIconProps> = ({
     () => getProviderIconModule(iconProviderId, isDark),
     [iconProviderId, isDark]
   )
-  const [uri, setUri] = useState<string | null>(null)
+  const [xml, setXml] = useState<string | null>(() =>
+    iconModule != null ? getCachedProviderIconXml(iconModule) ?? null : null
+  )
 
   useEffect(() => {
     if (iconModule == null) {
-      setUri(null)
+      setXml(null)
+      return
+    }
+
+    const cached = getCachedProviderIconXml(iconModule)
+    if (cached) {
+      setXml(cached)
       return
     }
 
     let cancelled = false
-    const asset = Asset.fromModule(iconModule)
 
-    void (async () => {
-      try {
-        if (!asset.localUri) {
-          await asset.downloadAsync()
-        }
-        if (!cancelled) {
-          setUri(asset.localUri ?? asset.uri)
-        }
-      } catch {
-        if (!cancelled) setUri(null)
-      }
-    })()
+    void resolveProviderIconXml(iconModule).then((resolved) => {
+      if (!cancelled) setXml(resolved)
+    })
 
     return () => {
       cancelled = true
@@ -64,7 +66,7 @@ export const ProviderBrandIcon: React.FC<ProviderBrandIconProps> = ({
   }, [iconModule])
 
   const wrapSize = size + 8
-  const showBrandSvg = Boolean(uri)
+  const showBrandSvg = Boolean(xml)
   const showLetterFallback = !hasProviderIcon(iconProviderId)
 
   return (
@@ -80,7 +82,7 @@ export const ProviderBrandIcon: React.FC<ProviderBrandIconProps> = ({
       ]}
     >
       {showBrandSvg ? (
-        <SvgUri uri={uri!} width={size} height={size} />
+        <SvgXml xml={xml!} width={size} height={size} />
       ) : showLetterFallback ? (
         <Text style={[styles.fallback, { color: colors.primary, fontSize: size * 0.55 }]}>
           {providerId.slice(0, 2).toUpperCase()}
@@ -89,6 +91,8 @@ export const ProviderBrandIcon: React.FC<ProviderBrandIconProps> = ({
     </View>
   )
 }
+
+export const ProviderBrandIcon = memo(ProviderBrandIconInner)
 
 const styles = StyleSheet.create({
   wrap: {
