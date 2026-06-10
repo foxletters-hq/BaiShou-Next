@@ -26,7 +26,6 @@ import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 import {
   AssistantRepository,
   MessageRepository,
-  SnapshotRepository,
   SqliteHybridSearchRepository
 } from '@baishou/database'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
@@ -83,8 +82,7 @@ export class AgentSessionService {
           COMPRESSION_MESSAGE_FETCH_LIMIT
         )) as import('./message.adapter').MessageWithParts[]
         // 重发/编辑截断后 token 可能低于阈值，但仍需强制重压缩（内容可能已变）
-        const canForceRecompress =
-          skipUserMessageRecording === true && rawForEstimate.length >= 4
+        const canForceRecompress = skipUserMessageRecording === true && rawForEstimate.length >= 4
         const compressionConfigForRun = canForceRecompress
           ? { ...compressionConfig, force: true }
           : compressionConfig
@@ -415,10 +413,7 @@ export class AgentSessionService {
         })
       }
     } catch (e: any) {
-      logger.error(
-        '[AgentSessionService] Error in streamChat:',
-        e?.stack || e?.message || e
-      )
+      logger.error('[AgentSessionService] Error in streamChat:', e?.stack || e?.message || e)
       if (e?.cause) {
         logger.error('[AgentSessionService] Cause:', e.cause)
       }

@@ -1,12 +1,5 @@
 import React, { useState } from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Linking
-} from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { CollapsibleAncillaryBlock } from '../CollapsibleAncillaryBlock'
@@ -29,7 +22,13 @@ export interface ToolResultGroupCardProps {
   invocations: ToolInvocation[]
 }
 
-function StructuredDataView({ data, colors }: { data: unknown; colors: ReturnType<typeof useNativeTheme>['colors'] }) {
+function StructuredDataView({
+  data,
+  colors
+}: {
+  data: unknown
+  colors: ReturnType<typeof useNativeTheme>['colors']
+}) {
   if (Array.isArray(data)) {
     return (
       <View style={styles.structGrid}>
@@ -53,10 +52,14 @@ function StructuredDataView({ data, colors }: { data: unknown; colors: ReturnTyp
               </Text>
             ) : null}
             {item?.snippet ? (
-              <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>{item.snippet}</Text>
+              <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>
+                {item.snippet}
+              </Text>
             ) : null}
             {item?.summary ? (
-              <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>{item.summary}</Text>
+              <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>
+                {item.summary}
+              </Text>
             ) : null}
             {item &&
             !item.title &&
@@ -64,9 +67,15 @@ function StructuredDataView({ data, colors }: { data: unknown; colors: ReturnTyp
             typeof item === 'object' &&
             Object.keys(item).length > 0
               ? Object.keys(item).map((k) => (
-                  <View key={k} style={[styles.structValueRow, { borderBottomColor: colors.borderSubtle }]}>
+                  <View
+                    key={k}
+                    style={[styles.structValueRow, { borderBottomColor: colors.borderSubtle }]}
+                  >
                     <Text style={[styles.structKey, { color: colors.primary }]}>{k}</Text>
-                    <Text style={[styles.structVal, { color: colors.textSecondary }]} numberOfLines={2}>
+                    <Text
+                      style={[styles.structVal, { color: colors.textSecondary }]}
+                      numberOfLines={2}
+                    >
                       {String(item[k])}
                     </Text>
                   </View>
@@ -83,10 +92,14 @@ function StructuredDataView({ data, colors }: { data: unknown; colors: ReturnTyp
     return (
       <View style={styles.structGrid}>
         {obj.title ? (
-          <Text style={[styles.structTitle, { color: colors.textPrimary }]}>{String(obj.title)}</Text>
+          <Text style={[styles.structTitle, { color: colors.textPrimary }]}>
+            {String(obj.title)}
+          </Text>
         ) : null}
         {obj.snippet ? (
-          <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>{String(obj.snippet)}</Text>
+          <Text style={[styles.structSnippet, { color: colors.textSecondary }]}>
+            {String(obj.snippet)}
+          </Text>
         ) : null}
         <View
           style={[
@@ -97,7 +110,10 @@ function StructuredDataView({ data, colors }: { data: unknown; colors: ReturnTyp
           {Object.keys(obj)
             .filter((k) => k !== 'title' && k !== 'snippet')
             .map((k) => (
-              <View key={k} style={[styles.structValueRow, { borderBottomColor: colors.borderSubtle }]}>
+              <View
+                key={k}
+                style={[styles.structValueRow, { borderBottomColor: colors.borderSubtle }]}
+              >
                 <Text style={[styles.structKey, { color: colors.primary }]}>{k}</Text>
                 <Text style={[styles.structVal, { color: colors.textSecondary }]} numberOfLines={2}>
                   {String(obj[k])}
@@ -128,7 +144,9 @@ const ToolResultItem: React.FC<{
 
   const rawContent = getToolResultRawContent(invocation)
   const isError = isToolResultError(invocation)
-  const toolName = getToolDisplayName(invocation, t)
+  const toolName = getToolDisplayName(invocation, (key, fallback) =>
+    t(key, { defaultValue: fallback })
+  )
   const parsedJson = parseToolResultJson(invocation)
   const viewportHeight = Math.min(contentHeight || RESULT_MAX_HEIGHT, RESULT_MAX_HEIGHT)
   const scrollEnabled = contentHeight > RESULT_MAX_HEIGHT
@@ -211,12 +229,7 @@ export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({ invoca
       onToggle={() => setExpanded((prev) => !prev)}
       bodyPadding={false}
     >
-      <View
-        style={[
-          styles.childrenArea,
-          { backgroundColor: `${colors.borderSubtle}33` }
-        ]}
-      >
+      <View style={[styles.childrenArea, { backgroundColor: `${colors.borderSubtle}33` }]}>
         {invocations.map((inv, index) => (
           <ToolResultItem key={inv.toolCallId || String(index)} invocation={inv} colors={colors} />
         ))}

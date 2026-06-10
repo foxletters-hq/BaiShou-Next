@@ -77,9 +77,18 @@ export function useAgentStream(
   const syncTokenUsageFromMessages = useCallback((sessionMessages: typeof messages) => {
     const assistantMessages = sessionMessages.filter((m) => m.role === 'assistant')
     setTokenUsage({
-      inputTokens: assistantMessages.reduce((sum, m) => sum + (m.inputTokens || 0), 0),
-      outputTokens: assistantMessages.reduce((sum, m) => sum + (m.outputTokens || 0), 0),
-      totalCostMicros: assistantMessages.reduce((sum, m) => sum + (m.costMicros || 0), 0)
+      inputTokens: assistantMessages.reduce(
+        (sum, m) => sum + ((m as { inputTokens?: number }).inputTokens || 0),
+        0
+      ),
+      outputTokens: assistantMessages.reduce(
+        (sum, m) => sum + ((m as { outputTokens?: number }).outputTokens || 0),
+        0
+      ),
+      totalCostMicros: assistantMessages.reduce(
+        (sum, m) => sum + ((m as { costMicros?: number }).costMicros || 0),
+        0
+      )
     })
   }, [])
 

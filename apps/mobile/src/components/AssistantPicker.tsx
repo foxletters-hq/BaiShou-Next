@@ -22,7 +22,7 @@ async function resolveDisplayAvatarUri(
 ): Promise<string | undefined> {
   if (isDefaultAssistantAvatarPath(avatarPath)) return undefined
   if (isAssistantAvatarDirectUri(avatarPath)) return avatarPath
-  if (isAssistantAvatarRelativePath(avatarPath)) {
+  if (avatarPath && isAssistantAvatarRelativePath(avatarPath)) {
     try {
       return await resolveRelative(avatarPath)
     } catch {

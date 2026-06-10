@@ -46,11 +46,11 @@ export async function persistResult(params: PersistResultParams): Promise<{
     streamResult,
     accumulator,
     sessionRepo,
-    snapshotRepo,
+    snapshotRepo: _snapshotRepo,
     provider,
     modelId,
     skipUserMessageRecording,
-    userMessageId,
+    userMessageId: _userMessageId,
     streamError
   } = params
 

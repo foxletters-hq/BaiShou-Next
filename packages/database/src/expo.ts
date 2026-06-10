@@ -26,6 +26,7 @@ export * from './repositories/summary.repository'
 export * from './repositories/summary.repository.impl'
 
 export * from './drivers/vec-capability'
+export type { ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
 
 import { AppDatabase } from './types'
 import { ExpoSqliteDriver, ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'

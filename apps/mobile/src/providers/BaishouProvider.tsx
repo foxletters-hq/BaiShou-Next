@@ -1,7 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { Platform } from 'react-native'
 import * as SQLite from 'expo-sqlite'
-import { ensureExpoAgentDatabaseInstalled, detectVecSupport } from '@baishou/database/expo'
+import {
+  ensureExpoAgentDatabaseInstalled,
+  detectVecSupport,
+  type ExpoSqliteDatabase
+} from '@baishou/database/expo'
 import {
   SessionManagerService,
   DiaryService,
@@ -237,8 +241,8 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
     async function init() {
       try {
         // 1. 初始化 SQLite 环境（单例，避免并发 open + 迁移）
-        const { drizzleDb, driver } = await ensureExpoAgentDatabaseInstalled(() =>
-          SQLite.openDatabaseAsync('baishou_next_mobile.db')
+        const { drizzleDb, driver } = await ensureExpoAgentDatabaseInstalled(
+          () => SQLite.openDatabaseAsync('baishou_next_mobile.db') as Promise<ExpoSqliteDatabase>
         )
 
         const vecCapability = await detectVecSupport(driver)
@@ -501,10 +505,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
             const provider = registry.getOrUpdateProvider(config)
 
             const searchMode = overrides?.searchMode ?? false
-            const userConfig = await buildMobileStreamUserConfig(
-              settingsManager,
-              searchMode
-            )
+            const userConfig = await buildMobileStreamUserConfig(settingsManager, searchMode)
 
             const embeddingProviderId = globalModels?.globalEmbeddingProviderId
             const embeddingModelId = globalModels?.globalEmbeddingModelId
@@ -716,11 +717,7 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        const getContextAtMessage = (
-          sessionId: string,
-          messageId: string,
-          searchMode = false
-        ) =>
+        const getContextAtMessage = (sessionId: string, messageId: string, searchMode = false) =>
           loadContextAtMessage(
             {
               sessionRepo,

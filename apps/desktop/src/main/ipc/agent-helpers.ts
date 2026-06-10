@@ -109,7 +109,7 @@ export function createDiarySearcher() {
         const rows = await shadowRepo.findByDateRange(startDate, endDate)
         return rows.map((row) => ({
           date: row.date,
-          preview: previewDiaryRow(row.rawContent as string | null | undefined)
+          preview: previewDiaryRow((row as { rawContent?: string | null }).rawContent)
         }))
       },
       async readByDates(dates: string[]) {

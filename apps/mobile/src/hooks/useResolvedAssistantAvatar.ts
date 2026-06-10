@@ -16,11 +16,11 @@ export function useResolvedAssistantAvatar(avatarPath?: string | null): string |
       setUri(null)
       return
     }
-    if (isAssistantAvatarDirectUri(avatarPath)) {
+    if (avatarPath && isAssistantAvatarDirectUri(avatarPath)) {
       setUri(avatarPath)
       return
     }
-    if (!isAssistantAvatarRelativePath(avatarPath) || !dbReady || !services) {
+    if (!avatarPath || !isAssistantAvatarRelativePath(avatarPath) || !dbReady || !services) {
       setUri(null)
       return
     }
