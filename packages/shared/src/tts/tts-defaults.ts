@@ -181,8 +181,9 @@ export function buildTtsProviderStatesFromGlobal(
   const result = getTtsInitialConfigs()
   if (!globalModels) return result
 
-  const savedProviderId = isTtsProviderId(globalModels.globalTtsProviderId || '')
-    ? globalModels.globalTtsProviderId!
+  const rawProviderId = globalModels.globalTtsProviderId || ''
+  const savedProviderId: TtsProviderId = isTtsProviderId(rawProviderId)
+    ? rawProviderId
     : 'openai-tts'
   const ttsSettings = globalModels.globalTtsSettings || {}
   const providerConfigs = globalModels.globalTtsProviderConfigs || {}

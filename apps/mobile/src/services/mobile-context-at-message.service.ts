@@ -7,7 +7,7 @@ import {
   webSearchConfigToUserConfig
 } from '@baishou/ai'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
-import type { AssistantManagerService, SettingsManagerService } from '@baishou/core'
+import type { AssistantManagerService, SettingsManagerService } from '@baishou/core-mobile'
 export interface MappedCallChainFlatEntry {
   kind: 'system-prompt' | 'compression-summary' | 'round-header' | 'message'
   roundIndex?: number

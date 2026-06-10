@@ -30,7 +30,7 @@ export function useTTSProviderSettings({
   const [isInitialized, setIsInitialized] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
   const skipAutoSaveRef = useRef(true)
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const updateCurrentConfig = useCallback(
     (updates: Partial<ProviderLocalState>) => {

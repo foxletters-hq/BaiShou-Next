@@ -92,7 +92,7 @@ export function useTtsProviderSettings({
   const [isInitialized, setIsInitialized] = useState(false)
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
   const skipAutoSaveRef = useRef(true)
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const getProviderName = useCallback(
     (type: string) => {
@@ -219,10 +219,7 @@ export function useTtsProviderSettings({
   }, [providerType, configs, currentConfig, getDefaultModelOptions])
 
   const persistCurrentConfig = useCallback(
-    async (
-      state: ProviderLocalState,
-      options?: { silent?: boolean; successMessage?: string }
-    ) => {
+    async (state: ProviderLocalState, options?: { silent?: boolean; successMessage?: string }) => {
       if (!onSaveConfig) return false
       if (!state.baseUrl.trim() && requiresBaseUrl(providerType)) {
         if (!options?.silent) {

@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import type { GlobalModelsConfig } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 
 const TTS_PLAYBACK_CACHE_KEY = 'baishou_tts_playback_cache'
 
 export interface TtsPlaybackSettings {
-  globalModels: Record<string, unknown> | null
+  globalModels: GlobalModelsConfig | null
 }
 
 let memoryCache: TtsPlaybackSettings | null = null
@@ -45,7 +46,7 @@ export async function getTtsPlaybackSettings(
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const globalModels =
-        (await settingsManager.get<Record<string, unknown>>('global_models')) || null
+        (await settingsManager.get<GlobalModelsConfig | null>('global_models')) || null
       const settings: TtsPlaybackSettings = { globalModels }
       setTtsPlaybackSettingsCache(settings)
       return settings
