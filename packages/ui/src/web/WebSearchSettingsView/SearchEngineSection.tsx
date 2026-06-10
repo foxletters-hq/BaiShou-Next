@@ -29,7 +29,7 @@ export const SearchEngineSection: React.FC<SearchEngineSectionProps> = ({
           />
         </div>
       </div>
-      <div className={styles.cardBody}>
+      <div className={styles.engineGrid}>
         {SEARCH_ENGINE_OPTIONS.map((option) => (
           <label
             key={option.value}

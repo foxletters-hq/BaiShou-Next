@@ -49,17 +49,25 @@
   padding-bottom: 4px;
 }
 
+.engineGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  padding: 8px 16px 16px;
+}
+
 /* Radio List Tile */
 .radioListTile {
   display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  margin: 6px 16px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  margin: 0;
   border: 1px solid transparent;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.17, 0.89, 0.32, 1.15);
   background-color: transparent;
+  min-width: 0;
 }
 
 .radioListTile:hover {
@@ -77,10 +85,12 @@
 }
 
 .radioCustomContainer {
-  margin-right: 16px;
+  margin-right: 10px;
+  margin-top: 1px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .radioCustomRing {
@@ -111,16 +121,18 @@
   flex-direction: column;
   justify-content: center;
   flex: 1;
+  min-width: 0;
 }
 
 .radioTitleRow {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .radioTitle {
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.35;
   color: var(--text-primary);
 }
 

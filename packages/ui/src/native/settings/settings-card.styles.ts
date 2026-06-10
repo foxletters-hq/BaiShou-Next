@@ -8,7 +8,17 @@ export const settingsCardStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   rowText: { flex: 1 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 4 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 100,
+    maxWidth: '48%',
+    alignItems: 'center'
+  },
   collapsed: {
     height: 0,
     overflow: 'hidden',

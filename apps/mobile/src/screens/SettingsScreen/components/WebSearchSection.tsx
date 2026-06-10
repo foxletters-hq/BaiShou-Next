@@ -94,7 +94,8 @@ export const WebSearchSection: React.FC = () => {
                 <Text
                   style={{
                     color: active ? colors.primary : colors.textSecondary,
-                    fontWeight: active ? '600' : '400'
+                    fontWeight: active ? '600' : '400',
+                    textAlign: 'center'
                   }}
                 >
                   {t(engine.labelKey)}
@@ -241,7 +242,17 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '600' },
   hint: { fontSize: 12, marginTop: 2, lineHeight: 17 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 4 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 100,
+    maxWidth: '48%',
+    alignItems: 'center'
+  },
   divider: { height: 1, marginVertical: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   rowText: { flex: 1 },

@@ -174,13 +174,19 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '500', marginBottom: 8, flex: 1 },
   chipRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8
   },
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 1
+    borderWidth: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 100,
+    maxWidth: '48%',
+    alignItems: 'center'
   },
   chipText: { fontSize: 14, fontWeight: '500' },
   stepperRow: {
