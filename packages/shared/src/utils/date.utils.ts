@@ -69,11 +69,23 @@ export function isSameLocalDay(a: Date, b: Date): boolean {
 
 /**
  * 将数据库中的 Unix 时间戳统一为毫秒。
- * hybrid_search.source_created_at 等字段存的是「秒」；部分 IPC 路径为「毫秒」。
+ * memory_embeddings.source_created_at 规范为「秒」，历史数据可能误写入「毫秒」。
  */
 export function timestampToMillis(ts: number | undefined | null): number | undefined {
   if (ts == null || !Number.isFinite(ts) || ts <= 0) return undefined
   return ts < 1_000_000_000_000 ? ts * 1000 : ts
+}
+
+/** 写入 DB 前统一为 Unix 秒 */
+export function normalizeUnixToSeconds(ts: number): number {
+  if (!Number.isFinite(ts) || ts <= 0) return Math.floor(Date.now() / 1000)
+  return ts >= 1_000_000_000_000 ? Math.floor(ts / 1000) : Math.floor(ts)
+}
+
+/** 日记日历日期（本地零点）→ source_created_at 秒 */
+export function diaryDateToSourceCreatedSeconds(date: Date): number {
+  const localMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  return normalizeUnixToSeconds(localMidnight.getTime())
 }
 
 /** 格式化为本地 YYYY-MM-DD HH:mm；无效时间戳返回 undefined */
