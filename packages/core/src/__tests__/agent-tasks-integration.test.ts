@@ -47,8 +47,8 @@ describe('Agent 1: 日记与筛选功能验证', () => {
     const tsx = readFile('apps/desktop/src/renderer/src/features/diary/components/DiaryGrid.tsx')
     // 确认分页阈值为 50（使用 pageSize）
     expect(tsx).toMatch(/showPagination\s*=.*totalCount\s*>\s*pageSize/)
-    // 确认分页选项为 [50, 80, 100, 200]
-    expect(tsx).toContain('[50, 80, 100, 200]')
+    // 确认分页选项为 [20, 30, 50, 80, 100]
+    expect(tsx).toContain('[20, 30, 50, 80, 100]')
   })
 })
 

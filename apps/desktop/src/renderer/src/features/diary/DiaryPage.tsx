@@ -61,7 +61,8 @@ export const DiaryPage: React.FC = () => {
   })
   const [pageSize, setPageSize] = useState(() => {
     const saved = sessionStorage.getItem('diary_pageSize')
-    return saved ? Number(saved) : 50
+    const parsed = saved ? Number(saved) : 50
+    return [20, 30, 50, 80, 100].includes(parsed) ? parsed : 50
   })
 
   const [todayEntry, setTodayEntry] = useState<DiaryEntry | null>(null)

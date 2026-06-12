@@ -50,10 +50,10 @@
 
 .diary-card-v2-badge {
   padding: 2px 6px;
-  background-color: var(--color-primary-light, rgba(91, 168, 245, 0.1));
+  background-color: transparent;
   color: var(--color-primary);
   border-radius: 4px;
-  border: 0.5px solid var(--color-primary-light, rgba(91, 168, 245, 0.2));
+  border: 0.5px solid var(--color-primary);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.5px;

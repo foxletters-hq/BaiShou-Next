@@ -1,23 +1,14 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, Trash2 } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import styles from './AssistantEditPage.module.css'
 
 interface AssistantEditAppBarProps {
   isEditing: boolean
-  isLastAssistant: boolean
-  canDelete: boolean
   onBack: () => void
-  onDeleteClick: () => void
 }
 
-export const AssistantEditAppBar: React.FC<AssistantEditAppBarProps> = ({
-  isEditing,
-  isLastAssistant,
-  canDelete,
-  onBack,
-  onDeleteClick
-}) => {
+export const AssistantEditAppBar: React.FC<AssistantEditAppBarProps> = ({ isEditing, onBack }) => {
   const { t } = useTranslation()
 
   return (
@@ -32,15 +23,6 @@ export const AssistantEditAppBar: React.FC<AssistantEditAppBarProps> = ({
             : t('agent.assistant.create_title', '创建伙伴')}
         </span>
       </div>
-      {isEditing && !isLastAssistant && canDelete && (
-        <button
-          className={styles.iconBtn}
-          onClick={onDeleteClick}
-          title={t('common.delete', '删除')}
-        >
-          <Trash2 size={24} />
-        </button>
-      )}
     </div>
   )
 }

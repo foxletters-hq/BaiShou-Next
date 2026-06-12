@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Pressable,
+  Keyboard
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import {
@@ -75,12 +84,13 @@ function formatKeepTurns(t: (key: string, fallback: string) => string, count: nu
 
 export const AssistantEditScreen: React.FC = () => {
   const { t, i18n } = useTranslation()
-  const { colors, isDark, tokens } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
   const router = useRouter()
   const { id } = useLocalSearchParams()
+  const insets = useSafeAreaInsets()
 
   const isNew = !id || id === 'new'
 
@@ -319,6 +329,7 @@ export const AssistantEditScreen: React.FC = () => {
   const handleDelete = async () => {
     if (isNew || existingAssistant?.isDefault) return
 
+    Keyboard.dismiss()
     const confirmed = await dialog.confirm(
       t(
         'agent.assistant.delete_confirm_content',
@@ -351,6 +362,8 @@ export const AssistantEditScreen: React.FC = () => {
     Boolean(pendingImportUri || previewAvatarUri) &&
     storedAvatarPath !== ASSISTANT_DEFAULT_AVATAR_SENTINEL
 
+  const canDelete = !isNew && !existingAssistant?.isDefault
+
   if (loading) {
     return (
       <StackScreenLayout
@@ -369,284 +382,325 @@ export const AssistantEditScreen: React.FC = () => {
     <StackScreenLayout
       title={screenTitle}
       {...getStackScreenChrome(colors)}
-      headerRight={{
-        label: saving ? t('common.saving') : t('common.save'),
-        onPress: handleSave,
-        disabled: saving
-      }}
       contentStyle={styles.layoutContent}
     >
-      <ScrollView
-        style={[styles.content, { backgroundColor: colors.bgApp }]}
-        contentContainerStyle={styles.contentContainer}
-        indicatorStyle={scrollIndicatorStyle(isDark)}
-      >
-        <SettingsGroupCard style={styles.avatarCard}>
-          <View style={styles.avatarSection}>
-            <View style={styles.avatarWrap}>
-              <Pressable onPress={() => void handleAvatarPress()}>
-                <AssistantAvatar
-                  emoji={emoji}
-                  avatarPath={storedAvatarPath}
-                  resolvedAvatarUri={previewAvatarUri}
-                  size={88}
-                />
-              </Pressable>
-              <View style={[styles.avatarBadge, { backgroundColor: colors.primary }]}>
-                <MaterialIcons name="sentiment-satisfied-alt" size={16} color={colors.onPrimary} />
+      <View style={styles.pageBody}>
+        <ScrollView
+          style={[styles.content, { backgroundColor: colors.bgApp }]}
+          contentContainerStyle={styles.contentContainer}
+          indicatorStyle={scrollIndicatorStyle(isDark)}
+          keyboardShouldPersistTaps="handled"
+        >
+          <SettingsGroupCard style={styles.avatarCard}>
+            <View style={styles.avatarSection}>
+              <View style={styles.avatarWrap}>
+                <Pressable onPress={() => void handleAvatarPress()}>
+                  <AssistantAvatar
+                    emoji={emoji}
+                    avatarPath={storedAvatarPath}
+                    resolvedAvatarUri={previewAvatarUri}
+                    size={88}
+                  />
+                </Pressable>
+                <View style={[styles.avatarBadge, { backgroundColor: colors.primary }]}>
+                  <MaterialIcons
+                    name="sentiment-satisfied-alt"
+                    size={16}
+                    color={colors.onPrimary}
+                  />
+                </View>
               </View>
-            </View>
-            <Text style={[styles.avatarHint, { color: colors.textSecondary }]}>
-              {t('agent.assistant.avatar_hint', '点击更换伙伴的图标或头像')}
-            </Text>
-            {hasCustomImage || (emoji && storedAvatarPath !== ASSISTANT_DEFAULT_AVATAR_SENTINEL) ? (
-              <TouchableOpacity onPress={handleRemoveAvatar}>
-                <Text style={[styles.textBtn, { color: colors.primary }]}>
-                  {t('agent.assistant.remove_avatar', '移除头像')}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </SettingsGroupCard>
-
-        <SettingsGroupCard>
-          <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
-            {t('agent.assistant.name_label', '伙伴名称')}
-          </Text>
-          <Input
-            value={name}
-            onChangeText={setName}
-            placeholder={t('agent.assistant.name_hint', '例如：知识伙伴、写作伙伴...')}
-          />
-
-          <View style={styles.fieldGap} />
-
-          <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
-            {t('agent.assistant.description_label', '简介')}
-          </Text>
-          <Input
-            value={description}
-            onChangeText={setDescription}
-            placeholder={t('agent.assistant.description_hint', '简短描述伙伴的用途...')}
-            multiline
-            numberOfLines={2}
-          />
-
-          <View style={styles.fieldGap} />
-
-          <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
-            {t('agent.assistant.prompt_label', '系统提示词')}
-          </Text>
-          <Input
-            value={systemPrompt}
-            onChangeText={setSystemPrompt}
-            placeholder={t('agent.assistant.prompt_hint', '定义伙伴的角色、行为和回复风格...')}
-            multiline
-            textarea
-            numberOfLines={8}
-            style={{ minHeight: 160 }}
-          />
-        </SettingsGroupCard>
-
-        <SettingsGroupCard>
-          <View style={styles.row}>
-            <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
-              {t('agent.assistant.bind_model_label', '绑定模型')}
-            </Text>
-            {providerId ? (
-              <TouchableOpacity onPress={clearModelBinding}>
-                <Text style={[styles.textBtn, { color: colors.primary, marginTop: 0 }]}>
-                  {t('agent.assistant.use_global_model', '使用全局模型')}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
-          {!providerId ? (
-            <TouchableOpacity
-              style={[styles.outlinedBtn, { borderColor: colors.borderSubtle }]}
-              onPress={() => void openModelSwitcher()}
-            >
-              <MaterialIcons name="add" size={18} color={colors.textPrimary} />
-              <Text style={[styles.outlinedBtnText, { color: colors.textPrimary }]}>
-                {t('agent.assistant.select_model_label', '选择模型（使用全局默认）')}
+              <Text style={[styles.avatarHint, { color: colors.textSecondary }]}>
+                {t('agent.assistant.avatar_hint', '点击更换伙伴的图标或头像')}
               </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.modelCard, { borderColor: colors.borderSubtle }]}
-              onPress={() => void openModelSwitcher()}
-              activeOpacity={0.75}
-            >
-              <ProviderBrandIcon providerId={providerId} size={24} />
-              <View style={styles.modelInfo}>
-                <Text style={[styles.modelSup, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {providerId}
-                </Text>
-                <Text style={[styles.modelSub, { color: colors.textPrimary }]} numberOfLines={1}>
-                  {modelId}
-                </Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
-
-          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
-            {t(
-              'agent.assistant.bind_model_desc',
-              '绑定后，和伙伴创建对话时，会默认优先使用选择的模型'
-            )}
-          </Text>
-        </SettingsGroupCard>
-
-        <SettingsGroupCard>
-          <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
-            {t('agent.assistant.memory_label', '记忆')}
-          </Text>
-
-          <View style={styles.row}>
-            <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
-              {t('agent.assistant.context_window_label', '上下文轮数')}
-            </Text>
-            <View style={styles.rowSpacer} />
-            {!isUnlimitedContext ? (
-              <Text style={[styles.valueText, { color: colors.textPrimary }]}>
-                {Math.round(contextWindow)}
-              </Text>
-            ) : null}
-            <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 0 }]}>
-              {isUnlimitedContext
-                ? t('agent.assistant.context_unlimited', '∞ 无限')
-                : t('agent.assistant.context_limited', '有限')}
-            </Text>
-            <Switch
-              value={isUnlimitedContext}
-              onValueChange={(unlimited) => setContextWindow(unlimited ? -1 : 20)}
-            />
-          </View>
-
-          {!isUnlimitedContext ? (
-            <SettingsSliderRow
-              title=""
-              value={contextWindow}
-              min={2}
-              max={100}
-              step={1}
-              onChange={setContextWindow}
-              formatValue={(v) => String(Math.round(v))}
-            />
-          ) : null}
-
-          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
-            {isUnlimitedContext
-              ? t(
-                  'agent.assistant.context_unlimited_desc',
-                  '不限制轮数，将发送全部对话历史（每轮含你的消息、AI 回复及工具调用）给模型。'
-                )
-              : t(
-                  'agent.assistant.context_window_desc',
-                  '发送给模型的最近对话轮数。一轮以你的消息开始，包含 AI 的回复以及该轮内的工具调用；轮数越多记忆越长，但 Token 消耗也更高。'
-                )}
-          </Text>
-
-          <View style={[styles.sectionDivider, { backgroundColor: colors.borderSubtle }]} />
-
-          <View style={styles.row}>
-            <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
-              {t('agent.assistant.compress_label', '自动压缩')}
-            </Text>
-            <View style={styles.rowSpacer} />
-            {!isCompressDisabled ? (
-              <Text style={[styles.valueText, { color: colors.textPrimary }]}>
-                {formatTokens(Math.round(compressTokenThreshold))}
-              </Text>
-            ) : null}
-            <Switch
-              value={!isCompressDisabled}
-              onValueChange={(enabled) => setCompressTokenThreshold(enabled ? 60000 : 0)}
-            />
-          </View>
-
-          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
-            {isCompressDisabled
-              ? t('agent.assistant.compress_disabled_desc', '对话不会自动压缩，所有消息将完整保留')
-              : t('agent.assistant.compress_enabled_desc', '对话超过阈值时自动将旧消息压缩为摘要')}
-          </Text>
-
-          {!isCompressDisabled ? (
-            <>
-              <SettingsSliderRow
-                title=""
-                value={compressTokenThreshold}
-                min={10000}
-                max={1000000}
-                step={10000}
-                onChange={setCompressTokenThreshold}
-                formatValue={(v) => formatTokens(Math.round(v))}
-              />
-              <SettingsSliderRow
-                title={t('agent.assistant.compress_keep_turns_label', '保留互动轮数')}
-                description={t(
-                  'agent.assistant.compress_keep_turns_desc',
-                  '触发压缩时，保留最近若干轮完整原文。一轮以你的消息开始，包含 AI 回复及该轮内的工具调用；更早的轮次会被压缩为摘要。'
-                )}
-                value={compressKeepTurns}
-                min={1}
-                max={10}
-                step={1}
-                onChange={setCompressKeepTurns}
-                formatValue={(v) => formatKeepTurns(t, v)}
-              />
-
-              <View style={[styles.sectionDivider, { backgroundColor: colors.borderSubtle }]} />
-
-              <View style={styles.row}>
-                <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
-                  {t('agent.assistant.compress_system_prompt_label', '压缩提示词')}
-                </Text>
-                <View style={styles.rowSpacer} />
-                <TouchableOpacity
-                  onPress={() =>
-                    setCompressSystemPrompt(getDefaultCompressionSystemPrompt(i18n.language))
-                  }
-                >
-                  <Text style={[styles.resetLink, { color: colors.primary }]}>
-                    {t('agent.assistant.compress_system_prompt_reset', '恢复默认')}
+              {hasCustomImage ||
+              (emoji && storedAvatarPath !== ASSISTANT_DEFAULT_AVATAR_SENTINEL) ? (
+                <TouchableOpacity onPress={handleRemoveAvatar}>
+                  <Text style={[styles.textBtn, { color: colors.primary }]}>
+                    {t('agent.assistant.remove_avatar', '移除头像')}
                   </Text>
                 </TouchableOpacity>
-              </View>
-              <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
-                {t(
-                  'agent.assistant.compress_system_prompt_desc',
-                  '生成对话压缩摘要时发给模型的系统指令。可自定义压缩时的思考方式与摘要规则。'
-                )}
-              </Text>
-              <Input
-                textarea
-                multiline
-                value={compressSystemPrompt}
-                onChangeText={setCompressSystemPrompt}
-                style={styles.compressPromptInput}
-                textAlignVertical="top"
-              />
-            </>
-          ) : null}
-        </SettingsGroupCard>
+              ) : null}
+            </View>
+          </SettingsGroupCard>
 
-        {!isNew && !existingAssistant?.isDefault ? (
+          <SettingsGroupCard>
+            <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
+              {t('agent.assistant.name_label', '伙伴名称')}
+            </Text>
+            <Input
+              value={name}
+              onChangeText={setName}
+              placeholder={t('agent.assistant.name_hint', '例如：知识伙伴、写作伙伴...')}
+            />
+
+            <View style={styles.fieldGap} />
+
+            <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+              {t('agent.assistant.description_label', '简介')}
+            </Text>
+            <Input
+              value={description}
+              onChangeText={setDescription}
+              placeholder={t('agent.assistant.description_hint', '简短描述伙伴的用途...')}
+              multiline
+              numberOfLines={2}
+            />
+
+            <View style={styles.fieldGap} />
+
+            <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+              {t('agent.assistant.prompt_label', '系统提示词')}
+            </Text>
+            <Input
+              value={systemPrompt}
+              onChangeText={setSystemPrompt}
+              placeholder={t('agent.assistant.prompt_hint', '定义伙伴的角色、行为和回复风格...')}
+              multiline
+              textarea
+              numberOfLines={8}
+              style={{ minHeight: 160 }}
+            />
+          </SettingsGroupCard>
+
+          <SettingsGroupCard>
+            <View style={styles.row}>
+              <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+                {t('agent.assistant.bind_model_label', '绑定模型')}
+              </Text>
+              {providerId ? (
+                <TouchableOpacity onPress={clearModelBinding}>
+                  <Text style={[styles.textBtn, { color: colors.primary, marginTop: 0 }]}>
+                    {t('agent.assistant.use_global_model', '使用全局模型')}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {!providerId ? (
+              <TouchableOpacity
+                style={[styles.outlinedBtn, { borderColor: colors.borderSubtle }]}
+                onPress={() => void openModelSwitcher()}
+              >
+                <MaterialIcons name="add" size={18} color={colors.textPrimary} />
+                <Text style={[styles.outlinedBtnText, { color: colors.textPrimary }]}>
+                  {t('agent.assistant.select_model_label', '选择模型（使用全局默认）')}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.modelCard, { borderColor: colors.borderSubtle }]}
+                onPress={() => void openModelSwitcher()}
+                activeOpacity={0.75}
+              >
+                <ProviderBrandIcon providerId={providerId} size={24} />
+                <View style={styles.modelInfo}>
+                  <Text
+                    style={[styles.modelSup, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {providerId}
+                  </Text>
+                  <Text style={[styles.modelSub, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {modelId}
+                  </Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+
+            <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+              {t(
+                'agent.assistant.bind_model_desc',
+                '绑定后，和伙伴创建对话时，会默认优先使用选择的模型'
+              )}
+            </Text>
+          </SettingsGroupCard>
+
+          <SettingsGroupCard>
+            <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
+              {t('agent.assistant.memory_label', '记忆')}
+            </Text>
+
+            <View style={styles.row}>
+              <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+                {t('agent.assistant.context_window_label', '上下文轮数')}
+              </Text>
+              <View style={styles.rowSpacer} />
+              {!isUnlimitedContext ? (
+                <Text style={[styles.valueText, { color: colors.textPrimary }]}>
+                  {Math.round(contextWindow)}
+                </Text>
+              ) : null}
+              <Text
+                style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 0 }]}
+              >
+                {isUnlimitedContext
+                  ? t('agent.assistant.context_unlimited', '∞ 无限')
+                  : t('agent.assistant.context_limited', '有限')}
+              </Text>
+              <Switch
+                value={isUnlimitedContext}
+                onValueChange={(unlimited) => setContextWindow(unlimited ? -1 : 20)}
+              />
+            </View>
+
+            {!isUnlimitedContext ? (
+              <SettingsSliderRow
+                title=""
+                value={contextWindow}
+                min={2}
+                max={100}
+                step={1}
+                onChange={setContextWindow}
+                formatValue={(v) => String(Math.round(v))}
+              />
+            ) : null}
+
+            <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+              {isUnlimitedContext
+                ? t(
+                    'agent.assistant.context_unlimited_desc',
+                    '不限制轮数，将发送全部对话历史（每轮含你的消息、AI 回复及工具调用）给模型。'
+                  )
+                : t(
+                    'agent.assistant.context_window_desc',
+                    '发送给模型的最近对话轮数。一轮以你的消息开始，包含 AI 的回复以及该轮内的工具调用；轮数越多记忆越长，但 Token 消耗也更高。'
+                  )}
+            </Text>
+
+            <View style={[styles.sectionDivider, { backgroundColor: colors.borderSubtle }]} />
+
+            <View style={styles.row}>
+              <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+                {t('agent.assistant.compress_label', '自动压缩')}
+              </Text>
+              <View style={styles.rowSpacer} />
+              {!isCompressDisabled ? (
+                <Text style={[styles.valueText, { color: colors.textPrimary }]}>
+                  {formatTokens(Math.round(compressTokenThreshold))}
+                </Text>
+              ) : null}
+              <Switch
+                value={!isCompressDisabled}
+                onValueChange={(enabled) => setCompressTokenThreshold(enabled ? 60000 : 0)}
+              />
+            </View>
+
+            <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+              {isCompressDisabled
+                ? t(
+                    'agent.assistant.compress_disabled_desc',
+                    '对话不会自动压缩，所有消息将完整保留'
+                  )
+                : t(
+                    'agent.assistant.compress_enabled_desc',
+                    '对话超过阈值时自动将旧消息压缩为摘要'
+                  )}
+            </Text>
+
+            {!isCompressDisabled ? (
+              <>
+                <SettingsSliderRow
+                  title=""
+                  value={compressTokenThreshold}
+                  min={10000}
+                  max={1000000}
+                  step={10000}
+                  onChange={setCompressTokenThreshold}
+                  formatValue={(v) => formatTokens(Math.round(v))}
+                />
+                <SettingsSliderRow
+                  title={t('agent.assistant.compress_keep_turns_label', '保留互动轮数')}
+                  description={t(
+                    'agent.assistant.compress_keep_turns_desc',
+                    '触发压缩时，保留最近若干轮完整原文。一轮以你的消息开始，包含 AI 回复及该轮内的工具调用；更早的轮次会被压缩为摘要。'
+                  )}
+                  value={compressKeepTurns}
+                  min={1}
+                  max={10}
+                  step={1}
+                  onChange={setCompressKeepTurns}
+                  formatValue={(v) => formatKeepTurns(t, v)}
+                />
+
+                <View style={[styles.sectionDivider, { backgroundColor: colors.borderSubtle }]} />
+
+                <View style={styles.row}>
+                  <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+                    {t('agent.assistant.compress_system_prompt_label', '压缩提示词')}
+                  </Text>
+                  <View style={styles.rowSpacer} />
+                  <TouchableOpacity
+                    onPress={() =>
+                      setCompressSystemPrompt(getDefaultCompressionSystemPrompt(i18n.language))
+                    }
+                  >
+                    <Text style={[styles.resetLink, { color: colors.primary }]}>
+                      {t('agent.assistant.compress_system_prompt_reset', '恢复默认')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+                  {t(
+                    'agent.assistant.compress_system_prompt_desc',
+                    '生成对话压缩摘要时发给模型的系统指令。可自定义压缩时的思考方式与摘要规则。'
+                  )}
+                </Text>
+                <Input
+                  textarea
+                  multiline
+                  value={compressSystemPrompt}
+                  onChangeText={setCompressSystemPrompt}
+                  style={styles.compressPromptInput}
+                  textAlignVertical="top"
+                />
+              </>
+            ) : null}
+          </SettingsGroupCard>
+        </ScrollView>
+
+        <View
+          style={[
+            styles.bottomBar,
+            {
+              borderTopColor: colors.borderSubtle,
+              backgroundColor: colors.bgApp,
+              paddingBottom: Math.max(insets.bottom, 12)
+            }
+          ]}
+        >
+          {canDelete ? (
+            <TouchableOpacity
+              style={[
+                styles.bottomBtn,
+                styles.bottomBtnOutline,
+                { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }
+              ]}
+              onPress={() => void handleDelete()}
+              disabled={saving}
+            >
+              <Text style={[styles.bottomBtnText, { color: colors.error }]}>
+                {t('common.delete', '删除')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
             style={[
-              styles.deleteButton,
-              { backgroundColor: colors.error + '10', borderRadius: tokens.radius.md }
+              styles.bottomBtn,
+              styles.bottomBtnPrimary,
+              { backgroundColor: colors.primary },
+              !canDelete && styles.bottomBtnFull
             ]}
-            onPress={() => void handleDelete()}
+            onPress={() => void handleSave()}
+            disabled={saving}
           >
-            <Text style={[styles.deleteText, { color: colors.error }]}>
-              {t('agent.assistant.delete_confirm_title', '删除伙伴')}
+            <Text style={[styles.bottomBtnText, { color: colors.onPrimary }]}>
+              {saving ? t('common.saving') : t('common.save')}
             </Text>
           </TouchableOpacity>
-        ) : null}
-      </ScrollView>
+        </View>
+      </View>
 
       <EmojiPicker
         visible={showEmojiPicker}
@@ -678,6 +732,9 @@ export const AssistantEditScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
+  pageBody: {
+    flex: 1
+  },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
@@ -691,7 +748,34 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 32
+    paddingBottom: 16
+  },
+  bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
+  bottomBtn: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16
+  },
+  bottomBtnFull: {
+    flex: 1
+  },
+  bottomBtnOutline: {
+    borderWidth: 1
+  },
+  bottomBtnPrimary: {},
+  bottomBtnText: {
+    fontSize: 16,
+    fontWeight: '600'
   },
   avatarCard: {
     alignItems: 'stretch'
@@ -778,14 +862,6 @@ const styles = StyleSheet.create({
   sectionDivider: {
     height: StyleSheet.hairlineWidth,
     marginVertical: 16
-  },
-  deleteButton: {
-    padding: 16,
-    alignItems: 'center'
-  },
-  deleteText: {
-    fontSize: 16,
-    fontWeight: '600'
   },
   resetLink: {
     fontSize: 13,

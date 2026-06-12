@@ -189,16 +189,12 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   return (
     <DialogContext.Provider value={{ alert, confirm, prompt, choose, closeAll }}>
       {children}
-      {state.isOpen && (
-        <Modal
-          visible={state.isOpen}
-          onClose={dismissDialog}
-          title={
-            state.type === 'confirm' || state.type === 'prompt' || state.type === 'choose'
-              ? undefined
-              : state.title
-          }
-        >
+      <Modal
+        visible={state.isOpen}
+        onClose={dismissDialog}
+        title={state.type === 'prompt' || state.type === 'choose' ? undefined : state.title}
+      >
+        {state.isOpen ? (
           <View
             style={[
               styles.dialogBody,
@@ -320,8 +316,8 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               </View>
             )}
           </View>
-        </Modal>
-      )}
+        ) : null}
+      </Modal>
     </DialogContext.Provider>
   )
 }

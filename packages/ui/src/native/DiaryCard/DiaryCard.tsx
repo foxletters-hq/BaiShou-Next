@@ -95,7 +95,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
                 style={[
                   styles.badge,
                   {
-                    backgroundColor: colors.primaryLight,
+                    backgroundColor: 'transparent',
                     borderColor: colors.primary
                   }
                 ]}

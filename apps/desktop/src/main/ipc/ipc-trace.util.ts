@@ -34,7 +34,7 @@ export function tracedIpcHandle(
     try {
       const result = await handler(event, ...args)
       const cost = Math.round(performance.now() - start)
-      const [summarizedResult] = summarizeIpcArgs([result]) as unknown[]
+      const summarizedResult = summarizeIpcArgs([result])
       logger.info(`[IPC Main] ⬅ ${channel} (${cost}ms)`, {
         result: summarizedResult
       })

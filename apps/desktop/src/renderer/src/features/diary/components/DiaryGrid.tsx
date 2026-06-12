@@ -63,7 +63,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
       <div className="diary-pagination-controls">
         <PageSizeSelector
           value={pageSize}
-          options={[50, 80, 100, 200]}
+          options={[20, 30, 50, 80, 100]}
           onChange={(size) => {
             onPageSizeChange(size)
             onPageChange(1)

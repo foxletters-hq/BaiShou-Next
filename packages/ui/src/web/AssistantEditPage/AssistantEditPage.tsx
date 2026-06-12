@@ -26,13 +26,7 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
 
   return (
     <div className={styles.scaffold}>
-      <AssistantEditAppBar
-        isEditing={form.isEditing}
-        isLastAssistant={isLastAssistant}
-        canDelete={!!onDelete}
-        onBack={onBack}
-        onDeleteClick={() => form.setShowDeleteConfirm(true)}
-      />
+      <AssistantEditAppBar isEditing={form.isEditing} onBack={onBack} />
 
       <div className={styles.scrollArea}>
         <div className={styles.formContainer}>
@@ -117,21 +111,32 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
             onShowCompressTooltip={form.setShowCompressTooltip}
             onShowKeepTurnsTooltip={form.setShowKeepTurnsTooltip}
           />
-
-          <div className={styles.spacer16} />
-
-          <button
-            className={styles.filledBtn}
-            onClick={form.handleSave}
-            disabled={form.saving || !form.name.trim()}
-          >
-            {form.saving ? (
-              <Loader2 size={20} className={styles.spinIcon} />
-            ) : (
-              t('common.save', '保存')
-            )}
-          </button>
         </div>
+      </div>
+
+      <div className={styles.formFooter}>
+        {form.isEditing && !isLastAssistant && onDelete ? (
+          <button
+            type="button"
+            className={styles.outlineDangerBtn}
+            onClick={() => form.setShowDeleteConfirm(true)}
+            disabled={form.saving}
+          >
+            {t('common.delete', '删除')}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={styles.filledBtn}
+          onClick={form.handleSave}
+          disabled={form.saving || !form.name.trim()}
+        >
+          {form.saving ? (
+            <Loader2 size={20} className={styles.spinIcon} />
+          ) : (
+            t('common.save', '保存')
+          )}
+        </button>
       </div>
 
       <AssistantModelPicker
