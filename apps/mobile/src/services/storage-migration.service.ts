@@ -3,7 +3,7 @@ import {
   copyStorageRootContents as copyStorageRootContentsCore,
   targetDirectoryHasData as targetDirectoryHasDataCore,
   validateStorageDirectoryWritable as validateStorageDirectoryWritableCore
-} from '@baishou/core'
+} from '@baishou/core-mobile'
 import { isPathInsideStorageRoot, isSameStorageRoot, normalizeStorageRoot } from '@baishou/shared'
 import { normalizeExternalStoragePath, stripFileScheme } from './android-external-fs'
 

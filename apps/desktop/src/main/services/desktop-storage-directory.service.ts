@@ -3,7 +3,7 @@ import {
   copyStorageRootContents,
   targetDirectoryHasData,
   validateStorageDirectoryWritable
-} from '@baishou/core'
+} from '@baishou/core-desktop'
 import { isPathInsideStorageRoot, isSameStorageRoot, logger } from '@baishou/shared'
 import { shadowConnectionManager } from '@baishou/database-desktop'
 import { pathService, vaultService, connectShadowForActiveVault } from '../ipc/vault.ipc'

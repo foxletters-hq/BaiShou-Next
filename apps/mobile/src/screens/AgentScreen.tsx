@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useFocusEffect, useRouter, type Href } from 'expo-router'
 import { type PromptShortcut } from '@baishou/shared'
 import {
   View,
@@ -736,7 +736,7 @@ export const AgentScreen = () => {
               onTriggerShortcut={() => setShowShortcutSheet(true)}
               onManageShortcuts={() => setShowShortcutSheet(true)}
               onRecall={() => setShowRecallSheet(true)}
-              onOpenTools={() => router.push('/agent/tools')}
+              onOpenTools={() => router.push('/(tabs)/agent/tools' as Href)}
               searchMode={searchMode}
               onToggleSearchMode={toggleSearchMode}
               ttsMode={ttsMode}
