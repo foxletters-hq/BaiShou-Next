@@ -21,24 +21,8 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     private readonly fileSystem: IFileSystem
   ) {}
 
-  /** 历史版本将伙伴头像写在 vault/.baishou/avatars；现统一为 attachments/avatars */
-  private async legacyVaultAvatarsDirs(): Promise<string[]> {
-    const dirs: string[] = []
-    try {
-      dirs.push(joinPath(await this.pathService.getVaultSystemDirectory('default'), 'avatars'))
-    } catch {
-      // ignore
-    }
-    try {
-      const activePath = await this.pathService.getActiveVaultPath()
-      if (activePath) {
-        const activeDir = joinPath(activePath, '.baishou', 'avatars')
-        if (!dirs.includes(activeDir)) dirs.push(activeDir)
-      }
-    } catch {
-      // ignore
-    }
-    return dirs
+  private async listAvatarCandidateDirs(): Promise<string[]> {
+    return [await this.pathService.getAvatarsDirectory()]
   }
 
   async importAvatar(absoluteSourcePath: string, prefix = 'agent'): Promise<string> {
@@ -56,10 +40,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     }
 
     const filename = basename(relativePath)
-    const candidateDirs = [
-      await this.pathService.getAvatarsDirectory(),
-      ...(await this.legacyVaultAvatarsDirs())
-    ]
+    const candidateDirs = await this.listAvatarCandidateDirs()
 
     for (const dir of candidateDirs) {
       const absPath = joinPath(dir, filename)

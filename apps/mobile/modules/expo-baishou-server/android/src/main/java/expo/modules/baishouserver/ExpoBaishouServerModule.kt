@@ -309,6 +309,23 @@ class ExpoBaishouServerModule : Module() {
             }.start()
         }
 
+        /** 外部存储 ↔ 沙盒等任意路径间流式复制（后台线程） */
+        AsyncFunction("externalCopyFileAsync") { fromPath: String, toPath: String, promise: Promise ->
+            val context = appContext.reactContext
+            if (context == null) {
+                promise.reject("E_NO_CONTEXT", "React context is null", null)
+                return@AsyncFunction
+            }
+            Thread {
+                try {
+                    ExternalStorageFiles.copyFileAny(context, fromPath, toPath)
+                    promise.resolve(null)
+                } catch (e: Exception) {
+                    promise.reject("E_EXTERNAL_COPY_FILE", e.message ?: "external copy file failed", e)
+                }
+            }.start()
+        }
+
         /** 调起系统目录选择器（ACTION_OPEN_DOCUMENT_TREE） */
         AsyncFunction("pickDirectoryAsync") { promise: Promise ->
             if (pendingDirectoryPromise != null) {

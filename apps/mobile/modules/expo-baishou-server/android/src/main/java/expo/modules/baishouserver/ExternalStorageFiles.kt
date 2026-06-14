@@ -168,4 +168,31 @@ object ExternalStorageFiles {
             from.copyTo(to, overwrite = true)
         }
     }
+
+    /**
+     * 任意 file:// 路径间复制（外部存储 ↔ 应用沙盒），用流式 I/O，避免整文件 base64 进 JS 堆。
+     * 任一端为外部路径时需已授予全文件访问或 WRITE_EXTERNAL_STORAGE。
+     */
+    fun copyFileAny(context: Context, fromUri: String, toUri: String) {
+        val fromPath = uriToPath(fromUri)
+        val toPath = uriToPath(toUri)
+        if (isExternalPath(fromPath) || isExternalPath(toPath)) {
+            if (!hasExternalAccess(context)) {
+                throw SecurityException("External storage access not granted")
+            }
+        }
+        val from = File(fromPath)
+        val to = File(toPath)
+        if (!from.exists()) throw java.io.FileNotFoundException(fromUri)
+        to.parentFile?.mkdirs()
+        if (from.isDirectory) {
+            from.copyRecursively(to, overwrite = true)
+        } else {
+            from.inputStream().buffered().use { input ->
+                to.outputStream().buffered().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+    }
 }

@@ -35,6 +35,7 @@ declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   externalMove(fromPath: string, toPath: string): void
   externalCopy(fromPath: string, toPath: string): void
   externalCopyAsync(fromPath: string, toPath: string): Promise<void>
+  externalCopyFileAsync(fromPath: string, toPath: string): Promise<void>
   pickDirectoryAsync(): Promise<PickDirectoryResult>
 }
 
@@ -212,6 +213,15 @@ export async function externalCopyAsync(fromPath: string, toPath: string): Promi
     return
   }
   await mod.externalCopyAsync(fromPath, toPath)
+}
+
+/** 外部存储 ↔ 沙盒等任意路径间流式复制，避免整文件 base64 进 JS */
+export async function externalCopyFileAsync(fromPath: string, toPath: string): Promise<void> {
+  const mod = requireNative()
+  if (typeof mod.externalCopyFileAsync !== 'function') {
+    throw new Error(`${NATIVE_REBUILD_HINT}（缺少 externalCopyFileAsync）`)
+  }
+  await mod.externalCopyFileAsync(fromPath, toPath)
 }
 
 export async function pickDirectoryAsync(): Promise<PickDirectoryResult> {

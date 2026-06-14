@@ -2,6 +2,7 @@ import { Platform } from 'react-native'
 import {
   externalCopy,
   externalCopyAsync,
+  externalCopyFileAsync,
   externalDelete,
   externalGetInfo,
   externalMakeDirectory,
@@ -125,4 +126,10 @@ export function externalCopySafe(from: string, to: string): void {
 export async function externalCopyAsyncSafe(from: string, to: string): Promise<void> {
   ensureNativeModule()
   await externalCopyAsync(toFileUri(from), toFileUri(to))
+}
+
+/** 外部 ↔ 沙盒等跨边界复制，原生流式 I/O */
+export async function externalCopyFileAsyncSafe(from: string, to: string): Promise<void> {
+  ensureNativeModule()
+  await externalCopyFileAsync(toFileUri(from), toFileUri(to))
 }

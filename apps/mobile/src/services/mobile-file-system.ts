@@ -2,6 +2,7 @@ import type { FileEncoding, FileStat, IFileSystem } from '@baishou/core-mobile'
 import {
   externalCopySafe,
   externalCopyAsyncSafe,
+  externalCopyFileAsyncSafe,
   externalDeleteSafe,
   externalGetInfoSafe,
   externalListDirSafe,
@@ -105,7 +106,10 @@ export class MobileFileSystem implements IFileSystem {
   }
 
   async copyFile(src: string, dest: string): Promise<void> {
-    if (isExternalStoragePath(src) && isExternalStoragePath(dest)) {
+    const srcExternal = isExternalStoragePath(src)
+    const destExternal = isExternalStoragePath(dest)
+
+    if (srcExternal && destExternal) {
       const srcInfo = externalGetInfoSafe(src)
       if (srcInfo.isDirectory) {
         await externalCopyAsyncSafe(src, dest)
@@ -114,10 +118,22 @@ export class MobileFileSystem implements IFileSystem {
       externalCopySafe(src, dest)
       return
     }
-    await SandboxFS.copyAsync({
-      from: toFileUri(src),
-      to: toFileUri(dest)
-    })
+
+    if (!srcExternal && !destExternal) {
+      await SandboxFS.copyAsync({
+        from: toFileUri(src),
+        to: toFileUri(dest)
+      })
+      return
+    }
+
+    // 外部 ↔ 沙盒：原生流式复制；旧 APK 无 API 时退化为 base64
+    try {
+      await externalCopyFileAsyncSafe(src, dest)
+    } catch {
+      const data = await this.readFile(src, 'base64')
+      await this.writeFile(dest, data, 'base64')
+    }
   }
 
   async unlink(filePath: string): Promise<void> {
