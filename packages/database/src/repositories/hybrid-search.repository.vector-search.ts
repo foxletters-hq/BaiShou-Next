@@ -20,7 +20,7 @@ export class HybridSearchVectorQuery {
     const res = await this.db.execute({
       sql: `
         SELECT embedding_id, group_id AS sessionId, chunk_text AS chunkText,
-               source_created_at AS createdAt
+               source_created_at AS createdAt, source_type AS sourceType
         FROM ${HYBRID_SEARCH_TABLE}
         WHERE chunk_text LIKE ?
         LIMIT ?
@@ -34,7 +34,8 @@ export class HybridSearchVectorQuery {
       chunkText: r.chunkText as string,
       score: limit - i,
       source: 'fts' as const,
-      createdAt: r.createdAt as number
+      createdAt: r.createdAt as number,
+      sourceType: r.sourceType as string | undefined
     }))
   }
 
@@ -87,7 +88,7 @@ export class HybridSearchVectorQuery {
     const res = await this.db.execute({
       sql: `
         SELECT embedding_id, source_id, group_id AS sessionId, chunk_text AS chunkText,
-               source_created_at AS createdAt,
+               source_created_at AS createdAt, source_type AS sourceType,
                vec_distance_cosine(embedding, ?) AS distance
         FROM ${HYBRID_SEARCH_TABLE}
         ORDER BY vec_distance_cosine(embedding, ?) ASC
@@ -102,7 +103,8 @@ export class HybridSearchVectorQuery {
       chunkText: r.chunkText as string,
       score: 1.0 - (typeof r.distance === 'number' ? r.distance : 0.0),
       source: 'vector' as const,
-      createdAt: r.createdAt as number
+      createdAt: r.createdAt as number,
+      sourceType: r.sourceType as string | undefined
     }))
 
     if (threshold !== undefined) {
@@ -119,7 +121,7 @@ export class HybridSearchVectorQuery {
     const res = await this.db.execute({
       sql: `
         SELECT ae.embedding_id, ae.group_id AS sessionId, ae.chunk_text AS chunkText,
-               ae.source_created_at AS createdAt, vt.distance
+               ae.source_created_at AS createdAt, ae.source_type AS sourceType, vt.distance
         FROM vector_top_k('${HYBRID_SEARCH_INDEX_NAME}', vector(?), ?) AS vt
         JOIN ${HYBRID_SEARCH_TABLE} ae ON ae.rowid = vt.id
       `,
@@ -132,7 +134,8 @@ export class HybridSearchVectorQuery {
       chunkText: r.chunkText as string,
       score: 1.0 - (typeof r.distance === 'number' ? r.distance : 0.0),
       source: 'vector' as const,
-      createdAt: r.createdAt as number
+      createdAt: r.createdAt as number,
+      sourceType: r.sourceType as string | undefined
     }))
 
     if (threshold !== undefined) {
@@ -149,7 +152,7 @@ export class HybridSearchVectorQuery {
     try {
       const res = await this.db.execute(
         `SELECT embedding_id, group_id AS sessionId, chunk_text AS chunkText,
-                source_created_at AS createdAt,
+                source_created_at AS createdAt, source_type AS sourceType,
                 hex(embedding) AS embeddingHex
          FROM ${HYBRID_SEARCH_TABLE}`
       )
@@ -185,6 +188,7 @@ export class HybridSearchVectorQuery {
             score: 1.0 - distance,
             source: 'vector' as const,
             createdAt: r.createdAt as number,
+            sourceType: r.sourceType as string | undefined,
             _dist: distance
           })
         } catch {
