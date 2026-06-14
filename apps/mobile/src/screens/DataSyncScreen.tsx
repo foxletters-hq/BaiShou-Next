@@ -14,8 +14,10 @@ import {
   useNativeToast,
   useDialog,
   scrollIndicatorStyle,
+  KeyboardAwareScrollView,
   Input,
-  RestoreBlockingOverlay
+  RestoreBlockingOverlay,
+  BackupScopeList
 } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -488,7 +490,12 @@ export const DataSyncScreen: React.FC = () => {
         {...getStackScreenChrome(colors)}
         contentStyle={styles.container}
       >
-        <ScrollView style={styles.content} indicatorStyle={scrollIndicatorStyle(isDark)}>
+        <KeyboardAwareScrollView
+          style={styles.content}
+          indicatorStyle={scrollIndicatorStyle(isDark)}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+        >
           <ArchiveLocalBackupSection
             onExport={handleArchiveExport}
             onImport={handleArchiveImport}
@@ -552,6 +559,12 @@ export const DataSyncScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
+            </View>
+          )}
+
+          {backupTab === 'cloud' && (
+            <View style={styles.backupScopeWrapper}>
+              <BackupScopeList />
             </View>
           )}
 
@@ -818,7 +831,7 @@ export const DataSyncScreen: React.FC = () => {
               )}
             </View>
           )}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         <DataSyncCountModal
           visible={showCountModal}
@@ -840,6 +853,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1, padding: 16 },
   section: { borderRadius: 16, padding: 16, marginBottom: 16 },
+  backupScopeWrapper: {
+    marginBottom: 16
+  },
   statCardsRow: {
     flexDirection: 'column',
     gap: 10,

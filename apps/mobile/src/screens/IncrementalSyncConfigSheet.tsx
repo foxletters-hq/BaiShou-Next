@@ -3,57 +3,84 @@ import {
   View,
   Text,
   StyleSheet,
-  Modal,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView
+  TouchableOpacity
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import type { S3SyncConfig } from '@baishou/shared'
-import { Input, Switch } from '@baishou/ui/native'
+import { SYNC_DIVERGENCE_THRESHOLD_OPTIONS } from '@baishou/shared'
+import { Input, Switch, Button, Select } from '@baishou/ui/native'
 import type { useNativeTheme } from '@baishou/ui/native'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
 type ThemeTokens = ReturnType<typeof useNativeTheme>['tokens']
 
 export interface IncrementalSyncConfigSheetProps {
-  visible: boolean
   config: S3SyncConfig
-  showPassword: boolean
+  showAccessKey: boolean
+  showSecretKey: boolean
   colors: ThemeColors
   tokens: ThemeTokens
   testing?: boolean
-  onChange: (next: S3SyncConfig) => void
-  onTogglePassword: () => void
+  onChange: (next: S3SyncConfig, immediate?: boolean) => void
+  onToggleAccessKey: () => void
+  onToggleSecretKey: () => void
   onTestConnection: () => void
-  onSave: () => void
-  onClose: () => void
 }
 
+const FILE_CONCURRENCY_OPTIONS = [1, 2, 3, 5, 10, 15, 20]
+
 export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProps> = ({
-  visible,
   config,
-  showPassword,
+  showAccessKey,
+  showSecretKey,
   colors,
   tokens,
   testing = false,
   onChange,
-  onTogglePassword,
-  onTestConnection,
-  onSave,
-  onClose
+  onToggleAccessKey,
+  onToggleSecretKey,
+  onTestConnection
 }) => {
   const { t } = useTranslation()
   const target = config.target === 'webdav' ? 'webdav' : 's3'
 
-  const setTarget = (next: 's3' | 'webdav') => onChange({ ...config, target: next })
+  const setTarget = (next: 's3' | 'webdav') => onChange({ ...config, target: next }, true)
+
+  const renderSecretField = (
+    label: string,
+    value: string,
+    onChangeText: (text: string) => void,
+    visible: boolean,
+    onToggle: () => void
+  ) => (
+    <>
+      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <View style={styles.passwordRow}>
+        <View style={styles.passwordInputWrapper}>
+          <Input
+            value={value}
+            onChangeText={onChangeText}
+            secureTextEntry={!visible}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+        <TouchableOpacity onPress={onToggle} style={styles.eyeBtn} accessibilityRole="button">
+          <MaterialIcons
+            name={visible ? 'visibility' : 'visibility-off'}
+            size={22}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+    </>
+  )
 
   const renderTargetCard = (
     value: 's3' | 'webdav',
     icon: keyof typeof MaterialIcons.glyphMap,
-    title: string,
-    desc: string
+    title: string
   ) => {
     const selected = target === value
     return (
@@ -76,226 +103,189 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
             color={selected ? colors.primary : colors.textSecondary}
           />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.targetTitle, { color: colors.textPrimary }]}>{title}</Text>
-          <Text style={[styles.targetDesc, { color: colors.textSecondary }]}>{desc}</Text>
-        </View>
+        <Text style={[styles.targetTitle, { color: colors.textPrimary }]}>{title}</Text>
       </TouchableOpacity>
     )
   }
 
+  const fileConcurrencyOptions = FILE_CONCURRENCY_OPTIONS.map((v) => ({
+    value: String(v),
+    label: t('data_sync.file_concurrency_option', { count: v })
+  }))
+
+  const divergenceOptions = SYNC_DIVERGENCE_THRESHOLD_OPTIONS.map((percent) => ({
+    value: String(percent),
+    label:
+      percent === 100
+        ? t('data_sync.max_divergence_remove_protection', '100（去除此保护）')
+        : t('data_sync.max_divergence_option', { percent })
+  }))
+
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView style={[styles.safe, { backgroundColor: colors.bgApp }]}>
-        <View style={[styles.appBar, { borderBottomColor: colors.borderSubtle }]}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn} hitSlop={12}>
-            <MaterialIcons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={[styles.appTitle, { color: colors.textPrimary }]}>
-            {t('data_sync.config_section')}
+    <View style={styles.container}>
+      <View style={styles.enableRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.enableTitle, { color: colors.textPrimary }]}>
+            {t('data_sync.incremental_sync')}
           </Text>
-          <View style={styles.backBtn} />
         </View>
+        <Switch
+          value={config.enabled}
+          onValueChange={(enabled) => onChange({ ...config, enabled }, true)}
+        />
+      </View>
 
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.enableRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.enableTitle, { color: colors.textPrimary }]}>
-                {t('data_sync.incremental_sync')}
-              </Text>
-              <Text style={[styles.enableDesc, { color: colors.textSecondary }]}>
-                {t('data_sync.incremental_sync_desc')}
-              </Text>
-            </View>
-            <Switch
-              value={config.enabled}
-              onValueChange={(enabled) => onChange({ ...config, enabled })}
-            />
-          </View>
+      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+        {t('data_sync.select_target_title')}
+      </Text>
 
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-            {t('data_sync.select_target_title')}
+      {renderTargetCard('s3', 'cloud', t('data_sync.target_s3'))}
+      {renderTargetCard('webdav', 'language', t('data_sync.target_webdav'))}
+
+      <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+
+      {target === 'webdav' ? (
+        <View style={styles.form}>
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {t('data_sync.webdav_url')}
           </Text>
-
-          {renderTargetCard('s3', 'cloud', t('data_sync.target_s3'), t('data_sync.target_s3_desc'))}
-          {renderTargetCard(
-            'webdav',
-            'language',
-            t('data_sync.target_webdav'),
-            t('data_sync.target_webdav_desc')
+          <Input
+            value={config.webdavUrl || ''}
+            onChangeText={(webdavUrl) => onChange({ ...config, webdavUrl })}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {t('data_sync.path_prefix')}
+          </Text>
+          <Input
+            value={config.path || ''}
+            onChangeText={(path) => onChange({ ...config, path })}
+            autoCapitalize="none"
+          />
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {t('data_sync.webdav_user')}
+          </Text>
+          <Input
+            value={config.accessKey || ''}
+            onChangeText={(accessKey) => onChange({ ...config, accessKey })}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {renderSecretField(
+            t('data_sync.webdav_password'),
+            config.secretKey || '',
+            (secretKey) => onChange({ ...config, secretKey }),
+            showSecretKey,
+            onToggleSecretKey
           )}
-
-          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-
-          {target === 'webdav' ? (
-            <View style={styles.form}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.webdav_url_label')}
-              </Text>
-              <Input
-                value={config.webdavUrl || ''}
-                onChangeText={(webdavUrl) => onChange({ ...config, webdavUrl })}
-                autoCapitalize="none"
-                keyboardType="url"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.webdav_path_label')}
-              </Text>
-              <Input
-                value={config.path || ''}
-                onChangeText={(path) => onChange({ ...config, path })}
-                autoCapitalize="none"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.webdav_user_label')}
-              </Text>
-              <Input
-                value={config.accessKey || ''}
-                onChangeText={(accessKey) => onChange({ ...config, accessKey })}
-                autoCapitalize="none"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.webdav_password_label')}
-              </Text>
-              <View style={styles.passwordRow}>
-                <Input
-                  value={config.secretKey || ''}
-                  onChangeText={(secretKey) => onChange({ ...config, secretKey })}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  style={{ flex: 1 }}
-                />
-                <TouchableOpacity onPress={onTogglePassword} style={styles.eyeBtn}>
-                  <MaterialIcons
-                    name={showPassword ? 'visibility' : 'visibility-off'}
-                    size={22}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.form}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.s3_endpoint_label')}
-              </Text>
-              <Input
-                value={config.endpoint || ''}
-                onChangeText={(endpoint) => onChange({ ...config, endpoint })}
-                autoCapitalize="none"
-                keyboardType="url"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.s3_region_label')}
-              </Text>
-              <Input
-                value={config.region || ''}
-                onChangeText={(region) => onChange({ ...config, region })}
-                autoCapitalize="none"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.s3_bucket_label')}
-              </Text>
-              <Input
-                value={config.bucket || ''}
-                onChangeText={(bucket) => onChange({ ...config, bucket })}
-                autoCapitalize="none"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.s3_path_label')}
-              </Text>
-              <Input
-                value={config.path || ''}
-                onChangeText={(path) => onChange({ ...config, path })}
-                autoCapitalize="none"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.s3_ak_label')}
-              </Text>
-              <Input
-                value={config.accessKey || ''}
-                onChangeText={(accessKey) => onChange({ ...config, accessKey })}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                {t('data_sync.s3_sk_label')}
-              </Text>
-              <View style={styles.passwordRow}>
-                <Input
-                  value={config.secretKey || ''}
-                  onChangeText={(secretKey) => onChange({ ...config, secretKey })}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  style={{ flex: 1 }}
-                />
-                <TouchableOpacity onPress={onTogglePassword} style={styles.eyeBtn}>
-                  <MaterialIcons
-                    name={showPassword ? 'visibility' : 'visibility-off'}
-                    size={22}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+        </View>
+      ) : (
+        <View style={styles.form}>
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {t('data_sync.s3_endpoint')}
+          </Text>
+          <Input
+            value={config.endpoint || ''}
+            onChangeText={(endpoint) => onChange({ ...config, endpoint })}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {t('data_sync.s3_region')}
+          </Text>
+          <Input
+            value={config.region || ''}
+            onChangeText={(region) => onChange({ ...config, region })}
+            autoCapitalize="none"
+          />
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {t('data_sync.s3_bucket')}
+          </Text>
+          <Input
+            value={config.bucket || ''}
+            onChangeText={(bucket) => onChange({ ...config, bucket })}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {t('data_sync.path_prefix')}
+          </Text>
+          <Input
+            value={config.path || ''}
+            onChangeText={(path) => onChange({ ...config, path })}
+            autoCapitalize="none"
+          />
+          {renderSecretField(
+            t('data_sync.s3_access_key'),
+            config.accessKey || '',
+            (accessKey) => onChange({ ...config, accessKey }),
+            showAccessKey,
+            onToggleAccessKey
           )}
+          {renderSecretField(
+            t('data_sync.s3_secret_key'),
+            config.secretKey || '',
+            (secretKey) => onChange({ ...config, secretKey }),
+            showSecretKey,
+            onToggleSecretKey
+          )}
+          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+            {t('data_sync.file_concurrency')}
+          </Text>
+          <Select
+            variant="settings"
+            value={String(config.fileConcurrency ?? 5)}
+            options={fileConcurrencyOptions}
+            onValueChange={(value) =>
+              onChange({ ...config, fileConcurrency: parseInt(value, 10) }, true)
+            }
+          />
+        </View>
+      )}
 
-          <TouchableOpacity
-            style={[
-              styles.secondaryBtn,
-              { borderColor: colors.borderMuted, backgroundColor: colors.bgSurfaceHighest }
-            ]}
-            onPress={onTestConnection}
-            disabled={testing}
-          >
-            <Text style={{ color: colors.textPrimary }}>
-              {testing ? t('data_sync.testing_connection') : t('data_sync.test_connection')}
-            </Text>
-          </TouchableOpacity>
+      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+        {t('data_sync.max_divergence_label')}
+      </Text>
+      <Select
+        variant="settings"
+        value={String(
+          config.maxDivergencePercent === null || config.maxDivergencePercent === undefined
+            ? 100
+            : config.maxDivergencePercent
+        )}
+        options={divergenceOptions}
+        onValueChange={(value) =>
+          onChange({ ...config, maxDivergencePercent: parseInt(value, 10) }, true)
+        }
+      />
+      <Text style={[styles.hint, { color: colors.textSecondary }]}>
+        {t('data_sync.max_divergence_hint')}
+      </Text>
 
-          <TouchableOpacity
-            style={[
-              styles.saveBtn,
-              { backgroundColor: colors.primary, borderRadius: tokens.radius.md }
-            ]}
-            onPress={onSave}
-          >
-            <Text style={{ color: colors.textOnPrimary, fontWeight: '700', fontSize: 16 }}>
-              {t('data_sync.save_config_button')}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+      <Button
+        variant="outline"
+        onPress={onTestConnection}
+        isDisabled={testing}
+        style={styles.testBtn}
+      >
+        {testing ? t('data_sync.testing_connection') : t('data_sync.test_connection')}
+      </Button>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  appBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth
+  container: {
+    gap: 4
   },
-  backBtn: { width: 40, alignItems: 'center' },
-  appTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700' },
-  scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
   enableRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 20
+    marginBottom: 12
   },
-  enableTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
-  enableDesc: { fontSize: 13, lineHeight: 18 },
+  enableTitle: { fontSize: 16, fontWeight: '700' },
   sectionLabel: {
     fontSize: 13,
     fontWeight: '600',
@@ -318,23 +308,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  targetTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
-  targetDesc: { fontSize: 12, lineHeight: 17 },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 16 },
+  targetTitle: { fontSize: 15, fontWeight: '600', flex: 1 },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: 12 },
   form: { gap: 4 },
   fieldLabel: { fontSize: 13, fontWeight: '600', marginTop: 10, marginBottom: 6 },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  eyeBtn: { padding: 8 },
-  secondaryBtn: {
-    marginTop: 20,
-    paddingVertical: 14,
+  passwordRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    borderWidth: 1
+    gap: 8
   },
-  saveBtn: {
-    marginTop: 12,
-    paddingVertical: 14,
-    alignItems: 'center'
+  passwordInputWrapper: { flex: 1 },
+  eyeBtn: { padding: 8 },
+  hint: { fontSize: 12, lineHeight: 18, marginTop: 6, marginBottom: 4 },
+  testBtn: {
+    marginTop: 20
   }
 })

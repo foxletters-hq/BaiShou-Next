@@ -114,7 +114,7 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
             minValue={1}
             maxValue={50}
             step={1}
-            onChange={(v) => onChangeCount(Math.round(v as number))}
+            onChange={(v) => onChangeCount(v)}
           />
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>

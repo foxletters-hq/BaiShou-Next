@@ -4,14 +4,13 @@ import {
   Text,
   StyleSheet,
   Modal,
-  ScrollView,
   TouchableOpacity,
   SafeAreaView
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import type { SyncConfig } from '@baishou/core-mobile'
-import { Input } from '@baishou/ui/native'
+import { Input, KeyboardAwareScrollView } from '@baishou/ui/native'
 import type { useNativeTheme } from '@baishou/ui/native'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
@@ -107,7 +106,11 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
           <View style={styles.backBtn} />
         </View>
 
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        <KeyboardAwareScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
             {t('data_sync.select_target_title', '选择备份目标')}
           </Text>
@@ -271,7 +274,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
               {t('data_sync.save_config_button', '保存配置')}
             </Text>
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </Modal>
   )
