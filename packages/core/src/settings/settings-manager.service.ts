@@ -1,5 +1,5 @@
 import { SettingsRepository } from '@baishou/database'
-import { SHORTCUT_TRACE_CHAIN, traceCall } from '@baishou/shared'
+import { SHORTCUT_TRACE_CHAIN, traceCall, migrateUserProfileSettingsKey } from '@baishou/shared'
 import { SettingsFileService } from './settings-file.service'
 
 const PROMPT_SHORTCUTS_KEY = 'prompt_shortcuts_v2'
@@ -13,6 +13,9 @@ function shouldTraceSettingsKey(key: string): boolean {
  * 将纯单机 SQLite KV转化为多设备系统隐蔽同步字典。
  */
 export class SettingsManagerService {
+  private flushToDiskTimer: ReturnType<typeof setTimeout> | null = null
+  private flushToDiskPromise: Promise<void> | null = null
+
   constructor(
     private readonly repo: SettingsRepository,
     private readonly fileService: SettingsFileService
@@ -45,7 +48,41 @@ export class SettingsManagerService {
     )
   }
 
+  /** 仅写 SQLite，不立刻导出全量 settings.json（配合 scheduleFlushToDisk 用于高频轻量更新） */
+  async setWithoutFlush<T>(key: string, value: T): Promise<void> {
+    await this.repo.set(key, value)
+  }
+
+  /** 防抖将 SQLite 全量快照写入磁盘，避免拖拽排序等操作阻塞 UI */
+  scheduleFlushToDisk(delayMs = 400): void {
+    if (this.flushToDiskTimer) clearTimeout(this.flushToDiskTimer)
+    this.flushToDiskTimer = setTimeout(() => {
+      this.flushToDiskTimer = null
+      void this.flushToDisk()
+    }, delayMs)
+  }
+
   async flushToDisk(): Promise<void> {
+    if (this.flushToDiskTimer) {
+      clearTimeout(this.flushToDiskTimer)
+      this.flushToDiskTimer = null
+    }
+    if (this.flushToDiskPromise) {
+      await this.flushToDiskPromise
+      return
+    }
+    this.flushToDiskPromise = this.flushToDiskUnlocked().finally(() => {
+      this.flushToDiskPromise = null
+    })
+    await this.flushToDiskPromise
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.repo.delete(key)
+    await this.flushToDisk()
+  }
+
+  private async flushToDiskUnlocked(): Promise<void> {
     const settingsMap = await this.repo.getAll()
     const shortcutPayload = settingsMap[PROMPT_SHORTCUTS_KEY]
     if (shortcutPayload !== undefined) {
@@ -68,6 +105,10 @@ export class SettingsManagerService {
     // 如果外层是 {} 依然继续，只是不更新罢了。
     for (const key of Object.keys(settingsMap)) {
       await this.repo.set(key, settingsMap[key])
+    }
+    const migrated = await migrateUserProfileSettingsKey(this.repo)
+    if (migrated) {
+      await this.flushToDiskUnlocked()
     }
   }
 }
