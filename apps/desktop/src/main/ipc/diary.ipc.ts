@@ -14,6 +14,12 @@ import * as fs from 'fs/promises'
 import { fileSystem, pathService, vaultService } from './vault.ipc'
 import { CreateDiaryInput, UpdateDiaryInput, DiaryListFilter } from '@baishou/shared'
 
+function broadcastDiaryEmbedFailed(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('diary:sync-event', { type: 'embed-failed' })
+  }
+}
+
 const embeddingCallback: IEmbeddingCallback = {
   async reEmbedDiary(params) {
     try {
@@ -43,6 +49,7 @@ const embeddingCallback: IEmbeddingCallback = {
       })
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 嵌入发生异常:', e)
+      broadcastDiaryEmbedFailed()
     }
   },
 

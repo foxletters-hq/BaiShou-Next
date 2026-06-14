@@ -79,6 +79,7 @@ export function registerRagQueryIPC() {
                   createdAt:
                     timestampToMillis(typeof r.createdAt === 'number' ? r.createdAt : undefined) ??
                     Date.now(),
+                  sourceType: r.sourceType,
                   similarity: r.score // コサイン类似度が score に入っている
                 }))
 
@@ -103,6 +104,7 @@ export function registerRagQueryIPC() {
           embeddingId: memoryEmbeddingsTable.embeddingId,
           text: memoryEmbeddingsTable.chunkText,
           modelId: memoryEmbeddingsTable.modelId,
+          sourceType: memoryEmbeddingsTable.sourceType,
           sortMillis: embeddingSortMillis
         })
         .from(memoryEmbeddingsTable)
@@ -125,7 +127,8 @@ export function registerRagQueryIPC() {
         embeddingId: r.embeddingId,
         text: r.text,
         modelId: r.modelId,
-        createdAt: timestampToMillis(Number(r.sortMillis)) ?? Date.now()
+        createdAt: timestampToMillis(Number(r.sortMillis)) ?? Date.now(),
+        sourceType: r.sourceType
       }))
 
       if (params.withTotal) {

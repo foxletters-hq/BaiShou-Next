@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterUnindexedDiaries } from '../rag.ipc'
+import { filterUnindexedDiaries } from '@baishou/shared'
 
 describe('filterUnindexedDiaries', () => {
   it('should filter out diaries that are already indexed and not modified', () => {

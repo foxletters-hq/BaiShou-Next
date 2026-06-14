@@ -85,25 +85,11 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
   }
 }
 
-export { sortDiariesByDateAsc, sortDiariesByDateDesc } from '@baishou/shared'
-
-export function filterUnindexedDiaries<T extends { id: any; updatedAt?: Date }>(
-  diaries: T[],
-  embeddedIds: Set<string>,
-  embeddedUpdatedAtMap: Map<string, number>
-): T[] {
-  return diaries.filter((d) => {
-    const sId = String(d.id)
-    if (!embeddedIds.has(sId)) {
-      return true
-    }
-    const existingUpdatedAt = embeddedUpdatedAtMap.get(sId)
-    if (existingUpdatedAt !== undefined && d.updatedAt) {
-      return d.updatedAt.getTime() > existingUpdatedAt
-    }
-    return false
-  })
-}
+export {
+  sortDiariesByDateAsc,
+  sortDiariesByDateDesc,
+  filterUnindexedDiaries
+} from '@baishou/shared'
 
 let config: DesktopEmbeddingConfig | null = null
 let storage: DesktopEmbeddingStorage | null = null
