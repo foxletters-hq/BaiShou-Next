@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, Modal, SafeAreaView, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Slider } from 'heroui-native'
 import { useNativeTheme } from '../theme'
-import { NativeSliderThumb } from '../Slider'
+import { NativeSlider } from '../Slider'
 
 export interface ColorPickerProps {
   value: string
@@ -124,30 +123,29 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, visib
               {t('colorPicker.hue', '色相滑块')}
             </Text>
             <View style={styles.hueSliderWrap}>
-              <Slider
+              <View style={styles.hueBar}>
+                {hueBarColors.map((color, index) => (
+                  <View
+                    key={`${color}-${index}`}
+                    style={[styles.hueSegment, { backgroundColor: color }]}
+                  />
+                ))}
+              </View>
+              <NativeSlider
                 value={huePosition * 100}
                 minValue={0}
                 maxValue={100}
                 step={1}
+                minimumTrackTintColor="transparent"
+                maximumTrackTintColor="transparent"
+                thumbTintColor={value}
                 onChange={(v) => {
-                  const ratio = (v as number) / 100
+                  const ratio = v / 100
                   setHuePosition(ratio)
                   const index = Math.floor(ratio * (hueBarColors.length - 0.01))
                   onChange(hueBarColors[Math.min(index, hueBarColors.length - 1)]!)
                 }}
-              >
-                <Slider.Track style={{ height: 12, borderRadius: 6, overflow: 'hidden' }}>
-                  <View style={styles.hueBar}>
-                    {hueBarColors.map((color, index) => (
-                      <View
-                        key={`${color}-${index}`}
-                        style={[styles.hueSegment, { backgroundColor: color }]}
-                      />
-                    ))}
-                  </View>
-                  <NativeSliderThumb thumbColor={value} thumbKnobColor="#FFFFFF" />
-                </Slider.Track>
-              </Slider>
+              />
             </View>
           </Pressable>
         </SafeAreaView>
@@ -229,17 +227,19 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   hueSliderWrap: {
-    width: '100%'
+    width: '100%',
+    justifyContent: 'center',
+    minHeight: 52
   },
   hueBar: {
     flexDirection: 'row',
-    height: 12,
-    borderRadius: 6,
+    height: 24,
+    borderRadius: 12,
     overflow: 'hidden',
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 0
+    alignSelf: 'center'
   },
   hueSegment: {
     flex: 1

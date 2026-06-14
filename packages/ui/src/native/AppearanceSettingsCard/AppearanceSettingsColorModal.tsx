@@ -57,7 +57,7 @@ export const AppearanceSettingsColorModal: React.FC<AppearanceSettingsColorModal
               value={hue}
               minValue={0}
               maxValue={360}
-              onChange={(v) => onHueChange(v as number)}
+              onChange={onHueChange}
               fillColor={previewColor}
               thumbOptions={colorThumb}
             />
@@ -70,7 +70,7 @@ export const AppearanceSettingsColorModal: React.FC<AppearanceSettingsColorModal
               value={sat}
               minValue={0}
               maxValue={100}
-              onChange={(v) => onSatChange(v as number)}
+              onChange={onSatChange}
               fillColor={previewColor}
               thumbOptions={colorThumb}
             />
@@ -83,7 +83,7 @@ export const AppearanceSettingsColorModal: React.FC<AppearanceSettingsColorModal
               value={lit}
               minValue={20}
               maxValue={90}
-              onChange={(v) => onLitChange(v as number)}
+              onChange={onLitChange}
               fillColor={previewColor}
               thumbOptions={colorThumb}
             />

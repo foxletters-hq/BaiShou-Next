@@ -8,8 +8,10 @@ import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
+import type { MockChatAttachment } from '@baishou/shared'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
+import { NativeChatBubbleAttachments } from './NativeChatBubbleAttachments'
 import { useNativeChatBubbleEdit } from './useNativeChatBubbleEdit'
 import {
   NativeChatBubbleActionsRow,
@@ -66,6 +68,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     toolName: string
     result: unknown
   }>
+  const attachments = (message.attachments || []) as MockChatAttachment[]
 
   return (
     <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
@@ -136,14 +139,24 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </View>
           ) : (
             <Pressable onLongPress={() => setShowActions(true)} delayLongPress={500}>
+              {attachments.length > 0 ? (
+                <NativeChatBubbleAttachments attachments={attachments} isUserBubble={isUser} />
+              ) : null}
               {isAssistant && cleanContent ? (
                 <MarkdownRenderer
                   content={cleanContent}
                   variant="chat"
                   onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
                 />
-              ) : !isAssistant ? (
-                <Text style={[styles.text, { color: colors.textPrimary }]}>{message.content}</Text>
+              ) : !isAssistant && message.content ? (
+                <Text
+                  style={[
+                    styles.text,
+                    { color: isUser ? colors.textOnPrimary : colors.textPrimary }
+                  ]}
+                >
+                  {message.content}
+                </Text>
               ) : null}
             </Pressable>
           )}

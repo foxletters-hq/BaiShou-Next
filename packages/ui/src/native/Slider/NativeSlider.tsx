@@ -1,107 +1,92 @@
-import React, { useEffect, useState } from 'react'
-import { Slider } from 'heroui-native'
-import type { ComponentProps } from 'react'
+import React from 'react'
+import { View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
+import CommunitySlider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
 import {
-  getHeroSliderFillStyle,
-  getHeroSliderThumbStyles,
-  getHeroSliderTrackStyle,
+  NATIVE_SLIDER_HEIGHT,
+  snapSliderValue,
   type NativeSliderThumbOptions
 } from './native-slider.utils'
 
-type HeroSliderProps = ComponentProps<typeof Slider>
-type SliderValue = NonNullable<HeroSliderProps['value']>
-
-export type NativeSliderProps = Omit<HeroSliderProps, 'children'> & {
+export type NativeSliderProps = {
+  value: number
+  minValue?: number
+  maxValue?: number
+  step?: number
+  onChange?: (value: number) => void
+  onChangeEnd?: (value: number) => void
+  /** 松手后再触发 onChangeEnd；拖动时仅 onChange 预览 */
+  commitOnChangeEnd?: boolean
   trackColor?: string
   fillColor?: string
   thumbOptions?: NativeSliderThumbOptions
-  /**
-   * 拖动时由 NativeSlider 内部维持滑块位置，并持续触发 onChange（预览）；
-   * 松手后通过 onChangeEnd 提交。用于避免父组件每帧重渲染导致卡顿。
-   */
-  commitOnChangeEnd?: boolean
+  minimumTrackTintColor?: string
+  maximumTrackTintColor?: string
+  thumbTintColor?: string
+  disabled?: boolean
+  style?: StyleProp<ViewStyle>
 }
 
 export const NativeSlider: React.FC<NativeSliderProps> = ({
+  value,
+  minValue = 0,
+  maxValue = 100,
+  step = 1,
+  onChange,
+  onChangeEnd,
+  commitOnChangeEnd: _commitOnChangeEnd = false,
   trackColor,
   fillColor,
   thumbOptions,
-  commitOnChangeEnd = false,
-  value,
-  defaultValue,
-  onChange,
-  onChangeEnd,
-  ...sliderProps
+  minimumTrackTintColor,
+  maximumTrackTintColor,
+  thumbTintColor,
+  disabled,
+  style
 }) => {
   const { colors } = useNativeTheme()
-  const [draftValue, setDraftValue] = useState<SliderValue>(
-    (value ?? defaultValue ?? 0) as SliderValue
-  )
 
-  useEffect(() => {
-    if (value !== undefined) {
-      setDraftValue(value as SliderValue)
-    }
-  }, [value])
+  const minTrack = fillColor ?? minimumTrackTintColor ?? colors.primary
+  const maxTrack =
+    trackColor ?? maximumTrackTintColor ?? colors.bgSurfaceNormal ?? colors.borderMuted
+  const thumb = thumbOptions?.thumbColor ?? thumbTintColor ?? colors.primary
 
-  const handleChange = (next: SliderValue) => {
-    if (commitOnChangeEnd) {
-      setDraftValue(next)
+  const emit = (raw: number, phase: 'change' | 'end') => {
+    const next = snapSliderValue(raw, minValue, maxValue, step)
+    if (phase === 'change') {
       onChange?.(next)
       return
     }
-
-    onChange?.(next)
-  }
-
-  const handleChangeEnd = (next: SliderValue) => {
-    if (commitOnChangeEnd) {
-      setDraftValue(next)
-      onChangeEnd?.(next)
-      return
-    }
-
     onChangeEnd?.(next)
   }
 
   return (
-    <Slider
-      {...sliderProps}
-      value={commitOnChangeEnd ? draftValue : value}
-      defaultValue={commitOnChangeEnd ? undefined : defaultValue}
-      onChange={handleChange}
-      onChangeEnd={handleChangeEnd}
-    >
-      <Slider.Track style={getHeroSliderTrackStyle(colors, trackColor)}>
-        <Slider.Fill style={getHeroSliderFillStyle(colors, fillColor)} />
-        <Slider.Thumb styles={getHeroSliderThumbStyles(colors, thumbOptions)} />
-      </Slider.Track>
-    </Slider>
+    <View style={[styles.wrap, style]}>
+      <CommunitySlider
+        style={styles.slider}
+        value={value}
+        minimumValue={minValue}
+        maximumValue={maxValue}
+        step={step}
+        disabled={disabled}
+        minimumTrackTintColor={minTrack}
+        maximumTrackTintColor={maxTrack}
+        thumbTintColor={thumb}
+        onValueChange={(raw) => emit(raw, 'change')}
+        onSlidingComplete={(raw) => emit(raw, 'end')}
+      />
+    </View>
   )
 }
 
-export type NativeSliderThumbProps = ComponentProps<typeof Slider.Thumb> & NativeSliderThumbOptions
-
-/** 自定义轨道时挂载胶囊形拇指 */
-export const NativeSliderThumb: React.FC<NativeSliderThumbProps> = ({
-  thumbColor,
-  thumbKnobColor,
-  index,
-  styles: stylesProp,
-  ...rest
-}) => {
-  const { colors } = useNativeTheme()
-  const base = getHeroSliderThumbStyles(colors, { thumbColor, thumbKnobColor })
-
-  return (
-    <Slider.Thumb
-      index={index}
-      styles={{
-        thumbContainer: { ...base.thumbContainer, ...stylesProp?.thumbContainer },
-        thumbKnob: { ...base.thumbKnob, ...stylesProp?.thumbKnob }
-      }}
-      {...rest}
-    />
-  )
-}
+const styles = StyleSheet.create({
+  wrap: {
+    width: '100%',
+    justifyContent: 'center',
+    minHeight: NATIVE_SLIDER_HEIGHT
+  },
+  slider: {
+    width: '100%',
+    height: NATIVE_SLIDER_HEIGHT
+  }
+})

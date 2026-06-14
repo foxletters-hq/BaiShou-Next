@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking, ActivityIndicator } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { CollapsibleAncillaryBlock } from '../CollapsibleAncillaryBlock'
@@ -20,6 +20,42 @@ interface ToolInvocation {
 
 export interface ToolResultGroupCardProps {
   invocations: ToolInvocation[]
+  /** 流式输出中正在执行的工具 */
+  activeToolName?: string | null
+  /** 流式场景默认展开；落盘消息默认折叠 */
+  defaultExpanded?: boolean
+}
+
+function ActiveToolRow({
+  name,
+  colors
+}: {
+  name: string
+  colors: ReturnType<typeof useNativeTheme>['colors']
+}) {
+  const { t } = useTranslation()
+  const [dots, setDots] = useState('.')
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDots((prev) => (prev === '...' ? '.' : prev + '.'))
+    }, 600)
+    return () => clearInterval(timer)
+  }, [])
+
+  return (
+    <View style={[styles.itemCard, { backgroundColor: colors.bgSurface }]}>
+      <View style={styles.itemHeader}>
+        <View style={styles.itemStatusWrap}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+        <Text style={[styles.itemName, { color: colors.primary }]} numberOfLines={1}>
+          {t(`agent.tools.${name}`, name)}
+          {dots}
+        </Text>
+      </View>
+    </View>
+  )
 }
 
 function StructuredDataView({
@@ -212,19 +248,31 @@ const ToolResultItem: React.FC<{
 }
 
 /** 对齐 desktop ToolResultGroup — 🎧 外壳 + CheckCircle / XCircle + 0.3s 展开动画 */
-export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({ invocations }) => {
+export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({
+  invocations,
+  activeToolName = null,
+  defaultExpanded = false
+}) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(defaultExpanded)
 
-  if (!invocations || invocations.length === 0) return null
+  const hasInvocations = invocations.length > 0
+  const hasActiveTool = Boolean(activeToolName)
+  if (!hasInvocations && !hasActiveTool) return null
+
+  const totalTools = invocations.length + (hasActiveTool ? 1 : 0)
+  const title =
+    hasActiveTool && !hasInvocations
+      ? t('agent.tools.tool_call', '工具调用')
+      : t('agent.tools.tool_call_results', '工具调用 · {{count}} 个结果', {
+          count: totalTools
+        })
 
   return (
     <CollapsibleAncillaryBlock
       headerIcon="🎧"
-      title={t('agent.tools.tool_call_results', '工具调用 · {{count}} 个结果', {
-        count: invocations.length
-      })}
+      title={title}
       open={expanded}
       onToggle={() => setExpanded((prev) => !prev)}
       bodyPadding={false}
@@ -233,6 +281,7 @@ export const ToolResultGroupCard: React.FC<ToolResultGroupCardProps> = ({ invoca
         {invocations.map((inv, index) => (
           <ToolResultItem key={inv.toolCallId || String(index)} invocation={inv} colors={colors} />
         ))}
+        {activeToolName ? <ActiveToolRow name={activeToolName} colors={colors} /> : null}
       </View>
     </CollapsibleAncillaryBlock>
   )

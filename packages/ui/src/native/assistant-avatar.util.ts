@@ -23,6 +23,11 @@ export function resolveNativeAssistantAvatarSource(
   if (avatarPath && isAssistantAvatarDirectUri(avatarPath)) {
     return { uri: avatarPath }
   }
+  if (avatarPath && /^local:/i.test(avatarPath)) {
+    const path = avatarPath.replace(/^local:/i, '')
+    const uri = path.startsWith('/') ? `file://${path}` : `file:///${path}`
+    return { uri }
+  }
   if (isAssistantAvatarRelativePath(avatarPath)) {
     return NATIVE_DEFAULT_ASSISTANT_AVATAR
   }

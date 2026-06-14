@@ -1,10 +1,11 @@
 import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { StoragePermissionPrompt } from '../StoragePermissionPrompt/StoragePermissionPrompt'
+import { Button, CardLinkAction } from '../Button'
 
 export interface NativeStorageSettingsCardProps {
   storageRootPath?: string
@@ -52,41 +53,23 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
         </Text>
       </View>
 
-      {onChangeDirectory ? (
-        <Pressable
-          onPress={() => void onChangeDirectory()}
-          style={({ pressed }) => [
-            styles.actionBtn,
-            {
-              borderColor: colors.primary,
-              backgroundColor: colors.primaryContainer,
-              opacity: pressed ? 0.7 : 1
-            }
-          ]}
-        >
-          <Text style={{ color: colors.onPrimaryContainer, fontWeight: '600', fontSize: 14 }}>
-            {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
-          </Text>
-        </Pressable>
-      ) : null}
-
-      {onMigrateDirectory ? (
-        <Pressable
-          onPress={() => void onMigrateDirectory()}
-          style={({ pressed }) => [
-            styles.actionBtn,
-            styles.actionBtnSecondary,
-            {
-              borderColor: colors.borderSubtle,
-              backgroundColor: colors.bgSurface,
-              opacity: pressed ? 0.7 : 1
-            }
-          ]}
-        >
-          <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
-            {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
-          </Text>
-        </Pressable>
+      {onChangeDirectory || onMigrateDirectory ? (
+        <View style={styles.actions}>
+          {onChangeDirectory ? (
+            <CardLinkAction variant="card" onPress={() => void onChangeDirectory()}>
+              {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
+            </CardLinkAction>
+          ) : null}
+          {onMigrateDirectory ? (
+            <Button
+              variant="outline"
+              className="w-full"
+              onPress={() => void onMigrateDirectory()}
+            >
+              {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
+            </Button>
+          ) : null}
+        </View>
       ) : null}
     </SettingsExpansionTile>
   )
@@ -101,15 +84,8 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     lineHeight: 18
   },
-  actionBtn: {
+  actions: {
     marginTop: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center'
-  },
-  actionBtnSecondary: {
-    marginTop: 8
+    gap: 8
   }
 })

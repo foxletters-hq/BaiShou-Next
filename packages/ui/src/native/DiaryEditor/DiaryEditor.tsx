@@ -259,8 +259,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const showImageTools = viewMode === 'edit' && activeImage != null
 
-  // Modal 等场景下 Android 往往不会 adjustResize，需用键盘高度把工具栏钉在输入法上方
-  const toolbarBottom = keyboardHeight
+  const toolbarDockBottom = keyboardHeight
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
@@ -303,7 +302,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           contentContainerStyle={[
             styles.bodyContent,
             styles.bodyContentGrow,
-            { paddingBottom: toolbarBottom + 16 }
+            { paddingBottom: toolbarDockBottom + toolbarHeight + 16 }
           ]}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
@@ -376,29 +375,30 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               </Pressable>
             )}
           </View>
-
-          <View
-            onLayout={(e) => {
-              const h = e.nativeEvent.layout.height
-              if (h > 0 && h !== toolbarHeight) setToolbarHeight(h)
-            }}
-          >
-            <MarkdownToolbar
-              viewMode={viewMode}
-              onViewModeChange={(mode) => {
-                if (mode === 'edit') handleSwitchToEdit()
-                else setViewMode('preview')
-              }}
-              onHideKeyboard={snapKeyboardChromeAway}
-              onInsertText={handleInsertText}
-              onPickImages={onPickImages ? handlePickImages : undefined}
-              pickingImages={pickingImages}
-              showImageTools={showImageTools}
-              onImageZoomIn={() => handleImageWidthDelta(DIARY_IMAGE_SIZE.step)}
-              onImageZoomOut={() => handleImageWidthDelta(-DIARY_IMAGE_SIZE.step)}
-            />
-          </View>
         </ScrollView>
+
+        <View
+          style={[styles.toolbarDock, { bottom: toolbarDockBottom }]}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height
+            if (h > 0 && h !== toolbarHeight) setToolbarHeight(h)
+          }}
+        >
+          <MarkdownToolbar
+            viewMode={viewMode}
+            onViewModeChange={(mode) => {
+              if (mode === 'edit') handleSwitchToEdit()
+              else setViewMode('preview')
+            }}
+            onHideKeyboard={snapKeyboardChromeAway}
+            onInsertText={handleInsertText}
+            onPickImages={onPickImages ? handlePickImages : undefined}
+            pickingImages={pickingImages}
+            showImageTools={showImageTools}
+            onImageZoomIn={() => handleImageWidthDelta(DIARY_IMAGE_SIZE.step)}
+            onImageZoomOut={() => handleImageWidthDelta(-DIARY_IMAGE_SIZE.step)}
+          />
+        </View>
       </View>
 
       <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
@@ -423,6 +423,11 @@ const styles = StyleSheet.create({
   editorBody: {
     flex: 1,
     position: 'relative'
+  },
+  toolbarDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0
   },
   body: { flex: 1 },
   bodyContent: { padding: 16 },

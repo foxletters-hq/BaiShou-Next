@@ -224,7 +224,7 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
             minValue={0.5}
             maxValue={2.0}
             step={0.1}
-            onChange={(v) => onUpdate({ speed: v as number })}
+            onChange={(v) => onUpdate({ speed: v })}
           />
           <View style={styles.rangeRow}>
             <Text style={[styles.rangeLabel, { color: colors.textTertiary }]}>0.5x</Text>

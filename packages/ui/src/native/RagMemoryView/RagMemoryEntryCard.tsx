@@ -215,7 +215,6 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
             current={currentPage}
             total={totalPages}
             onChange={(page) => onPageChange(page, pageSize)}
-            showFirstLast
             showJumper
           />
         </View>

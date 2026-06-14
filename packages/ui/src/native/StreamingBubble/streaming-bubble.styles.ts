@@ -5,51 +5,10 @@ export function createStreamingBubbleStyles(
   colors: ReturnType<typeof useNativeTheme>['colors'],
   tokens: ReturnType<typeof useNativeTheme>['tokens']
 ) {
-  const row: ViewStyle = {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: tokens.spacing.sm,
-    width: '100%'
-  }
-
-  const avatar: ViewStyle = {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primaryContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: tokens.spacing.sm
-  }
-
-  const avatarEmoji: TextStyle = { fontSize: 18 }
-
-  const aiName: TextStyle = {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: tokens.spacing.xs
-  }
-
-  const bubbleCard: ViewStyle = {
-    backgroundColor: colors.bgSurface,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    width: '100%',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8
-  }
-
   const dotsWrap: ViewStyle = {
-    paddingHorizontal: 4
+    paddingHorizontal: 4,
+    alignSelf: 'stretch',
+    width: '100%'
   }
 
   const errorBox: ViewStyle = {
@@ -65,19 +24,6 @@ export function createStreamingBubbleStyles(
   }
 
   return StyleSheet.create({
-    row,
-    avatar,
-    avatarEmoji,
-    content: {
-      flex: 1,
-      flexShrink: 1,
-      maxWidth: '88%',
-      minWidth: 0,
-      marginRight: 24,
-      alignSelf: 'stretch'
-    },
-    aiName,
-    bubbleCard,
     dotsWrap,
     errorBox,
     errorText

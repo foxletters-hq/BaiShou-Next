@@ -83,7 +83,7 @@ export const AgentBehaviorSettingsCard: React.FC<AgentBehaviorSettingsCardProps>
               onChange={(v) =>
                 onChange({
                   ...config,
-                  defaultTemperature: Math.round((v as number) * 10) / 10
+                  defaultTemperature: Math.round(v * 10) / 10
                 })
               }
             />

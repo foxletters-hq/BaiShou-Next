@@ -7,8 +7,9 @@ import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
 import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
 import type { NativeStreamingBubbleProps } from './streaming-bubble.types'
 import { createStreamingBubbleStyles } from './streaming-bubble.styles'
-import { StreamingBubbleAvatar } from './StreamingBubbleAvatar'
-import { StreamingBubbleToolExecution } from './StreamingBubbleToolExecution'
+import { ChatBubbleAvatar } from '../ChatBubble/ChatBubbleAvatar'
+import { chatBubbleStyles } from '../ChatBubble/chat-bubble.styles'
+import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
@@ -25,7 +26,7 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
-  const styles = useMemo(() => createStreamingBubbleStyles(colors, tokens), [colors, tokens])
+  const auxStyles = useMemo(() => createStreamingBubbleStyles(colors, tokens), [colors, tokens])
 
   const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
 
@@ -39,20 +40,35 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
   const hasTools = completedTools.length > 0 || !!activeToolName
 
   return (
-    <View style={styles.row}>
-      <StreamingBubbleAvatar
+    <View style={[chatBubbleStyles.container, chatBubbleStyles.containerAssistant]}>
+      <ChatBubbleAvatar
+        variant="assistant"
         emoji={aiProfile.emoji}
         avatarPath={aiProfile.avatarPath}
         resolvedAvatarUri={aiProfile.resolvedAvatarUri}
-        styles={styles}
+        style={{ marginRight: 8 }}
       />
 
-      <View style={styles.content}>
-        <Text style={styles.aiName}>{aiName}</Text>
+      <View
+        style={[
+          chatBubbleStyles.bubbleWrapper,
+          chatBubbleStyles.bubbleWrapperAssistant,
+          chatBubbleStyles.bubbleWrapperEditing
+        ]}
+      >
+        <Text
+          style={[
+            chatBubbleStyles.nameLabel,
+            chatBubbleStyles.nameLabelAssistant,
+            { color: colors.textSecondary }
+          ]}
+        >
+          {aiName}
+        </Text>
 
         {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠ {error}</Text>
+          <View style={auxStyles.errorBox}>
+            <Text style={auxStyles.errorText}>⚠ {error}</Text>
             {onRetry && (
               <Pressable
                 onPress={onRetry}
@@ -72,25 +88,48 @@ export const StreamingBubble: React.FC<NativeStreamingBubbleProps> = ({
             )}
           </View>
         ) : hasText || hasReasoning || hasTools ? (
-          <View style={styles.bubbleCard}>
+          <View
+            style={[
+              chatBubbleStyles.bubble,
+              chatBubbleStyles.bubbleEditing,
+              { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
+            ]}
+          >
             {hasReasoning && (
-              <ThinkingBlock
-                content={cleanReasoning}
-                isThinking={isReasoning && !hasText}
-                defaultOpen
-                autoCollapse={false}
-              />
+              <View
+                style={{
+                  marginBottom: hasText || hasTools ? 8 : 0,
+                  alignSelf: 'stretch',
+                  width: '100%'
+                }}
+              >
+                <ThinkingBlock
+                  content={cleanReasoning}
+                  isThinking={isReasoning && !hasText}
+                  defaultOpen={!hasText}
+                  autoCollapse={hasText}
+                />
+              </View>
             )}
 
-            <StreamingBubbleToolExecution
-              completedTools={completedTools}
-              activeToolName={activeToolName}
-            />
+            {hasTools ? (
+              <View style={{ marginBottom: hasText ? 8 : 0, alignSelf: 'stretch', width: '100%' }}>
+                <ToolResultGroupCard
+                  invocations={completedTools.map((tool, idx) => ({
+                    toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
+                    toolName: tool.name,
+                    result: tool.result ?? null
+                  }))}
+                  activeToolName={activeToolName}
+                  defaultExpanded
+                />
+              </View>
+            ) : null}
 
             {hasText && <MarkdownRenderer content={cleanText} variant="chat" />}
           </View>
         ) : (
-          <View style={styles.dotsWrap}>
+          <View style={auxStyles.dotsWrap}>
             <StreamingBubbleBouncingDots />
           </View>
         )}

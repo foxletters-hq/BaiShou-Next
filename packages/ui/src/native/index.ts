@@ -59,6 +59,8 @@ export * from './MessageActionBar'
 
 // 同步组件
 export * from './IncrementalSyncPanel'
+export * from './IncrementalSyncScopeList'
+export * from './BackupScopeList'
 export * from './LanSyncCard'
 export * from './CloudSyncPanel'
 
@@ -129,3 +131,11 @@ export {
 export { NATIVE_APP_BRAND_ICON, resolveNativeUserAvatarSource } from './user-avatar.util'
 
 export { useKeyboardHeight, type UseKeyboardHeightOptions } from './hooks/useKeyboardHeight'
+export {
+  KeyboardAwareScrollView,
+  scrollFocusedInputIntoView,
+  useKeyboardAwareScroll,
+  scheduleScrollFocusedInputOnFocus,
+  type KeyboardAwareScrollViewProps,
+  type KeyboardAwareScrollContextValue
+} from './KeyboardAwareScrollView'

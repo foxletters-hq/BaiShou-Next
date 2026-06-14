@@ -1,5 +1,6 @@
-import React from 'react'
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native'
+import React, { useEffect, useRef } from 'react'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { KeyboardAwareScrollView } from '../KeyboardAwareScrollView'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useNativeTheme } from '../theme'
@@ -37,6 +38,11 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const scrollRef = useRef<React.ComponentRef<typeof KeyboardAwareScrollView>>(null)
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false })
+  }, [summary?.id, isEditing])
 
   if (!summary) {
     return (
@@ -51,10 +57,7 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
 
   return (
     <View
-      style={[
-        styles.detail,
-        { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
-      ]}
+      style={[styles.detail, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}
     >
       <View style={styles.detailHeader}>
         <View style={styles.metaRow}>
@@ -103,7 +106,11 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
           )}
         </View>
       </View>
-      <ScrollView style={styles.detailScroll} contentContainerStyle={styles.detailScrollContent}>
+      <KeyboardAwareScrollView
+        ref={scrollRef}
+        style={styles.detailScroll}
+        contentContainerStyle={styles.detailScrollContent}
+      >
         {isEditing ? (
           <Input
             style={styles.editor}
@@ -116,7 +123,7 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
         ) : (
           <MarkdownRenderer content={summary.content} />
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   )
 }

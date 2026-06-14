@@ -1,6 +1,8 @@
 export interface ToolExecution {
   name: string
-  durationMs: number
+  durationMs?: number
+  result?: unknown
+  toolCallId?: string
 }
 
 export interface NativeStreamingBubbleProps {

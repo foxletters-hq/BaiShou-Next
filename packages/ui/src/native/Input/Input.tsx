@@ -1,5 +1,12 @@
-import React, { forwardRef } from 'react'
-import { View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import React, { forwardRef, useCallback } from 'react'
+import {
+  View,
+  type NativeSyntheticEvent,
+  type StyleProp,
+  type TargetedEvent,
+  type TextStyle,
+  type ViewStyle
+} from 'react-native'
 import {
   Input as HeroInput,
   TextArea as HeroTextArea,
@@ -11,6 +18,8 @@ import {
   type InputProps as HeroInputProps
 } from 'heroui-native'
 import { useNativeTheme } from '../theme'
+import { useKeyboardAwareScroll } from '../KeyboardAwareScrollView/keyboard-aware-scroll.context'
+import { scheduleScrollFocusedInputOnFocus } from '../KeyboardAwareScrollView/schedule-scroll-on-focus.util'
 import { sanitizeHeroInputStyle, splitInputLayoutStyle } from './input-style.utils'
 import {
   getCompactTextFieldStyle,
@@ -32,6 +41,11 @@ export interface NativeInputProps extends Omit<HeroInputProps, 'children'> {
   textarea?: boolean
   /** Tailwind/NativeWind classes merged with HeroUI field styles */
   className?: string
+  /**
+   * 聚焦时自动滚入键盘安全区（需外层 `KeyboardAwareScrollView`）。
+   * 聊天栏等固定底栏场景可设为 false。
+   */
+  keyboardAware?: boolean
 }
 
 /**
@@ -53,11 +67,23 @@ export const Input = forwardRef<any, NativeInputProps>(
       style,
       className,
       textAlignVertical: textAlignVerticalProp,
+      keyboardAware = true,
+      onFocus,
       ...props
     },
     ref
   ) => {
     const { colors } = useNativeTheme()
+    const keyboardScroll = useKeyboardAwareScroll()
+
+    const handleFocus = useCallback(
+      (event: NativeSyntheticEvent<TargetedEvent>) => {
+        onFocus?.(event)
+        if (!keyboardAware || !keyboardScroll) return
+        scheduleScrollFocusedInputOnFocus(keyboardScroll.scrollFocusedIntoView)
+      },
+      [keyboardAware, keyboardScroll, onFocus]
+    )
     const computedInvalid = isInvalid ?? !!error
     const useTextArea = textarea && multiline
     const hasSlots = Boolean(leftSlot || rightSlot)
@@ -88,6 +114,7 @@ export const Input = forwardRef<any, NativeInputProps>(
         variant="primary"
         className={inputClassName}
         style={inputStyle}
+        onFocus={handleFocus}
         {...props}
       />
     ) : (
@@ -99,6 +126,7 @@ export const Input = forwardRef<any, NativeInputProps>(
         textAlignVertical={textAlignVerticalProp ?? (multiline ? 'top' : 'center')}
         className={inputClassName}
         style={inputStyle}
+        onFocus={handleFocus}
         {...props}
       />
     )

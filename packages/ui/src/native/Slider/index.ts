@@ -1,11 +1,7 @@
-export { NativeSlider, NativeSliderThumb } from './NativeSlider'
-export type { NativeSliderProps, NativeSliderThumbProps } from './NativeSlider'
+export { NativeSlider } from './NativeSlider'
+export type { NativeSliderProps } from './NativeSlider'
 export {
-  getHeroSliderTrackStyle,
-  getHeroSliderFillStyle,
-  getHeroSliderThumbStyles,
-  HERO_SLIDER_TRACK_HEIGHT,
-  HERO_SLIDER_THUMB_WIDTH,
-  HERO_SLIDER_THUMB_HEIGHT
+  NATIVE_SLIDER_HEIGHT,
+  snapSliderValue,
+  type NativeSliderThumbOptions
 } from './native-slider.utils'
-export type { NativeSliderThumbOptions } from './native-slider.utils'

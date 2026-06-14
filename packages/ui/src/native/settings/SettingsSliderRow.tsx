@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { NativeSlider } from '../Slider'
 import { useNativeTheme } from '../theme'
@@ -31,12 +31,32 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
   const [draftValue, setDraftValue] = useState(value)
 
   useEffect(() => {
-    setDraftValue(value)
+    setDraftValue((prev) => (prev === value ? prev : value))
   }, [value])
 
   const normalize = (raw: number) => (step >= 1 ? Math.round(raw) : raw)
 
   const display = formatValue(commitOnChangeEnd ? draftValue : value)
+
+  const handlePreview = useCallback(
+    (next: number) => {
+      setDraftValue((prev) => (prev === next ? prev : next))
+      if (!commitOnChangeEnd && next !== value) {
+        onChange(next)
+      }
+    },
+    [commitOnChangeEnd, onChange, value]
+  )
+
+  const handleCommit = useCallback(
+    (next: number) => {
+      setDraftValue((prev) => (prev === next ? prev : next))
+      if (next !== value) {
+        onChange(next)
+      }
+    },
+    [onChange, value]
+  )
 
   return (
     <View style={styles.block}>
@@ -56,17 +76,8 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
             maxValue={max}
             step={step}
             commitOnChangeEnd={commitOnChangeEnd}
-            onChange={(v) => {
-              setDraftValue(normalize(v as number))
-              if (!commitOnChangeEnd) {
-                onChange(normalize(v as number))
-              }
-            }}
-            onChangeEnd={(v) => {
-              const next = normalize(v as number)
-              setDraftValue(next)
-              onChange(next)
-            }}
+            onChange={handlePreview}
+            onChangeEnd={handleCommit}
           />
         </View>
         <View style={[styles.valueBadge, { backgroundColor: colors.primaryLight }]}>

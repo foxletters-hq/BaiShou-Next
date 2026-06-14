@@ -1,8 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { Input } from '../Input/Input'
 import { DesktopStyleSlider } from './DesktopStyleSlider'
 import { useNativeTheme } from '../../native/theme'
 
@@ -15,6 +14,107 @@ interface DashboardSharedMemoryCardProps {
   onCopyContext: () => void
 }
 
+/** 滑块 + 数字输入：拖动预览仅在本组件内更新，避免牵动整张卡片重渲染 */
+function LookbackMonthsField({
+  lookbackMonths,
+  label,
+  onMonthsChanged
+}: {
+  lookbackMonths: number
+  label: string
+  onMonthsChanged: (val: number) => void
+}) {
+  const { colors } = useNativeTheme()
+  const [displayMonths, setDisplayMonths] = useState(lookbackMonths)
+  const numberInputRef = useRef<TextInput>(null)
+  const editingRef = useRef(false)
+
+  const syncNumberDisplay = useCallback((next: number) => {
+    numberInputRef.current?.setNativeProps({ text: String(next) })
+  }, [])
+
+  useEffect(() => {
+    setDisplayMonths((prev) => (prev === lookbackMonths ? prev : lookbackMonths))
+    if (!editingRef.current) {
+      syncNumberDisplay(lookbackMonths)
+    }
+  }, [lookbackMonths, syncNumberDisplay])
+
+  const commitMonths = useCallback(
+    (raw: number) => {
+      const clamped = Math.max(SLIDER_MIN, Math.round(raw))
+      setDisplayMonths(clamped)
+      syncNumberDisplay(clamped)
+      if (clamped !== lookbackMonths) {
+        onMonthsChanged(clamped)
+      }
+    },
+    [lookbackMonths, onMonthsChanged, syncNumberDisplay]
+  )
+
+  const handleSliderPreview = useCallback(
+    (next: number) => {
+      if (editingRef.current) return
+      syncNumberDisplay(next)
+    },
+    [syncNumberDisplay]
+  )
+
+  const sliderMax = Math.max(SLIDER_BASE_MAX, lookbackMonths)
+
+  return (
+    <View style={fieldStyles.controls}>
+      <View style={fieldStyles.labelRow}>
+        <Text style={[fieldStyles.label, { color: colors.textPrimary }]}>{label}</Text>
+        <TextInput
+          ref={numberInputRef}
+          style={[
+            fieldStyles.numberInput,
+            {
+              color: colors.textPrimary,
+              borderColor: colors.borderMuted,
+              backgroundColor: colors.bgSurface
+            }
+          ]}
+          defaultValue={String(displayMonths)}
+          keyboardType="number-pad"
+          maxLength={4}
+          selectTextOnFocus
+          onFocus={() => {
+            editingRef.current = true
+          }}
+          onChangeText={(text) => {
+            const digits = text.replace(/\D/g, '')
+            if (digits.length === 0) return
+            const n = parseInt(digits, 10)
+            if (!Number.isNaN(n)) {
+              setDisplayMonths(Math.max(SLIDER_MIN, n))
+            }
+          }}
+          onEndEditing={() => {
+            editingRef.current = false
+            commitMonths(displayMonths)
+          }}
+          onBlur={() => {
+            editingRef.current = false
+            commitMonths(displayMonths)
+          }}
+        />
+      </View>
+      <View style={fieldStyles.sliderWrap}>
+        <DesktopStyleSlider
+          value={lookbackMonths}
+          minimumValue={SLIDER_MIN}
+          maximumValue={sliderMax}
+          step={1}
+          onPreviewChange={handleSliderPreview}
+          onValueChange={commitMonths}
+        />
+      </View>
+    </View>
+  )
+}
+
 export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps> = ({
   lookbackMonths,
   onMonthsChanged,
@@ -23,28 +123,6 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const cardBorder = colors.borderMuted
-  const [draftMonths, setDraftMonths] = useState(String(lookbackMonths))
-
-  const commitMonths = useCallback(
-    (raw: string) => {
-      const n = parseInt(raw, 10)
-      if (Number.isNaN(n)) {
-        setDraftMonths(String(lookbackMonths))
-        return
-      }
-      const clamped = Math.max(SLIDER_MIN, n)
-      setDraftMonths(String(clamped))
-      onMonthsChanged(clamped)
-    },
-    [lookbackMonths, onMonthsChanged]
-  )
-
-  useEffect(() => {
-    setDraftMonths(String(lookbackMonths))
-  }, [lookbackMonths])
-
-  const sliderMax = Math.max(SLIDER_BASE_MAX, lookbackMonths)
-  const sliderValue = Math.min(Math.max(lookbackMonths, SLIDER_MIN), sliderMax)
 
   return (
     <View style={[styles.card, { backgroundColor: colors.bgSurface, borderColor: cardBorder }]}>
@@ -64,43 +142,11 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         {t('summary.shared_memory_desc')}
       </Text>
 
-      <View style={styles.controls}>
-        <View style={styles.labelRow}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {t('summary.lookback_label')}
-          </Text>
-          <Input
-            className="w-16 min-h-10 px-2"
-            style={styles.numberInput}
-            value={draftMonths}
-            keyboardType="number-pad"
-            maxLength={4}
-            selectTextOnFocus
-            onChangeText={(text) => {
-              const digits = text.replace(/\D/g, '')
-              setDraftMonths(digits)
-              if (digits.length > 0) {
-                const n = parseInt(digits, 10)
-                if (!Number.isNaN(n)) {
-                  onMonthsChanged(Math.max(SLIDER_MIN, n))
-                }
-              }
-            }}
-            onEndEditing={() => commitMonths(draftMonths)}
-            onBlur={() => commitMonths(draftMonths)}
-          />
-        </View>
-        <View style={styles.sliderWrap}>
-          <DesktopStyleSlider
-            value={sliderValue}
-            minimumValue={SLIDER_MIN}
-            maximumValue={sliderMax}
-            step={1}
-            onPreviewChange={(v) => setDraftMonths(String(v))}
-            onValueChange={onMonthsChanged}
-          />
-        </View>
-      </View>
+      <LookbackMonthsField
+        lookbackMonths={lookbackMonths}
+        label={t('summary.lookback_label')}
+        onMonthsChanged={onMonthsChanged}
+      />
 
       <TouchableOpacity
         activeOpacity={0.9}
@@ -113,6 +159,38 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
     </View>
   )
 }
+
+const fieldStyles = StyleSheet.create({
+  controls: {
+    gap: 8
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1
+  },
+  numberInput: {
+    width: 64,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    borderWidth: 1,
+    borderRadius: 10
+  },
+  sliderWrap: {
+    width: '100%',
+    justifyContent: 'center',
+    minHeight: 44
+  }
+})
 
 const styles = StyleSheet.create({
   card: {
@@ -138,35 +216,8 @@ const styles = StyleSheet.create({
     lineHeight: 20.8,
     marginBottom: 24
   },
-  controls: {
-    marginBottom: 24,
-    gap: 8
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1
-  },
-  numberInput: {
-    width: 64,
-    minHeight: 40,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center'
-  },
-  sliderWrap: {
-    width: '100%',
-    justifyContent: 'center',
-    minHeight: 44
-  },
   btn: {
+    marginTop: 24,
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: 'row',
