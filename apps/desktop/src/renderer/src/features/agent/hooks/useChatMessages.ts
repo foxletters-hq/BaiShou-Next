@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { MockChatAttachment } from '@baishou/shared'
+import { clearChatAttachmentImageCaches } from '@baishou/ui'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,
   CHAT_ROUNDS_PER_PAGE,
@@ -200,6 +201,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
     if (sessionId !== currentSessionIdRef.current) {
       currentSessionIdRef.current = sessionId
+      clearChatAttachmentImageCaches()
       loadedFromEndRef.current = 0
       messageCacheRef.current = []
       roundWindowStartRef.current = 0
