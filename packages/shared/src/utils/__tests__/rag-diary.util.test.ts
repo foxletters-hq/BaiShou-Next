@@ -67,4 +67,15 @@ describe('filterUnindexedDiaries', () => {
     expect(result).toHaveLength(1)
     expect(result[0]?.id).toBe(1)
   })
+
+  it('includes diaries indexed without updated_at metadata', () => {
+    const diaries = [{ id: 1, updatedAt: new Date('2026-05-20T00:00:00Z') }]
+    const embeddedIds = new Set(['1'])
+    const embeddedUpdatedAtMap = new Map<string, number>()
+
+    const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.id).toBe(1)
+  })
 })

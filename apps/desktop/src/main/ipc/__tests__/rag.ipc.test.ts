@@ -53,17 +53,16 @@ describe('filterUnindexedDiaries', () => {
     expect(result[0]?.id).toBe(1)
   })
 
-  it('should filter out diaries that are indexed but lack metadata updated_at', () => {
+  it('should include diaries that are indexed but lack metadata updated_at', () => {
     const diaries = [
       { id: 1, content: 'diary 1', updatedAt: new Date('2026-05-20T00:00:00Z') },
       { id: 2, content: 'diary 2', updatedAt: new Date('2026-05-20T00:00:00Z') }
     ]
-    // 向量库里有记录，但没有元数据更新时间 (例如没有出现在 embeddedUpdatedAtMap 中，或者 map 中无此项)
     const embeddedIds = new Set(['1', '2'])
     const embeddedUpdatedAtMap = new Map<string, number>()
 
     const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
 
-    expect(result).toHaveLength(0)
+    expect(result).toHaveLength(2)
   })
 })

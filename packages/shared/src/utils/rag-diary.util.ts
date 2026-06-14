@@ -20,7 +20,10 @@ export function filterUnindexedDiaries<T extends { id: unknown; updatedAt?: Date
       return true
     }
     const existingUpdatedAt = embeddedUpdatedAtMap.get(sId)
-    if (existingUpdatedAt !== undefined && d.updatedAt) {
+    if (existingUpdatedAt === undefined) {
+      return true
+    }
+    if (d.updatedAt) {
       return d.updatedAt.getTime() > existingUpdatedAt
     }
     return false
