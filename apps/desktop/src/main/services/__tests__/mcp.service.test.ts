@@ -77,7 +77,11 @@ describe.sequential('McpService', () => {
       }
     }
 
-    const fetchWithRetry = async (url: string, init: RequestInit, attempts = 30): Promise<Response> => {
+    const fetchWithRetry = async (
+      url: string,
+      init: RequestInit,
+      attempts = 30
+    ): Promise<Response> => {
       let lastError: unknown
       for (let i = 0; i < attempts; i++) {
         try {

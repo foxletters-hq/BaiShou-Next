@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { MockChatAttachment } from '@baishou/shared'
-import { clearChatAttachmentImageCaches } from '@baishou/ui/web/ChatBubble/chat-attachment-thumbnail.util'
+import { clearChatAttachmentImageCaches } from '@baishou/ui/chat-attachment-thumbnail'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,
   CHAT_ROUNDS_PER_PAGE,

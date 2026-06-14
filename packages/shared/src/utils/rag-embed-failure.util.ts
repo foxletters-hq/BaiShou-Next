@@ -1,6 +1,8 @@
 import type { RagConfig } from '../types/settings.types'
 
-export function hasRagDiaryEmbedFailure(config?: Pick<RagConfig, 'lastDiaryEmbedFailureAt'> | null): boolean {
+export function hasRagDiaryEmbedFailure(
+  config?: Pick<RagConfig, 'lastDiaryEmbedFailureAt'> | null
+): boolean {
   return typeof config?.lastDiaryEmbedFailureAt === 'number' && config.lastDiaryEmbedFailureAt > 0
 }
 
