@@ -8,7 +8,7 @@ import {
   VaultIndexServiceImpl,
   IEmbeddingCallback
 } from '@baishou/core-desktop'
-import { diaryDateToSourceCreatedSeconds, parseDateStr } from '@baishou/shared'
+import { diaryDateToSourceCreatedSeconds, parseDateStr, markRagDiaryEmbedFailure, clearRagDiaryEmbedFailure, hasRagDiaryEmbedFailure } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 import { fileSystem, pathService, vaultService } from './vault.ipc'
@@ -17,6 +17,23 @@ import { CreateDiaryInput, UpdateDiaryInput, DiaryListFilter } from '@baishou/sh
 function broadcastDiaryEmbedFailed(): void {
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send('diary:sync-event', { type: 'embed-failed' })
+  }
+}
+
+async function persistDiaryEmbedFailure(): Promise<void> {
+  const { settingsManager } = await import('./settings.ipc')
+  const ragConfig = (await settingsManager.get<any>('rag_config')) || {}
+  await settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig))
+  broadcastDiaryEmbedFailed()
+}
+
+async function clearDiaryEmbedFailureIfSet(): Promise<void> {
+  const { settingsManager } = await import('./settings.ipc')
+  const ragConfig = (await settingsManager.get<any>('rag_config')) || {}
+  if (!hasRagDiaryEmbedFailure(ragConfig)) return
+  await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfig))
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
   }
 }
 
@@ -47,9 +64,10 @@ const embeddingCallback: IEmbeddingCallback = {
         metadataJson: JSON.stringify({ updated_at: params.updatedAt.getTime() }),
         sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000
       })
+      await clearDiaryEmbedFailureIfSet()
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 嵌入发生异常:', e)
-      broadcastDiaryEmbedFailed()
+      await persistDiaryEmbedFailure()
     }
   },
 
