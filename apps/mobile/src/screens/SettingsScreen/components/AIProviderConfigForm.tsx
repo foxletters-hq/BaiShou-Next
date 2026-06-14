@@ -371,7 +371,10 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
                     >
                       {modelId}
                     </Text>
-                    <Switch value={on} onValueChange={(next) => toggleModelEnabled(modelId, next)} />
+                    <Switch
+                      value={on}
+                      onValueChange={(next) => toggleModelEnabled(modelId, next)}
+                    />
                   </View>
                 )
               })

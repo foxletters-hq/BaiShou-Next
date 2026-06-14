@@ -61,11 +61,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
             </CardLinkAction>
           ) : null}
           {onMigrateDirectory ? (
-            <Button
-              variant="outline"
-              className="w-full"
-              onPress={() => void onMigrateDirectory()}
-            >
+            <Button variant="outline" className="w-full" onPress={() => void onMigrateDirectory()}>
               {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
             </Button>
           ) : null}

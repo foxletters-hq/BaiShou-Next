@@ -142,10 +142,9 @@ export function registerSummaryIPC() {
         const activeVault = vaultService.getActiveVault()
         const vaultName = activeVault?.name ?? ''
         const result = vaultName
-          ? await client.execute(
-              'SELECT COUNT(*) as c FROM journals_index WHERE vault_name = ?',
-              [vaultName]
-            )
+          ? await client.execute('SELECT COUNT(*) as c FROM journals_index WHERE vault_name = ?', [
+              vaultName
+            ])
           : await client.execute('SELECT COUNT(*) as c FROM journals_index')
         totalDiaryCount = (result.rows[0]?.c as number) || 0
       } catch (e: any) {
@@ -253,7 +252,12 @@ export function registerSummaryIPC() {
     'summary:buildSharedContext',
     async (_, lookbackMonths: number, locale?: string) => {
       const summaries = await ensureManager().list()
-      return handleBuildSharedContext(summaries, lookbackMonths, locale, vaultService.getActiveVault()?.name)
+      return handleBuildSharedContext(
+        summaries,
+        lookbackMonths,
+        locale,
+        vaultService.getActiveVault()?.name
+      )
     }
   )
 }

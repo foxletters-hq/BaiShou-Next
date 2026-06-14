@@ -40,8 +40,9 @@ function canonicalQueryString(searchParams: URLSearchParams): string {
 
 /** AWS Sig V4 URI 编码（与 encodeURIComponent 略有差异） */
 function awsUriEncode(value: string): string {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (ch) =>
-    `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
   )
 }
 

@@ -78,13 +78,11 @@ async function resizeWithElectron(filePath: string): Promise<NormalizedImagePayl
   }
 }
 
-async function compressWithHost(
-  request: {
-    base64?: string
-    mimeType: string
-    filePath?: string
-  }
-): Promise<NormalizedImagePayload | null> {
+async function compressWithHost(request: {
+  base64?: string
+  mimeType: string
+  filePath?: string
+}): Promise<NormalizedImagePayload | null> {
   const compressor = getImageCompressor()
   if (!compressor) return null
 

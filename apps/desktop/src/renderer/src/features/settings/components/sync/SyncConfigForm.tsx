@@ -328,7 +328,10 @@ export const SyncConfigForm: React.FC = () => {
             marginBottom: 6
           }}
         >
-          {t('data_sync.max_divergence_label', 'Max local/remote difference for bidirectional sync')}
+          {t(
+            'data_sync.max_divergence_label',
+            'Max local/remote difference for bidirectional sync'
+          )}
         </label>
         <Select
           value={String(
@@ -348,7 +351,14 @@ export const SyncConfigForm: React.FC = () => {
           }))}
           size="small"
         />
-        <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: '12px',
+            color: 'var(--text-tertiary)',
+            lineHeight: 1.5
+          }}
+        >
           {t(
             'data_sync.max_divergence_hint',
             'Bidirectional sync is blocked when local and remote differ by more than this threshold. Upload-only is not affected. S3 and WebDAV use separate storage snapshots.'

@@ -5,8 +5,9 @@ export interface KeyboardAwareScrollContextValue {
   scrollFocusedIntoView: () => void
 }
 
-export const KeyboardAwareScrollContext =
-  createContext<KeyboardAwareScrollContextValue | null>(null)
+export const KeyboardAwareScrollContext = createContext<KeyboardAwareScrollContextValue | null>(
+  null
+)
 
 export function useKeyboardAwareScroll(): KeyboardAwareScrollContextValue | null {
   return useContext(KeyboardAwareScrollContext)

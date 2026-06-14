@@ -12,10 +12,7 @@ function manifest(files: Record<string, string>): SyncManifest {
     updatedAt: 0,
     deviceId: 'd',
     files: Object.fromEntries(
-      Object.entries(files).map(([path, hash]) => [
-        path,
-        { hash, size: 1, lastModified: 0 }
-      ])
+      Object.entries(files).map(([path, hash]) => [path, { hash, size: 1, lastModified: 0 }])
     )
   }
 }

@@ -5,10 +5,7 @@ import * as fs from 'fs'
 import { logger } from '@baishou/shared'
 
 import type { AppDatabase } from './types'
-import {
-  SHADOW_INDEX_DB_FILENAME,
-  ensureShadowIndexSchema
-} from './shadow-index-schema.shared'
+import { SHADOW_INDEX_DB_FILENAME, ensureShadowIndexSchema } from './shadow-index-schema.shared'
 
 /**
  * 影子索引连接管理器 (ShadowIndexConnectionManager)

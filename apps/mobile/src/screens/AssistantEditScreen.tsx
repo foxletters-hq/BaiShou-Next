@@ -296,11 +296,13 @@ export const AssistantEditScreen: React.FC = () => {
         (storedAvatarPath === ASSISTANT_DEFAULT_AVATAR_SENTINEL || (!emoji && !storedAvatarPath))
 
       const assistantId = isNew ? Date.now().toString() : (id as string)
-      const existingList = isNew ? [] : await listAssistantsForUi(
-        services.assistantManager,
-        services.attachmentManager,
-        services.fileSystem
-      )
+      const existingList = isNew
+        ? []
+        : await listAssistantsForUi(
+            services.assistantManager,
+            services.attachmentManager,
+            services.fileSystem
+          )
 
       const repoInput = buildAssistantRepoInput({
         name: name.trim(),

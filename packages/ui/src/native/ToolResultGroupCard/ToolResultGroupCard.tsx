@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking, ActivityIndicator } from 'react-native'
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Linking,
+  ActivityIndicator
+} from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { CollapsibleAncillaryBlock } from '../CollapsibleAncillaryBlock'

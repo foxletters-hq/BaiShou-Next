@@ -163,9 +163,7 @@ export const OnboardingScreen: React.FC = () => {
 
               {page.isStorage && (
                 <div className={styles.storageBox}>
-                  <div className={styles.pathLabel}>
-                    {t('onboarding.current_storage')}
-                  </div>
+                  <div className={styles.pathLabel}>{t('onboarding.current_storage')}</div>
                   <div className={styles.pathText}>{selectedPath}</div>
                   <button className={styles.pickBtn} onClick={handlePickDirectory}>
                     <FolderOpen size={16} />
@@ -181,9 +179,7 @@ export const OnboardingScreen: React.FC = () => {
                 </div>
               )}
 
-              {page.isLast && (
-                <div className={styles.slogan}>{t('onboarding.slogan')}</div>
-              )}
+              {page.isLast && <div className={styles.slogan}>{t('onboarding.slogan')}</div>}
             </div>
           ))}
         </div>

@@ -11,9 +11,7 @@ describe('incremental-sync-scan.util', () => {
       shouldIncludeIncrementalSyncFile('ai_providers.json', '.baishou/settings/ai_providers.json')
     ).toBe(true)
     expect(shouldIncludeIncrementalSyncFile('settings.json', '.baishou/settings.json')).toBe(false)
-    expect(shouldIncludeIncrementalSyncFile('manifest.json', '.baishou/manifest.json')).toBe(
-      false
-    )
+    expect(shouldIncludeIncrementalSyncFile('manifest.json', '.baishou/manifest.json')).toBe(false)
   })
 
   it('scans .baishou/settings but not other .baishou subdirectories', () => {

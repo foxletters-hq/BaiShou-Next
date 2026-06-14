@@ -90,7 +90,8 @@ describe('ShadowIndexSyncService', () => {
       getGlobalRegistryDirectory: async () => path.join(tmpDir, '.registry'),
       getVaultDirectory: async () => path.join(tmpDir, 'TestVault'),
       getVaultSystemDirectory: async () => path.join(tmpDir, 'TestVault', '.baishou'),
-      getGlobalShadowIndexDirectory: async () => path.join(tmpDir, '.baishou_global', 'shadow_index'),
+      getGlobalShadowIndexDirectory: async () =>
+        path.join(tmpDir, '.baishou_global', 'shadow_index'),
       getRootDirectory: async () => tmpDir,
       getSnapshotsDirectory: async () => path.join(tmpDir, 'snapshots'),
       getJournalsBaseDirectory: async () => journalsDir,

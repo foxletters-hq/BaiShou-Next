@@ -38,10 +38,7 @@ export const NativeChatBubbleAttachments: React.FC<NativeChatBubbleAttachmentsPr
               ]}
             >
               <Text style={styles.docIcon}>{att.isPdf || att.isText ? '📄' : '📁'}</Text>
-              <Text
-                style={[styles.docName, { color: colors.textPrimary }]}
-                numberOfLines={2}
-              >
+              <Text style={[styles.docName, { color: colors.textPrimary }]} numberOfLines={2}>
                 {att.fileName}
               </Text>
             </View>

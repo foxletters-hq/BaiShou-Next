@@ -42,8 +42,7 @@ export const SummaryDetailPage: React.FC = () => {
   const location = useLocation()
   const toast = useToast()
   const prefetchedSummary = (location.state as SummaryDetailLocationState | null)?.summary
-  const hasPrefetchedSummary =
-    !!prefetchedSummary && !!id && String(prefetchedSummary.id) === id
+  const hasPrefetchedSummary = !!prefetchedSummary && !!id && String(prefetchedSummary.id) === id
   const [summary, setSummary] = useState<SummaryDetail | null>(
     hasPrefetchedSummary ? prefetchedSummary : null
   )

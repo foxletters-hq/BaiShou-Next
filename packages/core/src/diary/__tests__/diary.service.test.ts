@@ -288,7 +288,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: null,
         location: null,
         locationDetail: null,
-      vaultName: 'TestVault'
+        vaultName: 'TestVault'
       })
       mockShadowSync.syncJournal.mockResolvedValue({
         isChanged: true,
@@ -328,7 +328,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: null,
         location: null,
         locationDetail: null,
-      vaultName: 'TestVault'
+        vaultName: 'TestVault'
       })
       mockFileSync.readJournal.mockResolvedValue({
         id: 20,

@@ -30,11 +30,7 @@ export class SettingsFileService {
     try {
       await this.fileSystem.rename(tmpPath, fullPath)
     } catch (renameErr: any) {
-      if (
-        renameErr.code === 'EXDEV' ||
-        renameErr.code === 'EPERM' ||
-        renameErr.code === 'EEXIST'
-      ) {
+      if (renameErr.code === 'EXDEV' || renameErr.code === 'EPERM' || renameErr.code === 'EEXIST') {
         try {
           await this.fileSystem.unlink(fullPath)
         } catch (unlinkErr: any) {
@@ -79,9 +75,7 @@ export class SettingsFileService {
     return this.migrateLegacySettingsIfPresent(settingsDir)
   }
 
-  private async readMergedFromSettingsDir(
-    settingsDir: string
-  ): Promise<Record<string, any>> {
+  private async readMergedFromSettingsDir(settingsDir: string): Promise<Record<string, any>> {
     try {
       const entries = await this.fileSystem.readdir(settingsDir)
       const jsonFiles = entries.filter(
@@ -105,9 +99,7 @@ export class SettingsFileService {
     }
   }
 
-  private async migrateLegacySettingsIfPresent(
-    settingsDir: string
-  ): Promise<Record<string, any>> {
+  private async migrateLegacySettingsIfPresent(settingsDir: string): Promise<Record<string, any>> {
     const baishouDir = path.dirname(settingsDir)
     const legacyPath = path.join(baishouDir, LEGACY_SETTINGS_FILENAME)
     if (!(await this.fileSystem.exists(legacyPath))) {

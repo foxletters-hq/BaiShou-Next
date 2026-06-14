@@ -9,7 +9,11 @@ import {
   type GlobalModelsConfig
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
-import { listAssistantsForUi, type MobileAssistantUi, buildAssistantRepoInput } from '../lib/mobile-assistant.util'
+import {
+  listAssistantsForUi,
+  type MobileAssistantUi,
+  buildAssistantRepoInput
+} from '../lib/mobile-assistant.util'
 import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 
 type Assistant = MobileAssistantUi

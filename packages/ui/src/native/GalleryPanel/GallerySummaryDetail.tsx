@@ -57,7 +57,10 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
 
   return (
     <View
-      style={[styles.detail, { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }]}
+      style={[
+        styles.detail,
+        { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+      ]}
     >
       <View style={styles.detailHeader}>
         <View style={styles.metaRow}>

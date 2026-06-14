@@ -2,7 +2,12 @@ import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IVaultService, VaultInfo } from './vault.types'
 import { IStoragePathService } from './storage-path.types'
-import { VaultActiveDeleteError, VaultInvalidNameError, VaultNameExistsError, VaultNotFoundError } from './vault.errors'
+import {
+  VaultActiveDeleteError,
+  VaultInvalidNameError,
+  VaultNameExistsError,
+  VaultNotFoundError
+} from './vault.errors'
 import { sanitizeVaultDirectoryName, validateVaultName } from './vault-name.util'
 
 export class VaultService implements IVaultService {

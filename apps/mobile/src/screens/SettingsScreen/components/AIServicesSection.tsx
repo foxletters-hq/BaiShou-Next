@@ -34,8 +34,8 @@ export const AIServicesSection: React.FC = () => {
   const toast = useNativeToast()
   const loadingRef = useRef(false)
 
-  const [listItems, setListItems] = useState<ProviderListItem[] | null>(
-    () => peekProviderListItemsCache()
+  const [listItems, setListItems] = useState<ProviderListItem[] | null>(() =>
+    peekProviderListItemsCache()
   )
   const [showAddModal, setShowAddModal] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', type: 'openai', baseUrl: '' })

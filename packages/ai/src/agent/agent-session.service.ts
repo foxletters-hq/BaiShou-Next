@@ -440,7 +440,10 @@ export class AgentSessionService {
         logger.error('[AgentSessionService] Failing URL:', (e as { url?: string }).url)
       }
       if ((e as { statusCode?: number })?.statusCode) {
-        logger.error('[AgentSessionService] HTTP status:', (e as { statusCode?: number }).statusCode)
+        logger.error(
+          '[AgentSessionService] HTTP status:',
+          (e as { statusCode?: number }).statusCode
+        )
       }
       if ((e as { responseHeaders?: unknown })?.responseHeaders) {
         logger.error(

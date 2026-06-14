@@ -1,12 +1,5 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  SafeAreaView
-} from 'react-native'
+import { View, Text, StyleSheet, Modal, TouchableOpacity, SafeAreaView } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import type { SyncConfig } from '@baishou/core-mobile'

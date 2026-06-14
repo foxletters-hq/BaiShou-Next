@@ -116,7 +116,11 @@ export const stableHooksPlugin = {
               if (visited.has(node)) return
               visited.add(node)
 
-              if (node.type === 'FunctionDeclaration' && node.id && HOOK_NAME_RE.test(node.id.name)) {
+              if (
+                node.type === 'FunctionDeclaration' &&
+                node.id &&
+                HOOK_NAME_RE.test(node.id.name)
+              ) {
                 for (const v of findUnmemoizedExports(node.body)) {
                   context.report({
                     node: v.node,

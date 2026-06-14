@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, Pressable, useColorScheme, LayoutAnimation, Platform, UIManager } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  useColorScheme,
+  LayoutAnimation,
+  Platform,
+  UIManager
+} from 'react-native'
 import { ScrollView } from 'react-native-gesture-handler'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
@@ -59,10 +68,7 @@ const ProviderListIcon = React.memo(function ProviderListIcon({
 
   return (
     <View
-      style={[
-        styles.iconWrap,
-        { width: wrapSize, height: wrapSize, borderRadius: wrapSize / 4 }
-      ]}
+      style={[styles.iconWrap, { width: wrapSize, height: wrapSize, borderRadius: wrapSize / 4 }]}
     >
       {xml ? (
         <SvgXml xml={xml} width={size} height={size} />

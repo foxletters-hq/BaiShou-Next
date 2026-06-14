@@ -1,10 +1,5 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import type { S3SyncConfig } from '@baishou/shared'

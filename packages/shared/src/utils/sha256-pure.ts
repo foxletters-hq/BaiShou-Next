@@ -36,7 +36,7 @@ function concatBytes(...parts: Uint8Array[]): Uint8Array {
 export function sha256Pure(data: ArrayBuffer | Uint8Array): Uint8Array {
   const message = toUint8Array(data)
   const bitLen = message.length * 8
-  const padLen = ((56 - ((message.length + 1) % 64)) + 64) % 64
+  const padLen = (56 - ((message.length + 1) % 64) + 64) % 64
   const padded = new Uint8Array(message.length + 1 + padLen + 8)
   padded.set(message)
   padded[message.length] = 0x80
@@ -114,7 +114,10 @@ export function sha256Pure(data: ArrayBuffer | Uint8Array): Uint8Array {
 }
 
 /** HMAC-SHA256（同步） */
-export function hmacSha256Pure(key: ArrayBuffer | Uint8Array, data: ArrayBuffer | Uint8Array): Uint8Array {
+export function hmacSha256Pure(
+  key: ArrayBuffer | Uint8Array,
+  data: ArrayBuffer | Uint8Array
+): Uint8Array {
   const blockSize = 64
   let keyBytes = toUint8Array(key)
   if (keyBytes.length > blockSize) {

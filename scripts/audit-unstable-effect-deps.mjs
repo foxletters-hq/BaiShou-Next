@@ -65,11 +65,7 @@ function isAsyncOrFnExpression(init) {
 function isInsideHookFunction(node) {
   let current = node.parent
   while (current) {
-    if (
-      ts.isFunctionDeclaration(current) &&
-      current.name &&
-      HOOK_NAME_RE.test(current.name.text)
-    ) {
+    if (ts.isFunctionDeclaration(current) && current.name && HOOK_NAME_RE.test(current.name.text)) {
       return true
     }
     if (
@@ -140,7 +136,13 @@ function getDepIdentifiers(deps) {
 /** @param {string} file @returns {Finding[]} */
 function analyzeFile(file) {
   const text = fs.readFileSync(file, 'utf8')
-  const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+  const sf = ts.createSourceFile(
+    file,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  )
   /** @type {Finding[]} */
   const findings = []
   /** @type {Map<string, { memoized: boolean, line: number }>} */
@@ -217,7 +219,12 @@ function analyzeFile(file) {
         const cb = node.arguments[0]
         let deps = /** @type {ts.ArrayLiteralExpression | null} */ (null)
 
-        if (cb && ts.isCallExpression(cb) && ts.isIdentifier(cb.expression) && cb.expression.text === 'useCallback') {
+        if (
+          cb &&
+          ts.isCallExpression(cb) &&
+          ts.isIdentifier(cb.expression) &&
+          cb.expression.text === 'useCallback'
+        ) {
           const depArg = cb.arguments[1]
           if (depArg && ts.isArrayLiteralExpression(depArg)) deps = depArg
         } else if (node.arguments[1] && ts.isArrayLiteralExpression(node.arguments[1])) {

@@ -77,7 +77,8 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   async getRemoteManifest(): Promise<SyncManifest> {
     const remoteFiles = await this.cloudClient.listFiles()
     const manifestFile = remoteFiles.find(
-      (f) => f.filename === SYNC_MANIFEST_FILENAME || f.filename.endsWith('/' + SYNC_MANIFEST_FILENAME)
+      (f) =>
+        f.filename === SYNC_MANIFEST_FILENAME || f.filename.endsWith('/' + SYNC_MANIFEST_FILENAME)
     )
 
     if (!manifestFile) {
@@ -191,11 +192,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     const storageIdPath = path.join(vaultPath, '.baishou', SYNC_STORAGE_ID_FILENAME)
     await fs.promises.mkdir(path.join(vaultPath, '.baishou'), { recursive: true })
     await fs.promises.writeFile(snapshotPath, JSON.stringify(manifest, null, 2), 'utf8')
-    await fs.promises.writeFile(
-      storageIdPath,
-      getIncrementalSyncStorageId(this.config),
-      'utf8'
-    )
+    await fs.promises.writeFile(storageIdPath, getIncrementalSyncStorageId(this.config), 'utf8')
   }
 
   protected async uploadFile(relPath: string): Promise<void> {
