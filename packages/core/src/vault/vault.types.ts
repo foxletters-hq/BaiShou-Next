@@ -18,6 +18,16 @@ export interface IVaultService {
   /** 获取所有注册的 Vault 列表 */
   getAllVaults(): VaultInfo[]
 
+  /** 名称是否已在注册表中 */
+  vaultExists(vaultName: string): boolean
+
+  /**
+   * 创建新工作空间（名称已存在或非法时抛错，不会切换至已有空间）
+   * @throws {VaultNameExistsError}
+   * @throws {VaultInvalidNameError}
+   */
+  createVault(vaultName: string): Promise<void>
+
   /**
    * 切换或创建空间库
    * 如果存在则更新 lastAccessedAt，不存在则在磁盘建立物理目录并存入注册表

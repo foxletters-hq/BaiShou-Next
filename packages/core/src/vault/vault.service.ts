@@ -2,7 +2,8 @@ import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { IVaultService, VaultInfo } from './vault.types'
 import { IStoragePathService } from './storage-path.types'
-import { VaultActiveDeleteError, VaultNotFoundError } from './vault.errors'
+import { VaultActiveDeleteError, VaultInvalidNameError, VaultNameExistsError, VaultNotFoundError } from './vault.errors'
+import { sanitizeVaultDirectoryName, validateVaultName } from './vault-name.util'
 
 export class VaultService implements IVaultService {
   private _vaults: VaultInfo[] = []
@@ -53,7 +54,7 @@ export class VaultService implements IVaultService {
         for (let i = 0; i < this._vaults.length; i++) {
           const vault = this._vaults[i]
           if (!vault) continue
-          const expectedPath = path.join(rootDir, vault.name)
+          const expectedPath = path.join(rootDir, sanitizeVaultDirectoryName(vault.name))
           const normalize = (p: string) => p.replace(/\\/g, '/').replace(/\/$/, '')
           if (normalize(vault.path) !== normalize(expectedPath)) {
             vault.path = expectedPath
@@ -101,8 +102,29 @@ export class VaultService implements IVaultService {
     return [...this._vaults]
   }
 
+  public vaultExists(vaultName: string): boolean {
+    const result = validateVaultName(vaultName)
+    if (!result.ok) return false
+    return this._vaults.some((v) => v.name === result.name)
+  }
+
+  public async createVault(vaultName: string): Promise<void> {
+    const name = this.resolveVaultNameOrThrow(vaultName)
+    if (this._vaults.some((v) => v.name === name)) {
+      throw new VaultNameExistsError(name)
+    }
+    await this.addNewVault(name)
+    const rootDir = await this.pathService.getRootDirectory()
+    await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
+  }
+
   public async switchVault(vaultName: string): Promise<void> {
-    const existingIndex = this._vaults.findIndex((v) => v.name === vaultName)
+    const result = validateVaultName(vaultName)
+    if (!result.ok) {
+      throw new VaultInvalidNameError(vaultName, result.reason)
+    }
+    const name = result.name
+    const existingIndex = this._vaults.findIndex((v) => v.name === name)
     const rootDir = await this.pathService.getRootDirectory()
     const registryFile = path.join(rootDir, 'vault_registry.json')
 
@@ -112,22 +134,35 @@ export class VaultService implements IVaultService {
         existing.lastAccessedAt = new Date()
       }
     } else {
-      const newPath = await this.pathService.getVaultDirectory(vaultName)
-      await this.fileSystem.mkdir(newPath, { recursive: true })
-      await this.fileSystem.mkdir(await this.pathService.getVaultSystemDirectory(vaultName), {
-        recursive: true
-      })
-
-      const newVault: VaultInfo = {
-        name: vaultName,
-        path: newPath,
-        createdAt: new Date(),
-        lastAccessedAt: new Date()
-      }
-      this._vaults.push(newVault)
+      this.resolveVaultNameOrThrow(name)
+      await this.addNewVault(name)
     }
 
     await this.saveRegistry(registryFile)
+  }
+
+  private resolveVaultNameOrThrow(vaultName: string): string {
+    const result = validateVaultName(vaultName)
+    if (!result.ok) {
+      throw new VaultInvalidNameError(vaultName, result.reason)
+    }
+    return result.name
+  }
+
+  private async addNewVault(vaultName: string): Promise<void> {
+    const newPath = await this.pathService.getVaultDirectory(vaultName)
+    await this.fileSystem.mkdir(newPath, { recursive: true })
+    await this.fileSystem.mkdir(await this.pathService.getVaultSystemDirectory(vaultName), {
+      recursive: true
+    })
+
+    const newVault: VaultInfo = {
+      name: vaultName,
+      path: newPath,
+      createdAt: new Date(),
+      lastAccessedAt: new Date()
+    }
+    this._vaults.push(newVault)
   }
 
   public async deleteVault(vaultName: string): Promise<void> {
