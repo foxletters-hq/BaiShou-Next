@@ -22,6 +22,20 @@ export function useStreamError(error: string | null, isStreaming: boolean): void
       return t('agent.error.api_key', 'API Key 已过期或无效，请转至模型设置中更新您的密钥。')
     }
     if (
+      rawErr.includes('VISION_NOT_SUPPORTED') ||
+      rawErr.includes('图片识别') ||
+      lower.includes('vision') ||
+      lower.includes('multimodal') ||
+      lower.includes('image') ||
+      ((lower.includes('not support') || lower.includes('does not support')) &&
+        (lower.includes('capability') || lower.includes('part') || lower.includes('content')))
+    ) {
+      return t(
+        'agent.error.vision_not_supported',
+        '当前模型不支持图片识别哦，可以换成视觉模型再试试呢~'
+      )
+    }
+    if (
       lower.includes('rate limit') ||
       lower.includes('too many requests') ||
       lower.includes('429')
