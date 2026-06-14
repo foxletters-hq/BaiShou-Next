@@ -1,6 +1,11 @@
 import { AgentMessage, AgentPart } from '@baishou/shared'
 import { ModelMessage, ToolResultPart } from 'ai'
 import {
+  injectModelMetadata,
+  injectModelMetadataIntoAssistantParts,
+  injectModelMetadataIntoToolResults
+} from '@baishou/shared'
+import {
   appendFileAttachmentToContentParts,
   appendImagePartToContentParts,
   finalizeUserContentParts
@@ -26,7 +31,6 @@ export class MessageAdapter {
       if (!msg.parts || msg.parts.length === 0) continue
 
       if (msg.role === 'system' || msg.role === 'user') {
-        // System 和 User 现在支持多模态内容与引用快照
         const contentParts: any[] = []
 
         for (const p of msg.parts) {
@@ -56,7 +60,11 @@ export class MessageAdapter {
           }
         }
 
-        const finalContent = finalizeUserContentParts(contentParts)
+        const finalContent = injectModelMetadata(
+          finalizeUserContentParts(contentParts),
+          msg.role,
+          msg.createdAt
+        )
 
         vercelMessages.push({
           role: msg.role as 'system' | 'user',
@@ -64,7 +72,6 @@ export class MessageAdapter {
         } as ModelMessage)
       } else if (msg.role === 'assistant') {
         const contentParts: any[] = []
-        // 收集已完成的工具调用结果，后续生成独立的 role: 'tool' 消息
         const toolResultParts: ToolResultPart[] = []
 
         for (const p of msg.parts) {
@@ -72,7 +79,6 @@ export class MessageAdapter {
             const data = p.data as any
             if (data.text) {
               if (data.isReasoning) {
-                // 深度求索 API 要求将推理内容作为 reasoning 类型回传
                 contentParts.push({ type: 'reasoning', text: data.text })
               } else {
                 contentParts.push({ type: 'text', text: data.text })
@@ -81,7 +87,6 @@ export class MessageAdapter {
           } else if (p.type === 'tool') {
             const data = p.data as any
             if (data.callId && data.name) {
-              // 解析工具参数，确保始终是有效的 JSON 对象
               let parsedArgs: Record<string, unknown> = {}
               if (data.arguments) {
                 try {
@@ -94,9 +99,6 @@ export class MessageAdapter {
                 }
               }
 
-              // 符合 Vercel AI SDK ToolCallPart 标准接口
-              // @see node_modules/@ai-sdk/provider-utils/dist/index.d.ts:656
-              // input 是标准字段，args 是向后兼容字段
               contentParts.push({
                 type: 'tool-call',
                 toolCallId: data.callId,
@@ -105,8 +107,6 @@ export class MessageAdapter {
                 input: parsedArgs
               })
 
-              // Vercel AI SDK 要求每个 tool-call 必须有对应的 tool-result
-              // 在 role: 'tool' 消息中。已完成的工具提取结果，失败的提供错误信息。
               toolResultParts.push({
                 type: 'tool-result',
                 toolCallId: data.callId,
@@ -123,21 +123,17 @@ export class MessageAdapter {
         if (contentParts.length > 0) {
           vercelMessages.push({
             role: 'assistant',
-            content: contentParts
+            content: injectModelMetadataIntoAssistantParts(contentParts, msg.createdAt)
           })
 
-          // 为已完成的工具调用生成独立的 tool 消息（紧跟在助理消息之后）
-          // 这确保了 Vercel AI SDK 的 tool-call ↔ tool-result 校验通过
           if (toolResultParts.length > 0) {
             vercelMessages.push({
               role: 'tool',
-              content: toolResultParts
+              content: injectModelMetadataIntoToolResults(toolResultParts, msg.createdAt)
             })
           }
         }
       } else if (msg.role === 'tool') {
-        // Tool Result Message 极其特殊，它里面存放着由于 assistant tool-call 所生成的结果。
-        // 在老白守里由于有 ToolPart 存在，可能是直接从里面拿 result
         const resultParts: ToolResultPart[] = []
 
         for (const p of msg.parts) {
@@ -152,7 +148,6 @@ export class MessageAdapter {
               })
             }
           } else if (p.type === 'text') {
-            // 说明它可能是一个以 text 代替结果的特殊 part
             const data = p.data as any
             if (data.toolCallId && data.toolName) {
               resultParts.push({
@@ -168,7 +163,7 @@ export class MessageAdapter {
         if (resultParts.length > 0) {
           vercelMessages.push({
             role: 'tool',
-            content: resultParts
+            content: injectModelMetadataIntoToolResults(resultParts, msg.createdAt)
           })
         }
       }

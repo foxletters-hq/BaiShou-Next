@@ -1,6 +1,6 @@
 import { StreamTextResult } from 'ai'
 import { SessionRepository } from '@baishou/database'
-import { logger } from '@baishou/shared'
+import { logger, sanitizeAssistantGeneratedText } from '@baishou/shared'
 import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { StreamAccumulator } from './stream-accumulator'
@@ -75,7 +75,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
       messageId: assistantMsgId,
       sessionId,
       type: 'text',
-      data: { text: accumulator.text }
+      data: { text: sanitizeAssistantGeneratedText(accumulator.text) }
     })
   }
 

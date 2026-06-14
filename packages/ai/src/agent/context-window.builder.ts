@@ -68,7 +68,7 @@ export class ContextWindowBuilder {
           role: 'system',
           isSummary: true,
           orderIndex: -1,
-          createdAt: new Date(),
+          createdAt: snapshot.createdAt ?? new Date(),
           parts: [
             {
               id: 'p_snapshot_' + snapshot.id,

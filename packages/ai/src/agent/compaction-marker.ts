@@ -16,15 +16,15 @@ export interface CompactionMarkerData {
   summaryDurationMs?: number
 }
 
-/** 落库前整理字段；思考与摘要已由 fullStream 原生分轨 */
+/** 落库前整理字段；剥离 think/summary 标记与误混入的助手回复 */
 export function finalizeCompressionForStorage(
   summaryText: string,
   reasoningText?: string
 ): { summaryText: string; reasoningText?: string } {
-  const trimmedReasoning = reasoningText?.trim()
+  const normalized = normalizeCompressionOutput(summaryText, reasoningText ?? '')
   return {
-    summaryText,
-    reasoningText: trimmedReasoning ? reasoningText : undefined
+    summaryText: normalized.summaryText,
+    reasoningText: normalized.reasoningText || undefined
   }
 }
 

@@ -8,7 +8,6 @@ import {
   CompressionErrorCode,
   compressionError,
   getDefaultCompressionSystemPrompt,
-  buildCompressionPreviousSummaryBlock
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import { MessageWithParts } from './message.adapter'
@@ -24,8 +23,7 @@ import {
   computeTailStartMessageId,
   preserveRecentTokenBudget,
   extractMessageText,
-  cloneMessagesForCompressionModel,
-  toFlatTextModelMessages,
+  buildCompressionUserMessageContent,
   type SessionCompressionConfig
 } from './context-compression.utils'
 import {
@@ -405,16 +403,10 @@ export class ContextCompressorService {
     const model = wrapLanguageModelWithMiddlewares(baseModel, providerType)
     const systemBase = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
 
-    const headForModel = cloneMessagesForCompressionModel(toCompress)
-    const headMessages = toFlatTextModelMessages(headForModel)
+    const userContent = buildCompressionUserMessageContent(toCompress, priorSummaryText)
+    if (!userContent) return null
 
-    const messages: ModelMessage[] = [...headMessages]
-    const previousSummaryBlock = buildCompressionPreviousSummaryBlock(
-      priorSummaryText?.trim() || undefined
-    )
-    if (previousSummaryBlock) {
-      messages.push({ role: 'user', content: previousSummaryBlock })
-    }
+    const messages: ModelMessage[] = [{ role: 'user', content: userContent }]
 
     const streamResult = streamText({
       model,

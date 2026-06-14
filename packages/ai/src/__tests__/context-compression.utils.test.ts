@@ -10,6 +10,7 @@ import {
   buildCompressionOldSummaryPrefix,
   hasEnoughMessagesForRecompress,
   formatMessagesAsCompressionTranscript,
+  buildCompressionUserMessageContent,
   hasUserContentInCompressionBatch,
   getModelContextWindow,
   usableContextTokens,
@@ -19,14 +20,20 @@ import {
 } from '../agent/context-compression.utils'
 import type { MessageWithParts } from '../agent/message.adapter'
 
-function msg(id: string, role: string, orderIndex: number, text: string): MessageWithParts {
+function msg(
+  id: string,
+  role: string,
+  orderIndex: number,
+  text: string,
+  createdAt: Date = new Date()
+): MessageWithParts {
   return {
     id,
     sessionId: 's1',
     role: role as MessageWithParts['role'],
     isSummary: false,
     orderIndex,
-    createdAt: new Date(),
+    createdAt,
     parts: [{ id: `p-${id}`, messageId: id, sessionId: 's1', type: 'text', data: { text } }]
   }
 }
@@ -220,6 +227,23 @@ describe('context-compression.utils', () => {
     expect(transcript).toContain('查天气')
     expect(transcript).toContain('【助手】')
     expect(hasUserContentInCompressionBatch(messages)).toBe(true)
+  })
+
+  it('buildCompressionUserMessageContent puts previous-summary before transcript', () => {
+    const sentAt = new Date(2026, 5, 15, 10, 0)
+    const messages = [
+      msg('1', 'user', 1, '但是感觉会很慢喵', sentAt),
+      msg('2', 'assistant', 2, '确实会慢', sentAt)
+    ]
+    const content = buildCompressionUserMessageContent(messages, '旧摘要：讨论了 Legacy Mode')
+    expect(content).toMatch(/^<previous-summary>/)
+    expect(content).toContain('旧摘要：讨论了 Legacy Mode')
+    expect(content).toContain('<message-time>2026-06-15 10:00</message-time>')
+    expect(content).toContain('<message-content>')
+    expect(content).toContain('但是感觉会很慢喵')
+    expect(content).toContain('【用户】')
+    expect(content).toContain('但是感觉会很慢喵')
+    expect(content!.indexOf('<previous-summary>')).toBeLessThan(content!.indexOf('【用户】'))
   })
 
   it('trimLeadingOrphanMessagesAfterSnapshot drops dangling assistant prefix', () => {

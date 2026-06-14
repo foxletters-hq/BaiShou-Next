@@ -43,7 +43,7 @@ export function makeAssistantMsg(
   }
 }
 
-export function makeUserMsg(text: string) {
+export function makeUserMsg(text: string, overrides: Partial<MessageWithParts> = {}) {
   return {
     id: 'msg-user',
     sessionId: 'sess-1',
@@ -59,6 +59,7 @@ export function makeUserMsg(text: string) {
         type: 'text' as const,
         data: { text }
       }
-    ]
+    ],
+    ...overrides
   }
 }

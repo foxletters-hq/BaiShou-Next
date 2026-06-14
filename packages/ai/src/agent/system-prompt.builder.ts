@@ -58,6 +58,10 @@ export class SystemPromptBuilder {
 
     buffer.push('<system_context>')
     buffer.push(`[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`)
+    buffer.push(
+      'Messages in context use metadata blocks: <message-time>YYYY-MM-DD HH:mm</message-time> and <message-content>…</message-content> (user, assistant, system, tool). ' +
+        'Your NEW replies must be plain text inside the assistant message only—never include these tags.'
+    )
     buffer.push(`[Current Vault / Workspace]: ${vaultName}`)
     buffer.push('</system_context>')
     buffer.push('')
@@ -67,6 +71,11 @@ export class SystemPromptBuilder {
     if (availableToolIds.length > 0) {
       buffer.push('<available_tools>')
       buffer.push('Available Tools:')
+      buffer.push(
+        'All tools are optional. Use one only when it clearly improves the answer; ' +
+          'prefer information already in the conversation (including any rolling compression summary) when sufficient.'
+      )
+      buffer.push('')
       for (const id of availableToolIds) {
         // 在 Vercel 中 getDescription 比较直接
         const toolObj = tools[id]

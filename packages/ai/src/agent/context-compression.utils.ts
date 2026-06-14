@@ -1,6 +1,11 @@
 import type { ModelMessage } from 'ai'
 import type { SessionRepository } from '@baishou/database'
 import { AssistantRepository } from '@baishou/database'
+import {
+  buildCompressionPreviousSummaryBlock,
+  shouldWrapRoleForModel,
+  wrapMessageBodyForModel
+} from '@baishou/shared'
 import type { MessageWithParts } from './message.adapter'
 import { TOOL_OUTPUT_MAX_CHARS } from './compression.constants'
 
@@ -503,9 +508,30 @@ export function formatMessagesAsCompressionTranscript(messages: MessageWithParts
     const text = extractMessageText(msg).trim()
     if (!text) continue
     const label = COMPRESSION_ROLE_LABELS[msg.role] ?? msg.role
-    blocks.push(`【${label}】\n${text}`)
+    const bodyBlock = shouldWrapRoleForModel(msg.role)
+      ? wrapMessageBodyForModel(text, msg.createdAt)
+      : text
+    blocks.push(`【${label}】\n${bodyBlock}`)
   }
   return blocks.join('\n\n---\n\n')
+}
+
+/**
+ * 构建送入压缩模型的单条 user 消息：<previous-summary> 在前，带角色标记的对话 transcript 在后。
+ */
+export function buildCompressionUserMessageContent(
+  messages: MessageWithParts[],
+  priorSummaryText?: string | null
+): string | null {
+  const transcript = formatMessagesAsCompressionTranscript(
+    cloneMessagesForCompressionModel(messages)
+  ).trim()
+  if (!transcript) return null
+
+  const previousSummaryBlock = buildCompressionPreviousSummaryBlock(
+    priorSummaryText?.trim() || undefined
+  )
+  return previousSummaryBlock ? `${previousSummaryBlock}\n\n${transcript}` : transcript
 }
 
 export function hasUserContentInCompressionBatch(messages: MessageWithParts[]): boolean {

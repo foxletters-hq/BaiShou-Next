@@ -1,5 +1,5 @@
 import { TextStreamPart } from 'ai'
-import { logger } from '@baishou/shared'
+import { sanitizeAssistantGeneratedText } from '@baishou/shared'
 
 export interface ToolCallSnapshot {
   callId: string
@@ -28,7 +28,7 @@ export class StreamAccumulator {
    * 纯文本内容（用于发送给 UI 或者最终落盘时作为 text Part）
    */
   get text(): string {
-    return this._textBuffer
+    return sanitizeAssistantGeneratedText(this._textBuffer)
   }
 
   /**

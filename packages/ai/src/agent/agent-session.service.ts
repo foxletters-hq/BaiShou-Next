@@ -10,7 +10,7 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import { isVisionModel, logger, type ISqlExecutor } from '@baishou/shared'
+import { isVisionModel, logger, prefixTextWithMessageTimestamp, type ISqlExecutor } from '@baishou/shared'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -137,7 +137,10 @@ export class AgentSessionService {
         if (attachments && attachments.length > 0) {
           const contentParts: unknown[] = []
           if (userText.trim()) {
-            contentParts.push({ type: 'text', text: userText })
+            contentParts.push({
+              type: 'text',
+              text: prefixTextWithMessageTimestamp(userText)
+            })
           }
           for (const att of attachments) {
             const flags = inferAttachmentFlags(att)
@@ -155,7 +158,10 @@ export class AgentSessionService {
             content: finalizeUserContentParts(contentParts)
           })
         } else {
-          coreMessages.push({ role: 'user', content: userText })
+          coreMessages.push({
+            role: 'user',
+            content: prefixTextWithMessageTimestamp(userText)
+          })
         }
       }
 
@@ -325,9 +331,7 @@ export class AgentSessionService {
         messageHasImageAttachments(attachments) &&
         !isVisionModel(modelId)
       ) {
-        throw new Error(
-          `当前模型「${modelId}」不支持图片识别，请更换为视觉模型（如 gemini-3-flash、gpt-4o）后再发送图片`
-        )
+        throw new Error('VISION_NOT_SUPPORTED')
       }
 
       const lastUserMsg = [...messagesForModel].reverse().find((m) => m.role === 'user')
