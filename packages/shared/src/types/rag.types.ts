@@ -7,6 +7,7 @@ export interface ISearchResult {
   score: number
   source: SearchSource
   createdAt?: number
+  sourceType?: string
 }
 
 export interface ISearchQueryOptions {

@@ -13,6 +13,29 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/** 模型误把助手回复与摘要标题混进 text 流时的常见分隔标记 */
+const SUMMARY_SECTION_MARKERS = [
+  /更新后的滚动摘要[：:\s（(]/,
+  /更新後的滾動摘要[：:\s（(]/,
+  /滚动摘要[：:\s（(]/,
+  /滾動摘要[：:\s（(]/,
+  /^#{1,3}\s*滚动摘要/m,
+  /^#{1,3}\s*Rolling\s+[Ss]ummary/m,
+  /^Rolling\s+[Ss]ummary[：:\s]/m
+]
+
+function stripAssistantReplyBeforeSummaryMarker(text: string): string {
+  for (const marker of SUMMARY_SECTION_MARKERS) {
+    const match = text.match(marker)
+    if (!match || match.index == null || match.index === 0) continue
+    const afterMarker = text.slice(match.index)
+    const headerEnd = afterMarker.indexOf('\n')
+    const body = (headerEnd >= 0 ? afterMarker.slice(headerEnd + 1) : '').trim()
+    if (body.length >= 20) return body
+  }
+  return text
+}
+
 export function normalizeCompressionOutput(
   summaryText: string,
   reasoningText: string
@@ -62,6 +85,8 @@ export function normalizeCompressionOutput(
     .replace(new RegExp(`${escapeRegExp(OPEN_REDacted)}`, 'gi'), '')
     .replace(new RegExp(`${escapeRegExp(CLOSE_REDacted)}`, 'gi'), '')
     .trim()
+
+  summary = stripAssistantReplyBeforeSummaryMarker(summary)
 
   if (extractedThink.length > 0) {
     reasoning = [reasoning, ...extractedThink].filter(Boolean).join('\n\n').trim()

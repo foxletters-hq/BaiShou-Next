@@ -670,6 +670,7 @@
     "rag_batch_embed": "Scan Unindexed Diaries",
     "rag_batch_embed_done": "Batch embedding completed",
     "rag_batch_embed_failed": "Batch embedding failed: {{message}}",
+    "rag_diary_auto_embed_failed": "Diary saved, but memory embedding failed. Open Settings → RAG Memory and tap \"Scan Unindexed Diaries\" to re-embed.",
     "rag_operation_failed": "Embedding operation failed",
     "rag_batch_embed_concurrency": "Batch embed concurrency",
     "rag_batch_embed_concurrency_hint": "How many diaries to embed in parallel. Higher is faster but more likely to hit API rate limits; 2–3 is recommended.",
@@ -703,7 +704,10 @@
     "rag_total_count": "Total:",
     "rag_model": "Model:",
     "rag_dimension": "Dimension:",
+    "rag_top_k": "Top-K Recall Limit",
+    "rag_top_k_tooltip": "Maximum number of most similar memories returned when AI searches. Higher values recall more, but may include less relevant fragments.",
     "rag_similarity_threshold": "Similarity Threshold",
+    "rag_similarity_threshold_tooltip": "Only memory fragments with similarity above this value are kept. A higher threshold means stricter matching and fewer results.",
     "dimension_detected": "Detection complete. Vector dimension is",
     "dimension_detection_error": "An error occurred during detection",
     "all_months": "All Months",
@@ -1412,8 +1416,8 @@
         "summarize_name": "Summarize",
         "summarize_content": "Please summarize the core meaning behind the following content:\n\n"
       },
-      "web_search_desc": "Search the internet for current information, news, and real-time data. Use this when the user asks about recent events, current facts, or anything that requires up-to-date information beyond your training data.\n\nIMPORTANT: This tool searches the PUBLIC INTERNET only. Do NOT use this to search the user's personal diary entries — use diary_search for that.\n\nYou should provide 2-3 search queries with different angles/keywords to get comprehensive results. For example, if the user asks about \"iPhone 16 vs Samsung S25\", you could search [\"iPhone 16 specs review\", \"Samsung S25 specs review\", \"iPhone 16 vs Samsung S25 comparison\"].\n\nResults include clickable [title](url) citations — use the url_read tool to read specific pages in detail.",
-      "vector_search_desc": "Semantic search over conversation history and stored memories. When the user asks about past content, previous decisions, personal preferences, or anything discussed before, you MUST call this tool first. Returns the most semantically relevant conversation snippets with scores.",
+      "web_search_desc": "Search the internet for current information, news, and real-time data. You may use this when the user asks about recent events, current facts, or anything that requires up-to-date information beyond your training data.\n\nIMPORTANT: This tool searches the PUBLIC INTERNET only. Do NOT use this to search the user's personal diary entries — use diary_search for that.\n\nYou may provide 2-3 search queries with different angles/keywords to get comprehensive results. For example, if the user asks about \"iPhone 16 vs Samsung S25\", you could search [\"iPhone 16 specs review\", \"Samsung S25 specs review\", \"iPhone 16 vs Samsung S25 comparison\"].\n\nResults include clickable [title](url) citations — use the url_read tool to read specific pages in detail.",
+      "vector_search_desc": "Semantic search over conversation history and stored memories. You may use this when recalling past content not already covered in the current context (including any rolling compression summary). Returns semantically relevant snippets with scores.",
       "url_read_desc": "Read the text content of a specific webpage URL directly. Use this when you have a specific link you want to analyze or summarize, instead of searching the whole web.",
       "summary_read_desc": "Read AI-generated summaries (weekly, monthly, quarterly, or yearly). Returns the summary content for a specific time period. Use diary_list or diary_search for raw diary entries instead.",
       "message_search_desc": "Search past conversation messages across all sessions by keyword. Returns matching message snippets with session title and date. Useful when the user references something discussed before, or when you need to recall previous conversations.",
@@ -1796,7 +1800,7 @@
       "quota": "Insufficient account quota or balance reported by the provider.",
       "unknown": "An error occurred: {{msg}}",
       "create_session": "Failed to create session due to system error: {{msg}}",
-      "vision_not_supported": "The current model does not support image recognition/vision capabilities. Please switch model and try again."
+      "vision_not_supported": "This model doesn't support image recognition — try switching to a vision model~"
     },
     "generation_failed": "Reply generation failed",
     "trace_title": "Trace [{{modelId}}]",
