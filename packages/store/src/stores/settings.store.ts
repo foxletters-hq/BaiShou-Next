@@ -206,7 +206,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
                 globalModels: globalModels || defaultGlobalModels,
                 agentBehavior: agentBehavior || defaultAgentBehavior,
                 ragConfig: ragConfig || defaultRagConfig,
-                webSearchConfig: webSearchConfig || defaultWebSearchConfig,
+                webSearchConfig: { ...defaultWebSearchConfig, ...(webSearchConfig || {}) },
                 summaryConfig: summaryConfig || defaultSummaryConfig,
                 toolManagementConfig: toolManagementConfig || defaultToolManagementConfig,
                 mcpServerConfig: mcpServerConfig || defaultMcpServerConfig,
