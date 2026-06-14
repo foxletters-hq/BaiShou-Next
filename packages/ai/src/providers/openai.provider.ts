@@ -26,24 +26,36 @@ export function applyDeepSeekReasoningFields(msg: {
   reasoning_content?: string
   tool_calls?: unknown[]
 }): void {
-  if (msg.role !== 'assistant' || typeof msg.content !== 'string' || !msg.content) {
+  if (msg.role !== 'assistant') {
     return
   }
 
-  const thinkMatch = msg.content.match(
-    new RegExp(`${DEEPSEEK_THINK_OPEN}\\s*([\\s\\S]*?)\\s*${DEEPSEEK_THINK_CLOSE}`)
-  )
-  if (!thinkMatch) return
+  const hasToolCalls = Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0
 
-  const reasoningContent = thinkMatch[1]?.trim() ?? ''
-  msg.content = msg.content
-    .replace(new RegExp(`${DEEPSEEK_THINK_OPEN}[\\s\\S]*?${DEEPSEEK_THINK_CLOSE}\\s*`, 'g'), '')
-    .trim()
-  if (reasoningContent) {
-    msg.reasoning_content = reasoningContent
+  if (typeof msg.content === 'string' && msg.content) {
+    const thinkMatch = msg.content.match(
+      new RegExp(`${DEEPSEEK_THINK_OPEN}\\s*([\\s\\S]*?)\\s*${DEEPSEEK_THINK_CLOSE}`)
+    )
+    if (thinkMatch) {
+      const reasoningContent = thinkMatch[1]?.trim() ?? ''
+      msg.content = msg.content
+        .replace(new RegExp(`${DEEPSEEK_THINK_OPEN}[\\s\\S]*?${DEEPSEEK_THINK_CLOSE}\\s*`, 'g'), '')
+        .trim()
+      if (reasoningContent) {
+        msg.reasoning_content = reasoningContent
+      }
+    }
   }
-  if (!msg.content) {
-    msg.content = null
+
+  // DeepSeek thinking 模式：含 tool_calls 的 assistant 消息必须在后续请求中回传 reasoning_content
+  // 参见 https://api-docs.deepseek.com/guides/thinking_mode#tool-calls
+  if (hasToolCalls && msg.reasoning_content == null) {
+    msg.reasoning_content = ''
+  }
+
+  // DeepSeek 不接受 content: null；纯 tool-call 消息应使用空字符串
+  if (msg.content === null || msg.content === undefined) {
+    msg.content = ''
   }
 }
 
@@ -89,20 +101,20 @@ function createDeepSeekFetchInterceptor(
       }
     }
 
-    return fetchImpl(url, safeInit).then((response: Response) => {
-      if (!response.ok) {
-        void response
-          .clone()
-          .text()
-          .then((body) => {
-            console.error(
-              `[FetchDebug] DeepSeek error status=${response.status} body=${body.slice(0, 800)}`
-            )
-          })
-          .catch(() => {})
-      }
-      return response
-    })
+    const response = await fetchImpl(url, safeInit)
+    if (!response.ok) {
+      // expo/fetch 的 FetchResponse.clone() 未实现，会抛出 Error('Not implemented') 并掩盖真实 API 错误
+      const errorBody = await response.text()
+      console.error(
+        `[FetchDebug] DeepSeek error status=${response.status} body=${errorBody.slice(0, 800)}`
+      )
+      return new Response(errorBody, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+    return response
   }
 }
 

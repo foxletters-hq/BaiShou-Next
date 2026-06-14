@@ -425,22 +425,29 @@ export class AgentSessionService {
           costMicros: usageResult.costMicros
         })
       }
-    } catch (e: any) {
-      logger.error('[AgentSessionService] Error in streamChat:', e?.stack || e?.message || e)
-      if (e?.cause) {
-        logger.error('[AgentSessionService] Cause:', e.cause)
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error(String(e))
+      logger.error('[AgentSessionService] Error in streamChat:', err.message)
+      if (err.stack) {
+        logger.error('[AgentSessionService] Stack:', err.stack)
       }
-      if (e?.url) {
-        logger.error('[AgentSessionService] Failing URL:', e.url)
+      if ((e as { cause?: unknown })?.cause) {
+        logger.error('[AgentSessionService] Cause:', (e as { cause?: unknown }).cause)
       }
-      if (e?.statusCode) {
-        logger.error('[AgentSessionService] HTTP status:', e.statusCode)
+      if ((e as { url?: string })?.url) {
+        logger.error('[AgentSessionService] Failing URL:', (e as { url?: string }).url)
       }
-      if (e?.responseHeaders) {
-        logger.error('[AgentSessionService] Response headers:', JSON.stringify(e.responseHeaders))
+      if ((e as { statusCode?: number })?.statusCode) {
+        logger.error('[AgentSessionService] HTTP status:', (e as { statusCode?: number }).statusCode)
       }
-      callbacks?.onError?.(e)
-      throw e
+      if ((e as { responseHeaders?: unknown })?.responseHeaders) {
+        logger.error(
+          '[AgentSessionService] Response headers:',
+          JSON.stringify((e as { responseHeaders?: unknown }).responseHeaders)
+        )
+      }
+      callbacks?.onError?.(err)
+      throw err
     }
   }
 

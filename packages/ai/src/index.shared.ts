@@ -75,6 +75,19 @@ export {
   clearLocalFileReader,
   type LocalFileReader
 } from './platform/local-file-reader.registry'
+export {
+  registerImageCompressor,
+  clearImageCompressor,
+  type ImageCompressor,
+  type ImageCompressRequest,
+  type ImageCompressResult
+} from './platform/image-compressor.registry'
+export {
+  normalizeImageForModel,
+  MAX_IMAGE_BASE64_CHARS,
+  MAX_IMAGE_DIMENSION,
+  type NormalizedImagePayload
+} from './platform/normalize-image-for-model'
 
 export type { IStreamEmitter } from './agent/stream-emitter.interface'
 export { AgentChatCoreService } from './agent/agent-chat-core.service'

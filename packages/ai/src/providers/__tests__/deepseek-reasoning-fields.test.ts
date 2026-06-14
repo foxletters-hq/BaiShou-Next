@@ -21,7 +21,7 @@ describe('applyDeepSeekReasoningFields', () => {
     expect(msg.content).toBe('正式回复')
   })
 
-  it('sets content to null when only think tags remain (tool-call messages)', () => {
+  it('sets content to empty string when only think tags remain (tool-call messages)', () => {
     const msg: {
       role: string
       content: string | null
@@ -36,8 +36,26 @@ describe('applyDeepSeekReasoningFields', () => {
     applyDeepSeekReasoningFields(msg)
 
     expect(msg.reasoning_content).toBe('仅推理')
-    expect(msg.content).toBeNull()
+    expect(msg.content).toBe('')
     expect(msg.tool_calls).toHaveLength(1)
+  })
+
+  it('adds empty reasoning_content for tool-call messages missing think tags', () => {
+    const msg: {
+      role: string
+      content: string
+      reasoning_content?: string
+      tool_calls: { id: string }[]
+    } = {
+      role: 'assistant',
+      content: '',
+      tool_calls: [{ id: 'call_1' }]
+    }
+
+    applyDeepSeekReasoningFields(msg)
+
+    expect(msg.reasoning_content).toBe('')
+    expect(msg.content).toBe('')
   })
 
   it('ignores non-assistant messages', () => {

@@ -105,16 +105,16 @@ export async function buildSharedContextText(
   summaries: any[],
   lookbackMonths: number,
   locale?: string,
-  options?: { diaries?: SharedContextDiaryRow[] }
+  options?: { diaries?: SharedContextDiaryRow[]; vaultName?: string }
 ): Promise<string> {
   let diaries: SharedContextDiaryRow[]
   if (options?.diaries) {
     diaries = options.diaries
   } else {
     const shadowDb = shadowConnectionManager.getDb()
-    if (!shadowDb) return ''
+    if (!shadowDb || !options?.vaultName) return ''
 
-    const shadowRepo = new ShadowIndexRepository(shadowDb as any)
+    const shadowRepo = new ShadowIndexRepository(shadowDb as any, options.vaultName)
     diaries = await shadowRepo.listAllWithFTS()
   }
 
@@ -201,10 +201,11 @@ export async function buildSharedContextText(
 export async function handleBuildSharedContext(
   summaries: any[],
   lookbackMonths: number,
-  locale?: string
+  locale?: string,
+  vaultName?: string
 ): Promise<string> {
   try {
-    return await buildSharedContextText(summaries, lookbackMonths, locale)
+    return await buildSharedContextText(summaries, lookbackMonths, locale, { vaultName })
   } catch (e) {
     logger.error('[SummaryIPC] buildSharedContext error:', e as any)
     return ''
