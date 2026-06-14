@@ -132,6 +132,18 @@ export function useRagSettings({
     void checkMigrationStatus()
   }, [])
 
+  useEffect(() => {
+    const api = (window as any).api
+    if (!api?.diary?.onSyncEvent) return
+
+    const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
+      if (event?.type !== 'embed-failed' && event?.type !== 'embed-failure-cleared') return
+      void settings.loadConfig?.()
+    })
+
+    return unsubscribe
+  }, [settings.loadConfig])
+
   const handleSearch = (q: string, mode: 'semantic' | 'text') => {
     setSearchQuery(q)
     setSearchMode(mode)

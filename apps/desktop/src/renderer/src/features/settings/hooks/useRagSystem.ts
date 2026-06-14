@@ -156,6 +156,7 @@ export function useRagSystem(
       await (window as any).api?.rag?.triggerBatchEmbed()
       setActiveRagState((prev: any) => ({ ...prev, error: undefined }))
       await fetchRagInfo()
+      await reloadSettings?.()
       toast.showSuccess(t('settings.rag_batch_embed_done', '批量嵌入已完成'))
     } catch (e: unknown) {
       const raw = extractIpcErrorMessage(e)
