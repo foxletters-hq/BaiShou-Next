@@ -2,6 +2,10 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as crypto from 'crypto'
 import type { S3SyncConfig } from '@baishou/shared'
+import {
+  shouldIncludeIncrementalSyncFile,
+  shouldScanIncrementalSyncDirectory
+} from '@baishou/shared'
 import type { ICloudSyncClient } from '../network/cloud-sync.interface'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { IVersionManager } from './version-manager.interface'
@@ -64,10 +68,10 @@ export abstract class ThreeWaySyncCore {
         const fullPath = path.join(dir, entry.name)
         const relPath = path.join(relativePath, entry.name)
         if (entry.isDirectory()) {
-          if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
+          if (shouldScanIncrementalSyncDirectory(entry.name, relPath)) {
             await scan(fullPath, relPath)
           }
-        } else if (!entry.name.startsWith('.')) {
+        } else if (shouldIncludeIncrementalSyncFile(entry.name, relPath)) {
           files.push(relPath.replace(/\\/g, '/'))
         }
       }

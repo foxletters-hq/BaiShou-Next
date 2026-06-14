@@ -10,7 +10,7 @@ const makeEntry = (overrides: Partial<ManifestEntry> = {}): ManifestEntry => ({
 })
 
 const makeManifest = (files: Record<string, ManifestEntry> = {}): SyncManifest => ({
-  version: 2,
+  version: 1,
   updatedAt: Date.now(),
   deviceId: 'test-device',
   files
@@ -27,7 +27,7 @@ const makeResult = (): IncrementalSyncResult => ({
   sessionId: ''
 })
 
-describe('IncrementalSyncService (V2 three-way merge)', () => {
+describe('IncrementalSyncService (three-way merge)', () => {
   let service: IIncrementalSyncService
 
   beforeEach(() => {
@@ -42,6 +42,7 @@ describe('IncrementalSyncService (V2 three-way merge)', () => {
       getLocalManifest: vi.fn(),
       getRemoteManifest: vi.fn(),
       getRemoteSnapshot: vi.fn(),
+      refreshLocalManifest: vi.fn(),
       getLastSyncConflicts: vi.fn()
     } satisfies IIncrementalSyncService
   })
@@ -191,7 +192,7 @@ describe('IncrementalSyncService (V2 three-way merge)', () => {
   describe('getRemoteSnapshot', () => {
     it('should return empty manifest on first sync', async () => {
       const empty: SyncManifest = {
-        version: 2,
+        version: 1,
         updatedAt: 0,
         deviceId: '',
         files: {}
@@ -200,7 +201,7 @@ describe('IncrementalSyncService (V2 three-way merge)', () => {
 
       const snapshot = await service.getRemoteSnapshot()
       expect(snapshot.files).toEqual({})
-      expect(snapshot.version).toBe(2)
+      expect(snapshot.version).toBe(1)
     })
 
     it('should return the last synced remote manifest', async () => {

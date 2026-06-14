@@ -1,7 +1,12 @@
 import type { S3SyncConfig } from '@baishou/shared'
+import {
+  SYNC_CONFIG_FILENAME,
+  SYNC_MANIFEST_FILENAME,
+  SYNC_REMOTE_SNAPSHOT_FILENAME
+} from '@baishou/shared'
 
-export const MANIFEST_FILENAME_V2 = 'manifest-v2.json'
-export const REMOTE_SNAPSHOT_FILENAME = 'last-remote-manifest-v2.json'
+export { SYNC_MANIFEST_FILENAME, SYNC_REMOTE_SNAPSHOT_FILENAME }
+export const S3_CONFIG_FILE = SYNC_CONFIG_FILENAME
 
 export const DEFAULT_S3_SYNC_CONFIG: S3SyncConfig = {
   enabled: false,
@@ -12,7 +17,6 @@ export const DEFAULT_S3_SYNC_CONFIG: S3SyncConfig = {
   accessKey: '',
   secretKey: '',
   chunkConcurrency: 5,
-  fileConcurrency: 5
+  fileConcurrency: 5,
+  maxDivergencePercent: 100
 }
-
-export const S3_CONFIG_FILE = '.baishou-s3.json'

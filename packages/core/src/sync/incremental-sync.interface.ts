@@ -6,12 +6,12 @@ import type {
 } from '@baishou/shared'
 
 /**
- * S3 增量同步服务接口 (V2)
+ * S3 增量同步服务接口
  *
  * 采用三向合并算法实现逐文件增量同步：
  * - 共同祖先 = 上次同步时保存的远程 manifest 快照 (last-remote-manifest.json)
  * - 本地版本 = 当前文件系统扫描结果
- * - 远程版本 = 刚从 S3 下载的 manifest
+ * - 远程版本 = 刚从云存储下载的 manifest
  *
  * 不依赖 tombstone，通过三向对比完整追踪新增/修改/删除。
  */
@@ -93,9 +93,14 @@ export interface IIncrementalSyncService {
 
   /**
    * 获取远程快照（三向合并的共同祖先）
-   * 首次同步时返回空 manifest (version=2, files={})
+   * 首次同步时返回空 manifest (version=1, files={})
    */
   getRemoteSnapshot(): Promise<SyncManifest>
+
+  /**
+   * 重新扫描 vault 并写入本地 manifest
+   */
+  refreshLocalManifest(): Promise<SyncManifest>
 
   // ── 冲突处理 ───────────────────────────────────────────────
 

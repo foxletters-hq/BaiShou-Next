@@ -1,7 +1,13 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { SyncManifest, ManifestEntry, S3SyncConfig } from '@baishou/shared'
-import { MANIFEST_FILENAME_V2, REMOTE_SNAPSHOT_FILENAME } from './three-way-sync.constants'
+import {
+  SYNC_MANIFEST_FILENAME,
+  SYNC_MANIFEST_VERSION,
+  SYNC_REMOTE_SNAPSHOT_FILENAME,
+  SYNC_STORAGE_ID_FILENAME,
+  getIncrementalSyncStorageId
+} from '@baishou/shared'
 import { ThreeWaySyncCore } from './three-way-sync.core'
 
 export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
@@ -28,7 +34,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     const vaultPath = await this.getVaultPath()
     const files = await this.scanLocalFiles()
     const manifest: SyncManifest = {
-      version: 2,
+      version: SYNC_MANIFEST_VERSION,
       updatedAt: Date.now(),
       deviceId: this.deviceId,
       files: {}
@@ -52,24 +58,30 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   async getLocalManifest(): Promise<SyncManifest> {
     const vaultPath = await this.getVaultPath()
-    const manifestPath = path.join(vaultPath, '.baishou', MANIFEST_FILENAME_V2)
+    const manifestPath = path.join(vaultPath, '.baishou', SYNC_MANIFEST_FILENAME)
 
     if (fs.existsSync(manifestPath)) {
       const raw = await fs.promises.readFile(manifestPath, 'utf8')
       return JSON.parse(raw) as SyncManifest
     }
 
-    return { version: 2, updatedAt: 0, deviceId: '', files: {} }
+    return { version: SYNC_MANIFEST_VERSION, updatedAt: 0, deviceId: '', files: {} }
+  }
+
+  async refreshLocalManifest(): Promise<SyncManifest> {
+    const manifest = await this.buildLocalManifest()
+    await this.saveLocalManifest(manifest)
+    return manifest
   }
 
   async getRemoteManifest(): Promise<SyncManifest> {
     const remoteFiles = await this.cloudClient.listFiles()
     const manifestFile = remoteFiles.find(
-      (f) => f.filename === MANIFEST_FILENAME_V2 || f.filename.endsWith('/' + MANIFEST_FILENAME_V2)
+      (f) => f.filename === SYNC_MANIFEST_FILENAME || f.filename.endsWith('/' + SYNC_MANIFEST_FILENAME)
     )
 
     if (!manifestFile) {
-      return { version: 2, updatedAt: 0, deviceId: '', files: {} }
+      return { version: SYNC_MANIFEST_VERSION, updatedAt: 0, deviceId: '', files: {} }
     }
 
     const vaultPath = await this.getVaultPath()
@@ -114,17 +126,43 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   async getRemoteSnapshot(): Promise<SyncManifest> {
+    await this.loadConfig()
     const vaultPath = await this.getVaultPath()
-    const snapshotPath = path.join(vaultPath, '.baishou', REMOTE_SNAPSHOT_FILENAME)
+    const snapshotPath = path.join(vaultPath, '.baishou', SYNC_REMOTE_SNAPSHOT_FILENAME)
+    const storageIdPath = path.join(vaultPath, '.baishou', SYNC_STORAGE_ID_FILENAME)
+    const currentStorageId = getIncrementalSyncStorageId(this.config)
 
-    if (fs.existsSync(snapshotPath)) {
-      try {
-        const raw = await fs.promises.readFile(snapshotPath, 'utf8')
-        return JSON.parse(raw) as SyncManifest
-      } catch {}
+    const empty: SyncManifest = {
+      version: SYNC_MANIFEST_VERSION,
+      updatedAt: 0,
+      deviceId: '',
+      files: {}
     }
 
-    return { version: 2, updatedAt: 0, deviceId: '', files: {} }
+    if (!fs.existsSync(snapshotPath)) {
+      return empty
+    }
+
+    if (fs.existsSync(storageIdPath)) {
+      try {
+        const savedId = (await fs.promises.readFile(storageIdPath, 'utf8')).trim()
+        if (savedId !== currentStorageId) {
+          return empty
+        }
+      } catch {
+        return empty
+      }
+    } else {
+      // 无存储标识的旧快照：不与当前目标混用
+      return empty
+    }
+
+    try {
+      const raw = await fs.promises.readFile(snapshotPath, 'utf8')
+      return JSON.parse(raw) as SyncManifest
+    } catch {
+      return empty
+    }
   }
 
   getLastSyncConflicts(): Promise<string[]> {
@@ -133,24 +171,31 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   protected async saveLocalManifest(manifest: SyncManifest): Promise<void> {
     const vaultPath = await this.getVaultPath()
-    const manifestPath = path.join(vaultPath, '.baishou', MANIFEST_FILENAME_V2)
+    const manifestPath = path.join(vaultPath, '.baishou', SYNC_MANIFEST_FILENAME)
     await fs.promises.mkdir(path.join(vaultPath, '.baishou'), { recursive: true })
     await fs.promises.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf8')
   }
 
   protected async uploadManifest(): Promise<void> {
     const vaultPath = await this.getVaultPath()
-    const manifestPath = path.join(vaultPath, '.baishou', MANIFEST_FILENAME_V2)
+    const manifestPath = path.join(vaultPath, '.baishou', SYNC_MANIFEST_FILENAME)
     if (fs.existsSync(manifestPath)) {
       await this.cloudClient.uploadFile(manifestPath)
     }
   }
 
   protected async saveRemoteSnapshot(manifest: SyncManifest): Promise<void> {
+    await this.loadConfig()
     const vaultPath = await this.getVaultPath()
-    const snapshotPath = path.join(vaultPath, '.baishou', REMOTE_SNAPSHOT_FILENAME)
+    const snapshotPath = path.join(vaultPath, '.baishou', SYNC_REMOTE_SNAPSHOT_FILENAME)
+    const storageIdPath = path.join(vaultPath, '.baishou', SYNC_STORAGE_ID_FILENAME)
     await fs.promises.mkdir(path.join(vaultPath, '.baishou'), { recursive: true })
     await fs.promises.writeFile(snapshotPath, JSON.stringify(manifest, null, 2), 'utf8')
+    await fs.promises.writeFile(
+      storageIdPath,
+      getIncrementalSyncStorageId(this.config),
+      'utf8'
+    )
   }
 
   protected async uploadFile(relPath: string): Promise<void> {

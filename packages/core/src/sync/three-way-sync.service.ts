@@ -1,4 +1,8 @@
 import type { IncrementalSyncResult, SyncProgressCallback } from '@baishou/shared'
+import {
+  assertBidirectionalSyncDivergenceAllowed,
+  SyncDivergenceExceededError
+} from '@baishou/shared'
 import type { IIncrementalSyncService } from './incremental-sync.interface'
 import { threeWayMerge } from './three-way-merge'
 import { S3NotConfiguredError, S3SyncError } from './sync.errors'
@@ -8,9 +12,8 @@ import { limitExecute } from './three-way-sync.utils'
 export { limitExecute } from './three-way-sync.utils'
 
 /**
- * 三向合并增量同步服务 V2
+ * 三向合并增量同步服务
  *
- * 与旧版 IncrementalSyncServiceImpl 独立共存。
  * 采用三向合并算法（本地 vs 远程 vs 祖先），支持删除传播。
  */
 export class ThreeWaySyncService
@@ -36,6 +39,7 @@ export class ThreeWaySyncService
     try {
       const localManifest = await this.buildLocalManifest()
       const remoteManifest = await this.getRemoteManifest()
+      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config)
       const ancestorSnapshot = await this.getRemoteSnapshot()
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
@@ -109,6 +113,7 @@ export class ThreeWaySyncService
       result.duration = Date.now() - startTime
       return result
     } catch (error) {
+      if (error instanceof SyncDivergenceExceededError) throw error
       throw new S3SyncError('Three-way sync failed', error instanceof Error ? error : undefined)
     }
   }
@@ -192,6 +197,7 @@ export class ThreeWaySyncService
     try {
       const localManifest = await this.buildLocalManifest()
       const remoteManifest = await this.getRemoteManifest()
+      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config)
       const ancestorSnapshot = await this.getRemoteSnapshot()
 
       const decisions = threeWayMerge(localManifest, remoteManifest, ancestorSnapshot)
@@ -234,6 +240,7 @@ export class ThreeWaySyncService
       result.duration = Date.now() - startTime
       return result
     } catch (error) {
+      if (error instanceof SyncDivergenceExceededError) throw error
       throw new S3SyncError('Download failed', error instanceof Error ? error : undefined)
     }
   }
