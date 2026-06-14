@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   diaryDateToSourceCreatedSeconds,
+  formatMessageTimestamp,
+  formatRagEntryTimestamp,
   formatStoredTimestamp,
   normalizeUnixToSeconds,
   timestampToMillis
@@ -46,6 +48,18 @@ describe('mixed timestamp sort normalization', () => {
   })
 })
 
+describe('formatRagEntryTimestamp', () => {
+  it('shows date only for diary entries', () => {
+    const ms = new Date(2026, 5, 14).getTime()
+    expect(formatRagEntryTimestamp(ms, 'diary')).toBe('06/14')
+  })
+
+  it('shows date and time for non-diary entries', () => {
+    const ms = new Date(2026, 5, 14, 9, 9).getTime()
+    expect(formatRagEntryTimestamp(ms, 'manual')).toBe('06/14 09:09')
+  })
+})
+
 describe('formatStoredTimestamp', () => {
   it('formats seconds-based diary index timestamps correctly', () => {
     const sec = Math.floor(new Date('2025-05-11T21:37:00').getTime() / 1000)
@@ -55,5 +69,12 @@ describe('formatStoredTimestamp', () => {
 
   it('returns undefined for epoch noise', () => {
     expect(formatStoredTimestamp(1_740_000)).toBeUndefined()
+  })
+})
+
+describe('formatMessageTimestamp', () => {
+  it('formats Date instances in local time', () => {
+    const d = new Date(2026, 5, 15, 8, 9)
+    expect(formatMessageTimestamp(d)).toBe('2026-06-15 08:09')
   })
 })

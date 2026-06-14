@@ -21,6 +21,7 @@ export * from './i18n/i18n.types'
 
 export * from './utils/pricing.util'
 export * from './utils/date.utils'
+export * from './message-metadata'
 export { logger } from './utils/logger'
 export { traceCall, SHORTCUT_TRACE_CHAIN } from './utils/call-trace'
 export * from './utils/model-capabilities'

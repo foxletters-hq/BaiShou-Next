@@ -88,6 +88,19 @@ export function diaryDateToSourceCreatedSeconds(date: Date): number {
   return normalizeUnixToSeconds(localMidnight.getTime())
 }
 
+/** RAG 记忆列表：日记仅显示月/日，其它来源显示月/日 + 时分 */
+export function formatRagEntryTimestamp(ms: number, sourceType?: string): string {
+  const d = new Date(timestampToMillis(ms) ?? ms)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  if (sourceType === 'diary') {
+    return `${month}/${day}`
+  }
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${month}/${day} ${hh}:${mm}`
+}
+
 /** 格式化为本地 YYYY-MM-DD HH:mm；无效时间戳返回 undefined */
 export function formatStoredTimestamp(ts: number | undefined | null): string | undefined {
   const ms = timestampToMillis(ts)
@@ -99,4 +112,16 @@ export function formatStoredTimestamp(ts: number | undefined | null): string | u
   const hh = String(t.getHours()).padStart(2, '0')
   const mm = String(t.getMinutes()).padStart(2, '0')
   return `${y}-${m}-${d} ${hh}:${mm}`
+}
+
+/** 消息 createdAt → 本地 YYYY-MM-DD HH:mm（供模型上下文前缀） */
+export function formatMessageTimestamp(
+  value: Date | number | undefined | null
+): string | undefined {
+  if (value == null) return undefined
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return undefined
+    return formatStoredTimestamp(value.getTime())
+  }
+  return formatStoredTimestamp(value)
 }
