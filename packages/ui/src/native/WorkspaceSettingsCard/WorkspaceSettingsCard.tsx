@@ -174,7 +174,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
         onPress={() => onManageWorkspace?.()}
         isDisabled={!onManageWorkspace}
       >
-        {t('workspace.manage', '管理工作区')}
+        {t('workspace.manage', '管理工作空间')}
       </CardLinkAction>
     </SettingsExpansionTile>
   )

@@ -79,7 +79,6 @@ export * from './TTSProviderSettings'
 export * from './AgentBehaviorSettingsCard'
 export * from './RagMemoryView'
 export * from './AgentToolsView'
-export * from './WebSearchSettingsView'
 export * from './SummarySettingsView'
 
 // Markdown渲染组件

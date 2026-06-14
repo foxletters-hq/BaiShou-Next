@@ -61,6 +61,13 @@ export * from './web/AIGlobalModelsView/index'
 export * from './web/TTSProviderSettings/index'
 export * from './web/AgentBehaviorSettingsCard/index'
 export * from './web/IdentitySettingsCard/index'
+export {
+  updateRecentPersonaIds,
+  renameRecentPersonaId,
+  removeRecentPersonaId,
+  pickRecentPersonaIds,
+  pickQuickSwitchPersonaIds
+} from './web/IdentitySettingsCard/identity-recent.utils'
 
 export * from './web/RagMemoryView/index'
 export * from './web/AgentToolsView/index'

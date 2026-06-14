@@ -8,6 +8,7 @@ import {
   ScrollView
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { formatRagEntryTimestamp } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Pagination as RagPagination } from '../Pagination'
 import { settingsCardStyles } from '../settings/settings-card.styles'
@@ -107,7 +108,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
         </Text>
         <View style={styles.entryFooter}>
           <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
-            {new Date(item.createdAt).toLocaleDateString()}
+            {formatRagEntryTimestamp(item.createdAt, item.sourceType)}
           </Text>
           {item.similarity !== undefined && (
             <View style={[styles.entrySimilarity, { backgroundColor: colors.primaryLight }]}>

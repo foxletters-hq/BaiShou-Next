@@ -27,6 +27,7 @@ export interface RagEntry {
   text: string
   modelId: string
   createdAt: number
+  sourceType?: string
   similarity?: number
 }
 

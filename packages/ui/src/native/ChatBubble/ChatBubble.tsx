@@ -5,6 +5,7 @@ import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinkin
 import { useNativeTheme } from '../../native/theme'
 import { NativeChatBubbleInlineEditor } from './NativeChatBubbleInlineEditor'
 import { MarkdownRenderer } from '../MarkdownRenderer/MarkdownRenderer'
+import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import type { ChatBubbleProps } from './chat-bubble.types'
@@ -37,6 +38,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [showActions, setShowActions] = useState(false)
+  const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
 
@@ -103,7 +105,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 ? { backgroundColor: colors.bgSurface, borderBottomRightRadius: 4 }
                 : { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
               : isUser
-                ? { backgroundColor: colors.primary, borderBottomRightRadius: 4 }
+                ? { backgroundColor: colors.bgSurface, borderBottomRightRadius: 4 }
                 : { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4 }
           ]}
         >
@@ -135,13 +137,14 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           ) : (
             <Pressable onLongPress={() => setShowActions(true)} delayLongPress={500}>
               {isAssistant && cleanContent ? (
-                <MarkdownRenderer content={cleanContent} variant="chat" />
+                <MarkdownRenderer
+                  content={cleanContent}
+                  variant="chat"
+                  onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
+                />
               ) : !isAssistant ? (
                 <Text
-                  style={[
-                    styles.text,
-                    { color: isUser ? colors.textOnPrimary : colors.textPrimary }
-                  ]}
+                  style={[styles.text, { color: colors.textPrimary }]}
                 >
                   {message.content}
                 </Text>
@@ -208,6 +211,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         onBranch={onBranch}
         onDelete={onDelete}
       />
+
+      <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
     </View>
   )
 }

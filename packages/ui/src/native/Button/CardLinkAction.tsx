@@ -6,7 +6,7 @@ import type { CardLinkActionVariant } from './card-link-action.styles'
 export interface CardLinkActionProps {
   onPress: () => void
   children: React.ReactNode
-  /** card：独立卡片底部操作（如「管理工作区」）；footer：分组底部链接 */
+  /** card：独立卡片底部操作（如「管理工作空间」）；footer：分组底部链接 */
   variant?: CardLinkActionVariant
   disabled?: boolean
   isDisabled?: boolean
