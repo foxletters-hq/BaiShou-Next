@@ -25,8 +25,9 @@ export function getMainPageCacheKey(pathname: string): string | null {
 const CachedPageLayer: React.FC<{
   cacheKey: string
   isActive: boolean
+  hideWhenOverlay: boolean
   Component: React.ComponentType
-}> = ({ cacheKey, isActive, Component }) => {
+}> = ({ cacheKey, isActive, hideWhenOverlay, Component }) => {
   const controls = useAnimation()
 
   useEffect(() => {
@@ -53,8 +54,8 @@ const CachedPageLayer: React.FC<{
   return (
     <motion.div
       className={styles.cachedPage}
-      hidden={!isActive}
-      aria-hidden={!isActive}
+      hidden={!isActive || hideWhenOverlay}
+      aria-hidden={!isActive || hideWhenOverlay}
       initial={false}
       animate={controls}
     >
@@ -63,7 +64,10 @@ const CachedPageLayer: React.FC<{
   )
 }
 
-export const MainPageCache: React.FC<{ activeKey: string | null }> = ({ activeKey }) => {
+export const MainPageCache: React.FC<{
+  activeKey: string | null
+  hideActiveWhenOverlay?: boolean
+}> = ({ activeKey, hideActiveWhenOverlay = false }) => {
   const [mountedKeys, setMountedKeys] = useState<Set<string>>(() => {
     const initial = new Set<string>()
     if (activeKey) initial.add(activeKey)
@@ -90,6 +94,7 @@ export const MainPageCache: React.FC<{ activeKey: string | null }> = ({ activeKe
             key={key}
             cacheKey={key}
             isActive={key === activeKey}
+            hideWhenOverlay={hideActiveWhenOverlay && key === activeKey}
             Component={Component}
           />
         )

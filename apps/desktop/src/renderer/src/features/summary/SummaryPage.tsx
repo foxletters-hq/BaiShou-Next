@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   DashboardHeroBanner,
   DashboardStatsCard,
@@ -17,6 +18,7 @@ import './SummaryPage.css'
 
 export const SummaryPage: React.FC = () => {
   const { t, i18n } = useTranslation()
+  const location = useLocation()
   const toast = useToast()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
   const [lookbackMonths, setLookbackMonths] = useState(1)
@@ -34,10 +36,34 @@ export const SummaryPage: React.FC = () => {
     stopGeneration,
     setConcurrency,
     generationStates,
-    refreshData
+    isDetectingMissing,
+    refreshData,
+    refreshMissing
   } = useSummaryData()
 
   const prevStatesRef = useRef<typeof generationStates>({})
+  const prevPathRef = useRef(location.pathname)
+  const prevTabRef = useRef(activeTab)
+
+  /** 从总结详情页返回时刷新列表（页面被 MainPageCache 缓存，不会重新挂载） */
+  useEffect(() => {
+    const prev = prevPathRef.current
+    prevPathRef.current = location.pathname
+
+    if (prev.startsWith('/summary/') && location.pathname === '/summary') {
+      void refreshData()
+    }
+  }, [location.pathname, refreshData])
+
+  /** 切回面板时重新检测缺失项（删除总结后从画廊返回面板） */
+  useEffect(() => {
+    const prev = prevTabRef.current
+    prevTabRef.current = activeTab
+
+    if (prev !== 'panel' && activeTab === 'panel') {
+      void refreshMissing()
+    }
+  }, [activeTab, refreshMissing])
 
   /** 首次加载：获取所有年份数据构建年份下拉 */
   useEffect(() => {
@@ -190,11 +216,13 @@ export const SummaryPage: React.FC = () => {
                 generationStates={generationStates}
                 stats={stats}
                 isBatchGenerating={isBatchGenerating}
+                isDetectingMissing={isDetectingMissing}
                 concurrencyLimit={concurrencyLimit}
                 onBatchGenerate={handleBatchGenerate}
                 onStopGeneration={handleStopGeneration}
                 onConcurrencyChange={handleConcurrencyChange}
                 onQueueSingle={(item) => queueGeneration([item], concurrencyLimit)}
+                onDetectMissing={() => void refreshMissing()}
               />
             </motion.div>
           ) : (

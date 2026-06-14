@@ -9,8 +9,11 @@ export const MainLayout: React.FC = () => {
   const location = useLocation()
   const cacheKey = getMainPageCacheKey(location.pathname)
   const showOutlet = cacheKey === null
+  const hideCacheForSubRoute =
+    showOutlet &&
+    (location.pathname.startsWith('/diary/') || location.pathname.startsWith('/summary/'))
 
-  // 当处于日记编辑或总结详情等二级子页面时，保持对应的缓存底座页面（如日记列表、总结列表）在背景挂载可见，防止黑屏或布局突变
+  // 当处于日记编辑或总结详情等二级子页面时，保持对应底座页面挂载，但隐藏以免与 Outlet 叠层闪烁
   let activeCacheKey = cacheKey
   if (location.pathname.startsWith('/diary/')) {
     activeCacheKey = '/diary'
@@ -23,7 +26,7 @@ export const MainLayout: React.FC = () => {
       <div className={styles.mainContent}>
         <Sidebar />
         <div className={styles.pageContent}>
-          <MainPageCache activeKey={activeCacheKey} />
+          <MainPageCache activeKey={activeCacheKey} hideActiveWhenOverlay={hideCacheForSubRoute} />
 
           <AnimatePresence mode="wait">
             {showOutlet && (

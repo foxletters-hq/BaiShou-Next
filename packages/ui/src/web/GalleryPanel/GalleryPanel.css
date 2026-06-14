@@ -138,6 +138,7 @@
 .gallery-detail {
   flex: 1;
   overflow-y: auto;
+  overflow-anchor: none;
   padding: 16px 24px;
   display: flex;
   flex-direction: column;

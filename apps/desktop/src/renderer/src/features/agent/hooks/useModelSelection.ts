@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSettingsStore } from '@baishou/store'
+import {
+  resolveDialogueModelSelection,
+  resolveProviderListDialogueFallback
+} from '@baishou/shared'
 
 export interface UseModelSelectionParams {
   sessionId: string | undefined
@@ -27,24 +31,23 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
   const settings = useSettingsStore()
 
   const providers = settings?.providers || []
-  const fallbackProvider = (providers.length > 0 ? providers[0] : null) as any
-  const fallbackModelId =
-    fallbackProvider?.enabledModels?.[0] || fallbackProvider?.models?.[0]?.id || 'unknown'
-  const fallbackProviderId = fallbackProvider?.providerId || 'unknown'
+  const providerFallback = resolveProviderListDialogueFallback(providers)
+  const fallbackProviderId = providerFallback.providerId || 'unknown'
+  const fallbackModelId = providerFallback.modelId || 'unknown'
 
-  let defaultProviderInfo = fallbackProviderId
-  let defaultModelInfo = fallbackModelId
+  const initialResolved = resolveDialogueModelSelection({
+    globalDialogueProviderId: settings.globalModels?.globalDialogueProviderId,
+    globalDialogueModelId: settings.globalModels?.globalDialogueModelId,
+    fallbackProviderId,
+    fallbackModelId
+  })
 
-  if (
-    settings.globalModels?.globalDialogueProviderId &&
-    settings.globalModels?.globalDialogueModelId
-  ) {
-    defaultProviderInfo = settings.globalModels.globalDialogueProviderId
-    defaultModelInfo = settings.globalModels.globalDialogueModelId
-  }
-
-  const [currentProviderId, setCurrentProviderId] = useState<string>(defaultProviderInfo)
-  const [currentModelId, setCurrentModelId] = useState<string>(defaultModelInfo)
+  const [currentProviderId, setCurrentProviderId] = useState<string>(
+    initialResolved.providerId || fallbackProviderId
+  )
+  const [currentModelId, setCurrentModelId] = useState<string>(
+    initialResolved.modelId || fallbackModelId
+  )
   const userManuallySetModelRef = useRef<boolean>(false)
   const prevSessionIdRef = useRef<string | null>(null)
 
@@ -56,40 +59,30 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
 
     if (userManuallySetModelRef.current) return
 
-    const assistantProviderId = (currentAssistant as any)?.providerId
-    const assistantModelId = (currentAssistant as any)?.modelId
+    const resolved = resolveDialogueModelSelection({
+      assistantProviderId: (currentAssistant as any)?.providerId,
+      assistantModelId: (currentAssistant as any)?.modelId,
+      globalDialogueProviderId: settings.globalModels?.globalDialogueProviderId,
+      globalDialogueModelId: settings.globalModels?.globalDialogueModelId,
+      fallbackProviderId,
+      fallbackModelId
+    })
 
-    let baseProviderId = fallbackProviderId
-    let baseModelId = fallbackModelId
-
-    if (
-      assistantProviderId &&
-      assistantModelId &&
-      assistantProviderId !== 'unknown' &&
-      assistantModelId !== 'unknown'
-    ) {
-      baseProviderId = assistantProviderId
-      baseModelId = assistantModelId
-    } else if (
-      settings.globalModels?.globalDialogueProviderId &&
-      settings.globalModels?.globalDialogueModelId &&
-      settings.globalModels.globalDialogueProviderId !== 'unknown' &&
-      settings.globalModels.globalDialogueModelId !== 'unknown'
-    ) {
-      baseProviderId = settings.globalModels.globalDialogueProviderId
-      baseModelId = settings.globalModels.globalDialogueModelId
+    if (resolved.providerId && resolved.modelId) {
+      setCurrentProviderId(resolved.providerId)
+      setCurrentModelId(resolved.modelId)
+      return
     }
 
-    if (
-      baseModelId &&
-      baseModelId !== 'unknown' &&
-      baseProviderId &&
-      baseProviderId !== 'unknown'
-    ) {
-      setCurrentProviderId(baseProviderId)
-      setCurrentModelId(baseModelId)
-    }
-  }, [sessionId, currentAssistant, settings.globalModels, fallbackProviderId, fallbackModelId])
+    setCurrentProviderId(fallbackProviderId)
+    setCurrentModelId(fallbackModelId)
+  }, [
+    sessionId,
+    currentAssistant,
+    settings.globalModels,
+    fallbackProviderId,
+    fallbackModelId
+  ])
 
   return {
     currentProviderId,

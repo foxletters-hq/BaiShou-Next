@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Edit3, Trash2, Calendar, Tag, Save, X } from 'lucide-react'
 import { MarkdownRenderer } from '../MarkdownRenderer'
@@ -36,9 +36,16 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
   onCancel
 }) => {
   const { t } = useTranslation()
+  const detailRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (detailRef.current) {
+      detailRef.current.scrollTop = 0
+    }
+  }, [summary?.id, isEditing])
 
   return (
-    <div className={`gallery-detail ${isEditing ? 'editing' : ''}`}>
+    <div ref={detailRef} className={`gallery-detail ${isEditing ? 'editing' : ''}`}>
       {summary ? (
         <>
           <div className="gallery-detail-header">

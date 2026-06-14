@@ -13,9 +13,29 @@ export function useSummaryData() {
     totalYearlyCount: 0
   })
   const [missingSummaries, setMissingSummaries] = useState<any[]>([])
+  const [isDetectingMissing, setIsDetectingMissing] = useState(false)
   const [generationStates, setGenerationStates] = useState<
     Record<string, { progress: number; phase: number; status: string; error?: string }>
   >({})
+
+  const fetchMissingSummaries = useCallback(async () => {
+    if (typeof window === 'undefined' || !window.electron) return
+
+    setIsDetectingMissing(true)
+    try {
+      const missing = await window.electron.ipcRenderer.invoke(
+        'summary:detect-missing',
+        i18n.language
+      )
+      logger.info(`[RENDERER-DEBUG] summary:detect-missing → ${missing?.length ?? 0} items`)
+      setMissingSummaries(missing || [])
+    } catch (e) {
+      logger.warn('[SummaryData] summary:detect-missing failed:', e)
+      setMissingSummaries([])
+    } finally {
+      setIsDetectingMissing(false)
+    }
+  }, [i18n.language])
 
   const fetchQueueState = useCallback(async () => {
     if (typeof window !== 'undefined' && window.electron) {
@@ -43,42 +63,47 @@ export function useSummaryData() {
   }, [])
 
   const fetchData = useCallback(async () => {
-    if (typeof window !== 'undefined' && window.electron) {
-      // 独立请求，避免单个失败阻塞全部
-      try {
-        const list = await window.electron.ipcRenderer.invoke('summary:list')
-        setSummaries(list || [])
-      } catch (e) {
-        logger.warn('[SummaryData] summary:list failed:', e)
-        setSummaries([])
-      }
+    if (typeof window === 'undefined' || !window.electron) return
 
-      try {
-        const st = await window.electron.ipcRenderer.invoke('summary:stats')
-        logger.info('[RENDERER-DEBUG] summary:stats →', st)
-        setStats({
-          totalDiaryCount: st?.totalDiaryCount || 0,
-          totalWeeklyCount: st?.weeklyCount || 0,
-          totalMonthlyCount: st?.monthlyCount || 0,
-          totalQuarterlyCount: st?.quarterlyCount || 0,
-          totalYearlyCount: st?.yearlyCount || 0
-        })
-      } catch (e) {
-        logger.warn('[SummaryData] summary:stats failed:', e)
-      }
+    setIsDetectingMissing(true)
 
-      try {
-        const missing = await window.electron.ipcRenderer.invoke(
-          'summary:detect-missing',
-          i18n.language
-        )
-        logger.info(`[RENDERER-DEBUG] summary:detect-missing → ${missing?.length ?? 0} items`)
-        setMissingSummaries(missing || [])
-      } catch (e) {
-        logger.warn('[SummaryData] summary:detect-missing failed:', e)
-        setMissingSummaries([])
-      }
+    const [listResult, statsResult, missingResult] = await Promise.allSettled([
+      window.electron.ipcRenderer.invoke('summary:list'),
+      window.electron.ipcRenderer.invoke('summary:stats'),
+      window.electron.ipcRenderer.invoke('summary:detect-missing', i18n.language)
+    ])
+
+    if (listResult.status === 'fulfilled') {
+      setSummaries(listResult.value || [])
+    } else {
+      logger.warn('[SummaryData] summary:list failed:', listResult.reason)
+      setSummaries([])
     }
+
+    if (statsResult.status === 'fulfilled') {
+      const st = statsResult.value
+      logger.info('[RENDERER-DEBUG] summary:stats →', st)
+      setStats({
+        totalDiaryCount: st?.totalDiaryCount || 0,
+        totalWeeklyCount: st?.weeklyCount || 0,
+        totalMonthlyCount: st?.monthlyCount || 0,
+        totalQuarterlyCount: st?.quarterlyCount || 0,
+        totalYearlyCount: st?.yearlyCount || 0
+      })
+    } else {
+      logger.warn('[SummaryData] summary:stats failed:', statsResult.reason)
+    }
+
+    if (missingResult.status === 'fulfilled') {
+      const missing = missingResult.value
+      logger.info(`[RENDERER-DEBUG] summary:detect-missing → ${missing?.length ?? 0} items`)
+      setMissingSummaries(missing || [])
+    } else {
+      logger.warn('[SummaryData] summary:detect-missing failed:', missingResult.reason)
+      setMissingSummaries([])
+    }
+
+    setIsDetectingMissing(false)
   }, [i18n.language])
 
   useEffect(() => {
@@ -148,6 +173,8 @@ export function useSummaryData() {
     stopGeneration,
     setConcurrency,
     generationStates,
-    refreshData: fetchData
+    isDetectingMissing,
+    refreshData: fetchData,
+    refreshMissing: fetchMissingSummaries
   }
 }

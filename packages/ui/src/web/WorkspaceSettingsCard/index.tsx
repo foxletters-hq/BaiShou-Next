@@ -71,7 +71,31 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
     }
     try {
       await onCreate(validation.name)
-    } catch {
+    } catch (e: unknown) {
+      const err = e as Error & { code?: string; vaultName?: string; reason?: string }
+      if (err?.code === 'VAULT_NAME_EXISTS') {
+        toast.showError(
+          t('workspace.name_exists', {
+            name: err.vaultName ?? validation.name,
+            defaultValue: '工作空间「{{name}}」已存在，请使用其他名称'
+          })
+        )
+        return
+      }
+      if (err?.code === 'VAULT_INVALID_NAME') {
+        toast.showError(
+          t(
+            err.reason === 'empty' ? 'workspace.name_empty' : 'workspace.invalid_name',
+            {
+              defaultValue:
+                err.reason === 'empty'
+                  ? '请输入工作空间名称'
+                  : '名称不能包含 / \\ : % # ? * 等特殊字符'
+            }
+          )
+        )
+        return
+      }
       toast.showError(t('workspace.create_failed', '创建失败'))
     }
   }

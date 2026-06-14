@@ -125,6 +125,43 @@
   flex-wrap: wrap;
 }
 
+.sp-detect-missing-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sp-detect-missing-btn:hover:not(:disabled) {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.sp-detect-missing-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sp-detect-spin {
+  animation: sp-detect-spin 1s linear infinite;
+}
+
+@keyframes sp-detect-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* 并发下拉菜单 */
 .concurrency-dropdown {
   position: relative;

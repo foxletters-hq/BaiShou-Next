@@ -12,6 +12,7 @@ import {
   MdSettings
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
+import { isIncrementalSyncReady } from '@baishou/shared'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 
 import { resolveFirstVisibleSidebarPath } from '../Sidebar/sidebar-preferences'
@@ -70,7 +71,7 @@ export const TitleBar: React.FC = () => {
     const fetchConfig = async () => {
       try {
         const cfg = await (window as any).api?.incrementalSync?.getConfig?.()
-        if (!cancelled) setS3Configured(!!cfg?.enabled)
+        if (!cancelled) setS3Configured(isIncrementalSyncReady(cfg))
       } catch {
         if (!cancelled && retries < 5) {
           retries++

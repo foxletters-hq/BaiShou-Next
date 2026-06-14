@@ -72,7 +72,8 @@ export function useGalleryPanel({ summaries, onOpen, onSave }: UseGalleryPanelOp
 
   const selectedSummary = useMemo(() => {
     if (selectedId) {
-      return filteredAndSortedSummaries.find((s) => String(s.id) === selectedId)
+      const found = filteredAndSortedSummaries.find((s) => String(s.id) === selectedId)
+      if (found) return found
     }
     return filteredAndSortedSummaries[0]
   }, [filteredAndSortedSummaries, selectedId])

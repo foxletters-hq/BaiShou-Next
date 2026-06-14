@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-surface);
+  background: linear-gradient(160deg, #fffbf5 0%, #d9eef8 100%);
   color: var(--text-primary);
   overflow: hidden;
   position: relative;
@@ -113,12 +113,31 @@
   object-fit: contain;
 }
 
-.title {
+.title,
+.titleWelcome {
   font-size: 28px;
   font-weight: 800;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
   letter-spacing: -0.5px;
+}
+
+.titleWelcome {
+  color: #5ba8cd;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
   color: var(--text-primary);
+}
+
+.tagline {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #5ba8cd;
+  opacity: 0.85;
+  margin-bottom: 12px;
 }
 
 .subtitle {
@@ -126,7 +145,7 @@
   line-height: 1.7;
   color: var(--text-secondary);
   max-width: 360px;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 .storageBox {
@@ -178,6 +197,13 @@
 
 .pickBtn:hover {
   background: var(--theme-color) 22;
+}
+
+.hintText {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  text-align: left;
 }
 
 .slogan {

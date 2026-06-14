@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MarkdownRenderer, useToast } from '@baishou/ui'
 import { ArrowLeft, Calendar, Tag, Trash2, Copy, Clock, Edit3, Save, X } from 'lucide-react'
@@ -31,13 +31,23 @@ const TYPE_CLASS_MAP: Record<string, string> = {
   yearly: 'type-yearly'
 }
 
+type SummaryDetailLocationState = {
+  summary?: SummaryDetail
+}
+
 export const SummaryDetailPage: React.FC = () => {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const toast = useToast()
-  const [summary, setSummary] = useState<SummaryDetail | null>(null)
-  const [loading, setLoading] = useState(true)
+  const prefetchedSummary = (location.state as SummaryDetailLocationState | null)?.summary
+  const hasPrefetchedSummary =
+    !!prefetchedSummary && !!id && String(prefetchedSummary.id) === id
+  const [summary, setSummary] = useState<SummaryDetail | null>(
+    hasPrefetchedSummary ? prefetchedSummary : null
+  )
+  const [loading, setLoading] = useState(!hasPrefetchedSummary)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -45,6 +55,13 @@ export const SummaryDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchSummary = async () => {
       if (!id || !window.electron) return
+
+      if (hasPrefetchedSummary && prefetchedSummary) {
+        setSummary(prefetchedSummary)
+        setLoading(false)
+        return
+      }
+
       setLoading(true)
       try {
         const allSummaries: SummaryDetail[] =
@@ -64,7 +81,7 @@ export const SummaryDetailPage: React.FC = () => {
       }
     }
     fetchSummary()
-  }, [id, navigate, toast, t])
+  }, [id, hasPrefetchedSummary, navigate, prefetchedSummary, toast, t])
 
   const handleCopy = async () => {
     if (!summary?.content) return

@@ -48,11 +48,13 @@ interface SummaryMissingSectionProps {
   generationStates: Record<string, any>
   stats: { totalDiaryCount: number }
   isBatchGenerating: boolean
+  isDetectingMissing: boolean
   concurrencyLimit: number
   onBatchGenerate: () => void
   onStopGeneration: () => void
   onConcurrencyChange: (n: number) => void
   onQueueSingle: (item: MissingPeriod) => void
+  onDetectMissing: () => void
 }
 
 /** AI 缺失摘要检测区域（含进度条、任务卡片列表） */
@@ -61,11 +63,13 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
   generationStates,
   stats,
   isBatchGenerating,
+  isDetectingMissing,
   concurrencyLimit,
   onBatchGenerate,
   onStopGeneration,
   onConcurrencyChange,
-  onQueueSingle
+  onQueueSingle,
+  onDetectMissing
 }) => {
   const { t, i18n } = useTranslation()
   const { language } = i18n
@@ -118,6 +122,20 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
               missingSummaries.length.toString()
             )}
           </div>
+          <button
+            type="button"
+            className="sp-detect-missing-btn"
+            onClick={onDetectMissing}
+            disabled={isDetectingMissing || isGenerating}
+            title={t('summary.detect_missing', '重新检测')}
+          >
+            <RefreshCw size={14} className={isDetectingMissing ? 'sp-detect-spin' : ''} />
+            <span>
+              {isDetectingMissing
+                ? t('summary.detecting_missing', '检测中...')
+                : t('summary.detect_missing', '重新检测')}
+            </span>
+          </button>
         </div>
       )}
 

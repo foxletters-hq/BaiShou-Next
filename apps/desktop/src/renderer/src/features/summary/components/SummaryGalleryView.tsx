@@ -14,7 +14,7 @@ interface Summary {
 
 interface SummaryGalleryViewProps {
   summaries: Summary[]
-  onRefreshData: () => void
+  onRefreshData: () => Promise<void>
 }
 
 /** 计算指定日期是一年中的第几周 */
@@ -100,7 +100,7 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
           new Date(summary.endDate)
         )
         toast.showSuccess(t('common.delete_success', '已删除'))
-        onRefreshData()
+        await onRefreshData()
       } catch (e) {
         console.error('[SummaryGalleryView] delete error:', e)
         toast.showError(t('common.delete_failed', '删除失败'))
@@ -112,17 +112,20 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
     <motion.div
       key="gallery"
       className="sp-gallery-view"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2 }}
+      initial={false}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
     >
       <GalleryPanel
         summaries={summaries}
         onOpen={() => {
           // 点击列表项只切换视图，GalleryPanel 内部处理选中状态
         }}
-        onEdit={(id) => navigate(`/summary/${id}`)}
+        onEdit={(id) => {
+          const summary = summaries.find((s) => String(s.id) === id)
+          navigate(`/summary/${id}`, summary ? { state: { summary } } : undefined)
+        }}
         onSave={handleSave}
         onDelete={handleDelete}
       />
