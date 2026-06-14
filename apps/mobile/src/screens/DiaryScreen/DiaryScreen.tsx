@@ -363,9 +363,7 @@ export const DiaryScreen: React.FC = () => {
             onFilterWeathersChange={setFilterWeathers}
             filterFavorite={filterFavorite}
             onFilterFavoriteChange={setFilterFavorite}
-            onSyncPress={
-              incrementalSyncReady ? () => void handleIncrementalSync() : undefined
-            }
+            onSyncPress={incrementalSyncReady ? () => void handleIncrementalSync() : undefined}
             isSyncing={isSyncing}
           />
 

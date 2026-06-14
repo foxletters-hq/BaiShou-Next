@@ -189,10 +189,7 @@ export class MobileIncrementalEngine {
       await this.fileSystem.mkdir(dir, { recursive: true })
     }
     await this.fileSystem.writeFile(sp, JSON.stringify(manifest, null, 2))
-    await this.fileSystem.writeFile(
-      this.storageIdPath(vault),
-      getIncrementalSyncStorageId(config)
-    )
+    await this.fileSystem.writeFile(this.storageIdPath(vault), getIncrementalSyncStorageId(config))
   }
 
   async getRemoteManifest(client: MobileIncrementalCloudClient): Promise<SyncManifest> {

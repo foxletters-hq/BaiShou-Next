@@ -1,9 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSettingsStore } from '@baishou/store'
-import {
-  resolveDialogueModelSelection,
-  resolveProviderListDialogueFallback
-} from '@baishou/shared'
+import { resolveDialogueModelSelection, resolveProviderListDialogueFallback } from '@baishou/shared'
 
 export interface UseModelSelectionParams {
   sessionId: string | undefined
@@ -76,13 +73,7 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
 
     setCurrentProviderId(fallbackProviderId)
     setCurrentModelId(fallbackModelId)
-  }, [
-    sessionId,
-    currentAssistant,
-    settings.globalModels,
-    fallbackProviderId,
-    fallbackModelId
-  ])
+  }, [sessionId, currentAssistant, settings.globalModels, fallbackProviderId, fallbackModelId])
 
   return {
     currentProviderId,

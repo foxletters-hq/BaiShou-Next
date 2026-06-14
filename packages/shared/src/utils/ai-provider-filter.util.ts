@@ -15,7 +15,9 @@ export type ModelSwitcherFilterMode = 'dialogue' | 'embedding' | 'tts'
  * 用户显式配置的启用模型列表。
  * `enabledModels: []` 表示全部关闭；仅当字段缺失时回退 `models`（兼容旧数据）。
  */
-export function resolveEnabledModelPool(config: Pick<AIProviderConfig, 'enabledModels' | 'models'>): string[] {
+export function resolveEnabledModelPool(
+  config: Pick<AIProviderConfig, 'enabledModels' | 'models'>
+): string[] {
   if (config.enabledModels !== undefined) {
     return config.enabledModels
   }

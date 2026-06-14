@@ -14,7 +14,9 @@ export function getIncrementalSyncStorageId(config: S3SyncConfig): string {
     const url = (config.webdavUrl || '').trim().replace(/\/+$/, '').toLowerCase()
     return `webdav:${url}:${pathPrefix}`
   }
-  const endpoint = normalizeS3Endpoint(config.endpoint || '').replace(/\/+$/, '').toLowerCase()
+  const endpoint = normalizeS3Endpoint(config.endpoint || '')
+    .replace(/\/+$/, '')
+    .toLowerCase()
   const bucket = (config.bucket || '').trim().toLowerCase()
   return `s3:${endpoint}:${bucket}:${pathPrefix}`
 }

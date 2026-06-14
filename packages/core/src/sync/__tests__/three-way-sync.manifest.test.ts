@@ -3,10 +3,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { ThreeWaySyncService } from '../three-way-sync.service'
-import {
-  SYNC_REMOTE_SNAPSHOT_FILENAME,
-  SYNC_MANIFEST_VERSION
-} from '@baishou/shared'
+import { SYNC_REMOTE_SNAPSHOT_FILENAME, SYNC_MANIFEST_VERSION } from '@baishou/shared'
 import { SYNC_STORAGE_ID_FILENAME } from '@baishou/shared'
 import type { ICloudSyncClient } from '../../network/cloud-sync.interface'
 import type { IStoragePathService } from '../../vault/storage-path.types'
@@ -79,7 +76,11 @@ describe('ThreeWaySyncManifestMixin.getRemoteSnapshot', () => {
       files: { 'notes/a.md': { hash: 'abc', size: 1, lastModified: 1 } }
     }
     const baishouDir = path.join(vaultPath, '.baishou')
-    fs.writeFileSync(path.join(baishouDir, SYNC_REMOTE_SNAPSHOT_FILENAME), JSON.stringify(snapshot), 'utf8')
+    fs.writeFileSync(
+      path.join(baishouDir, SYNC_REMOTE_SNAPSHOT_FILENAME),
+      JSON.stringify(snapshot),
+      'utf8'
+    )
     fs.writeFileSync(path.join(baishouDir, SYNC_STORAGE_ID_FILENAME), 's3:other-bucket', 'utf8')
 
     const result = await service.getRemoteSnapshot()

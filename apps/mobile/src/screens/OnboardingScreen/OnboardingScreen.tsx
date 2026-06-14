@@ -46,8 +46,7 @@ export const OnboardingScreen: React.FC = () => {
   const storageReadyToAdvance =
     !storagePermission.isAndroid ||
     (storagePermission.permissionChecked && storagePermission.granted === true)
-  const nextBlockedOnStorage =
-    currentPage === ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance
+  const nextBlockedOnStorage = currentPage === ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -160,13 +159,9 @@ export const OnboardingScreen: React.FC = () => {
     outputRange: [1, 1.04]
   })
 
-  const renderSlideTitle = (text: string) => (
-    <Text style={styles.slideTitle}>{text}</Text>
-  )
+  const renderSlideTitle = (text: string) => <Text style={styles.slideTitle}>{text}</Text>
 
-  const renderSlideBody = (text: string) => (
-    <Text style={styles.slideBody}>{text}</Text>
-  )
+  const renderSlideBody = (text: string) => <Text style={styles.slideBody}>{text}</Text>
 
   const renderWelcomeSlide = () => (
     <View style={styles.slideInner}>
@@ -323,9 +318,7 @@ export const OnboardingScreen: React.FC = () => {
               <Text style={styles.nextButtonText}>
                 {isLast ? t('onboarding.get_started') : t('common.next')}
               </Text>
-              {!isLast && (
-                <MaterialIcons name="arrow-forward-ios" size={14} color="#FFFFFF" />
-              )}
+              {!isLast && <MaterialIcons name="arrow-forward-ios" size={14} color="#FFFFFF" />}
             </TouchableOpacity>
           </View>
         </View>

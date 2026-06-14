@@ -217,7 +217,10 @@ export function useAgentStream(
       sessionId: string,
       userMessage: { id: string; content: string; attachments?: unknown[] }
     ) => {
-      if (!isConfiguredProviderId(currentProviderId) || !isConfiguredDialogueModelId(currentModelId)) {
+      if (
+        !isConfiguredProviderId(currentProviderId) ||
+        !isConfiguredDialogueModelId(currentModelId)
+      ) {
         toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }
@@ -290,7 +293,10 @@ export function useAgentStream(
       const hasAttachments = Boolean(attachments?.length)
       if ((!hasText && !hasAttachments) || !services) return
 
-      if (!isConfiguredProviderId(currentProviderId) || !isConfiguredDialogueModelId(currentModelId)) {
+      if (
+        !isConfiguredProviderId(currentProviderId) ||
+        !isConfiguredDialogueModelId(currentModelId)
+      ) {
         toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }
@@ -307,12 +313,16 @@ export function useAgentStream(
             firstAtt?.fileName ||
             firstAtt?.name ||
             t('agent.sessions.default_title', '新对话')
-          const vaultName = await services.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+          const vaultName = await services.pathService
+            .getActiveVaultNameForContext()
+            .catch(() => 'Personal')
           await services.sessionManager.upsertSession(
             buildInsertSessionInput(
               {
                 id: newSessionId,
-                title: sessionTitleSource.substring(0, 20) || t('agent.sessions.default_title', '新对话'),
+                title:
+                  sessionTitleSource.substring(0, 20) ||
+                  t('agent.sessions.default_title', '新对话'),
                 assistantId: currentAssistant?.id,
                 providerId: currentProviderId || undefined,
                 modelId: currentModelId || undefined
@@ -434,7 +444,10 @@ export function useAgentStream(
     async (messageId: string) => {
       if (!currentSessionId || !services) return
 
-      if (!isConfiguredProviderId(currentProviderId) || !isConfiguredDialogueModelId(currentModelId)) {
+      if (
+        !isConfiguredProviderId(currentProviderId) ||
+        !isConfiguredDialogueModelId(currentModelId)
+      ) {
         toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }

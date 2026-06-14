@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { Keyboard, Platform, useWindowDimensions } from 'react-native'
 
-function applyKeyboardHeight(
-  setKeyboardHeight: Dispatch<SetStateAction<number>>,
-  next: number
-) {
+function applyKeyboardHeight(setKeyboardHeight: Dispatch<SetStateAction<number>>, next: number) {
   setKeyboardHeight((prev) => (prev === next ? prev : next))
 }
 

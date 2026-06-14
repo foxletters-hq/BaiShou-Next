@@ -43,21 +43,13 @@ describe('signS3Request', () => {
   })
 
   it('produces identical signatures with pure JS and Web Crypto for encoded prefix', async () => {
-    const url =
-      'https://my-bucket.s3.amazonaws.com/?list-type=2&max-keys=1&prefix=backup_sync%2F'
+    const url = 'https://my-bucket.s3.amazonaws.com/?list-type=2&max-keys=1&prefix=backup_sync%2F'
     const fixedDate = new Date('2020-01-01T00:00:00.000Z')
     vi.useFakeTimers()
     vi.setSystemTime(fixedDate)
 
     const { signS3Request: signWeb } = await import('../aws-v4-sign')
-    const web = await signWeb(
-      'GET',
-      url,
-      'us-east-1',
-      'test-access-key',
-      'test-secret-key',
-      null
-    )
+    const web = await signWeb('GET', url, 'us-east-1', 'test-access-key', 'test-secret-key', null)
 
     const originalCrypto = globalThis.crypto
     vi.stubGlobal('crypto', undefined)

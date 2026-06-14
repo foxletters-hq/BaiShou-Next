@@ -24,8 +24,11 @@ export class ExpoShadowIndexConnectionManager {
   private _db: AppDatabase | null = null
   private _currentDbPath: string | null = null
   /** disconnect 后保留原生连接，避免重复 open / closeAsync */
-  private _cachedConnection: { expoDb: ExpoSqliteDatabase; db: AppDatabase; dbPath: string } | null =
-    null
+  private _cachedConnection: {
+    expoDb: ExpoSqliteDatabase
+    db: AppDatabase
+    dbPath: string
+  } | null = null
   /** 串行化 connect / disconnect，避免并发 open 同一 DB 文件 */
   private _opChain: Promise<void> = Promise.resolve()
 

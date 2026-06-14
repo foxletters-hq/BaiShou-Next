@@ -58,7 +58,10 @@ async function loadIdPathMaps(database: UpsertDb, vaultName: string): Promise<Id
 }
 
 function buildUpsertSet(
-  indexData: Omit<UpsertShadowIndexPayload, 'rawContent' | 'tags' | 'id' | 'filePath' | 'vaultName'>,
+  indexData: Omit<
+    UpsertShadowIndexPayload,
+    'rawContent' | 'tags' | 'id' | 'filePath' | 'vaultName'
+  >,
   vaultName: string,
   rawContent: string,
   tags: string
@@ -124,8 +127,14 @@ async function upsertOne(
   maps: IdPathMaps
 ): Promise<number> {
   const filePath = normalizeShadowFilePath(payload.filePath)
-  const { rawContent, tags, id: requestedId, filePath: _path, vaultName: _vault, ...indexData } =
-    payload
+  const {
+    rawContent,
+    tags,
+    id: requestedId,
+    filePath: _path,
+    vaultName: _vault,
+    ...indexData
+  } = payload
 
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
@@ -190,8 +199,14 @@ function upsertOneSync(
   maps: IdPathMaps
 ): number {
   const filePath = normalizeShadowFilePath(payload.filePath)
-  const { rawContent, tags, id: requestedId, filePath: _path, vaultName: _vault, ...indexData } =
-    payload
+  const {
+    rawContent,
+    tags,
+    id: requestedId,
+    filePath: _path,
+    vaultName: _vault,
+    ...indexData
+  } = payload
 
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
@@ -367,7 +382,10 @@ export class ShadowIndexUpsertOps {
     const deleted = await this.database
       .delete(shadowJournalIndexTable)
       .where(
-        and(eq(shadowJournalIndexTable.id, id), eq(shadowJournalIndexTable.vaultName, this.vaultName))
+        and(
+          eq(shadowJournalIndexTable.id, id),
+          eq(shadowJournalIndexTable.vaultName, this.vaultName)
+        )
       )
       .returning({ id: shadowJournalIndexTable.id })
 

@@ -315,10 +315,7 @@ export class MobileIncrementalCloudClient {
   private buildCompleteMultipartXml(parts: { part: number; etag: string }[]): string {
     const body = parts
       .sort((a, b) => a.part - b.part)
-      .map(
-        (p) =>
-          `<Part><PartNumber>${p.part}</PartNumber><ETag>${p.etag}</ETag></Part>`
-      )
+      .map((p) => `<Part><PartNumber>${p.part}</PartNumber><ETag>${p.etag}</ETag></Part>`)
       .join('')
     return `<CompleteMultipartUpload>${body}</CompleteMultipartUpload>`
   }
@@ -416,7 +413,14 @@ export class MobileIncrementalCloudClient {
     } catch (err) {
       const abortUrl = buildS3ObjectUrlWithQuery({ ...urlOpts, query: { uploadId } })
       try {
-        const abortSigned = await signS3Request('DELETE', abortUrl, region, accessKey, secretKey, null)
+        const abortSigned = await signS3Request(
+          'DELETE',
+          abortUrl,
+          region,
+          accessKey,
+          secretKey,
+          null
+        )
         await fetch(abortUrl, { method: 'DELETE', headers: s3FetchHeaders(abortSigned) })
       } catch {}
       throw err
@@ -488,7 +492,15 @@ export class MobileIncrementalCloudClient {
       const end = Math.min(start + INCREMENTAL_SYNC_CHUNK_SIZE, fileSize) - 1
       const chunkPath = `${cachePrefix}part_${partNumber}`
       const rangeHeader = { Range: `bytes=${start}-${end}` }
-      const signed = await signS3Request('GET', url, region, accessKey, secretKey, null, rangeHeader)
+      const signed = await signS3Request(
+        'GET',
+        url,
+        region,
+        accessKey,
+        secretKey,
+        null,
+        rangeHeader
+      )
       const res = await fetch(url, { headers: { ...s3FetchHeaders(signed), ...rangeHeader } })
       if (res.status !== 206) {
         throw new Error(`S3 range download requires 206, got ${res.status}`)
@@ -551,9 +563,7 @@ export class MobileIncrementalCloudClient {
     })
     if (!res.ok) return 0
     const xml = await res.text()
-    const match = xml.match(
-      /<(?:[^:]*:)?getcontentlength>(\d+)<\/(?:[^:]*:)?getcontentlength>/i
-    )
+    const match = xml.match(/<(?:[^:]*:)?getcontentlength>(\d+)<\/(?:[^:]*:)?getcontentlength>/i)
     return match?.[1] ? parseInt(match[1], 10) : 0
   }
 

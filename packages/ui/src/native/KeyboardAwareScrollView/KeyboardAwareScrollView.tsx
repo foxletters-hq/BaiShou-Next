@@ -1,11 +1,4 @@
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  type Ref
-} from 'react'
+import React, { forwardRef, useCallback, useEffect, useMemo, useRef, type Ref } from 'react'
 import {
   ScrollView,
   StyleSheet,
@@ -31,8 +24,7 @@ function mergeKeyboardPadding(
   if (keyboardPadding <= 0) return contentContainerStyle
 
   const flat = StyleSheet.flatten(contentContainerStyle) ?? {}
-  const basePadding =
-    typeof flat.paddingBottom === 'number' ? flat.paddingBottom : 0
+  const basePadding = typeof flat.paddingBottom === 'number' ? flat.paddingBottom : 0
 
   return [contentContainerStyle, { paddingBottom: basePadding + keyboardPadding }]
 }
@@ -72,19 +64,13 @@ export const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollVi
     if (wasOpen) return
 
     const frame = requestAnimationFrame(() => {
-      scrollFocusedInputIntoView(
-        scrollRef,
-        scrollYRef,
-        keyboardHeight,
-        extraKeyboardPadding
-      )
+      scrollFocusedInputIntoView(scrollRef, scrollYRef, keyboardHeight, extraKeyboardPadding)
     })
 
     return () => cancelAnimationFrame(frame)
   }, [autoScrollToFocusedInput, extraKeyboardPadding, keyboardHeight])
 
-  const keyboardPadding =
-    keyboardHeight > 0 ? keyboardHeight + extraKeyboardPadding : 0
+  const keyboardPadding = keyboardHeight > 0 ? keyboardHeight + extraKeyboardPadding : 0
 
   const mergedContentContainerStyle = useMemo(
     () => mergeKeyboardPadding(contentContainerStyle, keyboardPadding),
@@ -101,18 +87,10 @@ export const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollVi
 
   const scrollFocusedIntoView = useCallback(() => {
     if (!autoScrollToFocusedInput) return
-    scrollFocusedInputIntoView(
-      scrollRef,
-      scrollYRef,
-      keyboardHeight,
-      extraKeyboardPadding
-    )
+    scrollFocusedInputIntoView(scrollRef, scrollYRef, keyboardHeight, extraKeyboardPadding)
   }, [autoScrollToFocusedInput, extraKeyboardPadding, keyboardHeight])
 
-  const contextValue = useMemo(
-    () => ({ scrollFocusedIntoView }),
-    [scrollFocusedIntoView]
-  )
+  const contextValue = useMemo(() => ({ scrollFocusedIntoView }), [scrollFocusedIntoView])
 
   return (
     <KeyboardAwareScrollContext.Provider value={contextValue}>

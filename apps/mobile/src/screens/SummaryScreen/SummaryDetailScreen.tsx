@@ -287,49 +287,49 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         contentContainerStyle={styles.contentScroll}
         indicatorStyle={scrollIndicatorStyle(isDark)}
       >
-          <View
-            style={[
-              styles.metaCard,
-              { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
-            ]}
-          >
-            <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
-              <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{typeLabel}</Text>
-            </View>
+        <View
+          style={[
+            styles.metaCard,
+            { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
+          ]}
+        >
+          <View style={[styles.typeBadge, { backgroundColor: colors.primary + '20' }]}>
+            <Text style={[styles.typeBadgeText, { color: colors.primary }]}>{typeLabel}</Text>
+          </View>
 
-            <View style={styles.dateContainer}>
-              <Text style={[styles.dateText, { color: colors.textPrimary }]}>
-                {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
+          <View style={styles.dateContainer}>
+            <Text style={[styles.dateText, { color: colors.textPrimary }]}>
+              {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
+            </Text>
+          </View>
+
+          {summary.generatedAt ? (
+            <View style={styles.dateContainerLast}>
+              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+                {t('summary.generated_at')} {formatGeneratedAt(summary.generatedAt)}
               </Text>
             </View>
+          ) : null}
+        </View>
 
-            {summary.generatedAt ? (
-              <View style={styles.dateContainerLast}>
-                <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                  {t('summary.generated_at')} {formatGeneratedAt(summary.generatedAt)}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-
-          <View
-            style={[
-              styles.contentCard,
-              { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
-            ]}
-          >
-            {isEditing ? (
-              <Input
-                value={editContent}
-                onChangeText={setEditContent}
-                multiline
-                placeholder={t('summary.content_placeholder')}
-                style={styles.contentInput}
-              />
-            ) : (
-              <MarkdownRenderer content={summary.content} style={styles.contentText} />
-            )}
-          </View>
+        <View
+          style={[
+            styles.contentCard,
+            { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
+          ]}
+        >
+          {isEditing ? (
+            <Input
+              value={editContent}
+              onChangeText={setEditContent}
+              multiline
+              placeholder={t('summary.content_placeholder')}
+              style={styles.contentInput}
+            />
+          ) : (
+            <MarkdownRenderer content={summary.content} style={styles.contentText} />
+          )}
+        </View>
       </KeyboardAwareScrollView>
     </ScreenSafeArea>
   )

@@ -84,15 +84,12 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
       }
       if (err?.code === 'VAULT_INVALID_NAME') {
         toast.showError(
-          t(
-            err.reason === 'empty' ? 'workspace.name_empty' : 'workspace.invalid_name',
-            {
-              defaultValue:
-                err.reason === 'empty'
-                  ? '请输入工作空间名称'
-                  : '名称不能包含 / \\ : % # ? * 等特殊字符'
-            }
-          )
+          t(err.reason === 'empty' ? 'workspace.name_empty' : 'workspace.invalid_name', {
+            defaultValue:
+              err.reason === 'empty'
+                ? '请输入工作空间名称'
+                : '名称不能包含 / \\ : % # ? * 等特殊字符'
+          })
         )
         return
       }

@@ -2,7 +2,9 @@
 export const INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX = '.baishou/settings/' as const
 
 /** @deprecated 使用 INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX */
-export const INCREMENTAL_SYNC_BAISHOU_ALLOWLIST = [INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX] as const
+export const INCREMENTAL_SYNC_BAISHOU_ALLOWLIST = [
+  INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX
+] as const
 
 function normalizeRel(relativePath: string): string {
   return relativePath.replace(/\\/g, '/').replace(/^\//, '')
@@ -29,10 +31,7 @@ export function shouldScanIncrementalSyncDirectory(
   return true
 }
 
-export function shouldIncludeIncrementalSyncFile(
-  entryName: string,
-  relativePath: string
-): boolean {
+export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath: string): boolean {
   const rel = normalizeRel(relativePath)
   if (rel.startsWith('.baishou/')) {
     return rel.startsWith(INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX) && rel.endsWith('.json')

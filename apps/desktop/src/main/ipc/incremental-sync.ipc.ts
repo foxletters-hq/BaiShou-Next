@@ -182,7 +182,9 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:sync', async (event) => {
-    const result = await (await getOrchestrator()).sync((progress) => {
+    const result = await (
+      await getOrchestrator()
+    ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
     if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
@@ -199,7 +201,9 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:downloadOnly', async (event) => {
-    const result = await (await getOrchestrator()).downloadOnly((progress) => {
+    const result = await (
+      await getOrchestrator()
+    ).downloadOnly((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
     if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
@@ -228,7 +232,9 @@ export function registerIncrementalSyncIPC() {
   // ── 编排器一键同步 API ─────────────────────────────────────
 
   ipcMain.handle('incrementalSync:orchestratedSync', async (event) => {
-    const result = await (await getOrchestrator()).sync((progress) => {
+    const result = await (
+      await getOrchestrator()
+    ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
     if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
@@ -245,7 +251,9 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:orchestratedDownloadOnly', async (event) => {
-    const result = await (await getOrchestrator()).downloadOnly((progress) => {
+    const result = await (
+      await getOrchestrator()
+    ).downloadOnly((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     })
     if (result.downloaded.length > 0 || result.deletedLocal.length > 0) {
@@ -260,14 +268,12 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:getLastSyncSummary', async () => {
-    return (await getOrchestrator())
-      .getSyncHistory(1)
-      .then((logs) => {
-        if (logs.length > 0 && logs[0]!.success) {
-          return logs[0]!.summary
-        }
-        return null
-      })
+    return (await getOrchestrator()).getSyncHistory(1).then((logs) => {
+      if (logs.length > 0 && logs[0]!.success) {
+        return logs[0]!.summary
+      }
+      return null
+    })
   })
 }
 

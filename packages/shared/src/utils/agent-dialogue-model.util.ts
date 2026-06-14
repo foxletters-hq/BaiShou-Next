@@ -1,12 +1,7 @@
 import type { AIProviderConfig } from '../types/settings.types'
 
 /** 表示「未配置」的模型/供应商占位值（与桌面 Agent 页 unknown / 设置页 off 对齐） */
-export const UNCONFIGURED_DIALOGUE_MODEL_VALUES = new Set([
-  '',
-  'unknown',
-  'off',
-  'default'
-])
+export const UNCONFIGURED_DIALOGUE_MODEL_VALUES = new Set(['', 'unknown', 'off', 'default'])
 
 export function isConfiguredDialogueModelId(modelId: string | null | undefined): boolean {
   if (modelId == null) return false
@@ -53,7 +48,10 @@ export function resolveDialogueModelSelection(
     fallbackModelId
   } = input
 
-  if (isConfiguredProviderId(assistantProviderId) && isConfiguredDialogueModelId(assistantModelId)) {
+  if (
+    isConfiguredProviderId(assistantProviderId) &&
+    isConfiguredDialogueModelId(assistantModelId)
+  ) {
     return {
       providerId: assistantProviderId!.trim(),
       modelId: assistantModelId!.trim(),

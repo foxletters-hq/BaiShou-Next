@@ -6,7 +6,12 @@ import {
   ToolRegistry,
   webSearchConfigToUserConfig
 } from '@baishou/ai'
-import { resolveDiaryAiWritingPrompt, formatUserCardFromProfile, getUserProfileFromSettings, type DiaryTemplateConfig } from '@baishou/shared'
+import {
+  resolveDiaryAiWritingPrompt,
+  formatUserCardFromProfile,
+  getUserProfileFromSettings,
+  type DiaryTemplateConfig
+} from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG, type SessionRepository, type SnapshotRepository } from '@baishou/database'
 import type { AssistantManagerService, SettingsManagerService } from '@baishou/core-mobile'
 export interface MappedCallChainFlatEntry {

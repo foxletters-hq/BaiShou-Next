@@ -5,7 +5,12 @@ import type {
   SettingsManagerService,
   SummarySyncService
 } from '@baishou/core-mobile'
-import { logger, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY, ASSISTANT_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
+import {
+  logger,
+  DEFAULT_USER_PROFILE,
+  USER_PROFILE_SETTINGS_KEY,
+  ASSISTANT_DEFAULT_AVATAR_SENTINEL
+} from '@baishou/shared'
 import i18n from 'i18next'
 import { buildAssistantRepoInput } from '../lib/mobile-assistant.util'
 
@@ -109,9 +114,8 @@ export class MobileDataBootstrapper {
         logger.info('[MobileBootstrapper] Created default assistant')
       }
 
-      const userProfile = await deps.settingsManager.get<typeof DEFAULT_USER_PROFILE>(
-        USER_PROFILE_SETTINGS_KEY
-      )
+      const userProfile =
+        await deps.settingsManager.get<typeof DEFAULT_USER_PROFILE>(USER_PROFILE_SETTINGS_KEY)
       if (!userProfile?.personas || Object.keys(userProfile.personas).length === 0) {
         await deps.settingsManager.set(USER_PROFILE_SETTINGS_KEY, DEFAULT_USER_PROFILE)
         logger.info('[MobileBootstrapper] Created default identity card')
