@@ -4,7 +4,6 @@ import * as os from 'os'
 import * as path from 'path'
 import { ThreeWaySyncService } from '../three-way-sync.service'
 import {
-  SYNC_MANIFEST_FILENAME,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
   SYNC_MANIFEST_VERSION
 } from '@baishou/shared'

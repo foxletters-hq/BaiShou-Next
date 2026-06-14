@@ -129,7 +129,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       weather: null,
       mood: null,
       location: null,
-      locationDetail: null
+      locationDetail: null,
+      vaultName: 'TestVault'
     })
 
     const existingDiary: Diary = {
@@ -180,7 +181,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       weather: null,
       mood: null,
       location: null,
-      locationDetail: null
+      locationDetail: null,
+      vaultName: 'TestVault'
     })
 
     mockFileSync.readJournal.mockImplementation(async (d) => {
@@ -229,7 +231,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       weather: null,
       mood: null,
       location: null,
-      locationDetail: null
+      locationDetail: null,
+      vaultName: 'TestVault'
     })
 
     await service.delete(1)
@@ -284,7 +287,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         weather: null,
         mood: null,
         location: null,
-        locationDetail: null
+        locationDetail: null,
+      vaultName: 'TestVault'
       })
       mockShadowSync.syncJournal.mockResolvedValue({
         isChanged: true,
@@ -323,7 +327,8 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         weather: null,
         mood: null,
         location: null,
-        locationDetail: null
+        locationDetail: null,
+      vaultName: 'TestVault'
       })
       mockFileSync.readJournal.mockResolvedValue({
         id: 20,

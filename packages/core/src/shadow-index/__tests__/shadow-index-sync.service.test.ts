@@ -109,7 +109,9 @@ describe('ShadowIndexSyncService', () => {
       getActiveVault: () => vault,
       getAllVaults: () => [vault],
       switchVault: async () => {},
-      deleteVault: async () => {}
+      deleteVault: async () => {},
+      vaultExists: () => true,
+      createVault: async () => {}
     }
 
     mockEmbeddingCb = {

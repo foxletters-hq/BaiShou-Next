@@ -34,7 +34,7 @@ describe('ThreeWaySyncService divergence errors', () => {
       deviceId: 'remote',
       files: { 'b.txt': { hash: '2', size: 1, lastModified: 1 } }
     })
-    vi.spyOn(service, 'loadConfig' as never).mockResolvedValue(undefined)
+    vi.spyOn(ThreeWaySyncService.prototype as any, 'loadConfig').mockResolvedValue(undefined)
     Object.defineProperty(service, 'config', {
       value: {
         enabled: true,
