@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUserProfileStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
@@ -47,16 +47,20 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
 
   const storageSettings = useDesktopStorageSettings(refreshStorageStats)
 
+  const loadVaults = useCallback(async () => {
+    try {
+      const vList = await (window as any).api?.vault?.list()
+      const active = await (window as any).api?.vault?.getActive()
+      if (vList) setVaults(vList)
+      if (active) setActiveVault(active)
+    } catch (e) {
+      console.warn('Load vaults failed', e)
+    }
+  }, [])
+
   useEffect(() => {
     if (loadProfile) loadProfile()
-    const fetchVaults = async () => {
-      try {
-        const vList = await (window as any).api?.vault?.list()
-        const active = await (window as any).api?.vault?.getActive()
-        if (vList) setVaults(vList)
-        if (active) setActiveVault(active)
-      } catch (e) {}
-    }
+    void loadVaults()
 
     const fetchVersion = async () => {
       try {
@@ -67,10 +71,16 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
       }
     }
 
-    fetchVaults()
     void refreshStorageStats()
     fetchVersion()
-  }, [loadProfile])
+  }, [loadProfile, loadVaults])
+
+  const identityProfile = profile || {
+    nickname: '',
+    avatarPath: '',
+    activePersonaId: 'Default',
+    personas: { Default: { id: 'Default', facts: {} } }
+  }
 
   return (
     <>
@@ -80,10 +90,10 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
         hint={storageSettings.overlayHint}
       />
       <div className="settings-pane" style={{ paddingBottom: 0 }}>
-        {/* 账户设置 */}
+        {/* 快捷设置：账户 / 身份卡 / 工作空间 / 外观 / MCP */}
         <div className="glass-panel-card">
           <ProfileSettingsCard
-            profile={profile || { nickname: '', autoSync: false, avatarUrl: '' }}
+            profile={profile || { nickname: '', avatarPath: '' }}
             onSave={async (p) => {
               if (typeof window !== 'undefined' && window.electron) {
                 await window.electron.ipcRenderer.invoke('profile:save', p)
@@ -91,30 +101,45 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
               }
             }}
           />
-        </div>
 
-        {/* 身份卡组 */}
-        <div className="glass-panel-card">
           <IdentitySettingsCard
-            profile={
-              profile || {
-                nickname: '',
-                avatarPath: '',
-                activePersonaId: 'Default',
-                personas: { Default: { id: 'Default', facts: {} } }
-              }
-            }
+            embedded
+            profile={identityProfile}
             onChange={async (newProfile) => {
               if (typeof window !== 'undefined' && window.electron) {
                 await window.electron.ipcRenderer.invoke('profile:save', newProfile)
                 if (loadProfile) await loadProfile()
               }
             }}
+            onManageIdentity={() => navigate('/settings/identity-cards')}
           />
-        </div>
 
-        {/* 偏好设置组 */}
-        <div className="glass-panel-card">
+          <div className="settings-item-divider" />
+
+          <WorkspaceSettingsCard
+            embedded
+            vaults={
+              vaults.length > 0 ? vaults : [{ name: t('common.loading', 'Loading...'), path: '--' }]
+            }
+            activeVault={activeVault || vaults[0] || null}
+            onSwitch={async (id) => {
+              if (id === activeVault?.name) return
+              await (window as any).api?.vault?.switchActive(id)
+              await (window as any).api?.vault?.waitForResync?.()
+              window.location.reload()
+            }}
+            onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
+            onCreate={async (name) => {
+              await (window as any).api?.vault?.createDialog(name)
+              const active = await (window as any).api?.vault?.getActive()
+              if (active) setActiveVault(active)
+              window.location.reload()
+            }}
+            onManageWorkspace={() => navigate('/settings/workspaces')}
+          />
+
+          <div className="settings-item-divider" />
+
           <AppearanceSettingsCard
             themeMode={settings.themeMode}
             seedColor={settings.themeColor || '#5BA8F5'}
@@ -143,27 +168,6 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
 
         {/* 系统与数据组 */}
         <div className="glass-panel-card">
-          <WorkspaceSettingsCard
-            vaults={
-              vaults.length > 0 ? vaults : [{ name: t('common.loading', 'Loading...'), path: '--' }]
-            }
-            activeVault={activeVault || vaults[0] || null}
-            onSwitch={async (id) => {
-              if (id === activeVault?.name) return
-              await (window as any).api?.vault?.switchActive(id)
-              await (window as any).api?.vault?.waitForResync?.()
-              window.location.reload()
-            }}
-            onDelete={async (id) => await (window as any).api?.vault?.delete(id)}
-            onCreate={async (name) => {
-              await (window as any).api?.vault?.createDialog(name)
-              const active = await (window as any).api?.vault?.getActive()
-              if (active) setActiveVault(active)
-              window.location.reload()
-            }}
-          />
-          <div className="settings-item-divider" />
-
           <StorageSettingsCard
             storageRootPath={storageSettings.storageRootPath || storageStats.storageRootPath}
             sqliteSizeStats={storageStats.sqliteSizeStats}

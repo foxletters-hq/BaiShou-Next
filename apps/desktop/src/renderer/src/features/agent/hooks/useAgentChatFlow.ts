@@ -276,6 +276,7 @@ export function useAgentChatFlow() {
       }
 
       chat.setStreamSessionId(targetSessionId)
+      scroll.beginFollowIfAtBottom()
       await stream.startChat(
         targetSessionId,
         text,

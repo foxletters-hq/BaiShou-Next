@@ -20,7 +20,7 @@ import {
   ToastProvider,
   GlobalInputContextMenu
 } from '@baishou/ui'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
 import { i18n } from '@baishou/shared'
@@ -57,6 +57,39 @@ const GlobalErrorHandler = () => {
       window.removeEventListener('error', handleError)
     }
   }, [toast])
+
+  return null
+}
+
+const DIARY_EMBED_FAILURE_TOAST_DEBOUNCE_MS = 8000
+
+const DiaryEmbedFailureNotifier = () => {
+  const toast = useToast()
+  const { t } = useTranslation()
+  const lastShownAtRef = useRef(0)
+
+  useEffect(() => {
+    const api = (window as any).api
+    if (!api?.diary?.onSyncEvent) return
+
+    const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
+      if (event?.type !== 'embed-failed') return
+
+      const now = Date.now()
+      if (now - lastShownAtRef.current < DIARY_EMBED_FAILURE_TOAST_DEBOUNCE_MS) return
+      lastShownAtRef.current = now
+
+      toast.showWarning(
+        t(
+          'settings.rag_diary_auto_embed_failed',
+          '日记已保存，但记忆嵌入未成功。请前往 设置 → RAG 记忆，点击「全量扫描未索引日记」补全嵌入。'
+        ),
+        { duration: 6000 }
+      )
+    })
+
+    return unsubscribe
+  }, [t, toast])
 
   return null
 }
@@ -214,6 +247,7 @@ export function App() {
       <DialogProvider>
         <ToastProvider />
         <GlobalErrorHandler />
+        <DiaryEmbedFailureNotifier />
         <GlobalInputContextMenu />
         <ErrorBoundary>
           <AppShell />

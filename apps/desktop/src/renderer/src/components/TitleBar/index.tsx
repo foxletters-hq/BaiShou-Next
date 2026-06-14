@@ -13,10 +13,9 @@ import {
 } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
-import type { SyncProgress } from '@baishou/ui'
 
-import { useSyncStore } from '@baishou/store'
 import { resolveFirstVisibleSidebarPath } from '../Sidebar/sidebar-preferences'
+import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -31,6 +30,7 @@ export const TitleBar: React.FC = () => {
   const vaultMenuRef = useRef<HTMLDivElement>(null)
   const preloadedVaultsRef = useRef<Set<string>>(new Set())
   const [s3Configured, setS3Configured] = useState(false)
+  const { isSyncing, progress, startSync } = useOrchestratedSync()
 
   useEffect(() => {
     let timeoutId: any
@@ -84,60 +84,6 @@ export const TitleBar: React.FC = () => {
       clearTimeout(retryTimer)
     }
   }, [activeVault])
-
-  const handleOrchestratedSync = async (): Promise<SyncProgress> => {
-    const { setStatus, setMessage, setSyncResult, setProgress } = useSyncStore.getState()
-    setStatus('syncing')
-    setMessage('正在同步...')
-    setSyncResult(null)
-    setProgress(null)
-    try {
-      const result = await (window as any).api?.incrementalSync?.orchestratedSync()
-      setSyncResult(result)
-      setProgress(null)
-      setMessage('同步完成')
-      setStatus('success')
-      return result
-    } catch (e: any) {
-      const errorMsg = e?.message || '未知错误'
-      let friendlyMsg = errorMsg.replace(/^Error:\s*/i, '')
-      friendlyMsg = friendlyMsg.replace(/^Error invoking remote method '.*?':\s*/i, '')
-      if (
-        friendlyMsg.includes('SyncInProgressError') ||
-        friendlyMsg.includes('already in progress')
-      ) {
-        friendlyMsg = '同步操作正在进行中，请勿重复操作'
-      } else if (
-        friendlyMsg.includes('not initialized') ||
-        friendlyMsg.includes('Please update config first')
-      ) {
-        friendlyMsg = '同步服务尚未初始化，请先配置并保存您的连接信息'
-      } else if (friendlyMsg.includes('S3NotConfiguredError')) {
-        friendlyMsg = '同步服务尚未启用或配置不完整'
-      } else if (friendlyMsg.includes('InvalidAccessKeyId')) {
-        friendlyMsg = 'Access Key 无效或已过期，请在设置中更新您的密钥'
-      } else if (
-        friendlyMsg.includes('SignatureDoesNotMatch') ||
-        (friendlyMsg.includes('signature') && friendlyMsg.includes('does not match'))
-      ) {
-        friendlyMsg = 'Secret Key 无效，请在设置中更新您的密钥'
-      } else if (friendlyMsg.includes('AccessDenied')) {
-        friendlyMsg = '访问被拒绝，请检查 Bucket 权限或密钥配置'
-      } else if (friendlyMsg.includes('NoSuchBucket')) {
-        friendlyMsg = 'Bucket 不存在，请检查 Bucket 名称配置'
-      } else if (friendlyMsg.includes('ENOTFOUND') || friendlyMsg.includes('getaddrinfo')) {
-        friendlyMsg = '无法解析域名，请检查 Endpoint 地址和网络连接'
-      } else if (friendlyMsg.includes('ECONNREFUSED')) {
-        friendlyMsg = '连接被拒绝，请检查 Endpoint 地址和服务是否在线'
-      } else {
-        friendlyMsg = `同步失败: ${friendlyMsg}`
-      }
-      setMessage(friendlyMsg)
-      setStatus('error')
-      setProgress(null)
-      throw e
-    }
-  }
 
   const preloadVault = (vaultName: string) => {
     if (!vaultName || vaultName === activeVault?.name) return
@@ -196,9 +142,10 @@ export const TitleBar: React.FC = () => {
             {s3Configured && (
               <div style={{ marginRight: '8px' }}>
                 <IncrementalSyncPanel
-                  onSync={handleOrchestratedSync}
+                  onSync={startSync}
                   isConfigured={s3Configured}
-                  onSyncProgress={(cb) => (window as any).api?.incrementalSync?.onSyncProgress(cb)}
+                  isSyncing={isSyncing}
+                  progress={progress}
                 />
               </div>
             )}

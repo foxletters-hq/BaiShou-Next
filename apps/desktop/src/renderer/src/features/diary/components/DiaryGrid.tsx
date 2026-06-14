@@ -75,7 +75,6 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
           total={totalPages}
           onChange={onPageChange}
           siblingCount={1}
-          showFirstLast={true}
           showJumper={true}
           jumperPlaceholder={t('common.pagination_jump_placeholder', 'Go to')}
         />

@@ -171,7 +171,7 @@ export const AgentScreen: React.FC = () => {
             <button
               type="button"
               className={styles.scrollToBottomBtn}
-              onClick={() => flow.scroll.scrollToBottom(true)}
+              onClick={() => flow.scroll.scrollToBottom()}
               title={flow.t('agent.chat.scroll_to_bottom', '回到最新消息')}
               aria-label={flow.t('agent.chat.scroll_to_bottom', '回到最新消息')}
             >

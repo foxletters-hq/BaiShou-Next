@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   MdOutlineSettings,
   MdOutlineCloudQueue,
@@ -28,10 +29,26 @@ import { AttachmentManagementPane } from './components/AttachmentManagementPane'
 import { TTSSettingsPane } from './components/TTSSettingsPane'
 
 import { GeneralSettingsPane } from './components/GeneralSettingsPane'
+import { WorkspaceManagementPane } from './components/WorkspaceManagementPane'
+import { IdentityCardManagementPane } from './components/IdentityCardManagementPane'
 import { AiModelServicesPane } from './components/AiModelServicesPane'
 import { AiGlobalModelsPane } from './components/AiGlobalModelsPane'
 import { AssistantPane } from './components/AssistantPane'
 import { RagSettingsPane } from './components/RagSettingsPane'
+
+const settingsViewTransition = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6 },
+  transition: { duration: 0.2, ease: 'easeOut' as const }
+}
+
+function getSettingsContentKey(pathname: string, activeTab: number): string {
+  if (pathname === '/settings/workspaces') return 'workspaces'
+  if (pathname === '/settings/identity-cards') return 'identity-cards'
+  if (pathname === '/settings' || pathname === '/settings/general') return 'general'
+  return `tab-${activeTab}`
+}
 
 export const SettingsPage: React.FC = () => {
   const { t } = useTranslation()
@@ -108,6 +125,8 @@ export const SettingsPage: React.FC = () => {
       case '/settings/attachments':
         setActiveTab(10)
         break
+      case '/settings/workspaces':
+      case '/settings/identity-cards':
       case '/settings':
       case '/settings/general':
       default:
@@ -177,6 +196,14 @@ export const SettingsPage: React.FC = () => {
         </div>
       )
     }
+
+    if (location.pathname === '/settings/workspaces') {
+      return <WorkspaceManagementPane />
+    }
+    if (location.pathname === '/settings/identity-cards') {
+      return <IdentityCardManagementPane />
+    }
+
     switch (activeTab) {
       case 0:
         return <GeneralSettingsPane settings={settings} />
@@ -213,6 +240,21 @@ export const SettingsPage: React.FC = () => {
       navigate(-1)
     }, 250) // Matches the exit animation duration
   }
+
+  const isManagementSubPage =
+    location.pathname === '/settings/workspaces' ||
+    location.pathname === '/settings/identity-cards'
+
+  const isFullHeightPane =
+    activeTab === 8 ||
+    activeTab === 1 ||
+    activeTab === 2 ||
+    activeTab === 11 ||
+    activeTab === 4 ||
+    activeTab === 5 ||
+    isManagementSubPage
+
+  const contentKey = getSettingsContentKey(location.pathname, activeTab)
 
   return (
     <div className={`settings-page-wrapper ${isClosing ? 'settings-closing' : ''}`}>
@@ -251,19 +293,21 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="settings-content-area" style={{ position: 'relative' }}>
-          {activeTab === 8 ||
-          activeTab === 1 ||
-          activeTab === 2 ||
-          activeTab === 11 ||
-          activeTab === 4 ||
-          activeTab === 5 ? (
-            renderActiveView()
-          ) : (
-            <div className="settings-content-scroll" key={activeTab}>
+        <div className="settings-content-area" style={{ position: 'relative', overflow: 'hidden' }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={contentKey}
+              className={`settings-content-motion-host ${
+                isFullHeightPane ? '' : 'settings-content-scroll'
+              }`.trim()}
+              style={{
+                overflow: isManagementSubPage ? 'hidden' : isFullHeightPane ? undefined : undefined
+              }}
+              {...settingsViewTransition}
+            >
               {renderActiveView()}
-            </div>
-          )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>

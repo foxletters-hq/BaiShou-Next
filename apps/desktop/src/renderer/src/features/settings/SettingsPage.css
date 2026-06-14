@@ -200,7 +200,6 @@
 }
 
 .settings-pane {
-  animation: paneFadeIn 0.2s ease-out forwards;
   max-width: none;
   margin: 0;
   width: 100%;
@@ -227,10 +226,19 @@
 }
 
 /* Full-bleed tabs (RAG, models, …): pane fills area and scrolls internally */
-.settings-content-area > .settings-pane-full {
+.settings-content-area > .settings-pane-full,
+.settings-content-motion-host > .settings-pane-full {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+}
+
+.settings-content-motion-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 /* Glass panel equivalent to Flutter cards (Card with elevation 0 or 1) */

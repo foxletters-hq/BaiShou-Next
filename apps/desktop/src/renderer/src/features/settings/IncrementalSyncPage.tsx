@@ -1,100 +1,12 @@
 import { RefreshCw, FileText, Cloud, HelpCircle } from 'lucide-react'
-import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { Tooltip, formatSyncProgressStatus } from '@baishou/ui'
 import { SyncConfigForm } from './components/sync/SyncConfigForm'
+import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 
 export const IncrementalSyncPage: React.FC = () => {
   const { t } = useTranslation()
-  const {
-    status,
-    message,
-    syncResult,
-    progress,
-    setStatus,
-    setMessage,
-    setSyncResult,
-    setProgress
-  } = useSyncStore()
-
-  const friendlySyncError = (msg: string): string => {
-    if (!msg) return t('data_sync.sync_failed_generic', 'Sync failed')
-    let cleanMsg = msg.replace(/^Error:\s*/i, '')
-    cleanMsg = cleanMsg.replace(/^Error invoking remote method '.*?':\s*/i, '')
-
-    if (cleanMsg.includes('SyncInProgressError') || cleanMsg.includes('already in progress')) {
-      return t('data_sync.error_in_progress', 'Sync is already in progress. Please wait.')
-    }
-    if (cleanMsg.includes('not initialized') || cleanMsg.includes('Please update config first')) {
-      return t(
-        'data_sync.error_not_initialized',
-        'Sync service is not initialized. Please save your connection settings first.'
-      )
-    }
-    if (cleanMsg.includes('S3NotConfiguredError')) {
-      return t(
-        'data_sync.error_not_configured',
-        'Sync is not enabled or configuration is incomplete.'
-      )
-    }
-    if (cleanMsg.includes('InvalidAccessKeyId')) {
-      return t(
-        'data_sync.error_invalid_access_key',
-        'Access Key is invalid or expired. Please update your credentials.'
-      )
-    }
-    if (
-      cleanMsg.includes('SignatureDoesNotMatch') ||
-      (cleanMsg.includes('signature') && cleanMsg.includes('does not match'))
-    ) {
-      return t(
-        'data_sync.error_invalid_secret',
-        'Secret Key is invalid. Please update your credentials.'
-      )
-    }
-    if (cleanMsg.includes('AccessDenied')) {
-      return t(
-        'data_sync.error_access_denied',
-        'Access denied. Please check bucket permissions or credentials.'
-      )
-    }
-    if (cleanMsg.includes('NoSuchBucket')) {
-      return t('data_sync.error_no_bucket', 'Bucket does not exist. Please check the bucket name.')
-    }
-    if (cleanMsg.includes('ENOTFOUND') || cleanMsg.includes('getaddrinfo')) {
-      return t(
-        'data_sync.error_dns',
-        'Unable to resolve hostname. Please check the endpoint and network.'
-      )
-    }
-    if (cleanMsg.includes('ECONNREFUSED')) {
-      return t(
-        'data_sync.error_conn_refused',
-        'Connection refused. Please check the endpoint and service status.'
-      )
-    }
-    return t('data_sync.error_sync_failed_with_msg', 'Sync failed: {{msg}}', { msg: cleanMsg })
-  }
-
-  const handleSync = async () => {
-    setStatus('syncing')
-    setMessage(t('data_sync.syncing', 'Syncing...'))
-    setSyncResult(null)
-    setProgress(null)
-    try {
-      const result = await (window as any).api?.incrementalSync?.orchestratedSync()
-      setSyncResult(result)
-      setProgress(null)
-      setMessage(t('data_sync.sync_completed', 'Sync Completed'))
-      setStatus('success')
-    } catch (e: any) {
-      setMessage(
-        friendlySyncError(e?.message || t('data_sync.sync_unknown_error', 'Unknown error'))
-      )
-      setStatus('error')
-      setProgress(null)
-    }
-  }
+  const { isSyncing, syncResult, progress, startSync } = useOrchestratedSync()
 
   const formatDuration = (ms: number) => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`)
 
@@ -160,8 +72,8 @@ export const IncrementalSyncPage: React.FC = () => {
         </h3>
 
         <button
-          onClick={handleSync}
-          disabled={status === 'syncing'}
+          onClick={() => void startSync()}
+          disabled={isSyncing}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -169,24 +81,22 @@ export const IncrementalSyncPage: React.FC = () => {
             padding: '10px 20px',
             border: '1px solid var(--color-primary)',
             borderRadius: '8px',
-            background: status === 'syncing' ? 'var(--bg-surface)' : 'var(--color-primary)',
-            color: status === 'syncing' ? 'var(--text-primary)' : 'var(--text-on-primary)',
+            background: isSyncing ? 'var(--bg-surface)' : 'var(--color-primary)',
+            color: isSyncing ? 'var(--text-primary)' : 'var(--text-on-primary)',
             fontSize: '14px',
             fontWeight: 500,
             cursor: 'pointer',
-            opacity: status === 'syncing' ? 0.6 : 1
+            opacity: isSyncing ? 0.6 : 1
           }}
         >
           <RefreshCw
             size={16}
-            style={status === 'syncing' ? { animation: 'spin 1s linear infinite' } : undefined}
+            style={isSyncing ? { animation: 'spin 1s linear infinite' } : undefined}
           />
-          {status === 'syncing'
-            ? t('data_sync.syncing', 'Syncing...')
-            : t('data_sync.sync_now', 'Sync')}
+          {isSyncing ? t('data_sync.syncing', 'Syncing...') : t('data_sync.sync_now', 'Sync')}
         </button>
 
-        {status === 'syncing' && progress && progress.total > 0 && (
+        {isSyncing && progress && progress.total > 0 && (
           <div style={{ marginTop: 12 }}>
             <div
               style={{
