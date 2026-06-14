@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs/promises'
+import { sanitizeVaultDirectoryName } from '@baishou/core'
 import { IStoragePathService } from '@baishou/core-desktop'
 
 export class DesktopStoragePathService implements IStoragePathService {
@@ -68,8 +69,7 @@ export class DesktopStoragePathService implements IStoragePathService {
 
   public async getVaultDirectory(vaultName: string): Promise<string> {
     const root = await this.getRootDirectory()
-    // sanitize
-    const safeName = vaultName.replace(/[/\\]/g, '_')
+    const safeName = sanitizeVaultDirectoryName(vaultName)
     const vaultDir = path.join(root, safeName)
     await fs.mkdir(vaultDir, { recursive: true })
     return vaultDir
@@ -82,8 +82,14 @@ export class DesktopStoragePathService implements IStoragePathService {
     return vaultSysDir
   }
 
-  public async getShadowIndexDirectory(vaultName: string): Promise<string> {
-    return this.getVaultSystemDirectory(vaultName)
+  public async getActiveVaultSettingsDirectory(): Promise<string> {
+    return this.getVaultSystemDirectory(await this.getActiveVaultName())
+  }
+
+  public async getGlobalShadowIndexDirectory(): Promise<string> {
+    const dir = path.join(app.getPath('userData'), 'shadow_index')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
   }
 
   private async getActiveVaultName(): Promise<string> {
@@ -175,10 +181,33 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
-  /** User profile avatars — shared across workspaces (not under active vault). */
+  /** 用户头像目录，与移动端一致：`{activeVault}/Attachments/avatars/UserAvatars` */
   public async getUserAvatarsDirectory(): Promise<string> {
-    const dir = path.join(app.getPath('userData'), 'UserAvatars')
+    const avatarsDir = await this.getAvatarsDirectory()
+    const dir = path.join(avatarsDir, 'UserAvatars')
     await fs.mkdir(dir, { recursive: true })
+
+    const legacyDir = path.join(app.getPath('userData'), 'UserAvatars')
+    try {
+      const legacyStat = await fs.stat(legacyDir).catch(() => null)
+      if (legacyStat?.isDirectory()) {
+        const names = await fs.readdir(legacyDir)
+        for (const name of names) {
+          const src = path.join(legacyDir, name)
+          const dest = path.join(dir, name)
+          const st = await fs.stat(src).catch(() => null)
+          if (!st?.isFile()) continue
+          try {
+            await fs.access(dest)
+          } catch {
+            await fs.copyFile(src, dest)
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[PathService] Legacy UserAvatars migration skipped:', e)
+    }
+
     return dir
   }
 

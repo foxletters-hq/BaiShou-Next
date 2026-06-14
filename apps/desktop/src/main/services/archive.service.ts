@@ -261,7 +261,7 @@ export class DesktopArchiveService implements IArchiveService {
 
           const settingsRepo = new SettingsRepository(getAppDb())
           for (const [key, value] of Object.entries(prefs)) {
-            if (key === 'user_profile_data') continue
+            if (key === 'user_profile_data' || key === 'user_profile') continue
             if (key === 'cloud_sync_config' && currentCloudSyncConfig) {
               await settingsRepo.set(key, currentCloudSyncConfig)
               continue
@@ -274,6 +274,9 @@ export class DesktopArchiveService implements IArchiveService {
           if (prefs['user_profile_data']) {
             const profileRepo = new UserProfileRepository(getAppDb())
             await profileRepo.saveProfile(prefs['user_profile_data'])
+          } else if (prefs['user_profile']) {
+            const profileRepo = new UserProfileRepository(getAppDb())
+            await profileRepo.saveProfile(prefs['user_profile'])
           }
         }
         await fsp.rm(path.join(rootDir, 'config'), { recursive: true, force: true }).catch(() => {})
@@ -296,8 +299,8 @@ export class DesktopArchiveService implements IArchiveService {
     await this.vaultService.initRegistry()
 
     try {
-      const { connectShadowForActiveVault } = await import('../ipc/vault.ipc')
-      await connectShadowForActiveVault()
+      const { connectGlobalShadowDb } = await import('../ipc/vault.ipc')
+      await connectGlobalShadowDb()
     } catch (e: any) {
       logger.error('Failed to reconnect Shadow DB after import:', e)
     }

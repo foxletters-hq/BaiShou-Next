@@ -29,7 +29,7 @@ import { sessionWatcher } from './session-watcher.service'
  * 让所有的 Markdown 和 JSON 强行对齐进 SQLite 的高性能索引和状态里。
  *
  * 双库分离架构：
- * - 影子索引（日记）→ shadowConnectionManager.getDb()（per-vault shadow_index.db）
+ * - 影子索引（日记）→ shadowConnectionManager.getDb()（全局 shadow_index_v2.db，按 vault_name 隔离）
  * - Agent/Summary → connectionManager.getDb()（全局 baishou_agent.db）
  */
 export class GlobalDataBootstrapper {
@@ -42,11 +42,15 @@ export class GlobalDataBootstrapper {
 
   /**
    * 影子索引同步服务工厂
-   * 从 shadowConnectionManager 获取当前 Vault 的 Shadow DB 实例
+   * 从 shadowConnectionManager 获取全局 Shadow DB，并按当前活跃 Vault 创建 Repository
    */
   private tryGetShadowBootstrapper() {
-    const shadowDb = shadowConnectionManager.getDb() // per-vault shadow_index.db
-    const shadowRepo = new ShadowIndexRepository(shadowDb)
+    const shadowDb = shadowConnectionManager.getDb()
+    const activeVault = vaultService.getActiveVault()
+    if (!activeVault) {
+      throw new Error('[Bootstrapper] 无活跃 Vault，无法创建 ShadowIndexSyncService')
+    }
+    const shadowRepo = new ShadowIndexRepository(shadowDb, activeVault.name)
     return new ShadowIndexSyncService(shadowRepo, pathService, vaultService, fileSystem)
   }
 

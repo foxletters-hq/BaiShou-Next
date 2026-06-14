@@ -1,5 +1,6 @@
 import * as path from 'path'
 import * as Minio from 'minio'
+import { shouldUseS3PathStyle } from '@baishou/shared'
 import type { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
 /**
@@ -35,7 +36,7 @@ export class IncrementalS3Client implements ICloudSyncClient {
       accessKey,
       secretKey,
       region: region || 'us-east-1',
-      pathStyle: false
+      pathStyle: shouldUseS3PathStyle(safeEndpoint)
     })
     this.bucket = bucket
     this.chunkConcurrency = chunkConcurrency || 5

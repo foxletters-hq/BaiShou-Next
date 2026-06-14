@@ -6,7 +6,7 @@ import {
 } from '@baishou/core-desktop'
 import { isPathInsideStorageRoot, isSameStorageRoot, logger } from '@baishou/shared'
 import { shadowConnectionManager } from '@baishou/database-desktop'
-import { pathService, vaultService, connectShadowForActiveVault } from '../ipc/vault.ipc'
+import { pathService, vaultService, connectGlobalShadowDb } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
 import { settingsManager } from '../ipc/settings.ipc'
 import { diaryWatcher } from './diary-watcher.service'
@@ -102,7 +102,7 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
   if (quiesceDepth > 0) return
 
   await vaultService.initRegistry()
-  await connectShadowForActiveVault()
+  await connectGlobalShadowDb()
 
   const { globalBootstrapper } = await import('./bootstrapper.service')
   await globalBootstrapper.activateVaultRuntime()
