@@ -78,9 +78,9 @@ function decide(
     return {
       filePath,
       type: 'conflict-resolved',
-      direction: 'upload',
-      hash: local.hash,
-      size: local.size,
+      direction: 'download',
+      hash: remote.hash,
+      size: remote.size,
       localEntry: local,
       remoteEntry: remote,
       ancestorEntry: ancestor

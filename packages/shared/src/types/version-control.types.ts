@@ -99,6 +99,11 @@ export interface S3SyncConfig {
   chunkConcurrency?: number
   /** 文件级别并发上传下载度，默认 5 */
   fileConcurrency?: number
+  /**
+   * 双向同步允许的最大本地/远端差异比例（0–100）。
+   * 100 表示关闭差异保护；默认 100。历史 `null` 按 100 处理。
+   */
+  maxDivergencePercent?: number | null
 }
 
 /** 文件清单条目 */
@@ -112,12 +117,12 @@ export interface ManifestEntry {
 }
 
 /**
- * 文件清单 V2
+ * 增量同步文件清单
  * 纯状态快照：只记录当前存在的文件，不记录历史。
  * 文件删除后条目直接移除，体积随文件数线性增长，不随时间膨胀。
  */
 export interface SyncManifest {
-  /** 清单版本号 = 2 */
+  /** 清单格式版本号（当前为 1） */
   version: number
   /** 最后更新时间戳（毫秒） */
   updatedAt: number
@@ -190,7 +195,7 @@ export interface SyncSessionLog {
   error?: string
 }
 
-/** 增量同步结果 V2 */
+/** 增量同步结果 */
 export interface IncrementalSyncResult {
   /** 上传的文件列表 */
   uploaded: string[]
