@@ -15,6 +15,7 @@ import i18n from 'i18next'
 import { useNativeTheme, DialogProvider, preloadAllProviderIcons } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
+import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { fadeStackAnimation } from '@/src/navigation/fadeStackAnimation'
 import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
@@ -48,6 +49,7 @@ function AppContent() {
   const { isDark } = useNativeTheme()
   const { t } = useTranslation()
   const { dbReady, services } = useBaishou()
+  useDiaryEmbedFailureToast()
 
   useEffect(() => {
     if (!dbReady || !services) return
