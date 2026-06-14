@@ -58,6 +58,7 @@ import { MobileArchiveService } from '../services/archive.service'
 import { MobileLanSyncService } from '../services/lan-sync.service'
 import { MobileCloudSyncService } from '../services/cloud-sync.service'
 import { createMobileRagService, type MobileRagService } from '../services/mobile-rag.service'
+import { setMobileDiaryEmbeddingDeps } from '../services/mobile-diary-embedding.service'
 import { MobileIncrementalSyncService } from '../services/mobile-incremental-sync.service'
 import { MobileMcpService } from '../services/mobile-mcp.service'
 import { mobileDataBootstrapper } from '../services/mobile-bootstrapper.service'
@@ -397,15 +398,17 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
         const rawClient = (drizzleDb as any)?.session?.client || (drizzleDb as any)
         const hsRepo = new SqliteHybridSearchRepository(rawClient)
         const hybridSearchService = new HybridSearchService(hsRepo)
+        const ragServiceDeps = {
+          settingsManager,
+          diaryService: diaryServiceProxy,
+          hsRepo,
+          hybridSearchService,
+          registry,
+          rawSqlClient: rawClient
+        }
+        setMobileDiaryEmbeddingDeps(ragServiceDeps)
         const ragServiceRef = {
-          current: createMobileRagService({
-            settingsManager,
-            diaryService: diaryServiceProxy,
-            hsRepo,
-            hybridSearchService,
-            registry,
-            rawSqlClient: rawClient
-          })
+          current: createMobileRagService(ragServiceDeps)
         }
 
         /**
@@ -635,17 +638,20 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               callbacks: {
                 onStackInvalidated: () => {
                   diaryStackRef.current = null
+                  setMobileDiaryEmbeddingDeps(null)
                 },
                 onStackReady: (stack) => {
                   diaryStackRef.current = stack
-                  ragServiceRef.current = createMobileRagService({
+                  const nextRagDeps = {
                     settingsManager,
                     diaryService: stack.diaryService,
                     hsRepo,
                     hybridSearchService,
                     registry,
                     rawSqlClient: rawClient
-                  })
+                  }
+                  setMobileDiaryEmbeddingDeps(nextRagDeps)
+                  ragServiceRef.current = createMobileRagService(nextRagDeps)
                   if (!isMounted) return
                   setValue((prev) => ({
                     ...prev,
@@ -734,6 +740,14 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
               registry,
               rawSqlClient: rawClient
             })
+            setMobileDiaryEmbeddingDeps({
+              settingsManager,
+              diaryService: stack.diaryService,
+              hsRepo,
+              hybridSearchService,
+              registry,
+              rawSqlClient: rawClient
+            })
             if (isMounted) {
               setValue((prev) => ({
                 ...prev,
@@ -791,14 +805,16 @@ export function BaishouProvider({ children }: { children: ReactNode }) {
                     watcherDeps
                   })
                   diaryStackRef.current = resumedStack
-                  ragServiceRef.current = createMobileRagService({
+                  const resumedRagDeps = {
                     settingsManager,
                     diaryService: resumedStack.diaryService,
                     hsRepo,
                     hybridSearchService,
                     registry,
                     rawSqlClient: rawClient
-                  })
+                  }
+                  setMobileDiaryEmbeddingDeps(resumedRagDeps)
+                  ragServiceRef.current = createMobileRagService(resumedRagDeps)
                 } catch (caughtResumeError) {
                   logger.error(
                     '[BaishouProvider] resumeStorageAfterFileCopy failed, retrying setup:',

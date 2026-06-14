@@ -3,6 +3,7 @@ import {
   diaryDateToSourceCreatedSeconds,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
   EMBEDDING_SOURCE_SORT_ORDER_SQL,
+  filterUnindexedDiaries,
   limitExecute,
   resolveBatchEmbedConcurrency,
   sortDiariesByDateAsc,
@@ -44,6 +45,106 @@ async function resolveEmbeddingAdapter(
 
   const embeddingProvider = deps.registry.getOrUpdateProvider(embeddingProviderConfig)
   return new EmbeddingAdapter(embeddingProvider, embeddingModelId, deps.hsRepo)
+}
+
+export type EmbedDiaryEntryParams = {
+  diaryId: number
+  content: string
+  tags: string[]
+  date: Date | string
+  updatedAt: Date
+  groupId: string
+}
+
+async function loadEmbeddedDiaryIndex(deps: MobileRagServiceDeps): Promise<{
+  embeddedIds: Set<string>
+  embeddedUpdatedAtMap: Map<string, number>
+}> {
+  const embeddedIds = new Set<string>()
+  const embeddedUpdatedAtMap = new Map<string, number>()
+  const client = deps.rawSqlClient as {
+    execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
+  }
+  if (!client?.execute) {
+    return { embeddedIds, embeddedUpdatedAtMap }
+  }
+
+  const result = await client.execute({
+    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary'`,
+    args: []
+  })
+
+  for (const row of (result.rows || []) as Array<{
+    sourceId?: string | number
+    metadataJson?: string
+  }>) {
+    if (row.sourceId == null) continue
+    const sourceId = String(row.sourceId)
+    embeddedIds.add(sourceId)
+    if (!row.metadataJson) continue
+    try {
+      const meta = JSON.parse(row.metadataJson) as { updated_at?: number }
+      if (typeof meta.updated_at === 'number') {
+        const currentMax = embeddedUpdatedAtMap.get(sourceId) ?? 0
+        if (meta.updated_at > currentMax) {
+          embeddedUpdatedAtMap.set(sourceId, meta.updated_at)
+        }
+      }
+    } catch {
+      /* ignore malformed metadata */
+    }
+  }
+
+  return { embeddedIds, embeddedUpdatedAtMap }
+}
+
+export async function embedDiaryEntry(
+  deps: MobileRagServiceDeps,
+  params: EmbedDiaryEntryParams
+): Promise<void> {
+  const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
+  if (ragConfig.ragEnabled === false) return
+
+  const adapter = await resolveEmbeddingAdapter(deps)
+  if (!adapter) return
+
+  const globalModels =
+    (await deps.settingsManager.get<{ globalEmbeddingDimension?: number }>('global_models')) || {}
+  const dimension = globalModels.globalEmbeddingDimension
+  if (dimension && dimension > 0) {
+    await deps.hsRepo.initVectorIndex(dimension)
+  }
+
+  await deps.hsRepo.deleteEmbeddingsBySource('diary', String(params.diaryId))
+
+  const d = params.date instanceof Date ? params.date : new Date(params.date)
+  const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const tagPrefix = params.tags.length > 0 ? `[标签: ${params.tags.join(', ')}] ` : ''
+  const prefixedText = `${tagPrefix}[${label} 日记:]\n${params.content}`
+  const metadataJson = JSON.stringify({ updated_at: params.updatedAt.getTime() })
+  const embedArgs = {
+    text: prefixedText,
+    sourceType: 'diary',
+    sourceId: String(params.diaryId),
+    groupId: params.groupId,
+    sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000,
+    metadataJson,
+    requireSuccess: true as const
+  }
+
+  const maxAttempts = 3
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await adapter.embedText(embedArgs)
+      return
+    } catch (error) {
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000))
+      } else {
+        throw error
+      }
+    }
+  }
 }
 
 export function createMobileRagService(deps: MobileRagServiceDeps) {
@@ -163,7 +264,9 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         await deps.hsRepo.initVectorIndex(dimension)
       }
 
-      const diaries = sortDiariesByDateAsc(await deps.diaryService.listAll({ limit: 10000 }))
+      const allDiaries = sortDiariesByDateAsc(await deps.diaryService.listAll({ limit: 10000 }))
+      const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps)
+      const diaries = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap)
       const total = diaries.length
       const ragSettings =
         (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
@@ -185,19 +288,14 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
           return
         }
 
-        await deps.hsRepo.deleteEmbeddingsBySource('diary', String(diary.id))
-
         const d = diary.date instanceof Date ? diary.date : new Date(diary.date)
-        const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        const tagPrefix = meta.tags?.length ? `[标签: ${meta.tags.join(', ')}] ` : ''
-
-        const prefixedText = `${tagPrefix}[${label} 日记:]\n${diary.content}`
-        await adapter.embedText({
-          text: prefixedText,
-          sourceType: 'diary',
-          sourceId: String(diary.id),
-          groupId: 'diary_batch',
-          sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000
+        await embedDiaryEntry(deps, {
+          diaryId: diary.id,
+          content: diary.content,
+          tags: meta.tags ?? [],
+          date: d,
+          updatedAt: diary.updatedAt ?? new Date(),
+          groupId: 'diary_batch'
         })
 
         embedded++
@@ -236,6 +334,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
               embeddingId: r.messageId,
               text: r.chunkText,
               createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
+              sourceType: r.sourceType,
               similarity: r.score
             }))
             const sliced = entries.slice(offset, offset + limit)
@@ -251,6 +350,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
           embeddingId: r.messageId,
           text: r.chunkText,
           createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
+          sourceType: r.sourceType,
           similarity: r.score
         }))
         return { entries: page, total: fts.length }
@@ -269,7 +369,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const total = Number(countRow?.count ?? 0)
 
       const listRes = await client.execute({
-        sql: `SELECT embedding_id as embeddingId, chunk_text as text,
+        sql: `SELECT embedding_id as embeddingId, chunk_text as text, source_type as sourceType,
               ${EMBEDDING_SOURCE_SORT_MILLIS_SQL} as createdAt
               FROM ${HYBRID_SEARCH_TABLE}
               ORDER BY ${EMBEDDING_SOURCE_SORT_ORDER_SQL}

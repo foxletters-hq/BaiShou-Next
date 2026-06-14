@@ -40,6 +40,7 @@ import { vaultFileWatcher } from './vault-file-watcher.service'
 import { sessionFileWatcher } from './session-file-watcher.service'
 import { summaryFileWatcher } from './summary-file-watcher.service'
 import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
+import { getMobileDiaryEmbeddingCallback } from './mobile-diary-embedding.service'
 import { ExternalStorageRequiredError } from './storage-required.error'
 import type { SessionFileService } from '@baishou/core-mobile'
 import type { SessionSyncService } from '@baishou/core-mobile'
@@ -166,7 +167,8 @@ export function createVaultBoundDiaryStack(deps: {
     shadowRepo,
     deps.pathService,
     deps.vaultService,
-    deps.fileSystem
+    deps.fileSystem,
+    getMobileDiaryEmbeddingCallback()
   )
   const diaryService = new DiaryService(
     shadowRepo,
