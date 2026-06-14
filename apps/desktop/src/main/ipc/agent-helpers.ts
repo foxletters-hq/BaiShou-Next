@@ -4,8 +4,6 @@ import {
   AssistantRepository,
   MessageRepository,
   connectionManager,
-  shadowConnectionManager,
-  ShadowIndexRepository,
   UserProfileRepository,
   SnapshotRepository
 } from '@baishou/database-desktop'
@@ -17,7 +15,7 @@ import {
   AssistantManagerService,
   AttachmentManagerService
 } from '@baishou/core-desktop'
-import { fileSystem, pathService } from './vault.ipc'
+import { fileSystem, pathService, getActiveVaultShadowRepo } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import {
   AIProviderConfig,
@@ -26,7 +24,8 @@ import {
   resolveDiaryAiWritingPrompt,
   resolveDiaryAppendBlock,
   logger,
-  parseDateStr
+  parseDateStr,
+  formatUserCardFromProfile
 } from '@baishou/shared'
 
 function previewDiaryRow(raw: string | null | undefined): string {
@@ -92,8 +91,7 @@ export function getAgentManagers() {
 /** 创建日记 FTS5 搜索适配器，注入到 ToolContext 供 diary_search 工具使用 */
 export function createDiarySearcher() {
   try {
-    const shadowDb = shadowConnectionManager.getDb()
-    const shadowRepo = new ShadowIndexRepository(shadowDb)
+    const shadowRepo = getActiveVaultShadowRepo()
     return {
       async searchFTS(query: string, limit?: number) {
         const results = await shadowRepo.searchFTS(query, limit)
@@ -311,23 +309,7 @@ export async function buildStreamConfig(
     const db = connectionManager.getDb()
     const profileRepo = new UserProfileRepository(db)
     const profile = await profileRepo.getProfile()
-
-    if (profile && profile.activePersonaId && profile.personas[profile.activePersonaId]) {
-      const activePersona = profile.personas[profile.activePersonaId]
-      const facts = activePersona.facts
-
-      // 将身份卡的 facts 转换为可读的字符串格式
-      if (facts && Object.keys(facts).length > 0) {
-        const factsList = Object.entries(facts)
-          .filter(([_, value]) => value && value.trim().length > 0)
-          .map(([key, value]) => `- ${key}: ${value}`)
-          .join('\n')
-
-        if (factsList) {
-          userCard = `[User Identity Card / Persona: ${activePersona.id}]\n${factsList}`
-        }
-      }
-    }
+    userCard = formatUserCardFromProfile(profile)
   } catch (e: any) {
     logger.warn('[buildStreamConfig] Failed to load user profile:', e.message || e)
   }

@@ -1,13 +1,13 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import * as path from 'path'
-import * as fs from 'fs'
-import { createClient } from '@libsql/client'
-import { VaultService } from '@baishou/core-desktop'
-import { shadowConnectionManager } from '@baishou/database-desktop'
+import { VaultService, VaultNameExistsError, VaultInvalidNameError } from '@baishou/core-desktop'
+import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
 import { resetSyncService } from './incremental-sync.ipc'
 import { resetGitService } from './git-sync.ipc'
+import { diaryWatcher } from '../services/diary-watcher.service'
+import { summaryWatcher } from '../services/summary-watcher.service'
+import { sessionWatcher } from '../services/session-watcher.service'
 
 import { fileSystem } from '../services/node-file-system'
 
@@ -16,58 +16,45 @@ export { fileSystem }
 
 /**
  * VaultService 不再需要 connectionManager（Agent DB 全局共用，不随 Vault 切换）
- * Shadow DB 连接由此文件中的 initShadowForActiveVault() 驱动
+ * 全局 Shadow DB 由 connectGlobalShadowDb() 在启动时连接一次
  */
 export const vaultService = new VaultService(pathService, fileSystem)
 
-/**
- * 连接活跃 Vault 对应的影子索引库
- * 路径：`<vault>/.baishou/shadow_index.db`（对标原版设计）
- */
-export async function connectShadowForActiveVault(): Promise<void> {
-  const activeVault = vaultService.getActiveVault()
-  if (!activeVault) {
-    logger.warn('[VaultIPC] 无活跃 Vault，跳过 Shadow DB 连接')
-    return
-  }
-  const sysDir = await pathService.getShadowIndexDirectory(activeVault.name)
+/** 连接全局影子索引库（单库多 Vault，Vault 切换无需重连） */
+export async function connectGlobalShadowDb(): Promise<void> {
+  const sysDir = await pathService.getGlobalShadowIndexDirectory()
   await shadowConnectionManager.connect(sysDir)
-  logger.info(`[VaultIPC] Shadow DB 已连接: ${activeVault.name}`)
+  logger.info(`[VaultIPC] 全局 Shadow DB 已连接: ${sysDir}`)
 }
 
-/**
- * Warm shadow_index DB for a vault without switching the active connection.
- * Called on hover in the workspace menu so connect() is faster on switch.
- */
-export async function preloadVaultShadowDb(vaultName: string): Promise<void> {
-  const vault = vaultService.getAllVaults().find((v) => v.name === vaultName)
-  if (!vault) return
+/** 基于当前活跃 Vault 创建 ShadowIndexRepository */
+export function getActiveVaultShadowRepo(): ShadowIndexRepository {
+  const activeVault = vaultService.getActiveVault()
+  if (!activeVault) {
+    throw new Error('[VaultIPC] 无活跃 Vault，无法创建 ShadowIndexRepository')
+  }
+  return new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.name)
+}
 
-  const active = vaultService.getActiveVault()
-  if (active?.name === vaultName) return
-
-  const sysDir = await pathService.getShadowIndexDirectory(vaultName)
-  const dbPath = path.join(sysDir, 'shadow_index_v2.db')
-
-  try {
-    if (!fs.existsSync(sysDir)) {
-      await fs.promises.mkdir(sysDir, { recursive: true })
-    }
-    const client = createClient({ url: `file:${dbPath}` })
-    try {
-      await client.execute('SELECT 1')
-    } finally {
-      client.close()
-    }
-    logger.info(`[VaultIPC] Preloaded shadow DB cache: ${vaultName}`)
-  } catch (e) {
-    logger.debug(`[VaultIPC] Shadow preload skipped for ${vaultName}:`, e as any)
+/** 全局单库模式下 per-vault preload 已无意义，保留 IPC 兼容为 no-op */
+export async function preloadVaultShadowDb(_vaultName: string): Promise<void> {
+  if (!shadowConnectionManager.isConnected()) {
+    await connectGlobalShadowDb()
   }
 }
 
 async function switchVaultFast(vaultName: string) {
+  const active = vaultService.getActiveVault()
+  if (active?.name === vaultName) {
+    return active
+  }
+
+  diaryWatcher.stop()
+  summaryWatcher.stop()
+  sessionWatcher.stop()
+
   await vaultService.switchVault(vaultName)
-  await connectShadowForActiveVault()
+
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.activateVaultRuntime()
   const { resetAttachmentAllowedRootsCache } = await import('./attachment-path-cache')
@@ -80,15 +67,9 @@ async function switchVaultFast(vaultName: string) {
 }
 
 export async function initVaultSystem() {
-  // Agent DB 的 schema 在 index.ts 中一次性安装，此处无需重复
-  // Shadow DB 在 initRegistry() 后 connect
-
   await vaultService.initRegistry()
+  await connectGlobalShadowDb()
 
-  // 连接当前活跃 Vault 的影子索引库
-  await connectShadowForActiveVault()
-
-  // App Boot: 全量 SSOT 同步（首次启动仍需等待完成）
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
   await globalBootstrapper.fullyResyncAllEcosystems()
 }
@@ -135,12 +116,33 @@ export function registerVaultIPC() {
   })
 
   ipcMain.handle('vault:delete', async (_, vaultName: string) => {
+    if (shadowConnectionManager.isConnected()) {
+      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
+      await shadowRepo.deleteAllForVault(vaultName)
+    }
     await vaultService.deleteVault(vaultName)
     return true
   })
 
   ipcMain.handle('vault:createDialog', async (_, customName?: string) => {
     const newName = customName?.trim() || 'Workspace_' + Math.floor(Math.random() * 10000)
+    try {
+      await vaultService.createVault(newName)
+    } catch (e) {
+      if (e instanceof VaultNameExistsError) {
+        const err = new Error('VAULT_NAME_EXISTS')
+        ;(err as Error & { code: string; vaultName: string }).code = 'VAULT_NAME_EXISTS'
+        ;(err as Error & { vaultName: string }).vaultName = e.vaultName
+        throw err
+      }
+      if (e instanceof VaultInvalidNameError) {
+        const err = new Error('VAULT_INVALID_NAME')
+        ;(err as Error & { code: string; reason: string }).code = 'VAULT_INVALID_NAME'
+        ;(err as Error & { reason: string }).reason = e.reason
+        throw err
+      }
+      throw e
+    }
     return switchVaultFast(newName)
   })
 }

@@ -1,5 +1,4 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
 import {
   DiaryService,
   DiaryExportServiceImpl,
@@ -17,7 +16,7 @@ import {
 } from '@baishou/shared'
 import * as fs from 'fs/promises'
 
-import { fileSystem, pathService, vaultService } from './vault.ipc'
+import { fileSystem, pathService, vaultService, getActiveVaultShadowRepo } from './vault.ipc'
 import { CreateDiaryInput, UpdateDiaryInput, DiaryListFilter } from '@baishou/shared'
 
 function broadcastDiaryEmbedFailed(): void {
@@ -97,9 +96,7 @@ const embeddingCallback: IEmbeddingCallback = {
  * - 每次 IPC 调用时都从 shadowConnectionManager 取最新连接，保证 Vault 切换后的自动跟随
  */
 export function getDiaryManager() {
-  const shadowDb = shadowConnectionManager.getDb()
-
-  const shadowRepo = new ShadowIndexRepository(shadowDb)
+  const shadowRepo = getActiveVaultShadowRepo()
   const fileSync = new FileSyncServiceImpl(pathService, fileSystem)
   const shadowSync = new ShadowIndexSyncService(
     shadowRepo,
@@ -114,8 +111,7 @@ export function getDiaryManager() {
 }
 
 export function getShadowSync() {
-  const shadowDb = shadowConnectionManager.getDb()
-  const shadowRepo = new ShadowIndexRepository(shadowDb)
+  const shadowRepo = getActiveVaultShadowRepo()
   return new ShadowIndexSyncService(
     shadowRepo,
     pathService,
@@ -211,8 +207,7 @@ export function registerDiaryIPC() {
   })
 
   ipcMain.handle('diary:activityData', async (_, year?: number | null) => {
-    const shadowDb = shadowConnectionManager.getDb()
-    const shadowRepo = new ShadowIndexRepository(shadowDb)
+    const shadowRepo = getActiveVaultShadowRepo()
     return await shadowRepo.getActivityData(year ?? undefined)
   })
 

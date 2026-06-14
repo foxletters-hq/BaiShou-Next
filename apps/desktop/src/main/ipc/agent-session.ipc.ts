@@ -3,24 +3,30 @@ import * as crypto from 'crypto'
 import { getAgentManagers } from './agent-helpers'
 import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
-import { GlobalModelsConfig, logger } from '@baishou/shared'
+import { GlobalModelsConfig, logger, sessionBelongsToActiveVault } from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
+import { vaultService } from './vault.ipc'
 
-async function resolveActiveVaultName(): Promise<string | null> {
+async function resolveActiveVaultContext(): Promise<{
+  name: string | null
+  path: string | null
+}> {
   try {
-    return await pathService.getActiveVaultPath()
+    const active = vaultService.getActiveVault()
+    return { name: active?.name ?? null, path: active?.path ?? null }
   } catch {
-    return null
+    return { name: null, path: null }
   }
 }
 
 function filterSessionsForActiveVault<T extends { vaultName?: string | null }>(
   rows: T[],
+  activeVaultName: string | null,
   activeVaultPath: string | null
 ): T[] {
-  if (!activeVaultPath) return rows
-  return rows.filter(
-    (row) => row.vaultName === activeVaultPath || row.vaultName === 'default' || !row.vaultName
+  if (!activeVaultName && !activeVaultPath) return rows
+  return rows.filter((row) =>
+    sessionBelongsToActiveVault(row.vaultName, activeVaultName || 'Personal', activeVaultPath)
   )
 }
 
@@ -42,8 +48,8 @@ export function registerSessionIPC() {
         `[IPC] agent:get-sessions - astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
       )
       const results = await sessionManager.findAllSessions(limit, offset, assistantId, searchQuery)
-      const activeVaultPath = await resolveActiveVaultName()
-      const filtered = filterSessionsForActiveVault(results, activeVaultPath)
+      const { name: activeVaultName, path: activeVaultPath } = await resolveActiveVaultContext()
+      const filtered = filterSessionsForActiveVault(results, activeVaultName, activeVaultPath)
       logger.info(`[IPC] agent:get-sessions - found ${filtered.length} sessions`)
       return filtered
     }
@@ -64,10 +70,10 @@ export function registerSessionIPC() {
 
     const { sessionManager, assistantManager } = getAgentManagers()
 
-    let vaultName = 'default'
+    let vaultName = 'Personal'
     try {
-      const activeVaultPath = await pathService.getActiveVaultPath()
-      if (activeVaultPath) vaultName = activeVaultPath
+      const active = vaultService.getActiveVault()
+      if (active?.name) vaultName = active.name
     } catch (e) {}
 
     let providerId = 'default'

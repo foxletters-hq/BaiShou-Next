@@ -1,5 +1,6 @@
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database-desktop'
 import { logger, parseDateStr } from '@baishou/shared'
+import { vaultService } from './vault.ipc'
 
 /** 国际化字典类型 */
 interface LocaleDict {
@@ -101,10 +102,11 @@ export async function buildSharedContextText(
   lookbackMonths: number,
   locale?: string
 ): Promise<string> {
-  const shadowDb = shadowConnectionManager.getDb()
-  if (!shadowDb) return ''
+  const activeVault = vaultService.getActiveVault()
+  if (!activeVault) return ''
 
-  const shadowRepo = new ShadowIndexRepository(shadowDb as any)
+  const shadowDb = shadowConnectionManager.getDb()
+  const shadowRepo = new ShadowIndexRepository(shadowDb as any, activeVault.name)
   const diaries = await shadowRepo.listAllWithFTS()
 
   const now = new Date()

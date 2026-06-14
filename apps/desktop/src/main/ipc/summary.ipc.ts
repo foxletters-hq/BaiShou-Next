@@ -2,8 +2,7 @@ import { ipcMain } from 'electron'
 import {
   SummaryRepositoryImpl,
   connectionManager,
-  shadowConnectionManager,
-  ShadowIndexRepository
+  shadowConnectionManager
 } from '@baishou/database-desktop'
 import {
   SummaryManagerService,
@@ -21,7 +20,7 @@ import {
   resolveSummaryTemplatesForGeneration
 } from '@baishou/shared'
 import { SummaryQueueService } from '../services/summary-queue.service'
-import { pathService } from './vault.ipc'
+import { pathService, vaultService, getActiveVaultShadowRepo } from './vault.ipc'
 import { fileSystem } from '../services/node-file-system'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
 import { buildSummaryAiClient } from './summary-ai-client'
@@ -57,9 +56,8 @@ function ensureQueueReady(): void {
   const queueService = SummaryQueueService.getInstance()
   queueService.setDependencies(ensureManager(), async () => {
     const db = connectionManager.getDb()
-    const shadowDb = shadowConnectionManager.getDb()
     const summaryRepo = new SummaryRepositoryImpl(db)
-    const shadowRepo = new ShadowIndexRepository(shadowDb as any)
+    const shadowRepo = getActiveVaultShadowRepo()
 
     const diaryRepoAdapter = {
       async findByDateRange(start: Date, end: Date) {
@@ -141,7 +139,14 @@ export function registerSummaryIPC() {
       let totalDiaryCount = 0
       try {
         const client = shadowConnectionManager.getClient()
-        const result = await client.execute('SELECT COUNT(*) as c FROM journals_index')
+        const activeVault = vaultService.getActiveVault()
+        const vaultName = activeVault?.name ?? ''
+        const result = vaultName
+          ? await client.execute(
+              'SELECT COUNT(*) as c FROM journals_index WHERE vault_name = ?',
+              [vaultName]
+            )
+          : await client.execute('SELECT COUNT(*) as c FROM journals_index')
         totalDiaryCount = (result.rows[0]?.c as number) || 0
       } catch (e: any) {
         logger.error('Failed to get shadow_index count', e)
@@ -169,10 +174,9 @@ export function registerSummaryIPC() {
   ipcMain.handle('summary:detect-missing', async (_, locale: string = 'zh') => {
     try {
       const db = connectionManager.getDb()
-      const shadowDb = shadowConnectionManager.getDb()
-      if (!shadowDb) return []
+      if (!shadowConnectionManager.isConnected()) return []
 
-      const shadowRepo = new ShadowIndexRepository(shadowDb as any)
+      const shadowRepo = getActiveVaultShadowRepo()
       const summaryRepo = new SummaryRepositoryImpl(db)
 
       const diaryRepoAdapter = {
@@ -249,7 +253,7 @@ export function registerSummaryIPC() {
     'summary:buildSharedContext',
     async (_, lookbackMonths: number, locale?: string) => {
       const summaries = await ensureManager().list()
-      return handleBuildSharedContext(summaries, lookbackMonths, locale)
+      return handleBuildSharedContext(summaries, lookbackMonths, locale, vaultService.getActiveVault()?.name)
     }
   )
 }
