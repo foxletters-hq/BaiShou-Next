@@ -1,268 +1,336 @@
-import React, { useState, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native'
-import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
-import { useRouter } from 'expo-router'
+import React, { useEffect, useRef, useState } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Animated,
+  BackHandler
+} from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
+import { useRouter, useNavigation } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useNativeTheme, Input } from '@baishou/ui/native'
-import { ProviderType, type AiProviderModel } from '@baishou/shared'
-import { CompressionChart } from '../../components/CompressionChart'
+import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import { ONBOARDING_STORAGE_KEY } from '../../constants/storage'
-import { useBaishou } from '../../providers/BaishouProvider'
+import { useStoragePermission } from '../../hooks/useStoragePermission'
+import { useNativeToast } from '@baishou/ui/native'
+import {
+  BRAND_BLUE_DARK,
+  NUM_ONBOARDING_PAGES,
+  ONBOARDING_PAGE,
+  SLIDE_THEMES
+} from './onboarding-theme'
+import { OnboardingBackground } from './components/OnboardingBackground'
+import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
-
-interface OnboardingPage {
-  id: number
-  titleKey: string
-  subtitleKey: string
-  content?: React.ReactNode
-  isAiSetup?: boolean
-}
-
-const GEMINI_PROVIDER_ID = 'gemini_default'
+const APP_ICON = require('../../../assets/images/icon.png')
 
 export const OnboardingScreen: React.FC = () => {
   const router = useRouter()
+  const navigation = useNavigation()
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
-  const { services, dbReady } = useBaishou()
+  const toast = useNativeToast()
+  const storagePermission = useStoragePermission()
   const [currentPage, setCurrentPage] = useState(0)
-  const [apiKey, setApiKey] = useState('')
   const scrollViewRef = useRef<ScrollView>(null)
+  const floatAnim = useRef(new Animated.Value(0)).current
+  const programmaticTargetRef = useRef<number | null>(null)
+  const allowLeaveRef = useRef(false)
 
-  const saveApiKeyToProviders = async (key: string) => {
-    if (!services?.settingsManager || !dbReady) return
+  const storageReadyToAdvance =
+    !storagePermission.isAndroid ||
+    (storagePermission.permissionChecked && storagePermission.granted === true)
+  const nextBlockedOnStorage =
+    currentPage === ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance
 
-    const existing = (await services.settingsManager.get<AiProviderModel[]>('ai_providers')) || []
-    const providers: AiProviderModel[] = existing.length > 0 ? [...existing] : []
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1500,
+          useNativeDriver: true
+        })
+      ])
+    )
+    animation.start()
+    return () => animation.stop()
+  }, [floatAnim])
 
-    const geminiIndex = providers.findIndex((p) => p.id === GEMINI_PROVIDER_ID)
-    const geminiTemplate = providers[geminiIndex]
-
-    const updatedGemini: AiProviderModel = {
-      ...(geminiTemplate ?? {
-        id: GEMINI_PROVIDER_ID,
-        name: 'Google Gemini',
-        type: ProviderType.Gemini,
-        baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-        models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-        defaultDialogueModel: 'gemini-2.5-flash',
-        defaultNamingModel: 'gemini-2.5-flash',
-        enabledModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
-        isSystem: true,
-        sortOrder: 2
-      }),
-      apiKey: key,
-      isEnabled: true
-    }
-
-    if (geminiIndex >= 0) {
-      providers[geminiIndex] = updatedGemini
-    } else {
-      providers.push(updatedGemini)
-    }
-
-    await services.settingsManager.set('ai_providers', providers)
-
-    const globalModels =
-      (await services.settingsManager.get<Record<string, string>>('global_models')) || {}
-    if (!globalModels.globalDialogueProviderId) {
-      globalModels.globalDialogueProviderId = GEMINI_PROVIDER_ID
-      globalModels.globalDialogueModelId =
-        globalModels.globalDialogueModelId ||
-        updatedGemini.defaultDialogueModel ||
-        'gemini-2.5-flash'
-      await services.settingsManager.set('global_models', globalModels)
-    }
-  }
-
-  const finishOnboarding = async (
-    destination: '/(tabs)' | '/(tabs)/agent' | '/(tabs)/settings'
-  ) => {
+  const finishOnboarding = async () => {
+    allowLeaveRef.current = true
     await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
-    if (apiKey.trim()) {
-      try {
-        await saveApiKeyToProviders(apiKey.trim())
-      } catch (e) {
-        console.warn('[Onboarding] save api key to settings failed', e)
-        await AsyncStorage.setItem('@baishou/mobile_onboarding_api_key', apiKey.trim())
-      }
-    }
-    if (destination === '/(tabs)/settings') {
-      router.replace('/(tabs)/settings')
-      router.push('/settings/ai-services')
-    } else if (destination === '/(tabs)/agent') {
-      router.replace('/(tabs)/agent')
-    } else {
-      router.replace('/(tabs)')
-    }
+    router.replace('/(tabs)')
   }
 
-  const pages: OnboardingPage[] = [
-    {
-      id: 1,
-      titleKey: 'onboarding.welcome_title',
-      subtitleKey: 'common.app_title',
-      content: (
-        <View style={styles.heroContainer}>
-          <View style={[styles.logoBox, { backgroundColor: colors.primary + '20' }]}>
-            <Text style={styles.logoText}>✨</Text>
-          </View>
-          <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
-            {t('onboarding.welcome_desc')}
-          </Text>
-        </View>
-      )
-    },
-    {
-      id: 2,
-      titleKey: 'onboarding.compression_title',
-      subtitleKey: 'onboarding.philosophy_title',
-      content: (
-        <View style={styles.chartContainer}>
-          <Text style={[styles.chartDescription, { color: colors.textSecondary }]}>
-            {t('onboarding.compression_desc')}
-          </Text>
-          <CompressionChart delay={300} />
-        </View>
-      )
-    },
-    {
-      id: 3,
-      titleKey: 'onboarding.storage_title',
-      subtitleKey: 'onboarding.storage_subtitle_mobile',
-      content: <OnboardingStorageSlide />
-    },
-    {
-      id: 4,
-      titleKey: 'onboarding.ai_setup_title',
-      subtitleKey: 'onboarding.api_guide_title',
-      isAiSetup: true,
-      content: (
-        <View style={styles.aiSetupContainer}>
-          <Text style={[styles.chartDescription, { color: colors.textSecondary }]}>
-            {t('onboarding.ai_setup_desc')}
-          </Text>
-          <Text style={[styles.apiKeyLabel, { color: colors.textPrimary }]}>
-            {t('onboarding.api_key_label')}
-          </Text>
-          <Input
-            value={apiKey}
-            onChangeText={setApiKey}
-            placeholder={t('onboarding.api_key_hint')}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <TouchableOpacity
-            style={[styles.secondaryButton, { borderColor: colors.primary }]}
-            onPress={() => finishOnboarding('/(tabs)/settings')}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
-              {t('onboarding.go_to_config')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )
-    },
-    {
-      id: 5,
-      titleKey: 'onboarding.privacy_title',
-      subtitleKey: 'onboarding.privacy_desc',
-      content: (
-        <Text style={[styles.chartDescription, { color: colors.textSecondary }]}>
-          {t('onboarding.slogan')}
-        </Text>
-      )
-    }
-  ]
+  const goToPage = (page: number, options?: { animated?: boolean }) => {
+    const target = Math.max(0, Math.min(page, NUM_ONBOARDING_PAGES - 1))
+    programmaticTargetRef.current = target
+    scrollViewRef.current?.scrollTo({
+      x: target * SCREEN_WIDTH,
+      animated: options?.animated ?? true
+    })
+  }
 
   const handleNext = () => {
-    if (currentPage < pages.length - 1) {
-      const nextPage = currentPage + 1
-      setCurrentPage(nextPage)
-      scrollViewRef.current?.scrollTo({
-        x: nextPage * SCREEN_WIDTH,
-        animated: true
-      })
+    if (nextBlockedOnStorage) {
+      toast.showWarning(t('storage.all_files_access_settings_hint'))
+      return
+    }
+    const nextPage = currentPage + 1
+    if (nextPage > ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance) {
+      toast.showWarning(t('storage.all_files_access_settings_hint'))
+      return
+    }
+    if (currentPage < NUM_ONBOARDING_PAGES - 1) {
+      goToPage(nextPage)
     } else {
-      finishOnboarding('/(tabs)')
+      void finishOnboarding()
     }
   }
 
-  const handleSkip = () => {
-    finishOnboarding('/(tabs)')
+  const handlePrevious = () => {
+    if (currentPage > 0) {
+      goToPage(currentPage - 1)
+    }
   }
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (currentPage > 0) {
+        goToPage(currentPage - 1)
+      }
+      return true
+    })
+    return () => subscription.remove()
+  }, [currentPage])
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (event) => {
+      if (allowLeaveRef.current) return
+      event.preventDefault()
+    })
+    return unsubscribe
+  }, [navigation])
 
   const handleScroll = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
     const page = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH)
-    if (page !== currentPage) {
-      setCurrentPage(page)
+    const clampedPage = Math.max(0, Math.min(page, NUM_ONBOARDING_PAGES - 1))
+
+    const pendingTarget = programmaticTargetRef.current
+    if (pendingTarget !== null) {
+      if (clampedPage !== pendingTarget) {
+        return
+      }
+      programmaticTargetRef.current = null
+    }
+
+    if (clampedPage > ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance) {
+      programmaticTargetRef.current = ONBOARDING_PAGE.STORAGE
+      setCurrentPage(ONBOARDING_PAGE.STORAGE)
+      scrollViewRef.current?.scrollTo({
+        x: ONBOARDING_PAGE.STORAGE * SCREEN_WIDTH,
+        animated: true
+      })
+      toast.showWarning(t('storage.all_files_access_settings_hint'))
+      return
+    }
+
+    if (clampedPage !== currentPage) {
+      setCurrentPage(clampedPage)
     }
   }
 
+  const theme = SLIDE_THEMES[currentPage]
+  const isLast = currentPage === NUM_ONBOARDING_PAGES - 1
+
+  const welcomeScale = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.04]
+  })
+
+  const renderSlideTitle = (text: string) => (
+    <Text style={styles.slideTitle}>{text}</Text>
+  )
+
+  const renderSlideBody = (text: string) => (
+    <Text style={styles.slideBody}>{text}</Text>
+  )
+
+  const renderWelcomeSlide = () => (
+    <View style={styles.slideInner}>
+      <Animated.View style={[styles.welcomeIconWrap, { transform: [{ scale: welcomeScale }] }]}>
+        <Image source={APP_ICON} style={styles.welcomeIcon} contentFit="cover" />
+      </Animated.View>
+      <Text style={styles.welcomeTitle}>{t('onboarding.welcome_title')}</Text>
+      <Text style={styles.welcomeTagline}>{t('onboarding.welcome_tagline')}</Text>
+      {renderSlideBody(t('onboarding.welcome_desc'))}
+    </View>
+  )
+
+  const renderPhilosophySlide = () => (
+    <View style={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[1]} />
+      <View style={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.philosophy_title'))}
+      <View style={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.philosophy_desc'))}
+    </View>
+  )
+
+  const renderCompressionSlide = () => (
+    <View style={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[2]} size={56} />
+      <View style={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.compression_title'))}
+      <View style={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.compression_desc'))}
+    </View>
+  )
+
+  const renderStorageSlide = () => (
+    <View style={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[3]} />
+      <View style={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.storage_title'))}
+      <View style={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.storage_desc'))}
+      <View style={styles.slideSpacerLarge} />
+      <OnboardingStorageSlide
+        granted={storagePermission.granted}
+        permissionChecked={storagePermission.permissionChecked}
+        needsFullFileAccess={storagePermission.needsFullFileAccess}
+        onRequestPermission={storagePermission.request}
+      />
+    </View>
+  )
+
+  const renderApiConfigSlide = () => (
+    <View style={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[4]} />
+      <View style={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.api_guide_title'))}
+      <View style={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.api_guide_desc'))}
+    </View>
+  )
+
+  const renderPrivacySlide = () => (
+    <View style={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[5]} />
+      <View style={styles.slideSpacerLarge} />
+      {renderSlideTitle(t('onboarding.privacy_title'))}
+      <View style={styles.slideSpacerMedium} />
+      {renderSlideBody(t('onboarding.privacy_desc'))}
+      <View style={styles.sloganSpacer} />
+      <Text style={styles.slogan}>{t('onboarding.slogan')}</Text>
+    </View>
+  )
+
+  const slides = [
+    renderWelcomeSlide,
+    renderPhilosophySlide,
+    renderCompressionSlide,
+    renderStorageSlide,
+    renderApiConfigSlide,
+    renderPrivacySlide
+  ]
+
   return (
-    <ScreenSafeArea preset="screen" style={[styles.container, { backgroundColor: colors.bgApp }]}>
-      {currentPage < pages.length - 1 && (
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={[styles.skipText, { color: colors.textSecondary }]}>
-            {t('onboarding.skip')}
-          </Text>
-        </TouchableOpacity>
-      )}
+    <View style={styles.container}>
+      <OnboardingBackground />
 
-      <View style={styles.indicatorContainer}>
-        {pages.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.indicator,
-              {
-                backgroundColor: index === currentPage ? colors.primary : colors.bgSurfaceHighest,
-                width: index === currentPage ? 24 : 8
-              }
-            ]}
-          />
-        ))}
-      </View>
+      <ScreenSafeArea preset="screen" style={styles.safeArea}>
+        <View style={styles.topBar}>
+          {currentPage < NUM_ONBOARDING_PAGES - 1 && (
+            <TouchableOpacity onPress={() => void finishOnboarding()} style={styles.skipButton}>
+              <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
-        scrollEventThrottle={16}
-        style={styles.scrollView}
-      >
-        {pages.map((page) => (
-          <View key={page.id} style={styles.page}>
-            <View style={styles.pageContent}>
-              <Text style={[styles.pageTitle, { color: colors.textPrimary }]}>
-                {t(page.titleKey)}
-              </Text>
-              <Text style={[styles.pageSubtitle, { color: colors.primary }]}>
-                {page.isAiSetup ? t(page.subtitleKey) : t(page.subtitleKey)}
-              </Text>
-              {page.content}
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.nextButton, { backgroundColor: colors.primary }]}
-          onPress={handleNext}
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleScroll}
+          scrollEventThrottle={16}
+          style={styles.scrollView}
         >
-          <Text style={[styles.nextButtonText, { color: colors.textOnPrimary }]}>
-            {currentPage === pages.length - 1 ? t('onboarding.get_started') : t('common.next')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScreenSafeArea>
+          {slides.map((renderSlide, index) => (
+            <View key={index} style={styles.page}>
+              <ScrollView
+                contentContainerStyle={styles.pageScrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {renderSlide()}
+              </ScrollView>
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={styles.bottomControls}>
+          <View style={styles.indicators}>
+            {Array.from({ length: NUM_ONBOARDING_PAGES }).map((_, index) => {
+              const active = currentPage === index
+              return (
+                <View
+                  key={index}
+                  style={[
+                    styles.indicator,
+                    {
+                      width: active ? 20 : 7,
+                      backgroundColor: active ? theme.iconColor : '#D1D5DB'
+                    }
+                  ]}
+                />
+              )
+            })}
+          </View>
+
+          <View style={styles.navActions}>
+            {currentPage > 0 && (
+              <TouchableOpacity onPress={handlePrevious} style={styles.backButton}>
+                <MaterialIcons name="arrow-back-ios" size={12} color="#9CA3AF" />
+                <Text style={styles.backText}>{t('common.back')}</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              onPress={handleNext}
+              style={[
+                styles.nextButton,
+                {
+                  backgroundColor: isLast ? theme.iconColor : BRAND_BLUE_DARK,
+                  opacity: nextBlockedOnStorage ? 0.45 : 1
+                }
+              ]}
+              activeOpacity={nextBlockedOnStorage ? 1 : 0.9}
+            >
+              <Text style={styles.nextButtonText}>
+                {isLast ? t('onboarding.get_started') : t('common.next')}
+              </Text>
+              {!isLast && (
+                <MaterialIcons name="arrow-forward-ios" size={14} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScreenSafeArea>
+    </View>
   )
 }
 
@@ -270,28 +338,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'transparent'
+  },
+  topBar: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    alignItems: 'flex-end'
+  },
   skipButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 10,
-    padding: 8
+    paddingVertical: 4,
+    paddingHorizontal: 4
   },
   skipText: {
-    fontSize: 16,
-    fontWeight: '500'
-  },
-  indicatorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 60,
-    marginBottom: 20,
-    gap: 8
-  },
-  indicator: {
-    height: 8,
-    borderRadius: 4
+    color: '#9CA3AF',
+    fontSize: 15
   },
   scrollView: {
     flex: 1
@@ -300,79 +362,122 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     flex: 1
   },
-  pageContent: {
-    flex: 1,
+  pageScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: 32,
-    justifyContent: 'center'
+    paddingVertical: 16,
+    maxWidth: 480,
+    alignSelf: 'center',
+    width: '100%'
   },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: '900',
+  slideInner: {
+    alignItems: 'center'
+  },
+  slideTitle: {
+    fontSize: 22,
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 8
+    letterSpacing: -0.3,
+    lineHeight: 30,
+    color: '#111827'
   },
-  pageSubtitle: {
+  slideBody: {
+    fontSize: 16,
+    lineHeight: 27,
+    textAlign: 'center',
+    color: '#6B7280'
+  },
+  welcomeIconWrap: {
+    borderRadius: 32,
+    shadowColor: '#9AD4EA',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 30,
+    elevation: 8
+  },
+  welcomeIcon: {
+    width: 140,
+    height: 140,
+    borderRadius: 32
+  },
+  welcomeTitle: {
+    marginTop: 36,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    textAlign: 'center',
+    color: BRAND_BLUE_DARK
+  },
+  welcomeTagline: {
+    marginTop: 6,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 32,
+    color: BRAND_BLUE_DARK,
     opacity: 0.85
   },
-  heroContainer: {
-    alignItems: 'center'
+  slideSpacerLarge: {
+    height: 36
   },
-  logoBox: {
-    width: 100,
-    height: 100,
-    borderRadius: 30,
+  slideSpacerMedium: {
+    height: 20
+  },
+  sloganSpacer: {
+    height: 40
+  },
+  slogan: {
+    fontSize: 15,
+    color: '#6B7280',
+    letterSpacing: 2,
+    textAlign: 'center'
+  },
+  bottomControls: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24
   },
-  logoText: {
-    fontSize: 50
+  indicators: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flexShrink: 0
   },
-  heroSubtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24
+  indicator: {
+    height: 7,
+    borderRadius: 4
   },
-  chartContainer: {
-    alignItems: 'center'
+  navActions: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4
   },
-  chartDescription: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8
   },
-  footer: {
-    padding: 24
+  backText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginLeft: 2
   },
   nextButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center'
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12
   },
   nextButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold'
-  },
-  aiSetupContainer: {
-    gap: 16
-  },
-  apiKeyLabel: {
+    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600'
-  },
-  secondaryButton: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center'
-  },
-  secondaryButtonText: {
-    fontSize: 16,
     fontWeight: '600'
   }
 })

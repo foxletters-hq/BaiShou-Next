@@ -41,11 +41,19 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
-import { syncSettingsAssistantsToRepo } from '../services/mobile-assistant-sync.service'
+import {
+  buildAssistantRepoInput,
+  findAssistantForUi,
+  listAssistantsForUi
+} from '../lib/mobile-assistant.util'
 import {
   isResolvableAssistantAvatarDirectUri,
   normalizeAssistantAvatarDisplayUri
 } from '../lib/assistant-avatar-uri'
+import {
+  invalidateAssistantAvatarDisplayCache,
+  resolveAssistantAvatarForMobileUi
+} from '../lib/assistant-avatar-display.util'
 
 interface Assistant {
   id: string
@@ -137,8 +145,12 @@ export const AssistantEditScreen: React.FC = () => {
       }
       if (isAssistantAvatarRelativePath(path) && services) {
         try {
-          const resolved = await services.attachmentManager.resolveAvatarPath(path)
-          setPreviewAvatarUri(normalizeAssistantAvatarDisplayUri(resolved))
+          const displayUri = await resolveAssistantAvatarForMobileUi(
+            path,
+            services.attachmentManager,
+            services.fileSystem
+          )
+          setPreviewAvatarUri(displayUri ?? null)
         } catch {
           setPreviewAvatarUri(null)
         }
@@ -162,10 +174,14 @@ export const AssistantEditScreen: React.FC = () => {
 
     const loadAssistant = async () => {
       try {
-        const assistants = (await services.settingsManager.get<Assistant[]>('assistants')) || []
-        const assistant = assistants.find((a) => a.id === id)
+        const assistant = await findAssistantForUi(
+          services.assistantManager,
+          services.attachmentManager,
+          services.fileSystem,
+          id as string
+        )
         if (assistant) {
-          setExistingAssistant(assistant)
+          setExistingAssistant(assistant as Assistant)
           setName(assistant.name)
           setEmoji(assistant.emoji || '')
           setDescription(assistant.description || '')
@@ -261,8 +277,6 @@ export const AssistantEditScreen: React.FC = () => {
     setSaving(true)
 
     try {
-      const assistants = (await services.settingsManager.get<Assistant[]>('assistants')) || []
-
       let finalAvatarPath: string | undefined = storedAvatarPath
       if (pendingImportUri) {
         finalAvatarPath = await services.attachmentManager.importAvatar(pendingImportUri, 'agent')
@@ -281,17 +295,22 @@ export const AssistantEditScreen: React.FC = () => {
         !hasImageAvatar &&
         (storedAvatarPath === ASSISTANT_DEFAULT_AVATAR_SENTINEL || (!emoji && !storedAvatarPath))
 
-      const assistantData: Assistant = {
-        ...(existingAssistant || {}),
-        id: isNew ? Date.now().toString() : (id as string),
+      const assistantId = isNew ? Date.now().toString() : (id as string)
+      const existingList = isNew ? [] : await listAssistantsForUi(
+        services.assistantManager,
+        services.attachmentManager,
+        services.fileSystem
+      )
+
+      const repoInput = buildAssistantRepoInput({
         name: name.trim(),
         emoji: hasImageAvatar || useDefaultBuiltinAvatar ? '' : emoji,
         description: description.trim(),
         systemPrompt: systemPrompt.trim(),
-        isDefault: existingAssistant?.isDefault ?? assistants.length === 0,
+        isDefault: existingAssistant?.isDefault ?? existingList.length === 0,
         isPinned: existingAssistant?.isPinned ?? false,
-        providerId: providerId || undefined,
-        modelId: modelId || undefined,
+        providerId: providerId || null,
+        modelId: modelId || null,
         avatarPath: hasImageAvatar
           ? finalAvatarPath
           : useDefaultBuiltinAvatar
@@ -302,16 +321,19 @@ export const AssistantEditScreen: React.FC = () => {
         contextWindow: isUnlimitedContext ? -1 : Math.round(contextWindow),
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressTokenThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
-        compressSystemPrompt: isCompressDisabled ? null : compressSystemPrompt.trim() || null,
-        createdAt: existingAssistant?.createdAt ?? Date.now()
+        compressSystemPrompt: isCompressDisabled ? null : compressSystemPrompt.trim() || null
+      })
+
+      if (isNew) {
+        await services.assistantManager.create({ id: assistantId, ...repoInput })
+      } else {
+        await services.assistantManager.update(assistantId, repoInput)
       }
 
-      const newAssistants = isNew
-        ? [...assistants, assistantData]
-        : assistants.map((a) => (a.id === id ? { ...a, ...assistantData } : a))
-
-      await services.settingsManager.set('assistants', newAssistants)
-      await syncSettingsAssistantsToRepo(services.settingsManager, services.assistantManager)
+      invalidateAssistantAvatarDisplayCache(repoInput.avatarPath ?? undefined)
+      if (existingAssistant?.avatarPath && existingAssistant.avatarPath !== repoInput.avatarPath) {
+        invalidateAssistantAvatarDisplayCache(existingAssistant.avatarPath)
+      }
       toast.showSuccess(
         isNew
           ? t('agent.assistant.created', '伙伴已创建')
@@ -343,9 +365,7 @@ export const AssistantEditScreen: React.FC = () => {
     )
     if (!confirmed) return
     try {
-      const assistants = (await services?.settingsManager.get<Assistant[]>('assistants')) || []
-      const newAssistants = assistants.filter((a) => a.id !== id)
-      await services?.settingsManager.set('assistants', newAssistants)
+      await services?.assistantManager.delete(id as string)
       toast.showSuccess(t('agent.assistant.deleted', '伙伴已删除'))
       router.back()
     } catch (e) {

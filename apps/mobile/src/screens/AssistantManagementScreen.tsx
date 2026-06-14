@@ -17,12 +17,11 @@ import {
   AssistantAvatar
 } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
-import { resolveAssistantAvatarDisplayUri } from '../lib/assistant-avatar-uri'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
-import { syncSettingsAssistantsToRepo } from '../services/mobile-assistant-sync.service'
+import { listAssistantsForUi } from '../lib/mobile-assistant.util'
 
 interface Assistant {
   id: string
@@ -59,16 +58,12 @@ export const AssistantManagementScreen: React.FC = () => {
   const loadAssistants = useCallback(async () => {
     if (!dbReady || !services) return
     try {
-      const assistantList = (await services.settingsManager.get<Assistant[]>('assistants')) || []
-      const withAvatars = await Promise.all(
-        assistantList.map(async (a) => {
-          const displayAvatarUri = await resolveAssistantAvatarDisplayUri(a.avatarPath, (path) =>
-            services.attachmentManager.resolveAvatarPath(path)
-          )
-          return { ...a, displayAvatarUri }
-        })
+      const assistantList = await listAssistantsForUi(
+        services.assistantManager,
+        services.attachmentManager,
+        services.fileSystem
       )
-      setAssistants(withAvatars)
+      setAssistants(assistantList)
     } catch (e) {
       console.error('Failed to load assistants', e)
     } finally {
@@ -124,12 +119,8 @@ export const AssistantManagementScreen: React.FC = () => {
     )
     if (!confirmed) return
     try {
-      const newAssistants = assistants.filter((a) => a.id !== assistant.id)
-      await services?.settingsManager.set('assistants', newAssistants)
-      if (services) {
-        await syncSettingsAssistantsToRepo(services.settingsManager, services.assistantManager)
-      }
-      setAssistants(newAssistants)
+      await services?.assistantManager.delete(assistant.id)
+      setAssistants((prev) => prev.filter((a) => a.id !== assistant.id))
       toast.showSuccess(t('agent.assistant.deleted', '助手已删除'))
     } catch (e) {
       console.error('Failed to delete assistant', e)
@@ -139,14 +130,10 @@ export const AssistantManagementScreen: React.FC = () => {
 
   const handleTogglePin = async (assistant: Assistant) => {
     try {
-      const newAssistants = assistants.map((a) =>
-        a.id === assistant.id ? { ...a, isPinned: !a.isPinned } : a
+      await services?.assistantManager.togglePin(assistant.id, !assistant.isPinned)
+      setAssistants((prev) =>
+        prev.map((a) => (a.id === assistant.id ? { ...a, isPinned: !a.isPinned } : a))
       )
-      await services?.settingsManager.set('assistants', newAssistants)
-      if (services) {
-        await syncSettingsAssistantsToRepo(services.settingsManager, services.assistantManager)
-      }
-      setAssistants(newAssistants)
     } catch (e) {
       console.error('Failed to toggle pin', e)
     }
@@ -224,8 +211,9 @@ export const AssistantManagementScreen: React.FC = () => {
       title={t('agent.assistant.title', '伙伴管理')}
       {...getStackScreenChrome(colors)}
       headerRight={{
-        label: `+ ${t('agent.assistant.create_new', '新增伙伴')}`,
-        onPress: handleCreateAssistant
+        icon: 'add',
+        onPress: handleCreateAssistant,
+        accessibilityLabel: t('agent.assistant.create_new', '新增伙伴')
       }}
       contentStyle={styles.container}
     >
@@ -269,7 +257,7 @@ export const AssistantManagementScreen: React.FC = () => {
             <Input
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder={t('common.search_hint', '搜索…')}
+              placeholder={t('agent.assistant.search_hint', '搜索伙伴...')}
             />
           }
           ListEmptyComponent={

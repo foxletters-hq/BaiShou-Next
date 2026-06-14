@@ -1,58 +1,128 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { StoragePermissionPrompt, useNativeTheme } from '@baishou/ui/native'
+import { StoragePermissionPrompt, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
-import { useStoragePermission } from '../../../hooks/useStoragePermission'
-import { EXTERNAL_STORAGE_ROOT } from '../../../services/path.service'
+import {
+  EXTERNAL_STORAGE_ROOT,
+  hasStoragePermission,
+  requestStoragePermission
+} from '../../../services/storage-permission.service'
+import { pickUserDirectory } from '../../../services/pick-directory.service'
+import { toFileUri } from '../../../services/android-external-fs'
 
 function displayPath(uri: string): string {
   return uri.replace(/^file:\/\//, '')
 }
 
-export const OnboardingStorageSlide: React.FC = () => {
+interface OnboardingStorageSlideProps {
+  granted: boolean | undefined
+  permissionChecked: boolean
+  needsFullFileAccess: boolean
+  onRequestPermission: () => Promise<boolean>
+}
+
+export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
+  granted,
+  permissionChecked,
+  needsFullFileAccess,
+  onRequestPermission
+}) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
-  const { dbReady, storageReady } = useBaishou()
-  const { granted, request, needsFullFileAccess } = useStoragePermission()
-  const [rootPath, setRootPath] = useState('...')
+  const toast = useNativeToast()
+  const { dbReady, services } = useBaishou()
+  const [rootPath, setRootPath] = useState(displayPath(EXTERNAL_STORAGE_ROOT))
+  const [changing, setChanging] = useState(false)
+
+  const refreshRootPath = useCallback(async () => {
+    if (!services?.pathService) return
+    try {
+      const root = await services.pathService.getRootDirectory()
+      setRootPath(displayPath(root))
+    } catch {
+      setRootPath(displayPath(EXTERNAL_STORAGE_ROOT))
+    }
+  }, [services])
 
   useEffect(() => {
     if (!dbReady) return
-    if (storageReady && granted) {
+    if (Platform.OS === 'android' && granted !== true) {
       setRootPath(displayPath(EXTERNAL_STORAGE_ROOT))
       return
     }
-    setRootPath(displayPath(EXTERNAL_STORAGE_ROOT))
-  }, [dbReady, storageReady, granted])
+    void refreshRootPath()
+  }, [dbReady, granted, refreshRootPath])
+
+  const handleChangeStorage = async () => {
+    if (!services?.pathService) return
+
+    if (Platform.OS === 'android') {
+      const hasPermission = await hasStoragePermission()
+      if (!hasPermission) {
+        const ok = await onRequestPermission()
+        if (!ok) return
+      }
+    }
+
+    setChanging(true)
+    try {
+      const result = await pickUserDirectory()
+      if (result.status === 'selected') {
+        await services.pathService.updateRootDirectory(toFileUri(result.path))
+        await refreshRootPath()
+      }
+    } catch {
+      toast.showError(t('onboarding.storage_permission_error'))
+    } finally {
+      setChanging(false)
+    }
+  }
+
+  const showPath = permissionChecked || Platform.OS !== 'android'
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.desc, { color: colors.textSecondary }]}>
-        {t('onboarding.storage_desc_mobile')}
-      </Text>
+      {needsFullFileAccess && (
+        <StoragePermissionPrompt
+          onRequest={() => void onRequestPermission()}
+          compact
+          mode="required"
+        />
+      )}
 
-      <View style={[styles.pathCard, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.pathLabel, { color: colors.textSecondary }]}>
-          {t('onboarding.current_storage')}
-        </Text>
-        {rootPath === '...' ? (
-          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 8 }} />
+      <View style={styles.pathBlock}>
+        <View style={styles.pathHeader}>
+          <MaterialIcons name="folder-open" size={16} color="#D4924A" />
+          <Text style={styles.pathLabel}>{t('onboarding.current_storage')}</Text>
+        </View>
+        {!showPath ? (
+          <ActivityIndicator size="small" color="#D4924A" style={styles.loader} />
         ) : (
-          <Text style={[styles.pathValue, { color: colors.textPrimary }]} selectable>
-            {rootPath}
-          </Text>
+          <View style={styles.pathValueWrap}>
+            <Text style={styles.pathValue} selectable>
+              {rootPath}
+            </Text>
+          </View>
         )}
       </View>
 
-      {needsFullFileAccess && (
-        <StoragePermissionPrompt onRequest={() => void request()} compact mode="required" />
-      )}
-
       {granted === true && (
-        <Text style={[styles.hint, { color: colors.primary }]}>
-          {t('common.permission.storage_granted')}
-        </Text>
+        <TouchableOpacity
+          style={styles.changeButton}
+          onPress={() => void handleChangeStorage()}
+          disabled={changing}
+          activeOpacity={0.85}
+        >
+          {changing ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <MaterialIcons name="edit-location-alt" size={18} color="#FFFFFF" />
+              <Text style={styles.changeButtonText}>{t('onboarding.change_storage')}</Text>
+            </>
+          )}
+        </TouchableOpacity>
       )}
     </View>
   )
@@ -60,28 +130,55 @@ export const OnboardingStorageSlide: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16
+    width: '100%',
+    gap: 20
   },
-  desc: {
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center'
+  pathBlock: {
+    width: '100%',
+    gap: 10
   },
-  pathCard: {
-    padding: 16,
-    borderRadius: 12
+  pathHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6
   },
   pathLabel: {
-    fontSize: 13,
     fontWeight: '600',
-    marginBottom: 6
+    fontSize: 13,
+    color: '#6B5B45'
+  },
+  pathValueWrap: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF'
   },
   pathValue: {
+    fontFamily: 'monospace',
     fontSize: 12,
-    fontFamily: 'monospace'
+    lineHeight: 18,
+    textAlign: 'center',
+    color: '#6B7280'
   },
-  hint: {
-    fontSize: 13,
-    textAlign: 'center'
+  loader: {
+    marginTop: 4,
+    alignSelf: 'center'
+  },
+  changeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    alignSelf: 'center',
+    backgroundColor: '#FFB74D',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12
+  },
+  changeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600'
   }
 })
