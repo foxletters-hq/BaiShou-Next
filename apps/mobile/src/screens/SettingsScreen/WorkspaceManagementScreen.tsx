@@ -152,7 +152,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
 
   return (
     <StackScreenLayout
-      title={t('workspace.manage', '管理工作区')}
+      title={t('workspace.manage', '管理工作空间')}
       {...chrome}
       contentStyle={styles.layoutContent}
     >
