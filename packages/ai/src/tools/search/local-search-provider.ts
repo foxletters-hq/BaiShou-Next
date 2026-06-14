@@ -1,8 +1,10 @@
 import { logger, limitExecute } from '@baishou/shared'
-import { DEFAULT_WEB_SEARCH_LIMITS } from './web-search-config.util'
+import { DEFAULT_WEB_SEARCH_LIMITS, WEB_SEARCH_MAX_RESULTS_LIMIT } from './web-search-config.util'
 
 /** 与桌面端 SearchService 窗口池并发一致 */
 const LOCAL_SEARCH_CONTENT_CONCURRENCY = 4
+
+export { WEB_SEARCH_MAX_RESULTS_LIMIT as LOCAL_SEARCH_MAX_URL_RESULTS }
 
 export interface SearchItem {
   title: string
@@ -44,7 +46,7 @@ export abstract class LocalSearchProvider {
    */
   public async search(
     query: string,
-    maxResults: number = 5,
+    maxResults: number = DEFAULT_WEB_SEARCH_LIMITS.maxResults,
     webSearchResultFetcher?: (url: string) => Promise<string>,
     plainSnippetLength?: number
   ): Promise<LocalSearchResponse> {
@@ -53,8 +55,8 @@ export abstract class LocalSearchProvider {
         throw new Error('Search query cannot be empty')
       }
 
-      // 构建搜索 URL
-      const searchUrl = this.buildSearchUrl(query)
+      // 构建搜索 URL（含结果数量参数）
+      const searchUrl = this.buildSearchUrl(query, maxResults)
       logger.info(`[LocalSearchProvider] Searching: ${searchUrl}`)
 
       // 使用 IPC 调用主进程的 SearchService
@@ -108,7 +110,7 @@ export abstract class LocalSearchProvider {
   /**
    * 构建搜索 URL
    */
-  protected buildSearchUrl(query: string): string {
+  protected buildSearchUrl(query: string, maxResults: number): string {
     return this.searchUrl.replace('%s', encodeURIComponent(query))
   }
 

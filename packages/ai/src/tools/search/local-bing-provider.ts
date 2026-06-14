@@ -1,5 +1,5 @@
 import { logger } from '@baishou/shared'
-import { LocalSearchProvider, type SearchItem } from './local-search-provider'
+import { LocalSearchProvider, LOCAL_SEARCH_MAX_URL_RESULTS, type SearchItem } from './local-search-provider'
 
 /**
  * Bing 本地搜索提供者
@@ -8,6 +8,11 @@ import { LocalSearchProvider, type SearchItem } from './local-search-provider'
 export class LocalBingProvider extends LocalSearchProvider {
   constructor(fetchSearchPageFn?: (url: string) => Promise<string>) {
     super('local-bing', 'https://cn.bing.com/search?q=%s&ensearch=1', fetchSearchPageFn)
+  }
+
+  protected buildSearchUrl(query: string, maxResults: number): string {
+    const count = Math.min(Math.max(maxResults, 1), LOCAL_SEARCH_MAX_URL_RESULTS)
+    return `https://cn.bing.com/search?q=${encodeURIComponent(query)}&ensearch=1&count=${count}`
   }
 
   /**

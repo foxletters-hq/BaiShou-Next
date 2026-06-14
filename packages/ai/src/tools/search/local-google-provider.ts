@@ -1,5 +1,5 @@
 import { logger } from '@baishou/shared'
-import { LocalSearchProvider, type SearchItem } from './local-search-provider'
+import { LocalSearchProvider, LOCAL_SEARCH_MAX_URL_RESULTS, type SearchItem } from './local-search-provider'
 
 /**
  * Google 本地搜索提供者
@@ -8,6 +8,11 @@ import { LocalSearchProvider, type SearchItem } from './local-search-provider'
 export class LocalGoogleProvider extends LocalSearchProvider {
   constructor(fetchSearchPageFn?: (url: string) => Promise<string>) {
     super('local-google', 'https://www.google.com/search?q=%s', fetchSearchPageFn)
+  }
+
+  protected buildSearchUrl(query: string, maxResults: number): string {
+    const num = Math.min(Math.max(maxResults, 1), LOCAL_SEARCH_MAX_URL_RESULTS)
+    return `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${num}`
   }
 
   /**

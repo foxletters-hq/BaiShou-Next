@@ -3,6 +3,8 @@ import { searchExaMcp } from './exa-mcp-search'
 import { HtmlToMarkdownConverter } from './html-to-markdown'
 import { LocalBingProvider } from './local-bing-provider'
 import { LocalGoogleProvider } from './local-google-provider'
+import { DEFAULT_WEB_SEARCH_LIMITS } from './web-search-config.util'
+import { truncateSearchSnippet } from './web-content.util'
 
 export interface SearchResult {
   title: string
@@ -52,7 +54,7 @@ function cleanApiKey(apiKey?: string): string {
  * 包含随机请求头反爬伪装及 Fallback 策略保护
  */
 export class WebSearchService {
-  private static readonly defaultMaxResults = 5
+  private static readonly defaultMaxResults = DEFAULT_WEB_SEARCH_LIMITS.maxResults
 
   private static readonly userAgentPool = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
@@ -95,8 +97,8 @@ export class WebSearchService {
     const {
       queries,
       engine,
-      maxResultsPerQuery = 5,
-      totalMaxResults = 10,
+      maxResultsPerQuery = DEFAULT_WEB_SEARCH_LIMITS.maxResults,
+      totalMaxResults = maxResultsPerQuery,
       apiKey,
       exaApiKey,
       anysearchApiKey,
@@ -537,7 +539,10 @@ export class WebSearchService {
       return response.results.map((r) => ({
         title: r.title,
         url: r.url,
-        snippet: r.content.substring(0, 300) // 截取前300字符作为 snippet
+        snippet: truncateSearchSnippet(
+          r.content,
+          plainSnippetLength ?? DEFAULT_WEB_SEARCH_LIMITS.plainSnippetLength
+        )
       }))
     } catch (e) {
       console.error('[WebSearchService] Local Bing search failed:', e)
@@ -565,7 +570,10 @@ export class WebSearchService {
       return response.results.map((r) => ({
         title: r.title,
         url: r.url,
-        snippet: r.content.substring(0, 300) // 截取前300字符作为 snippet
+        snippet: truncateSearchSnippet(
+          r.content,
+          plainSnippetLength ?? DEFAULT_WEB_SEARCH_LIMITS.plainSnippetLength
+        )
       }))
     } catch (e) {
       console.error('[WebSearchService] Local Google search failed:', e)

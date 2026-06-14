@@ -45,6 +45,9 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     sourceId: string
     groupId: string
     sourceCreatedAt?: number
+    metadataJson?: string
+    /** 为 true 时，若所有分块均未成功嵌入则抛出错误 */
+    requireSuccess?: boolean
   }): Promise<void> {
     if (!this.hybridRepo) {
       throw new Error('hybridRepo must be provided to store embeddings permanently.')
@@ -52,6 +55,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
 
     // 对齐原版：长文本先分块，每块独立嵌入入库
     const chunks = splitIntoChunks(options.text)
+    let successCount = 0
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]!
@@ -61,6 +65,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         continue
       }
 
+      successCount++
       await this.hybridRepo.insertEmbedding({
         id: `${options.sourceId}_chunk_${i}`,
         sourceType: options.sourceType,
@@ -68,10 +73,15 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         groupId: options.groupId,
         chunkIndex: i,
         chunkText: chunk,
+        metadataJson: options.metadataJson || '{}',
         embedding: embVector,
         modelId: this.modelId,
         sourceCreatedAt: options.sourceCreatedAt ?? Date.now()
       })
+    }
+
+    if (options.requireSuccess && chunks.length > 0 && successCount === 0) {
+      throw new Error('Embedding API returned no vectors')
     }
   }
 }

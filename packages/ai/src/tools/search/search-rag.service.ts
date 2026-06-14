@@ -1,6 +1,7 @@
 import { cosineSimilarity } from 'ai'
 import { ToolEmbeddingService } from '../agent.tool'
 import { truncateSearchSnippet } from './web-content.util'
+import { DEFAULT_WEB_SEARCH_LIMITS } from './web-search-config.util'
 
 export interface CompressInput {
   query: string
@@ -8,7 +9,7 @@ export interface CompressInput {
   embeddingService: ToolEmbeddingService
   totalMaxChunks?: number
   chunksPerSource?: number
-  /** Max characters per result returned to the model (defaults to 1200). */
+  /** Max characters per result returned to the model (defaults to plain snippet setting). */
   maxSnippetLength?: number
 }
 
@@ -35,9 +36,9 @@ export class SearchRagService {
       query,
       results,
       embeddingService,
-      totalMaxChunks = 5,
-      chunksPerSource = 4,
-      maxSnippetLength = 1200
+      totalMaxChunks = DEFAULT_WEB_SEARCH_LIMITS.ragMaxChunks,
+      chunksPerSource = DEFAULT_WEB_SEARCH_LIMITS.ragChunksPerSource,
+      maxSnippetLength = DEFAULT_WEB_SEARCH_LIMITS.plainSnippetLength
     } = input
 
     const truncate = (text: string) => truncateSearchSnippet(text, maxSnippetLength)

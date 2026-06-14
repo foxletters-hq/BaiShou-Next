@@ -41,8 +41,8 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
 
   readonly description =
     'Semantic search over conversation history and stored memories. ' +
-    'When the user asks about past content, previous decisions, personal preferences, ' +
-    'or anything discussed before, you MUST call this tool first. ' +
+    'You may use this when the user asks about past content, previous decisions, personal preferences, ' +
+    'or earlier topics and the current context (including any rolling compression summary) is insufficient. ' +
     'Returns the most semantically relevant conversation snippets with scores.'
 
   readonly parameters = vectorSearchParams

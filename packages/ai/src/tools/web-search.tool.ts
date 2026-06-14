@@ -7,7 +7,7 @@ import {
   type SearchDiagnostics
 } from './search/web-search.service'
 import { SearchRagService } from './search/search-rag.service'
-import { resolveWebSearchLimits } from './search/web-search-config.util'
+import { resolveWebSearchLimits, DEFAULT_WEB_SEARCH_LIMITS } from './search/web-search-config.util'
 import { truncateSearchSnippet } from './search/web-content.util'
 
 const webSearchParams = z.object({
@@ -31,7 +31,7 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
     'that requires up-to-date information beyond your training data.\n\n' +
     'IMPORTANT: This tool searches the PUBLIC INTERNET only. ' +
     "Do NOT use this to search the user's personal diary entries — use diary_search for that.\n\n" +
-    'You should provide 2-3 search queries with different angles/keywords ' +
+    'You may provide 2-3 search queries with different angles/keywords ' +
     'to get comprehensive results. For example, if the user asks about "iPhone 16 vs Samsung S25", ' +
     'you could search ["iPhone 16 specs review", "Samsung S25 specs review", "iPhone 16 vs Samsung S25 comparison"].\n\n' +
     'Results include clickable [title](url) citations — use the url_read tool to read specific pages in detail.'
@@ -92,7 +92,7 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
         key: 'web_search_max_results',
         label: 'Max Results Per Query',
         type: 'number',
-        defaultValue: 5
+        defaultValue: DEFAULT_WEB_SEARCH_LIMITS.maxResults
       },
       {
         key: 'web_search_rag_enabled',
@@ -133,7 +133,7 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
           queries,
           engine,
           maxResultsPerQuery: maxResults,
-          totalMaxResults: maxResults + 5,
+          totalMaxResults: maxResults,
           apiKey: tavilyKey,
           exaApiKey: exaKey,
           anysearchApiKey: anysearchKey,

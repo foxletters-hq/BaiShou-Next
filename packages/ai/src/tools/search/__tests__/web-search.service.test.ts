@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { WebSearchService } from '../web-search.service'
 
 describe('WebSearchService', () => {
@@ -57,6 +57,56 @@ describe('WebSearchService', () => {
       const results = WebSearchService.parseDuckDuckGoResults(html, 5)
 
       expect(results).toHaveLength(0)
+    })
+  })
+
+  describe('multiSearch', () => {
+    it('caps merged multi-query results at totalMaxResults', async () => {
+      const searchSpy = vi
+        .spyOn(WebSearchService, 'search')
+        .mockImplementation(async (query) => [
+          { title: `${query}-a`, url: `https://example.com/${query}-a`, snippet: 'a' },
+          { title: `${query}-b`, url: `https://example.com/${query}-b`, snippet: 'b' }
+        ])
+
+      const results = await WebSearchService.multiSearch({
+        queries: ['one', 'two'],
+        engine: 'duckduckgo',
+        maxResultsPerQuery: 2,
+        totalMaxResults: 3
+      })
+
+      expect(results).toHaveLength(3)
+      searchSpy.mockRestore()
+    })
+
+    it('uses the same limit for single-query searches', async () => {
+      const searchSpy = vi.spyOn(WebSearchService, 'search').mockResolvedValue([
+        { title: 'a', url: 'https://example.com/a', snippet: 'a' },
+        { title: 'b', url: 'https://example.com/b', snippet: 'b' },
+        { title: 'c', url: 'https://example.com/c', snippet: 'c' }
+      ])
+
+      await WebSearchService.multiSearch({
+        queries: ['hello'],
+        engine: 'exa-mcp',
+        maxResultsPerQuery: 2,
+        totalMaxResults: 2
+      })
+
+      expect(searchSpy).toHaveBeenCalledWith(
+        'hello',
+        'exa-mcp',
+        2,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      )
+      searchSpy.mockRestore()
     })
   })
 
