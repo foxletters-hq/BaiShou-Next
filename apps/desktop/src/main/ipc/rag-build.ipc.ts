@@ -1,4 +1,4 @@
-import { ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { ipcMain, type IpcMainInvokeEvent, BrowserWindow } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 import { getAppDb } from '../db'
@@ -19,7 +19,10 @@ import {
   limitExecute,
   logger,
   resolveBatchEmbedConcurrency,
+  clearRagDiaryEmbedFailure,
+  hasRagDiaryEmbedFailure,
   toSerializableAiError,
+  type RagConfig,
   type RagMigrationStatusKey,
   type RagMigrationStreamResult
 } from '@baishou/shared'
@@ -189,9 +192,9 @@ export function registerRagBuildIPC() {
         filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
       )
       const total = diariesToEmbed.length
-      const ragConfig =
+      const batchRagConfig =
         (await settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
-      const batchConcurrency = resolveBatchEmbedConcurrency(ragConfig.batchEmbedConcurrency)
+      const batchConcurrency = resolveBatchEmbedConcurrency(batchRagConfig.batchEmbedConcurrency)
 
       if (total > 0) {
         await embeddingService.prepareEmbeddingIndex()
@@ -245,6 +248,15 @@ export function registerRagBuildIPC() {
         total,
         type: 'idle'
       })
+
+      const latestRagConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
+      if (hasRagDiaryEmbedFailure(latestRagConfig)) {
+        await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(latestRagConfig))
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
+        }
+      }
+
       return true
     } catch (e: unknown) {
       console.error('Batch Embed failed:', e)
