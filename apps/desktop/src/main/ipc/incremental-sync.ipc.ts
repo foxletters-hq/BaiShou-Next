@@ -44,8 +44,8 @@ async function ensureSyncServicesInitialized(): Promise<void> {
   try {
     const raw = await fs.promises.readFile(configPath, 'utf8')
     const saved = JSON.parse(raw) as Partial<S3SyncConfig>
-    await createSyncService(saved as S3SyncConfig)
-    if (syncService) await syncService.getConfig()
+    const service = await createSyncService(saved as S3SyncConfig)
+    await service.getConfig()
   } catch {
     // 配置损坏时保持未初始化，由 updateConfig 或 UI 重新保存
   }

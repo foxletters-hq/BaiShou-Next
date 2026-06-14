@@ -60,8 +60,12 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   private async getRemoteSize(remotePath: string): Promise<number> {
     try {
       const stat = await this.client.stat(remotePath)
-      if (stat && typeof stat.size === 'number') {
-        return stat.size
+      const size =
+        stat && typeof stat === 'object' && 'data' in stat
+          ? (stat as { data?: { size?: number } }).data?.size
+          : (stat as { size?: number } | undefined)?.size
+      if (typeof size === 'number') {
+        return size
       }
     } catch {}
     return 0
