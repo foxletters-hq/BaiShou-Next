@@ -1,0 +1,27 @@
+.container {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-low);
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.item {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}

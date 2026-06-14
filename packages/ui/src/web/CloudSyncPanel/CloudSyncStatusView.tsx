@@ -6,6 +6,7 @@ import { CloudSyncStatCards } from './CloudSyncStatCards'
 import { CloudSyncHeaderActions } from './CloudSyncHeaderActions'
 import { CloudSyncRecordList } from './CloudSyncRecordList'
 import { CloudSyncCountModal } from './CloudSyncCountModal'
+import { BackupScopeList } from '../BackupScopeList'
 
 export interface CloudSyncStatusViewProps {
   vm: CloudSyncPanelViewModel
@@ -24,6 +25,7 @@ export const CloudSyncStatusView: React.FC<CloudSyncStatusViewProps> = ({ vm }) 
       className={styles.container}
     >
       <CloudSyncStatCards vm={vm} />
+      {activeTab === 'cloud' && <BackupScopeList />}
       <CloudSyncHeaderActions vm={vm} />
       <CloudSyncRecordList vm={vm} />
       {showCountModal && <CloudSyncCountModal vm={vm} />}

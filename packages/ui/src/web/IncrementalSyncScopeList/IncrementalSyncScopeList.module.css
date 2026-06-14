@@ -1,0 +1,23 @@
+.container {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.item {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}

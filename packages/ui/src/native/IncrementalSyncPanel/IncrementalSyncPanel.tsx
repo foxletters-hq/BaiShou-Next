@@ -55,7 +55,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
       ]}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>🔄 增量同步</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>增量同步</Text>
         {!isConfigured && (
           <Text style={[styles.hint, { color: colors.error }]}>未配置同步目标</Text>
         )}
@@ -81,7 +81,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
             }
           ]}
         >
-          🔄 {isSyncing ? '同步中...' : '同步'}
+          {isSyncing ? '同步中...' : '同步'}
         </Text>
       </TouchableOpacity>
 
