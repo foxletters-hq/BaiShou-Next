@@ -57,7 +57,9 @@ describe.sequential('McpService', () => {
 
   it('handles Streamable HTTP initialize and tools/list on /mcp', async () => {
     await service.start()
-    const port = testPort
+    const server = (service as any).httpServer as import('http').Server | null
+    const bound = server?.address()
+    const port = typeof bound === 'object' && bound ? bound.port : testPort
     const base = `http://127.0.0.1:${port}/mcp`
     const mcpHeaders = {
       'Content-Type': 'application/json',
@@ -75,7 +77,20 @@ describe.sequential('McpService', () => {
       }
     }
 
-    const initRes = await fetch(base, {
+    const fetchWithRetry = async (url: string, init: RequestInit, attempts = 12): Promise<Response> => {
+      let lastError: unknown
+      for (let i = 0; i < attempts; i++) {
+        try {
+          return await fetch(url, init)
+        } catch (error) {
+          lastError = error
+          await new Promise((resolve) => setTimeout(resolve, 25))
+        }
+      }
+      throw lastError
+    }
+
+    const initRes = await fetchWithRetry(base, {
       method: 'POST',
       headers: mcpHeaders,
       body: JSON.stringify(initBody)
@@ -93,7 +108,7 @@ describe.sequential('McpService', () => {
       params: {}
     }
 
-    const listRes = await fetch(base, {
+    const listRes = await fetchWithRetry(base, {
       method: 'POST',
       headers: { ...mcpHeaders, 'mcp-session-id': sessionId! },
       body: JSON.stringify(listBody)
