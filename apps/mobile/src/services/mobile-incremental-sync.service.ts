@@ -1,8 +1,17 @@
-import { signS3Request, type S3SyncConfig } from '@baishou/shared'
+import {
+  buildS3ListUrl,
+  buildS3ObjectUrl,
+  isIncrementalSyncReady,
+  normalizeS3BasePath,
+  s3FetchHeaders,
+  signS3Request,
+  type S3SyncConfig
+} from '@baishou/shared'
 import type { IFileSystem, IArchiveService, SettingsManagerService } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
 import { MobileIncrementalEngine } from './mobile-incremental-engine'
+import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 
 export type IncrementalSyncProgress = {
   current: number
@@ -25,7 +34,42 @@ const DEFAULT_CONFIG: S3SyncConfig = {
   path: 'backup_sync',
   accessKey: '',
   secretKey: '',
-  target: 's3'
+  target: 's3',
+  fileConcurrency: 5,
+  chunkConcurrency: 5,
+  maxDivergencePercent: 100
+}
+
+type VaultSyncConfig = Partial<S3SyncConfig> & {
+  s3AccessKey?: string
+  s3SecretKey?: string
+  s3Path?: string
+  webdavUsername?: string
+  webdavPassword?: string
+  webdavPath?: string
+}
+
+function normalizeVaultConfig(partial?: VaultSyncConfig | null): S3SyncConfig {
+  const base = mergeConfig(partial)
+  const target = partial?.target === 'webdav' ? 'webdav' : 's3'
+  if (target === 'webdav') {
+    return {
+      ...base,
+      target: 'webdav',
+      accessKey: (partial?.accessKey || partial?.webdavUsername || '').trim(),
+      secretKey: (partial?.secretKey || partial?.webdavPassword || '').trim(),
+      path: partial?.path || partial?.webdavPath || base.path
+    }
+  }
+  return {
+    ...base,
+    target: 's3',
+    accessKey: (partial?.accessKey || partial?.s3AccessKey || '').trim(),
+    secretKey: (partial?.secretKey || partial?.s3SecretKey || '').trim(),
+    path: partial?.path || partial?.s3Path || base.path,
+    fileConcurrency: partial?.fileConcurrency ?? base.fileConcurrency,
+    chunkConcurrency: partial?.chunkConcurrency ?? base.chunkConcurrency
+  }
 }
 
 function mergeConfig(partial?: Partial<S3SyncConfig> | null): S3SyncConfig {
@@ -33,11 +77,7 @@ function mergeConfig(partial?: Partial<S3SyncConfig> | null): S3SyncConfig {
 }
 
 function isConfigReady(config: S3SyncConfig): boolean {
-  if (!config.enabled) return false
-  if (config.target === 'webdav') {
-    return Boolean(config.webdavUrl && config.accessKey)
-  }
-  return Boolean(config.endpoint && config.bucket && config.accessKey && config.secretKey)
+  return isIncrementalSyncReady(config)
 }
 
 async function testWebDav(config: S3SyncConfig): Promise<void> {
@@ -58,14 +98,15 @@ async function testWebDav(config: S3SyncConfig): Promise<void> {
 }
 
 async function testS3(config: S3SyncConfig): Promise<void> {
-  const uri = new URL(config.endpoint)
-  const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
-  const prefix = config.path?.replace(/^\//, '') || ''
-  const listUrl = usePathStyle
-    ? `${uri.protocol}//${uri.hostname}${uri.port ? ':' + uri.port : ''}/${config.bucket}?list-type=2&max-keys=1&prefix=${encodeURIComponent(prefix)}`
-    : `${uri.protocol}//${config.bucket}.${uri.hostname}${uri.port ? ':' + uri.port : ''}/?list-type=2&max-keys=1&prefix=${encodeURIComponent(prefix)}`
+  const prefix = normalizeS3BasePath(config.path)
+  const listUrl = buildS3ListUrl({
+    endpoint: config.endpoint,
+    bucket: config.bucket,
+    prefix,
+    maxKeys: 1
+  })
 
-  const headers = await signS3Request(
+  const signed = await signS3Request(
     'GET',
     listUrl,
     config.region || 'us-east-1',
@@ -73,7 +114,7 @@ async function testS3(config: S3SyncConfig): Promise<void> {
     config.secretKey,
     null
   )
-  const response = await fetch(listUrl, { method: 'GET', headers })
+  const response = await fetch(listUrl, { method: 'GET', headers: s3FetchHeaders(signed) })
   if (!response.ok) {
     throw new Error(`S3 list failed: ${response.status} ${response.statusText}`)
   }
@@ -109,29 +150,29 @@ async function uploadS3(
   localZipPath: string,
   remoteName: string
 ): Promise<void> {
-  const uri = new URL(config.endpoint)
-  const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
-  const basePath = config.path?.replace(/^\//, '') || ''
-  const objectName = basePath ? `${basePath.replace(/\/?$/, '/')}${remoteName}` : remoteName
+  const objectName = `${normalizeS3BasePath(config.path)}${remoteName}`
+  const url = buildS3ObjectUrl({
+    endpoint: config.endpoint,
+    bucket: config.bucket,
+    objectKey: objectName
+  })
 
-  const url = usePathStyle
-    ? `${uri.protocol}//${uri.hostname}${uri.port ? ':' + uri.port : ''}/${config.bucket}/${objectName}`
-    : `${uri.protocol}//${config.bucket}.${uri.hostname}${uri.port ? ':' + uri.port : ''}/${objectName}`
-
-  const headers = await signS3Request(
+  const contentType = 'application/zip'
+  const signed = await signS3Request(
     'PUT',
     url,
     config.region || 'us-east-1',
     config.accessKey,
     config.secretKey,
-    null
+    null,
+    { 'Content-Type': contentType }
   )
 
   const response = await uploadAsync(url, localZipPath, {
     httpMethod: 'PUT',
     headers: {
-      ...headers,
-      'Content-Type': 'application/zip'
+      ...s3FetchHeaders(signed),
+      'Content-Type': contentType
     },
     uploadType: FileSystemUploadType.BINARY_CONTENT
   })
@@ -149,9 +190,14 @@ export class MobileIncrementalSyncService {
     private readonly archiveService: IArchiveService,
     private readonly pathService: IStoragePathService,
     private readonly fileSystem: IFileSystem,
+    private readonly bootstrapper?: MobileDataBootstrapper,
     deviceId: string = `mobile-${Date.now()}`
   ) {
     this.engine = new MobileIncrementalEngine(pathService, fileSystem, deviceId)
+  }
+
+  private async afterSyncComplete(): Promise<void> {
+    await this.bootstrapper?.resyncFromDisk()
   }
 
   private async vaultConfigPath(): Promise<string | null> {
@@ -161,30 +207,28 @@ export class MobileIncrementalSyncService {
   }
 
   async getConfig(): Promise<S3SyncConfig> {
-    const fromSettings =
-      await this.settingsManager.get<Partial<S3SyncConfig>>('incremental_sync_config')
     const vaultPath = await this.vaultConfigPath()
     if (vaultPath) {
       try {
         if (await this.fileSystem.exists(vaultPath)) {
           const raw = await this.fileSystem.readFile(vaultPath)
-          const fromVault = JSON.parse(raw) as Partial<S3SyncConfig>
-          return mergeConfig({ ...fromVault, ...fromSettings })
+          const fromVault = JSON.parse(raw) as VaultSyncConfig
+          return normalizeVaultConfig(fromVault)
         }
       } catch {
-        // fallback settings only
+        // fall through to defaults
       }
     }
-    return mergeConfig(fromSettings)
+    return normalizeVaultConfig(null)
   }
 
   async saveConfig(config: Partial<S3SyncConfig>): Promise<void> {
     const merged = mergeConfig({ ...(await this.getConfig()), ...config })
-    await this.settingsManager.set('incremental_sync_config', merged)
     const vaultPath = await this.vaultConfigPath()
-    if (vaultPath) {
-      await this.fileSystem.writeFile(vaultPath, JSON.stringify(merged, null, 2))
+    if (!vaultPath) {
+      throw new Error('No active vault found')
     }
+    await this.fileSystem.writeFile(vaultPath, JSON.stringify(merged, null, 2))
   }
 
   async isConfigured(): Promise<boolean> {
@@ -193,7 +237,7 @@ export class MobileIncrementalSyncService {
   }
 
   async testConnection(configOverride?: Partial<S3SyncConfig>): Promise<void> {
-    const config = mergeConfig({ ...(await this.getConfig()), ...configOverride })
+    const config = normalizeVaultConfig({ ...(await this.getConfig()), ...configOverride })
     if (config.target === 'webdav') {
       await testWebDav(config)
     } else {
@@ -216,6 +260,8 @@ export class MobileIncrementalSyncService {
       onProgress?.({ current, total, statusText })
     })
 
+    await this.afterSyncComplete()
+
     return {
       uploaded: result.uploaded,
       downloaded: result.downloaded,
@@ -232,6 +278,7 @@ export class MobileIncrementalSyncService {
     const result = await this.engine.uploadOnly(config, (c, t, s) =>
       onProgress?.({ current: c, total: t, statusText: s })
     )
+    await this.afterSyncComplete()
     return {
       uploaded: result.uploaded,
       downloaded: 0,
@@ -248,6 +295,7 @@ export class MobileIncrementalSyncService {
     const result = await this.engine.downloadOnly(config, (c, t, s) =>
       onProgress?.({ current: c, total: t, statusText: s })
     )
+    await this.afterSyncComplete()
     return {
       uploaded: 0,
       downloaded: result.downloaded,

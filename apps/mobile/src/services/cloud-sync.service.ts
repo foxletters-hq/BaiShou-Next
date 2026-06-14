@@ -7,7 +7,13 @@ import {
   IArchiveService,
   type IFileSystem
 } from '@baishou/core-mobile'
-import { signS3Request } from '@baishou/shared'
+import {
+  buildS3ListUrl,
+  buildS3ObjectUrl,
+  fetchAllS3ListPages,
+  s3FetchHeaders,
+  signS3Request
+} from '@baishou/shared'
 
 /**
  * 基于 fetch API 的 WebDAV 客户端（React Native 兼容）
@@ -206,21 +212,29 @@ class MobileS3Client implements ICloudSyncClient {
   }
 
   private getObjectUrl(objectName: string): string {
-    const uri = new URL(this.endpoint)
-    const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
-
-    if (usePathStyle) {
-      return `${uri.protocol}//${uri.hostname}${uri.port ? ':' + uri.port : ''}/${this.bucket}/${objectName}`
-    }
-    return `${uri.protocol}//${this.bucket}.${uri.hostname}${uri.port ? ':' + uri.port : ''}/${objectName}`
+    return buildS3ObjectUrl({
+      endpoint: this.endpoint,
+      bucket: this.bucket,
+      objectKey: objectName
+    })
   }
 
   private async signRequest(
     method: string,
     url: string,
-    body?: ArrayBuffer
+    body?: ArrayBuffer,
+    extraHeaders?: Record<string, string>
   ): Promise<Record<string, string>> {
-    return signS3Request(method, url, this.region, this.accessKey, this.secretKey, body ?? null)
+    const signed = await signS3Request(
+      method,
+      url,
+      this.region,
+      this.accessKey,
+      this.secretKey,
+      body ?? null,
+      extraHeaders
+    )
+    return s3FetchHeaders(signed)
   }
 
   async uploadFile(localFilePath: string): Promise<void> {
@@ -228,13 +242,14 @@ class MobileS3Client implements ICloudSyncClient {
     const objectName = this.basePath + filename
     const url = this.getObjectUrl(objectName)
 
-    const headers = await this.signRequest('PUT', url)
+    const contentType = 'application/zip'
+    const headers = await this.signRequest('PUT', url, undefined, { 'Content-Type': contentType })
 
     const response = await uploadAsync(url, localFilePath, {
       httpMethod: 'PUT',
       headers: {
         ...headers,
-        'Content-Type': 'application/zip'
+        'Content-Type': contentType
       },
       uploadType: FileSystemUploadType.BINARY_CONTENT
     })
@@ -260,60 +275,32 @@ class MobileS3Client implements ICloudSyncClient {
   }
 
   async listFiles(): Promise<SyncRecord[]> {
-    const uri = new URL(this.endpoint)
-    const usePathStyle = uri.hostname.includes('localhost') || uri.hostname.includes('127.0.0.1')
+    const objects = await fetchAllS3ListPages(async (continuationToken) => {
+      const listUrl = buildS3ListUrl({
+        endpoint: this.endpoint,
+        bucket: this.bucket,
+        prefix: this.basePath,
+        continuationToken
+      })
+      const headers = await this.signRequest('GET', listUrl)
+      const response = await fetch(listUrl, { method: 'GET', headers })
+      if (!response.ok) {
+        throw new Error(`S3 list failed: ${response.status} ${response.statusText}`)
+      }
+      return response.text()
+    })
 
-    let listUrl: string
-    if (usePathStyle) {
-      listUrl = `${uri.protocol}//${uri.hostname}${uri.port ? ':' + uri.port : ''}/${this.bucket}?list-type=2&prefix=${encodeURIComponent(this.basePath)}`
-    } else {
-      listUrl = `${uri.protocol}//${this.bucket}.${uri.hostname}${uri.port ? ':' + uri.port : ''}/?list-type=2&prefix=${encodeURIComponent(this.basePath)}`
-    }
-
-    const headers = await this.signRequest('GET', listUrl)
-    const response = await fetch(listUrl, { method: 'GET', headers })
-
-    if (!response.ok) {
-      throw new Error(`S3 list failed: ${response.status} ${response.statusText}`)
-    }
-
-    const text = await response.text()
     const records: SyncRecord[] = []
-
-    // 简单的 XML 解析
-    const keyRegex = /<Key>([^<]+)<\/Key>/g
-    const modRegex = /<LastModified>([^<]+)<\/LastModified>/g
-    const sizeRegex = /<Size>([^<]+)<\/Size>/g
-
-    const keys: string[] = []
-    const mods: string[] = []
-    const sizes: string[] = []
-
-    let match
-    while ((match = keyRegex.exec(text)) !== null) {
-      keys.push(match[1])
-    }
-    while ((match = modRegex.exec(text)) !== null) {
-      mods.push(match[1])
-    }
-    while ((match = sizeRegex.exec(text)) !== null) {
-      sizes.push(match[1])
-    }
-
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i]
-      if (key.endsWith('/')) continue
-
-      const filename = key.split('/').pop()
+    for (const obj of objects) {
+      if (obj.key.endsWith('/')) continue
+      const filename = obj.key.split('/').pop()
       if (!filename) continue
-      // 仅列出 .zip 文件
       if (!/\.zip$/i.test(filename)) continue
       const isManaged = /^BaiShou_.*\.zip$/i.test(filename)
-
       records.push({
         filename,
-        lastModified: mods[i] ? new Date(mods[i]) : new Date(),
-        sizeInBytes: sizes[i] ? parseInt(sizes[i], 10) : 0,
+        lastModified: obj.lastModified ? new Date(obj.lastModified) : new Date(),
+        sizeInBytes: obj.size || 0,
         managed: isManaged
       })
     }
