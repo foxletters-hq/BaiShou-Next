@@ -389,13 +389,17 @@ export class MobileIncrementalCloudClient {
         ...urlOpts,
         query: { uploadId }
       })
+      const completePayload = completeBody.buffer.slice(
+        completeBody.byteOffset,
+        completeBody.byteOffset + completeBody.byteLength
+      )
       const completeSigned = await signS3Request(
         'POST',
         completeUrl,
         region,
         accessKey,
         secretKey,
-        completeBody,
+        completePayload,
         { 'Content-Type': 'application/xml' }
       )
       const completeRes = await fetch(completeUrl, {

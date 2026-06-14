@@ -56,7 +56,8 @@ function base64ToBytes(b64: string): Uint8Array {
 /** 与桌面一致：文件原始字节 MD5 → hex */
 async function md5File(fileSystem: IFileSystem, filePath: string): Promise<string> {
   const b64 = await fileSystem.readFile(filePath, 'base64')
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.MD5, base64ToBytes(b64))
+  const bytes = base64ToBytes(b64)
+  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.MD5, Uint8Array.from(bytes))
   return bytesToHex(new Uint8Array(digest))
 }
 

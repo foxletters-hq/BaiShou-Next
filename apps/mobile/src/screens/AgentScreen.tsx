@@ -765,7 +765,7 @@ export const AgentScreen = () => {
                 name: currentAssistant.name,
                 description: currentAssistant.description,
                 emoji: currentAssistant.emoji,
-                avatarPath: currentAssistant.avatarPath,
+                avatarPath: currentAssistant.avatarPath ?? undefined,
                 displayAvatarUri: resolvedCurrentAvatarUri || undefined
               }
             : null
