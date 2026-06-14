@@ -13,7 +13,7 @@ export interface CloudSyncStatusViewProps {
 }
 
 export const CloudSyncStatusView: React.FC<CloudSyncStatusViewProps> = ({ vm }) => {
-  const { showCountModal } = vm
+  const { showCountModal, activeTab } = vm
 
   return (
     <motion.div
