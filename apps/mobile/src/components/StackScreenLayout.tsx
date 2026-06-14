@@ -14,6 +14,11 @@ export interface StackScreenLayoutProps extends StackScreenHeaderProps {
 /**
  * 栈内全屏子页统一壳（与局域网传输页同款顶栏）。
  * 路由必须 `headerShown: false`，避免系统导航栏与自定义顶栏重复。
+ *
+ * 含输入框的表单页请用 `KeyboardAwareScrollView` 包裹内容（替代 `ScrollView`），
+ * 以统一处理 Android adjustNothing 下的键盘留白与自动滚入聚焦输入框。
+ * 页面内 `@baishou/ui/native` 的 `Input` 在聚焦时会自动向最近的
+ * `KeyboardAwareScrollView` 请求滚入安全区。
  */
 export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
   children,

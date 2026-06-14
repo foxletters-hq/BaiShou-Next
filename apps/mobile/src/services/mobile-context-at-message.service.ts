@@ -6,9 +6,8 @@ import {
   ToolRegistry,
   webSearchConfigToUserConfig
 } from '@baishou/ai'
-import { resolveDiaryAiWritingPrompt, type DiaryTemplateConfig } from '@baishou/shared'
-import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
-import type { SessionRepository, SnapshotRepository } from '@baishou/database'
+import { resolveDiaryAiWritingPrompt, formatUserCardFromProfile, getUserProfileFromSettings, type DiaryTemplateConfig } from '@baishou/shared'
+import { DEFAULT_WEB_SEARCH_CONFIG, type SessionRepository, type SnapshotRepository } from '@baishou/database'
 import type { AssistantManagerService, SettingsManagerService } from '@baishou/core-mobile'
 export interface MappedCallChainFlatEntry {
   kind: 'system-prompt' | 'compression-summary' | 'round-header' | 'message'
@@ -39,7 +38,7 @@ export interface MobileContextAtMessagePayload {
   flatEntries: MappedCallChainFlatEntry[]
 }
 
-async function resolveAssistantContextWindow(
+export async function resolveAssistantContextWindow(
   sessionId: string,
   sessionRepo: SessionRepository,
   assistantManager: AssistantManagerService
@@ -70,6 +69,7 @@ export async function buildMobileStreamUserConfig(
   const globalModels = await settingsManager.get<any>('global_models')
   const diaryTemplateConfig =
     (await settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
+  const userProfile = await getUserProfileFromSettings(settingsManager)
   const providers = (await settingsManager.get<any[]>('ai_providers')) || []
 
   const embeddingProviderId = globalModels?.globalEmbeddingProviderId
@@ -95,7 +95,8 @@ export async function buildMobileStreamUserConfig(
       ...DEFAULT_WEB_SEARCH_CONFIG,
       ...(webSearchConfig || {})
     }),
-    diaryAiWritingPrompt: resolveDiaryAiWritingPrompt(diaryTemplateConfig)
+    diaryAiWritingPrompt: resolveDiaryAiWritingPrompt(diaryTemplateConfig),
+    userCard: formatUserCardFromProfile(userProfile)
   }
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import { AssistantPicker as SharedAssistantPicker } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
-import { resolveAssistantAvatarDisplayUri } from '../lib/assistant-avatar-uri'
+import { listAssistantsForUi } from '../lib/mobile-assistant.util'
 import type { MockAgentAssistant } from '@baishou/ui/native'
 
 interface AssistantPickerProps {
@@ -20,31 +20,35 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = (props) => {
   useEffect(() => {
     if (!props.isVisible || !dbReady || !services) return
 
+    let cancelled = false
     const load = async () => {
       try {
-        const list = (await services.settingsManager.get<any[]>('assistants')) || []
-        const mapped: MockAgentAssistant[] = await Promise.all(
-          list.map(async (a) => ({
-            id: a.id,
-            name: a.name,
-            description: a.description || '',
-            emoji: a.emoji,
-            avatarPath: a.avatarPath,
-            displayAvatarUri: await resolveAssistantAvatarDisplayUri(a.avatarPath, (path) =>
-              services.attachmentManager.resolveAvatarPath(path)
-            ),
-            systemPrompt: a.systemPrompt,
-            providerId: a.providerId,
-            modelId: a.modelId
-          }))
+        const list = await listAssistantsForUi(
+          services.assistantManager,
+          services.attachmentManager,
+          services.fileSystem
         )
-        setAssistants(mapped)
+        const mapped: MockAgentAssistant[] = list.map((a) => ({
+          id: a.id,
+          name: a.name,
+          description: a.description || '',
+          emoji: a.emoji,
+          avatarPath: a.avatarPath ?? undefined,
+          displayAvatarUri: a.displayAvatarUri,
+          systemPrompt: a.systemPrompt,
+          providerId: a.providerId,
+          modelId: a.modelId
+        }))
+        if (!cancelled) setAssistants(mapped)
       } catch {
-        setAssistants([])
+        if (!cancelled) setAssistants([])
       }
     }
 
     void load()
+    return () => {
+      cancelled = true
+    }
   }, [props.isVisible, dbReady, services])
 
   const openAssistants = () => {

@@ -1,58 +1,40 @@
 import React, { useEffect, useRef } from 'react'
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native'
-import { useNativeTheme } from '@baishou/ui/native'
+import { View, Text, StyleSheet, Animated, Dimensions, Easing } from 'react-native'
+import { useTranslation } from 'react-i18next'
 
-interface CompressionChartProps {
-  delay?: number
-}
+const STEP_COLORS = ['#B3E5FC', '#81D4FA', '#4FC3F7', '#29B6F6'] as const
+const STEP_DELAYS = [0, 180, 360, 540, 720] as const
+const ANIM_DURATION_MS = 1200
 
-export const CompressionChart: React.FC<CompressionChartProps> = ({ delay = 0 }) => {
-  const { colors } = useNativeTheme()
+export const CompressionChart: React.FC = () => {
+  const { t } = useTranslation()
   const screenWidth = Dimensions.get('window').width
-  const maxWidth = Math.min(screenWidth - 40, 420)
+  const maxWidth = Math.min(screenWidth - 64, 420)
 
   const anim1 = useRef(new Animated.Value(0)).current
   const anim2 = useRef(new Animated.Value(0)).current
   const anim3 = useRef(new Animated.Value(0)).current
   const anim4 = useRef(new Animated.Value(0)).current
   const anim5 = useRef(new Animated.Value(0)).current
+  const anims = useRef([anim1, anim2, anim3, anim4, anim5]).current
 
   useEffect(() => {
-    const animations = [
-      Animated.timing(anim1, {
+    anims.forEach((anim) => anim.setValue(0))
+
+    const animations = anims.map((anim, index) =>
+      Animated.timing(anim, {
         toValue: 1,
-        duration: 800,
-        delay: delay + 0,
-        useNativeDriver: true
-      }),
-      Animated.timing(anim2, {
-        toValue: 1,
-        duration: 800,
-        delay: delay + 150,
-        useNativeDriver: true
-      }),
-      Animated.timing(anim3, {
-        toValue: 1,
-        duration: 800,
-        delay: delay + 300,
-        useNativeDriver: true
-      }),
-      Animated.timing(anim4, {
-        toValue: 1,
-        duration: 800,
-        delay: delay + 450,
-        useNativeDriver: true
-      }),
-      Animated.timing(anim5, {
-        toValue: 1,
-        duration: 800,
-        delay: delay + 600,
+        duration: ANIM_DURATION_MS,
+        delay: STEP_DELAYS[index],
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true
       })
-    ]
+    )
 
-    Animated.stagger(100, animations).start()
-  }, [delay, anim1, anim2, anim3, anim4, anim5])
+    const handle = Animated.parallel(animations)
+    handle.start()
+    return () => handle.stop()
+  }, [anims])
 
   const createStepStyle = (anim: Animated.Value, widthFactor: number, color: string) => ({
     opacity: anim,
@@ -69,28 +51,19 @@ export const CompressionChart: React.FC<CompressionChartProps> = ({ delay = 0 })
   })
 
   return (
-    <View style={styles.container}>
-      {/* 日 */}
-      <Animated.View style={[styles.step, createStepStyle(anim1, 0.3, '#B3E5FC')]}>
-        <Text style={[styles.stepText, { color: colors.textOnPrimary }]}>日</Text>
+    <View style={[styles.container, { maxWidth }]}>
+      <Animated.View style={[styles.step, createStepStyle(anim1, 0.3, STEP_COLORS[0])]}>
+        <Text style={styles.stepText}>{t('common.daily')}</Text>
       </Animated.View>
-
-      {/* 周 */}
-      <Animated.View style={[styles.step, createStepStyle(anim2, 0.48, '#81D4FA')]}>
-        <Text style={[styles.stepText, { color: colors.textOnPrimary }]}>周</Text>
+      <Animated.View style={[styles.step, createStepStyle(anim2, 0.48, STEP_COLORS[1])]}>
+        <Text style={styles.stepText}>{t('common.weekly')}</Text>
       </Animated.View>
-
-      {/* 月 */}
-      <Animated.View style={[styles.step, createStepStyle(anim3, 0.66, '#4FC3F7')]}>
-        <Text style={[styles.stepText, { color: colors.textOnPrimary }]}>月</Text>
+      <Animated.View style={[styles.step, createStepStyle(anim3, 0.66, STEP_COLORS[2])]}>
+        <Text style={styles.stepText}>{t('common.monthly')}</Text>
       </Animated.View>
-
-      {/* 季 */}
-      <Animated.View style={[styles.step, createStepStyle(anim4, 0.82, '#29B6F6')]}>
-        <Text style={[styles.stepText, { color: colors.textOnPrimary }]}>季</Text>
+      <Animated.View style={[styles.step, createStepStyle(anim4, 0.82, STEP_COLORS[3])]}>
+        <Text style={styles.stepText}>{t('common.quarterly')}</Text>
       </Animated.View>
-
-      {/* 年基底 */}
       <Animated.View
         style={[
           styles.baseBar,
@@ -108,7 +81,7 @@ export const CompressionChart: React.FC<CompressionChartProps> = ({ delay = 0 })
           }
         ]}
       >
-        <Text style={[styles.baseBarText, { color: colors.textOnPrimary }]}>年</Text>
+        <Text style={styles.baseBarText}>{t('common.yearly')}</Text>
       </Animated.View>
     </View>
   )
@@ -116,6 +89,8 @@ export const CompressionChart: React.FC<CompressionChartProps> = ({ delay = 0 })
 
 const styles = StyleSheet.create({
   container: {
+    alignSelf: 'center',
+    width: '100%',
     alignItems: 'flex-start'
   },
   step: {
@@ -131,6 +106,7 @@ const styles = StyleSheet.create({
     elevation: 4
   },
   stepText: {
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
     letterSpacing: 0.5
@@ -149,6 +125,7 @@ const styles = StyleSheet.create({
     elevation: 6
   },
   baseBarText: {
+    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 17,
     letterSpacing: 3

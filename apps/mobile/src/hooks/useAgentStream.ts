@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { reconcileCompressionStateAfterTruncate, truncateSessionAfterOrderIndex } from '@baishou/ai'
+import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { buildInsertSessionInput } from '../utils/session-input.util'
@@ -35,7 +36,7 @@ export function useAgentStream(
   const toast = useNativeToast()
   const dialog = useDialog()
   const { addMessage, updateMessage, setLoading, clearSession, messages } = useAgentStore()
-  const { startAgentChat, services } = useBaishou()
+  const { startAgentChat, services, vaultSwitching } = useBaishou()
 
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
@@ -59,8 +60,23 @@ export function useAgentStream(
   const searchModeRef = useRef(searchMode)
   searchModeRef.current = searchMode
   const abortControllerRef = useRef<AbortController | null>(null)
+  const activeToolRef = useRef<ToolCallInfo | null>(null)
   const currentSessionIdRef = useRef(currentSessionId)
   currentSessionIdRef.current = currentSessionId
+
+  const syncTokenUsageFromSession = useCallback(
+    async (sessionId: string) => {
+      if (!services?.sessionRepo) return
+      const session = await services.sessionRepo.getSessionById(sessionId)
+      if (!session) return
+      setTokenUsage({
+        inputTokens: session.totalInputTokens ?? 0,
+        outputTokens: session.totalOutputTokens ?? 0,
+        totalCostMicros: session.totalCostMicros ?? 0
+      })
+    },
+    [services]
+  )
 
   const reloadMessagesFromDb = useCallback(
     async (sessionId: string) => {
@@ -70,27 +86,10 @@ export function useAgentStream(
       for (const row of rows) {
         addMessage(mapSessionMessageFromDb(row as any))
       }
+      await syncTokenUsageFromSession(sessionId)
     },
-    [services, clearSession, addMessage]
+    [services, clearSession, addMessage, syncTokenUsageFromSession]
   )
-
-  const syncTokenUsageFromMessages = useCallback((sessionMessages: typeof messages) => {
-    const assistantMessages = sessionMessages.filter((m) => m.role === 'assistant')
-    setTokenUsage({
-      inputTokens: assistantMessages.reduce(
-        (sum, m) => sum + ((m as { inputTokens?: number }).inputTokens || 0),
-        0
-      ),
-      outputTokens: assistantMessages.reduce(
-        (sum, m) => sum + ((m as { outputTokens?: number }).outputTokens || 0),
-        0
-      ),
-      totalCostMicros: assistantMessages.reduce(
-        (sum, m) => sum + ((m as { costMicros?: number }).costMicros || 0),
-        0
-      )
-    })
-  }, [])
 
   useEffect(() => {
     if (!currentSessionId) {
@@ -98,9 +97,9 @@ export function useAgentStream(
       return
     }
     if (!isStreaming) {
-      syncTokenUsageFromMessages(messages)
+      void syncTokenUsageFromSession(currentSessionId)
     }
-  }, [currentSessionId, messages, isStreaming, syncTokenUsageFromMessages])
+  }, [currentSessionId, isStreaming, syncTokenUsageFromSession])
 
   /** 对齐 desktop useAgentStream：消费 onCompressionLifecycle / agent:compression-event */
   useEffect(() => {
@@ -156,8 +155,25 @@ export function useAgentStream(
   const resetStreamingBuffers = useCallback(() => {
     setStreamingText('')
     setStreamingReasoning('')
+    activeToolRef.current = null
     setActiveTool(null)
     setCompletedTools([])
+  }, [])
+
+  const handleToolCallStart = useCallback((toolName: string) => {
+    const tool = { name: toolName, startTime: Date.now() }
+    activeToolRef.current = tool
+    setActiveTool(tool)
+  }, [])
+
+  const handleToolCallResult = useCallback((toolName: string, result: unknown) => {
+    const startTime = activeToolRef.current?.startTime ?? Date.now()
+    activeToolRef.current = null
+    setActiveTool(null)
+    setCompletedTools((prev) => [
+      ...prev,
+      { name: toolName, startTime, endTime: Date.now(), result }
+    ])
   }, [])
 
   /** 中断当前流式/压缩 UI，避免重发或新消息与旧生成并行 */
@@ -173,15 +189,22 @@ export function useAgentStream(
     resetStreamingBuffers()
   }, [resetStreamingBuffers, setLoading])
 
-  /** 流结束：先落库刷新，再收起 StreamingBubble（对齐 desktop，避免双气泡） */
+  // 工作区切换时中断流式生成，避免旧会话的流写入新 UI
+  useEffect(() => {
+    if (vaultSwitching) {
+      interruptActiveStream()
+    }
+  }, [vaultSwitching, interruptActiveStream])
+
+  /** 流结束：先收起 StreamingBubble，再落库刷新，避免列表与 footer 双气泡闪烁 */
   const finishStream = useCallback(
     async (sessionId: string) => {
       setLoading(false)
       abortControllerRef.current = null
+      setIsStreaming(false)
       try {
         await reloadMessagesFromDb(sessionId)
       } finally {
-        setIsStreaming(false)
         resetStreamingBuffers()
       }
     },
@@ -194,7 +217,7 @@ export function useAgentStream(
       sessionId: string,
       userMessage: { id: string; content: string; attachments?: unknown[] }
     ) => {
-      if (!currentProviderId || !currentModelId) {
+      if (!isConfiguredProviderId(currentProviderId) || !isConfiguredDialogueModelId(currentModelId)) {
         toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }
@@ -222,14 +245,8 @@ export function useAgentStream(
               setStreamingText(currentText)
             },
             onReasoningDelta: (chunk) => setStreamingReasoning((prev) => prev + chunk),
-            onToolCallStart: (toolName) => setActiveTool({ name: toolName, startTime: Date.now() }),
-            onToolCallResult: (toolName, result) => {
-              setActiveTool(null)
-              setCompletedTools((prev) => [
-                ...prev,
-                { name: toolName, startTime: Date.now(), endTime: Date.now(), result }
-              ])
-            },
+            onToolCallStart: handleToolCallStart,
+            onToolCallResult: handleToolCallResult,
             onFinish: () => {
               void finishStream(sessionId)
             },
@@ -261,15 +278,19 @@ export function useAgentStream(
       interruptActiveStream,
       resetStreamingBuffers,
       setLoading,
-      startAgentChat
+      startAgentChat,
+      handleToolCallStart,
+      handleToolCallResult
     ]
   )
 
   const handleSend = useCallback(
     async (text: string, attachments?: unknown[], sendSearchMode?: boolean) => {
-      if (!text.trim() || !services) return
+      const hasText = Boolean(text.trim())
+      const hasAttachments = Boolean(attachments?.length)
+      if ((!hasText && !hasAttachments) || !services) return
 
-      if (!currentProviderId || !currentModelId) {
+      if (!isConfiguredProviderId(currentProviderId) || !isConfiguredDialogueModelId(currentModelId)) {
         toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }
@@ -280,14 +301,24 @@ export function useAgentStream(
       if (!sessionId) {
         try {
           const newSessionId = Date.now().toString()
+          const firstAtt = attachments?.[0] as { fileName?: string; name?: string } | undefined
+          const sessionTitleSource =
+            text.trim() ||
+            firstAtt?.fileName ||
+            firstAtt?.name ||
+            t('agent.sessions.default_title', '新对话')
+          const vaultName = await services.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
           await services.sessionManager.upsertSession(
-            buildInsertSessionInput({
-              id: newSessionId,
-              title: text.substring(0, 20) || t('agent.sessions.default_title', '新对话'),
-              assistantId: currentAssistant?.id,
-              providerId: currentProviderId || undefined,
-              modelId: currentModelId || undefined
-            })
+            buildInsertSessionInput(
+              {
+                id: newSessionId,
+                title: sessionTitleSource.substring(0, 20) || t('agent.sessions.default_title', '新对话'),
+                assistantId: currentAssistant?.id,
+                providerId: currentProviderId || undefined,
+                modelId: currentModelId || undefined
+              },
+              vaultName
+            )
           )
           sessionId = newSessionId
           onSessionCreated?.(newSessionId)
@@ -352,16 +383,8 @@ export function useAgentStream(
             onReasoningDelta: (chunk) => {
               setStreamingReasoning((prev) => prev + chunk)
             },
-            onToolCallStart: (toolName: string) => {
-              setActiveTool({ name: toolName, startTime: Date.now() })
-            },
-            onToolCallResult: (toolName: string, result: unknown) => {
-              setActiveTool(null)
-              setCompletedTools((prev) => [
-                ...prev,
-                { name: toolName, startTime: Date.now(), endTime: Date.now(), result }
-              ])
-            },
+            onToolCallStart: handleToolCallStart,
+            onToolCallResult: handleToolCallResult,
             onFinish: () => {
               void finishStream(sessionId!)
             },
@@ -397,7 +420,9 @@ export function useAgentStream(
       onSessionCreated,
       finishStream,
       resetStreamingBuffers,
-      interruptActiveStream
+      interruptActiveStream,
+      handleToolCallStart,
+      handleToolCallResult
     ]
   )
 
@@ -409,7 +434,7 @@ export function useAgentStream(
     async (messageId: string) => {
       if (!currentSessionId || !services) return
 
-      if (!currentProviderId || !currentModelId) {
+      if (!isConfiguredProviderId(currentProviderId) || !isConfiguredDialogueModelId(currentModelId)) {
         toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }

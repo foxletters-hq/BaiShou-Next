@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
-import { isAssistantAvatarRelativePath, isDefaultAssistantAvatarPath } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
-import {
-  isResolvableAssistantAvatarDirectUri,
-  normalizeAssistantAvatarDisplayUri
-} from '../lib/assistant-avatar-uri'
+import { resolveAssistantAvatarForMobileUi } from '../lib/assistant-avatar-display.util'
 
 /** 将 settings 中的伙伴头像路径解析为可展示的本地 URI */
 export function useResolvedAssistantAvatar(avatarPath?: string | null): string | null {
@@ -13,26 +9,17 @@ export function useResolvedAssistantAvatar(avatarPath?: string | null): string |
 
   useEffect(() => {
     setUri(null)
+    if (!avatarPath || !dbReady || !services) return
 
-    if (isDefaultAssistantAvatarPath(avatarPath)) {
-      return
-    }
-    if (avatarPath && isResolvableAssistantAvatarDirectUri(avatarPath)) {
-      setUri(normalizeAssistantAvatarDisplayUri(avatarPath))
-      return
-    }
-    if (!avatarPath || !isAssistantAvatarRelativePath(avatarPath) || !dbReady || !services) {
-      return
-    }
     let cancelled = false
-    services.attachmentManager
-      .resolveAvatarPath(avatarPath)
-      .then((resolved) => {
-        if (!cancelled) setUri(normalizeAssistantAvatarDisplayUri(resolved))
-      })
-      .catch(() => {
-        if (!cancelled) setUri(null)
-      })
+    void resolveAssistantAvatarForMobileUi(
+      avatarPath,
+      services.attachmentManager,
+      services.fileSystem
+    ).then((resolved) => {
+      if (!cancelled) setUri(resolved ?? null)
+    })
+
     return () => {
       cancelled = true
     }

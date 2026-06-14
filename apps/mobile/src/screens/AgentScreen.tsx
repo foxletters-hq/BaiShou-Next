@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useFocusEffect, useRouter, type Href } from 'expo-router'
-import { type PromptShortcut } from '@baishou/shared'
+import { type PromptShortcut, USER_PROFILE_SETTINGS_KEY } from '@baishou/shared'
 import {
   View,
   StyleSheet,
@@ -49,7 +49,7 @@ import { useBranchSession } from '../hooks/useBranchSession'
 import { useStreamError } from '../hooks/useStreamError'
 import { useMobilePromptShortcuts } from '../hooks/useMobilePromptShortcuts'
 import { useResolvedAssistantAvatar } from '../hooks/useResolvedAssistantAvatar'
-import { resolveAssistantAvatarDisplayUri } from '../lib/assistant-avatar-uri'
+import { listAssistantsForUi, type MobileAssistantUi } from '../lib/mobile-assistant.util'
 /** 底部输入栏 + 工具条的大致高度，用于「回到底部」悬浮按钮定位 */
 const INPUT_DOCK_HEIGHT = 136
 /** 编辑态：保存按钮与 token 行距键盘顶部的留白 */
@@ -104,6 +104,23 @@ export const AgentScreen = () => {
   }>({ nickname: '' })
 
   const {
+    currentAssistant,
+    currentProviderId,
+    currentModelId,
+    displayModelName,
+    showAssistantPicker,
+    showModelSwitcher,
+    setShowAssistantPicker,
+    setShowModelSwitcher,
+    handleSelectAssistant,
+    handleSelectModel,
+    setCurrentAssistant,
+    syncWithSession
+  } = useAgentModel()
+
+  const resolvedCurrentAvatarUri = useResolvedAssistantAvatar(currentAssistant?.avatarPath)
+
+  const {
     currentSessionId,
     setCurrentSessionId,
     hasMore,
@@ -115,7 +132,15 @@ export const AgentScreen = () => {
     handleDeleteSession,
     handlePinSession,
     handleRenameSession
-  } = useAgentSession()
+  } = useAgentSession({
+    assistantId: currentAssistant?.id,
+    providerId: currentProviderId ?? undefined,
+    modelId: currentModelId ?? undefined
+  })
+
+  useEffect(() => {
+    syncWithSession(currentSessionId)
+  }, [currentSessionId, syncWithSession])
 
   /** 按行实测位置微调滚动：键盘展开时避开键盘，收起时避开底部工具栏 */
   const scrollEditingMessageIntoView = useCallback(() => {
@@ -148,21 +173,6 @@ export const AgentScreen = () => {
       clearTimeout(late)
     }
   }, [isBubbleEditing, editingMessageId, keyboardHeight, scrollEditingMessageIntoView])
-
-  const {
-    currentAssistant,
-    currentProviderId,
-    currentModelId,
-    showAssistantPicker,
-    showModelSwitcher,
-    setShowAssistantPicker,
-    setShowModelSwitcher,
-    handleSelectAssistant,
-    handleSelectModel,
-    setCurrentAssistant
-  } = useAgentModel()
-
-  const resolvedCurrentAvatarUri = useResolvedAssistantAvatar(currentAssistant?.avatarPath)
 
   const {
     isStreaming,
@@ -238,36 +248,45 @@ export const AgentScreen = () => {
   const loadAssistants = useCallback(async () => {
     if (!dbReady || !services) return
     try {
-      const list = (await services.settingsManager.get<any[]>('assistants')) || []
-      const mapped = await Promise.all(
-        list.map(async (a) => {
-          const displayAvatarUri = await resolveAssistantAvatarDisplayUri(a.avatarPath, (path) =>
-            services.attachmentManager.resolveAvatarPath(path)
-          )
-          return {
-            id: a.id,
-            name: a.name,
-            description: a.description,
-            emoji: a.emoji,
-            avatarPath: a.avatarPath,
-            displayAvatarUri,
-            isPinned: Boolean(a.isPinned),
-            lastUsedAt: a.lastUsedAt || 0
-          }
-        })
+      const list = await listAssistantsForUi(
+        services.assistantManager,
+        services.attachmentManager,
+        services.fileSystem
       )
-      setAssistants(mapped)
+      setAssistants(
+        list.map(({ id, name, description, emoji, avatarPath, displayAvatarUri, isPinned }) => ({
+          id,
+          name,
+          description,
+          emoji,
+          avatarPath: avatarPath ?? undefined,
+          displayAvatarUri,
+          isPinned: Boolean(isPinned),
+          lastUsedAt: 0
+        }))
+      )
     } catch {
       setAssistants([])
     }
   }, [dbReady, services])
 
   const refreshCurrentAssistant = useCallback(async () => {
-    if (!dbReady || !services || !currentAssistant?.id) return
+    if (!dbReady || !services) return
     try {
-      const list = (await services.settingsManager.get<any[]>('assistants')) || []
-      const updated = list.find((a) => a.id === currentAssistant.id)
-      if (updated) setCurrentAssistant(updated)
+      const list = await listAssistantsForUi(
+        services.assistantManager,
+        services.attachmentManager,
+        services.fileSystem
+      )
+      if (currentAssistant?.id) {
+        const updated = list.find((a) => a.id === currentAssistant.id)
+        if (updated) {
+          setCurrentAssistant(updated as MobileAssistantUi)
+          return
+        }
+      }
+      const defaultAssistant = list.find((a) => a.isDefault) || list[0]
+      if (defaultAssistant) setCurrentAssistant(defaultAssistant)
     } catch {
       // ignore
     }
@@ -275,7 +294,13 @@ export const AgentScreen = () => {
 
   useEffect(() => {
     void loadAssistants()
-  }, [loadAssistants, drawerOpen, showAssistantPicker])
+  }, [loadAssistants, showAssistantPicker])
+
+  useEffect(() => {
+    if (!drawerOpen) return
+    const timer = setTimeout(() => void loadAssistants(), 400)
+    return () => clearTimeout(timer)
+  }, [drawerOpen, loadAssistants])
 
   useFocusEffect(
     useCallback(() => {
@@ -287,7 +312,7 @@ export const AgentScreen = () => {
   useEffect(() => {
     if (!dbReady || !services) return
     services.settingsManager
-      .get<{ nickname?: string; avatarPath?: string | null }>('user_profile')
+      .get<{ nickname?: string; avatarPath?: string | null }>(USER_PROFILE_SETTINGS_KEY)
       .then((profile) =>
         setUserProfile({
           nickname: profile?.nickname || t('agent.chat.you_label', '你'),
@@ -295,7 +320,7 @@ export const AgentScreen = () => {
         })
       )
       .catch(() => setUserProfile({ nickname: t('agent.chat.you_label', '你') }))
-  }, [dbReady, services, drawerOpen, t])
+  }, [dbReady, services, t])
 
   const pinnedAssistants = useMemo(
     () =>
@@ -323,26 +348,7 @@ export const AgentScreen = () => {
         modelId?: string
       }
       await handleAssistantSwitched(assistant.id, fullWithModel.providerId, fullWithModel.modelId)
-      if (!services) return
-      try {
-        const list =
-          (await services.settingsManager.get<
-            Array<{
-              id: string
-              name: string
-              emoji: string
-              description?: string
-              isPinned?: boolean
-              lastUsedAt?: number
-              [key: string]: unknown
-            }>
-          >('assistants')) || []
-        const updated = list.map((a) =>
-          a.id === assistant.id ? { ...a, lastUsedAt: Date.now() } : a
-        )
-        await services.settingsManager.set('assistants', updated)
-        void loadAssistants()
-      } catch {}
+      void loadAssistants()
     },
     [assistants, handleSelectAssistant, handleAssistantSwitched, services, loadAssistants]
   )
@@ -585,7 +591,7 @@ export const AgentScreen = () => {
       <ScreenSafeArea preset="tab" style={{ backgroundColor: colors.bgApp }}>
         <View style={styles.container}>
           <AgentChatAppBar
-            modelName={currentModelId || ''}
+            modelName={displayModelName || ''}
             costMicros={totalCostMicros}
             onMenuPress={() => setDrawerOpen(true)}
             onModelPress={() => setShowModelSwitcher(true)}
@@ -674,9 +680,12 @@ export const AgentScreen = () => {
                     reasoning={streamingReasoning}
                     isReasoning={isStreaming && !streamingText && !!streamingReasoning}
                     activeToolName={activeTool?.name ?? null}
-                    completedTools={completedTools.map((tool) => ({
+                    completedTools={completedTools.map((tool, idx) => ({
                       name: tool.name,
-                      durationMs: tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0
+                      durationMs:
+                        tool.endTime && tool.startTime ? tool.endTime - tool.startTime : 0,
+                      result: tool.result,
+                      toolCallId: `streaming-${tool.name}-${idx}`
                     }))}
                     aiProfile={chatAiProfile}
                   />
@@ -799,7 +808,7 @@ export const AgentScreen = () => {
         isOpen={showCostDialog}
         onClose={() => setShowCostDialog(false)}
         details={{
-          modelName: currentModelId || t('agent.no_model_selected', '暂未选择模型'),
+          modelName: displayModelName || t('agent.no_model_selected', '暂未选择模型'),
           promptTokens: totalInputTokens,
           completionTokens: totalOutputTokens,
           totalTokens: totalInputTokens + totalOutputTokens,

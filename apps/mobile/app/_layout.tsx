@@ -77,7 +77,14 @@ function AppContent() {
         }}
       >
         <Stack.Screen name="index" />
-        <Stack.Screen name="onboarding" />
+        <Stack.Screen
+          name="onboarding"
+          options={{
+            gestureEnabled: false,
+            fullScreenGestureEnabled: false,
+            headerBackVisible: false
+          }}
+        />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="settings" />
         <Stack.Screen

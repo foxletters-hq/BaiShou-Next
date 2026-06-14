@@ -1,125 +1,154 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ASSISTANT_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
+import {
+  ASSISTANT_DEFAULT_AVATAR_SENTINEL,
+  formatDialogueModelLabel,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId,
+  resolveDialogueModelSelection,
+  type GlobalModelsConfig
+} from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
-import { syncSettingsAssistantsToRepo } from '../services/mobile-assistant-sync.service'
+import { listAssistantsForUi, type MobileAssistantUi, buildAssistantRepoInput } from '../lib/mobile-assistant.util'
+import { waitForVaultEcosystemResync } from '../services/mobile-vault-resync.service'
 
-interface Assistant {
-  id: string
-  name: string
-  emoji: string
-  description?: string
-  avatarPath?: string
-  isDefault: boolean
-  isPinned: boolean
-  systemPrompt?: string
-  providerId?: string
-  modelId?: string
+type Assistant = MobileAssistantUi
+
+export interface UseAgentModelOptions {
+  /** @deprecated 请改用 syncWithSession */
+  currentSessionId?: string | null
 }
 
-export function useAgentModel() {
+export function useAgentModel(_options: UseAgentModelOptions = {}) {
   const { t } = useTranslation()
-  const { services, dbReady, storageReady } = useBaishou()
+  const { services, dbReady, storageReady, vaultRevision } = useBaishou()
 
-  // 助手管理状态
   const [currentAssistant, setCurrentAssistant] = useState<Assistant | null>(null)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
-
-  // 模型管理状态
-  const [currentProviderId, setCurrentProviderId] = useState<string | null>(null)
-  const [currentModelId, setCurrentModelId] = useState<string | null>(null)
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
 
-  // 加载默认助手和模型配置
+  const [globalModels, setGlobalModels] = useState<GlobalModelsConfig | null>(null)
+  const [currentProviderId, setCurrentProviderId] = useState<string | null>(null)
+  const [currentModelId, setCurrentModelId] = useState<string | null>(null)
+
+  const userManuallySetModelRef = useRef(false)
+  const prevSessionIdRef = useRef<string | null | undefined>(null)
+
+  const applyResolvedModel = useCallback(
+    (assistant: Assistant | null, models: GlobalModelsConfig | null) => {
+      if (userManuallySetModelRef.current) return
+
+      const resolved = resolveDialogueModelSelection({
+        assistantProviderId: assistant?.providerId,
+        assistantModelId: assistant?.modelId,
+        globalDialogueProviderId: models?.globalDialogueProviderId,
+        globalDialogueModelId: models?.globalDialogueModelId
+      })
+
+      setCurrentProviderId(resolved.providerId)
+      setCurrentModelId(resolved.modelId)
+    },
+    []
+  )
+
+  const syncWithSession = useCallback(
+    (sessionId: string | null | undefined) => {
+      if (prevSessionIdRef.current === sessionId) return
+      prevSessionIdRef.current = sessionId ?? null
+      userManuallySetModelRef.current = false
+      applyResolvedModel(currentAssistant, globalModels)
+    },
+    [applyResolvedModel, currentAssistant, globalModels]
+  )
+
+  useEffect(() => {
+    applyResolvedModel(currentAssistant, globalModels)
+  }, [currentAssistant, globalModels, applyResolvedModel])
+
+  // 加载默认助手和全局模型；工作区切换后随 vaultRevision 重载（对齐桌面 AgentLayout）
   useEffect(() => {
     if (!dbReady || !services || !storageReady) return
 
     const loadDefaultConfig = async () => {
       try {
-        // 加载助手列表
-        let assistants = (await services.settingsManager.get<Assistant[]>('assistants')) || []
+        if (vaultRevision > 0) {
+          await waitForVaultEcosystemResync()
+        }
 
-        // 如果没有助手，自动创建默认助手（参考桌面端逻辑）
+        let assistants = await listAssistantsForUi(
+          services.assistantManager,
+          services.attachmentManager,
+          services.fileSystem
+        )
+
         if (assistants.length === 0) {
-          const defaultAssistant: Assistant = {
+          await services.assistantManager.create({
             id: 'default',
-            name: t('agent.assistant.default_assistant_name', '默认伙伴'),
-            emoji: '',
-            avatarPath: ASSISTANT_DEFAULT_AVATAR_SENTINEL,
-            isDefault: true,
-            isPinned: false,
-            systemPrompt: ''
+            ...buildAssistantRepoInput({
+              name: t('agent.assistant.default_assistant_name', '默认伙伴'),
+              avatarPath: ASSISTANT_DEFAULT_AVATAR_SENTINEL,
+              isDefault: true,
+              isPinned: false,
+              systemPrompt: ''
+            })
+          })
+          assistants = await listAssistantsForUi(
+            services.assistantManager,
+            services.attachmentManager,
+            services.fileSystem
+          )
+        }
+
+        const nextGlobalModels =
+          (await services.settingsManager.get<GlobalModelsConfig>('global_models')) || null
+        setGlobalModels(nextGlobalModels)
+
+        setCurrentAssistant((prev) => {
+          const stillValid = prev && assistants.find((a) => a.id === prev.id)
+          const next = stillValid || assistants.find((a) => a.isDefault) || assistants[0] || null
+          if (!userManuallySetModelRef.current) {
+            applyResolvedModel(next, nextGlobalModels)
           }
-          await services.settingsManager.set('assistants', [defaultAssistant])
-          assistants = [defaultAssistant]
-        }
-
-        await syncSettingsAssistantsToRepo(services.settingsManager, services.assistantManager)
-
-        const defaultAssistant = assistants.find((a) => a.isDefault) || assistants[0]
-        if (defaultAssistant) {
-          setCurrentAssistant(defaultAssistant)
-        }
-
-        // 加载模型配置
-        const globalModels = await services.settingsManager.get<any>('global_models')
-        if (globalModels) {
-          setCurrentProviderId(globalModels.globalDialogueProviderId)
-          setCurrentModelId(globalModels.globalDialogueModelId)
-        }
+          return next
+        })
       } catch (e) {
         console.warn('Failed to load default config', e)
       }
     }
 
-    loadDefaultConfig()
-  }, [dbReady, services, storageReady, t])
+    void loadDefaultConfig()
+  }, [dbReady, services, storageReady, vaultRevision, t, applyResolvedModel])
 
-  // 选择助手
-  const handleSelectAssistant = useCallback((assistant: Assistant) => {
-    setCurrentAssistant(assistant)
-    setShowAssistantPicker(false)
+  const handleSelectAssistant = useCallback(
+    (assistant: Assistant) => {
+      setCurrentAssistant(assistant)
+      setShowAssistantPicker(false)
+      userManuallySetModelRef.current = false
+      applyResolvedModel(assistant, globalModels)
+    },
+    [applyResolvedModel, globalModels]
+  )
 
-    // 如果助手有自己的模型配置，使用助手的配置
-    if (assistant.providerId) {
-      setCurrentProviderId(assistant.providerId)
-    }
-    if (assistant.modelId) {
-      setCurrentModelId(assistant.modelId)
-    }
-  }, [])
-
-  // 选择模型
   const handleSelectModel = useCallback((providerId: string, modelId: string) => {
+    userManuallySetModelRef.current = true
     setCurrentProviderId(providerId)
     setCurrentModelId(modelId)
     setShowModelSwitcher(false)
   }, [])
 
-  // 获取有效的模型配置（助手优先）
-  const getEffectiveModelConfig = useCallback(() => {
-    // 助手级模型优先
-    if (currentAssistant?.providerId && currentAssistant?.modelId) {
-      return {
-        providerId: currentAssistant.providerId,
-        modelId: currentAssistant.modelId
-      }
-    }
-    // 否则使用全局配置
-    return {
-      providerId: currentProviderId,
-      modelId: currentModelId
-    }
-  }, [currentAssistant, currentProviderId, currentModelId])
+  const displayModelName = formatDialogueModelLabel(currentModelId)
+  const hasConfiguredDialogueModel =
+    isConfiguredProviderId(currentProviderId) && isConfiguredDialogueModelId(currentModelId)
 
   return {
-    // 状态
     currentAssistant,
     currentProviderId,
     currentModelId,
+    displayModelName,
+    hasConfiguredDialogueModel,
+    globalModels,
     showAssistantPicker,
     showModelSwitcher,
-    // 方法
     setCurrentAssistant,
     setCurrentProviderId,
     setCurrentModelId,
@@ -127,6 +156,6 @@ export function useAgentModel() {
     setShowModelSwitcher,
     handleSelectAssistant,
     handleSelectModel,
-    getEffectiveModelConfig
+    syncWithSession
   }
 }

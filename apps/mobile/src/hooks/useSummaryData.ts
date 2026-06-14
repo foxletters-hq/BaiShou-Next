@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
-import { SummaryType, logger } from '@baishou/shared'
+import { SummaryType, logger, type MissingSummary as DetectedMissingSummary } from '@baishou/shared'
 import { appendVaultDebugLog } from '../services/summary-debug-log.util'
 
 interface Summary {
@@ -46,7 +46,10 @@ interface QueueItem {
 
 export function useSummaryData() {
   const { i18n } = useTranslation()
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision } = useBaishou()
+  const summaryManager = services?.summaryManager
+  const diaryService = services?.diaryService
+  const missingSummaryDetector = services?.missingSummaryDetector
   const [summaries, setSummaries] = useState<Summary[]>([])
   const [stats, setStats] = useState<Stats>({
     totalDiaryCount: 0,
@@ -56,6 +59,7 @@ export function useSummaryData() {
     totalYearlyCount: 0
   })
   const [missingSummaries, setMissingSummaries] = useState<MissingSummary[]>([])
+  const [isDetectingMissing, setIsDetectingMissing] = useState(false)
   const [generationStates, setGenerationStates] = useState<Record<string, GenerationState>>({})
   const [loading, setLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -67,61 +71,80 @@ export function useSummaryData() {
   const concurrencyLimitRef = useRef(1)
   const isSchedulingRef = useRef(false)
 
+  const mapDetectedMissing = useCallback(
+    (detected: DetectedMissingSummary[]) =>
+      detected.map((m) => ({
+        type: m.type,
+        startDate: m.startDate instanceof Date ? m.startDate.toISOString() : String(m.startDate),
+        endDate: m.endDate instanceof Date ? m.endDate.toISOString() : String(m.endDate),
+        label: m.label,
+        dateRangeStr: `${new Date(m.startDate).toLocaleDateString()} - ${new Date(m.endDate).toLocaleDateString()}`
+      })),
+    []
+  )
+
+  const fetchMissingSummaries = useCallback(async () => {
+    if (!dbReady || !missingSummaryDetector) return
+
+    setIsDetectingMissing(true)
+    try {
+      const detected = await missingSummaryDetector.getAllMissing(i18n.language)
+      setMissingSummaries(mapDetectedMissing(detected))
+    } catch (e) {
+      console.warn('Detect missing summaries failed:', e)
+      setMissingSummaries([])
+    } finally {
+      setIsDetectingMissing(false)
+    }
+  }, [dbReady, missingSummaryDetector, i18n.language, mapDetectedMissing])
+
   const fetchData = useCallback(async () => {
-    if (!dbReady || !services) return
+    if (!dbReady || !summaryManager || !diaryService || !missingSummaryDetector) return
 
     try {
       setLoading(true)
+      setIsDetectingMissing(true)
 
-      // 获取总结列表
-      const summaryList = await services.summaryManager.list()
-      const mappedSummaries = summaryList.map((s) => ({
-        id: String(s.id),
-        type: s.type,
-        startDate: s.startDate instanceof Date ? s.startDate.toISOString() : s.startDate,
-        endDate: s.endDate instanceof Date ? s.endDate.toISOString() : s.endDate,
-        content: s.content
-      }))
-      setSummaries(mappedSummaries)
+      const [summaryList, diaryCount, detected] = await Promise.all([
+        summaryManager.list(),
+        diaryService.count(),
+        missingSummaryDetector.getAllMissing(i18n.language)
+      ])
 
-      // 获取统计信息
-      const diaryCount = await services.diaryService.count()
-      const weeklyCount = summaryList.filter((s) => s.type === 'weekly').length
-      const monthlyCount = summaryList.filter((s) => s.type === 'monthly').length
-      const quarterlyCount = summaryList.filter((s) => s.type === 'quarterly').length
-      const yearlyCount = summaryList.filter((s) => s.type === 'yearly').length
+      setSummaries(
+        summaryList.map((s) => ({
+          id: String(s.id),
+          type: s.type,
+          startDate: s.startDate instanceof Date ? s.startDate.toISOString() : s.startDate,
+          endDate: s.endDate instanceof Date ? s.endDate.toISOString() : s.endDate,
+          content: s.content
+        }))
+      )
 
       setStats({
         totalDiaryCount: diaryCount,
-        totalWeeklyCount: weeklyCount,
-        totalMonthlyCount: monthlyCount,
-        totalQuarterlyCount: quarterlyCount,
-        totalYearlyCount: yearlyCount
+        totalWeeklyCount: summaryList.filter((s) => s.type === 'weekly').length,
+        totalMonthlyCount: summaryList.filter((s) => s.type === 'monthly').length,
+        totalQuarterlyCount: summaryList.filter((s) => s.type === 'quarterly').length,
+        totalYearlyCount: summaryList.filter((s) => s.type === 'yearly').length
       })
 
-      // 检测缺失的总结（与桌面端一致：周→月→季→年级联，避免无上下文时生成失败）
-      try {
-        const detected = await services.missingSummaryDetector.getAllMissing(i18n.language)
-        setMissingSummaries(
-          detected.map((m) => ({
-            type: m.type,
-            startDate:
-              m.startDate instanceof Date ? m.startDate.toISOString() : String(m.startDate),
-            endDate: m.endDate instanceof Date ? m.endDate.toISOString() : String(m.endDate),
-            label: m.label,
-            dateRangeStr: `${new Date(m.startDate).toLocaleDateString()} - ${new Date(m.endDate).toLocaleDateString()}`
-          }))
-        )
-      } catch (e) {
-        console.warn('Detect missing summaries failed:', e)
-        setMissingSummaries([])
-      }
+      setMissingSummaries(mapDetectedMissing(detected))
     } catch (e) {
       console.warn('Failed to fetch summary data', e)
     } finally {
       setLoading(false)
+      setIsDetectingMissing(false)
     }
-  }, [dbReady, services, i18n.language])
+  }, [
+    dbReady,
+    summaryManager,
+    diaryService,
+    missingSummaryDetector,
+    i18n.language,
+    mapDetectedMissing,
+    vaultRevision
+  ])
 
   useEffect(() => {
     fetchData()
@@ -409,10 +432,6 @@ export function useSummaryData() {
     ])
   }
 
-  const refreshData = () => {
-    fetchData()
-  }
-
   const setConcurrency = useCallback((limit: number) => {
     concurrencyLimitRef.current = Math.max(1, Math.min(5, limit))
   }, [])
@@ -427,7 +446,9 @@ export function useSummaryData() {
     stopGeneration,
     setConcurrency,
     generationStates,
-    refreshData,
+    isDetectingMissing,
+    refreshData: fetchData,
+    refreshMissing: fetchMissingSummaries,
     loading,
     isGenerating
   }

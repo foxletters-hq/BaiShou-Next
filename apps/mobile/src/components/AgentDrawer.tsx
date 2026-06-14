@@ -1,5 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { View, Text, Modal, Pressable, TouchableOpacity, StyleSheet, Animated } from 'react-native'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { View, Text, Modal, Pressable, TouchableOpacity, StyleSheet } from 'react-native'
+import Animated, {
+  cancelAnimation,
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -35,6 +44,9 @@ interface AgentDrawerProps {
 const DRAWER_WIDTH = 280
 /** 每页 10 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
 const SESSION_PAGE_SIZE = 10
+const DRAWER_OPEN_SPRING = { damping: 28, stiffness: 280, mass: 0.88, overshootClamping: true }
+const DRAWER_CLOSE_SPRING = { damping: 32, stiffness: 340, mass: 0.82, overshootClamping: true }
+const SESSION_LOAD_DELAY_MS = 220
 
 function DrawerAssistantAvatar({ assistant, size }: { assistant: AssistantSummary; size: number }) {
   return (
@@ -70,10 +82,19 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
   const [isLoadingMoreSessions, setIsLoadingMoreSessions] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current
-  const fadeAnim = useRef(new Animated.Value(0)).current
+  const slideX = useSharedValue(-DRAWER_WIDTH)
+  const backdropOpacity = useSharedValue(0)
   const sessionsLoadedFromDbRef = useRef(0)
   const lastLoadRequestId = useRef(0)
+  const lastVisibleAssistantRef = useRef<string | null>(null)
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value
+  }))
+
+  const drawerSlideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: slideX.value }]
+  }))
 
   const mapSession = useCallback(
     (s: any): AgentSession => ({
@@ -151,48 +172,56 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
 
   useEffect(() => {
     if (!visible || !currentAssistant?.id) return
-    lastLoadRequestId.current += 1
-    sessionsLoadedFromDbRef.current = 0
-    setSessions([])
-    setHasMoreSessions(false)
-    void loadSessions(true)
+
+    const assistantKey = currentAssistant.id
+    const assistantChanged = lastVisibleAssistantRef.current !== assistantKey
+    lastVisibleAssistantRef.current = assistantKey
+
+    if (assistantChanged) {
+      lastLoadRequestId.current += 1
+      sessionsLoadedFromDbRef.current = 0
+      setSessions([])
+      setHasMoreSessions(false)
+    }
+
+    const timer = setTimeout(() => void loadSessions(true), SESSION_LOAD_DELAY_MS)
+    return () => clearTimeout(timer)
   }, [visible, currentAssistant?.id, loadSessions])
 
+  const finishClose = useCallback(() => {
+    setMounted(false)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!visible) return
+
+    cancelAnimation(slideX)
+    cancelAnimation(backdropOpacity)
+    slideX.value = -DRAWER_WIDTH
+    backdropOpacity.value = 0
+    setMounted(true)
+  }, [visible, slideX, backdropOpacity])
+
   useEffect(() => {
+    if (!mounted) return
+
     if (visible) {
-      setMounted(true)
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 260,
-          useNativeDriver: true
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 260,
-          useNativeDriver: true
-        })
-      ]).start()
+      slideX.value = withSpring(0, DRAWER_OPEN_SPRING)
+      backdropOpacity.value = withTiming(1, {
+        duration: 260,
+        easing: Easing.out(Easing.cubic)
+      })
       return
     }
 
-    if (!mounted) return
-
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -DRAWER_WIDTH,
-        duration: 220,
-        useNativeDriver: true
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true
-      })
-    ]).start(({ finished }) => {
-      if (finished) setMounted(false)
+    slideX.value = withSpring(-DRAWER_WIDTH, DRAWER_CLOSE_SPRING, (finished) => {
+      if (finished) runOnJS(finishClose)()
     })
-  }, [visible, mounted, slideAnim, fadeAnim])
+    backdropOpacity.value = withTiming(0, {
+      duration: 220,
+      easing: Easing.in(Easing.cubic)
+    })
+  }, [visible, mounted, slideX, backdropOpacity, finishClose])
 
   const handleSelect = (id: string) => {
     onSelectSession(id)
@@ -227,9 +256,15 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
   if (!mounted) return null
 
   return (
-    <Modal visible={mounted} animationType="none" transparent onRequestClose={onClose}>
+    <Modal
+      visible={mounted}
+      animationType="none"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
 
@@ -238,9 +273,9 @@ export const AgentDrawer: React.FC<AgentDrawerProps> = ({
             styles.drawerWrap,
             {
               top: insets.top,
-              bottom: 0,
-              transform: [{ translateX: slideAnim }]
-            }
+              bottom: 0
+            },
+            drawerSlideStyle
           ]}
         >
           <View
