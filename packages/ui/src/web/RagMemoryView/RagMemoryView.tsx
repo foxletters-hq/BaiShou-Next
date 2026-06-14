@@ -7,6 +7,7 @@ import { RagMemoryDisabledAlert } from './RagMemoryDisabledAlert'
 import { RagMemoryStatsChips } from './RagMemoryStatsChips'
 import { RagMemoryConfigBlock } from './RagMemoryConfigBlock'
 import { RagMemoryAlerts } from './RagMemoryAlerts'
+import { RagMemoryDiaryEmbedHint } from './RagMemoryDiaryEmbedHint'
 import { RagMemoryActionButtons } from './RagMemoryActionButtons'
 import { RagMemorySearchBar } from './RagMemorySearchBar'
 import { RagMemoryEntriesList } from './RagMemoryEntriesList'
@@ -81,6 +82,11 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           onCancelMigration={onCancelMigration}
           onRestoreMigration={onRestoreMigration}
           onResumeMigration={onResumeMigration}
+        />
+
+        <RagMemoryDiaryEmbedHint
+          failedAt={config.lastDiaryEmbedFailureAt}
+          onBatchEmbed={onBatchEmbed}
         />
 
         <RagMemoryActionButtons

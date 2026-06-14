@@ -5,6 +5,7 @@ export interface RagConfig {
   ragSimilarityThreshold: number
   ragEnabled: boolean
   batchEmbedConcurrency?: number
+  lastDiaryEmbedFailureAt?: number
 }
 
 export interface RagStats {

@@ -787,3 +787,58 @@ input:checked + .slider:before {
   border-radius: 4px;
   transition: all 0.2s ease;
 }
+
+/* Diary embed pending hint */
+.embedHint {
+  margin-bottom: 12px;
+}
+
+.embedHintChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--color-warning-rgb, 245, 158, 11), 0.35);
+  background: rgba(var(--color-warning-rgb, 245, 158, 11), 0.08);
+  color: var(--color-warning, #d97706);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.embedHintChip:hover {
+  background: rgba(var(--color-warning-rgb, 245, 158, 11), 0.14);
+}
+
+.embedHintBody {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background: var(--bg-surface, #fff);
+}
+
+.embedHintDesc {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary, #64748b);
+}
+
+.embedHintAction {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.embedHintAction:hover {
+  opacity: 0.9;
+}
