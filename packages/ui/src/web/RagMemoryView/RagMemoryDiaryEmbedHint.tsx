@@ -38,7 +38,11 @@ export const RagMemoryDiaryEmbedHint: React.FC<RagMemoryDiaryEmbedHintProps> = (
             )}
           </p>
           {onBatchEmbed ? (
-            <button type="button" className={styles.embedHintAction} onClick={() => void onBatchEmbed()}>
+            <button
+              type="button"
+              className={styles.embedHintAction}
+              onClick={() => void onBatchEmbed()}
+            >
               {t('settings.rag_batch_embed', '全量扫描未索引日记')}
             </button>
           ) : null}

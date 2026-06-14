@@ -8,7 +8,13 @@ import {
   VaultIndexServiceImpl,
   IEmbeddingCallback
 } from '@baishou/core-desktop'
-import { diaryDateToSourceCreatedSeconds, parseDateStr, markRagDiaryEmbedFailure, clearRagDiaryEmbedFailure, hasRagDiaryEmbedFailure } from '@baishou/shared'
+import {
+  diaryDateToSourceCreatedSeconds,
+  parseDateStr,
+  markRagDiaryEmbedFailure,
+  clearRagDiaryEmbedFailure,
+  hasRagDiaryEmbedFailure
+} from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 import { fileSystem, pathService, vaultService } from './vault.ipc'
