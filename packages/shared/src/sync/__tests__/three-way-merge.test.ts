@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { SyncManifest, ManifestEntry } from '../../types/version-control.types'
+import { SYNC_MANIFEST_VERSION } from '../../constants/incremental-sync.constants'
 import { threeWayMerge } from '../three-way-merge'
 
 const makeEntry = (overrides: Partial<ManifestEntry> = {}): ManifestEntry => ({
@@ -9,7 +10,7 @@ const makeEntry = (overrides: Partial<ManifestEntry> = {}): ManifestEntry => ({
 })
 
 const makeManifest = (files: Record<string, ManifestEntry> = {}): SyncManifest => ({
-  version: 2,
+  version: SYNC_MANIFEST_VERSION,
   updatedAt: Date.now(),
   deviceId: 'test',
   files
@@ -132,7 +133,7 @@ describe('threeWayMerge', () => {
     expect(decision?.direction).toBe('download')
   })
 
-  it('should prefer local data when both local and remote are new with different content (empty ancestor)', () => {
+  it('should prefer remote data when both local and remote are new with different content (empty ancestor)', () => {
     const localEntry = makeEntry({ hash: 'local-hash', lastModified: 1000 })
     const remoteEntry = makeEntry({ hash: 'remote-hash', lastModified: 2000 })
     const local = makeManifest({ [filePath]: localEntry })
@@ -143,8 +144,8 @@ describe('threeWayMerge', () => {
     const decision = decisions.find((d) => d.filePath === filePath)
 
     expect(decision?.type).toBe('conflict-resolved')
-    expect(decision?.direction).toBe('upload')
-    expect(decision?.hash).toBe('local-hash')
+    expect(decision?.direction).toBe('download')
+    expect(decision?.hash).toBe('remote-hash')
   })
 
   it('should skip when both local and remote have same content (empty ancestor)', () => {
