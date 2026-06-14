@@ -56,15 +56,6 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
 
         {(handleChangeDirectory || onMigrateDirectory) && (
           <div className="storage-settings-actions">
-            {handleChangeDirectory ? (
-              <button
-                type="button"
-                className="storage-settings-action-btn"
-                onClick={() => void handleChangeDirectory()}
-              >
-                {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
-              </button>
-            ) : null}
             {onMigrateDirectory ? (
               <button
                 type="button"
@@ -72,6 +63,15 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
                 onClick={() => void onMigrateDirectory()}
               >
                 {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
+              </button>
+            ) : null}
+            {handleChangeDirectory ? (
+              <button
+                type="button"
+                className="storage-settings-action-btn"
+                onClick={() => void handleChangeDirectory()}
+              >
+                {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
               </button>
             ) : null}
           </div>

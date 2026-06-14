@@ -11,7 +11,7 @@ interface RagEmbeddedFilesTableProps {
   setActiveMenuId: (id: string | null) => void
   onEditEntry?: (entry: RagEntry) => void
   onDeleteEntry?: (id: string) => void
-  formatDate: (ms: number) => string
+  formatDate: (entry: RagEntry) => string
 }
 
 /**
@@ -61,7 +61,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
             <div className={styles.memoryEntryFooter}>
               <span>{e.modelId}</span>
               <span>·</span>
-              <span>{formatDate(e.createdAt)}</span>
+              <span>{formatDate(e)}</span>
               {e.similarity !== undefined && (
                 <>
                   <span>·</span>

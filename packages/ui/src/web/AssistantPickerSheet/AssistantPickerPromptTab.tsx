@@ -1,6 +1,10 @@
 import React from 'react'
 import { Command, Star, X } from 'lucide-react'
+import { MdCloud } from 'react-icons/md'
 import { CodeMirrorEditor } from '../DiaryEditor/CodeMirrorEditor'
+import { HelpTooltip } from '../HelpTooltip'
+import { getProviderIcon } from '../../utils/provider-icons'
+import { useTheme } from '../../hooks'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantInfo } from './assistant-picker-sheet.types'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
@@ -18,8 +22,20 @@ export function AssistantPickerPromptTab({
     setEditingPrompt,
     saveConfig,
     updateAssistantAPI,
-    setShowModelSwitcher
+    setShowModelSwitcher,
+    providers
   } = vm
+  const { isDark } = useTheme()
+
+  const providerId = activeAssistant.providerId
+  const providerRecord = providers.find(
+    (p) => (p.id || p.providerId) === providerId
+  )
+  const providerIconSrc = providerId
+    ? getProviderIcon(providerId, isDark) ||
+      getProviderIcon(providerRecord?.type, isDark)
+    : undefined
+
   return (
     <>
       <div
@@ -34,17 +50,15 @@ export function AssistantPickerPromptTab({
         <h3 className={styles.sectionTitle} style={{ margin: 0 }}>
           {t('agent.assistant.prompt_label', '系统提示词')}
         </h3>
+        <HelpTooltip
+          content={t(
+            'agent.assistant.prompt_hint',
+            '定义伙伴的角色、行为和回复风格...'
+          )}
+        />
       </div>
       <div
-        style={{
-          width: '100%',
-          height: 180,
-          border: '1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3)',
-          borderRadius: 12,
-          outline: 'none',
-          background: 'transparent',
-          overflowY: 'auto'
-        }}
+        className={styles.promptEditorArea}
         onBlur={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node)) {
             saveConfig()
@@ -71,48 +85,29 @@ export function AssistantPickerPromptTab({
         <h3 className={styles.sectionTitle} style={{ margin: 0 }}>
           {t('agent.assistant.bind_model_label', '绑定模型')}
         </h3>
+        <HelpTooltip
+          content={t(
+            'agent.assistant.bind_model_desc',
+            '绑定后，和伙伴创建对话时，会默认优先使用选择的模型'
+          )}
+        />
       </div>
-      <div
-        className={styles.modelSelectorArea}
-        onClick={() => setShowModelSwitcher(true)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          cursor: 'pointer',
-          borderRadius: 12,
-          border: '1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3)',
-          background: 'var(--bg-surface-highlight, rgba(248, 250, 252, 0.2))',
-          padding: '14px 16px',
-          gap: 12
-        }}
-      >
-        <Command size={18} color="var(--color-primary)" />
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
+      <div className={styles.modelSelectorArea} onClick={() => setShowModelSwitcher(true)}>
+        <div className={styles.modelSelectorIcon}>
+          {providerIconSrc ? (
+            <img src={providerIconSrc} alt={providerId || ''} />
+          ) : (
+            <MdCloud size={24} color="var(--text-tertiary)" />
+          )}
+        </div>
+        <div className={styles.modelSelectorInfo}>
           {activeAssistant.providerId ? (
             <>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                {activeAssistant.providerId}
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 'bold' }}>{activeAssistant.modelId}</span>
+              <span className={styles.modelSelectorProvider}>{activeAssistant.providerId}</span>
+              <span className={styles.modelSelectorModel}>{activeAssistant.modelId}</span>
             </>
           ) : (
-            <span
-              style={{
-                fontSize: 13,
-                color: 'var(--text-secondary)'
-              }}
-            >
+            <span className={styles.modelSelectorPlaceholder}>
               {t('agent.assistant.use_global_model', '使用全局模型')}
             </span>
           )}
@@ -128,7 +123,7 @@ export function AssistantPickerPromptTab({
                 modelId: null
               })
             }}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', flexShrink: 0 }}
           />
         )}
       </div>

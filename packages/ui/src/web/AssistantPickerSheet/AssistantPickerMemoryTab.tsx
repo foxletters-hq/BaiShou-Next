@@ -45,15 +45,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
       </div>
 
       {/* Context Window */}
-      <div
-        style={{
-          padding: 14,
-          border: '1px solid rgba(var(--color-outline-variant-rgb, 200,200,200), 0.2)',
-          borderRadius: 12,
-          marginBottom: 20,
-          background: 'var(--bg-surface-highlight, rgba(248, 250, 252, 0.2))'
-        }}
-      >
+      <div className={`${styles.memoryOptionCard} ${styles.memoryOptionCardSpaced}`}>
         <div
           style={{
             display: 'flex',
@@ -141,14 +133,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           )}
         />
       </div>
-      <div
-        style={{
-          padding: 14,
-          border: '1px solid rgba(var(--color-outline-variant-rgb, 200,200,200), 0.2)',
-          borderRadius: 12,
-          background: 'var(--bg-surface-highlight, rgba(248, 250, 252, 0.2))'
-        }}
-      >
+      <div className={styles.memoryOptionCard}>
         <div
           style={{
             display: 'flex',

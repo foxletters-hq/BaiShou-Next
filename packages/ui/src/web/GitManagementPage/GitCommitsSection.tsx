@@ -129,7 +129,6 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm }) => {
                   current={page}
                   total={Math.max(1, Math.ceil(totalCount / pageSize))}
                   onChange={setPage}
-                  showFirstLast
                   showJumper
                   jumperPlaceholder={t('version_control.jump_page', '跳页')}
                 />

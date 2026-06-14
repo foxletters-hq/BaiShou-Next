@@ -3,6 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import type { UserProfileConfig } from './identity-settings.types'
+import {
+  removeRecentPersonaId,
+  renameRecentPersonaId,
+  updateRecentPersonaIds
+} from './identity-recent.utils'
 
 interface UseIdentitySettingsCardOptions {
   profile: UserProfileConfig
@@ -32,19 +37,24 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
 
   const handleSwitch = async (pid: string) => {
     if (pid !== activeId) {
-      onChange({ ...profile, activePersonaId: pid })
-    } else {
-      const newName = await dialog.prompt(t('settings.rename_identity_card', '重命名身份卡'), pid)
-      if (newName && newName !== pid && !mergedPersonas[newName]) {
-        const nextPersonas = { ...mergedPersonas }
-        nextPersonas[newName] = { ...nextPersonas[pid], id: newName }
-        delete nextPersonas[pid]
-        onChange({
-          ...profile,
-          personas: nextPersonas,
-          activePersonaId: newName
-        })
-      }
+      onChange({
+        ...profile,
+        activePersonaId: pid,
+        recentPersonaIds: updateRecentPersonaIds(profile.recentPersonaIds, activeId, pid)
+      })
+      return
+    }
+    const newName = await dialog.prompt(t('settings.rename_identity_card', '重命名身份卡'), pid)
+    if (newName && newName !== pid && !mergedPersonas[newName]) {
+      const nextPersonas = { ...mergedPersonas }
+      nextPersonas[newName] = { ...nextPersonas[pid], id: newName }
+      delete nextPersonas[pid]
+      onChange({
+        ...profile,
+        personas: nextPersonas,
+        activePersonaId: newName,
+        recentPersonaIds: renameRecentPersonaId(profile.recentPersonaIds, pid, newName)
+      })
     }
   }
 
@@ -58,7 +68,8 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
       onChange({
         ...profile,
         personas: nextPersonas,
-        activePersonaId: newName
+        activePersonaId: newName,
+        recentPersonaIds: updateRecentPersonaIds(profile.recentPersonaIds, activeId, newName)
       })
     }
   }
@@ -121,7 +132,8 @@ export function useIdentitySettingsCard({ profile, onChange }: UseIdentitySettin
       onChange({
         ...profile,
         personas: nextPersonas,
-        activePersonaId: remainingIds[0]
+        activePersonaId: remainingIds[0],
+        recentPersonaIds: removeRecentPersonaId(profile.recentPersonaIds, pid)
       })
     }
   }

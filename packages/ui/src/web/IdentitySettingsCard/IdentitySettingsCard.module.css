@@ -107,6 +107,57 @@
   padding: 0 16px;
 }
 
+.embeddedQuickSwitchBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.embeddedQuickSwitchHint {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+  letter-spacing: 0.2px;
+}
+
+.embeddedQuickSwitchRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.embeddedPersonaChips {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.identityManageButton {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--color-primary, #5ba8f5);
+  color: var(--color-on-primary, #fff);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.identityManageButton:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.identityManageButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .chipsContainer {
   display: flex;
   flex-wrap: wrap;

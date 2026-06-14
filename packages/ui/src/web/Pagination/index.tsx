@@ -85,7 +85,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   total,
   onChange,
   siblingCount = 1,
-  showFirstLast = true,
+  showFirstLast = false,
   showJumper = true,
   jumperPlaceholder,
   disabled = false,

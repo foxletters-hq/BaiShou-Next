@@ -71,7 +71,6 @@ export const DiaryAttachmentGrid: React.FC<DiaryAttachmentGridProps> = ({ vm }) 
                 current={currentDiaryPage}
                 total={totalDiaryPages}
                 onChange={setCurrentDiaryPage}
-                showFirstLast={true}
                 showJumper={true}
                 jumperPlaceholder={t('version_control.jump_page', '跳页')}
               />
@@ -189,7 +188,6 @@ export const DiaryAttachmentGrid: React.FC<DiaryAttachmentGridProps> = ({ vm }) 
                 current={currentDiaryPage}
                 total={totalDiaryPages}
                 onChange={setCurrentDiaryPage}
-                showFirstLast={true}
                 showJumper={true}
                 jumperPlaceholder={t('version_control.jump_page', '跳页')}
               />

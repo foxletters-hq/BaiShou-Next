@@ -1,7 +1,7 @@
 import React from 'react'
 import type { RagMemoryViewProps } from './rag-memory.types'
 import { useRagMemoryView, getRagBusyFlags } from './useRagMemoryView'
-import { formatRagDate } from './rag-memory.utils'
+import { formatRagEntryDate } from './rag-memory.utils'
 import { RagMemoryHeader } from './RagMemoryHeader'
 import { RagMemoryDisabledAlert } from './RagMemoryDisabledAlert'
 import { RagMemoryStatsChips } from './RagMemoryStatsChips'
@@ -104,7 +104,7 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           searchQuery={view.searchQuery}
           activeMenuId={view.activeMenuId}
           setActiveMenuId={view.setActiveMenuId}
-          formatDate={formatRagDate}
+          formatDate={formatRagEntryDate}
           showPagination={view.showPagination}
           effectiveTotal={view.effectiveTotal}
           pageSize={view.pageSize}

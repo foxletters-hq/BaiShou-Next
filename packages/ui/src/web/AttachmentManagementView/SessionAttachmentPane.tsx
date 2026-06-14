@@ -23,7 +23,6 @@ const SessionPagination: React.FC<{ vm: AttachmentManagementViewModel }> = ({ vm
       current={vm.currentSessionPage}
       total={vm.totalSessionPages}
       onChange={vm.setCurrentSessionPage}
-      showFirstLast
       showJumper
       jumperPlaceholder={vm.t('version_control.jump_page', '跳页')}
     />
@@ -127,7 +126,6 @@ export const SessionAttachmentPane: React.FC<SessionAttachmentPaneProps> = ({ vm
             current={vm.currentSessionPage}
             total={vm.totalSessionPages}
             onChange={vm.setCurrentSessionPage}
-            showFirstLast
             showJumper
             jumperPlaceholder={t('version_control.jump_page', '跳页')}
           />

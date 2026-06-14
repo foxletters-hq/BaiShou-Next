@@ -207,11 +207,16 @@
   gap: 16px;
 }
 
+.paramLabelGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .paramLabel {
-  width: 100px;
   font-size: 13px;
   color: var(--text-primary);
-  flex-shrink: 0;
 }
 
 .paramValueBlue {

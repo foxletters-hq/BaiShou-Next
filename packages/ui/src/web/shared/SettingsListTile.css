@@ -8,6 +8,51 @@
   width: 100%;
 }
 
+.settings-expansion-tile-embedded .settings-expansion-summary {
+  padding: 13px 14px;
+}
+
+.settings-expansion-summary-divider {
+  border-bottom: 1px solid var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+}
+
+.settings-expansion-content-embedded {
+  padding: 0 14px 14px;
+}
+
+.settings-expansion-content-divider {
+  border-bottom: 1px solid var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+}
+
+.settings-card-link-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 128px;
+  align-self: flex-end;
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--color-primary, #5ba8f5);
+  color: var(--color-on-primary, #fff);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+
+.settings-card-link-action:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.settings-card-link-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ExpansionTile 标题行 (summary) */
 .settings-expansion-summary {
   display: flex;

@@ -10,7 +10,7 @@ interface RagMemoryEntriesListProps {
   searchQuery: string
   activeMenuId: string | null
   setActiveMenuId: (id: string | null) => void
-  formatDate: (ms: number) => string
+  formatDate: (entry: RagEntry) => string
   showPagination: boolean
   effectiveTotal: number
   pageSize: number
@@ -76,7 +76,6 @@ export const RagMemoryEntriesList: React.FC<RagMemoryEntriesListProps> = ({
               total={totalPages}
               onChange={onPageChange}
               siblingCount={1}
-              showFirstLast={true}
               showJumper={true}
               jumperPlaceholder={t('settings.rag_jump_to_page', '跳转')}
             />

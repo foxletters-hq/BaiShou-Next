@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { WEB_SEARCH_MAX_RESULTS_LIMIT } from '@baishou/shared'
 import {
   MdFormatListNumbered,
   MdAutoAwesome,
@@ -44,7 +45,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
             <input
               type="range"
               min="1"
-              max="30"
+              max={WEB_SEARCH_MAX_RESULTS_LIMIT}
               value={searchConfig.webSearchMaxResults}
               onChange={(e) => onChange('webSearchMaxResults', parseInt(e.target.value))}
               className={styles.sliderInput}

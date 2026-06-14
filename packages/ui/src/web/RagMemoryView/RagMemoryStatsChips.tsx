@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdMemory, MdStorage, MdCheckCircleOutline, MdRefresh } from 'react-icons/md'
+import { Sparkles } from 'lucide-react'
+import { MdStorage, MdCheckCircleOutline, MdRefresh } from 'react-icons/md'
 import type { RagStats } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
 
@@ -32,7 +33,7 @@ export const RagMemoryStatsChips: React.FC<RagMemoryStatsChipsProps> = ({
       </div>
       <div className={`${styles.statChip} ${styles.chipGreen}`}>
         <span className={styles.chipIcon}>
-          <MdMemory size={14} />
+          <Sparkles size={14} />
         </span>
         <span className={styles.chipLabel}>{t('settings.rag_model', '模型:')}</span>
         {embeddingModelId ? (

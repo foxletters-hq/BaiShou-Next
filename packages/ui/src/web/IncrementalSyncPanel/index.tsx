@@ -19,45 +19,37 @@ export interface SyncProgress {
 }
 
 export interface IncrementalSyncPanelProps {
-  onSync: () => Promise<SyncProgress>
+  onSync: () => Promise<SyncProgress | null>
   isConfigured: boolean
   onSyncProgress?: (callback: (event: SyncProgressEvent) => void) => () => void
+  /** When provided, the panel reflects global sync state instead of local state. */
+  isSyncing?: boolean
+  progress?: SyncProgressEvent | null
 }
 
 export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
   onSync,
   isConfigured,
-  onSyncProgress
+  onSyncProgress,
+  isSyncing: externalIsSyncing,
+  progress: externalProgress
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [progress, setProgress] = useState<SyncProgressEvent | null>(null)
+  const isControlled = externalIsSyncing !== undefined
+  const [localIsSyncing, setLocalIsSyncing] = useState(false)
+  const [localProgress, setLocalProgress] = useState<SyncProgressEvent | null>(null)
+
+  const isSyncing = isControlled ? externalIsSyncing : localIsSyncing
+  const progress = isControlled ? (externalProgress ?? null) : localProgress
 
   useEffect(() => {
-    if (!onSyncProgress) return undefined
+    if (isControlled || !onSyncProgress) return undefined
     const unsub = onSyncProgress((event) => {
-      setProgress(event)
+      setLocalProgress(event)
     })
     return unsub
-  }, [onSyncProgress])
-
-  const handleSync = useCallback(async () => {
-    if (isSyncing || !isConfigured) return
-    setIsSyncing(true)
-    setProgress(null)
-
-    try {
-      await onSync()
-      setProgress(null)
-      toast.showSuccess(t('data_sync.sync_completed', '同步成功'))
-    } catch (e: any) {
-      toast.showError(friendlySyncError(e?.message || ''))
-      setProgress(null)
-    } finally {
-      setIsSyncing(false)
-    }
-  }, [isSyncing, isConfigured, onSync, t, toast])
+  }, [isControlled, onSyncProgress])
 
   const friendlySyncError = (msg: string): string => {
     if (!msg) return t('data_sync.sync_failed', '同步失败')
@@ -99,6 +91,31 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
     }
     return t('data_sync.sync_failed', '同步失败') + `: ${cleanMsg}`
   }
+
+  const handleSync = useCallback(async () => {
+    if (isSyncing || !isConfigured) return
+    if (!isControlled) {
+      setLocalIsSyncing(true)
+      setLocalProgress(null)
+    }
+
+    try {
+      await onSync()
+      if (!isControlled) {
+        setLocalProgress(null)
+        toast.showSuccess(t('data_sync.sync_completed', '同步成功'))
+      }
+    } catch (e: any) {
+      if (!isControlled) {
+        toast.showError(friendlySyncError(e?.message || ''))
+        setLocalProgress(null)
+      }
+    } finally {
+      if (!isControlled) {
+        setLocalIsSyncing(false)
+      }
+    }
+  }, [isControlled, isConfigured, isSyncing, onSync, t, toast])
 
   return (
     <>

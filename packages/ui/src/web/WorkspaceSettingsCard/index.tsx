@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdWorkspacesOutline, MdFolderSpecial, MdAdd, MdCheckCircle } from 'react-icons/md'
 import { useDialog } from '../Dialog'
@@ -6,9 +6,17 @@ import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
+import { pickRecentVaults } from './workspace-settings.utils'
+import { validateWorkspaceName } from './workspace-name.validation'
+import styles from './WorkspaceSettingsCard.module.css'
 
 export { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
 export type { WorkspaceScopeHelpTooltipProps } from './WorkspaceScopeHelpTooltip'
+export { validateWorkspaceName }
+export type {
+  WorkspaceNameValidationReason,
+  WorkspaceNameValidationResult
+} from './workspace-name.validation'
 
 export interface VaultInfo {
   name: string
@@ -25,6 +33,9 @@ export interface WorkspaceSettingsCardProps {
   onCreate: (name: string) => Promise<void>
   customRootPath?: string | null
   onPickCustomRoot?: () => Promise<string | null>
+  embedded?: boolean
+  isLast?: boolean
+  onManageWorkspace?: () => void
 }
 
 export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
@@ -32,18 +43,35 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   activeVault,
   onSwitch,
   onDelete,
-  onCreate
+  onCreate,
+  embedded = false,
+  isLast = false,
+  onManageWorkspace
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
   const toast = useToast()
 
+  const recentVaults = useMemo(() => pickRecentVaults(vaults, activeVault), [vaults, activeVault])
+
   const handleCreate = async () => {
     const name = await dialog.prompt(t('workspace.new_name', '空间名称'), '')
-    if (!name?.trim()) return
+    if (name === null) return
+    const validation = validateWorkspaceName(
+      name,
+      vaults.map((vault) => vault.name)
+    )
+    if (!validation.ok) {
+      const message =
+        validation.reason === 'duplicate'
+          ? t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。')
+          : t('workspace.name_invalid', '工作空间名称不能包含特殊字符，且不能以点号结尾。')
+      toast.showWarning(message)
+      return
+    }
     try {
-      await onCreate(name.trim())
-    } catch (e) {
+      await onCreate(validation.name)
+    } catch {
       toast.showError(t('workspace.create_failed', '创建失败'))
     }
   }
@@ -69,6 +97,85 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
     } catch {
       return t('common.unknown_time', '未知时间')
     }
+  }
+
+  const embeddedBody = (
+    <>
+      <div className={styles.workspaceCurrentBlock}>
+        <div className={styles.workspaceCurrentInfo}>
+          {activeVault ? (
+            <>
+              <span className={styles.workspaceSectionLabel}>
+                {t('workspace.current_space', '当前空间')}
+              </span>
+              <span className="settings-list-tile-title">{activeVault.name}</span>
+              {activeVault.path ? (
+                <span className={styles.workspacePathText}>
+                  {activeVault.path.replace(/^file:\/\//, '')}
+                </span>
+              ) : null}
+            </>
+          ) : (
+            <span className={styles.workspaceEmptyHint}>
+              {t('workspace.no_active', '尚未选择工作空间')}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          className={styles.workspaceManageButton}
+          onClick={() => onManageWorkspace?.()}
+          disabled={!onManageWorkspace}
+        >
+          {t('workspace.manage', '管理工作空间')}
+        </button>
+      </div>
+
+      {recentVaults.length > 0 ? (
+        <>
+          <span className={styles.workspaceSectionLabel} style={{ marginBottom: 4, marginTop: 4 }}>
+            {t('workspace.recent_hint', '仅显示最近使用的三个工作空间')}
+          </span>
+          <div className={styles.workspaceRecentList}>
+            {recentVaults.map((vault) => (
+              <button
+                key={vault.name}
+                type="button"
+                className={styles.workspaceRecentCard}
+                onMouseEnter={() => {
+                  if (typeof window !== 'undefined' && (window as any).api?.vault?.preload) {
+                    void (window as any).api.vault.preload(vault.name)
+                  }
+                }}
+                onClick={() => onSwitch(vault.name)}
+              >
+                <span className={styles.workspaceRecentTitle}>{vault.name}</span>
+                <span className={styles.workspaceRecentAction}>
+                  {t('workspace.switch', '切换')}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <SettingsExpansionTile
+        embedded
+        isLast={isLast}
+        title={t('workspace.title', '工作空间')}
+        titleAddon={<WorkspaceScopeHelpTooltip />}
+        subtitle={t('workspace.current', '当前空间: {{name}}', {
+          name: activeVault?.name ?? t('common.unknown', '未知')
+        })}
+      >
+        {embeddedBody}
+      </SettingsExpansionTile>
+    )
   }
 
   return (
@@ -131,7 +238,6 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
       <div className="settings-list-divider indent" />
 
-      {/* 创建新空间 */}
       <button className="settings-list-tile" onClick={handleCreate}>
         <div className="settings-list-tile-leading">
           <MdAdd size={22} />

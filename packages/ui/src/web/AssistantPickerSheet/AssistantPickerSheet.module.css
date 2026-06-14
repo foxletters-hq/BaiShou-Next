@@ -15,7 +15,7 @@
 }
 
 .dialog {
-  background: var(--bg-surface);
+  background: var(--bg-surface-lowest);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow:
     0 32px 80px rgba(0, 0, 0, 0.15),
@@ -33,15 +33,15 @@
 /* ───────── Left Sidebar (white tone) ───────── */
 .sidebar {
   width: 280px;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-surface-lowest);
+  border-right: 1px solid var(--border-muted);
   display: flex;
   flex-direction: column;
 }
 
 :global(body[data-theme='dark']) .sidebar {
-  background: var(--bg-surface);
-  border-right-color: var(--border-subtle);
+  background: var(--bg-surface-lowest);
+  border-right-color: var(--border-muted);
 }
 
 .sidebarHeader {
@@ -285,8 +285,8 @@
 
 .bottomArea {
   padding: 16px 20px;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  border-top: 1px solid var(--border-muted);
+  background: var(--bg-surface-lowest);
 }
 
 .createBtn {
@@ -297,7 +297,7 @@
   gap: 8px;
   padding: 10px;
   background: var(--bg-surface);
-  border: 1px dashed var(--border-subtle);
+  border: 1px solid var(--border-muted);
   border-radius: 12px;
   color: var(--text-secondary);
   font-weight: 700;
@@ -308,8 +308,73 @@
 
 .createBtn:hover {
   background: var(--bg-surface-high);
-  border-color: rgba(var(--color-outline-variant-rgb), 0.6);
+  border-color: var(--border-muted);
   color: var(--text-primary);
+}
+
+.memoryOptionCard {
+  padding: 14px;
+  border: 1px solid var(--border-muted);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+
+.memoryOptionCardSpaced {
+  margin-bottom: 20px;
+}
+
+.modelSelectorArea {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 12px;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  padding: 14px 16px;
+  gap: 12px;
+  transition: background-color 0.2s;
+}
+
+.modelSelectorArea:hover {
+  background: var(--bg-surface-high);
+}
+
+.modelSelectorIcon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modelSelectorIcon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.modelSelectorInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.modelSelectorProvider {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.modelSelectorModel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modelSelectorPlaceholder {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 /* ───────── Right Detail Pane ───────── */
@@ -318,7 +383,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--bg-surface);
+  background: var(--bg-surface-lowest);
 }
 
 .closeBtn {
@@ -414,7 +479,7 @@
 .tabsRow {
   display: flex;
   gap: 8px;
-  border-bottom: 2px solid rgba(var(--color-outline-variant-rgb), 0.3);
+  border-bottom: 2px solid var(--border-muted);
   margin-bottom: 24px;
 }
 
@@ -459,9 +524,24 @@
   letter-spacing: 0.5px;
 }
 
+.promptEditorArea {
+  width: 100%;
+  height: 180px;
+  border: 1px solid var(--border-muted);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  overflow-y: auto;
+}
+
+.promptEditorArea :global(.cm-editor),
+.promptEditorArea :global(.cm-scroller),
+.promptEditorArea :global(.cm-gutters) {
+  background: var(--bg-surface) !important;
+}
+
 .promptBox {
   background: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.8);
+  border: 1px solid var(--border-muted);
   border-radius: 12px;
   padding: 16px;
   font-family: var(--font-mono, monospace);
@@ -477,7 +557,7 @@
   width: 100%;
   box-sizing: border-box;
   background: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.8);
+  border: 1px solid var(--border-muted);
   border-radius: 12px;
   padding: 16px;
   font-family: inherit;
@@ -554,8 +634,9 @@
 }
 
 .applyBtnCurrent {
-  background: rgba(var(--color-outline-variant-rgb), 0.3);
+  background: var(--bg-surface);
   color: var(--text-secondary);
+  border: 1px solid var(--border-muted);
   box-shadow: none;
   cursor: default;
 }
@@ -563,6 +644,8 @@
 .applyBtnCurrent:hover {
   transform: none;
   box-shadow: none;
+  filter: none;
+  background: var(--bg-surface);
 }
 
 @keyframes fadeIn {

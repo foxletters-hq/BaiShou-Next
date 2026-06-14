@@ -10,6 +10,10 @@ export interface SettingsExpansionTileProps {
   /** Shown beside the title (e.g. help icon). */
   titleAddon?: React.ReactNode
   nested?: boolean
+  /** 嵌入分组卡片内：无独立外框，行底部分隔线 */
+  embedded?: boolean
+  /** 嵌入模式下是否为分组最后一项 */
+  isLast?: boolean
   children: React.ReactNode
 }
 
@@ -19,6 +23,8 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
   subtitle,
   titleAddon,
   nested = false,
+  embedded = false,
+  isLast = false,
   children
 }) => {
   const [open, setOpen] = useState(false)
@@ -36,12 +42,14 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
     }
   }, [open])
 
+  const showRowDivider = embedded && (!isLast || open)
+
   return (
     <div
-      className={`settings-expansion-tile ${nested ? 'settings-nested' : ''} ${open ? 'settings-open' : ''}`}
+      className={`settings-expansion-tile ${nested ? 'settings-nested' : ''} ${embedded ? 'settings-expansion-tile-embedded' : ''} ${open ? 'settings-open' : ''}`}
     >
       <div
-        className="settings-expansion-summary"
+        className={`settings-expansion-summary ${showRowDivider ? 'settings-expansion-summary-divider' : ''}`}
         role="button"
         tabIndex={0}
         onClick={(e) => {
@@ -69,7 +77,13 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
       {/* Uses modern CSS Grid transition for bidirectional smooth height animation + delayed unmount */}
       <div className={`settings-expansion-grid-wrapper ${open ? 'expanded' : ''}`}>
         <div className="settings-expansion-grid-item">
-          {shouldRender && <div className="settings-expansion-content">{children}</div>}
+          {shouldRender && (
+            <div
+              className={`settings-expansion-content ${embedded ? 'settings-expansion-content-embedded' : ''} ${embedded && !isLast ? 'settings-expansion-content-divider' : ''}`}
+            >
+              {children}
+            </div>
+          )}
         </div>
       </div>
     </div>

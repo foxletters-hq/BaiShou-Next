@@ -4,18 +4,78 @@ import type { IdentitySettingsCardProps } from './identity-settings.types'
 import { useIdentitySettingsCard } from './useIdentitySettingsCard'
 import { IdentitySettingsHeader } from './IdentitySettingsHeader'
 import { IdentityPersonaChips } from './IdentityPersonaChips'
+import { IdentitySettingsPersonaSection } from './IdentitySettingsPersonaSection'
 import { IdentityFactsList } from './IdentityFactsList'
 import { IdentityFactEditModal } from './IdentityFactEditModal'
+import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import styles from './IdentitySettingsCard.module.css'
 
 export type { UserProfileConfig, IdentitySettingsCardProps } from './identity-settings.types'
 
 export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
   profile,
-  onChange
+  onChange,
+  embedded = false,
+  isLast = false,
+  onManageIdentity
 }) => {
   const { t } = useTranslation()
   const card = useIdentitySettingsCard({ profile, onChange })
+
+  const factsBody = (
+    <>
+      <IdentityFactsList
+        currentFacts={card.currentFacts}
+        onAddFact={card.handleAddFact}
+        onEditFact={card.startEdit}
+        onDeleteFact={card.handleDeleteFact}
+      />
+      <IdentityFactEditModal
+        isOpen={card.isFactModalOpen}
+        editingKey={card.editingKey}
+        editKeyInput={card.editKeyInput}
+        editValInput={card.editValInput}
+        onKeyChange={card.setEditKeyInput}
+        onValueChange={card.setEditValInput}
+        onSave={card.saveEdit}
+        onClose={() => card.setIsFactModalOpen(false)}
+      />
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <SettingsExpansionTile
+        embedded
+        isLast={isLast}
+        title={t('settings.identity_card', '身份卡')}
+        subtitle={t('settings.identity_current', '当前: {{name}}', { name: card.activeId })}
+      >
+        <div className={styles.embeddedQuickSwitchBlock}>
+          <span className={styles.embeddedQuickSwitchHint}>
+            {t('settings.identity_recent_hint', '仅显示最近五次常用的身份卡')}
+          </span>
+          <div className={styles.embeddedQuickSwitchRow}>
+            <IdentitySettingsPersonaSection
+              activeId={card.activeId}
+              allPersonas={card.allPersonas}
+              recentPersonaIds={profile.recentPersonaIds}
+              onSwitch={card.handleSwitch}
+            />
+            <button
+              type="button"
+              className={styles.identityManageButton}
+              onClick={() => onManageIdentity?.()}
+              disabled={!onManageIdentity}
+            >
+              {t('settings.manage_identity_cards', '管理身份卡')}
+            </button>
+          </div>
+        </div>
+        {factsBody}
+      </SettingsExpansionTile>
+    )
+  }
 
   return (
     <div className={styles.flutterCardContainer}>
@@ -39,25 +99,9 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
             onDeletePersona={card.handleDeletePersona}
           />
 
-          <IdentityFactsList
-            currentFacts={card.currentFacts}
-            onAddFact={card.handleAddFact}
-            onEditFact={card.startEdit}
-            onDeleteFact={card.handleDeleteFact}
-          />
+          {factsBody}
         </div>
       </div>
-
-      <IdentityFactEditModal
-        isOpen={card.isFactModalOpen}
-        editingKey={card.editingKey}
-        editKeyInput={card.editKeyInput}
-        editValInput={card.editValInput}
-        onKeyChange={card.setEditKeyInput}
-        onValueChange={card.setEditValInput}
-        onSave={card.saveEdit}
-        onClose={() => card.setIsFactModalOpen(false)}
-      />
     </div>
   )
 }

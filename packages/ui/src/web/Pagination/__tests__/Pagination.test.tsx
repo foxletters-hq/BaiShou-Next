@@ -21,8 +21,14 @@ describe('Pagination', () => {
       expect(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
     })
 
-    it('should render first and last buttons by default', () => {
+    it('should hide first and last buttons by default', () => {
       render(<Pagination {...defaultProps} />)
+      expect(screen.queryByRole('button', { name: 'First page' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Last page' })).not.toBeInTheDocument()
+    })
+
+    it('should render first and last buttons when showFirstLast is true', () => {
+      render(<Pagination {...defaultProps} showFirstLast />)
       expect(screen.getByRole('button', { name: 'First page' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Last page' })).toBeInTheDocument()
     })
@@ -114,14 +120,14 @@ describe('Pagination', () => {
 
     it('should call onChange when clicking first page', async () => {
       const onChange = vi.fn()
-      render(<Pagination current={5} total={10} onChange={onChange} />)
+      render(<Pagination current={5} total={10} onChange={onChange} showFirstLast />)
       await userEvent.click(screen.getByRole('button', { name: 'First page' }))
       expect(onChange).toHaveBeenCalledWith(1)
     })
 
     it('should call onChange when clicking last page', async () => {
       const onChange = vi.fn()
-      render(<Pagination current={5} total={10} onChange={onChange} />)
+      render(<Pagination current={5} total={10} onChange={onChange} showFirstLast />)
       await userEvent.click(screen.getByRole('button', { name: 'Last page' }))
       expect(onChange).toHaveBeenCalledWith(10)
     })
@@ -135,24 +141,20 @@ describe('Pagination', () => {
   })
 
   describe('按钮禁用状态', () => {
-    it('should disable previous and first buttons when current is 1', () => {
+    it('should disable previous button when current is 1', () => {
       render(<Pagination current={1} total={10} onChange={vi.fn()} />)
       expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'First page' })).toBeDisabled()
     })
 
-    it('should disable next and last buttons when current is last page', () => {
+    it('should disable next button when current is last page', () => {
       render(<Pagination current={10} total={10} onChange={vi.fn()} />)
       expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Last page' })).toBeDisabled()
     })
 
     it('should disable all buttons when disabled prop is true', () => {
       render(<Pagination current={5} total={10} onChange={vi.fn()} disabled />)
       expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'First page' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Last page' })).toBeDisabled()
     })
   })
 
