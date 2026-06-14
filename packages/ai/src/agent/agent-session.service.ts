@@ -432,7 +432,9 @@ export class AgentSessionService {
         logger.error('[AgentSessionService] Stack:', err.stack)
       }
       if ((e as { cause?: unknown })?.cause) {
-        logger.error('[AgentSessionService] Cause:', (e as { cause?: unknown }).cause)
+        logger.error('[AgentSessionService] Cause:', {
+          cause: String((e as { cause?: unknown }).cause)
+        })
       }
       if ((e as { url?: string })?.url) {
         logger.error('[AgentSessionService] Failing URL:', (e as { url?: string }).url)
