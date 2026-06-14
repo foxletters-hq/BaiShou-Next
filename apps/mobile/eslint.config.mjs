@@ -1,4 +1,5 @@
 import { createBaishouEslintConfig } from '../../eslint.baishou.base.mjs'
+import stableHooksPlugin from '../../scripts/eslint-plugin-stable-hooks.mjs'
 
 export default [
   ...createBaishouEslintConfig({
@@ -68,6 +69,15 @@ export default [
           ]
         }
       ]
+    }
+  },
+  {
+    files: ['src/hooks/**/*.{ts,tsx}'],
+    plugins: {
+      'stable-hooks': stableHooksPlugin
+    },
+    rules: {
+      'stable-hooks/no-unmemoized-hook-export': 'error'
     }
   }
 ]

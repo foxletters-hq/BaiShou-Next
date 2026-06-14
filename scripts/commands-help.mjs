@@ -14,7 +14,8 @@ const sections = [
         'pnpm dev:mobile:clear',
         '★ 全量重装：清 Metro/.expo/Gradle 缓存 + 重编安装 APK（升级 Expo、加原生模块、闪退时用；完成后 dev:mobile）'
       ],
-      ['pnpm mobile:connect', 'adb reverse + 打开 App（Metro 需已在 dev:mobile 跑着）']
+      ['pnpm mobile:connect', 'adb reverse + 打开 App（Metro 需已在 dev:mobile 跑着）'],
+      ['pnpm mobile:install', '安装已编好的 debug APK（clear 编完但手机没点安装时用）']
     ]
   },
   {
