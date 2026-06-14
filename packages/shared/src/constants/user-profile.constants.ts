@@ -1,4 +1,5 @@
-import { USER_DEFAULT_AVATAR_SENTINEL, type UserProfile } from '../types/user-profile.types'
+import type { UserProfile } from '../types/user-profile.types'
+import { USER_DEFAULT_AVATAR_SENTINEL } from '../utils/user-avatar.util'
 
 /** 用户档案在 system_settings / settings.json 中的 canonical 键（与桌面 UserProfileRepository 对齐） */
 export const USER_PROFILE_SETTINGS_KEY = 'user_profile_data' as const
