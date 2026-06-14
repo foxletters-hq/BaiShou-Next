@@ -1,16 +1,15 @@
 /**
  * 跨平台 AWS Signature V4 签名工具
  *
- * 使用 Web Crypto API（crypto.subtle），兼容 Node.js、浏览器、React Native Hermes。
+ * 优先使用 Web Crypto API（crypto.subtle）；不可用时回退到纯 JS SHA-256/HMAC（React Native Hermes）。
  * Node.js < 19 通过 node:crypto.webcrypto 回退。
  */
 
+import { hmacSha256Pure, sha256Pure } from './sha256-pure'
+
 const encoder = new TextEncoder()
 
-/**
- * 获取 crypto.subtle，兼容不同平台
- */
-function getSubtle(): SubtleCrypto {
+function getSubtle(): SubtleCrypto | null {
   if (globalThis.crypto?.subtle) {
     return globalThis.crypto.subtle
   }
@@ -22,7 +21,49 @@ function getSubtle(): SubtleCrypto {
       return nodeCrypto.webcrypto.subtle
     }
   } catch {}
-  throw new Error('Web Crypto API is not available in this environment')
+  return null
+}
+
+const subtleCrypto = getSubtle()
+
+/** AWS Sig V4 规范化 query string（对已解码的 searchParams 逐项编码，避免双重编码） */
+function canonicalQueryString(searchParams: URLSearchParams): string {
+  const entries: [string, string][] = []
+  searchParams.forEach((value, key) => {
+    entries.push([key, value])
+  })
+  return entries
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${awsUriEncode(key)}=${awsUriEncode(value)}`)
+    .join('&')
+}
+
+/** AWS Sig V4 URI 编码（与 encodeURIComponent 略有差异） */
+function awsUriEncode(value: string): string {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (ch) =>
+    `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
+  )
+}
+
+function canonicalUri(pathname: string): string {
+  if (!pathname || pathname === '/') return '/'
+  return pathname
+    .split('/')
+    .map((segment) => awsUriEncode(segment))
+    .join('/')
+}
+
+/**
+ * 转为 fetch / uploadAsync 可用的请求头。
+ * Host 仅参与签名，由 HTTP 客户端根据 URL 自动设置，避免 RN 手动设置 Host 导致验签失败。
+ */
+export function s3FetchHeaders(signed: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = {}
+  for (const [key, value] of Object.entries(signed)) {
+    if (key.toLowerCase() === 'host') continue
+    headers[key] = value
+  }
+  return headers
 }
 
 /**
@@ -39,25 +80,31 @@ function toHex(buffer: ArrayBuffer): string {
  */
 async function sha256(data: ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
   const input = data instanceof Uint8Array ? data : new Uint8Array(data)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return getSubtle().digest('SHA-256', input as any)
+  if (subtleCrypto) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return subtleCrypto.digest('SHA-256', input as any)
+  }
+  return sha256Pure(input).buffer as ArrayBuffer
 }
 
 /**
  * HMAC-SHA256
  */
-async function hmacSha256(key: ArrayBuffer, data: string): Promise<ArrayBuffer> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cryptoKey = await getSubtle().importKey(
-    'raw',
-    key as any,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const signature = await getSubtle().sign('HMAC', cryptoKey, encoder.encode(data) as any)
-  return signature
+async function hmacSha256(key: ArrayBuffer | Uint8Array, data: string): Promise<ArrayBuffer> {
+  const keyBytes = key instanceof Uint8Array ? key : new Uint8Array(key)
+  if (subtleCrypto) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cryptoKey = await subtleCrypto.importKey(
+      'raw',
+      keyBytes as any,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return subtleCrypto.sign('HMAC', cryptoKey, encoder.encode(data) as any)
+  }
+  return hmacSha256Pure(keyBytes, encoder.encode(data)).buffer as ArrayBuffer
 }
 
 /**
@@ -69,10 +116,7 @@ async function getSignatureKey(
   region: string,
   service: string
 ): Promise<ArrayBuffer> {
-  const kDate = await hmacSha256(
-    encoder.encode(`AWS4${secretKey}`).buffer as ArrayBuffer,
-    dateStamp
-  )
+  const kDate = await hmacSha256(encoder.encode(`AWS4${secretKey}`), dateStamp)
   const kRegion = await hmacSha256(kDate, region)
   const kService = await hmacSha256(kRegion, service)
   const kSigning = await hmacSha256(kService, 'aws4_request')
@@ -92,6 +136,8 @@ export async function signS3Request(
   additionalHeaders?: Record<string, string>
 ): Promise<Record<string, string>> {
   const service = 's3'
+  const trimmedAccessKey = accessKey.trim()
+  const trimmedSecretKey = secretKey.trim()
   const now = new Date()
   const amzDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '')
   const dateStamp = amzDate.substring(0, 8)
@@ -117,26 +163,19 @@ export async function signS3Request(
     .join(';')
 
   // 构建规范化请求
-  const canonicalUri = parsedUrl.pathname || '/'
-  const canonicalQuerystring = (parsedUrl.searchParams?.toString() || '')
-    .split('&')
-    .map((p) => {
-      const [key, value] = p.split('=')
-      return `${encodeURIComponent(key ?? '')}=${encodeURIComponent(value ?? '')}`
-    })
-    .sort()
-    .join('&')
+  const canonicalUriValue = canonicalUri(parsedUrl.pathname || '/')
+  const canonicalQuerystring = canonicalQueryString(parsedUrl.searchParams)
 
   const canonicalHeaders =
-    Object.keys(headers)
-      .map((k) => k.toLowerCase())
-      .sort()
-      .map((k) => `${k}:${headers[k]!.trim()}`)
+    Object.entries(headers)
+      .map(([key, value]) => [key.toLowerCase(), value.trim()] as const)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}:${value}`)
       .join('\n') + '\n'
 
   const canonicalRequest = [
     method.toUpperCase(),
-    canonicalUri,
+    canonicalUriValue,
     canonicalQuerystring,
     canonicalHeaders,
     signedHeaders,
@@ -152,11 +191,10 @@ export async function signS3Request(
   )
 
   // 计算签名密钥和最终签名
-  const signingKey = await getSignatureKey(secretKey, dateStamp, region, service)
+  const signingKey = await getSignatureKey(trimmedSecretKey, dateStamp, region, service)
   const signature = toHex(await hmacSha256(signingKey, stringToSign))
 
-  // 构建 Authorization 头
-  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
+  const authorization = `AWS4-HMAC-SHA256 Credential=${trimmedAccessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
 
   return {
     ...headers,
