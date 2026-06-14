@@ -79,6 +79,8 @@ export interface RagConfig {
   ragSimilarityThreshold: number // 相似度阈值过滤（默认 0.4）
   /** 批量嵌入日记时的并行篇数（1–5，默认 3） */
   batchEmbedConcurrency?: number
+  /** 最近一次日记自动嵌入失败的时间戳（毫秒），用于 RAG 页非阻塞提示 */
+  lastDiaryEmbedFailureAt?: number
 }
 
 /**
