@@ -196,7 +196,7 @@ export const AssistantEditScreen: React.FC = () => {
             setStoredAvatarPath(ASSISTANT_DEFAULT_AVATAR_SENTINEL)
           }
           setPendingImportUri(null)
-          await resolveAvatarPreview(assistant.avatarPath)
+          await resolveAvatarPreview(assistant.avatarPath ?? undefined)
           setContextWindow(assistant.contextWindow ?? -1)
           setCompressTokenThreshold(assistant.compressTokenThreshold ?? 60000)
           setCompressKeepTurns(assistant.compressKeepTurns ?? 3)

@@ -13,7 +13,7 @@ export type MobileAssistantUi = {
   isPinned: boolean
   providerId?: string
   modelId?: string
-  avatarPath?: string | null
+  avatarPath?: string
   contextWindow?: number
   compressTokenThreshold?: number
   compressKeepTurns?: number
@@ -78,14 +78,12 @@ export async function listAssistantsForUi(
       isPinned: a.isPinned,
       providerId: a.providerId ?? undefined,
       modelId: a.modelId ?? undefined,
-      avatarPath: a.avatarPath,
+      avatarPath: a.avatarPath ?? undefined,
       contextWindow: a.contextWindow ?? undefined,
       compressTokenThreshold: a.compressTokenThreshold ?? undefined,
       compressKeepTurns: a.compressKeepTurns ?? undefined,
       compressSystemPrompt: a.compressSystemPrompt,
       createdAt: a.createdAt ? new Date(a.createdAt).getTime() : undefined,
-      lastUsedAt: a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : undefined,
-      useCount: a.useCount ?? undefined,
       displayAvatarUri: await resolveAssistantAvatarForMobileUi(
         a.avatarPath ?? undefined,
         attachmentManager,
@@ -113,7 +111,7 @@ export async function findAssistantForUi(
     isPinned: a.isPinned,
     providerId: a.providerId ?? undefined,
     modelId: a.modelId ?? undefined,
-    avatarPath: a.avatarPath,
+    avatarPath: a.avatarPath ?? undefined,
     contextWindow: a.contextWindow ?? undefined,
     compressTokenThreshold: a.compressTokenThreshold ?? undefined,
     compressKeepTurns: a.compressKeepTurns ?? undefined,
